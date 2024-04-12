@@ -1,0 +1,77 @@
+# Copyright 2018 The JemaOS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Author: Simon Tsao(yang@jemaos.io)
+
+import("//build/config/features.gni")
+import("//extensions/buildflags/buildflags.gni")
+import("//jemaos/extensions/common/api/jemaos_schema.gni")
+import("//mojo/public/tools/bindings/mojom.gni")
+import("//rlz/buildflags/buildflags.gni")
+import("//tools/json_schema_compiler/json_schema_api.gni")
+
+assert(enable_extensions)
+assert(is_chromeos)
+
+static_library("jemaos_extensions_api") {
+  sources = [
+    "api/native_windows/native_windows_api.cc",
+    "api/native_windows/native_windows_api.h",
+    "api/app_management/app_management_api.cc",
+    "api/app_management/app_management_api.h",
+    "api/command_line/command_line_api.cc",
+    "api/command_line/command_line_api.h",
+    "api/shell_client/shell_client_api.cc",
+    "api/shell_client/shell_client_api.h",
+    "api/jemaos_arc_status/jemaos_arc_status_api.cc",
+    "api/jemaos_arc_status/jemaos_arc_status_api.h",
+    "api/jemaos_private/jemaos_private_api.cc",
+    "api/jemaos_private/jemaos_private_api.h",
+  ]
+
+  configs += [
+    "//build/config:precompiled_headers",
+    "//build/config/compiler:wexit_time_destructors",
+  ]
+  defines = []
+
+  public_deps = [
+    "//jemaos/extensions/common/api",
+    "//ipc:ipc_buildflags",
+  ]
+
+  deps = [
+    "//extensions/browser",
+    "//ash/public/cpp",
+    "//ash",
+    "//ui/aura",
+    "//jemaos/switches",
+    "//jemaos/build/config:buildflags",
+  ]
+}
+
+function_registration("jemaos_extensions_api_registration") {
+  sources = extensions_api_schema_files
+  impl_dir = "//jemaos/extensions/browser/api"
+  bundle_name = "JemaOS"
+  root_namespace = extensions_api_root_namespace
+  schema_include_rules = extensions_api_schema_include_rules
+  deps = [
+    "//base",
+    "//extensions/buildflags",
+    "//skia",
+    "//extensions/browser",
+    "//jemaos/extensions/common/api",
+  ]
+}
+
+group("browser"){
+  deps = [
+    ":jemaos_extensions_api",
+    ":jemaos_extensions_api_registration",
+  ]
+
+  public_deps = [
+    "//jemaos/extensions/common/api",
+  ]
+}

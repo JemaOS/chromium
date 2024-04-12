@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<grit-part>
+  <!-- override chrome/app/resources/locale_settings.grd -->
+  <if expr="use_jemaos_com">
+    <message name="IDS_FACTORY_RESET_HELP_URL" translateable="false">
+      https://jemaos.com/docs/manual/fix-problems/reset-your-jemaos-device-to-factory-settings/
+    </message>
+  </if>
+  <if expr="not use_jemaos_com">
+    <message name="IDS_FACTORY_RESET_HELP_URL" translateable="false">
+      https://jemaos.io/docs/manual/fix-problems/reset-your-jemaos-device-to-factory-settings/
+    </message>
+  </if>
+</grit-part>

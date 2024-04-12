@@ -30,7 +30,8 @@ namespace policy {
 namespace {
 
 DMToken* GetTestingDMTokenStorage() {
-  static base::NoDestructor<DMToken> dm_token(DMToken::CreateEmptyToken());
+  static base::NoDestructor<DMToken> dm_token(
+      DMToken::CreateEmptyTokenForTesting());
   return dm_token.get();
 }
 
@@ -62,8 +63,8 @@ DMToken GetDMToken(Profile* const profile) {
 
   if (dm_token.is_empty() && policy_manager &&
       policy_manager->IsClientRegistered()) {
-    dm_token =
-        DMToken::CreateValidToken(policy_manager->core()->client()->dm_token());
+    dm_token = DMToken(DMToken::Status::kValid,
+                       policy_manager->core()->client()->dm_token());
   }
 #elif BUILDFLAG(IS_CHROMEOS_LACROS)
   if (!profile)
@@ -74,15 +75,15 @@ DMToken GetDMToken(Profile* const profile) {
         policy::PolicyLoaderLacros::main_user_policy_data();
     if (dm_token.is_empty() && policy && policy->has_request_token() &&
         !policy->request_token().empty()) {
-      dm_token = DMToken::CreateValidToken(policy->request_token());
+      dm_token = DMToken(DMToken::Status::kValid, policy->request_token());
     }
   } else {
     UserCloudPolicyManager* policy_manager =
         profile->GetUserCloudPolicyManager();
     if (dm_token.is_empty() && policy_manager &&
         policy_manager->IsClientRegistered()) {
-      dm_token = DMToken::CreateValidToken(
-          policy_manager->core()->client()->dm_token());
+      dm_token = DMToken(DMToken::Status::kValid,
+                         policy_manager->core()->client()->dm_token());
     }
   }
 #elif !BUILDFLAG(IS_ANDROID)

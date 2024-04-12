@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, dp} = await testRunner.startBlank(
       `Tests that inline document.write() does not send Page.documentOpened event`);
 

@@ -30,9 +30,9 @@ NearbyProcessManager* NearbyProcessManagerFactory::GetForProfile(
 // static
 bool NearbyProcessManagerFactory::CanBeLaunchedForProfile(Profile* profile) {
   // We allow NearbyProcessManager to be used with the signin profile since it
-  // is required for OOBE Quick Start. See class documentation for more detail.
+  // is required for OOBE Quick Start.
   if (ProfileHelper::IsSigninProfile(profile) &&
-      profile->IsPrimaryOTRProfile()) {
+      features::IsOobeQuickStartEnabled()) {
     return true;
   }
 
@@ -40,6 +40,9 @@ bool NearbyProcessManagerFactory::CanBeLaunchedForProfile(Profile* profile) {
   if (profile->IsOffTheRecord()) {
     return false;
   }
+
+  if (profile->IsJemaProfile())
+    return false;
 
   // Likewise, kiosk users are ineligible.
   if (user_manager::UserManager::Get()->IsLoggedInAsAnyKioskApp()) {
@@ -52,8 +55,7 @@ bool NearbyProcessManagerFactory::CanBeLaunchedForProfile(Profile* profile) {
 
 // static
 NearbyProcessManagerFactory* NearbyProcessManagerFactory::GetInstance() {
-  static base::NoDestructor<NearbyProcessManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<NearbyProcessManagerFactory>::get();
 }
 
 // static
@@ -64,21 +66,14 @@ void NearbyProcessManagerFactory::SetBypassPrimaryUserCheckForTesting(
 }
 
 NearbyProcessManagerFactory::NearbyProcessManagerFactory()
-    : ProfileKeyedServiceFactory(
-          "NearbyProcessManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+    : ProfileKeyedServiceFactory("NearbyProcessManager",
+                                 ProfileSelections::BuildForAllProfiles()) {
   DependsOn(NearbyDependenciesProviderFactory::GetInstance());
 }
 
 NearbyProcessManagerFactory::~NearbyProcessManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-NearbyProcessManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* NearbyProcessManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
@@ -88,7 +83,8 @@ NearbyProcessManagerFactory::BuildServiceInstanceForBrowserContext(
   if (CanBeLaunchedForProfile(profile) ||
       g_bypass_primary_user_check_for_testing) {
     return NearbyProcessManagerImpl::Factory::Create(
-        NearbyDependenciesProviderFactory::GetForProfile(profile));
+               NearbyDependenciesProviderFactory::GetForProfile(profile))
+        .release();
   }
 
   return nullptr;

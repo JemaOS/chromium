@@ -13,7 +13,6 @@
 #include "components/sync/model/syncable_service.h"
 #include "extensions/browser/api/storage/settings_observer.h"
 #include "extensions/browser/api/storage/value_store_cache.h"
-#include "extensions/common/extension_id.h"
 
 namespace base {
 class FilePath;
@@ -51,7 +50,7 @@ class SyncValueStoreCache : public ValueStoreCache {
   void RunWithValueStoreForExtension(
       StorageCallback callback,
       scoped_refptr<const Extension> extension) override;
-  void DeleteStorageSoon(const ExtensionId& extension_id) override;
+  void DeleteStorageSoon(const std::string& extension_id) override;
 
  private:
   void InitOnBackend(scoped_refptr<value_store::ValueStoreFactory> factory,

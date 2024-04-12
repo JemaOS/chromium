@@ -6,7 +6,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_INPUT_POINTER_EVENT_MANAGER_H_
 
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/dom/synchronous_mutation_observer.h"
 #include "third_party/blink/renderer/core/input/boundary_event_dispatcher.h"
 #include "third_party/blink/renderer/core/input/touch_event_manager.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
@@ -23,13 +22,12 @@ class WebPointerProperties;
 // This class takes care of dispatching all pointer events and keeps track of
 // properties of active pointer events.
 class CORE_EXPORT PointerEventManager final
-    : public GarbageCollected<PointerEventManager>,
-      public SynchronousMutationObserver {
+    : public GarbageCollected<PointerEventManager> {
  public:
   PointerEventManager(LocalFrame&, MouseEventManager&);
   PointerEventManager(const PointerEventManager&) = delete;
   PointerEventManager& operator=(const PointerEventManager&) = delete;
-  void Trace(Visitor*) const override;
+  void Trace(Visitor*) const;
 
   // This is the unified path for handling all input device events. This may
   // cause firing DOM pointerevents, mouseevent, and touch events accordingly.
@@ -111,18 +109,28 @@ class CORE_EXPORT PointerEventManager final
   // function.
   WebInputEventResult FlushEvents();
 
-  // See `PointerEventFactory::GetPointerIdForTouchGesture`.
-  PointerId GetPointerIdForTouchGesture(const uint32_t unique_touch_event_id);
+  // Returns the id of the pointer event corresponding to the given pointer
+  // properties if exists otherwise s_invalidId.
+  int GetPointerEventId(
+      const WebPointerProperties& web_pointer_properties) const;
 
   Element* CurrentTouchDownElement();
 
  private:
+  class EventTargetAttributes : public GarbageCollected<EventTargetAttributes> {
+   public:
+    void Trace(Visitor* visitor) const { visitor->Trace(target); }
+    Member<Element> target;
+    EventTargetAttributes() : target(nullptr) {}
+    EventTargetAttributes(Element* target) : target(target) {}
+  };
   // We use int64_t to cover the whole range for PointerId with no
   // deleted hash value.
   template <typename T>
   using PointerIdKeyMap =
       HeapHashMap<int64_t, T, IntWithZeroKeyHashTraits<int64_t>>;
   using PointerCapturingMap = PointerIdKeyMap<Member<Element>>;
+  using ElementUnderPointerMap = PointerIdKeyMap<Member<EventTargetAttributes>>;
 
   class PointerEventBoundaryEventDispatcher : public BoundaryEventDispatcher {
    public:
@@ -133,12 +141,22 @@ class CORE_EXPORT PointerEventManager final
         const PointerEventBoundaryEventDispatcher&) = delete;
 
    protected:
+    void DispatchOut(EventTarget*, EventTarget* related_target) override;
+    void DispatchOver(EventTarget*, EventTarget* related_target) override;
+    void DispatchLeave(EventTarget*,
+                       EventTarget* related_target,
+                       bool check_for_listener) override;
+    void DispatchEnter(EventTarget*,
+                       EventTarget* related_target,
+                       bool check_for_listener) override;
+    AtomicString GetLeaveEvent() override;
+    AtomicString GetEnterEvent() override;
+
+   private:
     void Dispatch(EventTarget*,
                   EventTarget* related_target,
                   const AtomicString&,
-                  bool check_for_listener) override;
-
-   private:
+                  bool check_for_listener);
     PointerEventManager* pointer_event_manager_;
     PointerEvent* pointer_event_;
   };
@@ -175,7 +193,6 @@ class CORE_EXPORT PointerEventManager final
                                             bool hovering);
 
   void SendBoundaryEvents(EventTarget* exited_target,
-                          bool original_exited_target_removed,
                           EventTarget* entered_target,
                           PointerEvent*);
   void SetElementUnderPointer(PointerEvent*, Element*);
@@ -206,6 +223,7 @@ class CORE_EXPORT PointerEventManager final
   void RemoveTargetFromPointerCapturingMapping(PointerCapturingMap&,
                                                const Element*);
   Element* GetEffectiveTargetForPointerEvent(Element*, PointerId);
+  Element* GetCapturingElement(PointerId);
   void RemovePointer(PointerEvent*);
   WebInputEventResult DispatchPointerEvent(EventTarget*,
                                            PointerEvent*,
@@ -238,16 +256,13 @@ class CORE_EXPORT PointerEventManager final
   bool HandleResizerDrag(const WebPointerEvent&,
                          const event_handling_util::PointerEventTarget&);
 
-  // Implementations of |SynchronousMutationObserver|
-  void NodeWillBeRemoved(Node& node_to_be_removed) final;
-
   // NOTE: If adding a new field to this class please ensure that it is
   // cleared in |PointerEventManager::clear()|.
 
   const Member<LocalFrame> frame_;
 
   WeakMember<PaintLayerScrollableArea> resize_scrollable_area_;
-  gfx::Vector2d offset_from_resize_corner_;
+  LayoutSize offset_from_resize_corner_;
 
   // Prevents firing mousedown, mousemove & mouseup in-between a canceled
   // pointerdown and next pointerup/pointercancel.
@@ -258,7 +273,7 @@ class CORE_EXPORT PointerEventManager final
 
   // Set upon scrolling starts when sending a pointercancel, prevents PE
   // dispatches for non-hovering pointers until all of them become inactive.
-  bool non_hovering_pointers_canceled_ = false;
+  bool non_hovering_pointers_canceled_;
 
   Deque<uint32_t> touch_ids_for_canceled_pointerdowns_;
 
@@ -266,15 +281,7 @@ class CORE_EXPORT PointerEventManager final
   // which might be different than m_nodeUnderMouse in EventHandler. That one
   // keeps track of any compatibility mouse event positions but this map for
   // the pointer with id=1 is only taking care of true mouse related events.
-  PointerIdKeyMap<Member<Element>> element_under_pointer_;
-
-  // Whether the `element_under_pointer_` reference was updated to an ancestor
-  // element because of the removal of the original element from DOM.  This
-  // Boolean state guarantees correct "pointerout" and "pointerover" events at
-  // the updated `element_under_pointer_` (i.e. the updated element gets no
-  // "out", but it gets an "over" if it happens to become the new
-  // `element_under_pointer_` later on).
-  WTF::HashSet<int64_t> original_element_under_pointer_removed_;
+  ElementUnderPointerMap element_under_pointer_;
 
   PointerCapturingMap pointer_capture_target_;
   PointerCapturingMap pending_pointer_capture_target_;
@@ -285,18 +292,13 @@ class CORE_EXPORT PointerEventManager final
 
   // The pointerId of the PointerEvent currently being dispatched within this
   // frame or 0 if none.
-  PointerId dispatching_pointer_id_ = 0;
+  PointerId dispatching_pointer_id_;
 
   // These flags are set for the SkipTouchEventFilter experiment. The
   // experiment either skips filtering discrete (touch start/end) events to the
   // main thread, or all events (touch start/end/move).
   bool skip_touch_filter_discrete_ = false;
   bool skip_touch_filter_all_ = false;
-
-  struct {
-    DOMNodeId target = kInvalidDOMNodeId;
-    base::TimeTicks time;
-  } discarded_event_;
 
   WeakMember<Scrollbar> captured_scrollbar_;
 };

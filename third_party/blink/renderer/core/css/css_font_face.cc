@@ -31,7 +31,6 @@
 #include "third_party/blink/renderer/core/css/css_segmented_font_face.h"
 #include "third_party/blink/renderer/core/css/font_face_set_document.h"
 #include "third_party/blink/renderer/core/css/font_face_set_worker.h"
-#include "third_party/blink/renderer/core/css/font_size_functions.h"
 #include "third_party/blink/renderer/core/css/remote_font_face_source.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
@@ -114,7 +113,7 @@ bool CSSFontFace::FallbackVisibilityChanged(RemoteFontFaceSource* source) {
   return true;
 }
 
-const SimpleFontData* CSSFontFace::GetFontData(
+scoped_refptr<SimpleFontData> CSSFontFace::GetFontData(
     const FontDescription& font_description) {
   if (!IsValid()) {
     return nullptr;
@@ -122,7 +121,7 @@ const SimpleFontData* CSSFontFace::GetFontData(
 
   // Apply the 'size-adjust' descriptor before font selection.
   // https://drafts.csswg.org/css-fonts-5/#descdef-font-face-size-adjust
-  FontDescription size_adjusted_description =
+  const FontDescription& size_adjusted_description =
       font_face_->HasSizeAdjust()
           ? font_description.SizeAdjustedFontDescription(
                 font_face_->GetSizeAdjust())
@@ -140,23 +139,9 @@ const SimpleFontData* CSSFontFace::GetFontData(
       return nullptr;
     }
 
-    if (const SimpleFontData* result =
+    if (scoped_refptr<SimpleFontData> result =
             source->GetFontData(size_adjusted_description,
                                 font_face_->GetFontSelectionCapabilities())) {
-      // The font data here is created using the primary font's description.
-      // We need to adjust the size of a fallback font with actual font metrics
-      // if the description has font-size-adjust.
-      if (size_adjusted_description.HasSizeAdjust()) {
-        if (auto adjusted_size =
-                FontSizeFunctions::MetricsMultiplierAdjustedFontSize(
-                    result, size_adjusted_description)) {
-          size_adjusted_description.SetAdjustedSize(adjusted_size.value());
-          result =
-              source->GetFontData(size_adjusted_description,
-                                  font_face_->GetFontSelectionCapabilities());
-        }
-      }
-
       if (font_face_->HasFontMetricsOverride()) {
         // TODO(xiaochengh): Try not to create a temporary
         // SimpleFontData.
@@ -216,8 +201,9 @@ bool CSSFontFace::MaybeLoadFont(const FontDescription& font_description,
 
 void CSSFontFace::Load() {
   FontDescription font_description;
-  font_description.SetFamily(
-      FontFamily(font_face_->family(), FontFamily::Type::kFamilyName));
+  FontFamily font_family;
+  font_family.SetFamily(font_face_->family(), FontFamily::Type::kFamilyName);
+  font_description.SetFamily(font_family);
   Load(font_description);
 }
 
@@ -291,7 +277,6 @@ bool CSSFontFace::UpdatePeriod() {
 void CSSFontFace::Trace(Visitor* visitor) const {
   visitor->Trace(segmented_font_faces_);
   visitor->Trace(sources_);
-  visitor->Trace(ranges_);
   visitor->Trace(font_face_);
 }
 

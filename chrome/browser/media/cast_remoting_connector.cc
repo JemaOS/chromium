@@ -535,14 +535,14 @@ void CastRemotingConnector::OnPrefChanged() {
 #endif
 }
 
-std::optional<bool> CastRemotingConnector::GetRemotingAllowedUserPref() const {
+absl::optional<bool> CastRemotingConnector::GetRemotingAllowedUserPref() const {
 #if BUILDFLAG(IS_ANDROID)
-  return std::nullopt;
+  return absl::nullopt;
 #else
   const PrefService::Preference* pref = pref_service_->FindPreference(
       media_router::prefs::kMediaRouterMediaRemotingEnabled);
   if (!pref || pref->IsDefaultValue()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return pref->GetValue()->GetBool();
 #endif

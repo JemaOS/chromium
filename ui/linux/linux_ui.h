@@ -6,7 +6,6 @@
 #define UI_LINUX_LINUX_UI_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -18,7 +17,6 @@
 #include "build/buildflag.h"
 #include "build/chromecast_buildflags.h"
 #include "printing/buildflags/buildflags.h"
-#include "ui/display/types/display_config.h"
 
 // The main entrypoint into Linux toolkit specific code. GTK/QT code should only
 // be executed behind this interface.
@@ -83,15 +81,6 @@ class COMPONENT_EXPORT(LINUX_UI) LinuxUi {
     kRightClick,
   };
 
-  struct FontSettings {
-    std::string family;
-    int size_pixels = 0;
-    // Holds a bitfield of gfx::Font::Style values.
-    int style = 0;
-    // A standard font weight as used in Pango.  Must be a value in [1, 999].
-    int weight = 0;
-  };
-
   LinuxUi(const LinuxUi&) = delete;
   LinuxUi& operator=(const LinuxUi&) = delete;
   virtual ~LinuxUi();
@@ -121,22 +110,9 @@ class COMPONENT_EXPORT(LINUX_UI) LinuxUi {
 
   void RemoveCursorThemeObserver(CursorThemeManagerObserver* observer);
 
-  // Returns details about the default UI font.
-  FontSettings GetDefaultFontDescription();
-
-  // Determines the device scale factor for all screens.
-  const display::DisplayConfig& display_config() const {
-    return display_config_;
-  }
-
   // Returns true on success.  If false is returned, this instance shouldn't
   // be used and the behavior of all functions is undefined.
   [[nodiscard]] virtual bool Initialize() = 0;
-
-  // Caches the default font render parameters.  This doesn't need to be called
-  // explicitly since the first call to get the font settings will implicitly
-  // initialize the default front render parameters.
-  virtual void InitializeFontSettings() = 0;
 
   virtual base::TimeDelta GetCursorBlinkInterval() const = 0;
 
@@ -146,6 +122,9 @@ class COMPONENT_EXPORT(LINUX_UI) LinuxUi {
   virtual gfx::Image GetIconForContentType(const std::string& content_type,
                                            int size,
                                            float scale) const = 0;
+
+  // Determines the device scale factor of the primary screen.
+  virtual float GetDeviceScaleFactor() const = 0;
 
   // Returns a map of KeyboardEvent code to KeyboardEvent key values.
   virtual base::flat_map<std::string, std::string> GetKeyboardLayoutMap() = 0;
@@ -181,15 +160,21 @@ class COMPONENT_EXPORT(LINUX_UI) LinuxUi {
   // false will be returned if the key event doesn't correspond to a predefined
   // key binding.  Edit commands matched with |event| will be stored in
   // |edit_commands|, if |edit_commands| is non-nullptr.
-  //
-  // |text_falgs| is the current ui::TextInputFlags if available.
   virtual bool GetTextEditCommandsForEvent(
       const ui::Event& event,
-      int text_flags,
       std::vector<TextEditCommandAuraLinux>* commands) = 0;
 
   // Returns the default font rendering settings.
-  virtual gfx::FontRenderParams GetDefaultFontRenderParams() = 0;
+  virtual gfx::FontRenderParams GetDefaultFontRenderParams() const = 0;
+
+  // Returns details about the default UI font. |style_out| holds a bitfield of
+  // gfx::Font::Style values.
+  virtual void GetDefaultFontDescription(
+      std::string* family_out,
+      int* size_pixels_out,
+      int* style_out,
+      int* weight_out,
+      gfx::FontRenderParams* params_out) const = 0;
 
   // Indicates if animations are enabled by the toolkit.
   virtual bool AnimationsEnabled() const = 0;
@@ -239,13 +224,6 @@ class COMPONENT_EXPORT(LINUX_UI) LinuxUi {
     return cursor_theme_observer_list_;
   }
 
-  display::DisplayConfig& display_config() { return display_config_; }
-
-  void set_default_font_settings(
-      const std::optional<FontSettings>& default_font_settings) {
-    default_font_settings_ = default_font_settings;
-  }
-
  private:
   // Objects to notify when the device scale factor changes.
   base::ObserverList<DeviceScaleFactorObserver>::Unchecked
@@ -253,10 +231,6 @@ class COMPONENT_EXPORT(LINUX_UI) LinuxUi {
 
   // Objects to notify when the cursor theme or size changes.
   base::ObserverList<CursorThemeManagerObserver> cursor_theme_observer_list_;
-
-  display::DisplayConfig display_config_;
-
-  std::optional<FontSettings> default_font_settings_;
 };
 
 class COMPONENT_EXPORT(LINUX_UI) LinuxUiTheme {
@@ -290,10 +264,6 @@ class COMPONENT_EXPORT(LINUX_UI) LinuxUiTheme {
   // preferred.
   virtual bool PreferDarkTheme() const = 0;
 
-  // Override the toolkit's dark mode preference.  Used when the dark mode
-  // setting is provided by org.freedesktop.appearance instead of the toolkit.
-  virtual void SetDarkTheme(bool dark) = 0;
-
   // Returns a new NavButtonProvider, or nullptr if the underlying
   // toolkit does not support drawing client-side navigation buttons.
   virtual std::unique_ptr<NavButtonProvider> CreateNavButtonProvider() = 0;
@@ -303,8 +273,7 @@ class COMPONENT_EXPORT(LINUX_UI) LinuxUiTheme {
   // if transparency is unsupported and the frame should be rendered opaque.
   // The returned object is not owned by the caller and will remain alive until
   // the process ends.
-  virtual WindowFrameProvider* GetWindowFrameProvider(bool solid_frame,
-                                                      bool tiled) = 0;
+  virtual WindowFrameProvider* GetWindowFrameProvider(bool solid_frame) = 0;
 
  protected:
   LinuxUiTheme();

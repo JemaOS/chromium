@@ -109,7 +109,8 @@ TfLiteObjectDetectorOptions TfLiteObjectDetectorOptionsCreate(void) {
 }
 
 TfLiteObjectDetector* TfLiteObjectDetectorFromOptions(
-    const TfLiteObjectDetectorOptions* options, TfLiteSupportError** error) {
+    const TfLiteObjectDetectorOptions* options,
+    TfLiteSupportError** error) {
   StatusOr<ObjectDetectorOptionsCpp> cpp_option_status =
       CreateObjectDetectorCppOptionsFromCOptions(options);
 
@@ -174,7 +175,8 @@ TfLiteDetectionResult* GetDetectionResultCStruct(
 }
 
 TfLiteDetectionResult* TfLiteObjectDetectorDetect(
-    const TfLiteObjectDetector* detector, const TfLiteFrameBuffer* frame_buffer,
+    const TfLiteObjectDetector* detector,
+    const TfLiteFrameBuffer* frame_buffer,
     TfLiteSupportError** error) {
   if (detector == nullptr) {
     tflite::support::CreateTfLiteSupportError(

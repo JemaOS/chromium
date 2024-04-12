@@ -80,9 +80,10 @@ void WebFormElementObserverImpl::ObserverCallback::Deliver(
         Disconnect();
         return;
       }
-    } else if (auto* element = DynamicTo<Element>(record->target())) {
+    } else {
       // Either "style" or "class" was modified. Check the computed style.
-      auto* style = MakeGarbageCollected<CSSComputedStyleDeclaration>(element);
+      auto* style =
+          MakeGarbageCollected<CSSComputedStyleDeclaration>(record->target());
       if (style->GetPropertyValue(CSSPropertyID::kDisplay) == "none") {
         std::move(callback_).Run();
         Disconnect();

@@ -36,18 +36,7 @@ bool ProgressIndicatorAnimation::HasAnimated() const {
 }
 
 bool ProgressIndicatorAnimation::IsAnimating() const {
-  if (animator_ && animator_->is_animating()) {
-    return true;
-  }
-
-  // Cyclic animations, such as indeterminate ring animations, repeat forever
-  // and never finish from the user's perspective. Therefore, this function
-  // returns true if a cyclic animation has started.
-  return is_cyclic_ && !start_time_.is_null();
-}
-
-void ProgressIndicatorAnimation::Init() {
-  UpdateAnimatableProperties(/*fraction=*/0.f);
+  return animator_ && animator_->is_animating();
 }
 
 void ProgressIndicatorAnimation::AnimationProgressed(

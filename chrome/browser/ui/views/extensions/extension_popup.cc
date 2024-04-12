@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/views/extensions/extension_popup.h"
 
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/devtools/devtools_window.h"
@@ -22,6 +23,7 @@
 #include "ui/views/controls/native/native_view_host.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/style/platform_style.h"
+#include "ui/views/views_features.h"
 #include "ui/views/widget/widget.h"
 
 #if defined(USE_AURA)
@@ -30,12 +32,8 @@
 #include "ui/wm/public/activation_client.h"
 #endif
 
-#if BUILDFLAG(IS_OZONE)
-#include "ui/ozone/public/ozone_platform.h"
-#endif
-
 #if BUILDFLAG(IS_MAC)
-#include "base/message_loop/message_pump_apple.h"
+#include "base/message_loop/message_pump_mac.h"
 #endif
 
 constexpr gfx::Size ExtensionPopup::kMinSize;
@@ -90,7 +88,7 @@ class ExtensionPopup::ScopedBrowserActivationObservation
   }
 
  private:
-  raw_ptr<ExtensionPopup> owner_;
+  ExtensionPopup* owner_;
   base::ScopedObservation<views::Widget, views::WidgetObserver> observation_{
       this};
 };
@@ -224,18 +222,6 @@ gfx::Size ExtensionPopup::GetMinBounds() {
 }
 
 gfx::Size ExtensionPopup::GetMaxBounds() {
-#if BUILDFLAG(IS_OZONE)
-  // Some platforms like wayland don't allow clients to know the global
-  // coordinates of the window. This means in those platforms we have no way to
-  // calculate exact space available based on the position of the parent window.
-  // So simply fall back on default max.
-  if (!ui::OzonePlatform::GetInstance()
-           ->GetPlatformProperties()
-           .supports_global_screen_coordinates) {
-    return kMaxSize;
-  }
-#endif
-
   gfx::Size max_size = kMaxSize;
   max_size.SetToMin(
       BubbleDialogDelegate::GetMaxAvailableScreenSpaceToPlaceBubble(
@@ -362,14 +348,18 @@ ExtensionPopup::ExtensionPopup(
 
 void ExtensionPopup::ShowBubble() {
   GetWidget()->Show();
+  if (!base::FeatureList::IsEnabled(views::features::kWidgetLayering)) {
+    // StackAboveWidget() stacks this widget *directly* above the anchor view
+    // widget. This prevents it from covering other UI.
+    GetWidget()->StackAboveWidget(GetAnchorView()->GetWidget());
+  }
 
   // Focus on the host contents when the bubble is first shown.
   host_->host_contents()->Focus();
 
   if (show_action_ == PopupShowAction::kShowAndInspect) {
     DevToolsWindow::OpenDevToolsWindow(
-        host_->host_contents(), DevToolsToggleAction::ShowConsolePanel(),
-        DevToolsOpenedByAction::kContextMenuInspect);
+        host_->host_contents(), DevToolsToggleAction::ShowConsolePanel());
   }
 
   if (shown_callback_)
@@ -386,7 +376,7 @@ void ExtensionPopup::CloseDeferredIfNecessary(
 #if BUILDFLAG(IS_MAC)
   // On Mac, defer close if we're in a nested run loop (for example, showing a
   // context menu) to avoid messaging deallocated objects.
-  if (base::message_pump_apple::IsHandlingSendEvent()) {
+  if (base::MessagePumpMac::IsHandlingSendEvent()) {
     deferred_close_weak_ptr_factory_.InvalidateWeakPtrs();
     auto weak_ptr = deferred_close_weak_ptr_factory_.GetWeakPtr();
     CFRunLoopPerformBlock(CFRunLoopGetCurrent(), kCFRunLoopDefaultMode, ^{
@@ -406,5 +396,5 @@ void ExtensionPopup::HandleCloseExtensionHost(extensions::ExtensionHost* host) {
   CloseDeferredIfNecessary();
 }
 
-BEGIN_METADATA(ExtensionPopup)
+BEGIN_METADATA(ExtensionPopup, views::BubbleDialogDelegateView)
 END_METADATA

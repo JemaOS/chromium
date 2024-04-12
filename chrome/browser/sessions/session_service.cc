@@ -60,10 +60,6 @@
 #include "content/public/browser/session_storage_namespace.h"
 #include "content/public/browser/web_contents.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chromeos/components/kiosk/kiosk_utils.h"
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/crostini/crostini_util.h"
 #endif
@@ -169,12 +165,10 @@ bool SessionService::IsRelevantWindowType(
 }
 
 bool SessionService::ShouldRestore(Browser* browser) {
-#if BUILDFLAG(IS_CHROMEOS)
   // Do not restore browser window in the kiosk session.
-  if (chromeos::IsKioskSession()) {
+  if (profiles::IsKioskSession()) {
     return false;
   }
-#endif
 
   // ChromeOS and OSX have different ideas of application lifetime than
   // the other platforms.
@@ -206,7 +200,7 @@ bool SessionService::ShouldRestore(Browser* browser) {
   }
   if (primary_user_profile &&
       BrowserLauncher::GetForProfile(primary_user_profile)
-          ->is_launching_for_last_opened_profiles()) {
+          ->is_launching_for_full_restore()) {
     return true;
   }
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -264,12 +258,11 @@ void SessionService::MoveCurrentSessionToLastSession() {
 
 void SessionService::DeleteLastSession() {
   command_storage_manager()->DeleteLastSession();
-  ++count_delete_last_session_for_testing_;
 }
 
 void SessionService::SetTabGroup(SessionID window_id,
                                  SessionID tab_id,
-                                 std::optional<tab_groups::TabGroupId> group) {
+                                 absl::optional<tab_groups::TabGroupId> group) {
   if (!ShouldTrackChangesToWindow(window_id))
     return;
 
@@ -286,7 +279,7 @@ void SessionService::SetTabGroupMetadata(
     SessionID window_id,
     const tab_groups::TabGroupId& group_id,
     const tab_groups::TabGroupVisualData* visual_data,
-    const std::optional<std::string> saved_guid) {
+    const absl::optional<std::string> saved_guid) {
   if (!ShouldTrackChangesToWindow(window_id))
     return;
 
@@ -574,8 +567,7 @@ bool SessionService::RestoreIfNecessary(const StartupTabs& startup_tabs,
       browser_creator.LaunchBrowser(*command_line, profile(), base::FilePath(),
                                     chrome::startup::IsProcessStartup::kYes,
                                     chrome::startup::IsFirstRun::kNo,
-                                    std::make_unique<OldLaunchModeRecorder>(),
-                                    /*restore_tabbed_browser=*/true);
+                                    std::make_unique<OldLaunchModeRecorder>());
       return true;
     } else {
       // If 'browser' is not null, show the crash bubble in the current browser
@@ -593,7 +585,7 @@ void SessionService::BuildCommandsForTab(
     SessionID window_id,
     WebContents* tab,
     int index_in_window,
-    std::optional<tab_groups::TabGroupId> group,
+    absl::optional<tab_groups::TabGroupId> group,
     bool is_pinned,
     IdToRange* tab_to_available_range) {
   DCHECK(is_saving_enabled());
@@ -624,7 +616,7 @@ void SessionService::BuildCommandsForTab(
   }
 
 #if defined(TOOLKIT_VIEWS)
-  std::optional<std::pair<std::string, std::string>> tab_restore_data =
+  absl::optional<std::pair<std::string, std::string>> tab_restore_data =
       side_search::MaybeGetSideSearchTabRestoreData(tab);
   if (tab_restore_data.has_value()) {
     command_storage_manager()->AppendRebuildCommand(
@@ -673,7 +665,7 @@ bool SessionService::IsOnlyOneTabLeft() const {
     return is_only_one_tab_left_for_test_;
 
   int window_count = 0;
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     const SessionID window_id = browser->session_id();
     if (ShouldTrackBrowser(browser) &&
         window_closing_ids_.find(window_id) == window_closing_ids_.end()) {
@@ -692,7 +684,7 @@ bool SessionService::HasOpenTrackableBrowsers(SessionID window_id) const {
   if (profile()->AsTestingProfile())
     return has_open_trackable_browser_for_test_;
 
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     const SessionID browser_id = browser->session_id();
     if (browser_id != window_id &&
         window_closing_ids_.find(browser_id) == window_closing_ids_.end() &&
@@ -723,7 +715,7 @@ void SessionService::LogExitEvent() {
   RemoveExitEvent();
   int browser_count = 0;
   int tab_count = 0;
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     if (browser->profile() == profile()) {
       ++browser_count;
       tab_count += browser->tab_strip_model()->count();

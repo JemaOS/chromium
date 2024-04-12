@@ -10,7 +10,9 @@ import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModel.ReadableObjectPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableBooleanPropertyKey;
 
-/** Model for an {@link FastCheckoutCreditCard} entry in the credit card screen sheet. */
+/**
+ * Model for an {@link FastCheckoutCreditCard} entry in the credit card screen sheet.
+ */
 public class CreditCardItemProperties {
     /** The credit card represented by this entry. */
     public static final ReadableObjectPropertyKey<FastCheckoutCreditCard> CREDIT_CARD =
@@ -23,7 +25,9 @@ public class CreditCardItemProperties {
     public static final WritableBooleanPropertyKey IS_SELECTED =
             new WritableBooleanPropertyKey("is_selected");
 
-    /** The function to run when this credit card is selected by the user. */
+    /**
+     * The function to run when this credit card is selected by the user.
+     */
     public static final ReadableObjectPropertyKey<Runnable> ON_CLICK_LISTENER =
             new ReadableObjectPropertyKey<>("on_click_listener");
 

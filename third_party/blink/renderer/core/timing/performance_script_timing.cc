@@ -4,25 +4,69 @@
 
 #include "third_party/blink/renderer/core/timing/performance_script_timing.h"
 
-#include <cstdint>
-
-#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_object_builder.h"
 #include "third_party/blink/renderer/core/frame/dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/performance_entry_names.h"
 #include "third_party/blink/renderer/core/timing/animation_frame_timing_info.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
-#include "third_party/blink/renderer/core/timing/performance_server_timing.h"
 #include "third_party/blink/renderer/core/timing/task_attribution_timing.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
+
+namespace {
+AtomicString GetScriptName(ScriptTimingInfo* info,
+                           LocalDOMWindow* owner_window) {
+  const String& url =
+      info->GetSourceLocation().url
+          ? info->GetSourceLocation().url
+          : (owner_window ? owner_window->BaseURL().GetString() : "inline");
+
+  switch (info->GetType()) {
+    case ScriptTimingInfo::Type::kClassicScript:
+    case ScriptTimingInfo::Type::kModuleScript:
+    case ScriptTimingInfo::Type::kExecuteScript:
+      return AtomicString(url);
+    case ScriptTimingInfo::Type::kEventHandler:
+    case ScriptTimingInfo::Type::kUserCallback: {
+      WTF::StringBuilder builder;
+      if (info->GetType() == ScriptTimingInfo::Type::kEventHandler) {
+        builder.Append(info->ClassLikeName());
+        builder.Append(".");
+        builder.Append("on");
+      }
+      builder.Append(info->PropertyLikeName());
+      return builder.ToAtomicString();
+    }
+
+    case ScriptTimingInfo::Type::kPromiseResolve:
+    case ScriptTimingInfo::Type::kPromiseReject: {
+      WTF::StringBuilder builder;
+      if (info->ClassLikeName().empty() && info->PropertyLikeName().empty()) {
+        return info->GetType() == ScriptTimingInfo::Type::kPromiseResolve
+                   ? "Promise.resolve"
+                   : "Promise.reject";
+      }
+
+      if (!info->ClassLikeName().empty()) {
+        builder.Append(info->ClassLikeName());
+        builder.Append(".");
+      }
+      builder.Append(info->PropertyLikeName());
+      builder.Append(".");
+      builder.Append(info->GetType() == ScriptTimingInfo::Type::kPromiseResolve
+                         ? "then"
+                         : "catch");
+      return builder.ToAtomicString();
+    }
+  }
+}
+}  // namespace
 
 PerformanceScriptTiming::PerformanceScriptTiming(
     ScriptTimingInfo* info,
@@ -31,30 +75,29 @@ PerformanceScriptTiming::PerformanceScriptTiming(
     DOMWindow* source)
     : PerformanceEntry(
           (info->EndTime() - info->StartTime()).InMilliseconds(),
-          performance_entry_names::kScript,
+          GetScriptName(info, info->Window()),
           DOMWindowPerformance::performance(*source->ToLocalDOMWindow())
               ->MonotonicTimeToDOMHighResTimeStamp(info->StartTime()),
           source) {
   info_ = info;
   time_origin_ = time_origin;
   cross_origin_isolated_capability_ = cross_origin_isolated_capability;
-  if (!info_->Window() || !source) {
-    window_attribution_ = AtomicString("other");
-  } else if (info_->Window() == source) {
-    window_attribution_ = AtomicString("self");
+  DCHECK(info_->Window() && source);
+  if (info_->Window() == source) {
+    window_attribution_ = "self";
   } else if (!info_->Window()->GetFrame()) {
-    window_attribution_ = AtomicString("other");
+    window_attribution_ = "other";
   } else if (info_->Window()->GetFrame()->Tree().IsDescendantOf(
                  source->GetFrame())) {
-    window_attribution_ = AtomicString("descendant");
+    window_attribution_ = "descendant";
   } else if (source->GetFrame()->Tree().IsDescendantOf(
                  info_->Window()->GetFrame())) {
-    window_attribution_ = AtomicString("ancestor");
+    window_attribution_ = "ancestor";
   } else if (source->GetFrame()->Tree().Top() ==
              info_->Window()->GetFrame()->Top()) {
-    window_attribution_ = AtomicString("same-page");
+    window_attribution_ = "same-page";
   } else {
-    window_attribution_ = AtomicString("other");
+    window_attribution_ = "other";
   }
 }
 
@@ -64,60 +107,12 @@ const AtomicString& PerformanceScriptTiming::entryType() const {
   return performance_entry_names::kScript;
 }
 
-AtomicString PerformanceScriptTiming::invoker() const {
-  switch (info_->GetInvokerType()) {
-    case ScriptTimingInfo::InvokerType::kClassicScript:
-    case ScriptTimingInfo::InvokerType::kModuleScript: {
-      if (info_->GetSourceLocation().url) {
-        return AtomicString(info_->GetSourceLocation().url);
-      }
-      if (const DOMWindow* owner_window = source()) {
-        CHECK(owner_window->IsLocalDOMWindow());
-        return AtomicString(
-            To<LocalDOMWindow>(owner_window)->BaseURL().GetString());
-      }
-      return AtomicString("inline");
-    }
-    case ScriptTimingInfo::InvokerType::kEventHandler:
-    case ScriptTimingInfo::InvokerType::kUserCallback: {
-      WTF::StringBuilder builder;
-      if (info_->GetInvokerType() ==
-          ScriptTimingInfo::InvokerType::kEventHandler) {
-        builder.Append(info_->ClassLikeName());
-        builder.Append(".");
-        builder.Append("on");
-      }
-      builder.Append(info_->PropertyLikeName());
-      return builder.ToAtomicString();
-    }
-
-    case ScriptTimingInfo::InvokerType::kPromiseResolve:
-    case ScriptTimingInfo::InvokerType::kPromiseReject: {
-      WTF::StringBuilder builder;
-      if (info_->PropertyLikeName().empty()) {
-        return AtomicString(
-            info_->GetInvokerType() ==
-                    ScriptTimingInfo::InvokerType::kPromiseResolve
-                ? "Promise.resolve"
-                : "Promise.reject");
-      }
-
-      if (!info_->ClassLikeName().empty()) {
-        builder.Append(info_->ClassLikeName());
-        builder.Append(".");
-      }
-      builder.Append(info_->PropertyLikeName());
-      builder.Append(".");
-      builder.Append(info_->GetInvokerType() ==
-                             ScriptTimingInfo::InvokerType::kPromiseResolve
-                         ? "then"
-                         : "catch");
-      return builder.ToAtomicString();
-    }
-  }
-}
 DOMHighResTimeStamp PerformanceScriptTiming::executionStart() const {
   return ToMonotonicTime(info_->ExecutionStartTime());
+}
+
+DOMHighResTimeStamp PerformanceScriptTiming::desiredExecutionStart() const {
+  return ToMonotonicTime(info_->DesiredExecutionStartTime());
 }
 
 DOMHighResTimeStamp PerformanceScriptTiming::ToMonotonicTime(
@@ -143,32 +138,44 @@ LocalDOMWindow* PerformanceScriptTiming::window() const {
 const AtomicString& PerformanceScriptTiming::windowAttribution() const {
   return window_attribution_;
 }
-
-AtomicString PerformanceScriptTiming::invokerType() const {
-  switch (info_->GetInvokerType()) {
-    case ScriptTimingInfo::InvokerType::kClassicScript:
-      return AtomicString("classic-script");
-    case ScriptTimingInfo::InvokerType::kModuleScript:
-      return AtomicString("module-script");
-    case ScriptTimingInfo::InvokerType::kEventHandler:
-      return AtomicString("event-listener");
-    case ScriptTimingInfo::InvokerType::kUserCallback:
-      return AtomicString("user-callback");
-    case ScriptTimingInfo::InvokerType::kPromiseResolve:
-      return AtomicString("resolve-promise");
-    case ScriptTimingInfo::InvokerType::kPromiseReject:
-      return AtomicString("reject-promise");
+AtomicString PerformanceScriptTiming::type() const {
+  switch (info_->GetType()) {
+    case ScriptTimingInfo::Type::kClassicScript:
+      return "classic-script";
+    case ScriptTimingInfo::Type::kModuleScript:
+      return "module-script";
+    case ScriptTimingInfo::Type::kExecuteScript:
+      return "execute-script";
+    case ScriptTimingInfo::Type::kEventHandler:
+      return "event-listener";
+    case ScriptTimingInfo::Type::kUserCallback:
+      return "user-callback";
+    case ScriptTimingInfo::Type::kPromiseResolve:
+      return "resolve-promise";
+    case ScriptTimingInfo::Type::kPromiseReject:
+      return "reject-promise";
   }
 }
 
-WTF::String PerformanceScriptTiming::sourceURL() const {
-  return info_->GetSourceLocation().url;
-}
-WTF::String PerformanceScriptTiming::sourceFunctionName() const {
-  return info_->GetSourceLocation().function_name;
-}
-int32_t PerformanceScriptTiming::sourceCharPosition() const {
-  return info_->GetSourceLocation().char_position;
+WTF::String PerformanceScriptTiming::sourceLocation() const {
+  const ScriptTimingInfo::ScriptSourceLocation& source_location =
+      info_->GetSourceLocation();
+  if (!source_location.url) {
+    return WTF::String();
+  }
+
+  StringBuilder builder;
+  if (!source_location.function_name.empty()) {
+    builder.Append(source_location.function_name);
+    builder.Append("@");
+  }
+
+  builder.Append(source_location.url);
+  builder.Append(":");
+  builder.AppendNumber(source_location.line_number);
+  builder.Append(":");
+  builder.AppendNumber(source_location.column_number);
+  return builder.ToString();
 }
 
 PerformanceEntryType PerformanceScriptTiming::EntryTypeEnum() const {
@@ -177,16 +184,14 @@ PerformanceEntryType PerformanceScriptTiming::EntryTypeEnum() const {
 
 void PerformanceScriptTiming::BuildJSONValue(V8ObjectBuilder& builder) const {
   PerformanceEntry::BuildJSONValue(builder);
-  builder.AddString("invoker", invoker());
-  builder.AddString("invokerType", invokerType());
+  builder.AddString("type", type());
   builder.AddString("windowAttribution", windowAttribution());
   builder.AddNumber("executionStart", executionStart());
+  builder.AddNumber("desiredExecutionStart", desiredExecutionStart());
   builder.AddNumber("forcedStyleAndLayoutDuration",
                     forcedStyleAndLayoutDuration());
   builder.AddNumber("pauseDuration", pauseDuration());
-  builder.AddString("sourceURL", sourceURL());
-  builder.AddString("sourceFunctionName", sourceFunctionName());
-  builder.AddNumber("sourceCharPosition", sourceCharPosition());
+  builder.AddString("sourceLocation", sourceLocation());
 }
 
 void PerformanceScriptTiming::Trace(Visitor* visitor) const {

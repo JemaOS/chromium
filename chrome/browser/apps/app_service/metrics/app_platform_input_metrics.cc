@@ -7,13 +7,11 @@
 #include "ash/shell.h"
 #include "base/metrics/histogram_macros.h"
 #include "chrome/browser/apps/app_service/metrics/app_platform_metrics.h"
-#include "chrome/browser/apps/app_service/metrics/app_platform_metrics_utils.h"
 #include "chrome/browser/apps/app_service/web_contents_app_id_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chromeos/components/mgs/managed_guest_session_utils.h"
 #include "components/app_constants/constants.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
@@ -91,16 +89,16 @@ std::string GetInputEventSourceKey(InputEventSource event_source) {
   }
 }
 
-base::Value::Dict ConvertEventCountsToValue(
+base::Value ConvertEventCountsToValue(
     const AppPlatformInputMetrics::EventSourceToCounts& event_counts) {
-  base::Value::Dict event_counts_dict;
+  base::Value event_counts_dict(base::Value::Type::DICT);
   for (const auto& counts : event_counts) {
-    base::Value::Dict count_dict;
+    base::Value count_dict(base::Value::Type::DICT);
     for (const auto& it : counts.second) {
-      count_dict.Set(GetAppTypeHistogramName(it.first), it.second);
+      count_dict.SetIntKey(GetAppTypeHistogramName(it.first), it.second);
     }
-    event_counts_dict.Set(GetInputEventSourceKey(counts.first),
-                          std::move(count_dict));
+    event_counts_dict.SetKey(GetInputEventSourceKey(counts.first),
+                             std::move(count_dict));
   }
   return event_counts_dict;
 }
@@ -140,14 +138,9 @@ constexpr char kAppInputEventsKey[] = "app_platform_metrics.app_input_events";
 
 AppPlatformInputMetrics::AppPlatformInputMetrics(
     Profile* profile,
-    const apps::AppRegistryCache& app_registry_cache,
     InstanceRegistry& instance_registry)
-    : profile_(profile), app_registry_cache_(app_registry_cache) {
-  instance_registry_observation_.Observe(&instance_registry);
-  if (chromeos::IsManagedGuestSession()) {
-    CHECK(ukm::UkmRecorder::Get());
-    ukm_recorder_observer_.Observe(ukm::UkmRecorder::Get());
-  }
+    : profile_(profile) {
+  InstanceRegistry::Observer::Observe(&instance_registry);
   if (ash::Shell::HasInstance()) {
     ash::Shell::Get()->AddPreTargetHandler(this);
   }
@@ -191,7 +184,17 @@ void AppPlatformInputMetrics::OnFiveMinutes() {
 }
 
 void AppPlatformInputMetrics::OnTwoHours() {
-  RecordInputEventsUkm();
+  if (!ShouldRecordUkm(profile_)) {
+    return;
+  }
+
+  for (const auto& event_counts : app_id_to_event_count_per_two_hours_) {
+    // `event_counts.second` is the map from InputEventSource to the event
+    // counts.
+    RecordInputEventsUkm(event_counts.first, event_counts.second);
+  }
+
+  app_id_to_event_count_per_two_hours_.clear();
 }
 
 void AppPlatformInputMetrics::OnInstanceUpdate(const InstanceUpdate& update) {
@@ -226,12 +229,7 @@ void AppPlatformInputMetrics::OnInstanceUpdate(const InstanceUpdate& update) {
 
 void AppPlatformInputMetrics::OnInstanceRegistryWillBeDestroyed(
     InstanceRegistry* cache) {
-  instance_registry_observation_.Reset();
-}
-
-void AppPlatformInputMetrics::OnStartingShutdown() {
-  CHECK(chromeos::IsManagedGuestSession());
-  RecordInputEventsUkm();
+  InstanceRegistry::Observer::Observe(nullptr);
 }
 
 void AppPlatformInputMetrics::SetAppInfoForActivatedWindow(
@@ -316,7 +314,7 @@ void AppPlatformInputMetrics::RecordEventCount(InputEventSource event_source,
     return;
   }
 
-  if (!ShouldRecordUkmForApp(it->second.app_id)) {
+  if (!ShouldRecordUkmForAppTypeName(GetAppType(profile_, it->second.app_id))) {
     return;
   }
 
@@ -324,24 +322,7 @@ void AppPlatformInputMetrics::RecordEventCount(InputEventSource event_source,
                                         [it->second.app_type_name];
 }
 
-void AppPlatformInputMetrics::RecordInputEventsUkm() {
-  if (!ShouldRecordUkm(profile_)) {
-    return;
-  }
-
-  for (const auto& event_counts : app_id_to_event_count_per_two_hours_) {
-    if (!ShouldRecordUkmForApp(event_counts.first)) {
-      continue;
-    }
-    // `event_counts.second` is the map from InputEventSource to the event
-    // counts.
-    RecordInputEventsUkmForApp(event_counts.first, event_counts.second);
-  }
-
-  app_id_to_event_count_per_two_hours_.clear();
-}
-
-void AppPlatformInputMetrics::RecordInputEventsUkmForApp(
+void AppPlatformInputMetrics::RecordInputEventsUkm(
     const std::string& app_id,
     const EventSourceToCounts& event_counts) {
   for (const auto& counts : event_counts) {
@@ -383,7 +364,7 @@ void AppPlatformInputMetrics::RecordInputEventsUkmFromPref() {
                                            kAppInputEventsKey);
 
   for (const auto [app_id, events] : *input_events_update) {
-    if (!ShouldRecordUkmForApp(app_id)) {
+    if (!ShouldRecordUkmForAppTypeName(GetAppType(profile_, app_id))) {
       continue;
     }
 
@@ -394,13 +375,8 @@ void AppPlatformInputMetrics::RecordInputEventsUkmFromPref() {
 
     EventSourceToCounts event_counts =
         ConvertDictValueToEventCounts(*events_dict);
-    RecordInputEventsUkmForApp(app_id, event_counts);
+    RecordInputEventsUkm(app_id, event_counts);
   }
-}
-
-bool AppPlatformInputMetrics::ShouldRecordUkmForApp(const std::string& app_id) {
-  return ShouldRecordUkmForAppId(app_id, app_registry_cache_.get()) &&
-         ShouldRecordUkmForAppTypeName(GetAppType(profile_, app_id));
 }
 
 }  // namespace apps

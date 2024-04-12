@@ -13,24 +13,20 @@
 @interface AppShimRenderWidgetHostViewMacDelegate () <HistorySwiperDelegate>
 @end
 
-@implementation AppShimRenderWidgetHostViewMacDelegate {
-  uint64_t _nsviewIDThatWantsHistoryOverlay;
-
-  // Responsible for 2-finger swipes history navigation.
-  HistorySwiper* __strong _historySwiper;
-}
+@implementation AppShimRenderWidgetHostViewMacDelegate
 
 - (instancetype)initWithRenderWidgetHostNSViewID:
     (uint64_t)renderWidgetHostNSViewID {
   if (self = [super init]) {
     _nsviewIDThatWantsHistoryOverlay = renderWidgetHostNSViewID;
-    _historySwiper = [[HistorySwiper alloc] initWithDelegate:self];
+    _historySwiper.reset([[HistorySwiper alloc] initWithDelegate:self]);
   }
   return self;
 }
 
 - (void)dealloc {
-  _historySwiper.delegate = nil;
+  [_historySwiper setDelegate:nil];
+  [super dealloc];
 }
 
 // Handle an event. All incoming key and mouse events flow through this

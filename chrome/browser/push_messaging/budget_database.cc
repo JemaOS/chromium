@@ -165,7 +165,7 @@ void BudgetDatabase::GetBudgetAfterSync(const url::Origin& origin,
   {
     BudgetState prediction;
     prediction.budget_at = total;
-    prediction.time = clock_->Now().InMillisecondsFSinceUnixEpoch();
+    prediction.time = clock_->Now().ToJsTime();
     predictions.push_back(prediction);
   }
 
@@ -176,7 +176,7 @@ void BudgetDatabase::GetBudgetAfterSync(const url::Origin& origin,
     BudgetState prediction;
     total -= chunk.amount;
     prediction.budget_at = total;
-    prediction.time = chunk.expiration.InMillisecondsFSinceUnixEpoch();
+    prediction.time = chunk.expiration.ToJsTime();
     predictions.push_back(prediction);
   }
 

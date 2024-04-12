@@ -1,9 +1,9 @@
 <?php
-    $sleep = $_GET['delay'] ?? null;
+    $sleep = $_GET['delay'];
     if (isset($sleep))
         usleep($sleep*1000);
     $url = $_GET['url'];
-    $refresh = $_GET['refresh'] ?? null;
+    $refresh = $_GET['refresh'];
 
     if (isset($refresh)) {
         header("HTTP/1.1 200");
@@ -17,7 +17,7 @@
     if (isset($_GET['timing_allow_origin']))
         header("Timing-Allow-Origin: " . $_GET['timing_allow_origin']);
 
-    $code = $_GET['code'] ?? null;
+    $code = $_GET['code'];
     if (!isset($code))
         $code = 302;
     header("HTTP/1.1 $code");

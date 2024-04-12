@@ -11,14 +11,11 @@
 #define IN_LIBXML
 #include "libxml.h"
 #include <string.h>
-#include <stdarg.h>
 
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
-#include <libxml/parserInternals.h>
 #include <libxml/uri.h>
 #include <libxml/HTMLtree.h>
-#include <libxml/SAX2.h>
 
 #ifdef LIBXML_WRITER_ENABLED
 
@@ -32,11 +29,26 @@
 #define B64LINELEN 72
 #define B64CRLF "\r\n"
 
-#ifndef va_copy
-  #ifdef __va_copy
-    #define va_copy(dest, src) __va_copy(dest, src)
+/*
+ * The following VA_COPY was coded following an example in
+ * the Samba project.  It may not be sufficient for some
+ * esoteric implementations of va_list but (hopefully) will
+ * be sufficient for libxml2.
+ */
+#ifndef VA_COPY
+  #ifdef HAVE_VA_COPY
+    #define VA_COPY(dest, src) va_copy(dest, src)
   #else
-    #define va_copy(dest, src) memcpy(dest, src, sizeof(va_list))
+    #ifdef HAVE___VA_COPY
+      #define VA_COPY(dest,src) __va_copy(dest, src)
+    #else
+      #ifndef VA_LIST_IS_ARRAY
+        #define VA_COPY(dest,src) (dest) = (src)
+      #else
+        #include <string.h>
+        #define VA_COPY(dest,src) memcpy((char *)(dest),(char *)(src),sizeof(va_list))
+      #endif
+    #endif
   #endif
 #endif
 
@@ -697,11 +709,7 @@ xmlTextWriterEndDocument(xmlTextWriterPtr writer)
         sum += count;
     }
 
-    count = xmlTextWriterFlush(writer);
-    if (count < 0)
-        return -1;
-    sum += count;
-
+    sum += xmlTextWriterFlush(writer);
 
     return sum;
 }
@@ -4237,35 +4245,6 @@ xmlTextWriterFlush(xmlTextWriterPtr writer)
 }
 
 /**
- * xmlTextWriterClose:
- * @writer:  the xmlTextWriterPtr
- *
- * Flushes and closes the output buffer.
- *
- * Available since 2.13.0.
- *
- * Returns an xmlParserErrors code.
- */
-int
-xmlTextWriterClose(xmlTextWriterPtr writer)
-{
-    int result;
-
-    if ((writer == NULL) || (writer->out == NULL))
-        return XML_ERR_ARGUMENT;
-
-    result = xmlOutputBufferClose(writer->out);
-    writer->out = NULL;
-
-    if (result >= 0)
-        result = XML_ERR_OK;
-    else
-        result = -result;
-
-    return result;
-}
-
-/**
  * misc
  */
 
@@ -4502,7 +4481,7 @@ xmlTextWriterVSprintf(const char *format, va_list argptr)
         return NULL;
     }
 
-    va_copy(locarg, argptr);
+    VA_COPY(locarg, argptr);
     while (((count = vsnprintf((char *) buf, size, format, locarg)) < 0)
            || (count == size - 1) || (count == size) || (count > size)) {
 	va_end(locarg);
@@ -4514,7 +4493,7 @@ xmlTextWriterVSprintf(const char *format, va_list argptr)
                             "xmlTextWriterVSprintf : out of memory!\n");
             return NULL;
         }
-	va_copy(locarg, argptr);
+	VA_COPY(locarg, argptr);
     }
     va_end(locarg);
 
@@ -4533,17 +4512,28 @@ xmlTextWriterStartDocumentCallback(void *ctx)
     xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr) ctx;
     xmlDocPtr doc;
 
-#ifdef LIBXML_HTML_ENABLED
     if (ctxt->html) {
+#ifdef LIBXML_HTML_ENABLED
         if (ctxt->myDoc == NULL)
             ctxt->myDoc = htmlNewDocNoDtD(NULL, NULL);
         if (ctxt->myDoc == NULL) {
-            xmlCtxtErrMemory(ctxt);
+            if ((ctxt->sax != NULL) && (ctxt->sax->error != NULL))
+                ctxt->sax->error(ctxt->userData,
+                                 "SAX.startDocument(): out of memory\n");
+            ctxt->errNo = XML_ERR_NO_MEMORY;
+            ctxt->instate = XML_PARSER_EOF;
+            ctxt->disableSAX = 1;
             return;
         }
-    } else
+#else
+        xmlWriterErrMsg(NULL, XML_ERR_INTERNAL_ERROR,
+                        "libxml2 built without HTML support\n");
+        ctxt->errNo = XML_ERR_INTERNAL_ERROR;
+        ctxt->instate = XML_PARSER_EOF;
+        ctxt->disableSAX = 1;
+        return;
 #endif
-    {
+    } else {
         doc = ctxt->myDoc;
         if (doc == NULL)
             doc = ctxt->myDoc = xmlNewDoc(ctxt->version);
@@ -4556,7 +4546,12 @@ xmlTextWriterStartDocumentCallback(void *ctx)
                 doc->standalone = ctxt->standalone;
             }
         } else {
-            xmlCtxtErrMemory(ctxt);
+            if ((ctxt->sax != NULL) && (ctxt->sax->error != NULL))
+                ctxt->sax->error(ctxt->userData,
+                                 "SAX.startDocument(): out of memory\n");
+            ctxt->errNo = XML_ERR_NO_MEMORY;
+            ctxt->instate = XML_PARSER_EOF;
+            ctxt->disableSAX = 1;
             return;
         }
     }

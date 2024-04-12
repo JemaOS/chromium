@@ -37,7 +37,7 @@ CodecPressureManagerProvider::GetDecoderPressureManager() {
         ReclaimableCodec::CodecType::kDecoder, GetTaskRunner());
   }
 
-  return decoder_pressure_manager_.Get();
+  return decoder_pressure_manager_;
 }
 
 CodecPressureManager*
@@ -47,7 +47,7 @@ CodecPressureManagerProvider::GetEncoderPressureManager() {
         ReclaimableCodec::CodecType::kEncoder, GetTaskRunner());
   }
 
-  return encoder_pressure_manager_.Get();
+  return encoder_pressure_manager_;
 }
 
 scoped_refptr<base::SequencedTaskRunner>

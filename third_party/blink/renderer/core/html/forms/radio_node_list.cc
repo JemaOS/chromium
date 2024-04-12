@@ -37,8 +37,6 @@
 
 namespace blink {
 
-using mojom::blink::FormControlType;
-
 RadioNodeList::RadioNodeList(ContainerNode& owner_node,
                              CollectionType type,
                              const AtomicString& name)
@@ -58,10 +56,9 @@ static inline HTMLInputElement* ToRadioButtonInputElement(Element& element) {
   auto* input_element = DynamicTo<HTMLInputElement>(&element);
   if (!input_element)
     return nullptr;
-  if (input_element->FormControlType() != FormControlType::kInputRadio ||
-      input_element->Value().empty()) {
+  if (input_element->type() != input_type_names::kRadio ||
+      input_element->Value().empty())
     return nullptr;
-  }
   return input_element;
 }
 
@@ -117,7 +114,7 @@ bool RadioNodeList::ElementMatches(const Element& element) const {
 
   auto* html_input_element = DynamicTo<HTMLInputElement>(&element);
   if (html_input_element &&
-      html_input_element->FormControlType() == FormControlType::kInputImage) {
+      html_input_element->type() == input_type_names::kImage) {
     return false;
   }
 

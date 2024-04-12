@@ -37,13 +37,14 @@
 namespace blink {
 
 class ExceptionState;
+class ScriptState;
 
 class CORE_EXPORT HTMLScriptElement final : public HTMLElement,
                                             public ScriptElementBase {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  static bool supports(const AtomicString&);
+  static bool supports(ScriptState*, const AtomicString&);
 
   HTMLScriptElement(Document&, const CreateElementFlags);
 
@@ -53,7 +54,7 @@ class CORE_EXPORT HTMLScriptElement final : public HTMLElement,
   String text() { return TextFromChildren(); }
   void setText(const String&);
   void setInnerTextForBinding(
-      const V8UnionStringLegacyNullToEmptyStringOrTrustedScript*
+      const V8UnionStringTreatNullAsEmptyStringOrTrustedScript*
           string_or_trusted_script,
       ExceptionState& exception_state) override;
   void setTextContentForBinding(const V8UnionStringOrTrustedScript* value,
@@ -90,6 +91,7 @@ class CORE_EXPORT HTMLScriptElement final : public HTMLElement,
 
   bool IsURLAttribute(const Attribute&) const override;
   bool HasLegalLinkAttribute(const QualifiedName&) const override;
+  const QualifiedName& SubResourceAttributeName() const override;
 
   // ScriptElementBase overrides:
   String SourceAttributeValue() const override;

@@ -13,7 +13,6 @@
 #include "chrome/browser/permissions/one_time_permissions_tracker_factory.h"
 #include "chrome/browser/profiles/off_the_record_profile_impl.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/common/buildflags.h"
 #include "components/content_settings/core/browser/content_settings_pref_provider.h"
@@ -31,9 +30,9 @@
 #endif
 
 #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+#include "chrome/browser/content_settings/content_settings_supervised_provider.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/supervised_user/supervised_user_settings_service_factory.h"
-#include "components/supervised_user/core/browser/supervised_user_content_settings_provider.h"
 #include "components/supervised_user/core/browser/supervised_user_settings_service.h"
 #endif
 
@@ -47,22 +46,22 @@
 #include "chrome/browser/sessions/exit_type_service_factory.h"
 #endif
 
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/browser/ash/profiles/profile_helper.h"
+#endif
+
 HostContentSettingsMapFactory::HostContentSettingsMapFactory()
     : RefcountedProfileKeyedServiceFactory(
           "HostContentSettingsMap",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
 #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
   DependsOn(SupervisedUserSettingsServiceFactory::GetInstance());
 #endif
 #if BUILDFLAG(IS_ANDROID)
   DependsOn(TemplateURLServiceFactory::GetInstance());
-#endif
+#else
   DependsOn(OneTimePermissionsTrackerFactory::GetInstance());
+#endif
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   DependsOn(extensions::ContentSettingsService::GetFactoryInstance());
 #endif
@@ -72,7 +71,8 @@ HostContentSettingsMapFactory::HostContentSettingsMapFactory()
 #endif
 }
 
-HostContentSettingsMapFactory::~HostContentSettingsMapFactory() = default;
+HostContentSettingsMapFactory::~HostContentSettingsMapFactory() {
+}
 
 // static
 HostContentSettingsMap* HostContentSettingsMapFactory::GetForProfile(
@@ -85,8 +85,7 @@ HostContentSettingsMap* HostContentSettingsMapFactory::GetForProfile(
 
 // static
 HostContentSettingsMapFactory* HostContentSettingsMapFactory::GetInstance() {
-  static base::NoDestructor<HostContentSettingsMapFactory> instance;
-  return instance.get();
+  return base::Singleton<HostContentSettingsMapFactory>::get();
 }
 
 scoped_refptr<RefcountedKeyedService>
@@ -105,11 +104,21 @@ scoped_refptr<RefcountedKeyedService>
   if (profile->IsOffTheRecord() && !profile->IsGuestSession())
     GetForProfile(original_profile);
 
+  bool should_record_metrics = profile->IsRegularProfile();
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  // ChromeOS creates various irregular profiles (login, lock screen...); they
+  // are of type kRegular (returns true for `Profile::IsRegular()`), that aren't
+  // used to browse the web and users can't configure. Don't collect metrics
+  // about them.
+  should_record_metrics =
+      should_record_metrics && ash::ProfileHelper::IsUserProfile(profile);
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+
   scoped_refptr<HostContentSettingsMap> settings_map(new HostContentSettingsMap(
       profile->GetPrefs(),
       profile->IsOffTheRecord() || profile->IsGuestSession(),
       /*store_last_modified=*/true, profile->ShouldRestoreOldSessionCookies(),
-      profiles::IsRegularUserProfile(profile)));
+      should_record_metrics));
 
   auto allowlist_provider = std::make_unique<WebUIAllowlistProvider>(
       WebUIAllowlist::GetOrCreate(profile));
@@ -136,10 +145,8 @@ scoped_refptr<RefcountedKeyedService>
       SupervisedUserSettingsServiceFactory::GetForKey(profile->GetProfileKey());
   // This may be null in testing.
   if (supervised_service) {
-    std::unique_ptr<supervised_user::SupervisedUserContentSettingsProvider>
-        supervised_provider(
-            new supervised_user::SupervisedUserContentSettingsProvider(
-                supervised_service));
+    std::unique_ptr<content_settings::SupervisedProvider> supervised_provider(
+        new content_settings::SupervisedProvider(supervised_service));
     settings_map->RegisterProvider(HostContentSettingsMap::SUPERVISED_PROVIDER,
                                    std::move(supervised_provider));
   }
@@ -167,7 +174,7 @@ scoped_refptr<RefcountedKeyedService>
         HostContentSettingsMap::INSTALLED_WEBAPP_PROVIDER,
         std::move(webapp_provider));
   }
-#endif  // defined (OS_ANDROID)
+#else
   if (base::FeatureList::IsEnabled(permissions::features::kOneTimePermission)) {
     auto one_time_permission_provider =
         std::make_unique<OneTimePermissionProvider>(
@@ -177,5 +184,6 @@ scoped_refptr<RefcountedKeyedService>
         HostContentSettingsMap::ONE_TIME_PERMISSION_PROVIDER,
         std::move(one_time_permission_provider));
   }
+#endif  // defined (OS_ANDROID)
   return settings_map;
 }

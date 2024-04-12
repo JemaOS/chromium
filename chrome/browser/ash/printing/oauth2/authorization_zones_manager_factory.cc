@@ -30,20 +30,14 @@ AuthorizationZonesManagerFactory::GetForBrowserContext(
 AuthorizationZonesManagerFactory::AuthorizationZonesManagerFactory()
     : ProfileKeyedServiceFactory(
           "AuthorizationZonesManagerFactory",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
 AuthorizationZonesManagerFactory::~AuthorizationZonesManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-AuthorizationZonesManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AuthorizationZonesManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return AuthorizationZonesManager::Create(
-      Profile::FromBrowserContext(context));
+  return AuthorizationZonesManager::Create(Profile::FromBrowserContext(context))
+      .release();
 }
 
 }  // namespace oauth2

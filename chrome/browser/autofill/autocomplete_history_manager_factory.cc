@@ -4,9 +4,9 @@
 
 #include "chrome/browser/autofill/autocomplete_history_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/webdata_services/web_data_service_factory.h"
+#include "chrome/browser/web_data_service_factory.h"
 #include "components/autofill/core/browser/autocomplete_history_manager.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service.h"
 
@@ -22,24 +22,17 @@ AutocompleteHistoryManager* AutocompleteHistoryManagerFactory::GetForProfile(
 // static
 AutocompleteHistoryManagerFactory*
 AutocompleteHistoryManagerFactory::GetInstance() {
-  static base::NoDestructor<AutocompleteHistoryManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<AutocompleteHistoryManagerFactory>::get();
 }
 
 AutocompleteHistoryManagerFactory::AutocompleteHistoryManagerFactory()
     : ProfileKeyedServiceFactory(
           "AutocompleteHistoryManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(WebDataServiceFactory::GetInstance());
 }
 
-AutocompleteHistoryManagerFactory::~AutocompleteHistoryManagerFactory() =
-    default;
+AutocompleteHistoryManagerFactory::~AutocompleteHistoryManagerFactory() {}
 
 KeyedService* AutocompleteHistoryManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {

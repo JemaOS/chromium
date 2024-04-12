@@ -36,6 +36,7 @@ class SessionCrashedBubbleView : public SessionCrashedBubble {
   // Internal show method also used by SessionCrashedBubbleViewTest.
   // TODO(pbos): Mock conditions in test instead.
   static views::BubbleDialogDelegate* ShowBubble(Browser* browser,
+                                                 bool uma_opted_in_already,
                                                  bool offer_uma_optin);
 };
 

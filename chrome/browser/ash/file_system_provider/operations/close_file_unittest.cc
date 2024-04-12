@@ -20,7 +20,9 @@
 #include "storage/browser/file_system/async_file_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 namespace {
 
 const char kExtensionId[] = "mbflcebpggnecokmikipoihdbecnjfoj";
@@ -32,8 +34,8 @@ const int kOpenRequestId = 3;
 
 class FileSystemProviderOperationsCloseFileTest : public testing::Test {
  protected:
-  FileSystemProviderOperationsCloseFileTest() = default;
-  ~FileSystemProviderOperationsCloseFileTest() override = default;
+  FileSystemProviderOperationsCloseFileTest() {}
+  ~FileSystemProviderOperationsCloseFileTest() override {}
 
   void SetUp() override {
     file_system_info_ = ProvidedFileSystemInfo(
@@ -67,12 +69,12 @@ TEST_F(FileSystemProviderOperationsCloseFileTest, Execute) {
   const base::Value* options_as_value = &event_args[0];
   ASSERT_TRUE(options_as_value->is_dict());
 
-  auto options =
-      CloseFileRequestedOptions::FromValue(options_as_value->GetDict());
-  ASSERT_TRUE(options);
-  EXPECT_EQ(kFileSystemId, options->file_system_id);
-  EXPECT_EQ(kRequestId, options->request_id);
-  EXPECT_EQ(kOpenRequestId, options->open_request_id);
+  CloseFileRequestedOptions options;
+  ASSERT_TRUE(CloseFileRequestedOptions::Populate(options_as_value->GetDict(),
+                                                  options));
+  EXPECT_EQ(kFileSystemId, options.file_system_id);
+  EXPECT_EQ(kRequestId, options.request_id);
+  EXPECT_EQ(kOpenRequestId, options.open_request_id);
 }
 
 TEST_F(FileSystemProviderOperationsCloseFileTest, Execute_NoListener) {
@@ -114,4 +116,6 @@ TEST_F(FileSystemProviderOperationsCloseFileTest, OnError) {
   EXPECT_EQ(base::File::FILE_ERROR_TOO_MANY_OPENED, callback_log[0]);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

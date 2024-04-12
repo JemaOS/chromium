@@ -1,4 +1,4 @@
-// Copyright 2023 The Chromium Authors
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,16 +31,14 @@ chrome.events = {};
 chrome.events.Rule;
 
 /**
- * An object which allows the addition and removal of listeners for a Chrome
- * event.
+ * An object which allows the addition and removal of listeners for a Chrome event.
  * @typedef {Object}
  * @see https://developer.chrome.com/extensions/events#type-Event
  */
 chrome.events.Event;
 
 /**
- * Filters URLs for various criteria. See <a href='events#filtered'>event
- * filtering</a>. All criteria are case sensitive.
+ * Filters URLs for various criteria. See <a href='events#filtered'>event filtering</a>. All criteria are case sensitive.
  * @typedef {{
  *   hostContains: (string|undefined),
  *   hostEquals: (string|undefined),
@@ -61,8 +59,7 @@ chrome.events.Event;
  *   urlPrefix: (string|undefined),
  *   urlSuffix: (string|undefined),
  *   schemes: (!Array<string>|undefined),
- *   ports: (!Array<(number|!Array<number>)>|undefined),
- *   cidrBlocks: (!Array<string>|undefined)
+ *   ports: (!Array<(number|!Array<number>)>|undefined)
  * }}
  * @see https://developer.chrome.com/extensions/events#type-UrlFilter
  */

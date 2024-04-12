@@ -23,6 +23,7 @@
 #include "ash/wm/container_finder.h"
 #include "ash/wm/lock_state_controller.h"
 #include "ash/wm/session_state_animator.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "ash/wm/window_util.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
@@ -31,7 +32,6 @@
 #include "base/time/time.h"
 #include "chromeos/dbus/power_manager/backlight.pb.h"
 #include "ui/compositor/layer.h"
-#include "ui/display/tablet_state.h"
 #include "ui/display/types/display_snapshot.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_observer.h"
@@ -127,6 +127,7 @@ PowerButtonController::PowerButtonController(
   auto* shell = Shell::Get();
   shell->display_configurator()->AddObserver(this);
   backlights_forced_off_observation_.Observe(backlights_forced_off_setter);
+  shell->tablet_mode_controller()->AddObserver(this);
   shell->lock_state_controller()->AddObserver(this);
   shell->session_controller()->AddObserver(this);
 }
@@ -135,6 +136,9 @@ PowerButtonController::~PowerButtonController() {
   auto* shell = Shell::Get();
   shell->session_controller()->RemoveObserver(this);
   shell->lock_state_controller()->RemoveObserver(this);
+  if (shell->tablet_mode_controller()) {
+    shell->tablet_mode_controller()->RemoveObserver(this);
+  }
   shell->display_configurator()->RemoveObserver(this);
   AccelerometerReader::GetInstance()->RemoveObserver(this);
   chromeos::PowerManagerClient::Get()->RemoveObserver(this);
@@ -319,10 +323,6 @@ bool PowerButtonController::IsMenuOpened() const {
   return menu_widget_ && menu_widget_->GetLayer()->GetTargetVisibility();
 }
 
-void PowerButtonController::ShowMenuOnDebugAccelerator() {
-  StartPowerMenuAnimation(ShutdownReason::DEBUG_ACCELERATOR);
-}
-
 void PowerButtonController::DismissMenu() {
   if (IsMenuOpened()) {
     static_cast<PowerButtonMenuScreenView*>(menu_widget_->GetContentsView())
@@ -409,7 +409,7 @@ void PowerButtonController::OnLoginStatusChanged(LoginStatus status) {
 }
 
 void PowerButtonController::OnGetSwitchStates(
-    std::optional<chromeos::PowerManagerClient::SwitchStates> result) {
+    absl::optional<chromeos::PowerManagerClient::SwitchStates> result) {
   if (!result.has_value()) {
     return;
   }
@@ -443,21 +443,14 @@ void PowerButtonController::OnScreenBacklightStateChanged(
   }
 }
 
-void PowerButtonController::OnDisplayTabletStateChanged(
-    display::TabletState state) {
-  switch (state) {
-    case display::TabletState::kEnteringTabletMode:
-    case display::TabletState::kExitingTabletMode:
-      break;
-    case display::TabletState::kInTabletMode:
-      in_tablet_mode_ = true;
-      StopTimersAndDismissMenu();
-      break;
-    case display::TabletState::kInClamshellMode:
-      in_tablet_mode_ = false;
-      StopTimersAndDismissMenu();
-      break;
-  }
+void PowerButtonController::OnTabletModeStarted() {
+  in_tablet_mode_ = true;
+  StopTimersAndDismissMenu();
+}
+
+void PowerButtonController::OnTabletModeEnded() {
+  in_tablet_mode_ = false;
+  StopTimersAndDismissMenu();
 }
 
 void PowerButtonController::OnSecurityCurtainEnabled() {
@@ -570,7 +563,7 @@ void PowerButtonController::ParsePowerButtonPositionSwitch() {
     return;
   }
 
-  std::optional<base::Value> parsed_json = base::JSONReader::Read(
+  absl::optional<base::Value> parsed_json = base::JSONReader::Read(
       cl->GetSwitchValueASCII(switches::kAshPowerButtonPosition));
   if (!parsed_json || !parsed_json->is_dict()) {
     LOG(ERROR) << switches::kAshPowerButtonPosition << " flag has no value";
@@ -579,7 +572,7 @@ void PowerButtonController::ParsePowerButtonPositionSwitch() {
 
   const base::Value::Dict& position_info = parsed_json->GetDict();
   const std::string* edge = position_info.FindString(kEdgeField);
-  std::optional<double> position = position_info.FindDouble(kPositionField);
+  absl::optional<double> position = position_info.FindDouble(kPositionField);
 
   if (!edge || !position) {
     LOG(ERROR) << "Both " << kEdgeField << " field and " << kPositionField

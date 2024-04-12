@@ -3,13 +3,16 @@
 // found in the LICENSE file.
 
 // https://dom.spec.whatwg.org/#mixin-documentorshadowroot
-interface mixin DocumentOrShadowRoot {
+// https://w3c.github.io/webcomponents/spec/shadow/#extensions-to-the-documentorshadowroot-mixin
+[
+    LegacyTreatAsPartialInterface
+] interface mixin DocumentOrShadowRoot {
     // Selection API
     // https://w3c.github.io/selection-api/#extensions-to-document-interface
     [Affects=Nothing] Selection? getSelection();
     // Web-Animation-API
     //https://drafts.csswg.org/web-animations/#extensions-to-the-documentorshadowroot-interface-mixin
-    [Measure] sequence<Animation> getAnimations();
+    [RuntimeEnabled=WebAnimationsAPI, Measure] sequence<Animation> getAnimations();
     // CSSOM View Module
     // https://drafts.csswg.org/cssom-view/#extensions-to-the-document-interface
     [Measure] Element? elementFromPoint(double x, double y);
@@ -23,7 +26,4 @@ interface mixin DocumentOrShadowRoot {
     // https://fullscreen.spec.whatwg.org/
     [LegacyLenientSetter] readonly attribute Element? fullscreenElement;
     [MeasureAs=AdoptedStyleSheets] attribute ObservableArray<CSSStyleSheet> adoptedStyleSheets;
-    // Picture-in-picture API
-    // https://w3c.github.io/picture-in-picture/#documentorshadowroot-extension
-    [Measure] readonly attribute Element? pictureInPictureElement;
 };

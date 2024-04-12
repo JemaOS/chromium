@@ -4,11 +4,11 @@
 
 #include "ash/shelf/kiosk_app_instruction_bubble.h"
 
+#include "ash/constants/ash_features.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/style/ash_color_provider.h"
-#include "ash/style/typography.h"
 #include "ash/system/tray/tray_popup_utils.h"
 #include "ash/system/tray/tray_utils.h"
 #include "base/functional/callback_helpers.h"
@@ -38,8 +38,8 @@ views::BubbleBorder::Arrow GetArrow(ShelfAlignment alignment) {
   return views::BubbleBorder::Arrow::NONE;
 }
 
-gfx::Insets GetBubbleInsets(aura::Window* window) {
-  gfx::Insets insets = GetTrayBubbleInsets(window);
+gfx::Insets GetBubbleInsets() {
+  gfx::Insets insets = GetTrayBubbleInsets();
   insets.set_bottom(views::LayoutProvider::Get()->GetDistanceMetric(
       views::DISTANCE_RELATED_LABEL_HORIZONTAL));
   return insets;
@@ -61,8 +61,8 @@ KioskAppInstructionBubble::KioskAppInstructionBubble(views::View* anchor,
 
   // Set up the title view.
   title_ = AddChildView(std::make_unique<views::Label>());
-  title_->SetAutoColorReadabilityEnabled(false);
-  TypographyProvider::Get()->StyleLabel(TypographyToken::kCrosBody2, *title_);
+  TrayPopupUtils::SetLabelFontList(title_,
+                                   TrayPopupUtils::FontStyle::kSmallTitle);
   title_->SetText(l10n_util::GetStringUTF16(IDS_SHELF_KIOSK_APP_INSTRUCTION));
   title_->SetMultiLine(true);
   title_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
@@ -75,8 +75,7 @@ KioskAppInstructionBubble::KioskAppInstructionBubble(views::View* anchor,
 
   auto bubble_border =
       std::make_unique<views::BubbleBorder>(arrow(), GetShadow());
-  bubble_border->set_insets(
-      GetBubbleInsets(anchor_widget()->GetNativeWindow()->GetRootWindow()));
+  bubble_border->set_insets(GetBubbleInsets());
   bubble_border->SetCornerRadius(
       views::LayoutProvider::Get()->GetCornerRadiusMetric(
           views::Emphasis::kHigh));
@@ -105,7 +104,7 @@ gfx::Size KioskAppInstructionBubble::CalculatePreferredSize() const {
   return gfx::Size(width, GetHeightForWidth(width));
 }
 
-BEGIN_METADATA(KioskAppInstructionBubble)
+BEGIN_METADATA(KioskAppInstructionBubble, views::BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace ash

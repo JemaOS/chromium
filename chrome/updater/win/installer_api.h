@@ -5,14 +5,12 @@
 #ifndef CHROME_UPDATER_WIN_INSTALLER_API_H_
 #define CHROME_UPDATER_WIN_INSTALLER_API_H_
 
-#include <optional>
 #include <string>
-#include <utility>
 
 #include "base/win/registry.h"
 #include "chrome/updater/enum_traits.h"
 #include "chrome/updater/installer.h"
-#include "chrome/updater/win/win_constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace updater {
 
@@ -69,6 +67,26 @@ enum class UpdaterScope;
 // "0" (if the updater does not send usage stats); %COMPANY% is the uppercase
 // short company name specified in branding.gni (e.g. "GOOGLE").
 
+// These values are defined by the Installer API.
+enum class InstallerResult {
+  // The installer succeeded, unconditionally.
+  kSuccess = 0,
+
+  // The installer returned a specific error using the Installer API mechanism.
+  kCustomError = 1,
+
+  // TODO(crbug.com/1139013): support MSI payloads.
+  // The MSI installer failed, with a system error.
+  kMsiError = 2,
+
+  // The installer failed with a a system error.
+  kSystemError = 3,
+
+  // The installer failed. The exit code of the installer process contains
+  // the error.
+  kExitCode = 4,
+};
+
 template <>
 struct EnumTraits<InstallerResult> {
   using R = InstallerResult;
@@ -84,15 +102,15 @@ struct InstallerOutcome {
   InstallerOutcome(const InstallerOutcome&);
   ~InstallerOutcome();
 
-  std::optional<InstallerResult> installer_result;
-  std::optional<int> installer_error;
-  std::optional<int> installer_extracode1;
-  std::optional<std::string> installer_text;
-  std::optional<std::string> installer_cmd_line;
+  absl::optional<InstallerResult> installer_result;
+  absl::optional<int> installer_error;
+  absl::optional<int> installer_extracode1;
+  absl::optional<std::string> installer_text;
+  absl::optional<std::string> installer_cmd_line;
 };
 
 // Opens the registry ClientState subkey for the `app_id`.
-std::optional<base::win::RegKey> ClientStateAppKeyOpen(
+absl::optional<base::win::RegKey> ClientStateAppKeyOpen(
     UpdaterScope updater_scope,
     const std::string& app_id,
     REGSAM regsam);
@@ -116,33 +134,24 @@ bool DeleteInstallerOutput(UpdaterScope updater_scope,
 // Returns the Installer API outcome, best-effort, and renames the InstallerXXX
 // values to LastInstallerXXX values. The LastInstallerXXX values remain around
 // until the next update or install.
-std::optional<InstallerOutcome> GetInstallerOutcome(UpdaterScope updater_scope,
-                                                    const std::string& app_id);
-
-// Returns the Last Installer API outcome, i.e., the LastInstallerXXX values.
-std::optional<InstallerOutcome> GetClientStateKeyLastInstallerOutcome(
-    UpdaterScope updater_scope,
-    const std::string& app_id);
-std::optional<InstallerOutcome> GetUpdaterKeyLastInstallerOutcome(
-    UpdaterScope updater_scope);
-
+absl::optional<InstallerOutcome> GetInstallerOutcome(UpdaterScope updater_scope,
+                                                     const std::string& app_id);
 bool SetInstallerOutcomeForTesting(UpdaterScope updater_scope,
                                    const std::string& app_id,
                                    const InstallerOutcome& installer_outcome);
 
 // Translates the Installer API outcome into an `Installer::Result` value.
-// * Handles installer exit codes correctly.
-// * Handles non-zero success codes `ERROR_SUCCESS_RE{xxx}` correctly.
-// * Uniformly sets `CrxInstaller::Result::error` to `0` for success, and
-//   `kErrorApplicationInstallerFailed` for failure. The installer API code (or
-//   exit code in the case of no installer API) is stored within
-//   `CrxInstaller::Result::original_error` to avoid overlaps with
-//   `update_client` error codes. Otherwise for instance error code `2` could
-//   mean `FINGERPRINT_WRITE_FAILED = 2` or the windows error
-//   `ERROR_FILE_NOT_FOUND`.
+// `exit_code` is the exit code of the installer process, which may be used
+// in some cases, depending on the installer outcome.
 Installer::Result MakeInstallerResult(
-    std::optional<InstallerOutcome> installer_outcome,
+    absl::optional<InstallerOutcome> installer_outcome,
     int exit_code);
+
+// Returns the textual description of a system `error` as provided
+// by the operating system. The function assumes that the locale value for
+// the calling thread is set, otherwise, the function uses the user/system
+// default LANGID, or it defaults to US English.
+std::string GetTextForSystemError(int error);
 
 }  // namespace updater
 

@@ -70,7 +70,7 @@ class MultiDeviceSetupClientHolder : public KeyedService {
     weak_factory_.InvalidateWeakPtrs();
   }
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
   std::unique_ptr<MultiDeviceSetupClient> multidevice_setup_client_;
   base::WeakPtrFactory<MultiDeviceSetupClientHolder> weak_factory_{this};
 };
@@ -118,17 +118,15 @@ MultiDeviceSetupClient* MultiDeviceSetupClientFactory::GetForProfile(
 
 // static
 MultiDeviceSetupClientFactory* MultiDeviceSetupClientFactory::GetInstance() {
-  static base::NoDestructor<MultiDeviceSetupClientFactory> instance;
-  return instance.get();
+  return base::Singleton<MultiDeviceSetupClientFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-MultiDeviceSetupClientFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* MultiDeviceSetupClientFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   if (IsAllowedByPolicy(context)) {
     PA_LOG(INFO)
         << "Allowed by policy. Returning new MultiDeviceSetupClientHolder";
-    return std::make_unique<MultiDeviceSetupClientHolder>(context);
+    return new MultiDeviceSetupClientHolder(context);
   }
 
   PA_LOG(INFO) << "NOT allowed by policy. Unable to return "

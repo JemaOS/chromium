@@ -8,13 +8,11 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/cancelable_callback.h"
 #include "base/compiler_specific.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -37,6 +35,7 @@
 #include "media/base/renderer_factory_selector.h"
 #include "media/base/routing_token_callback.h"
 #include "media/base/simple_watch_timer.h"
+#include "media/base/text_track.h"
 #include "media/filters/demuxer_manager.h"
 #include "media/mojo/mojom/media_metrics_provider.mojom.h"
 #include "media/mojo/mojom/playback_events_recorder.mojom.h"
@@ -44,14 +43,15 @@
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/media_session/public/cpp/media_position.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/platform/media/video_frame_compositor.h"
 #include "third_party/blink/public/platform/media/web_media_player_builder.h"
-#include "third_party/blink/public/platform/media/web_media_player_delegate.h"
+#include "third_party/blink/public/platform/media/webmediaplayer_delegate.h"
 #include "third_party/blink/public/platform/web_audio_source_provider.h"
 #include "third_party/blink/public/platform/web_content_decryption_module_result.h"
 #include "third_party/blink/public/platform/web_media_player.h"
 #include "third_party/blink/public/platform/web_surface_layer_bridge.h"
-#include "third_party/blink/public/web/modules/media/web_media_player_util.h"
+#include "third_party/blink/public/web/modules/media/webmediaplayer_util.h"
 #include "third_party/blink/renderer/platform/allow_discouraged_type.h"
 #include "third_party/blink/renderer/platform/media/learning_experiment_helper.h"
 #include "third_party/blink/renderer/platform/media/multi_buffer_data_source.h"
@@ -72,6 +72,10 @@ namespace gfx {
 class Size;
 }
 
+namespace learning {
+class LearningTaskController;
+}
+
 namespace media {
 class CdmContextRef;
 class ChunkDemuxer;
@@ -80,10 +84,6 @@ class MediaLog;
 class MemoryDumpProviderProxy;
 class PipelineController;
 class SwitchableAudioRendererSink;
-
-namespace learning {
-class LearningTaskController;
-}
 }  // namespace media
 
 namespace viz {
@@ -103,18 +103,6 @@ class WebContentDecryptionModule;
 class WebLocalFrame;
 class WebMediaPlayerClient;
 class WebMediaPlayerEncryptedMediaClient;
-
-// The set of split histograms that are supported. Keeping them in an enum
-// helps prevent raw strings from being scattered throughout the source, and
-// can provide a convenient way to remember to update the histograms.xml file
-// when changes or additions are made.
-enum class SplitHistogramName {
-  kTimeToMetadata,
-  kTimeToPlayReady,
-  kUnderflowDuration2,
-  kVideoHeightInitial,
-  kTimeToFirstFrame,
-};
 
 // The canonical implementation of WebMediaPlayer that's backed by
 // Pipeline. Handles normal resource loading, Media Source, and
@@ -205,7 +193,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
              const gfx::Rect& rect,
              cc::PaintFlags& flags) override;
   scoped_refptr<media::VideoFrame> GetCurrentFrameThenUpdate() override;
-  std::optional<media::VideoFrame::ID> CurrentFrameId() const override;
+  absl::optional<media::VideoFrame::ID> CurrentFrameId() const override;
   media::PaintCanvasVideoRenderer* GetPaintCanvasVideoRenderer() override;
 
   // True if the loaded media has a playable video/audio track.
@@ -259,7 +247,6 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   void SuspendForFrameClosed() override;
 
   bool HasAvailableVideoFrame() const override;
-  bool HasReadableVideoFrame() const override;
 
   scoped_refptr<WebAudioSourceProviderImpl> GetAudioSourceProvider() override;
 
@@ -319,7 +306,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   void OnBecameVisible() override;
   bool IsOpaque() const override;
   int GetDelegateId() override;
-  std::optional<viz::SurfaceId> GetSurfaceId() override;
+  absl::optional<viz::SurfaceId> GetSurfaceId() override;
   GURL GetSrcAfterRedirects() override;
   void RequestVideoFrameCallback() override;
   std::unique_ptr<WebMediaPlayer::VideoFramePresentationMetadata>
@@ -352,8 +339,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
 
   // Allow background video tracks with ~5 second keyframes (rounding down) to
   // be disabled to save resources.
-  constexpr static base::TimeDelta
-      kMaxKeyframeDistanceToDisableBackgroundVideo = base::Milliseconds(5500);
+  enum { kMaxKeyframeDistanceToDisableBackgroundVideoMs = 5500 };
 
  private:
   friend class WebMediaPlayerImplTest;
@@ -381,7 +367,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   // if it's not specified.
   template <uint32_t Flags, typename... T>
   void WriteSplitHistogram(void (*UmaFunction)(const std::string&, T...),
-                           SplitHistogramName key,
+                           const std::string& key,
                            const T&... value);
 
   void EnableOverlay();
@@ -398,7 +384,6 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   // call will do nothing.
   void MaybeSendOverlayInfoToDecoder();
 
-  void OnPipelineStarted(media::PipelineStatus status);
   void OnPipelineSuspended();
   void OnBeforePipelineResume();
   void OnPipelineResumed();
@@ -413,12 +398,14 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
       media::BufferingState state,
       media::BufferingStateChangeReason reason) override;
   void OnDurationChange() override;
+  void OnAddTextTrack(const media::TextTrackConfig& config,
+                      media::AddTextTrackDoneCB done_cb) override;
   void OnWaiting(media::WaitingReason reason) override;
   void OnAudioConfigChange(const media::AudioDecoderConfig& config) override;
   void OnVideoConfigChange(const media::VideoDecoderConfig& config) override;
   void OnVideoNaturalSizeChange(const gfx::Size& size) override;
   void OnVideoOpacityChange(bool opaque) override;
-  void OnVideoFrameRateChange(std::optional<int> fps) override;
+  void OnVideoFrameRateChange(absl::optional<int> fps) override;
   void OnVideoAverageKeyframeDistanceUpdate() override;
   void OnAudioPipelineInfoChange(const media::AudioPipelineInfo& info) override;
   void OnVideoPipelineInfoChange(const media::VideoPipelineInfo& info) override;
@@ -435,7 +422,6 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   void RestartForHls() override;
   bool IsSecurityOriginCryptographic() const override;
   void UpdateLoadedUrl(const GURL& url) override;
-  void DemuxerRequestsSeek(base::TimeDelta seek_time) override;
 
 #if BUILDFLAG(ENABLE_FFMPEG)
   void AddAudioTrack(const std::string& id,
@@ -449,8 +435,6 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
 #endif  // BUILDFLAG(ENABLE_FFMPEG)
 
 #if BUILDFLAG(ENABLE_HLS_DEMUXER)
-  void GetUrlData(const GURL& gurl,
-                  base::OnceCallback<void(scoped_refptr<UrlData>)> cb);
   base::SequenceBound<media::HlsDataSourceProvider> GetHlsDataSourceProvider()
       override;
 #endif  // BUILDFLAG(ENABLE_HLS_DEMUXER)
@@ -495,10 +479,10 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
       media::ProvideOverlayInfoCB provide_overlay_info_cb);
 
   // Creates a Renderer via the |renderer_factory_selector_|. If the
-  // |renderer_type| is std::nullopt, create the base Renderer. Otherwise, set
+  // |renderer_type| is absl::nullopt, create the base Renderer. Otherwise, set
   // the base type to be |renderer_type| and create a Renderer of that type.
   std::unique_ptr<media::Renderer> CreateRenderer(
-      std::optional<media::RendererType> renderer_type);
+      absl::optional<media::RendererType> renderer_type);
 
   // Finishes starting the pipeline due to a call to load().
   void StartPipeline();
@@ -679,7 +663,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   base::TimeDelta GetCurrentTimeInternal() const;
 
   // Called by the compositor the very first time a frame is received.
-  void OnFirstFrame(base::TimeTicks frame_time, bool is_frame_readable);
+  void OnFirstFrame(base::TimeTicks frame_time);
 
   // Records the encryption scheme used by the stream |stream_name|. This is
   // only recorded when metadata is available.
@@ -726,7 +710,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   // Report UMAs when this object instance is destroyed.
   void ReportSessionUMAs() const;
 
-  std::optional<media::DemuxerType> GetDemuxerType() const;
+  absl::optional<media::DemuxerType> GetDemuxerType() const;
 
   // Useful to bind for a cb to be called when a demuxer is created.
   media::PipelineStatus OnDemuxerCreated(media::Demuxer* demuxer,
@@ -734,10 +718,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
                                          bool is_streaming,
                                          bool is_static);
 
-  // Notifies the `client_` and the `delegate_` about metadata change.
-  void DidMediaMetadataChange();
-
-  const raw_ptr<WebLocalFrame> frame_;
+  WebLocalFrame* const frame_;
 
   WebMediaPlayer::NetworkState network_state_ =
       WebMediaPlayer::kNetworkStateEmpty;
@@ -823,15 +804,11 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
 
   bool overlay_enabled_ = false;
 
-  // Cors and Caching flags set during `Load` and used while creating demuxers.
-  CorsMode cors_mode_ = kCorsModeUnspecified;
-  bool is_cache_disabled_ = false;
-
   // Whether the current decoder requires a restart on overlay transitions.
   bool decoder_requires_restart_for_overlay_ = false;
 
-  const raw_ptr<WebMediaPlayerClient> client_;
-  const raw_ptr<WebMediaPlayerEncryptedMediaClient> encrypted_client_;
+  WebMediaPlayerClient* const client_;
+  WebMediaPlayerEncryptedMediaClient* const encrypted_client_;
 
   // WebMediaPlayer notifies the |delegate_| of playback state changes using
   // |delegate_id_|; an id provided after registering with the delegate.  The
@@ -844,7 +821,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   // before the frame is destroyed). RenderFrameImpl owns |delegate_| and is
   // guaranteed to outlive |this|; thus it is safe to store |delegate_| as a raw
   // pointer.
-  raw_ptr<WebMediaPlayerDelegate> delegate_;
+  WebMediaPlayerDelegate* delegate_;
   int delegate_id_ = 0;
 
   // The playback state last reported to |delegate_|, to avoid setting duplicate
@@ -869,10 +846,10 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   // Manages the lifetime of the DataSource, and soon the Demuxer.
   std::unique_ptr<media::DemuxerManager> demuxer_manager_;
 
-  raw_ptr<const base::TickClock> tick_clock_ = nullptr;
+  const base::TickClock* tick_clock_ = nullptr;
 
   std::unique_ptr<BufferedDataSourceHostImpl> buffered_data_source_host_;
-  const raw_ptr<UrlIndex> url_index_;
+  UrlIndex* const url_index_;
   scoped_refptr<viz::RasterContextProvider> raster_context_provider_;
 
   // Video rendering members.
@@ -904,11 +881,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
 
   // Captured once the cdm is provided to SetCdmInternal(). Used in creation of
   // |video_decode_stats_reporter_|.
-  std::optional<media::CdmConfig> cdm_config_;
-
-  // Whether the EME playback has been blocked waiting for the CDM to be set
-  // or waiting for decryption key.
-  bool has_waiting_for_key_ = false;
+  absl::optional<media::CdmConfig> cdm_config_;
 
   // Tracks if we are currently flinging a video (e.g. in a RemotePlayback
   // session). Used to prevent videos from being paused when hidden.
@@ -949,6 +922,12 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   // started; prevents us from spuriously logging errors that are transient or
   // unimportant.
   bool suppress_destruction_errors_ = false;
+
+  // TODO(dalecurtis): The following comment is inaccurate as this value is also
+  // used for, for example, data URLs.
+  // Used for HLS playback and in certain fallback paths (e.g. on older devices
+  // that can't support the unified media pipeline).
+  GURL loaded_url_ ALLOW_DISCOURAGED_TYPE("Avoids conversion in media code");
 
   // NOTE: |using_media_player_renderer_| is set based on the usage of a
   // MediaResource::Type::URL in StartPipeline(). This works because
@@ -1023,10 +1002,10 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   bool disable_pipeline_auto_suspend_ = false;
 
   // Pipeline statistics overridden by tests.
-  std::optional<media::PipelineStatistics> pipeline_statistics_for_test_;
+  absl::optional<media::PipelineStatistics> pipeline_statistics_for_test_;
 
   // Pipeline media duration overridden by tests.
-  std::optional<base::TimeDelta> pipeline_media_duration_for_test_;
+  absl::optional<base::TimeDelta> pipeline_media_duration_for_test_;
 
   // Whether the video requires a user gesture to resume after it was paused in
   // the background. Affects the value of ShouldPausePlaybackWhenHidden().
@@ -1079,7 +1058,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   mojo::Remote<media::mojom::MediaMetricsProvider> media_metrics_provider_;
   mojo::Remote<media::mojom::PlaybackEventsRecorder> playback_events_recorder_;
 
-  std::optional<ReadyState> stale_state_override_for_testing_;
+  absl::optional<ReadyState> stale_state_override_for_testing_;
 
   // True if we attempt to start the media pipeline in a suspended state for
   // preload=metadata. Cleared upon pipeline startup.
@@ -1091,9 +1070,6 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   // True if we have not yet rendered a first frame, but one is needed. Set back
   // to false as soon as |has_first_frame_| is set to true.
   bool needs_first_frame_ = false;
-
-  // Whether the rendered frame is readable, e.g. can be converted to image.
-  bool is_frame_readable_ = false;
 
   // True if StartPipeline() completed a lazy load startup.
   bool did_lazy_load_ = false;
@@ -1128,7 +1104,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
 
   // Created while playing, deleted otherwise.
   std::unique_ptr<SmoothnessHelper> smoothness_helper_;
-  std::optional<int> last_reported_fps_;
+  absl::optional<int> last_reported_fps_;
 
   // Time of the last call to GetCurrentFrameFromCompositor(). Used to prevent
   // background optimizations from being applied when capturing is active.

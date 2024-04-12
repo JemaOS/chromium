@@ -29,8 +29,6 @@
 #include "ui/gfx/render_text.h"
 #include "ui/gfx/shadow_value.h"
 #include "ui/gfx/skia_paint_util.h"
-#include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
 
 namespace {
 
@@ -98,33 +96,26 @@ void IconWithBadgeImageSource::SetBadge(std::unique_ptr<Badge> badge) {
                 badge_.get(), get_color_provider_callback_.Run()))
           : badge_->text_color;
 
-  const int badge_height = features::IsChromeRefresh2023() ? 14 : 12;
+  constexpr int kBadgeHeight = 12;
   ui::ResourceBundle* rb = &ui::ResourceBundle::GetSharedInstance();
-  gfx::FontList base_font =
-      features::IsChromeRefresh2023()
-          ? views::TypographyProvider::Get().GetFont(
-                views::style::CONTEXT_BADGE, views::style::STYLE_SECONDARY)
-          : rb->GetFontList(ui::ResourceBundle::BaseFont)
-                .DeriveWithHeightUpperBound(badge_height);
+  gfx::FontList base_font = rb->GetFontList(ui::ResourceBundle::BaseFont)
+                                .DeriveWithHeightUpperBound(kBadgeHeight);
   std::u16string utf16_text = base::UTF8ToUTF16(badge_->text);
 
-  if (!features::IsChromeRefresh2023()) {
-    // See if we can squeeze a slightly larger font into the badge given the
-    // actual string that is to be displayed.
-    constexpr int kMaxIncrementAttempts = 5;
-    for (size_t i = 0; i < kMaxIncrementAttempts; ++i) {
-      int w = 0;
-      int h = 0;
-      gfx::FontList bigger_font =
-          base_font.Derive(1, 0, gfx::Font::Weight::BOLD);
-      gfx::Canvas::SizeStringInt(utf16_text, bigger_font, &w, &h, 0,
-                                 gfx::Canvas::NO_ELLIPSIS);
-      if (h > badge_height) {
-        break;
-      }
-      base_font = bigger_font;
-    }
+  // See if we can squeeze a slightly larger font into the badge given the
+  // actual string that is to be displayed.
+  constexpr int kMaxIncrementAttempts = 5;
+  for (size_t i = 0; i < kMaxIncrementAttempts; ++i) {
+    int w = 0;
+    int h = 0;
+    gfx::FontList bigger_font = base_font.Derive(1, 0, gfx::Font::Weight::BOLD);
+    gfx::Canvas::SizeStringInt(utf16_text, bigger_font, &w, &h, 0,
+                               gfx::Canvas::NO_ELLIPSIS);
+    if (h > kBadgeHeight)
+      break;
+    base_font = bigger_font;
   }
+
   constexpr int kMaxTextWidth = 23;
   const int text_width = std::min(
       kMaxTextWidth, gfx::Canvas::GetStringWidth(utf16_text, base_font));
@@ -139,7 +130,7 @@ void IconWithBadgeImageSource::SetBadge(std::unique_ptr<Badge> badge) {
   // or even otherwise. If there is a mismatch you get http://crbug.com/26400.
   if (icon_area.width() != 0 && (badge_width % 2 != icon_area.width() % 2))
     badge_width += 1;
-  badge_width = std::max(badge_height, badge_width);
+  badge_width = std::max(kBadgeHeight, badge_width);
 
   // The minimum width for center-aligning the badge.
   constexpr int kCenterAlignThreshold = 20;
@@ -148,32 +139,20 @@ void IconWithBadgeImageSource::SetBadge(std::unique_ptr<Badge> badge) {
   const int badge_offset_x = badge_width >= kCenterAlignThreshold
                                  ? (icon_area.width() - badge_width) / 2
                                  : icon_area.width() - badge_width;
-  const int badge_offset_y = icon_area.height() - badge_height;
+  const int badge_offset_y = icon_area.height() - kBadgeHeight;
   badge_background_rect_ =
       gfx::Rect(icon_area.x() + badge_offset_x, icon_area.y() + badge_offset_y,
-                badge_width, badge_height);
+                badge_width, kBadgeHeight);
   gfx::Rect badge_rect = badge_background_rect_;
-
-  if (features::IsChromeRefresh2023()) {
-    const int top_inset = (badge_height - base_font.GetHeight()) / 2;
-    const int bottom_inset = (badge_height - base_font.GetHeight()) - top_inset;
-    const int left_inset = (badge_rect.width() - text_width) / 2;
-    const int right_inset = (badge_rect.width() - text_width) - left_inset;
-    badge_rect.Inset(
-        gfx::Insets::TLBR(top_inset, left_inset, bottom_inset, right_inset));
-  } else {
-    badge_rect.Inset(gfx::Insets::TLBR(
-        badge_height - base_font.GetHeight(),
-        std::max(kPadding, (badge_rect.width() - text_width) / 2), 0,
-        kPadding));
-  }
+  badge_rect.Inset(gfx::Insets::TLBR(
+      kBadgeHeight - base_font.GetHeight(),
+      std::max(kPadding, (badge_rect.width() - text_width) / 2), 0, kPadding));
   badge_text_ = gfx::RenderText::CreateRenderText();
-  badge_text_->SetHorizontalAlignment(
-      features::IsChromeRefresh2023() ? gfx::ALIGN_CENTER : gfx::ALIGN_LEFT);
+  badge_text_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
   badge_text_->SetCursorEnabled(false);
   badge_text_->SetFontList(base_font);
   badge_text_->SetColor(text_color);
-  badge_text_->SetText(std::move(utf16_text));
+  badge_text_->SetText(utf16_text);
   badge_text_->SetDisplayRect(badge_rect);
 }
 

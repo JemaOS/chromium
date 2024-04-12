@@ -4,7 +4,6 @@
 
 #include "chrome/browser/google/google_brand.h"
 
-#include <optional>
 #include <string>
 
 #include "base/containers/contains.h"
@@ -16,14 +15,25 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/installer/util/google_update_settings.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_MAC)
+#include "chrome/browser/mac/keystone_glue.h"
+#elif BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/google/google_brand_chromeos.h"
 #endif
 
-namespace google_brand {
+
+// Helpers --------------------------------------------------------------------
+
+namespace {
 
 const char* g_brand_for_testing = nullptr;
+
+}  // namespace
+
+
+namespace google_brand {
 
 // Global functions -----------------------------------------------------------
 
@@ -38,11 +48,11 @@ bool GetBrand(std::string* brand) {
   // Cache brand code value, since it is queried a lot and registry queries are
   // slow enough to actually affect top-level metrics like
   // Omnibox.CharTypedToRepaintLatency.
-  static const base::NoDestructor<std::optional<std::string>> brand_code(
-      []() -> std::optional<std::string> {
+  static const base::NoDestructor<absl::optional<std::string>> brand_code(
+      []() -> absl::optional<std::string> {
         std::wstring brandw;
         if (!GoogleUpdateSettings::GetBrand(&brandw))
-          return std::nullopt;
+          return absl::nullopt;
         return base::WideToASCII(brandw);
       }());
   if (!brand_code->has_value())
@@ -59,7 +69,7 @@ bool GetReactivationBrand(std::string* brand) {
   return ret;
 }
 
-#elif !BUILDFLAG(IS_MAC)
+#else
 
 bool GetBrand(std::string* brand) {
   if (g_brand_for_testing) {
@@ -67,7 +77,9 @@ bool GetBrand(std::string* brand) {
     return true;
   }
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_MAC)
+  brand->assign(keystone_glue::BrandCode());
+#elif BUILDFLAG(IS_CHROMEOS_ASH)
   brand->assign(google_brand::chromeos::GetBrand());
 #else
   brand->clear();
@@ -164,5 +176,6 @@ BrandForTesting::BrandForTesting(const std::string& brand) : brand_(brand) {
 BrandForTesting::~BrandForTesting() {
   g_brand_for_testing = nullptr;
 }
+
 
 }  // namespace google_brand

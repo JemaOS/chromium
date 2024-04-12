@@ -4,7 +4,6 @@
 
 #include "chrome/browser/apps/app_service/uninstall_dialog.h"
 
-#include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
 #include "chrome/browser/apps/app_service/app_icon/app_icon_factory.h"
 #include "chrome/browser/apps/app_service/publishers/extension_apps_chromeos.h"
@@ -13,6 +12,12 @@
 #include "extensions/browser/uninstall_reason.h"
 #include "ui/views/native_window_tracker.h"
 #include "ui/views/widget/widget.h"
+
+namespace {
+
+constexpr int32_t kUninstallIconSize = 48;
+
+}  // namespace
 
 namespace apps {
 
@@ -28,16 +33,14 @@ UninstallDialog::UninstallDialog(Profile* profile,
       app_name_(app_name),
       parent_window_(parent_window),
       uninstall_callback_(std::move(uninstall_callback)) {
-  if (parent_window) {
+  if (parent_window)
     parent_window_tracker_ = views::NativeWindowTracker::Create(parent_window);
-  }
 }
 
 UninstallDialog::~UninstallDialog() = default;
 
 void UninstallDialog::PrepareToShow(IconKey icon_key,
-                                    apps::IconLoader* icon_loader,
-                                    int32_t icon_size) {
+                                    apps::IconLoader* icon_loader) {
   if (app_type_ == AppType::kCrostini) {
     // Crostini icons might be a big image, and not fit the size, so add the
     // resize icon effect, to resize the image.
@@ -54,7 +57,7 @@ void UninstallDialog::PrepareToShow(IconKey icon_key,
 
   // Currently ARC apps only support 48*48 native icon.
   icon_loader->LoadIconFromIconKey(
-      app_id_, icon_key, IconType::kStandard, icon_size,
+      app_type_, app_id_, icon_key, IconType::kStandard, kUninstallIconSize,
       /*allow_placeholder_icon=*/false,
       base::BindOnce(&UninstallDialog::OnLoadIcon,
                      weak_ptr_factory_.GetWeakPtr()));
@@ -101,7 +104,9 @@ void UninstallDialog::OnLoadIcon(IconValuePtr icon_value) {
   widget_ = UiBase::Create(profile_, app_type_, app_id_, app_name_,
                            icon_value->uncompressed, parent_window_, this);
 
-  if (uninstall_dialog_created_callback_) {
+  // For browser tests, if the callback is set, run the callback to stop the run
+  // loop.
+  if (!uninstall_dialog_created_callback_.is_null()) {
     std::move(uninstall_dialog_created_callback_).Run(true);
   }
 }

@@ -5,8 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_TIMING_PERFORMANCE_SCRIPT_TIMING_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_TIMING_PERFORMANCE_SCRIPT_TIMING_H_
 
-#include <cstdint>
-
 #include "third_party/blink/renderer/core/dom/dom_high_res_time_stamp.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/timing/animation_frame_timing_info.h"
@@ -36,13 +34,11 @@ class PerformanceScriptTiming final : public PerformanceEntry {
   DOMHighResTimeStamp executionStart() const;
   DOMHighResTimeStamp forcedStyleAndLayoutDuration() const;
   DOMHighResTimeStamp pauseDuration() const;
+  DOMHighResTimeStamp desiredExecutionStart() const;
   LocalDOMWindow* window() const;
-  WTF::String sourceURL() const;
-  WTF::String sourceFunctionName() const;
-  int32_t sourceCharPosition() const;
+  WTF::String sourceLocation() const;
   const AtomicString& windowAttribution() const;
-  AtomicString invokerType() const;
-  AtomicString invoker() const;
+  AtomicString type() const;
   void Trace(Visitor*) const override;
 
  private:

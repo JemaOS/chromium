@@ -4,7 +4,7 @@
 
 #include "chrome/browser/ash/bluetooth/debug_logs_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/bluetooth/debug_logs_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/profiles/profile.h"
@@ -52,8 +52,7 @@ DebugLogsManager* DebugLogsManagerFactory::GetForProfile(Profile* profile) {
 
 // static
 DebugLogsManagerFactory* DebugLogsManagerFactory::GetInstance() {
-  static base::NoDestructor<DebugLogsManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<DebugLogsManagerFactory>::get();
 }
 
 DebugLogsManagerFactory::DebugLogsManagerFactory()
@@ -70,8 +69,7 @@ DebugLogsManagerFactory::DebugLogsManagerFactory()
 
 DebugLogsManagerFactory::~DebugLogsManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-DebugLogsManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* DebugLogsManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
@@ -79,7 +77,7 @@ DebugLogsManagerFactory::BuildServiceInstanceForBrowserContext(
   if (!ProfileHelper::Get()->IsPrimaryProfile(profile))
     return nullptr;
 
-  return std::make_unique<DebugLogsManagerService>(profile);
+  return new DebugLogsManagerService(profile);
 }
 
 bool DebugLogsManagerFactory::ServiceIsCreatedWithBrowserContext() const {

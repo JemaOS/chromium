@@ -176,7 +176,7 @@ class WebUITabStripFieldTrialCommandLineOverrideBrowserTest
     : public WebUITabStripFieldTrialWithTabletModeBrowserTest {
  public:
   WebUITabStripFieldTrialCommandLineOverrideBrowserTest() {
-    feature_list()->InitFromCommandLine("WebUITabStrip", "");
+    feature_list()->InitializeFromCommandLine("WebUITabStrip", "");
     InitFeatureList();
     EXPECT_TRUE(base::FeatureList::IsEnabled(features::kWebUITabStrip));
   }

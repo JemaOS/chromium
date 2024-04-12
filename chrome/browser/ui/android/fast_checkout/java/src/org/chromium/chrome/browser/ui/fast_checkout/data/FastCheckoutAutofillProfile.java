@@ -4,12 +4,16 @@
 
 package org.chromium.chrome.browser.ui.fast_checkout.data;
 
-import org.jni_zero.CalledByNative;
+import org.chromium.base.annotations.CalledByNative;
 
-/** A profile, similar to the one used by the PersonalDataManager. */
+/**
+ * A profile, similar to the one used by the PersonalDataManager.
+ */
 public class FastCheckoutAutofillProfile {
     private final String mGUID;
+    private final String mOrigin;
     private final boolean mIsLocal;
+    private final String mHonorificPrefix;
     private final String mFullName;
     private final String mCompanyName;
     private final String mStreetAddress;
@@ -25,24 +29,15 @@ public class FastCheckoutAutofillProfile {
     private final String mLanguageCode;
 
     @CalledByNative
-    public FastCheckoutAutofillProfile(
-            String guid,
-            boolean isLocal,
-            String fullName,
-            String companyName,
-            String streetAddress,
-            String region,
-            String locality,
-            String dependentLocality,
-            String postalCode,
-            String sortingCode,
-            String countryCode,
-            String countryName,
-            String phoneNumber,
-            String emailAddress,
-            String languageCode) {
+    public FastCheckoutAutofillProfile(String guid, String origin, boolean isLocal,
+            String honorificPrefix, String fullName, String companyName, String streetAddress,
+            String region, String locality, String dependentLocality, String postalCode,
+            String sortingCode, String countryCode, String countryName, String phoneNumber,
+            String emailAddress, String languageCode) {
         mGUID = guid;
+        mOrigin = origin;
         mIsLocal = isLocal;
+        mHonorificPrefix = honorificPrefix;
         mFullName = fullName;
         mCompanyName = companyName;
         mStreetAddress = streetAddress;
@@ -63,8 +58,18 @@ public class FastCheckoutAutofillProfile {
         return mGUID;
     }
 
+    @CalledByNative
+    public String getOrigin() {
+        return mOrigin;
+    }
+
     public boolean getIsLocal() {
         return mIsLocal;
+    }
+
+    @CalledByNative
+    public String getHonorificPrefix() {
+        return mHonorificPrefix;
     }
 
     @CalledByNative

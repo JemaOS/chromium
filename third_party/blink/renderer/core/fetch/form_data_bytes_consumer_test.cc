@@ -16,7 +16,6 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/forms/form_data.h"
-#include "third_party/blink/renderer/core/testing/file_backed_blob_factory_test_helper.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_typed_array.h"
@@ -78,8 +77,7 @@ scoped_refptr<EncodedFormData> ComplexFormData() {
   scoped_refptr<EncodedFormData> data = EncodedFormData::Create();
 
   data->AppendData("foo", 3);
-  data->AppendFileRange("/foo/bar/baz", 3, 4,
-                        base::Time::FromSecondsSinceUnixEpoch(5));
+  data->AppendFileRange("/foo/bar/baz", 3, 4, base::Time::FromDoubleT(5));
   auto blob_data = std::make_unique<BlobData>();
   blob_data->AppendText("hello", false);
   auto size = blob_data->length();
@@ -132,14 +130,7 @@ class NoopClient final : public GarbageCollected<NoopClient>,
 
 class FormDataBytesConsumerTest : public PageTestBase {
  public:
-  void SetUp() override {
-    PageTestBase::SetUp(gfx::Size());
-    file_factory_helper_ = std::make_unique<FileBackedBlobFactoryTestHelper>(
-        GetFrame().GetDocument()->GetExecutionContext());
-  }
-
- private:
-  std::unique_ptr<FileBackedBlobFactoryTestHelper> file_factory_helper_;
+  void SetUp() override { PageTestBase::SetUp(gfx::Size()); }
 };
 
 TEST_F(FormDataBytesConsumerTest, TwoPhaseReadFromString) {

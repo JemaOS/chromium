@@ -16,7 +16,6 @@
 #include "build/build_config.h"
 #include "media/base/decoder_factory.h"
 #include "media/base/media_util.h"
-#include "media/base/platform_features.h"
 #include "media/base/video_codecs.h"
 #include "media/video/gpu_video_accelerator_factories.h"
 #include "third_party/blink/renderer/platform/peerconnection/rtc_video_decoder_adapter.h"
@@ -60,7 +59,7 @@ constexpr std::array<CodecConfig, 9> kCodecConfigs = {{
 
 // Translate from media::VideoDecoderConfig to webrtc::SdpVideoFormat, or return
 // nothing if the profile isn't supported.
-std::optional<webrtc::SdpVideoFormat> VdcToWebRtcFormat(
+absl::optional<webrtc::SdpVideoFormat> VdcToWebRtcFormat(
     const media::VideoDecoderConfig& config) {
   switch (config.codec()) {
     case media::VideoCodec::kAV1:
@@ -81,7 +80,7 @@ std::optional<webrtc::SdpVideoFormat> VdcToWebRtcFormat(
           break;
         default:
           // Unsupported profile in WebRTC.
-          return std::nullopt;
+          return absl::nullopt;
       }
       return webrtc::SdpVideoFormat(
           cricket::kVp9CodecName, {{webrtc::kVP9FmtpProfileId,
@@ -104,13 +103,13 @@ std::optional<webrtc::SdpVideoFormat> VdcToWebRtcFormat(
           break;
         default:
           // Unsupported H264 profile in WebRTC.
-          return std::nullopt;
+          return absl::nullopt;
       }
 
       const int width = config.visible_rect().width();
       const int height = config.visible_rect().height();
 
-      const std::optional<webrtc::H264Level> h264_level =
+      const absl::optional<webrtc::H264Level> h264_level =
           webrtc::H264SupportedLevel(width * height, kDefaultFps);
       const webrtc::H264ProfileLevelId profile_level_id(
           h264_profile, h264_level.value_or(webrtc::H264Level::kLevel1));
@@ -123,7 +122,7 @@ std::optional<webrtc::SdpVideoFormat> VdcToWebRtcFormat(
       return format;
     }
     default:
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
@@ -212,7 +211,7 @@ RTCVideoDecoderFactory::GetSupportedFormats() const {
         gfx::Rect(kDefaultSize), kDefaultSize, media::EmptyExtraData(),
         media::EncryptionScheme::kUnencrypted);
     config.set_is_rtc(true);
-    std::optional<webrtc::SdpVideoFormat> format;
+    absl::optional<webrtc::SdpVideoFormat> format;
 
     // The RTCVideoDecoderAdapter is for HW decoders only, so ignore it if there
     // are no gpu_factories_.
@@ -273,7 +272,9 @@ RTCVideoDecoderFactory::QueryCodecSupport(const webrtc::SdpVideoFormat& format,
     // return false if the configuration requires reference scaling unless we
     // explicitly know that the HW decoder can handle this.
     if (codec == media::VideoCodec::kVP9 &&
-        !media::IsVp9kSVCHWDecodingEnabled()) {
+        (!gpu_factories_ ||
+         !RTCVideoDecoderAdapter::Vp9HwSupportForSpatialLayers(
+             gpu_factories_->GetDecoderType()))) {
       return {false, false};
     }
   }
@@ -315,8 +316,8 @@ RTCVideoDecoderFactory::~RTCVideoDecoderFactory() {
   DVLOG(2) << __func__;
 }
 
-std::unique_ptr<webrtc::VideoDecoder> RTCVideoDecoderFactory::Create(
-    const webrtc::Environment& /*env*/,
+std::unique_ptr<webrtc::VideoDecoder>
+RTCVideoDecoderFactory::CreateVideoDecoder(
     const webrtc::SdpVideoFormat& format) {
   TRACE_EVENT0("webrtc", "RTCVideoDecoderFactory::CreateVideoDecoder");
   DVLOG(2) << __func__;

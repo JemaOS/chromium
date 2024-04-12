@@ -6,20 +6,19 @@ package org.chromium.chrome.browser.image_descriptions;
 
 import android.content.Context;
 
-import org.jni_zero.NativeMethods;
+import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.ResettersForTesting;
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.device.DeviceConditions;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.preferences.Pref;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.net.ConnectionType;
-import org.chromium.ui.accessibility.AccessibilityState;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.widget.Toast;
 
@@ -48,7 +47,9 @@ public class ImageDescriptionsController {
         return sInstance;
     }
 
-    /** Private constructor to prevent unwanted construction/initialization */
+    /**
+     * Private constructor to prevent unwanted construction/initialization
+     */
     private ImageDescriptionsController() {
         this.mDelegate = defaultDelegate();
     }
@@ -61,20 +62,20 @@ public class ImageDescriptionsController {
         return new ImageDescriptionsControllerDelegate() {
             @Override
             public void enableImageDescriptions(Profile profile) {
-                getPrefService(profile)
-                        .setBoolean(Pref.ACCESSIBILITY_IMAGE_LABELS_ENABLED_ANDROID, true);
+                getPrefService(profile).setBoolean(
+                        Pref.ACCESSIBILITY_IMAGE_LABELS_ENABLED_ANDROID, true);
             }
 
             @Override
             public void disableImageDescriptions(Profile profile) {
-                getPrefService(profile)
-                        .setBoolean(Pref.ACCESSIBILITY_IMAGE_LABELS_ENABLED_ANDROID, false);
+                getPrefService(profile).setBoolean(
+                        Pref.ACCESSIBILITY_IMAGE_LABELS_ENABLED_ANDROID, false);
             }
 
             @Override
             public void setOnlyOnWifiRequirement(boolean onlyOnWifi, Profile profile) {
-                getPrefService(profile)
-                        .setBoolean(Pref.ACCESSIBILITY_IMAGE_LABELS_ONLY_ON_WIFI, onlyOnWifi);
+                getPrefService(profile).setBoolean(
+                        Pref.ACCESSIBILITY_IMAGE_LABELS_ONLY_ON_WIFI, onlyOnWifi);
             }
 
             @Override
@@ -82,12 +83,10 @@ public class ImageDescriptionsController {
                     boolean dontAskAgain, WebContents webContents) {
                 // User selected "Just Once", update counter and "Don't ask again" preference as
                 // needed.
-                getSharedPrefs()
-                        .incrementInt(ChromePreferenceKeys.IMAGE_DESCRIPTIONS_JUST_ONCE_COUNT);
-                getSharedPrefs()
-                        .writeBoolean(
-                                ChromePreferenceKeys.IMAGE_DESCRIPTIONS_DONT_ASK_AGAIN,
-                                dontAskAgain);
+                getSharedPrefs().incrementInt(
+                        ChromePreferenceKeys.IMAGE_DESCRIPTIONS_JUST_ONCE_COUNT);
+                getSharedPrefs().writeBoolean(
+                        ChromePreferenceKeys.IMAGE_DESCRIPTIONS_DONT_ASK_AGAIN, dontAskAgain);
 
                 ImageDescriptionsControllerJni.get().getImageDescriptionsOnce(webContents);
             }
@@ -98,10 +97,9 @@ public class ImageDescriptionsController {
      * Set the ImageDescriptionsControllerDelegate delegate one time, used for testing purposes.
      * @param delegate      The new ImageDescriptionsControllerDelegate delegate to use.
      */
+    @VisibleForTesting
     public void setDelegateForTesting(ImageDescriptionsControllerDelegate delegate) {
-        var oldValue = this.mDelegate;
         this.mDelegate = delegate;
-        ResettersForTesting.register(() -> this.mDelegate = oldValue);
     }
 
     /**
@@ -117,7 +115,7 @@ public class ImageDescriptionsController {
      */
     public void onImageDescriptionsMenuItemSelected(
             Context context, ModalDialogManager modalDialogManager, WebContents webContents) {
-        Profile profile = Profile.fromWebContents(webContents).getOriginalProfile();
+        Profile profile = Profile.getLastUsedRegularProfile();
         boolean enabledBeforeMenuItemSelected = imageDescriptionsEnabled(profile);
 
         if (enabledBeforeMenuItemSelected) {
@@ -127,10 +125,8 @@ public class ImageDescriptionsController {
                     && DeviceConditions.getCurrentNetConnectionType(context)
                             != ConnectionType.CONNECTION_WIFI) {
                 mDelegate.getImageDescriptionsJustOnce(false, webContents);
-                Toast.makeText(
-                                context,
-                                R.string.image_descriptions_toast_just_once,
-                                Toast.LENGTH_LONG)
+                Toast.makeText(context, R.string.image_descriptions_toast_just_once,
+                             Toast.LENGTH_LONG)
                         .show();
             } else {
                 // Otherwise, user has elected to stop descriptions.
@@ -143,27 +139,21 @@ public class ImageDescriptionsController {
             // a "just once" fetch. In all other cases, show the dialog to prompt the user.
             if (dontAskAgainEnabled()) {
                 mDelegate.getImageDescriptionsJustOnce(true, webContents);
-                Toast.makeText(
-                                context,
-                                R.string.image_descriptions_toast_just_once,
-                                Toast.LENGTH_LONG)
+                Toast.makeText(context, R.string.image_descriptions_toast_just_once,
+                             Toast.LENGTH_LONG)
                         .show();
             } else {
                 ImageDescriptionsDialog prompt =
-                        new ImageDescriptionsDialog(
-                                context,
-                                modalDialogManager,
-                                getDelegate(),
-                                shouldShowDontAskAgainOption(),
-                                webContents);
+                        new ImageDescriptionsDialog(context, modalDialogManager, getDelegate(),
+                                shouldShowDontAskAgainOption(), webContents);
                 prompt.show();
             }
         }
     }
 
     protected boolean dontAskAgainEnabled() {
-        return getSharedPrefs()
-                .readBoolean(ChromePreferenceKeys.IMAGE_DESCRIPTIONS_DONT_ASK_AGAIN, false);
+        return getSharedPrefs().readBoolean(
+                ChromePreferenceKeys.IMAGE_DESCRIPTIONS_DONT_ASK_AGAIN, false);
     }
 
     protected boolean shouldShowDontAskAgainOption() {
@@ -172,7 +162,7 @@ public class ImageDescriptionsController {
     }
 
     public boolean shouldShowImageDescriptionsMenuItem() {
-        return AccessibilityState.isScreenReaderEnabled();
+        return ChromeAccessibilityUtil.get().isTouchExplorationEnabled();
     }
 
     public boolean imageDescriptionsEnabled(Profile profile) {
@@ -193,10 +183,10 @@ public class ImageDescriptionsController {
 
     /**
      * Helper method to return SharedPreferencesManager instance.
-     * @return ChromeSharedPreferences
+     * @return SharedPreferencesManager
      */
     private SharedPreferencesManager getSharedPrefs() {
-        return ChromeSharedPreferences.getInstance();
+        return SharedPreferencesManager.getInstance();
     }
 
     @NativeMethods

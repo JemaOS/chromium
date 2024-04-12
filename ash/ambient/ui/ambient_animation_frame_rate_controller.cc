@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,6 @@
 #include "ash/frame_throttler/frame_throttling_controller.h"
 #include "base/check.h"
 #include "base/logging.h"
-#include "base/memory/raw_ptr.h"
 #include "base/notreached.h"
 #include "base/time/time.h"
 #include "cc/paint/skottie_wrapper.h"
@@ -108,7 +107,7 @@ void AmbientAnimationFrameRateController::AddWindowToThrottle(
 AmbientAnimationFrameRateScheduleIterator
 AmbientAnimationFrameRateController::FindCurrentSection() const {
   DCHECK(tracking_animation_);
-  std::optional<float> current_progress =
+  absl::optional<float> current_progress =
       tracking_animation_->GetCurrentProgress();
   if (!current_progress) {
     DVLOG(1) << "Animation is not playing currently. Cannot map timestamp to "
@@ -161,7 +160,7 @@ void AmbientAnimationFrameRateController::ThrottleFrameRateForCurrentSection() {
 
 void AmbientAnimationFrameRateController::ThrottleFrameRate(
     base::TimeDelta frame_interval) {
-  std::vector<raw_ptr<aura::Window, VectorExperimental>> windows_as_vector;
+  std::vector<aura::Window*> windows_as_vector;
   for (const auto& [window, animation] : windows_to_throttle_) {
     windows_as_vector.push_back(window);
   }

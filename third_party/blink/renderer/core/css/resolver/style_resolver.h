@@ -24,18 +24,18 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_STYLE_RESOLVER_H_
 
 #include "base/gtest_prod_util.h"
+#include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/animation/interpolation.h"
 #include "third_party/blink/renderer/core/animation/property_handle.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/color_scheme_flags.h"
-#include "third_party/blink/renderer/core/css/css_position_try_rule.h"
+#include "third_party/blink/renderer/core/css/css_position_fallback_rule.h"
 #include "third_party/blink/renderer/core/css/element_rule_collector.h"
 #include "third_party/blink/renderer/core/css/resolver/matched_properties_cache.h"
 #include "third_party/blink/renderer/core/css/resolver/style_builder.h"
 #include "third_party/blink/renderer/core/css/selector_checker.h"
 #include "third_party/blink/renderer/core/css/selector_filter.h"
 #include "third_party/blink/renderer/core/css/style_request.h"
-#include "third_party/blink/renderer/core/style/filter_operations.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/deque.h"
@@ -48,8 +48,6 @@ class CSSPropertyValueSet;
 class CSSValue;
 class Document;
 class Element;
-class Font;
-class FontDescription;
 class Interpolation;
 class MatchResult;
 class PropertyHandle;
@@ -68,9 +66,10 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   ~StyleResolver();
   void Dispose();
 
-  const ComputedStyle* ResolveStyle(Element*,
-                                    const StyleRecalcContext&,
-                                    const StyleRequest& = StyleRequest());
+  scoped_refptr<const ComputedStyle> ResolveStyle(
+      Element*,
+      const StyleRecalcContext&,
+      const StyleRequest& = StyleRequest());
 
   // Return a reference to the initial style singleton.
   const ComputedStyle& InitialStyle() const;
@@ -78,16 +77,13 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   // Create a new ComputedStyleBuilder based on the initial style singleton.
   ComputedStyleBuilder CreateComputedStyleBuilder() const;
 
-  // Create a new ComputedStyleBuilder inheriting from the given style.
-  ComputedStyleBuilder CreateComputedStyleBuilderInheritingFrom(
-      const ComputedStyle& parent_style) const;
-
   // Create a ComputedStyle for initial styles to be used as the basis for the
   // root element style. In addition to initial values things like zoom, font,
   // forced color mode etc. is set.
   ComputedStyleBuilder InitialStyleBuilderForElement() const;
-  const ComputedStyle* InitialStyleForElement() const;
-
+  scoped_refptr<const ComputedStyle> InitialStyleForElement() const {
+    return InitialStyleBuilderForElement().TakeStyle();
+  }
   float InitialZoom() const;
 
   static CompositorKeyframeValue* CreateCompositorKeyframeValueSnapshot(
@@ -98,22 +94,23 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
       const CSSValue*,
       double offset);
 
-  const ComputedStyle* StyleForPage(uint32_t page_index,
-                                    const AtomicString& page_name);
-  const ComputedStyle* StyleForText(Text*);
-  const ComputedStyle* StyleForViewport();
-  const ComputedStyle* StyleForFormattedText(
+  scoped_refptr<const ComputedStyle> StyleForPage(
+      uint32_t page_index,
+      const AtomicString& page_name);
+  scoped_refptr<const ComputedStyle> StyleForText(Text*);
+  scoped_refptr<const ComputedStyle> StyleForViewport();
+  scoped_refptr<const ComputedStyle> StyleForFormattedText(
       bool is_text_run,
       const ComputedStyle& parent_style,
       const CSSPropertyValueSet* css_property_value_set);
-  const ComputedStyle* StyleForFormattedText(
+  scoped_refptr<const ComputedStyle> StyleForFormattedText(
       bool is_text_run,
       const FontDescription& default_font,
       const CSSPropertyValueSet* css_property_value_set);
   // Returns `ComputedStyle` for rendering initial letter text.
   // `initial_letter_box_style` should have non-normal `initial-letter`
   // property.
-  const ComputedStyle* StyleForInitialLetterText(
+  scoped_refptr<const ComputedStyle> StyleForInitialLetterText(
       const ComputedStyle& initial_letter_box_style,
       const ComputedStyle& paragraph_style);
 
@@ -125,13 +122,17 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   ComputedStyleBuilder CreateAnonymousStyleBuilderWithDisplay(
       const ComputedStyle& parent_style,
       EDisplay);
-  const ComputedStyle* CreateAnonymousStyleWithDisplay(
+  scoped_refptr<const ComputedStyle> CreateAnonymousStyleWithDisplay(
       const ComputedStyle& parent_style,
-      EDisplay display);
+      EDisplay display) {
+    return CreateAnonymousStyleBuilderWithDisplay(parent_style, display)
+        .TakeStyle();
+  }
 
   // Create ComputedStyle for anonymous wrappers between text boxes and
   // display:contents elements.
-  const ComputedStyle* CreateInheritedDisplayContentsStyleIfNeeded(
+  scoped_refptr<const ComputedStyle>
+  CreateInheritedDisplayContentsStyleIfNeeded(
       const ComputedStyle& parent_style,
       const ComputedStyle& layout_parent_style);
 
@@ -193,13 +194,6 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   static const CSSValue* ComputeValue(Element* element,
                                       const CSSPropertyName&,
                                       const CSSValue&);
-  // Resolves a single CSSValue in the context of some element's computed style.
-  //
-  // This is intended for use by the Inspector Agent.
-  static const CSSValue* ResolveValue(Element& element,
-                                      const ComputedStyle& style,
-                                      const CSSPropertyName&,
-                                      const CSSValue&);
 
   // Compute FilterOperations from the specified CSSValue, using the provided
   // Font to resolve any font-relative units.
@@ -209,7 +203,7 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
                                            const Font&,
                                            const CSSValue&);
 
-  const ComputedStyle* StyleForInterpolations(
+  scoped_refptr<const ComputedStyle> StyleForInterpolations(
       Element& element,
       ActiveInterpolationsMap& animations);
 
@@ -218,45 +212,30 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   // ticked to the current time. Ticking the animations is required to ensure
   // smooth retargeting of transitions.
   // https://drafts.csswg.org/css-transitions-1/#before-change-style
-  const ComputedStyle* BeforeChangeStyleForTransitionUpdate(
+  scoped_refptr<const ComputedStyle> BeforeChangeStyleForTransitionUpdate(
       Element& element,
       const ComputedStyle& base_style,
       ActiveInterpolationsMap& transition_interpolations);
-
-  StyleRulePositionTry* ResolvePositionTryRule(const TreeScope* tree_scope,
-                                               AtomicString position_try_name);
+  StyleRulePositionFallback* ResolvePositionFallbackRule(
+      const TreeScope* tree_scope,
+      AtomicString position_fallback_name);
+  scoped_refptr<const ComputedStyle> ResolvePositionFallbackStyle(
+      Element&,
+      unsigned index);
 
   // Check if the BODY or HTML element's display or containment stops
   // propagation of BODY style to HTML and viewport.
   bool ShouldStopBodyPropagation(const Element& body_or_html);
 
-  // If enabled, will attempt to count the number of bytes used by the
-  // generated ComputedStyle objects. Note that most of the fast paths
-  // (e.g. inline incremental style) and the non-element styles
-  // (e.g. @page) are not accounted for. However, the effect of the MPC
-  // should be correctly modeled. Note that there is a significant
-  // CPU overhead through this, and it will also allocate a fairly large
-  // amount of temporary GC memory for the diffing.
-  void SetCountComputedStyleBytes(bool enabled) {
-    count_computed_style_bytes_ = enabled;
-    computed_style_bytes_used_ = 0;
-  }
-  size_t GetComputedStyleBytesUsed() const {
-    DCHECK(count_computed_style_bytes_);
-    return computed_style_bytes_used_;
-  }
-
   void Trace(Visitor*) const;
 
  private:
-  // Creates a new ComputedStyle, either cloning an existing one
-  // or combining two different ones (see the comment on
-  // ApplyBaseStyleNoCache() for more details).
-  void InitStyle(Element& element,
-                 const StyleRequest&,
-                 const ComputedStyle& source_for_noninherited,
-                 const ComputedStyle* parent_style,
-                 StyleResolverState& state);
+  void InitStyleAndApplyInheritance(Element& element,
+                                    const StyleRequest&,
+                                    StyleResolverState& state);
+  void ApplyInheritance(Element& element,
+                        const StyleRequest& style_request,
+                        StyleResolverState& state);
 
   void ApplyBaseStyle(Element* element,
                       const StyleRecalcContext&,
@@ -279,6 +258,7 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
                                     PseudoId,
                                     const AtomicString& view_transition_name,
                                     unsigned rules_to_include);
+  void MatchRuleSets(ElementRuleCollector&, const MatchRequest&);
   void MatchUARules(const Element&, ElementRuleCollector&);
   void MatchUserRules(ElementRuleCollector&);
   void MatchPresentationalHints(StyleResolverState&, ElementRuleCollector&);
@@ -288,8 +268,8 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
                             ElementRuleCollector&,
                             bool for_shadow_pseudo = false);
   void MatchPseudoPartRulesForUAHost(const Element&, ElementRuleCollector&);
-  void MatchPositionTryRules(const Element&, ElementRuleCollector&);
   void MatchAuthorRules(const Element&,
+                        ScopedStyleResolver*,
                         ElementRuleCollector&);
   void MatchAllRules(StyleResolverState&,
                      ElementRuleCollector&,
@@ -327,29 +307,24 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
     bool EffectiveZoomChanged(const ComputedStyleBuilder&) const;
     bool FontChanged(const ComputedStyleBuilder&) const;
     bool InheritedVariablesChanged(const ComputedStyleBuilder&) const;
-    bool LineHeightChanged(const ComputedStyleBuilder&) const;
     bool IsUsableAfterApplyInheritedOnly(const ComputedStyleBuilder&) const;
   };
 
-  CacheSuccess ApplyMatchedCache(StyleResolverState&,
-                                 const StyleRequest&,
-                                 const MatchResult&);
+  CacheSuccess ApplyMatchedCache(StyleResolverState&, const MatchResult&);
   void MaybeAddToMatchedPropertiesCache(StyleResolverState&,
                                         const CacheSuccess&,
                                         const MatchResult&);
 
-  void ApplyPropertiesFromCascade(StyleResolverState&,
-                                  StyleCascade& cascade,
-                                  CacheSuccess cache_success);
+  void CascadeAndApplyMatchedProperties(StyleResolverState&,
+                                        StyleCascade& cascade);
 
   bool ApplyAnimatedStyle(StyleResolverState&, StyleCascade&);
 
   void ApplyCallbackSelectors(StyleResolverState&);
   void ApplyDocumentRulesSelectors(StyleResolverState&, ContainerNode* scope);
-  StyleRuleList* CollectMatchingRulesFromUnconnectedRuleSet(
-      StyleResolverState&,
-      RuleSet*,
-      ContainerNode* scope);
+  StyleRuleList* CollectMatchingRulesFromRuleSet(StyleResolverState&,
+                                                 RuleSet*,
+                                                 ContainerNode* scope);
 
   Document& GetDocument() const { return *document_; }
 
@@ -361,10 +336,8 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
                                 Functor& func) const;
 
   MatchedPropertiesCache matched_properties_cache_;
-
-  // Both these members are on a hot-path for creating ComputedStyle objects.
-  const subtle::UncompressedMember<const ComputedStyle> initial_style_;
-  const subtle::UncompressedMember<const ComputedStyle> initial_style_for_img_;
+  scoped_refptr<const ComputedStyle> initial_style_;
+  scoped_refptr<const ComputedStyle> initial_style_for_img_;
   SelectorFilter selector_filter_;
 
   Member<Document> document_;
@@ -374,19 +347,15 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   // style computations; see `EnsureElementForFormattedText`.
   Member<Element> formatted_text_element_;
 
-  // See SetCountComputedStyleBytes().
-  bool count_computed_style_bytes_ = false;
-  size_t computed_style_bytes_used_ = 0;
-
   bool print_media_type_ = false;
   bool was_viewport_resized_ = false;
 
+  FRIEND_TEST_ALL_PREFIXES(ComputedStyleTest, ApplyInternalLightDarkColor);
   friend class StyleResolverTest;
-  FRIEND_TEST_ALL_PREFIXES(ParameterizedStyleResolverTest,
-                           TreeScopedReferences);
+  FRIEND_TEST_ALL_PREFIXES(StyleResolverTest, TreeScopedReferences);
 
   Element& EnsureElementForFormattedText();
-  const ComputedStyle* StyleForFormattedText(
+  scoped_refptr<const ComputedStyle> StyleForFormattedText(
       bool is_text_run,
       const FontDescription* default_font,
       const ComputedStyle* parent_style,

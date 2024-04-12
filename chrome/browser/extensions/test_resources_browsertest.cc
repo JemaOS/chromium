@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
-
 #include "base/path_service.h"
 #include "base/strings/stringprintf.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
@@ -19,6 +17,7 @@
 #include "extensions/common/manifest_handlers/externally_connectable.h"
 #include "extensions/common/url_pattern.h"
 #include "extensions/test/test_extension_dir.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace extensions {
 

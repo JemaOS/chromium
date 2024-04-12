@@ -6,7 +6,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_ABORT_SIGNAL_H_
 
 #include "base/functional/callback_forward.h"
-#include "base/functional/function_ref.h"
+#include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/abort_signal_composition_type.h"
@@ -17,15 +17,14 @@
 
 namespace blink {
 
-class AbortController;
 class AbortSignalCompositionManager;
-class AbortSignalRegistry;
 class ExceptionState;
 class ExecutionContext;
 class ScriptState;
 
 // Implementation of https://dom.spec.whatwg.org/#interface-AbortSignal
-class CORE_EXPORT AbortSignal : public EventTarget {
+class CORE_EXPORT AbortSignal : public EventTargetWithInlineData,
+                                public LazyActiveScriptWrappable<AbortSignal> {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -36,8 +35,14 @@ class CORE_EXPORT AbortSignal : public EventTarget {
     kAborted,
     // Created by AbortSignal.timeout().
     kTimeout,
-    // Created by AbortSignal.any() or used internally to combine signals.
+    // Created by AbortSignal.any().
     kComposite,
+    // An internal signal which either is directly aborted or uses the internal
+    // `Follow` algorithm.
+    //
+    // TODO(crbug.com/1323391): Specs that use the internal `Follow` algorithm
+    // should be modified to create follow-immutable composite signals.
+    kInternal,
   };
 
   // The base class for "abort algorithm" defined at
@@ -59,24 +64,19 @@ class CORE_EXPORT AbortSignal : public EventTarget {
   // be explcitly removed by passing the handle to `RemoveAlgorithm()`.
   class CORE_EXPORT AlgorithmHandle : public GarbageCollected<AlgorithmHandle> {
    public:
-    AlgorithmHandle(Algorithm*, AbortSignal*);
+    explicit AlgorithmHandle(Algorithm*);
     ~AlgorithmHandle();
 
-    Algorithm* GetAlgorithm() { return algorithm_.Get(); }
+    Algorithm* GetAlgorithm() { return algorithm_; }
 
     void Trace(Visitor* visitor) const;
 
    private:
     Member<Algorithm> algorithm_;
-    // A reference to the signal the algorithm is associated with. This ensures
-    // the associated signal stays alive while it has pending algorithms, which
-    // is necessary for composite signals.
-    Member<AbortSignal> signal_;
   };
 
-  // Constructs a composite signal that is dependent on no other signals. This
-  // is used to create non-abortable signal, e.g. fixed priority task signals
-  // and default signals used in fetch.
+  // Constructs a SignalType::kInternal signal. This is only for non web-exposed
+  // signals.
   explicit AbortSignal(ExecutionContext*);
 
   // Constructs a new signal with the given `SignalType`.
@@ -84,8 +84,7 @@ class CORE_EXPORT AbortSignal : public EventTarget {
 
   // Constructs a composite signal. The signal will be aborted if any of
   // `source_signals` are aborted or become aborted.
-  AbortSignal(ScriptState*,
-              const HeapVector<Member<AbortSignal>>& source_signals);
+  AbortSignal(ScriptState*, HeapVector<Member<AbortSignal>>& source_signals);
 
   ~AbortSignal() override;
 
@@ -102,6 +101,7 @@ class CORE_EXPORT AbortSignal : public EventTarget {
 
   const AtomicString& InterfaceName() const override;
   ExecutionContext* GetExecutionContext() const override;
+  bool HasPendingActivity() const override;
 
   // Internal API
 
@@ -122,18 +122,17 @@ class CORE_EXPORT AbortSignal : public EventTarget {
   // needed, e.g. to not rely on GC timing.
   void RemoveAlgorithm(AlgorithmHandle*);
 
-  class SignalAbortPassKey {
-   private:
-    SignalAbortPassKey() = default;
-
-    friend class AbortController;
-    friend class AbortSignal;
-  };
   // The "To signal abort" algorithm from the standard:
   // https://dom.spec.whatwg.org/#abortsignal-add. Run all algorithms that were
   // added by AddAlgorithm(), in order of addition, then fire an "abort"
   // event. Does nothing if called more than once.
-  void SignalAbort(ScriptState*, ScriptValue reason, SignalAbortPassKey);
+  void SignalAbort(ScriptState*);
+  void SignalAbort(ScriptState*, ScriptValue reason);
+
+  // The "follow" algorithm from the standard:
+  // https://dom.spec.whatwg.org/#abortsignal-follow
+  // |this| is the followingSignal described in the standard.
+  void Follow(ScriptState*, AbortSignal* parent);
 
   virtual bool IsTaskSignal() const { return false; }
 
@@ -161,29 +160,23 @@ class CORE_EXPORT AbortSignal : public EventTarget {
   // can no longer emit events.
   virtual void DetachFromController();
 
- protected:
-  // EventTarget callbacks.
-  void AddedEventListener(const AtomicString& event_type,
-                          RegisteredEventListener&) override;
-  void RemovedEventListener(const AtomicString& event_type,
-                            const RegisteredEventListener&) override;
-
-  // Returns true iff the signal is settled for the given composition type.
-  virtual bool IsSettledFor(AbortSignalCompositionType) const;
+  // This enables the `PostConstructionCallbackTrait`, which is used to register
+  // the `LazyActiveScriptWrappable` for composite signals. Using this prevents
+  // calling a virtual method for objects under construction.
+  void ActiveScriptWrappableBaseConstructed();
 
  private:
-  void InitializeCompositeSignal(
-      const HeapVector<Member<AbortSignal>>& source_signals);
+  // Common constructor initialization separated out to make mutually exclusive
+  // constructors more readable.
+  void InitializeCommon(ExecutionContext*, SignalType);
 
   void AbortTimeoutFired(ScriptState*);
 
-  enum class AddRemoveType { kAdded, kRemoved };
-  void OnEventListenerAddedOrRemoved(const AtomicString& event_type,
-                                     AddRemoveType);
-
-  // Invokes the given callback on the associated `AbortSignalRegistry`. Must
-  // only be called for composite signals.
-  void InvokeRegistryCallback(base::FunctionRef<void(AbortSignalRegistry&)>);
+  // This ensures abort is propagated to any "following" signals.
+  //
+  // TODO(crbug.com/1323391): Remove this after AbortSignal.any() is
+  // implemented.
+  HeapVector<Member<AlgorithmHandle>> dependent_signal_algorithms_;
 
   // https://dom.spec.whatwg.org/#abortsignal-abort-reason
   // There is one difference from the spec. The value is empty instead of

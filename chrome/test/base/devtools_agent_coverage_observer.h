@@ -5,11 +5,6 @@
 #ifndef CHROME_TEST_BASE_DEVTOOLS_AGENT_COVERAGE_OBSERVER_H_
 #define CHROME_TEST_BASE_DEVTOOLS_AGENT_COVERAGE_OBSERVER_H_
 
-#include <map>
-#include <memory>
-#include <utility>
-
-#include "base/memory/scoped_refptr.h"
 #include "chrome/test/base/devtools_listener.h"
 #include "content/public/browser/devtools_agent_host_observer.h"
 
@@ -32,7 +27,7 @@ class DevToolsAgentCoverageObserver
       ShouldInspectDevToolsAgentHostCallback should_inspect_callback);
   ~DevToolsAgentCoverageObserver() override;
 
-  bool CoverageEnabled() const;
+  bool CoverageEnabled();
   void CollectCoverage(const std::string& test_name);
 
  protected:
@@ -44,14 +39,11 @@ class DevToolsAgentCoverageObserver
   void DevToolsAgentHostDetached(content::DevToolsAgentHost* host) override;
   void DevToolsAgentHostCrashed(content::DevToolsAgentHost* host,
                                 base::TerminationStatus status) override;
-  void DevToolsAgentHostDestroyed(
-      content::DevToolsAgentHost* agent_host) override;
 
  private:
   using DevToolsAgentMap =  // agent hosts: have a unique devtools listener
       std::map<content::DevToolsAgentHost*,
-               std::pair<scoped_refptr<content::DevToolsAgentHost>,
-                         std::unique_ptr<coverage::DevToolsListener>>>;
+               std::unique_ptr<coverage::DevToolsListener>>;
   base::FilePath devtools_code_coverage_dir_;
   DevToolsAgentMap devtools_agents_;
   ShouldInspectDevToolsAgentHostCallback should_inspect_callback_;

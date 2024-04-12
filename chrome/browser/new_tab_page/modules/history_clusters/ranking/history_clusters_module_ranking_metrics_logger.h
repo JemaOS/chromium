@@ -29,19 +29,6 @@ class HistoryClustersModuleRankingMetricsLogger {
   // for testing.
   virtual void SetClicked(int64_t cluster_id);
 
-  // Sets that the module showing cluster with `cluster_id` was disabled.
-  // Virtual for testing.
-  virtual void SetDisabled(int64_t cluster_id);
-
-  // Sets that the module showing cluster with `cluster_id` was dismissed.
-  // Virtual for testing.
-  virtual void SetDismissed(int64_t cluster_id, bool dismissed = true);
-
-  // Sets that the module showing cluster with `cluster_id` that was dismissed
-  // was done so with positive intent.
-  // Virtual for testing.
-  virtual void SetMarkedAsDone(int64_t cluster_id, bool done = true);
-
   // Sets that the module showing cluster with `cluster_id` was displayed using
   // `layout_type`. Virtual for testing.
   virtual void SetLayoutTypeShown(
@@ -57,10 +44,7 @@ class HistoryClustersModuleRankingMetricsLogger {
 
   struct RankingMetricsInfo {
     HistoryClustersModuleRankingSignals ranking_signals;
-    bool disabled = false;
-    bool dismissed = false;
     bool clicked = false;
-    bool markedAsDone = false;
     ntp::history_clusters::mojom::LayoutType layout_type =
         ntp::history_clusters::mojom::LayoutType::kNone;
   };

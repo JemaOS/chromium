@@ -118,7 +118,7 @@ class FileBrowserHandlerExecutor {
       const Extension* extension,
       int handler_pid);
 
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
   scoped_refptr<const Extension> extension_;
   const std::string action_id_;
   file_tasks::FileTaskFinishedCallback done_;
@@ -133,7 +133,8 @@ FileBrowserHandlerExecutor::SetupFileAccessPermissions(
     const std::vector<FileSystemURL>& file_urls) {
   DCHECK(handler_extension.get());
 
-  auto* backend = ash::FileSystemBackend::Get(*file_system_context_handler);
+  storage::ExternalFileSystemBackend* backend =
+      file_system_context_handler->external_backend();
 
   std::unique_ptr<FileDefinitionList> file_definition_list(
       new FileDefinitionList);
@@ -146,7 +147,9 @@ FileBrowserHandlerExecutor::SetupFileAccessPermissions(
     base::FilePath local_path = url.path();
     base::FilePath virtual_path = url.virtual_path();
 
-    const bool is_native_file = url.type() == storage::kFileSystemTypeLocal;
+    const bool is_native_file =
+        url.type() == storage::kFileSystemTypeLocal ||
+        url.type() == storage::kFileSystemTypeRestrictedLocal;
 
     // If the file is from a physical volume, actual file must be found.
     if (is_native_file) {
@@ -223,8 +226,8 @@ void FileBrowserHandlerExecutor::ExecuteDoneOnUIThread(
     // TASK_RESULT_MESSAGE_SENT.
     std::move(done_).Run(
         success
-            ? extensions::api::file_manager_private::TaskResult::kMessageSent
-            : extensions::api::file_manager_private::TaskResult::kFailed,
+            ? extensions::api::file_manager_private::TASK_RESULT_MESSAGE_SENT
+            : extensions::api::file_manager_private::TASK_RESULT_FAILED,
         failure_reason);
   }
   delete this;
@@ -245,9 +248,7 @@ void FileBrowserHandlerExecutor::ExecuteFileActionsOnUIThread(
   extensions::ExtensionHost* extension_host =
       manager->GetBackgroundHostForExtension(extension_->id());
 
-  const auto context_id =
-      extensions::LazyContextId::ForExtension(profile_, extension_.get());
-  CHECK(context_id.IsForBackgroundPage());
+  const extensions::LazyContextId context_id(profile_, extension_->id());
   extensions::LazyContextTaskQueue* task_queue = context_id.GetTaskQueue();
 
   if (task_queue->ShouldEnqueueTask(profile_, extension_.get())) {

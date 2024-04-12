@@ -24,8 +24,7 @@ TrustSafetySentimentServiceFactory::TrustSafetySentimentServiceFactory()
 
 TrustSafetySentimentServiceFactory*
 TrustSafetySentimentServiceFactory::GetInstance() {
-  static base::NoDestructor<TrustSafetySentimentServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<TrustSafetySentimentServiceFactory>::get();
 }
 
 TrustSafetySentimentService* TrustSafetySentimentServiceFactory::GetForProfile(

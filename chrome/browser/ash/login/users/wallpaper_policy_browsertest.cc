@@ -10,7 +10,6 @@
 
 #include "ash/constants/ash_paths.h"
 #include "ash/constants/ash_switches.h"
-#include "ash/public/cpp/wallpaper/wallpaper_controller.h"
 #include "ash/public/cpp/wallpaper/wallpaper_controller_observer.h"
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
@@ -34,6 +33,7 @@
 #include "chrome/browser/ash/policy/external_data/cloud_external_data_manager_base_test_util.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/ash/wallpaper_controller_client_impl.h"
 #include "chrome/browser/ui/webui/ash/login/oobe_ui.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/test/base/fake_gaia_mixin.h"
@@ -61,7 +61,6 @@
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/image/image_skia.h"
-#include "ui/gfx/image/image_skia_rep_default.h"
 #include "url/gurl.h"
 
 namespace ash {
@@ -192,7 +191,7 @@ class WallpaperPolicyTest : public LoginManagerTest,
 
   void SetUpOnMainThread() override {
     LoginManagerTest::SetUpOnMainThread();
-    ash::WallpaperController::Get()->AddObserver(this);
+    WallpaperControllerClientImpl::Get()->AddObserver(this);
 
     // Set up policy signing.
     user_policy_builders_[0] =
@@ -202,14 +201,14 @@ class WallpaperPolicyTest : public LoginManagerTest,
   }
 
   void TearDownOnMainThread() override {
-    ash::WallpaperController::Get()->RemoveObserver(this);
+    WallpaperControllerClientImpl::Get()->RemoveObserver(this);
     LoginManagerTest::TearDownOnMainThread();
   }
 
   // Obtain wallpaper image and return its average ARGB color.
   SkColor GetAverageWallpaperColor() {
     average_color_.reset();
-    auto image = ash::WallpaperController::Get()->GetWallpaperImage();
+    auto image = WallpaperControllerClientImpl::Get()->GetWallpaperImage();
     const gfx::ImageSkiaRep& representation = image.GetRepresentation(1.0f);
     if (representation.is_null()) {
       ADD_FAILURE() << "No image representation.";
@@ -222,9 +221,8 @@ class WallpaperPolicyTest : public LoginManagerTest,
   // WallpaperControllerObserver:
   void OnWallpaperChanged() override {
     ++wallpaper_change_count_;
-    if (run_loop_) {
+    if (run_loop_)
       run_loop_->Quit();
-    }
   }
 
   // Runs the loop until wallpaper has changed to the expected color.
@@ -311,7 +309,7 @@ class WallpaperPolicyTest : public LoginManagerTest,
 
  private:
   // The average ARGB color of the current wallpaper.
-  std::optional<SkColor> average_color_;
+  absl::optional<SkColor> average_color_;
 
   base::WeakPtrFactory<WallpaperPolicyTest> weak_ptr_factory_{this};
 };

@@ -49,28 +49,28 @@ RTCError::RTCError(const RTCErrorInit* init, String message)
     : DOMException(DOMExceptionCode::kOperationError, std::move(message)),
       error_detail_(init->errorDetail()),
       sdp_line_number_(init->hasSdpLineNumber()
-                           ? std::optional<int32_t>(init->sdpLineNumber())
-                           : std::nullopt),
+                           ? absl::optional<int32_t>(init->sdpLineNumber())
+                           : absl::nullopt),
       http_request_status_code_(
           init->hasHttpRequestStatusCode()
-              ? std::optional<int32_t>(init->httpRequestStatusCode())
-              : std::nullopt),
+              ? absl::optional<int32_t>(init->httpRequestStatusCode())
+              : absl::nullopt),
       sctp_cause_code_(init->hasSctpCauseCode()
-                           ? std::optional<int32_t>(init->sctpCauseCode())
-                           : std::nullopt),
+                           ? absl::optional<int32_t>(init->sctpCauseCode())
+                           : absl::nullopt),
       received_alert_(init->hasReceivedAlert()
-                          ? std::optional<uint32_t>(init->receivedAlert())
-                          : std::nullopt),
+                          ? absl::optional<uint32_t>(init->receivedAlert())
+                          : absl::nullopt),
       sent_alert_(init->hasSentAlert()
-                      ? std::optional<uint32_t>(init->sentAlert())
-                      : std::nullopt) {}
+                      ? absl::optional<uint32_t>(init->sentAlert())
+                      : absl::nullopt) {}
 
 RTCError::RTCError(webrtc::RTCError err)
     : DOMException(DOMExceptionCode::kOperationError, err.message()),
       error_detail_(RTCErrorDetailToString(err.error_detail())),
       sctp_cause_code_(err.sctp_cause_code()
-                           ? std::optional<int32_t>(*err.sctp_cause_code())
-                           : std::nullopt) {}
+                           ? absl::optional<int32_t>(*err.sctp_cause_code())
+                           : absl::nullopt) {}
 
 const String& RTCError::errorDetail() const {
   return error_detail_;

@@ -8,7 +8,7 @@
 #import <Cocoa/Cocoa.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
-#import "base/apple/foundation_util.h"
+#import "base/mac/foundation_util.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/media_keys_listener_manager.h"
 #include "extensions/common/command.h"
@@ -29,7 +29,10 @@ GlobalShortcutListener* GlobalShortcutListener::GetInstance() {
   return instance;
 }
 
-GlobalShortcutListenerMac::GlobalShortcutListenerMac() {
+GlobalShortcutListenerMac::GlobalShortcutListenerMac()
+    : is_listening_(false),
+      hot_key_id_(0),
+      event_handler_(NULL) {
   CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
 
   // If the MediaKeysListenerManager is not enabled, we need to create our own
@@ -173,7 +176,7 @@ bool GlobalShortcutListenerMac::RegisterHotKey(
   EventHotKeyID event_hot_key_id;
 
   // Signature uniquely identifies the application that owns this hot_key.
-  event_hot_key_id.signature = base::apple::CreatorCodeForApplication();
+  event_hot_key_id.signature = base::mac::CreatorCodeForApplication();
   event_hot_key_id.id = hot_key_id;
 
   // Translate ui::Accelerator modifiers to cmdKey, altKey, etc.
@@ -183,16 +186,13 @@ bool GlobalShortcutListenerMac::RegisterHotKey(
   modifiers |= (accelerator.IsAltDown() ? optionKey : 0);
   modifiers |= (accelerator.IsCmdDown() ? cmdKey : 0);
 
-  int key_code =
-      ui::MacKeyCodeForWindowsKeyCode(accelerator.key_code(), /*flags=*/0,
-                                      /*us_keyboard_shifted_character=*/nullptr,
-                                      /*keyboard_character=*/nullptr);
+  int key_code = ui::MacKeyCodeForWindowsKeyCode(accelerator.key_code(), 0,
+      NULL, NULL);
 
   // Register the event hot key.
   EventHotKeyRef hot_key_ref;
   OSStatus status = RegisterEventHotKey(key_code, modifiers, event_hot_key_id,
-                                        GetApplicationEventTarget(),
-                                        /*inOptions=*/0, &hot_key_ref);
+      GetApplicationEventTarget(), 0, &hot_key_ref);
   if (status != noErr)
     return false;
 
@@ -227,14 +227,14 @@ void GlobalShortcutListenerMac::StartWatchingHotKeys() {
 void GlobalShortcutListenerMac::StopWatchingHotKeys() {
   DCHECK(event_handler_);
   RemoveEventHandler(event_handler_);
-  event_handler_ = nullptr;
+  event_handler_ = NULL;
 }
 
 bool GlobalShortcutListenerMac::IsAnyHotKeyRegistered() {
-  for (auto& accelerator_id : accelerator_ids_) {
-    if (!Command::IsMediaKey(accelerator_id.first)) {
+  AcceleratorIdMap::iterator it;
+  for (it = accelerator_ids_.begin(); it != accelerator_ids_.end(); ++it) {
+    if (!Command::IsMediaKey(it->first))
       return true;
-    }
   }
   return false;
 }
@@ -244,10 +244,8 @@ OSStatus GlobalShortcutListenerMac::HotKeyHandler(
     EventHandlerCallRef next_handler, EventRef event, void* user_data) {
   // Extract the hotkey from the event.
   EventHotKeyID hot_key_id;
-  OSStatus result =
-      GetEventParameter(event, kEventParamDirectObject, typeEventHotKeyID,
-                        /*outActualType=*/nullptr, sizeof(hot_key_id),
-                        /*outActualSize=*/nullptr, &hot_key_id);
+  OSStatus result = GetEventParameter(event, kEventParamDirectObject,
+      typeEventHotKeyID, NULL, sizeof(hot_key_id), NULL, &hot_key_id);
   if (result != noErr)
     return result;
 

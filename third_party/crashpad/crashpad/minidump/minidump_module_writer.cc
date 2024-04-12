@@ -19,7 +19,6 @@
 #include <limits>
 #include <utility>
 
-#include "base/check_op.h"
 #include "base/logging.h"
 #include "base/numerics/safe_conversions.h"
 #include "minidump/minidump_string_writer.h"

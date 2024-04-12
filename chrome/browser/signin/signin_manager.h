@@ -38,11 +38,6 @@ struct CoreAccountId;
 class PrefService;
 class SigninClient;
 
-
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-BASE_DECLARE_FEATURE(kPreventSignoutIfAccountValid);
-#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
-
 // See `SigninManager::CreateAccountSelectionInProgressHandle()`.
 class AccountSelectionInProgressHandle {
  public:
@@ -60,9 +55,9 @@ class AccountSelectionInProgressHandle {
 class SigninManager : public KeyedService,
                       public signin::IdentityManager::Observer {
  public:
-  SigninManager(PrefService& prefs,
-                signin::IdentityManager& identity_manager,
-                SigninClient& client);
+  SigninManager(PrefService* prefs,
+                signin::IdentityManager* identity_manger,
+                SigninClient* client);
   ~SigninManager() override;
 
   SigninManager(const SigninManager&) = delete;
@@ -133,9 +128,9 @@ class SigninManager : public KeyedService,
       const CoreAccountId& account_id);
 #endif
 
-  const raw_ref<PrefService> prefs_;
-  const raw_ref<SigninClient> signin_client_;
-  const raw_ref<signin::IdentityManager> identity_manager_;
+  raw_ptr<PrefService> prefs_;
+  const raw_ptr<SigninClient> signin_client_;
+  raw_ptr<signin::IdentityManager> identity_manager_;
   base::ScopedObservation<signin::IdentityManager,
                           signin::IdentityManager::Observer>
       identity_manager_observation_{this};

@@ -6,16 +6,13 @@
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_MEDIASTREAM_BROWSER_CAPTURE_MEDIA_STREAM_TRACK_H_
 
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver_with_tracker.h"
+#include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/modules/mediastream/crop_target.h"
 #include "third_party/blink/renderer/modules/mediastream/media_stream_track_impl.h"
-#include "third_party/blink/renderer/modules/mediastream/restriction_target.h"
-#include "third_party/blink/renderer/modules/mediastream/sub_capture_target.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 
 namespace blink {
-
-class DOMException;
 
 class MODULES_EXPORT BrowserCaptureMediaStreamTrack
     : public MediaStreamTrackImpl {
@@ -36,102 +33,73 @@ class MODULES_EXPORT BrowserCaptureMediaStreamTrack
 #if !BUILDFLAG(IS_ANDROID)
   void Trace(Visitor*) const override;
 
-  // MediaStreamTrack impl
-  void SendWheel(double relative_x,
-                 double relative_y,
-                 int wheel_delta_x,
-                 int wheel_delta_y,
-                 base::OnceCallback<void(DOMException*)> callback) override;
-  void SetZoomLevel(int zoom_level,
-                    base::OnceCallback<void(DOMException*)> callback) override;
-
-  // Allows tests to invoke OnSubCaptureTargetVersionObserved() directly, since
-  // triggering it via mocks would be prohibitively difficult.
-  void OnSubCaptureTargetVersionObservedForTesting(
-      uint32_t sub_capture_target_version) {
-    OnSubCaptureTargetVersionObserved(sub_capture_target_version);
+  // Allows tests to invoke OnCropVersionObserved() directly, since triggering
+  // it via mocks would be prohibitively difficult.
+  void OnCropVersionObservedForTesting(uint32_t crop_version) {
+    OnCropVersionObserved(crop_version);
   }
 #endif
 
-  ScriptPromiseTyped<IDLUndefined> cropTo(ScriptState*,
-                                          CropTarget*,
-                                          ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> restrictTo(ScriptState*,
-                                              RestrictionTarget*,
-                                              ExceptionState&);
+  ScriptPromise cropTo(ScriptState*, CropTarget*, ExceptionState&);
 
   BrowserCaptureMediaStreamTrack* clone(ExecutionContext*) override;
 
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.
-  enum class ApplySubCaptureTargetResult {
+  enum class CropToResult {
     kOk = 0,
-    kTimedOut = 1,
-    kInvalidFormat = 2,
+    kUnsupportedPlatform = 1,
+    kInvalidCropTargetFormat = 2,
     kRejectedWithErrorGeneric = 3,
     kRejectedWithUnsupportedCaptureDevice = 4,
-    kRejectedWithNotImplemented = 5,
-    kNonIncreasingVersion = 6,
-    kInvalidTarget = 7,
-    kUnsupportedPlatform = 8,
-    kMaxValue = kUnsupportedPlatform
+    kRejectedWithErrorUnknownDeviceId_DEPRECATED = 5,
+    kRejectedWithNotImplemented = 6,
+    kNonIncreasingCropVersion = 7,
+    kInvalidCropTarget = 8,
+    kTimedOut = 9,
+    kMaxValue = kTimedOut
   };
 
  private:
-  // Helper function serving cropTo(), restrictTo(), and any potential
-  // future function that takes a BCMST and mutates what it is capturing
-  // to some subset of the original target, based on a target identified
-  // using a SubCaptureTarget.
-  ScriptPromiseTyped<IDLUndefined> ApplySubCaptureTarget(ScriptState*,
-                                                         SubCaptureTarget::Type,
-                                                         SubCaptureTarget*,
-                                                         ExceptionState&);
-
 #if !BUILDFLAG(IS_ANDROID)
-  struct PromiseInfo : GarbageCollected<PromiseInfo> {
-    explicit PromiseInfo(
-        ScriptPromiseResolverWithTracker<ApplySubCaptureTargetResult,
-                                         IDLUndefined>* promise_resolver)
+  struct CropPromiseInfo : GarbageCollected<CropPromiseInfo> {
+    explicit CropPromiseInfo(
+        ScriptPromiseResolverWithTracker<CropToResult>* promise_resolver)
         : promise_resolver(promise_resolver) {}
 
     void Trace(Visitor* visitor) const { visitor->Trace(promise_resolver); }
 
-    const Member<ScriptPromiseResolverWithTracker<ApplySubCaptureTargetResult,
-                                                  IDLUndefined>>
+    const Member<ScriptPromiseResolverWithTracker<CropToResult>>
         promise_resolver;
-    std::optional<media::mojom::ApplySubCaptureTargetResult> result;
-    bool sub_capture_target_version_observed = false;
+    absl::optional<media::mojom::CropRequestResult> crop_result;
+    bool crop_version_observed = false;
   };
 
-  using SubCaptureTargetVersionToPromiseInfoMap =
+  using CropVersionToPromiseInfoMap =
       HeapHashMap<uint32_t,
-                  Member<BrowserCaptureMediaStreamTrack::PromiseInfo>>;
-  using PromiseMapIterator = SubCaptureTargetVersionToPromiseInfoMap::iterator;
+                  Member<BrowserCaptureMediaStreamTrack::CropPromiseInfo>>;
+  using PromiseMapIterator = CropVersionToPromiseInfoMap::iterator;
 
-  // Each cropTo() or restrictTo() call is associated with a unique
-  // |sub_capture_target_version| which identifies this specific invocation.
-  // When the browser process responds with the result of the invocation,
-  // it triggers a call to OnResultFromBrowserProcess() with that
-  // |sub_capture_target_version|.
-  void OnResultFromBrowserProcess(
-      uint32_t sub_capture_target_version,
-      media::mojom::ApplySubCaptureTargetResult result);
+  // Each cropTo() call is associated with a unique |crop_version| which
+  // identifies this specific cropTo() invocation. When the browser process
+  // responds with the result of the cropTo() invocation, it triggers
+  // a call to OnResultFromBrowserProcess() with that |crop_version|.
+  void OnResultFromBrowserProcess(uint32_t crop_version,
+                                  media::mojom::CropRequestResult result);
 
-  // OnSubCaptureTargetVersionObserved() is posted as a callback, bound to a
-  // unique |sub_capture_target_version|. This callback be invoked when the
-  // first frame is observed which is associated with that
-  // |sub_capture_target_version|.
+  // OnCropVersionObserved() is posted as a callback, bound to a unique
+  // |crop_version|. This callback be invoked when the first frame is observed
+  // which is associated with that |crop_version|.
   // TODO(crbug.com/1266378): The Promise should also be resolved if a
   // a barrier event is observed. (That is, although no frame is delivered,
   // there is a guarantee that all future frames will be of this version
   // or later. This would happen if cropping a muted track, for instance.)
-  void OnSubCaptureTargetVersionObserved(uint32_t sub_capture_target_version);
+  void OnCropVersionObserved(uint32_t crop_version);
 
   // The Promise that cropTo() issued is resolved when both conditions
   // are fulfulled:
   // 1. OnResultFromBrowserProcess(kSuccess) called.
-  // 2. OnSubCaptureTargetVersionObserved() called for the associated
-  // |sub_capture_target_version|.
+  // 2. OnCropVersionObserved() called for the associated |crop_version|.
   //
   // The order of fulfillment does not matter.
   //
@@ -139,17 +107,16 @@ class MODULES_EXPORT BrowserCaptureMediaStreamTrack
   // an error value.
   void MaybeFinalizeCropPromise(PromiseMapIterator iter);
 
-  // Each time cropTo() is called on a given track, its sub-capture-target
-  // version increments. Associate each Promise with its sub-capture-target
-  // version, so that Viz can easily stamp each frame. When we see the first
-  // such frame, or an equivalent message, we can resolve the Promise. (An
-  // "equivalent message" can be a notification of a dropped frame, or a
-  // notification that a frame was not produced due to consisting of 0 pixels
-  // after the crop was applied, or anything similar.)
+  // Each time cropTo() is called on a given track, its crop version increments.
+  // Associate each Promise with its crop version, so that Viz can easily stamp
+  // each frame. When we see the first such frame, or an equivalent message,
+  // we can resolve the Promise. (An "equivalent message" can be a notification
+  // of a dropped frame, or a notification that a frame was not produced due
+  // to consisting of 0 pixels after the crop was applied, or anything similar.)
   //
   // Note that frames before the first call to cropTo() will be associated
   // with a version of 0, both here and in Viz.
-  HeapHashMap<uint32_t, Member<PromiseInfo>> pending_promises_;
+  HeapHashMap<uint32_t, Member<CropPromiseInfo>> pending_promises_;
 #endif  // !BUILDFLAG(IS_ANDROID)
 };
 

@@ -106,6 +106,11 @@ base::Time ComputeRelaunchWindowStartForDay(
   return window_start;
 }
 
+// Returns random TimeDelta uniformly selected between zero and `max`.
+base::TimeDelta GenRandomTimeDelta(base::TimeDelta max) {
+  return base::Microseconds(base::RandGenerator(max.InMicroseconds()));
+}
+
 }  // namespace
 
 // static
@@ -259,7 +264,7 @@ base::Time UpgradeDetector::AdjustDeadline(base::Time deadline,
       next_window_start =
           ComputeRelaunchWindowStartForDay(window, deadline + base::Hours(23));
     }
-    return next_window_start + base::RandTimeDeltaUpTo(duration);
+    return next_window_start + GenRandomTimeDelta(duration);
   }
 
   // Is the deadline within this day's window?
@@ -284,39 +289,37 @@ base::Time UpgradeDetector::AdjustDeadline(base::Time deadline,
 
   // The deadline is after previous day's window. Push the deadline forward into
   // a random interval in the day's window.
-  return window_start + base::RandTimeDeltaUpTo(duration);
+  return window_start + GenRandomTimeDelta(duration);
 }
 
 // static
-std::optional<UpgradeDetector::RelaunchWindow>
+absl::optional<UpgradeDetector::RelaunchWindow>
 UpgradeDetector::GetRelaunchWindowPolicyValue() {
   // Not all tests provide a PrefService for local_state().
   auto* local_state = g_browser_process->local_state();
   if (!local_state)
-    return std::nullopt;
+    return absl::nullopt;
 
   const auto* preference = local_state->FindPreference(prefs::kRelaunchWindow);
   DCHECK(preference);
   if (preference->IsDefaultValue())
-    return std::nullopt;
+    return absl::nullopt;
 
   const base::Value* policy_value = preference->GetValue();
   DCHECK(policy_value->is_dict());
 
-  const base::Value::List* entries =
-      policy_value->GetDict().FindList("entries");
-  if (!entries || entries->empty()) {
-    return std::nullopt;
-  }
+  const base::Value* entries = policy_value->FindListKey("entries");
+  if (!entries || entries->GetList().empty())
+    return absl::nullopt;
 
   // Currently only single daily window is supported.
-  const auto& window = entries->front().GetDict();
-  const std::optional<int> hour = window.FindIntByDottedPath("start.hour");
-  const std::optional<int> minute = window.FindIntByDottedPath("start.minute");
-  const std::optional<int> duration_mins = window.FindInt("duration_mins");
+  const auto& window = entries->GetList().front().GetDict();
+  const absl::optional<int> hour = window.FindIntByDottedPath("start.hour");
+  const absl::optional<int> minute = window.FindIntByDottedPath("start.minute");
+  const absl::optional<int> duration_mins = window.FindInt("duration_mins");
 
   if (!hour || !minute || !duration_mins)
-    return std::nullopt;
+    return absl::nullopt;
 
   return RelaunchWindow(hour.value(), minute.value(),
                         base::Minutes(duration_mins.value()));

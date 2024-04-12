@@ -15,14 +15,13 @@
 #include "base/trace_event/memory_dump_manager.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "cc/base/switches.h"
 #include "chrome/browser/infobars/simple_alert_infobar_creator.h"
 #include "chrome/browser/ui/simple_message_box.h"
 #include "chrome/browser/webauthn/webauthn_switches.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/autofill/core/common/autofill_switches.h"
 #include "components/history_clusters/core/file_clustering_backend.h"
@@ -41,7 +40,6 @@
 #include "sandbox/policy/switches.h"
 #include "services/device/public/cpp/hid/hid_switches.h"
 #include "services/network/public/cpp/network_switches.h"
-#include "third_party/blink/public/common/features_generated.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/resource/scoped_startup_resource_bundle.h"
@@ -54,10 +52,6 @@
 #include "chrome/browser/ui/browser.h"
 #endif
 
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-#include "chromeos/constants/chromeos_features.h"
-#endif
-
 namespace chrome {
 
 namespace {
@@ -65,11 +59,8 @@ namespace {
 #if !BUILDFLAG(IS_ANDROID)
 // Dangerous command line flags for which to display a warning that "stability
 // and security will suffer".
-const char* const kBadFlags[] = {
-    // These flags allow redirecting user traffic.
-    network::switches::kHostResolverRules,
-    switches::kHostRules,
-
+static const char* kBadFlags[] = {
+    network::switches::kIgnoreCertificateErrorsSPKIList,
     // These flags disable sandbox-related security.
     sandbox::policy::switches::kDisableGpuSandbox,
     sandbox::policy::switches::kDisableSeccompFilterSandbox,
@@ -88,7 +79,6 @@ const char* const kBadFlags[] = {
     // These flags undermine HTTPS / connection security.
     switches::kDisableWebRtcEncryption,
     switches::kIgnoreCertificateErrors,
-    network::switches::kIgnoreCertificateErrorsSPKIList,
 
     // This flag could prevent QuotaChange events from firing or cause the event
     // to fire too often, potentially impacting web application behavior.
@@ -173,11 +163,6 @@ const char* const kBadFlags[] = {
     // This flag disables protection against potentially unintentional user
     // interaction with certain UI elements.
     views::switches::kDisableInputEventActivationProtectionForTesting,
-
-    // This flag enables injecting synthetic input. It is meant to be used only
-    // in tests and performance benchmarks. Using it could allow faking user
-    // interaction across origins.
-    cc::switches::kEnableGpuBenchmarking,
 };
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -192,14 +177,6 @@ static const base::Feature* kBadFeatureFlagsInAboutFlags[] = {
 #if BUILDFLAG(IS_ANDROID)
     &chrome::android::kCommandLineOnNonRooted,
 #endif
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-    &chromeos::features::kBlinkExtensionDiagnostics,
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-
-    // This flag disables security for the Page Embedded Permission Control, for
-    // testing purposes. Can only be enabled via the command line.
-    &blink::features::kDisablePepcSecurityForTesting,
 };
 
 void ShowBadFlagsInfoBarHelper(content::WebContents* web_contents,
@@ -262,7 +239,7 @@ void MaybeShowInvalidUserDataDirWarningDialog() {
   if (user_data_dir.empty())
     return;
 
-  startup_metric_utils::GetBrowser().SetNonBrowserUIDisplayed();
+  startup_metric_utils::SetNonBrowserUIDisplayed();
 
   // Ensure there is an instance of ResourceBundle that is initialized for
   // localized string resource accesses.

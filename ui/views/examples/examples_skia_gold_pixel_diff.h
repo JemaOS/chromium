@@ -15,12 +15,10 @@
 
 namespace views::examples {
 
-class ExamplesSkiaGoldPixelDiff {
+class ExamplesSkiaGoldPixelDiff : public ui::test::SkiaGoldPixelDiff {
  public:
   ExamplesSkiaGoldPixelDiff();
-  ~ExamplesSkiaGoldPixelDiff();
-
-  void Init(const std::string& screenshot_prefix);
+  ~ExamplesSkiaGoldPixelDiff() override;
 
   void OnExamplesWindowShown(views::Widget* widget);
 
@@ -31,8 +29,6 @@ class ExamplesSkiaGoldPixelDiff {
                                      const views::Widget* widget) const;
   void DoScreenshot(views::Widget* widget);
 
-  std::string screenshot_prefix_;
-  raw_ptr<ui::test::SkiaGoldPixelDiff> pixel_diff_ = nullptr;
   mutable gfx::Image screenshot_;
   ExamplesExitCode result_ = ExamplesExitCode::kNone;
 };

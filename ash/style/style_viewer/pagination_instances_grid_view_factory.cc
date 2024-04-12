@@ -80,7 +80,7 @@ class PaginationTestContents : public views::BoxLayoutView {
   gfx::PointF dragging_origin_;
   // True if the content is being dragged.
   bool is_dragging_ = false;
-  raw_ptr<PaginationController> const pagination_controller_;
+  base::raw_ptr<PaginationController> const pagination_controller_;
 };
 
 //------------------------------------------------------------------------------
@@ -123,9 +123,9 @@ class PaginationTestScrollView : public views::ScrollView,
     return gfx::Size(kPageWidth, kPageHeight);
   }
 
-  void Layout(PassKey) override {
+  void Layout() override {
     page_container_->SizeToPreferredSize();
-    LayoutSuperclass<views::ScrollView>(this);
+    views::ScrollView::Layout();
   }
 
   // PaginationModelObserver:
@@ -181,10 +181,10 @@ class PaginationTestScrollView : public views::ScrollView,
   }
 
  private:
-  raw_ptr<PaginationModel> const model_;
+  base::raw_ptr<PaginationModel> const model_;
   PaginationView::Orientation orientation_;
   std::unique_ptr<PaginationController> pagination_controller_;
-  raw_ptr<PaginationTestContents> page_container_;
+  base::raw_ptr<PaginationTestContents> page_container_;
   base::ScopedObservation<PaginationModel, PaginationModelObserver>
       model_observer_{this};
 };

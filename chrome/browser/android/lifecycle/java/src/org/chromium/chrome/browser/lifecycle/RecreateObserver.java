@@ -10,6 +10,8 @@ package org.chromium.chrome.browser.lifecycle;
  *
  */
 public interface RecreateObserver extends LifecycleObserver {
-    /** Called when the activity is going to recreate. */
+    /**
+     * Called when the activity is going to recreate.
+     */
     void onRecreate();
 }

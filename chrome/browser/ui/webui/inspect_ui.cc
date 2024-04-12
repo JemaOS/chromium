@@ -91,9 +91,6 @@ void CreateAndAddInspectUIHTMLSource(Profile* profile) {
   source->AddResourcePath("inspect.css", IDR_INSPECT_CSS);
   source->AddResourcePath("inspect.js", IDR_INSPECT_JS);
   source->SetDefaultResource(IDR_INSPECT_HTML);
-  source->OverrideContentSecurityPolicy(
-      network::mojom::CSPDirectiveName::ScriptSrc,
-      "script-src chrome://resources chrome://webui-test 'self';");
 }
 
 // DevToolsFrontEndObserver ----------------------------------------
@@ -412,8 +409,7 @@ void InspectMessageHandler::HandleOpenNodeFrontendCommand(
   Profile* profile = Profile::FromWebUI(web_ui());
   if (!profile)
     return;
-  DevToolsWindow::OpenNodeFrontendWindow(profile,
-                                         DevToolsOpenedByAction::kInspectLink);
+  DevToolsWindow::OpenNodeFrontendWindow(profile);
 }
 
 void InspectMessageHandler::HandleLaunchUIDevToolsCommand(
@@ -497,8 +493,7 @@ void InspectUI::Inspect(const std::string& source_id,
   scoped_refptr<DevToolsAgentHost> target = FindTarget(source_id, target_id);
   if (target) {
     Profile* profile = Profile::FromWebUI(web_ui());
-    DevToolsWindow::OpenDevToolsWindow(target, profile,
-                                       DevToolsOpenedByAction::kInspectLink);
+    DevToolsWindow::OpenDevToolsWindow(target, profile);
   }
 }
 
@@ -507,8 +502,7 @@ void InspectUI::InspectFallback(const std::string& source_id,
   scoped_refptr<DevToolsAgentHost> target = FindTarget(source_id, target_id);
   if (target) {
     Profile* profile = Profile::FromWebUI(web_ui());
-    DevToolsWindow::OpenDevToolsWindowWithBundledFrontend(
-        target, profile, DevToolsOpenedByAction::kInspectLink);
+    DevToolsWindow::OpenDevToolsWindowWithBundledFrontend(target, profile);
   }
 }
 
@@ -551,8 +545,7 @@ void InspectUI::Pause(const std::string& source_id,
   content::WebContents* web_contents = target->GetWebContents();
   if (web_contents) {
     DevToolsWindow::OpenDevToolsWindow(web_contents,
-                                       DevToolsToggleAction::PauseInDebugger(),
-                                       DevToolsOpenedByAction::kInspectLink);
+                                       DevToolsToggleAction::PauseInDebugger());
   }
 }
 
@@ -592,8 +585,10 @@ void InspectUI::InspectBrowserWithCustomFrontend(
 
 void InspectUI::InspectDevices(Browser* browser) {
   base::RecordAction(base::UserMetricsAction("InspectDevices"));
-  ShowSingletonTabOverwritingNTP(browser, GURL(chrome::kChromeUIInspectURL),
-                                 NavigateParams::IGNORE_AND_NAVIGATE);
+  NavigateParams params(GetSingletonTabNavigateParams(
+      browser, GURL(chrome::kChromeUIInspectURL)));
+  params.path_behavior = NavigateParams::IGNORE_AND_NAVIGATE;
+  ShowSingletonTabOverwritingNTP(browser, &params);
 }
 
 void InspectUI::WebContentsDestroyed() {

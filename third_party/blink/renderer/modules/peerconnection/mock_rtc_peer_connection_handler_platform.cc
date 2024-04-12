@@ -89,9 +89,11 @@ class DummyRTCRtpSenderPlatform : public RTCRtpSenderPlatform {
     return std::unique_ptr<webrtc::RtpParameters>();
   }
   void SetParameters(Vector<webrtc::RtpEncodingParameters>,
-                     std::optional<webrtc::DegradationPreference>,
+                     absl::optional<webrtc::DegradationPreference>,
                      RTCVoidRequest*) override {}
-  void GetStats(RTCStatsReportCallback) override {}
+  void GetStats(RTCStatsReportCallback,
+                const Vector<webrtc::NonStandardGroupId>&,
+                bool is_track_stats_deprecation_trial_enabled) override {}
   void SetStreams(const Vector<String>& stream_ids) override {}
 
  private:
@@ -152,13 +154,15 @@ class DummyRTCRtpReceiverPlatform : public RTCRtpReceiverPlatform {
   Vector<std::unique_ptr<RTCRtpSource>> GetSources() override {
     return Vector<std::unique_ptr<RTCRtpSource>>();
   }
-  void GetStats(RTCStatsReportCallback) override {}
+  void GetStats(RTCStatsReportCallback,
+                const Vector<webrtc::NonStandardGroupId>&,
+                bool is_track_stats_deprecation_trial_enabled) override {}
   std::unique_ptr<webrtc::RtpParameters> GetParameters() const override {
     return nullptr;
   }
 
   void SetJitterBufferMinimumDelay(
-      std::optional<double> delay_seconds) override {}
+      absl::optional<double> delay_seconds) override {}
 
  private:
   const uintptr_t id_;
@@ -240,13 +244,13 @@ class MockRTCPeerConnectionHandlerPlatform::DummyRTCRtpTransceiverPlatform
       webrtc::RtpTransceiverDirection direction) override {
     return internal_->set_direction(direction);
   }
-  std::optional<webrtc::RtpTransceiverDirection> CurrentDirection()
+  absl::optional<webrtc::RtpTransceiverDirection> CurrentDirection()
       const override {
-    return std::nullopt;
+    return absl::nullopt;
   }
-  std::optional<webrtc::RtpTransceiverDirection> FiredDirection()
+  absl::optional<webrtc::RtpTransceiverDirection> FiredDirection()
       const override {
-    return std::nullopt;
+    return absl::nullopt;
   }
   webrtc::RTCError Stop() override { return webrtc::RTCError::OK(); }
   webrtc::RTCError SetCodecPreferences(
@@ -280,6 +284,7 @@ MockRTCPeerConnectionHandlerPlatform::~MockRTCPeerConnectionHandlerPlatform() =
 bool MockRTCPeerConnectionHandlerPlatform::Initialize(
     ExecutionContext*,
     const webrtc::PeerConnectionInterface::RTCConfiguration&,
+    GoogMediaConstraints*,
     WebLocalFrame*,
     ExceptionState&) {
   return true;
@@ -324,7 +329,12 @@ void MockRTCPeerConnectionHandlerPlatform::AddIceCandidate(
 
 void MockRTCPeerConnectionHandlerPlatform::RestartIce() {}
 
-void MockRTCPeerConnectionHandlerPlatform::GetStats(RTCStatsReportCallback) {}
+void MockRTCPeerConnectionHandlerPlatform::GetStats(RTCStatsRequest*) {}
+
+void MockRTCPeerConnectionHandlerPlatform::GetStats(
+    RTCStatsReportCallback,
+    const Vector<webrtc::NonStandardGroupId>&,
+    bool is_track_stats_deprecation_trial_enabled) {}
 
 webrtc::RTCErrorOr<std::unique_ptr<RTCRtpTransceiverPlatform>>
 MockRTCPeerConnectionHandlerPlatform::AddTransceiverWithTrack(

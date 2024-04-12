@@ -7,17 +7,16 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/singleton.h"
-#include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ime/dummy_text_input_client.h"
 #include "ui/base/ime/ime_key_event_dispatcher.h"
 #include "ui/base/ime/init/input_method_initializer.h"
@@ -95,11 +94,11 @@ class LinuxInputMethodContextForTesting : public LinuxInputMethodContext {
     return &virtual_keyboard_controller_;
   }
 
-  TextInputType input_type() const { return attributes_.input_type; }
-  TextInputMode input_mode() const { return attributes_.input_mode; }
-  uint32_t input_flags() const { return attributes_.flags; }
-  bool should_do_learning() const { return attributes_.should_do_learning; }
-  bool can_compose_inline() const { return attributes_.can_compose_inline; }
+  TextInputType input_type() const { return input_type_; }
+  TextInputMode input_mode() const { return input_mode_; }
+  uint32_t input_flags() const { return input_flags_; }
+  bool should_do_learning() const { return should_do_learning_; }
+  bool can_compose_inline() const { return can_compose_inline_; }
   TextInputClient* old_client() { return old_client_; }
   TextInputClient* new_client() { return new_client_; }
   void DropClients() {
@@ -153,10 +152,8 @@ class LinuxInputMethodContextForTesting : public LinuxInputMethodContext {
 
   void UpdateFocus(bool has_client,
                    TextInputType old_type,
-                   const TextInputClientAttributes& new_client_attributes,
-                   ui::TextInputClient::FocusReason reason) override {
-    attributes_ = new_client_attributes;
-  }
+                   TextInputType new_type,
+                   ui::TextInputClient::FocusReason reason) override {}
 
   void SetCursorLocation(const gfx::Rect& rect) override {
     cursor_position_ = rect;
@@ -166,8 +163,8 @@ class LinuxInputMethodContextForTesting : public LinuxInputMethodContext {
       const std::u16string& text,
       const gfx::Range& text_range,
       const gfx::Range& selection_range,
-      const std::optional<GrammarFragment>& fragment,
-      const std::optional<AutocorrectInfo>& autocorrect) override {
+      const absl::optional<GrammarFragment>& fragment,
+      const absl::optional<AutocorrectInfo>& autocorrect) override {
     TestResult::GetInstance()->RecordAction(u"surroundingtext:" + text);
     TestResult::GetInstance()->RecordAction(base::ASCIIToUTF16(
         base::StringPrintf("textrangestart:%zu", text_range.start())));
@@ -180,6 +177,18 @@ class LinuxInputMethodContextForTesting : public LinuxInputMethodContext {
         base::StringPrintf("selectionrangeend:%zu", selection_range.end())));
   }
 
+  void SetContentType(TextInputType type,
+                      TextInputMode mode,
+                      uint32_t flags,
+                      bool should_do_learning,
+                      bool can_compose_inline) override {
+    input_type_ = type;
+    input_mode_ = mode;
+    input_flags_ = flags;
+    should_do_learning_ = should_do_learning;
+    can_compose_inline_ = can_compose_inline;
+  }
+
  private:
   raw_ptr<LinuxInputMethodContextDelegate> delegate_;
   VirtualKeyboardControllerStub virtual_keyboard_controller_;
@@ -187,9 +196,13 @@ class LinuxInputMethodContextForTesting : public LinuxInputMethodContext {
   bool is_sync_mode_;
   bool eat_key_;
   gfx::Rect cursor_position_;
-  TextInputClientAttributes attributes_;
-  raw_ptr<TextInputClient, DanglingUntriaged> old_client_ = nullptr;
-  raw_ptr<TextInputClient, DanglingUntriaged> new_client_ = nullptr;
+  TextInputType input_type_;
+  TextInputMode input_mode_;
+  uint32_t input_flags_;
+  bool should_do_learning_;
+  bool can_compose_inline_;
+  raw_ptr<TextInputClient> old_client_ = nullptr;
+  raw_ptr<TextInputClient> new_client_ = nullptr;
 };
 
 class InputMethodDelegateForTesting : public ImeKeyEventDispatcher {
@@ -215,7 +228,9 @@ class InputMethodDelegateForTesting : public ImeKeyEventDispatcher {
       default:
         break;
     }
-    action += base::NumberToString(key_event->key_code());
+    std::stringstream ss;
+    ss << key_event->key_code();
+    action += std::string(ss.str());
     TestResult::GetInstance()->RecordAction(base::ASCIIToUTF16(action));
     return ui::EventDispatchDetails();
   }
@@ -231,7 +246,7 @@ class TextInputClientForTesting : public DummyTextInputClient {
   gfx::Range selection_range;
   std::u16string surrounding_text;
 
-  std::optional<gfx::Rect> caret_not_in_rect;
+  absl::optional<gfx::Rect> caret_not_in_rect;
 
   bool can_compose_inline = false;
 
@@ -239,9 +254,6 @@ class TextInputClientForTesting : public DummyTextInputClient {
   bool CanComposeInline() const override { return can_compose_inline; }
 
   void SetCompositionText(const CompositionText& composition) override {
-    // TODO(crbug.com/1465683) According to the documentation for
-    // SetCompositionText, if there is no composition, any existing text
-    // selection should be deleted.
     composition_text = composition.text;
     TestResult::GetInstance()->RecordAction(u"compositionstart");
     TestResult::GetInstance()->RecordAction(u"compositionupdate:" +
@@ -279,9 +291,10 @@ class TextInputClientForTesting : public DummyTextInputClient {
   }
 
   void InsertChar(const ui::KeyEvent& event) override {
-    TestResult::GetInstance()->RecordAction(
-        u"keypress:" + base::ASCIIToUTF16(base::NumberToString(
-                           static_cast<uint16_t>(event.GetCharacter()))));
+    std::stringstream ss;
+    ss << static_cast<uint16_t>(event.GetCharacter());
+    TestResult::GetInstance()->RecordAction(u"keypress:" +
+                                            base::ASCIIToUTF16(ss.str()));
   }
 
   bool GetTextRange(gfx::Range* range) const override {
@@ -302,10 +315,6 @@ class TextInputClientForTesting : public DummyTextInputClient {
 
   void EnsureCaretNotInRect(const gfx::Rect& rect) override {
     caret_not_in_rect = rect;
-  }
-
-  void InsertImage(const GURL& url) override {
-    TestResult::GetInstance()->RecordAction(u"insertimage");
   }
 };
 
@@ -1205,42 +1214,6 @@ TEST_F(InputMethodAuraLinuxTest, OnSetVirtualKeyboardOccludedBounds) {
   RemoveLastClient(client.get());
 }
 
-TEST_F(InputMethodAuraLinuxTest, OnConfirmCompositionText) {
-  auto client =
-      std::make_unique<TextInputClientForTesting>(TEXT_INPUT_TYPE_TEXT);
-  InstallFirstClient(client.get());
-
-  input_method_auralinux_->OnPreeditStart();
-  CompositionText comp;
-  comp.text = u"a";
-  input_method_auralinux_->OnPreeditChanged(comp);
-
-  test_result_->ExpectAction("compositionstart");
-  test_result_->ExpectAction("compositionupdate:a");
-  test_result_->Verify();
-
-  input_method_auralinux_->OnConfirmCompositionText(/*keep_selection=*/true);
-
-  test_result_->ExpectAction("compositionend");
-  test_result_->ExpectAction("textinput:a");
-
-  RemoveLastClient(client.get());
-}
-
-TEST_F(InputMethodAuraLinuxTest, OnInsertImage) {
-  const GURL some_image_url = GURL("");
-  auto client = std::make_unique<TextInputClientForTesting>(
-      TEXT_INPUT_TYPE_CONTENT_EDITABLE);
-  InstallFirstClient(client.get());
-
-  input_method_auralinux_->OnInsertImage(some_image_url);
-
-  test_result_->ExpectAction("insertimage");
-  test_result_->Verify();
-
-  RemoveLastClient(client.get());
-}
-
 TEST_F(InputMethodAuraLinuxTest, GetVirtualKeyboardController) {
   EXPECT_EQ(input_method_auralinux_->GetVirtualKeyboardController(),
             context_->GetVirtualKeyboardController());
@@ -1296,47 +1269,6 @@ TEST_F(InputMethodAuraLinuxTest, CanComposeInline) {
 
   input_method_auralinux_->SetFocusedTextInputClient(client2.get());
   EXPECT_EQ(context_->can_compose_inline(), true);
-}
-
-TEST_F(InputMethodAuraLinuxTest, UpdateCompositionIfTextSelected) {
-  auto client =
-      std::make_unique<TextInputClientForTesting>(TEXT_INPUT_TYPE_TEXT);
-  InstallFirstClient(client.get());
-
-  // SetCompositionText("") should not be called when nothing is selected.
-  client->surrounding_text = u"abcdef";
-  client->text_range = gfx::Range(0, 6);
-  client->selection_range = gfx::Range(3, 3);
-  input_method_auralinux_->OnCaretBoundsChanged(client.get());
-  test_result_->ExpectAction("surroundingtext:abcdef");
-  test_result_->ExpectAction("textrangestart:0");
-  test_result_->ExpectAction("textrangeend:6");
-  test_result_->ExpectAction("selectionrangestart:3");
-  test_result_->ExpectAction("selectionrangeend:3");
-  test_result_->Verify();
-  input_method_auralinux_->OnPreeditChanged(CompositionText());
-  test_result_->Verify();
-
-  // SetCompositionText("") should be called when there is a text selection.
-  client->selection_range = gfx::Range(2, 5);
-  input_method_auralinux_->OnCaretBoundsChanged(client.get());
-  test_result_->ExpectAction("surroundingtext:abcdef");
-  test_result_->ExpectAction("textrangestart:0");
-  test_result_->ExpectAction("textrangeend:6");
-  test_result_->ExpectAction("selectionrangestart:2");
-  test_result_->ExpectAction("selectionrangeend:5");
-  test_result_->Verify();
-  input_method_auralinux_->OnPreeditChanged(CompositionText());
-  test_result_->ExpectAction("compositionstart");
-  test_result_->ExpectAction("compositionupdate:");
-  test_result_->Verify();
-
-  // TODO(crbug.com/1465683) This test verifies that SetCompositionText is
-  // called when there is a selection, but it doesn't verify that it deletes
-  // the existing text selection. This is because the mock TextInputClient
-  // doesn't do anything with the selection.
-
-  RemoveLastClient(client.get());
 }
 
 }  // namespace

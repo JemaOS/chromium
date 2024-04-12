@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-
 (async function() {
   TestRunner.addResult(`Verifies that text editor has focus after panel re-selecting.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
 
   await TestRunner.addScriptTag('resources/script.js');
@@ -15,8 +12,8 @@ import * as UI from 'devtools/ui/legacy/legacy.js';
   SourcesTestRunner.showScriptSource('script.js', onSourceFrame);
   function onSourceFrame(sourceFrame) {
     TestRunner.addResult('initial: focused = ' + sourceFrame.hasFocus());
-    UI.InspectorView.InspectorView.instance().showPanel('elements')
-        .then(() => UI.InspectorView.InspectorView.instance().showPanel('sources'))
+    UI.inspectorView.showPanel('elements')
+        .then(() => UI.inspectorView.showPanel('sources'))
         .then(onPanelReselected.bind(null, sourceFrame));
   }
 

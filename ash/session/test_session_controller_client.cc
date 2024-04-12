@@ -138,13 +138,12 @@ void TestSessionControllerClient::AddUserSession(
     user_manager::UserType user_type,
     bool provide_pref_service,
     bool is_new_profile,
-    const std::string& given_name,
-    bool is_account_managed) {
+    const std::string& given_name) {
   auto account_id = AccountId::FromUserEmail(
       use_lower_case_user_id_ ? GetUserIdFromEmail(display_email)
                               : display_email);
   AddUserSession(account_id, display_email, user_type, provide_pref_service,
-                 is_new_profile, given_name, is_account_managed);
+                 is_new_profile, given_name);
 }
 
 void TestSessionControllerClient::AddUserSession(
@@ -153,12 +152,11 @@ void TestSessionControllerClient::AddUserSession(
     user_manager::UserType user_type,
     bool provide_pref_service,
     bool is_new_profile,
-    const std::string& given_name,
-    bool is_account_managed) {
+    const std::string& given_name) {
   // Set is_ephemeral in user_info to true if the user type is guest or public
   // account.
-  bool is_ephemeral = user_type == user_manager::UserType::kGuest ||
-                      user_type == user_manager::UserType::kPublicAccount;
+  bool is_ephemeral = user_type == user_manager::USER_TYPE_GUEST ||
+                      user_type == user_manager::USER_TYPE_PUBLIC_ACCOUNT;
 
   UserSession session;
   session.session_id = ++fake_session_id_;
@@ -169,10 +167,6 @@ void TestSessionControllerClient::AddUserSession(
   session.user_info.is_ephemeral = is_ephemeral;
   session.user_info.is_new_profile = is_new_profile;
   session.user_info.given_name = given_name;
-  session.user_info.has_gaia_account =
-      account_id.GetAccountType() == AccountType::GOOGLE &&
-      !account_id.GetGaiaId().empty();
-  session.user_info.is_managed = is_account_managed;
   controller_->UpdateUserSession(std::move(session));
 
   if (provide_pref_service && prefs_provider_ &&
@@ -323,16 +317,11 @@ PrefService* TestSessionControllerClient::GetUserPrefService(
   return prefs_provider_ ? prefs_provider_->GetUserPrefs(account_id) : nullptr;
 }
 
-base::FilePath TestSessionControllerClient::GetProfilePath(
-    const AccountId& account_id) {
-  return base::FilePath("/profile/path").Append(account_id.GetUserEmail());
-}
-
 bool TestSessionControllerClient::IsEnterpriseManaged() const {
   return is_enterprise_managed_;
 }
 
-std::optional<int> TestSessionControllerClient::GetExistingUsersCount() const {
+absl::optional<int> TestSessionControllerClient::GetExistingUsersCount() const {
   return existing_users_count_;
 }
 

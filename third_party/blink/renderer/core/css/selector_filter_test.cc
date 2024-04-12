@@ -19,7 +19,7 @@ namespace {
 
 Vector<unsigned> CollectIdentifierHashesFromInnerRule(Document& document,
                                                       String rule_text) {
-  Vector<unsigned> result;
+  Vector<unsigned> result(4);
   const auto* outer_rule = DynamicTo<StyleRuleGroup>(
       css_test_helpers::ParseRule(document, rule_text));
   CHECK(outer_rule);
@@ -30,12 +30,8 @@ Vector<unsigned> CollectIdentifierHashesFromInnerRule(Document& document,
   CHECK(inner_style_rule);
   CHECK(inner_style_rule->FirstSelector());
 
-  const auto* scope_rule = DynamicTo<StyleRuleScope>(outer_rule);
-  const StyleScope* style_scope =
-      scope_rule ? &scope_rule->GetStyleScope() : nullptr;
-
   SelectorFilter::CollectIdentifierHashes(*inner_style_rule->FirstSelector(),
-                                          style_scope, result);
+                                          result.data(), result.size());
   return result;
 }
 
@@ -51,9 +47,11 @@ TEST_F(SelectorFilterTest, CollectHashesScopeSubject) {
     }
   )CSS");
 
-  ASSERT_EQ(2u, hashes.size());
+  ASSERT_EQ(4u, hashes.size());
   EXPECT_NE(0u, hashes[0]);  // .b
   EXPECT_NE(0u, hashes[1]);  // .c
+  EXPECT_EQ(0u, hashes[2]);
+  EXPECT_EQ(0u, hashes[3]);
 }
 
 TEST_F(SelectorFilterTest, CollectHashesScopeNonSubject) {
@@ -66,10 +64,11 @@ TEST_F(SelectorFilterTest, CollectHashesScopeNonSubject) {
     }
   )CSS");
 
-  ASSERT_EQ(3u, hashes.size());
+  ASSERT_EQ(4u, hashes.size());
   EXPECT_NE(0u, hashes[0]);  // .b
   EXPECT_NE(0u, hashes[1]);  // .c
-  EXPECT_NE(0u, hashes[2]);  // .a
+  EXPECT_EQ(0u, hashes[2]);
+  EXPECT_EQ(0u, hashes[3]);
 }
 
 TEST_F(SelectorFilterTest, CollectHashesScopeImplied) {
@@ -83,10 +82,11 @@ TEST_F(SelectorFilterTest, CollectHashesScopeImplied) {
     }
   )CSS");
 
-  ASSERT_EQ(3u, hashes.size());
+  ASSERT_EQ(4u, hashes.size());
   EXPECT_NE(0u, hashes[0]);  // .b
   EXPECT_NE(0u, hashes[1]);  // .c
-  EXPECT_NE(0u, hashes[2]);  // .a
+  EXPECT_EQ(0u, hashes[2]);
+  EXPECT_EQ(0u, hashes[3]);
 }
 
 }  // namespace blink

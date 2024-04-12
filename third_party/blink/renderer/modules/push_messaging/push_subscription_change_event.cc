@@ -30,11 +30,11 @@ PushSubscriptionChangeEvent::PushSubscriptionChangeEvent(
 PushSubscriptionChangeEvent::~PushSubscriptionChangeEvent() = default;
 
 PushSubscription* PushSubscriptionChangeEvent::newSubscription() const {
-  return new_subscription_.Get();
+  return new_subscription_;
 }
 
 PushSubscription* PushSubscriptionChangeEvent::oldSubscription() const {
-  return old_subscription_.Get();
+  return old_subscription_;
 }
 
 void PushSubscriptionChangeEvent::Trace(Visitor* visitor) const {

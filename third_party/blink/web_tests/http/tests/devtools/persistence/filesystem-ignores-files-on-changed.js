@@ -2,19 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {BindingsTestRunner} from 'bindings_test_runner';
-
-import * as Persistence from 'devtools/models/persistence/persistence.js';
-
 (async function() {
   TestRunner.addResult(`Ensure that if a file that should be ignored is changed on the filesystem it does not propogate events.\n`);
+  await TestRunner.loadTestModule('bindings_test_runner');
 
   TestRunner.addResult('Creating filesystem');
   var fs = new BindingsTestRunner.TestFileSystem('/var/www');
   await fs.reportCreatedPromise();
 
-  Persistence.IsolatedFileSystemManager.IsolatedFileSystemManager.instance().addEventListener(
+  Persistence.isolatedFileSystemManager.addEventListener(
       Persistence.IsolatedFileSystemManager.Events.FileSystemFilesChanged, event => {
         TestRunner.addResult('Created Files:');
         for (var createdFiles of event.data.added.valuesArray())
@@ -28,7 +24,7 @@ import * as Persistence from 'devtools/models/persistence/persistence.js';
       });
 
   TestRunner.addResult('Creating Files');
-  Persistence.IsolatedFileSystemManager.IsolatedFileSystemManager.instance().workspaceFolderExcludePatternSetting().set('[iI]gnored');
+  Persistence.isolatedFileSystemManager.workspaceFolderExcludePatternSetting().set('[iI]gnored');
 
   TestRunner.addResult('Creating "ignoredFile"');
   var ignoredFile = fs.addFile('ignoredFile', 'content');

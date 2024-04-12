@@ -153,7 +153,7 @@ extensions::api::settings_private::PrefObject
 GeneratedCookiePrimarySettingPref::GetPrefObject() const {
   extensions::api::settings_private::PrefObject pref_object;
   pref_object.key = pref_name_;
-  pref_object.type = extensions::api::settings_private::PrefType::kNumber;
+  pref_object.type = extensions::api::settings_private::PREF_TYPE_NUMBER;
 
   auto content_setting = host_content_settings_map_->GetDefaultContentSetting(
       ContentSettingsType::COOKIES, nullptr);
@@ -224,7 +224,7 @@ void GeneratedCookiePrimarySettingPref::ApplyPrimaryCookieSettingManagedState(
 
   if (content_setting_enforced && content_setting == CONTENT_SETTING_BLOCK) {
     // Preference is fully managed by the content setting.
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
     settings_private::GeneratedPref::ApplyControlledByFromContentSettingSource(
         &pref_object, content_setting_source);
     return;
@@ -232,7 +232,7 @@ void GeneratedCookiePrimarySettingPref::ApplyPrimaryCookieSettingManagedState(
 
   if (content_setting_enforced && cookie_controls_mode_enforced) {
     // Preference is considered fully managed by the third party preference.
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
     settings_private::GeneratedPref::ApplyControlledByFromPref(
         &pref_object, cookie_controls_mode_pref);
     return;
@@ -252,13 +252,14 @@ void GeneratedCookiePrimarySettingPref::ApplyPrimaryCookieSettingManagedState(
 
     // Based on state assessed so far the enforcement is only recommended. This
     // may be changed to ENFORCED later in this function.
-    pref_object.enforcement = settings_api::Enforcement::kRecommended;
+    pref_object.enforcement =
+        settings_api::Enforcement::ENFORCEMENT_RECOMMENDED;
   }
 
   // If cookie controls are enforced and the content settings is not enforced,
   // you can choose between the selected cookie controls setting and "BLOCK"
   if (cookie_controls_mode_enforced) {
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
     settings_private::GeneratedPref::ApplyControlledByFromPref(
         &pref_object, cookie_controls_mode_pref);
     auto value = static_cast<CookieControlsMode>(
@@ -274,7 +275,7 @@ void GeneratedCookiePrimarySettingPref::ApplyPrimaryCookieSettingManagedState(
   if (content_setting_enforced) {
     DCHECK(content_setting == CONTENT_SETTING_ALLOW ||
            content_setting == CONTENT_SETTING_SESSION_ONLY);
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
     settings_private::GeneratedPref::ApplyControlledByFromContentSettingSource(
         &pref_object, content_setting_source);
 
@@ -316,7 +317,7 @@ GeneratedCookieSessionOnlyPref::SetPref(const base::Value* value) {
 settings_api::PrefObject GeneratedCookieSessionOnlyPref::GetPrefObject() const {
   settings_api::PrefObject pref_object;
   pref_object.key = pref_name_;
-  pref_object.type = settings_api::PrefType::kBoolean;
+  pref_object.type = settings_api::PREF_TYPE_BOOLEAN;
 
   std::string content_setting_provider;
   auto content_setting = host_content_settings_map_->GetDefaultContentSetting(
@@ -333,16 +334,19 @@ settings_api::PrefObject GeneratedCookieSessionOnlyPref::GetPrefObject() const {
       HostContentSettingsMap::GetSettingSourceFromProviderName(
           content_setting_provider);
   if (content_setting_source == SettingSource::SETTING_SOURCE_POLICY) {
-    pref_object.controlled_by = settings_api::ControlledBy::kDevicePolicy;
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_DEVICE_POLICY;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
   }
   if (content_setting_source == SettingSource::SETTING_SOURCE_EXTENSION) {
-    pref_object.controlled_by = settings_api::ControlledBy::kExtension;
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_EXTENSION;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
   }
   if (content_setting_source == SettingSource::SETTING_SOURCE_SUPERVISED) {
-    pref_object.controlled_by = settings_api::ControlledBy::kChildRestriction;
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_CHILD_RESTRICTION;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
   }
 
   return pref_object;
@@ -382,7 +386,7 @@ settings_api::PrefObject
 GeneratedCookieDefaultContentSettingPref::GetPrefObject() const {
   settings_api::PrefObject pref_object;
   pref_object.key = pref_name_;
-  pref_object.type = settings_api::PrefType::kString;
+  pref_object.type = settings_api::PREF_TYPE_STRING;
 
   std::string content_setting_provider;
   auto content_setting = host_content_settings_map_->GetDefaultContentSetting(
@@ -397,16 +401,19 @@ GeneratedCookieDefaultContentSettingPref::GetPrefObject() const {
       HostContentSettingsMap::GetSettingSourceFromProviderName(
           content_setting_provider);
   if (content_setting_source == SettingSource::SETTING_SOURCE_POLICY) {
-    pref_object.controlled_by = settings_api::ControlledBy::kDevicePolicy;
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_DEVICE_POLICY;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
   }
   if (content_setting_source == SettingSource::SETTING_SOURCE_EXTENSION) {
-    pref_object.controlled_by = settings_api::ControlledBy::kExtension;
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_EXTENSION;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
   }
   if (content_setting_source == SettingSource::SETTING_SOURCE_SUPERVISED) {
-    pref_object.controlled_by = settings_api::ControlledBy::kChildRestriction;
-    pref_object.enforcement = settings_api::Enforcement::kEnforced;
+    pref_object.controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_CHILD_RESTRICTION;
+    pref_object.enforcement = settings_api::Enforcement::ENFORCEMENT_ENFORCED;
   }
 
   return pref_object;

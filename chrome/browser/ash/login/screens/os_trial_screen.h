@@ -17,9 +17,9 @@ class OsTrialScreenView;
 class OsTrialScreen : public BaseScreen {
  public:
   enum class Result {
-    kNextTry,
-    kNextInstall,
-    kBack,
+    NEXT_TRY,
+    NEXT_INSTALL,
+    BACK,
   };
 
   static std::string GetResultString(Result result);

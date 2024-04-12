@@ -116,10 +116,9 @@
     </style>
     <!-- TODO(jamescook): Show the promo on Chrome OS if the user is signed-in
          but has sync disabled. -->
-    <div id="banner" hidden="[[shouldHideBanner_(syncStatus.signedIn)]]"
-        part="banner"></div>
+    <div id="banner" hidden="[[syncStatus.signedIn]]" part="banner"></div>
     <div class="cr-row first"
-        id="promo-header" hidden="[[shouldHideBanner_(syncStatus.signedIn)]]">
+        id="promo-header" hidden="[[syncStatus.signedIn]]">
       <div class="flex cr-padded-text">
         <div id="promo-title" part="title">
           [[getLabel_(promoLabelWithAccount,
@@ -161,10 +160,9 @@
           </div>
           <div class="secondary text-elide">
             [[getAccountLabel_(
-                '$i18nPolymer{signedInTo}', '$i18nPolymer{syncingTo}',
-                shownAccount_.email, syncStatus.hasError, syncStatus.signedIn,
-                syncStatus.disabled, syncStatus.firstSetupInProgress,
-                shownAccount_.isPrimaryAccount)]]
+                '$i18nPolymer{syncingTo}', shownAccount_.email,
+                syncStatus.hasError, syncStatus.signedIn,
+                syncStatus.disabled, syncStatus.firstSetupInProgress)]]
           </div>
         </div>
 <!-- Chrome OS does not allow switching users for sync. -->
@@ -180,8 +178,7 @@
                 syncStatus.domain)]]"></div>
 </if>
         <cr-button id="sync-button" class="action-button cr-button-gap"
-            hidden="[[shouldHideSyncButton_(syncStatus.signedIn)]]"
-            on-click="onSyncButtonClick_"
+            hidden="[[syncStatus.signedIn]]" on-click="onSyncButtonClick_"
             disabled="[[shouldDisableSyncButton_(showSetupButtons_,
                     syncStatus.firstSetupInProgress,
                     prefs.signin.allowed_on_next_startup.value)]]">

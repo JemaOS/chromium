@@ -22,8 +22,6 @@
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/accessibility/ax_tree.h"
 #include "ui/accessibility/ax_tree_data.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/views/accessibility/view_accessibility.h"
@@ -39,17 +37,12 @@ namespace views::test {
 namespace {
 
 class TestButton : public Button {
-  METADATA_HEADER(TestButton, Button)
-
  public:
   TestButton() : Button(Button::PressedCallback()) {}
   TestButton(const TestButton&) = delete;
   TestButton& operator=(const TestButton&) = delete;
   ~TestButton() override = default;
 };
-
-BEGIN_METADATA(TestButton)
-END_METADATA
 
 class ViewsAXTreeManagerTest : public ViewsTestBase,
                                public ::testing::WithParamInterface<bool> {
@@ -144,9 +137,6 @@ void ViewsAXTreeManagerTest::TearDown() {
 }
 
 void ViewsAXTreeManagerTest::CloseWidget() {
-  button_ = nullptr;
-  label_ = nullptr;
-
   if (!widget_->IsClosed())
     widget_->CloseNow();
 

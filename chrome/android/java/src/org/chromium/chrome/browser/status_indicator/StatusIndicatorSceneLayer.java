@@ -6,9 +6,8 @@ package org.chromium.chrome.browser.status_indicator;
 
 import android.graphics.RectF;
 
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.layouts.EventFilter;
 import org.chromium.chrome.browser.layouts.SceneOverlay;
@@ -71,21 +70,16 @@ class StatusIndicatorSceneLayer extends SceneOverlayLayer implements SceneOverla
 
     @Override
     public void setContentTree(SceneLayer contentTree) {
-        StatusIndicatorSceneLayerJni.get()
-                .setContentTree(mNativePtr, StatusIndicatorSceneLayer.this, contentTree);
+        StatusIndicatorSceneLayerJni.get().setContentTree(
+                mNativePtr, StatusIndicatorSceneLayer.this, contentTree);
     }
 
     @Override
     public SceneOverlayLayer getUpdatedSceneOverlayTree(
             RectF viewport, RectF visibleViewport, ResourceManager resourceManager, float yOffset) {
         final int offset = mBrowserControlsStateProvider.getTopControlsMinHeightOffset();
-        StatusIndicatorSceneLayerJni.get()
-                .updateStatusIndicatorLayer(
-                        mNativePtr,
-                        StatusIndicatorSceneLayer.this,
-                        resourceManager,
-                        mResourceId,
-                        offset);
+        StatusIndicatorSceneLayerJni.get().updateStatusIndicatorLayer(
+                mNativePtr, StatusIndicatorSceneLayer.this, resourceManager, mResourceId, offset);
         return this;
     }
 
@@ -129,17 +123,10 @@ class StatusIndicatorSceneLayer extends SceneOverlayLayer implements SceneOverla
     @NativeMethods
     interface Natives {
         long init(StatusIndicatorSceneLayer caller);
-
-        void setContentTree(
-                long nativeStatusIndicatorSceneLayer,
-                StatusIndicatorSceneLayer caller,
+        void setContentTree(long nativeStatusIndicatorSceneLayer, StatusIndicatorSceneLayer caller,
                 SceneLayer contentTree);
-
-        void updateStatusIndicatorLayer(
-                long nativeStatusIndicatorSceneLayer,
-                StatusIndicatorSceneLayer caller,
-                ResourceManager resourceManager,
-                int viewResourceId,
-                int offset);
+        void updateStatusIndicatorLayer(long nativeStatusIndicatorSceneLayer,
+                StatusIndicatorSceneLayer caller, ResourceManager resourceManager,
+                int viewResourceId, int offset);
     }
 }

@@ -45,7 +45,7 @@ class MockMediaStreamVideoSink : public MediaStreamVideoSink {
       WebMediaStreamTrack::ContentHintType content_hint) override;
   MOCK_METHOD(void,
               OnVideoConstraintsChanged,
-              (std::optional<double>, std::optional<double>),
+              (absl::optional<double>, absl::optional<double>),
               (override));
 
   // Triggered when OnVideoFrame(scoped_refptr<media::VideoFrame> frame)
@@ -54,7 +54,7 @@ class MockMediaStreamVideoSink : public MediaStreamVideoSink {
   MOCK_METHOD(void, OnEncodedVideoFrame, (base::TimeTicks));
 
   // Triggered when a frame is dropped.
-  MOCK_METHOD(void, OnNotifyFrameDropped, (media::VideoCaptureFrameDropReason));
+  MOCK_METHOD(void, OnNotifyFrameDropped, ());
 
   VideoCaptureDeliverFrameCB GetDeliverFrameCB();
   EncodedVideoFrameCB GetDeliverEncodedVideoFrameCB();
@@ -67,7 +67,7 @@ class MockMediaStreamVideoSink : public MediaStreamVideoSink {
 
   bool enabled() const { return enabled_; }
   WebMediaStreamSource::ReadyState state() const { return state_; }
-  std::optional<WebMediaStreamTrack::ContentHintType> content_hint() const {
+  absl::optional<WebMediaStreamTrack::ContentHintType> content_hint() const {
     return content_hint_;
   }
 
@@ -78,10 +78,11 @@ class MockMediaStreamVideoSink : public MediaStreamVideoSink {
  private:
   void DeliverVideoFrame(
       scoped_refptr<media::VideoFrame> frame,
+      std::vector<scoped_refptr<media::VideoFrame>> scaled_frames,
       base::TimeTicks estimated_capture_time);
   void DeliverEncodedVideoFrame(scoped_refptr<EncodedVideoFrame> frame,
                                 base::TimeTicks estimated_capture_time);
-  void NotifyFrameDropped(media::VideoCaptureFrameDropReason reason);
+  void NotifyFrameDropped();
 
   MediaStreamVideoSink::UsesAlpha uses_alpha_ =
       MediaStreamVideoSink::UsesAlpha::kDefault;
@@ -91,7 +92,7 @@ class MockMediaStreamVideoSink : public MediaStreamVideoSink {
   WebMediaStreamSource::ReadyState state_;
   gfx::Size frame_size_;
   scoped_refptr<media::VideoFrame> last_frame_;
-  std::optional<WebMediaStreamTrack::ContentHintType> content_hint_;
+  absl::optional<WebMediaStreamTrack::ContentHintType> content_hint_;
   base::WeakPtrFactory<MockMediaStreamVideoSink> weak_factory_{this};
 };
 

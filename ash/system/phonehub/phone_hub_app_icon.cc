@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "ash/system/phonehub/phone_hub_app_icon.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_skia_operations.h"
 
@@ -15,7 +14,9 @@ AppIcon::AppIcon(const gfx::Image& icon, int size) {
       gfx::Size(size, size)));
 }
 
-BEGIN_METADATA(AppIcon)
-END_METADATA
+// views::View:
+const char* AppIcon::GetClassName() const {
+  return "AppIcon";
+}
 
 }  // namespace ash

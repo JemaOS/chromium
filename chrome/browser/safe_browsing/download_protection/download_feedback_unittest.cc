@@ -16,13 +16,12 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/thread_pool.h"
-#include "chrome/browser/safe_browsing/cloud_content_scanning/multipart_uploader.h"
+#include "chrome/browser/safe_browsing/download_protection/two_phase_uploader.h"
 #include "components/safe_browsing/core/common/proto/csd.pb.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_utils.h"
-#include "net/http/http_status_code.h"
 #include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
 #include "services/network/test/test_shared_url_loader_factory.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -31,112 +30,68 @@ namespace safe_browsing {
 
 namespace {
 
-class FakeUploader : public MultipartUploadRequest {
+class FakeUploader : public TwoPhaseUploader {
  public:
-  FakeUploader(const GURL& base_url,
+  FakeUploader(base::TaskRunner* file_task_runner,
+               const GURL& base_url,
                const std::string& metadata,
                const base::FilePath& file_path,
-               uint64_t file_size,
-               Callback finish_callback,
-               const net::NetworkTrafficAnnotationTag& traffic_annotation);
+               FinishCallback finish_callback);
   ~FakeUploader() override {}
 
   void Start() override { start_called_ = true; }
 
+  scoped_refptr<base::TaskRunner> file_task_runner_;
   GURL base_url_;
   std::string metadata_;
   base::FilePath file_path_;
-  Callback finish_callback_;
+  FinishCallback finish_callback_;
 
   bool start_called_;
 };
 
-FakeUploader::FakeUploader(
-    const GURL& base_url,
-    const std::string& metadata,
-    const base::FilePath& file_path,
-    uint64_t file_size,
-    Callback finish_callback,
-    const net::NetworkTrafficAnnotationTag& traffic_annotation)
-    : MultipartUploadRequest(/*url_loader_factory=*/nullptr,
-                             base_url,
-                             metadata,
-                             file_path,
-                             file_size,
-                             traffic_annotation,
-                             base::DoNothing()),
+FakeUploader::FakeUploader(base::TaskRunner* file_task_runner,
+                           const GURL& base_url,
+                           const std::string& metadata,
+                           const base::FilePath& file_path,
+                           FinishCallback finish_callback)
+    : file_task_runner_(file_task_runner),
       base_url_(base_url),
       metadata_(metadata),
       file_path_(file_path),
       finish_callback_(std::move(finish_callback)),
       start_called_(false) {}
 
-class FakeUploaderFactory : public ConnectorUploadRequestFactory {
+class FakeUploaderFactory : public TwoPhaseUploaderFactory {
  public:
   FakeUploaderFactory() : uploader_(nullptr) {}
   ~FakeUploaderFactory() override {}
 
-  std::unique_ptr<ConnectorUploadRequest> CreateStringRequest(
+  std::unique_ptr<TwoPhaseUploader> CreateTwoPhaseUploader(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      const GURL& base_url,
-      const std::string& metadata,
-      const std::string& data,
-      const net::NetworkTrafficAnnotationTag& traffic_annotation,
-      ConnectorUploadRequest::Callback callback) override;
-  std::unique_ptr<ConnectorUploadRequest> CreateFileRequest(
-      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+      base::TaskRunner* file_task_runner,
       const GURL& base_url,
       const std::string& metadata,
       const base::FilePath& file_path,
-      uint64_t file_size,
-      const net::NetworkTrafficAnnotationTag& traffic_annotation,
-      ConnectorUploadRequest::Callback callback) override;
-  std::unique_ptr<ConnectorUploadRequest> CreatePageRequest(
-      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      const GURL& base_url,
-      const std::string& metadata,
-      base::ReadOnlySharedMemoryRegion page_region,
-      const net::NetworkTrafficAnnotationTag& traffic_annotation,
-      ConnectorUploadRequest::Callback callback) override;
+      TwoPhaseUploader::FinishCallback finish_callback,
+      const net::NetworkTrafficAnnotationTag& traffic_annotation) override;
 
-  raw_ptr<FakeUploader, DanglingUntriaged> uploader_;
+  raw_ptr<FakeUploader> uploader_;
 };
 
-std::unique_ptr<ConnectorUploadRequest>
-FakeUploaderFactory::CreateStringRequest(
+std::unique_ptr<TwoPhaseUploader> FakeUploaderFactory::CreateTwoPhaseUploader(
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-    const GURL& base_url,
-    const std::string& metadata,
-    const std::string& data,
-    const net::NetworkTrafficAnnotationTag& traffic_annotation,
-    ConnectorUploadRequest::Callback callback) {
-  NOTREACHED_NORETURN();
-}
-
-std::unique_ptr<ConnectorUploadRequest> FakeUploaderFactory::CreateFileRequest(
-    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+    base::TaskRunner* file_task_runner,
     const GURL& base_url,
     const std::string& metadata,
     const base::FilePath& file_path,
-    uint64_t file_size,
-    const net::NetworkTrafficAnnotationTag& traffic_annotation,
-    ConnectorUploadRequest::Callback callback) {
+    TwoPhaseUploader::FinishCallback finish_callback,
+    const net::NetworkTrafficAnnotationTag& traffic_annotation) {
   EXPECT_FALSE(uploader_);
 
-  auto uploader =
-      std::make_unique<FakeUploader>(base_url, metadata, file_path, file_size,
-                                     std::move(callback), traffic_annotation);
-  uploader_ = uploader.get();
-  return uploader;
-}
-std::unique_ptr<ConnectorUploadRequest> FakeUploaderFactory::CreatePageRequest(
-    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-    const GURL& base_url,
-    const std::string& metadata,
-    base::ReadOnlySharedMemoryRegion page_region,
-    const net::NetworkTrafficAnnotationTag& traffic_annotation,
-    ConnectorUploadRequest::Callback callback) {
-  NOTREACHED_NORETURN();
+  uploader_ = new FakeUploader(file_task_runner, base_url, metadata, file_path,
+                               std::move(finish_callback));
+  return base::WrapUnique(uploader_.get());
 }
 
 }  // namespace
@@ -158,14 +113,14 @@ class DownloadFeedbackTest : public testing::Test {
     upload_file_path_ = temp_dir_.GetPath().AppendASCII("test file");
     upload_file_data_ = "data";
     ASSERT_TRUE(base::WriteFile(upload_file_path_, upload_file_data_));
-    ConnectorUploadRequest::RegisterFactoryForTests(&uploader_factory_);
+    TwoPhaseUploader::RegisterFactory(&two_phase_uploader_factory_);
   }
 
-  void TearDown() override {
-    ConnectorUploadRequest::RegisterFactoryForTests(nullptr);
-  }
+  void TearDown() override { TwoPhaseUploader::RegisterFactory(nullptr); }
 
-  FakeUploader* uploader() const { return uploader_factory_.uploader_; }
+  FakeUploader* uploader() const {
+    return two_phase_uploader_factory_.uploader_;
+  }
 
   void FinishCallback() {
     EXPECT_FALSE(feedback_finish_called_);
@@ -179,7 +134,7 @@ class DownloadFeedbackTest : public testing::Test {
   content::BrowserTaskEnvironment task_environment_;
   scoped_refptr<base::SequencedTaskRunner> file_task_runner_;
   scoped_refptr<base::SingleThreadTaskRunner> io_task_runner_;
-  FakeUploaderFactory uploader_factory_;
+  FakeUploaderFactory two_phase_uploader_factory_;
   scoped_refptr<network::TestSharedURLLoaderFactory> shared_url_loader_factory_;
 
   bool feedback_finish_called_;
@@ -199,7 +154,7 @@ TEST_F(DownloadFeedbackTest, CompleteUpload) {
       expected_report_metadata.download_response().SerializeAsString());
 
   std::unique_ptr<DownloadFeedback> feedback = DownloadFeedback::Create(
-      shared_url_loader_factory_, upload_file_path_, upload_file_data_.size(),
+      shared_url_loader_factory_, file_task_runner_.get(), upload_file_path_,
       ping_request, ping_response);
   EXPECT_FALSE(uploader());
 
@@ -209,6 +164,7 @@ TEST_F(DownloadFeedbackTest, CompleteUpload) {
   EXPECT_FALSE(feedback_finish_called_);
   EXPECT_TRUE(uploader()->start_called_);
 
+  EXPECT_EQ(file_task_runner_, uploader()->file_task_runner_);
   EXPECT_EQ(upload_file_path_, uploader()->file_path_);
   EXPECT_EQ(expected_report_metadata.SerializeAsString(),
             uploader()->metadata_);
@@ -218,7 +174,7 @@ TEST_F(DownloadFeedbackTest, CompleteUpload) {
 
   EXPECT_FALSE(feedback_finish_called_);
   std::move(uploader()->finish_callback_)
-      .Run(/*success=*/true, net::HTTP_OK, "");
+      .Run(TwoPhaseUploader::STATE_SUCCESS, net::OK, 0, "");
   EXPECT_TRUE(feedback_finish_called_);
   feedback.reset();
   content::RunAllTasksUntilIdle();
@@ -239,7 +195,7 @@ TEST_F(DownloadFeedbackTest, CancelUpload) {
       expected_report_metadata.download_response().SerializeAsString());
 
   std::unique_ptr<DownloadFeedback> feedback = DownloadFeedback::Create(
-      shared_url_loader_factory_, upload_file_path_, upload_file_data_.size(),
+      shared_url_loader_factory_, file_task_runner_.get(), upload_file_path_,
       ping_request, ping_response);
   EXPECT_FALSE(uploader());
 

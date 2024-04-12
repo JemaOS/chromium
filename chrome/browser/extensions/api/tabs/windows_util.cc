@@ -98,7 +98,7 @@ bool CanOperateOnWindow(const ExtensionFunction* function,
 }
 
 IncognitoResult ShouldOpenIncognitoWindow(Profile* profile,
-                                          std::optional<bool> incognito,
+                                          absl::optional<bool> incognito,
                                           std::vector<GURL>* urls,
                                           std::string* error) {
   const policy::IncognitoModeAvailability incognito_availability =

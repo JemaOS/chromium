@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.ntp;
 
 import java.util.Date;
 
-/** Represents a recently closed entry from TabRestoreService. */
+/**
+ * Represents a recently closed entry from TabRestoreService.
+ */
 public class RecentlyClosedEntry {
     private final int mSessionId;
     private final Date mDate;

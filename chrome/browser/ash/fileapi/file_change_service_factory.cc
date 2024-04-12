@@ -6,7 +6,6 @@
 
 #include "base/no_destructor.h"
 #include "chrome/browser/ash/fileapi/file_change_service.h"
-#include "chrome/browser/file_system_access/file_system_access_permission_context_factory.h"
 #include "chrome/browser/profiles/profile.h"
 
 namespace ash {
@@ -31,19 +30,16 @@ FileChangeServiceFactory::FileChangeServiceFactory()
           // sessions.
           ProfileSelections::Builder()
               .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
-  DependsOn(FileSystemAccessPermissionContextFactory::GetInstance());
-}
+              .Build()) {}
 
 FileChangeServiceFactory::~FileChangeServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-FileChangeServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FileChangeServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* const profile = Profile::FromBrowserContext(context);
   if (profile->IsOffTheRecord())
     CHECK(profile->IsGuestSession());
-  return std::make_unique<FileChangeService>(profile);
+  return new FileChangeService();
 }
 
 }  // namespace ash

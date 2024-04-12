@@ -54,13 +54,8 @@ public class LensControllerDelegate {
             LensQueryParams lensQueryParams, Callback<ChipRenderParams> chipRenderParamsCallback) {}
 
     /** @see {@link LensController#getShareWithGoogleLensIntent()} */
-    public Intent getShareWithGoogleLensIntent(
-            Uri imageUri,
-            boolean isIncognito,
-            String srcUrl,
-            String titleOrAltText,
-            String pageUrl,
-            @Nullable String lensIntentType) {
+    public Intent getShareWithGoogleLensIntent(Uri imageUri, boolean isIncognito, String srcUrl,
+            String titleOrAltText, String pageUrl, @Nullable String lensIntentType) {
         return null;
     }
 

@@ -5,17 +5,14 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_PERMISSIONS_TESTING_INTERNALS_PERMISSION_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_PERMISSIONS_TESTING_INTERNALS_PERMISSION_H_
 
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
+#include "third_party/blink/renderer/platform/wtf/forward.h"
 
 namespace blink {
 
 class ExceptionState;
 class Internals;
+class ScriptPromise;
 class ScriptState;
 class ScriptValue;
 
@@ -23,12 +20,13 @@ class InternalsPermission {
   STATIC_ONLY(InternalsPermission);
 
  public:
-  static ScriptPromiseTyped<IDLUndefined> setPermission(
-      ScriptState*,
-      Internals&,
-      const ScriptValue&,
-      const WTF::String& state,
-      ExceptionState&);
+  static ScriptPromise setPermission(ScriptState*,
+                                     Internals&,
+                                     const ScriptValue&,
+                                     const String& state,
+                                     const String& origin,
+                                     const String& embedding_origin,
+                                     ExceptionState&);
 };
 
 }  // namespace blink

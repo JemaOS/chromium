@@ -9,7 +9,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -19,6 +18,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/observer_list.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/ax_enums.mojom-forward.h"
 #include "ui/accessibility/ax_export.h"
 #include "ui/accessibility/ax_tree_data.h"
@@ -208,6 +208,8 @@ class AX_EXPORT AXTree {
   // for testing and debugging.
   const std::string& error() const { return error_; }
 
+  void DisallowFailFastForFuzzing() { disallow_fail_fast_ = true; }
+
   int size() { return static_cast<int>(id_map_.size()); }
 
   // Return a negative number that's suitable to use for a node ID for
@@ -218,12 +220,12 @@ class AX_EXPORT AXTree {
   // Returns the PosInSet of |node|. Looks in node_set_size_pos_in_set_info_map_
   // for cached value. Calls |ComputeSetSizePosInSetAndCache|if no value is
   // present in the cache.
-  std::optional<int> GetPosInSet(const AXNode& node);
+  absl::optional<int> GetPosInSet(const AXNode& node);
 
   // Returns the SetSize of |node|. Looks in node_set_size_pos_in_set_info_map_
   // for cached value. Calls |ComputeSetSizePosInSetAndCache|if no value is
   // present in the cache.
-  std::optional<int> GetSetSize(const AXNode& node);
+  absl::optional<int> GetSetSize(const AXNode& node);
 
   // Returns the part of the current selection that falls within this
   // accessibility tree, if any.
@@ -264,11 +266,6 @@ class AX_EXPORT AXTree {
   // Indicates if the node with the focus should never be ignored, (see
   // `SetFocusedNodeShouldNeverBeIgnored` above).
   static bool is_focused_node_always_unignored_;
-
-#if DCHECK_IS_ON()
-  bool has_plugin_ = false;
-  void CheckTreeConsistency(const AXTreeUpdate& update);
-#endif
 
   // Accumulate errors as there can be more than one before Chrome is crashed
   // via AccessibilityFatalError();
@@ -354,10 +351,18 @@ class AX_EXPORT AXTree {
       const AXTreeData* new_tree_data,
       const AXNodeData& new_data);
 
-  // Update maps that track which relations are pointing to |node|.
-  void UpdateReverseRelations(AXNode* node,
-                              const AXNodeData& new_data,
-                              bool is_new_node = false);
+  // Notify the delegate that |node| has changed its data attributes, including
+  // its ignored state. Only for |kAccessibilityUnserializeOptimizations| flag.
+  void NotifyNodeAttributesHaveBeenChangedOptimized(
+      AXNode* node,
+      AXTreeUpdateState& update_state,
+      AXTreeObserver& observer,
+      const AXTreeData* optional_old_tree_data,
+      const AXNodeData& old_data,
+      const AXTreeData* new_tree_data,
+      const AXNodeData& new_data);
+
+  void UpdateReverseRelations(AXNode* node, const AXNodeData& new_data);
 
   // Sets a flag indicating whether the tree is currently being updated or not.
   // If the tree is being updated, then its internal pointers might be invalid
@@ -399,11 +404,10 @@ class AX_EXPORT AXTree {
   // if they exist, and creating otherwise. Reparenting is disallowed, so
   // if the id already exists as the child of another node, that's an
   // error. Returns true on success, false on fatal error.
-  bool CreateNewChildVector(
-      AXNode* node,
-      const std::vector<AXNodeID>& new_child_ids,
-      std::vector<raw_ptr<AXNode, VectorExperimental>>* new_children,
-      AXTreeUpdateState* update_state);
+  bool CreateNewChildVector(AXNode* node,
+                            const std::vector<AXNodeID>& new_child_ids,
+                            std::vector<AXNode*>* new_children,
+                            AXTreeUpdateState* update_state);
 
   // Returns the lowest unignored ancestor of the node with the given ID. If the
   // node is not ignored, it returns the node.
@@ -422,6 +426,7 @@ class AX_EXPORT AXTree {
   raw_ptr<AXNode> root_ = nullptr;
   std::unordered_map<AXNodeID, std::unique_ptr<AXNode>> id_map_;
   std::string error_;
+  bool disallow_fail_fast_ = false;
   AXTreeData data_;
 
   // Map from an int attribute (if IsNodeIdIntAttribute is true) to
@@ -446,9 +451,9 @@ class AX_EXPORT AXTree {
     NodeSetSizePosInSetInfo();
     ~NodeSetSizePosInSetInfo();
 
-    std::optional<int> pos_in_set;
-    std::optional<int> set_size;
-    std::optional<int> lowest_hierarchical_level;
+    absl::optional<int> pos_in_set;
+    absl::optional<int> set_size;
+    absl::optional<int> lowest_hierarchical_level;
   };
 
   // Represents the content of an ordered set which includes the ordered set
@@ -475,8 +480,8 @@ class AX_EXPORT AXTree {
       const AXNode& original_node,
       const AXNode* ordered_set,
       const AXNode* local_parent,
-      std::optional<int> ordered_set_min_level,
-      std::optional<int> prev_level,
+      absl::optional<int> ordered_set_min_level,
+      absl::optional<int> prev_level,
       OrderedSetItemsMap* items_map_to_be_populated) const;
 
   // Computes the pos_in_set and set_size values of all items in ordered_set and

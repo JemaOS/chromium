@@ -30,12 +30,9 @@ public class ForeignSessionItemPropertiesUnitTest {
 
     @Before
     public void setUp() {
-        mSession = new ForeignSession("tag", "John's iPhone 6", 32L, new ArrayList<>(), 2);
-        mModel =
-                ForeignSessionItemProperties.create(
-                        /* device= */ mSession,
-                        /* isSelected= */ false,
-                        /* onClickListener= */ () -> {});
+        mSession = new ForeignSession("tag", "John's iPhone 6", 32L, new ArrayList<>());
+        mModel = ForeignSessionItemProperties.create(
+                /*device=*/mSession, /*isSelected=*/false, /*onClickListener=*/() -> {});
     }
 
     @After

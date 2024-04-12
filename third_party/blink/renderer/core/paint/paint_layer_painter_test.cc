@@ -125,10 +125,9 @@ TEST_P(PaintLayerPainterTest, CachedSubsequenceAndChunksWithBackgrounds) {
   check_results();
 
   To<HTMLElement>(content1->GetNode())
-      ->setAttribute(
-          html_names::kStyleAttr,
-          AtomicString("position: absolute; width: 100px; height: 100px; "
-                       "background-color: green"));
+      ->setAttribute(html_names::kStyleAttr,
+                     "position: absolute; width: 100px; height: 100px; "
+                     "background-color: green");
   PaintController::CounterForTesting counter;
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(6u, counter.num_cached_items);
@@ -170,17 +169,10 @@ TEST_P(PaintLayerPainterTest, CachedSubsequenceAndChunksWithoutBackgrounds) {
   auto* filler_layer = To<LayoutBoxModelObject>(filler)->Layer();
 
   auto chunks = ContentPaintChunks();
-  if (RuntimeEnabledFeatures::HitTestOpaquenessEnabled()) {
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*container_layer, chunks.begin() + 1, 6);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*content_layer, chunks.begin() + 4, 2);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*inner_content_layer, chunks.begin() + 5, 1);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*filler_layer, chunks.begin() + 6, 1);
-  } else {
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*container_layer, chunks.begin() + 1, 5);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*content_layer, chunks.begin() + 3, 2);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*inner_content_layer, chunks.begin() + 4, 1);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*filler_layer, chunks.begin() + 5, 1);
-  }
+  EXPECT_SUBSEQUENCE_FROM_CHUNK(*container_layer, chunks.begin() + 1, 5);
+  EXPECT_SUBSEQUENCE_FROM_CHUNK(*content_layer, chunks.begin() + 3, 2);
+  EXPECT_SUBSEQUENCE_FROM_CHUNK(*inner_content_layer, chunks.begin() + 4, 1);
+  EXPECT_SUBSEQUENCE_FROM_CHUNK(*filler_layer, chunks.begin() + 5, 1);
 
   auto container_properties =
       container->FirstFragment().LocalBorderBoxProperties();
@@ -190,71 +182,36 @@ TEST_P(PaintLayerPainterTest, CachedSubsequenceAndChunksWithoutBackgrounds) {
       container->FirstFragment().PaintProperties()->ScrollTranslation();
   scroll_hit_test.scroll_hit_test_rect = gfx::Rect(0, 0, 150, 150);
 
-  if (RuntimeEnabledFeatures::HitTestOpaquenessEnabled()) {
-    EXPECT_THAT(
-        chunks,
-        ElementsAre(
-            VIEW_SCROLLING_BACKGROUND_CHUNK_COMMON,
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container_layer->Id(), DisplayItem::kLayerChunk),
-                container_properties, nullptr, gfx::Rect(0, 0, 150, 150)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container->Id(), DisplayItem::kScrollHitTest),
-                container_properties, &scroll_hit_test,
-                gfx::Rect(0, 0, 150, 150)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container->Id(), kScrollingBackgroundChunkType),
-                content_properties, nullptr, gfx::Rect(0, 0, 300, 400)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(content_layer->Id(), DisplayItem::kLayerChunk),
-                content_properties, nullptr, gfx::Rect(0, 0, 200, 100)),
-            IsPaintChunk(1, 1,
-                         PaintChunk::Id(inner_content_layer->Id(),
-                                        DisplayItem::kLayerChunk),
-                         content_properties, nullptr,
-                         gfx::Rect(0, 0, 100, 100)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(filler_layer->Id(), DisplayItem::kLayerChunk),
-                content_properties, nullptr, gfx::Rect(0, 100, 300, 300))));
-  } else {
-    EXPECT_THAT(
-        chunks,
-        ElementsAre(
-            VIEW_SCROLLING_BACKGROUND_CHUNK_COMMON,
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container_layer->Id(), DisplayItem::kLayerChunk),
-                container_properties, nullptr, gfx::Rect(0, 0, 150, 150)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container->Id(), DisplayItem::kScrollHitTest),
-                container_properties, &scroll_hit_test,
-                gfx::Rect(0, 0, 150, 150)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(content_layer->Id(), DisplayItem::kLayerChunk),
-                content_properties, nullptr, gfx::Rect(0, 0, 200, 100)),
-            IsPaintChunk(1, 1,
-                         PaintChunk::Id(inner_content_layer->Id(),
-                                        DisplayItem::kLayerChunk),
-                         content_properties, nullptr,
-                         gfx::Rect(0, 0, 100, 100)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(filler_layer->Id(), DisplayItem::kLayerChunk),
-                content_properties, nullptr, gfx::Rect(0, 100, 300, 300))));
-  }
+  EXPECT_THAT(
+      chunks,
+      ElementsAre(
+          VIEW_SCROLLING_BACKGROUND_CHUNK_COMMON,
+          IsPaintChunk(
+              1, 1,
+              PaintChunk::Id(container_layer->Id(), DisplayItem::kLayerChunk),
+              container_properties, nullptr, gfx::Rect(0, 0, 150, 150)),
+          IsPaintChunk(
+              1, 1,
+              PaintChunk::Id(container->Id(), DisplayItem::kScrollHitTest),
+              container_properties, &scroll_hit_test,
+              gfx::Rect(0, 0, 150, 150)),
+          IsPaintChunk(
+              1, 1,
+              PaintChunk::Id(content_layer->Id(), DisplayItem::kLayerChunk),
+              content_properties, nullptr, gfx::Rect(0, 0, 200, 100)),
+          IsPaintChunk(1, 1,
+                       PaintChunk::Id(inner_content_layer->Id(),
+                                      DisplayItem::kLayerChunk),
+                       content_properties, nullptr, gfx::Rect(0, 0, 100, 100)),
+          IsPaintChunk(
+              1, 1,
+              PaintChunk::Id(filler_layer->Id(), DisplayItem::kLayerChunk),
+              content_properties, nullptr, gfx::Rect(0, 100, 300, 300))));
 
   To<HTMLElement>(inner_content->GetNode())
-      ->setAttribute(
-          html_names::kStyleAttr,
-          AtomicString("position: absolute; width: 100px; height: 100px; "
-                       "top: 100px; background-color: green"));
+      ->setAttribute(html_names::kStyleAttr,
+                     "position: absolute; width: 100px; height: 100px; "
+                     "top: 100px; background-color: green");
   PaintController::CounterForTesting counter;
   UpdateAllLifecyclePhasesForTest();
 
@@ -269,75 +226,37 @@ TEST_P(PaintLayerPainterTest, CachedSubsequenceAndChunksWithoutBackgrounds) {
                    kBackgroundType)));
 
   chunks = ContentPaintChunks();
-  if (RuntimeEnabledFeatures::HitTestOpaquenessEnabled()) {
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*container_layer, chunks.begin() + 1, 6);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*content_layer, chunks.begin() + 4, 2);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*inner_content_layer, chunks.begin() + 5, 1);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*filler_layer, chunks.begin() + 6, 1);
+  EXPECT_SUBSEQUENCE_FROM_CHUNK(*container_layer, chunks.begin() + 1, 5);
+  EXPECT_SUBSEQUENCE_FROM_CHUNK(*content_layer, chunks.begin() + 3, 2);
+  EXPECT_SUBSEQUENCE_FROM_CHUNK(*inner_content_layer, chunks.begin() + 4, 1);
+  EXPECT_SUBSEQUENCE_FROM_CHUNK(*filler_layer, chunks.begin() + 5, 1);
 
-    EXPECT_THAT(
-        ContentPaintChunks(),
-        ElementsAre(
-            VIEW_SCROLLING_BACKGROUND_CHUNK_COMMON,
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container_layer->Id(), DisplayItem::kLayerChunk),
-                container_properties, nullptr, gfx::Rect(0, 0, 150, 150)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container->Id(), DisplayItem::kScrollHitTest),
-                container_properties, &scroll_hit_test,
-                gfx::Rect(0, 0, 150, 150)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container->Id(), kScrollingBackgroundChunkType),
-                content_properties, nullptr, gfx::Rect(0, 0, 300, 400)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(content_layer->Id(), DisplayItem::kLayerChunk),
-                content_properties, nullptr, gfx::Rect(0, 0, 200, 100)),
-            IsPaintChunk(1, 2,
-                         PaintChunk::Id(inner_content_layer->Id(),
-                                        DisplayItem::kLayerChunk),
-                         content_properties, nullptr,
-                         gfx::Rect(0, 100, 100, 100)),
-            IsPaintChunk(
-                2, 2,
-                PaintChunk::Id(filler_layer->Id(), DisplayItem::kLayerChunk),
-                content_properties, nullptr, gfx::Rect(0, 100, 300, 300))));
-  } else {
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*container_layer, chunks.begin() + 1, 5);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*content_layer, chunks.begin() + 3, 2);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*inner_content_layer, chunks.begin() + 4, 1);
-    EXPECT_SUBSEQUENCE_FROM_CHUNK(*filler_layer, chunks.begin() + 5, 1);
-
-    EXPECT_THAT(
-        ContentPaintChunks(),
-        ElementsAre(
-            VIEW_SCROLLING_BACKGROUND_CHUNK_COMMON,
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container_layer->Id(), DisplayItem::kLayerChunk),
-                container_properties, nullptr, gfx::Rect(0, 0, 150, 150)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(container->Id(), DisplayItem::kScrollHitTest),
-                container_properties, &scroll_hit_test,
-                gfx::Rect(0, 0, 150, 150)),
-            IsPaintChunk(
-                1, 1,
-                PaintChunk::Id(content_layer->Id(), DisplayItem::kLayerChunk),
-                content_properties, nullptr, gfx::Rect(0, 0, 200, 100)),
-            IsPaintChunk(1, 2,
-                         PaintChunk::Id(inner_content_layer->Id(),
-                                        DisplayItem::kLayerChunk),
-                         content_properties, nullptr,
-                         gfx::Rect(0, 100, 100, 100)),
-            IsPaintChunk(
-                2, 2,
-                PaintChunk::Id(filler_layer->Id(), DisplayItem::kLayerChunk),
-                content_properties, nullptr, gfx::Rect(0, 100, 300, 300))));
-  }
+  EXPECT_THAT(
+      ContentPaintChunks(),
+      ElementsAre(
+          VIEW_SCROLLING_BACKGROUND_CHUNK_COMMON,
+          IsPaintChunk(
+              1, 1,
+              PaintChunk::Id(container_layer->Id(), DisplayItem::kLayerChunk),
+              container_properties, nullptr, gfx::Rect(0, 0, 150, 150)),
+          IsPaintChunk(
+              1, 1,
+              PaintChunk::Id(container->Id(), DisplayItem::kScrollHitTest),
+              container_properties, &scroll_hit_test,
+              gfx::Rect(0, 0, 150, 150)),
+          IsPaintChunk(
+              1, 1,
+              PaintChunk::Id(content_layer->Id(), DisplayItem::kLayerChunk),
+              content_properties, nullptr, gfx::Rect(0, 0, 200, 100)),
+          IsPaintChunk(1, 2,
+                       PaintChunk::Id(inner_content_layer->Id(),
+                                      DisplayItem::kLayerChunk),
+                       content_properties, nullptr,
+                       gfx::Rect(0, 100, 100, 100)),
+          IsPaintChunk(
+              2, 2,
+              PaintChunk::Id(filler_layer->Id(), DisplayItem::kLayerChunk),
+              content_properties, nullptr, gfx::Rect(0, 100, 300, 300))));
 }
 
 TEST_P(PaintLayerPainterTest, CachedSubsequenceOnCullRectChange) {
@@ -471,10 +390,9 @@ TEST_P(PaintLayerPainterTest,
                           IsSameId(content2.Id(), kBackgroundType)));
 
   To<HTMLElement>(GetElementById("content1"))
-      ->setAttribute(
-          html_names::kStyleAttr,
-          AtomicString("position: absolute; width: 100px; height: 100px; "
-                       "background-color: green"));
+      ->setAttribute(html_names::kStyleAttr,
+                     "position: absolute; width: 100px; height: 100px; "
+                     "background-color: green");
   UpdateAllLifecyclePhasesExceptPaint();
   PaintController::CounterForTesting counter;
   PaintContents(gfx::Rect(0, 0, 50, 300));
@@ -521,9 +439,8 @@ TEST_P(PaintLayerPainterTest, CachedSubsequenceRetainsPreviousPaintResult) {
 
   // Change something that triggers a repaint but |target| should use cached
   // subsequence.
-  GetDocument()
-      .getElementById(AtomicString("change"))
-      ->setAttribute(html_names::kStyleAttr, AtomicString("display: block"));
+  GetDocument().getElementById("change")->setAttribute(html_names::kStyleAttr,
+                                                       "display: block");
   UpdateAllLifecyclePhasesExceptPaint();
   EXPECT_FALSE(target_layer->SelfNeedsRepaint());
   PaintController::CounterForTesting counter;
@@ -577,10 +494,10 @@ TEST_P(PaintLayerPainterTest, CachedSubsequenceRetainsPreviousPaintResult) {
 }
 
 TEST_P(PaintLayerPainterTest, PaintPhaseOutline) {
-  AtomicString style_without_outline(
-      "width: 50px; height: 50px; background-color: green");
-  AtomicString style_with_outline("outline: 1px solid blue; " +
-                                  style_without_outline);
+  AtomicString style_without_outline =
+      "width: 50px; height: 50px; background-color: green";
+  AtomicString style_with_outline =
+      "outline: 1px solid blue; " + style_without_outline;
   SetBodyInnerHTML(R"HTML(
     <div id='self-painting-layer' style='position: absolute'>
       <div id='non-self-painting-layer' style='overflow: hidden'>
@@ -591,15 +508,13 @@ TEST_P(PaintLayerPainterTest, PaintPhaseOutline) {
     </div>
   )HTML");
   LayoutObject& outline_div =
-      *GetDocument().getElementById(AtomicString("outline"))->GetLayoutObject();
+      *GetDocument().getElementById("outline")->GetLayoutObject();
   To<HTMLElement>(outline_div.GetNode())
       ->setAttribute(html_names::kStyleAttr, style_without_outline);
   UpdateAllLifecyclePhasesForTest();
 
   auto& self_painting_layer_object = *To<LayoutBoxModelObject>(
-      GetDocument()
-          .getElementById(AtomicString("self-painting-layer"))
-          ->GetLayoutObject());
+      GetDocument().getElementById("self-painting-layer")->GetLayoutObject());
   PaintLayer& self_painting_layer = *self_painting_layer_object.Layer();
   ASSERT_TRUE(self_painting_layer.IsSelfPaintingLayer());
   auto& non_self_painting_layer =
@@ -613,9 +528,8 @@ TEST_P(PaintLayerPainterTest, PaintPhaseOutline) {
   // Outline on the self-painting-layer node itself doesn't affect
   // PaintPhaseDescendantOutlines.
   To<HTMLElement>(self_painting_layer_object.GetNode())
-      ->setAttribute(
-          html_names::kStyleAttr,
-          AtomicString("position: absolute; outline: 1px solid green"));
+      ->setAttribute(html_names::kStyleAttr,
+                     "position: absolute; outline: 1px solid green");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(self_painting_layer.NeedsPaintPhaseDescendantOutlines());
   EXPECT_FALSE(non_self_painting_layer.NeedsPaintPhaseDescendantOutlines());
@@ -646,9 +560,9 @@ TEST_P(PaintLayerPainterTest, PaintPhaseOutline) {
 }
 
 TEST_P(PaintLayerPainterTest, PaintPhaseFloat) {
-  AtomicString style_without_float(
-      "width: 50px; height: 50px; background-color: green");
-  AtomicString style_with_float("float: left; " + style_without_float);
+  AtomicString style_without_float =
+      "width: 50px; height: 50px; background-color: green";
+  AtomicString style_with_float = "float: left; " + style_without_float;
   SetBodyInnerHTML(R"HTML(
     <div id='self-painting-layer' style='position: absolute'>
       <div id='non-self-painting-layer' style='overflow: hidden'>
@@ -660,15 +574,13 @@ TEST_P(PaintLayerPainterTest, PaintPhaseFloat) {
     </div>
   )HTML");
   LayoutObject& float_div =
-      *GetDocument().getElementById(AtomicString("float"))->GetLayoutObject();
+      *GetDocument().getElementById("float")->GetLayoutObject();
   To<HTMLElement>(float_div.GetNode())
       ->setAttribute(html_names::kStyleAttr, style_without_float);
   UpdateAllLifecyclePhasesForTest();
 
   auto& self_painting_layer_object = *To<LayoutBoxModelObject>(
-      GetDocument()
-          .getElementById(AtomicString("self-painting-layer"))
-          ->GetLayoutObject());
+      GetDocument().getElementById("self-painting-layer")->GetLayoutObject());
   PaintLayer& self_painting_layer = *self_painting_layer_object.Layer();
   ASSERT_TRUE(self_painting_layer.IsSelfPaintingLayer());
   auto& non_self_painting_layer =
@@ -713,7 +625,7 @@ TEST_P(PaintLayerPainterTest, PaintPhaseFloatUnderInlineLayer) {
   UpdateAllLifecyclePhasesForTest();
 
   LayoutObject& float_div =
-      *GetDocument().getElementById(AtomicString("float"))->GetLayoutObject();
+      *GetDocument().getElementById("float")->GetLayoutObject();
   PaintLayer& span_layer = *GetPaintLayerByElementId("span");
   ASSERT_TRUE(&span_layer == float_div.EnclosingLayer());
   ASSERT_TRUE(span_layer.NeedsPaintPhaseFloat());
@@ -743,9 +655,7 @@ TEST_P(PaintLayerPainterTest, PaintPhasesUpdateOnLayerAddition) {
   )HTML");
 
   auto& layer_div = *To<LayoutBoxModelObject>(
-      GetDocument()
-          .getElementById(AtomicString("will-be-layer"))
-          ->GetLayoutObject());
+      GetDocument().getElementById("will-be-layer")->GetLayoutObject());
   EXPECT_FALSE(layer_div.HasLayer());
 
   PaintLayer& html_layer =
@@ -756,8 +666,7 @@ TEST_P(PaintLayerPainterTest, PaintPhasesUpdateOnLayerAddition) {
   EXPECT_TRUE(html_layer.NeedsPaintPhaseFloat());
 
   To<HTMLElement>(layer_div.GetNode())
-      ->setAttribute(html_names::kStyleAttr,
-                     AtomicString("position: relative"));
+      ->setAttribute(html_names::kStyleAttr, "position: relative");
   UpdateAllLifecyclePhasesForTest();
   ASSERT_TRUE(layer_div.HasLayer());
   PaintLayer& layer = *layer_div.Layer();
@@ -790,9 +699,9 @@ TEST_P(PaintLayerPainterTest, PaintPhasesUpdateOnBecomingSelfPainting) {
   EXPECT_TRUE(html_layer.NeedsPaintPhaseDescendantOutlines());
 
   To<HTMLElement>(layer_div.GetNode())
-      ->setAttribute(html_names::kStyleAttr,
-                     AtomicString("width: 100px; height: 100px; overflow: "
-                                  "hidden; position: relative"));
+      ->setAttribute(
+          html_names::kStyleAttr,
+          "width: 100px; height: 100px; overflow: hidden; position: relative");
   UpdateAllLifecyclePhasesForTest();
   PaintLayer& layer = *layer_div.Layer();
   ASSERT_TRUE(layer.IsSelfPaintingLayer());
@@ -825,9 +734,8 @@ TEST_P(PaintLayerPainterTest, PaintPhasesUpdateOnBecomingNonSelfPainting) {
   EXPECT_FALSE(html_layer.NeedsPaintPhaseDescendantOutlines());
 
   To<HTMLElement>(layer_div.GetNode())
-      ->setAttribute(
-          html_names::kStyleAttr,
-          AtomicString("width: 100px; height: 100px; overflow: hidden"));
+      ->setAttribute(html_names::kStyleAttr,
+                     "width: 100px; height: 100px; overflow: hidden");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(layer.IsSelfPaintingLayer());
   EXPECT_TRUE(html_layer.NeedsPaintPhaseDescendantOutlines());

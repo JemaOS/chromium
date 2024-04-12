@@ -6,7 +6,6 @@
 
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/css/css_computed_style_declaration.h"
-#include "third_party/blink/renderer/core/css/parser/css_property_parser.h"
 #include "third_party/blink/renderer/core/dom/attribute.h"
 #include "third_party/blink/renderer/core/dom/attribute_collection.h"
 #include "third_party/blink/renderer/core/dom/character_data.h"
@@ -16,11 +15,9 @@
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/dom/node.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
-#include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
@@ -49,8 +46,6 @@
 #include "v8/include/v8-inspector.h"
 
 namespace blink {
-
-using mojom::blink::FormControlType;
 using protocol::Maybe;
 
 namespace {
@@ -102,7 +97,7 @@ std::unique_ptr<protocol::DOMSnapshot::RareBooleanData> BooleanData() {
 }
 
 String GetOriginUrl(const Node* node) {
-  v8::Isolate* isolate = node->GetDocument().GetAgent().isolate();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   ThreadDebugger* debugger = ThreadDebugger::From(isolate);
   if (!isolate || !isolate->InContext() || !debugger)
     return String();
@@ -193,8 +188,10 @@ PhysicalRect InspectorDOMSnapshotAgent::RectInDocument(
 PhysicalRect InspectorDOMSnapshotAgent::TextFragmentRectInDocument(
     const LayoutObject* layout_object,
     const LayoutText::TextBoxInfo& text_box) {
+  PhysicalRect local_coords_text_box_rect =
+      layout_object->FlipForWritingMode(text_box.local_rect);
   PhysicalRect absolute_coords_text_box_rect =
-      layout_object->LocalToAbsoluteRect(text_box.local_rect);
+      layout_object->LocalToAbsoluteRect(local_coords_text_box_rect);
   LocalFrameView* local_frame_view = layout_object->GetFrameView();
   return local_frame_view
              ? local_frame_view->FrameToDocument(absolute_coords_text_box_rect)
@@ -216,13 +213,13 @@ void InspectorDOMSnapshotAgent::CharacterDataModified(
     CharacterData* character_data) {
   String origin_url = GetOriginUrl(character_data);
   if (origin_url)
-    origin_url_map_->insert(character_data->GetDomNodeId(), origin_url);
+    origin_url_map_->insert(DOMNodeIds::IdForNode(character_data), origin_url);
 }
 
 void InspectorDOMSnapshotAgent::DidInsertDOMNode(Node* node) {
   String origin_url = GetOriginUrl(node);
   if (origin_url)
-    origin_url_map_->insert(node->GetDomNodeId(), origin_url);
+    origin_url_map_->insert(DOMNodeIds::IdForNode(node), origin_url);
 }
 
 void InspectorDOMSnapshotAgent::EnableAndReset() {
@@ -311,15 +308,15 @@ protocol::Response InspectorDOMSnapshotAgent::captureSnapshot(
     css_property_filter_->push_back(&property);
   }
 
-  if (include_paint_order.value_or(false)) {
+  if (include_paint_order.fromMaybe(false)) {
     paint_order_map_ =
         InspectorDOMSnapshotAgent::BuildPaintLayerTree(main_window->document());
   }
 
-  include_snapshot_dom_rects_ = include_dom_rects.value_or(false);
+  include_snapshot_dom_rects_ = include_dom_rects.fromMaybe(false);
   include_blended_background_colors_ =
-      include_blended_background_colors.value_or(false);
-  include_text_color_opacities_ = include_text_color_opacities.value_or(false);
+      include_blended_background_colors.fromMaybe(false);
+  include_text_color_opacities_ = include_text_color_opacities.fromMaybe(false);
 
   for (LocalFrame* frame : *inspected_frames_) {
     if (Document* document = frame->GetDocument())
@@ -499,7 +496,7 @@ void InspectorDOMSnapshotAgent::VisitNode(Node* node,
 
   auto* nodes = document_->getNodes();
   int index = static_cast<int>(nodes->getNodeName(nullptr)->size());
-  DOMNodeId backend_node_id = node->GetDomNodeId();
+  DOMNodeId backend_node_id = DOMNodeIds::IdForNode(node);
 
   // Create DOMNode object and add it to the result array before traversing
   // children, so that parents appear before their children in the array.
@@ -526,7 +523,7 @@ void InspectorDOMSnapshotAgent::VisitNode(Node* node,
     if (!node->parentNode()) {
       SetRare(nodes->getOriginURL(nullptr), index, std::move(origin_url));
     } else {
-      DOMNodeId parent_id = node->parentNode()->GetDomNodeId();
+      DOMNodeId parent_id = DOMNodeIds::IdForNode(node->parentNode());
       auto it = origin_url_map_->find(parent_id);
       String parent_url = it != origin_url_map_->end() ? it->value : String();
       if (parent_url != origin_url)
@@ -553,9 +550,8 @@ void InspectorDOMSnapshotAgent::VisitNode(Node* node,
 
     if (auto* input_element = DynamicTo<HTMLInputElement>(*element)) {
       SetRare(nodes->getInputValue(nullptr), index, input_element->Value());
-      if ((input_element->FormControlType() == FormControlType::kInputRadio) ||
-          (input_element->FormControlType() ==
-           FormControlType::kInputCheckbox)) {
+      if ((input_element->type() == input_type_names::kRadio) ||
+          (input_element->type() == input_type_names::kCheckbox)) {
         if (input_element->Checked()) {
           SetRare(nodes->getInputChecked(nullptr), index);
         }
@@ -699,7 +695,7 @@ int InspectorDOMSnapshotAgent::BuildLayoutTreeNode(
   }
 
   String text = layout_object->IsText()
-                    ? To<LayoutText>(layout_object)->TransformedText()
+                    ? To<LayoutText>(layout_object)->GetText()
                     : String();
   layout_tree_snapshot->getText()->emplace_back(AddString(text));
 
@@ -740,20 +736,12 @@ InspectorDOMSnapshotAgent::BuildStylesForNode(Node* node) {
       !node->GetDocument().NeedsLayoutTreeUpdateForNodeIncludingDisplayLocked(
           *node));
   auto result = std::make_unique<protocol::Array<int>>();
-  LayoutObject* layout_object = node->GetLayoutObject();
-  if (!layout_object) {
-    // This doesn't make sense for display:contents elements. They are also
-    // rendered, but with no LayoutObject.
+  auto* layout_object = node->GetLayoutObject();
+  if (!layout_object)
     return result;
-  }
-  Element* element = DynamicTo<Element>(node);
-  if (!element) {
-    element = FlatTreeTraversal::ParentElement(*node);
-  }
-  const ComputedStyle* style = element ? element->GetComputedStyle() : nullptr;
-  if (!style) {
+  const ComputedStyle* style = node->EnsureComputedStyle(kPseudoIdNone);
+  if (!style)
     return result;
-  }
   auto cached_style = style_cache_.find(style);
   if (cached_style != style_cache_.end())
     return std::make_unique<protocol::Array<int>>(*cached_style->value);
@@ -761,8 +749,7 @@ InspectorDOMSnapshotAgent::BuildStylesForNode(Node* node) {
   result->reserve(css_property_filter_->size());
   for (const auto* property : *css_property_filter_) {
     const CSSValue* value = property->CSSValueFromComputedStyle(
-        *style, layout_object, /* allow_visited_style= */ true,
-        CSSValuePhase::kResolvedValue);
+        *style, layout_object, /* allow_visited_style= */ true);
     if (!value) {
       result->emplace_back(-1);
       continue;
@@ -826,7 +813,6 @@ void InspectorDOMSnapshotAgent::Trace(Visitor* visitor) const {
   visitor->Trace(paint_order_map_);
   visitor->Trace(document_order_map_);
   visitor->Trace(css_value_cache_);
-  visitor->Trace(style_cache_);
   InspectorBaseAgent::Trace(visitor);
 }
 

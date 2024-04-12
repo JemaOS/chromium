@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_DIPS_DIPS_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_DIPS_DIPS_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -22,7 +22,7 @@ class DIPSServiceFactory : public ProfileKeyedServiceFactory {
   static ProfileSelections CreateProfileSelections();
 
  private:
-  friend base::NoDestructor<DIPSServiceFactory>;
+  friend struct base::DefaultSingletonTraits<DIPSServiceFactory>;
 
   DIPSServiceFactory();
   ~DIPSServiceFactory() override;

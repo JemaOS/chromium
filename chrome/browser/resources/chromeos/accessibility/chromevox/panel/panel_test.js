@@ -16,8 +16,33 @@ ChromeVoxPanelTest = class extends ChromeVoxPanelTestBase {
   }
 
   /** @override */
+  get featureList() {
+    return {enabled: ['features::kAccessibilityDeprecateChromeVoxTabs']};
+  }
+
+  /** @override */
   async setUpDeferred() {
     await super.setUpDeferred();
+
+    // Alphabetical based on file path.
+    await importModule(
+        'ChromeVoxRange', '/chromevox/background/chromevox_range.js');
+    await importModule(
+        'CommandHandlerInterface',
+        '/chromevox/background/command_handler_interface.js');
+    await importModule('EventSource', '/chromevox/background/event_source.js');
+    await importModule(
+        'EventSourceType', '/chromevox/common/event_source_type.js');
+    await importModule(
+        'LocaleOutputHelper', '/chromevox/common/locale_output_helper.js');
+    await importModule(
+        ['PanelCommand', 'PanelCommandType'],
+        '/chromevox/common/panel_command.js');
+    await importModule('MenuManager', '/chromevox/panel/menu_manager.js');
+    await importModule('CursorRange', '/common/cursors/range.js');
+    await importModule('LocalStorage', '/common/local_storage.js');
+    await importModule(
+        'SettingsManager', '/chromevox/common/settings_manager.js');
 
     globalThis.Gesture = chrome.accessibilityPrivate.Gesture;
     globalThis.RoleType = chrome.automation.RoleType;
@@ -62,6 +87,19 @@ ChromeVoxPanelTest = class extends ChromeVoxPanelTestBase {
       evt.target.value = query;
       this.getPanel().instance.menuManager_.onSearchBarQuery(evt);
     }.bind(this);
+  }
+
+  async waitForMenu(menuMsg) {
+    const menuManager = this.getPanel().instance.menuManager_;
+
+    // Menu and menu item updates occur in a different js context, so tests need
+    // to wait until an update has been made.
+    return new Promise(
+        resolve =>
+            this.addCallbackPostMethod(menuManager, 'activateMenu', () => {
+              assertEquals(menuMsg, menuManager.activeMenu_.menuMsg);
+              resolve();
+            }, () => true));
   }
 
   assertActiveMenuItem(menuMsg, menuItemTitle, opt_menuItemShortcut) {

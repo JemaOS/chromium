@@ -16,7 +16,6 @@
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "chrome/common/chrome_constants.h"
 #include "chrome/test/base/scoped_testing_local_state.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/core/common/policy_service.h"
@@ -28,10 +27,9 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
-#include "chrome/browser/ash/login/users/chrome_user_manager_impl.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
+#include "chrome/browser/ash/login/users/scoped_test_user_manager.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
-#include "components/user_manager/scoped_user_manager.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -44,7 +42,7 @@ class TestingProfile;
 namespace content {
 class BrowserContext;
 class BrowserTaskEnvironment;
-}  // namespace content
+}
 
 namespace sync_preferences {
 class TestingPrefServiceSyncable;
@@ -68,11 +66,11 @@ class ExtensionServiceTestBase : public testing::Test {
     // directory with the given content, and initializes user prefs store
     // referring the file.
     // If not, sync_preferences::TestingPrefServiceSyncable is used.
-    std::optional<std::string> prefs_content;
+    absl::optional<std::string> prefs_content;
 
-    // If not empty, copies both directories to the profile directory.
+    // If not empty, copies the directory to the profile's extension
+    // directory.
     base::FilePath extensions_dir;
-    base::FilePath unpacked_extensions_dir;
 
     bool autoupdate_enabled = false;
     bool extensions_enabled = true;
@@ -104,7 +102,7 @@ class ExtensionServiceTestBase : public testing::Test {
 
   // Public because parameterized test cases need it to be, or else the compiler
   // barfs.
-  static void SetUpTestSuite();  // faux-verride (static override).
+  static void SetUpTestCase();  // faux-verride (static override).
 
  protected:
   ExtensionServiceTestBase();
@@ -122,8 +120,7 @@ class ExtensionServiceTestBase : public testing::Test {
   virtual void InitializeExtensionService(
       const ExtensionServiceInitParams& params);
 
-  // Initialize an empty ExtensionService using a production, on-disk pref file.
-  // See documentation for |prefs_content|.
+  // Initialize an empty ExtensionService using the default init params.
   void InitializeEmptyExtensionService();
 
   // Initialize an ExtensionService with a few already-installed extensions.
@@ -138,9 +135,10 @@ class ExtensionServiceTestBase : public testing::Test {
   // Helpers to check the existence and values of extension prefs.
   size_t GetPrefKeyCount();
   void ValidatePrefKeyCount(size_t count);
-  testing::AssertionResult ValidateBooleanPref(const std::string& extension_id,
-                                               const std::string& pref_path,
-                                               bool expected_val);
+  testing::AssertionResult ValidateBooleanPref(
+      const std::string& extension_id,
+      const std::string& pref_path,
+      bool expected_val);
   void ValidateIntegerPref(const std::string& extension_id,
                            const std::string& pref_path,
                            int expected_val);
@@ -160,9 +158,6 @@ class ExtensionServiceTestBase : public testing::Test {
   ExtensionRegistry* registry() { return registry_; }
   const base::FilePath& extensions_install_dir() const {
     return extensions_install_dir_;
-  }
-  const base::FilePath& unpacked_install_dir() const {
-    return unpacked_install_dir_;
   }
   const base::FilePath& data_dir() const { return data_dir_; }
   const base::ScopedTempDir& temp_dir() const { return temp_dir_; }
@@ -217,7 +212,7 @@ class ExtensionServiceTestBase : public testing::Test {
 
   // The ExtensionService, whose lifetime is managed by |profile|'s
   // ExtensionSystem.
-  raw_ptr<ExtensionService, DanglingUntriaged> service_;
+  raw_ptr<ExtensionService> service_;
   ScopedTestingLocalState testing_local_state_;
 
  private:
@@ -225,8 +220,6 @@ class ExtensionServiceTestBase : public testing::Test {
 
   // The directory into which extensions are installed.
   base::FilePath extensions_install_dir_;
-  // The directory into which unpacked extensions are installed.
-  base::FilePath unpacked_install_dir_;
 
   // chrome/test/data/extensions/
   base::FilePath data_dir_;
@@ -234,13 +227,12 @@ class ExtensionServiceTestBase : public testing::Test {
   content::InProcessUtilityThreadHelper in_process_utility_thread_helper_;
 
   // The associated ExtensionRegistry, for convenience.
-  raw_ptr<extensions::ExtensionRegistry, DanglingUntriaged> registry_;
+  raw_ptr<extensions::ExtensionRegistry> registry_;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   ash::ScopedCrosSettingsTestHelper cros_settings_test_helper_;
-  std::unique_ptr<ash::KioskChromeAppManager> kiosk_chrome_app_manager_;
-  user_manager::ScopedUserManager test_user_manager_{
-      ash::ChromeUserManagerImpl::CreateChromeUserManager()};
+  std::unique_ptr<ash::KioskAppManager> kiosk_app_manager_;
+  ash::ScopedTestUserManager test_user_manager_;
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)

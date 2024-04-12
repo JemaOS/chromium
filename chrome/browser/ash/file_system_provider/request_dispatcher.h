@@ -6,8 +6,9 @@
 #define CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_REQUEST_DISPATCHER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace extensions {
 struct Event;
@@ -25,10 +26,10 @@ class RequestDispatcher {
   // filesystem, and null for operations that don't apply to any existing
   // filesystem (like mount).
   virtual bool DispatchRequest(int request_id,
-                               std::optional<std::string> file_system_id,
+                               absl::optional<std::string> file_system_id,
                                std::unique_ptr<extensions::Event> event) = 0;
   virtual void CancelRequest(int request_id,
-                             std::optional<std::string> file_system_id) = 0;
+                             absl::optional<std::string> file_system_id) = 0;
 };
 
 }  // namespace ash::file_system_provider

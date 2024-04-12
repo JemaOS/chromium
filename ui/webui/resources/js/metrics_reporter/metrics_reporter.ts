@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {TimeDelta} from '//resources/mojo/mojo/public/mojom/base/time.mojom-webui.js';
+import {TimeDelta} from '//resources/mojo/mojo/public/mojom/base/time.mojom-webui.js';
 
-import {assert} from '../assert.js';
+import {assert} from '../assert_ts.js';
 
-import type {BrowserProxy} from './browser_proxy.js';
-import {BrowserProxyImpl} from './browser_proxy.js';
+import {BrowserProxy, BrowserProxyImpl} from './browser_proxy.js';
 
 function timeFromMojo(delta: TimeDelta): bigint {
   return delta.microseconds;

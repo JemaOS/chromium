@@ -64,20 +64,20 @@ void FirstWebContentsProfiler::RecordFinishReason(
 
 void FirstWebContentsProfiler::RecordNavigationFinished(
     base::TimeTicks navigation_start) {
-  startup_metric_utils::GetBrowser().RecordFirstWebContentsMainNavigationStart(
+  startup_metric_utils::RecordFirstWebContentsMainNavigationStart(
       navigation_start);
-  startup_metric_utils::GetBrowser()
-      .RecordFirstWebContentsMainNavigationFinished(base::TimeTicks::Now());
+  startup_metric_utils::RecordFirstWebContentsMainNavigationFinished(
+      base::TimeTicks::Now());
 }
 
 void FirstWebContentsProfiler::RecordFirstNonEmptyPaint() {
-  startup_metric_utils::GetBrowser().RecordFirstWebContentsNonEmptyPaint(
+  startup_metric_utils::RecordFirstWebContentsNonEmptyPaint(
       base::TimeTicks::Now(),
       web_contents()->GetPrimaryMainFrame()->GetProcess()->GetLastInitTime());
 }
 
 bool FirstWebContentsProfiler::WasStartupInterrupted() {
-  return startup_metric_utils::GetBrowser().WasMainWindowStartupInterrupted();
+  return startup_metric_utils::WasMainWindowStartupInterrupted();
 }
 
 }  // namespace

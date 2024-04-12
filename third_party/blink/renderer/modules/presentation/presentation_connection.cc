@@ -389,7 +389,8 @@ ExecutionContext* PresentationConnection::GetExecutionContext() const {
 void PresentationConnection::AddedEventListener(
     const AtomicString& event_type,
     RegisteredEventListener& registered_listener) {
-  EventTarget::AddedEventListener(event_type, registered_listener);
+  EventTargetWithInlineData::AddedEventListener(event_type,
+                                                registered_listener);
   if (event_type == event_type_names::kConnect) {
     UseCounter::Count(GetExecutionContext(),
                       WebFeature::kPresentationConnectionConnectEventListener);
@@ -429,7 +430,7 @@ void PresentationConnection::Trace(Visitor* visitor) const {
   visitor->Trace(target_connection_);
   visitor->Trace(blob_loader_);
   visitor->Trace(messages_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextLifecycleStateObserver::Trace(visitor);
 }
 

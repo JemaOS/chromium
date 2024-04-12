@@ -21,7 +21,6 @@
 #include "base/location.h"
 #include "base/memory/ref_counted.h"
 #include "base/path_service.h"
-#include "base/process/kill.h"
 #include "base/process/launch.h"
 #include "base/process/process.h"
 #include "base/process/process_iterator.h"

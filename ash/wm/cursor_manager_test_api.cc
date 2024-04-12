@@ -6,6 +6,7 @@
 
 #include "ash/public/cpp/test/shell_test_api.h"
 #include "ash/wm/native_cursor_manager_ash.h"
+#include "ui/display/display.h"
 
 namespace ash {
 

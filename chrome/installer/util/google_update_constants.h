@@ -51,7 +51,6 @@ extern const wchar_t kRegCleanInstallRequiredForVersionBelowField[];
 extern const wchar_t kRegClientField[];
 extern const wchar_t kRegCommandLineField[];
 extern const wchar_t kRegCriticalVersionField[];
-extern const wchar_t kRegDefaultField[];
 extern const wchar_t kRegDidRunField[];
 extern const wchar_t kRegDowngradeCleanupCommandField[];
 extern const wchar_t kRegEulaAceptedField[];
@@ -86,6 +85,10 @@ extern const wchar_t kRegWebAccessibleField[];
 
 // Last time that chrome ran in the Time internal format.
 extern const wchar_t kRegLastRunTimeField[];
+
+// The name of the value where Google Update reads the list of experiments for
+// itself and Chrome.
+extern const wchar_t kExperimentLabels[];
 
 }  // namespace google_update
 

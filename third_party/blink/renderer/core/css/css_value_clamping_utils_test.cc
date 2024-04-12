@@ -26,7 +26,7 @@ TEST(CSSValueClampingTest, IsLengthClampedPositiveInfinity) {
 TEST(CSSValueClampingTest, IsLengthClampedNaN) {
   EXPECT_EQ(CSSValueClampingUtils::ClampLength(
                 std::numeric_limits<double>::quiet_NaN()),
-            0.0);
+            std::numeric_limits<double>::max());
 }
 
 TEST(CSSValueClampingTest, IsLengthClampedNegativeInfinity) {

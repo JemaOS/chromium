@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_POLICY_SCHEDULED_TASK_HANDLER_DEVICE_SCHEDULED_REBOOT_HANDLER_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
@@ -18,6 +17,7 @@
 #include "chromeos/ash/components/settings/timezone_settings.h"
 #include "chromeos/dbus/power/power_manager_client.h"
 #include "services/device/public/mojom/wake_lock.mojom-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/icu/source/i18n/unicode/timezone.h"
 
 namespace policy {
@@ -54,7 +54,7 @@ class DeviceScheduledRebootHandler
   void SetRebootDelayForTest(const base::TimeDelta& reboot_delay);
 
   // Returns value of |scheduled_reboot_data_|.
-  std::optional<ScheduledTaskExecutor::ScheduledTaskData>
+  absl::optional<ScheduledTaskExecutor::ScheduledTaskData>
   GetScheduledRebootDataForTest() const;
 
   // Returns value of |skip_reboot_|.
@@ -102,23 +102,23 @@ class DeviceScheduledRebootHandler
   void RebootDevice(const std::string& reboot_description) const;
 
   // Used to retrieve Chrome OS settings. Not owned.
-  const raw_ptr<ash::CrosSettings> cros_settings_;
+  const base::raw_ptr<ash::CrosSettings> cros_settings_;
 
   // Subscription for callback when settings change.
   base::CallbackListSubscription cros_settings_subscription_;
 
   // Currently active scheduled reboot policy.
-  std::optional<ScheduledTaskExecutor::ScheduledTaskData>
+  absl::optional<ScheduledTaskExecutor::ScheduledTaskData>
       scheduled_reboot_data_;
 
   // Timer that is scheduled to check for updates.
   std::unique_ptr<ScheduledTaskExecutor> scheduled_task_executor_;
 
   // Delay added to scheduled reboot time, used for testing.
-  std::optional<base::TimeDelta> reboot_delay_for_testing_;
+  absl::optional<base::TimeDelta> reboot_delay_for_testing_;
 
   // Scheduler for reboot notification and dialog. Unowned.
-  raw_ptr<RebootNotificationsScheduler> notifications_scheduler_;
+  base::raw_ptr<RebootNotificationsScheduler> notifications_scheduler_;
 
   // Indicating if the reboot should be skipped.
   bool skip_reboot_ = false;

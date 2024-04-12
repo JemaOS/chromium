@@ -11,8 +11,6 @@
 #include <iterator>
 #include <map>
 #include <memory>
-#include <optional>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -27,6 +25,7 @@
 #include "base/path_service.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/stringprintf.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
@@ -79,6 +78,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/perf/perf_result_reporter.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/openscreen/src/platform/base/error.h"
 #include "third_party/zlib/google/compression_utils.h"
 #include "ui/gl/gl_switches.h"
@@ -122,7 +122,7 @@ constexpr char kMetricCastLatencyMs[] = "cast_latency";
 constexpr char kTestPageLocation[] =
     "/cast/cast_mirroring_performance_browsertest.html";
 
-constexpr std::string_view kFullPerformanceRunSwitch = "full-performance-run";
+constexpr base::StringPiece kFullPerformanceRunSwitch = "full-performance-run";
 
 // The test receiver and senders should share the target playout delay.
 constexpr int kTargetPlayoutDelayMs = 400;  // milliseconds
@@ -233,7 +233,7 @@ void ContinueBrowserFor(base::TimeDelta duration) {
 using TraceAnalyzerUniquePtr = std::unique_ptr<trace_analyzer::TraceAnalyzer>;
 
 void QueryTraceEvents(trace_analyzer::TraceAnalyzer* analyzer,
-                      std::string_view event_name,
+                      base::StringPiece event_name,
                       trace_analyzer::TraceEventVector* events) {
   const trace_analyzer::Query kQuery =
       trace_analyzer::Query::EventNameIs(std::string(event_name)) &&
@@ -250,7 +250,8 @@ void QueryTraceEvents(trace_analyzer::TraceAnalyzer* analyzer,
 std::string MakeBase64EncodedGZippedString(const std::string& input) {
   std::string gzipped_input;
   compression::GzipCompress(input, &gzipped_input);
-  std::string result = base::Base64Encode(gzipped_input);
+  std::string result;
+  base::Base64Encode(gzipped_input, &result);
 
   // Break up the string with newlines to make it easier to handle in the
   // console logs.
@@ -268,7 +269,7 @@ std::string MakeBase64EncodedGZippedString(const std::string& input) {
 TraceAnalyzerUniquePtr TraceAndObserve(
     bool is_full_performance_run,
     const std::string& category_patterns,
-    const std::vector<std::string_view>& event_names,
+    const std::vector<base::StringPiece>& event_names,
     int required_event_count) {
   const base::TimeDelta observation_period = is_full_performance_run
                                                  ? kFullRunObservationPeriod
@@ -845,7 +846,7 @@ class CastV2PerformanceTest : public InProcessBrowserTest,
 
  protected:
   // Ensure best effort tasks are not required for this test to pass.
-  std::optional<base::ThreadPoolInstance::ScopedBestEffortExecutionFence>
+  absl::optional<base::ThreadPoolInstance::ScopedBestEffortExecutionFence>
       best_effort_fence_;
 
   // HTTPS server for loading pages from the test data dir.
@@ -913,7 +914,7 @@ class TestTabMirroringSession : public mirroring::mojom::SessionObserver,
 
   // CastMessageChannel implementation (inbound).
   void OnMessage(mirroring::mojom::CastMessagePtr message) override {
-    const std::optional<base::Value> root_or_error =
+    const absl::optional<base::Value> root_or_error =
         base::JSONReader::Read(message->json_format_data);
     ASSERT_TRUE(root_or_error);
     const base::Value::Dict& root = root_or_error->GetDict();
@@ -1060,13 +1061,7 @@ class TestTabMirroringSession : public mirroring::mojom::SessionObserver,
 };
 }  // namespace
 
-// TODO(crbug.com/328635249): Test is flaky.
-#if BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_Performance DISABLED_Performance
-#else
-#define MAYBE_Performance Performance
-#endif
-IN_PROC_BROWSER_TEST_P(CastV2PerformanceTest, MAYBE_Performance) {
+IN_PROC_BROWSER_TEST_P(CastV2PerformanceTest, Performance) {
   net::IPEndPoint receiver_end_point = media::cast::test::GetFreeLocalPort();
   VLOG(1) << "Got local UDP endpoint for testing: "
           << receiver_end_point.ToString();
@@ -1111,7 +1106,7 @@ IN_PROC_BROWSER_TEST_P(CastV2PerformanceTest, MAYBE_Performance) {
   // Observe the running browser for a while, collecting a trace.
   TraceAnalyzerUniquePtr analyzer = TraceAndObserve(
       is_full_performance_run_, "gpu.capture,cast_perf_test",
-      std::vector<std::string_view>{
+      std::vector<base::StringPiece>{
           // From the Compositor/Capture pipeline...
           "Capture", "OnBufferReceived", "ConsumeVideoFrame",
           // From the Cast Sender's pipeline...

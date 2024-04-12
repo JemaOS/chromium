@@ -67,11 +67,7 @@ void AppListBadgeController::OnActiveUserPrefServiceChanged(
   AccountId account_id =
       Shell::Get()->session_controller()->GetActiveAccountId();
   cache_ = apps::AppRegistryCacheWrapper::Get().GetAppRegistryCache(account_id);
-
-  app_registry_cache_observer_.Reset();
-  if (cache_) {
-    app_registry_cache_observer_.Observe(cache_);
-  }
+  Observe(cache_);  // From apps::AppRegistryCache::Observer.
 
   // Resetting the recorded pref forces the next call to
   // UpdateAppNotificationBadging() to update notification badging for every
@@ -90,7 +86,7 @@ void AppListBadgeController::OnAppUpdate(const apps::AppUpdate& update) {
 
 void AppListBadgeController::OnAppRegistryCacheWillBeDestroyed(
     apps::AppRegistryCache* cache) {
-  app_registry_cache_observer_.Reset();
+  Observe(nullptr);  // From apps::AppRegistryCache::Observer.
 }
 
 void AppListBadgeController::UpdateItemNotificationBadge(

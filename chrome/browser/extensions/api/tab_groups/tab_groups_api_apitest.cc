@@ -6,7 +6,6 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/common/extensions/api/tab_groups.h"
 #include "content/public/browser/web_contents.h"
@@ -20,7 +19,6 @@ namespace {
 
 using TabGroupsApiTest = ExtensionApiTest;
 
-// TODO(crbug.com/1441814): Test is flaky.
 IN_PROC_BROWSER_TEST_F(TabGroupsApiTest, TestTabGroupsWorks) {
   ASSERT_TRUE(RunExtensionTest("tab_groups")) << message_;
 }

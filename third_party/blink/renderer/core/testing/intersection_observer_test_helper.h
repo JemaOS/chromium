@@ -33,24 +33,19 @@ class TestIntersectionObserverDelegate : public IntersectionObserverDelegate {
     call_count_++;
     entries_.AppendVector(entries);
   }
-  bool NeedsInitialObservationWithDetachedTarget() const override {
-    return true;
-  }
   ExecutionContext* GetExecutionContext() const override {
     return document_->GetExecutionContext();
   }
   int CallCount() const { return call_count_; }
   int EntryCount() const { return entries_.size(); }
-  const IntersectionObserverEntry* LastEntry() const {
-    return entries_.back().Get();
-  }
+  const IntersectionObserverEntry* LastEntry() const { return entries_.back(); }
   void Clear() {
     entries_.clear();
     call_count_ = 0;
   }
-  gfx::RectF LastIntersectionRect() const {
+  PhysicalRect LastIntersectionRect() const {
     if (entries_.empty())
-      return gfx::RectF();
+      return PhysicalRect();
     const IntersectionGeometry& geometry = entries_.back()->GetGeometry();
     return geometry.IntersectionRect();
   }

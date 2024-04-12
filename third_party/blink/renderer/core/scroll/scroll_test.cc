@@ -80,8 +80,8 @@ TEST_P(FractionalScrollSimTest, GetBoundingClientRectAtFractional) {
 
   Compositor().BeginFrame();
 
-  Element* target = GetDocument().getElementById(AtomicString("target"));
-  DOMRect* rect = target->GetBoundingClientRect();
+  Element* target = GetDocument().getElementById("target");
+  DOMRect* rect = target->getBoundingClientRect();
   const float kOneLayoutUnit = 1.f / kFixedPointDenominator;
   EXPECT_NEAR(LayoutUnit(800.f - 700.5f), rect->left(), kOneLayoutUnit);
   EXPECT_NEAR(LayoutUnit(600.f - 500.6f), rect->top(), kOneLayoutUnit);
@@ -137,9 +137,11 @@ TEST_P(FractionalScrollSimTest, NoRepaintOnScrollFromSubpixel) {
       mojom::blink::ScrollBehavior::kInstant);
 
   Compositor().BeginFrame();
-  EXPECT_FALSE(
-      GetRasterInvalidationTracking(*GetDocument().View(), 0, "container")
-          ->HasInvalidations());
+  EXPECT_FALSE(GetRasterInvalidationTracking(
+                   *GetDocument().View(),
+                   RuntimeEnabledFeatures::SolidColorLayersEnabled() ? 0 : 2,
+                   "container")
+                   ->HasInvalidations());
   GetDocument().View()->SetTracksRasterInvalidations(false);
 }
 
@@ -171,7 +173,7 @@ TEST_P(FractionalScrollSimTest, StickyDoesntOscillate) {
   Compositor().BeginFrame();
 
   const float kOneLayoutUnitF = LayoutUnit::Epsilon();
-  Element* sticky = GetDocument().getElementById(AtomicString("sticky"));
+  Element* sticky = GetDocument().getElementById("sticky");
 
   // Try sub-layout-unit scroll offsets. The sticky box shouldn't move.
   for (int i = 0; i < 3; ++i) {
@@ -179,7 +181,7 @@ TEST_P(FractionalScrollSimTest, StickyDoesntOscillate) {
         ScrollOffset(0.f, kOneLayoutUnitF / 4.f),
         mojom::blink::ScrollType::kProgrammatic);
     Compositor().BeginFrame();
-    EXPECT_EQ(8, sticky->GetBoundingClientRect()->top());
+    EXPECT_EQ(8, sticky->getBoundingClientRect()->top());
   }
 
   // This offset is specifically chosen since it doesn't land on a LayoutUnit
@@ -188,7 +190,7 @@ TEST_P(FractionalScrollSimTest, StickyDoesntOscillate) {
       ScrollOffset(0.f, 98.8675308f), mojom::blink::ScrollType::kProgrammatic,
       mojom::blink::ScrollBehavior::kInstant);
   Compositor().BeginFrame();
-  EXPECT_EQ(0, sticky->GetBoundingClientRect()->top());
+  EXPECT_EQ(0, sticky->getBoundingClientRect()->top());
 
   // Incrementally scroll from here, making sure the sticky position remains
   // fixed.
@@ -197,7 +199,7 @@ TEST_P(FractionalScrollSimTest, StickyDoesntOscillate) {
         ScrollOffset(0.f, kOneLayoutUnitF / 3.f),
         mojom::blink::ScrollType::kProgrammatic);
     Compositor().BeginFrame();
-    EXPECT_EQ(0, sticky->GetBoundingClientRect()->top());
+    EXPECT_EQ(0, sticky->getBoundingClientRect()->top());
   }
 }
 
@@ -365,7 +367,7 @@ TEST_P(ScrollAnimatorSimTest, TestDivUserScrollCallBack) {
   WebView().MainFrameWidget()->SetFocus(true);
   WebView().SetIsActive(true);
 
-  Element* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  Element* scroller = GetDocument().getElementById("scroller");
 
   bool finished = false;
   PaintLayerScrollableArea* scrollable_area =
@@ -490,7 +492,7 @@ class ScrollInfacesUseCounterSimTest : public SimTest,
             <div id="scroller"><div id="content"></div></div>
         )HTML");
     auto& document = GetDocument();
-    auto* style = document.getElementById(AtomicString("scroller"))->style();
+    auto* style = document.getElementById("scroller")->style();
     style->setProperty(&Window(), "direction", direction, String(),
                        ASSERT_NO_EXCEPTION);
     style->setProperty(&Window(), "writing-mode", writing_mode, String(),

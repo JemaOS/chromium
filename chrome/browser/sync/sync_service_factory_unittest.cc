@@ -4,6 +4,10 @@
 
 #include "chrome/browser/sync/sync_service_factory.h"
 
+#include <stddef.h>
+
+#include <vector>
+
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
@@ -11,20 +15,17 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/favicon/favicon_service_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
-#include "chrome/browser/sync/sync_service_factory.h"
-#include "chrome/browser/trusted_vault/trusted_vault_service_factory.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/webdata_services/web_data_service_factory.h"
+#include "chrome/browser/web_data_service_factory.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/test/base/testing_profile.h"
-#include "components/commerce/core/commerce_feature_list.h"
-#include "components/data_sharing/public/features.h"
-#include "components/password_manager/core/browser/features/password_features.h"
+#include "components/browser_sync/browser_sync_switches.h"
 #include "components/supervised_user/core/common/buildflags.h"
 #include "components/sync/base/command_line_switches.h"
 #include "components/sync/base/features.h"
 #include "components/sync/base/model_type.h"
-#include "components/sync/service/sync_service_impl.h"
+#include "components/sync/driver/data_type_controller.h"
+#include "components/sync/driver/sync_service_impl.h"
 #include "content/public/test/browser_task_environment.h"
 #include "extensions/buildflags/buildflags.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -36,7 +37,7 @@
 #include "chrome/browser/sync/wifi_configuration_sync_service_factory.h"
 #include "chromeos/ash/components/dbus/shill/shill_clients.h"
 #include "chromeos/ash/components/dbus/shill/shill_manager_client.h"
-#include "chromeos/ash/components/network/network_handler_test_helper.h"
+#include "chromeos/ash/components/network/network_handler.h"
 #include "chromeos/ash/components/sync_wifi/wifi_configuration_sync_service.h"
 #include "chromeos/ash/services/network_config/public/cpp/cros_network_config_test_helper.h"
 #endif
@@ -56,8 +57,6 @@ class SyncServiceFactoryTest : public testing::Test {
                               FaviconServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(HistoryServiceFactory::GetInstance(),
                               HistoryServiceFactory::GetDefaultFactory());
-    builder.AddTestingFactory(TrustedVaultServiceFactory::GetInstance(),
-                              TrustedVaultServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(SyncServiceFactory::GetInstance(),
                               SyncServiceFactory::GetDefaultFactory());
     // Some services will only be created if there is a WebDataService.
@@ -74,16 +73,22 @@ class SyncServiceFactoryTest : public testing::Test {
   }
 
  protected:
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  SyncServiceFactoryTest() {
+    // Fake network stack is required for WIFI_CONFIGURATIONS datatype.
+    ash::NetworkHandler::Initialize();
+  }
+  ~SyncServiceFactoryTest() override { ash::NetworkHandler::Shutdown(); }
+#else
   SyncServiceFactoryTest() = default;
   ~SyncServiceFactoryTest() override = default;
+#endif
 
   // Returns the collection of default datatypes.
   syncer::ModelTypeSet DefaultDatatypes() {
-    static_assert(52 == syncer::GetNumModelTypes(),
+    static_assert(46 == syncer::GetNumModelTypes(),
                   "When adding a new type, you probably want to add it here as "
-                  "well (assuming it is already enabled). Check similar "
-                  "function in "
-                  "ios/c/b/sync/model/sync_service_factory_unittest.cc");
+                  "well (assuming it is already enabled).");
 
     syncer::ModelTypeSet datatypes;
 
@@ -116,7 +121,7 @@ class SyncServiceFactoryTest : public testing::Test {
 
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
     BUILDFLAG(IS_WIN)
-    if (base::FeatureList::IsEnabled(features::kTabGroupsSave)) {
+    if (base::FeatureList::IsEnabled(features::kTabGroupsSaveSyncIntegration)) {
       datatypes.Put(syncer::SAVED_TAB_GROUP);
     }
 #endif  // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) ||
@@ -145,69 +150,42 @@ class SyncServiceFactoryTest : public testing::Test {
     // is null for testing and hence no controller gets instantiated.
     datatypes.Put(syncer::AUTOFILL);
     datatypes.Put(syncer::AUTOFILL_PROFILE);
-    if (base::FeatureList::IsEnabled(
-            syncer::kSyncAutofillWalletCredentialData)) {
-      datatypes.Put(syncer::AUTOFILL_WALLET_CREDENTIAL);
-    }
     datatypes.Put(syncer::AUTOFILL_WALLET_DATA);
     datatypes.Put(syncer::AUTOFILL_WALLET_METADATA);
     datatypes.Put(syncer::AUTOFILL_WALLET_OFFER);
     datatypes.Put(syncer::BOOKMARKS);
-    if (base::FeatureList::IsEnabled(commerce::kProductSpecifications)) {
-      datatypes.Put(syncer::COMPARE);
+    if (base::FeatureList::IsEnabled(syncer::kSyncEnableContactInfoDataType)) {
+      datatypes.Put(syncer::CONTACT_INFO);
     }
-    datatypes.Put(syncer::CONTACT_INFO);
     datatypes.Put(syncer::DEVICE_INFO);
-    datatypes.Put(syncer::HISTORY);
+    if (base::FeatureList::IsEnabled(syncer::kSyncEnableHistoryDataType)) {
+      datatypes.Put(syncer::HISTORY);
+    }
     datatypes.Put(syncer::HISTORY_DELETE_DIRECTIVES);
     datatypes.Put(syncer::PREFERENCES);
     datatypes.Put(syncer::PRIORITY_PREFERENCES);
     datatypes.Put(syncer::SESSIONS);
+    datatypes.Put(syncer::PROXY_TABS);
+    datatypes.Put(syncer::TYPED_URLS);
     datatypes.Put(syncer::USER_EVENTS);
     datatypes.Put(syncer::USER_CONSENTS);
     datatypes.Put(syncer::SEND_TAB_TO_SELF);
     datatypes.Put(syncer::SHARING_MESSAGE);
-#if !BUILDFLAG(IS_ANDROID)
     if (base::FeatureList::IsEnabled(syncer::kSyncWebauthnCredentials)) {
       datatypes.Put(syncer::WEBAUTHN_CREDENTIAL);
-    }
-#endif  // !BUILDFLAG(IS_ANDROID)
-    if (base::FeatureList::IsEnabled(
-            password_manager::features::
-                kPasswordManagerEnableReceiverService)) {
-      datatypes.Put(syncer::INCOMING_PASSWORD_SHARING_INVITATION);
-    }
-    if (base::FeatureList::IsEnabled(
-            password_manager::features::kPasswordManagerEnableSenderService)) {
-      datatypes.Put(syncer::OUTGOING_PASSWORD_SHARING_INVITATION);
-    }
-    if (base::FeatureList::IsEnabled(
-            data_sharing::features::kDataSharingFeature)) {
-      datatypes.Put(syncer::COLLABORATION_GROUP);
-      datatypes.Put(syncer::SHARED_TAB_GROUP_DATA);
-    }
-#if BUILDFLAG(IS_ANDROID)
-    if (base::FeatureList::IsEnabled(syncer::kWebApkBackupAndRestoreBackend)) {
-      datatypes.Put(syncer::WEB_APKS);
-    }
-#endif  // BUILDFLAG(IS_ANDROID)
-    if (base::FeatureList::IsEnabled(syncer::kSyncPlusAddress)) {
-      datatypes.Put(syncer::PLUS_ADDRESS);
     }
     return datatypes;
   }
 
   Profile* profile() { return profile_.get(); }
 
+  void RunUntilIdle() { task_environment_.RunUntilIdle(); }
+
  private:
   content::BrowserTaskEnvironment task_environment_;
   std::unique_ptr<TestingProfile> profile_;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  // Fake network stack is required for WIFI_CONFIGURATIONS datatype. It's also
-  // used by `network_config_helper_`
-  ash::NetworkHandlerTestHelper network_handler_test_helper_;
-
   // Sets up  and  tears down the Chrome OS networking mojo service as needed
   // for the WIFI_CONFIGURATIONS sync service.
   ash::network_config::CrosNetworkConfigTestHelper network_config_helper_;
@@ -231,4 +209,6 @@ TEST_F(SyncServiceFactoryTest, CreateSyncServiceImplDefault) {
   for (syncer::ModelType type : default_types) {
     EXPECT_TRUE(types.Has(type)) << type << " not found in datatypes map";
   }
+  sync_service->Shutdown();
+  RunUntilIdle();
 }

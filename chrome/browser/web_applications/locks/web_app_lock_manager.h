@@ -13,8 +13,8 @@
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/types/pass_key.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "components/services/storage/indexed_db/locks/partitioned_lock_manager.h"
-#include "components/webapps/common/web_app_id.h"
 
 namespace base {
 class Value;
@@ -25,7 +25,6 @@ namespace web_app {
 class AppLock;
 class AppLockDescription;
 class LockDescription;
-class WebAppCommandManager;
 class NoopLock;
 class SharedWebContentsLock;
 class SharedWebContentsWithAppLock;
@@ -44,8 +43,7 @@ class WebAppProvider;
 // example, the following method call guarantees that it is done in an isolated
 // context:
 //
-// void UpdateWidget(WithAppResources& lock_with_app_exclusivity, webapps::AppId
-// id) {
+// void UpdateWidget(WithAppResources& lock_with_app_exclusivity, AppId id) {
 //    widget_.SetTitle(lock_with_app_exclusivity.registrar().GetShortName(id));
 //    ...
 // }
@@ -59,7 +57,7 @@ class WebAppProvider;
 // Example of using a lock across an async boundary:
 //
 // void UpdateWidget(base::WeakPtr<WithAppResources> lock_with_app_exclusivity,
-//                   webapps::AppId id) {
+//                   AppId id) {
 //    widget_.SetTitle(lock_with_app_exclusivity.registrar().GetShortName(id));
 //    TalkToAsyncSystem(..., base::BindOnce(&OnAsyncSystemUpdated,
 //                                          lock_with_app_exclusivity));
@@ -77,11 +75,8 @@ class WebAppLockManager {
  public:
   using PassKey = base::PassKey<WebAppLockManager>;
 
-  WebAppLockManager();
+  explicit WebAppLockManager(WebAppProvider& provider);
   ~WebAppLockManager();
-
-  void SetProvider(base::PassKey<WebAppCommandManager>,
-                   WebAppProvider& provider);
 
   // Returns if the lock for the shared web contents is free.  This means no one
   // is using the shared web contents.
@@ -101,7 +96,7 @@ class WebAppLockManager {
   std::unique_ptr<SharedWebContentsWithAppLockDescription>
   UpgradeAndAcquireLock(
       std::unique_ptr<SharedWebContentsLock> lock,
-      const base::flat_set<webapps::AppId>& app_ids,
+      const base::flat_set<AppId>& app_ids,
       base::OnceCallback<void(std::unique_ptr<SharedWebContentsWithAppLock>)>
           on_lock_acquired,
       const base::Location& location = FROM_HERE);
@@ -110,13 +105,13 @@ class WebAppLockManager {
   // when the new lock has been acquired.
   std::unique_ptr<AppLockDescription> UpgradeAndAcquireLock(
       std::unique_ptr<NoopLock> lock,
-      const base::flat_set<webapps::AppId>& app_ids,
+      const base::flat_set<AppId>& app_ids,
       base::OnceCallback<void(std::unique_ptr<AppLock>)> on_lock_acquired,
       const base::Location& location = FROM_HERE);
 
   base::Value ToDebugValue() const;
 
-  WebAppProvider& provider() const { return *provider_; }
+  WebAppProvider& provider() const { return provider_.get(); }
 
  private:
   // Acquires the lock for the given `lock`, calling `on_lock_acquired` when
@@ -127,7 +122,7 @@ class WebAppLockManager {
                    const base::Location& location);
 
   content::PartitionedLockManager lock_manager_;
-  raw_ptr<WebAppProvider> provider_ = nullptr;
+  raw_ref<WebAppProvider> provider_;
   base::WeakPtrFactory<WebAppLockManager> weak_factory_{this};
 };
 

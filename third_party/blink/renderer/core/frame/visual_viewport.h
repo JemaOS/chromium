@@ -51,7 +51,7 @@
 namespace cc {
 class AnimationHost;
 class AnimationTimeline;
-class SolidColorScrollbarLayer;
+class ScrollbarLayerBase;
 }
 
 namespace blink {
@@ -187,17 +187,16 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   // ScrollableArea implementation
   ChromeClient* GetChromeClient() const override;
   SmoothScrollSequencer* GetSmoothScrollSequencer() const override;
-  bool SetScrollOffset(const ScrollOffset&,
+  void SetScrollOffset(const ScrollOffset&,
                        mojom::blink::ScrollType,
                        mojom::blink::ScrollBehavior,
                        ScrollCallback on_finish) override;
-  bool SetScrollOffset(const ScrollOffset&,
+  void SetScrollOffset(const ScrollOffset&,
                        mojom::blink::ScrollType,
                        mojom::blink::ScrollBehavior =
                            mojom::blink::ScrollBehavior::kInstant) override;
   PhysicalRect ScrollIntoView(
       const PhysicalRect&,
-      const PhysicalBoxStrut& scroll_margin,
       const mojom::blink::ScrollIntoViewParamsPtr&) override;
   bool IsThrottled() const override {
     // VisualViewport is always in the main frame, so the frame does not get
@@ -294,7 +293,6 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   void Paint(GraphicsContext&) const;
 
   void UsedColorSchemeChanged();
-  void ScrollbarColorChanged();
 
   // Returns whether this VisualViewport is "active", that is, whether it'll
   // affect paint property trees. If false, this renderer cannot be
@@ -311,7 +309,6 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
     overscroll_type_ = type;
     SetNeedsPaintPropertyUpdate();
   }
-  std::optional<blink::Color> CSSScrollbarThumbColor() const;
 
  private:
   bool DidSetScaleOrLocation(float scale,
@@ -326,7 +323,6 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   EScrollbarWidth CSSScrollbarWidth() const;
   int ScrollbarThickness() const;
   void UpdateScrollbarLayer(ScrollbarOrientation);
-  void UpdateScrollbarColor(cc::SolidColorScrollbarLayer&);
 
   void NotifyRootFrameViewport() const;
 
@@ -354,8 +350,8 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   Member<Page> page_;
 
   scoped_refptr<cc::Layer> scroll_layer_;
-  scoped_refptr<cc::SolidColorScrollbarLayer> scrollbar_layer_horizontal_;
-  scoped_refptr<cc::SolidColorScrollbarLayer> scrollbar_layer_vertical_;
+  scoped_refptr<cc::ScrollbarLayerBase> scrollbar_layer_horizontal_;
+  scoped_refptr<cc::ScrollbarLayerBase> scrollbar_layer_vertical_;
 
   PropertyTreeStateOrAlias parent_property_tree_state_;
   scoped_refptr<TransformPaintPropertyNode> device_emulation_transform_node_;

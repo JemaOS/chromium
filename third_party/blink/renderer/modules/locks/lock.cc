@@ -85,8 +85,7 @@ String Lock::mode() const {
   return ModeToString(mode_);
 }
 
-void Lock::HoldUntil(ScriptPromiseTyped<IDLAny> promise,
-                     ScriptPromiseResolverTyped<IDLAny>* resolver) {
+void Lock::HoldUntil(ScriptPromise promise, ScriptPromiseResolver* resolver) {
   DCHECK(!resolver_);
 
   // Note that it is possible for the ExecutionContext that this Lock lives in

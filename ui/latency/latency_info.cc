@@ -55,7 +55,7 @@ bool IsInputLatencyBeginComponent(ui::LatencyComponentType type) {
 }
 
 constexpr const char kTraceCategoriesForAsyncEvents[] =
-    "benchmark,latencyInfo,rail,input.scrolling";
+    "benchmark,latencyInfo,rail";
 
 struct LatencyInfoEnabledInitializer {
   LatencyInfoEnabledInitializer() :

@@ -5,6 +5,7 @@
 #include "chrome/updater/policy/mac/managed_preference_policy_manager_impl.h"
 
 #include "base/enterprise_util.h"
+#include "base/mac/scoped_nsobject.h"
 #include "chrome/updater/constants.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/gtest_mac.h"
@@ -29,21 +30,22 @@ TEST(CRUManagedPreferencePolicyManagerTest, TestPolicyValues) {
       @"TargetVersionPrefix" : @"82.",
     },
   };
-  CRUManagedPreferencePolicyManager* policyManager =
-      [[CRUManagedPreferencePolicyManager alloc] initWithDictionary:policyDict];
-  EXPECT_NSEQ([policyManager source], @"Managed Preferences");
-  EXPECT_TRUE(policyManager.hasActivePolicy);
+  base::scoped_nsobject<CRUManagedPreferencePolicyManager> policyManager(
+      [[CRUManagedPreferencePolicyManager alloc]
+          initWithDictionary:policyDict]);
+  EXPECT_NSEQ([policyManager source], @"ManagedPreference");
+  EXPECT_EQ([policyManager managed], base::IsManagedOrEnterpriseDevice());
 
   // Verify global level policies.
-  EXPECT_EQ(policyManager.lastCheckPeriodMinutes, kPolicyNotSet);
-  EXPECT_EQ(policyManager.defaultUpdatePolicy, kPolicyDisabled);
-  EXPECT_NSEQ(policyManager.downloadPreference, @"cacheable");
-  EXPECT_EQ(policyManager.updatesSuppressed.start_hour_, 12);
-  EXPECT_EQ(policyManager.updatesSuppressed.start_minute_, 15);
-  EXPECT_EQ(policyManager.updatesSuppressed.duration_minute_, 30);
-  EXPECT_EQ(policyManager.proxyMode, nil);
-  EXPECT_EQ(policyManager.proxyServer, nil);
-  EXPECT_EQ(policyManager.proxyPacURL, nil);
+  EXPECT_EQ([policyManager lastCheckPeriodMinutes], kPolicyNotSet);
+  EXPECT_EQ([policyManager defaultUpdatePolicy], kPolicyDisabled);
+  EXPECT_NSEQ([policyManager downloadPreference], @"cacheable");
+  EXPECT_EQ([policyManager updatesSuppressed].start_hour_, 12);
+  EXPECT_EQ([policyManager updatesSuppressed].start_minute_, 15);
+  EXPECT_EQ([policyManager updatesSuppressed].duration_minute_, 30);
+  EXPECT_EQ([policyManager proxyMode], nil);
+  EXPECT_EQ([policyManager proxyServer], nil);
+  EXPECT_EQ([policyManager proxyPacURL], nil);
 
   // App-level policies.
   NSString* keystoneID = @"com.google.Keystone";
@@ -64,28 +66,30 @@ TEST(CRUManagedPreferencePolicyManagerTest, TestPolicyValues) {
 
 TEST(CRUManagedPreferencePolicyManagerTest, TestEmptyPolicyValues) {
   CRUUpdatePolicyDictionary* policyDict = @{};
-  CRUManagedPreferencePolicyManager* policyManager =
-      [[CRUManagedPreferencePolicyManager alloc] initWithDictionary:policyDict];
-  EXPECT_FALSE(policyManager.hasActivePolicy);
+  base::scoped_nsobject<CRUManagedPreferencePolicyManager> policyManager(
+      [[CRUManagedPreferencePolicyManager alloc]
+          initWithDictionary:policyDict]);
+  EXPECT_FALSE([policyManager managed]);
 }
 
 TEST(CRUManagedPreferencePolicyManagerTest, TestNoGlobalPolicy) {
   CRUUpdatePolicyDictionary* policyDict = @{@"some.app" : @{}};
-  CRUManagedPreferencePolicyManager* policyManager =
-      [[CRUManagedPreferencePolicyManager alloc] initWithDictionary:policyDict];
-  EXPECT_NSEQ(policyManager.source, @"Managed Preferences");
-  EXPECT_TRUE(policyManager.hasActivePolicy);
+  base::scoped_nsobject<CRUManagedPreferencePolicyManager> policyManager(
+      [[CRUManagedPreferencePolicyManager alloc]
+          initWithDictionary:policyDict]);
+  EXPECT_NSEQ([policyManager source], @"ManagedPreference");
+  EXPECT_EQ([policyManager managed], base::IsManagedOrEnterpriseDevice());
 
   // Verify global level policies are set to default.
-  EXPECT_EQ(policyManager.lastCheckPeriodMinutes, kPolicyNotSet);
-  EXPECT_EQ(policyManager.defaultUpdatePolicy, kPolicyNotSet);
-  EXPECT_NSEQ(policyManager.downloadPreference, nil);
-  EXPECT_EQ(policyManager.updatesSuppressed.start_hour_, kPolicyNotSet);
-  EXPECT_EQ(policyManager.updatesSuppressed.start_minute_, kPolicyNotSet);
-  EXPECT_EQ(policyManager.updatesSuppressed.duration_minute_, kPolicyNotSet);
-  EXPECT_EQ(policyManager.proxyMode, nil);
-  EXPECT_EQ(policyManager.proxyServer, nil);
-  EXPECT_EQ(policyManager.proxyPacURL, nil);
+  EXPECT_EQ([policyManager lastCheckPeriodMinutes], kPolicyNotSet);
+  EXPECT_EQ([policyManager defaultUpdatePolicy], kPolicyNotSet);
+  EXPECT_NSEQ([policyManager downloadPreference], nil);
+  EXPECT_EQ([policyManager updatesSuppressed].start_hour_, kPolicyNotSet);
+  EXPECT_EQ([policyManager updatesSuppressed].start_minute_, kPolicyNotSet);
+  EXPECT_EQ([policyManager updatesSuppressed].duration_minute_, kPolicyNotSet);
+  EXPECT_EQ([policyManager proxyMode], nil);
+  EXPECT_EQ([policyManager proxyServer], nil);
+  EXPECT_EQ([policyManager proxyPacURL], nil);
 }
 
 TEST(CRUManagedPreferencePolicyManagerTest, TestInvalidPolicyValues) {
@@ -109,21 +113,22 @@ TEST(CRUManagedPreferencePolicyManagerTest, TestInvalidPolicyValues) {
     },
     @"com.google.Foo" : @"PolicyValueIsNotDictionary",
   };
-  CRUManagedPreferencePolicyManager* policyManager =
-      [[CRUManagedPreferencePolicyManager alloc] initWithDictionary:policyDict];
-  EXPECT_NSEQ(policyManager.source, @"Managed Preferences");
-  EXPECT_TRUE(policyManager.hasActivePolicy);
+  base::scoped_nsobject<CRUManagedPreferencePolicyManager> policyManager(
+      [[CRUManagedPreferencePolicyManager alloc]
+          initWithDictionary:policyDict]);
+  EXPECT_NSEQ([policyManager source], @"ManagedPreference");
+  EXPECT_EQ([policyManager managed], base::IsManagedOrEnterpriseDevice());
 
   // Verify global level policies.
-  EXPECT_EQ(policyManager.lastCheckPeriodMinutes, kPolicyNotSet);
-  EXPECT_EQ(policyManager.defaultUpdatePolicy, kPolicyNotSet);
-  EXPECT_EQ(policyManager.downloadPreference, nil);
-  EXPECT_EQ(policyManager.updatesSuppressed.start_hour_, kPolicyNotSet);
-  EXPECT_EQ(policyManager.updatesSuppressed.start_minute_, kPolicyNotSet);
-  EXPECT_EQ(policyManager.updatesSuppressed.duration_minute_, kPolicyNotSet);
-  EXPECT_EQ(policyManager.proxyMode, nil);
-  EXPECT_EQ(policyManager.proxyServer, nil);
-  EXPECT_EQ(policyManager.proxyPacURL, nil);
+  EXPECT_EQ([policyManager lastCheckPeriodMinutes], kPolicyNotSet);
+  EXPECT_EQ([policyManager defaultUpdatePolicy], kPolicyNotSet);
+  EXPECT_EQ([policyManager downloadPreference], nil);
+  EXPECT_EQ([policyManager updatesSuppressed].start_hour_, kPolicyNotSet);
+  EXPECT_EQ([policyManager updatesSuppressed].start_minute_, kPolicyNotSet);
+  EXPECT_EQ([policyManager updatesSuppressed].duration_minute_, kPolicyNotSet);
+  EXPECT_EQ([policyManager proxyMode], nil);
+  EXPECT_EQ([policyManager proxyServer], nil);
+  EXPECT_EQ([policyManager proxyPacURL], nil);
 
   // App-level policies.
   NSString* keystoneID = @"com.google.Keystone";

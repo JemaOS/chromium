@@ -17,8 +17,8 @@ LayoutViewTransitionContent::LayoutViewTransitionContent(
           element->is_live_content_element())),
       captured_rect_(element->captured_rect()),
       border_box_rect_(element->border_box_rect()) {
-  SetIntrinsicSize(PhysicalSize(LayoutUnit(border_box_rect_.width()),
-                                LayoutUnit(border_box_rect_.height())));
+  SetIntrinsicSize(LayoutSize(LayoutUnit(border_box_rect_.width()),
+                              LayoutUnit(border_box_rect_.height())));
 }
 
 LayoutViewTransitionContent::~LayoutViewTransitionContent() = default;
@@ -27,8 +27,8 @@ void LayoutViewTransitionContent::OnIntrinsicSizeUpdated(
     const gfx::RectF& captured_rect,
     const gfx::RectF& border_box_rect) {
   NOT_DESTROYED();
-  SetIntrinsicSize(PhysicalSize(LayoutUnit(border_box_rect.width()),
-                                LayoutUnit(border_box_rect.height())));
+  SetIntrinsicSize(LayoutSize(LayoutUnit(border_box_rect.width()),
+                              LayoutUnit(border_box_rect.height())));
   if (captured_rect_ != captured_rect) {
     SetShouldDoFullPaintInvalidationWithoutLayoutChange(
         PaintInvalidationReason::kImage);

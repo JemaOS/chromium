@@ -10,8 +10,8 @@ import android.graphics.Rect;
 import android.view.View;
 import android.view.ViewGroup;
 
-import androidx.annotation.ColorInt;
 import androidx.annotation.IntDef;
+import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
 import org.chromium.base.FeatureList;
@@ -45,13 +45,8 @@ public class OptionalButtonCoordinator {
     private Callback<Integer> mTransitionFinishedCallback;
     private IPHCommandBuilder mIphCommandBuilder;
 
-    @IntDef({
-        TransitionType.SWAPPING,
-        TransitionType.SHOWING,
-        TransitionType.HIDING,
-        TransitionType.EXPANDING_ACTION_CHIP,
-        TransitionType.COLLAPSING_ACTION_CHIP
-    })
+    @IntDef({TransitionType.SWAPPING, TransitionType.SHOWING, TransitionType.HIDING,
+            TransitionType.EXPANDING_ACTION_CHIP, TransitionType.COLLAPSING_ACTION_CHIP})
     @Retention(RetentionPolicy.SOURCE)
     public @interface TransitionType {
         int SWAPPING = 0;
@@ -70,21 +65,16 @@ public class OptionalButtonCoordinator {
      * @param isAnimationAllowedPredicate A BooleanProvider that is called before all transitions to
      *         determine if said transition should be animated or not.
      */
-    public OptionalButtonCoordinator(
-            View view,
-            UserEducationHelper userEducationHelper,
-            ViewGroup transitionRoot,
-            BooleanSupplier isAnimationAllowedPredicate,
+    public OptionalButtonCoordinator(View view, UserEducationHelper userEducationHelper,
+            ViewGroup transitionRoot, BooleanSupplier isAnimationAllowedPredicate,
             Tracker featureEngagementTracker) {
         mUserEducationHelper = userEducationHelper;
         PropertyModel model =
                 new PropertyModel.Builder(OptionalButtonProperties.ALL_KEYS)
-                        .with(
-                                OptionalButtonProperties.TRANSITION_FINISHED_CALLBACK,
+                        .with(OptionalButtonProperties.TRANSITION_FINISHED_CALLBACK,
                                 this::onTransitionFinishedCallback)
                         .with(OptionalButtonProperties.TRANSITION_ROOT, transitionRoot)
-                        .with(
-                                OptionalButtonProperties.IS_ANIMATION_ALLOWED_PREDICATE,
+                        .with(OptionalButtonProperties.IS_ANIMATION_ALLOWED_PREDICATE,
                                 isAnimationAllowedPredicate)
                         .build();
 
@@ -131,8 +121,7 @@ public class OptionalButtonCoordinator {
      * @param buttonData
      */
     public void updateButton(ButtonData buttonData) {
-        if (buttonData != null
-                && buttonData.getButtonSpec() != null
+        if (buttonData != null && buttonData.getButtonSpec() != null
                 && buttonData.getButtonSpec().getIPHCommandBuilder() != null) {
             mIphCommandBuilder = buttonData.getButtonSpec().getIPHCommandBuilder();
             setViewSpecificIphProperties(mIphCommandBuilder);
@@ -140,24 +129,20 @@ public class OptionalButtonCoordinator {
             mIphCommandBuilder = null;
         }
 
-        boolean hasActionChipResourceId =
-                buttonData != null
-                        && buttonData.getButtonSpec().getActionChipLabelResId()
-                                != Resources.ID_NULL;
+        boolean hasActionChipResourceId = buttonData != null
+                && buttonData.getButtonSpec().getActionChipLabelResId() != Resources.ID_NULL;
 
         // Dynamic buttons include an action chip resource ID by default regardless of variant.
         if (hasActionChipResourceId) {
             // We should only show the action chip if the action chip variant is enabled.
-            boolean isActionChipVariant =
-                    FeatureList.isInitialized()
-                            && AdaptiveToolbarFeatures.shouldShowActionChip(
-                                    buttonData.getButtonSpec().getButtonVariant());
+            boolean isActionChipVariant = FeatureList.isInitialized()
+                    && AdaptiveToolbarFeatures.shouldShowActionChip(
+                            buttonData.getButtonSpec().getButtonVariant());
             // And if feature engagement allows it.
-            boolean shouldShowActionChip =
-                    isActionChipVariant
-                            && mFeatureEngagementTracker.isInitialized()
-                            && mFeatureEngagementTracker.shouldTriggerHelpUI(
-                                    FeatureConstants.CONTEXTUAL_PAGE_ACTIONS_ACTION_CHIP);
+            boolean shouldShowActionChip = isActionChipVariant
+                    && mFeatureEngagementTracker.isInitialized()
+                    && mFeatureEngagementTracker.shouldTriggerHelpUI(
+                            FeatureConstants.CONTEXTUAL_PAGE_ACTIONS_ACTION_CHIP);
 
             if (!shouldShowActionChip) {
                 ((ButtonDataImpl) buttonData).updateActionChipResourceId(Resources.ID_NULL);
@@ -202,10 +187,9 @@ public class OptionalButtonCoordinator {
      * #updateButton(ButtonData)} is called with a {@link
      * org.chromium.chrome.browser.toolbar.ButtonData.ButtonSpec} where {@code isDynamicAction()} is
      * true).
-     *
      * @param backgroundColor
      */
-    public void setBackgroundColorFilter(@ColorInt int backgroundColor) {
+    public void setBackgroundColorFilter(int backgroundColor) {
         mMediator.setBackgroundColorFilter(backgroundColor);
     }
 
@@ -230,6 +214,7 @@ public class OptionalButtonCoordinator {
     }
 
     /** Gets the underlying ButtonView. */
+    @VisibleForTesting
     public View getButtonViewForTesting() {
         return mView.getButtonView();
     }
@@ -242,12 +227,11 @@ public class OptionalButtonCoordinator {
         if (transitionType == TransitionType.EXPANDING_ACTION_CHIP) {
             // Record an event in feature engagement to limit the amount of times we show the action
             // chip.
-            mFeatureEngagementTracker.addOnInitializedCallback(
-                    isReady -> {
-                        if (!isReady) return;
-                        mFeatureEngagementTracker.dismissed(
-                                FeatureConstants.CONTEXTUAL_PAGE_ACTIONS_ACTION_CHIP);
-                    });
+            mFeatureEngagementTracker.addOnInitializedCallback(isReady -> {
+                if (!isReady) return;
+                mFeatureEngagementTracker.dismissed(
+                        FeatureConstants.CONTEXTUAL_PAGE_ACTIONS_ACTION_CHIP);
+            });
         }
 
         if (mIphCommandBuilder != null) {
@@ -258,18 +242,17 @@ public class OptionalButtonCoordinator {
 
     private void setViewSpecificIphProperties(IPHCommandBuilder iphCommandBuilder) {
         HighlightParams highlightParams = new HighlightParams(HighlightShape.CIRCLE);
-        highlightParams.setCircleRadius(
-                new Bounds() {
-                    @Override
-                    public float getMaxRadiusPx(Rect bounds) {
-                        return mView.getResources().getDisplayMetrics().density * 20;
-                    }
+        highlightParams.setCircleRadius(new Bounds() {
+            @Override
+            public float getMaxRadiusPx(Rect bounds) {
+                return mView.getResources().getDisplayMetrics().density * 20;
+            }
 
-                    @Override
-                    public float getMinRadiusPx(Rect bounds) {
-                        return mView.getResources().getDisplayMetrics().density * 20;
-                    }
-                });
+            @Override
+            public float getMinRadiusPx(Rect bounds) {
+                return mView.getResources().getDisplayMetrics().density * 20;
+            }
+        });
 
         // We want this IPH highlight to be on the same position as the button's background which is
         // an ImageView separate from the button's ListMenuButton. IPH highlights are implemented as
@@ -281,16 +264,13 @@ public class OptionalButtonCoordinator {
         iphCommandBuilder.setOnShowCallback(() -> mMediator.setBackgroundAlpha(0));
         iphCommandBuilder.setOnDismissCallback(() -> mMediator.setBackgroundAlpha(255));
 
-        View anchorView = mView;
-        View backgroundView = mView.getBackgroundView();
-        if (backgroundView != null && backgroundView.getVisibility() != View.GONE) {
-            anchorView = backgroundView;
-        }
-        ViewRectProvider viewRectProvider = new ViewRectProvider(anchorView);
+        ViewRectProvider viewRectProvider = new ViewRectProvider(
+                mView.getBackgroundView() == null ? mView : mView.getBackgroundView());
         viewRectProvider.setIncludePadding(false);
 
         highlightParams.setBoundsRespectPadding(true);
-        iphCommandBuilder.setAnchorView(anchorView);
+        iphCommandBuilder.setAnchorView(
+                mView.getBackgroundView() == null ? mView : mView.getBackgroundView());
         iphCommandBuilder.setViewRectProvider(viewRectProvider);
         iphCommandBuilder.setHighlightParams(highlightParams);
     }

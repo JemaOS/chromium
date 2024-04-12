@@ -65,13 +65,13 @@ struct EnrollmentConfig {
     // Forced enrollment triggered as a fallback to attestation re-enrollment,
     // user can't skip.
     MODE_ATTESTATION_MANUAL_FALLBACK = 11,
-    // Deprecated. Demo mode does not support offline enrollment.
+    // Deprecated: Demo mode does not support offline enrollment.
     // Enrollment for offline demo mode with locally stored policy data.
-    DEPRECATED_MODE_OFFLINE_DEMO = 12,
-    // Deprecated. Flow that happens when already enrolled device undergoes
+    MODE_OFFLINE_DEMO_DEPRECATED = 12,
+    // Obsolete. Flow that happens when already enrolled device undergoes
     // version rollback. Enrollment information is preserved during rollback,
     // but some steps have to be repeated as stateful partition was wiped.
-    DEPRECATED_MODE_ENROLLED_ROLLBACK = 13,
+    OBSOLETE_MODE_ENROLLED_ROLLBACK = 13,
     // Server-backed-state-triggered forced initial enrollment, user can't
     // skip.
     MODE_INITIAL_SERVER_FORCED = 14,
@@ -89,6 +89,8 @@ struct EnrollmentConfig {
     // Attestation re-enrollment just failed, attempt manual enrollment as
     // fallback. Cannot be skipped.
     MODE_ATTESTATION_ROLLBACK_MANUAL_FALLBACK = 18,
+
+    MODE_JEMA_LOCAL_FORCED = 19,
   };
 
   // An enumeration of authentication mechanisms that can be used for
@@ -101,6 +103,12 @@ struct EnrollmentConfig {
     // Let the system determine the best mechanism (typically the one
     // that requires the least user interaction).
     AUTH_MECHANISM_BEST_AVAILABLE = 2,
+
+    // Auth with jema token in a special way
+    AUTH_MECHANISM_JEMA,
+    // if user is allowed to enroll manually when auto enroll(AUTH_MECHANISM_JEMA) failed, use this mechanism,
+    // it will fallback to inertactive auth
+    AUTH_MECHANISM_JEMA_BEST_AVAILABLE,
   };
 
   // An enumeration of assigned upgrades that a device can after initial
@@ -124,11 +132,9 @@ struct EnrollmentConfig {
   // |config.management_domain| may be non-empty even if |config.mode| is
   // MODE_NONE.
   // |statistics_provider| would also be const if it had const access methods.
-  // May alter the enrollment recovery flag in local state if it discovers
-  // inconsistency there.
   static EnrollmentConfig GetPrescribedEnrollmentConfig();
   static EnrollmentConfig GetPrescribedEnrollmentConfig(
-      PrefService* local_state,
+      const PrefService& local_state,
       const ash::InstallAttributes& install_attributes,
       ash::system::StatisticsProvider* statistics_provider);
 
@@ -147,7 +153,9 @@ struct EnrollmentConfig {
 
   // Whether attestation enrollment should be triggered.
   bool should_enroll_with_attestation() const {
-    return auth_mechanism != AUTH_MECHANISM_INTERACTIVE;
+    // do not trigger enroll if auth_mechanism is jema when oobe is completed
+    // if we want to trigger jema enrollment even if oobe is completed, we should add a function like should_enroll_with_jema()
+    return auth_mechanism != AUTH_MECHANISM_INTERACTIVE && auth_mechanism != AUTH_MECHANISM_JEMA && auth_mechanism != AUTH_MECHANISM_JEMA_BEST_AVAILABLE;
   }
 
   // Whether interactive enrollment should be triggered.
@@ -167,6 +175,7 @@ struct EnrollmentConfig {
            mode == MODE_ATTESTATION_LOCAL_FORCED ||
            mode == MODE_ATTESTATION_SERVER_FORCED ||
            mode == MODE_INITIAL_SERVER_FORCED ||
+           mode == MODE_JEMA_LOCAL_FORCED ||
            mode == MODE_ATTESTATION_INITIAL_SERVER_FORCED ||
            mode == MODE_ATTESTATION_ROLLBACK_FORCED || mode == MODE_RECOVERY ||
            is_manual_fallback();
@@ -176,6 +185,11 @@ struct EnrollmentConfig {
   // manually.
   bool is_attestation_auth_forced() const {
     return auth_mechanism == AUTH_MECHANISM_ATTESTATION;
+  }
+
+  bool is_attestation_auth_jema() const {
+    return auth_mechanism == AUTH_MECHANISM_JEMA ||
+           auth_mechanism == AUTH_MECHANISM_JEMA_BEST_AVAILABLE;
   }
 
   // Whether this configuration is in attestation mode per server request.
@@ -209,9 +223,13 @@ struct EnrollmentConfig {
     return is_mode_attestation_client() || is_mode_attestation_server();
   }
 
+  bool is_mode_jema() const {
+    return mode == MODE_JEMA_LOCAL_FORCED;
+  }
+
   // Whether this configuration is in OAuth mode.
   bool is_mode_oauth() const {
-    return mode != MODE_NONE && !is_mode_attestation();
+    return mode != MODE_NONE && !is_mode_attestation() && !is_mode_jema();
   }
 
   // Indicates the enrollment flow variant to trigger during OOBE.
@@ -248,10 +266,6 @@ struct EnrollmentConfig {
   // The path for the device policy blob data for the offline demo mode. This
   // should be empty and never used for other modes.
   base::FilePath offline_policy_path;
-
-  // User's email which can be passed from the Gaia screen in the enrollment
-  // nudge flow.
-  std::string enrollment_nudge_email;
 };
 
 }  // namespace policy

@@ -5,9 +5,9 @@
 /**
  * @fileoverview Handles user keyboard input events.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
+import {UserActionMonitor} from '../background/user_action_monitor.js';
 
-import {Command} from './command.js';
+import {Command} from './command_store.js';
 import {KeyMap} from './key_map.js';
 import {KeyUtil} from './key_util.js';
 
@@ -59,5 +59,3 @@ ChromeVoxKbHandler.basicKeyDownActionsListener = function(evt) {
 
   return returnValue;
 };
-
-TestImportManager.exportForTesting(['ChromeVoxKbHandler', ChromeVoxKbHandler]);

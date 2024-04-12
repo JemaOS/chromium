@@ -4,7 +4,7 @@
 
 #include "third_party/blink/renderer/platform/graphics/paint/clip_paint_property_node.h"
 
-#include "third_party/blink/renderer/platform/geometry/infinite_int_rect.h"
+#include "third_party/blink/renderer/platform/geometry/layout_rect.h"
 #include "third_party/blink/renderer/platform/graphics/paint/effect_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/paint/property_tree_state.h"
 
@@ -26,11 +26,12 @@ PaintPropertyChangeType ClipPaintPropertyNode::State::ComputeChange(
 }
 
 const ClipPaintPropertyNode& ClipPaintPropertyNode::Root() {
-  DEFINE_STATIC_REF(ClipPaintPropertyNode, root,
-                    base::AdoptRef(new ClipPaintPropertyNode(
-                        nullptr, State(&TransformPaintPropertyNode::Root(),
-                                       gfx::RectF(InfiniteIntRect()),
-                                       FloatRoundedRect(InfiniteIntRect())))));
+  DEFINE_STATIC_REF(
+      ClipPaintPropertyNode, root,
+      base::AdoptRef(new ClipPaintPropertyNode(
+          nullptr, State(&TransformPaintPropertyNode::Root(),
+                         gfx::RectF(LayoutRect::InfiniteIntRect()),
+                         FloatRoundedRect(LayoutRect::InfiniteIntRect())))));
   return *root;
 }
 
@@ -40,18 +41,15 @@ bool ClipPaintPropertyNodeOrAlias::Changed(
     const TransformPaintPropertyNodeOrAlias* transform_not_to_check) const {
   for (const auto* node = this; node && node != &relative_to_state.Clip();
        node = node->Parent()) {
-    if (node->NodeChanged() >= change) {
+    if (node->NodeChanged() >= change)
       return true;
-    }
-    if (node->IsParentAlias()) {
+    if (node->IsParentAlias())
       continue;
-    }
     const auto* unaliased = static_cast<const ClipPaintPropertyNode*>(node);
     if (&unaliased->LocalTransformSpace() != transform_not_to_check &&
-        unaliased->LocalTransformSpace().Changed(
-            change, relative_to_state.Transform())) {
+        unaliased->LocalTransformSpace().Changed(change,
+                                                 relative_to_state.Transform()))
       return true;
-    }
   }
 
   return false;
@@ -71,7 +69,7 @@ void ClipPaintPropertyNodeOrAlias::ClearChangedToRoot(
 }
 
 std::unique_ptr<JSONObject> ClipPaintPropertyNode::ToJSON() const {
-  auto json = ClipPaintPropertyNodeOrAlias::ToJSON();
+  auto json = ToJSONBase();
   if (NodeChanged() != PaintPropertyChangeType::kUnchanged)
     json->SetString("changed", PaintPropertyChangeTypeToString(NodeChanged()));
   json->SetString("localTransformSpace",

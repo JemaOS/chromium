@@ -37,7 +37,7 @@ class JPEGImageReader;
 class PLATFORM_EXPORT JPEGImageDecoder final : public ImageDecoder {
  public:
   JPEGImageDecoder(AlphaOption,
-                   ColorBehavior,
+                   const ColorBehavior&,
                    wtf_size_t max_decoded_bytes,
                    wtf_size_t offset = 0);
   JPEGImageDecoder(const JPEGImageDecoder&) = delete;
@@ -45,10 +45,10 @@ class PLATFORM_EXPORT JPEGImageDecoder final : public ImageDecoder {
   ~JPEGImageDecoder() override;
 
   // ImageDecoder:
-  String FilenameExtension() const override;
+  String FilenameExtension() const override { return "jpg"; }
   const AtomicString& MimeType() const override;
-  void OnSetData(scoped_refptr<SegmentReader> data) override;
-  gfx::Size DecodedSize() const override;
+  void OnSetData(SegmentReader* data) override;
+  gfx::Size DecodedSize() const override { return decoded_size_; }
   bool SetSize(unsigned width, unsigned height) override;
   cc::YUVSubsampling GetYUVSubsampling() const override;
   gfx::Size DecodedYUVSize(cc::YUVIndex) const override;
@@ -57,8 +57,8 @@ class PLATFORM_EXPORT JPEGImageDecoder final : public ImageDecoder {
   SkYUVColorSpace GetYUVColorSpace() const override;
   Vector<SkISize> GetSupportedDecodeSizes() const override;
   bool GetGainmapInfoAndData(
-      SkGainmapInfo& out_gainmap_info,
-      scoped_refptr<SegmentReader>& out_gainmap_data) const override;
+      SkGainmapInfo& outGainmapInfo,
+      scoped_refptr<SegmentReader>& outGainmapData) const override;
 
   bool HasImagePlanes() const { return image_planes_.get(); }
 
@@ -69,6 +69,10 @@ class PLATFORM_EXPORT JPEGImageDecoder final : public ImageDecoder {
                                         unsigned scale_denominator);
   bool ShouldGenerateAllSizes() const;
   void Complete();
+
+  void SetOrientation(ImageOrientation orientation) {
+    orientation_ = orientation;
+  }
 
   void SetDensityCorrectedSize(const gfx::Size& size) {
     density_corrected_size_ = size;
@@ -90,8 +94,11 @@ class PLATFORM_EXPORT JPEGImageDecoder final : public ImageDecoder {
 
  private:
   // ImageDecoder:
-  void DecodeSize() override;
-  void Decode(wtf_size_t) override;
+  void DecodeSize() override { Decode(DecodingMode::kDecodeHeader); }
+  void Decode(wtf_size_t) override {
+    // Use DecodeToYUV for YUV decoding.
+    Decode(DecodingMode::kDecodeToBitmap);
+  }
   cc::ImageHeaderMetadata MakeMetadataForDecodeAcceleration() const override;
 
   // Attempts to calculate the coded size of the JPEG image. Returns a zero

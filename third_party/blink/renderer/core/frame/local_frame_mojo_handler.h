@@ -6,8 +6,8 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_LOCAL_FRAME_MOJO_HANDLER_H_
 
 #include "build/build_config.h"
-#include "components/viz/common/navigation_id.h"
-#include "third_party/blink/public/mojom/device_posture/device_posture_provider.mojom-blink.h"
+#include "components/power_scheduler/power_mode_voter.h"
+#include "services/device/public/mojom/device_posture_provider.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/back_forward_cache_controller.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/fullscreen.mojom-blink-forward.h"
@@ -47,8 +47,9 @@ class LocalFrameMojoHandler
     : public GarbageCollected<LocalFrameMojoHandler>,
       public mojom::blink::LocalFrame,
       public mojom::blink::LocalMainFrame,
+      public mojom::blink::HighPriorityLocalFrame,
       public mojom::blink::FullscreenVideoElementHandler,
-      public mojom::blink::DevicePostureClient {
+      public device::mojom::blink::DevicePostureProviderClient {
  public:
   explicit LocalFrameMojoHandler(blink::LocalFrame& frame);
   void Trace(Visitor* visitor) const;
@@ -68,7 +69,6 @@ class LocalFrameMojoHandler
   }
 
   mojom::blink::ReportingServiceProxy* ReportingService();
-  mojom::blink::DevicePostureProvider* DevicePostureProvider();
   mojom::blink::BackForwardCacheControllerHost&
   BackForwardCacheControllerHostRemote();
 
@@ -78,10 +78,7 @@ class LocalFrameMojoHandler
   void RebindTextInputHostForTesting();
 #endif
 
-  mojom::blink::DevicePostureType GetDevicePosture();
-  void OverrideDevicePostureForEmulation(
-      mojom::blink::DevicePostureType device_posture_param);
-  void DisableDevicePostureOverrideForEmulation();
+  device::mojom::blink::DevicePostureType GetDevicePosture();
 
  private:
   Page* GetPage() const;
@@ -92,6 +89,8 @@ class LocalFrameMojoHandler
       mojo::PendingAssociatedReceiver<mojom::blink::LocalFrame> receiver);
   void BindToMainFrameReceiver(
       mojo::PendingAssociatedReceiver<mojom::blink::LocalMainFrame> receiver);
+  void BindToHighPriorityReceiver(
+      mojo::PendingReceiver<mojom::blink::HighPriorityLocalFrame> receiver);
   void BindFullscreenVideoElementReceiver(
       mojo::PendingAssociatedReceiver<
           mojom::blink::FullscreenVideoElementHandler> receiver);
@@ -109,6 +108,7 @@ class LocalFrameMojoHandler
   void AddMessageToConsole(mojom::blink::ConsoleMessageLevel level,
                            const WTF::String& message,
                            bool discard_duplicates) final;
+  void AddInspectorIssue(mojom::blink::InspectorIssueInfoPtr) final;
   void SwapInImmediately() final;
   void CheckCompleted() final;
   void StopLoading() final;
@@ -121,15 +121,12 @@ class LocalFrameMojoHandler
   void ReportBlinkFeatureUsage(const Vector<mojom::blink::WebFeature>&) final;
   void RenderFallbackContent() final;
   void BeforeUnload(bool is_reload, BeforeUnloadCallback callback) final;
-  void MediaPlayerActionAt(const gfx::Point& window_point,
-                           mojom::blink::MediaPlayerActionPtr action) final;
-  void RequestVideoFrameAt(const gfx::Point& window_point,
-                           const gfx::Size& max_size,
-                           int max_area,
-                           RequestVideoFrameAtCallback callback) final;
+  void MediaPlayerActionAt(
+      const gfx::Point& window_point,
+      blink::mojom::blink::MediaPlayerActionPtr action) final;
   void AdvanceFocusInFrame(
       mojom::blink::FocusType focus_type,
-      const std::optional<RemoteFrameToken>& source_frame_token) final;
+      const absl::optional<RemoteFrameToken>& source_frame_token) final;
   void AdvanceFocusForIME(mojom::blink::FocusType focus_type) final;
   void ReportContentSecurityPolicyViolation(
       network::mojom::blink::CSPViolationPtr csp_violation) final;
@@ -140,7 +137,7 @@ class LocalFrameMojoHandler
   // until the next navigation.
   void DidUpdateFramePolicy(const FramePolicy& frame_policy) final;
   void PostMessageEvent(
-      const std::optional<RemoteFrameToken>& source_frame_token,
+      const absl::optional<RemoteFrameToken>& source_frame_token,
       const String& source_origin,
       const String& target_origin,
       BlinkTransferableMessage message) final;
@@ -174,7 +171,7 @@ class LocalFrameMojoHandler
   void BindReportingObserver(
       mojo::PendingReceiver<mojom::blink::ReportingObserver> receiver) final;
   void UpdateOpener(
-      const std::optional<blink::FrameToken>& opener_routing_id) final;
+      const absl::optional<blink::FrameToken>& opener_routing_id) final;
   void GetSavableResourceLinks(GetSavableResourceLinksCallback callback) final;
   void MixedContentFound(
       const KURL& main_resource_url,
@@ -198,21 +195,13 @@ class LocalFrameMojoHandler
   void GetOpenGraphMetadata(GetOpenGraphMetadataCallback callback) final;
 
   void SetNavigationApiHistoryEntriesForRestore(
-      mojom::blink::NavigationApiHistoryEntryArraysPtr,
-      mojom::blink::NavigationApiEntryRestoreReason) final;
+      mojom::blink::NavigationApiHistoryEntryArraysPtr) final;
   void NotifyNavigationApiOfDisposedEntries(
       const WTF::Vector<WTF::String>&) final;
   void TraverseCancelled(const String& navigation_api_key,
                          mojom::blink::TraverseCancelledReason reason) final;
-  void DispatchNavigateEventForCrossDocumentTraversal(
-      const KURL&,
-      const std::string& page_state,
-      bool is_browser_initiated) final;
   void SnapshotDocumentForViewTransition(
-      const viz::NavigationId& navigation_id,
-      mojom::blink::PageSwapEventParamsPtr,
       SnapshotDocumentForViewTransitionCallback callback) final;
-  void DispatchPageSwap(mojom::blink::PageSwapEventParamsPtr) final;
 
   void AddResourceTimingEntryForFailedSubframeNavigation(
       const FrameToken& subframe_token,
@@ -224,7 +213,7 @@ class LocalFrameMojoHandler
       uint32_t response_code,
       const WTF::String& mime_type,
       network::mojom::blink::LoadTimingInfoPtr load_timing_info,
-      net::HttpConnectionInfo connection_info,
+      net::HttpResponseInfo::ConnectionInfo connection_info,
       const WTF::String& alpn_negotiated_protocol,
       bool is_secure_transport,
       bool is_validated,
@@ -248,19 +237,31 @@ class LocalFrameMojoHandler
   void InstallCoopAccessMonitor(
       const FrameToken& accessed_window,
       network::mojom::blink::CrossOriginOpenerPolicyReporterParamsPtr
-          coop_reporter_params,
-      bool is_in_same_virtual_coop_related_group) final;
+          coop_reporter_params) final;
+  void OnPortalActivated(
+      const PortalToken& portal_token,
+      mojo::PendingAssociatedRemote<mojom::blink::Portal> portal,
+      mojo::PendingAssociatedReceiver<mojom::blink::PortalClient> portal_client,
+      BlinkTransferableMessage data,
+      uint64_t trace_id,
+      OnPortalActivatedCallback callback) final;
+  void ForwardMessageFromHost(
+      BlinkTransferableMessage message,
+      const scoped_refptr<const SecurityOrigin>& source_origin) final;
   void UpdateBrowserControlsState(cc::BrowserControlsState constraints,
                                   cc::BrowserControlsState current,
                                   bool animate) override;
 
-  void SetV8CompileHints(base::ReadOnlySharedMemoryRegion data) override;
+  // mojom::blink::HighPriorityLocalFrame implementation:
+  void DispatchBeforeUnload(
+      bool is_reload,
+      mojom::blink::LocalFrame::BeforeUnloadCallback callback) final;
 
   // mojom::FullscreenVideoElementHandler implementation:
   void RequestFullscreenVideoElement() final;
 
-  // DevicePostureClient implementation:
-  void OnPostureChanged(mojom::blink::DevicePostureType posture) final;
+  // DevicePostureServiceClient implementation:
+  void OnPostureChanged(device::mojom::blink::DevicePostureType posture) final;
 
   Member<blink::LocalFrame> frame_;
 
@@ -274,14 +275,8 @@ class LocalFrameMojoHandler
   HeapMojoRemote<mojom::blink::ReportingServiceProxy> reporting_service_{
       nullptr};
 
-  // Device posture fields should only be used, e.g. non-null, on local roots.
-  HeapMojoRemote<mojom::blink::DevicePostureProvider>
+  HeapMojoRemote<device::mojom::blink::DevicePostureProvider>
       device_posture_provider_service_{nullptr};
-  // LocalFrameMojoHandler can be reused by multiple ExecutionContext.
-  HeapMojoReceiver<mojom::blink::DevicePostureClient, LocalFrameMojoHandler>
-      device_posture_receiver_{this, nullptr};
-  mojom::blink::DevicePostureType current_device_posture_ =
-      mojom::blink::DevicePostureType::kContinuous;
 
   HeapMojoAssociatedRemote<mojom::blink::LocalFrameHost>
       local_frame_host_remote_{nullptr};
@@ -297,9 +292,23 @@ class LocalFrameMojoHandler
                              LocalFrameMojoHandler>
       main_frame_receiver_{this, nullptr};
   // LocalFrameMojoHandler can be reused by multiple ExecutionContext.
+  HeapMojoReceiver<mojom::blink::HighPriorityLocalFrame, LocalFrameMojoHandler>
+      high_priority_frame_receiver_{this, nullptr};
+  // LocalFrameMojoHandler can be reused by multiple ExecutionContext.
   HeapMojoAssociatedReceiver<mojom::blink::FullscreenVideoElementHandler,
                              LocalFrameMojoHandler>
       fullscreen_video_receiver_{this, nullptr};
+
+  // LocalFrameMojoHandler can be reused by multiple ExecutionContext.
+  HeapMojoReceiver<device::mojom::blink::DevicePostureProviderClient,
+                   LocalFrameMojoHandler>
+      device_posture_receiver_{this, nullptr};
+
+  device::mojom::blink::DevicePostureType current_device_posture_ =
+      device::mojom::blink::DevicePostureType::kContinuous;
+
+  std::unique_ptr<power_scheduler::PowerModeVoter>
+      script_execution_power_mode_voter_;
 };
 
 class ActiveURLMessageFilter : public mojo::MessageFilter {

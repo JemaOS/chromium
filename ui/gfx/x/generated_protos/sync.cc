@@ -7,19 +7,36 @@
 //    ../../third_party/xcbproto/src \
 //    gen/ui/gfx/x \
 //    bigreq \
+//    composite \
+//    damage \
+//    dpms \
+//    dri2 \
 //    dri3 \
+//    ge \
 //    glx \
+//    present \
 //    randr \
+//    record \
 //    render \
+//    res \
 //    screensaver \
 //    shape \
 //    shm \
 //    sync \
+//    xc_misc \
+//    xevie \
+//    xf86dri \
+//    xf86vidmode \
 //    xfixes \
+//    xinerama \
 //    xinput \
 //    xkb \
+//    xprint \
 //    xproto \
-//    xtest
+//    xselinux \
+//    xtest \
+//    xv \
+//    xvmc
 
 #include "sync.h"
 
@@ -29,7 +46,6 @@
 
 #include "base/logging.h"
 #include "base/posix/eintr_wrapper.h"
-#include "ui/gfx/x/connection.h"
 #include "ui/gfx/x/xproto_internal.h"
 
 namespace x11 {
@@ -78,9 +94,8 @@ void ReadError<Sync::CounterError>(Sync::CounterError* error_,
   // major_opcode
   Read(&major_opcode, &buf);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
-
 std::string Sync::AlarmError::ToString() const {
   std::stringstream ss_;
   ss_ << "Sync::AlarmError{";
@@ -121,9 +136,8 @@ void ReadError<Sync::AlarmError>(Sync::AlarmError* error_, ReadBuffer* buffer) {
   // major_opcode
   Read(&major_opcode, &buf);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
-
 template <>
 COMPONENT_EXPORT(X11)
 void ReadEvent<Sync::CounterNotifyEvent>(Sync::CounterNotifyEvent* event_,
@@ -188,7 +202,7 @@ void ReadEvent<Sync::CounterNotifyEvent>(Sync::CounterNotifyEvent* event_,
   // pad0
   Pad(&buf, 1);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
 
 template <>
@@ -253,7 +267,7 @@ void ReadEvent<Sync::AlarmNotifyEvent>(Sync::AlarmNotifyEvent* event_,
   // pad0
   Pad(&buf, 3);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
 
 Future<Sync::InitializeReply> Sync::Initialize(
@@ -332,7 +346,7 @@ std::unique_ptr<Sync::InitializeReply> detail::ReadReply<Sync::InitializeReply>(
   Pad(&buf, 22);
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -438,7 +452,7 @@ std::unique_ptr<Sync::ListSystemCountersReply> detail::ReadReply<
   }
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -592,7 +606,7 @@ std::unique_ptr<Sync::QueryCounterReply> detail::ReadReply<
   }
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -619,7 +633,7 @@ Future<void> Sync::Await(const Sync::AwaitRequest& request) {
   Pad(&buf, sizeof(uint16_t));
 
   // wait_list
-  CHECK_EQ(static_cast<size_t>(wait_list_len), wait_list.size());
+  DCHECK_EQ(static_cast<size_t>(wait_list_len), wait_list.size());
   for (auto& wait_list_elem : wait_list) {
     // wait_list_elem
     {
@@ -881,12 +895,12 @@ Future<void> Sync::CreateAlarm(const Sync::CreateAlarmRequest& request) {
 }
 
 Future<void> Sync::CreateAlarm(const Alarm& id,
-                               const std::optional<Counter>& counter,
-                               const std::optional<Valuetype>& valueType,
-                               const std::optional<Int64>& value,
-                               const std::optional<Testtype>& testType,
-                               const std::optional<Int64>& delta,
-                               const std::optional<uint32_t>& events) {
+                               const absl::optional<Counter>& counter,
+                               const absl::optional<Valuetype>& valueType,
+                               const absl::optional<Int64>& value,
+                               const absl::optional<Testtype>& testType,
+                               const absl::optional<Int64>& delta,
+                               const absl::optional<uint32_t>& events) {
   return Sync::CreateAlarm(Sync::CreateAlarmRequest{
       id, counter, valueType, value, testType, delta, events});
 }
@@ -1000,12 +1014,12 @@ Future<void> Sync::ChangeAlarm(const Sync::ChangeAlarmRequest& request) {
 }
 
 Future<void> Sync::ChangeAlarm(const Alarm& id,
-                               const std::optional<Counter>& counter,
-                               const std::optional<Valuetype>& valueType,
-                               const std::optional<Int64>& value,
-                               const std::optional<Testtype>& testType,
-                               const std::optional<Int64>& delta,
-                               const std::optional<uint32_t>& events) {
+                               const absl::optional<Counter>& counter,
+                               const absl::optional<Valuetype>& valueType,
+                               const absl::optional<Int64>& value,
+                               const absl::optional<Testtype>& testType,
+                               const absl::optional<Int64>& delta,
+                               const absl::optional<uint32_t>& events) {
   return Sync::ChangeAlarm(Sync::ChangeAlarmRequest{
       id, counter, valueType, value, testType, delta, events});
 }
@@ -1160,7 +1174,7 @@ std::unique_ptr<Sync::QueryAlarmReply> detail::ReadReply<Sync::QueryAlarmReply>(
   Pad(&buf, 2);
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -1263,7 +1277,7 @@ std::unique_ptr<Sync::GetPriorityReply> detail::ReadReply<
   Read(&priority, &buf);
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -1472,7 +1486,7 @@ std::unique_ptr<Sync::QueryFenceReply> detail::ReadReply<Sync::QueryFenceReply>(
   Pad(&buf, 23);
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -1499,7 +1513,7 @@ Future<void> Sync::AwaitFence(const Sync::AwaitFenceRequest& request) {
   Pad(&buf, sizeof(uint16_t));
 
   // fence_list
-  CHECK_EQ(static_cast<size_t>(fence_list_len), fence_list.size());
+  DCHECK_EQ(static_cast<size_t>(fence_list_len), fence_list.size());
   for (auto& fence_list_elem : fence_list) {
     // fence_list_elem
     buf.Write(&fence_list_elem);

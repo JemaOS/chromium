@@ -175,9 +175,6 @@ StyleColor& StyleColor::operator=(const StyleColor& other) {
               *other.color_or_unresolved_color_mix_.unresolved_color_mix));
     }
   } else {
-    if (IsUnresolvedColorMixFunction()) {
-      color_or_unresolved_color_mix_.unresolved_color_mix.reset();
-    }
     color_or_unresolved_color_mix_.color =
         other.color_or_unresolved_color_mix_.color;
   }
@@ -228,7 +225,8 @@ StyleColor::~StyleColor() {
 
 Color StyleColor::Resolve(const Color& current_color,
                           mojom::blink::ColorScheme color_scheme,
-                          bool* is_current_color) const {
+                          bool* is_current_color,
+                          bool is_forced_color) const {
   if (IsUnresolvedColorMixFunction()) {
     return color_or_unresolved_color_mix_.unresolved_color_mix->Resolve(
         current_color);
@@ -240,12 +238,9 @@ Color StyleColor::Resolve(const Color& current_color,
   if (IsCurrentColor()) {
     return current_color;
   }
-  if (EffectiveColorKeyword() != CSSValueID::kInvalid) {
-    // It is okay to pass nullptr for color_provider here because system colors
-    // are now resolved before used value time.
-    CHECK(!IsSystemColorIncludingDeprecated());
-    return ColorFromKeyword(color_keyword_, color_scheme,
-                            /*color_provider=*/nullptr);
+  if (EffectiveColorKeyword() != CSSValueID::kInvalid ||
+      (is_forced_color && IsSystemColorIncludingDeprecated())) {
+    return ColorFromKeyword(color_keyword_, color_scheme);
   }
   return GetColor();
 }
@@ -253,32 +248,23 @@ Color StyleColor::Resolve(const Color& current_color,
 Color StyleColor::ResolveWithAlpha(Color current_color,
                                    mojom::blink::ColorScheme color_scheme,
                                    int alpha,
-                                   bool* is_current_color) const {
-  Color color = Resolve(current_color, color_scheme, is_current_color);
+                                   bool* is_current_color,
+                                   bool is_forced_color) const {
+  Color color =
+      Resolve(current_color, color_scheme, is_current_color, is_forced_color);
   // TODO(crbug.com/1333988) This looks unfriendly to CSS Color 4.
   return Color(color.Red(), color.Green(), color.Blue(), alpha);
 }
 
-StyleColor StyleColor::ResolveSystemColor(
-    mojom::blink::ColorScheme color_scheme,
-    const ui::ColorProvider* color_provider) const {
-  CHECK(IsSystemColor());
-  Color color = ColorFromKeyword(color_keyword_, color_scheme, color_provider);
-  return StyleColor(color, color_keyword_);
-}
-
 Color StyleColor::ColorFromKeyword(CSSValueID keyword,
-                                   mojom::blink::ColorScheme color_scheme,
-                                   const ui::ColorProvider* color_provider) {
+                                   mojom::blink::ColorScheme color_scheme) {
   if (const char* value_name = getValueName(keyword)) {
     if (const NamedColor* named_color = FindColor(
             value_name, static_cast<wtf_size_t>(strlen(value_name)))) {
       return Color::FromRGBA32(named_color->argb_value);
     }
   }
-
-  return LayoutTheme::GetTheme().SystemColor(keyword, color_scheme,
-                                             color_provider);
+  return LayoutTheme::GetTheme().SystemColor(keyword, color_scheme);
 }
 
 bool StyleColor::IsColorKeyword(CSSValueID id) {
@@ -333,8 +319,6 @@ bool StyleColor::IsSystemColorIncludingDeprecated(CSSValueID id) {
 
 bool StyleColor::IsSystemColor(CSSValueID id) {
   switch (id) {
-    case CSSValueID::kAccentcolor:
-    case CSSValueID::kAccentcolortext:
     case CSSValueID::kActivetext:
     case CSSValueID::kButtonborder:
     case CSSValueID::kButtonface:
@@ -363,19 +347,6 @@ bool StyleColor::IsSystemColor(CSSValueID id) {
 CSSValueID StyleColor::EffectiveColorKeyword() const {
   return IsSystemColorIncludingDeprecated(color_keyword_) ? CSSValueID::kInvalid
                                                           : color_keyword_;
-}
-
-CORE_EXPORT std::ostream& operator<<(std::ostream& stream,
-                                     const StyleColor& color) {
-  if (color.IsCurrentColor()) {
-    return stream << "currentcolor";
-  } else if (color.IsUnresolvedColorMixFunction()) {
-    return stream << "<unresolved color-mix>";
-  } else if (color.HasColorKeyword() && !color.IsNumeric()) {
-    return stream << getValueName(color.GetColorKeyword());
-  } else {
-    return stream << color.GetColor();
-  }
 }
 
 }  // namespace blink

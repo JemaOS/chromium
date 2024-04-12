@@ -49,7 +49,6 @@
 #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/wtf.h"
-#include "url/scheme_host_port.h"
 #include "url/url_canon.h"
 #include "url/url_canon_ip.h"
 #include "url/url_util.h"
@@ -119,8 +118,9 @@ static bool ShouldTreatAsOpaqueOrigin(const KURL& url) {
                      relevant_url.Protocol().Ascii()))
     return true;
 
-  // Nonstandard schemes and unregistered schemes are placed in opaque origins.
-  if (!relevant_url.IsStandard()) {
+  // Nonstandard schemes and unregistered schemes aren't known to contain hosts
+  // and/or ports, so they'll usually be placed in opaque origins.
+  if (!relevant_url.CanSetHostOrPort()) {
     // A temporary exception is made for non-standard local schemes.
     // TODO: Migrate "content:" and "externalfile:" to be standard schemes, and
     // remove the local scheme exception.
@@ -138,21 +138,16 @@ static bool ShouldTreatAsOpaqueOrigin(const KURL& url) {
   return false;
 }
 
-scoped_refptr<SecurityOrigin> SecurityOrigin::CreateInternal(const KURL& url) {
-  if (url::SchemeHostPort::ShouldDiscardHostAndPort(url.Protocol().Ascii())) {
-    return base::AdoptRef(
-        new SecurityOrigin(url.Protocol(), g_empty_string, 0));
-  }
-
-  // This mimics the logic in url::SchemeHostPort(const GURL&). In
-  // particular, it ensures a URL with a port of 0 will translate into
-  // an origin with an effective port of 0.
-  uint16_t port = (url.HasPort() || !url.IsValid() || !url.IsStandard())
-                      ? url.Port()
-                      : DefaultPortForProtocol(url.Protocol());
-  return base::AdoptRef(new SecurityOrigin(EnsureNonNull(url.Protocol()),
-                                           EnsureNonNull(url.Host()), port));
-}
+SecurityOrigin::SecurityOrigin(const KURL& url)
+    : SecurityOrigin(
+          EnsureNonNull(url.Protocol()),
+          EnsureNonNull(url.Host()),
+          // This mimics the logic in url::SchemeHostPort(const GURL&). In
+          // particular, it ensures a URL with a port of 0 will translate into
+          // an origin with an effective port of 0.
+          (url.HasPort() || !url.IsValid() || !url.IsHierarchical())
+              ? url.Port()
+              : DefaultPortForProtocol(url.Protocol())) {}
 
 SecurityOrigin::SecurityOrigin(const String& protocol,
                                const String& host,
@@ -171,7 +166,7 @@ SecurityOrigin::SecurityOrigin(const url::Origin::Nonce& nonce,
     : nonce_if_opaque_(nonce), precursor_origin_(precursor) {}
 
 SecurityOrigin::SecurityOrigin(NewUniqueOpaque, const SecurityOrigin* precursor)
-    : nonce_if_opaque_(std::in_place), precursor_origin_(precursor) {}
+    : nonce_if_opaque_(absl::in_place), precursor_origin_(precursor) {}
 
 SecurityOrigin::SecurityOrigin(const SecurityOrigin* other,
                                ConstructIsolatedCopy)
@@ -233,9 +228,9 @@ scoped_refptr<SecurityOrigin> SecurityOrigin::CreateWithReferenceOrigin(
   }
 
   if (ShouldUseInnerURL(url))
-    return CreateInternal(ExtractInnerURL(url));
+    return base::AdoptRef(new SecurityOrigin(ExtractInnerURL(url)));
 
-  return CreateInternal(url);
+  return base::AdoptRef(new SecurityOrigin(url));
 }
 
 scoped_refptr<SecurityOrigin> SecurityOrigin::Create(const KURL& url) {

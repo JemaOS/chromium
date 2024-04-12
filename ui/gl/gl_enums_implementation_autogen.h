@@ -981,6 +981,10 @@ static const GLEnums::EnumToString enum_to_string_table[] = {
         "GL_ASYNC_PIXEL_PACK_COMPLETED_CHROMIUM",
     },
     {
+        0x6007,
+        "GL_LATENCY_QUERY_CHROMIUM",
+    },
+    {
         0x6009,
         "GL_PROGRAM_COMPLETION_QUERY_CHROMIUM",
     },
@@ -999,6 +1003,22 @@ static const GLEnums::EnumToString enum_to_string_table[] = {
     {
         0x78EF,
         "GL_PIXEL_UNPACK_TRANSFER_BUFFER_BINDING_CHROMIUM",
+    },
+    {
+        0x78FA,
+        "GL_RGB_YCRCB_420_CHROMIUM",
+    },
+    {
+        0x78FB,
+        "GL_RGB_YCBCR_422_CHROMIUM",
+    },
+    {
+        0x78FC,
+        "GL_RGB_YCBCR_420V_CHROMIUM",
+    },
+    {
+        0x78FD,
+        "GL_RGB_YCBCR_P010_CHROMIUM",
     },
     {
         0x80,
@@ -2631,6 +2651,10 @@ static const GLEnums::EnumToString enum_to_string_table[] = {
     {
         0x8A57,
         "GL_COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV1_EXT",
+    },
+    {
+        0x8AF0,
+        "GL_TEXTURE_FILTERING_HINT_CHROMIUM",
     },
     {
         0x8AF6,
@@ -4870,7 +4894,7 @@ static const GLEnums::EnumToString enum_to_string_table[] = {
     },
     {
         0x90EA,
-        "GL_DEPTH_STENCIL_TEXTURE_MODE_ANGLE",
+        "GL_DEPTH_STENCIL_TEXTURE_MODE",
     },
     {
         0x90EB,

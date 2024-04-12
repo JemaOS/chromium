@@ -25,4 +25,4 @@ class ChromeAppModalDialogManagerDelegate
                           const url::Origin& origin) override;
 };
 
-#endif  // CHROME_BROWSER_UI_JAVASCRIPT_DIALOGS_CHROME_APP_MODAL_DIALOG_MANAGER_DELEGATE_H_
+#endif

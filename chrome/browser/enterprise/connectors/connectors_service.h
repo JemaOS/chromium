@@ -42,13 +42,13 @@ class ConnectorsService : public KeyedService {
   ~ConnectorsService() override;
 
   // Accessors that call the corresponding method in ConnectorsManager.
-  std::optional<ReportingSettings> GetReportingSettings(
+  absl::optional<ReportingSettings> GetReportingSettings(
       ReportingConnector connector);
-  std::optional<AnalysisSettings> GetAnalysisSettings(
+  absl::optional<AnalysisSettings> GetAnalysisSettings(
       const GURL& url,
       AnalysisConnector connector);
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  std::optional<AnalysisSettings> GetAnalysisSettings(
+  absl::optional<AnalysisSettings> GetAnalysisSettings(
       const storage::FileSystemURL& source_url,
       const storage::FileSystemURL& destination_url,
       AnalysisConnector connector);
@@ -60,12 +60,12 @@ class ConnectorsService : public KeyedService {
   bool DelayUntilVerdict(AnalysisConnector connector);
 
   // Gets custom message if set by the admin.
-  std::optional<std::u16string> GetCustomMessage(AnalysisConnector connector,
-                                                 const std::string& tag);
+  absl::optional<std::u16string> GetCustomMessage(AnalysisConnector connector,
+                                                  const std::string& tag);
 
   // Gets custom learn more URL if provided by the admin.
-  std::optional<GURL> GetLearnMoreUrl(AnalysisConnector connector,
-                                      const std::string& tag);
+  absl::optional<GURL> GetLearnMoreUrl(AnalysisConnector connector,
+                                       const std::string& tag);
 
   // Returns true if the admin enabled Bypass Justification.
   bool GetBypassJustificationRequired(AnalysisConnector connector,
@@ -84,20 +84,15 @@ class ConnectorsService : public KeyedService {
       AnalysisConnector connector);
 
   // DM token accessor function for real-time URL checks. Returns a profile or
-  // browser DM token depending on the policy scope, and std::nullopt if there
+  // browser DM token depending on the policy scope, and absl::nullopt if there
   // is no token to use.
-  std::optional<std::string> GetDMTokenForRealTimeUrlCheck() const;
+  absl::optional<std::string> GetDMTokenForRealTimeUrlCheck() const;
 
   // Returns the value to used by the enterprise real-time URL check Connector
   // if it is set and if the scope it's set at has a valid browser-profile
   // affiliation.
   safe_browsing::EnterpriseRealTimeUrlCheckMode GetAppliedRealTimeUrlCheck()
       const;
-
-  // Returns the profile email if real-time URL check is set for the profile,
-  // the device ID if it is set for the device, or an empty string if it is
-  // unset.
-  std::string GetRealTimeUrlCheckIdentifier() const;
 
   // Returns the CBCM domain or profile domain that enables connector policies.
   // If both set Connector policies, the CBCM domain is returned as it has
@@ -124,17 +119,21 @@ class ConnectorsService : public KeyedService {
     policy::PolicyScope scope;
   };
 
-  std::optional<AnalysisSettings> GetCommonAnalysisSettings(
-      std::optional<AnalysisSettings> settings,
+  absl::optional<AnalysisSettings> GetCommonAnalysisSettings(
+      absl::optional<AnalysisSettings> settings,
       AnalysisConnector connector);
 
   // Returns the DM token to use with the given |scope_pref|. That pref should
   // contain either POLICY_SCOPE_MACHINE or POLICY_SCOPE_USER.
-  std::optional<DmToken> GetDmToken(const char* scope_pref) const;
-  std::optional<DmToken> GetBrowserDmToken() const;
+  absl::optional<DmToken> GetDmToken(const char* scope_pref) const;
+  absl::optional<DmToken> GetBrowserDmToken() const;
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
-  std::optional<DmToken> GetProfileDmToken() const;
+  absl::optional<DmToken> GetProfileDmToken() const;
 
+  // Returns true if the browser isn't managed by CBCM, otherwise this checks if
+  // the affiliations IDs from the profile and browser policy fetching responses
+  // indicate that the same customer manages both.
+  bool CanUseProfileDmToken() const;
 #endif
 
   // Returns the policy::PolicyScope stored in the given |scope_pref|.

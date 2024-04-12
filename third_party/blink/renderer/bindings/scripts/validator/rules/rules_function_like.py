@@ -9,13 +9,21 @@ in Web IDL https://webidl.spec.whatwg.org/.
 Each rule class must inherit RuleBase.
 """
 
-from validator.framework import RuleBase
 from validator.framework import target
+from validator.framework import RuleBase
 
 
-class VariadicArgumentMustBeLastArgument(RuleBase):
+class NonOptionalArgumentAfterOptionalOrVariadicArgument(RuleBase):
     def validate(self, assert_, function_like):
+        is_optional_seen = False
         for i, argument in enumerate(function_like.arguments):
+            assert_(
+                not is_optional_seen
+                or (argument.is_optional or argument.is_variadic),
+                ("A non-optional argument "
+                 "must not follow an optional argument."))
+            if argument.is_optional:
+                is_optional_seen = True
             if argument.is_variadic:
                 assert_(i == len(function_like.arguments) - 1,
                         ("A variadic argument must be written "
@@ -24,4 +32,4 @@ class VariadicArgumentMustBeLastArgument(RuleBase):
 
 def register_rules(rule_store):
     rule_store.register(target.FUNCTION_LIKES,
-                        VariadicArgumentMustBeLastArgument())
+                        NonOptionalArgumentAfterOptionalOrVariadicArgument())

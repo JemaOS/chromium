@@ -12,7 +12,6 @@
 #include "base/process/process.h"
 #include "base/task/current_thread.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/version.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rrect_f.h"
 #include "ui/gfx/linux/drm_util_linux.h"
@@ -78,9 +77,7 @@ void WaylandBufferManagerGpu::Initialize(
     bool supports_viewporter,
     bool supports_acquire_fence,
     bool supports_overlays,
-    uint32_t supported_surface_augmentor_version,
-    bool supports_single_pixel_buffer,
-    const base::Version& server_version) {
+    uint32_t supported_surface_augmentor_version) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(gpu_sequence_checker_);
 
   // See the comment in the constructor.
@@ -104,21 +101,7 @@ void WaylandBufferManagerGpu::Initialize(
       AUGMENTED_SURFACE_SET_BACKGROUND_COLOR_SINCE_VERSION;
   supports_clip_rect_ = supported_surface_augmentor_version >=
                         AUGMENTED_SUB_SURFACE_SET_CLIP_RECT_SINCE_VERSION;
-  supports_affine_transform_ =
-      supported_surface_augmentor_version >=
-      AUGMENTED_SUB_SURFACE_SET_TRANSFORM_SINCE_VERSION;
 
-  // HitTestMask fix landed in https://crrev.com/c/5252908. This is required to
-  // support DnD behavior when the target window has out-of-window frames.
-  supports_out_of_window_clip_rect_ =
-      server_version.IsValid() &&
-      server_version >= base::Version("123.0.6274.0");
-
-  // Exo transformation fix landed in https://crrev.com/c/4961473
-  has_transformation_fix_ = server_version.IsValid() &&
-                            server_version >= base::Version("121.0.6113.0");
-
-  supports_single_pixel_buffer_ = supports_single_pixel_buffer;
   BindHostInterface(std::move(remote_host));
 
   ProcessPendingTasks();
@@ -278,24 +261,6 @@ void WaylandBufferManagerGpu::CreateSolidColorBuffer(SkColor4f color,
   RunOrQueueTask(std::move(task));
 }
 
-void WaylandBufferManagerGpu::CreateSinglePixelBuffer(SkColor4f color,
-                                                      uint32_t buf_id) {
-  DCHECK(gpu_thread_runner_);
-  if (!gpu_thread_runner_->BelongsToCurrentThread()) {
-    // Do the mojo call on the GpuMainThread.
-    gpu_thread_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&WaylandBufferManagerGpu::CreateSinglePixelBuffer,
-                       base::Unretained(this), color, buf_id));
-    return;
-  }
-
-  base::OnceClosure task =
-      base::BindOnce(&WaylandBufferManagerGpu::CreateSinglePixelBufferTask,
-                     base::Unretained(this), color, buf_id);
-  RunOrQueueTask(std::move(task));
-}
-
 void WaylandBufferManagerGpu::CommitBuffer(gfx::AcceleratedWidget widget,
                                            uint32_t frame_id,
                                            uint32_t buffer_id,
@@ -313,7 +278,7 @@ void WaylandBufferManagerGpu::CommitBuffer(gfx::AcceleratedWidget widget,
           gfx::RectF(bounds_rect), gfx::RectF(1.f, 1.f) /* no crop */, false,
           damage_region, 1.0f /*opacity*/, gfx::OverlayPriorityHint::kNone,
           gfx::RRectF(gfx::RectF(bounds_rect), corners), gfx::ColorSpace(),
-          std::nullopt),
+          absl::nullopt),
       nullptr, buffer_id, surface_scale_factor);
   CommitOverlays(widget, frame_id, data, std::move(overlay_configs));
 }
@@ -388,17 +353,15 @@ void WaylandBufferManagerGpu::AddBindingWaylandBufferManagerGpu(
   receiver_set_.Add(this, std::move(receiver));
 }
 
-const std::vector<uint64_t>
+const std::vector<uint64_t>&
 WaylandBufferManagerGpu::GetModifiersForBufferFormat(
     gfx::BufferFormat buffer_format) const {
   auto it = supported_buffer_formats_with_modifiers_.find(buffer_format);
   if (it != supported_buffer_formats_with_modifiers_.end()) {
-    if (drm_modifiers_filter_) {
-      return drm_modifiers_filter_->Filter(buffer_format, it->second);
-    }
     return it->second;
   }
-  return {};
+  static std::vector<uint64_t> dummy;
+  return dummy;
 }
 
 uint32_t WaylandBufferManagerGpu::AllocateBufferID() {
@@ -557,14 +520,6 @@ void WaylandBufferManagerGpu::CreateSolidColorBufferTask(SkColor4f color,
   DCHECK(remote_host_);
 
   remote_host_->CreateSolidColorBuffer(size, color, buf_id);
-}
-
-void WaylandBufferManagerGpu::CreateSinglePixelBufferTask(SkColor4f color,
-                                                          uint32_t buf_id) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(gpu_sequence_checker_);
-  DCHECK(remote_host_);
-
-  remote_host_->CreateSinglePixelBuffer(color, buf_id);
 }
 
 void WaylandBufferManagerGpu::CommitOverlaysTask(

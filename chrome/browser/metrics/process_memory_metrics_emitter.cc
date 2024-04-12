@@ -6,11 +6,10 @@
 
 #include <set>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/allocator/buildflags.h"
-#include "base/allocator/partition_allocator/src/partition_alloc/partition_alloc_buildflags.h"
+#include "base/allocator/partition_allocator/partition_alloc_buildflags.h"
 #include "base/compiler_specific.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
@@ -26,6 +25,7 @@
 #include "chrome/browser/metrics/tab_footprint_aggregator.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "components/metrics/metrics_data_validation.h"
+#include "components/metrics/system_memory_stats_recorder.h"
 #include "components/performance_manager/public/graph/frame_node.h"
 #include "components/performance_manager/public/graph/graph.h"
 #include "components/performance_manager/public/graph/graph_operations.h"
@@ -74,9 +74,6 @@ namespace {
 const char kEffectiveSize[] = "effective_size";
 const char kSize[] = "size";
 const char kAllocatedObjectsSize[] = "allocated_objects_size";
-#if BUILDFLAG(IS_CHROMEOS)
-const char kNonExoSize[] = "non_exo_size";
-#endif
 
 constexpr int kKiB = 1024;
 constexpr int kMiB = 1024 * 1024;
@@ -125,13 +122,6 @@ struct Metric {
 };
 
 const Metric kAllocatorDumpNamesForMetrics[] = {
-    {"accessibility/ax_platform_node",
-     "AXPlatformNodeCount",
-     MetricSize::kCustom,
-     MemoryAllocatorDump::kNameObjectCount,
-     EmitTo::kSizeInUmaOnly,
-     /*ukm_setter=*/nullptr,
-     {1, 1000000}},
     {"blink_gc", "BlinkGC", MetricSize::kLarge, kEffectiveSize,
      EmitTo::kSizeInUkmAndUma, &Memory_Experimental::SetBlinkGC},
     {"blink_gc", "BlinkGC.AllocatedObjects", MetricSize::kLarge,
@@ -197,6 +187,9 @@ const Metric kAllocatorDumpNamesForMetrics[] = {
     {"blink_objects/ResourceFetcher", "NumberOfResourceFetcher",
      MetricSize::kTiny, MemoryAllocatorDump::kNameObjectCount,
      EmitTo::kSizeInUmaOnly, nullptr},
+    {"canvas/ResourceProvider/SkSurface", "CanvasResourceProvider.SkSurface",
+     MetricSize::kSmall, kSize, EmitTo::kCountsInUkmOnly,
+     &Memory_Experimental::SetCanvasResourceProvider_SkSurface},
     {"canvas/hibernated", "HibernatedCanvas.Size", MetricSize::kSmall, kSize,
      EmitTo::kSizeInUmaOnly, nullptr},
     {"canvas/hibernated", "HibernatedCanvas.OriginalSize", MetricSize::kSmall,
@@ -232,18 +225,12 @@ const Metric kAllocatorDumpNamesForMetrics[] = {
      EmitTo::kSizeInUkmAndUma, &Memory_Experimental::SetCommandBuffer},
     {"gpu/gr_shader_cache", "Gpu.GrShaderCache", MetricSize::kSmall,
      kEffectiveSize, EmitTo::kSizeInUmaOnly, nullptr},
-    {"gpu/mapped_memory", "GpuMappedMemory", MetricSize::kSmall, kEffectiveSize,
-     EmitTo::kSizeInUmaOnly, nullptr},
     // Not effective size, to account for the total footprint, a large fraction
     // of it being claimed by renderers.
     {"gpu/shared_images", "SharedImages", MetricSize::kLarge, kSize,
      EmitTo::kSizeInUmaOnly, nullptr},
     {"gpu/shared_images", "SharedImages.Purgeable", MetricSize::kLarge,
      "purgeable_size", EmitTo::kSizeInUmaOnly, nullptr},
-#if BUILDFLAG(IS_CHROMEOS)
-    {"gpu/shared_images", "SharedImages.NonExo", MetricSize::kLarge,
-     kNonExoSize, EmitTo::kSizeInUmaOnly, nullptr},
-#endif  // BUILDFLAG(IS_CHROMEOS)
     {"gpu/transfer_cache", "ServiceTransferCache", MetricSize::kCustom, kSize,
      EmitTo::kSizeInUmaOnly, nullptr, ImageSizeMetricRange},
     {"gpu/transfer_cache", "ServiceTransferCache.AvgImageSize",
@@ -256,18 +243,12 @@ const Metric kAllocatorDumpNamesForMetrics[] = {
      EmitTo::kSizeInUmaOnly, nullptr},
     {"gpu/vulkan", "Vulkan.AllocatedObjects", MetricSize::kLarge, "used_size",
      EmitTo::kSizeInUmaOnly, nullptr},
-    {"gpu/vulkan", "Vulkan.Fragmentation", MetricSize::kLarge,
-     "fragmentation_size", EmitTo::kSizeInUmaOnly, nullptr},
     {"history", "History", MetricSize::kSmall, kEffectiveSize,
      EmitTo::kSizeInUkmAndUma, &Memory_Experimental::SetHistory},
 #if BUILDFLAG(IS_MAC)
     {"iosurface", "IOSurface", MetricSize::kLarge, kSize,
      EmitTo::kSizeInUmaOnly, nullptr},
     {"iosurface", "IOSurface.DirtyMemory", MetricSize::kLarge,
-     "resident_swapped", EmitTo::kSizeInUmaOnly, nullptr},
-    {"ioaccelerator", "IOAccelerator", MetricSize::kLarge, kSize,
-     EmitTo::kSizeInUmaOnly, nullptr},
-    {"ioaccelerator", "IOAccelerator.DirtyMemory", MetricSize::kLarge,
      "resident_swapped", EmitTo::kSizeInUmaOnly, nullptr},
 #endif
     {"java_heap", "JavaHeap", MetricSize::kLarge, kEffectiveSize,
@@ -292,35 +273,12 @@ const Metric kAllocatorDumpNamesForMetrics[] = {
      MetricSize::kTiny, MemoryAllocatorDump::kNameObjectCount,
      EmitTo::kSizeInUmaOnly, nullptr},
 #if BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
+    // TODO(keishi): Add brp_quarantined metrics for the Blink partitions.
     {"malloc/partitions/allocator", "Malloc.BRPQuarantined", MetricSize::kSmall,
      "brp_quarantined_size", EmitTo::kSizeInUmaOnly, nullptr},
     {"malloc/partitions/allocator", "Malloc.BRPQuarantinedCount",
      MetricSize::kTiny, "brp_quarantined_count", EmitTo::kSizeInUmaOnly,
      nullptr},
-    {"partition_alloc/partitions", "PartitionAlloc.BRPQuarantined",
-     MetricSize::kSmall, "brp_quarantined_size", EmitTo::kSizeInUmaOnly,
-     nullptr},
-    {"partition_alloc/partitions", "PartitionAlloc.BRPQuarantinedCount",
-     MetricSize::kTiny, "brp_quarantined_count", EmitTo::kSizeInUmaOnly,
-     nullptr},
-    {"partition_alloc/partitions/fast_malloc",
-     "PartitionAlloc.BRPQuarantined.FastMalloc", MetricSize::kSmall,
-     "brp_quarantined_size", EmitTo::kSizeInUmaOnly, nullptr},
-    {"partition_alloc/partitions/fast_malloc",
-     "PartitionAlloc.BRPQuarantinedCount.FastMalloc", MetricSize::kTiny,
-     "brp_quarantined_count", EmitTo::kSizeInUmaOnly, nullptr},
-    {"partition_alloc/partitions/buffer",
-     "PartitionAlloc.BRPQuarantined.Buffer", MetricSize::kSmall,
-     "brp_quarantined_size", EmitTo::kSizeInUmaOnly, nullptr},
-    {"partition_alloc/partitions/buffer",
-     "PartitionAlloc.BRPQuarantinedCount.Buffer", MetricSize::kTiny,
-     "brp_quarantined_count", EmitTo::kSizeInUmaOnly, nullptr},
-    {"partition_alloc/partitions/array_buffer",
-     "PartitionAlloc.BRPQuarantined.ArrayBuffer", MetricSize::kSmall,
-     "brp_quarantined_size", EmitTo::kSizeInUmaOnly, nullptr},
-    {"partition_alloc/partitions/array_buffer",
-     "PartitionAlloc.BRPQuarantinedCount.ArrayBuffer", MetricSize::kTiny,
-     "brp_quarantined_count", EmitTo::kSizeInUmaOnly, nullptr},
 #endif  // BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
     {"malloc/partitions", "Malloc.BRPQuarantinedBytesPerMinute",
      MetricSize::kSmall, "brp_quarantined_bytes_per_minute",
@@ -559,20 +517,6 @@ const Metric kAllocatorDumpNamesForMetrics[] = {
      "V8.Main.Heap.ReadOnlySpace.AllocatedObjects", MetricSize::kLarge,
      kAllocatedObjectsSize, EmitTo::kSizeInUkmAndUma,
      &Memory_Experimental::SetV8_Main_Heap_ReadOnlySpace_AllocatedObjects},
-    {"v8/main/heap/large_object_space", "V8.Main.Heap.SharedLargeObjectSpace",
-     MetricSize::kLarge, kEffectiveSize, EmitTo::kSizeInUkmAndUma,
-     &Memory_Experimental::SetV8_Main_Heap_SharedLargeObjectSpace},
-    {"v8/main/heap/large_object_space",
-     "V8.Main.Heap.SharedLargeObjectSpace.AllocatedObjects", MetricSize::kLarge,
-     kAllocatedObjectsSize, EmitTo::kSizeInUkmAndUma,
-     &Memory_Experimental::
-         SetV8_Main_Heap_SharedLargeObjectSpace_AllocatedObjects},
-    {"v8/main/heap/shared_space", "V8.Main.Heap.SharedSpace",
-     MetricSize::kLarge, kEffectiveSize, EmitTo::kSizeInUkmAndUma,
-     &Memory_Experimental::SetV8_Main_Heap_SharedSpace},
-    {"v8/main/heap/shared_space", "V8.Main.Heap.SharedSpace.AllocatedObjects",
-     MetricSize::kLarge, kAllocatedObjectsSize, EmitTo::kSizeInUkmAndUma,
-     &Memory_Experimental::SetV8_Main_Heap_SharedSpace_AllocatedObjects},
     {"v8/main/malloc", "V8.Main.Malloc", MetricSize::kLarge, kEffectiveSize,
      EmitTo::kSizeInUkmAndUma, &Memory_Experimental::SetV8_Main_Malloc},
     {"v8/workers", "V8.Workers", MetricSize::kLarge, kEffectiveSize,
@@ -669,21 +613,17 @@ const Metric kPartitionAllocAddressSpaceMetrics[] = {
     },
     Metric{
         .uma_name = "PartitionAlloc.AddressSpace."
-                    "ThreadIsolatedPoolLargestAvailableReservation",
+                    "PkeyPoolLargestAvailableReservation",
         .metric_size = MetricSize::kLarge,
-        .metric = "thread_isolated_pool_largest_reservation",
+        .metric = "pkey_pool_largest_reservation",
     },
     Metric{
-        .uma_name = "PartitionAlloc.AddressSpace.ThreadIsolatedPoolUsage",
+        .uma_name = "PartitionAlloc.AddressSpace.PkeyPoolUsage",
         .metric_size = MetricSize::kLarge,
-        .metric = "thread_isolated_pool_usage",
+        .metric = "pkey_pool_usage",
     },
 };
 #endif  // BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC)
-
-// Record a memory size in megabytes, over a potential interval up to 32 GB.
-#define UMA_HISTOGRAM_LARGE_MEMORY_MB(name, sample) \
-  UMA_HISTOGRAM_CUSTOM_COUNTS(name, sample, 1, 32768, 50)
 
 #define EXPERIMENTAL_UMA_PREFIX "Memory.Experimental."
 #define VERSION_SUFFIX_PERCENT "2."
@@ -721,7 +661,7 @@ void EmitProcessUma(HistogramProcessType process_type,
 
   // Always use "Gpu" in process name for command buffers to be
   // consistent even in single process mode.
-  if (std::string_view(item.uma_name) == "CommandBuffer") {
+  if (base::StringPiece(item.uma_name) == "CommandBuffer") {
     uma_name =
         EXPERIMENTAL_UMA_PREFIX "Gpu" VERSION_SUFFIX_NORMAL "CommandBuffer";
     DCHECK(item.metric_size == MetricSize::kLarge);
@@ -756,7 +696,7 @@ void EmitPartitionAllocFragmentationStat(
     HistogramProcessType process_type,
     const char* dump_name,
     const char* uma_name) {
-  std::optional<uint64_t> value = pmd.GetMetric(dump_name, "fragmentation");
+  absl::optional<uint64_t> value = pmd.GetMetric(dump_name, "fragmentation");
   if (value.has_value()) {
     Metric fragmentation_metric = {dump_name,
                                    uma_name,
@@ -772,7 +712,7 @@ void EmitPartitionAllocWastedStat(const GlobalMemoryDump::ProcessDump& pmd,
                                   HistogramProcessType process_type,
                                   const char* dump_name,
                                   const char* uma_name) {
-  std::optional<uint64_t> value = pmd.GetMetric(dump_name, "wasted");
+  absl::optional<uint64_t> value = pmd.GetMetric(dump_name, "wasted");
   if (value.has_value()) {
     Metric wasted_metric = {dump_name,
                             uma_name,
@@ -786,7 +726,7 @@ void EmitPartitionAllocWastedStat(const GlobalMemoryDump::ProcessDump& pmd,
 
 void EmitMallocStats(const GlobalMemoryDump::ProcessDump& pmd,
                      HistogramProcessType process_type,
-                     const std::optional<base::TimeDelta>& uptime) {
+                     const absl::optional<base::TimeDelta>& uptime) {
 #if BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC)
   const char* const kMallocDumpName = "malloc/partitions/allocator";
 #endif  // BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC)
@@ -835,7 +775,7 @@ void EmitPartitionAllocAddressSpaceStatVariants(
     const Metric& metric,
     const uint64_t metric_value,
     HistogramProcessType process_type,
-    const std::optional<base::TimeDelta>& uptime) {
+    const absl::optional<base::TimeDelta>& uptime) {
   // Emit the bare metric.
   EmitProcessUma(process_type, metric, metric_value);
 
@@ -864,9 +804,9 @@ void EmitPartitionAllocAddressSpaceStatVariants(
 void EmitPartitionAllocAddressSpaceStats(
     const GlobalMemoryDump::ProcessDump& pmd,
     HistogramProcessType process_type,
-    const std::optional<base::TimeDelta>& uptime) {
+    const absl::optional<base::TimeDelta>& uptime) {
   for (const auto& metric : kPartitionAllocAddressSpaceMetrics) {
-    std::optional<uint64_t> metric_value =
+    absl::optional<uint64_t> metric_value =
         pmd.GetMetric("partition_alloc/address_space", metric.metric);
     if (!metric_value.has_value()) {
       continue;
@@ -879,11 +819,11 @@ void EmitPartitionAllocAddressSpaceStats(
 
 void EmitProcessUmaAndUkm(const GlobalMemoryDump::ProcessDump& pmd,
                           HistogramProcessType process_type,
-                          const std::optional<base::TimeDelta>& uptime,
+                          const absl::optional<base::TimeDelta>& uptime,
                           bool record_uma,
                           Memory_Experimental* builder) {
   for (const auto& item : kAllocatorDumpNamesForMetrics) {
-    std::optional<uint64_t> value = pmd.GetMetric(item.dump_name, item.metric);
+    absl::optional<uint64_t> value = pmd.GetMetric(item.dump_name, item.metric);
     if (!value)
       continue;
 
@@ -986,30 +926,10 @@ void EmitSummedGpuMemory(const GlobalMemoryDump::ProcessDump& pmd,
     EmitProcessUma(HistogramProcessType::kGpu, synthetic_metric, total);
 }
 
-#if BUILDFLAG(IS_CHROMEOS)
-void EmitGpuMemoryNonExo(const GlobalMemoryDump::ProcessDump& pmd,
-                         bool record_uma) {
-  if (!record_uma) {
-    return;
-  }
-  Metric synthetic_metric = {
-      nullptr, "GpuMemoryNonExo",      MetricSize::kLarge,
-      kSize,   EmitTo::kSizeInUmaOnly, nullptr};
-
-  // Combine several categories together to sum up Chrome-reported gpu memory.
-  uint64_t total = 0;
-  total += pmd.GetMetric("gpu/shared_images", kNonExoSize).value_or(0);
-  total += pmd.GetMetric("skia/gpu_resources", kSize).value_or(0);
-
-  // We only report this metric for the GPU process, so we always use kGpu.
-  EmitProcessUma(HistogramProcessType::kGpu, synthetic_metric, total);
-}
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
 void EmitBrowserMemoryMetrics(const GlobalMemoryDump::ProcessDump& pmd,
                               ukm::SourceId ukm_source_id,
                               ukm::UkmRecorder* ukm_recorder,
-                              const std::optional<base::TimeDelta>& uptime,
+                              const absl::optional<base::TimeDelta>& uptime,
                               bool record_uma) {
   Memory_Experimental builder(ukm_source_id);
   builder.SetProcessType(static_cast<int64_t>(
@@ -1026,7 +946,7 @@ void EmitRendererMemoryMetrics(
     const ProcessMemoryMetricsEmitter::PageInfo* page_info,
     ukm::UkmRecorder* ukm_recorder,
     int number_of_extensions,
-    const std::optional<base::TimeDelta>& uptime,
+    const absl::optional<base::TimeDelta>& uptime,
     bool record_uma) {
   // If the renderer doesn't host a single page, no page_info will be passed in,
   // and there's no single URL to associate its memory with.
@@ -1057,7 +977,7 @@ void EmitRendererMemoryMetrics(
 void EmitGpuMemoryMetrics(const GlobalMemoryDump::ProcessDump& pmd,
                           ukm::SourceId ukm_source_id,
                           ukm::UkmRecorder* ukm_recorder,
-                          const std::optional<base::TimeDelta>& uptime,
+                          const absl::optional<base::TimeDelta>& uptime,
                           bool record_uma) {
   Memory_Experimental builder(ukm_source_id);
   builder.SetProcessType(
@@ -1065,9 +985,6 @@ void EmitGpuMemoryMetrics(const GlobalMemoryDump::ProcessDump& pmd,
   EmitProcessUmaAndUkm(pmd, HistogramProcessType::kGpu, uptime, record_uma,
                        &builder);
   EmitSummedGpuMemory(pmd, &builder, record_uma);
-#if BUILDFLAG(IS_CHROMEOS)
-  EmitGpuMemoryNonExo(pmd, record_uma);
-#endif
   builder.Record(ukm_recorder);
 }
 
@@ -1075,7 +992,7 @@ void EmitUtilityMemoryMetrics(HistogramProcessType ptype,
                               const GlobalMemoryDump::ProcessDump& pmd,
                               ukm::SourceId ukm_source_id,
                               ukm::UkmRecorder* ukm_recorder,
-                              const std::optional<base::TimeDelta>& uptime,
+                              const absl::optional<base::TimeDelta>& uptime,
                               bool record_uma) {
   Memory_Experimental builder(ukm_source_id);
   builder.SetProcessType(static_cast<int64_t>(
@@ -1089,12 +1006,12 @@ void EmitUtilityMemoryMetrics(HistogramProcessType ptype,
 // Return the base::android::ChildBindingState if the process with `pid` is a
 // renderer. If the `pid` is not in the list of live renderers it is assumed to
 // be unbound. If the `process_type` is not for a renderer return nullopt.
-std::optional<base::android::ChildBindingState>
+absl::optional<base::android::ChildBindingState>
 GetAndroidRendererProcessBindingState(
     memory_instrumentation::mojom::ProcessType process_type,
     base::ProcessId pid) {
   if (process_type != memory_instrumentation::mojom::ProcessType::RENDERER) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   for (auto iter = content::RenderProcessHost::AllHostsIterator();
        !iter.IsAtEnd(); iter.Advance()) {
@@ -1256,7 +1173,7 @@ int ProcessMemoryMetricsEmitter::GetNumberOfExtensions(base::ProcessId pid) {
   return number_of_extensions;
 }
 
-std::optional<base::TimeDelta> ProcessMemoryMetricsEmitter::GetProcessUptime(
+absl::optional<base::TimeDelta> ProcessMemoryMetricsEmitter::GetProcessUptime(
     base::TimeTicks now,
     base::ProcessId pid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -1266,7 +1183,7 @@ std::optional<base::TimeDelta> ProcessMemoryMetricsEmitter::GetProcessUptime(
     if (!process_info->second.launch_time.is_null())
       return now - process_info->second.launch_time;
   }
-  return std::optional<base::TimeDelta>();
+  return absl::optional<base::TimeDelta>();
 }
 
 void ProcessMemoryMetricsEmitter::CollateResults() {
@@ -1289,14 +1206,11 @@ void ProcessMemoryMetricsEmitter::CollateResults() {
 #endif  // BUILDFLAG(IS_ANDROID)
   uint32_t renderer_private_footprint_total_kb = 0;
   uint32_t renderer_malloc_total_kb = 0;
-  uint32_t renderer_blink_gc_total_kb = 0;
-  uint32_t renderer_blink_gc_fragmentation_total_kb = 0;
   uint32_t shared_footprint_total_kb = 0;
   uint32_t resident_set_total_kb = 0;
   uint64_t tiles_total_memory = 0;
   uint64_t hibernated_canvas_total_memory = 0;
   uint64_t hibernated_canvas_total_original_memory = 0;
-  uint64_t gpu_mapped_memory_total = 0;
   bool emit_metrics_for_all_processes = pid_scope_ == base::kNullProcessId;
 
   TabFootprintAggregator per_tab_metrics;
@@ -1376,19 +1290,8 @@ void ProcessMemoryMetricsEmitter::CollateResults() {
             single_page_info = &process_info.page_infos[0];
           }
         }
-
-        // Sum malloc memory from all renderers.
         renderer_malloc_total_kb +=
             pmd.GetMetric("malloc", "effective_size").value_or(0) / kKiB;
-
-        // Sum Blink memory from all renderers.
-        const uint64_t blink_gc_bytes =
-            pmd.GetMetric("blink_gc", kEffectiveSize).value_or(0);
-        const uint64_t blink_gc_allocated_objects_bytes =
-            pmd.GetMetric("blink_gc", kAllocatedObjectsSize).value_or(0);
-        renderer_blink_gc_total_kb += blink_gc_bytes / kKiB;
-        renderer_blink_gc_fragmentation_total_kb +=
-            (blink_gc_bytes - blink_gc_allocated_objects_bytes) / kKiB;
 
         int number_of_extensions = GetNumberOfExtensions(pmd.pid());
         EmitRendererMemoryMetrics(
@@ -1447,8 +1350,6 @@ void ProcessMemoryMetricsEmitter::CollateResults() {
       // they are shared with the GPU process (under a different name), and we
       // don't want to count these partially if priority is not set right.
       tiles_total_memory += pmd.GetMetric("cc/tile_memory", kSize).value_or(0);
-      gpu_mapped_memory_total +=
-          pmd.GetMetric("gpu/mapped_memory", kSize).value_or(0);
     }
   }
 
@@ -1495,17 +1396,10 @@ void ProcessMemoryMetricsEmitter::CollateResults() {
                                   renderer_private_footprint_total_kb / kKiB);
     UMA_HISTOGRAM_MEMORY_LARGE_MB("Memory.Total.RendererMalloc",
                                   renderer_malloc_total_kb / kKiB);
-    UMA_HISTOGRAM_MEMORY_LARGE_MB("Memory.Total.RendererBlinkGC",
-                                  renderer_blink_gc_total_kb / kKiB);
-    UMA_HISTOGRAM_MEMORY_LARGE_MB(
-        "Memory.Total.RendererBlinkGC.Fragmentation",
-        renderer_blink_gc_fragmentation_total_kb / kKiB);
     UMA_HISTOGRAM_MEMORY_LARGE_MB("Memory.Total.SharedMemoryFootprint",
                                   shared_footprint_total_kb / kKiB);
     UMA_HISTOGRAM_MEMORY_MEDIUM_MB("Memory.Total.TileMemory",
                                    tiles_total_memory / kMiB);
-    UMA_HISTOGRAM_MEMORY_MEDIUM_MB("Memory.Total.GpuMappedMemory",
-                                   gpu_mapped_memory_total / kMiB);
 #if BUILDFLAG(IS_ANDROID)
     UMA_HISTOGRAM_MEMORY_LARGE_MB(
         "Memory.Total.PrivateMemoryFootprintExcludingWaivedRenderers",

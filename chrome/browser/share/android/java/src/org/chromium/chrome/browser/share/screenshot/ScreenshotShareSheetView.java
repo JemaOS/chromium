@@ -17,7 +17,9 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.share.screenshot.ScreenshotShareSheetViewProperties.NoArgOperation;
 import org.chromium.ui.widget.ChromeImageView;
 
-/** Manages the Android View representing the Screenshot share panel. */
+/**
+ * Manages the Android View representing the Screenshot share panel.
+ */
 class ScreenshotShareSheetView extends FrameLayout {
     /** Constructor for use from XML. */
     public ScreenshotShareSheetView(Context context, AttributeSet attrs) {
@@ -34,6 +36,7 @@ class ScreenshotShareSheetView extends FrameLayout {
         setNoArgOperationListener(NoArgOperation.SAVE, R.id.save, noArgOperationCallback);
         setNoArgOperationListener(NoArgOperation.DELETE, R.id.delete, noArgOperationCallback);
         setNoArgOperationListener(NoArgOperation.DELETE, R.id.close_button, noArgOperationCallback);
+        setNoArgOperationListener(NoArgOperation.INSTALL, R.id.edit, noArgOperationCallback);
     }
 
     /**
@@ -46,10 +49,7 @@ class ScreenshotShareSheetView extends FrameLayout {
     private void setNoArgOperationListener(
             Integer operation, int viewId, Callback<Integer> noArgOperationCallback) {
         View button = findViewById(viewId);
-        button.setOnClickListener(
-                v -> {
-                    noArgOperationCallback.onResult(operation);
-                });
+        button.setOnClickListener(v -> { noArgOperationCallback.onResult(operation); });
     }
 
     /**
@@ -61,5 +61,10 @@ class ScreenshotShareSheetView extends FrameLayout {
         ChromeImageView screenshotImageView = findViewById(R.id.screenshot);
         Drawable drawable = new BitmapDrawable(bitmap);
         screenshotImageView.setImageDrawable(drawable);
+    }
+
+    public void setEditButtonDisabled(boolean disabled) {
+        View editButton = findViewById(R.id.edit);
+        editButton.setVisibility(disabled ? View.GONE : View.VISIBLE);
     }
 }

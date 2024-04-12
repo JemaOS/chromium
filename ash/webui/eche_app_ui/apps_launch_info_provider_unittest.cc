@@ -37,14 +37,16 @@ class AppsLaunchInfoProviderTest : public testing::Test {
     handler_.reset();
   }
 
-  mojom::ConnectionStatus GetConnectionStatusFromLastAttempt() {
-    return provider_->GetConnectionStatusFromLastAttempt();
+  void NotifyConnectionStatusForUiChanged(mojom::ConnectionStatus status) {
+    handler_->SetConnectionStatusForUi(status);
   }
 
-  void SetAppLaunchInfo(mojom::AppStreamLaunchEntryPoint entry_point,
-                        mojom::ConnectionStatus status) {
-    handler_->SetConnectionStatusForUi(status);
-    provider_->SetAppLaunchInfo(entry_point);
+  mojom::ConnectionStatus GetLastConnectionStatus() {
+    return provider_->GetConnectionStatusForUi();
+  }
+
+  void SetEntryPoint(mojom::AppStreamLaunchEntryPoint entry_point) {
+    provider_->SetEntryPoint(entry_point);
   }
 
   mojom::AppStreamLaunchEntryPoint GetEntryPoint() {
@@ -58,28 +60,42 @@ class AppsLaunchInfoProviderTest : public testing::Test {
   std::unique_ptr<AppsLaunchInfoProvider> provider_;
 };
 
-TEST_F(AppsLaunchInfoProviderTest, SetEntryPoint) {
-  EXPECT_EQ(GetEntryPoint(), mojom::AppStreamLaunchEntryPoint::UNKNOWN);
-  EXPECT_EQ(GetConnectionStatusFromLastAttempt(),
+TEST_F(AppsLaunchInfoProviderTest, OnConnectionStatusForUiChanged) {
+  EXPECT_EQ(GetLastConnectionStatus(),
             mojom::ConnectionStatus::kConnectionStatusDisconnected);
 
-  SetAppLaunchInfo(mojom::AppStreamLaunchEntryPoint::NOTIFICATION,
-                   mojom::ConnectionStatus::kConnectionStatusConnecting);
-  EXPECT_EQ(GetEntryPoint(), mojom::AppStreamLaunchEntryPoint::NOTIFICATION);
-  EXPECT_EQ(GetConnectionStatusFromLastAttempt(),
+  NotifyConnectionStatusForUiChanged(
+      mojom::ConnectionStatus::kConnectionStatusConnecting);
+  EXPECT_EQ(GetLastConnectionStatus(),
             mojom::ConnectionStatus::kConnectionStatusConnecting);
 
-  SetAppLaunchInfo(mojom::AppStreamLaunchEntryPoint::APPS_LIST,
-                   mojom::ConnectionStatus::kConnectionStatusConnected);
-  EXPECT_EQ(GetEntryPoint(), mojom::AppStreamLaunchEntryPoint::APPS_LIST);
-  EXPECT_EQ(GetConnectionStatusFromLastAttempt(),
+  NotifyConnectionStatusForUiChanged(
+      mojom::ConnectionStatus::kConnectionStatusConnected);
+  EXPECT_EQ(GetLastConnectionStatus(),
             mojom::ConnectionStatus::kConnectionStatusConnected);
 
-  SetAppLaunchInfo(mojom::AppStreamLaunchEntryPoint::RECENT_APPS,
-                   mojom::ConnectionStatus::kConnectionStatusFailed);
-  EXPECT_EQ(GetEntryPoint(), mojom::AppStreamLaunchEntryPoint::RECENT_APPS);
-  EXPECT_EQ(GetConnectionStatusFromLastAttempt(),
+  NotifyConnectionStatusForUiChanged(
+      mojom::ConnectionStatus::kConnectionStatusFailed);
+  EXPECT_EQ(GetLastConnectionStatus(),
             mojom::ConnectionStatus::kConnectionStatusFailed);
+
+  NotifyConnectionStatusForUiChanged(
+      mojom::ConnectionStatus::kConnectionStatusDisconnected);
+  EXPECT_EQ(GetLastConnectionStatus(),
+            mojom::ConnectionStatus::kConnectionStatusDisconnected);
+}
+
+TEST_F(AppsLaunchInfoProviderTest, SetEntryPoint) {
+  EXPECT_EQ(GetEntryPoint(), mojom::AppStreamLaunchEntryPoint::UNKNOWN);
+
+  SetEntryPoint(mojom::AppStreamLaunchEntryPoint::NOTIFICATION);
+  EXPECT_EQ(GetEntryPoint(), mojom::AppStreamLaunchEntryPoint::NOTIFICATION);
+
+  SetEntryPoint(mojom::AppStreamLaunchEntryPoint::APPS_LIST);
+  EXPECT_EQ(GetEntryPoint(), mojom::AppStreamLaunchEntryPoint::APPS_LIST);
+
+  SetEntryPoint(mojom::AppStreamLaunchEntryPoint::RECENT_APPS);
+  EXPECT_EQ(GetEntryPoint(), mojom::AppStreamLaunchEntryPoint::RECENT_APPS);
 }
 
 }  // namespace ash::eche_app

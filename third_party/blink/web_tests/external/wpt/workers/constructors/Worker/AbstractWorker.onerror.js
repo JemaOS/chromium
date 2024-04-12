@@ -1,5 +1,5 @@
-// Throw a runtime error, the UA must report the error for that script.
-// https://html.spec.whatwg.org/#runtime-script-errors-2
-for (;;)
-  throw new Error("error from onerror.js");
+for (;) // should cause onerror to be invoked, but onerror is null, so
+        // the error is "not handled". should fire an ErrorEvent on the
+        // worker.
+  break;
 postMessage(1); // shouldn't do anything since the script doesn't compile

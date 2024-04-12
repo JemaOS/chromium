@@ -55,8 +55,8 @@ MediaGalleryCheckboxView::MediaGalleryCheckboxView(
 
 MediaGalleryCheckboxView::~MediaGalleryCheckboxView() = default;
 
-void MediaGalleryCheckboxView::Layout(PassKey) {
-  LayoutSuperclass<views::BoxLayoutView>(this);
+void MediaGalleryCheckboxView::Layout() {
+  views::BoxLayoutView::Layout();
   if (GetPreferredSize().width() <= GetLocalBounds().width())
     return;
 
@@ -82,5 +82,5 @@ void MediaGalleryCheckboxView::Layout(PassKey) {
   }
 }
 
-BEGIN_METADATA(MediaGalleryCheckboxView)
+BEGIN_METADATA(MediaGalleryCheckboxView, views::BoxLayoutView)
 END_METADATA

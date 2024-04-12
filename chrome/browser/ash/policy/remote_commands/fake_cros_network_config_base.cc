@@ -136,24 +136,17 @@ void FakeCrosNetworkConfigBase::ResetTrafficCounters(const std::string& guid) {
   NOTREACHED();
 }
 
-void FakeCrosNetworkConfigBase::SetTrafficCountersResetDay(
+void FakeCrosNetworkConfigBase::SetTrafficCountersAutoReset(
     const std::string& guid,
+    bool auto_reset,
     chromeos::network_config::mojom::UInt32ValuePtr day,
-    SetTrafficCountersResetDayCallback callback) {
+    SetTrafficCountersAutoResetCallback callback) {
   NOTREACHED();
 }
 
 void FakeCrosNetworkConfigBase::CreateCustomApn(
     const std::string& network_guid,
-    chromeos::network_config::mojom::ApnPropertiesPtr apn,
-    CreateCustomApnCallback callback) {
-  NOTREACHED();
-}
-
-void FakeCrosNetworkConfigBase::CreateExclusivelyEnabledCustomApn(
-    const std::string& network_guid,
-    chromeos::network_config::mojom::ApnPropertiesPtr apn,
-    CreateExclusivelyEnabledCustomApnCallback callback) {
+    chromeos::network_config::mojom::ApnPropertiesPtr apn) {
   NOTREACHED();
 }
 

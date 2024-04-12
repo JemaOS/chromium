@@ -56,13 +56,12 @@ class CORE_EXPORT RootFrameViewport final
 
   // ScrollableArea Implementation
   bool IsRootFrameViewport() const override { return true; }
-  bool SetScrollOffset(const ScrollOffset&,
+  void SetScrollOffset(const ScrollOffset&,
                        mojom::blink::ScrollType,
                        mojom::blink::ScrollBehavior,
                        ScrollCallback on_finish) override;
   PhysicalRect ScrollIntoView(
       const PhysicalRect&,
-      const PhysicalBoxStrut& scroll_margin,
       const mojom::blink::ScrollIntoViewParamsPtr&) override;
   gfx::Rect VisibleContentRect(
       IncludeScrollbarsInRect = kExcludeScrollbars) const override;
@@ -127,23 +126,14 @@ class CORE_EXPORT RootFrameViewport final
   // RootFrameViewport delegates these scroll-snap methods to its layout
   // viewport.
   const cc::SnapContainerData* GetSnapContainerData() const override;
-  void SetSnapContainerData(std::optional<cc::SnapContainerData>) override;
+  void SetSnapContainerData(absl::optional<cc::SnapContainerData>) override;
   bool SetTargetSnapAreaElementIds(cc::TargetSnapAreaElementIds) override;
   bool SnapContainerDataNeedsUpdate() const override;
   void SetSnapContainerDataNeedsUpdate(bool) override;
-  std::optional<gfx::PointF> GetSnapPositionAndSetTarget(
+  bool NeedsResnap() const override;
+  void SetNeedsResnap(bool) override;
+  absl::optional<gfx::PointF> GetSnapPositionAndSetTarget(
       const cc::SnapSelectionStrategy& strategy) override;
-  void UpdateSnappedTargetsAndEnqueueSnapChanged() override;
-  std::optional<cc::TargetSnapAreaElementIds> GetSnapchangingTargetIds()
-      const override;
-  void SetSnapchangingTargetIds(
-      std::optional<cc::TargetSnapAreaElementIds>) override;
-  const cc::SnapSelectionStrategy* GetImplSnapStrategy() const override;
-  void SetImplSnapStrategy(
-      std::unique_ptr<cc::SnapSelectionStrategy> strategy) override;
-  void EnqueueSnapChangingEventFromImplIfNeeded() override;
-  void UpdateSnapChangingTargetsAndEnqueueSnapChanging(
-      const cc::TargetSnapAreaElementIds& new_target_ids) override;
 
   void SetPendingHistoryRestoreScrollOffset(
       const HistoryItem::ViewState& view_state,
@@ -166,9 +156,6 @@ class CORE_EXPORT RootFrameViewport final
     return user_scroll_sequence_affects_layout_viewport_;
   }
 
-  std::optional<cc::ElementId> GetTargetedSnapAreaId() override;
-  void SetTargetedSnapAreaId(const std::optional<cc::ElementId>&) override;
-
  private:
   FRIEND_TEST_ALL_PREFIXES(RootFrameViewportTest, DistributeScrollOrder);
 
@@ -176,7 +163,7 @@ class CORE_EXPORT RootFrameViewport final
 
   ScrollOffset ScrollOffsetFromScrollAnimators() const;
 
-  bool DistributeScrollBetweenViewports(
+  void DistributeScrollBetweenViewports(
       const ScrollOffset&,
       mojom::blink::ScrollType,
       mojom::blink::ScrollBehavior,
@@ -197,7 +184,7 @@ class CORE_EXPORT RootFrameViewport final
 
   Member<ScrollableArea> visual_viewport_;
   Member<ScrollableArea> layout_viewport_;
-  std::optional<HistoryItem::ViewState> pending_view_state_;
+  absl::optional<HistoryItem::ViewState> pending_view_state_;
   bool should_restore_scroll_;
   bool user_scroll_sequence_affects_layout_viewport_ = false;
 };

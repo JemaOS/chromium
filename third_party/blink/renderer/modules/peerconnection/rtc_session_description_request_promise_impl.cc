@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/modules/peerconnection/rtc_session_description_request_promise_impl.h"
 
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_session_description_init.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_error_util.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_peer_connection.h"
@@ -15,21 +14,19 @@
 namespace blink {
 
 RTCSessionDescriptionRequestPromiseImpl*
-RTCSessionDescriptionRequestPromiseImpl::Create(
-    RTCPeerConnection* requester,
-    ScriptPromiseResolverTyped<RTCSessionDescriptionInit>* resolver,
-    const char* interface_name,
-    const char* property_name) {
+RTCSessionDescriptionRequestPromiseImpl::Create(RTCPeerConnection* requester,
+                                                ScriptPromiseResolver* resolver,
+                                                const char* interface_name,
+                                                const char* property_name) {
   return MakeGarbageCollected<RTCSessionDescriptionRequestPromiseImpl>(
       requester, resolver, interface_name, property_name);
 }
 
 RTCSessionDescriptionRequestPromiseImpl::
-    RTCSessionDescriptionRequestPromiseImpl(
-        RTCPeerConnection* requester,
-        ScriptPromiseResolverTyped<RTCSessionDescriptionInit>* resolver,
-        const char* interface_name,
-        const char* property_name)
+    RTCSessionDescriptionRequestPromiseImpl(RTCPeerConnection* requester,
+                                            ScriptPromiseResolver* resolver,
+                                            const char* interface_name,
+                                            const char* property_name)
     : requester_(requester),
       resolver_(resolver),
       interface_name_(interface_name),
@@ -44,9 +41,8 @@ RTCSessionDescriptionRequestPromiseImpl::
 void RTCSessionDescriptionRequestPromiseImpl::RequestSucceeded(
     RTCSessionDescriptionPlatform* platform_session_description) {
   if (requester_ && requester_->ShouldFireDefaultCallbacks()) {
-    auto* description = RTCSessionDescriptionInit::Create();
-    description->setType(platform_session_description->GetType());
-    description->setSdp(platform_session_description->Sdp());
+    auto* description =
+        RTCSessionDescription::Create(platform_session_description);
     requester_->NoteSdpCreated(*description);
     resolver_->Resolve(description);
   } else {
@@ -63,7 +59,7 @@ void RTCSessionDescriptionRequestPromiseImpl::RequestFailed(
   if (requester_ && requester_->ShouldFireDefaultCallbacks()) {
     ScriptState::Scope scope(resolver_->GetScriptState());
     ExceptionState exception_state(resolver_->GetScriptState()->GetIsolate(),
-                                   ExceptionContextType::kOperationInvoke,
+                                   ExceptionState::kExecutionContext,
                                    interface_name_, property_name_);
     ThrowExceptionFromRTCError(error, exception_state);
     resolver_->Reject(exception_state);

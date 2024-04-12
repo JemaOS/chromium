@@ -38,7 +38,6 @@
 
 #include "base/containers/span.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -179,7 +178,7 @@ class MODULES_EXPORT WebSocketChannelImpl final
     void operator()(char* p) const;
 
    private:
-    raw_ptr<v8::Isolate> isolate_;
+    v8::Isolate* isolate_;
     size_t size_;
   };
 
@@ -337,7 +336,7 @@ class MODULES_EXPORT WebSocketChannelImpl final
   void HandleDidClose(bool was_clean, uint16_t code, const String& reason);
 
   // Completion callback. It is called with the results of throttling.
-  void OnCompletion(const std::optional<WebString>& error);
+  void OnCompletion(const absl::optional<WebString>& error);
 
   // Methods for BlobLoader.
   void DidFinishLoadingBlob(MessageData, size_t);

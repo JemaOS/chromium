@@ -10,10 +10,9 @@ import 'chrome://resources/polymer/v3_0/iron-list/iron-list.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {BrowserProxy, DataCollectorItem} from './browser_proxy.js';
-import {BrowserProxyImpl} from './browser_proxy.js';
+import {BrowserProxy, BrowserProxyImpl, DataCollectorItem} from './browser_proxy.js';
 import {getTemplate} from './data_collectors.html.js';
-import type {ScreenshotElement} from './screenshot.js';
+import {ScreenshotElement} from './screenshot.js';
 import {SupportToolPageMixin} from './support_tool_page_mixin.js';
 
 const DataCollectorsElementBase = SupportToolPageMixin(PolymerElement);
@@ -37,16 +36,11 @@ export class DataCollectorsElement extends DataCollectorsElementBase {
         type: Boolean,
         value: () => loadTimeData.getBoolean('enableScreenshot'),
       },
-      allSelected_: {
-        type: Boolean,
-        value: false,
-      },
     };
   }
 
   private dataCollectors_: DataCollectorItem[];
   private enableScreenshot_: boolean;
-  private allSelected_: boolean;
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
 
   override connectedCallback() {
@@ -55,8 +49,6 @@ export class DataCollectorsElement extends DataCollectorsElementBase {
     this.browserProxy_.getDataCollectors().then(
         (dataCollectors: DataCollectorItem[]) => {
           this.dataCollectors_ = dataCollectors;
-          this.allSelected_ =
-              this.dataCollectors_.every((element) => element.isIncluded);
         });
   }
 
@@ -76,24 +68,6 @@ export class DataCollectorsElement extends DataCollectorsElementBase {
     return this.enableScreenshot_ ?
         this.$$<ScreenshotElement>('#screenshot')!.getEditedScreenshotBase64() :
         '';
-  }
-
-  private getSelectAllButtonLabel_(selectAllClicked: boolean): string {
-    if (selectAllClicked) {
-      return this.i18n('selectNone');
-    } else {
-      return this.i18n('selectAll');
-    }
-  }
-
-  private onSelectAllClick_() {
-    this.allSelected_ = !this.allSelected_;
-    // Update this.dataCollectors_ to reflect the selection choice.
-    for (let index = 0; index < this.dataCollectors_.length; index++) {
-      // Mutate the array observably. See:
-      // https://polymer-library.polymer-project.org/3.0/docs/devguide/data-system#make-observable-changes
-      this.set(`dataCollectors_.${index}.isIncluded`, this.allSelected_);
-    }
   }
 }
 

@@ -22,8 +22,6 @@
 #include "base/check_op.h"
 #include "base/functional/bind.h"
 #include "base/notreached.h"
-#include "chromeos/ash/services/assistant/public/cpp/assistant_enums.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/scoped_animation_duration_scale_mode.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
@@ -219,6 +217,12 @@ void ContentsView::SetActiveStateInternal(int page_index, bool animate) {
 
   app_list_pages_[GetActivePageIndex()]->OnWillBeHidden();
 
+  raw_ptr<SearchBoxView> search_box_view = GetSearchBoxView();
+  CHECK(search_box_view)
+      << "SearchBoxView must be available to update its internal state.";
+  search_box_view->SetIsIphAllowed(GetStateForPageIndex(page_index) ==
+                                   AppListState::kStateSearchResults);
+
   // Start animating to the new page. Disable animation for tests.
   bool should_animate = animate && !set_active_state_without_animation_ &&
                         !ui::ScopedAnimationDurationScaleMode::is_zero();
@@ -238,7 +242,7 @@ void ContentsView::SetActiveStateInternal(int page_index, bool animate) {
   ActivePageChanged();
 
   if (!should_animate)
-    DeprecatedLayoutImmediately();
+    Layout();
 }
 
 void ContentsView::ActivePageChanged() {
@@ -262,17 +266,8 @@ void ContentsView::ShowSearchResults(bool show) {
 
   // SetVisible() only when showing search results, the search results page will
   // be hidden at the end of its own bounds animation.
-  if (show) {
+  if (show)
     search_result_page_view()->SetVisible(true);
-
-    // Always to hide `assistant_page_view_` in case it is visible.
-    assistant_page_view_->SetVisible(false);
-
-    // `page_before_search_` could be invisible when showing
-    // `assistant_page_view_`.
-    GetPageView(page_before_search_)->SetVisible(true);
-  }
-
   SetActiveStateInternal(show ? search_page : page_before_search_,
                          true /*animate*/);
   if (show)
@@ -313,7 +308,7 @@ void ContentsView::ShowEmbeddedAssistantUI(bool show) {
   if (next_page == GetPageIndexForState(AppListState::kStateApps)) {
     GetSearchBoxView()->ClearSearch();
     GetSearchBoxView()->SetSearchBoxActive(false, ui::ET_UNKNOWN);
-    apps_container_view_->DeprecatedLayoutImmediately();
+    apps_container_view_->Layout();
   }
 }
 
@@ -466,8 +461,6 @@ bool ContentsView::Back() {
       ShowSearchResults(false);
       break;
     case AppListState::kStateEmbeddedAssistant:
-      GetAppListMainView()->view_delegate()->EndAssistant(
-          assistant::AssistantExitPoint::kBackInLauncher);
       ShowEmbeddedAssistantUI(false);
       break;
     case AppListState::kStateStart_DEPRECATED:
@@ -478,7 +471,7 @@ bool ContentsView::Back() {
   return true;
 }
 
-void ContentsView::Layout(PassKey) {
+void ContentsView::Layout() {
   const gfx::Rect rect = GetContentsBounds();
   if (rect.IsEmpty())
     return;
@@ -497,6 +490,10 @@ void ContentsView::Layout(PassKey) {
 
   // Reset the transform which can be set through animation
   search_box->layer()->SetTransform(gfx::Transform());
+}
+
+const char* ContentsView::GetClassName() const {
+  return "ContentsView";
 }
 
 void ContentsView::TotalPagesChanged(int previous_page_count,
@@ -608,8 +605,5 @@ gfx::Rect ContentsView::ConvertRectToWidgetWithoutTransform(
   }
   return widget_rect;
 }
-
-BEGIN_METADATA(ContentsView)
-END_METADATA
 
 }  // namespace ash

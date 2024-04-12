@@ -9,6 +9,8 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.ResolveInfo;
 import android.text.TextUtils;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.ObserverList;
@@ -51,13 +53,8 @@ public final class DefaultBrowserInfo2 {
         public final int systemCount;
 
         /** Creates an instance of the {@link DefaultInfo} class. */
-        public DefaultInfo(
-                boolean isChromeSystem,
-                boolean isChromeDefault,
-                boolean isDefaultSystem,
-                boolean hasDefault,
-                int browserCount,
-                int systemCount) {
+        public DefaultInfo(boolean isChromeSystem, boolean isChromeDefault, boolean isDefaultSystem,
+                boolean hasDefault, int browserCount, int systemCount) {
             this.isChromeSystem = isChromeSystem;
             this.isChromeDefault = isChromeDefault;
             this.isDefaultSystem = isDefaultSystem;
@@ -84,10 +81,12 @@ public final class DefaultBrowserInfo2 {
         sDefaultInfoTask.get(callback);
     }
 
+    @VisibleForTesting
     public static void setDefaultInfoForTests(DefaultInfo info) {
         DefaultInfoTask.setDefaultInfoForTests(info);
     }
 
+    @VisibleForTesting
     public static void clearDefaultInfoForTests() {
         DefaultInfoTask.clearDefaultInfoForTests();
     }
@@ -97,6 +96,7 @@ public final class DefaultBrowserInfo2 {
 
         private final ObserverList<Callback<DefaultInfo>> mObservers = new ObserverList<>();
 
+        @VisibleForTesting
         public static void setDefaultInfoForTests(DefaultInfo info) {
             sTestInfo = new AtomicReference<DefaultInfo>(info);
         }
@@ -176,13 +176,8 @@ public final class DefaultBrowserInfo2 {
 
             browserCount = uniquePackages.size();
 
-            return new DefaultInfo(
-                    isChromeSystem,
-                    isChromeDefault,
-                    isDefaultSystem,
-                    hasDefault,
-                    browserCount,
-                    systemCount);
+            return new DefaultInfo(isChromeSystem, isChromeDefault, isDefaultSystem, hasDefault,
+                    browserCount, systemCount);
         }
 
         @Override

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startURL(
     'resources/page-with-shared-worker.html',
     `Tests that we can load resources from a dedicated worker.`);

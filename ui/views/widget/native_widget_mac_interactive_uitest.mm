@@ -4,10 +4,12 @@
 
 #include "ui/views/widget/native_widget_mac.h"
 
+#include "base/memory/raw_ptr.h"
+
 #import <Cocoa/Cocoa.h>
 
 #import "base/mac/mac_util.h"
-#include "base/memory/raw_ptr.h"
+#import "base/mac/scoped_nsobject.h"
 #include "ui/base/test/ui_controls.h"
 #import "ui/base/test/windowed_nsnotification_observer.h"
 #import "ui/events/test/cocoa_test_event_utils.h"
@@ -15,7 +17,6 @@
 #include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/test/native_widget_factory.h"
 #include "ui/views/test/test_widget_observer.h"
-#include "ui/views/test/widget_activation_waiter.h"
 #include "ui/views/test/widget_test.h"
 #include "ui/views/widget/widget_interactive_uitest_utils.h"
 
@@ -80,11 +81,12 @@ TEST_P(NativeWidgetMacInteractiveUITest, ShowAttainsKeyStatus) {
   EXPECT_FALSE(widget->IsActive());
   EXPECT_EQ(0, activation_count_);
   {
+    WidgetActivationWaiter wait_for_first_active(widget, true);
     widget->Show();
-    WaitForWidgetActive(widget, true);
+    wait_for_first_active.Wait();
   }
   EXPECT_TRUE(widget->IsActive());
-  EXPECT_TRUE(widget->GetNativeWindow().GetNativeNSWindow().keyWindow);
+  EXPECT_TRUE([widget->GetNativeWindow().GetNativeNSWindow() isKeyWindow]);
   EXPECT_EQ(1, activation_count_);
   EXPECT_EQ(0, deactivation_count_);
 
@@ -93,16 +95,18 @@ TEST_P(NativeWidgetMacInteractiveUITest, ShowAttainsKeyStatus) {
   Widget* widget2 = MakeWidget();  // Note: not observed.
   EXPECT_EQ(0, deactivation_count_);
   {
+    WidgetActivationWaiter wait_for_deactivate(widget, false);
     widget2->Show();
-    WaitForWidgetActive(widget2, true);
+    wait_for_deactivate.Wait();
   }
   EXPECT_EQ(1, deactivation_count_);
   EXPECT_FALSE(widget->IsActive());
   EXPECT_EQ(1, activation_count_);
 
   {
+    WidgetActivationWaiter wait_for_external_activate(widget, true);
     [widget->GetNativeWindow().GetNativeNSWindow() makeKeyAndOrderFront:nil];
-    WaitForWidgetActive(widget, true);
+    wait_for_external_activate.Wait();
   }
   EXPECT_TRUE(widget->IsActive());
   EXPECT_EQ(1, deactivation_count_);
@@ -121,34 +125,34 @@ TEST_P(NativeWidgetMacInteractiveUITest, ShowInactiveIgnoresKeyStatus) {
   Widget* widget = MakeWidget();
   NSWindow* widget_window = widget->GetNativeWindow().GetNativeNSWindow();
 
-  WindowedNSNotificationObserver* waiter =
+  base::scoped_nsobject<WindowedNSNotificationObserver> waiter(
       [[WindowedNSNotificationObserver alloc]
           initForNotification:NSWindowDidBecomeKeyNotification
-                       object:widget_window];
+                       object:widget_window]);
 
   EXPECT_FALSE(widget->IsVisible());
-  EXPECT_FALSE(widget_window.visible);
+  EXPECT_FALSE([widget_window isVisible]);
   EXPECT_FALSE(widget->IsActive());
-  EXPECT_FALSE(widget_window.keyWindow);
+  EXPECT_FALSE([widget_window isKeyWindow]);
   widget->ShowInactive();
 
   EXPECT_TRUE(widget->IsVisible());
-  EXPECT_TRUE(widget_window.visible);
+  EXPECT_TRUE([widget_window isVisible]);
   EXPECT_FALSE(widget->IsActive());
-  EXPECT_FALSE(widget_window.keyWindow);
+  EXPECT_FALSE([widget_window isKeyWindow]);
 
   // If the window were to become active, this would activate it.
   RunPendingMessages();
   EXPECT_FALSE(widget->IsActive());
-  EXPECT_FALSE(widget_window.keyWindow);
-  EXPECT_EQ(0, waiter.notificationCount);
+  EXPECT_FALSE([widget_window isKeyWindow]);
+  EXPECT_EQ(0, [waiter notificationCount]);
 
   // Activating the inactive widget should make it key, asynchronously.
   widget->Activate();
   [waiter wait];
-  EXPECT_EQ(1, waiter.notificationCount);
+  EXPECT_EQ(1, [waiter notificationCount]);
   EXPECT_TRUE(widget->IsActive());
-  EXPECT_TRUE(widget_window.keyWindow);
+  EXPECT_TRUE([widget_window isKeyWindow]);
 
   widget->CloseNow();
 }
@@ -158,19 +162,19 @@ namespace {
 // Show |widget| and wait for it to become the key window.
 void ShowKeyWindow(Widget* widget) {
   NSWindow* widget_window = widget->GetNativeWindow().GetNativeNSWindow();
-  WindowedNSNotificationObserver* waiter =
+  base::scoped_nsobject<WindowedNSNotificationObserver> waiter(
       [[WindowedNSNotificationObserver alloc]
           initForNotification:NSWindowDidBecomeKeyNotification
-                       object:widget_window];
+                       object:widget_window]);
   widget->Show();
   EXPECT_TRUE([waiter wait]);
-  EXPECT_TRUE(widget_window.keyWindow);
+  EXPECT_TRUE([widget_window isKeyWindow]);
 }
 
 NSData* ViewAsTIFF(NSView* view) {
   NSBitmapImageRep* bitmap =
-      [view bitmapImageRepForCachingDisplayInRect:view.bounds];
-  [view cacheDisplayInRect:view.bounds toBitmapImageRep:bitmap];
+      [view bitmapImageRepForCachingDisplayInRect:[view bounds]];
+  [view cacheDisplayInRect:[view bounds] toBitmapImageRep:bitmap];
   return [bitmap TIFFRepresentation];
 }
 
@@ -194,7 +198,7 @@ TEST_F(NativeWidgetMacInteractiveUITest, ParentWindowTrafficLights) {
   ShowKeyWindow(parent_widget);
 
   NSWindow* parent = parent_widget->GetNativeWindow().GetNativeNSWindow();
-  EXPECT_TRUE(parent.mainWindow);
+  EXPECT_TRUE([parent isMainWindow]);
 
   NSButton* button = [parent standardWindowButton:NSWindowCloseButton];
   EXPECT_TRUE(button);
@@ -217,11 +221,11 @@ TEST_F(NativeWidgetMacInteractiveUITest, ParentWindowTrafficLights) {
   EXPECT_TRUE(parent_widget->ShouldPaintAsActive());
 
   // Parent window should still be main, and have its traffic lights active.
-  EXPECT_TRUE(parent.mainWindow);
-  EXPECT_FALSE(parent.keyWindow);
+  EXPECT_TRUE([parent isMainWindow]);
+  EXPECT_FALSE([parent isKeyWindow]);
 
   // Enabled status doesn't actually change, but check anyway.
-  EXPECT_TRUE(button.enabled);
+  EXPECT_TRUE([button isEnabled]);
   NSData* button_image_with_child = ViewAsTIFF(button);
   EXPECT_TRUE([active_button_image isEqualToData:button_image_with_child]);
 
@@ -231,18 +235,18 @@ TEST_F(NativeWidgetMacInteractiveUITest, ParentWindowTrafficLights) {
   Widget* other_widget = CreateTopLevelPlatformWidget();
   other_widget->SetBounds(gfx::Rect(200, 200, 100, 100));
   ShowKeyWindow(other_widget);
-  EXPECT_FALSE(parent.mainWindow);
-  EXPECT_FALSE(parent.keyWindow);
+  EXPECT_FALSE([parent isMainWindow]);
+  EXPECT_FALSE([parent isKeyWindow]);
   EXPECT_FALSE(parent_widget->ShouldPaintAsActive());
-  EXPECT_TRUE(button.enabled);
+  EXPECT_TRUE([button isEnabled]);
   NSData* inactive_button_image = ViewAsTIFF(button);
   EXPECT_FALSE([active_button_image isEqualToData:inactive_button_image]);
 
   // Focus the child again and assert the parent once again paints as active.
   [child makeKeyWindow];
   EXPECT_TRUE(parent_widget->ShouldPaintAsActive());
-  EXPECT_TRUE(child.keyWindow);
-  EXPECT_FALSE(parent.keyWindow);
+  EXPECT_TRUE([child isKeyWindow]);
+  EXPECT_FALSE([parent isKeyWindow]);
 
   child_widget->CloseNow();
   other_widget->CloseNow();
@@ -278,7 +282,7 @@ TEST_F(NativeWidgetMacInteractiveUITest,
   }
 
   NSWindow* window = widget->GetNativeWindow().GetNativeNSWindow();
-  EXPECT_TRUE(window.miniaturized);
+  EXPECT_TRUE([window isMiniaturized]);
 
   // As part of the window restoration process,
   // SessionRestoreImpl::ShowBrowser() -> BrowserView::Show() ->
@@ -287,17 +291,17 @@ TEST_F(NativeWidgetMacInteractiveUITest,
   // name is Show(), it "shows" the saved_show_state_ which in this case is
   // WindowVisibilityState::kHideWindow.
   widget->Show();
-  EXPECT_TRUE(window.miniaturized);
+  EXPECT_TRUE([window isMiniaturized]);
 
   // Activate the window from the dock (i.e.
   // SetVisibilityState(WindowVisibilityState::kShowAndActivateWindow)).
-  WindowedNSNotificationObserver* deminiaturizationObserver =
-      [[WindowedNSNotificationObserver alloc]
+  base::scoped_nsobject<WindowedNSNotificationObserver>
+      deminiaturizationObserver([[WindowedNSNotificationObserver alloc]
           initForNotification:NSWindowDidDeminiaturizeNotification
-                       object:window];
+                       object:window]);
   widget->Activate();
   [deminiaturizationObserver wait];
-  EXPECT_FALSE(window.miniaturized);
+  EXPECT_FALSE([window isMiniaturized]);
 
   widget->CloseNow();
 }
@@ -368,20 +372,21 @@ TEST_F(NativeWidgetMacInteractiveUITest, GlobalNSTextInputContextUpdates) {
   widget->GetContentsView()->AddChildView(textfield);
   textfield->RequestFocus();
   {
+    WidgetActivationWaiter wait_for_first_active(widget, true);
     widget->Show();
-    WaitForWidgetActive(widget, true);
+    wait_for_first_active.Wait();
   }
-  EXPECT_TRUE(widget->GetNativeView().GetNativeNSView().inputContext);
-  EXPECT_EQ(widget->GetNativeView().GetNativeNSView().inputContext,
-            NSTextInputContext.currentInputContext);
+  EXPECT_TRUE([widget->GetNativeView().GetNativeNSView() inputContext]);
+  EXPECT_EQ([widget->GetNativeView().GetNativeNSView() inputContext],
+            [NSTextInputContext currentInputContext]);
 
   widget->GetContentsView()->RemoveChildView(textfield);
 
   // NSTextInputContext usually only updates at the end of an AppKit event loop
   // iteration. We just tore out the inputContext, so ensure the raw, weak
   // global pointer that AppKit likes to keep around has been updated manually.
-  EXPECT_EQ(nil, NSTextInputContext.currentInputContext);
-  EXPECT_FALSE(widget->GetNativeView().GetNativeNSView().inputContext);
+  EXPECT_EQ(nil, [NSTextInputContext currentInputContext]);
+  EXPECT_FALSE([widget->GetNativeView().GetNativeNSView() inputContext]);
 
   // RemoveChildView() doesn't delete the view.
   delete textfield;

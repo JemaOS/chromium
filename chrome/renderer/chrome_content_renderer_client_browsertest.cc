@@ -60,9 +60,8 @@ TEST_F(ChromeContentRendererClientSearchBoxTest, RewriteThumbnailURL) {
 
   // Create a thumbnail URL containing the correct render frame ID and an
   // arbitrary instant restricted ID.
-  GURL thumbnail_url(base::StringPrintf(
-      "chrome-search:/thumb/%s/1",
-      render_frame->GetWebFrame()->GetLocalFrameToken().ToString().c_str()));
+  GURL thumbnail_url(base::StringPrintf("chrome-search:/thumb/%i/1",
+                                        render_frame->GetRoutingID()));
 
   GURL result;
   // Make sure the SearchBox rewrites a thumbnail request from the main frame.
@@ -176,8 +175,9 @@ IN_PROC_BROWSER_TEST_P(ChromeContentRendererClientBrowserTest,
       browser()->tab_strip_model()->GetActiveWebContents();
 
   GURL video_url = https_server()->GetURL(GetParam().host, GetParam().path);
-  EXPECT_TRUE(ExecJs(web_contents, "appendEmbedToDOM('" + video_url.spec() +
-                                       "','" + GetParam().type + "');"));
+  EXPECT_TRUE(ExecuteScript(web_contents, "appendEmbedToDOM('" +
+                                              video_url.spec() + "','" +
+                                              GetParam().type + "');"));
   WaitForYouTubeRequest();
 }
 
@@ -189,8 +189,9 @@ IN_PROC_BROWSER_TEST_P(ChromeContentRendererClientBrowserTest,
      browser()->tab_strip_model()->GetActiveWebContents();
 
   GURL video_url = https_server()->GetURL(GetParam().host, GetParam().path);
-  EXPECT_TRUE(ExecJs(web_contents, "appendDataEmbedToDOM('" + video_url.spec() +
-                                       "','" + GetParam().type + "');"));
+  EXPECT_TRUE(ExecuteScript(web_contents, "appendDataEmbedToDOM('" +
+                                              video_url.spec() + "','" +
+                                              GetParam().type + "');"));
   WaitForYouTubeRequest();
 }
 

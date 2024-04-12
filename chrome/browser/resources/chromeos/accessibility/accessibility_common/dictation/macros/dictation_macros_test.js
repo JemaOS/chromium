@@ -10,8 +10,35 @@ DictationMacrosTest = class extends DictationE2ETestBase {
   async setUpDeferred() {
     await super.setUpDeferred();
 
+    await importModule(
+        'MacroError', '/accessibility_common/dictation/macros/macro.js');
+    await importModule(
+        'StopListeningMacro',
+        '/accessibility_common/dictation/macros/stop_listening_macro.js');
+    await importModule(
+        'InputController',
+        '/accessibility_common/dictation/input_controller.js');
+    await importModule(
+        'UnselectTextMacro',
+        '/accessibility_common/dictation/macros/repeatable_key_press_macro.js');
     this.mockAccessibilityPrivate.enableFeatureForTest(
         'dictationContextChecking', true);
+  }
+
+  async focusInputFieldWithValue(value, selStart = 0, selEnd = 0) {
+    const root = await this.runWithLoadedTree(
+        '<input type="text" value="' + value + '"></input>');
+
+    const node = root.find({role: chrome.automation.RoleType.TEXT_FIELD});
+    assertTrue(Boolean(node));
+    if (!node.state || !node.state.focused) {
+      node.focus();
+    }
+
+    while (node.textSelStart !== selStart || node.textSelEnd !== selEnd) {
+      node.setSelection(selStart, selEnd);
+      await this.waitForEvent(node, 'textSelectionChanged');
+    }
   }
 };
 
@@ -22,6 +49,7 @@ AX_TEST_F('DictationMacrosTest', 'ValidInputTextViewMacro', async function() {
   assertEquals('INPUT_TEXT_VIEW', macro.getNameAsString());
   const checkContextResult = macro.checkContext();
   assertTrue(checkContextResult.canTryAction);
+  assertFalse(checkContextResult.willImmediatelyDisambiguate);
   assertEquals(undefined, checkContextResult.error);
   const runMacroResult = macro.run();
   assertTrue(runMacroResult.isSuccess);
@@ -35,7 +63,8 @@ AX_TEST_F('DictationMacrosTest', 'InvalidInputTextViewMacro', async function() {
   assertEquals('INPUT_TEXT_VIEW', macro.getNameAsString());
   const checkContextResult = macro.checkContext();
   assertFalse(checkContextResult.canTryAction);
-  assertEquals(MacroError.BAD_CONTEXT, checkContextResult.error);
+  assertEquals(undefined, checkContextResult.willImmediatelyDisambiguate);
+  assertEquals(MacroError.FAILED_ACTUATION, checkContextResult.error);
   const runMacroResult = macro.run();
   assertFalse(runMacroResult.isSuccess);
   assertEquals(MacroError.FAILED_ACTUATION, runMacroResult.error);
@@ -43,12 +72,11 @@ AX_TEST_F('DictationMacrosTest', 'InvalidInputTextViewMacro', async function() {
 
 AX_TEST_F('DictationMacrosTest', 'RepeatableKeyPressMacro', async function() {
   // DELETE_PREV_CHAR is one of many RepeatableKeyPressMacros.
-  // Toggle Dictation on so that the Macro will be runnable.
-  this.toggleDictationOn();
   const macro = await this.getSimpleParseStrategy().parse('delete');
   assertEquals('DELETE_PREV_CHAR', macro.getNameAsString());
   const checkContextResult = macro.checkContext();
   assertTrue(checkContextResult.canTryAction);
+  assertFalse(checkContextResult.willImmediatelyDisambiguate);
   assertEquals(undefined, checkContextResult.error);
   const runMacroResult = macro.run();
   assertTrue(runMacroResult.isSuccess);
@@ -61,6 +89,7 @@ AX_TEST_F('DictationMacrosTest', 'ListCommandsMacro', async function() {
   assertEquals('LIST_COMMANDS', macro.getNameAsString());
   const checkContextResult = macro.checkContext();
   assertTrue(checkContextResult.canTryAction);
+  assertFalse(checkContextResult.willImmediatelyDisambiguate);
   assertEquals(undefined, checkContextResult.error);
   const runMacroResult = macro.run();
   assertTrue(runMacroResult.isSuccess);
@@ -71,10 +100,11 @@ AX_TEST_F('DictationMacrosTest', 'StopListeningMacro', async function() {
   this.toggleDictationOn();
   assertTrue(this.getDictationActive());
   assertTrue(this.getSpeechRecognitionActive());
-  const macro = new ToggleDictationMacro();
-  assertEquals('TOGGLE_DICTATION', macro.getNameAsString());
+  const macro = new StopListeningMacro();
+  assertEquals('STOP_LISTENING', macro.getNameAsString());
   const checkContextResult = macro.checkContext();
   assertTrue(checkContextResult.canTryAction);
+  assertFalse(checkContextResult.willImmediatelyDisambiguate);
   assertEquals(undefined, checkContextResult.error);
   const runMacroResult = macro.run();
   assertTrue(runMacroResult.isSuccess);
@@ -107,11 +137,21 @@ SYNC_TEST_F('DictationMacrosTest', 'SmartMacros', async function() {
 
 AX_TEST_F(
     'DictationMacrosTest', 'UnselectInactiveInputController', async function() {
-      const macro = new UnselectTextMacro(new InputControllerImpl());
+      const macro = new UnselectTextMacro(new InputController());
       assertEquals('UNSELECT_TEXT', macro.getNameAsString());
-      const contextResult = macro.checkContext();
-      assertFalse(contextResult.canTryAction);
-      assertEquals(MacroError.BAD_CONTEXT, contextResult.error);
-      assertEquals(
-          Context.INACTIVE_INPUT_CONTROLLER, contextResult.failedContext);
+      assertFalse(macro.checkContext().canTryAction);
     });
+
+AX_TEST_F('DictationMacrosTest', 'UnselectWithNullValue', async function() {
+  await this.focusInputFieldWithValue('', 0, 0);
+  this.toggleDictationOn();
+  const macro = await this.getSimpleParseStrategy().parse('unselect');
+  assertEquals('UNSELECT_TEXT', macro.getNameAsString());
+  assertFalse(macro.checkContext().canTryAction);
+});
+
+// TODO(crbug.com/1376579): Add a test case where canTryAction
+// returns true. We can't do this right now because
+// getEditableNodeData() returns null if text is selected.
+// TODO(crbug.com/1376579): Add a test case with the cursor
+// at the beginning, middle, end, and some value.

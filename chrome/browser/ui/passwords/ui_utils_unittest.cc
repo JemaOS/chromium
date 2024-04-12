@@ -202,8 +202,3 @@ TEST(ManagePasswordsViewUtilTest, GetManagePasswordsDialogTitleText) {
     EXPECT_TRUE(title.find(domain) != std::u16string::npos);
   }
 }
-
-TEST(ManagePasswordsViewUtilTest,
-     GetConfirmationManagePasswordsDialogTitleText) {
-  EXPECT_NE(std::u16string(), GetConfirmationManagePasswordsDialogTitleText());
-}

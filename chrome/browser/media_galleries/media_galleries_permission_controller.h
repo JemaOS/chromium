@@ -120,7 +120,7 @@ class MediaGalleriesPermissionController
   void OnPreferencesInitialized();
 
   // SelectFileDialog::Listener implementation:
-  void FileSelected(const ui::SelectedFileInfo& file_info,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
   void FileSelectionCanceled(void* params) override;

@@ -279,14 +279,14 @@ HTMLDivElement* VTTRegion::GetDisplayTree(Document& document) {
     PrepareRegionDisplayTree();
   }
 
-  return region_display_tree_.Get();
+  return region_display_tree_;
 }
 
 void VTTRegion::WillRemoveVTTCueBox(VTTCueBox* box) {
   DVLOG(VTT_LOG_LEVEL) << "willRemoveVTTCueBox";
   DCHECK(cue_container_->contains(box));
 
-  double box_height = box->GetBoundingClientRect()->height();
+  double box_height = box->getBoundingClientRect()->height();
 
   cue_container_->classList().Remove(TextTrackCueContainerScrollingClass());
 
@@ -321,11 +321,11 @@ void VTTRegion::DisplayLastVTTCueBox() {
     cue_container_->classList().Add(TextTrackCueContainerScrollingClass());
 
   double region_bottom =
-      region_display_tree_->GetBoundingClientRect()->bottom();
+      region_display_tree_->getBoundingClientRect()->bottom();
 
   // Find first cue that is not entirely displayed and scroll it upwards.
   for (Element& child : ElementTraversal::ChildrenOf(*cue_container_)) {
-    DOMRect* client_rect = child.GetBoundingClientRect();
+    DOMRect* client_rect = child.getBoundingClientRect();
     double child_bottom = client_rect->bottom();
 
     if (region_bottom >= child_bottom)

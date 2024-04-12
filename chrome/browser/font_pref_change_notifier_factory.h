@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_FONT_PREF_CHANGE_NOTIFIER_FACTORY_H_
 #define CHROME_BROWSER_FONT_PREF_CHANGE_NOTIFIER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class FontPrefChangeNotifier;
@@ -19,13 +19,13 @@ class FontPrefChangeNotifierFactory : public ProfileKeyedServiceFactory {
   static FontPrefChangeNotifierFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<FontPrefChangeNotifierFactory>;
+  friend struct base::DefaultSingletonTraits<FontPrefChangeNotifierFactory>;
 
   FontPrefChangeNotifierFactory();
   ~FontPrefChangeNotifierFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

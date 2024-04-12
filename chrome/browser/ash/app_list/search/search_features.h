@@ -18,11 +18,6 @@ BASE_DECLARE_FEATURE(kLauncherKeywordExtractionScoring);
 // Federated analytics for launcher queries, via Private Heavy Hitters (PHH).
 BASE_DECLARE_FEATURE(kLauncherQueryFederatedAnalyticsPHH);
 
-// Change relevance score in Drive Files, Local Files, Help App, Keyboard
-// shortcuts, OS Settings and personalization app to all be based on a fuzzy
-// match
-BASE_DECLARE_FEATURE(kLauncherFuzzyMatchAcrossProviders);
-
 // Enables a fuzzy match between the query and title in Omnibox result to
 // calculate the relevance
 BASE_DECLARE_FEATURE(kLauncherFuzzyMatchForOmnibox);
@@ -30,38 +25,17 @@ BASE_DECLARE_FEATURE(kLauncherFuzzyMatchForOmnibox);
 // Enables image search in the launcher.
 BASE_DECLARE_FEATURE(kLauncherImageSearch);
 
-// Whether or not to override configuration of the local image search confidence
-// threshold with an experiment.
-BASE_DECLARE_FEATURE(kLauncherLocalImageSearchConfidence);
-
-// Whether or not to override configuration of the local image search Relevance
-// threshold with an experiment.
-BASE_DECLARE_FEATURE(kLauncherLocalImageSearchRelevance);
-
-// Enable Image Content-based Annotation
-BASE_DECLARE_FEATURE(kLauncherImageSearchIca);
-
-// Indicates whether Image Content-based Annotation is supported by hardware.
-BASE_DECLARE_FEATURE(kICASupportedByHardware);
-
-// Enable Optical Character Recognition
-BASE_DECLARE_FEATURE(kLauncherImageSearchOcr);
-
 BASE_DECLARE_FEATURE(kLauncherSystemInfoAnswerCards);
 
-// Enable manatee for keyboard shortcuts
-BASE_DECLARE_FEATURE(kLauncherManateeForKeyboardShortcuts);
+BASE_DECLARE_FEATURE(kLauncherOmniboxPublishLogicLog);
 
 bool IsLauncherGameSearchEnabled();
 bool IsLauncherKeywordExtractionScoringEnabled();
 bool IsLauncherQueryFederatedAnalyticsPHHEnabled();
 bool IsLauncherImageSearchEnabled();
-bool IsLauncherImageSearchIcaEnabled();
-bool IsLauncherImageSearchOcrEnabled();
-bool IsLauncherFuzzyMatchAcrossProvidersEnabled();
 bool isLauncherFuzzyMatchForOmniboxEnabled();
 bool isLauncherSystemInfoAnswerCardsEnabled();
-bool isLauncherManateeForKeyboardShortcutsEnabled();
+bool isLauncherOmniboxPublishLogicLogEnabled();
 
 }  // namespace search_features
 

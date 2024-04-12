@@ -1,9 +1,4 @@
-/**
- * When Typescript tries to resolve imports, it sees
- * `import "chrome://resources/mwc/lit/index.js"`. The import path is
- * meaningless at compile time. This file provides Lit's types to builds that
- * that depend on it
- */
+/** Simple file to export all lit resources we care about for easy bundling. */
 
 export * from "./components-chromium/node_modules/lit/index.js";
 export * from "./components-chromium/node_modules/lit/decorators.js";
@@ -27,6 +22,4 @@ export * from "./components-chromium/node_modules/lit/directives/template-conten
 export * from "./components-chromium/node_modules/lit/directives/unsafe-html.js";
 export * from "./components-chromium/node_modules/lit/directives/unsafe-svg.js";
 export * from "./components-chromium/node_modules/lit/directives/until.js";
-export * from './components-chromium/node_modules/lit/directives/when.js';
-export * from './components-chromium/node_modules/@lit/task/task.js';
-export {html as staticHtml, literal, svg as staticSvg, unsafeStatic, withStatic,} from './components-chromium/node_modules/lit/static-html.js';
+export * from "./components-chromium/node_modules/lit/directives/when.js";

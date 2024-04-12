@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/arc/input_method_manager/input_method_prefs.h"
 
-#include <optional>
-
 #include "base/strings/stringprintf.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/testing_profile.h"
@@ -76,12 +74,10 @@ TEST_F(InputMethodPrefsTest, UpdateEnabledImes) {
                           component_extension_ime_id);
 
   InputMethodPrefs prefs(profile());
-  InputMethodDescriptor arc_ime_descriptor1(
-      arc_ime_id1, "", "", {}, {}, false, GURL(), GURL(),
-      /*handwriting_language=*/std::nullopt);
-  InputMethodDescriptor arc_ime_descriptor2(
-      arc_ime_id2, "", "", {}, {}, false, GURL(), GURL(),
-      /*handwriting_language=*/std::nullopt);
+  InputMethodDescriptor arc_ime_descriptor1(arc_ime_id1, "", "", {}, {}, false,
+                                            GURL(), GURL());
+  InputMethodDescriptor arc_ime_descriptor2(arc_ime_id2, "", "", {}, {}, false,
+                                            GURL(), GURL());
 
   {
     prefs.UpdateEnabledImes({arc_ime_descriptor1});

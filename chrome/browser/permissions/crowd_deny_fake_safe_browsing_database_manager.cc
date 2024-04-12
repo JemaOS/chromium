@@ -51,6 +51,9 @@ bool CrowdDenyFakeSafeBrowsingDatabaseManager::CancelApiCheck(Client* client) {
   return true;
 }
 
+bool CrowdDenyFakeSafeBrowsingDatabaseManager::ChecksAreAlwaysAsync() const {
+  return false;
+}
 safe_browsing::ThreatMetadata
 CrowdDenyFakeSafeBrowsingDatabaseManager::GetSimulatedMetadataOrSafe(
     const GURL& url) {

@@ -9,7 +9,7 @@ export const SUBDOMAIN_SPECIFIER = '*.';
 /**
  * Returns a favicon url for a given site.
  */
-export function getFaviconUrl(site: string): string {
+export function getFaviconUrl(site: string, size: number = 20): string {
   // Use 'http' as the scheme if `site` has a wildcard scheme.
   let faviconUrl =
       site.startsWith('*://') ? site.replace('*://', 'http://') : site;
@@ -21,7 +21,7 @@ export function getFaviconUrl(site: string): string {
 
   return getFaviconForPageURL(
       faviconUrl, /*isSyncedUrlForHistoryUi=*/ false,
-      /*remoteIconUrlForUma=*/ '', /*size=*/ 20);
+      /*remoteIconUrlForUma=*/ '', size);
 }
 
 /**

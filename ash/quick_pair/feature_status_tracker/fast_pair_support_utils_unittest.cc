@@ -17,7 +17,6 @@ class FastPairSupportUtilsTest : public testing::Test {
  public:
   void SetUp() override {
     adapter_ = base::MakeRefCounted<FakeBluetoothAdapter>();
-    adapter_->SetBluetoothIsPowered(true);
   }
 
  protected:
@@ -38,15 +37,20 @@ TEST_F(FastPairSupportUtilsTest, HasHardwareSupportForHardwareState) {
   EXPECT_TRUE(HasHardwareSupport(adapter_));
 }
 
-TEST_F(FastPairSupportUtilsTest, DisableAllowCrossDeviceFeatureSuite) {
+TEST_F(FastPairSupportUtilsTest, HasHardwareSupportForFlagState) {
   EXPECT_TRUE(HasHardwareSupport(adapter_));
 
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(features::kAllowCrossDeviceFeatureSuite);
+  adapter_->SetHardwareOffloadingStatus(
+      device::BluetoothAdapter::LowEnergyScanSessionHardwareOffloadingStatus::
+          kNotSupported);
   EXPECT_FALSE(HasHardwareSupport(adapter_));
+
+  base::test::ScopedFeatureList feature_list{
+      features::kFastPairSoftwareScanning};
+  EXPECT_TRUE(HasHardwareSupport(adapter_));
 }
 
-TEST_F(FastPairSupportUtilsTest, HasHardwareSupportFalseForAdapterPresence) {
+TEST_F(FastPairSupportUtilsTest, HasHardwareSupportFalseForAdapterState) {
   EXPECT_TRUE(HasHardwareSupport(adapter_));
 
   adapter_->SetBluetoothIsPresent(false);
@@ -54,13 +58,6 @@ TEST_F(FastPairSupportUtilsTest, HasHardwareSupportFalseForAdapterPresence) {
 
   scoped_refptr<FakeBluetoothAdapter> null_adapter;
   EXPECT_FALSE(HasHardwareSupport(null_adapter));
-}
-
-TEST_F(FastPairSupportUtilsTest, HasHardwareSupportFalseForAdapterPowerState) {
-  EXPECT_TRUE(HasHardwareSupport(adapter_));
-
-  adapter_->SetBluetoothIsPowered(false);
-  EXPECT_FALSE(HasHardwareSupport(adapter_));
 }
 
 }  // namespace quick_pair

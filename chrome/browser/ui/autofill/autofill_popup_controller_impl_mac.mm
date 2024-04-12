@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/autofill/autofill_popup_controller_impl_mac.h"
 
 #import "chrome/browser/ui/cocoa/touchbar/web_textfield_touch_bar_controller.h"
-#include "components/autofill/core/browser/filling_product.h"
 #include "components/autofill/core/browser/ui/autofill_popup_delegate.h"
 #include "components/autofill/core/browser/ui/popup_item_ids.h"
 
@@ -20,12 +19,10 @@ WeakPtr<AutofillPopupControllerImpl> AutofillPopupControllerImpl::GetOrCreate(
     content::WebContents* web_contents,
     gfx::NativeView container_view,
     const gfx::RectF& element_bounds,
-    base::i18n::TextDirection text_direction,
-    int32_t form_control_ax_id) {
+    base::i18n::TextDirection text_direction) {
   if (previous.get() && previous->delegate_.get() == delegate.get() &&
       previous->container_view() == container_view) {
-    previous->controller_common_.element_bounds = element_bounds;
-    previous->form_control_ax_id_ = form_control_ax_id;
+    previous->SetElementBounds(element_bounds);
     previous->ClearState();
     return previous;
   }
@@ -34,8 +31,7 @@ WeakPtr<AutofillPopupControllerImpl> AutofillPopupControllerImpl::GetOrCreate(
     previous->Hide(PopupHidingReason::kViewDestroyed);
 
   AutofillPopupControllerImpl* controller = new AutofillPopupControllerImplMac(
-      delegate, web_contents, container_view, element_bounds, text_direction,
-      form_control_ax_id);
+      delegate, web_contents, container_view, element_bounds, text_direction);
   return controller->GetWeakPtr();
 }
 
@@ -44,25 +40,20 @@ AutofillPopupControllerImplMac::AutofillPopupControllerImplMac(
     content::WebContents* web_contents,
     gfx::NativeView container_view,
     const gfx::RectF& element_bounds,
-    base::i18n::TextDirection text_direction,
-    int32_t form_control_ax_id)
+    base::i18n::TextDirection text_direction)
     : AutofillPopupControllerImpl(delegate,
                                   web_contents,
                                   container_view,
                                   element_bounds,
-                                  text_direction,
-                                  form_control_ax_id,
-                                  base::DoNothing(),
-                                  std::nullopt),
+                                  text_direction),
       touch_bar_controller_(nil),
-      is_credit_card_popup_(delegate->GetMainFillingProduct() ==
-                            FillingProduct::kCreditCard) {}
+      is_credit_card_popup_(delegate->GetPopupType() ==
+                            PopupType::kCreditCards) {}
 
-AutofillPopupControllerImplMac::~AutofillPopupControllerImplMac() = default;
+AutofillPopupControllerImplMac::~AutofillPopupControllerImplMac() {}
 
 void AutofillPopupControllerImplMac::Show(
     std::vector<autofill::Suggestion> suggestions,
-    AutofillSuggestionTriggerSource trigger_source,
     AutoselectFirstSuggestion autoselect_first_suggestion) {
   if (!suggestions.empty() && is_credit_card_popup_) {
     touch_bar_controller_ = [WebTextfieldTouchBarController
@@ -70,7 +61,7 @@ void AutofillPopupControllerImplMac::Show(
     [touch_bar_controller_ showCreditCardAutofillWithController:this];
   }
 
-  AutofillPopupControllerImpl::Show(std::move(suggestions), trigger_source,
+  AutofillPopupControllerImpl::Show(std::move(suggestions),
                                     autoselect_first_suggestion);
   // No code below this line!
   // |Show| may hide the popup and destroy |this|, so |Show| should be the last
@@ -78,11 +69,12 @@ void AutofillPopupControllerImplMac::Show(
 }
 
 void AutofillPopupControllerImplMac::UpdateDataListValues(
-    base::span<const SelectOption> options) {
+    const std::vector<std::u16string>& values,
+    const std::vector<std::u16string>& labels) {
   if (touch_bar_controller_)
     [touch_bar_controller_ invalidateTouchBar];
 
-  AutofillPopupControllerImpl::UpdateDataListValues(options);
+  AutofillPopupControllerImpl::UpdateDataListValues(values, labels);
   // No code below this line!
   // |UpdateDataListValues| may hide the popup and destroy |this|, so
   // |UpdateDataListValues| should be the last line.

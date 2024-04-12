@@ -15,7 +15,6 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/ui/webui/ash/login/lacros_data_backward_migration_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/mojom/screens_login.mojom.h"
 #include "chrome/common/chrome_paths.h"
 
 namespace ash {
@@ -27,7 +26,6 @@ LacrosDataBackwardMigrationScreen::LacrosDataBackwardMigrationScreen(
     base::WeakPtr<LacrosDataBackwardMigrationScreenView> view)
     : BaseScreen(LacrosDataBackwardMigrationScreenView::kScreenId,
                  OobeScreenPriority::SCREEN_DEVICE_DEVELOPER_MODIFICATION),
-      OobeMojoBinder(this),
       view_(std::move(view)) {
   DCHECK(view_);
 }
@@ -83,19 +81,7 @@ void LacrosDataBackwardMigrationScreen::ShowImpl() {
 }
 
 void LacrosDataBackwardMigrationScreen::OnProgress(int percent) {
-  if (GetRemote()->is_bound()) {
-    (*GetRemote())->SetProgressValue(percent);
-  }
-}
-
-void LacrosDataBackwardMigrationScreen::OnCancelButtonClicked() {
-  if (is_hidden()) {
-    return;
-  }
-  LOG(WARNING) << "User cancelled backward migration.";
-  migrator_->CancelMigration(
-      base::BindOnce(&LacrosDataBackwardMigrationScreen::OnCanceled,
-                     weak_factory_.GetWeakPtr()));
+  view_->SetProgressValue(percent);
 }
 
 void LacrosDataBackwardMigrationScreen::OnMigrated(
@@ -105,15 +91,9 @@ void LacrosDataBackwardMigrationScreen::OnMigrated(
       chrome::AttemptRestart();
       break;
     case BrowserDataBackMigratorBase::Result::kFailed:
-      if (GetRemote()->is_bound()) {
-        (*GetRemote())->SetFailureStatus();
-      }
+      view_->SetFailureStatus();
       break;
   }
-}
-
-void LacrosDataBackwardMigrationScreen::OnCanceled() {
-  chrome::AttemptRestart();
 }
 
 void LacrosDataBackwardMigrationScreen::HideImpl() {}

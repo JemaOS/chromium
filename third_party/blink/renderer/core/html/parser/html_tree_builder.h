@@ -47,33 +47,21 @@ class HTMLDocumentParser;
 
 class HTMLTreeBuilder final : public GarbageCollected<HTMLTreeBuilder> {
  public:
-  // This constructor is used for main document parsing.
-  // TODO(kouhei): HTMLTreeBuilder can be created for non-HTMLDocument
-  // (XHTMLDocument) from editing code. Fix editing code to always invoke HTML
-  // parser on HTMLDocument.
+  // HTMLTreeBuilder can be created for non-HTMLDocument (XHTMLDocument) from
+  // editing code.
+  // TODO(kouhei): Fix editing code to always invoke HTML parser on
+  // HTMLDocument.
   HTMLTreeBuilder(HTMLDocumentParser*,
                   Document&,
                   ParserContentPolicy,
                   const HTMLParserOptions&,
                   bool include_shadow_roots);
-  // This constructor is used for fragment parsing.
   HTMLTreeBuilder(HTMLDocumentParser*,
                   DocumentFragment*,
                   Element* context_element,
                   ParserContentPolicy,
                   const HTMLParserOptions&,
                   bool include_shadow_roots);
-
- private:
-  HTMLTreeBuilder(HTMLDocumentParser*,
-                  Document&,
-                  ParserContentPolicy,
-                  const HTMLParserOptions&,
-                  bool include_shadow_roots,
-                  DocumentFragment* for_fragment,
-                  Element* fragment_context_element);
-
- public:
   HTMLTreeBuilder(const HTMLTreeBuilder&) = delete;
   HTMLTreeBuilder& operator=(const HTMLTreeBuilder&) = delete;
   ~HTMLTreeBuilder();
@@ -87,11 +75,6 @@ class HTMLTreeBuilder final : public GarbageCollected<HTMLTreeBuilder> {
   }
   bool IsParsingFragmentOrTemplateContents() const {
     return IsParsingFragment() || IsParsingTemplateContents();
-  }
-
-  void SetDOMPartsAllowedState(DOMPartsAllowed state) {
-    DCHECK(RuntimeEnabledFeatures::DOMPartsAPIEnabled());
-    tree_.SetDOMPartsAllowedState(state);
   }
 
   void Detach();
@@ -139,8 +122,6 @@ class HTMLTreeBuilder final : public GarbageCollected<HTMLTreeBuilder> {
     kInCellMode,
     kInSelectMode,
     kInSelectInTableMode,
-    kInButtonInSelectMode,
-    kInDatalistInSelectMode,
     kAfterBodyMode,
     kInFramesetMode,
     kAfterFramesetMode,
@@ -159,7 +140,6 @@ class HTMLTreeBuilder final : public GarbageCollected<HTMLTreeBuilder> {
   void ProcessComment(AtomicHTMLToken*);
   void ProcessCharacter(AtomicHTMLToken*);
   void ProcessEndOfFile(AtomicHTMLToken*);
-  void ProcessDOMPart(AtomicHTMLToken*);
 
   bool ProcessStartTagForInHead(AtomicHTMLToken*);
   void ProcessStartTagForInBody(AtomicHTMLToken*);
@@ -234,7 +214,7 @@ class HTMLTreeBuilder final : public GarbageCollected<HTMLTreeBuilder> {
     FragmentParsingContext& operator=(const FragmentParsingContext&) = delete;
     void Init(DocumentFragment*, Element* context_element);
 
-    DocumentFragment* Fragment() const { return fragment_.Get(); }
+    DocumentFragment* Fragment() const { return fragment_; }
     Element* ContextElement() const {
       DCHECK(fragment_);
       return context_element_stack_item_->GetElement();

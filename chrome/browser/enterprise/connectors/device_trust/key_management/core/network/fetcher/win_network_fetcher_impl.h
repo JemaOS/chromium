@@ -8,7 +8,6 @@
 #include <string>
 
 #include "base/containers/flat_map.h"
-#include "base/memory/scoped_refptr.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/network/fetcher/win_network_fetcher.h"
 #include "components/winhttp/network_fetcher.h"
 #include "components/winhttp/scoped_hinternet.h"
@@ -21,7 +20,7 @@ class WinNetworkFetcherImpl : public WinNetworkFetcher {
  public:
   WinNetworkFetcherImpl(const GURL& url,
                         const std::string& body,
-                        base::flat_map<std::string, std::string> headers);
+                        const base::flat_map<std::string, std::string> headers);
 
   ~WinNetworkFetcherImpl() override;
 
@@ -32,7 +31,7 @@ class WinNetworkFetcherImpl : public WinNetworkFetcher {
   GURL url_;
   std::string body_;
   base::flat_map<std::string, std::string> headers_;
-  scoped_refptr<winhttp::SharedHInternet> winhttp_session_;
+  winhttp::ScopedHInternet winhttp_session_;
   scoped_refptr<winhttp::NetworkFetcher> winhttp_network_fetcher_;
 };
 

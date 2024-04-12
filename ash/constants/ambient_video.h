@@ -5,9 +5,8 @@
 #ifndef ASH_CONSTANTS_AMBIENT_VIDEO_H_
 #define ASH_CONSTANTS_AMBIENT_VIDEO_H_
 
-#include <string_view>
-
 #include "base/component_export.h"
+#include "base/strings/string_piece.h"
 
 namespace ash {
 
@@ -29,10 +28,10 @@ enum class AmbientVideo {
 // this default for the user when the video theme is active.
 inline constexpr AmbientVideo kDefaultAmbientVideo = AmbientVideo::kNewMexico;
 
-// The returned string_view is guaranteed to be null-terminated and point to
+// The returned StringPiece is guaranteed to be null-terminated and point to
 // memory valid for the lifetime of the program.
 COMPONENT_EXPORT(ASH_CONSTANTS)
-std::string_view ToString(AmbientVideo video);
+base::StringPiece ToString(AmbientVideo video);
 
 }  // namespace ash
 

@@ -2,19 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import './input_key.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 
-import {ShortcutInputKeyElement} from 'chrome://resources/ash/common/shortcut_input_ui/shortcut_input_key.js';
-import {KeyInputState} from 'chrome://resources/ash/common/shortcut_input_ui/shortcut_utils.js';
-import {assert} from 'chrome://resources/js/assert.js';
-import {mojoString16ToString} from 'chrome://resources/js/mojo_type_util.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {IronIconElement} from 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 import {PolymerElementProperties} from 'chrome://resources/polymer/v3_0/polymer/interfaces.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {AcceleratorLookupManager} from './accelerator_lookup_manager.js';
-import {AcceleratorSource, TextAcceleratorPart, TextAcceleratorPartType} from './shortcut_types.js';
-import {isCustomizationAllowed} from './shortcut_utils.js';
+import {InputKeyElement, KeyInputState} from './input_key.js';
+import {mojoString16ToString} from './mojo_utils.js';
+import {TextAcceleratorInfo, TextAcceleratorPart, TextAcceleratorPartType} from './shortcut_types.js';
+import {isCustomizationDisabled, isTextAcceleratorInfo} from './shortcut_utils.js';
 import {getTemplate} from './text_accelerator.html.js';
 
 /**
@@ -35,13 +34,6 @@ export class TextAcceleratorElement extends PolymerElement {
         observer: TextAcceleratorElement.prototype.parseAndDisplayTextParts,
       },
 
-      isOnlyText: {
-        type: Boolean,
-        value: false,
-        computed: 'areAllPartsTextParts(parts)',
-        reflectToAttribute: true,
-      },
-
       // If this property is true, the spacing between keys will be narrower
       // than usual.
       narrow: {
@@ -59,40 +51,27 @@ export class TextAcceleratorElement extends PolymerElement {
         // can be updated.
         observer: TextAcceleratorElement.prototype.parseAndDisplayTextParts,
       },
-
-      // If this property is true, lock icon should be hidden.
-      displayLockIcon: {
-        type: Boolean,
-        value: false,
-      },
-
-      action: {
-        type: Number,
-        value: 0,
-      },
-
-      source: {
-        type: Number,
-        value: 0,
-      },
     };
   }
 
   parts: TextAcceleratorPart[];
   narrow: boolean;
-  displayLockIcon: boolean;
   highlighted: boolean;
-  action: number;
-  source: AcceleratorSource;
-  private lookupManager: AcceleratorLookupManager =
-      AcceleratorLookupManager.getInstance();
+
+  static getTextAcceleratorParts(info: TextAcceleratorInfo[]):
+      TextAcceleratorPart[] {
+    // For text based layout accelerators, we always expect this to be an array
+    // with a single element.
+    assert(info.length === 1);
+    const textAcceleratorInfo = info[0];
+    assert(isTextAcceleratorInfo(textAcceleratorInfo));
+    return textAcceleratorInfo.layoutProperties.textAccelerator.parts;
+  }
 
   private parseAndDisplayTextParts(): void {
     const container =
-        this.shadowRoot!.querySelector<HTMLElement>('.parts-container');
-    assert(container);
-    assert(window.trustedTypes);
-    container.innerHTML = window.trustedTypes.emptyHTML;
+        this.shadowRoot!.querySelector('.parts-container') as HTMLDivElement;
+    container.innerHTML = '';
     const textParts: Node[] = [];
     for (const part of this.parts) {
       const text = mojoString16ToString(part.text);
@@ -117,16 +96,15 @@ export class TextAcceleratorElement extends PolymerElement {
   }
 
   private createInputKeyPart(keyText: string, type: TextAcceleratorPartType):
-      ShortcutInputKeyElement {
+      InputKeyElement {
     const keyState = type === TextAcceleratorPartType.kModifier ?
         KeyInputState.MODIFIER_SELECTED :
         KeyInputState.ALPHANUMERIC_SELECTED;
-    const key = document.createElement('shortcut-input-key');
+    const key = document.createElement('input-key');
     key.key = keyText;
     key.keyState = keyState;
     key.narrow = this.narrow;
     key.highlighted = this.highlighted;
-    key.hasLauncherButton = this.lookupManager.getHasLauncherButton();
     return key;
   }
 
@@ -143,20 +121,7 @@ export class TextAcceleratorElement extends PolymerElement {
   }
 
   private shouldShowLockIcon(): boolean {
-    // Show lock icon in each row if customization is enabled and its
-    // category is not locked.
-    if (!isCustomizationAllowed()) {
-      return false;
-    }
-    return !this.displayLockIcon &&
-        !this.lookupManager.isSubcategoryLocked(
-            this.lookupManager.getAcceleratorSubcategory(
-                this.source, this.action));
-  }
-
-  private areAllPartsTextParts(): boolean {
-    return this.parts.every(
-        part => part.type === TextAcceleratorPartType.kPlainText);
+    return !isCustomizationDisabled();
   }
 
   static get template(): HTMLTemplateElement {

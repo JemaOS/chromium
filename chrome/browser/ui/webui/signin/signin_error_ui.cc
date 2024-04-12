@@ -18,7 +18,7 @@
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
 #include "chrome/browser/signin/signin_ui_util.h"
 #include "chrome/browser/ui/browser_window.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/profile_picker.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service_factory.h"
 #include "chrome/browser/ui/webui/signin/signin_error_handler.h"
@@ -92,9 +92,13 @@ void SigninErrorUI::Initialize(Browser* browser, bool from_profile_picker) {
     // string is ever passed and possibly add a DCHECK.
     source->AddLocalizedString("signinErrorTitle", IDS_SIGNIN_ERROR_TITLE);
   } else {
-    source->AddString("signinErrorTitle",
-                      l10n_util::GetStringFUTF16(IDS_SIGNIN_ERROR_EMAIL_TITLE,
-                                                 last_login_error.email()));
+    int title_string_id =
+        AccountConsistencyModeManager::IsDiceEnabledForProfile(webui_profile)
+            ? IDS_SIGNIN_ERROR_DICE_EMAIL_TITLE
+            : IDS_SIGNIN_ERROR_EMAIL_TITLE;
+    source->AddString(
+        "signinErrorTitle",
+        l10n_util::GetStringFUTF16(title_string_id, last_login_error.email()));
   }
 
   source->AddString("signinErrorMessage", std::u16string());
@@ -134,7 +138,7 @@ void SigninErrorUI::Initialize(Browser* browser, bool from_profile_picker) {
             .GetProfileAttributesWithPath(
                 last_login_error.another_profile_path());
     DCHECK(entry);
-    DCHECK(entry->IsAuthenticated() || entry->CanBeManaged());
+    DCHECK(entry->IsAuthenticated());
     handler->set_duplicate_profile_path(entry->GetPath());
     existing_name = entry->GetName();
     source->AddString("signinErrorMessage",

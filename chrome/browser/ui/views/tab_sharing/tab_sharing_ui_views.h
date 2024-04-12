@@ -97,7 +97,7 @@ class TabSharingUIViews : public TabSharingUI,
   // rate-limit our response.
 
   void OnRegionCaptureRectChanged(
-      const std::optional<gfx::Rect>& region_capture_rect) override;
+      const absl::optional<gfx::Rect>& region_capture_rect) override;
 
  protected:
 #if BUILDFLAG(IS_CHROMEOS)
@@ -143,7 +143,7 @@ class TabSharingUIViews : public TabSharingUI,
   void RefreshFavicons();
 
   void MaybeUpdateFavicon(content::WebContents* focus_target,
-                          std::optional<uint32_t>* current_hash,
+                          absl::optional<uint32_t>* current_hash,
                           content::WebContents* infobar_owner);
 
   ui::ImageModel TabFavicon(content::WebContents* web_contents) const;
@@ -160,14 +160,6 @@ class TabSharingUIViews : public TabSharingUI,
   // Whether the share-this-tab-instead button may be shown for |web_contents|.
   bool IsShareInsteadButtonPossible(content::WebContents* web_contents) const;
 
-  // Tabs eligible for capture include:
-  // * Tabs from the same profile.
-  // * Tabs from an incognito profile may capture the original profile's tabs,
-  //   and vice versa.
-  // * Guest tabs may only capture other guest tabs. (Note that a guest tab's
-  //   "original" session might be an arbitrary non-guest session.)
-  bool IsCapturableByCapturer(const Profile* profile) const;
-
   // As for the purpose of this identification:
   // Assume a tab is captured twice, and both sessions use Region Capture.
   // The blue border falls back on its viewport-encompassing form. But when
@@ -175,9 +167,6 @@ class TabSharingUIViews : public TabSharingUI,
   // remaining session's crop-target.
   static CaptureSessionId next_capture_session_id_;
   const CaptureSessionId capture_session_id_;
-
-  // The capturer's profile.
-  const raw_ptr<Profile, DanglingUntriaged> profile_;
 
   InfoBars infobars_;
   std::map<content::WebContents*, std::unique_ptr<SameOriginObserver>>
@@ -194,6 +183,7 @@ class TabSharingUIViews : public TabSharingUI,
   raw_ptr<content::WebContents, DanglingUntriaged> shared_tab_;
   std::unique_ptr<SameOriginObserver> shared_tab_origin_observer_;
   std::u16string shared_tab_name_;
+  raw_ptr<Profile, DanglingUntriaged> profile_;
   std::unique_ptr<content::MediaStreamUI> tab_capture_indicator_ui_;
 
   // FaviconPeriodicUpdate() runs on a delayed task which re-posts itself.
@@ -215,8 +205,8 @@ class TabSharingUIViews : public TabSharingUI,
   // Indicates whether this instance is used for casting or capturing.
   const TabSharingInfoBarDelegate::TabShareType capture_type_;
 
-  std::optional<uint32_t> capturer_favicon_hash_;
-  std::optional<uint32_t> captured_favicon_hash_;
+  absl::optional<uint32_t> capturer_favicon_hash_;
+  absl::optional<uint32_t> captured_favicon_hash_;
 
   std::map<content::WebContents*, ui::ImageModel>
       favicon_overrides_for_testing_;

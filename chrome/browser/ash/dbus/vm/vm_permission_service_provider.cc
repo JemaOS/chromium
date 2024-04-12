@@ -48,7 +48,7 @@ base::UnguessableToken TokenFromString(const std::string& str) {
     count++;
   });
 
-  std::optional<base::UnguessableToken> token =
+  absl::optional<base::UnguessableToken> token =
       base::UnguessableToken::Deserialize(high, low);
   if (!token.has_value()) {
     return base::UnguessableToken();
@@ -172,8 +172,7 @@ void VmPermissionServiceProvider::RegisterVm(
 
   const base::UnguessableToken token(base::UnguessableToken::Create());
 
-  SetCameraPermission(token,
-                      vm->permission_to_enabled_map[VmInfo::PermissionCamera]);
+  media::CameraHalDispatcherImpl::GetInstance()->RegisterPluginVmToken(token);
 
   vms_[token] = std::move(vm);
 
@@ -213,7 +212,8 @@ void VmPermissionServiceProvider::UnregisterVm(
     return;
   }
 
-  SetCameraPermission(iter->first, false);
+  media::CameraHalDispatcherImpl::GetInstance()->UnregisterPluginVmToken(
+      iter->first);
 
   vms_.erase(iter);
 
@@ -270,9 +270,6 @@ void VmPermissionServiceProvider::SetPermissions(
 
   // Commit final version of permissions.
   iter->second->permission_to_enabled_map = std::move(new_permissions);
-  SetCameraPermission(
-      iter->first,
-      iter->second->permission_to_enabled_map[VmInfo::PermissionCamera]);
 
   std::move(response_sender).Run(std::move(response));
 }
@@ -376,17 +373,6 @@ void VmPermissionServiceProvider::UpdateBorealisPermissions(VmInfo* vm) {
   if (prefs->GetBoolean(prefs::kAudioCaptureAllowed)) {
     vm->permission_to_enabled_map[VmInfo::PermissionMicrophone] =
         prefs->GetBoolean(borealis::prefs::kBorealisMicAllowed);
-  }
-}
-
-void VmPermissionServiceProvider::SetCameraPermission(
-    base::UnguessableToken token,
-    bool enabled) {
-  if (enabled) {
-    media::CameraHalDispatcherImpl::GetInstance()->RegisterPluginVmToken(token);
-  } else {
-    media::CameraHalDispatcherImpl::GetInstance()->UnregisterPluginVmToken(
-        token);
   }
 }
 

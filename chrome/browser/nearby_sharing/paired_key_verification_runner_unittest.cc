@@ -5,8 +5,6 @@
 #include "chrome/browser/nearby_sharing/paired_key_verification_runner.h"
 
 #include <stdint.h>
-
-#include <optional>
 #include <vector>
 
 #include "base/functional/callback.h"
@@ -25,6 +23,7 @@
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -59,14 +58,14 @@ class MockIncomingFramesReader : public IncomingFramesReader {
   MOCK_METHOD(void,
               ReadFrame,
               (base::OnceCallback<
-                  void(std::optional<sharing::mojom::V1FramePtr>)> callback),
+                  void(absl::optional<sharing::mojom::V1FramePtr>)> callback),
               (override));
 
   MOCK_METHOD(
       void,
       ReadFrame,
       (sharing::mojom::V1Frame::Tag frame_type,
-       base::OnceCallback<void(std::optional<sharing::mojom::V1FramePtr>)>
+       base::OnceCallback<void(absl::optional<sharing::mojom::V1FramePtr>)>
            callback,
        base::TimeDelta timeout),
       (override));
@@ -95,7 +94,7 @@ PairedKeyVerificationRunner::PairedKeyVerificationResult Merge(
 class PairedKeyVerificationRunnerTest : public testing::Test {
  public:
   enum class ReturnFrameType {
-    // Return std::nullopt for the frame.
+    // Return absl::nullopt for the frame.
     kNull,
     // Return an empty frame.
     kEmpty,
@@ -118,11 +117,11 @@ class PairedKeyVerificationRunnerTest : public testing::Test {
                        bool restricted_to_contacts,
                        PairedKeyVerificationRunner::PairedKeyVerificationResult
                            expected_result) {
-    std::optional<NearbyShareDecryptedPublicCertificate> public_certificate =
+    absl::optional<NearbyShareDecryptedPublicCertificate> public_certificate =
         use_valid_public_certificate
-            ? std::make_optional<NearbyShareDecryptedPublicCertificate>(
+            ? absl::make_optional<NearbyShareDecryptedPublicCertificate>(
                   GetNearbyShareTestDecryptedPublicCertificate())
-            : std::nullopt;
+            : absl::nullopt;
 
     PairedKeyVerificationRunner runner(
         share_target_, kEndpointId, kAuthToken, &connection_,
@@ -148,9 +147,9 @@ class PairedKeyVerificationRunnerTest : public testing::Test {
         .WillOnce(testing::WithArg<1>(testing::Invoke(
             [frame_type](
                 base::OnceCallback<void(
-                    std::optional<sharing::mojom::V1FramePtr>)> callback) {
+                    absl::optional<sharing::mojom::V1FramePtr>)> callback) {
               if (frame_type == ReturnFrameType::kNull) {
-                std::move(callback).Run(std::nullopt);
+                std::move(callback).Run(absl::nullopt);
                 return;
               }
 
@@ -160,7 +159,7 @@ class PairedKeyVerificationRunnerTest : public testing::Test {
                 mojo_v1frame = sharing::mojom::V1Frame::NewPairedKeyEncryption(
                     sharing::mojom::PairedKeyEncryptionFrame::New(
                         kIncomingConnectionSignedData,
-                        kPrivateCertificateHashAuthToken, std::nullopt));
+                        kPrivateCertificateHashAuthToken, absl::nullopt));
               } else if (frame_type ==
                          ReturnFrameType::kOptionalSignedDataValid) {
                 mojo_v1frame = sharing::mojom::V1Frame::NewPairedKeyEncryption(
@@ -194,9 +193,9 @@ class PairedKeyVerificationRunnerTest : public testing::Test {
                   testing::_, testing::Eq(kTimeout)))
         .WillOnce(testing::WithArg<1>(testing::Invoke(
             [=](base::OnceCallback<void(
-                    std::optional<sharing::mojom::V1FramePtr>)> callback) {
+                    absl::optional<sharing::mojom::V1FramePtr>)> callback) {
               if (frame_type == ReturnFrameType::kNull) {
-                std::move(callback).Run(std::nullopt);
+                std::move(callback).Run(absl::nullopt);
                 return;
               }
 

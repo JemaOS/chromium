@@ -96,8 +96,7 @@ class WebDialogViewUnitTest : public views::test::WidgetTest {
   }
 
   void TearDown() override {
-    web_dialog_view_ = nullptr;
-    widget_.ExtractAsDangling()->CloseNow();
+    widget_->CloseNow();
     views::test::WidgetTest::TearDown();
   }
 

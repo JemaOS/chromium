@@ -56,17 +56,8 @@ using html_names::kStyleAttr;
 
 // NOTE: This test uses <iframe sandbox> to create cross origin iframes.
 
-// This should not conflict with the existing PaintTestConfiguration bits.
-enum { kIntersectionOptimization = 1 << 20 };
-
-class FrameThrottlingTest : public PaintTestConfigurations,
-                            public SimTest,
-                            private ScopedIntersectionOptimizationForTest {
+class FrameThrottlingTest : public PaintTestConfigurations, public SimTest {
  protected:
-  FrameThrottlingTest()
-      : ScopedIntersectionOptimizationForTest(GetParam() &
-                                              kIntersectionOptimization) {}
-
   void SetUp() override {
     SimTest::SetUp();
     WebView().MainFrameViewWidget()->Resize(gfx::Size(640, 480));
@@ -100,10 +91,7 @@ class FrameThrottlingTest : public PaintTestConfigurations,
   };
 };
 
-INSTANTIATE_TEST_SUITE_P(All,
-                         FrameThrottlingTest,
-                         ::testing::Values(PAINT_TEST_SUITE_P_VALUES,
-                                           kIntersectionOptimization));
+INSTANTIATE_PAINT_TEST_SUITE_P(FrameThrottlingTest);
 
 TEST_P(FrameThrottlingTest, ThrottleInvisibleFrames) {
   SimRequest main_resource("https://example.com/", "text/html");
@@ -111,8 +99,8 @@ TEST_P(FrameThrottlingTest, ThrottleInvisibleFrames) {
   LoadURL("https://example.com/");
   main_resource.Complete("<iframe sandbox id=frame></iframe>");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
 
   // Initially both frames are visible.
@@ -120,15 +108,14 @@ TEST_P(FrameThrottlingTest, ThrottleInvisibleFrames) {
   EXPECT_FALSE(frame_document->View()->IsHiddenForThrottling());
 
   // Moving the child fully outside the parent makes it invisible.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_FALSE(GetDocument().View()->IsHiddenForThrottling());
   EXPECT_TRUE(frame_document->View()->IsHiddenForThrottling());
 
   // A partially visible child is considered visible.
-  frame_element->setAttribute(
-      kStyleAttr, AtomicString("transform: translate(-50px, 0px, 0px)"));
+  frame_element->setAttribute(kStyleAttr,
+                              "transform: translate(-50px, 0px, 0px)");
   CompositeFrame();
   EXPECT_FALSE(GetDocument().View()->IsHiddenForThrottling());
   EXPECT_FALSE(frame_document->View()->IsHiddenForThrottling());
@@ -142,12 +129,12 @@ TEST_P(FrameThrottlingTest, HiddenSameOriginFramesAreNotThrottled) {
   main_resource.Complete("<iframe id=frame src=iframe.html></iframe>");
   frame_resource.Complete("<iframe id=innerFrame></iframe>");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
 
-  auto* inner_frame_element = To<HTMLIFrameElement>(
-      frame_document->getElementById(AtomicString("innerFrame")));
+  auto* inner_frame_element =
+      To<HTMLIFrameElement>(frame_document->getElementById("innerFrame"));
   auto* inner_frame_document = inner_frame_element->contentDocument();
 
   EXPECT_FALSE(GetDocument().View()->CanThrottleRendering());
@@ -155,8 +142,7 @@ TEST_P(FrameThrottlingTest, HiddenSameOriginFramesAreNotThrottled) {
   EXPECT_FALSE(inner_frame_document->View()->CanThrottleRendering());
 
   // Hidden same origin frames are not throttled.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_FALSE(GetDocument().View()->CanThrottleRendering());
   EXPECT_FALSE(frame_document->View()->CanThrottleRendering());
@@ -172,12 +158,12 @@ TEST_P(FrameThrottlingTest, HiddenCrossOriginFramesAreThrottled) {
   main_resource.Complete("<iframe id=frame src=iframe.html></iframe>");
   frame_resource.Complete("<iframe id=innerFrame sandbox></iframe>");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
 
-  auto* inner_frame_element = To<HTMLIFrameElement>(
-      frame_document->getElementById(AtomicString("innerFrame")));
+  auto* inner_frame_element =
+      To<HTMLIFrameElement>(frame_document->getElementById("innerFrame"));
   auto* inner_frame_document = inner_frame_element->contentDocument();
 
   EXPECT_FALSE(GetDocument().View()->CanThrottleRendering());
@@ -185,8 +171,7 @@ TEST_P(FrameThrottlingTest, HiddenCrossOriginFramesAreThrottled) {
   EXPECT_FALSE(inner_frame_document->View()->CanThrottleRendering());
 
   // Hidden cross origin frames are throttled.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_FALSE(GetDocument().View()->CanThrottleRendering());
   EXPECT_FALSE(frame_document->View()->CanThrottleRendering());
@@ -202,17 +187,16 @@ TEST_P(FrameThrottlingTest, IntersectionObservationOverridesThrottling) {
   main_resource.Complete("<iframe id=frame src=iframe.html></iframe>");
   frame_resource.Complete("<iframe id=innerFrame sandbox></iframe>");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
 
-  auto* inner_frame_element = To<HTMLIFrameElement>(
-      frame_document->getElementById(AtomicString("innerFrame")));
+  auto* inner_frame_element =
+      To<HTMLIFrameElement>(frame_document->getElementById("innerFrame"));
   auto* inner_frame_document = inner_frame_element->contentDocument();
 
   // Hidden cross origin frames are throttled.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_FALSE(GetDocument().View()->CanThrottleRendering());
   EXPECT_FALSE(frame_document->View()->CanThrottleRendering());
@@ -269,13 +253,11 @@ TEST_P(FrameThrottlingTest, NestedIntersectionObservationStateUpdated) {
   child_frame_resource.Complete("");
 
   // Move both frames offscreen to make them throttled.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  auto* child_frame_element =
-      To<HTMLIFrameElement>(frame_element->contentDocument()->getElementById(
-          AtomicString("child-frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  auto* child_frame_element = To<HTMLIFrameElement>(
+      frame_element->contentDocument()->getElementById("child-frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
 
   CompositeFrame();
 
@@ -328,8 +310,7 @@ TEST_P(FrameThrottlingTest,
   ASSERT_TRUE(root_frame_view->ShouldThrottleRenderingForTest());
 
   auto* child_frame_document =
-      To<HTMLIFrameElement>(
-          root_frame->GetDocument()->getElementById(AtomicString("frame")))
+      To<HTMLIFrameElement>(root_frame->GetDocument()->getElementById("frame"))
           ->contentDocument();
   auto* child_frame_view = child_frame_document->View();
   // Force |child_frame_view| to do an intersection observation.
@@ -358,8 +339,8 @@ TEST_P(FrameThrottlingTest,
 
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
   // Hidden cross origin frames are throttled.
   EXPECT_TRUE(frame_document->View()->ShouldThrottleRenderingForTest());
@@ -404,8 +385,8 @@ TEST_P(FrameThrottlingTest, ForAllThrottledLocalFrameViews) {
 
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
   // Hidden cross origin frames are throttled.
   EXPECT_TRUE(frame_document->View()->ShouldThrottleRenderingForTest());
@@ -420,6 +401,10 @@ TEST_P(FrameThrottlingTest, ForAllThrottledLocalFrameViews) {
 }
 
 TEST_P(FrameThrottlingTest, HiddenCrossOriginDisplayNoneFramesAreThrottled) {
+  // Enable cross-origin non-visible iframe throttling.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      features::kThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes);
   // Create a document with doubly nested iframes.
   SimRequest main_resource("https://example.com/", "text/html");
   SimRequest frame_resource("https://example.com/iframe.html", "text/html");
@@ -430,12 +415,12 @@ TEST_P(FrameThrottlingTest, HiddenCrossOriginDisplayNoneFramesAreThrottled) {
       "<iframe id=innerFrame style='display: none; width: 0; height: 0' "
       "sandbox></iframe>");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
 
-  auto* inner_frame_element = To<HTMLIFrameElement>(
-      frame_document->getElementById(AtomicString("innerFrame")));
+  auto* inner_frame_element =
+      To<HTMLIFrameElement>(frame_document->getElementById("innerFrame"));
   auto* inner_frame_document = inner_frame_element->contentDocument();
 
   EXPECT_FALSE(GetDocument().View()->CanThrottleRendering());
@@ -444,14 +429,31 @@ TEST_P(FrameThrottlingTest, HiddenCrossOriginDisplayNoneFramesAreThrottled) {
 
   // The frame is throttled because its dimensions are 0x0, as per experimental
   // feature ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_FALSE(GetDocument().View()->CanThrottleRendering());
   // When ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes is enabled,
   // we will throttle the frame.
   EXPECT_FALSE(frame_document->View()->CanThrottleRendering());
   EXPECT_TRUE(inner_frame_document->View()->CanThrottleRendering());
+  EXPECT_TRUE(base::FeatureList::IsEnabled(
+      features::kThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes));
+  {
+    // Re-test with flag disabled.
+    base::test::ScopedFeatureList feature_list_inner;
+    feature_list_inner.InitAndDisableFeature(
+        features::kThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes);
+    EXPECT_FALSE(
+        features::
+            IsThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframesEnabled());
+
+    frame_document->View()->GetLayoutView()->SetNeedsLayout("test");
+    frame_document->View()->ScheduleAnimation();
+    frame_document->View()->GetLayoutView()->Layer()->SetNeedsRepaint();
+    frame_document->View()->ForceUpdateViewportIntersections();
+    CompositeFrame();
+    EXPECT_FALSE(inner_frame_document->View()->CanThrottleRendering());
+  }
 }
 
 TEST_P(FrameThrottlingTest, ThrottledLifecycleUpdate) {
@@ -460,13 +462,12 @@ TEST_P(FrameThrottlingTest, ThrottledLifecycleUpdate) {
   LoadURL("https://example.com/");
   main_resource.Complete("<iframe sandbox id=frame></iframe>");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
 
   // Enable throttling for the child frame.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_document->View()->CanThrottleRendering());
   EXPECT_EQ(DocumentLifecycle::kPaintClean,
@@ -477,7 +478,7 @@ TEST_P(FrameThrottlingTest, ThrottledLifecycleUpdate) {
   // TODO(skyostil): these expectations are either wrong, or the test is
   // not exercising the code correctly. PaintClean means the entire lifecycle
   // ran.
-  frame_element->setAttribute(html_names::kWidthAttr, AtomicString("50"));
+  frame_element->setAttribute(html_names::kWidthAttr, "50");
   CompositeFrame();
 
   EXPECT_EQ(DocumentLifecycle::kPaintClean,
@@ -496,18 +497,17 @@ TEST_P(FrameThrottlingTest, UnthrottlingFrameSchedulesAnimation) {
   main_resource.Complete("<iframe sandbox id=frame></iframe>");
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
 
   // First make the child hidden to enable throttling.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
   EXPECT_FALSE(Compositor().NeedsBeginFrame());
 
   // Then bring it back on-screen. This should schedule an animation update.
-  frame_element->setAttribute(kStyleAttr, g_empty_atom);
+  frame_element->setAttribute(kStyleAttr, "");
   CompositeFrame();
   EXPECT_TRUE(Compositor().NeedsBeginFrame());
   CompositeFrame();
@@ -530,47 +530,32 @@ TEST_P(FrameThrottlingTest, ThrottledFrameCompositing) {
 
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  auto* frame_doc = frame_element->contentDocument();
-  auto* frame_view = frame_doc->View();
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  auto* frame_view = frame_element->contentDocument()->View();
   EXPECT_FALSE(frame_view->CanThrottleRendering());
   auto* root_layer = WebView().MainFrameImpl()->GetFrameView()->RootCcLayer();
   EXPECT_EQ(0u, CcLayersByDOMElementId(root_layer, "container").size());
-  if (RuntimeEnabledFeatures::HitTestOpaquenessEnabled()) {
-    EXPECT_TRUE(CcLayerByOwnerNodeId(root_layer, frame_doc->GetDomNodeId()));
-  } else {
-    EXPECT_EQ(1u, CcLayersByDOMElementId(root_layer, "inner_frame").size());
-  }
+  EXPECT_EQ(1u, CcLayersByDOMElementId(root_layer, "inner_frame").size());
 
   // First make the child hidden to enable throttling, and composite
   // the container.
-  auto* container_element =
-      GetDocument().getElementById(AtomicString("container"));
+  auto* container_element = GetDocument().getElementById("container");
   container_element->setAttribute(
-      kStyleAttr,
-      AtomicString("will-change: transform; transform: translateY(480px)"));
+      kStyleAttr, "will-change: transform; transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_view->CanThrottleRendering());
   EXPECT_EQ(1u, CcLayersByDOMElementId(root_layer, "container").size());
-  if (RuntimeEnabledFeatures::HitTestOpaquenessEnabled()) {
-    EXPECT_TRUE(CcLayerByOwnerNodeId(root_layer, frame_doc->GetDomNodeId()));
-  } else {
-    EXPECT_EQ(1u, CcLayersByDOMElementId(root_layer, "inner_frame").size());
-  }
+  EXPECT_EQ(1u, CcLayersByDOMElementId(root_layer, "inner_frame").size());
 
   // Then bring it back on-screen, and decomposite container.
-  container_element->setAttribute(kStyleAttr, g_empty_atom);
+  container_element->setAttribute(kStyleAttr, "");
   CompositeFrame();
   ASSERT_TRUE(Compositor().NeedsBeginFrame());
   CompositeFrame();
   EXPECT_FALSE(frame_view->CanThrottleRendering());
   EXPECT_EQ(0u, CcLayersByDOMElementId(root_layer, "container").size());
-  if (RuntimeEnabledFeatures::HitTestOpaquenessEnabled()) {
-    EXPECT_TRUE(CcLayerByOwnerNodeId(root_layer, frame_doc->GetDomNodeId()));
-  } else {
-    EXPECT_EQ(1u, CcLayersByDOMElementId(root_layer, "inner_frame").size());
-  }
+  EXPECT_EQ(1u, CcLayersByDOMElementId(root_layer, "inner_frame").size());
 }
 
 TEST_P(FrameThrottlingTest, MutatingThrottledFrameDoesNotCauseAnimation) {
@@ -585,22 +570,21 @@ TEST_P(FrameThrottlingTest, MutatingThrottledFrameDoesNotCauseAnimation) {
   auto commands1 = CompositeFrame();
   EXPECT_TRUE(commands1.Contains(SimCanvas::kRect, "red"));
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
 
   // Move the frame offscreen to throttle it.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
 
   // Mutating the throttled frame should not cause an animation to be scheduled.
   frame_element->contentDocument()->documentElement()->setAttribute(
-      kStyleAttr, AtomicString("background: green"));
+      kStyleAttr, "background: green");
   EXPECT_FALSE(Compositor().NeedsBeginFrame());
 
   // Move the frame back on screen to unthrottle it.
-  frame_element->setAttribute(kStyleAttr, g_empty_atom);
+  frame_element->setAttribute(kStyleAttr, "");
   EXPECT_TRUE(Compositor().NeedsBeginFrame());
 
   // The first frame we composite after unthrottling won't contain the
@@ -624,17 +608,15 @@ TEST_P(FrameThrottlingTest, SynchronousLayoutInThrottledFrame) {
   main_resource.Complete("<iframe id=frame sandbox src=iframe.html></iframe>");
   frame_resource.Complete("<div id=div></div>");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
 
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
 
   // Change the size of a div in the throttled frame.
-  auto* div_element =
-      frame_element->contentDocument()->getElementById(AtomicString("div"));
-  div_element->setAttribute(kStyleAttr, AtomicString("width: 50px"));
+  auto* div_element = frame_element->contentDocument()->getElementById("div");
+  div_element->setAttribute(kStyleAttr, "width: 50px");
 
   // Querying the width of the div should do a synchronous layout update even
   // though the frame is being throttled.
@@ -651,10 +633,9 @@ TEST_P(FrameThrottlingTest, UnthrottlingTriggersRepaint) {
   frame_resource.Complete("<style> html { background: green; } </style>");
 
   // Move the frame offscreen to throttle it.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
@@ -691,10 +672,9 @@ TEST_P(FrameThrottlingTest, UnthrottlingTriggersRepaintInCompositedChild) {
   )HTML");
 
   // Move the frame offscreen to throttle it.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
@@ -722,18 +702,17 @@ TEST_P(FrameThrottlingTest, ChangeStyleInThrottledFrame) {
   frame_resource.Complete("<style> html { background: red; } </style>");
 
   // Move the frame offscreen to throttle it.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
 
   // Change the background color of the frame's contents from red to green.
-  frame_element->contentDocument()->body()->setAttribute(
-      kStyleAttr, AtomicString("background: green"));
+  frame_element->contentDocument()->body()->setAttribute(kStyleAttr,
+                                                         "background: green");
 
   // Scroll down to unthrottle the frame.
   WebView().MainFrameImpl()->GetFrameView()->LayoutViewport()->SetScrollOffset(
@@ -757,8 +736,8 @@ TEST_P(FrameThrottlingTest, ChangeOriginInThrottledFrame) {
       "src=http://sub.example.com/iframe.html></iframe>");
   frame_resource.Complete("");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
 
   CompositeFrame();
 
@@ -802,8 +781,8 @@ TEST_P(FrameThrottlingTest, MainFrameOriginChangeInvalidatesDescendants) {
 
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
   EXPECT_TRUE(frame_document->View()->CanThrottleRendering());
   EXPECT_TRUE(frame_document->GetFrame()->IsCrossOriginToNearestMainFrame());
@@ -849,10 +828,9 @@ TEST_P(FrameThrottlingTest, ThrottledFrameWithFocus) {
       "</script>\n");
 
   // Move the frame offscreen to throttle it.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
@@ -863,8 +841,7 @@ TEST_P(FrameThrottlingTest, ThrottledFrameWithFocus) {
   EXPECT_FALSE(Compositor().HasSelection());
   GetDocument().GetPage()->GetFocusController().SetFocusedFrame(
       frame_element->contentDocument()->GetFrame());
-  GetDocument().body()->setAttribute(kStyleAttr,
-                                     AtomicString("background: green"));
+  GetDocument().body()->setAttribute(kStyleAttr, "background: green");
   CompositeFrame();
   EXPECT_FALSE(Compositor().HasSelection());
 }
@@ -887,10 +864,9 @@ TEST_P(FrameThrottlingTest, ScrollingCoordinatorShouldSkipThrottledFrame) {
   )HTML");
 
   // Move the frame offscreen to throttle it.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
@@ -898,11 +874,11 @@ TEST_P(FrameThrottlingTest, ScrollingCoordinatorShouldSkipThrottledFrame) {
 
   // Change style of the frame's content to make it in VisualUpdatePending
   // state.
-  frame_element->contentDocument()->body()->setAttribute(
-      kStyleAttr, AtomicString("background: green"));
+  frame_element->contentDocument()->body()->setAttribute(kStyleAttr,
+                                                         "background: green");
   // Change root frame's layout so that the next lifecycle update will call
   // ScrollingCoordinator::UpdateAfterPaint().
-  GetDocument().body()->setAttribute(kStyleAttr, AtomicString("margin: 20px"));
+  GetDocument().body()->setAttribute(kStyleAttr, "margin: 20px");
   EXPECT_EQ(DocumentLifecycle::kVisualUpdatePending,
             frame_element->contentDocument()->Lifecycle().GetState());
 
@@ -920,8 +896,7 @@ TEST_P(FrameThrottlingTest, ScrollingCoordinatorShouldSkipThrottledFrame) {
 
   // Make the frame visible by changing its transform. This doesn't cause a
   // layout, but should still unthrottle the frame.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(0px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(0px)");
   CompositeFrame();
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
@@ -954,10 +929,9 @@ TEST_P(FrameThrottlingTest, ScrollingCoordinatorShouldSkipThrottledLayer) {
       "handler</div>");
 
   // Move the frame offscreen to throttle it.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
@@ -965,11 +939,11 @@ TEST_P(FrameThrottlingTest, ScrollingCoordinatorShouldSkipThrottledLayer) {
 
   // Change style of the frame's content to make it in VisualUpdatePending
   // state.
-  frame_element->contentDocument()->body()->setAttribute(
-      kStyleAttr, AtomicString("background: green"));
+  frame_element->contentDocument()->body()->setAttribute(kStyleAttr,
+                                                         "background: green");
   // Change root frame's layout so that the next lifecycle update will call
   // ScrollingCoordinator::UpdateAfterPaint().
-  GetDocument().body()->setAttribute(kStyleAttr, AtomicString("margin: 20px"));
+  GetDocument().body()->setAttribute(kStyleAttr, "margin: 20px");
   EXPECT_EQ(DocumentLifecycle::kVisualUpdatePending,
             frame_element->contentDocument()->Lifecycle().GetState());
 
@@ -995,10 +969,9 @@ TEST_P(FrameThrottlingTest,
   frame_resource.Complete("<div style='height: 2000px'></div>");
 
   // Move the frame offscreen to throttle it.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
@@ -1006,11 +979,11 @@ TEST_P(FrameThrottlingTest,
 
   // Change style of the frame's content to make it in VisualUpdatePending
   // state.
-  frame_element->contentDocument()->body()->setAttribute(
-      kStyleAttr, AtomicString("background: green"));
+  frame_element->contentDocument()->body()->setAttribute(kStyleAttr,
+                                                         "background: green");
   // Change root frame's layout so that the next lifecycle update will call
   // ScrollingCoordinator::UpdateAfterPaint().
-  GetDocument().body()->setAttribute(kStyleAttr, AtomicString("margin: 20px"));
+  GetDocument().body()->setAttribute(kStyleAttr, "margin: 20px");
   EXPECT_EQ(DocumentLifecycle::kVisualUpdatePending,
             frame_element->contentDocument()->Lifecycle().GetState());
 
@@ -1023,8 +996,7 @@ TEST_P(FrameThrottlingTest,
 
   // Make the frame visible by changing its transform. This doesn't cause a
   // layout, but should still unthrottle the frame.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(0px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(0px)");
   CompositeFrame();  // Unthrottle the frame.
 
   EXPECT_FALSE(frame_element->contentDocument()
@@ -1046,10 +1018,9 @@ TEST_P(FrameThrottlingTest, UnthrottleByTransformingWithoutLayout) {
   frame_resource.Complete("");
 
   // Move the frame offscreen to throttle it.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
@@ -1057,8 +1028,7 @@ TEST_P(FrameThrottlingTest, UnthrottleByTransformingWithoutLayout) {
 
   // Make the frame visible by changing its transform. This doesn't cause a
   // layout, but should still unthrottle the frame.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(0px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(0px)");
   CompositeFrame();
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
@@ -1076,10 +1046,9 @@ TEST_P(FrameThrottlingTest, DumpThrottledFrame) {
       "main <iframe id=frame sandbox=allow-scripts src=iframe.html></iframe>");
   frame_resource.Complete("");
   CompositeFrame();
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
 
@@ -1108,8 +1077,8 @@ TEST_P(FrameThrottlingTest, ThrottleInnerCompositedLayer) {
       "<div id=div style='will-change: transform; background: blue'>DIV</div>");
   auto commands_not_throttled = CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* root_layer = WebView().MainFrameImpl()->GetFrameView()->RootCcLayer();
   // The inner div is composited.
   EXPECT_EQ(1u, CcLayersByDOMElementId(root_layer, "div").size());
@@ -1119,8 +1088,7 @@ TEST_P(FrameThrottlingTest, ThrottleInnerCompositedLayer) {
   EXPECT_EQ(full_draw_count, commands_not_throttled.DrawCount());
 
   // Move the frame offscreen to throttle it.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
   CompositeFrame();
@@ -1140,10 +1108,8 @@ TEST_P(FrameThrottlingTest, ThrottleInnerCompositedLayer) {
   EXPECT_LT(commands_throttled.DrawCount(), full_draw_count);
 
   // Remove compositing trigger of inner_div.
-  auto* inner_div =
-      frame_element->contentDocument()->getElementById(AtomicString("div"));
-  inner_div->setAttribute(kStyleAttr,
-                          AtomicString("background: yellow; overflow: hidden"));
+  auto* inner_div = frame_element->contentDocument()->getElementById("div");
+  inner_div->setAttribute(kStyleAttr, "background: yellow; overflow: hidden");
   // Do an unthrottled style and layout update, simulating the situation
   // triggered by script style/layout access.
   GetDocument().View()->UpdateLifecycleToLayoutClean(
@@ -1159,7 +1125,7 @@ TEST_P(FrameThrottlingTest, ThrottleInnerCompositedLayer) {
   EXPECT_LT(commands_throttled1.DrawCount(), full_draw_count);
 
   // Move the frame back on screen.
-  frame_element->setAttribute(kStyleAttr, g_empty_atom);
+  frame_element->setAttribute(kStyleAttr, "");
   CompositeFrame();
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
@@ -1189,21 +1155,18 @@ TEST_P(FrameThrottlingTest, ThrottleSubtreeAtomically) {
 
   // Move both frames offscreen. IntersectionObservers will run during
   // post-lifecycle steps and synchronously update throttling status.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  auto* child_frame_element =
-      To<HTMLIFrameElement>(frame_element->contentDocument()->getElementById(
-          AtomicString("child-frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  auto* child_frame_element = To<HTMLIFrameElement>(
+      frame_element->contentDocument()->getElementById("child-frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   Compositor().BeginFrame();
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
   EXPECT_TRUE(
       child_frame_element->contentDocument()->View()->CanThrottleRendering());
 
   // Move the frame back on screen.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(0px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(0px)");
   Compositor().BeginFrame();
   EXPECT_FALSE(
       frame_element->contentDocument()->View()->CanThrottleRendering());
@@ -1225,10 +1188,9 @@ TEST_P(FrameThrottlingTest, SkipPaintingLayersInThrottledFrames) {
   auto commands = CompositeFrame();
   EXPECT_TRUE(commands.Contains(SimCanvas::kRect, "red"));
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
 
@@ -1273,10 +1235,9 @@ TEST_P(FrameThrottlingTest, SynchronousLayoutInAnimationFrameCallback) {
   second_frame_resource.Complete("");
 
   // Throttle the first frame.
-  auto* first_frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("first")));
-  first_frame_element->setAttribute(
-      kStyleAttr, AtomicString("transform: translateY(480px)"));
+  auto* first_frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("first"));
+  first_frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(
       first_frame_element->contentDocument()->View()->CanThrottleRendering());
@@ -1285,8 +1246,8 @@ TEST_P(FrameThrottlingTest, SynchronousLayoutInAnimationFrameCallback) {
   // contents of the first frame and causes a synchronous style update. This
   // should not result in an unexpected lifecycle state even if the first
   // frame is throttled during the animation frame callback.
-  auto* second_frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("second")));
+  auto* second_frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("second"));
   ClassicScript::CreateUnspecifiedScript(
       "window.requestAnimationFrame(function() {\n"
       "  var throttledFrame = window.parent.frames.first;\n"
@@ -1317,12 +1278,12 @@ TEST_P(FrameThrottlingTest, AllowOneAnimationFrame) {
     </script>
   )HTML");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   CompositeFrame();
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
 
-  v8::HandleScope scope(Window().GetIsolate());
+  v8::HandleScope scope(v8::Isolate::GetCurrent());
   v8::Local<v8::Value> result =
       ClassicScript::CreateUnspecifiedScript("window.didRaf;")
           ->RunScriptAndReturnValue(
@@ -1340,29 +1301,29 @@ TEST_P(FrameThrottlingTest, UpdatePaintPropertiesOnUnthrottling) {
   frame_resource.Complete("<div id='div'>Inner</div>");
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
-  auto* inner_div = frame_document->getElementById(AtomicString("div"));
+  auto* inner_div = frame_document->getElementById("div");
   auto* inner_div_object = inner_div->GetLayoutObject();
   EXPECT_FALSE(frame_document->View()->ShouldThrottleRenderingForTest());
 
   frame_element->setAttribute(html_names::kStyleAttr,
-                              AtomicString("transform: translateY(1000px)"));
+                              "transform: translateY(1000px)");
   CompositeFrame();
   EXPECT_TRUE(frame_document->View()->CanThrottleRendering());
   EXPECT_FALSE(inner_div_object->FirstFragment().PaintProperties());
 
   // Mutating the throttled frame should not cause paint property update.
   inner_div->setAttribute(html_names::kStyleAttr,
-                          AtomicString("transform: translateY(20px)"));
+                          "transform: translateY(20px)");
   EXPECT_FALSE(Compositor().NeedsBeginFrame());
   EXPECT_TRUE(frame_document->View()->CanThrottleRendering());
   UpdateAllLifecyclePhases();
   EXPECT_FALSE(inner_div_object->FirstFragment().PaintProperties());
 
   // Move the frame back on screen to unthrottle it.
-  frame_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  frame_element->setAttribute(html_names::kStyleAttr, "");
   // The first update unthrottles the frame, the second actually update layout
   // and paint properties etc.
   CompositeFrame();
@@ -1377,6 +1338,10 @@ TEST_P(FrameThrottlingTest, UpdatePaintPropertiesOnUnthrottling) {
 }
 
 TEST_P(FrameThrottlingTest, DisplayNoneNotThrottled) {
+  // Enable cross-origin non-visible iframe throttling.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      features::kThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes);
   SimRequest main_resource("https://example.com/", "text/html");
 
   LoadURL("https://example.com/");
@@ -1384,8 +1349,8 @@ TEST_P(FrameThrottlingTest, DisplayNoneNotThrottled) {
       "<style>iframe { transform: translateY(480px); }</style>"
       "<iframe sandbox id=frame></iframe>");
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
 
   // Initially the frame is throttled as it is offscreen.
@@ -1393,14 +1358,31 @@ TEST_P(FrameThrottlingTest, DisplayNoneNotThrottled) {
   EXPECT_TRUE(frame_document->View()->CanThrottleRendering());
 
   // Setting display:none unthrottles the frame.
-  frame_element->setAttribute(kStyleAttr, AtomicString("display: none"));
+  frame_element->setAttribute(kStyleAttr, "display: none");
   CompositeFrame();
   // When ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes is enabled,
   // we will throttle cross-origin display:none.
   EXPECT_TRUE(frame_document->View()->CanThrottleRendering());
+  {
+    // Re-test with flag disabled.
+    base::test::ScopedFeatureList feature_list_inner;
+    feature_list_inner.InitAndDisableFeature(
+        features::kThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes);
+
+    frame_document->View()->GetLayoutView()->SetNeedsLayout("test");
+    frame_document->View()->ScheduleAnimation();
+    frame_document->View()->GetLayoutView()->Layer()->SetNeedsRepaint();
+    frame_document->View()->ForceUpdateViewportIntersections();
+    CompositeFrame();
+    EXPECT_FALSE(frame_document->View()->CanThrottleRendering());
+  }
 }
 
 TEST_P(FrameThrottlingTest, DisplayNoneChildrenRemainThrottled) {
+  // Enable cross-origin non-visible iframe throttling.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      features::kThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes);
   // Create two nested frames which are throttled.
   SimRequest main_resource("https://example.com/", "text/html");
   SimRequest frame_resource("https://example.com/iframe.html", "text/html");
@@ -1414,13 +1396,11 @@ TEST_P(FrameThrottlingTest, DisplayNoneChildrenRemainThrottled) {
   child_frame_resource.Complete("");
 
   // Move both frames offscreen to make them throttled.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
-  auto* child_frame_element =
-      To<HTMLIFrameElement>(frame_element->contentDocument()->getElementById(
-          AtomicString("child-frame")));
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
+  auto* child_frame_element = To<HTMLIFrameElement>(
+      frame_element->contentDocument()->getElementById("child-frame"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
   EXPECT_TRUE(
@@ -1428,13 +1408,34 @@ TEST_P(FrameThrottlingTest, DisplayNoneChildrenRemainThrottled) {
 
   // Setting display:none for the parent frame throttles the parent and also
   // the child. This behavior differs from Safari.
-  frame_element->setAttribute(kStyleAttr, AtomicString("display: none"));
+  frame_element->setAttribute(kStyleAttr, "display: none");
   CompositeFrame();
   // When ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes is enabled,
   // the cross-origin, display:none frame will be throttled.
   EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
   EXPECT_TRUE(
       child_frame_element->contentDocument()->View()->CanThrottleRendering());
+  {
+    // Re-test with flag disabled.
+    base::test::ScopedFeatureList feature_list_inner;
+    feature_list_inner.InitAndDisableFeature(
+        features::kThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes);
+
+    frame_element->contentDocument()->View()->GetLayoutView()->SetNeedsLayout(
+        "test");
+    frame_element->contentDocument()->View()->ScheduleAnimation();
+    frame_element->contentDocument()
+        ->View()
+        ->GetLayoutView()
+        ->Layer()
+        ->SetNeedsRepaint();
+    frame_element->contentDocument()
+        ->View()
+        ->ForceUpdateViewportIntersections();
+    CompositeFrame();
+    EXPECT_FALSE(
+        frame_element->contentDocument()->View()->CanThrottleRendering());
+  }
 }
 
 TEST_P(FrameThrottlingTest, LifecycleUpdateAfterUnthrottledCompositingUpdate) {
@@ -1450,14 +1451,14 @@ TEST_P(FrameThrottlingTest, LifecycleUpdateAfterUnthrottledCompositingUpdate) {
   frame_resource.Complete("<div id='div'>Foo</div>");
 
   CompositeFrame();
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
   EXPECT_TRUE(frame_document->View()->CanThrottleRendering());
   EXPECT_FALSE(frame_document->View()->ShouldThrottleRendering());
 
-  frame_document->getElementById(AtomicString("div"))
-      ->setAttribute(kStyleAttr, AtomicString("will-change: transform"));
+  frame_document->getElementById("div")->setAttribute(kStyleAttr,
+                                                      "will-change: transform");
   GetDocument().View()->UpdateAllLifecyclePhasesExceptPaint(
       DocumentUpdateReason::kTest);
 
@@ -1491,13 +1492,12 @@ TEST_P(FrameThrottlingTest, NestedFramesInRemoteFrameHiddenAndShown) {
 
   auto* root_frame = LocalFrameRoot().GetFrame();
   auto* frame_document =
-      To<HTMLIFrameElement>(
-          root_frame->GetDocument()->getElementById(AtomicString("frame")))
+      To<HTMLIFrameElement>(root_frame->GetDocument()->getElementById("frame"))
           ->contentDocument();
   auto* frame_view = frame_document->View();
-  auto* child_document = To<HTMLIFrameElement>(frame_document->getElementById(
-                                                   AtomicString("child-frame")))
-                             ->contentDocument();
+  auto* child_document =
+      To<HTMLIFrameElement>(frame_document->getElementById("child-frame"))
+          ->contentDocument();
   auto* child_view = child_document->View();
 
   CompositeFrame();
@@ -1523,9 +1523,9 @@ TEST_P(FrameThrottlingTest, NestedFramesInRemoteFrameHiddenAndShown) {
   // Simulate a trivial style change that doesn't trigger layout, compositing
   // update, but schedules layout tree update.
   frame_document->documentElement()->setAttribute(html_names::kStyleAttr,
-                                                  AtomicString("color: blue"));
+                                                  "color: blue");
   // This is needed to reproduce crbug.com/1054644 before the fix.
-  frame_view->SetIntersectionObservationState(LocalFrameView::kDesired);
+  frame_view->SetNeedsPaintPropertyUpdate();
 
   // Show the frame without any other change.
   LocalFrameRoot().WasShown();
@@ -1560,11 +1560,10 @@ TEST_P(FrameThrottlingTest, LifecycleThrottledFrameNeedsRepaint) {
   auto commands = CompositeFrame();
   EXPECT_TRUE(commands.Contains(SimCanvas::kRect, "red"));
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
   frame_document->View()->SetLifecycleUpdatesThrottledForTesting(true);
-  GetDocument().View()->GetLayoutView()->Layer()->SetNeedsRepaint();
   GetDocument().View()->ScheduleAnimation();
   EXPECT_TRUE(frame_document->View()->ShouldThrottleRenderingForTest());
 
@@ -1572,8 +1571,7 @@ TEST_P(FrameThrottlingTest, LifecycleThrottledFrameNeedsRepaint) {
   // The throttled frame is omitted for paint.
   EXPECT_FALSE(commands.Contains(SimCanvas::kRect, "red"));
 
-  frame_document->body()->setAttribute(kStyleAttr,
-                                       AtomicString("background: green"));
+  frame_document->body()->setAttribute(kStyleAttr, "background: green");
   // Update life cycle update except paint without throttling, which will do
   // paint invalidation.
   GetDocument().View()->UpdateAllLifecyclePhasesExceptPaint(
@@ -1615,6 +1613,11 @@ class TestEventListener : public NativeEventListener {
 }  // namespace
 
 TEST_P(FrameThrottlingTest, ThrottledIframeGetsResizeEvents) {
+  // Enable cross-origin non-visible iframe throttling.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      features::kThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes);
+
   WebView().GetSettings()->SetJavaScriptEnabled(true);
 
   // Set up child-iframe that can be throttled and make sure it still gets a
@@ -1633,11 +1636,10 @@ TEST_P(FrameThrottlingTest, ThrottledIframeGetsResizeEvents) {
   )HTML");
 
   // Load and verify throttling.
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* listener = MakeGarbageCollected<TestEventListener>();
-  frame_element->contentWindow()->addEventListener(event_type_names::kResize,
-                                                   listener,
+  frame_element->contentWindow()->addEventListener("resize", listener,
                                                    /*use_capture=*/false);
   EXPECT_EQ(listener->GetCallCount(), 0);
   CompositeFrame();
@@ -1651,8 +1653,7 @@ TEST_P(FrameThrottlingTest, ThrottledIframeGetsResizeEvents) {
   CompositeFrame();
   EXPECT_EQ(listener->GetCallCount(), 2);
 
-  frame_element->contentWindow()->removeEventListener(event_type_names::kResize,
-                                                      listener,
+  frame_element->contentWindow()->removeEventListener("resize", listener,
                                                       /*use_capture=*/false);
 }
 
@@ -1670,13 +1671,13 @@ TEST_P(FrameThrottlingTest, AncestorTouchActionAndWheelEventHandlers) {
   frame_resource.Complete("<div id='child'></div>");
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
-  auto* parent = GetDocument().getElementById(AtomicString("parent"));
+  auto* parent = GetDocument().getElementById("parent");
   auto* parent_object = parent->GetLayoutObject();
   auto* child_layout_view = frame_document->GetLayoutView();
-  auto* child = frame_document->getElementById(AtomicString("child"));
+  auto* child = frame_document->getElementById("child");
   auto* child_object = child->GetLayoutObject();
   EXPECT_FALSE(frame_document->View()->ShouldThrottleRenderingForTest());
   EXPECT_FALSE(parent_object->InsideBlockingTouchEventHandler());
@@ -1687,8 +1688,7 @@ TEST_P(FrameThrottlingTest, AncestorTouchActionAndWheelEventHandlers) {
   EXPECT_FALSE(child_object->InsideBlockingWheelEventHandler());
 
   // Moving the child fully outside the parent makes it invisible.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_document->View()->ShouldThrottleRenderingForTest());
 
@@ -1709,8 +1709,8 @@ TEST_P(FrameThrottlingTest, AncestorTouchActionAndWheelEventHandlers) {
   EXPECT_FALSE(child_object->InsideBlockingWheelEventHandler());
 
   // Move the child back to the visible viewport.
-  frame_element->setAttribute(
-      kStyleAttr, AtomicString("transform: translate(-50px, 0px, 0px)"));
+  frame_element->setAttribute(kStyleAttr,
+                              "transform: translate(-50px, 0px, 0px)");
   // Update throttling, which will schedule visual update on unthrottling of the
   // frame.
   CompositeFrame();
@@ -1742,13 +1742,13 @@ TEST_P(FrameThrottlingTest, DescendantTouchActionAndWheelEventHandlers) {
   frame_resource.Complete("<div id='child'></div>");
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_document = frame_element->contentDocument();
-  auto* parent = GetDocument().getElementById(AtomicString("parent"));
+  auto* parent = GetDocument().getElementById("parent");
   auto* parent_object = parent->GetLayoutObject();
   auto* child_layout_view = frame_document->GetLayoutView();
-  auto* child = frame_document->getElementById(AtomicString("child"));
+  auto* child = frame_document->getElementById("child");
   auto* child_object = child->GetLayoutObject();
   EXPECT_FALSE(frame_document->View()->ShouldThrottleRenderingForTest());
   EXPECT_FALSE(parent_object->InsideBlockingTouchEventHandler());
@@ -1759,8 +1759,7 @@ TEST_P(FrameThrottlingTest, DescendantTouchActionAndWheelEventHandlers) {
   EXPECT_FALSE(child_object->InsideBlockingWheelEventHandler());
 
   // Moving the child fully outside the parent makes it invisible.
-  frame_element->setAttribute(kStyleAttr,
-                              AtomicString("transform: translateY(480px)"));
+  frame_element->setAttribute(kStyleAttr, "transform: translateY(480px)");
   CompositeFrame();
   EXPECT_TRUE(frame_document->View()->ShouldThrottleRenderingForTest());
 
@@ -1787,8 +1786,8 @@ TEST_P(FrameThrottlingTest, DescendantTouchActionAndWheelEventHandlers) {
   EXPECT_FALSE(child_object->InsideBlockingWheelEventHandler());
 
   // Move the child back to the visible viewport.
-  frame_element->setAttribute(
-      kStyleAttr, AtomicString("transform: translate(-50px, 0px, 0px)"));
+  frame_element->setAttribute(kStyleAttr,
+                              "transform: translate(-50px, 0px, 0px)");
   // Update throttling, which will schedule visual update on unthrottling of the
   // frame.
   CompositeFrame();
@@ -1835,8 +1834,8 @@ TEST_P(FrameThrottlingTest, ForceUnthrottled) {
     <div style="width:120px">Hello, world!</div>
   )HTML");
   CompositeFrame();
-  HTMLIFrameElement* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  HTMLIFrameElement* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   LocalFrameView* inner_frame_view =
       To<LocalFrameView>(frame_element->OwnedEmbeddedContentView());
   EXPECT_TRUE(inner_frame_view->ShouldThrottleRenderingForTest());
@@ -1903,8 +1902,8 @@ TEST_P(FrameThrottlingTest, CullRectUpdate) {
   frame_resource.Complete("");
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* frame_object = frame_element->GetLayoutBox();
   auto* frame_document = frame_element->contentDocument();
   auto* child_layout_view = frame_document->GetLayoutView();
@@ -1916,9 +1915,8 @@ TEST_P(FrameThrottlingTest, CullRectUpdate) {
 
   // Change clip. |frame_element| should update its cull rect.
   // |child_layout_view|'s cull rect update is pending.
-  GetDocument()
-      .getElementById(AtomicString("clip"))
-      ->setAttribute(kStyleAttr, AtomicString("width: 630px"));
+  GetDocument().getElementById("clip")->setAttribute(kStyleAttr,
+                                                     "width: 630px");
   CompositeFrame();
   EXPECT_EQ(gfx::Rect(0, 0, 630, 100),
             frame_object->FirstFragment().GetCullRect().Rect());
@@ -1926,8 +1924,8 @@ TEST_P(FrameThrottlingTest, CullRectUpdate) {
 
   // Move the frame into the visible viewport.
   GetDocument()
-      .getElementById(AtomicString("container"))
-      ->setAttribute(kStyleAttr, AtomicString("transform: translate(0)"));
+      .getElementById("container")
+      ->setAttribute(kStyleAttr, "transform: translate(0)");
   // Update throttling, which will schedule visual update on unthrottling of the
   // frame.
   CompositeFrame();
@@ -1955,14 +1953,13 @@ TEST_P(FrameThrottlingTest, ClearPaintArtifactOnThrottlingLocalRoot) {
       "<div style='will-change:transform'>Hello, world!</div>");
   CompositeFrame();
   LocalFrameView* view = LocalFrameRoot().GetFrame()->View();
-  Element* div =
-      view->GetFrame().GetDocument()->QuerySelector(AtomicString("div"));
+  Element* div = view->GetFrame().GetDocument()->QuerySelector("div");
   EXPECT_FALSE(
       view->GetPaintControllerForTesting().GetPaintArtifact().IsEmpty());
 
   // This emulates javascript.
-  div->setAttribute(html_names::kStyleAttr, g_empty_atom);
-  div->GetBoundingClientRect();
+  div->setAttribute("style", "", ASSERT_NO_EXCEPTION);
+  div->getBoundingClientRect();
   // This emulates WebFrameWidgetImpl::UpdateRenderThrottlingStatusForSubFrame.
   view->UpdateRenderThrottlingStatus(true, false, false, true);
   // UpdateRenderThrottlingStatus should have cleared out previous paint
@@ -1984,12 +1981,12 @@ TEST_P(FrameThrottlingTest, PrintThrottledFrame) {
   frame_resource.Complete("ABC");
   CompositeFrame();
 
-  auto* frame_element = To<HTMLIFrameElement>(
-      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_element =
+      To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
   auto* sub_frame = To<LocalFrame>(frame_element->ContentFrame());
   EXPECT_TRUE(sub_frame->View()->ShouldThrottleRenderingForTest());
   auto* web_frame = WebLocalFrameImpl::FromFrame(sub_frame);
-  WebPrintParams print_params(gfx::SizeF(500, 500));
+  WebPrintParams print_params(gfx::Size(500, 500));
   web_frame->PrintBegin(print_params, blink::WebNode());
   cc::PaintRecorder recorder;
   web_frame->PrintPage(0, recorder.beginRecording());

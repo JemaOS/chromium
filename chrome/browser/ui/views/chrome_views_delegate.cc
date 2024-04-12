@@ -31,7 +31,6 @@
 #include "chrome/browser/ui/ash/touch_selection_menu_runner_chromeos.h"
 #include "chromeos/ui/frame/frame_utils.h"
 #include "ui/aura/client/aura_constants.h"
-#include "ui/views/widget/widget_delegate.h"
 #endif
 
 // Helpers --------------------------------------------------------------------
@@ -119,10 +118,10 @@ bool ChromeViewsDelegate::GetSavedWindowPlacement(
 
   DCHECK(prefs->FindPreference(window_name));
   const base::Value::Dict& dictionary = prefs->GetDict(window_name);
-  std::optional<int> left = dictionary.FindInt("left");
-  std::optional<int> top = dictionary.FindInt("top");
-  std::optional<int> right = dictionary.FindInt("right");
-  std::optional<int> bottom = dictionary.FindInt("bottom");
+  absl::optional<int> left = dictionary.FindInt("left");
+  absl::optional<int> top = dictionary.FindInt("top");
+  absl::optional<int> right = dictionary.FindInt("right");
+  absl::optional<int> bottom = dictionary.FindInt("bottom");
   if (!left || !top || !right || !bottom)
     return false;
 
@@ -181,10 +180,7 @@ void ChromeViewsDelegate::OnBeforeWidgetInit(
   // Only for dialog widgets, if this is not going to be a transient child,
   // then we mark it as an OS system app, otherwise its transient root's app
   // type should be used.
-  // `delegate->IsDialogBox()` does not work because the underlying Widget
-  // does not have its widget delegate set before `OnBeforeWidgetInit`.
-  if (params->delegate && params->delegate->AsDialogDelegate() &&
-      !params->parent) {
+  if (delegate->IsDialogBox() && !params->parent) {
     params->init_properties_container.SetProperty(
         aura::client::kAppType, static_cast<int>(ash::AppType::SYSTEM_APP));
   }
@@ -214,5 +210,5 @@ void ChromeViewsDelegate::OnBeforeWidgetInit(
 }
 
 std::string ChromeViewsDelegate::GetApplicationName() {
-  return std::string(version_info::GetProductName());
+  return version_info::GetProductName();
 }

@@ -50,8 +50,7 @@ class WaylandZAuraOutputManagerTest : public WaylandTestSimple {
   WaylandZAuraOutputManagerTest()
       : WaylandTestSimple(wl::ServerConfig{
             .enable_aura_shell = wl::EnableAuraShellProtocol::kEnabled,
-            .aura_output_manager_protocol =
-                wl::AuraOutputManagerProtocol::kEnabledV1}) {}
+            .use_aura_output_manager = true}) {}
 
  protected:
   // Sends sample metrics to the primary output configured for this fixture.
@@ -274,14 +273,14 @@ TEST_F(WaylandZAuraOutputManagerTest, ActiveDisplay) {
 
   // Activate the secondary output.
   PostToServerAndWait([&](wl::TestWaylandServerThread* server) {
-    server->zaura_output_manager()->SendActivated(secondary_output);
+    server->zaura_output_manager()->SendActivated(secondary_output->resource());
   });
   EXPECT_EQ(secondary_id,
             display::Screen::GetScreen()->GetDisplayForNewWindows().id());
 
   // Activate the primary output.
   PostToServerAndWait([&](wl::TestWaylandServerThread* server) {
-    server->zaura_output_manager()->SendActivated(primary_output);
+    server->zaura_output_manager()->SendActivated(primary_output->resource());
   });
   EXPECT_EQ(primary_id,
             display::Screen::GetScreen()->GetDisplayForNewWindows().id());
@@ -337,7 +336,6 @@ TEST_F(WaylandZAuraOutputManagerTest,
   EXPECT_CALL(output_delegate, OnOutputHandleMetrics(testing::_)).Times(1);
   primary_output()->set_delegate_for_testing(&output_delegate);
   SendSampleMetrics(GetSampleMetrics());
-  primary_output()->set_delegate_for_testing(nullptr);
 }
 
 }  // namespace ui

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SSL_SCT_REPORTING_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_SSL_SCT_REPORTING_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -30,13 +30,13 @@ class SCTReportingServiceFactory : public ProfileKeyedServiceFactory {
       content::BrowserContext* context);
 
  private:
-  friend base::NoDestructor<SCTReportingServiceFactory>;
+  friend struct base::DefaultSingletonTraits<SCTReportingServiceFactory>;
 
   SCTReportingServiceFactory();
   ~SCTReportingServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

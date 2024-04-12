@@ -10,19 +10,16 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/sync/test/integration/multi_client_status_change_checker.h"
 #include "chrome/browser/sync/test/integration/sync_test.h"
 #include "components/sessions/core/session_types.h"
 #include "components/sync_sessions/synced_session.h"
-#include "ui/base/window_open_disposition.h"
 
 class GURL;
 
 namespace sessions_helper {
 
-using SyncedSessionVector = std::vector<
-    raw_ptr<const sync_sessions::SyncedSession, VectorExperimental>>;
+using SyncedSessionVector = std::vector<const sync_sessions::SyncedSession*>;
 using SessionWindowMap =
     std::map<SessionID, sync_sessions::SyncedSessionWindow*>;
 using ScopedWindowMap =

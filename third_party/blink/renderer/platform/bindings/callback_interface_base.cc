@@ -37,7 +37,8 @@ CallbackInterfaceBase::CallbackInterfaceBase(
     v8::MaybeLocal<v8::Context> creation_context =
         callback_object->GetCreationContext();
     if (BindingSecurityForPlatform::ShouldAllowAccessToV8Context(
-            incumbent_script_state_->GetContext(), creation_context)) {
+            incumbent_script_state_->GetContext(), creation_context,
+            BindingSecurityForPlatform::ErrorReportOption::kDoNotReport)) {
       callback_relevant_script_state_ =
           ScriptState::From(creation_context.ToLocalChecked());
     }
@@ -54,14 +55,14 @@ ScriptState* CallbackInterfaceBase::CallbackRelevantScriptStateOrReportError(
     const char* interface_name,
     const char* operation_name) {
   if (callback_relevant_script_state_)
-    return callback_relevant_script_state_.Get();
+    return callback_relevant_script_state_;
 
   // Report a SecurityError due to a cross origin callback object.
   ScriptState::Scope incumbent_scope(incumbent_script_state_);
   v8::TryCatch try_catch(GetIsolate());
   try_catch.SetVerbose(true);
   ExceptionState exception_state(GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
+                                 ExceptionState::kExecutionContext,
                                  interface_name, operation_name);
   exception_state.ThrowSecurityError(
       "An invocation of the provided callback failed due to cross origin "
@@ -73,12 +74,12 @@ ScriptState* CallbackInterfaceBase::CallbackRelevantScriptStateOrThrowException(
     const char* interface_name,
     const char* operation_name) {
   if (callback_relevant_script_state_)
-    return callback_relevant_script_state_.Get();
+    return callback_relevant_script_state_;
 
   // Throw a SecurityError due to a cross origin callback object.
   ScriptState::Scope incumbent_scope(incumbent_script_state_);
   ExceptionState exception_state(GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
+                                 ExceptionState::kExecutionContext,
                                  interface_name, operation_name);
   exception_state.ThrowSecurityError(
       "An invocation of the provided callback failed due to cross origin "

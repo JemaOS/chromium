@@ -14,9 +14,11 @@
 #include "chrome/test/chromedriver/log_replay/devtools_log_reader.h"
 #include "chrome/test/chromedriver/net/sync_websocket_factory.h"
 
-namespace network::mojom {
+namespace network {
+namespace mojom {
 class URLLoaderFactory;
-}  // namespace network::mojom
+}
+}  // namespace network
 
 // Subclass of DevToolsHttpClient that redirects communication
 // that would happen with Chrome to a DevToolsLogReader (i.e. a ChromeDriver
@@ -27,6 +29,7 @@ class ReplayHttpClient : public DevToolsHttpClient {
   // Initializes a DevToolsLogReader with the given log file.
   ReplayHttpClient(const DevToolsEndpoint& endpoint,
                    network::mojom::URLLoaderFactory* factory,
+                   std::unique_ptr<std::set<WebViewInfo::Type>> window_types,
                    const base::FilePath& log_file);
   ~ReplayHttpClient() override;
 

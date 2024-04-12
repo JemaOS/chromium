@@ -78,6 +78,11 @@ inline bool IsASCIILower(CharType c) {
 }
 
 template <typename CharType>
+inline bool IsASCIIOctalDigit(CharType c) {
+  return (c >= '0') & (c <= '7');
+}
+
+template <typename CharType>
 inline bool IsASCIIPrintable(CharType c) {
   return c >= ' ' && c <= '~';
 }
@@ -167,6 +172,7 @@ using WTF::IsASCIIAlphanumeric;
 using WTF::IsASCIIDigit;
 using WTF::IsASCIIHexDigit;
 using WTF::IsASCIILower;
+using WTF::IsASCIIOctalDigit;
 using WTF::IsASCIIPrintable;
 using WTF::IsASCIISpace;
 using WTF::IsASCIIUpper;

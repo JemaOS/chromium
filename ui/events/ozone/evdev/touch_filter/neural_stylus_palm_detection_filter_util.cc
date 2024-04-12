@@ -4,9 +4,8 @@
 
 #include "ui/events/ozone/evdev/touch_filter/neural_stylus_palm_detection_filter_util.h"
 
+#include <base/logging.h>
 #include <algorithm>
-
-#include "base/logging.h"
 
 namespace ui {
 

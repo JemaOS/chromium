@@ -8,11 +8,7 @@
 #include "services/network/public/cpp/cors/cors_error_status.h"
 #include "third_party/blink/public/platform/web_url_request.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
-
-namespace WTF {
-class AtomicString;
-class String;
-}  // namespace WTF
+#include "third_party/blink/renderer/platform/wtf/forward.h"
 
 namespace blink {
 
@@ -25,13 +21,12 @@ namespace cors {
 
 // Stringify CorsError mainly for inspector messages. Generated string should
 // not be exposed to JavaScript for security reasons.
-PLATFORM_EXPORT WTF::String GetErrorString(
-    const network::CorsErrorStatus& status,
-    const KURL& initial_request_url,
-    const KURL& last_request_url,
-    const SecurityOrigin& origin,
-    ResourceType resource_type,
-    const WTF::AtomicString& initiator_name);
+PLATFORM_EXPORT String GetErrorString(const network::CorsErrorStatus& status,
+                                      const KURL& initial_request_url,
+                                      const KURL& last_request_url,
+                                      const SecurityOrigin& origin,
+                                      ResourceType resource_type,
+                                      const AtomicString& initiator_name);
 
 }  // namespace cors
 

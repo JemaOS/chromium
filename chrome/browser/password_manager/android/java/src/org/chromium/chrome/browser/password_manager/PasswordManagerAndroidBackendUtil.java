@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 package org.chromium.chrome.browser.password_manager;
 
+import static org.chromium.chrome.browser.password_manager.PasswordManagerHelper.usesUnifiedPasswordManagerUI;
+
 import android.app.PendingIntent;
 
 import androidx.annotation.Nullable;
@@ -51,7 +53,8 @@ class PasswordManagerAndroidBackendUtil {
         return 0; // '0' means SUCCESS.
     }
 
-    static @Nullable Integer getConnectionResultCode(Exception exception) {
+    @Nullable
+    static Integer getConnectionResultCode(Exception exception) {
         if (!(exception instanceof ApiException)) return null;
 
         ConnectionResult connectionResult =
@@ -62,6 +65,8 @@ class PasswordManagerAndroidBackendUtil {
     }
 
     static void handleResolvableApiException(ResolvableApiException exception) {
+        if (!usesUnifiedPasswordManagerUI()) return;
+
         // No special resolution for the authentication errors is needed since the user has already
         // been prompted to reauthenticate by Google services and Sync in Chrome.
         if (exception.getStatusCode() == ChromeSyncStatusCode.AUTH_ERROR_RESOLVABLE) return;

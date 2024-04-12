@@ -9,7 +9,7 @@ import {flushTasks, waitAfterNextRender} from 'chrome://webui-test/polymer_test_
 
 import {assertEquals, assertNotEquals, assertThrows, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 
-suite('keyboardDiagramTestSuite', () => {
+export function keyboardDiagramTestSuite() {
   /** @type {?KeyboardDiagramElement} */
   let diagramElement = null;
 
@@ -358,4 +358,4 @@ suite('keyboardDiagramTestSuite', () => {
         diagramElement.root.querySelector('[data-code="41"]');
     assertEquals('Kana/alphanumeric switch', letterSwitchKey.ariaName);
   });
-});
+}

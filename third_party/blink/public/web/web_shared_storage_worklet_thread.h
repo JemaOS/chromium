@@ -8,7 +8,6 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/mojom/shared_storage/shared_storage_worklet_service.mojom-forward.h"
-#include "third_party/blink/public/mojom/worker/worklet_global_scope_creation_params.mojom-forward.h"
 #include "third_party/blink/public/platform/cross_variant_mojo_util.h"
 #include "third_party/blink/public/platform/web_common.h"
 
@@ -20,8 +19,7 @@ class BLINK_EXPORT WebSharedStorageWorkletThread {
   static void Start(
       scoped_refptr<base::SingleThreadTaskRunner> main_thread_runner,
       CrossVariantMojoReceiver<mojom::SharedStorageWorkletServiceInterfaceBase>
-          receiver,
-      mojom::WorkletGlobalScopeCreationParamsPtr global_scope_creation_params);
+          receiver);
 
   virtual ~WebSharedStorageWorkletThread() = default;
 };

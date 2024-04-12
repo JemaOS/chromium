@@ -58,8 +58,8 @@ struct RecentAppInfo {
   RecentAppInfo& operator=(RecentAppInfo&) = default;
   ~RecentAppInfo() = default;
 
-  raw_ptr<AppListItem> item;
-  raw_ptr<SearchResult> result;
+  AppListItem* item;
+  SearchResult* result;
 };
 
 // Returns a list of recent apps by filtering zero-state suggestion data.
@@ -116,7 +116,6 @@ class RecentAppsView::GridDelegateImpl : public AppListItemView::GridDelegate {
     selected_view_ = view;
     // Ensure the translucent background of this selection is painted.
     selected_view_->SchedulePaint();
-    selected_view_->NotifyAccessibilityEvent(ax::mojom::Event::kFocus, true);
   }
   void ClearSelectedView() override { selected_view_ = nullptr; }
   bool IsSelectedView(const AppListItemView* view) const override {
@@ -148,8 +147,8 @@ class RecentAppsView::GridDelegateImpl : public AppListItemView::GridDelegate {
   }
 
  private:
-  const raw_ptr<AppListViewDelegate> view_delegate_;
-  raw_ptr<AppListItemView, DanglingUntriaged> selected_view_ = nullptr;
+  const raw_ptr<AppListViewDelegate, ExperimentalAsh> view_delegate_;
+  raw_ptr<AppListItemView, ExperimentalAsh> selected_view_ = nullptr;
 };
 
 RecentAppsView::RecentAppsView(AppListKeyboardController* keyboard_controller,
@@ -164,11 +163,10 @@ RecentAppsView::RecentAppsView(AppListKeyboardController* keyboard_controller,
   layout_->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kStart);
   layout_->set_cross_axis_alignment(
       views::BoxLayout::CrossAxisAlignment::kStart);
-  GetViewAccessibility().SetRole(ax::mojom::Role::kGroup);
+  GetViewAccessibility().OverrideRole(ax::mojom::Role::kGroup);
   // TODO(https://crbug.com/1298211): This needs a designated string resource.
-  GetViewAccessibility().SetName(
-      l10n_util::GetStringUTF16(IDS_ASH_LAUNCHER_RECENT_APPS_A11Y_NAME),
-      ax::mojom::NameFrom::kAttribute);
+  GetViewAccessibility().OverrideName(
+      l10n_util::GetStringUTF16(IDS_ASH_LAUNCHER_RECENT_APPS_A11Y_NAME));
   SetVisible(false);
 }
 
@@ -193,9 +191,8 @@ void RecentAppsView::OnAppListItemWillBeDeleted(AppListItem* item) {
 void RecentAppsView::UpdateAppListConfig(const AppListConfig* app_list_config) {
   app_list_config_ = app_list_config;
 
-  for (ash::AppListItemView* item_view : item_views_) {
+  for (auto* item_view : item_views_)
     item_view->UpdateAppListConfig(app_list_config);
-  }
 }
 
 void RecentAppsView::UpdateResults(
@@ -219,9 +216,8 @@ void RecentAppsView::UpdateResults(
   if (auto* notifier = view_delegate_->GetNotifier()) {
     std::vector<AppListNotifier::Result> notifier_results;
     for (const RecentAppInfo& app : apps)
-      notifier_results.emplace_back(
-          app.result->id(), app.result->metrics_type(),
-          app.result->continue_file_suggestion_type());
+      notifier_results.emplace_back(app.result->id(),
+                                    app.result->metrics_type());
     notifier->NotifyResultsUpdated(SearchResultDisplayType::kRecentApps,
                                    notifier_results);
   }
@@ -343,7 +339,7 @@ int RecentAppsView::CalculateTilePadding() const {
   return width_to_distribute / ((kMaxRecommendedApps - 1) * 2);
 }
 
-BEGIN_METADATA(RecentAppsView)
+BEGIN_METADATA(RecentAppsView, views::View)
 END_METADATA
 
 }  // namespace ash

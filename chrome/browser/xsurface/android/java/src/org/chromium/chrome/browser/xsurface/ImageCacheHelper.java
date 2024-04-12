@@ -20,6 +20,8 @@ public interface ImageCacheHelper {
      */
     default void prefetchImage(String url) {}
 
-    /** Clears the image memory cache. */
+    /**
+     * Clears the image memory cache.
+     */
     default void clearMemoryCache() {}
 }

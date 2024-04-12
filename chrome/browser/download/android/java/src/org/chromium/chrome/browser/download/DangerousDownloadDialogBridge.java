@@ -6,11 +6,9 @@ package org.chromium.chrome.browser.download;
 
 import android.app.Activity;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.download.dialogs.DangerousDownloadDialog;
-import org.chromium.chrome.browser.download.interstitial.NewDownloadTab;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManagerHolder;
 
@@ -43,32 +41,23 @@ public class DangerousDownloadDialogBridge {
      * @param iconId The icon resource for the warning dialog.
      */
     @CalledByNative
-    public void showDialog(
-            WindowAndroid windowAndroid,
-            String guid,
-            String fileName,
-            long totalBytes,
-            int iconId) {
+    public void showDialog(WindowAndroid windowAndroid, String guid, String fileName,
+            long totalBytes, int iconId) {
         Activity activity = windowAndroid.getActivity().get();
         if (activity == null) {
-            onCancel(guid, windowAndroid);
+            onCancel(guid);
             return;
         }
 
-        new DangerousDownloadDialog()
-                .show(
-                        activity,
-                        ((ModalDialogManagerHolder) activity).getModalDialogManager(),
-                        fileName,
-                        totalBytes,
-                        iconId,
-                        (accepted) -> {
-                            if (accepted) {
-                                onAccepted(guid);
-                            } else {
-                                onCancel(guid, windowAndroid);
-                            }
-                        });
+        new DangerousDownloadDialog().show(activity,
+                ((ModalDialogManagerHolder) activity).getModalDialogManager(), fileName, totalBytes,
+                iconId, (accepted) -> {
+                    if (accepted) {
+                        onAccepted(guid);
+                    } else {
+                        onCancel(guid);
+                    }
+                });
     }
 
     @CalledByNative
@@ -80,16 +69,14 @@ public class DangerousDownloadDialogBridge {
         DangerousDownloadDialogBridgeJni.get().accepted(mNativeDangerousDownloadDialogBridge, guid);
     }
 
-    private void onCancel(String guid, WindowAndroid windowAndroid) {
-        DangerousDownloadDialogBridgeJni.get()
-                .cancelled(mNativeDangerousDownloadDialogBridge, guid);
-        NewDownloadTab.closeExistingNewDownloadTab(windowAndroid);
+    private void onCancel(String guid) {
+        DangerousDownloadDialogBridgeJni.get().cancelled(
+                mNativeDangerousDownloadDialogBridge, guid);
     }
 
     @NativeMethods
     interface Natives {
         void accepted(long nativeDangerousDownloadDialogBridge, String guid);
-
         void cancelled(long nativeDangerousDownloadDialogBridge, String guid);
     }
 }

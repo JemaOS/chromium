@@ -5,7 +5,6 @@
 #include "chrome/browser/sharing/sharing_device_registration.h"
 
 #include <stdint.h>
-
 #include <vector>
 
 #include "base/base64url.h"
@@ -17,7 +16,6 @@
 #include "chrome/browser/sharing/sharing_constants.h"
 #include "chrome/browser/sharing/sharing_device_registration_result.h"
 #include "chrome/browser/sharing/sharing_sync_preference.h"
-#include "chrome/browser/sharing/sharing_target_device_info.h"
 #include "chrome/browser/sharing/sharing_utils.h"
 #include "chrome/browser/sharing/sms/sms_flags.h"
 #include "chrome/browser/sharing/vapid_key_manager.h"
@@ -26,7 +24,7 @@
 #include "components/gcm_driver/instance_id/instance_id_driver.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/prefs/pref_service.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
 #include "components/sync_device_info/device_info.h"
 #include "crypto/ec_private_key.h"
 
@@ -52,12 +50,12 @@ SharingDeviceRegistration::SharingDeviceRegistration(
 SharingDeviceRegistration::~SharingDeviceRegistration() = default;
 
 void SharingDeviceRegistration::RegisterDevice(RegistrationCallback callback) {
-  std::optional<std::string> authorized_entity = GetAuthorizationEntity();
+  absl::optional<std::string> authorized_entity = GetAuthorizationEntity();
   if (!authorized_entity) {
     OnVapidTargetInfoRetrieved(std::move(callback),
-                               /*authorized_entity=*/std::nullopt,
+                               /*authorized_entity=*/absl::nullopt,
                                SharingDeviceRegistrationResult::kSuccess,
-                               /*vapid_target_info=*/std::nullopt);
+                               /*vapid_target_info=*/absl::nullopt);
     return;
   }
 
@@ -99,13 +97,13 @@ void SharingDeviceRegistration::OnFCMTokenReceived(
     case InstanceID::SERVER_ERROR:
     case InstanceID::ASYNC_OPERATION_PENDING:
       std::move(callback).Run(
-          SharingDeviceRegistrationResult::kFcmTransientError, std::nullopt);
+          SharingDeviceRegistrationResult::kFcmTransientError, absl::nullopt);
       break;
     case InstanceID::INVALID_PARAMETER:
     case InstanceID::UNKNOWN_ERROR:
     case InstanceID::DISABLED:
       std::move(callback).Run(SharingDeviceRegistrationResult::kFcmFatalError,
-                              std::nullopt);
+                              absl::nullopt);
       break;
   }
 }
@@ -117,15 +115,15 @@ void SharingDeviceRegistration::OnEncryptionInfoReceived(
     std::string auth_secret) {
   std::move(callback).Run(
       SharingDeviceRegistrationResult::kSuccess,
-      std::make_optional(syncer::DeviceInfo::SharingTargetInfo{
+      absl::make_optional(syncer::DeviceInfo::SharingTargetInfo{
           fcm_token, p256dh, auth_secret}));
 }
 
 void SharingDeviceRegistration::OnVapidTargetInfoRetrieved(
     RegistrationCallback callback,
-    std::optional<std::string> authorized_entity,
+    absl::optional<std::string> authorized_entity,
     SharingDeviceRegistrationResult result,
-    std::optional<syncer::DeviceInfo::SharingTargetInfo> vapid_target_info) {
+    absl::optional<syncer::DeviceInfo::SharingTargetInfo> vapid_target_info) {
   if (result != SharingDeviceRegistrationResult::kSuccess) {
     std::move(callback).Run(result);
     return;
@@ -135,7 +133,7 @@ void SharingDeviceRegistration::OnVapidTargetInfoRetrieved(
     OnSharingTargetInfoRetrieved(
         std::move(callback), std::move(authorized_entity),
         std::move(vapid_target_info), SharingDeviceRegistrationResult::kSuccess,
-        /*sharing_target_info=*/std::nullopt);
+        /*sharing_target_info=*/absl::nullopt);
     return;
   }
 
@@ -150,10 +148,10 @@ void SharingDeviceRegistration::OnVapidTargetInfoRetrieved(
 
 void SharingDeviceRegistration::OnSharingTargetInfoRetrieved(
     RegistrationCallback callback,
-    std::optional<std::string> authorized_entity,
-    std::optional<syncer::DeviceInfo::SharingTargetInfo> vapid_target_info,
+    absl::optional<std::string> authorized_entity,
+    absl::optional<syncer::DeviceInfo::SharingTargetInfo> vapid_target_info,
     SharingDeviceRegistrationResult result,
-    std::optional<syncer::DeviceInfo::SharingTargetInfo> sharing_target_info) {
+    absl::optional<syncer::DeviceInfo::SharingTargetInfo> sharing_target_info) {
   if (result != SharingDeviceRegistrationResult::kSuccess) {
     std::move(callback).Run(result);
     return;
@@ -249,22 +247,22 @@ void SharingDeviceRegistration::OnFCMTokenDeleted(RegistrationCallback callback,
   NOTREACHED();
 }
 
-std::optional<std::string> SharingDeviceRegistration::GetAuthorizationEntity()
+absl::optional<std::string> SharingDeviceRegistration::GetAuthorizationEntity()
     const {
   // TODO(himanshujaju) : Extract a static function to convert ECPrivateKey* to
   // Base64PublicKey in library.
   crypto::ECPrivateKey* vapid_key = vapid_key_manager_->GetOrCreateKey();
   if (!vapid_key)
-    return std::nullopt;
+    return absl::nullopt;
 
   std::string public_key;
   if (!gcm::GetRawPublicKey(*vapid_key, &public_key))
-    return std::nullopt;
+    return absl::nullopt;
 
   std::string base64_public_key;
   base::Base64UrlEncode(public_key, base::Base64UrlEncodePolicy::OMIT_PADDING,
                         &base64_public_key);
-  return std::make_optional(std::move(base64_public_key));
+  return absl::make_optional(std::move(base64_public_key));
 }
 
 std::set<SharingSpecificFields::EnabledFeatures>
@@ -302,7 +300,7 @@ SharingDeviceRegistration::GetEnabledFeatures(bool supports_vapid) const {
 
 bool SharingDeviceRegistration::IsClickToCallSupported() const {
 #if BUILDFLAG(IS_ANDROID)
-  JNIEnv* env = jni_zero::AttachCurrentThread();
+  JNIEnv* env = base::android::AttachCurrentThread();
   return Java_SharingJNIBridge_isTelephonySupported(env);
 #else
   return false;

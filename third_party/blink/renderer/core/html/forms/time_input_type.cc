@@ -57,6 +57,10 @@ void TimeInputType::CountUsage() {
   CountUsageIfVisible(WebFeature::kInputTypeTime);
 }
 
+const AtomicString& TimeInputType::FormControlType() const {
+  return input_type_names::kTime;
+}
+
 Decimal TimeInputType::DefaultValueForStepUp() const {
   DateComponents date;
   date.SetMillisecondsSinceMidnight(

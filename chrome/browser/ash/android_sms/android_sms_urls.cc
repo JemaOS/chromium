@@ -33,7 +33,7 @@ GURL GetCustomDomain(bool use_install_url) {
       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
           switches::kCustomAndroidMessagesDomain);
   if (custom_domain.empty()) {
-    return GURL();
+    return GURL::EmptyGURL();
   }
 
   GURL url(custom_domain);

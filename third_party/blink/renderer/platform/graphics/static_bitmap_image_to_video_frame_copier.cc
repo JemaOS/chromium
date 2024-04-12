@@ -7,9 +7,8 @@
 #include "base/functional/callback_helpers.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
-#include "components/viz/common/resources/shared_image_format_utils.h"
+#include "components/viz/common/resources/resource_format_utils.h"
 #include "gpu/command_buffer/client/raster_interface.h"
-#include "gpu/command_buffer/common/capabilities.h"
 #include "media/base/video_frame.h"
 #include "media/base/video_util.h"
 #include "third_party/blink/public/platform/web_graphics_context_3d_provider.h"
@@ -45,8 +44,7 @@ StaticBitmapImageToVideoFrameCopier::GetAcceleratedVideoFramePool(
 void StaticBitmapImageToVideoFrameCopier::Convert(
     scoped_refptr<StaticBitmapImage> image,
     bool can_discard_alpha,
-    base::WeakPtr<blink::WebGraphicsContext3DProviderWrapper>
-        context_provider_wrapper,
+    base::WeakPtr<blink::WebGraphicsContext3DProviderWrapper> context_provider,
     FrameReadyCallback callback) {
   can_discard_alpha_ = can_discard_alpha;
   if (!image)
@@ -82,30 +80,14 @@ void StaticBitmapImageToVideoFrameCopier::Convert(
     return;
   }
 
-  if (!context_provider_wrapper) {
-    DLOG(ERROR) << "Context lost, skipping frame";
-    return;
-  }
-
-  auto* context_provider = context_provider_wrapper->ContextProvider();
   if (!context_provider) {
     DLOG(ERROR) << "Context lost, skipping frame";
     return;
   }
 
-  // Readback to YUV is only used when result is opaque.
-  const bool result_is_opaque =
-      image->CurrentFrameKnownToBeOpaque() || can_discard_alpha_;
-
-  const bool supports_yuv_readback =
-      context_provider->GetCapabilities().supports_yuv_readback;
-  // If supports_rgb_to_yuv_conversion is true, supports_yuv_readback must also
-  // be.
-  CHECK(!context_provider->GetCapabilities().supports_rgb_to_yuv_conversion ||
-        supports_yuv_readback);
-
   // Try async reading if image is texture backed.
-  if (!too_small_for_i420 && result_is_opaque && supports_yuv_readback) {
+  if (!too_small_for_i420 &&
+      (image->CurrentFrameKnownToBeOpaque() || can_discard_alpha_)) {
     // Split the callback so it can be used for both the GMB frame pool copy and
     // ReadYUVPixelsAsync fallback paths.
     auto split_callback = base::SplitOnceCallback(std::move(callback));
@@ -113,15 +95,15 @@ void StaticBitmapImageToVideoFrameCopier::Convert(
       if (!accelerated_frame_pool_) {
         accelerated_frame_pool_ =
             std::make_unique<WebGraphicsContext3DVideoFramePool>(
-                context_provider_wrapper);
+                context_provider);
       }
       // TODO(https://crbug.com/1224279): This assumes that all
       // StaticBitmapImages are 8-bit sRGB. Expose the color space and pixel
       // format that is backing `image->GetMailboxHolder()`, or, alternatively,
       // expose an accelerated SkImage.
       if (accelerated_frame_pool_->CopyRGBATextureToVideoFrame(
-              viz::SkColorTypeToSinglePlaneSharedImageFormat(
-                  kRGBA_8888_SkColorType),
+              viz::SharedImageFormat::SinglePlane(
+                  viz::SkColorTypeToResourceFormat(kRGBA_8888_SkColorType)),
               gfx::Size(image->width(), image->height()),
               gfx::ColorSpace::CreateSRGB(),
               image->IsOriginTopLeft() ? kTopLeft_GrSurfaceOrigin
@@ -134,10 +116,11 @@ void StaticBitmapImageToVideoFrameCopier::Convert(
         return;
       }
     }
-    ReadYUVPixelsAsync(image, context_provider,
+    ReadYUVPixelsAsync(image, context_provider->ContextProvider(),
                        std::move(split_callback.second));
   } else {
-    ReadARGBPixelsAsync(image, context_provider, std::move(callback));
+    ReadARGBPixelsAsync(image, context_provider->ContextProvider(),
+                        std::move(callback));
   }
 
   TRACE_EVENT1("blink", "StaticBitmapImageToVideoFrameCopier::Convert",
@@ -173,7 +156,6 @@ void StaticBitmapImageToVideoFrameCopier::ReadARGBPixelsSync(
     DLOG(ERROR) << "Couldn't read pixels from PaintImage";
     return;
   }
-  temp_argb_frame->set_color_space(gfx::ColorSpace::CreateSRGB());
   std::move(callback).Run(std::move(temp_argb_frame));
 }
 
@@ -183,6 +165,8 @@ void StaticBitmapImageToVideoFrameCopier::ReadARGBPixelsAsync(
     FrameReadyCallback callback) {
   DCHECK_CALLED_ON_VALID_THREAD(main_render_thread_checker_);
   DCHECK(context_provider);
+  DCHECK(!image->CurrentFrameKnownToBeOpaque());
+  DCHECK_EQ(can_discard_alpha_, false);
 
   const media::VideoPixelFormat temp_argb_pixel_format =
       media::VideoPixelFormatFromSkColorType(kN32_SkColorType,
@@ -273,7 +257,6 @@ void StaticBitmapImageToVideoFrameCopier::OnARGBPixelsReadAsync(
     ReadARGBPixelsSync(image, std::move(callback));
     return;
   }
-  argb_frame->set_color_space(gfx::ColorSpace::CreateSRGB());
   std::move(callback).Run(std::move(argb_frame));
 }
 
@@ -287,7 +270,6 @@ void StaticBitmapImageToVideoFrameCopier::OnYUVPixelsReadAsync(
     DLOG(ERROR) << "Couldn't read SkImage using async callback";
     return;
   }
-  yuv_frame->set_color_space(gfx::ColorSpace::CreateREC601());
   std::move(callback).Run(yuv_frame);
 }
 

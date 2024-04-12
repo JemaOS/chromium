@@ -29,7 +29,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_RESOURCE_REQUEST_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/containers/flat_set.h"
 #include "base/time/time.h"
@@ -37,7 +36,6 @@
 #include "net/cookies/site_for_cookies.h"
 #include "net/filter/source_stream.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
-#include "services/network/public/cpp/attribution_reporting_runtime_features.h"
 #include "services/network/public/mojom/attribution.mojom-blink.h"
 #include "services/network/public/mojom/chunked_data_pipe_getter.mojom-blink-forward.h"
 #include "services/network/public/mojom/cors.mojom-blink-forward.h"
@@ -45,8 +43,8 @@
 #include "services/network/public/mojom/ip_address_space.mojom-blink-forward.h"
 #include "services/network/public/mojom/trust_tokens.mojom-blink.h"
 #include "services/network/public/mojom/web_bundle_handle.mojom-blink.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
-#include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/resource_request_blocked_reason.h"
 #include "third_party/blink/public/platform/web_url_request_extra_data.h"
 #include "third_party/blink/renderer/platform/loader/fetch/render_blocking_behavior.h"
@@ -61,7 +59,6 @@
 namespace blink {
 
 class EncodedFormData;
-class PermissionsPolicy;
 
 // ResourceRequestHead represents request without request body.
 // See ResourceRequest below to see what request is.
@@ -230,6 +227,9 @@ class PLATFORM_EXPORT ResourceRequestHead {
     SetHttpHeaderField(http_names::kAccept, http_accept);
   }
 
+  bool AllowStoredCredentials() const;
+  void SetAllowStoredCredentials(bool allow_credentials);
+
   // The initial priority for the request.
   ResourceLoadPriority InitialPriority() const;
 
@@ -287,34 +287,6 @@ class PLATFORM_EXPORT ResourceRequestHead {
   bool GetBrowsingTopics() const { return browsing_topics_; }
   void SetBrowsingTopics(bool browsing_topics) {
     browsing_topics_ = browsing_topics;
-  }
-
-  // True if this is an ad auction request eligible for attaching the
-  // `Sec-Ad-Auction-Fetch` request header and processing the
-  // `X-Ad-Auction-Result` response header.
-  bool GetAdAuctionHeaders() const { return ad_auction_headers_; }
-  void SetAdAuctionHeaders(bool ad_auction_headers) {
-    ad_auction_headers_ = ad_auction_headers;
-  }
-
-  // True if the original request included the required attribute for the
-  // response to be eligible to write to shared storage, pending a
-  // `PermissionsPolicy` check.
-  bool GetSharedStorageWritableOptedIn() const {
-    return shared_storage_writable_opted_in_;
-  }
-  void SetSharedStorageWritableOptedIn(bool shared_storage_writable_opted_in) {
-    shared_storage_writable_opted_in_ = shared_storage_writable_opted_in;
-  }
-
-  // True if the current request should have the
-  // `http_names::kSecSharedStorageWritable` header attached and is eligible to
-  // write to shared storage from response headers.
-  bool GetSharedStorageWritableEligible() const {
-    return shared_storage_writable_eligible_;
-  }
-  void SetSharedStorageWritableEligible(bool shared_storage_writable_eligible) {
-    shared_storage_writable_eligible_ = shared_storage_writable_eligible;
   }
 
   // True if service workers should not get events for the request.
@@ -410,14 +382,14 @@ class PLATFORM_EXPORT ResourceRequestHead {
     cors_preflight_policy_ = policy;
   }
 
-  const std::optional<RedirectInfo>& GetRedirectInfo() const {
+  const absl::optional<RedirectInfo>& GetRedirectInfo() const {
     return redirect_info_;
   }
 
-  void SetSuggestedFilename(const std::optional<String>& suggested_filename) {
+  void SetSuggestedFilename(const absl::optional<String>& suggested_filename) {
     suggested_filename_ = suggested_filename;
   }
-  const std::optional<String>& GetSuggestedFilename() const {
+  const absl::optional<String>& GetSuggestedFilename() const {
     return suggested_filename_;
   }
 
@@ -439,11 +411,11 @@ class PLATFORM_EXPORT ResourceRequestHead {
   void SetAllowStaleResponse(bool value) { allow_stale_response_ = value; }
   bool AllowsStaleResponse() const { return allow_stale_response_; }
 
-  const std::optional<base::UnguessableToken>& GetDevToolsToken() const {
+  const absl::optional<base::UnguessableToken>& GetDevToolsToken() const {
     return devtools_token_;
   }
   void SetDevToolsToken(
-      const std::optional<base::UnguessableToken>& devtools_token) {
+      const absl::optional<base::UnguessableToken>& devtools_token) {
     devtools_token_ = devtools_token;
   }
 
@@ -459,8 +431,10 @@ class PLATFORM_EXPORT ResourceRequestHead {
     devtools_accepted_stream_types_ = types;
   }
 
-  const String& GetDevToolsId() const { return devtools_id_; }
-  void SetDevToolsId(const String devtools_id) { devtools_id_ = devtools_id; }
+  const absl::optional<String>& GetDevToolsId() const { return devtools_id_; }
+  void SetDevToolsId(const absl::optional<String>& devtools_id) {
+    devtools_id_ = devtools_id;
+  }
 
   void SetRequestedWithHeader(const String& value) {
     requested_with_header_ = value;
@@ -479,10 +453,10 @@ class PLATFORM_EXPORT ResourceRequestHead {
   // can use this to display the initiator call stack when debugging a process
   // that later intercepts the request, e.g., in a service worker fetch event
   // handler.
-  const std::optional<String>& GetDevToolsStackId() const {
+  const absl::optional<String>& GetDevToolsStackId() const {
     return devtools_stack_id_;
   }
-  void SetDevToolsStackId(const std::optional<String>& devtools_stack_id) {
+  void SetDevToolsStackId(const absl::optional<String>& devtools_stack_id) {
     devtools_stack_id_ = devtools_stack_id;
   }
 
@@ -501,10 +475,10 @@ class PLATFORM_EXPORT ResourceRequestHead {
   }
 
   void SetRecursivePrefetchToken(
-      const std::optional<base::UnguessableToken>& token) {
+      const absl::optional<base::UnguessableToken>& token) {
     recursive_prefetch_token_ = token;
   }
-  const std::optional<base::UnguessableToken>& RecursivePrefetchToken() const {
+  const absl::optional<base::UnguessableToken>& RecursivePrefetchToken() const {
     return recursive_prefetch_token_;
   }
 
@@ -522,9 +496,6 @@ class PLATFORM_EXPORT ResourceRequestHead {
 
   void SetFetchLikeAPI(bool enabled) { is_fetch_like_api_ = enabled; }
 
-  bool IsFetchLaterAPI() const { return is_fetch_later_api_; }
-  void SetFetchLaterAPI(bool enabled) { is_fetch_later_api_ = enabled; }
-
   bool IsFavicon() const { return is_favicon_; }
 
   void SetFavicon(bool enabled) { is_favicon_ = enabled; }
@@ -538,12 +509,12 @@ class PLATFORM_EXPORT ResourceRequestHead {
         prefetch_maybe_for_top_level_navigation;
   }
 
-  const std::optional<network::mojom::blink::TrustTokenParams>&
+  const absl::optional<network::mojom::blink::TrustTokenParams>&
   TrustTokenParams() const {
     return trust_token_params_;
   }
   void SetTrustTokenParams(
-      std::optional<network::mojom::blink::TrustTokenParams> params) {
+      absl::optional<network::mojom::blink::TrustTokenParams> params) {
     trust_token_params_ = std::move(params);
   }
 
@@ -559,7 +530,7 @@ class PLATFORM_EXPORT ResourceRequestHead {
     original_destination_ = value;
   }
 
-  const std::optional<ResourceRequestHead::WebBundleTokenParams>&
+  const absl::optional<ResourceRequestHead::WebBundleTokenParams>&
   GetWebBundleTokenParams() const {
     return web_bundle_token_params_;
   }
@@ -600,48 +571,6 @@ class PLATFORM_EXPORT ResourceRequestHead {
     attribution_reporting_eligibility_ = eligibility;
   }
 
-  const network::AttributionReportingRuntimeFeatures&
-  GetAttributionReportingRuntimeFeatures() const {
-    return attribution_reporting_runtime_features_;
-  }
-
-  void SetAttributionReportingRuntimeFeatures(
-      network::AttributionReportingRuntimeFeatures runtime_features) {
-    attribution_reporting_runtime_features_ = runtime_features;
-  }
-
-  const std::optional<base::UnguessableToken>& GetAttributionSrcToken() const {
-    return attribution_reporting_src_token_;
-  }
-
-  void SetAttributionReportingSrcToken(
-      std::optional<base::UnguessableToken> src_token) {
-    attribution_reporting_src_token_ = src_token;
-  }
-
-  bool SharedDictionaryWriterEnabled() const {
-    return shared_dictionary_writer_enabled_;
-  }
-
-  void SetSharedDictionaryWriterEnabled(bool shared_dictionary_writer_enabled) {
-    shared_dictionary_writer_enabled_ = shared_dictionary_writer_enabled;
-  }
-
-  const std::optional<base::UnguessableToken>&
-  GetServiceWorkerRaceNetworkRequestToken() const {
-    return service_worker_race_network_request_token_;
-  }
-
-  void SetServiceWorkerRaceNetworkRequestToken(
-      const base::UnguessableToken& token) {
-    // TODO(crbug.com/1492640) Consider using base::TokenType not to include
-    // null token by strong typing.
-    if (token.is_empty()) {
-      return;
-    }
-    service_worker_race_network_request_token_ = token;
-  }
-
  private:
   const CacheControlHeader& GetCacheControlHeader() const;
 
@@ -660,6 +589,7 @@ class PLATFORM_EXPORT ResourceRequestHead {
 
   AtomicString http_method_;
   HTTPHeaderMap http_header_fields_;
+  bool allow_stored_credentials_ : 1;
   bool report_upload_progress_ : 1;
   bool has_user_gesture_ : 1;
   bool has_text_fragment_token_ : 1;
@@ -667,9 +597,6 @@ class PLATFORM_EXPORT ResourceRequestHead {
   bool use_stream_on_response_ : 1;
   bool keepalive_ : 1;
   bool browsing_topics_ : 1;
-  bool ad_auction_headers_ : 1;
-  bool shared_storage_writable_opted_in_ : 1;
-  bool shared_storage_writable_eligible_ : 1;
   bool allow_stale_response_ : 1;
   mojom::blink::FetchCacheMode cache_mode_;
   bool skip_service_worker_ : 1;
@@ -691,11 +618,11 @@ class PLATFORM_EXPORT ResourceRequestHead {
   String referrer_string_;
   network::mojom::ReferrerPolicy referrer_policy_;
   network::mojom::CorsPreflightPolicy cors_preflight_policy_;
-  std::optional<RedirectInfo> redirect_info_;
-  std::optional<network::mojom::blink::TrustTokenParams> trust_token_params_;
+  absl::optional<RedirectInfo> redirect_info_;
+  absl::optional<network::mojom::blink::TrustTokenParams> trust_token_params_;
   network::mojom::IPAddressSpace target_address_space_;
 
-  std::optional<String> suggested_filename_;
+  absl::optional<String> suggested_filename_;
 
   mutable CacheControlHeader cache_control_header_cache_;
 
@@ -708,13 +635,13 @@ class PLATFORM_EXPORT ResourceRequestHead {
 
   bool is_automatic_upgrade_ = false;
 
-  std::optional<base::UnguessableToken> devtools_token_;
-  String devtools_id_;
+  absl::optional<base::UnguessableToken> devtools_token_;
+  absl::optional<String> devtools_id_;
   String requested_with_header_;
   String client_data_header_;
   String purpose_header_;
 
-  std::optional<String> devtools_stack_id_;
+  absl::optional<String> devtools_stack_id_;
 
   ukm::SourceId ukm_source_id_ = ukm::kInvalidSourceId;
 
@@ -729,11 +656,6 @@ class PLATFORM_EXPORT ResourceRequestHead {
 
   bool is_fetch_like_api_ = false;
 
-  // Indicates that this ResourceRequest represents the requestObject for a
-  // JS fetchLater() call.
-  // https://whatpr.org/fetch/1647/094ea69...152d725.html#fetch-later-method
-  bool is_fetch_later_api_ = false;
-
   bool is_favicon_ = false;
 
   // Currently this is only used when a prefetch request has `as=document`
@@ -745,12 +667,12 @@ class PLATFORM_EXPORT ResourceRequestHead {
   // This is used when fetching preload header requests from cross-origin
   // prefetch responses. The browser process uses this token to ensure the
   // request is cached correctly.
-  std::optional<base::UnguessableToken> recursive_prefetch_token_;
+  absl::optional<base::UnguessableToken> recursive_prefetch_token_;
 
   // This is used when fetching either a WebBundle or a subresrouce in the
   // WebBundle. The network process uses this token to associate the request to
   // the bundle.
-  std::optional<WebBundleTokenParams> web_bundle_token_params_;
+  absl::optional<WebBundleTokenParams> web_bundle_token_params_;
 
   // Render blocking behavior of the resource. Used in maintaining correct
   // reporting for redirects.
@@ -760,7 +682,7 @@ class PLATFORM_EXPORT ResourceRequestHead {
   // If not null, the network service will not advertise any stream types
   // (via Accept-Encoding) that are not listed. Also, it will not attempt
   // decoding any non-listed stream types.
-  // Instead of using std::optional, we use scoped_refptr to reduce
+  // Instead of using absl::optional, we use scoped_refptr to reduce
   // blink memory footprint because the attribute is only used by DevTools
   // and we should keep the footprint minimal when DevTools is closed.
   scoped_refptr<
@@ -775,20 +697,6 @@ class PLATFORM_EXPORT ResourceRequestHead {
   network::mojom::AttributionReportingEligibility
       attribution_reporting_eligibility_ =
           network::mojom::AttributionReportingEligibility::kUnset;
-
-  network::AttributionReportingRuntimeFeatures
-      attribution_reporting_runtime_features_;
-
-  std::optional<base::UnguessableToken> attribution_reporting_src_token_;
-
-  // Indicate the state of CompressionDictionaryTransport feature. When it is
-  // true, `use-as-dictionary` response HTTP header may be processed.
-  // TODO(crbug.com/1413922): Remove this flag when we launch
-  // CompressionDictionaryTransport feature.
-  bool shared_dictionary_writer_enabled_ = false;
-
-  std::optional<base::UnguessableToken>
-      service_worker_race_network_request_token_;
 };
 
 class PLATFORM_EXPORT ResourceRequestBody {
@@ -863,16 +771,6 @@ class PLATFORM_EXPORT ResourceRequest final : public ResourceRequestHead {
   void SetHttpBody(scoped_refptr<EncodedFormData>);
 
   ResourceRequestBody& MutableBody() { return body_; }
-
-  // `PermissionsPolicy` is in blink/public and hence cannot access
-  // `ResourceRequest`. We implement this method here and make `ResourceRequest`
-  // a forward-declared friend class to `PermissionsPolicy` in order to keep
-  // `PermissionsPolicy::IsFeatureEnabledForSubresourceRequestAssumingOptIn()`
-  // private for safety.
-  bool IsFeatureEnabledForSubresourceRequestAssumingOptIn(
-      const PermissionsPolicy* policy,
-      mojom::blink::PermissionsPolicyFeature feature,
-      const url::Origin& origin);
 
  private:
   ResourceRequestBody body_;

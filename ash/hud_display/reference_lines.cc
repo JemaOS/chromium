@@ -35,7 +35,7 @@ std::u16string GenerateLabelText(float value, const std::u16string& dimention) {
 
 }  // anonymous namespace
 
-BEGIN_METADATA(ReferenceLines)
+BEGIN_METADATA(ReferenceLines, views::View)
 END_METADATA
 
 ReferenceLines::ReferenceLines(float left,
@@ -87,7 +87,7 @@ ReferenceLines::ReferenceLines(float left,
 
 ReferenceLines::~ReferenceLines() = default;
 
-void ReferenceLines::Layout(PassKey) {
+void ReferenceLines::Layout() {
   // Align all the right labels on their left edge.
   gfx::Size right_top_label_size = right_top_label_->GetPreferredSize();
   gfx::Size right_middle_label_size = right_middle_label_->GetPreferredSize();
@@ -127,7 +127,7 @@ void ReferenceLines::Layout(PassKey) {
                          left_bottom_label_->GetPreferredSize().height() -
                          label_border});
 
-  LayoutSuperclass<views::View>(this);
+  views::View::Layout();
 }
 
 void ReferenceLines::OnPaint(gfx::Canvas* canvas) {

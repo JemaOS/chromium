@@ -39,7 +39,7 @@ class PaymentRequestCanMakePaymentMetricsTest
 
     // Choosing nickpay for its JIT installation support.
     nickpay_server_.ServeFilesFromSourceDirectory(
-        "components/test/data/payments/");
+        "components/test/data/payments/nickpay.test/");
 
     ASSERT_TRUE(nickpay_server_.Start());
   }
@@ -164,8 +164,8 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCanMakePaymentMetricsTest,
                                DialogEvent::CAN_MAKE_PAYMENT_RETURNED,
                                DialogEvent::HAS_ENROLLED_INSTRUMENT_CALLED,
                                DialogEvent::HAS_ENROLLED_INSTRUMENT_RETURNED});
-  ASSERT_TRUE(
-      content::ExecJs(GetActiveWebContents(), "queryNoShowWithUrlMethods();"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "queryNoShowWithUrlMethods();"));
   ASSERT_TRUE(WaitForObservedEvent());
 
   // Navigate away to trigger the log.
@@ -205,9 +205,9 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCanMakePaymentMetricsTest,
   base::HistogramTester histogram_tester;
 
   std::string nickpay_method_name =
-      nickpay_server_.GetURL("nickpay.test", "/nickpay.test/pay").spec();
+      nickpay_server_.GetURL("nickpay.test", "/pay").spec();
   std::string nickpay2_method_name =
-      nickpay_server_.GetURL("nickpay2.test", "/nickpay.test/pay").spec();
+      nickpay_server_.GetURL("nickpay2.test", "/pay").spec();
 
   ResetEventWaiterForSequence({DialogEvent::CAN_MAKE_PAYMENT_CALLED,
                                DialogEvent::CAN_MAKE_PAYMENT_RETURNED,
@@ -267,9 +267,9 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCanMakePaymentMetricsTest,
   base::HistogramTester histogram_tester;
 
   std::string nickpay_method_name =
-      nickpay_server_.GetURL("nickpay.test", "/nickpay.test/pay").spec();
+      nickpay_server_.GetURL("nickpay.test", "/pay").spec();
   std::string nickpay2_method_name =
-      nickpay_server_.GetURL("nickpay2.test", "/nickpay.test/pay").spec();
+      nickpay_server_.GetURL("nickpay2.test", "/pay").spec();
 
   ResetEventWaiterForSequence({DialogEvent::CAN_MAKE_PAYMENT_CALLED,
                                DialogEvent::CAN_MAKE_PAYMENT_RETURNED,
@@ -296,7 +296,8 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCanMakePaymentMetricsTest,
       {DialogEvent::ABORT_CALLED, DialogEvent::DIALOG_CLOSED});
   const std::string click_buy_button_js =
       "(function() { document.getElementById('abort').click(); })();";
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(), click_buy_button_js));
+  ASSERT_TRUE(
+      content::ExecuteScript(GetActiveWebContents(), click_buy_button_js));
   ASSERT_TRUE(WaitForObservedEvent());
 
   // Make sure the correct events were logged.
@@ -333,9 +334,9 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCanMakePaymentMetricsTest,
   base::HistogramTester histogram_tester;
 
   std::string nickpay_method_name =
-      nickpay_server_.GetURL("nickpay.test", "/nickpay.test/pay").spec();
+      nickpay_server_.GetURL("nickpay.test", "/pay").spec();
   std::string nickpay2_method_name =
-      nickpay_server_.GetURL("nickpay2.test", "/nickpay.test/pay").spec();
+      nickpay_server_.GetURL("nickpay2.test", "/pay").spec();
 
   ResetEventWaiterForSequence({DialogEvent::CAN_MAKE_PAYMENT_CALLED,
                                DialogEvent::CAN_MAKE_PAYMENT_RETURNED,
@@ -449,7 +450,8 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCanMakePaymentMetricsTest,
       {DialogEvent::ABORT_CALLED, DialogEvent::DIALOG_CLOSED});
   const std::string click_buy_button_js =
       "(function() { document.getElementById('abort').click(); })();";
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(), click_buy_button_js));
+  ASSERT_TRUE(
+      content::ExecuteScript(GetActiveWebContents(), click_buy_button_js));
   ASSERT_TRUE(WaitForObservedEvent());
 
   // Make sure the correct events were logged.
@@ -564,7 +566,8 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCanMakePaymentMetricsTest,
       {DialogEvent::ABORT_CALLED, DialogEvent::DIALOG_CLOSED});
   const std::string click_buy_button_js =
       "(function() { document.getElementById('abort').click(); })();";
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(), click_buy_button_js));
+  ASSERT_TRUE(
+      content::ExecuteScript(GetActiveWebContents(), click_buy_button_js));
   ASSERT_TRUE(WaitForObservedEvent());
 
   // Make sure that no canMakePayment events were logged.

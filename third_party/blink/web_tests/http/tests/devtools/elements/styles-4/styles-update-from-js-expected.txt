@@ -30,7 +30,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 
 Running: testSetStyleCSSText
@@ -42,7 +41,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 
 Running: testSetViaParsedAttributes
@@ -72,7 +70,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 
 Running: testSetViaAncestorClass
@@ -87,7 +84,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 ======== Inherited from div#container.red ========
 [expanded] 
@@ -107,7 +103,6 @@ div[foo="bar"] + div { (<style>)
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 ======== Inherited from div#container.red ========
 [expanded] 

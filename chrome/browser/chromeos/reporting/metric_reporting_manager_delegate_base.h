@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_CHROMEOS_REPORTING_METRIC_REPORTING_MANAGER_DELEGATE_BASE_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/time/time.h"
 #include "chrome/browser/profiles/profile.h"
@@ -16,9 +15,6 @@
 #include "components/reporting/metrics/metric_event_observer.h"
 #include "components/reporting/metrics/metric_event_observer_manager.h"
 #include "components/reporting/metrics/metric_report_queue.h"
-#include "components/reporting/proto/synced/record.pb.h"
-#include "components/reporting/util/rate_limiter_interface.h"
-#include "components/reporting/util/rate_limiter_slide_window.h"
 
 namespace reporting::metrics {
 
@@ -34,14 +30,11 @@ class MetricReportingManagerDelegateBase {
   virtual ~MetricReportingManagerDelegateBase() = default;
 
   // Creates a new `MetricReportQueue` that can be used towards metrics
-  // reporting. Specify a `RateLimiterInterface` implementation to enforce rate
-  // limiting.
+  // reporting.
   virtual std::unique_ptr<MetricReportQueue> CreateMetricReportQueue(
       EventType event_type,
       Destination destination,
-      Priority priority,
-      std::unique_ptr<RateLimiterInterface> rate_limiter = nullptr,
-      std::optional<SourceInfo> source_info = std::nullopt);
+      Priority priority);
 
   // Creates a new `MetricReportQueue` for periodic uploads. The rate is
   // controlled by the specified setting and we fall back to the defaults
@@ -53,8 +46,7 @@ class MetricReportingManagerDelegateBase {
       ReportingSettings* reporting_settings,
       const std::string& rate_setting_path,
       base::TimeDelta default_rate,
-      int rate_unit_to_ms = 1,
-      std::optional<SourceInfo> source_info = std::nullopt);
+      int rate_unit_to_ms = 1);
 
   // Creates a new collector for periodic metric collection. The rate is
   // controlled by the specified setting and we fall back to the defaults
@@ -104,16 +96,9 @@ class MetricReportingManagerDelegateBase {
       EventDrivenTelemetryCollectorPool* collector_pool,
       base::TimeDelta init_delay = base::TimeDelta());
 
-  // Creates a new instance of the sliding window rate limiter with the
-  // specified total size, time window and bucket count.
-  virtual std::unique_ptr<RateLimiterSlideWindow>
-  CreateSlidingWindowRateLimiter(size_t total_size,
-                                 base::TimeDelta time_window,
-                                 size_t bucket_count);
-
   // Checks for profile affiliation and returns true if affiliated. False
   // otherwise.
-  virtual bool IsUserAffiliated(Profile& profile) const;
+  virtual bool IsAffiliated(Profile* profile) const;
 
   // Returns the delay interval used with `MetricReportingManager`
   // initialization.

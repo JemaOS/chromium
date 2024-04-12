@@ -5,7 +5,7 @@
 /** @fileoverview Suite of tests for site-permissions-site-group. */
 import 'chrome://extensions/extensions.js';
 
-import type {SitePermissionsSiteGroupElement} from 'chrome://extensions/extensions.js';
+import {SitePermissionsSiteGroupElement} from 'chrome://extensions/extensions.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -53,10 +53,8 @@ suite('SitePermissionsSiteGroupElement', function() {
     const sitesList =
         element.shadowRoot!.querySelector<HTMLElement>('#sites-list');
     assertFalse(isVisible(sitesList));
-    const expandButton = element.shadowRoot!.querySelector('cr-expand-button');
-    assertTrue(!!expandButton);
-    expandButton.click();
-    await expandButton.updateComplete;
+    element.shadowRoot!.querySelector<HTMLElement>('cr-expand-button')!.click();
+    flush();
 
     assertTrue(isVisible(sitesList));
     const expandedSites =
@@ -98,10 +96,8 @@ suite('SitePermissionsSiteGroupElement', function() {
     assertEquals('google.ca', element.$.etldOrSite.innerText);
     assertEquals('', element.$.etldOrSiteSubtext.innerText);
 
-    const expandButton = element.shadowRoot!.querySelector('cr-expand-button');
-    assertTrue(!!expandButton);
-    expandButton.click();
-    await expandButton.updateComplete;
+    element.shadowRoot!.querySelector<HTMLElement>('cr-expand-button')!.click();
+    flush();
 
     assertTrue(isVisible(
         element.shadowRoot!.querySelector<HTMLElement>('#sites-list')));

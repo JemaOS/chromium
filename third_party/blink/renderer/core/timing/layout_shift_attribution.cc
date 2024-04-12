@@ -32,22 +32,22 @@ Node* LayoutShiftAttribution::node() const {
 }
 
 Node* LayoutShiftAttribution::rawNodeForInspector() const {
-  return node_.Get();
+  return node_;
 }
 
 DOMRectReadOnly* LayoutShiftAttribution::previousRect() const {
-  return previous_rect_.Get();
+  return previous_rect_;
 }
 
 DOMRectReadOnly* LayoutShiftAttribution::currentRect() const {
-  return current_rect_.Get();
+  return current_rect_;
 }
 
 ScriptValue LayoutShiftAttribution::toJSONForBinding(
     ScriptState* script_state) const {
   V8ObjectBuilder builder(script_state);
-  builder.Add("previousRect", previous_rect_.Get());
-  builder.Add("currentRect", current_rect_.Get());
+  builder.Add("previousRect", previous_rect_);
+  builder.Add("currentRect", current_rect_);
   return builder.GetScriptValue();
 }
 

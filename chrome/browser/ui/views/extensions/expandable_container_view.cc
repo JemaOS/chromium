@@ -52,7 +52,7 @@ bool ExpandableContainerView::DetailsView::GetExpanded() const {
   return expanded_;
 }
 
-BEGIN_METADATA(ExpandableContainerView, DetailsView)
+BEGIN_METADATA(ExpandableContainerView, DetailsView, views::View)
 ADD_PROPERTY_METADATA(bool, Expanded)
 END_METADATA
 
@@ -87,5 +87,5 @@ void ExpandableContainerView::ToggleDetailLevel() {
       expanded ? IDS_EXTENSIONS_SHOW_DETAILS : IDS_EXTENSIONS_HIDE_DETAILS));
 }
 
-BEGIN_METADATA(ExpandableContainerView)
+BEGIN_METADATA(ExpandableContainerView, views::View)
 END_METADATA

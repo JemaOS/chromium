@@ -69,10 +69,8 @@ class MockCertProvisioningWorker : public CertProvisioningWorker {
   MOCK_METHOD(void, DoStep, (), (override));
   MOCK_METHOD(void, Stop, (CertProvisioningWorkerState), (override));
   MOCK_METHOD(void, Pause, (), (override));
-  MOCK_METHOD(void, MarkWorkerForReset, (), (override));
   MOCK_METHOD(bool, IsWaiting, (), (const override));
-  MOCK_METHOD(bool, IsWorkerMarkedForReset, (), (const override));
-  MOCK_METHOD(const std::optional<BackendServerError>&,
+  MOCK_METHOD(const absl::optional<BackendServerError>&,
               GetLastBackendServerError,
               (),
               (const override));
@@ -84,13 +82,12 @@ class MockCertProvisioningWorker : public CertProvisioningWorker {
               (),
               (const override));
   MOCK_METHOD(base::Time, GetLastUpdateTime, (), (const override));
-  MOCK_METHOD(std::string, GetFailureMessage, (), (const override));
+  MOCK_METHOD(const std::string&, GetFailureMessage, (), (const override));
 
   void SetExpectations(testing::Cardinality do_step_times,
                        bool is_waiting,
                        const CertProfile& cert_profile,
                        std::string failure_message);
-  void ResetExpected();
 
   // Storage fields for SetExpectations function. They are returned by
   // reference and without copying them there is a risk that the original

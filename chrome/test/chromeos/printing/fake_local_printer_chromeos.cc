@@ -79,12 +79,6 @@ void FakeLocalPrinter::AddPrintJobObserver(
   FAIL();
 }
 
-void FakeLocalPrinter::AddLocalPrintersObserver(
-    mojo::PendingRemote<crosapi::mojom::LocalPrintersObserver> remote,
-    AddLocalPrintersObserverCallback callback) {
-  FAIL();
-}
-
 void FakeLocalPrinter::GetOAuthAccessToken(
     const std::string& printer_id,
     GetOAuthAccessTokenCallback callback) {

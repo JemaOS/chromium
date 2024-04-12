@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert, assertEnumVariant} from '../../assert.js';
-import {queuedAsyncCallback} from '../../async_job_queue.js';
+import {assert} from '../../assert.js';
 import * as barcodeChip from '../../barcode_chip.js';
 import {CameraManager, CameraUI} from '../../device/index.js';
 import * as dom from '../../dom.js';
@@ -12,6 +11,7 @@ import {BarcodeScanner} from '../../models/barcode.js';
 import {ChromeHelper} from '../../mojo/chrome_helper.js';
 import * as state from '../../state.js';
 import {Mode, PreviewVideo} from '../../type.js';
+import {assertEnumVariant} from '../../util.js';
 
 import {DocumentCornerOverlay} from './document_corner_overlay.js';
 
@@ -54,14 +54,9 @@ export class ScanOptions implements CameraUI {
 
   private readonly onChangeListeners = new Set<ScanOptionsChangeListener>();
 
-  private readonly updateDocumentModeStatus =
-      queuedAsyncCallback('keepLatest', async () => {
-        await this.checkDocumentModeReadiness();
-      });
-
-  private readonly documentModeOptionWrapper =
-      dom.get('#scan-document-option', HTMLDivElement);
-
+  /**
+   * @param cameraManager Camera manager instance.
+   */
   constructor(private readonly cameraManager: CameraManager) {
     this.cameraManager.registerCameraUI(this);
 
@@ -72,11 +67,10 @@ export class ScanOptions implements CameraUI {
     // ready.
     dom.get('#scan-barcode', HTMLInputElement).checked = true;
 
-    // TODO(pihsun): Move this outside of the constructor.
-    void (async () => {
-      const supported =
-          await ChromeHelper.getInstance().isDocumentScannerSupported();
-      this.documentModeOptionWrapper.hidden = !supported;
+    (async () => {
+      const {supported} =
+          await ChromeHelper.getInstance().getDocumentScannerReadyState();
+      dom.get('#scan-document-option', HTMLElement).hidden = !supported;
     })();
 
     for (const option of this.scanOptions) {
@@ -85,44 +79,43 @@ export class ScanOptions implements CameraUI {
           evt.preventDefault();
         }
       });
-      option.addEventListener('change', async () => {
+      option.addEventListener('change', () => {
         if (option.checked) {
-          await this.switchToScanType(this.getToggledScanOption());
+          this.updateOption(this.getToggledScanOption());
         }
       });
     }
   }
 
-  async checkDocumentModeReadiness(): Promise<void> {
+  async checkDocumentModeReadiness(): Promise<boolean> {
     const isLoaded =
         await ChromeHelper.getInstance().checkDocumentModeReadiness();
     if (isLoaded) {
       this.onDocumentModeReady();
     }
+    return isLoaded;
   }
 
   onDocumentModeReady(): void {
-    if (this.documentModeEnabled()) {
-      return;
-    }
-    this.documentModeOptionWrapper.classList.remove('disabled');
-    const inputElement = getElementFromScanType(ScanType.DOCUMENT);
-    inputElement.disabled = false;
-    // Avoid UI jump when in Scan mode.
+    const docModeOption = dom.get('#scan-document-option', HTMLDivElement);
+    docModeOption.classList.remove('disabled');
+
+    const docBtn = dom.get('#scan-document', HTMLInputElement);
+    docBtn.disabled = false;
     if (!state.get(Mode.SCAN)) {
-      inputElement.checked = true;
+      docBtn.checked = true;
     }
   }
 
   /**
-   * Adds a listener for scan options change.
+   * Add listener for scan options change.
    */
   addOnChangeListener(listener: ScanOptionsChangeListener): void {
     this.onChangeListeners.add(listener);
   }
 
   /**
-   * Whether preview is attached to scan frame source.
+   * Whether preview have attached as scan frame source.
    */
   private previewAvailable(): boolean {
     return this.video?.isExpired() === false;
@@ -140,16 +133,12 @@ export class ScanOptions implements CameraUI {
     const {deviceId} = video.getVideoSettings();
     this.documentCornerOverlay.attach(deviceId);
     const scanType = this.getToggledScanOption();
-    // Not awaiting here since this is for teardown after preview video
-    // expires.
-    void (async () => {
+    (async () => {
       await video.onExpired.wait();
       this.detachPreview();
     })();
-    await this.switchToScanType(scanType);
-    if (!this.documentModeEnabled()) {
-      this.updateDocumentModeStatus();
-    }
+    await this.updateOption(scanType);
+    this.checkDocumentModeReadiness();
   }
 
   /**
@@ -162,11 +151,15 @@ export class ScanOptions implements CameraUI {
     return getScanTypeFromElement(checkedEl);
   }
 
+  isDocumentModeEnabled(): boolean {
+    return this.documentCornerOverlay.isEnabled();
+  }
+
   /**
-   * Updates the option UI and starts or stops the corresponding scanner
-   * according to given |scanType|.
+   * @param scanType Scan type to be enabled, null for no type is
+   *     enabled.
    */
-  private async switchToScanType(scanType: ScanType) {
+  private async updateOption(scanType: ScanType) {
     if (!this.previewAvailable()) {
       return;
     }
@@ -200,7 +193,7 @@ export class ScanOptions implements CameraUI {
   }
 
   /**
-   * Stops all scanner and detaches from current preview.
+   * Stops all scanner and detach from current preview.
    */
   private detachPreview(): void {
     if (this.barcodeScanner !== null) {
@@ -208,11 +201,5 @@ export class ScanOptions implements CameraUI {
       this.barcodeScanner = null;
     }
     this.documentCornerOverlay.detach();
-  }
-
-  private documentModeEnabled(): boolean {
-    const disabled =
-        this.documentModeOptionWrapper.classList.contains('disabled');
-    return !disabled;
   }
 }

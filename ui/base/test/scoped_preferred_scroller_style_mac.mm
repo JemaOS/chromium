@@ -6,10 +6,10 @@
 
 #import <AppKit/AppKit.h>
 
-#import "base/apple/scoped_objc_class_swizzler.h"
 #include "base/check.h"
+#import "base/mac/scoped_objc_class_swizzler.h"
 
-using base::apple::ScopedObjCClassSwizzler;
+using base::mac::ScopedObjCClassSwizzler;
 
 namespace {
 
@@ -55,7 +55,8 @@ NSScrollerStyle GetScrollerStyle(bool overlay) {
 
 @end
 
-namespace ui::test {
+namespace ui {
+namespace test {
 
 ScopedPreferredScrollerStyle::ScopedPreferredScrollerStyle(bool overlay)
     : overlay_(overlay) {
@@ -82,4 +83,5 @@ ScopedPreferredScrollerStyle::~ScopedPreferredScrollerStyle() {
     NotifyStyleChanged();
 }
 
-}  // namespace ui::test
+}  // namespace test
+}  // namespace ui

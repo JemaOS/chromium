@@ -42,8 +42,7 @@ mojom::CaptivePortalProblem GetProblemFromPortalState(
 
 }  // namespace
 
-CaptivePortalRoutine::CaptivePortalRoutine(mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source) {
+CaptivePortalRoutine::CaptivePortalRoutine() {
   BindToInProcessInstance(
       remote_cros_network_config_.BindNewPipeAndPassReceiver());
 }

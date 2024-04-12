@@ -9,25 +9,22 @@
 
 import 'chrome://resources/ash/common/cr.m.js';
 import 'chrome://resources/ash/common/event_target.js';
-import 'chrome://resources/ash/common/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_icon_button/cr_icon_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_input/cr_input.js';
-import 'chrome://resources/ash/common/cr_elements/icons.html.js';
-import 'chrome://resources/ash/common/cr_elements/cr_shared_vars.css.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import 'chrome://resources/cr_elements/icons.html.js';
+import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import './components/buttons/oobe_text_button.js';
 import './components/oobe_icons.html.js';
-import './components/oobe_illo_icons.html.js';
-import './gaia_action_buttons/gaia_action_buttons.js';
-import '//resources/ash/common/cr_elements/policy/cr_tooltip_icon.js';
+import '//resources/cr_elements/policy/cr_tooltip_icon.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 
 import {assert} from 'chrome://resources/ash/common/assert.js';
 import {I18nBehavior, I18nBehaviorInterface} from 'chrome://resources/ash/common/i18n_behavior.js';
-import {sendWithPromise} from 'chrome://resources/js/cr.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {html, mixinBehaviors, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {Authenticator, AuthFlow, AuthMode, AuthParams, SUPPORTED_PARAMS} from '../../gaia_auth_host/authenticator.js';
+import {Authenticator, AuthMode, AuthParams, SUPPORTED_PARAMS} from '../../gaia_auth_host/authenticator.js';
 
 const clearDataType = {
   appcache: true,
@@ -77,7 +74,7 @@ class LockReauth extends LockReauthBase {
        */
       isVerifyUser_: {
         type: Boolean,
-        value: false,
+        value: true,
       },
 
       /**
@@ -89,18 +86,9 @@ class LockReauth extends LockReauthBase {
       },
 
       /**
-       * Whether the webview for online sign-in is shown.
+       * Whether user is authenticating on SAML page.
        */
-      isSigninFrameDisplayed_: {
-        type: Boolean,
-        value: false,
-      },
-
-      /**
-       * Whether the authenticator is currently showing SAML IdP page.
-       * @private
-       */
-      isSaml_: {
+      isSamlPage_: {
         type: Boolean,
         value: false,
       },
@@ -133,6 +121,14 @@ class LockReauth extends LockReauthBase {
        * Whether the user's password has changed.
        */
       isPasswordChanged_: {
+        type: Boolean,
+        value: false,
+      },
+
+      /**
+       * Whether to show Saml Notice Message.
+       */
+      showSamlNoticeMessage_: {
         type: Boolean,
         value: false,
       },
@@ -171,17 +167,6 @@ class LockReauth extends LockReauthBase {
      * @private
      */
     this.signinFrame_ = undefined;
-
-    /**
-     * Gaia path which can serve as a fallback in reloading scenarios. Expected
-     * to correspond to editable Gaia username page.
-     * TODO(b/259181755): this should no longer be needed once we change the
-     * implementation of the "Enter Google Account info" button to fully reload
-     * the flow through cpp code.
-     * @type {string}
-     * @private
-     */
-    this.fallbackGaiaPath_ = '';
   }
 
   /** @override */
@@ -196,13 +181,6 @@ class LockReauth extends LockReauthBase {
         'authCompleted', (e) => void this.onAuthCompletedMessage_(e));
     this.authenticator_.addEventListener(
         'loadAbort', (e) => void this.onLoadAbortMessage_(e.detail));
-    this.authenticator_.addEventListener('getDeviceId', (e) => {
-      sendWithPromise('getDeviceId')
-          .then(deviceId => this.authenticator_.getDeviceIdResponse(deviceId));
-    });
-    this.authenticator_.addEventListener('authFlowChange', (e) => {
-      this.isSaml_ = e.detail.newValue === AuthFlow.SAML;
-    });
     chrome.send('initialize');
   }
 
@@ -210,11 +188,11 @@ class LockReauth extends LockReauthBase {
   resetState_() {
     this.isVerifyUser_ = false;
     this.isErrorDisplayed_ = false;
-    this.isSaml_ = false;
-    this.isSigninFrameDisplayed_ = false;
+    this.isSamlPage_ = false;
     this.isConfirmPassword_ = false;
     this.isManualInput_ = false;
     this.isPasswordChanged_ = false;
+    this.showSamlNoticeMessage_ = false;
     this.authDomain_ = '';
   }
 
@@ -241,17 +219,14 @@ class LockReauth extends LockReauthBase {
   }
 
   /**
-   * Loads the authentication parameters.
+   * Loads the authentication parameter into the iframe.
    * @param {!Object} data authenticator parameters bag.
-   * @suppress {missingProperties}
    */
   loadAuthenticator(data) {
     assert(
         'webviewPartitionName' in data,
         'ERROR: missing webview partition name');
     this.authenticator_.setWebviewPartition(data.webviewPartitionName);
-    this.fallbackGaiaPath_ = data.fallbackGaiaPath;
-
     const params = {};
     SUPPORTED_PARAMS.forEach(name => {
       if (data.hasOwnProperty(name)) {
@@ -259,14 +234,10 @@ class LockReauth extends LockReauthBase {
       }
     });
 
-    params.enableGaiaActionButtons = data.enableGaiaActionButtons;
     this.authenticatorParams_ = /** @type {AuthParams} */ (params);
     this.email_ = data.email;
     this.isDefaultSsoProvider = data.doSamlRedirect;
-    this.isSaml_ = this.isDefaultSsoProvider;
-    if (data['doSamlRedirect']) {
-      this.isVerifyUser_ = true;
-    } else {
+    if (!data['doSamlRedirect']) {
       this.doGaiaRedirect_();
     }
     chrome.send('authenticatorLoaded');
@@ -305,11 +276,6 @@ class LockReauth extends LockReauthBase {
     const signinFrame = this.shadowRoot.getElementById('signin-frame');
     assert(signinFrame);
     return /** @type {!WebView} */ (signinFrame);
-  }
-
-  /** @private */
-  setFocusToWebview_() {
-    this.signinFrame_.focus();
   }
 
   onAuthCompletedMessage_(e) {
@@ -380,7 +346,8 @@ class LockReauth extends LockReauthBase {
      * These statements override resetStates_ calls.
      * Thus have to be AFTER resetState_.
      */
-    this.isSigninFrameDisplayed_ = true;
+    this.isSamlPage_ = true;
+    this.showSamlNoticeMessage_ = true;
   }
 
   /** @private */
@@ -396,7 +363,7 @@ class LockReauth extends LockReauthBase {
         return;
       }
 
-      if (confirmPasswordInput.value !== this.$.passwordInput.value) {
+      if (confirmPasswordInput.value != this.$.passwordInput.value) {
         this.$.passwordInput.invalid = true;
         confirmPasswordInput.invalid = true;
         return;
@@ -431,7 +398,7 @@ class LockReauth extends LockReauthBase {
      * These statements override resetStates_ calls.
      * Thus have to be AFTER resetState_.
      */
-    this.isSigninFrameDisplayed_ = true;
+    this.isSamlPage_ = true;
   }
 
   /** @private */
@@ -455,12 +422,6 @@ class LockReauth extends LockReauthBase {
     this.authenticatorParams_.doSamlRedirect = false;
     this.authenticatorParams_.enableGaiaActionButtons = true;
     this.isDefaultSsoProvider = false;
-    this.isSaml_ = false;
-    // Replace Gaia path with a fallback path to land on Gaia username page.
-    assert(
-        this.fallbackGaiaPath_,
-        'fallback Gaia path needed when trying to switch from SAML to Gaia');
-    this.authenticatorParams_.gaiaPath = this.fallbackGaiaPath_;
     this.authenticator_.load(
         AuthMode.DEFAULT,
         /** @type {AuthParams} */ (this.authenticatorParams_));

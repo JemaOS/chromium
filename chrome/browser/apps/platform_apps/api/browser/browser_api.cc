@@ -15,7 +15,7 @@ namespace api {
 BrowserOpenTabFunction::~BrowserOpenTabFunction() {}
 
 ExtensionFunction::ResponseAction BrowserOpenTabFunction::Run() {
-  std::optional<browser::OpenTab::Params> params(
+  absl::optional<browser::OpenTab::Params> params(
       browser::OpenTab::Params::Create(args()));
   EXTENSION_FUNCTION_VALIDATE(params.has_value());
 

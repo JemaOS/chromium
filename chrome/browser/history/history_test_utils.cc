@@ -24,8 +24,7 @@ namespace {
 // Notifies the main thread after all history backend thread tasks have run.
 class WaitForHistoryTask : public history::HistoryDBTask {
  public:
-  explicit WaitForHistoryTask(base::OnceClosure quit_closure)
-      : quit_closure_(std::move(quit_closure)) {}
+  WaitForHistoryTask() {}
 
   WaitForHistoryTask(const WaitForHistoryTask&) = delete;
   WaitForHistoryTask& operator=(const WaitForHistoryTask&) = delete;
@@ -34,22 +33,22 @@ class WaitForHistoryTask : public history::HistoryDBTask {
                      history::HistoryDatabase* db) override {
     return true;
   }
-  void DoneRunOnMainThread() override { std::move(quit_closure_).Run(); }
+
+  void DoneRunOnMainThread() override {
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
+  }
 
  private:
-  base::OnceClosure quit_closure_;
   ~WaitForHistoryTask() override {}
 };
 
 }  // namespace
 
 void WaitForHistoryBackendToRun(Profile* profile) {
-  base::RunLoop loop;
   base::CancelableTaskTracker task_tracker;
-  std::unique_ptr<history::HistoryDBTask> task(
-      new WaitForHistoryTask(loop.QuitWhenIdleClosure()));
+  std::unique_ptr<history::HistoryDBTask> task(new WaitForHistoryTask());
   history::HistoryService* history = HistoryServiceFactory::GetForProfile(
       profile, ServiceAccessType::EXPLICIT_ACCESS);
   history->ScheduleDBTask(FROM_HERE, std::move(task), &task_tracker);
-  loop.Run();
+  content::RunMessageLoop();
 }

@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ash/crosapi/desk_template_ash.h"
-#include "ui/base/ui_base_types.h"
 
 namespace crosapi {
 
@@ -43,7 +42,7 @@ void DeskTemplateAsh::GetBrowserInformation(
 
 void DeskTemplateAsh::CreateBrowserWithRestoredData(
     const gfx::Rect& bounds,
-    const ui::WindowShowState show_state,
+    const ui::mojom::WindowShowState show_state,
     crosapi::mojom::DeskTemplateStatePtr additional_state) {
   if (remotes_.empty())
     return;
@@ -54,15 +53,13 @@ void DeskTemplateAsh::CreateBrowserWithRestoredData(
 
 void DeskTemplateAsh::GetFaviconImage(
     const GURL& url,
-    uint64_t lacros_profile_id,
     base::OnceCallback<void(const gfx::ImageSkia&)> callback) {
   if (remotes_.empty()) {
     std::move(callback).Run(gfx::ImageSkia());
     return;
   }
 
-  remotes_.begin()->get()->GetFaviconImage(url, lacros_profile_id,
-                                           std::move(callback));
+  remotes_.begin()->get()->GetFaviconImage(url, std::move(callback));
 }
 
 void DeskTemplateAsh::AddDeskTemplateClient(

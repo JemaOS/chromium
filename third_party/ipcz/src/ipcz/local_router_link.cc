@@ -19,8 +19,7 @@ namespace ipcz {
 // This object is shared between the two Routers on either end of a
 // LocalRouterLink. The Routers access each other through references owned by
 // this object.
-class LocalRouterLink::SharedState
-    : public RefCounted<LocalRouterLink::SharedState> {
+class LocalRouterLink::SharedState : public RefCounted {
  public:
   SharedState(LinkType type,
               LocalRouterLink::InitialState initial_state,
@@ -66,9 +65,7 @@ class LocalRouterLink::SharedState
   }
 
  private:
-  friend class RefCounted<SharedState>;
-
-  ~SharedState() = default;
+  ~SharedState() override = default;
 
   const LinkType type_;
 
@@ -122,13 +119,13 @@ void LocalRouterLink::AllocateParcelData(size_t num_bytes,
 }
 
 void LocalRouterLink::AcceptParcel(const OperationContext& context,
-                                   std::unique_ptr<Parcel> parcel) {
+                                   Parcel& parcel) {
   if (Ref<Router> receiver = state_->GetRouter(side_.opposite())) {
     if (state_->type() == LinkType::kCentral) {
-      receiver->AcceptInboundParcel(context, std::move(parcel));
+      receiver->AcceptInboundParcel(context, parcel);
     } else {
       ABSL_ASSERT(state_->type() == LinkType::kBridge);
-      receiver->AcceptOutboundParcel(context, std::move(parcel));
+      receiver->AcceptOutboundParcel(context, parcel);
     }
   }
 }

@@ -31,7 +31,8 @@ const char kAllowlistID[] = "lmadimbbgapmngbiclpjjngmdickadpl";
 namespace errors = manifest_errors;
 namespace keys = manifest_keys;
 
-using InitValueManifestTest = ChromeManifestTest;
+class InitValueManifestTest : public ChromeManifestTest {
+};
 
 TEST_F(InitValueManifestTest, InitFromValueInvalid) {
   SimpleFeature::ScopedThreadUnsafeAllowlistForTest allowlist(kAllowlistID);

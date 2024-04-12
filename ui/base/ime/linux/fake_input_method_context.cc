@@ -21,11 +21,10 @@ bool FakeInputMethodContext::IsPeekKeyEvent(const ui::KeyEvent& key_event) {
 
 void FakeInputMethodContext::Reset() {}
 
-void FakeInputMethodContext::UpdateFocus(
-    bool has_client,
-    TextInputType old_type,
-    const TextInputClientAttributes& new_client_attributes,
-    TextInputClient::FocusReason reason) {}
+void FakeInputMethodContext::UpdateFocus(bool has_client,
+                                         TextInputType old_type,
+                                         TextInputType new_type,
+                                         TextInputClient::FocusReason reason) {}
 
 void FakeInputMethodContext::SetCursorLocation(const gfx::Rect& rect) {}
 
@@ -33,8 +32,14 @@ void FakeInputMethodContext::SetSurroundingText(
     const std::u16string& text,
     const gfx::Range& text_range,
     const gfx::Range& selection_range,
-    const std::optional<GrammarFragment>& fragment,
-    const std::optional<AutocorrectInfo>& autocorrect) {}
+    const absl::optional<GrammarFragment>& fragment,
+    const absl::optional<AutocorrectInfo>& autocorrect) {}
+
+void FakeInputMethodContext::SetContentType(TextInputType type,
+                                            TextInputMode mode,
+                                            uint32_t flags,
+                                            bool should_do_learning,
+                                            bool can_compose_inline) {}
 
 VirtualKeyboardController*
 FakeInputMethodContext::GetVirtualKeyboardController() {

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_API_SAFE_BROWSING_PRIVATE_SAFE_BROWSING_PRIVATE_EVENT_ROUTER_FACTORY_H_
 #define CHROME_BROWSER_EXTENSIONS_API_SAFE_BROWSING_PRIVATE_SAFE_BROWSING_PRIVATE_EVENT_ROUTER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace extensions {
@@ -37,13 +37,14 @@ class SafeBrowsingPrivateEventRouterFactory
   bool ServiceIsNULLWhileTesting() const override;
 
  private:
-  friend base::NoDestructor<SafeBrowsingPrivateEventRouterFactory>;
+  friend struct base::DefaultSingletonTraits<
+      SafeBrowsingPrivateEventRouterFactory>;
 
   SafeBrowsingPrivateEventRouterFactory();
   ~SafeBrowsingPrivateEventRouterFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

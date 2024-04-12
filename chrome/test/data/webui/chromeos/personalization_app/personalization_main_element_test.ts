@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 import 'chrome://personalization/strings.m.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {AmbientActionName, PersonalizationMainElement, SetShouldShowTimeOfDayBannerAction} from 'chrome://personalization/js/personalization_app.js';
+import {AmbientActionName, PersonalizationMain, SetShouldShowTimeOfDayBannerAction} from 'chrome://personalization/js/personalization_app.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
@@ -11,8 +12,8 @@ import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
 import {baseSetup, initElement, teardownElement} from './personalization_app_test_utils.js';
 import {TestPersonalizationStore} from './test_personalization_store.js';
 
-suite('PersonalizationMainElementTest', function() {
-  let personalizationMainElement: PersonalizationMainElement|null;
+suite('PersonalizationMainTest', function() {
+  let personalizationMainElement: PersonalizationMain|null;
   let personalizationStore: TestPersonalizationStore;
 
   setup(() => {
@@ -27,7 +28,7 @@ suite('PersonalizationMainElementTest', function() {
 
   test('has large ambient preview when ambient allowed', async () => {
     loadTimeData.overrideValues({isAmbientModeAllowed: true});
-    personalizationMainElement = initElement(PersonalizationMainElement);
+    personalizationMainElement = initElement(PersonalizationMain);
     await waitAfterNextRender(personalizationMainElement);
 
     const preview = personalizationMainElement!.shadowRoot!.querySelector(
@@ -38,7 +39,7 @@ suite('PersonalizationMainElementTest', function() {
   test('has preview when ambient disallowed but jelly enabled', async () => {
     loadTimeData.overrideValues(
         {isAmbientModeAllowed: false, isPersonalizationJellyEnabled: true});
-    personalizationMainElement = initElement(PersonalizationMainElement);
+    personalizationMainElement = initElement(PersonalizationMain);
     await waitAfterNextRender(personalizationMainElement);
 
     const preview = personalizationMainElement!.shadowRoot!.querySelector(
@@ -49,7 +50,7 @@ suite('PersonalizationMainElementTest', function() {
   test('has no ambient preview when ambient and jelly disallowed', async () => {
     loadTimeData.overrideValues(
         {isAmbientModeAllowed: false, isPersonalizationJellyEnabled: false});
-    personalizationMainElement = initElement(PersonalizationMainElement);
+    personalizationMainElement = initElement(PersonalizationMain);
     await waitAfterNextRender(personalizationMainElement);
 
     const preview = personalizationMainElement!.shadowRoot!.querySelector(
@@ -61,7 +62,7 @@ suite('PersonalizationMainElementTest', function() {
     personalizationStore.setReducersEnabled(true);
     personalizationStore.data.ambient.shouldShowTimeOfDayBanner = true;
     personalizationStore.notifyObservers();
-    personalizationMainElement = initElement(PersonalizationMainElement);
+    personalizationMainElement = initElement(PersonalizationMain);
     await waitAfterNextRender(personalizationMainElement);
 
     const banner = personalizationMainElement!.shadowRoot!.querySelector(

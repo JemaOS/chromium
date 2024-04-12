@@ -13,7 +13,7 @@ namespace quick_pair {
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. This enum should be kept in sync with
-// the FastPairPairFailure enum in //tools/metrics/histograms/enums.xml.
+// the FastPairPairFailure enum in src/tools/metrics/histograms/enums.xml.
 enum class PairFailure {
   // Failed to create a GATT connection to the device.
   kCreateGattConnection = 0,
@@ -83,15 +83,7 @@ enum class PairFailure {
   // Failed to connect to discovered device after pairing when the device is
   // known to the adapter.
   kFailedToConnectAfterPairing = 30,
-  // Failed to write to Additional Data characteristic.
-  kAdditionalDataCharacteristicWrite = 31,
-  // Failed to discover Additional Data Characteristic.
-  // Currently this failure is not emitted anywhere.
-  // TODO(b/279654454) measure this pair failure in some metric.
-  kAdditionalDataCharacteristicDiscovery = 32,
-  // Timed out while writing to Additional Data characteristic.
-  kAdditionalDataCharacteristicWriteTimeout = 33,
-  kMaxValue = kAdditionalDataCharacteristicWriteTimeout,
+  kMaxValue = kFailedToConnectAfterPairing,
 };
 
 COMPONENT_EXPORT(QUICK_PAIR_COMMON)

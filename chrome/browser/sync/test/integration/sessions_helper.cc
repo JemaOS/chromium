@@ -27,7 +27,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "components/sync/service/sync_client.h"
+#include "components/sync/driver/sync_client.h"
 #include "components/sync_sessions/open_tabs_ui_delegate.h"
 #include "components/sync_sessions/session_sync_service.h"
 #include "content/public/browser/navigation_entry.h"
@@ -159,16 +159,17 @@ void CloseTab(int browser_index, int tab_index) {
 }
 
 void MoveTab(int from_browser_index, int to_browser_index, int tab_index) {
-  std::unique_ptr<tabs::TabModel> detached_tab =
+  std::unique_ptr<content::WebContents> detached_contents =
       test()
           ->GetBrowser(from_browser_index)
           ->tab_strip_model()
-          ->DetachTabAtForInsertion(tab_index);
+          ->DetachWebContentsAtForInsertion(tab_index);
 
   TabStripModel* target_strip =
       test()->GetBrowser(to_browser_index)->tab_strip_model();
-  target_strip->InsertDetachedTabAt(
-      target_strip->count(), std::move(detached_tab), AddTabTypes::ADD_ACTIVE);
+  target_strip->InsertWebContentsAt(target_strip->count(),
+                                    std::move(detached_contents),
+                                    AddTabTypes::ADD_ACTIVE);
 }
 
 void NavigateTab(int browser_index, const GURL& url) {

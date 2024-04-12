@@ -31,6 +31,8 @@ namespace ash {
 const char kScreenAccessNotificationId[] = "chrome://screen/access";
 const char kRemotingScreenShareNotificationId[] =
     "chrome://screen/remoting-share";
+const char kNotifierScreenAccess[] = "ash.screen-access";
+const char kNotifierRemotingScreenShare[] = "ash.remoting-screen-share";
 
 ScreenSecurityController::ScreenSecurityController() {
   Shell::Get()->AddShellObserver(this);
@@ -87,7 +89,7 @@ void ScreenSecurityController::CreateNotification(
           base::BindRepeating(
               [](base::WeakPtr<ScreenSecurityController> controller,
                  bool is_screen_access_notification,
-                 std::optional<int> button_index) {
+                 absl::optional<int> button_index) {
                 if (!button_index)
                   return;
 
@@ -106,22 +108,36 @@ void ScreenSecurityController::CreateNotification(
               },
               weak_ptr_factory_.GetWeakPtr(), is_screen_access_notification));
 
+  // If the feature is enabled, the notification should have the style of
+  // privacy indicators notification.
+  auto* notifier_id =
+      features::IsPrivacyIndicatorsEnabled()
+          ? kPrivacyIndicatorsNotifierId
+          : (is_screen_access_notification ? kNotifierScreenAccess
+                                           : kNotifierRemotingScreenShare);
+
   std::unique_ptr<Notification> notification = CreateSystemNotificationPtr(
       message_center::NOTIFICATION_TYPE_SIMPLE,
       is_screen_access_notification ? kScreenAccessNotificationId
                                     : kRemotingScreenShareNotificationId,
       l10n_util::GetStringUTF16(IDS_ASH_STATUS_TRAY_SCREEN_SHARE_TITLE),
       message, std::u16string() /* display_source */, GURL(),
-      message_center::NotifierId(message_center::NotifierType::SYSTEM_COMPONENT,
-                                 kPrivacyIndicatorsNotifierId,
-                                 NotificationCatalogName::kPrivacyIndicators),
+      message_center::NotifierId(
+          message_center::NotifierType::SYSTEM_COMPONENT, notifier_id,
+          features::IsPrivacyIndicatorsEnabled()
+              ? NotificationCatalogName::kPrivacyIndicators
+              : NotificationCatalogName::kScreenSecurity),
       data, std::move(delegate),
-      /*small_image=*/kPrivacyIndicatorsScreenShareIcon,
+      features::IsPrivacyIndicatorsEnabled() ? kPrivacyIndicatorsScreenShareIcon
+                                             : kNotificationScreenshareIcon,
       message_center::SystemNotificationWarningLevel::NORMAL);
 
   notification->set_pinned(true);
-  notification->set_accent_color_id(ui::kColorAshPrivacyIndicatorsBackground);
-  notification->set_parent_vector_small_image(kPrivacyIndicatorsIcon);
+
+  if (features::IsPrivacyIndicatorsEnabled()) {
+    notification->set_accent_color_id(ui::kColorAshPrivacyIndicatorsBackground);
+    notification->set_parent_vector_small_image(kPrivacyIndicatorsIcon);
+  }
 
   message_center::MessageCenter::Get()->AddNotification(
       std::move(notification));
@@ -157,7 +173,6 @@ void ScreenSecurityController::OnScreenAccessStart(
     return;
 
   CreateNotification(access_app_name, /*is_screen_access_notification=*/true);
-  UpdatePrivacyIndicatorsScreenShareStatus(/*is_screen_sharing=*/true);
 }
 
 void ScreenSecurityController::OnScreenAccessStop() {
@@ -166,7 +181,6 @@ void ScreenSecurityController::OnScreenAccessStop() {
   }
 
   StopAllSessions(/*is_screen_access=*/true);
-  UpdatePrivacyIndicatorsScreenShareStatus(/*is_screen_sharing=*/false);
 }
 
 void ScreenSecurityController::OnRemotingScreenShareStart(
@@ -182,7 +196,9 @@ void ScreenSecurityController::OnRemotingScreenShareStart(
   CreateNotification(
       l10n_util::GetStringUTF16(IDS_ASH_STATUS_TRAY_SCREEN_SHARE_BEING_HELPED),
       /*is_screen_access_notification=*/false);
-  UpdatePrivacyIndicatorsScreenShareStatus(/*is_screen_sharing=*/true);
+
+  if (features::IsPrivacyIndicatorsEnabled())
+    UpdatePrivacyIndicatorsScreenShareStatus(/*is_screen_sharing=*/true);
 }
 
 void ScreenSecurityController::OnRemotingScreenShareStop() {
@@ -191,7 +207,9 @@ void ScreenSecurityController::OnRemotingScreenShareStop() {
   }
 
   StopAllSessions(/*is_screen_access=*/false);
-  UpdatePrivacyIndicatorsScreenShareStatus(/*is_screen_sharing=*/false);
+
+  if (features::IsPrivacyIndicatorsEnabled())
+    UpdatePrivacyIndicatorsScreenShareStatus(/*is_screen_sharing=*/false);
 }
 
 void ScreenSecurityController::OnCastingSessionStartedOrStopped(bool started) {

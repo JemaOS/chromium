@@ -4,13 +4,15 @@
 
 #include "chrome/browser/ash/file_system_provider/watcher.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 WatcherKey::WatcherKey(const base::FilePath& entry_path, bool recursive)
     : entry_path(entry_path), recursive(recursive) {
 }
 
-WatcherKey::~WatcherKey() = default;
+WatcherKey::~WatcherKey() {
+}
 
 bool WatcherKey::Comparator::operator()(const WatcherKey& a,
                                         const WatcherKey& b) const {
@@ -24,13 +26,16 @@ Subscriber::Subscriber() : persistent(false) {
 
 Subscriber::Subscriber(const Subscriber& other) = default;
 
-Subscriber::~Subscriber() = default;
+Subscriber::~Subscriber() {
+}
 
 Watcher::Watcher() : recursive(false) {
 }
 
 Watcher::Watcher(const Watcher& other) = default;
 
-Watcher::~Watcher() = default;
+Watcher::~Watcher() {
+}
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

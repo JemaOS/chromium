@@ -27,7 +27,7 @@ class AnnouncementNotificationServiceFactory
   friend class base::NoDestructor<AnnouncementNotificationServiceFactory>;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
   AnnouncementNotificationServiceFactory();

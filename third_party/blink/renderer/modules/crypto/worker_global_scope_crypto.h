@@ -46,11 +46,11 @@ class WorkerGlobalScopeCrypto final
  public:
   static const char kSupplementName[];
 
-  static WorkerGlobalScopeCrypto& From(WorkerGlobalScope&);
-  static Crypto* crypto(WorkerGlobalScope&);
+  static WorkerGlobalScopeCrypto& From(Supplementable<WorkerGlobalScope>&);
+  static Crypto* crypto(Supplementable<WorkerGlobalScope>&);
   Crypto* crypto() const;
 
-  explicit WorkerGlobalScopeCrypto(WorkerGlobalScope& worker_scope);
+  WorkerGlobalScopeCrypto();
 
   void Trace(Visitor*) const override;
 

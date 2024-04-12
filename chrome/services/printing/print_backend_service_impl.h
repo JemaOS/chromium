@@ -91,11 +91,6 @@ class UnsandboxedPrintBackendHostImpl
 
 class PrintBackendServiceImpl : public mojom::PrintBackendService {
  public:
-  struct StartPrintingResult {
-    mojom::ResultCode result;
-    int job_id;
-  };
-
   explicit PrintBackendServiceImpl(
       mojo::PendingReceiver<mojom::PrintBackendService> receiver);
   PrintBackendServiceImpl(const PrintBackendServiceImpl&) = delete;
@@ -137,7 +132,7 @@ class PrintBackendServiceImpl : public mojom::PrintBackendService {
 
    private:
 #if BUILDFLAG(ENABLE_OOP_BASIC_PRINT_DIALOG)
-    gfx::NativeView parent_native_view_ = gfx::NativeView();
+    gfx::NativeView parent_native_view_ = nullptr;
 #endif
     std::string locale_;
   };
@@ -200,7 +195,7 @@ class PrintBackendServiceImpl : public mojom::PrintBackendService {
       int document_cookie,
       const std::u16string& document_name,
 #if !BUILDFLAG(ENABLE_OOP_BASIC_PRINT_DIALOG)
-      const std::optional<PrintSettings>& settings,
+      const absl::optional<PrintSettings>& settings,
 #endif
       mojom::PrintBackendService::StartPrintingCallback callback) override;
 #if BUILDFLAG(IS_WIN)
@@ -235,7 +230,7 @@ class PrintBackendServiceImpl : public mojom::PrintBackendService {
       mojom::ResultCode result);
 #endif
   void OnDidStartPrintingReadyDocument(DocumentHelper& document_helper,
-                                       StartPrintingResult printing_result);
+                                       mojom::ResultCode result);
   void OnDidDocumentDone(
       DocumentHelper& document_helper,
       mojom::PrintBackendService::DocumentDoneCallback callback,

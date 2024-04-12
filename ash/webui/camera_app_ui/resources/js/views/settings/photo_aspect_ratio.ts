@@ -16,7 +16,7 @@ import {BaseSettings} from './base.js';
 import * as util from './util.js';
 
 /**
- * View controller of photo aspect ratio settings.
+ * View controller of photo resolution settings.
  */
 export class PhotoAspectRatioSettings extends BaseSettings {
   private readonly menu: HTMLElement;
@@ -88,12 +88,12 @@ export class PhotoAspectRatioSettings extends BaseSettings {
     input.checked = option.checked;
 
     if (!input.checked) {
-      input.addEventListener('click', async (event) => {
-        event.preventDefault();
+      input.addEventListener('click', (event) => {
         this.focusedDeviceId = deviceId;
         this.menuScrollTop = this.menu.scrollTop;
-        await this.cameraManager.setPrefPhotoAspectRatioSet(
+        this.cameraManager.setPrefPhotoAspectRatioSet(
             deviceId, option.aspectRatioSet);
+        event.preventDefault();
       });
     }
     this.menu.appendChild(optionElement);

@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "base/files/file_path.h"
-#include "base/test/test_future.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chromeos/crosapi/mojom/file_manager.mojom-test-utils.h"
 #include "chromeos/crosapi/mojom/file_manager.mojom.h"
@@ -14,9 +13,11 @@
 using FileManagerLacrosBrowserTest = InProcessBrowserTest;
 
 IN_PROC_BROWSER_TEST_F(FileManagerLacrosBrowserTest, Basics) {
-  auto& file_manager =
-      chromeos::LacrosService::Get()->GetRemote<crosapi::mojom::FileManager>();
-  base::test::TestFuture<crosapi::mojom::OpenResult> result_future;
+  crosapi::mojom::FileManagerAsyncWaiter waiter(
+      chromeos::LacrosService::Get()
+          ->GetRemote<crosapi::mojom::FileManager>()
+          .get());
+  crosapi::mojom::OpenResult result;
 
   // The file manager requires a large amount of setup to get it to run in
   // tests. See FileManagerBrowserTestBase. For example, by default it won't
@@ -24,20 +25,16 @@ IN_PROC_BROWSER_TEST_F(FileManagerLacrosBrowserTest, Basics) {
   // safely create in a test. Since we don't have a test mojo API to put the
   // file manager into a suitable state, exercise our API via error cases.
   base::FilePath bad_path("/does/not/exist");
-  file_manager->ShowItemInFolder(bad_path, result_future.GetCallback());
-  EXPECT_EQ(crosapi::mojom::OpenResult::kFailedPathNotFound,
-            result_future.Take());
+  waiter.ShowItemInFolder(bad_path, &result);
+  EXPECT_EQ(crosapi::mojom::OpenResult::kFailedPathNotFound, result);
 
-  file_manager->OpenFolder(bad_path, result_future.GetCallback());
-  EXPECT_EQ(crosapi::mojom::OpenResult::kFailedPathNotFound,
-            result_future.Take());
+  waiter.OpenFolder(bad_path, &result);
+  EXPECT_EQ(crosapi::mojom::OpenResult::kFailedPathNotFound, result);
 
-  file_manager->OpenFile(bad_path, result_future.GetCallback());
-  EXPECT_EQ(crosapi::mojom::OpenResult::kFailedPathNotFound,
-            result_future.Take());
+  waiter.OpenFile(bad_path, &result);
+  EXPECT_EQ(crosapi::mojom::OpenResult::kFailedPathNotFound, result);
 
   base::FilePath malformed_path("!@#$%");
-  file_manager->ShowItemInFolder(malformed_path, result_future.GetCallback());
-  EXPECT_EQ(crosapi::mojom::OpenResult::kFailedPathNotFound,
-            result_future.Take());
+  waiter.ShowItemInFolder(malformed_path, &result);
+  EXPECT_EQ(crosapi::mojom::OpenResult::kFailedPathNotFound, result);
 }

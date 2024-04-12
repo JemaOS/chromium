@@ -38,7 +38,6 @@
 #include "third_party/blink/renderer/core/css/css_value_pair.h"
 #include "third_party/blink/renderer/core/css/style_rule_counter_style.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
-#include "third_party/blink/renderer/core/keywords.h"
 #include "third_party/blink/renderer/platform/text/text_break_iterator.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
@@ -55,7 +54,7 @@ const wtf_size_t kCounterLengthLimit = 120;
 const CounterStyle& GetDisc() {
   const CounterStyle* disc =
       CounterStyleMap::GetUACounterStyleMap()->FindCounterStyleAcrossScopes(
-          keywords::kDisc);
+          "disc");
   DCHECK(disc);
   return *disc;
 }
@@ -583,7 +582,7 @@ CounterStyle& CounterStyle::GetDecimal() {
   DEFINE_STATIC_LOCAL(
       Persistent<CounterStyle>, decimal,
       (CounterStyleMap::GetUACounterStyleMap()->FindCounterStyleAcrossScopes(
-          keywords::kDecimal)));
+          "decimal")));
   DCHECK(decimal);
   return *decimal;
 }
@@ -702,15 +701,16 @@ CounterStyle::CounterStyle(const StyleRuleCounterStyle& rule)
 
   if (HasSymbols(system_)) {
     if (system_ == CounterStyleSystem::kAdditive) {
-      for (const auto& symbol : To<CSSValueList>(*rule.GetAdditiveSymbols())) {
-        const auto& pair = To<CSSValuePair>(*symbol.Get());
+      for (const CSSValue* symbol :
+           To<CSSValueList>(*rule.GetAdditiveSymbols())) {
+        const auto& pair = To<CSSValuePair>(*symbol);
         additive_weights_.push_back(
             To<CSSPrimitiveValue>(pair.First()).GetIntValue());
         symbols_.push_back(SymbolToString(pair.Second()));
       }
     } else {
-      for (const auto& symbol : To<CSSValueList>(*rule.GetSymbols())) {
-        symbols_.push_back(SymbolToString(*symbol.Get()));
+      for (const CSSValue* symbol : To<CSSValueList>(*rule.GetSymbols())) {
+        symbols_.push_back(SymbolToString(*symbol));
       }
     }
   }

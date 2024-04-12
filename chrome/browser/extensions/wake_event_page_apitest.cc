@@ -33,7 +33,7 @@ namespace {
 //
 // Expects a single string replacement of the "background" property, including
 // trailing comma, or nothing if there is no background page.
-constexpr char kManifestJson[] =
+const char* kManifestJson =
     "{\n"
     "  %s\n"
     "  'content_scripts': [{\n"

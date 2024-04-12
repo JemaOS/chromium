@@ -21,19 +21,13 @@ LocalBinaryUploadServiceFactory::GetForProfile(Profile* profile) {
 // static
 LocalBinaryUploadServiceFactory*
 LocalBinaryUploadServiceFactory::GetInstance() {
-  static base::NoDestructor<LocalBinaryUploadServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<LocalBinaryUploadServiceFactory>::get();
 }
 
 LocalBinaryUploadServiceFactory::LocalBinaryUploadServiceFactory()
     : ProfileKeyedServiceFactory(
           "LocalBinaryUploadService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(enterprise_signals::SystemSignalsServiceHostFactory::GetInstance());
 }
 

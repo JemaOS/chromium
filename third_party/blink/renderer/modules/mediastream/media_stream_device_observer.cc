@@ -126,7 +126,7 @@ void MediaStreamDeviceObserver::OnDeviceChanged(
     // time as the underlying media device is unplugged from the system.
     return;
   }
-  // OnDeviceChanged cannot only happen in combination with getAllScreensMedia,
+  // OnDeviceChanged cannot only happen in combination with getDisplayMediaSet,
   // which is the only API that handles multiple streams at once.
   DCHECK_EQ(1u, it->value.size());
 
@@ -214,7 +214,7 @@ void MediaStreamDeviceObserver::OnDeviceCaptureHandleChange(
     return;
   }
   // OnDeviceCaptureHandleChange cannot only happen in combination with
-  // getAllScreensMedia, which is the only API that handles multiple streams
+  // getDisplayMediaSet, which is the only API that handles multiple streams
   // at once.
   DCHECK_EQ(1u, it->value.size());
 
@@ -222,36 +222,6 @@ void MediaStreamDeviceObserver::OnDeviceCaptureHandleChange(
   if (stream->on_device_capture_handle_change_cb) {
     stream->on_device_capture_handle_change_cb.Run(device);
   }
-}
-
-void MediaStreamDeviceObserver::OnZoomLevelChange(
-    const String& label,
-    const MediaStreamDevice& device,
-    int zoom_level) {
-  DVLOG(1) << __func__ << " label=" << label << " device_id=" << device.id;
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  CHECK_GT(zoom_level, 0);
-
-  auto it = label_stream_map_.find(label);
-  if (it == label_stream_map_.end()) {
-    return;
-  }
-
-  Vector<Stream>& streams = it->value;
-  if (streams.size() != 1u) {
-    return;
-  }
-
-  Stream* stream = &streams[0];
-  if (!stream) {
-    return;
-  }
-
-  if (stream->on_zoom_level_change_cb) {
-    stream->on_zoom_level_change_cb.Run(device, zoom_level);
-  }
-#endif
 }
 
 void MediaStreamDeviceObserver::BindMediaStreamDeviceObserverReceiver(
@@ -263,7 +233,14 @@ void MediaStreamDeviceObserver::BindMediaStreamDeviceObserverReceiver(
 void MediaStreamDeviceObserver::AddStreams(
     const String& label,
     const mojom::blink::StreamDevicesSet& stream_devices_set,
-    const WebMediaStreamDeviceObserver::StreamCallbacks& stream_callbacks) {
+    WebMediaStreamDeviceObserver::OnDeviceStoppedCb on_device_stopped_cb,
+    WebMediaStreamDeviceObserver::OnDeviceChangedCb on_device_changed_cb,
+    WebMediaStreamDeviceObserver::OnDeviceRequestStateChangeCb
+        on_device_request_state_change_cb,
+    WebMediaStreamDeviceObserver::OnDeviceCaptureConfigurationChangeCb
+        on_device_capture_configuration_change_cb,
+    WebMediaStreamDeviceObserver::OnDeviceCaptureHandleChangeCb
+        on_device_capture_handle_change_cb) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   Vector<Stream> streams;
@@ -271,17 +248,14 @@ void MediaStreamDeviceObserver::AddStreams(
        stream_devices_set.stream_devices) {
     const mojom::blink::StreamDevices& stream_devices = *stream_devices_ptr;
     Stream stream;
-    stream.on_device_stopped_cb = stream_callbacks.on_device_stopped_cb;
-    stream.on_device_changed_cb = stream_callbacks.on_device_changed_cb;
+    stream.on_device_stopped_cb = on_device_stopped_cb;
+    stream.on_device_changed_cb = on_device_changed_cb;
     stream.on_device_request_state_change_cb =
-        stream_callbacks.on_device_request_state_change_cb;
+        on_device_request_state_change_cb;
     stream.on_device_capture_configuration_change_cb =
-        stream_callbacks.on_device_capture_configuration_change_cb;
+        on_device_capture_configuration_change_cb;
     stream.on_device_capture_handle_change_cb =
-        stream_callbacks.on_device_capture_handle_change_cb;
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-    stream.on_zoom_level_change_cb = stream_callbacks.on_zoom_level_change_cb;
-#endif
+        on_device_capture_handle_change_cb;
     if (stream_devices.audio_device.has_value()) {
       stream.audio_devices.push_back(stream_devices.audio_device.value());
     }

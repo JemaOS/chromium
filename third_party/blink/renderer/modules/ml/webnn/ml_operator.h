@@ -5,8 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_ML_WEBNN_ML_OPERATOR_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_ML_WEBNN_ML_OPERATOR_H_
 
-#include "services/webnn/public/mojom/webnn_graph.mojom-blink.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/bindings/dictionary_base.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
@@ -21,18 +19,35 @@ class MLOperand;
 
 class MODULES_EXPORT MLOperator : public GarbageCollected<MLOperator> {
  public:
-  using OperationSubKind =
-      absl::variant<webnn::mojom::blink::ArgMinMax::Kind,
-                    webnn::mojom::blink::Conv2d::Kind,
-                    webnn::mojom::blink::ElementWiseBinary::Kind,
-                    webnn::mojom::blink::ElementWiseUnary::Kind,
-                    webnn::mojom::blink::Pool2d::Kind,
-                    webnn::mojom::blink::Reduce::Kind,
-                    absl::monostate>;
+  enum class OperatorKind {
+    // Keep the order as the same as build methods of MLGraphBuilder.
+    kClamp,
+    kConcat,
+    kConv2d,
+    kConvTranspose2d,
+    kAdd,
+    kSub,
+    kMul,
+    kDiv,
+    kLeakyRelu,
+    kMax,
+    kMin,
+    kElu,
+    kGemm,
+    kHardSwish,
+    kAveragePool2d,
+    kMaxPool2d,
+    kPad,
+    kPRelu,
+    kRelu,
+    kReshape,
+    kResample2d,
+    kSoftmax,
+    kSigmoid,
+    kTranspose
+  };
 
-  static String OperatorKindToString(
-      webnn::mojom::blink::Operation::Tag kind,
-      OperationSubKind sub_kind = absl::monostate{});
+  static String OperatorKindToString(MLOperator::OperatorKind kind);
 
   // It is safe for a caller, usually a MLGraphBuidler operation build method,
   // that passes the reference of the options dictionary argument received from
@@ -47,29 +62,21 @@ class MODULES_EXPORT MLOperator : public GarbageCollected<MLOperator> {
   // MLConv2dOptions::FillMembersFromV8Object, before passing it to a
   // MLGraphBuilder operation build method.
   MLOperator(MLGraphBuilder* builder,
-             webnn::mojom::blink::Operation::Tag kind,
-             OperationSubKind sub_kind = absl::monostate{},
+             OperatorKind kind,
              const bindings::DictionaryBase* options = nullptr);
 
   MLOperator(const MLOperator&) = delete;
   MLOperator& operator=(const MLOperator&) = delete;
 
-  virtual ~MLOperator();
+  ~MLOperator();
 
   void Trace(Visitor* visitor) const;
 
-  webnn::mojom::blink::Operation::Tag Kind() const;
-  OperationSubKind SubKind() const;
-  template <typename MojomKind>
-  MojomKind SubKind() const {
-    return absl::get<MojomKind>(SubKind());
-  }
-
+  OperatorKind Kind() const;
   const bindings::DictionaryBase* Options() const;
   bool IsConnected() const;
   const HeapVector<Member<const MLOperand>>& Inputs() const;
   const HeapVector<Member<const MLOperand>>& Outputs() const;
-  MLGraphBuilder const* Builder() const { return builder_.Get(); }
 
   // According to WebNN programming model
   // https://www.w3.org/TR/webnn/#programming-model, neural networks are
@@ -82,9 +89,7 @@ class MODULES_EXPORT MLOperator : public GarbageCollected<MLOperator> {
 
  private:
   Member<MLGraphBuilder> builder_;
-  webnn::mojom::blink::Operation::Tag kind_;
-  OperationSubKind sub_kind_;
-
+  OperatorKind kind_;
   // The correct type of options_ depends on OperatorKind. For example, if the
   // OperatorKind is kClamp, options_ could static_cast to MLClampOptions.
   Member<const bindings::DictionaryBase> options_;
@@ -94,64 +99,6 @@ class MODULES_EXPORT MLOperator : public GarbageCollected<MLOperator> {
   bool is_connected_{false};
   HeapVector<Member<const MLOperand>> inputs_;
   HeapVector<Member<const MLOperand>> outputs_;
-};
-
-// TODO: crbug.com/325612086 - Remove all these subclasses. This information
-// should all be contained within the respective mojo Operation struct.
-
-class MODULES_EXPORT MLConcatOperator : public MLOperator {
- public:
-  MLConcatOperator(MLGraphBuilder* builder, const uint32_t axis);
-
-  MLConcatOperator(const MLConcatOperator&) = delete;
-  MLConcatOperator& operator=(const MLConcatOperator&) = delete;
-
-  ~MLConcatOperator() override;
-
-  uint32_t Axis() const;
-
- private:
-  uint32_t axis_;
-};
-
-class MODULES_EXPORT MLLstmOperator : public MLOperator {
- public:
-  MLLstmOperator(MLGraphBuilder* builder,
-                 uint32_t steps,
-                 uint32_t hidden_size,
-                 const bindings::DictionaryBase* options);
-
-  MLLstmOperator(const MLLstmOperator&) = delete;
-  MLLstmOperator& operator=(const MLLstmOperator&) = delete;
-
-  ~MLLstmOperator() override;
-
-  uint32_t steps() const;
-  uint32_t hidden_size() const;
-
- private:
-  uint32_t steps_;
-  uint32_t hidden_size_;
-};
-
-class MODULES_EXPORT MLGruOperator : public MLOperator {
- public:
-  MLGruOperator(MLGraphBuilder* builder,
-                uint32_t steps,
-                uint32_t hidden_size,
-                const bindings::DictionaryBase* options);
-
-  MLGruOperator(const MLGruOperator&) = delete;
-  MLGruOperator& operator=(const MLGruOperator&) = delete;
-
-  ~MLGruOperator() override;
-
-  uint32_t steps() const { return steps_; }
-  uint32_t hidden_size() const { return hidden_size_; }
-
- private:
-  uint32_t steps_;
-  uint32_t hidden_size_;
 };
 
 class MODULES_EXPORT MLPadOperator : public MLOperator {
@@ -164,7 +111,7 @@ class MODULES_EXPORT MLPadOperator : public MLOperator {
   MLPadOperator(const MLPadOperator&) = delete;
   MLPadOperator& operator=(const MLPadOperator&) = delete;
 
-  ~MLPadOperator() override;
+  ~MLPadOperator();
 
   const Vector<uint32_t>& BeginningPadding() const;
   const Vector<uint32_t>& EndingPadding() const;
@@ -172,49 +119,6 @@ class MODULES_EXPORT MLPadOperator : public MLOperator {
  private:
   Vector<uint32_t> beginning_padding_;
   Vector<uint32_t> ending_padding_;
-};
-
-class MODULES_EXPORT MLSliceOperator : public MLOperator {
- public:
-  MLSliceOperator(MLGraphBuilder* builder,
-                  const Vector<uint32_t>& beginning_padding,
-                  const Vector<uint32_t>& ending_padding);
-
-  MLSliceOperator(const MLSliceOperator&) = delete;
-  MLSliceOperator& operator=(const MLSliceOperator&) = delete;
-
-  ~MLSliceOperator() override;
-
-  const Vector<uint32_t>& Starts() const;
-  const Vector<uint32_t>& Sizes() const;
-
- private:
-  Vector<uint32_t> starts_;
-  Vector<uint32_t> sizes_;
-};
-
-class MODULES_EXPORT MLSplitOperator : public MLOperator {
- public:
-  MLSplitOperator(MLGraphBuilder* builder,
-                  const uint32_t splits,
-                  const bindings::DictionaryBase* options = nullptr);
-  MLSplitOperator(MLGraphBuilder* builder,
-                  const Vector<uint32_t>& splits,
-                  const bindings::DictionaryBase* options = nullptr);
-
-  MLSplitOperator(const MLSplitOperator&) = delete;
-  MLSplitOperator& operator=(const MLSplitOperator&) = delete;
-
-  ~MLSplitOperator() override;
-
-  bool IsEvenSplit() const;
-  uint32_t SplitNumber() const;
-  const Vector<uint32_t>& SplitSizes() const;
-
- private:
-  bool is_even_split_;
-  uint32_t split_number_;
-  Vector<uint32_t> split_sizes_;
 };
 }  // namespace blink
 

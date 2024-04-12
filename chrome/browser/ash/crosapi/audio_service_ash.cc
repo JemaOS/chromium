@@ -13,6 +13,8 @@
 
 namespace crosapi {
 
+// TODO: Add unit tests for AudioServiceAsh (b/235565865).
+
 AudioServiceAsh::Observer::Observer() = default;
 AudioServiceAsh::Observer::~Observer() = default;
 
@@ -54,9 +56,12 @@ AudioServiceAsh::AudioServiceAsh() = default;
 AudioServiceAsh::~AudioServiceAsh() = default;
 
 void AudioServiceAsh::Initialize(Profile* profile) {
-  CHECK(profile);
+  DCHECK(profile);
   if (stable_id_calculator_) {
-    VLOG(1) << "AudioServiceAsh is already initialized. Skip init.";
+    // TODO: investigate why crosapi ash object inits are called more than once.
+    // (b/235203815)
+    LOG(WARNING)
+        << "AudioServiceAsh was already initialized. Not initializing again.";
     return;
   }
 
@@ -82,7 +87,7 @@ void AudioServiceAsh::GetDevices(mojom::DeviceFilterPtr filter,
   auto extapi_callback = base::BindOnce(
       [](GetDevicesCallback crosapi_callback, bool success,
          std::vector<extensions::api::audio::AudioDeviceInfo> devices_src) {
-        std::optional<std::vector<mojom::AudioDeviceInfoPtr>> result;
+        absl::optional<std::vector<mojom::AudioDeviceInfoPtr>> result;
 
         if (success) {
           result.emplace();  // construct empty vector in-place

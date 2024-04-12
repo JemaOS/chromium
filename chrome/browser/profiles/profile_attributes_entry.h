@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/containers/flat_set.h"
@@ -18,6 +17,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "base/values.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/image/image.h"
 
@@ -36,15 +36,6 @@ enum class NameForm {
   kGaiaName,
   kLocalName,
   kGaiaAndLocalName,
-};
-
-struct ProfileManagementOicdTokens {
-  std::string auth_token;
-  std::string id_token;
-
-  bool operator==(const ProfileManagementOicdTokens& other) const {
-    return auth_token == other.auth_token && id_token == other.id_token;
-  }
 };
 
 class ProfileAttributesEntry {
@@ -142,9 +133,6 @@ class ProfileAttributesEntry {
   bool IsUsingDefaultAvatar() const;
   // Indicates that profile was signed in through native OS credential provider.
   bool IsSignedInWithCredentialProvider() const;
-  // Returns true if the profile is managed by a third party identity that is
-  // not sync-ed to Google (i.e dasher-based).
-  bool IsDasherlessManagement() const;
   // Returns the index of the default icon used by the profile.
   size_t GetAvatarIconIndex() const;
   // Returns the colors specified by the profile theme, or default colors if no
@@ -152,7 +140,7 @@ class ProfileAttributesEntry {
   ProfileThemeColors GetProfileThemeColors() const;
   // Returns the colors specified by the profile theme, or empty if no theme is
   // set for the profile.
-  std::optional<ProfileThemeColors> GetProfileThemeColorsIfSet() const;
+  absl::optional<ProfileThemeColors> GetProfileThemeColorsIfSet() const;
   // Returns the metrics bucket this profile should be recorded in.
   // Note: The bucket index is assigned once and remains the same all time. 0 is
   // reserved for the guest profile.
@@ -166,11 +154,6 @@ class ProfileAttributesEntry {
 
   // Returns the enrollment token to get policies for a profile.
   std::string GetProfileManagementEnrollmentToken() const;
-
-  // Returns the Oauth token and Id token from the OIDC authentication response
-  // that created the profile. The existence of these tokens are also used to
-  // check whether the profile is created by an OIDC authentication response.
-  ProfileManagementOicdTokens GetProfileManagementOidcTokens() const;
 
   // Returns the signin id for a profile managed by a token. This may be empty
   // even if there is an enrollment token.
@@ -200,7 +183,6 @@ class ProfileAttributesEntry {
   void SetLastDownloadedGAIAPictureUrlWithSize(
       const std::string& image_url_with_size);
   void SetSignedInWithCredentialProvider(bool value);
-  void SetDasherlessManagement(bool value);
   // Only non-omitted profiles can be set as non-ephemeral. It's the
   // responsibility of the caller to make sure that the entry is set as
   // non-ephemeral only if prefs::kForceEphemeralProfiles is false.
@@ -209,16 +191,14 @@ class ProfileAttributesEntry {
   bool UserAcceptedAccountManagement() const;
   void SetIsUsingDefaultAvatar(bool value);
   void SetAvatarIconIndex(size_t icon_index);
-  // std::nullopt resets colors to default.
-  void SetProfileThemeColors(const std::optional<ProfileThemeColors>& colors);
+  // absl::nullopt resets colors to default.
+  void SetProfileThemeColors(const absl::optional<ProfileThemeColors>& colors);
 
   // Unlike for other string setters, the argument is expected to be UTF8
   // encoded.
   void SetHostedDomain(std::string hosted_domain);
 
   void SetProfileManagementEnrollmentToken(const std::string& enrollment_token);
-  void SetProfileManagementOidcTokens(
-      const ProfileManagementOicdTokens& oidc_tokens);
   void SetProfileManagementId(const std::string& id);
 
   void SetAuthInfo(const std::string& gaia_id,
@@ -256,6 +236,7 @@ class ProfileAttributesEntry {
 
  private:
   friend class ProfileAttributesStorage;
+  friend class ProfileThemeUpdateServiceBrowserTest;
   FRIEND_TEST_ALL_PREFIXES(ProfileAttributesStorageTest,
                            EntryInternalAccessors);
   FRIEND_TEST_ALL_PREFIXES(ProfileAttributesStorageTest, ProfileActiveTime);
@@ -319,8 +300,8 @@ class ProfileAttributesEntry {
   int GetInteger(const char* key) const;
 
   // Internal getter that returns one of the profile theme colors or
-  // std::nullopt if the key is not present.
-  std::optional<SkColor> GetProfileThemeColor(const char* key) const;
+  // absl::nullopt if the key is not present.
+  absl::optional<SkColor> GetProfileThemeColor(const char* key) const;
 
   // Type checking. Only IsDouble is implemented because others do not have
   // callsites.

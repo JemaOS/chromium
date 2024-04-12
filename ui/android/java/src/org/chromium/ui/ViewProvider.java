@@ -13,7 +13,9 @@ import org.chromium.base.Callback;
  * @param <T> The view type.
  */
 public interface ViewProvider<T> {
-    /** Starts inflating the view. */
+    /**
+     * Starts inflating the view.
+     */
     void inflate();
 
     /**

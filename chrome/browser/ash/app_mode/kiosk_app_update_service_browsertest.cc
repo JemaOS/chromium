@@ -25,7 +25,6 @@
 #include "base/task/thread_pool.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_path_override.h"
-#include "base/test/test_future.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
 #include "chrome/browser/apps/platform_apps/app_browsertest_util.h"
@@ -44,8 +43,6 @@
 #include "extensions/test/extension_test_message_listener.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-using base::test::TestFuture;
-
 namespace ash {
 
 namespace {
@@ -54,9 +51,9 @@ namespace {
 constexpr base::TimeDelta kAutomaticRebootManagerInitTimeout =
     base::Seconds(60);
 
-// Blocks until `manager` is initialized and then sets `success_out` to true and
-// runs `quit_closure`. If initialization does not occur within `timeout`, sets
-// `success_out` to false and runs `quit_closure`.
+// Blocks until |manager| is initialized and then sets |success_out| to true and
+// runs |quit_closure|. If initialization does not occur within |timeout|, sets
+// |success_out| to false and runs |quit_closure|.
 void WaitForAutomaticRebootManagerInit(system::AutomaticRebootManager* manager,
                                        const base::TimeDelta& timeout,
                                        base::OnceClosure quit_closure,
@@ -90,8 +87,8 @@ class KioskAppUpdateServiceTest
         base::NumberToString(uptime.InSecondsF());
     const base::FilePath uptime_file = temp_dir.Append("uptime");
     ASSERT_TRUE(base::WriteFile(uptime_file, uptime_seconds));
-    uptime_file_override_ = std::make_unique<base::ScopedPathOverride>(
-        FILE_UPTIME, uptime_file, /*is_absolute=*/false, /*create=*/false);
+    uptime_file_override_ =
+        std::make_unique<base::ScopedPathOverride>(FILE_UPTIME, uptime_file);
   }
 
   void SetUpOnMainThread() override {
@@ -108,7 +105,7 @@ class KioskAppUpdateServiceTest
     automatic_reboot_manager_ =
         g_browser_process->platform_part()->automatic_reboot_manager();
 
-    // Wait for `automatic_reboot_manager_` to finish initializing.
+    // Wait for |automatic_reboot_manager_| to finish initializing.
     bool initialized = false;
     base::RunLoop run_loop;
     base::ThreadPool::PostTask(
@@ -128,8 +125,8 @@ class KioskAppUpdateServiceTest
   // system::AutomaticRebootManagerObserver:
   void OnRebootRequested(
       system::AutomaticRebootManagerObserver::Reason) override {
-    if (test_waiter_) {
-      test_waiter_->SetValue();
+    if (run_loop_) {
+      run_loop_->Quit();
     }
   }
 
@@ -148,27 +145,28 @@ class KioskAppUpdateServiceTest
   void FireUpdatedNeedReboot() {
     update_engine::StatusResult status;
     status.set_current_operation(update_engine::Operation::UPDATED_NEED_REBOOT);
-    test_waiter_ = std::make_unique<TestFuture<void>>();
+    run_loop_ = std::make_unique<base::RunLoop>();
     automatic_reboot_manager_->UpdateStatusChanged(status);
-    EXPECT_TRUE(test_waiter_->Wait());
+    run_loop_->Run();
   }
 
   void RequestPeriodicReboot() {
-    test_waiter_ = std::make_unique<TestFuture<void>>();
+    run_loop_ = std::make_unique<base::RunLoop>();
     g_browser_process->local_state()->SetInteger(prefs::kUptimeLimit,
                                                  base::Hours(2).InSeconds());
-    EXPECT_TRUE(test_waiter_->Wait());
+    run_loop_->Run();
   }
 
  private:
   base::ScopedTempDir temp_dir_;
   std::unique_ptr<base::ScopedPathOverride> uptime_file_override_;
-  raw_ptr<const extensions::Extension> app_ = nullptr;  // Not owned.
-  raw_ptr<KioskAppUpdateService, DanglingUntriaged> update_service_ =
+  raw_ptr<const extensions::Extension, ExperimentalAsh> app_ =
       nullptr;  // Not owned.
-  raw_ptr<system::AutomaticRebootManager, DanglingUntriaged>
+  raw_ptr<KioskAppUpdateService, ExperimentalAsh> update_service_ =
+      nullptr;  // Not owned.
+  raw_ptr<system::AutomaticRebootManager, ExperimentalAsh>
       automatic_reboot_manager_ = nullptr;  // Not owned.
-  std::unique_ptr<TestFuture<void>> test_waiter_;
+  std::unique_ptr<base::RunLoop> run_loop_;
 };
 
 // Verifies that the app is notified a reboot is required when an app update

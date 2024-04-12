@@ -13,9 +13,8 @@
 namespace chromeos {
 
 class PassphraseTextfield : public views::Textfield {
-  METADATA_HEADER(PassphraseTextfield, views::Textfield)
-
  public:
+  METADATA_HEADER(PassphraseTextfield);
   PassphraseTextfield();
 
   // If show_fake is true, then the text field will show a fake password.

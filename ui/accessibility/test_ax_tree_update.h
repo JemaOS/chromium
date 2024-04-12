@@ -35,7 +35,7 @@ struct TestAXTreeUpdateNode final {
   TestAXTreeUpdateNode(ax::mojom::Role role,
                        ax::mojom::State state,
                        const std::vector<TestAXTreeUpdateNode>& children);
-  explicit TestAXTreeUpdateNode(const std::string& text);
+  TestAXTreeUpdateNode(const std::string& text);
 
   AXNodeData data;
   std::vector<TestAXTreeUpdateNode> children;
@@ -48,7 +48,7 @@ struct TestAXTreeUpdateNode final {
 // ++kStaticText "text"
 class TestAXTreeUpdate final : public AXTreeUpdate {
  public:
-  explicit TestAXTreeUpdate(const TestAXTreeUpdateNode& root);
+  TestAXTreeUpdate(const TestAXTreeUpdateNode& root);
 
   // Returns an `AXTreeUpdate` from a tree structure string of the format:
   // ++<id> <role> <name?>="<name>" <state?>=<state_value>,<state_value>
@@ -75,7 +75,7 @@ class TestAXTreeUpdate final : public AXTreeUpdate {
   // - For similar reasons, spaces, '+', '=', commas, and double quotes can't be
   // used as or within node names.
   // Follow up CLs will be made so alleviate these limitations.
-  explicit TestAXTreeUpdate(const std::string& tree_structure);
+  TestAXTreeUpdate(const std::string& tree_structure);
 
   TestAXTreeUpdate(const TestAXTreeUpdate&) = delete;
   TestAXTreeUpdate& operator=(const TestAXTreeUpdate&) = delete;

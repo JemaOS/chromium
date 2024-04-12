@@ -14,20 +14,15 @@
 
 namespace blink {
 
-namespace protocol::Audits {
 class InspectorIssue;
-}  // namespace protocol::Audits
-
 class InspectorIssueStorage;
-class WebAutofillClient;
 
 class CORE_EXPORT InspectorAuditsAgent final
     : public InspectorBaseAgent<protocol::Audits::Metainfo> {
  public:
   explicit InspectorAuditsAgent(InspectorNetworkAgent*,
                                 InspectorIssueStorage*,
-                                InspectedFrames*,
-                                WebAutofillClient*);
+                                InspectedFrames*);
   InspectorAuditsAgent(const InspectorAuditsAgent&) = delete;
   InspectorAuditsAgent& operator=(const InspectorAuditsAgent&) = delete;
   ~InspectorAuditsAgent() override;
@@ -40,9 +35,6 @@ class CORE_EXPORT InspectorAuditsAgent final
   protocol::Response enable() override;
   protocol::Response disable() override;
   protocol::Response checkContrast(protocol::Maybe<bool> report_aaa) override;
-  protocol::Response checkFormsIssues(
-      std::unique_ptr<protocol::Array<protocol::Audits::GenericIssueDetails>>*
-          out_formIssues) override;
 
   void Restore() override;
 
@@ -63,7 +55,6 @@ class CORE_EXPORT InspectorAuditsAgent final
   InspectorAgentState::Boolean enabled_;
   Member<InspectorNetworkAgent> network_agent_;
   Member<InspectedFrames> inspected_frames_;
-  WebAutofillClient* const web_autofill_client_ = nullptr;
 };
 
 }  // namespace blink

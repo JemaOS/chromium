@@ -12,9 +12,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -23,34 +21,28 @@ import android.os.Bundle;
 import android.text.TextUtils;
 
 import org.json.JSONArray;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.robolectric.RuntimeEnvironment;
-import org.robolectric.Shadows;
 import org.robolectric.android.util.concurrent.RoboExecutorService;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.LooperMode;
 import org.robolectric.shadows.ShadowLooper;
-import org.robolectric.shadows.ShadowPackageManager;
 
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.Callback;
-import org.chromium.base.FakeTimeTestRule;
 import org.chromium.base.PathUtils;
-import org.chromium.base.TimeUtils;
 import org.chromium.base.metrics.RecordHistogram;
+import org.chromium.base.metrics.UmaRecorderHolder;
 import org.chromium.base.task.PostTask;
-import org.chromium.base.task.test.BackgroundShadowAsyncTask;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.CallbackHelper;
-import org.chromium.base.test.util.Features;
 import org.chromium.base.test.util.JniMocker;
 import org.chromium.blink.mojom.DisplayMode;
 import org.chromium.chrome.browser.ActivityTabProvider;
@@ -63,8 +55,11 @@ import org.chromium.chrome.browser.browserservices.intents.WebappConstants;
 import org.chromium.chrome.browser.browserservices.intents.WebappIcon;
 import org.chromium.chrome.browser.browserservices.intents.WebappInfo;
 import org.chromium.chrome.browser.browserservices.intents.WebappIntentUtils;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.test.util.browser.Features;
+import org.chromium.chrome.test.util.browser.Features.EnableFeatures;
 import org.chromium.components.embedder_support.util.ShadowUrlUtilities;
 import org.chromium.components.webapk.lib.common.WebApkMetaDataKeys;
 import org.chromium.components.webapps.WebApkDistributor;
@@ -83,23 +78,24 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Observer;
 import java.util.concurrent.TimeoutException;
-
-/** Unit tests for WebApkUpdateManager. */
+import java.util.concurrent.atomic.AtomicBoolean;
+/**
+ * Unit tests for WebApkUpdateManager.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(
-        manifest = Config.NONE,
-        shadows = {ShadowUrlUtilities.class, BackgroundShadowAsyncTask.class})
+@Config(manifest = Config.NONE, shadows = {ShadowUrlUtilities.class})
 @LooperMode(LooperMode.Mode.LEGACY)
+@EnableFeatures(ChromeFeatureList.WEB_APK_UNIQUE_ID)
 public class WebApkUpdateManagerUnitTest {
-    @Mock private Activity mActivityMock;
+    @Rule
+    public MockWebappDataStorageClockRule mClockRule = new MockWebappDataStorageClockRule();
 
-    @Rule public FakeTimeTestRule mClockRule = new FakeTimeTestRule();
+    @Rule
+    public JniMocker mJniMocker = new JniMocker();
 
-    @Rule public JniMocker mJniMocker = new JniMocker();
-
-    @Rule public final TestRule mProcessor = new Features.JUnitProcessor();
+    @Rule
+    public final TestRule mProcessor = new Features.JUnitProcessor();
 
     private static final String WEBAPK_PACKAGE_NAME = "org.chromium.webapk.test_package";
     private static final String UNBOUND_WEBAPK_PACKAGE_NAME = "com.webapk.test_package";
@@ -120,8 +116,6 @@ public class WebApkUpdateManagerUnitTest {
     private static final int ORIENTATION = ScreenOrientationLockType.DEFAULT;
     private static final long THEME_COLOR = 1L;
     private static final long BACKGROUND_COLOR = 2L;
-    private static final long DARK_THEME_COLOR = 3L;
-    private static final long DARK_BACKGROUND_COLOR = 4L;
     private static final int DEFAULT_BACKGROUND_COLOR = 3;
     private static final String SHARE_TARGET_ACTION = "/share_action.html";
     private static final String SHARE_TARGET_PARAM_TITLE = "share_params_title";
@@ -130,19 +124,15 @@ public class WebApkUpdateManagerUnitTest {
     private static final String SHARE_TARGET_ENC_TYPE_MULTIPART = "multipart/form-data";
     private static final String[] SHARE_TARGET_FILE_NAMES = new String[] {"file_1", "file_2"};
     private static final String[][] SHARE_TARGET_ACCEPTS =
-            new String[][] {
-                new String[] {"file_1_accept_1", "file_1_accept_2"},
-                new String[] {"file_2_accept_2", "file_2_accept_2"}
-            };
+            new String[][] {new String[] {"file_1_accept_1", "file_1_accept_2"},
+                    new String[] {"file_2_accept_2", "file_2_accept_2"}};
 
     /** Different values than the ones used in {@link defaultManifestData()}. */
     private static final String DIFFERENT_NAME = "Different Name";
-
     private static final int DIFFERENT_BACKGROUND_COLOR = 42;
 
     /** The histograms involved in showing the App Identity update dialog. */
     private static final String HISTOGRAM_NOT_SHOWING = "Webapp.AppIdentityDialog.NotShowing";
-
     private static final String HISTOGRAM_SHOWING = "Webapp.AppIdentityDialog.Showing";
     private static final String HISTOGRAM_PRE_APPROVED = "Webapp.AppIdentityDialog.AlreadyApproved";
 
@@ -169,44 +159,18 @@ public class WebApkUpdateManagerUnitTest {
         }
 
         @Override
-        public void storeWebApkUpdateRequestToFile(
-                String updateRequestPath,
-                String startUrl,
-                String scope,
-                String name,
-                String shortName,
-                boolean hasCustomName,
-                String manifestId,
-                String appKey,
-                String primaryIconUrl,
-                byte[] primaryIconData,
-                boolean isPrimaryIconMaskable,
-                String splashIconUrl,
-                byte[] splashIconData,
-                boolean isSplashIconMaskable,
-                String[] iconUrls,
-                String[] iconHashes,
-                @DisplayMode.EnumType int displayMode,
-                int orientation,
-                long themeColor,
-                long backgroundColor,
-                long darkThemeColor,
-                long darkBackgroundColor,
-                String shareTargetAction,
-                String shareTargetParamTitle,
-                String shareTargetParamText,
-                boolean shareTargetParamIsMethodPost,
-                boolean shareTargetParamIsEncTypeMultipart,
-                String[] shareTargetParamFileNames,
-                Object[] shareTargetParamAccepts,
-                String[][] shortcuts,
-                byte[][] shortcutIconData,
-                String manifestUrl,
-                String webApkPackage,
-                int webApkVersion,
-                boolean isManifestStale,
-                boolean isAppIdentityUpdateSupported,
-                int[] updateReasons,
+        public void storeWebApkUpdateRequestToFile(String updateRequestPath, String startUrl,
+                String scope, String name, String shortName, String manifestId, String appKey,
+                String primaryIconUrl, String primaryIconData, boolean isPrimaryIconMaskable,
+                String splashIconUrl, String splashIconData, boolean isSplashIconMaskable,
+                String[] iconUrls, String[] iconHashes, @DisplayMode.EnumType int displayMode,
+                int orientation, long themeColor, long backgroundColor, String shareTargetAction,
+                String shareTargetParamTitle, String shareTargetParamText,
+                boolean shareTargetParamIsMethodPost, boolean shareTargetParamIsEncTypeMultipart,
+                String[] shareTargetParamFileNames, Object[] shareTargetParamAccepts,
+                String[][] shortcuts, byte[][] shortcutIconData, String manifestUrl,
+                String webApkPackage, int webApkVersion, boolean isManifestStale,
+                boolean isAppIdentityUpdateSupported, int[] updateReasons,
                 Callback<Boolean> callback) {}
 
         @Override
@@ -233,16 +197,14 @@ public class WebApkUpdateManagerUnitTest {
          * run, all App Identity update dialogs will be pre-approved (without showing).
          */
         private boolean mNameUpdatesEnabled;
-
         private boolean mIconUpdatesEnabled;
 
-        public TestWebApkUpdateManager(Activity activity) {
-            this(activity, /* nameUpdatesEnabled= */ false, /* iconUpdatesEnabled= */ false);
+        public TestWebApkUpdateManager() {
+            this(/* nameUpdatesEnabled= */ false, /* iconUpdatesEnabled= */ false);
         }
 
-        public TestWebApkUpdateManager(
-                Activity activity, boolean nameUpdatesEnabled, boolean iconUpdatesEnabled) {
-            this(activity, buildMockTabProvider(), Mockito.mock(ActivityLifecycleDispatcher.class));
+        public TestWebApkUpdateManager(boolean nameUpdatesEnabled, boolean iconUpdatesEnabled) {
+            this(buildMockTabProvider(), Mockito.mock(ActivityLifecycleDispatcher.class));
             mNameUpdatesEnabled = nameUpdatesEnabled;
             mIconUpdatesEnabled = iconUpdatesEnabled;
         }
@@ -254,24 +216,28 @@ public class WebApkUpdateManagerUnitTest {
             return tabProvider;
         }
 
-        private TestWebApkUpdateManager(
-                Activity activity,
-                ActivityTabProvider tabProvider,
+        private TestWebApkUpdateManager(ActivityTabProvider tabProvider,
                 ActivityLifecycleDispatcher activityLifecycleDispatcher) {
-            super(activity, tabProvider, activityLifecycleDispatcher);
+            super(tabProvider, activityLifecycleDispatcher);
         }
 
-        /** Returns whether the is-update-needed check has been triggered. */
+        /**
+         * Returns whether the is-update-needed check has been triggered.
+         */
         public boolean updateCheckStarted() {
             return mFetcher != null && mFetcher.wasStarted();
         }
 
-        /** Returns whether an update has been requested. */
+        /**
+         * Returns whether an update has been requested.
+         */
         public boolean updateRequested() {
             return mStoreUpdateRequestCallback != null;
         }
 
-        /** Returns the "name" from the requested update. Null if an update has not been requested. */
+        /**
+         * Returns the "name" from the requested update. Null if an update has not been requested.
+         */
         public String requestedUpdateName() {
             return mUpdateName;
         }
@@ -311,33 +277,9 @@ public class WebApkUpdateManagerUnitTest {
             boolean expectNameChange = mNameUpdatesEnabled && (shortNameChanging || nameChanging);
             boolean expectIconChange = mIconUpdatesEnabled && iconChanging;
 
-            super.onUserApprovedUpdate(
-                    expectNameChange || expectIconChange
+            super.onUserApprovedUpdate(expectNameChange || expectIconChange
                             ? DialogDismissalCause.POSITIVE_BUTTON_CLICKED
                             : DialogDismissalCause.NEGATIVE_BUTTON_CLICKED);
-        }
-
-        @Override
-        protected void encodeIconsInBackground(
-                String updateRequestPath,
-                WebappInfo info,
-                String primaryIconUrl,
-                String splashIconUrl,
-                boolean isManifestStale,
-                boolean isAppIdentityUpdateSupported,
-                List<Integer> updateReasons,
-                Callback<Boolean> callback) {
-            storeWebApkUpdateRequestToFile(
-                    updateRequestPath,
-                    info,
-                    primaryIconUrl,
-                    new byte[] {},
-                    splashIconUrl,
-                    new byte[] {},
-                    isManifestStale,
-                    isAppIdentityUpdateSupported,
-                    updateReasons,
-                    callback);
         }
 
         @Override
@@ -347,16 +289,10 @@ public class WebApkUpdateManagerUnitTest {
         }
 
         @Override
-        protected void storeWebApkUpdateRequestToFile(
-                String updateRequestPath,
-                WebappInfo info,
-                String primaryIconUrl,
-                byte[] primaryIconData,
-                String splashIconUrl,
-                byte[] splashIconData,
-                boolean isManifestStale,
-                boolean isAppIdentityUpdateSupported,
-                List<Integer> updateReasons,
+        protected void storeWebApkUpdateRequestToFile(String updateRequestPath, WebappInfo info,
+                String primaryIconUrl, String primaryIconData, String splashIconUrl,
+                String splashIconData, boolean isManifestStale,
+                boolean isAppIdentityUpdateSupported, List<Integer> updateReasons,
                 Callback<Boolean> callback) {
             mStoreUpdateRequestCallback = callback;
             mUpdateName = info.name();
@@ -376,7 +312,6 @@ public class WebApkUpdateManagerUnitTest {
         public String scopeUrl;
         public String name;
         public String shortName;
-        public boolean hasCustomName;
         public String id;
         public String appKey;
         public Map<String, String> iconUrlToMurmur2HashMap;
@@ -386,8 +321,6 @@ public class WebApkUpdateManagerUnitTest {
         public int orientation;
         public long themeColor;
         public long backgroundColor;
-        public long darkThemeColor;
-        public long darkBackgroundColor;
         public int defaultBackgroundColor;
         public String shareTargetAction;
         public String shareTargetParamTitle;
@@ -418,40 +351,44 @@ public class WebApkUpdateManagerUnitTest {
         }
     }
 
-    private void registerStorageForWebApkPackage(String webApkPackageName) throws Exception {
+    private void registerStorageForWebApkPackage(String webApkPackageName) {
         try {
+            // AtomicBoolean because Java requires |registered| to be final.
+            final AtomicBoolean registered = new AtomicBoolean();
             CallbackHelper helper = new CallbackHelper();
-            WebappRegistry.getInstance()
-                    .register(
-                            WebappIntentUtils.getIdForWebApkPackage(webApkPackageName),
-                            new WebappRegistry.FetchWebappDataStorageCallback() {
-                                @Override
-                                public void onWebappDataStorageRetrieved(
-                                        WebappDataStorage storage) {
-                                    helper.notifyCalled();
-                                }
-                            });
-            BackgroundShadowAsyncTask.runBackgroundTasks();
-            ShadowLooper.runUiThreadTasks();
-
+            WebappRegistry.getInstance().register(
+                    WebappIntentUtils.getIdForWebApkPackage(webApkPackageName),
+                    new WebappRegistry.FetchWebappDataStorageCallback() {
+                        @Override
+                        public void onWebappDataStorageRetrieved(WebappDataStorage storage) {
+                            registered.set(true);
+                            helper.notifyCalled();
+                        }
+                    });
+            boolean registeredOnTime = registered.get();
             helper.waitForFirst();
+            // Assert here instead of in WebappRegistry callback because asserting in the callback
+            // does not fail the test. Wait till the callback is called to fail the test in order
+            // to get the stacktrace.
+            assertTrue("WebappRegistry should be synchronous", registeredOnTime);
         } catch (TimeoutException e) {
             fail();
         }
     }
 
     private static WebappDataStorage getStorage(String packageName) {
-        return WebappRegistry.getInstance()
-                .getWebappDataStorage(WebappIntentUtils.getIdForWebApkPackage(packageName));
+        return WebappRegistry.getInstance().getWebappDataStorage(
+                WebappIntentUtils.getIdForWebApkPackage(packageName));
     }
 
     /**
-     * Create a WebAPK metadata bundle from ManifestData.
-     *
-     * @param manifestData <meta-data> values for WebAPK's Android Manifest.
+     * Registers WebAPK with default package name. Overwrites previous registrations.
+     * @param packageName         Package name for which to register the WebApk.
+     * @param manifestData        <meta-data> values for WebAPK's Android Manifest.
      * @param shellApkVersionCode WebAPK's version of the //chrome/android/webapk/shell_apk code.
      */
-    private Bundle createWebApkMetadata(ManifestData manifestData, int shellApkVersionCode) {
+    private void registerWebApk(
+            String packageName, ManifestData manifestData, int shellApkVersionCode) {
         Bundle metaData = new Bundle();
         metaData.putInt(WebApkMetaDataKeys.SHELL_APK_VERSION, shellApkVersionCode);
         metaData.putString(WebApkMetaDataKeys.START_URL, manifestData.startUrl);
@@ -460,11 +397,7 @@ public class WebApkUpdateManagerUnitTest {
         metaData.putString(WebApkMetaDataKeys.SHORT_NAME, manifestData.shortName);
         metaData.putString(WebApkMetaDataKeys.THEME_COLOR, manifestData.themeColor + "L");
         metaData.putString(WebApkMetaDataKeys.BACKGROUND_COLOR, manifestData.backgroundColor + "L");
-        metaData.putString(WebApkMetaDataKeys.DARK_THEME_COLOR, manifestData.darkThemeColor + "L");
-        metaData.putString(
-                WebApkMetaDataKeys.DARK_BACKGROUND_COLOR, manifestData.darkBackgroundColor + "L");
-        metaData.putInt(
-                WebApkMetaDataKeys.DEFAULT_BACKGROUND_COLOR_ID,
+        metaData.putInt(WebApkMetaDataKeys.DEFAULT_BACKGROUND_COLOR_ID,
                 FakeDefaultBackgroundColorResource.ID);
         metaData.putString(WebApkMetaDataKeys.WEB_MANIFEST_URL, WEB_MANIFEST_URL);
         metaData.putString(WebApkMetaDataKeys.WEB_MANIFEST_ID, manifestData.id);
@@ -481,19 +414,7 @@ public class WebApkUpdateManagerUnitTest {
         iconUrlsAndIconMurmur2Hashes = iconUrlsAndIconMurmur2Hashes.trim();
         metaData.putString(
                 WebApkMetaDataKeys.ICON_URLS_AND_ICON_MURMUR2_HASHES, iconUrlsAndIconMurmur2Hashes);
-        return metaData;
-    }
 
-    /**
-     * Registers WebAPK with default package name. Overwrites previous registrations.
-     *
-     * @param packageName Package name for which to register the WebApk.
-     * @param manifestData <meta-data> values for WebAPK's Android Manifest.
-     * @param shellApkVersionCode WebAPK's version of the //chrome/android/webapk/shell_apk code.
-     */
-    private void registerWebApk(
-            String packageName, ManifestData manifestData, int shellApkVersionCode) {
-        Bundle metadata = createWebApkMetadata(manifestData, shellApkVersionCode);
         Bundle shareTargetMetaData = new Bundle();
         shareTargetMetaData.putString(
                 WebApkMetaDataKeys.SHARE_ACTION, manifestData.shareTargetAction);
@@ -525,9 +446,8 @@ public class WebApkUpdateManagerUnitTest {
         }
 
         WebApkTestHelper.registerWebApkWithMetaData(
-                packageName, metadata, new Bundle[] {shareTargetMetaData});
-        WebApkTestHelper.setResource(
-                packageName,
+                packageName, metaData, new Bundle[] {shareTargetMetaData});
+        WebApkTestHelper.setResource(packageName,
                 new FakeDefaultBackgroundColorResource(manifestData.defaultBackgroundColor));
     }
 
@@ -537,7 +457,6 @@ public class WebApkUpdateManagerUnitTest {
         manifestData.scopeUrl = SCOPE_URL;
         manifestData.name = NAME;
         manifestData.shortName = SHORT_NAME;
-        manifestData.hasCustomName = false;
         manifestData.id = MANIFEST_ID;
         manifestData.appKey = MANIFEST_ID;
 
@@ -550,8 +469,6 @@ public class WebApkUpdateManagerUnitTest {
         manifestData.orientation = ORIENTATION;
         manifestData.themeColor = THEME_COLOR;
         manifestData.backgroundColor = BACKGROUND_COLOR;
-        manifestData.darkThemeColor = DARK_THEME_COLOR;
-        manifestData.darkBackgroundColor = DARK_BACKGROUND_COLOR;
         manifestData.defaultBackgroundColor = DEFAULT_BACKGROUND_COLOR;
         manifestData.shareTargetAction = SHARE_TARGET_ACTION;
         manifestData.shareTargetParamTitle = SHARE_TARGET_PARAM_TITLE;
@@ -559,10 +476,9 @@ public class WebApkUpdateManagerUnitTest {
         manifestData.shareTargetMethod = SHARE_TARGET_METHOD_GET;
         manifestData.shareTargetEncType = SHARE_TARGET_ENC_TYPE_MULTIPART;
         manifestData.shareTargetFileNames = SHARE_TARGET_FILE_NAMES.clone();
-        manifestData.shareTargetFileAccepts =
-                Arrays.stream(SHARE_TARGET_ACCEPTS)
-                        .map(strings -> strings.clone())
-                        .toArray(i -> new String[i][]);
+        manifestData.shareTargetFileAccepts = Arrays.stream(SHARE_TARGET_ACCEPTS)
+                                                      .map(strings -> strings.clone())
+                                                      .toArray(i -> new String[i][]);
         manifestData.shortcuts = new ArrayList<>();
         return manifestData;
     }
@@ -572,55 +488,27 @@ public class WebApkUpdateManagerUnitTest {
         if (manifestData == null) return null;
 
         final String kPackageName = "org.random.webapk";
-        WebApkShareTarget shareTarget =
-                TextUtils.isEmpty(manifestData.shareTargetAction)
-                        ? null
-                        : new WebApkShareTarget(
-                                manifestData.shareTargetAction,
-                                manifestData.shareTargetParamTitle,
-                                null,
-                                manifestData.shareTargetMethod != null
-                                        && manifestData.shareTargetMethod.equals(
-                                                SHARE_TARGET_METHOD_POST),
-                                manifestData.shareTargetEncType != null
-                                        && manifestData.shareTargetEncType.equals(
-                                                SHARE_TARGET_ENC_TYPE_MULTIPART),
-                                manifestData.shareTargetFileNames,
-                                manifestData.shareTargetFileAccepts);
-        return WebApkIntentDataProviderFactory.create(
-                new Intent(),
-                "",
-                manifestData.scopeUrl,
-                new WebappIcon(manifestData.primaryIcon),
-                null,
-                manifestData.name,
-                manifestData.shortName,
-                manifestData.hasCustomName,
-                manifestData.displayMode,
-                manifestData.orientation,
-                -1,
-                manifestData.themeColor,
-                manifestData.backgroundColor,
-                manifestData.darkThemeColor,
-                manifestData.darkBackgroundColor,
-                manifestData.defaultBackgroundColor,
-                /* isPrimaryIconMaskable= */ false,
-                /* isSplashIconMaskable= */ false,
-                kPackageName,
-                -1,
-                WEB_MANIFEST_URL,
-                manifestData.startUrl,
-                manifestData.id,
-                manifestData.appKey,
-                WebApkDistributor.BROWSER,
-                manifestData.iconUrlToMurmur2HashMap,
-                shareTarget,
-                /* forceNavigation= */ false,
-                /* isSplashProvidedByWebApk= */ false,
-                /* shareData= */ null,
-                /* shortcutItems= */ manifestData.shortcuts,
-                /* webApkVersionCode= */ 1,
-                /* lastUpdateTime= */ TimeUtils.currentTimeMillis());
+        WebApkShareTarget shareTarget = TextUtils.isEmpty(manifestData.shareTargetAction)
+                ? null
+                : new WebApkShareTarget(manifestData.shareTargetAction,
+                        manifestData.shareTargetParamTitle, null,
+                        manifestData.shareTargetMethod != null
+                                && manifestData.shareTargetMethod.equals(SHARE_TARGET_METHOD_POST),
+                        manifestData.shareTargetEncType != null
+                                && manifestData.shareTargetEncType.equals(
+                                        SHARE_TARGET_ENC_TYPE_MULTIPART),
+                        manifestData.shareTargetFileNames, manifestData.shareTargetFileAccepts);
+        return WebApkIntentDataProviderFactory.create(new Intent(), "", manifestData.scopeUrl,
+                new WebappIcon(manifestData.primaryIcon), null, manifestData.name,
+                manifestData.shortName, manifestData.displayMode, manifestData.orientation, -1,
+                manifestData.themeColor, manifestData.backgroundColor,
+                manifestData.defaultBackgroundColor, false /* isPrimaryIconMaskable */,
+                false /* isSplashIconMaskable*/, kPackageName, -1, WEB_MANIFEST_URL,
+                manifestData.startUrl, manifestData.id, manifestData.appKey,
+                WebApkDistributor.BROWSER, manifestData.iconUrlToMurmur2HashMap, shareTarget,
+                false /* forceNavigation */, false /* isSplashProvidedByWebApk */,
+                null /* shareData */, manifestData.shortcuts /* shortcutItems */,
+                1 /* webApkVersionCode */);
     }
 
     /**
@@ -628,13 +516,11 @@ public class WebApkUpdateManagerUnitTest {
      * @param color The bitmap color.
      */
     private static Bitmap createBitmap(int color) {
-        int[] colors = {color};
+        int colors[] = {color};
         return Bitmap.createBitmap(colors, 1, 1, Bitmap.Config.ALPHA_8);
     }
 
-    private static void updateIfNeeded(
-            String packageName,
-            WebApkUpdateManager updateManager,
+    private static void updateIfNeeded(String packageName, WebApkUpdateManager updateManager,
             List<WebApkExtras.ShortcutItem> shortcuts) {
         // Use the intent version of {@link WebApkInfo#create()} in order to test default values
         // set by the intent version of {@link WebApkInfo#create()}.
@@ -669,10 +555,8 @@ public class WebApkUpdateManagerUnitTest {
             WebApkUpdateManager updateManager, ManifestData fetchedManifestData) {
         String primaryIconUrl = randomIconUrl(fetchedManifestData);
         String splashIconUrl = randomIconUrl(fetchedManifestData);
-        updateManager.onGotManifestData(
-                intentDataProviderFromManifestData(fetchedManifestData),
-                primaryIconUrl,
-                splashIconUrl);
+        updateManager.onGotManifestData(intentDataProviderFromManifestData(fetchedManifestData),
+                primaryIconUrl, splashIconUrl);
     }
 
     /**
@@ -681,10 +565,8 @@ public class WebApkUpdateManagerUnitTest {
      * @param result The result of the update task. Emulates the proto creation as always
      *               succeeding.
      */
-    private static void tryCompletingUpdate(
-            TestWebApkUpdateManager updateManager,
-            WebappDataStorage storage,
-            @WebApkInstallResult int result) {
+    private static void tryCompletingUpdate(TestWebApkUpdateManager updateManager,
+            WebappDataStorage storage, @WebApkInstallResult int result) {
         // Emulate proto creation as always succeeding.
         Callback<Boolean> storeUpdateRequestCallback =
                 updateManager.getStoreUpdateRequestCallback();
@@ -697,7 +579,7 @@ public class WebApkUpdateManagerUnitTest {
                 TestWebApkUpdateManagerJni.getUpdateCallback();
         if (updateCallback == null) return;
 
-        updateCallback.onResultFromNative(result, /* relaxUpdates= */ false);
+        updateCallback.onResultFromNative(result, false /* relaxUpdates */);
     }
 
     private static void writeRandomTextToFile(String path) {
@@ -718,40 +600,33 @@ public class WebApkUpdateManagerUnitTest {
 
     private boolean checkUpdateNeededForFetchedManifest(
             ManifestData androidManifestData, ManifestData fetchedManifestData) {
-        return checkUpdateNeededForFetchedManifest(
-                androidManifestData,
-                fetchedManifestData,
-                /* nameUpdatesEnabled= */ false,
-                /* iconUpdatesEnabled= */ false);
+        return checkUpdateNeededForFetchedManifest(androidManifestData, fetchedManifestData,
+                /* nameUpdatesEnabled= */ false, /* iconUpdatesEnabled= */ false);
     }
 
     /**
      * Checks whether the WebAPK is updated given data from the WebAPK's Android Manifest and data
      * from the fetched Web Manifest.
      */
-    private boolean checkUpdateNeededForFetchedManifest(
-            ManifestData androidManifestData,
-            ManifestData fetchedManifestData,
-            boolean nameUpdatesEnabled,
+    private boolean checkUpdateNeededForFetchedManifest(ManifestData androidManifestData,
+            ManifestData fetchedManifestData, boolean nameUpdatesEnabled,
             boolean iconUpdatesEnabled) {
         registerWebApk(
                 WEBAPK_PACKAGE_NAME, androidManifestData, REQUEST_UPDATE_FOR_SHELL_APK_VERSION);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
         TestWebApkUpdateManager updateManager =
-                new TestWebApkUpdateManager(mActivityMock, nameUpdatesEnabled, iconUpdatesEnabled);
+                new TestWebApkUpdateManager(nameUpdatesEnabled, iconUpdatesEnabled);
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager, androidManifestData.shortcuts);
         assertTrue(updateManager.updateCheckStarted());
-        updateManager.onGotManifestData(
-                intentDataProviderFromManifestData(fetchedManifestData),
-                fetchedManifestData.primaryIconUrl,
-                null);
+        updateManager.onGotManifestData(intentDataProviderFromManifestData(fetchedManifestData),
+                fetchedManifestData.primaryIconUrl, null);
         return updateManager.updateRequested();
     }
 
     @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+    public void setUp() {
+        UmaRecorderHolder.resetForTesting();
 
         PathUtils.setPrivateDataDirectorySuffix("chrome");
         PostTask.setPrenativeThreadPoolExecutorForTesting(new RoboExecutorService());
@@ -771,15 +646,20 @@ public class WebApkUpdateManagerUnitTest {
         ChromeBackgroundTaskFactory.setAsDefault();
     }
 
+    @After
+    public void tearDown() {
+        PostTask.resetPrenativeThreadPoolExecutorForTesting();
+    }
+
     /**
      * Test that the is-update-needed check is tried the next time that the WebAPK is launched if
      * Chrome is killed prior to the initial URL finishing loading.
      */
     @Test
     public void testCheckOnNextLaunchIfClosePriorToFirstPageLoad() {
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
         {
-            TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+            TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
             updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
             assertTrue(updateManager.updateCheckStarted());
         }
@@ -788,7 +668,7 @@ public class WebApkUpdateManagerUnitTest {
 
         {
             // Relaunching the WebAPK should do an is-update-needed check.
-            TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+            TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
             updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
             assertTrue(updateManager.updateCheckStarted());
             onGotUnchangedWebManifestData(updateManager);
@@ -796,7 +676,7 @@ public class WebApkUpdateManagerUnitTest {
 
         {
             // Relaunching the WebAPK should not do an is-update-needed-check.
-            TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+            TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
             updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
             assertFalse(updateManager.updateCheckStarted());
         }
@@ -810,10 +690,10 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testUpdateNotNeeded() {
-        long initialTime = TimeUtils.currentTimeMillis();
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        long initialTime = mClockRule.currentTimeMillis();
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
         onGotUnchangedWebManifestData(updateManager);
@@ -834,17 +714,16 @@ public class WebApkUpdateManagerUnitTest {
     public void testMarkUpdateAsSucceededIfUpdateNoLongerNeeded() {
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
         storage.updateDidLastWebApkUpdateRequestSucceed(false);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
         onGotUnchangedWebManifestData(updateManager);
         assertFalse(updateManager.updateRequested());
 
         assertTrue(storage.getDidLastWebApkUpdateRequestSucceed());
-        assertEquals(
-                TimeUtils.currentTimeMillis(),
+        assertEquals(mClockRule.currentTimeMillis(),
                 storage.getLastWebApkUpdateRequestCompletionTimeMs());
     }
 
@@ -854,9 +733,9 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testMarkUpdateAsFailedIfClosePriorToUpdateCompleting() {
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
         onGotDifferentData(updateManager);
@@ -867,8 +746,7 @@ public class WebApkUpdateManagerUnitTest {
         // Check {@link WebappDataStorage} state.
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
         assertFalse(storage.getDidLastWebApkUpdateRequestSucceed());
-        assertEquals(
-                TimeUtils.currentTimeMillis(),
+        assertEquals(mClockRule.currentTimeMillis(),
                 storage.getLastWebApkUpdateRequestCompletionTimeMs());
     }
 
@@ -878,10 +756,10 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testPendingUpdateFileDeletedAfterUpdateCompletion() {
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
 
         onGotDifferentData(updateManager);
@@ -903,10 +781,10 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testFileDeletedIfStoreWebApkUpdateRequestToFileFails() {
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
 
         onGotDifferentData(updateManager);
@@ -932,13 +810,11 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testShellApkOutOfDateNoWebManifest() {
-        registerWebApk(
-                WEBAPK_PACKAGE_NAME,
-                defaultManifestData(),
+        registerWebApk(WEBAPK_PACKAGE_NAME, defaultManifestData(),
                 REQUEST_UPDATE_FOR_SHELL_APK_VERSION - 1);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
 
@@ -960,13 +836,11 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testDontRequestUpdateAfterManagerDestroyed() {
-        registerWebApk(
-                WEBAPK_PACKAGE_NAME,
-                defaultManifestData(),
+        registerWebApk(WEBAPK_PACKAGE_NAME, defaultManifestData(),
                 REQUEST_UPDATE_FOR_SHELL_APK_VERSION - 1);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
 
@@ -982,13 +856,11 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testShellApkOutOfDateStillHasWebManifest() {
-        registerWebApk(
-                WEBAPK_PACKAGE_NAME,
-                defaultManifestData(),
+        registerWebApk(WEBAPK_PACKAGE_NAME, defaultManifestData(),
                 REQUEST_UPDATE_FOR_SHELL_APK_VERSION - 1);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
 
@@ -1010,13 +882,10 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testStartUrlRedirectsToPageWithUpdatedWebManifest() {
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager =
-                new TestWebApkUpdateManager(
-                        mActivityMock,
-                        /* nameUpdatesEnabled= */ true,
-                        /* iconUpdatesEnabled= */ false);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(
+                /* nameUpdatesEnabled= */ true, /* iconUpdatesEnabled= */ false);
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
 
@@ -1049,9 +918,9 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testStartUrlRedirectsToPageWithUnchangedWebManifest() {
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
 
         // Update manager times out.
@@ -1070,18 +939,18 @@ public class WebApkUpdateManagerUnitTest {
                 checkUpdateNeededForFetchedManifest(defaultManifestData(), defaultManifestData()));
     }
 
-    /** Test that a webapk with an unexpected package name does not request updates. */
+    /**
+     * Test that a webapk with an unexpected package name does not request updates.
+     */
     @Test
     public void testUnboundWebApkDoesNotUpgrade() {
         ManifestData androidManifestData = defaultManifestData();
 
-        registerWebApk(
-                UNBOUND_WEBAPK_PACKAGE_NAME,
-                androidManifestData,
+        registerWebApk(UNBOUND_WEBAPK_PACKAGE_NAME, androidManifestData,
                 REQUEST_UPDATE_FOR_SHELL_APK_VERSION);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(UNBOUND_WEBAPK_PACKAGE_NAME, updateManager);
         assertFalse(updateManager.updateCheckStarted());
         assertFalse(updateManager.updateRequested());
@@ -1217,12 +1086,8 @@ public class WebApkUpdateManagerUnitTest {
         fetchedData.iconUrlToMurmur2HashMap.put(
                 fetchedData.primaryIconUrl, PRIMARY_ICON_MURMUR2_HASH + "1");
         fetchedData.primaryIcon = createBitmap(Color.BLUE);
-        assertTrue(
-                checkUpdateNeededForFetchedManifest(
-                        defaultManifestData(),
-                        fetchedData,
-                        /* nameUpdatesEnabled= */ false,
-                        /* iconUpdatesEnabled= */ true));
+        assertTrue(checkUpdateNeededForFetchedManifest(defaultManifestData(), fetchedData,
+                /* nameUpdatesEnabled= */ false, /* iconUpdatesEnabled= */ true));
     }
 
     /**
@@ -1236,12 +1101,8 @@ public class WebApkUpdateManagerUnitTest {
         ManifestData fetchedData = defaultManifestData();
         fetchedData.iconUrlToMurmur2HashMap.put("/icon2.png", "22");
         fetchedData.primaryIconUrl = "/icon2.png";
-        assertTrue(
-                checkUpdateNeededForFetchedManifest(
-                        defaultManifestData(),
-                        fetchedData,
-                        /* nameUpdatesEnabled= */ false,
-                        /* iconUpdatesEnabled= */ true));
+        assertTrue(checkUpdateNeededForFetchedManifest(defaultManifestData(), fetchedData,
+                /* nameUpdatesEnabled= */ false, /* iconUpdatesEnabled= */ true));
     }
 
     /**
@@ -1254,7 +1115,7 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void
-            testIconUrlsChangeShouldNotUpgradeIfPrimaryIconUrlAndMonochromeIconUrlDoNotChange() {
+    testIconUrlsChangeShouldNotUpgradeIfPrimaryIconUrlAndMonochromeIconUrlDoNotChange() {
         ManifestData fetchedData = defaultManifestData();
         fetchedData.iconUrlToMurmur2HashMap.put("/icon2.png", null);
         assertFalse(checkUpdateNeededForFetchedManifest(defaultManifestData(), fetchedData));
@@ -1303,12 +1164,8 @@ public class WebApkUpdateManagerUnitTest {
     public void testManifestShortNameChangedShouldUpgrade() {
         ManifestData fetchedData = defaultManifestData();
         fetchedData.shortName = SHORT_NAME + "2";
-        assertTrue(
-                checkUpdateNeededForFetchedManifest(
-                        defaultManifestData(),
-                        fetchedData,
-                        /* nameUpdatesEnabled= */ true,
-                        /* iconUpdatesEnabled= */ false));
+        assertTrue(checkUpdateNeededForFetchedManifest(defaultManifestData(), fetchedData,
+                /* nameUpdatesEnabled= */ true, /* iconUpdatesEnabled= */ false));
     }
 
     /** Test that an upgrade is requested when the Web Manifest 'name' changes. */
@@ -1316,12 +1173,8 @@ public class WebApkUpdateManagerUnitTest {
     public void testManifestNameChangedShouldUpgrade() {
         ManifestData fetchedData = defaultManifestData();
         fetchedData.name = NAME + "2";
-        assertTrue(
-                checkUpdateNeededForFetchedManifest(
-                        defaultManifestData(),
-                        fetchedData,
-                        /* nameUpdatesEnabled= */ true,
-                        /* iconUpdatesEnabled= */ false));
+        assertTrue(checkUpdateNeededForFetchedManifest(defaultManifestData(), fetchedData,
+                /* nameUpdatesEnabled= */ true, /* iconUpdatesEnabled= */ false));
     }
 
     /** Test that an upgrade is requested when the Web Manifest 'display' changes. */
@@ -1361,26 +1214,6 @@ public class WebApkUpdateManagerUnitTest {
         oldData.backgroundColor = 1L;
         ManifestData fetchedData = defaultManifestData();
         fetchedData.backgroundColor = 2L;
-        assertTrue(checkUpdateNeededForFetchedManifest(oldData, fetchedData));
-    }
-
-    /** Test that an upgrade is requested when the Web Manifest 'dark_theme_color' changes. */
-    @Test
-    public void testManifestDarkThemeColorChangedShouldUpgrade() {
-        ManifestData oldData = defaultManifestData();
-        oldData.themeColor = 3L;
-        ManifestData fetchedData = defaultManifestData();
-        fetchedData.themeColor = 4L;
-        assertTrue(checkUpdateNeededForFetchedManifest(oldData, fetchedData));
-    }
-
-    /** Test that an upgrade is requested when the Web Manifest 'dark_background_color' changes. */
-    @Test
-    public void testManifestDarkBackgroundColorChangedShouldUpgrade() {
-        ManifestData oldData = defaultManifestData();
-        oldData.backgroundColor = 4L;
-        ManifestData fetchedData = defaultManifestData();
-        fetchedData.backgroundColor = 5L;
         assertTrue(checkUpdateNeededForFetchedManifest(oldData, fetchedData));
     }
 
@@ -1426,12 +1259,10 @@ public class WebApkUpdateManagerUnitTest {
      */
     @Test
     public void testShellApkOutOfDate() {
-        registerWebApk(
-                WEBAPK_PACKAGE_NAME,
-                defaultManifestData(),
+        registerWebApk(WEBAPK_PACKAGE_NAME, defaultManifestData(),
                 REQUEST_UPDATE_FOR_SHELL_APK_VERSION - 1);
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
 
         // There have not been any update requests for the current ShellAPK version. A WebAPK update
         // should be requested immediately.
@@ -1441,51 +1272,13 @@ public class WebApkUpdateManagerUnitTest {
         assertTrue(updateManager.updateRequested());
         tryCompletingUpdate(updateManager, storage, WebApkInstallResult.FAILURE);
 
-        mClockRule.advanceMillis(1);
+        mClockRule.advance(1);
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertFalse(updateManager.updateCheckStarted());
 
         // A previous update request was made for the current ShellAPK version. A WebAPK update
         // should be requested after the regular delay.
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL - 1);
-        updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
-        assertTrue(updateManager.updateCheckStarted());
-        onGotManifestData(updateManager, defaultManifestData());
-        assertTrue(updateManager.updateRequested());
-    }
-
-    /**
-     * Tests that a WebAPK update is requested if the Shell APK hasn't been updated for a long time
-     * even if is is newer than the requested version.
-     */
-    @Test
-    public void testShellApkOutOfDateInterval() {
-        ShadowPackageManager pm =
-                Shadows.shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
-        PackageInfo packageInfo =
-                WebApkTestHelper.newPackageInfo(
-                        WEBAPK_PACKAGE_NAME,
-                        createWebApkMetadata(
-                                defaultManifestData(), REQUEST_UPDATE_FOR_SHELL_APK_VERSION),
-                        null,
-                        null);
-        packageInfo.lastUpdateTime = TimeUtils.currentTimeMillis();
-        pm.addPackage(packageInfo);
-
-        WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
-
-        // Update is not needed when no manifest change and shell version is the same as
-        // REQUEST_UPDATE_FOR_SHELL_APK_VERSION.
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
-        updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
-        assertTrue(updateManager.updateCheckStarted());
-        onGotManifestData(updateManager, defaultManifestData());
-        assertFalse(updateManager.updateRequested());
-        tryCompletingUpdate(updateManager, storage, WebApkInstallResult.FAILURE);
-
-        // Update is requested when a shell hasn't been updated for a long time.
-        mClockRule.advanceMillis(WebApkUpdateManager.OLD_SHELL_NEEDS_UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL - 1);
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
         onGotManifestData(updateManager, defaultManifestData());
@@ -1500,7 +1293,7 @@ public class WebApkUpdateManagerUnitTest {
     public void testForcedUpdateSuccess() {
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
         storage.setShouldForceUpdate(true);
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
         onGotDifferentData(updateManager);
@@ -1517,7 +1310,7 @@ public class WebApkUpdateManagerUnitTest {
     public void testForcedUpdateNotNeeded() {
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
         storage.setShouldForceUpdate(true);
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
         onGotManifestData(updateManager, defaultManifestData());
@@ -1525,12 +1318,14 @@ public class WebApkUpdateManagerUnitTest {
         assertFalse(storage.shouldForceUpdate());
     }
 
-    /** Tests that a forced update handles failure gracefully. */
+    /**
+     * Tests that a forced update handles failure gracefully.
+     */
     @Test
     public void testForcedUpdateFailure() {
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
         storage.setShouldForceUpdate(true);
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
         onGotDifferentData(updateManager);
@@ -1539,12 +1334,14 @@ public class WebApkUpdateManagerUnitTest {
         assertFalse(storage.shouldForceUpdate());
     }
 
-    /** Tests that a forced update handles failing to retrieve the manifest. */
+    /**
+     * Tests that a forced update handles failing to retrieve the manifest.
+     */
     @Test
     public void testForcedUpdateManifestNotRetrieved() {
         WebappDataStorage storage = getStorage(WEBAPK_PACKAGE_NAME);
         storage.setShouldForceUpdate(true);
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
         onGotManifestData(updateManager, null);
@@ -1552,12 +1349,12 @@ public class WebApkUpdateManagerUnitTest {
         assertFalse(storage.shouldForceUpdate());
     }
 
-    /** Test that WebappDataStorage#setShouldForceUpdate() is a no-op for unbound WebAPKs. */
+    /**
+     * Test that WebappDataStorage#setShouldForceUpdate() is a no-op for unbound WebAPKs.
+     */
     @Test
-    public void testForceUpdateUnboundWebApk() throws Exception {
-        registerWebApk(
-                UNBOUND_WEBAPK_PACKAGE_NAME,
-                defaultManifestData(),
+    public void testForceUpdateUnboundWebApk() {
+        registerWebApk(UNBOUND_WEBAPK_PACKAGE_NAME, defaultManifestData(),
                 REQUEST_UPDATE_FOR_SHELL_APK_VERSION);
         registerStorageForWebApkPackage(UNBOUND_WEBAPK_PACKAGE_NAME);
         WebappDataStorage storage = getStorage(UNBOUND_WEBAPK_PACKAGE_NAME);
@@ -1566,146 +1363,95 @@ public class WebApkUpdateManagerUnitTest {
         storage.setShouldForceUpdate(true);
         assertFalse(storage.shouldForceUpdate());
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(UNBOUND_WEBAPK_PACKAGE_NAME, updateManager);
         assertFalse(updateManager.updateCheckStarted());
         assertFalse(updateManager.updateRequested());
     }
 
-    /** Test that an update is required if a shortcut has been added. */
+    /**
+     * Test that an update is required if a shortcut has been added.
+     */
     @Test
     public void testUpdateIfShortcutIsAdded() {
         ManifestData fetchedData = defaultManifestData();
-        fetchedData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name", "shortName", "launchUrl", "iconUrl", "iconHash", new WebappIcon()));
+        fetchedData.shortcuts.add(new WebApkExtras.ShortcutItem(
+                "name", "shortName", "launchUrl", "iconUrl", "iconHash", new WebappIcon()));
         assertTrue(checkUpdateNeededForFetchedManifest(defaultManifestData(), fetchedData));
     }
 
-    /** Test that an update is required if a shortcut name has been changed. */
+    /**
+     * Test that an update is required if a shortcut name has been changed.
+     */
     @Test
     public void testUpdateIfShortcutHasChangedName() {
         ManifestData androidData = defaultManifestData();
-        androidData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name1",
-                        "shortName",
-                        "launchUrl",
-                        "iconUrl",
-                        "iconHash",
-                        new WebappIcon("appName", 42)));
+        androidData.shortcuts.add(new WebApkExtras.ShortcutItem("name1", "shortName", "launchUrl",
+                "iconUrl", "iconHash", new WebappIcon("appName", 42)));
         ManifestData fetchedData = defaultManifestData();
-        fetchedData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name2",
-                        "shortName",
-                        "launchUrl",
-                        "iconUrl",
-                        "iconHash",
-                        new WebappIcon()));
+        fetchedData.shortcuts.add(new WebApkExtras.ShortcutItem(
+                "name2", "shortName", "launchUrl", "iconUrl", "iconHash", new WebappIcon()));
         assertTrue(checkUpdateNeededForFetchedManifest(androidData, fetchedData));
     }
 
-    /** Test that an update is required if a shortcut short name has been changed. */
+    /**
+     * Test that an update is required if a shortcut short name has been changed.
+     */
     @Test
     public void testUpdateIfShortcutHasChangedShortName() {
         ManifestData androidData = defaultManifestData();
-        androidData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name",
-                        "shortName1",
-                        "launchUrl",
-                        "iconUrl",
-                        "iconHash",
-                        new WebappIcon("appName", 42)));
+        androidData.shortcuts.add(new WebApkExtras.ShortcutItem("name", "shortName1", "launchUrl",
+                "iconUrl", "iconHash", new WebappIcon("appName", 42)));
         ManifestData fetchedData = defaultManifestData();
-        fetchedData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name",
-                        "shortName2",
-                        "launchUrl",
-                        "iconUrl",
-                        "iconHash",
-                        new WebappIcon()));
+        fetchedData.shortcuts.add(new WebApkExtras.ShortcutItem(
+                "name", "shortName2", "launchUrl", "iconUrl", "iconHash", new WebappIcon()));
         assertTrue(checkUpdateNeededForFetchedManifest(androidData, fetchedData));
     }
 
-    /** Test that an update is required if a shortcut launch URL has been changed. */
+    /**
+     * Test that an update is required if a shortcut launch URL has been changed.
+     */
     @Test
     public void testUpdateIfShortcutHasChangedLaunchUrl() {
         ManifestData androidData = defaultManifestData();
-        androidData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name",
-                        "shortName",
-                        "launchUrl1",
-                        "iconUrl",
-                        "iconHash",
-                        new WebappIcon("appName", 42)));
+        androidData.shortcuts.add(new WebApkExtras.ShortcutItem("name", "shortName", "launchUrl1",
+                "iconUrl", "iconHash", new WebappIcon("appName", 42)));
         ManifestData fetchedData = defaultManifestData();
-        fetchedData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name",
-                        "shortName",
-                        "launchUrl2",
-                        "iconUrl",
-                        "iconHash",
-                        new WebappIcon()));
+        fetchedData.shortcuts.add(new WebApkExtras.ShortcutItem(
+                "name", "shortName", "launchUrl2", "iconUrl", "iconHash", new WebappIcon()));
         assertTrue(checkUpdateNeededForFetchedManifest(androidData, fetchedData));
     }
 
-    /** Test that an update is required if a shortcut icon hash has been changed. */
+    /**
+     * Test that an update is required if a shortcut icon hash has been changed.
+     */
     @Test
     public void testUpdateIfShortcutHasChangedIconHash() {
         ManifestData androidData = defaultManifestData();
-        androidData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name",
-                        "shortName",
-                        "launchUrl",
-                        "iconUrl",
-                        "iconHash1",
-                        new WebappIcon("appName", 42)));
+        androidData.shortcuts.add(new WebApkExtras.ShortcutItem("name", "shortName", "launchUrl",
+                "iconUrl", "iconHash1", new WebappIcon("appName", 42)));
         ManifestData fetchedData = defaultManifestData();
-        fetchedData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name",
-                        "shortName",
-                        "launchUrl",
-                        "iconUrl",
-                        "iconHash2",
-                        new WebappIcon()));
+        fetchedData.shortcuts.add(new WebApkExtras.ShortcutItem(
+                "name", "shortName", "launchUrl", "iconUrl", "iconHash2", new WebappIcon()));
         assertTrue(checkUpdateNeededForFetchedManifest(androidData, fetchedData));
     }
 
-    /** Test that an update is not required if a shortcut url has changed but the hash hasn't. */
+    /**
+     * Test that an update is not required if a shortcut url has changed but the hash hasn't.
+     */
     @Test
     public void testNoUpdateIfShortcutHasOnlyIconUrlChanges() {
         ManifestData androidData = defaultManifestData();
-        androidData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name",
-                        "shortName",
-                        "launchUrl",
-                        "iconUrl1",
-                        "iconHash",
-                        new WebappIcon("appName", 42)));
+        androidData.shortcuts.add(new WebApkExtras.ShortcutItem("name", "shortName", "launchUrl",
+                "iconUrl1", "iconHash", new WebappIcon("appName", 42)));
         ManifestData fetchedData = defaultManifestData();
-        fetchedData.shortcuts.add(
-                new WebApkExtras.ShortcutItem(
-                        "name",
-                        "shortName",
-                        "launchUrl",
-                        "iconUrl2",
-                        "iconHash",
-                        new WebappIcon()));
+        fetchedData.shortcuts.add(new WebApkExtras.ShortcutItem(
+                "name", "shortName", "launchUrl", "iconUrl2", "iconHash", new WebappIcon()));
         assertFalse(checkUpdateNeededForFetchedManifest(androidData, fetchedData));
     }
 
     private void verifyHistograms(String name, int expectedCallCount) {
-        assertEquals(
-                "Histogram record count doesn't match.",
-                expectedCallCount,
+        assertEquals("Histogram record count doesn't match.", expectedCallCount,
                 RecordHistogram.getHistogramTotalCountForTesting(name));
     }
 
@@ -1719,9 +1465,8 @@ public class WebApkUpdateManagerUnitTest {
         boolean nameUpdatesEnabled = false;
 
         // Try with unchanged manifest data.
-        assertFalse(
-                checkUpdateNeededForFetchedManifest(
-                        androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
+        assertFalse(checkUpdateNeededForFetchedManifest(
+                androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
         verifyHistograms(HISTOGRAM_NOT_SHOWING, 0);
         verifyHistograms(HISTOGRAM_SHOWING, 0);
         verifyHistograms(HISTOGRAM_PRE_APPROVED, 0);
@@ -1731,9 +1476,8 @@ public class WebApkUpdateManagerUnitTest {
         fetchedData.name = "foo";
         String hash = "foo|Short Name|3|NotAdaptive";
         storage.updateLastWebApkUpdateHashAccepted(hash);
-        assertFalse(
-                checkUpdateNeededForFetchedManifest(
-                        androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
+        assertFalse(checkUpdateNeededForFetchedManifest(
+                androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
         verifyHistograms(HISTOGRAM_NOT_SHOWING, 0);
         verifyHistograms(HISTOGRAM_SHOWING, 0);
         verifyHistograms(HISTOGRAM_PRE_APPROVED, 0);
@@ -1743,9 +1487,8 @@ public class WebApkUpdateManagerUnitTest {
         // Now try again, but with naming updates allowed.
         hash = "foo|Short Name|3|NotAdaptive";
         storage.updateLastWebApkUpdateHashAccepted(hash);
-        assertTrue(
-                checkUpdateNeededForFetchedManifest(
-                        androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
+        assertTrue(checkUpdateNeededForFetchedManifest(
+                androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
         verifyHistograms(HISTOGRAM_NOT_SHOWING, 0);
         verifyHistograms(HISTOGRAM_SHOWING, 0);
         verifyHistograms(HISTOGRAM_PRE_APPROVED, 1);
@@ -1757,9 +1500,8 @@ public class WebApkUpdateManagerUnitTest {
         fetchedData.shortName = "bar";
         hash = "Long Name|bar|3|NotAdaptive";
         storage.updateLastWebApkUpdateHashAccepted(hash);
-        assertTrue(
-                checkUpdateNeededForFetchedManifest(
-                        androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
+        assertTrue(checkUpdateNeededForFetchedManifest(
+                androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
         verifyHistograms(HISTOGRAM_NOT_SHOWING, 0);
         verifyHistograms(HISTOGRAM_SHOWING, 0);
         verifyHistograms(HISTOGRAM_PRE_APPROVED, 2);
@@ -1772,9 +1514,8 @@ public class WebApkUpdateManagerUnitTest {
         fetchedData.iconUrlToMurmur2HashMap.put(PRIMARY_ICON_URL, "42");
         hash = "Long Name|Short Name|3|NotAdaptive";
         storage.updateLastWebApkUpdateHashAccepted(hash);
-        assertFalse(
-                checkUpdateNeededForFetchedManifest(
-                        androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
+        assertFalse(checkUpdateNeededForFetchedManifest(
+                androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
         verifyHistograms(HISTOGRAM_NOT_SHOWING, 0);
         verifyHistograms(HISTOGRAM_SHOWING, 0);
         verifyHistograms(HISTOGRAM_PRE_APPROVED, 2);
@@ -1784,9 +1525,8 @@ public class WebApkUpdateManagerUnitTest {
         // Now try again, but with icon updates allowed.
         hash = "Long Name|Short Name|42|NotAdaptive";
         storage.updateLastWebApkUpdateHashAccepted(hash);
-        assertTrue(
-                checkUpdateNeededForFetchedManifest(
-                        androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
+        assertTrue(checkUpdateNeededForFetchedManifest(
+                androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
         verifyHistograms(HISTOGRAM_NOT_SHOWING, 0);
         verifyHistograms(HISTOGRAM_SHOWING, 0);
         verifyHistograms(HISTOGRAM_PRE_APPROVED, 3);
@@ -1796,9 +1536,8 @@ public class WebApkUpdateManagerUnitTest {
         fetchedData.shortName = "bar";
         hash = "foo|bar|42|NotAdaptive";
         storage.updateLastWebApkUpdateHashAccepted(hash);
-        assertTrue(
-                checkUpdateNeededForFetchedManifest(
-                        androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
+        assertTrue(checkUpdateNeededForFetchedManifest(
+                androidData, fetchedData, nameUpdatesEnabled, iconUpdatesEnabled));
         verifyHistograms(HISTOGRAM_NOT_SHOWING, 0);
         verifyHistograms(HISTOGRAM_SHOWING, 0);
         verifyHistograms(HISTOGRAM_PRE_APPROVED, 4);
@@ -1807,13 +1546,11 @@ public class WebApkUpdateManagerUnitTest {
     @Test
     public void testEmptyAppIdentityHash() {
         // Setup the test to trigger a null mFetchedInfo within WebApkUpdateManager.
-        registerWebApk(
-                WEBAPK_PACKAGE_NAME,
-                defaultManifestData(),
+        registerWebApk(WEBAPK_PACKAGE_NAME, defaultManifestData(),
                 REQUEST_UPDATE_FOR_SHELL_APK_VERSION - 1);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
 
@@ -1833,21 +1570,21 @@ public class WebApkUpdateManagerUnitTest {
         verifyHistograms(HISTOGRAM_PRE_APPROVED, 0);
     }
 
-    /** Test for crashing when IntentDataProvider is null, as per https://crbug.com/1342066. */
+    /**
+     * Test for crashing when IntentDataProvider is null, as per https://crbug.com/1342066.
+     */
     @Test
     public void testDoesntCrashWithNullProvider() {
         ManifestData androidManifestData = defaultManifestData();
         registerWebApk(
                 WEBAPK_PACKAGE_NAME, androidManifestData, REQUEST_UPDATE_FOR_SHELL_APK_VERSION);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager, androidManifestData.shortcuts);
         assertTrue(updateManager.updateCheckStarted());
-        updateManager.onGotManifestData(
-                /* fetchedIntentDataProvider= */ null,
-                /* primaryIconUrl= */ null,
-                /* splashIconUrl= */ null);
+        updateManager.onGotManifestData(/* fetchedIntentDataProvider= */ null,
+                /* primaryIconUrl= */ null, /* splashIconUrl= */ null);
     }
 
     @Test
@@ -1863,9 +1600,9 @@ public class WebApkUpdateManagerUnitTest {
         ManifestData androidData = defaultManifestData();
         androidData.appKey = WEB_MANIFEST_URL;
         registerWebApk(WEBAPK_PACKAGE_NAME, androidData, REQUEST_UPDATE_FOR_SHELL_APK_VERSION);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
 
@@ -1890,36 +1627,14 @@ public class WebApkUpdateManagerUnitTest {
         androidData.appKey = null;
 
         registerWebApk(WEBAPK_PACKAGE_NAME, androidData, REQUEST_UPDATE_FOR_SHELL_APK_VERSION);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
+        mClockRule.advance(WebappDataStorage.UPDATE_INTERVAL);
 
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
+        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager();
         updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
         assertTrue(updateManager.updateCheckStarted());
 
         onGotDifferentData(updateManager);
         assertTrue(updateManager.updateRequested());
         assertEquals(WEB_MANIFEST_URL, updateManager.requestedAppKey());
-    }
-
-    /**
-     * Tests that WebAPK updates keeps the default appKey when no value specified from the WebAPK's
-     * Android Manifest <meta-data>.
-     */
-    @Test
-    public void testUpdateWithCustomName() {
-        ManifestData androidData = defaultManifestData();
-        androidData.name = "custom name";
-        androidData.hasCustomName = true;
-
-        registerWebApk(WEBAPK_PACKAGE_NAME, androidData, REQUEST_UPDATE_FOR_SHELL_APK_VERSION - 1);
-        mClockRule.advanceMillis(WebappDataStorage.UPDATE_INTERVAL);
-
-        TestWebApkUpdateManager updateManager = new TestWebApkUpdateManager(mActivityMock);
-        updateIfNeeded(WEBAPK_PACKAGE_NAME, updateManager);
-        assertTrue(updateManager.updateCheckStarted());
-
-        onGotDifferentData(updateManager);
-        assertTrue(updateManager.updateRequested());
-        assertEquals(androidData.name, updateManager.requestedUpdateName());
     }
 }

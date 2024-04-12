@@ -71,12 +71,8 @@ public interface PriceDropNotificationManager {
      * @param recordMetrics Whether to record metrics using {@link NotificationUmaTracker}. Only
      *         Chime notification code path should set this to true.
      */
-    void onNotificationActionClicked(
-            String actionId,
-            String url,
-            @Nullable String offerId,
-            @Nullable String clusterId,
-            boolean recordMetrics);
+    void onNotificationActionClicked(String actionId, String url, @Nullable String offerId,
+            @Nullable String clusterId, boolean recordMetrics);
 
     @Deprecated
     Intent getNotificationClickIntent(String url);
@@ -114,11 +110,15 @@ public interface PriceDropNotificationManager {
      */
     boolean areAppNotificationsEnabled();
 
-    /** Create the notification channel for price drop notifications. */
+    /**
+     * Create the notification channel for price drop notifications.
+     */
     @RequiresApi(Build.VERSION_CODES.O)
     void createNotificationChannel();
 
-    /** Send users to notification settings so they can manage price drop notifications. */
+    /**
+     * Send users to notification settings so they can manage price drop notifications.
+     */
     void launchNotificationSettings();
 
     /**
@@ -134,15 +134,21 @@ public interface PriceDropNotificationManager {
     @RequiresApi(Build.VERSION_CODES.O)
     NotificationChannel getNotificationChannel();
 
-    /** Delete price drop notification channel for testing. */
+    /**
+     * Delete price drop notification channel for testing.
+     */
     @VisibleForTesting
     @RequiresApi(Build.VERSION_CODES.O)
     void deleteChannelForTesting();
 
-    /** Record how many notifications are shown in the given window per management type. */
+    /**
+     * Record how many notifications are shown in the given window per management type.
+     */
     void recordMetricsForNotificationCounts();
 
-    /** Check if the shown notifications in given window have reached the max allowed number. */
+    /**
+     * Check if the shown notifications in given window have reached the max allowed number.
+     */
     boolean hasReachedMaxAllowedNotificationNumber(@SystemNotificationType int type);
 
     /**

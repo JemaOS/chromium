@@ -11,13 +11,6 @@
 #include "chrome/test/base/testing_profile.h"
 #include "content/public/test/browser_task_environment.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
-#include "components/account_id/account_id.h"
-#include "components/user_manager/scoped_user_manager.h"
-#include "components/user_manager/user_names.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
 namespace extensions {
 
 ExtensionServiceUserTestBase::ExtensionServiceUserTestBase() = default;
@@ -61,7 +54,7 @@ void ExtensionServiceUserTestBase::MaybeSetUpTestUser(bool is_guest) {
   AccountId account_id = account_id_;
   if (is_guest) {
     user = GetFakeUserManager()->AddGuestUser();
-    account_id = user_manager::GuestAccountId();
+    account_id = GetFakeUserManager()->GetGuestAccountId();
   } else {
     user = GetFakeUserManager()->AddUser(account_id_);
   }

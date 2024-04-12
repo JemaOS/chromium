@@ -11,16 +11,15 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 print media emulated:
 [expanded] 
 element.style { ()
 
 [expanded] 
-@media print {
+@media print
 #main { (<style>)
-        color: black;
+    color: black;
 
 [expanded] 
 #main { (<style>)
@@ -29,7 +28,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 tty media emulated:
 [expanded] 
@@ -46,7 +44,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 No media emulated:
 [expanded] 
@@ -59,6 +56,5 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 

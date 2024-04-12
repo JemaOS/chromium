@@ -11,7 +11,7 @@ include_rules = [
     "+base/threading/sequenced_task_runner_handle.h",
     "+base/threading/thread_task_runner_handle.h",
 
-    # web_media_player_ms{_compositor}.cc includes.
+    # webmediaplayer_ms{_compositor}.cc includes.
     "+base/values.h",
     "+cc/layers/surface_layer.h",
     "+cc/layers/video_frame_provider_client_impl.h",
@@ -25,9 +25,14 @@ include_rules = [
     "+services/viz/public/cpp/gpu/context_provider_command_buffer.h",
     "+skia/ext/platform_canvas.h",
 
+    "+base/task/bind_post_task.h",
     "+base/files/file.h",
     "+base/metrics/field_trial.h",
 
+    "+base/guid.h",
+    "+base/token.h",
+    "+base/sequence_checker.h",
+    "+base/trace_event/trace_event.h",
     "+base/unguessable_token.h",
     "+base/uuid.h",
     "+media/audio",

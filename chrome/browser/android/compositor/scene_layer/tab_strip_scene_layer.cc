@@ -6,27 +6,28 @@
 
 #include "base/android/jni_android.h"
 #include "base/feature_list.h"
+#include "base/logging.h"
 #include "cc/resources/scoped_ui_resource.h"
 #include "cc/slim/layer.h"
 #include "cc/slim/solid_color_layer.h"
 #include "cc/slim/ui_resource_layer.h"
 #include "chrome/android/chrome_jni_headers/TabStripSceneLayer_jni.h"
-#include "chrome/browser/android/compositor/decoration_title.h"
 #include "chrome/browser/android/compositor/layer/tab_handle_layer.h"
 #include "chrome/browser/android/compositor/layer_title_cache.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "ui/android/resources/nine_patch_resource.h"
 #include "ui/android/resources/resource_manager_impl.h"
-#include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/gfx/geometry/transform.h"
 
 using base::android::JavaParamRef;
 using base::android::JavaRef;
+bool tab_strip_redesign_enabled;
 
 namespace android {
 
 TabStripSceneLayer::TabStripSceneLayer(JNIEnv* env,
-                                       const JavaRef<jobject>& jobj)
+                                       const JavaRef<jobject>& jobj,
+                                       jboolean is_tab_strip_redesign_enabled)
     : SceneLayer(env, jobj),
       tab_strip_layer_(cc::slim::SolidColorLayer::Create()),
       scrollable_strip_layer_(cc::slim::Layer::Create()),
@@ -34,22 +35,17 @@ TabStripSceneLayer::TabStripSceneLayer(JNIEnv* env,
       new_tab_button_background_(cc::slim::UIResourceLayer::Create()),
       left_fade_(cc::slim::UIResourceLayer::Create()),
       right_fade_(cc::slim::UIResourceLayer::Create()),
-      left_padding_layer_(cc::slim::SolidColorLayer::Create()),
-      right_padding_layer_(cc::slim::SolidColorLayer::Create()),
       model_selector_button_(cc::slim::UIResourceLayer::Create()),
       model_selector_button_background_(cc::slim::UIResourceLayer::Create()),
-      scrim_layer_(cc::slim::SolidColorLayer::Create()),
+      write_index_(0),
       content_tree_(nullptr) {
   new_tab_button_->SetIsDrawable(true);
   new_tab_button_background_->SetIsDrawable(true);
   model_selector_button_->SetIsDrawable(true);
   model_selector_button_background_->SetIsDrawable(true);
-
   left_fade_->SetIsDrawable(true);
   right_fade_->SetIsDrawable(true);
-  scrim_layer_->SetIsDrawable(true);
-  left_padding_layer_->SetIsDrawable(true);
-  right_padding_layer_->SetIsDrawable(true);
+  tab_strip_redesign_enabled = is_tab_strip_redesign_enabled;
 
   // When the ScrollingStripStacker is used, the new tab button and tabs scroll,
   // while the incognito button and left/ride fade stay fixed. Put the new tab
@@ -60,18 +56,18 @@ TabStripSceneLayer::TabStripSceneLayer(JNIEnv* env,
 
   tab_strip_layer_->AddChild(left_fade_);
   tab_strip_layer_->AddChild(right_fade_);
-  tab_strip_layer_->AddChild(left_padding_layer_);
-  tab_strip_layer_->AddChild(right_padding_layer_);
   tab_strip_layer_->AddChild(model_selector_button_);
   tab_strip_layer_->AddChild(model_selector_button_background_);
   model_selector_button_background_->AddChild(model_selector_button_);
-  tab_strip_layer_->AddChild(new_tab_button_background_);
-  tab_strip_layer_->AddChild(scrim_layer_);
-
+  if (tab_strip_redesign_enabled) {
+    tab_strip_layer_->AddChild(new_tab_button_background_);
+  }
+  tab_strip_layer_->AddChild(new_tab_button_);
   layer()->AddChild(tab_strip_layer_);
 }
 
-TabStripSceneLayer::~TabStripSceneLayer() = default;
+TabStripSceneLayer::~TabStripSceneLayer() {
+}
 
 void TabStripSceneLayer::SetContentTree(
     JNIEnv* env,
@@ -99,7 +95,6 @@ void TabStripSceneLayer::BeginBuildingFrame(JNIEnv* env,
                                             const JavaParamRef<jobject>& jobj,
                                             jboolean visible) {
   write_index_ = 0;
-  group_write_index_ = 0;
   tab_strip_layer_->SetHideLayerAndSubtree(!visible);
 }
 
@@ -109,22 +104,11 @@ void TabStripSceneLayer::FinishBuildingFrame(
   if (tab_strip_layer_->hide_layer_and_subtree())
     return;
 
-  for (unsigned i = write_index_; i < tab_handle_layers_.size(); ++i) {
+  for (unsigned i = write_index_; i < tab_handle_layers_.size(); ++i)
     tab_handle_layers_[i]->layer()->RemoveFromParent();
-  }
-  for (unsigned i = group_write_index_; i < group_title_layers_.size(); ++i) {
-    group_title_layers_[i]->RemoveFromParent();
-  }
-  for (unsigned i = group_write_index_; i < group_bottom_layers_.size(); ++i) {
-    group_bottom_layers_[i]->RemoveFromParent();
-  }
 
   tab_handle_layers_.erase(tab_handle_layers_.begin() + write_index_,
                            tab_handle_layers_.end());
-  group_title_layers_.erase(group_title_layers_.begin() + group_write_index_,
-                            group_title_layers_.end());
-  group_bottom_layers_.erase(group_bottom_layers_.begin() + group_write_index_,
-                             group_bottom_layers_.end());
 }
 
 void TabStripSceneLayer::UpdateTabStripLayer(JNIEnv* env,
@@ -132,11 +116,8 @@ void TabStripSceneLayer::UpdateTabStripLayer(JNIEnv* env,
                                              jint width,
                                              jint height,
                                              jfloat y_offset,
-                                             jint background_color,
-                                             jint scrim_color,
-                                             jfloat scrim_opacity,
-                                             jfloat left_padding,
-                                             jfloat right_padding) {
+                                             jboolean should_readd_background,
+                                             jint background_color) {
   gfx::RectF content(0, y_offset, width, height);
   layer()->SetPosition(gfx::PointF(0, y_offset));
   tab_strip_layer_->SetBounds(gfx::Size(width, height));
@@ -147,39 +128,19 @@ void TabStripSceneLayer::UpdateTabStripLayer(JNIEnv* env,
   if (content_tree_)
     content_tree_->layer()->SetPosition(gfx::PointF(0, -y_offset));
 
-  // Update left and right padding layers as required.
-  if (left_padding == 0) {
-    left_padding_layer_->SetHideLayerAndSubtree(true);
-  } else {
-    left_padding_layer_->SetHideLayerAndSubtree(false);
-    left_padding_layer_->SetBounds(gfx::Size(left_padding, height));
-    left_padding_layer_->SetBackgroundColor(
-        SkColor4f::FromColor(background_color));
+  // Make sure tab strip changes are committed after rotating the device.
+  // See https://crbug.com/503930 for more details.
+  // InsertChild() forces the tree sync, which seems to fix the problem.
+  // Note that this is a workaround.
+  // TODO(changwan): find out why the update is not committed after rotation.
+  if (should_readd_background) {
+    int background_index = 0;
+    if (content_tree_ && content_tree_->layer()) {
+      background_index = 1;
+    }
+    DCHECK(layer()->children()[background_index] == tab_strip_layer_);
+    layer()->InsertChild(tab_strip_layer_, background_index);
   }
-
-  if (right_padding == 0) {
-    right_padding_layer_->SetHideLayerAndSubtree(true);
-  } else {
-    right_padding_layer_->SetHideLayerAndSubtree(false);
-    right_padding_layer_->SetBounds(gfx::Size(right_padding, height));
-    right_padding_layer_->SetPosition(gfx::PointF(width - right_padding, 0));
-    right_padding_layer_->SetBackgroundColor(
-        SkColor4f::FromColor(background_color));
-  }
-
-  // Hide scrim layer if it's not visible.
-  if (scrim_opacity == 0.f) {
-    scrim_layer_->SetHideLayerAndSubtree(true);
-    return;
-  }
-
-  // Set opacity and color
-  scrim_layer_->SetOpacity(scrim_opacity);
-  scrim_layer_->SetBounds(tab_strip_layer_->bounds());
-  scrim_layer_->SetBackgroundColor(SkColor4f::FromColor(scrim_color));
-
-  // Ensure layer is visible.
-  scrim_layer_->SetHideLayerAndSubtree(false);
 }
 
 void TabStripSceneLayer::UpdateNewTabButton(
@@ -187,7 +148,6 @@ void TabStripSceneLayer::UpdateNewTabButton(
     const JavaParamRef<jobject>& jobj,
     jint resource_id,
     jint bg_resource_id,
-    jboolean should_apply_hover_highlight,
     jfloat x,
     jfloat y,
     jfloat touch_target_offset,
@@ -207,40 +167,35 @@ void TabStripSceneLayer::UpdateNewTabButton(
   new_tab_button_->SetHideLayerAndSubtree(!visible);
   new_tab_button_->SetOpacity(button_alpha);
 
-  float left_offset = touch_target_offset;
-
   // Set Tab Strip Redesign new tab button background
-  ui::Resource* button_background_resource =
-      resource_manager->GetStaticResourceWithTint(bg_resource_id,
-                                                  background_tint, true);
-
-  float background_left_offset = (button_background_resource->size().width() -
-                                  button_resource->size().width()) /
-                                 2;
-  float background_top_offset = (button_background_resource->size().height() -
-                                 button_resource->size().height()) /
-                                2;
-
-  // Move new tab button visually towards tabs when tab strip is not full.
-  x += left_offset;
-
-  // Only show button bg if btn is being hovered on.
-  if (!should_apply_hover_highlight) {
-    new_tab_button_background_->RemoveFromParent();
-    tab_strip_layer_->AddChild(new_tab_button_);
-    new_tab_button_->SetPosition(
-        gfx::PointF(x + background_left_offset, y + background_top_offset));
-  } else {
-    tab_strip_layer_->AddChild(new_tab_button_background_);
+  if (tab_strip_redesign_enabled) {
+    ui::Resource* button_background_resource =
+        resource_manager->GetStaticResourceWithTint(bg_resource_id,
+                                                    background_tint, true);
+    float background_left_offset = (button_background_resource->size().width() -
+                                    button_resource->size().width()) /
+                                   2;
+    float background_top_offset = (button_background_resource->size().height() -
+                                   button_resource->size().height()) /
+                                  2;
     new_tab_button_background_->SetUIResourceId(
         button_background_resource->ui_resource()->id());
     new_tab_button_background_->SetPosition(gfx::PointF(x, y));
+
     new_tab_button_background_->SetBounds(button_background_resource->size());
     new_tab_button_background_->SetHideLayerAndSubtree(!visible);
     new_tab_button_background_->SetOpacity(button_alpha);
     new_tab_button_->SetPosition(
         gfx::PointF(background_left_offset, background_top_offset));
     new_tab_button_background_->AddChild(new_tab_button_);
+  } else {
+    // The touch target for the new tab button is skewed towards the end of the
+    // strip. This ensures that the view itself is correctly aligned without
+    // adjusting the touch target.
+    float left_offset = touch_target_offset;
+
+    // Only show new tab button icon when TSR is disabled
+    new_tab_button_->SetPosition(gfx::PointF(x + left_offset, y));
   }
 }
 
@@ -284,7 +239,6 @@ void TabStripSceneLayer::UpdateModelSelectorButtonBackground(
     jboolean visible,
     jint tint,
     jint background_tint,
-    jboolean should_apply_hover_highlight,
     jfloat button_alpha,
     const JavaParamRef<jobject>& jresource_manager) {
   ui::ResourceManager* resource_manager =
@@ -310,25 +264,14 @@ void TabStripSceneLayer::UpdateModelSelectorButtonBackground(
                                  button_resource->size().height()) /
                                 2;
 
-  // Only show button bg if btn style enabled or when the btn is being hovered
-  // on.
-  if (!should_apply_hover_highlight) {
-    model_selector_button_background_->RemoveFromParent();
-    model_selector_button_->SetPosition(
-        gfx::PointF(x + background_left_offset, y + background_top_offset));
-    tab_strip_layer_->AddChild(model_selector_button_);
-  } else {
-    tab_strip_layer_->AddChild(model_selector_button_background_);
-    model_selector_button_background_->SetPosition(gfx::PointF(x, y));
+  model_selector_button_background_->SetPosition(gfx::PointF(x, y));
 
-    model_selector_button_background_->SetBounds(
-        button_background_resource->size());
-    model_selector_button_background_->SetHideLayerAndSubtree(!visible);
-    model_selector_button_background_->SetOpacity(button_alpha);
-    model_selector_button_->SetPosition(
-        gfx::PointF(background_left_offset, background_top_offset));
-    model_selector_button_background_->AddChild(model_selector_button_);
-  }
+  model_selector_button_background_->SetBounds(
+      button_background_resource->size());
+  model_selector_button_background_->SetHideLayerAndSubtree(!visible);
+  model_selector_button_background_->SetOpacity(button_alpha);
+  model_selector_button_->SetPosition(
+      gfx::PointF(background_left_offset, background_top_offset));
   model_selector_button_->SetBounds(button_resource->size());
   model_selector_button_->SetHideLayerAndSubtree(!visible);
   model_selector_button_->SetOpacity(button_alpha);
@@ -340,8 +283,8 @@ void TabStripSceneLayer::UpdateTabStripLeftFade(
     jint resource_id,
     jfloat opacity,
     const JavaParamRef<jobject>& jresource_manager,
-    jint left_fade_color,
-    jfloat left_padding) {
+    jint left_fade_color) {
+
   // Hide layer if it's not visible.
   if (opacity == 0.f) {
     left_fade_->SetHideLayerAndSubtree(true);
@@ -365,13 +308,12 @@ void TabStripSceneLayer::UpdateTabStripLeftFade(
 
   // Set bounds. Use the parent layer height so the 1px fade resource is
   // stretched vertically.
-  float height = scrollable_strip_layer_->bounds().height();
-  left_fade_->SetBounds(gfx::Size(fade_resource->size().width(), height));
+  left_fade_->SetBounds(gfx::Size(fade_resource->size().width(),
+                                  scrollable_strip_layer_->bounds().height()));
 
   // Set position. The rotation set above requires the layer to be offset
   // by its width in order to display on the left edge.
-  left_fade_->SetPosition(
-      gfx::PointF(fade_resource->size().width() + left_padding, 0));
+  left_fade_->SetPosition(gfx::PointF(fade_resource->size().width(), 0));
 
   // Ensure layer is visible.
   left_fade_->SetHideLayerAndSubtree(false);
@@ -383,8 +325,8 @@ void TabStripSceneLayer::UpdateTabStripRightFade(
     jint resource_id,
     jfloat opacity,
     const JavaParamRef<jobject>& jresource_manager,
-    jint right_fade_color,
-    jfloat right_padding) {
+    jint right_fade_color) {
+
   // Hide layer if it's not visible.
   if (opacity == 0.f) {
     right_fade_->SetHideLayerAndSubtree(true);
@@ -403,12 +345,12 @@ void TabStripSceneLayer::UpdateTabStripRightFade(
 
   // Set bounds. Use the parent layer height so the 1px fade resource is
   // stretched vertically.
-  float height = scrollable_strip_layer_->bounds().height();
-  right_fade_->SetBounds(gfx::Size(fade_resource->size().width(), height));
+  right_fade_->SetBounds(gfx::Size(fade_resource->size().width(),
+                                   scrollable_strip_layer_->bounds().height()));
 
   // Set position. The right fade is positioned at the end of the tab strip.
-  float x = scrollable_strip_layer_->bounds().width() -
-            fade_resource->size().width() - right_padding;
+  float x =
+      scrollable_strip_layer_->bounds().width() - fade_resource->size().width();
   right_fade_->SetPosition(gfx::PointF(x, 0));
 
   // Ensure layer is visible.
@@ -420,27 +362,24 @@ void TabStripSceneLayer::PutStripTabLayer(
     const JavaParamRef<jobject>& jobj,
     jint id,
     jint close_resource_id,
-    jint close_hover_bg_resource_id,
     jint divider_resource_id,
     jint handle_resource_id,
     jint handle_outline_resource_id,
     jint close_tint,
-    jint close_hover_bg_tint,
     jint divider_tint,
     jint handle_tint,
     jint handle_outline_tint,
     jboolean foreground,
-    jboolean shouldShowTabOutline,
     jboolean close_pressed,
     jfloat toolbar_width,
     jfloat x,
     jfloat y,
     jfloat width,
     jfloat height,
+    jfloat content_offset_x,
     jfloat content_offset_y,
     jfloat divider_offset_x,
-    jfloat bottom_margin,
-    jfloat top_margin,
+    jfloat bottom_offset_y,
     jfloat close_button_padding,
     jfloat close_button_alpha,
     jboolean is_start_divider_visible,
@@ -458,100 +397,22 @@ void TabStripSceneLayer::PutStripTabLayer(
   scoped_refptr<TabHandleLayer> layer = GetNextLayer(layer_title_cache);
   ui::NinePatchResource* tab_handle_resource =
       ui::NinePatchResource::From(resource_manager->GetStaticResourceWithTint(
-          handle_resource_id, handle_tint, true));
+          handle_resource_id, handle_tint));
   ui::NinePatchResource* tab_handle_outline_resource =
       ui::NinePatchResource::From(resource_manager->GetStaticResourceWithTint(
           handle_outline_resource_id, handle_outline_tint));
   ui::Resource* close_button_resource =
       resource_manager->GetStaticResourceWithTint(close_resource_id,
                                                   close_tint);
-
-  ui::Resource* close_button_hover_resource =
-      resource_manager->GetStaticResourceWithTint(close_hover_bg_resource_id,
-                                                  close_hover_bg_tint, true);
-
   ui::Resource* divider_resource = resource_manager->GetStaticResourceWithTint(
       divider_resource_id, divider_tint, true);
   layer->SetProperties(
-      id, close_button_resource, close_button_hover_resource, divider_resource,
-      tab_handle_resource, tab_handle_outline_resource, foreground,
-      shouldShowTabOutline, close_pressed, toolbar_width, x, y, width, height,
-      content_offset_y, divider_offset_x, bottom_margin, top_margin,
-      close_button_padding, close_button_alpha, is_start_divider_visible,
-      is_end_divider_visible, is_loading, spinner_rotation, brightness,
-      opacity);
-}
-
-void TabStripSceneLayer::PutGroupIndicatorLayer(
-    JNIEnv* env,
-    const base::android::JavaParamRef<jobject>& jobj,
-    jint id,
-    jint tint,
-    jfloat x,
-    jfloat y,
-    jfloat width,
-    jfloat height,
-    jfloat default_margin,
-    jfloat top_margin,
-    jfloat title_text_padding,
-    jfloat corner_radius,
-    jfloat bottom_indicator_width,
-    jfloat bottom_indicator_height,
-    const JavaParamRef<jobject>& jlayer_title_cache) {
-  LayerTitleCache* layer_title_cache =
-      LayerTitleCache::FromJavaObject(jlayer_title_cache);
-
-  // Reuse existing layer if it exists.
-  scoped_refptr<cc::slim::SolidColorLayer> title_indicator_layer =
-      GetNextGroupTitleLayer();
-  scoped_refptr<cc::slim::SolidColorLayer> bottom_indicator_layer =
-      GetNextGroupBottomLayer();
-  group_write_index_++;
-
-  // Adjust position values.
-  x += default_margin;
-  y += top_margin;
-  width -= (default_margin * 2);
-  height -= (default_margin + top_margin);
-
-  // Set title indicator container properties.
-  title_indicator_layer->SetPosition(gfx::PointF(x, y));
-  title_indicator_layer->SetBounds(gfx::Size(width, height));
-  title_indicator_layer->SetRoundedCorner(gfx::RoundedCornersF(
-      corner_radius, corner_radius, corner_radius, corner_radius));
-  title_indicator_layer->SetBackgroundColor(SkColor4f::FromColor(tint));
-
-  // Set title.
-  DecorationTitle* title_layer = layer_title_cache->GetGroupTitleLayer(id);
-  if (title_layer) {
-    title_layer->setOpacity(1.0f);
-    title_layer->setBounds(gfx::Size(width - (title_text_padding * 2), height));
-    title_layer->layer()->SetPosition(gfx::PointF(title_text_padding, 0));
-    if (title_indicator_layer->children().size() == 0) {
-      title_indicator_layer->AddChild(title_layer->layer());
-    } else {
-      title_indicator_layer->ReplaceChild(
-          title_indicator_layer->children()[0].get(), title_layer->layer());
-    }
-    title_layer->SetUIResourceIds();
-  }
-
-  // Set bottom indicator properties.
-  float bottom_indicator_x = x;
-  float bottom_indicator_y =
-      y + height + default_margin - bottom_indicator_height;
-
-  // Use ceiling value to prevent height float from getting truncated, otherwise
-  // it could result in bottom indicator looks thinner than intended in certain
-  // screen densities.
-  bottom_indicator_layer->SetBounds(
-      gfx::Size(bottom_indicator_width, ceil(bottom_indicator_height)));
-
-  // Use the floor value to position vertically to prevent bottom indicator from
-  // getting cut off in certain screen densities.
-  bottom_indicator_layer->SetPosition(
-      gfx::PointF(bottom_indicator_x, floor(bottom_indicator_y)));
-  bottom_indicator_layer->SetBackgroundColor(SkColor4f::FromColor(tint));
+      id, close_button_resource, divider_resource, tab_handle_resource,
+      tab_handle_outline_resource, foreground, close_pressed, toolbar_width, x,
+      y, width, height, content_offset_x, content_offset_y, divider_offset_x,
+      bottom_offset_y, close_button_padding, close_button_alpha,
+      is_start_divider_visible, is_end_divider_visible, is_loading,
+      spinner_rotation, brightness, opacity, tab_strip_redesign_enabled);
 }
 
 scoped_refptr<TabHandleLayer> TabStripSceneLayer::GetNextLayer(
@@ -567,34 +428,6 @@ scoped_refptr<TabHandleLayer> TabStripSceneLayer::GetNextLayer(
   return layer_tree;
 }
 
-scoped_refptr<cc::slim::SolidColorLayer>
-TabStripSceneLayer::GetNextGroupTitleLayer() {
-  if (group_write_index_ < group_title_layers_.size()) {
-    return group_title_layers_[group_write_index_];
-  }
-
-  scoped_refptr<cc::slim::SolidColorLayer> layer =
-      cc::slim::SolidColorLayer::Create();
-  layer->SetIsDrawable(true);
-  group_title_layers_.push_back(layer);
-  scrollable_strip_layer_->AddChild(layer);
-  return layer;
-}
-
-scoped_refptr<cc::slim::SolidColorLayer>
-TabStripSceneLayer::GetNextGroupBottomLayer() {
-  if (group_write_index_ < group_bottom_layers_.size()) {
-    return group_bottom_layers_[group_write_index_];
-  }
-
-  scoped_refptr<cc::slim::SolidColorLayer> layer =
-      cc::slim::SolidColorLayer::Create();
-  layer->SetIsDrawable(true);
-  group_bottom_layers_.push_back(layer);
-  scrollable_strip_layer_->InsertChild(layer, 0);
-  return layer;
-}
-
 bool TabStripSceneLayer::ShouldShowBackground() {
   if (content_tree_)
     return content_tree_->ShouldShowBackground();
@@ -607,10 +440,13 @@ SkColor TabStripSceneLayer::GetBackgroundColor() {
   return SceneLayer::GetBackgroundColor();
 }
 
-static jlong JNI_TabStripSceneLayer_Init(JNIEnv* env,
-                                         const JavaParamRef<jobject>& jobj) {
+static jlong JNI_TabStripSceneLayer_Init(
+    JNIEnv* env,
+    const JavaParamRef<jobject>& jobj,
+    jboolean is_tab_strip_redesign_enabled) {
   // This will automatically bind to the Java object and pass ownership there.
-  TabStripSceneLayer* scene_layer = new TabStripSceneLayer(env, jobj);
+  TabStripSceneLayer* scene_layer =
+      new TabStripSceneLayer(env, jobj, is_tab_strip_redesign_enabled);
   return reinterpret_cast<intptr_t>(scene_layer);
 }
 

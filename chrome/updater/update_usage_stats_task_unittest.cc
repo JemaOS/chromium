@@ -5,7 +5,6 @@
 #include "chrome/updater/update_usage_stats_task.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,6 +28,7 @@
 
 #if BUILDFLAG(IS_MAC)
 #include "chrome/updater/util/mac_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #elif BUILDFLAG(IS_WIN)
 #include "base/strings/sys_string_conversions.h"
 #include "base/win/registry.h"
@@ -43,7 +43,7 @@ namespace {
 
 #if BUILDFLAG(IS_MAC)
 base::FilePath AppIDToPath(const std::string& app_id) {
-  std::optional<base::FilePath> application_support_dir =
+  absl::optional<base::FilePath> application_support_dir =
       GetApplicationSupportDirectory(UpdaterScope::kUser);
   EXPECT_TRUE(application_support_dir);
   return (*application_support_dir)
@@ -52,27 +52,17 @@ base::FilePath AppIDToPath(const std::string& app_id) {
 }
 #endif
 
-#if BUILDFLAG(IS_WIN)
-std::vector<std::wstring> UsageStatsRegKeyPaths() {
-  std::vector<std::wstring> key_paths = {CLIENT_STATE_KEY};
-  if (IsSystemInstall(GetTestScope())) {
-    key_paths.push_back(CLIENT_STATE_MEDIUM_KEY);
-  }
-  return key_paths;
-}
-#endif
-
-void ClearAppUsageStats(const std::string& app_id) {
+void ClearAppUsageStats(const std::string& app_id, UpdaterScope scope) {
 #if BUILDFLAG(IS_MAC)
   ASSERT_TRUE(base::DeletePathRecursively(AppIDToPath(app_id)));
 #elif BUILDFLAG(IS_WIN)
-  for (const auto& key_path : UsageStatsRegKeyPaths()) {
-    LONG outcome = base::win::RegKey(UpdaterScopeToHKeyRoot(GetTestScope()),
-                                     key_path.c_str(), Wow6432(DELETE))
-                       .DeleteKey(base::SysUTF8ToWide(app_id).c_str());
-    ASSERT_TRUE(outcome == ERROR_SUCCESS || outcome == ERROR_FILE_NOT_FOUND ||
-                outcome == ERROR_INVALID_HANDLE);
-  }
+  LONG outcome =
+      base::win::RegKey(
+          UpdaterScopeToHKeyRoot(scope),
+          IsSystemInstall(scope) ? CLIENT_STATE_MEDIUM_KEY : CLIENT_STATE_KEY,
+          Wow6432(KEY_WRITE))
+          .DeleteKey(base::SysUTF8ToWide(app_id).c_str());
+  ASSERT_TRUE(outcome == ERROR_SUCCESS || outcome == ERROR_FILE_NOT_FOUND);
 #endif
 }
 
@@ -80,23 +70,9 @@ void ClearAppUsageStats(const std::string& app_id) {
 
 class UpdateUsageStatsTaskTest : public testing::Test {
  protected:
-#if BUILDFLAG(IS_WIN)
-  void SetAppUsageStats(const std::wstring& key_path,
-                        const std::string& app_id,
-                        bool enabled) {
-    cleanups_.emplace_back(base::BindOnce(&ClearAppUsageStats, app_id));
-
-    base::win::RegKey key =
-        base::win::RegKey(UpdaterScopeToHKeyRoot(GetTestScope()),
-                          key_path.c_str(), Wow6432(KEY_WRITE));
-    ASSERT_EQ(
-        key.CreateKey(base::SysUTF8ToWide(app_id).c_str(), Wow6432(KEY_WRITE)),
-        ERROR_SUCCESS);
-    ASSERT_EQ(key.WriteValue(L"usagestats", enabled ? 1 : 0), ERROR_SUCCESS);
-  }
-#else
   void SetAppUsageStats(const std::string& app_id, bool enabled) {
-    cleanups_.emplace_back(base::BindOnce(&ClearAppUsageStats, app_id));
+    cleanups_.emplace_back(
+        base::BindOnce(&ClearAppUsageStats, app_id, GetTestScope()));
 #if BUILDFLAG(IS_MAC)
     base::CreateDirectory(AppIDToPath(app_id));
     std::unique_ptr<crashpad::CrashReportDatabase> database =
@@ -104,69 +80,34 @@ class UpdateUsageStatsTaskTest : public testing::Test {
             AppIDToPath(app_id).AppendASCII("Crashpad"));
     ASSERT_TRUE(database);
     database->GetSettings()->SetUploadsEnabled(enabled);
-#endif  // BUILDFLAG(IS_MAC)
+#elif BUILDFLAG(IS_WIN)
+    base::win::RegKey key = base::win::RegKey(
+        UpdaterScopeToHKeyRoot(GetTestScope()),
+        IsSystemInstall(GetTestScope()) ? CLIENT_STATE_MEDIUM_KEY
+                                        : CLIENT_STATE_KEY,
+        Wow6432(KEY_WRITE));
+    ASSERT_EQ(
+        key.CreateKey(base::SysUTF8ToWide(app_id).c_str(), Wow6432(KEY_WRITE)),
+        ERROR_SUCCESS);
+    ASSERT_EQ(key.WriteValue(L"usagestats", enabled ? 1 : 0), ERROR_SUCCESS);
+#endif
   }
-#endif  // BUILDFLAG(IS_WIN)
 
  private:
   std::vector<base::ScopedClosureRunner> cleanups_;
 };
 
-#if BUILDFLAG(IS_WIN)
-TEST_F(UpdateUsageStatsTaskTest, NoApps) {
-  ClearAppUsageStats("app1");
-  ClearAppUsageStats("app2");
-  ASSERT_FALSE(OtherAppUsageStatsAllowed({"app1", "app2"}, GetTestScope()));
-  ASSERT_FALSE(AreRawUsageStatsEnabled(GetTestScope(), {"app1", "app2"}));
-}
-
-TEST_F(UpdateUsageStatsTaskTest, OneAppEnabled) {
-  for (const auto& key_path : UsageStatsRegKeyPaths()) {
-    ClearAppUsageStats("app1");
-    ClearAppUsageStats("app2");
-    SetAppUsageStats(key_path, "app1", true);
-    SetAppUsageStats(key_path, "app2", false);
-    ASSERT_TRUE(OtherAppUsageStatsAllowed({"app1", "app2"}, GetTestScope()));
-    ASSERT_TRUE(AreRawUsageStatsEnabled(GetTestScope(), {"app1", "app2"}));
-  }
-}
-
-TEST_F(UpdateUsageStatsTaskTest, ZeroAppsEnabled) {
-  for (const auto& key_path : UsageStatsRegKeyPaths()) {
-    ClearAppUsageStats("app1");
-    ClearAppUsageStats("app2");
-    SetAppUsageStats(key_path, "app1", false);
-    SetAppUsageStats(key_path, "app2", false);
-    ASSERT_FALSE(OtherAppUsageStatsAllowed({"app1", "app2"}, GetTestScope()));
-    ASSERT_FALSE(AreRawUsageStatsEnabled(GetTestScope(), {"app1", "app2"}));
-  }
-}
-
-TEST_F(UpdateUsageStatsTaskTest,
-       SystemInstallClientStateMediumKeyShadowClientStateKey) {
-  if (!IsSystemInstall(GetTestScope())) {
-    return;
-  }
-  SetAppUsageStats(CLIENT_STATE_MEDIUM_KEY, "app1", false);
-  SetAppUsageStats(CLIENT_STATE_KEY, "app1", true);
-  ASSERT_FALSE(OtherAppUsageStatsAllowed({"app1"}, GetTestScope()));
-
-  SetAppUsageStats(CLIENT_STATE_MEDIUM_KEY, "app1", true);
-  SetAppUsageStats(CLIENT_STATE_KEY, "app1", false);
-  ASSERT_TRUE(OtherAppUsageStatsAllowed({"app1"}, GetTestScope()));
-  ASSERT_TRUE(AreRawUsageStatsEnabled(GetTestScope(), {"app1"}));
-}
-#elif !BUILDFLAG(IS_MAC) || !BUILDFLAG(GOOGLE_CHROME_BRANDING)
 // Mac Google-branded builds may pick up Chrome or other Google software
 // usagestat opt-ins from outside this test. Disable the test in that
 // configuration.
+#if !BUILDFLAG(IS_MAC) || !BUILDFLAG(GOOGLE_CHROME_BRANDING)
 TEST_F(UpdateUsageStatsTaskTest, NoApps) {
-  ClearAppUsageStats("app1");
-  ClearAppUsageStats("app2");
+  ClearAppUsageStats("app1", GetTestScope());
+  ClearAppUsageStats("app2", GetTestScope());
   ASSERT_FALSE(OtherAppUsageStatsAllowed({"app1", "app2"}, GetTestScope()));
 }
 
-// TODO(crbug.com/1296311): Enable tests once the feature is implemented.
+// TODO(crbug.com/1367437): Enable tests once updater is implemented for Linux
 #if !BUILDFLAG(IS_LINUX)
 TEST_F(UpdateUsageStatsTaskTest, OneAppEnabled) {
   SetAppUsageStats("app1", true);

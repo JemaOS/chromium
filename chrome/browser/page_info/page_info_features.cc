@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,14 +16,10 @@ bool IsAboutThisSiteFeatureEnabled() {
       g_browser_process->GetApplicationLocale());
 }
 
-bool IsAboutThisSiteAsyncFetchingEnabled() {
+bool IsAboutThisSiteNewIconFeatureEnabled() {
   return IsAboutThisSiteFeatureEnabled() &&
-         base::FeatureList::IsEnabled(kAboutThisSiteAsyncFetching);
+         base::FeatureList::IsEnabled(page_info::kPageInfoAboutThisSiteNewIcon);
 }
-
-BASE_FEATURE(kAboutThisSiteAsyncFetching,
-             "AboutThisSiteAsyncFetching",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if !BUILDFLAG(IS_ANDROID)
 bool IsPersistentSidePanelEntryFeatureEnabled() {
@@ -36,6 +32,11 @@ BASE_FEATURE(kAboutThisSitePersistentSidePanelEntry,
              "AboutThisSitePersistentSidePanelEntry",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+bool IsKeepSidePanelOnSameTabNavsFeatureEnabled() {
+  return IsAboutThisSiteFeatureEnabled() &&
+         base::FeatureList::IsEnabled(
+             page_info::kPageInfoAboutThisSiteKeepSidePanelOnSameTabNavs);
+}
 #endif
 
 }  // namespace page_info

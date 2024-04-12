@@ -44,7 +44,7 @@ const AtomicString& BluetoothAdvertisingEvent::InterfaceName() const {
 }
 
 BluetoothDevice* BluetoothAdvertisingEvent::device() const {
-  return device_.Get();
+  return device_;
 }
 
 const String& BluetoothAdvertisingEvent::name() const {
@@ -57,11 +57,11 @@ const Vector<String>& BluetoothAdvertisingEvent::uuids() const {
 
 BluetoothManufacturerDataMap* BluetoothAdvertisingEvent::manufacturerData()
     const {
-  return manufacturer_data_map_.Get();
+  return manufacturer_data_map_;
 }
 
 BluetoothServiceDataMap* BluetoothAdvertisingEvent::serviceData() const {
-  return service_data_map_.Get();
+  return service_data_map_;
 }
 
 }  // namespace blink

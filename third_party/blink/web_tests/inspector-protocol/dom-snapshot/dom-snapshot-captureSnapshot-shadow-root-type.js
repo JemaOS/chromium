@@ -1,15 +1,15 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {dp} = await testRunner.startHTML(`
     <html>
     <body>
       <host-element>
-        <template shadowrootmode="open">
+        <template shadowroot="open">
           <h2>Open shadow root</h2>
         </template>
       </host-element>
       <host-element>
-        <template shadowrootmode="closed">
-          <h2>Closed shadow root</h2>
+        <template shadowroot="closed">
+          <h2>Closes shadow root</h2>
         </template>
       </host-element>
       <textarea>test for ua shadow roots are not returned by DOMSnapshot.captureSnapshot</textarea>

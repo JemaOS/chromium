@@ -87,7 +87,7 @@ media::VideoDecodeAccelerator::Config CreateVdaConfig(
     bool uses_vd) {
   media::VideoDecodeAccelerator::Config vda_config(profile);
   vda_config.output_mode =
-      media::VideoDecodeAccelerator::Config::OutputMode::kImport;
+      media::VideoDecodeAccelerator::Config::OutputMode::IMPORT;
   vda_config.is_deferred_initialization_allowed = uses_vd;
   return vda_config;
 }
@@ -146,6 +146,7 @@ GpuArcVideoDecodeAccelerator::~GpuArcVideoDecodeAccelerator() {
 void GpuArcVideoDecodeAccelerator::ProvidePictureBuffers(
     uint32_t requested_num_of_buffers,
     media::VideoPixelFormat format,
+    uint32_t textures_per_buffer,
     const gfx::Size& dimensions,
     uint32_t texture_target) {
   NOTIMPLEMENTED() << "VDA must call ProvidePictureBuffersWithVisibleRect() "
@@ -155,6 +156,7 @@ void GpuArcVideoDecodeAccelerator::ProvidePictureBuffers(
 void GpuArcVideoDecodeAccelerator::ProvidePictureBuffersWithVisibleRect(
     uint32_t requested_num_of_buffers,
     media::VideoPixelFormat format,
+    uint32_t textures_per_buffer,
     const gfx::Size& dimensions,
     const gfx::Rect& visible_rect,
     uint32_t texture_target) {
@@ -424,7 +426,7 @@ void GpuArcVideoDecodeAccelerator::InitializeTask(
       "Media.GpuArcVideoDecodeAccelerator.InstanceCount.Initialized",
       initialized_instance_count_, /*exclusive_max=*/50);
 
-  secure_mode_ = std::nullopt;
+  secure_mode_ = absl::nullopt;
   error_state_ = false;
   pending_requests_ = {};
   pending_flush_callbacks_ = {};
@@ -452,16 +454,9 @@ void GpuArcVideoDecodeAccelerator::OnInitializeDone(
   if (result != mojom::VideoDecodeAccelerator::Result::SUCCESS)
     error_state_ = true;
 
-  // Report initialization status to UMAs.
-  if (result == mojom::VideoDecodeAccelerator::Result::SUCCESS) {
-    UMA_HISTOGRAM_ENUMERATION(
-        "Media.GpuArcVideoDecodeAccelerator.InitializeSucceeded", profile_,
-        media::VIDEO_CODEC_PROFILE_MAX + 1);
-  } else {
-    UMA_HISTOGRAM_ENUMERATION(
-        "Media.GpuArcVideoDecodeAccelerator.InitializeFailed", profile_,
-        media::VIDEO_CODEC_PROFILE_MAX + 1);
-  }
+  // Report initialization status to UMA.
+  UMA_HISTOGRAM_ENUMERATION(
+      "Media.GpuArcVideoDecodeAccelerator.InitializeResult", result);
   std::move(pending_init_callback_).Run(result);
   RunPendingRequests();
 }

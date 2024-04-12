@@ -6,11 +6,11 @@
 #define CHROME_BROWSER_UI_COCOA_HISTORY_MENU_BRIDGE_H_
 
 #import <Cocoa/Cocoa.h>
-
 #include <map>
 #include <memory>
 #include <vector>
 
+#include "base/mac/scoped_nsobject.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -79,23 +79,22 @@ class HistoryMenuBridge : public sessions::TabRestoreServiceObserver,
     // The URL that will be navigated to if the user selects this item.
     GURL url;
     // Favicon for the URL.
-    NSImage* __strong icon;
+    base::scoped_nsobject<NSImage> icon;
 
     // If the icon is being requested from the FaviconService, |icon_requested|
     // will be true and |icon_task_id| will be valid. If this is false, then
     // |icon_task_id| will be
     // base::CancelableTaskTracker::kBadTaskId.
-    bool icon_requested = false;
+    bool icon_requested;
     // The Handle given to us by the FaviconService for the icon fetch request.
-    base::CancelableTaskTracker::TaskId icon_task_id =
-        base::CancelableTaskTracker::kBadTaskId;
+    base::CancelableTaskTracker::TaskId icon_task_id;
 
     // The pointer to the item after it has been created. Strong; NSMenu also
     // retains this. During a rebuild flood (if the user closes a lot of tabs
     // quickly), the NSMenu can release the item before the HistoryItem has
     // been fully deleted. If this were a weak pointer, it would result in a
     // zombie.
-    NSMenuItem* __strong menu_item;
+    base::scoped_nsobject<NSMenuItem> menu_item;
 
     // This ID is unique for a browser session and can be passed to the
     // TabRestoreService to re-open the closed window or tab that this
@@ -257,8 +256,8 @@ class HistoryMenuBridge : public sessions::TabRestoreServiceObserver,
                     const history::VisitRow& new_visit) override;
   void OnURLsModified(history::HistoryService* history_service,
                       const history::URLRows& changed_urls) override;
-  void OnHistoryDeletions(history::HistoryService* history_service,
-                          const history::DeletionInfo& deletion_info) override;
+  void OnURLsDeleted(history::HistoryService* history_service,
+                     const history::DeletionInfo& deletion_info) override;
   void OnHistoryServiceLoaded(history::HistoryService* service) override;
   void HistoryServiceBeingDeleted(history::HistoryService* service) override;
 
@@ -269,7 +268,7 @@ class HistoryMenuBridge : public sessions::TabRestoreServiceObserver,
   // Returns if the given menu item should be visible for the current profile.
   bool ShouldMenuItemBeVisible(NSMenuItem* item);
 
-  HistoryMenuCocoaController* __strong controller_;
+  base::scoped_nsobject<HistoryMenuCocoaController> controller_;  // strong
 
   raw_ptr<Profile> profile_;                                            // weak
   raw_ptr<history::HistoryService> history_service_ = nullptr;          // weak
@@ -298,7 +297,7 @@ class HistoryMenuBridge : public sessions::TabRestoreServiceObserver,
   bool is_menu_open_ = false;
 
   // The default favicon if a HistoryItem does not have one.
-  NSImage* __strong default_favicon_;
+  base::scoped_nsobject<NSImage> default_favicon_;
 
   base::ScopedObservation<history::HistoryService,
                           history::HistoryServiceObserver>

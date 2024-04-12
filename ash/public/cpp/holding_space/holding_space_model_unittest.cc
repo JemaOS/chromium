@@ -5,15 +5,12 @@
 #include "ash/public/cpp/holding_space/holding_space_model.h"
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "ash/constants/ash_features.h"
 #include "ash/public/cpp/holding_space/holding_space_constants.h"
-#include "ash/public/cpp/holding_space/holding_space_file.h"
 #include "ash/public/cpp/holding_space/holding_space_image.h"
 #include "ash/public/cpp/holding_space/holding_space_item.h"
-#include "ash/public/cpp/holding_space/holding_space_item_updated_fields.h"
 #include "ash/public/cpp/holding_space/holding_space_model_observer.h"
 #include "ash/public/cpp/holding_space/holding_space_progress.h"
 #include "ash/public/cpp/holding_space/holding_space_section.h"
@@ -21,20 +18,16 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
-#include "base/strings/strcat.h"
 #include "base/test/scoped_feature_list.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
-#include "ui/color/color_id.h"
 #include "ui/gfx/paint_vector_icon.h"
 
 namespace ash {
 namespace {
 
-// Aliases ---------------------------------------------------------------------
-
-using testing::VariantWith;
+using UpdatedField = HoldingSpaceModelObserver::UpdatedField;
 
 // Helpers ---------------------------------------------------------------------
 
@@ -43,6 +36,13 @@ HoldingSpaceItem::InProgressCommand CreateInProgressCommand(
   return HoldingSpaceItem::InProgressCommand(command_id, /*label_id=*/-1,
                                              &gfx::kNoneIcon,
                                              /*handler=*/base::DoNothing());
+}
+
+std::vector<HoldingSpaceItem::Type> GetHoldingSpaceItemTypes() {
+  std::vector<HoldingSpaceItem::Type> types;
+  for (int i = 0; i <= static_cast<int>(HoldingSpaceItem::Type::kMaxValue); ++i)
+    types.emplace_back(static_cast<HoldingSpaceItem::Type>(i));
+  return types;
 }
 
 std::unique_ptr<HoldingSpaceImage> CreateFakeHoldingSpaceImage(
@@ -55,10 +55,8 @@ std::unique_ptr<HoldingSpaceImage> CreateFakeHoldingSpaceImage(
 
 std::unique_ptr<HoldingSpaceItem> CreateItem(HoldingSpaceItem::Type type) {
   return HoldingSpaceItem::CreateFileBackedItem(
-      type,
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/type, base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 }
 
@@ -78,10 +76,10 @@ class ScopedModelObservation : public HoldingSpaceModelObserver {
 
   // Returns the last updated fields for which `OnHoldingSpaceItemUpdated()`
   // was called, clearing the cached value.
-  HoldingSpaceItemUpdatedFields TakeLastUpdatedFields() {
-    HoldingSpaceItemUpdatedFields result = last_updated_fields_;
-    last_updated_fields_ = HoldingSpaceItemUpdatedFields();
-    return result;
+  uint32_t TakeLastUpdatedFields() {
+    const uint32_t updated_fields = last_updated_fields_;
+    last_updated_fields_ = 0u;
+    return updated_fields;
   }
 
   // Returns the last `HoldingSpaceItem` for which `OnHoldingSpaceItemUpdated()`
@@ -110,9 +108,8 @@ class ScopedModelObservation : public HoldingSpaceModelObserver {
 
  private:
   // HoldingSpaceModel::Observer:
-  void OnHoldingSpaceItemUpdated(
-      const HoldingSpaceItem* item,
-      const HoldingSpaceItemUpdatedFields& updated_fields) override {
+  void OnHoldingSpaceItemUpdated(const HoldingSpaceItem* item,
+                                 uint32_t updated_fields) override {
     last_updated_item_ = item;
     last_updated_fields_ = updated_fields;
     ++updated_item_count_;
@@ -127,12 +124,12 @@ class ScopedModelObservation : public HoldingSpaceModelObserver {
   // The last `HoldingSpaceItem` for which `OnHoldingSpaceItemUpdated()` was
   // called. May be `nullptr` prior to an update event or following a call to
   // `TakeLastUpdatedItem()`.
-  raw_ptr<const HoldingSpaceItem> last_updated_item_ = nullptr;
+  raw_ptr<const HoldingSpaceItem, ExperimentalAsh> last_updated_item_ = nullptr;
 
   // The last updated fields for which `OnHoldingSpaceItemUpdated()` was called.
-  // May be empty prior to an update event or following a call to
+  // May be zero prior to an update event or following a call to
   // `TakeLastUpdatedFields()`.
-  HoldingSpaceItemUpdatedFields last_updated_fields_;
+  uint32_t last_updated_fields_ = 0u;
 
   // The count of times for which `OnHoldingSpaceItemUpdated()` was called. May
   // be reset following a call to `TakeUpdatedItemCount()`.
@@ -185,7 +182,7 @@ class HoldingSpaceModelTest
 INSTANTIATE_TEST_SUITE_P(
     All,
     HoldingSpaceModelTest,
-    testing::Combine(testing::ValuesIn(holding_space_util::GetAllItemTypes()),
+    testing::Combine(testing::ValuesIn(GetHoldingSpaceItemTypes()),
                      /*predictability_enabled=*/testing::Bool()));
 
 // Tests -----------------------------------------------------------------------
@@ -199,10 +196,8 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_AccessibleName) {
 
   // Create a holding space `item`.
   auto item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetHoldingSpaceItemType(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetHoldingSpaceItemType(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       HoldingSpaceProgress(/*current_bytes=*/0, /*total_bytes=*/100),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
   auto* item_ptr = item.get();
@@ -217,73 +212,56 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_AccessibleName) {
 
   // Update text. Because accessible name is not overridden, this should result
   // in an update to the computed accessible name field.
-  HoldingSpaceItemUpdatedFields expected_update;
-  expected_update.previous_accessible_name = item_ptr->GetAccessibleName();
-  expected_update.previous_text = item_ptr->GetText();
-  std::u16string text(u"text");
-  model().UpdateItem(item_ptr->id())->SetText(text);
+  model().UpdateItem(item_ptr->id())->SetText(u"text");
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_TRUE(observation.TakeLastUpdatedFields() &
+              UpdatedField::kAccessibleName);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->GetAccessibleName(), text);
+  EXPECT_EQ(item_ptr->GetAccessibleName(), u"text");
 
   // Update secondary text. Because accessible name is not overridden, this
   // should result in an update to the computed accessible name field.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_accessible_name = item_ptr->GetAccessibleName();
-  expected_update.previous_secondary_text = item_ptr->secondary_text();
-  std::u16string secondary_text(u"secondary_text");
-  model().UpdateItem(item_ptr->id())->SetSecondaryText(secondary_text);
+  model().UpdateItem(item_ptr->id())->SetSecondaryText(u"secondary_text");
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_TRUE(observation.TakeLastUpdatedFields() &
+              UpdatedField::kAccessibleName);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->GetAccessibleName(),
-            base::StrCat({text, u", ", secondary_text}));
+  EXPECT_EQ(item_ptr->GetAccessibleName(), u"text, secondary_text");
 
   // Update accessible name. Note that accessible name field is now overridden
   // from its previously computed value.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_accessible_name = item_ptr->GetAccessibleName();
-  std::optional<std::u16string> accessible_name(u"accessible_name");
-  model().UpdateItem(item_ptr->id())->SetAccessibleName(accessible_name);
+  model().UpdateItem(item_ptr->id())->SetAccessibleName(u"accessible_name");
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kAccessibleName);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->GetAccessibleName(), accessible_name);
+  EXPECT_EQ(item_ptr->GetAccessibleName(), u"accessible_name");
 
   // Update text. Because accessible name is overridden, this should *not*
   // result in an update to the computed accessible name field.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_text = item_ptr->GetText();
-  text = u"updated_text";
-  model().UpdateItem(item_ptr->id())->SetText(text);
+  model().UpdateItem(item_ptr->id())->SetText(u"updated_text");
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kText);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->GetAccessibleName(), accessible_name);
+  EXPECT_EQ(item_ptr->GetAccessibleName(), u"accessible_name");
 
   // Update secondary text. Because accessible name is overridden, this should
   // *not* result in an update to the computed accessible name field.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_secondary_text = item_ptr->secondary_text();
-  secondary_text = u"updated_secondary_text";
-  model().UpdateItem(item_ptr->id())->SetSecondaryText(secondary_text);
+  model()
+      .UpdateItem(item_ptr->id())
+      ->SetSecondaryText(u"updated_secondary_text");
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kSecondaryText);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->GetAccessibleName(), accessible_name);
+  EXPECT_EQ(item_ptr->GetAccessibleName(), u"accessible_name");
 
   // Update accessible name. Note that accessible name field is no longer being
   // overridden from its computed value.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_accessible_name = item_ptr->GetAccessibleName();
-  accessible_name = std::nullopt;
-  model().UpdateItem(item_ptr->id())->SetAccessibleName(accessible_name);
+  model().UpdateItem(item_ptr->id())->SetAccessibleName(absl::nullopt);
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kAccessibleName);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
   EXPECT_EQ(item_ptr->GetAccessibleName(),
-            base::StrCat({text, u", ", secondary_text}));
+            u"updated_text, updated_secondary_text");
 }
 
 // Verifies that updating multiple item attributes is atomic.
@@ -295,10 +273,8 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_Atomic) {
 
   // Create a holding space `item`.
   auto item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetHoldingSpaceItemType(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetHoldingSpaceItemType(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       HoldingSpaceProgress(/*current_bytes=*/0, /*total_bytes=*/100),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
   auto* item_ptr = item.get();
@@ -309,32 +285,25 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_Atomic) {
   EXPECT_EQ(model().items()[0].get(), item_ptr);
 
   // Update accessible name.
-  HoldingSpaceItemUpdatedFields expected_update;
-  expected_update.previous_accessible_name = item_ptr->GetAccessibleName();
-  std::u16string accessible_name(u"accessible_name");
-  model().UpdateItem(item_ptr->id())->SetAccessibleName(accessible_name);
+  model().UpdateItem(item_ptr->id())->SetAccessibleName(u"accessible_name");
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kAccessibleName);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->GetAccessibleName(), accessible_name);
+  EXPECT_EQ(item_ptr->GetAccessibleName(), u"accessible_name");
 
   // Update backing file.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_backing_file = item_ptr->file();
-  expected_update.previous_text = item_ptr->GetText();
-  HoldingSpaceFile backing_file(base::FilePath("updated_file_path"),
-                                HoldingSpaceFile::FileSystemType::kTest,
-                                GURL("filesystem::updated_file_system_url"));
-  model().UpdateItem(item_ptr->id())->SetBackingFile(backing_file);
+  base::FilePath updated_file_path("updated_file_path");
+  GURL updated_file_system_url("filesystem::updated_file_system_url");
+  model()
+      .UpdateItem(item_ptr->id())
+      ->SetBackingFile(updated_file_path, updated_file_system_url);
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kBackingFile);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->file(), backing_file);
+  EXPECT_EQ(item_ptr->file_path(), updated_file_path);
+  EXPECT_EQ(item_ptr->file_system_url(), updated_file_system_url);
 
   // Update in-progress commands.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_in_progress_commands =
-      item_ptr->in_progress_commands();
   std::vector<HoldingSpaceItem::InProgressCommand> in_progress_commands;
   in_progress_commands.push_back(
       CreateInProgressCommand(HoldingSpaceCommandId::kCancelItem));
@@ -342,95 +311,76 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_Atomic) {
       .UpdateItem(item_ptr->id())
       ->SetInProgressCommands(in_progress_commands);
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(),
+            UpdatedField::kInProgressCommands);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
   EXPECT_EQ(item_ptr->in_progress_commands(), in_progress_commands);
 
   // Update progress.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_progress = item_ptr->progress();
-  HoldingSpaceProgress progress(/*current_bytes=*/50, /*total_bytes=*/100);
-  model().UpdateItem(item_ptr->id())->SetProgress(progress);
+  model()
+      .UpdateItem(item_ptr->id())
+      ->SetProgress(
+          HoldingSpaceProgress(/*current_bytes=*/50, /*total_bytes=*/100));
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kProgress);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->progress(), progress);
+  EXPECT_EQ(item_ptr->progress().GetValue(), 0.5f);
 
   // Update text.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_text = item_ptr->GetText();
-  std::u16string text(u"text");
-  model().UpdateItem(item_ptr->id())->SetText(text);
+  model().UpdateItem(item_ptr->id())->SetText(u"text");
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kText);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->GetText(), text);
+  EXPECT_EQ(item_ptr->GetText(), u"text");
 
   // Update secondary text.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_secondary_text = item_ptr->secondary_text();
-  std::u16string secondary_text(u"secondary_text");
-  model().UpdateItem(item_ptr->id())->SetSecondaryText(secondary_text);
+  model().UpdateItem(item_ptr->id())->SetSecondaryText(u"secondary_text");
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kSecondaryText);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->secondary_text(), secondary_text);
+  EXPECT_EQ(item_ptr->secondary_text(), u"secondary_text");
 
   // Update secondary text color.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_secondary_text_color_variant =
-      item_ptr->secondary_text_color_variant();
-  ui::ColorId secondary_text_color_id(cros_tokens::kTextColorAlert);
   model()
       .UpdateItem(item_ptr->id())
-      ->SetSecondaryTextColorVariant(secondary_text_color_id);
+      ->SetSecondaryTextColorId(cros_tokens::kTextColorAlert);
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(),
+            UpdatedField::kSecondaryTextColor);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_THAT(*item_ptr->secondary_text_color_variant(),
-              VariantWith<ui::ColorId>(secondary_text_color_id));
+  EXPECT_EQ(item_ptr->secondary_text_color_id(), cros_tokens::kTextColorAlert);
 
   // Update all attributes.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_accessible_name = item_ptr->GetAccessibleName();
-  expected_update.previous_backing_file = item_ptr->file();
-  expected_update.previous_in_progress_commands =
-      item_ptr->in_progress_commands();
-  expected_update.previous_progress = item_ptr->progress();
-  expected_update.previous_secondary_text = item_ptr->secondary_text();
-  expected_update.previous_secondary_text_color_variant =
-      item_ptr->secondary_text_color_variant();
-  expected_update.previous_text = item_ptr->GetText();
-  accessible_name = u"updated_accessible_name";
-  backing_file = HoldingSpaceFile(base::FilePath("updated_file_path"),
-                                  HoldingSpaceFile::FileSystemType::kLocal,
-                                  GURL("file_system::updated_file_system_url"));
   in_progress_commands.push_back(
       CreateInProgressCommand(HoldingSpaceCommandId::kPauseItem));
-  progress = HoldingSpaceProgress(/*current_bytes=*/75, /*total_bytes=*/100);
-  secondary_text = u"updated_secondary_text";
-  secondary_text_color_id = cros_tokens::kTextColorWarning;
-  text = u"updated_text";
+  updated_file_path = base::FilePath("again_updated_file_path");
+  updated_file_system_url = GURL("filesystem::again_updated_file_system_url");
   model()
       .UpdateItem(item_ptr->id())
-      ->SetAccessibleName(accessible_name)
-      .SetBackingFile(backing_file)
+      ->SetAccessibleName(u"updated_accessible_name")
+      .SetBackingFile(updated_file_path, updated_file_system_url)
       .SetInProgressCommands(in_progress_commands)
-      .SetText(text)
-      .SetSecondaryText(secondary_text)
-      .SetSecondaryTextColorVariant(secondary_text_color_id)
-      .SetProgress(progress);
+      .SetText(u"updated_text")
+      .SetSecondaryText(u"updated_secondary_text")
+      .SetSecondaryTextColorId(cros_tokens::kTextColorWarning)
+      .SetProgress(
+          HoldingSpaceProgress(/*current_bytes=*/75, /*total_bytes=*/100));
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(),
+            UpdatedField::kAccessibleName | UpdatedField::kBackingFile |
+                UpdatedField::kInProgressCommands | UpdatedField::kProgress |
+                UpdatedField::kSecondaryText |
+                UpdatedField::kSecondaryTextColor | UpdatedField::kText);
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 1);
-  EXPECT_EQ(item_ptr->GetAccessibleName(), accessible_name);
-  EXPECT_EQ(item_ptr->file(), backing_file);
+  EXPECT_EQ(item_ptr->GetAccessibleName(), u"updated_accessible_name");
+  EXPECT_EQ(item_ptr->file_path(), updated_file_path);
+  EXPECT_EQ(item_ptr->file_system_url(), updated_file_system_url);
   EXPECT_EQ(item_ptr->in_progress_commands(), in_progress_commands);
-  EXPECT_EQ(item_ptr->progress(), progress);
-  EXPECT_EQ(item_ptr->GetText(), text);
-  EXPECT_EQ(item_ptr->secondary_text(), secondary_text);
-  EXPECT_THAT(*item_ptr->secondary_text_color_variant(),
-              VariantWith<ui::ColorId>(secondary_text_color_id));
+  EXPECT_EQ(item_ptr->progress().GetValue(), 0.75f);
+  EXPECT_EQ(item_ptr->GetText(), u"updated_text");
+  EXPECT_EQ(item_ptr->secondary_text(), u"updated_secondary_text");
+  EXPECT_EQ(item_ptr->secondary_text_color_id(),
+            cros_tokens::kTextColorWarning);
 }
 
 // Verifies that updating items will no-op appropriately.
@@ -442,11 +392,8 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_Noop) {
 
   // Create a holding space `item`.
   auto item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetHoldingSpaceItemType(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
-      HoldingSpaceProgress(),
+      /*type=*/GetHoldingSpaceItemType(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"), HoldingSpaceProgress(),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
   auto* item_ptr = item.get();
 
@@ -462,12 +409,12 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_Noop) {
   // Perform another no-op update. No observers should be notified.
   model()
       .UpdateItem(item_ptr->id())
-      ->SetAccessibleName(std::nullopt)
-      .SetBackingFile(item_ptr->file())
+      ->SetAccessibleName(absl::nullopt)
+      .SetBackingFile(item_ptr->file_path(), item_ptr->file_system_url())
       .SetInProgressCommands({})
-      .SetText(std::nullopt)
-      .SetSecondaryText(std::nullopt)
-      .SetSecondaryTextColorVariant(std::nullopt)
+      .SetText(absl::nullopt)
+      .SetSecondaryText(absl::nullopt)
+      .SetSecondaryTextColorId(absl::nullopt)
       .SetProgress(item_ptr->progress());
   EXPECT_EQ(observation.TakeUpdatedItemCount(), 0);
 }
@@ -481,10 +428,8 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_InProgressCommands) {
 
   // Create an in-progress holding space `item`.
   auto item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetHoldingSpaceItemType(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetHoldingSpaceItemType(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       HoldingSpaceProgress(/*current_bytes=*/0, /*total_bytes=*/100),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
   auto* item_ptr = item.get();
@@ -500,13 +445,10 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_InProgressCommands) {
   // Attempt to update in-progress commands to empty. This should no-op.
   model().UpdateItem(item_ptr->id())->SetInProgressCommands({});
   EXPECT_FALSE(observation.TakeLastUpdatedItem());
-  EXPECT_TRUE(observation.TakeLastUpdatedFields().IsEmpty());
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), 0u);
   EXPECT_TRUE(item_ptr->in_progress_commands().empty());
 
   // Update in-progress commands.
-  HoldingSpaceItemUpdatedFields expected_update;
-  expected_update.previous_in_progress_commands =
-      item_ptr->in_progress_commands();
   std::vector<HoldingSpaceItem::InProgressCommand> in_progress_commands;
   in_progress_commands.push_back(
       CreateInProgressCommand(HoldingSpaceCommandId::kCancelItem));
@@ -514,38 +456,34 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_InProgressCommands) {
       .UpdateItem(item_ptr->id())
       ->SetInProgressCommands(in_progress_commands);
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(),
+            UpdatedField::kInProgressCommands);
   EXPECT_EQ(item_ptr->in_progress_commands(), in_progress_commands);
 
   // Update in-progress commands again.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_in_progress_commands =
-      item_ptr->in_progress_commands();
   in_progress_commands.push_back(
       CreateInProgressCommand(HoldingSpaceCommandId::kPauseItem));
   model()
       .UpdateItem(item_ptr->id())
       ->SetInProgressCommands(in_progress_commands);
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(),
+            UpdatedField::kInProgressCommands);
   EXPECT_EQ(item_ptr->in_progress_commands(), in_progress_commands);
 
   // Update in-progress commands and progress to completion. Because the item is
   // no longer in progress, in-progress commands should be empty.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_in_progress_commands =
-      item_ptr->in_progress_commands();
-  expected_update.previous_progress = item_ptr->progress();
   in_progress_commands.push_back(
       CreateInProgressCommand(HoldingSpaceCommandId::kResumeItem));
-  HoldingSpaceProgress progress(/*current_bytes=*/100, /*total_bytes=*/100);
   model()
       .UpdateItem(item_ptr->id())
       ->SetInProgressCommands(in_progress_commands)
-      .SetProgress(progress);
+      .SetProgress(
+          HoldingSpaceProgress(/*current_bytes=*/100, /*total_bytes=*/100));
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
-  EXPECT_EQ(item_ptr->progress(), progress);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(),
+            UpdatedField::kInProgressCommands | UpdatedField::kProgress);
+  EXPECT_TRUE(item_ptr->progress().IsComplete());
   EXPECT_TRUE(item_ptr->in_progress_commands().empty());
 
   // Attempts to update in-progress commands should no-op for completed items.
@@ -553,7 +491,7 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_InProgressCommands) {
       .UpdateItem(item_ptr->id())
       ->SetInProgressCommands(in_progress_commands);
   EXPECT_FALSE(observation.TakeLastUpdatedItem());
-  EXPECT_TRUE(observation.TakeLastUpdatedFields().IsEmpty());
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), 0u);
   EXPECT_TRUE(item_ptr->in_progress_commands().empty());
 }
 
@@ -566,11 +504,9 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_Progress) {
 
   // Create a holding space `item`.
   auto item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetHoldingSpaceItemType(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
-      HoldingSpaceProgress(/*current_bytes=*/std::nullopt,
+      /*type=*/GetHoldingSpaceItemType(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
+      HoldingSpaceProgress(/*current_bytes=*/absl::nullopt,
                            /*total_bytes=*/100),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
   auto* item_ptr = item.get();
@@ -583,61 +519,51 @@ TEST_P(HoldingSpaceModelTest, UpdateItem_Progress) {
   // Verify progress is indeterminate.
   EXPECT_TRUE(item_ptr->progress().IsIndeterminate());
 
-  // Update progress to a determinate, in-progress value.
-  HoldingSpaceItemUpdatedFields expected_update;
-  expected_update.previous_progress = item_ptr->progress();
-  HoldingSpaceProgress progress(/*current_bytes=*/50, /*total_bytes=*/100);
-  model().UpdateItem(item_ptr->id())->SetProgress(progress);
+  // Update progress to `0.5f`.
+  model()
+      .UpdateItem(item_ptr->id())
+      ->SetProgress(
+          HoldingSpaceProgress(/*current_bytes=*/50, /*total_bytes=*/100));
   EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
-  EXPECT_EQ(item_ptr->progress(), progress);
-  EXPECT_FALSE(item_ptr->progress().IsComplete());
-  EXPECT_FALSE(item_ptr->progress().IsIndeterminate());
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kProgress);
+  EXPECT_EQ(item_ptr->progress().GetValue(), 0.5f);
 
-  // Update progress to the same value. This should no-op.
-  progress = HoldingSpaceProgress(/*current_bytes=*/50, /*total_bytes=*/100);
-  model().UpdateItem(item_ptr->id())->SetProgress(progress);
-  EXPECT_FALSE(observation.TakeLastUpdatedItem());
-  EXPECT_TRUE(observation.TakeLastUpdatedFields().IsEmpty());
-  EXPECT_EQ(item_ptr->progress(), progress);
-  EXPECT_FALSE(item_ptr->progress().IsComplete());
-  EXPECT_FALSE(item_ptr->progress().IsIndeterminate());
-
-  // Update progress to indeterminate.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_progress = item_ptr->progress();
-  progress = HoldingSpaceProgress(/*current_bytes=*/std::nullopt,
-                                  /*total_bytes=*/100);
-  model().UpdateItem(item_ptr->id())->SetProgress(progress);
-  EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
-  EXPECT_EQ(item_ptr->progress(), progress);
-  EXPECT_FALSE(item_ptr->progress().IsComplete());
-  EXPECT_TRUE(item_ptr->progress().IsIndeterminate());
-
-  // Update progress to complete.
-  expected_update = HoldingSpaceItemUpdatedFields();
-  expected_update.previous_progress = item_ptr->progress();
-  progress = HoldingSpaceProgress(/*current_bytes=*/100, /*total_bytes=*/100);
-  model().UpdateItem(item_ptr->id())->SetProgress(progress);
-  EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
-  EXPECT_EQ(observation.TakeLastUpdatedFields(), expected_update);
-  EXPECT_EQ(item_ptr->progress(), progress);
-  EXPECT_TRUE(item_ptr->progress().IsComplete());
-  EXPECT_FALSE(item_ptr->progress().IsIndeterminate());
-
-  // Update progress to an in-progress value. This should no-op as progress
-  // becomes read-only after being marked completed.
-  progress = item_ptr->progress();
+  // Update progress to `0.5f` again. This should no-op.
   model()
       .UpdateItem(item_ptr->id())
       ->SetProgress(
           HoldingSpaceProgress(/*current_bytes=*/50, /*total_bytes=*/100));
   EXPECT_FALSE(observation.TakeLastUpdatedItem());
-  EXPECT_TRUE(observation.TakeLastUpdatedFields().IsEmpty());
-  EXPECT_EQ(item_ptr->progress(), progress);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), 0u);
+  EXPECT_EQ(item_ptr->progress().GetValue(), 0.5f);
+
+  // Update progress to indeterminate.
+  model()
+      .UpdateItem(item_ptr->id())
+      ->SetProgress(HoldingSpaceProgress(/*current_bytes=*/absl::nullopt,
+                                         /*total_bytes=*/100));
+  EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kProgress);
+  EXPECT_TRUE(item_ptr->progress().IsIndeterminate());
+
+  // Update progress to complete.
+  model()
+      .UpdateItem(item_ptr->id())
+      ->SetProgress(
+          HoldingSpaceProgress(/*current_bytes=*/100, /*total_bytes=*/100));
+  EXPECT_EQ(observation.TakeLastUpdatedItem(), item_ptr);
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), UpdatedField::kProgress);
   EXPECT_TRUE(item_ptr->progress().IsComplete());
-  EXPECT_FALSE(item_ptr->progress().IsIndeterminate());
+
+  // Update progress to `0.5f`. This should no-op as progress becomes read-only
+  // after being marked completed.
+  model()
+      .UpdateItem(item_ptr->id())
+      ->SetProgress(
+          HoldingSpaceProgress(/*current_bytes=*/50, /*total_bytes=*/100));
+  EXPECT_FALSE(observation.TakeLastUpdatedItem());
+  EXPECT_EQ(observation.TakeLastUpdatedFields(), 0u);
+  EXPECT_TRUE(item_ptr->progress().IsComplete());
 }
 
 TEST_P(HoldingSpaceModelTest, EnforcesMaxItemCountsPerSection) {

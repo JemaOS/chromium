@@ -27,9 +27,9 @@ class Widget;
 // Common class to |PageInfoBubbleView| and |InternalPageInfoBubbleView|.
 class PageInfoBubbleViewBase : public views::BubbleDialogDelegateView,
                                public content::WebContentsObserver {
-  METADATA_HEADER(PageInfoBubbleViewBase, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(PageInfoBubbleViewBase);
+
   // Type of the bubble being displayed.
   enum BubbleType {
     BUBBLE_NONE,

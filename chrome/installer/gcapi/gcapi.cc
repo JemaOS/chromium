@@ -25,7 +25,6 @@
 #include <tlhelp32.h>
 #include <wrl/client.h>
 
-#include <algorithm>
 #include <cstdlib>
 #include <iterator>
 #include <limits>
@@ -33,6 +32,7 @@
 #include <string>
 
 #include "base/command_line.h"
+#include "base/cxx17_backports.h"
 #include "base/files/file_path.h"
 #include "base/process/launch.h"
 #include "base/strings/string_number_conversions.h"
@@ -42,13 +42,13 @@
 #include "base/win/scoped_com_initializer.h"
 #include "base/win/scoped_handle.h"
 #include "base/win/wmi.h"
+#include "chrome/installer/gcapi/gcapi_omaha_experiment.h"
 #include "chrome/installer/gcapi/gcapi_reactivation.h"
 #include "chrome/installer/gcapi/google_update_util.h"
 #include "chrome/installer/launcher_support/chrome_launcher_support.h"
 #include "chrome/installer/util/google_update_constants.h"
 #include "chrome/installer/util/util_constants.h"
-#include "chrome/updater/app/server/win/updater_legacy_idl.h"
-#include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
+#include "google_update/google_update_idl.h"
 
 using base::Time;
 using base::win::RegKey;
@@ -424,11 +424,6 @@ BOOL __stdcall LaunchGoogleChrome() {
   }
 
   bool impersonation_success = false;
-  absl::Cleanup revert_to_self = [&] {
-    if (impersonation_success) {
-      ::RevertToSelf();
-    }
-  };
   if (IsRunningElevated()) {
     wchar_t* curr_proc_sid;
     if (!GetUserIdForProcess(GetCurrentProcessId(), &curr_proc_sid)) {
@@ -478,24 +473,25 @@ BOOL __stdcall LaunchGoogleChrome() {
 
   base::CommandLine chrome_command(chrome_exe_path);
 
-  // Chrome queries for the SxS IIDs first, with a fallback to the legacy IID,
-  // to make sure that marshaling loads the proxy/stub from the correct (HKLM)
-  // hive.
-  // If Omaha's process launcher does not work, Omaha may not be installed at
-  // system level. Try just running Chrome instead.
-  ComPtr<IUnknown> unknown;
+  bool ret = false;
   ComPtr<IProcessLauncher> ipl;
-  return (SUCCEEDED(::CoCreateInstance(__uuidof(ProcessLauncherClass), nullptr,
-                                       CLSCTX_LOCAL_SERVER,
-                                       IID_PPV_ARGS(&unknown))) &&
-          (SUCCEEDED(unknown.CopyTo(__uuidof(IProcessLauncherSystem),
-                                    IID_PPV_ARGS_Helper(&ipl))) ||
-           SUCCEEDED(unknown.As(&ipl))) &&
-          SUCCEEDED(ipl->LaunchCmdLine(
-              chrome_command.GetCommandLineString().c_str()))) ||
-         base::LaunchProcess(chrome_command.GetCommandLineString(),
-                             base::LaunchOptions())
-             .IsValid();
+  if (SUCCEEDED(::CoCreateInstance(__uuidof(ProcessLauncherClass), nullptr,
+                                   CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&ipl)))) {
+    if (SUCCEEDED(
+            ipl->LaunchCmdLine(chrome_command.GetCommandLineString().c_str())))
+      ret = true;
+    ipl.Reset();
+  } else {
+    // Couldn't get Omaha's process launcher, Omaha may not be installed at
+    // system level. Try just running Chrome instead.
+    ret = base::LaunchProcess(chrome_command.GetCommandLineString(),
+                              base::LaunchOptions())
+              .IsValid();
+  }
+
+  if (impersonation_success)
+    ::RevertToSelf();
+  return ret;
 }
 
 BOOL __stdcall LaunchGoogleChromeWithDimensions(int x,
@@ -646,18 +642,21 @@ BOOL __stdcall CanOfferReactivation(const wchar_t* brand_code,
 BOOL __stdcall ReactivateChrome(const wchar_t* brand_code,
                                 int shell_mode,
                                 DWORD* error_code) {
-  if (!CanOfferReactivation(brand_code, shell_mode, error_code)) {
-    return FALSE;
+  BOOL result = FALSE;
+  if (CanOfferReactivation(brand_code, shell_mode, error_code)) {
+    if (SetReactivationBrandCode(brand_code, shell_mode)) {
+      // Currently set this as a best-effort thing. We return TRUE if
+      // reactivation succeeded regardless of the experiment label result.
+      SetReactivationExperimentLabels(brand_code, shell_mode);
+
+      result = TRUE;
+    } else {
+      if (error_code)
+        *error_code = REACTIVATE_ERROR_REACTIVATION_FAILED;
+    }
   }
 
-  if (SetReactivationBrandCode(brand_code, shell_mode)) {
-    return TRUE;
-  }
-
-  if (error_code) {
-    *error_code = REACTIVATE_ERROR_REACTIVATION_FAILED;
-  }
-  return FALSE;
+  return result;
 }
 
 BOOL __stdcall CanOfferRelaunch(const wchar_t** partner_brandcode_list,
@@ -744,14 +743,15 @@ BOOL __stdcall SetRelaunchOffered(const wchar_t** partner_brandcode_list,
     return FALSE;
 
   // Store the relaunched brand code and the minimum date for relaunch (6 months
-  // from now).
+  // from now), and set the Omaha experiment label.
   RegKey key;
   if (key.Create(HKEY_CURRENT_USER, gcapi_internals::kChromeRegClientStateKey,
                  KEY_SET_VALUE | KEY_WOW64_32KEY) != ERROR_SUCCESS ||
       key.WriteValue(kRelaunchBrandcodeValue, relaunch_brandcode) !=
           ERROR_SUCCESS ||
       key.WriteValue(kRelaunchAllowedAfterValue, FormatDateOffsetByMonths(6)) !=
-          ERROR_SUCCESS) {
+          ERROR_SUCCESS ||
+      !SetRelaunchExperimentLabels(relaunch_brandcode, shell_mode)) {
     if (error_code)
       *error_code = RELAUNCH_ERROR_RELAUNCH_FAILED;
     return FALSE;

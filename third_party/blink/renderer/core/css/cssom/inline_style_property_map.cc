@@ -4,8 +4,9 @@
 
 #include "third_party/blink/renderer/core/css/cssom/inline_style_property_map.h"
 
+#include "third_party/blink/renderer/core/css/css_custom_property_declaration.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
-#include "third_party/blink/renderer/core/css/css_unparsed_declaration_value.h"
+#include "third_party/blink/renderer/core/css/css_variable_reference_value.h"
 #include "third_party/blink/renderer/core/css/style_property_serializer.h"
 
 namespace blink {
@@ -50,12 +51,12 @@ bool InlineStylePropertyMap::SetShorthandProperty(
 void InlineStylePropertyMap::SetCustomProperty(
     const AtomicString& property_name,
     const CSSValue& value) {
-  DCHECK(value.IsUnparsedDeclaration());
-  const auto& variable_value = To<CSSUnparsedDeclarationValue>(value);
+  DCHECK(value.IsVariableReferenceValue());
+  const auto& variable_value = To<CSSVariableReferenceValue>(value);
   CSSVariableData* variable_data = variable_value.VariableDataValue();
   owner_element_->SetInlineStyleProperty(
       CSSPropertyName(property_name),
-      *MakeGarbageCollected<CSSUnparsedDeclarationValue>(
+      *MakeGarbageCollected<CSSCustomPropertyDeclaration>(
           variable_data, variable_value.ParserContext()));
   owner_element_->NotifyInlineStyleMutation();
 }

@@ -9,7 +9,7 @@ var assertFalse = chrome.test.assertFalse;
 var assertTrue = chrome.test.assertTrue;
 
 function pageUrl(name) {
-  return chrome.runtime.getURL(
+  return chrome.extension.getURL(
       '_test_resources/api_test/tabs/basics/' + name + '.html');
 }
 

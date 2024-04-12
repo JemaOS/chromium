@@ -3,8 +3,7 @@
 // found in the LICENSE file.
 
 import {highlight} from 'chrome://resources/js/search_highlight_utils.js';
-
-import type {Tab} from './tab_search.mojom-webui.js';
+import {Tab} from './tab_search.mojom-webui.js';
 
 interface Range {
   start: number;

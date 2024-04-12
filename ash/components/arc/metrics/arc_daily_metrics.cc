@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "ash/components/arc/metrics/arc_daily_metrics.h"
+#include "ash/components/arc/metrics/arc_daily_metrics_prefs.h"
 
 #include <unordered_set>
 
@@ -10,6 +11,7 @@
 #include "base/memory/raw_ref.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/stringprintf.h"
+#include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 
 namespace arc {
@@ -36,7 +38,7 @@ class DailyObserver : public metrics::DailyEvent::Observer {
   }
 
  private:
-  const raw_ref<ArcDailyMetrics> arc_daily_metrics_;
+  const raw_ref<ArcDailyMetrics, ExperimentalAsh> arc_daily_metrics_;
 };
 
 class KillCounts {
@@ -123,6 +125,11 @@ void KillCounts::UpdateUmaDaily() {
 
 }  // namespace
 
+void RegisterDailyMetricsPrefs(PrefRegistrySimple* registry) {
+  registry->RegisterDictionaryPref(prefs::kArcDailyMetricsKills);
+  metrics::DailyEvent::RegisterPref(registry, prefs::kArcDailyMetricsSample);
+}
+
 const vm_tools::concierge::VmInfo_VmType
     ArcDailyMetrics::kKillCountTypeVm[ArcDailyMetrics::kKillCountNum] = {
         vm_tools::concierge::VmInfo_VmType_UNKNOWN,    // kKillCountAll not used
@@ -163,7 +170,7 @@ ArcDailyMetrics::ArcDailyMetrics(PrefService* pref_service)
 ArcDailyMetrics::~ArcDailyMetrics() = default;
 
 void ArcDailyMetrics::OnLowMemoryKillCounts(
-    std::optional<vm_tools::concierge::ListVmsResponse> vms_list,
+    absl::optional<vm_tools::concierge::ListVmsResponse> vms_list,
     int oom,
     int foreground,
     int perceptible,

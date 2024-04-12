@@ -23,8 +23,6 @@ class ASH_EXPORT NetworkTrayView : public TrayItemView,
                                    public network_icon::AnimationObserver,
                                    public SessionObserver,
                                    public TrayNetworkStateObserver {
-  METADATA_HEADER(NetworkTrayView, TrayItemView)
-
  public:
   NetworkTrayView(const NetworkTrayView&) = delete;
   NetworkTrayView& operator=(const NetworkTrayView&) = delete;
@@ -35,6 +33,8 @@ class ASH_EXPORT NetworkTrayView : public TrayItemView,
 
   std::u16string GetAccessibleNameString() const;
 
+  const char* GetClassName() const override;
+
   // views::View:
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
   views::View* GetTooltipHandlerForPoint(const gfx::Point& point) override;
@@ -43,7 +43,6 @@ class ASH_EXPORT NetworkTrayView : public TrayItemView,
   // TrayItemView:
   void HandleLocaleChange() override;
   void OnThemeChanged() override;
-  void UpdateLabelOrImageViewColor(bool active) override;
 
   // network_icon::AnimationObserver:
   void NetworkIconChanged() override;
@@ -64,9 +63,6 @@ class ASH_EXPORT NetworkTrayView : public TrayItemView,
 
   // Updates the tooltip and calls NotifyAccessibilityEvent when necessary.
   void UpdateConnectionStatus(bool notify_a11y);
-
-  // Gets the icon type to paint different icons for different states.
-  network_icon::IconType GetIconType();
 
   ActiveNetworkIcon::Type type_;
 

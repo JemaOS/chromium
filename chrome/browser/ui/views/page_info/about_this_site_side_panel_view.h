@@ -22,16 +22,16 @@ namespace views {
 class WebView;
 }  // namespace views
 
-// Owns the webview and navigates to a google search URL when requested. It's
+// Owns the webview and navigates to a google search URL when requested. Its
 // owned by the side panel registry.
-class AboutThisSiteSidePanelView final
+class AboutThisSiteSidePanelView
     : public views::FlexLayoutView,
       public content::WebContentsObserver,
       public content::WebContentsDelegate,
-      public AboutThisSiteWebContentsUserData::Delegate {
+      public AboutThisSiteWebContentsUserData::Delegate,
+      public base::SupportsWeakPtr<AboutThisSiteSidePanelView> {
  public:
-  explicit AboutThisSiteSidePanelView(
-      content::WebContents* parent_web_contents);
+  explicit AboutThisSiteSidePanelView(BrowserView* browser_view);
   AboutThisSiteSidePanelView(const AboutThisSiteSidePanelView&) = delete;
   AboutThisSiteSidePanelView& operator=(const AboutThisSiteSidePanelView&) =
       delete;
@@ -41,10 +41,6 @@ class AboutThisSiteSidePanelView final
 
   // views::View:
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
-
-  base::WeakPtr<AboutThisSiteSidePanelView> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
 
  private:
   // Remove parameters that shouldn't be passed to the main browser.
@@ -77,14 +73,12 @@ class AboutThisSiteSidePanelView final
       content::WebContents* source,
       const content::NativeWebKeyboardEvent& event) override;
 
-  BrowserView* outer_browser_view();
   content::WebContentsDelegate* outer_delegate();
 
   GURL last_url_;
-  base::WeakPtr<content::WebContents> parent_web_contents_;
+  raw_ptr<BrowserView> browser_view_;
   raw_ptr<views::WebView> loading_indicator_web_view_;
   raw_ptr<views::WebView> web_view_;
-  base::WeakPtrFactory<AboutThisSiteSidePanelView> weak_ptr_factory_{this};
 };
 
 #endif // CHROME_BROWSER_UI_VIEWS_PAGE_INFO_ABOUT_THIS_SITE_SIDE_PANEL_VIEW_H_

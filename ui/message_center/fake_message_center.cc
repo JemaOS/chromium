@@ -65,7 +65,7 @@ Notification* FakeMessageCenter::FindPopupNotificationById(
 Notification* FakeMessageCenter::FindVisibleNotificationById(
     const std::string& id) {
   const auto& notifications = GetVisibleNotifications();
-  for (Notification* notification : notifications) {
+  for (auto* notification : notifications) {
     if (notification->id() == id) {
       return notification;
     }
@@ -146,7 +146,7 @@ void FakeMessageCenter::RemoveNotificationsForNotifierId(
 void FakeMessageCenter::RemoveAllNotifications(bool by_user, RemoveType type) {
   // Only removing all is supported.
   DCHECK_EQ(type, RemoveType::ALL);
-  for (const Notification* notification : notifications_.GetNotifications()) {
+  for (const auto* notification : notifications_.GetNotifications()) {
     // This is safe to remove since GetNotifications() returned a copy.
     RemoveNotification(notification->id(), by_user);
   }
@@ -170,8 +170,6 @@ void FakeMessageCenter::ClickOnNotificationButtonWithReply(
 
 void FakeMessageCenter::ClickOnSettingsButton(const std::string& id) {}
 
-void FakeMessageCenter::ClickOnSnoozeButton(const std::string& id) {}
-
 void FakeMessageCenter::DisableNotification(const std::string& id) {}
 
 void FakeMessageCenter::MarkSinglePopupAsShown(const std::string& id,
@@ -185,13 +183,7 @@ void FakeMessageCenter::ResetSinglePopup(const std::string& id) {}
 void FakeMessageCenter::DisplayedNotification(const std::string& id,
                                               const DisplaySource source) {}
 
-void FakeMessageCenter::SetQuietMode(bool in_quiet_mode,
-                                     QuietModeSourceType type) {}
-
-QuietModeSourceType FakeMessageCenter::GetLastQuietModeChangeSourceType()
-    const {
-  return QuietModeSourceType::kUserAction;
-}
+void FakeMessageCenter::SetQuietMode(bool in_quiet_mode) {}
 
 void FakeMessageCenter::SetSpokenFeedbackEnabled(bool enabled) {}
 
@@ -211,8 +203,6 @@ ExpandState FakeMessageCenter::GetNotificationExpandState(
 
 void FakeMessageCenter::SetNotificationExpandState(const std::string& id,
                                                    const ExpandState state) {}
-
-void FakeMessageCenter::OnSetExpanded(const std::string& id, bool expanded) {}
 
 void FakeMessageCenter::SetHasMessageCenterView(bool has_message_center_view) {
   has_message_center_view_ = has_message_center_view;

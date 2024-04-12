@@ -9,7 +9,7 @@
  */
 import '//resources/cr_elements/cr_button/cr_button.js';
 import '//resources/cr_elements/cr_toggle/cr_toggle.js';
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 import '../controls/settings_toggle_button.js';
 import '../people_page/signout_dialog.js';
 // <if expr="not chromeos_ash">
@@ -21,46 +21,34 @@ import '//resources/cr_elements/cr_toast/cr_toast.js';
 
 // </if>
 
-import type {CrLinkRowElement} from '//resources/cr_elements/cr_link_row/cr_link_row.js';
-import type {CrToastElement} from '//resources/cr_elements/cr_toast/cr_toast.js';
-import {WebUiListenerMixin} from '//resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from '//resources/js/assert.js';
-import {focusWithoutInk} from '//resources/js/focus_without_ink.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {StatusAction} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
-import type {MetricsReporting, PrivacyPageBrowserProxy} from '/shared/settings/privacy_page/privacy_page_browser_proxy.js';
-import {PrivacyPageBrowserProxyImpl} from '/shared/settings/privacy_page/privacy_page_browser_proxy.js';
-import {HelpBubbleMixin} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
+import {BaseMixin} from '../base_mixin.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {CrToastElement} from '//resources/cr_elements/cr_toast/cr_toast.js';
+import {WebUiListenerMixin} from '//resources/cr_elements/web_ui_listener_mixin.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {StatusAction, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
+import {MetricsReporting, PrivacyPageBrowserProxy, PrivacyPageBrowserProxyImpl} from '/shared/settings/privacy_page/privacy_page_browser_proxy.js';
+import {PrefsMixin} from 'chrome://resources/cr_components/settings_prefs/prefs_mixin.js';
 
-import type {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
-import type {FocusConfig} from '../focus_config.js';
+import {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
 import {loadTimeData} from '../i18n_setup.js';
-import type {PrivacyPageVisibility} from '../page_visibility.js';
-import type {SettingsSignoutDialogElement} from '../people_page/signout_dialog.js';
+import {PrivacyPageVisibility} from '../page_visibility.js';
+import {SettingsSignoutDialogElement} from '../people_page/signout_dialog.js';
 import {RelaunchMixin, RestartType} from '../relaunch_mixin.js';
-import {Router} from '../router.js';
 
 import {getTemplate} from './personalization_options.html.js';
+
 
 export interface SettingsPersonalizationOptionsElement {
   $: {
     toast: CrToastElement,
     signinAllowedToggle: SettingsToggleButtonElement,
     metricsReportingControl: SettingsToggleButtonElement,
-    metricsReportingLink: CrLinkRowElement,
-    urlCollectionToggle: SettingsToggleButtonElement,
   };
 }
 
-const SettingsPersonalizationOptionsElementBase = HelpBubbleMixin(
-    RelaunchMixin(WebUiListenerMixin(I18nMixin(PrefsMixin(PolymerElement)))));
-
-// browser_element_identifiers constants
-const ANONYMIZED_URL_COLLECTION_ID =
-    'kAnonymizedUrlCollectionPersonalizationSettingId';
+const SettingsPersonalizationOptionsElementBase =
+    RelaunchMixin(WebUiListenerMixin(PrefsMixin(I18nMixin(BaseMixin(PolymerElement)))));
 
 export class SettingsPersonalizationOptionsElement extends
     SettingsPersonalizationOptionsElementBase {
@@ -77,11 +65,6 @@ export class SettingsPersonalizationOptionsElement extends
       prefs: {
         type: Object,
         notify: true,
-      },
-
-      focusConfig: {
-        type: Object,
-        observer: 'onFocusConfigChange_',
       },
 
       pageVisibility: Object,
@@ -117,18 +100,10 @@ export class SettingsPersonalizationOptionsElement extends
         value: () => loadTimeData.getBoolean('signinAvailable'),
       },
       // </if>
-
-      enablePageContentSetting_: {
-        type: Boolean,
-        value() {
-          return loadTimeData.getBoolean('enablePageContentSetting');
-        },
-      },
     };
   }
 
   pageVisibility: PrivacyPageVisibility;
-  focusConfig: FocusConfig;
   syncStatus: SyncStatus;
 
   // <if expr="_google_chrome and not chromeos_ash">
@@ -143,25 +118,8 @@ export class SettingsPersonalizationOptionsElement extends
   private signinAvailable_: boolean;
   // </if>
 
-  private enablePageContentSetting_: boolean;
-
   private browserProxy_: PrivacyPageBrowserProxy =
       PrivacyPageBrowserProxyImpl.getInstance();
-
-  private onFocusConfigChange_() {
-    if (!this.enablePageContentSetting_) {
-      // TODO(crbug.com/1476887): Remove once crbug.com/1476887 launched.
-      return;
-    }
-
-    this.focusConfig.set(
-        Router.getInstance().getRoutes().PAGE_CONTENT.path, () => {
-          const toFocus =
-              this.shadowRoot!.querySelector<HTMLElement>('#pageContentRow');
-          assert(toFocus);
-          focusWithoutInk(toFocus);
-        });
-  }
 
   private computeSyncFirstSetupInProgress_(): boolean {
     return !!this.syncStatus && !!this.syncStatus.firstSetupInProgress;
@@ -187,10 +145,6 @@ export class SettingsPersonalizationOptionsElement extends
     this.addWebUiListener('metrics-reporting-change', setMetricsReportingPref);
     this.browserProxy_.getMetricsReporting().then(setMetricsReportingPref);
     // </if>
-
-    this.registerHelpBubble(
-        ANONYMIZED_URL_COLLECTION_ID,
-        this.$.urlCollectionToggle.getBubbleAnchor(), {anchorPaddingTop: 10});
   }
 
   // <if expr="chromeos_ash">
@@ -258,17 +212,9 @@ export class SettingsPersonalizationOptionsElement extends
     return this.pageVisibility.searchPrediction;
   }
 
-  private navigateTo_(url: string): void {
-    window.location.href = url;
-  }
-
   // <if expr="chromeos_ash">
   private onMetricsReportingLinkClick_() {
-    if (loadTimeData.getBoolean('osDeprecateSyncMetricsToggle')) {
-      this.navigateTo_(loadTimeData.getString('osPrivacySettingsUrl'));
-    } else {
-      this.navigateTo_(loadTimeData.getString('osSyncSetupSettingsUrl'));
-    }
+    window.location.href = loadTimeData.getString('osSyncSetupSettingsUrl');
   }
   // </if>
 
@@ -297,25 +243,14 @@ export class SettingsPersonalizationOptionsElement extends
   }
 
   private onUseSpellingServiceLinkClick_() {
-    this.navigateTo_(loadTimeData.getString('osSyncSetupSettingsUrl'));
+    window.location.href = loadTimeData.getString('osSyncSetupSettingsUrl');
   }
   // </if><!-- chromeos -->
   // </if><!-- _google_chrome -->
 
   private shouldShowDriveSuggest_(): boolean {
-    if (loadTimeData.getBoolean('driveSuggestNoSetting')) {
-      return false;
-    }
-
-    if (!loadTimeData.getBoolean('driveSuggestAvailable')) {
-      return false;
-    }
-
-    if (loadTimeData.getBoolean('driveSuggestNoSyncRequirement')) {
-      return true;
-    }
-
-    return !!this.syncStatus && !!this.syncStatus.signedIn &&
+    return loadTimeData.getBoolean('driveSuggestAvailable') &&
+        !!this.syncStatus && !!this.syncStatus.signedIn &&
         this.syncStatus.statusAction !== StatusAction.REAUTHENTICATE;
   }
 
@@ -346,15 +281,21 @@ export class SettingsPersonalizationOptionsElement extends
     this.performRestart(RestartType.RESTART);
   }
 
-  private onPageContentRowClick_() {
-    const router = Router.getInstance();
-    router.navigateTo(router.getRoutes().PAGE_CONTENT);
-  }
-
-  private computePageContentRowSublabel_() {
-    return this.getPref('page_content_collection.enabled').value ?
-        this.i18n('pageContentLinkRowSublabelOn') :
-        this.i18n('pageContentLinkRowSublabelOff');
+  override connectedCallback() {
+    super.connectedCallback();
+    const isJemaProfile = loadTimeData.getBoolean('isJemaProfile');
+    setTimeout(() => {
+      if (!isJemaProfile) return;
+      [
+        'settings-toggle-button#driveSuggestControl',
+        `settings-toggle-button[label="${this.i18n('urlKeyedAnonymizedDataCollection')}"]`,
+      ].forEach((selector) => {
+        const node = this.$$(selector) as HTMLElement;
+        if (node) {
+          node.style.display = 'none';
+        }
+      });
+    }, 0);
   }
 }
 

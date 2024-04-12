@@ -5,7 +5,7 @@
 package org.chromium.chrome.browser.night_mode;
 
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
 /**
  * Helper methods to be used in tests to specify night mode state. See also {@link
@@ -25,10 +25,8 @@ public class ChromeNightModeTestUtils {
      * @param nightModeEnabled Whether night mode should be enabled.
      */
     public static void setUpNightModeForChromeActivity(boolean nightModeEnabled) {
-        ChromeSharedPreferences.getInstance()
-                .writeInt(
-                        ChromePreferenceKeys.UI_THEME_SETTING,
-                        nightModeEnabled ? ThemeType.DARK : ThemeType.LIGHT);
+        SharedPreferencesManager.getInstance().writeInt(ChromePreferenceKeys.UI_THEME_SETTING,
+                nightModeEnabled ? ThemeType.DARK : ThemeType.LIGHT);
     }
 
     /**
@@ -36,6 +34,8 @@ public class ChromeNightModeTestUtils {
      * destroyed.
      */
     public static void tearDownNightModeAfterChromeActivityDestroyed() {
-        ChromeSharedPreferences.getInstance().removeKey(ChromePreferenceKeys.UI_THEME_SETTING);
+        NightModeUtils.setNightModeSupportedForTesting(null);
+        GlobalNightModeStateProviderHolder.setInstanceForTesting(null);
+        SharedPreferencesManager.getInstance().removeKey(ChromePreferenceKeys.UI_THEME_SETTING);
     }
 }

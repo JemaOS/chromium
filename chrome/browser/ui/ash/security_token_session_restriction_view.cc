@@ -141,5 +141,5 @@ void SecurityTokenSessionRestrictionView::UpdateLabel() {
   }
 }
 
-BEGIN_METADATA(SecurityTokenSessionRestrictionView)
+BEGIN_METADATA(SecurityTokenSessionRestrictionView, AppDialogView);
 END_METADATA

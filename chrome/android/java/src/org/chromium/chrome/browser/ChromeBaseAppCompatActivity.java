@@ -4,8 +4,6 @@
 
 package org.chromium.chrome.browser;
 
-import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-
 import static org.chromium.chrome.browser.base.SplitCompatApplication.CHROME_SPLIT_NAME;
 
 import android.app.ActivityManager.TaskDescription;
@@ -14,28 +12,16 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewStub;
-import android.widget.LinearLayout;
-import android.widget.LinearLayout.LayoutParams;
 
 import androidx.annotation.CallSuper;
-import androidx.annotation.IntDef;
-import androidx.annotation.LayoutRes;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.StyleRes;
-import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.color.DynamicColors;
 
-import org.chromium.base.BuildInfo;
 import org.chromium.base.BundleUtils;
-import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.supplier.ObservableSupplier;
@@ -49,14 +35,9 @@ import org.chromium.chrome.browser.metrics.UmaSessionStats;
 import org.chromium.chrome.browser.night_mode.GlobalNightModeStateProviderHolder;
 import org.chromium.chrome.browser.night_mode.NightModeStateProvider;
 import org.chromium.chrome.browser.night_mode.NightModeUtils;
-import org.chromium.components.browser_ui.util.AutomotiveUtils;
-import org.chromium.ui.display.DisplaySwitches;
-import org.chromium.ui.display.DisplayUtil;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modaldialog.ModalDialogManagerHolder;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.util.LinkedHashSet;
 
 /**
@@ -65,45 +46,6 @@ import java.util.LinkedHashSet;
  */
 public class ChromeBaseAppCompatActivity extends AppCompatActivity
         implements NightModeStateProvider.Observer, ModalDialogManagerHolder {
-    /**
-     * Chrome in automotive needs a persistent back button toolbar above all activities because
-     * AAOS/cars do not have a built in back button. This is implemented differently in each
-     * activity.
-     *
-     * Activities that use the <merge> tag or delay layout inflation cannot use WITH_TOOLBAR_VIEW.
-     * Activities that use their own action bar cannot use WITH_ACTION_BAR.
-     * Activities that appear as Dialogs using themes do not have an automotive toolbar yet (NONE).
-     *
-     * Full screen alert dialogs display the automotive toolbar using FullscreenAlertDialog.
-     * Full screen dialogs display the automotive toolbar using ChromeDialog.
-     */
-    @IntDef({
-        AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW,
-        AutomotiveToolbarImplementation.WITH_ACTION_BAR,
-        AutomotiveToolbarImplementation.NONE,
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    protected @interface AutomotiveToolbarImplementation {
-        /**
-         * Automotive toolbar is added by including the original layout into a bigger LinearLayout
-         * that has a Toolbar View, see
-         * R.layout.automotive_layout_with_horizontal_back_button_toolbar and
-         * R.layout.automotive_layout_with_vertical_back_button_toolbar.
-         */
-        int WITH_TOOLBAR_VIEW = 0;
-
-        /**
-         * Automotive toolbar is added using AppCompatActivity's ActionBar, provided with a
-         * ThemeOverlay, see R.style.ThemeOverlay_BrowserUI_Automotive_PersistentBackButtonToolbar.
-         *
-         * <p>This will be deprecated because it does not support a vertical toolbar.
-         */
-        @Deprecated int WITH_ACTION_BAR = 1;
-
-        /** Automotive toolbar is not added. */
-        int NONE = -1;
-    }
-
     private final ObservableSupplierImpl<ModalDialogManager> mModalDialogManagerSupplier =
             new ObservableSupplierImpl<>();
     private NightModeStateProvider mNightModeStateProvider;
@@ -120,17 +62,10 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
         Context appContext = ContextUtils.getApplicationContext();
         if (!chromeModuleClassLoader.equals(appContext.getClassLoader())) {
             // This should only happen on Android O. See crbug.com/1146745 for more info.
-            throw new IllegalStateException(
-                    "ClassLoader mismatch detected.\nA: "
-                            + chromeModuleClassLoader
-                            + "\nB: "
-                            + appContext.getClassLoader()
-                            + "\nC: "
-                            + chromeModuleClassLoader.getParent()
-                            + "\nD: "
-                            + appContext.getClassLoader().getParent()
-                            + "\nE: "
-                            + appContext);
+            throw new IllegalStateException("ClassLoader mismatch detected.\nA: "
+                    + chromeModuleClassLoader + "\nB: " + appContext.getClassLoader()
+                    + "\nC: " + chromeModuleClassLoader.getParent()
+                    + "\nD: " + appContext.getClassLoader().getParent() + "\nE: " + appContext);
         }
         // If ClassLoader was corrected by SplitCompatAppComponentFactory, also need to correct
         // the reference in the associated Context.
@@ -254,7 +189,8 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
      * Creates a {@link ModalDialogManager} for this class. Subclasses that need one should override
      * this method.
      */
-    protected @Nullable ModalDialogManager createModalDialogManager() {
+    @Nullable
+    protected ModalDialogManager createModalDialogManager() {
         return null;
     }
 
@@ -269,20 +205,8 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
      */
     @CallSuper
     protected boolean applyOverrides(Context baseContext, Configuration overrideConfig) {
-        applyOverridesForAutomotive(baseContext, overrideConfig);
         return NightModeUtils.applyOverridesForNightMode(
                 getNightModeStateProvider(), overrideConfig);
-    }
-
-    @VisibleForTesting
-    static void applyOverridesForAutomotive(Context baseContext, Configuration overrideConfig) {
-        if (BuildInfo.getInstance().isAutomotive) {
-            DisplayUtil.scaleUpConfigurationForAutomotive(baseContext, overrideConfig);
-
-            // Enable web ui scaling for automotive devices.
-            CommandLine.getInstance()
-                    .appendSwitch(DisplaySwitches.AUTOMOTIVE_WEB_UI_SCALE_UP_ENABLED);
-        }
     }
 
     /**
@@ -307,41 +231,30 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
      */
     protected void initializeNightModeStateProvider() {}
 
-    /** Apply theme overlay to this activity class. */
+    /**
+     * Apply theme overlay to this activity class.
+     */
     @CallSuper
     protected void applyThemeOverlays() {
+        if (ChromeFeatureList.sBaselineGm3SurfaceColors.isEnabled()) {
+            getTheme().applyStyle(R.style.SurfaceColorsThemeOverlay, /* force= */ true);
+            mThemeResIds.add(R.style.SurfaceColorsThemeOverlay);
+        }
         DynamicColors.applyToActivityIfAvailable(this);
 
-        DeferredStartupHandler.getInstance()
-                .addDeferredTask(
-                        () -> {
-                            // #registerSyntheticFieldTrial requires native.
-                            boolean isDynamicColorAvailable =
-                                    DynamicColors.isDynamicColorAvailable();
-                            RecordHistogram.recordBooleanHistogram(
-                                    "Android.DynamicColors.IsAvailable", isDynamicColorAvailable);
-                            UmaSessionStats.registerSyntheticFieldTrial(
-                                    "IsDynamicColorAvailable",
-                                    isDynamicColorAvailable ? "Enabled" : "Disabled");
-                        });
-
-        if (BuildInfo.getInstance().isAutomotive
-                && getAutomotiveToolbarImplementation()
-                        == AutomotiveToolbarImplementation.WITH_ACTION_BAR) {
-            int automotiveOverlay =
-                    R.style.ThemeOverlay_BrowserUI_Automotive_PersistentBackButtonToolbar;
-            getTheme().applyStyle(automotiveOverlay, /* force= */ true);
-            mThemeResIds.add(automotiveOverlay);
-        }
-
-        if (ChromeFeatureList.sAndroidElegantTextHeight.isEnabled()) {
-            int elegantTextHeightOverlay = R.style.ThemeOverlay_BrowserUI_ElegantTextHeight;
-            getTheme().applyStyle(elegantTextHeightOverlay, true);
-            mThemeResIds.add(elegantTextHeightOverlay);
-        }
+        DeferredStartupHandler.getInstance().addDeferredTask(() -> {
+            // #registerSyntheticFieldTrial requires native.
+            boolean isDynamicColorAvailable = DynamicColors.isDynamicColorAvailable();
+            RecordHistogram.recordBooleanHistogram(
+                    "Android.DynamicColors.IsAvailable", isDynamicColorAvailable);
+            UmaSessionStats.registerSyntheticFieldTrial(
+                    "IsDynamicColorAvailable", isDynamicColorAvailable ? "Enabled" : "Disabled");
+        });
     }
 
-    /** Sets the default task description that will appear in the recents UI. */
+    /**
+     * Sets the default task description that will appear in the recents UI.
+     */
     protected void setDefaultTaskDescription() {
         final TaskDescription taskDescription =
                 new TaskDescription(null, null, getColor(R.color.default_task_description_color));
@@ -354,7 +267,9 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
         if (!isFinishing()) recreate();
     }
 
-    /** Required to make preference fragments use InMemorySharedPreferences in tests. */
+    /**
+     * Required to make preference fragments use InMemorySharedPreferences in tests.
+     */
     @Override
     public SharedPreferences getSharedPreferences(String name, int mode) {
         return ContextUtils.getApplicationContext().getSharedPreferences(name, mode);
@@ -370,121 +285,5 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
             mServiceTracingProxyProvider.traceSystemServices();
         }
         return service;
-    }
-
-    /**
-     * Set the back button in the automotive toolbar to perform an Android system level back.
-     *
-     * This toolbar will be used to do things like exit fullscreen YouTube videos because AAOS/cars
-     * don't have a built in back button
-     */
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            getOnBackPressedDispatcher().onBackPressed();
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public void setContentView(@LayoutRes int layoutResID) {
-        if (BuildInfo.getInstance().isAutomotive
-                && getAutomotiveToolbarImplementation()
-                        == AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW) {
-            super.setContentView(AutomotiveUtils.getAutomotiveLayoutWithBackButtonToolbar(this));
-            setAutomotiveToolbarBackButtonAction();
-            ViewStub stub = findViewById(R.id.original_layout);
-            stub.setLayoutResource(layoutResID);
-            stub.inflate();
-        } else {
-            super.setContentView(layoutResID);
-        }
-    }
-
-    @Override
-    public void setContentView(View view) {
-        if (BuildInfo.getInstance().isAutomotive
-                && getAutomotiveToolbarImplementation()
-                        == AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW) {
-            super.setContentView(AutomotiveUtils.getAutomotiveLayoutWithBackButtonToolbar(this));
-            setAutomotiveToolbarBackButtonAction();
-            LinearLayout linearLayout = findViewById(R.id.automotive_base_linear_layout);
-            linearLayout.addView(view, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
-        } else {
-            super.setContentView(view);
-        }
-    }
-
-    @Override
-    public void setContentView(View view, ViewGroup.LayoutParams params) {
-        if (BuildInfo.getInstance().isAutomotive
-                && getAutomotiveToolbarImplementation()
-                        == AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW) {
-            super.setContentView(AutomotiveUtils.getAutomotiveLayoutWithBackButtonToolbar(this));
-            setAutomotiveToolbarBackButtonAction();
-            LinearLayout linearLayout = findViewById(R.id.automotive_base_linear_layout);
-            linearLayout.setLayoutParams(params);
-            linearLayout.addView(view, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
-        } else {
-            super.setContentView(view, params);
-        }
-    }
-
-    @Override
-    public void addContentView(View view, ViewGroup.LayoutParams params) {
-        if (BuildInfo.getInstance().isAutomotive
-                && params.width == MATCH_PARENT
-                && params.height == MATCH_PARENT) {
-            ViewGroup automotiveLayout =
-                    (ViewGroup)
-                            getLayoutInflater()
-                                    .inflate(
-                                            AutomotiveUtils
-                                                    .getAutomotiveLayoutWithBackButtonToolbar(this),
-                                            null);
-            super.addContentView(
-                    automotiveLayout, new LinearLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
-            setAutomotiveToolbarBackButtonAction();
-            automotiveLayout.addView(view, params);
-        } else {
-            super.addContentView(view, params);
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        if (BuildInfo.getInstance().isAutomotive
-                && getAutomotiveToolbarImplementation()
-                        == AutomotiveToolbarImplementation.WITH_ACTION_BAR
-                && getSupportActionBar() != null) {
-            getSupportActionBar().setHomeActionContentDescription(R.string.back);
-        }
-        super.onResume();
-    }
-
-    protected int getAutomotiveToolbarImplementation() {
-        int activityStyle = -1;
-        try {
-            activityStyle =
-                    getPackageManager().getActivityInfo(getComponentName(), 0).getThemeResource();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (activityStyle == R.style.Theme_Chromium_DialogWhenLarge) {
-            return AutomotiveToolbarImplementation.NONE;
-        } else {
-            return AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW;
-        }
-    }
-
-    private void setAutomotiveToolbarBackButtonAction() {
-        Toolbar backButtonToolbarForAutomotive = findViewById(R.id.back_button_toolbar);
-        if (backButtonToolbarForAutomotive != null) {
-            backButtonToolbarForAutomotive.setNavigationOnClickListener(
-                    backButtonClick -> {
-                        getOnBackPressedDispatcher().onBackPressed();
-                    });
-        }
     }
 }

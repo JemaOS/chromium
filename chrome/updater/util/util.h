@@ -5,83 +5,65 @@
 #ifndef CHROME_UPDATER_UTIL_UTIL_H_
 #define CHROME_UPDATER_UTIL_UTIL_H_
 
-#include <cmath>
-#include <concepts>
-#include <optional>
-#include <ostream>
 #include <string>
-#include <type_traits>
-#include <vector>
+#include <utility>
 
-#include "base/functional/callback_forward.h"
-#include "base/memory/ref_counted.h"
-#include "base/types/cxx23_to_underlying.h"
+#include "base/command_line.h"
+#include "base/files/file_path.h"
+#include "base/strings/string_piece.h"
+#include "base/strings/string_util.h"
+#include "base/task/sequenced_task_runner.h"
 #include "build/build_config.h"
 #include "chrome/updater/tag.h"
 #include "chrome/updater/updater_scope.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class GURL;
 
+// Externally-defined printers for base types.
 namespace base {
 
 class CommandLine;
-class FilePath;
 class Version;
 
-// Enables insertion of optional `base` types. Must be in the `base` namespace
-// for insertion into gTest expectations to work.
 template <class T>
-inline std::ostream& operator<<(std::ostream& os, const std::optional<T>& opt) {
-  if (!opt.has_value()) {
-    return os << "std::nullopt";
+std::ostream& operator<<(std::ostream& os, const absl::optional<T>& opt) {
+  if (opt.has_value()) {
+    return os << opt.value();
+  } else {
+    return os << "absl::nullopt";
   }
-  return os << opt.value();
 }
 
 }  // namespace base
 
 namespace updater {
 
-struct RegistrationRequest;
-
-// Inserts an enum value as the underlying type.
-template <typename T>
-  requires(std::is_enum_v<T>)
-inline std::ostream& operator<<(std::ostream& os, const T& e) {
-  return os << base::to_underlying(e);
+namespace tagging {
+struct TagArgs;
 }
+
+enum class UpdaterScope;
 
 // Returns the versioned install directory under which the program stores its
 // executables. For example, on macOS this function may return
 // ~/Library/Google/GoogleUpdater/88.0.4293.0 (/Library for system). Does not
 // create the directory if it does not exist.
-std::optional<base::FilePath> GetVersionedInstallDirectory(
+absl::optional<base::FilePath> GetVersionedInstallDirectory(
     UpdaterScope scope,
     const base::Version& version);
 
 // Simpler form of GetVersionedInstallDirectory for the currently running
 // version of the updater.
-std::optional<base::FilePath> GetVersionedInstallDirectory(UpdaterScope scope);
+absl::optional<base::FilePath> GetVersionedInstallDirectory(UpdaterScope scope);
 
 // Returns the base install directory common to all versions of the updater.
 // Does not create the directory if it does not exist.
-std::optional<base::FilePath> GetInstallDirectory(UpdaterScope scope);
-
-// Returns the base path for discardable caches. Deleting a discardable cache
-// between runs of the updater may impair performance, cause a redownload, etc.,
-// but otherwise not interfere with overall updater function. Cache contents
-// should only be stored in subpaths under this path. Does not create the
-// directory if it does not exist.
-std::optional<base::FilePath> GetCacheBaseDirectory(UpdaterScope scope);
-
-// Returns the path where CRXes cached for delta updates should be stored,
-// common to all versions of the updater. Does not create the directory if it
-// does not exist.
-std::optional<base::FilePath> GetCrxDiffCacheDirectory(UpdaterScope scope);
+absl::optional<base::FilePath> GetInstallDirectory(UpdaterScope scope);
 
 #if BUILDFLAG(IS_MAC)
 // For example: ~/Library/Google/GoogleUpdater/88.0.4293.0/GoogleUpdater.app
-std::optional<base::FilePath> GetUpdaterAppBundlePath(UpdaterScope scope);
+absl::optional<base::FilePath> GetUpdaterAppBundlePath(UpdaterScope scope);
 #endif  // BUILDFLAG(IS_MAC)
 
 // For user installations:
@@ -90,13 +72,7 @@ std::optional<base::FilePath> GetUpdaterAppBundlePath(UpdaterScope scope);
 // For system installations:
 // /Library/Google/GoogleUpdater/88.0.4293.0/GoogleUpdater.app/Contents/
 //    MacOS/GoogleUpdater
-std::optional<base::FilePath> GetUpdaterExecutablePath(
-    UpdaterScope scope,
-    const base::Version& version);
-
-// Simpler form of GetUpdaterExecutablePath for the currently running version
-// of the updater.
-std::optional<base::FilePath> GetUpdaterExecutablePath(UpdaterScope scope);
+absl::optional<base::FilePath> GetUpdaterExecutablePath(UpdaterScope scope);
 
 // Returns a relative path to the executable from GetVersionedInstallDirectory.
 // "GoogleUpdater.app/Contents/MacOS/GoogleUpdater" on macOS.
@@ -105,22 +81,22 @@ base::FilePath GetExecutableRelativePath();
 
 // Returns the path to the crashpad database directory. The directory is not
 // created if it does not exist.
-std::optional<base::FilePath> GetCrashDatabasePath(UpdaterScope scope);
+absl::optional<base::FilePath> GetCrashDatabasePath(UpdaterScope scope);
 
 // Returns the path to the crashpad database, creating it if it does not exist.
-std::optional<base::FilePath> EnsureCrashDatabasePath(UpdaterScope scope);
+absl::optional<base::FilePath> EnsureCrashDatabasePath(UpdaterScope scope);
 
 // Return the parsed values from --tag command line argument. The functions
 // return {} if there was no tag at all. An error is set if the tag fails to
 // parse.
 struct TagParsingResult {
   TagParsingResult();
-  TagParsingResult(std::optional<tagging::TagArgs> tag_args,
+  TagParsingResult(absl::optional<tagging::TagArgs> tag_args,
                    tagging::ErrorCode error);
   ~TagParsingResult();
   TagParsingResult(const TagParsingResult&);
   TagParsingResult& operator=(const TagParsingResult&);
-  std::optional<tagging::TagArgs> tag_args;
+  absl::optional<tagging::TagArgs> tag_args;
   tagging::ErrorCode error = tagging::ErrorCode::kSuccess;
 };
 
@@ -128,19 +104,43 @@ TagParsingResult GetTagArgsForCommandLine(
     const base::CommandLine& command_line);
 TagParsingResult GetTagArgs();
 
-std::optional<tagging::AppArgs> GetAppArgs(const std::string& app_id);
+// Returns the arguments corresponding to `app_id` from the command line tag.
+absl::optional<tagging::AppArgs> GetAppArgsForCommandLine(
+    const base::CommandLine& command_line,
+    const std::string& app_id);
+absl::optional<tagging::AppArgs> GetAppArgs(const std::string& app_id);
 
+std::string GetDecodedInstallDataFromAppArgsForCommandLine(
+    const base::CommandLine& command_line,
+    const std::string& app_id);
 std::string GetDecodedInstallDataFromAppArgs(const std::string& app_id);
 
+std::string GetInstallDataIndexFromAppArgsForCommandLine(
+    const base::CommandLine& command_line,
+    const std::string& app_id);
 std::string GetInstallDataIndexFromAppArgs(const std::string& app_id);
 
-std::optional<base::FilePath> GetLogFilePath(UpdaterScope scope);
+// Returns true if the user running the updater also owns the `path`.
+bool PathOwnedByUser(const base::FilePath& path);
+
+absl::optional<base::FilePath> GetLogFilePath(UpdaterScope scope);
 
 // Initializes logging for an executable.
 void InitLogging(UpdaterScope updater_scope);
 
-// Returns HTTP user-agent value.
-std::string GetUpdaterUserAgent();
+// Wraps the 'command_line' to be executed in an elevated context.
+// On macOS this is done with 'sudo'.
+base::CommandLine MakeElevated(base::CommandLine command_line);
+
+// Functor used by associative containers of strings as a case-insensitive ASCII
+// compare. `StringT` could be either UTF-8 or UTF-16.
+struct CaseInsensitiveASCIICompare {
+ public:
+  template <typename StringT>
+  bool operator()(const StringT& x, const StringT& y) const {
+    return base::CompareCaseInsensitiveASCII(x, y) > 0;
+  }
+};
 
 // Returns a new GURL by appending the given query parameter name and the
 // value. Unsafe characters in the name and the value are escaped like
@@ -165,6 +165,8 @@ GURL AppendQueryParameter(const GURL& url,
 bool UnzipWithExe(const base::FilePath& src_path,
                   const base::FilePath& dest_path);
 
+absl::optional<base::FilePath> GetKeystoneFolderPath(UpdaterScope scope);
+
 // Read the file at path to confirm that the file at the path has the same
 // permissions as the given permissions mask.
 bool ConfirmFilePermissions(const base::FilePath& root_path,
@@ -187,18 +189,18 @@ std::wstring GetTaskDisplayName(UpdaterScope scope);
 // The string must be in format like:
 //   program.exe /switch1 value1 /switch2 /switch3 value3
 // Returns empty if a Chromium style switch is found.
-std::optional<base::CommandLine> CommandLineForLegacyFormat(
+absl::optional<base::CommandLine> CommandLineForLegacyFormat(
     const std::wstring& cmd_string);
+
+#endif  // BUILDFLAG(IS_WIN)
 
 // Returns the command line for current process, either in legacy style, or
 // in Chromium style.
 base::CommandLine GetCommandLineLegacyCompatible();
 
-#endif  // BUILDFLAG(IS_WIN)
-
 // Writes the provided string prefixed with the UTF8 byte order mark to a
 // temporary file. The temporary file is created in the specified `directory`.
-std::optional<base::FilePath> WriteInstallerDataToTempFile(
+absl::optional<base::FilePath> WriteInstallerDataToTempFile(
     const base::FilePath& directory,
     const std::string& installer_data);
 
@@ -210,26 +212,6 @@ void InitializeThreadPool(const char* name);
 // owned by non-root accounts, or avoiding the installation of a user level
 // updater as root.
 bool WrongUser(UpdaterScope scope);
-
-// Returns whether a user has previously accepted a EULA / ToS for at least one
-// of the listed apps.
-bool EulaAccepted(const std::vector<std::string>& app_ids);
-
-// Imports metadata from legacy updaters.
-bool MigrateLegacyUpdaters(
-    UpdaterScope scope,
-    base::RepeatingCallback<void(const RegistrationRequest&)>
-        register_callback);
-
-// Delete everything other than `except` under `except.DirName()`.
-[[nodiscard]] bool DeleteExcept(const std::optional<base::FilePath>& except);
-
-// Returns the quotient of dividing two integer numbers (m/n) rounded up.
-template <typename T>
-  requires(std::integral<T>)
-[[nodiscard]] constexpr T CeilingDivide(T m, T n) {
-  return std::ceil(static_cast<double>(m) / n);
-}
 
 }  // namespace updater
 

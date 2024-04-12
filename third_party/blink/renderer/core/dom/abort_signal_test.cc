@@ -6,6 +6,9 @@
 
 #include <tuple>
 
+#include "base/test/scoped_feature_list.h"
+#include "third_party/blink/public/common/features.h"
+#include "third_party/blink/public/platform/web_runtime_features.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/dom/abort_controller.h"
 #include "third_party/blink/renderer/core/dom/abort_signal_registry.h"
@@ -37,8 +40,7 @@ class AbortSignalTest : public PageTestBase {
   void SetUp() override {
     PageTestBase::SetUp();
 
-    ScriptState* script_state = ToScriptStateForMainWorld(&GetFrame());
-    controller_ = AbortController::Create(script_state);
+    controller_ = AbortController::Create(GetFrame().DomWindow());
     signal_ = controller_->signal();
   }
 
@@ -131,16 +133,59 @@ TEST_F(AbortSignalTest, RegisteredSignalAlgorithmListenerGCed) {
   EXPECT_EQ(count, 0);
 }
 
-TEST_F(AbortSignalTest, CanAbort) {
+namespace {
+
+enum class TestType { kCompositionEnabled, kNoFeatures };
+
+const char* TestTypeToString(TestType test_type) {
+  switch (test_type) {
+    case TestType::kCompositionEnabled:
+      return "CompositionEnabled";
+    case TestType::kNoFeatures:
+      return "NoFeatures";
+  }
+}
+
+}  // namespace
+
+class AbortSignalCompositionTest
+    : public AbortSignalTest,
+      public ::testing::WithParamInterface<TestType> {
+ public:
+  AbortSignalCompositionTest() {
+    switch (GetParam()) {
+      case TestType::kCompositionEnabled:
+        feature_list_.InitWithFeatures({features::kAbortSignalComposition}, {});
+        break;
+      case TestType::kNoFeatures:
+        feature_list_.InitWithFeatures({}, {features::kAbortSignalComposition});
+        break;
+    }
+    WebRuntimeFeatures::UpdateStatusFromBaseFeatures();
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+TEST_P(AbortSignalCompositionTest, CanAbort) {
   EXPECT_TRUE(signal_->CanAbort());
   SignalAbort();
   EXPECT_FALSE(signal_->CanAbort());
 }
 
-TEST_F(AbortSignalTest, CanAbortAfterGC) {
+TEST_P(AbortSignalCompositionTest, CanAbortAfterGC) {
   controller_.Clear();
   ThreadState::Current()->CollectAllGarbageForTesting();
-  EXPECT_FALSE(signal_->CanAbort());
+  EXPECT_EQ(signal_->CanAbort(), GetParam() == TestType::kNoFeatures);
 }
+
+INSTANTIATE_TEST_SUITE_P(,
+                         AbortSignalCompositionTest,
+                         testing::Values(TestType::kCompositionEnabled,
+                                         TestType::kNoFeatures),
+                         [](const testing::TestParamInfo<TestType>& info) {
+                           return TestTypeToString(info.param);
+                         });
 
 }  // namespace blink

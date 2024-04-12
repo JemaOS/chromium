@@ -7,9 +7,8 @@ package org.chromium.chrome.browser.compositor.overlays.strip;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import androidx.annotation.Nullable;
-
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabImpl;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tabmodel.EmptyTabModel;
 
@@ -24,7 +23,7 @@ public class TestTabModel extends EmptyTabModel {
 
     public void addTab(final String title) {
         mMaxId++;
-        final Tab mockTab = mock(Tab.class);
+        final TabImpl mockTab = mock(TabImpl.class);
         final int tabId = mMaxId;
         when(mockTab.getId()).thenReturn(tabId);
         when(mockTab.getTitle()).thenReturn(title);
@@ -37,11 +36,6 @@ public class TestTabModel extends EmptyTabModel {
             return mMockTabs.get(position);
         }
         return null;
-    }
-
-    @Override
-    public @Nullable Tab getTabById(int tabId) {
-        return mMockTabs.stream().filter(t -> t.getId() == tabId).findAny().orElse(null);
     }
 
     @Override

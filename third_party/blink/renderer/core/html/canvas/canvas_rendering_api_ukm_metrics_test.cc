@@ -26,8 +26,7 @@ class CanvasRenderingAPIUkmMetricsTest : public PageTestBase {
     PageTestBase::SetUp();
     GetDocument().documentElement()->setInnerHTML(
         "<body><canvas id='c'></canvas></body>");
-    canvas_element_ =
-        To<HTMLCanvasElement>(GetDocument().getElementById(AtomicString("c")));
+    canvas_element_ = To<HTMLCanvasElement>(GetDocument().getElementById("c"));
     UpdateAllLifecyclePhasesForTest();
   }
 
@@ -39,7 +38,7 @@ class CanvasRenderingAPIUkmMetricsTest : public PageTestBase {
     auto entries = recorder_.GetEntriesByName(
         ukm::builders::ClientRenderingAPI::kEntryName);
     EXPECT_EQ(1ul, entries.size());
-    auto* entry = entries[0].get();
+    auto* entry = entries[0];
     ukm::TestUkmRecorder::ExpectEntryMetric(
         entry, ukm::builders::ClientRenderingAPI::kCanvas_RenderingContextName,
         static_cast<int>(expected_value));

@@ -7,12 +7,12 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/memory/raw_ptr.h"
 #include "base/strings/string_util.h"
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace predictors {
@@ -65,14 +65,14 @@ class LoadingStatsCollector {
   // All results are reported to UMA and UKM.
   void RecordPageRequestSummary(
       const PageRequestSummary& summary,
-      const std::optional<OptimizationGuidePrediction>&
+      const absl::optional<OptimizationGuidePrediction>&
           optimization_guide_prediction);
   // Evicts all stale stats that are kept in memory. All speculative actions are
   // reported and considered as waste.
   void CleanupAbandonedStats();
 
  private:
-  raw_ptr<ResourcePrefetchPredictor, DanglingUntriaged> predictor_;
+  raw_ptr<ResourcePrefetchPredictor> predictor_;
   base::TimeDelta max_stats_age_;
   std::map<GURL, std::unique_ptr<PreconnectStats>> preconnect_stats_;
 };

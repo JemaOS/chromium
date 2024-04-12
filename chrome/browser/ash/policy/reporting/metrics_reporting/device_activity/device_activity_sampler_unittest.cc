@@ -4,13 +4,12 @@
 
 #include "chrome/browser/ash/policy/reporting/metrics_reporting/device_activity/device_activity_sampler.h"
 
-#include <optional>
-
 #include "base/test/task_environment.h"
 #include "components/reporting/proto/synced/metric_data.pb.h"
 #include "components/reporting/util/test_support_callbacks.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/idle/idle.h"
 #include "ui/base/idle/scoped_set_idle_state.h"
 
@@ -43,9 +42,9 @@ class DeviceActivitySamplerTest
 
 TEST_P(DeviceActivitySamplerTest, CollectDeviceActivityState) {
   ::ui::ScopedSetIdleState scoped_set_idle_state(GetParam());
-  test::TestEvent<std::optional<MetricData>> test_event;
+  test::TestEvent<absl::optional<MetricData>> test_event;
   sampler_.MaybeCollect(test_event.cb());
-  std::optional<MetricData> result = test_event.result();
+  absl::optional<MetricData> result = test_event.result();
   ASSERT_TRUE(result.has_value());
   const MetricData& metric_data = result.value();
   ASSERT_TRUE(metric_data.has_telemetry_data()) << "Missing telemetry data";

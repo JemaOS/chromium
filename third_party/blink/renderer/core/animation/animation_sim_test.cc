@@ -35,11 +35,13 @@ TEST_F(AnimationSimTest, CustomPropertyBaseComputedStyle) {
   // around and not be valid in the exit frame of the next custom property
   // animation.
 
+  ScopedWebAnimationsAPIForTest web_animations(true);
+
   SimRequest main_resource("https://example.com/", "text/html");
   LoadURL("https://example.com/");
   main_resource.Complete("<div id=\"target\"></div>");
 
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
 
   // CSS.registerProperty({
   //   name: '--x',
@@ -58,8 +60,7 @@ TEST_F(AnimationSimTest, CustomPropertyBaseComputedStyle) {
 
   // target.animate({'--x': '100%'}, 1000);
   auto* keyframe = MakeGarbageCollected<StringKeyframe>();
-  keyframe->SetCSSPropertyValue(AtomicString("--x"), "100%",
-                                Window().GetSecureContextMode(),
+  keyframe->SetCSSPropertyValue("--x", "100%", Window().GetSecureContextMode(),
                                 GetDocument().ElementSheet().Contents());
   StringKeyframeVector keyframes;
   keyframes.push_back(keyframe);
@@ -82,8 +83,7 @@ TEST_F(AnimationSimTest, CustomPropertyBaseComputedStyle) {
 
   // target.animate({'--x': '100%'}, 1000);
   keyframe = MakeGarbageCollected<StringKeyframe>();
-  keyframe->SetCSSPropertyValue(AtomicString("--x"), "100%",
-                                Window().GetSecureContextMode(),
+  keyframe->SetCSSPropertyValue("--x", "100%", Window().GetSecureContextMode(),
                                 GetDocument().ElementSheet().Contents());
   keyframes.clear();
   keyframes.push_back(std::move(keyframe));

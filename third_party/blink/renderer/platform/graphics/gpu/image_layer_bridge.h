@@ -48,7 +48,9 @@ class PLATFORM_EXPORT ImageLayerBridge
 
   cc::Layer* CcLayer() const;
 
-  void SetFilterQuality(cc::PaintFlags::FilterQuality filter_quality);
+  void SetFilterQuality(cc::PaintFlags::FilterQuality filter_quality) {
+    filter_quality_ = filter_quality;
+  }
   void SetUV(const gfx::PointF& left_top, const gfx::PointF& right_bottom);
 
   bool IsAccelerated() { return image_ && image_->IsTextureBacked(); }
@@ -85,6 +87,8 @@ class PLATFORM_EXPORT ImageLayerBridge
 
   scoped_refptr<StaticBitmapImage> image_;
   scoped_refptr<cc::TextureLayer> layer_;
+  cc::PaintFlags::FilterQuality filter_quality_ =
+      cc::PaintFlags::FilterQuality::kLow;
 
   // SharedMemory bitmaps that can be recycled.
   Vector<RegisteredBitmap> recycled_bitmaps_;

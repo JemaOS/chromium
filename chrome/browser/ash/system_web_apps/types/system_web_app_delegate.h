@@ -20,19 +20,19 @@
 
 class Browser;
 class Profile;
+struct WebAppInstallInfo;
 
 namespace apps {
 struct AppLaunchParams;
-}  // namespace apps
+}
 
 namespace gfx {
 class Rect;
-}  // namespace gfx
+}
 
 namespace web_app {
-struct WebAppInstallInfo;
 class WebAppProvider;
-}  // namespace web_app
+}
 
 namespace ash {
 
@@ -79,7 +79,7 @@ class SystemWebAppDelegate {
   const GURL& GetInstallUrl() const { return install_url_; }
 
   // Returns a WebAppInstallInfo struct to complete installation.
-  virtual std::unique_ptr<web_app::WebAppInstallInfo> GetWebAppInfo() const = 0;
+  virtual std::unique_ptr<WebAppInstallInfo> GetWebAppInfo() const = 0;
 
   // Returns a vector of AppIDs. Each app_id (a string id) may correspond to any
   // ChromeOS app: ChromeApp, WebApp, Arc++ etc. The apps specified will have
@@ -128,17 +128,12 @@ class SystemWebAppDelegate {
   // the order in go/default-apps.
   virtual bool ShouldShowInLauncher() const;
 
-  // If false, this app will be hidden from both the Chrome OS search and shelf.
-  // If true, this app will be shown in both the ChromeOS search and shelf.
-  virtual bool ShouldShowInSearchAndShelf() const;
+  // If false, this app will be hidden from the Chrome OS search.
+  virtual bool ShouldShowInSearch() const;
 
-  // If true, in Ash browser, navigations (e.g. Omnibox URL, anchor link) to
-  // this app will open in the app's window instead of the navigation's context
-  // (e.g. browser tab).
-  //
-  // This feature isn't applicable to Lacros browser. If you need navigations in
-  // Lacros to launch the app, use crosapi URL handler by adding the app's URL
-  // to `ChromeWebUIControllerFactory::GetListOfAcceptableURLs()`.
+  // If true, navigations (e.g. Omnibox URL, anchor link) to this app
+  // will open in the app's window instead of the navigation's context (e.g.
+  // browser tab).
   virtual bool ShouldCaptureNavigations() const;
 
   // If false, the app will non-resizeable.
@@ -146,9 +141,6 @@ class SystemWebAppDelegate {
 
   // If false, the surface of app will can be non-maximizable.
   virtual bool ShouldAllowMaximize() const;
-
-  // If false, the surface of the app can not enter fullscreen.
-  virtual bool ShouldAllowFullscreen() const;
 
   // If true, the App's window will have a tab-strip.
   virtual bool ShouldHaveTabStrip() const;
@@ -165,7 +157,7 @@ class SystemWebAppDelegate {
   virtual bool ShouldHandleFileOpenIntents() const;
 
   // Setup information to drive a background task.
-  virtual std::optional<SystemWebAppBackgroundTaskInfo> GetTimerInfo() const;
+  virtual absl::optional<SystemWebAppBackgroundTaskInfo> GetTimerInfo() const;
 
   // Default window bounds of the application.
   virtual gfx::Rect GetDefaultBounds(Browser* browser) const;

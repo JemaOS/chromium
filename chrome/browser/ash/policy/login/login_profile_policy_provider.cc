@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/policy/login/login_profile_policy_provider.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -19,6 +18,7 @@
 #include "components/policy/core/common/policy_map.h"
 #include "components/policy/core/common/policy_types.h"
 #include "components/policy/policy_constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 
@@ -38,7 +38,7 @@ const char kActionShutdown[] = "Shutdown";
 const char kActionDoNothing[] = "DoNothing";
 
 // All policies in this list should have a pref mapping test case in
-// components/policy/test/data/pref_mapping/[PolicyName].json with location
+// components/policy/test/data/policy_test_cases.json with location
 // "signin_profile".
 const DevicePolicyToUserPolicyMapEntry kDevicePoliciesWithPolicyOptionsMap[] = {
     {key::kDeviceLoginScreenAutoSelectCertificateForUrls,
@@ -74,17 +74,7 @@ const DevicePolicyToUserPolicyMapEntry kDevicePoliciesWithPolicyOptionsMap[] = {
     {key::kDeviceLoginScreenPromptOnMultipleMatchingCertificates,
      key::kPromptOnMultipleMatchingCertificates},
     {key::kDeviceLoginScreenContextAwareAccessSignalsAllowlist,
-     key::kUserContextAwareAccessSignalsAllowlist},
-    {key::kDeviceLoginScreenTouchVirtualKeyboardEnabled,
-     key::kTouchVirtualKeyboardEnabled},
-
-    // The authentication URL blocklist and allowlist policies implement content
-    // control for authentication flows, including in the login screen and lock
-    // screen.  Since these use the SigninProfile and LockScreenProfile, content
-    // control is already possible there through the URLBlocklist/URLAllowlist
-    // user policies.
-    {key::kDeviceAuthenticationURLBlocklist, key::kURLBlocklist},
-    {key::kDeviceAuthenticationURLAllowlist, key::kURLAllowlist},
+     key::kContextAwareAccessSignalsAllowlist},
 
     // key::kDeviceLoginScreenLocales maps to the ash::kDeviceLoginScreenLocales
     // CrosSetting elsewhere. Also map it to the key::kForcedLanguages policy in
@@ -115,7 +105,7 @@ const DevicePolicyToUserPolicyMapEntry kRecommendedDevicePoliciesMap[] = {
      key::kVirtualKeyboardEnabled},
 };
 
-std::optional<base::Value> GetAction(const std::string& action) {
+absl::optional<base::Value> GetAction(const std::string& action) {
   if (action == kActionSuspend) {
     return base::Value(chromeos::PowerPolicyController::ACTION_SUSPEND);
   }
@@ -128,7 +118,7 @@ std::optional<base::Value> GetAction(const std::string& action) {
   if (action == kActionDoNothing) {
     return base::Value(chromeos::PowerPolicyController::ACTION_DO_NOTHING);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // Applies |value| as the recommended value of |user_policy| in
@@ -197,13 +187,12 @@ void LoginProfilePolicyProvider::Shutdown() {
   ConfigurationPolicyProvider::Shutdown();
 }
 
-void LoginProfilePolicyProvider::RefreshPolicies(PolicyFetchReason reason) {
+void LoginProfilePolicyProvider::RefreshPolicies() {
   waiting_for_device_policy_refresh_ = true;
   weak_factory_.InvalidateWeakPtrs();
   device_policy_service_->RefreshPolicies(
       base::BindOnce(&LoginProfilePolicyProvider::OnDevicePolicyRefreshDone,
-                     weak_factory_.GetWeakPtr()),
-      reason);
+                     weak_factory_.GetWeakPtr()));
 }
 
 void LoginProfilePolicyProvider::OnPolicyUpdated(const PolicyNamespace& ns,
@@ -259,7 +248,7 @@ void LoginProfilePolicyProvider::UpdateFromDevicePolicy() {
         policy_dict.FindString(kLidCloseAction);
 
     if (lid_close_action) {
-      std::optional<base::Value> action = GetAction(*lid_close_action);
+      absl::optional<base::Value> action = GetAction(*lid_close_action);
       if (action) {
         ApplyValueAsMandatoryPolicy(*action, key::kLidCloseAction,
                                     &user_policy_map);

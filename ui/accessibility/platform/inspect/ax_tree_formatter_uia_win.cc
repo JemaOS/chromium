@@ -118,12 +118,8 @@ void GetUIARuntimeId(IUIAutomationElement* first_child,
 void GetUIARoot(ui::AXPlatformNodeDelegate* start,
                 IUIAutomation* uia,
                 IUIAutomationElement** root) {
-  // If dumping when the page or iframe is reloading, the
-  // tree manager may have been removed.
   ui::AXTreeManager* tree_manager = start->GetTreeManager();
-  if (!tree_manager) {
-    return;
-  }
+  DCHECK(tree_manager);
 
   // Start by getting the root element for the HWND hosting the web content.
   HWND hwnd = static_cast<ui::AXPlatformTreeManager*>(tree_manager)
@@ -141,12 +137,8 @@ void GetUIAElementFromDelegate(ui::AXPlatformNodeDelegate* start,
   // To locate the client element we want, we'll construct a RuntimeId
   // corresponding to our provider element, then search for that.
   Microsoft::WRL::ComPtr<IUIAutomationElement> root;
-  // If dumping when the page or iframe is reloading, we may encounter
-  // a brief moment when the root cannot be found through the tree_manager.
   GetUIARoot(start, uia, &root);
-  if (!root.Get()) {
-    return;
-  }
+  CHECK(root.Get());
 
   // The root element is provided by AXFragmentRootWin, whose RuntimeId is not
   // in the same form as elements provided by BrowserAccessibility.
@@ -476,12 +468,8 @@ base::Value::Dict AXTreeFormatterUia::BuildTree(
   Microsoft::WRL::ComPtr<IUIAutomationElement> start_element;
   GetUIAElementFromDelegate(start, uia_.Get(), &start_element);
 
-  base::Value::Dict tree;
-  if (!start_element) {
-    return tree;
-  }
-
   RECT root_bounds = GetUIARootBounds(start, uia_.Get());
+  base::Value::Dict tree;
   if (start_element.Get()) {
     // Build an accessibility tree starting from that element.
     RecursiveBuildTree(start_element.Get(), root_bounds.left, root_bounds.top,

@@ -37,16 +37,6 @@ class ZxcvbnDataComponentInstallerPolicy : public ComponentInstallerPolicy {
   static constexpr base::FilePath::StringPieceType kUsTvAndFilmTxtFileName =
       FILE_PATH_LITERAL("us_tv_and_film.txt");
 
-  static constexpr std::array<base::FilePath::StringPieceType, 6> kFileNames = {
-      {
-          kEnglishWikipediaTxtFileName,
-          kFemaleNamesTxtFileName,
-          kMaleNamesTxtFileName,
-          kPasswordsTxtFileName,
-          kSurnamesTxtFileName,
-          kUsTvAndFilmTxtFileName,
-      }};
-
   // The filename of the combined word list in the format that
   // `zxcvbn::RankedDicts` uses internally.
   static constexpr base::FilePath::StringPieceType
@@ -77,6 +67,7 @@ class ZxcvbnDataComponentInstallerPolicy : public ComponentInstallerPolicy {
   void GetHash(std::vector<uint8_t>* hash) const override;
 
   std::string GetName() const override;
+
 
   update_client::InstallerAttributes GetInstallerAttributes() const override;
 };

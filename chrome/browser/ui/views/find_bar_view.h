@@ -9,8 +9,9 @@
 #include <string>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "chrome/browser/ui/views/chrome_views_export.h"
-#include "ui/base/interaction/element_identifier.h"
+#include "chrome/browser/ui/views/dropdown_bar_host_delegate.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/textfield/textfield.h"
@@ -42,16 +43,10 @@ class Textfield;
 //
 ////////////////////////////////////////////////////////////////////////////////
 class FindBarView : public views::BoxLayoutView,
+                    public DropdownBarHostDelegate,
                     public views::TextfieldController {
-  METADATA_HEADER(FindBarView, views::BoxLayoutView)
-
  public:
-  // Element IDs for ui::ElementTracker
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kElementId);
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kTextField);
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kPreviousButtonElementId);
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kNextButtonElementId);
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kCloseButtonElementId);
+  METADATA_HEADER(FindBarView);
 
   explicit FindBarView(FindBarHost* host = nullptr);
 
@@ -82,13 +77,13 @@ class FindBarView : public views::BoxLayoutView,
   // Clears the current Match Count value in the Find text box.
   void ClearMatchCount();
 
-  // Claims focus for the text field and selects its contents.
-  void FocusAndSelectAll();
-
   // views::View:
   bool OnMousePressed(const ui::MouseEvent& event) override;
   gfx::Size CalculatePreferredSize() const override;
   void OnThemeChanged() override;
+
+  // DropdownBarHostDelegate:
+  void FocusAndSelectAll() override;
 
   // views::TextfieldController:
   bool HandleKeyEvent(views::Textfield* sender,
@@ -121,13 +116,25 @@ class FindBarView : public views::BoxLayoutView,
   std::u16string last_searched_text_;
 
   // The controls in the window.
-  raw_ptr<views::Textfield> find_text_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION views::Textfield* find_text_;
   std::unique_ptr<views::Painter> find_text_border_;
-  raw_ptr<FindBarMatchCountLabel> match_count_text_;
-  raw_ptr<views::Separator> separator_;
-  raw_ptr<views::ImageButton> find_previous_button_;
-  raw_ptr<views::ImageButton> find_next_button_;
-  raw_ptr<views::ImageButton> close_button_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION FindBarMatchCountLabel* match_count_text_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION views::Separator* separator_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION views::ImageButton* find_previous_button_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION views::ImageButton* find_next_button_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION views::ImageButton* close_button_;
 };
 
 BEGIN_VIEW_BUILDER(/* no export */, FindBarView, views::BoxLayoutView)

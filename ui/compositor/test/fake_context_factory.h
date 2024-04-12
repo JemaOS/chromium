@@ -14,11 +14,12 @@
 namespace cc {
 class FakeLayerTreeFrameSink;
 class TestTaskGraphRunner;
+class TestGpuMemoryBufferManager;
 }
 
 namespace viz {
 class CompositorFrame;
-class TestGpuMemoryBufferManager;
+class ContextProvider;
 }
 
 namespace ui {
@@ -37,6 +38,8 @@ class FakeContextFactory : public ui::ContextFactory {
   // ui::ContextFactory:
   void CreateLayerTreeFrameSink(
       base::WeakPtr<ui::Compositor> compositor) override;
+  scoped_refptr<viz::ContextProvider> SharedMainThreadContextProvider()
+      override;
   scoped_refptr<viz::RasterContextProvider>
   SharedMainThreadRasterContextProvider() override;
   void RemoveCompositor(ui::Compositor* compositor) override;

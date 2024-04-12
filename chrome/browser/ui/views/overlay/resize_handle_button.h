@@ -11,9 +11,9 @@
 
 // An image button representing a white resize handle affordance.
 class ResizeHandleButton : public views::ImageButton {
-  METADATA_HEADER(ResizeHandleButton, views::ImageButton)
-
  public:
+  METADATA_HEADER(ResizeHandleButton);
+
   explicit ResizeHandleButton(PressedCallback callback);
   ResizeHandleButton(const ResizeHandleButton&) = delete;
   ResizeHandleButton& operator=(const ResizeHandleButton&) = delete;

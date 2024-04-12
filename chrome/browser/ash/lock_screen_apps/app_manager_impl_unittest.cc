@@ -6,7 +6,6 @@
 
 #include <initializer_list>
 #include <memory>
-#include <optional>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -30,9 +29,6 @@
 #include "base/test/simple_test_tick_clock.h"
 #include "base/traits_bag.h"
 #include "base/values.h"
-#include "chrome/browser/apps/app_service/app_service_proxy.h"
-#include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
-#include "chrome/browser/apps/app_service/app_service_test.h"
 #include "chrome/browser/ash/arc/session/arc_session_manager.h"
 #include "chrome/browser/ash/arc/test/test_arc_session_manager.h"
 #include "chrome/browser/ash/lock_screen_apps/fake_lock_screen_profile_creator.h"
@@ -62,7 +58,12 @@
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/mojom/manifest.mojom-shared.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+
+using extensions::DictionaryBuilder;
+using extensions::ListBuilder;
 
 namespace lock_screen_apps {
 
@@ -114,10 +115,10 @@ class LockScreenEventObserver
     if (event.restrict_to_browser_context)
       EXPECT_EQ(context_, event.restrict_to_browser_context);
 
-    ASSERT_TRUE(arg_value.is_dict());
-    std::optional<extensions::api::app_runtime::LaunchData> launch_data =
-        extensions::api::app_runtime::LaunchData::FromValue(
-            arg_value.GetDict());
+    std::unique_ptr<extensions::api::app_runtime::LaunchData> launch_data =
+        extensions::api::app_runtime::LaunchData::FromValueDeprecated(
+            arg_value);
+    ASSERT_TRUE(launch_data);
     ASSERT_TRUE(launch_data->action_data);
     EXPECT_EQ(extensions::api::app_runtime::ActionType::kNewNote,
               launch_data->action_data->action_type);
@@ -144,7 +145,7 @@ class LockScreenEventObserver
 
  private:
   std::vector<std::string> launched_apps_;
-  raw_ptr<content::BrowserContext> context_;
+  raw_ptr<content::BrowserContext, ExperimentalAsh> context_;
   bool expect_restore_action_state_ = true;
 };
 
@@ -198,11 +199,6 @@ class LockScreenAppManagerImplTest
     profile_ = CreatePrimaryProfile();
 
     InitExtensionSystem(profile());
-
-    // Wait for AppServiceProxy to be ready - NoteTakingHelper depends on
-    // AppService.
-    WaitForAppServiceProxyReady(
-        apps::AppServiceProxyFactory::GetForProfile(profile_));
 
     // Initialize arc session manager - NoteTakingHelper expects it to be set.
     arc_session_manager_ = arc::CreateTestArcSessionManager(
@@ -323,29 +319,34 @@ class LockScreenAppManagerImplTest
     std::string version = test_app.version;
     bool supports_lock_screen = test_app.supports_lock_screen;
 
-    base::Value::Dict background = base::Value::Dict().Set(
-        "scripts", base::Value::List().Append("background.js"));
-    base::Value::List action_handlers = base::Value::List().Append(
-        base::Value::Dict()
-            .Set("action", "new_note")
-            .Set("enabled_on_lock_screen", supports_lock_screen));
+    base::Value::Dict background =
+        DictionaryBuilder()
+            .Set("scripts", ListBuilder().Append("background.js").Build())
+            .Build();
+    base::Value::List action_handlers =
+        ListBuilder()
+            .Append(DictionaryBuilder()
+                        .Set("action", "new_note")
+                        .Set("enabled_on_lock_screen", supports_lock_screen)
+                        .Build())
+            .Build();
 
-    auto manifest_builder =
-        base::Value::Dict()
-            .Set("name", "Note taking app")
-            .Set("version", version)
-            .Set("manifest_version", 2)
-            .Set("app",
-                 base::Value::Dict().Set("background", std::move(background)))
-            .Set("permissions", base::Value::List().Append("lockScreen"))
-            .Set("action_handlers", std::move(action_handlers));
+    DictionaryBuilder manifest_builder;
+    manifest_builder.Set("name", "Note taking app")
+        .Set("version", version)
+        .Set("manifest_version", 2)
+        .Set("app", DictionaryBuilder()
+                        .Set("background", std::move(background))
+                        .Build())
+        .Set("permissions", ListBuilder().Append("lockScreen").Build())
+        .Set("action_handlers", std::move(action_handlers));
 
     base::FilePath extension_path =
         GetTestAppSourcePath(appType, profile, id, version);
 
     scoped_refptr<const extensions::Extension> extension =
         extensions::ExtensionBuilder()
-            .SetManifest(std::move(manifest_builder))
+            .SetManifest(manifest_builder.Build())
             .SetID(id)
             .SetPath(extension_path)
             .SetLocation(GetAppLocation(appType))
@@ -492,7 +493,7 @@ class LockScreenAppManagerImplTest
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
 
   TestingProfileManager profile_manager_;
-  raw_ptr<TestingProfile> profile_ = nullptr;
+  raw_ptr<TestingProfile, ExperimentalAsh> profile_ = nullptr;
 
   std::unique_ptr<LockScreenEventObserver> event_observer_;
 
@@ -514,32 +515,32 @@ bool IsInstalled(const std::string& app_id, Profile* profile) {
 
 bool IsInstalledAndEnabled(const std::string& app_id, Profile* profile) {
   const extensions::Extension* app =
-      extensions::ExtensionRegistry::Get(profile)->enabled_extensions().GetByID(
-          app_id);
+      extensions::ExtensionRegistry::Get(profile)->GetExtensionById(
+          app_id, extensions::ExtensionRegistry::ENABLED);
   return app;
 }
 
 bool PathExists(const std::string& app_id, Profile* profile) {
   const extensions::Extension* app =
-      extensions::ExtensionRegistry::Get(profile)->enabled_extensions().GetByID(
-          app_id);
+      extensions::ExtensionRegistry::Get(profile)->GetExtensionById(
+          app_id, extensions::ExtensionRegistry::ENABLED);
   return app && base::PathExists(app->path());
 }
 
 base::FilePath GetPath(const std::string& app_id, Profile* profile) {
   const extensions::Extension* app =
-      extensions::ExtensionRegistry::Get(profile)->enabled_extensions().GetByID(
-          app_id);
+      extensions::ExtensionRegistry::Get(profile)->GetExtensionById(
+          app_id, extensions::ExtensionRegistry::ENABLED);
   return app ? app->path() : base::FilePath();
 }
 
-std::optional<std::string> GetVersion(const std::string& app_id,
-                                      Profile* profile) {
+absl::optional<std::string> GetVersion(const std::string& app_id,
+                                       Profile* profile) {
   const extensions::Extension* app =
-      extensions::ExtensionRegistry::Get(profile)->enabled_extensions().GetByID(
-          app_id);
+      extensions::ExtensionRegistry::Get(profile)->GetExtensionById(
+          app_id, extensions::ExtensionRegistry::ENABLED);
   if (!app)
-    return std::nullopt;
+    return absl::nullopt;
   return app->VersionString();
 }
 

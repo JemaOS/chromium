@@ -6,12 +6,10 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <optional>
 #include <ostream>
 #include <random>
 #include <set>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -20,7 +18,6 @@
 #include "base/check_op.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
-#include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/location.h"
@@ -32,21 +29,19 @@
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/task/sequenced_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
-#include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/web_applications/web_app_dialogs.h"
-#include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_source.h"
-#include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_storage_location.h"
+#include "chrome/browser/ui/browser_dialogs.h"
+#include "chrome/browser/web_applications/externally_installed_web_app_prefs.h"
+#include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_location.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
 #include "chrome/browser/web_applications/proto/web_app_os_integration_state.pb.h"
-#include "chrome/browser/web_applications/proto/web_app_proto_package.pb.h"
 #include "chrome/browser/web_applications/test/web_app_test_observers.h"
 #include "chrome/browser/web_applications/web_app.h"
 #include "chrome/browser/web_applications/web_app_chromeos_data.h"
@@ -57,9 +52,7 @@
 #include "chrome/browser/web_applications/web_app_registry_update.h"
 #include "chrome/browser/web_applications/web_app_sync_bridge.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
-#include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
-#include "components/base32/base32.h"
 #include "components/prefs/pref_service.h"
 #include "components/services/app_service/public/cpp/file_handler.h"
 #include "components/services/app_service/public/cpp/icon_info.h"
@@ -71,22 +64,21 @@
 #include "content/public/browser/service_worker_context.h"
 #include "content/public/browser/storage_partition.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/manifest/manifest.h"
 #include "third_party/blink/public/common/permissions_policy/origin_with_possible_wildcards.h"
 #include "third_party/blink/public/common/permissions_policy/permissions_policy.h"
 #include "third_party/blink/public/common/permissions_policy/policy_helper_public.h"
-#include "third_party/blink/public/common/safe_url_pattern.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/manifest/capture_links.mojom-shared.h"
-#include "third_party/liburlpattern/pattern.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
 namespace {
 
-std::vector<std::string> test_features = {
+std::vector<std::string> features = {
     "default_on_feature", "default_self_feature", "default_disabled_feature"};
 
 }  // namespace
@@ -98,31 +90,17 @@ namespace {
 
 class RandomHelper {
  public:
-  explicit RandomHelper(const uint32_t seed, bool non_zero)
+  explicit RandomHelper(const uint32_t seed)
       :  // Seed of 0 and 1 generate the same sequence, so skip 0.
         generator_(seed + 1),
-        distribution_(0u, UINT32_MAX),
-        non_zero_(non_zero) {}
+        distribution_(0u, UINT32_MAX) {}
 
-  uint32_t next_uint() {
-    return std::max(distribution_(generator_),
-                    static_cast<uint32_t>(non_zero_));
-  }
+  uint32_t next_uint() { return distribution_(generator_); }
 
   // Return an unsigned int between 0 (inclusive) and bound (exclusive).
-  uint32_t next_uint(uint32_t bound) {
-    return bound <= 1 ? 0
-                      : std::max(next_uint() % bound,
-                                 static_cast<uint32_t>(non_zero_));
-  }
+  uint32_t next_uint(uint32_t bound) { return next_uint() % bound; }
 
-  bool next_bool() { return non_zero_ || next_uint() & 1u; }
-
-  base::Time next_time() {
-    return base::Time::UnixEpoch() + base::Milliseconds(next_uint());
-  }
-
-  int64_t next_proto_time() { return syncer::TimeToProtoTime(next_time()); }
+  bool next_bool() { return next_uint() & 1u; }
 
   template <typename T>
   T next_enum() {
@@ -135,13 +113,7 @@ class RandomHelper {
  private:
   std::default_random_engine generator_;
   std::uniform_int_distribution<uint32_t> distribution_;
-  bool non_zero_;
 };
-
-#define NEXT_PROTO_ENUM(random_helper, T, skip_zero)         \
-  static_cast<T>(static_cast<uint32_t>(skip_zero) +          \
-                 random_helper.next_uint(T##_MAX - T##_MIN - \
-                                         static_cast<uint32_t>(skip_zero)))
 
 apps::FileHandlers CreateRandomFileHandlers(uint32_t suffix) {
   apps::FileHandlers file_handlers;
@@ -207,9 +179,9 @@ apps::ShareTarget CreateRandomShareTarget(uint32_t suffix) {
 blink::ParsedPermissionsPolicy CreateRandomPermissionsPolicy(
     RandomHelper& random) {
   const int num_permissions_policy_declarations =
-      random.next_uint(test_features.size());
+      random.next_uint(features.size());
 
-  std::vector<std::string> available_features = test_features;
+  std::vector<std::string> available_features = features;
 
   const auto suffix = random.next_uint();
   std::default_random_engine rng;
@@ -227,7 +199,8 @@ blink::ParsedPermissionsPolicy CreateRandomPermissionsPolicy(
       const auto origin =
           url::Origin::Create(GURL("https://app-" + suffix_str + ".com/"));
       permissions_policy[i].allowed_origins.emplace_back(
-          *blink::OriginWithPossibleWildcards::FromOrigin(origin));
+          origin,
+          /*has_subdomain_wildcard=*/false);
     }
   }
   return permissions_policy;
@@ -388,9 +361,7 @@ std::vector<blink::Manifest::ImageResource> CreateRandomHomeTabIcons(
     // Icon sizes can be non square
     std::vector<gfx::Size> sizes;
     for (int j = random.next_uint(3) + 1; j > 0; --j) {
-      int x = j * random.next_uint(200);
-      int y = j * random.next_uint(200);
-      sizes.emplace_back(x, y);
+      sizes.emplace_back(j * random.next_uint(200), j * random.next_uint(200));
     }
     icon.sizes = std::move(sizes);
 
@@ -412,43 +383,6 @@ std::vector<blink::Manifest::ImageResource> CreateRandomHomeTabIcons(
   return icons;
 }
 
-std::vector<blink::SafeUrlPattern> CreateRandomScopePatterns(
-    RandomHelper& random) {
-  std::vector<blink::SafeUrlPattern> scope_patterns;
-
-  for (int i = random.next_uint(4) + 1; i >= 0; --i) {
-    blink::SafeUrlPattern url_pattern;
-
-    for (int j = random.next_uint(4) + 1; j >= 0; --j) {
-      liburlpattern::Part part;
-
-      std::vector<liburlpattern::PartType> part_types = {
-          liburlpattern::PartType::kFixed,
-          liburlpattern::PartType::kFullWildcard,
-          liburlpattern::PartType::kSegmentWildcard};
-      std::vector<liburlpattern::Modifier> modifiers = {
-          liburlpattern::Modifier::kZeroOrMore,
-          liburlpattern::Modifier::kOptional,
-          liburlpattern::Modifier::kOneOrMore, liburlpattern::Modifier::kNone};
-      part.type = part_types[random.next_uint(part_types.size())];
-      part.value = "value" + base::NumberToString(j);
-      if (part.type == liburlpattern::PartType::kFullWildcard ||
-          part.type == liburlpattern::PartType::kSegmentWildcard) {
-        part.prefix = "prefix" + base::NumberToString(j);
-        part.name = "name" + base::NumberToString(j);
-        part.suffix = "suffix" + base::NumberToString(j);
-      }
-
-      part.modifier = modifiers[random.next_uint(modifiers.size())];
-
-      url_pattern.pathname.push_back(std::move(part));
-    }
-
-    scope_patterns.push_back(std::move(url_pattern));
-  }
-  return scope_patterns;
-}
-
 proto::WebAppOsIntegrationState GenerateRandomWebAppOsIntegrationState(
     RandomHelper& random,
     WebApp& app) {
@@ -460,7 +394,8 @@ proto::WebAppOsIntegrationState GenerateRandomWebAppOsIntegrationState(
   shortcuts->set_description(app.untranslated_description());
   auto* first_shortcut = shortcuts->add_icon_data_any();
   first_shortcut->set_icon_size(32);
-  first_shortcut->set_timestamp(random.next_proto_time());
+  first_shortcut->set_timestamp(syncer::TimeToProtoTime(
+      base::Time::UnixEpoch() + base::Milliseconds(random.next_uint())));
 
   // Randomly fill protocols_handled.
   auto* protocols_handled = state.mutable_protocols_handled();
@@ -497,15 +432,18 @@ proto::WebAppOsIntegrationState GenerateRandomWebAppOsIntegrationState(
 
     auto* data_any = menu_info->add_icon_data_any();
     data_any->set_icon_size(16 * random.next_uint(/*bound=*/4));
-    data_any->set_timestamp(random.next_proto_time());
+    data_any->set_timestamp(syncer::TimeToProtoTime(
+        base::Time::UnixEpoch() + base::Milliseconds(random.next_uint())));
 
     auto* data_maskable = menu_info->add_icon_data_maskable();
     data_maskable->set_icon_size(16 * random.next_uint(/*bound=*/4));
-    data_maskable->set_timestamp(random.next_proto_time());
+    data_maskable->set_timestamp(syncer::TimeToProtoTime(
+        base::Time::UnixEpoch() + base::Milliseconds(random.next_uint())));
 
     auto* data_monochrome = menu_info->add_icon_data_monochrome();
     data_monochrome->set_icon_size(16 * random.next_uint(/*bound=*/4));
-    data_monochrome->set_timestamp(random.next_proto_time());
+    data_monochrome->set_timestamp(syncer::TimeToProtoTime(
+        base::Time::UnixEpoch() + base::Milliseconds(random.next_uint())));
   }
 
   // Randomly fill file handling information.
@@ -534,10 +472,35 @@ proto::WebAppOsIntegrationState GenerateRandomWebAppOsIntegrationState(
 
 }  // namespace
 
+std::string GetExternalPrefMigrationTestName(
+    const ::testing::TestParamInfo<ExternalPrefMigrationTestCases>& info) {
+  switch (info.param) {
+    case ExternalPrefMigrationTestCases::kDisableMigrationReadPref:
+      return "DisableMigration_ReadFromPrefs";
+    case ExternalPrefMigrationTestCases::kDisableMigrationReadDB:
+      return "DisableMigration_ReadFromDB";
+    case ExternalPrefMigrationTestCases::kEnableMigrationReadPref:
+      return "EnableMigration_ReadFromPrefs";
+    case ExternalPrefMigrationTestCases::kEnableMigrationReadDB:
+      return "EnableMigration_ReadFromDB";
+  }
+}
+
+std::string GetOsIntegrationSubManagersTestName(
+    const ::testing::TestParamInfo<OsIntegrationSubManagersState>& info) {
+  switch (info.param) {
+    case OsIntegrationSubManagersState::kSaveStateToDB:
+      return "OSIntegrationSubManagers_SaveStateToDB";
+    case OsIntegrationSubManagersState::kSaveStateAndExecute:
+      return "OSIntegrationSubManagers_SaveStateAndExecute";
+    case OsIntegrationSubManagersState::kDisabled:
+      return "OSIntegrationSubManagers_Disabled";
+  }
+}
+
 std::unique_ptr<WebApp> CreateWebApp(const GURL& start_url,
                                      WebAppManagement::Type source_type) {
-  const webapps::AppId app_id =
-      GenerateAppId(/*manifest_id=*/std::nullopt, start_url);
+  const AppId app_id = GenerateAppId(/*manifest_id=*/absl::nullopt, start_url);
 
   auto web_app = std::make_unique<WebApp>(app_id);
   web_app->SetStartUrl(start_url);
@@ -549,37 +512,31 @@ std::unique_ptr<WebApp> CreateWebApp(const GURL& start_url,
   return web_app;
 }
 
-std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
-  RandomHelper random(params.seed, params.non_zero);
+std::unique_ptr<WebApp> CreateRandomWebApp(const GURL& base_url,
+                                           const uint32_t seed,
+                                           bool allow_system_source) {
+  RandomHelper random(seed);
 
-  const std::string seed_str = base::NumberToString(params.seed);
-  std::optional<std::string> relative_manifest_id;
-  if (random.next_bool()) {
-    std::string path = "manifest_id_" + seed_str;
-    if (random.next_bool()) {
-      path += "?query=test";
-    }
-    if (random.next_bool()) {
-      path += "#fragment";
-    }
-    relative_manifest_id = path;
-  }
-  const GURL scope = params.base_url.Resolve("scope" + seed_str + "/");
+  const std::string seed_str = base::NumberToString(seed);
+  absl::optional<std::string> manifest_id;
+  if (random.next_bool())
+    manifest_id = "manifest_id_" + seed_str;
+  const GURL scope = base_url.Resolve("scope" + seed_str + "/");
   const GURL start_url = scope.Resolve("start" + seed_str);
-  const webapps::AppId app_id = GenerateAppId(relative_manifest_id, start_url);
+  const AppId app_id = GenerateAppId(manifest_id, start_url);
 
   const std::string name = "Name" + seed_str;
   const std::string description = "Description" + seed_str;
-  const std::optional<SkColor> theme_color = random.next_uint();
-  std::optional<SkColor> dark_mode_theme_color;
-  const std::optional<SkColor> background_color = random.next_uint();
-  std::optional<SkColor> dark_mode_background_color;
-  const std::optional<SkColor> synced_theme_color = random.next_uint();
+  const absl::optional<SkColor> theme_color = random.next_uint();
+  absl::optional<SkColor> dark_mode_theme_color;
+  const absl::optional<SkColor> background_color = random.next_uint();
+  absl::optional<SkColor> dark_mode_background_color;
+  const absl::optional<SkColor> synced_theme_color = random.next_uint();
   auto app = std::make_unique<WebApp>(app_id);
   std::vector<WebAppManagement::Type> management_types;
 
   // Generate all possible permutations of field values in a random way:
-  if (params.allow_system_source && random.next_bool()) {
+  if (allow_system_source && random.next_bool()) {
     app->AddSource(WebAppManagement::kSystem);
     management_types.push_back(WebAppManagement::kSystem);
   }
@@ -609,16 +566,8 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
     management_types.push_back(WebAppManagement::kKiosk);
   }
   if (random.next_bool()) {
-    app->AddSource(WebAppManagement::kIwaShimlessRma);
-    management_types.push_back(WebAppManagement::kIwaShimlessRma);
-  }
-  if (random.next_bool()) {
-    app->AddSource(WebAppManagement::kIwaPolicy);
-    management_types.push_back(WebAppManagement::kIwaPolicy);
-  }
-  if (random.next_bool()) {
-    app->AddSource(WebAppManagement::kIwaUserInstalled);
-    management_types.push_back(WebAppManagement::kIwaUserInstalled);
+    app->AddSource(WebAppManagement::kCommandLine);
+    management_types.push_back(WebAppManagement::kCommandLine);
   }
   if (random.next_bool()) {
     app->AddSource(WebAppManagement::kOem);
@@ -627,10 +576,6 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
   if (random.next_bool()) {
     app->AddSource(WebAppManagement::kOneDriveIntegration);
     management_types.push_back(WebAppManagement::kOneDriveIntegration);
-  }
-  if (random.next_bool()) {
-    app->AddSource(WebAppManagement::kApsDefault);
-    management_types.push_back(WebAppManagement::kApsDefault);
   }
 
   // Must always be at least one source.
@@ -650,10 +595,7 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
 
   app->SetName(name);
   app->SetDescription(description);
-  if (relative_manifest_id) {
-    app->SetManifestId(
-        GenerateManifestId(relative_manifest_id.value(), start_url));
-  }
+  app->SetManifestId(manifest_id);
   app->SetStartUrl(GURL(start_url));
   app->SetScope(GURL(scope));
   app->SetThemeColor(theme_color);
@@ -666,26 +608,19 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
   const mojom::UserDisplayMode user_display_modes[3] = {
       mojom::UserDisplayMode::kBrowser, mojom::UserDisplayMode::kStandalone,
       mojom::UserDisplayMode::kTabbed};
-  // Explicitly set a UserDisplayMode for each platform (instead of calling
-  // `SetUserDisplayMode` which sets the current platform's value only) so the
-  // test expectations are consistent across platforms.
-  if (base::FeatureList::IsEnabled(kSeparateUserDisplayModeForCrOS)) {
-    if (random.next_bool()) {
-      app->SetUserDisplayModeDefault(user_display_modes[random.next_uint(3)]);
-    }
-    // Must have at least one platform's UserDisplayMode set.
-    if (!app->user_display_mode_default().has_value() || random.next_bool()) {
-      app->SetUserDisplayModeCrOS(user_display_modes[random.next_uint(3)]);
-    }
-  } else {
-    app->SetUserDisplayModeDefault(user_display_modes[random.next_uint(3)]);
-  }
+  app->SetUserDisplayMode(user_display_modes[random.next_uint(3)]);
 
-  app->SetLastBadgingTime(random.next_time());
+  const base::Time last_badging_time =
+      base::Time::UnixEpoch() + base::Milliseconds(random.next_uint());
+  app->SetLastBadgingTime(last_badging_time);
 
-  app->SetLastLaunchTime(random.next_time());
+  const base::Time last_launch_time =
+      base::Time::UnixEpoch() + base::Milliseconds(random.next_uint());
+  app->SetLastLaunchTime(last_launch_time);
 
-  app->SetFirstInstallTime(random.next_time());
+  const base::Time install_time =
+      base::Time::UnixEpoch() + base::Milliseconds(random.next_uint());
+  app->SetInstallTime(install_time);
 
   const DisplayMode display_modes[4] = {
       DisplayMode::kBrowser, DisplayMode::kMinimalUi, DisplayMode::kStandalone,
@@ -711,8 +646,8 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
   std::vector<apps::IconInfo> manifest_icons(num_icons);
   for (int i = 0; i < num_icons; i++) {
     apps::IconInfo icon;
-    icon.url = params.base_url.Resolve(
-        "/icon" + base::NumberToString(random.next_uint()));
+    icon.url =
+        base_url.Resolve("/icon" + base::NumberToString(random.next_uint()));
     if (random.next_bool())
       icon.square_size_px = size;
 
@@ -771,20 +706,15 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
   }
   app->SetAdditionalSearchTerms(std::move(additional_search_terms));
 
-  int num_shortcut_items = static_cast<int>(random.next_uint(4)) + 1;
-  auto item_infos =
-      CreateRandomShortcutsMenuItemInfos(scope, num_shortcut_items, random);
-  auto icons_sizes =
-      CreateRandomDownloadedShortcutsMenuIconsSizes(num_shortcut_items, random);
-  CHECK_EQ(item_infos.size(), icons_sizes.size());
-  for (int i = 0; i < num_shortcut_items; ++i) {
-    item_infos[i].downloaded_icon_sizes = std::move(icons_sizes[i]);
-  }
-  icons_sizes.clear();
-  app->SetShortcutsMenuInfo(std::move(item_infos));
-
-  app->SetManifestUrl(
-      params.base_url.Resolve("/manifest" + seed_str + ".json"));
+  int num_shortcut_menus = static_cast<int>(random.next_uint(4)) + 1;
+  app->SetShortcutsMenuItemInfos(
+      CreateRandomShortcutsMenuItemInfos(scope, num_shortcut_menus, random));
+  app->SetDownloadedShortcutsMenuIconsSizes(
+      CreateRandomDownloadedShortcutsMenuIconsSizes(num_shortcut_menus,
+                                                    random));
+  CHECK_EQ(app->shortcuts_menu_item_infos().size(),
+           app->downloaded_shortcuts_menu_icons_sizes().size());
+  app->SetManifestUrl(base_url.Resolve("/manifest" + seed_str + ".json"));
 
   const int num_allowed_launch_protocols = random.next_uint(8);
   std::vector<std::string> allowed_launch_protocols(
@@ -818,7 +748,9 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
         LaunchHandler{random.next_enum<LaunchHandler::ClientMode>()});
   }
 
-  app->SetManifestUpdateTime(random.next_time());
+  const base::Time manifest_update_time =
+      base::Time::UnixEpoch() + base::Milliseconds(random.next_uint());
+  app->SetManifestUpdateTime(manifest_update_time);
 
   if (random.next_bool())
     app->SetParentAppId(base::NumberToString(random.next_uint()));
@@ -834,36 +766,31 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
   if (IsChromeOsDataMandatory()) {
     // Use a separate random generator for CrOS so the result is deterministic
     // across cros and non-cros builds.
-    RandomHelper cros_random(params.seed, params.non_zero);
-    auto chromeos_data = std::make_optional<WebAppChromeOsData>();
+    RandomHelper cros_random(seed);
+    auto chromeos_data = absl::make_optional<WebAppChromeOsData>();
     chromeos_data->show_in_launcher = cros_random.next_bool();
-    chromeos_data->show_in_search_and_shelf = cros_random.next_bool();
+    chromeos_data->show_in_search = cros_random.next_bool();
     chromeos_data->show_in_management = cros_random.next_bool();
     chromeos_data->is_disabled = cros_random.next_bool();
     chromeos_data->oem_installed = cros_random.next_bool();
-    // Comply with DCHECK that system apps and shimless RMA apps cannot be OEM
-    // installed.
-    if (app->IsSystemApp() || app->IsIwaShimlessRmaApp()) {
+    // Comply with DCHECK that system apps cannot be OEM installed.
+    if (app->IsSystemApp())
       chromeos_data->oem_installed = false;
-    }
     app->SetWebAppChromeOsData(std::move(chromeos_data));
   }
 
   WebApp::ExternalConfigMap management_to_external_config;
   for (WebAppManagement::Type type : management_types) {
-    if (type == WebAppManagement::kSync || WebAppManagement::IsIwaType(type)) {
+    if (type == WebAppManagement::kSync)
       continue;
-    }
     base::flat_set<GURL> install_urls;
     base::flat_set<std::string> additional_policy_ids;
     WebApp::ExternalManagementConfig config;
     if (random.next_bool()) {
-      install_urls.emplace(
-          params.base_url.Resolve("installer1_" + seed_str + "/"));
+      install_urls.emplace(base_url.Resolve("installer1_" + seed_str + "/"));
     }
     if (random.next_bool()) {
-      install_urls.emplace(
-          params.base_url.Resolve("installer2_" + seed_str + "/"));
+      install_urls.emplace(base_url.Resolve("installer2_" + seed_str + "/"));
     }
     if (random.next_bool()) {
       additional_policy_ids.emplace("policy_id_1_" + seed_str);
@@ -890,22 +817,23 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
       if (random.next_bool()) {
         home_tab_params.icons = CreateRandomHomeTabIcons(random);
       }
-      if (random.next_bool()) {
-        home_tab_params.scope_patterns = CreateRandomScopePatterns(random);
-      }
       tab_strip.home_tab = std::move(home_tab_params);
     } else {
       tab_strip.home_tab =
           random.next_enum<blink::mojom::TabStripMemberVisibility>();
     }
 
-    blink::Manifest::NewTabButtonParams new_tab_button_params;
     if (random.next_bool()) {
-      new_tab_button_params.url = scope.Resolve(
-          "new_tab_button_url" + base::NumberToString(random.next_uint()));
+      blink::Manifest::NewTabButtonParams new_tab_button_params;
+      if (random.next_bool()) {
+        new_tab_button_params.url = scope.Resolve(
+            "new_tab_button_url" + base::NumberToString(random.next_uint()));
+      }
+      tab_strip.new_tab_button = new_tab_button_params;
+    } else {
+      tab_strip.new_tab_button =
+          random.next_enum<blink::mojom::TabStripMemberVisibility>();
     }
-    tab_strip.new_tab_button = new_tab_button_params;
-
     app->SetTabStrip(std::move(tab_strip));
   }
 
@@ -915,78 +843,22 @@ std::unique_ptr<WebApp> CreateRandomWebApp(CreateRandomWebAppParams params) {
       GenerateRandomWebAppOsIntegrationState(random, *app));
 
   if (random.next_bool()) {
-    bool dev_mode = random.next_bool();
-
-    auto get_location_type = [&seed_str, &random,
-                              &dev_mode]() -> IsolatedWebAppStorageLocation {
-      if (!dev_mode) {
-        return IwaStorageOwnedBundle{
-            base32::Base32Encode(base::as_byte_span(seed_str),
-                                 base32::Base32EncodePolicy::OMIT_PADDING),
-            /*dev_mode=*/false};
-      } else {
-        constexpr size_t kNumLocationTypes =
-            absl::variant_size<IsolatedWebAppStorageLocation::Variant>::value;
-        std::array<IsolatedWebAppStorageLocation, kNumLocationTypes>
-            location_types = {
-                IwaStorageOwnedBundle{
-                    base32::Base32Encode(
-                        base::as_byte_span(seed_str),
-                        base32::Base32EncodePolicy::OMIT_PADDING),
-                    /*dev_mode=*/true},
-                IwaStorageUnownedBundle{
-                    base::FilePath::FromUTF8Unsafe(seed_str)},
-                IwaStorageProxy{url::Origin::Create(
-                    GURL(base::StrCat({"https://proxy-", seed_str, ".com/"})))},
-            };
-        return location_types.at(random.next_uint(kNumLocationTypes));
-      }
+    constexpr size_t kNumLocationTypes =
+        absl::variant_size<IsolatedWebAppLocation>::value;
+    auto path = base::FilePath::FromUTF8Unsafe(seed_str);
+    IsolatedWebAppLocation location_types[] = {
+        InstalledBundle{.path = path},
+        DevModeBundle{.path = path},
+        DevModeProxy{.proxy_url = url::Origin::Create(GURL(
+                         base::StrCat({"https://proxy-", seed_str, ".com/"})))},
     };
+    static_assert(std::size(location_types) == kNumLocationTypes);
 
-    base::Version version = base::Version({
-        random.next_uint(),
-        random.next_uint(),
-        random.next_uint(),
-    });
-
-    WebApp::IsolationData isolation_data(get_location_type(), version);
-    if (random.next_bool()) {
-      isolation_data.controlled_frame_partitions.insert("partition_name");
-    }
-    if (random.next_bool()) {
-      base::Version pending_version = base::Version({
-          random.next_uint(),
-          random.next_uint(),
-          random.next_uint(),
-      });
-      WebApp::IsolationData::PendingUpdateInfo pending_update_info(
-          get_location_type(), pending_version);
-      isolation_data.SetPendingUpdateInfo(pending_update_info);
-    }
-    app->SetIsolationData(isolation_data);
+    IsolatedWebAppLocation location(
+        location_types[random.next_uint(kNumLocationTypes)]);
+    app->SetIsolationData(WebApp::IsolationData(location));
   }
 
-  app->SetLinkCapturingUserPreference(NEXT_PROTO_ENUM(
-      random, proto::LinkCapturingUserPreference, /*skip_zero=*/false));
-
-  app->SetLatestInstallTime(random.next_time());
-
-  if (random.next_bool()) {
-    GeneratedIconFix generated_icon_fix;
-    generated_icon_fix.set_source(
-        NEXT_PROTO_ENUM(random, GeneratedIconFixSource, /*skip_zero=*/true));
-    generated_icon_fix.set_window_start_time(random.next_proto_time());
-    if (random.next_bool()) {
-      generated_icon_fix.set_last_attempt_time(random.next_proto_time());
-    }
-    generated_icon_fix.set_attempt_count(random.next_uint(100));
-    app->SetGeneratedIconFix(generated_icon_fix);
-  }
-
-  app->SetSupportedLinksOfferIgnoreCount(random.next_uint());
-  app->SetSupportedLinksOfferDismissCount(random.next_uint());
-
-  app->SetIsDiyApp(random.next_bool());
   return app;
 }
 
@@ -994,7 +866,7 @@ void TestAcceptDialogCallback(
     content::WebContents* initiator_web_contents,
     std::unique_ptr<WebAppInstallInfo> web_app_info,
     WebAppInstallationAcceptanceCallback acceptance_callback) {
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(acceptance_callback), true /*accept*/,
                                 std::move(web_app_info)));
 }
@@ -1003,25 +875,21 @@ void TestDeclineDialogCallback(
     content::WebContents* initiator_web_contents,
     std::unique_ptr<WebAppInstallInfo> web_app_info,
     WebAppInstallationAcceptanceCallback acceptance_callback) {
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(acceptance_callback),
                                 false /*accept*/, std::move(web_app_info)));
 }
 
-// TODO(b/329703817): Make this smarter by waiting for a specific dialog, and
-// then triggering accept on the dialog.
-webapps::AppId InstallPwaForCurrentUrl(Browser* browser) {
+AppId InstallPwaForCurrentUrl(Browser* browser) {
   // Depending on the installability criteria, different dialogs can be used.
-  SetAutoAcceptWebAppDialogForTesting(true, true);
-  SetAutoAcceptPWAInstallConfirmationForTesting(true);
-  SetAutoAcceptDiyAppsInstallDialogForTesting(true);
-  WebAppTestInstallWithOsHooksObserver observer(browser->profile());
+  chrome::SetAutoAcceptWebAppDialogForTesting(true, true);
+  chrome::SetAutoAcceptPWAInstallConfirmationForTesting(true);
+  WebAppTestInstallObserver observer(browser->profile());
   observer.BeginListening();
   CHECK(chrome::ExecuteCommand(browser, IDC_INSTALL_PWA));
-  webapps::AppId app_id = observer.Wait();
-  SetAutoAcceptPWAInstallConfirmationForTesting(false);
-  SetAutoAcceptWebAppDialogForTesting(false, false);
-  SetAutoAcceptDiyAppsInstallDialogForTesting(false);
+  AppId app_id = observer.Wait();
+  chrome::SetAutoAcceptPWAInstallConfirmationForTesting(false);
+  chrome::SetAutoAcceptWebAppDialogForTesting(false, false);
   return app_id;
 }
 
@@ -1041,7 +909,7 @@ void CheckServiceWorkerStatus(const GURL& url,
   run_loop.Run();
 }
 
-void SetWebAppSettingsListPref(Profile* profile, const std::string_view pref) {
+void SetWebAppSettingsListPref(Profile* profile, const base::StringPiece pref) {
   auto result = base::JSONReader::ReadAndReturnValueWithError(
       pref, base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS);
   DCHECK(result.has_value()) << result.error().message;
@@ -1051,40 +919,43 @@ void SetWebAppSettingsListPref(Profile* profile, const std::string_view pref) {
 
 void AddInstallUrlData(PrefService* pref_service,
                        WebAppSyncBridge* sync_bridge,
-                       const webapps::AppId& app_id,
+                       const AppId& app_id,
                        const GURL& url,
                        const ExternalInstallSource& source) {
-  ScopedRegistryUpdate update = sync_bridge->BeginUpdate();
+  ScopedRegistryUpdate update(sync_bridge);
   WebApp* app_to_update = update->UpdateApp(app_id);
   DCHECK(app_to_update);
 
   // Adding external app data (source and URL) to web_app DB.
   app_to_update->AddInstallURLToManagementExternalConfigMap(
       ConvertExternalInstallSourceToSource(source), url);
+
+  // Add to legacy external pref storage.
+  // TODO(crbug.com/1339965): Clean up after external pref migration is
+  // complete.
+  ExternallyInstalledWebAppPrefs(pref_service).Insert(url, app_id, source);
 }
 
 void AddInstallUrlAndPlaceholderData(PrefService* pref_service,
                                      WebAppSyncBridge* sync_bridge,
-                                     const webapps::AppId& app_id,
+                                     const AppId& app_id,
                                      const GURL& url,
                                      const ExternalInstallSource& source,
                                      bool is_placeholder) {
-  ScopedRegistryUpdate update = sync_bridge->BeginUpdate();
+  ScopedRegistryUpdate update(sync_bridge);
+  ExternallyInstalledWebAppPrefs prefs(pref_service);
   WebApp* app_to_update = update->UpdateApp(app_id);
   DCHECK(app_to_update);
 
   // Adding install_url, source and placeholder information to the web_app DB.
   app_to_update->AddExternalSourceInformation(
       ConvertExternalInstallSourceToSource(source), url, is_placeholder);
-}
 
-void SynchronizeOsIntegration(Profile* profile,
-                              const webapps::AppId& app_id,
-                              std::optional<SynchronizeOsOptions> options) {
-  base::test::TestFuture<void> sync_future;
-  WebAppProvider::GetForTest(profile)->scheduler().SynchronizeOsIntegration(
-      app_id, sync_future.GetCallback(), options);
-  EXPECT_TRUE(sync_future.Wait());
+  // Add to legacy external pref storage.
+  // TODO(crbug.com/1339965): Clean up after external pref migration is
+  // complete.
+  prefs.Insert(url, app_id, source);
+  prefs.SetIsPlaceholder(url, is_placeholder);
 }
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)

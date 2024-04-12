@@ -109,7 +109,7 @@ void WebTimeRanges::Invert() {
       inverted.Add(end, pos_inf);
   }
 
-  swap(inverted);
+  Swap(inverted);
 }
 
 void WebTimeRanges::IntersectWith(const WebTimeRanges& other) {

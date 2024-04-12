@@ -9,7 +9,6 @@
 #include "ash/system/model/clock_model.h"
 #include "ash/system/model/system_tray_model.h"
 #include "ash/system/time/calendar_utils.h"
-#include "base/containers/contains.h"
 #include "base/i18n/unicodestring.h"
 #include "base/memory/ptr_util.h"
 #include "base/time/time.h"
@@ -32,7 +31,7 @@ const std::vector<std::u16string> kDefaultWeekTitle = {u"S", u"M", u"T", u"W",
                                                        u"T", u"F", u"S"};
 
 UDate TimeToUDate(const base::Time& time) {
-  return static_cast<UDate>(time.InSecondsFSinceUnixEpoch() *
+  return static_cast<UDate>(time.ToDoubleT() *
                             base::Time::kMillisecondsPerSecond);
 }
 
@@ -42,28 +41,28 @@ icu::UnicodeString getHoursPattern(const icu::UnicodeString& unicode_pattern) {
   std::string pattern;
   unicode_pattern.toUTF8String(pattern);
 
-  if (base::Contains(pattern, "hh")) {
+  if (pattern.find("hh") != std::string::npos) {
     return icu::UnicodeString("hh");
   }
-  if (base::Contains(pattern, "h")) {
+  if (pattern.find("h") != std::string::npos) {
     return icu::UnicodeString("h");
   }
-  if (base::Contains(pattern, "HH")) {
+  if (pattern.find("HH") != std::string::npos) {
     return icu::UnicodeString("HH");
   }
-  if (base::Contains(pattern, "H")) {
+  if (pattern.find("H") != std::string::npos) {
     return icu::UnicodeString("H");
   }
-  if (base::Contains(pattern, "KK")) {
+  if (pattern.find("KK") != std::string::npos) {
     return icu::UnicodeString("KK");
   }
-  if (base::Contains(pattern, "K")) {
+  if (pattern.find("K") != std::string::npos) {
     return icu::UnicodeString("K");
   }
-  if (base::Contains(pattern, "kk")) {
+  if (pattern.find("kk") != std::string::npos) {
     return icu::UnicodeString("kk");
   }
-  if (base::Contains(pattern, "k")) {
+  if (pattern.find("k") != std::string::npos) {
     return icu::UnicodeString("k");
   }
 
@@ -325,7 +324,6 @@ void DateHelper::TimezoneChanged(const icu::TimeZone& timezone) {
 }
 
 void DateHelper::OnLocaleChanged() {
-  ResetFormatters();
   CalculateLocalWeekTitles();
 }
 

@@ -6,8 +6,9 @@
 
 namespace ash {
 
-WindowMirrorViewPip::WindowMirrorViewPip(aura::Window* source)
-    : WindowMirrorView(source) {}
+WindowMirrorViewPip::WindowMirrorViewPip(aura::Window* source,
+                                         bool trilinear_filtering_on_init)
+    : WindowMirrorView(source, trilinear_filtering_on_init) {}
 
 WindowMirrorViewPip::~WindowMirrorViewPip() = default;
 

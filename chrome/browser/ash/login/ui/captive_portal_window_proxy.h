@@ -50,17 +50,17 @@ class CaptivePortalWindowProxy : public views::WidgetObserver {
   // is in the captive portal state.
   // Subsequent call to this method would reuses existing view
   // but reloads test page (generate_204).
-  void ShowIfRedirected(const std::string& network_name);
+  void ShowIfRedirected();
 
   // Forces captive portal window show.
-  void Show(const std::string& network_name);
+  void Show();
 
   // Closes the window.
   void Close();
 
   // Called by CaptivePortalView when URL loading was redirected from the
   // original URL.
-  void OnRedirected(const std::string& network_name);
+  void OnRedirected();
 
   // Called by CaptivePortalView when origin URL is loaded without any
   // redirections.
@@ -97,7 +97,7 @@ class CaptivePortalWindowProxy : public views::WidgetObserver {
 
   // Initializes `captive_portal_view_` if it is not initialized and
   // starts loading Captive Portal redirect URL.
-  void InitCaptivePortalView(const std::string& network_name);
+  void InitCaptivePortalView();
 
   // Returns symbolic state name based on internal state.
   State GetState() const;
@@ -106,9 +106,10 @@ class CaptivePortalWindowProxy : public views::WidgetObserver {
   // notifications from `widget_` and resets it.
   void DetachFromWidget(views::Widget* widget);
 
-  raw_ptr<Profile> profile_ = ProfileHelper::GetSigninProfile();
-  raw_ptr<content::WebContents> web_contents_;
-  raw_ptr<views::Widget> widget_ = nullptr;
+  raw_ptr<Profile, ExperimentalAsh> profile_ =
+      ProfileHelper::GetSigninProfile();
+  raw_ptr<content::WebContents, ExperimentalAsh> web_contents_;
+  raw_ptr<views::Widget, ExperimentalAsh> widget_ = nullptr;
 
   std::unique_ptr<CaptivePortalView> captive_portal_view_;
 

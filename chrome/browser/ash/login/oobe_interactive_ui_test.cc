@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <optional>
-#include <string_view>
 
 #include "ash/components/arc/session/arc_service_manager.h"
 #include "ash/components/arc/session/arc_session_runner.h"
@@ -20,19 +18,19 @@
 #include "base/memory/raw_ptr.h"
 #include "base/strings/stringprintf.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/values.h"
 #include "build/branding_buildflags.h"
 #include "build/buildflag.h"
-#include "chrome/browser/apps/app_discovery_service/recommended_arc_apps/recommend_apps_fetcher.h"
-#include "chrome/browser/apps/app_discovery_service/recommended_arc_apps/recommend_apps_fetcher_delegate.h"
-#include "chrome/browser/apps/app_discovery_service/recommended_arc_apps/scoped_test_recommend_apps_fetcher_factory.h"
 #include "chrome/browser/ash/arc/session/arc_service_launcher.h"
 #include "chrome/browser/ash/arc/session/arc_session_manager.h"
 #include "chrome/browser/ash/arc/test/test_arc_session_manager.h"
 #include "chrome/browser/ash/login/quick_unlock/quick_unlock_utils.h"
+#include "chrome/browser/ash/login/screens/recommend_apps/recommend_apps_fetcher.h"
+#include "chrome/browser/ash/login/screens/recommend_apps/recommend_apps_fetcher_delegate.h"
+#include "chrome/browser/ash/login/screens/recommend_apps/scoped_test_recommend_apps_fetcher_factory.h"
 #include "chrome/browser/ash/login/test/device_state_mixin.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/embedded_test_server_setup_mixin.h"
 #include "chrome/browser/ash/login/test/enrollment_ui_mixin.h"
 #include "chrome/browser/ash/login/test/fake_arc_tos_mixin.h"
@@ -44,13 +42,11 @@
 #include "chrome/browser/ash/login/test/oobe_screen_exit_waiter.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
 #include "chrome/browser/ash/login/test/oobe_screens_utils.h"
-#include "chrome/browser/ash/login/test/scoped_policy_update.h"
 #include "chrome/browser/ash/login/test/test_predicate_waiter.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/ash/policy/enrollment/auto_enrollment_type_checker.h"
 #include "chrome/browser/ash/policy/enrollment/psm/rlwe_test_support.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/chrome_browser_main.h"
 #include "chrome/browser/chrome_browser_main_extra_parts.h"
 #include "chrome/browser/extensions/api/quick_unlock_private/quick_unlock_private_api.h"
@@ -58,20 +54,13 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/webui/ash/login/app_downloading_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/assistant_optin_flow_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/choobe_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/consumer_update_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/display_size_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/gaia_info_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/gaia_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/gesture_navigation_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/marketing_opt_in_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/password_selection_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/recommend_apps_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/sync_consent_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/terms_of_service_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/theme_selection_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/touchpad_scroll_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/tpm_error_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/user_creation_screen_handler.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/fake_gaia_mixin.h"
@@ -81,14 +70,13 @@
 #include "chromeos/ash/components/dbus/update_engine/update_engine_client.h"
 #include "chromeos/ash/components/system/fake_statistics_provider.h"
 #include "chromeos/constants/chromeos_features.h"
-#include "chromeos/dbus/power/fake_power_manager_client.h"
-#include "components/policy/core/common/policy_switches.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_utils.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/http_request.h"
 #include "net/test/embedded_test_server/http_response.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_observer.h"
 #include "ui/display/display_switches.h"
@@ -139,21 +127,6 @@ void RunNetworkSelectionScreenChecks() {
 
   test::OobeJS().CreateFocusWaiter({"network-selection", "nextButton"})->Wait();
   EXPECT_TRUE(test::IsScanningRequestedOnNetworkScreen());
-}
-
-void HandleGaiaInfoScreen() {
-  OobeScreenWaiter(GaiaInfoScreenView::kScreenId).Wait();
-  LOG(INFO) << "OobeInteractiveUITest: Switched to 'gaia-info' screen.";
-
-  test::OobeJS().ClickOnPath({"gaia-info", "nextButton"});
-  LOG(INFO) << "OobeInteractiveUITest: Exiting 'gaia-info' screen.";
-}
-
-void HandleConsumerUpdateScreen() {
-  OobeScreenWaiter(ConsumerUpdateScreenView::kScreenId).Wait();
-  LOG(INFO) << "OobeInteractiveUITest: Switched to 'consumer-update' screen.";
-
-  test::ExitConsumerUpdateScreenNoUpdate();
 }
 
 void WaitForGaiaSignInScreen() {
@@ -239,31 +212,13 @@ void HandleRecommendAppsScreen() {
   test::OobeJS().ClickOnPath(
       {"recommend-apps", "appsList", R"(test\\.package)"});
 
-  const std::initializer_list<std::string_view> install_button = {
+  const std::initializer_list<base::StringPiece> install_button = {
       "recommend-apps", "installButton"};
   test::OobeJS().CreateEnabledWaiter(true, install_button)->Wait();
   test::OobeJS().TapOnPath(install_button);
 
   OobeScreenExitWaiter(RecommendAppsScreenView::kScreenId).Wait();
   LOG(INFO) << "OobeInteractiveUITest: 'recommend-apps' screen done.";
-}
-
-// Waits for PasswordSelectionScreen to be shown, selects 'Gaia password' option
-// and clicks next to go to the next screen.
-void HandlePasswordSelectionScreen() {
-  OobeScreenWaiter(PasswordSelectionScreenView::kScreenId).Wait();
-  LOG(INFO)
-      << "OobeInteractiveUITest: Switched to 'password-selection' screen.";
-
-  test::OobeJS().CreateVisibilityWaiter(true, {"password-selection"})->Wait();
-
-  test::OobeJS().ClickOnPath({"password-selection", "gaiaPasswordButton"});
-
-  test::OobeJS().ExpectVisiblePath({"password-selection", "nextButton"});
-  test::OobeJS().ExecuteAsync("$('password-selection').$.nextButton.click()");
-
-  OobeScreenExitWaiter(PasswordSelectionScreenView::kScreenId).Wait();
-  LOG(INFO) << "OobeInteractiveUITest: 'password-selection' screen done.";
 }
 
 // Waits for AppDownloadingScreen to be shown, clicks 'Continue' button, and
@@ -277,7 +232,7 @@ void HandleAppDownloadingScreen() {
   EXPECT_FALSE(LoginScreenTestApi::IsGuestButtonShown());
   EXPECT_FALSE(LoginScreenTestApi::IsAddUserButtonShown());
 
-  const std::initializer_list<std::string_view> continue_button = {
+  const std::initializer_list<base::StringPiece> continue_button = {
       "app-downloading", "continue-setup-button"};
   test::OobeJS().TapOnPath(continue_button);
 
@@ -305,7 +260,7 @@ void HandleAssistantOptInScreen() {
       .CreateVisibilityWaiter(true, {"assistant-optin-flow", "card", "loading"})
       ->Wait();
 
-  std::initializer_list<std::string_view> skip_button_path = {
+  std::initializer_list<base::StringPiece> skip_button_path = {
       "assistant-optin-flow", "card", "loading", "skip-button"};
   test::OobeJS().CreateEnabledWaiter(true, skip_button_path)->Wait();
   test::OobeJS().TapOnPath(skip_button_path);
@@ -359,68 +314,6 @@ void HandleThemeSelectionScreen() {
   OobeScreenExitWaiter(ThemeSelectionScreenView::kScreenId).Wait();
 }
 
-// Waits for display size screen to get shown, then taps through the screen
-// and waits for the screen to exit.
-void HandleDisplaySizeScreen() {
-  OobeScreenWaiter(DisplaySizeScreenView::kScreenId).Wait();
-
-  test::OobeJS().ClickOnPath({"display-size", "nextButton"});
-
-  OobeScreenExitWaiter(DisplaySizeScreenView::kScreenId).Wait();
-}
-
-// Waits for touchpad scroll screen to get shown, then taps through the screen
-// and waits for the screen to exit.
-void HandleTouchpadScrollScreen() {
-  OobeScreenWaiter(TouchpadScrollScreenView::kScreenId).Wait();
-
-  test::OobeJS().ClickOnPath({"touchpad-scroll", "nextButton"});
-
-  OobeScreenExitWaiter(TouchpadScrollScreenView::kScreenId).Wait();
-}
-
-// Waits for CHOOBE screen to get shown, selects all screens cards, then taps
-// through the screen and waits for the screen to exit.
-void HandleChoobeScreen() {
-  OobeScreenWaiter(ChoobeScreenView::kScreenId).Wait();
-
-  const test::UIPath screens_cards[] = {
-      {"choobe", "screensList", "cr-button-touchpad-scroll"},
-      {"choobe", "screensList", "cr-button-display-size"},
-      {"choobe", "screensList", "cr-button-theme-selection"}};
-  for (const auto& card : screens_cards) {
-    test::OobeJS().TapOnPath(card);
-  }
-  test::OobeJS().TapOnPath({"choobe", "nextButton"});
-
-  OobeScreenExitWaiter(ChoobeScreenView::kScreenId).Wait();
-}
-
-// Taps through CHOOBE screen (if it should be shown), then calls the handle
-// methods for the optional sreens.
-void HandleChoobeFlow() {
-  // CHOOBE screen will only be enabled when there are at least 3 eligible
-  // optional screens. So, for the screen to be shown, both `OobeDisplaySize`
-  // and `OobeTouchpadScroll` must be enabled to have at least 3 optional
-  // screens.
-  bool should_show_choobe = features::IsOobeDisplaySizeEnabled() &&
-                            features::IsOobeTouchpadScrollEnabled();
-
-  if (should_show_choobe) {
-    HandleChoobeScreen();
-  }
-
-  if (features::IsOobeTouchpadScrollEnabled()) {
-    HandleTouchpadScrollScreen();
-  }
-
-  if (features::IsOobeDisplaySizeEnabled()) {
-    HandleDisplaySizeScreen();
-  }
-
-  HandleThemeSelectionScreen();
-}
-
 // Waits for marketing opt in screen to get shown, then taps through the screen
 // and waits for the screen to exit.
 void HandleMarketingOptInScreen() {
@@ -445,10 +338,9 @@ void HandleMarketingOptInScreen() {
   OobeScreenExitWaiter(MarketingOptInScreenView::kScreenId).Wait();
 }
 
-class FakeRecommendAppsFetcher : public apps::RecommendAppsFetcher {
+class FakeRecommendAppsFetcher : public RecommendAppsFetcher {
  public:
-  explicit FakeRecommendAppsFetcher(
-      apps::RecommendAppsFetcherDelegate* delegate)
+  explicit FakeRecommendAppsFetcher(RecommendAppsFetcherDelegate* delegate)
       : delegate_(delegate) {}
   ~FakeRecommendAppsFetcher() override = default;
 
@@ -469,11 +361,11 @@ class FakeRecommendAppsFetcher : public apps::RecommendAppsFetcher {
   void Retry() override { NOTREACHED(); }
 
  private:
-  const raw_ptr<apps::RecommendAppsFetcherDelegate> delegate_;
+  const raw_ptr<RecommendAppsFetcherDelegate, ExperimentalAsh> delegate_;
 };
 
-std::unique_ptr<apps::RecommendAppsFetcher> CreateRecommendAppsFetcher(
-    apps::RecommendAppsFetcherDelegate* delegate) {
+std::unique_ptr<RecommendAppsFetcher> CreateRecommendAppsFetcher(
+    RecommendAppsFetcherDelegate* delegate) {
   return std::make_unique<FakeRecommendAppsFetcher>(delegate);
 }
 
@@ -507,7 +399,7 @@ class NativeWindowVisibilityObserver : public aura::WindowObserver {
   // The window was visible at some point in time.
   bool was_visible_ = false;
 
-  raw_ptr<aura::Window> window_;
+  raw_ptr<aura::Window, ExperimentalAsh> window_;
 };
 
 // Sets the `NativeWindowVisibilityObserver` to observe the
@@ -541,7 +433,7 @@ class NativeWindowVisibilityBrowserMainExtraParts
   }
 
  private:
-  raw_ptr<NativeWindowVisibilityObserver, DanglingUntriaged> observer_;
+  raw_ptr<NativeWindowVisibilityObserver, ExperimentalAsh> observer_;
 };
 
 class OobeEndToEndTestSetupMixin : public InProcessBrowserTestMixin {
@@ -603,13 +495,6 @@ class OobeEndToEndTestSetupMixin : public InProcessBrowserTestMixin {
     if (params_.arc_state != ArcState::kNotAvailable) {
       arc::SetArcAvailableCommandLineForTesting(command_line);
     }
-
-    // This will change the verification key to be used by the
-    // CloudPolicyValidator. It will allow for the policy provided by the
-    // PolicyBuilder to pass the signature validation.
-    command_line->AppendSwitchASCII(
-        policy::switches::kPolicyVerificationKey,
-        policy::PolicyBuilder::GetEncodedPolicyVerificationKey());
   }
 
   void SetUpInProcessBrowserTestFixture() override {
@@ -622,7 +507,7 @@ class OobeEndToEndTestSetupMixin : public InProcessBrowserTestMixin {
 
     if (params_.arc_state != ArcState::kNotAvailable) {
       recommend_apps_fetcher_factory_ =
-          std::make_unique<apps::ScopedTestRecommendAppsFetcherFactory>(
+          std::make_unique<ScopedTestRecommendAppsFetcherFactory>(
               base::BindRepeating(&CreateRecommendAppsFetcher));
     }
   }
@@ -660,7 +545,7 @@ class OobeEndToEndTestSetupMixin : public InProcessBrowserTestMixin {
   Parameters params_;
 
   base::test::ScopedFeatureList feature_list_;
-  std::unique_ptr<apps::ScopedTestRecommendAppsFetcherFactory>
+  std::unique_ptr<ScopedTestRecommendAppsFetcherFactory>
       recommend_apps_fetcher_factory_;
   std::unique_ptr<quick_unlock::TestApi> test_api_;
 };
@@ -674,9 +559,7 @@ class OobeInteractiveUITest : public OobeBaseTest,
   OobeInteractiveUITest(const OobeInteractiveUITest&) = delete;
   OobeInteractiveUITest& operator=(const OobeInteractiveUITest&) = delete;
 
-  OobeInteractiveUITest() {
-    histogram_tester_ = std::make_unique<base::HistogramTester>();
-  }
+  OobeInteractiveUITest() = default;
   ~OobeInteractiveUITest() override = default;
 
   // OobeBaseTest:
@@ -709,8 +592,6 @@ class OobeInteractiveUITest : public OobeBaseTest,
 
   const OobeEndToEndTestSetupMixin* test_setup() const { return &setup_; }
 
-  base::HistogramTester* histogram_tester() { return histogram_tester_.get(); }
-
  private:
   void ForceBrandedBuild() const;
   FakeGaiaMixin fake_gaia_{&mixin_host_};
@@ -718,7 +599,6 @@ class OobeInteractiveUITest : public OobeBaseTest,
   FakeArcTosMixin fake_arc_tos_{&mixin_host_, embedded_test_server()};
 
   OobeEndToEndTestSetupMixin setup_{&mixin_host_, GetParam()};
-  std::unique_ptr<base::HistogramTester> histogram_tester_;
 };
 
 void OobeInteractiveUITest::ForceBrandedBuild() const {
@@ -726,8 +606,6 @@ void OobeInteractiveUITest::ForceBrandedBuild() const {
 }
 
 void OobeInteractiveUITest::PerformStepsBeforeEnrollmentCheck() {
-  histogram_tester()->ExpectUniqueSample("OOBE.OobeFlowStatus", 0 /*Started*/,
-                                         1);
   ForceBrandedBuild();
   test::WaitForWelcomeScreen();
   RunWelcomeScreenChecks();
@@ -745,39 +623,18 @@ void OobeInteractiveUITest::PerformSessionSignInSteps() {
   ForceBrandedBuild();
   if (GetFirstSigninScreen() == UserCreationView::kScreenId) {
     test::WaitForUserCreationScreen();
-
-    if (features::IsOobeSoftwareUpdateEnabled()) {
-      test::TapForPersonalUseCrRadioButton();
-      test::TapUserCreationNext();
-      HandleConsumerUpdateScreen();
-    } else {
-      test::TapUserCreationNext();
-    }
-
-    if (features::IsOobeGaiaInfoScreenEnabled()) {
-      HandleGaiaInfoScreen();
-    }
+    test::TapUserCreationNext();
   }
-
   WaitForGaiaSignInScreen();
   LogInAsRegularUser();
 
   test::WaitForConsolidatedConsentScreen();
-  histogram_tester()->ExpectUniqueSample(
-      "OOBE.OnboardingFlowStatus.FirstOnboarding", 0 /*Started*/, 1);
-  histogram_tester()->ExpectTotalCount("OOBE.OobeStartToOnboardingStartTime",
-                                       1);
-
   RunConsolidatedConsentScreenChecks();
   test::TapConsolidatedConsentAccept();
 
   test::WaitForSyncConsentScreen();
   RunSyncConsentScreenChecks();
   test::ExitScreenSyncConsent();
-
-  if (ash::features::AreLocalPasswordsEnabledForConsumers()) {
-    HandlePasswordSelectionScreen();
-  }
 
   if (test_setup()->is_quick_unlock_enabled()) {
     test::WaitForFingerprintScreen();
@@ -796,33 +653,18 @@ void OobeInteractiveUITest::PerformSessionSignInSteps() {
     HandleAppDownloadingScreen();
   }
 
-  if (!features::IsOobeSkipAssistantEnabled()) {
-    HandleAssistantOptInScreen();
-  }
+  HandleAssistantOptInScreen();
 
   if (test_setup()->is_tablet() &&
       test_setup()->hide_shelf_controls_in_tablet_mode()) {
     HandleGestureNavigationScreen();
   }
 
-  if (features::IsOobeChoobeEnabled()) {
-    HandleChoobeFlow();
-  } else {
-    HandleThemeSelectionScreen();
-  }
-
+  HandleThemeSelectionScreen();
   HandleMarketingOptInScreen();
-  histogram_tester()->ExpectBucketCount("OOBE.OobeFlowStatus", 1 /*Completed*/,
-                                        1);
-  histogram_tester()->ExpectBucketCount(
-      "OOBE.OnboardingFlowStatus.FirstOnboarding", 1 /*Completed*/, 1);
-  histogram_tester()->ExpectTotalCount("OOBE.OobeFlowDuration", 1);
-  histogram_tester()->ExpectTotalCount(
-      "OOBE.OnboardingFlowDuration.FirstOnboarding", 1);
 }
 
 void OobeInteractiveUITest::SimpleEndToEnd() {
-  test::SetFakeTouchpadDevice();
   PerformStepsBeforeEnrollmentCheck();
   PerformSessionSignInSteps();
 
@@ -896,7 +738,6 @@ class OobeZeroTouchInteractiveUITest : public OobeInteractiveUITest {
 };
 
 void OobeZeroTouchInteractiveUITest::ZeroTouchEndToEnd() {
-  test::SetFakeTouchpadDevice();
   policy_test_server_mixin_.SetupZeroTouchForcedEnrollment();
 
   WizardController::default_controller()
@@ -1110,16 +951,9 @@ class EphemeralUserOobeTest : public OobeBaseTest,
       &mixin_host_, DeviceStateMixin::State::OOBE_COMPLETED_CLOUD_ENROLLED};
 };
 
-// TODO(crbug.com/1396268): Flaky on Linux Chrome OS ASan LSan and dbg.
-// Re-enable this test.
-#if BUILDFLAG(IS_CHROMEOS) && (defined(ADDRESS_SANITIZER) || !defined(NDEBUG))
-#define MAYBE_RegularEphemeralUser DISABLED_RegularEphemeralUser
-#else
-#define MAYBE_RegularEphemeralUser RegularEphemeralUser
-#endif
 // In this test we login as a regular user, which means it is not affilated
 // with the domain of the device. Thus we still need a consent from user.
-IN_PROC_BROWSER_TEST_P(EphemeralUserOobeTest, MAYBE_RegularEphemeralUser) {
+IN_PROC_BROWSER_TEST_P(EphemeralUserOobeTest, RegularEphemeralUser) {
   LoginDisplayHost::default_host()->GetWizardContext()->is_branded_build = true;
 
   WaitForGaiaSignInScreen();
@@ -1150,116 +984,5 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Bool(),
                      testing::Values(ArcState::kNotAvailable,
                                      ArcState::kAcceptTerms)));
-
-class OobeFlexInteractiveUITest
-    : public OobeBaseTest,
-      public ::testing::WithParamInterface<::tpm_manager::TpmManagerStatus> {
- public:
-  OobeFlexInteractiveUITest() = default;
-  OobeFlexInteractiveUITest(const OobeFlexInteractiveUITest&) = delete;
-  OobeFlexInteractiveUITest& operator=(const OobeFlexInteractiveUITest&) =
-      delete;
-
-  ~OobeFlexInteractiveUITest() override = default;
-
-  // EnrollmentScreenTest:
-  void SetUpOnMainThread() override {
-    EnrollmentScreen* enrollment_screen = EnrollmentScreen::Get(
-        WizardController::default_controller()->screen_manager());
-    original_tpm_check_callback_ =
-        enrollment_screen->get_tpm_ownership_callback_for_testing();
-    enrollment_screen->set_tpm_ownership_callback_for_testing(base::BindOnce(
-        &OobeFlexInteractiveUITest::HandleTakeTPMOwnershipResponse,
-        base::Unretained(this)));
-
-    OobeBaseTest::SetUpOnMainThread();
-  }
-
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    command_line->AppendSwitch(switches::kTpmIsDynamic);
-    OobeBaseTest::SetUpCommandLine(command_line);
-
-    // This will change the verification key to be used by the
-    // CloudPolicyValidator. It will allow for the policy provided by the
-    // PolicyBuilder to pass the signature validation.
-    command_line->AppendSwitchASCII(
-        policy::switches::kPolicyVerificationKey,
-        policy::PolicyBuilder::GetEncodedPolicyVerificationKey());
-  }
-
-  test::EnrollmentUIMixin enrollment_ui_{&mixin_host_};
-
- private:
-  void HandleTakeTPMOwnershipResponse(
-      const ::tpm_manager::TakeOwnershipReply& reply) {
-    EXPECT_FALSE(tpm_reply_.has_value());
-    tpm_reply_ = reply;
-    // Here we substitute fake reply with status that we want to test.
-    tpm_reply_.value().set_status(GetParam());
-
-    if (original_tpm_check_callback_) {
-      std::move(original_tpm_check_callback_).Run(tpm_reply_.value());
-    }
-  }
-
-  EnrollmentScreen::TpmStatusCallback original_tpm_check_callback_;
-  std::optional<::tpm_manager::TakeOwnershipReply> tpm_reply_;
-};
-
-// Verify that ChromeOS Flex behaves as expected on devices with different TPM
-// configurations.
-IN_PROC_BROWSER_TEST_P(OobeFlexInteractiveUITest, SmokeEnroll) {
-  LoginDisplayHost::default_host()->GetWizardContext()->is_branded_build = true;
-  test::WaitForWelcomeScreen();
-  RunWelcomeScreenChecks();
-  test::TapWelcomeNext();
-
-  test::WaitForNetworkSelectionScreen();
-  RunNetworkSelectionScreenChecks();
-  test::TapNetworkSelectionNext();
-
-  test::WaitForUpdateScreen();
-  test::ExitUpdateScreenNoUpdate();
-
-  LoginDisplayHost* host = LoginDisplayHost::default_host();
-  host->HandleAccelerator(LoginAcceleratorAction::kStartEnrollment);
-
-  test::WaitForEnrollmentScreen();
-  switch (GetParam()) {
-    case ::tpm_manager::STATUS_SUCCESS:
-    case ::tpm_manager::STATUS_NOT_AVAILABLE:
-      enrollment_ui_.WaitForStep(test::ui::kEnrollmentStepSignin);
-      return;
-    case ::tpm_manager::STATUS_DBUS_ERROR: {
-      OobeScreenExitWaiter(TpmErrorView::kScreenId).Wait();
-      test::OobeJS().ExpectVisiblePath({"tpm-error-message", "restartButton"});
-      ash::test::TapOnPathAndWaitForOobeToBeDestroyed(
-          {"tpm-error-message", "restartButton"});
-
-      EXPECT_EQ(
-          chromeos::FakePowerManagerClient::Get()->num_request_restart_calls(),
-          1);
-      return;
-    }
-
-    case ::tpm_manager::STATUS_DEVICE_ERROR: {
-      OobeScreenExitWaiter(TpmErrorView::kScreenId).Wait();
-      test::OobeJS().ExpectVisiblePath({"tpm-error-message", "restartButton"});
-      ash::test::TapOnPathAndWaitForOobeToBeDestroyed(
-          {"tpm-error-message", "restartButton"});
-      EXPECT_EQ(
-          chromeos::FakePowerManagerClient::Get()->num_request_restart_calls(),
-          1);
-      return;
-    }
-  }
-}
-
-INSTANTIATE_TEST_SUITE_P(All,
-                         OobeFlexInteractiveUITest,
-                         ::testing::Values(::tpm_manager::STATUS_SUCCESS,
-                                           ::tpm_manager::STATUS_DEVICE_ERROR,
-                                           ::tpm_manager::STATUS_NOT_AVAILABLE,
-                                           ::tpm_manager::STATUS_DBUS_ERROR));
 
 }  //  namespace ash

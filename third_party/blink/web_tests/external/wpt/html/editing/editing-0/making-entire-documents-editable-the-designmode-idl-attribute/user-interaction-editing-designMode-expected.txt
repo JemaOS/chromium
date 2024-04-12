@@ -1,5 +1,6 @@
 This is a testharness.js-based test.
-[FAIL] set designMode = "on"
-  assert_true: expected true got false
+PASS initial designMode attribute
+FAIL set designMode = "on" assert_true: expected true got false
+PASS set designMode = "off"
 Harness: the test ran to completion.
 

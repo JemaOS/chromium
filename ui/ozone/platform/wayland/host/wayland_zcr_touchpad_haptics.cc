@@ -49,12 +49,13 @@ WaylandZcrTouchpadHaptics::WaylandZcrTouchpadHaptics(
     : obj_(zcr_touchpad_haptics), connection_(connection) {
   DCHECK(obj_);
   DCHECK(connection_);
-  static constexpr zcr_touchpad_haptics_v1_listener kTouchpadHapticsListener = {
-      .activated = &OnActivated,
-      .deactivated = &OnDeactivated,
-  };
-  zcr_touchpad_haptics_v1_add_listener(obj_.get(), &kTouchpadHapticsListener,
-                                       this);
+  static constexpr zcr_touchpad_haptics_v1_listener
+      zcr_touchpad_haptics_v1_listener = {
+          &WaylandZcrTouchpadHaptics::OnActivated,
+          &WaylandZcrTouchpadHaptics::OnDeactivated,
+      };
+  zcr_touchpad_haptics_v1_add_listener(obj_.get(),
+                                       &zcr_touchpad_haptics_v1_listener, this);
 }
 
 WaylandZcrTouchpadHaptics::~WaylandZcrTouchpadHaptics() = default;
@@ -62,14 +63,14 @@ WaylandZcrTouchpadHaptics::~WaylandZcrTouchpadHaptics() = default;
 // static
 void WaylandZcrTouchpadHaptics::OnActivated(
     void* data,
-    zcr_touchpad_haptics_v1* touchpad_haptics) {
+    struct zcr_touchpad_haptics_v1* zcr_touchpad_haptics_v1) {
   NOTIMPLEMENTED_LOG_ONCE();
 }
 
 // static
 void WaylandZcrTouchpadHaptics::OnDeactivated(
     void* data,
-    zcr_touchpad_haptics_v1* touchpad_haptics) {
+    struct zcr_touchpad_haptics_v1* zcr_touchpad_haptics_v1) {
   NOTIMPLEMENTED_LOG_ONCE();
 }
 

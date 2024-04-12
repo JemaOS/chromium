@@ -8,11 +8,18 @@
  * loading and rendering of elements that are accessed imperatively. A URL is
  * given that holds the elements to be loaded lazily.
  */
-import {assert} from '//resources/js/assert.js';
-import type {TemplateInstanceBase} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {html, PolymerElement, templatize} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {assert} from '//resources/js/assert_ts.js';
+import {html, PolymerElement, TemplateInstanceBase, templatize} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {ensureLazyLoaded} from '../ensure_lazy_loaded.js';
+
+declare global {
+  interface Window {
+    // https://github.com/microsoft/TypeScript/issues/40807
+    requestIdleCallback(callback: () => void): number;
+    cancelIdleCallback(id: number): void;
+  }
+}
 
 export class SettingsIdleLoadElement extends PolymerElement {
   static get is() {
@@ -31,7 +38,7 @@ export class SettingsIdleLoadElement extends PolymerElement {
   override connectedCallback() {
     super.connectedCallback();
 
-    this.idleCallback_ = requestIdleCallback(() => {
+    this.idleCallback_ = window.requestIdleCallback(() => {
       this.get();
     });
   }
@@ -40,7 +47,7 @@ export class SettingsIdleLoadElement extends PolymerElement {
     super.disconnectedCallback();
 
     // No-op if callback already fired.
-    cancelIdleCallback(this.idleCallback_);
+    window.cancelIdleCallback(this.idleCallback_);
   }
 
   /**

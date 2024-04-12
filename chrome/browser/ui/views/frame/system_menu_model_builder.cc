@@ -27,7 +27,7 @@
 #include "chromeos/ui/frame/desks/move_to_desks_menu_delegate.h"
 #include "chromeos/ui/frame/desks/move_to_desks_menu_model.h"
 #include "components/account_id/account_id.h"
-#include "components/user_manager/user.h"
+#include "components/user_manager/user_info.h"
 #include "components/user_manager/user_manager.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/gfx/native_widget_types.h"
@@ -69,6 +69,7 @@ void SystemMenuModelBuilder::BuildMenu(ui::SimpleMenuModel* model) {
     BuildSystemMenuForBrowserWindow(model);
   else
     BuildSystemMenuForAppOrPopupWindow(model);
+  AddFrameToggleItems(model);
 }
 
 void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
@@ -134,11 +135,7 @@ void SystemMenuModelBuilder::BuildSystemMenuForAppOrPopupWindow(
     model->AddSeparator(ui::NORMAL_SEPARATOR);
     model->AddItemWithStringId(IDC_FIND, IDS_FIND);
     model->AddItemWithStringId(IDC_PRINT, IDS_PRINT);
-    zoom_menu_contents_ =
-        std::make_unique<ui::SimpleMenuModel>(&menu_delegate_);
-    zoom_menu_contents_->AddItemWithStringId(IDC_ZOOM_PLUS, IDS_ZOOM_PLUS);
-    zoom_menu_contents_->AddItemWithStringId(IDC_ZOOM_NORMAL, IDS_ZOOM_NORMAL);
-    zoom_menu_contents_->AddItemWithStringId(IDC_ZOOM_MINUS, IDS_ZOOM_MINUS);
+    zoom_menu_contents_ = std::make_unique<ZoomMenuModel>(&menu_delegate_);
     model->AddSubMenuWithStringId(IDC_ZOOM_MENU, IDS_ZOOM_MENU,
                                   zoom_menu_contents_.get());
   }
@@ -155,6 +152,14 @@ void SystemMenuModelBuilder::BuildSystemMenuForAppOrPopupWindow(
   AppendMoveToDesksMenu(model);
 #endif
   AppendTeleportMenu(model);
+}
+
+void SystemMenuModelBuilder::AddFrameToggleItems(ui::SimpleMenuModel* model) {
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kDebugEnableFrameToggle)) {
+    model->AddSeparator(ui::NORMAL_SEPARATOR);
+    model->AddItem(IDC_DEBUG_FRAME_TOGGLE, u"Toggle Frame Type");
+  }
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -216,7 +221,7 @@ void SystemMenuModelBuilder::AppendTeleportMenu(ui::SimpleMenuModel* model) {
     if (command_id > IDC_VISIT_DESKTOP_OF_LRU_USER_LAST) {
       break;
     }
-    const user_manager::User* user_info = logged_in_users[user_index];
+    const user_manager::UserInfo* user_info = logged_in_users[user_index];
     model->AddItem(
         command_id,
         l10n_util::GetStringFUTF16(

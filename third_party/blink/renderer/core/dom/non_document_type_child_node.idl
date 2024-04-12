@@ -3,7 +3,10 @@
 // found in the LICENSE file.
 
 // https://dom.spec.whatwg.org/#interface-nondocumenttypechildnode
-interface mixin NonDocumentTypeChildNode {
-  [PerWorldBindings] readonly attribute Element? previousElementSibling;
-  [PerWorldBindings] readonly attribute Element? nextElementSibling;
+
+[
+    LegacyTreatAsPartialInterface
+] interface mixin NonDocumentTypeChildNode {
+    [PerWorldBindings] readonly attribute Element? previousElementSibling;
+    [PerWorldBindings] readonly attribute Element? nextElementSibling;
 };

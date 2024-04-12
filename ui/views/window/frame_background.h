@@ -7,7 +7,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "third_party/skia/include/core/SkColor.h"
-#include "ui/gfx/geometry/point.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/views/views_export.h"
 
@@ -50,11 +49,8 @@ class VIEWS_EXPORT FrameBackground {
   // Memory is owned by the caller.
   void set_theme_image(const gfx::ImageSkia& image) { theme_image_ = image; }
 
-  // Sets an inset into the theme image to begin painting at. This must be
-  // further modified by the origin of the frame.
-  void set_theme_image_inset(gfx::Point theme_image_inset) {
-    theme_image_inset_ = theme_image_inset;
-  }
+  // Sets an inset into the theme image to begin painting at.
+  void set_theme_image_y_inset(int y_inset) { theme_image_y_inset_ = y_inset; }
 
   // Sets an image that overlays the top window image.  Usually used to add
   // edge highlighting to provide the illusion of depth.  May be null (empty).
@@ -112,7 +108,7 @@ class VIEWS_EXPORT FrameBackground {
   bool use_custom_frame_ = true;
   bool is_active_ = true;
   gfx::ImageSkia theme_image_;
-  gfx::Point theme_image_inset_;
+  int theme_image_y_inset_ = 0;
   gfx::ImageSkia theme_overlay_image_;
   int top_area_height_ = 0;
 

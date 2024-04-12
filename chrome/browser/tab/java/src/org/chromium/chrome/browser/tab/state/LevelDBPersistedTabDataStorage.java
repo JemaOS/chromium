@@ -36,7 +36,7 @@ public class LevelDBPersistedTabDataStorage implements PersistedTabDataStorage, 
 
     LevelDBPersistedTabDataStorage(Profile profile) {
         assert !profile.isOffTheRecord()
-                : "LevelDBPersistedTabDataStorage is not supported for incognito profiles";
+            : "LevelDBPersistedTabDataStorage is not supported for incognito profiles";
         mPersistedDataStorage = new LevelDBPersistedDataStorage(profile, sNamespace);
     }
 
@@ -50,10 +50,7 @@ public class LevelDBPersistedTabDataStorage implements PersistedTabDataStorage, 
     }
 
     @Override
-    public void save(
-            int tabId,
-            String dataId,
-            Serializer<ByteBuffer> serializer,
+    public void save(int tabId, String dataId, Serializer<ByteBuffer> serializer,
             Callback<Integer> callback) {
         assert false : "save with callback unused in LevelDBPersistedTabDataStorage";
     }
@@ -79,11 +76,8 @@ public class LevelDBPersistedTabDataStorage implements PersistedTabDataStorage, 
     @MainThread
     @Override
     public void restore(int tabId, String dataId, Callback<ByteBuffer> callback) {
-        mPersistedDataStorage.load(
-                getKey(tabId, dataId),
-                (res) -> {
-                    callback.onResult(res == null ? null : ByteBuffer.wrap(res));
-                });
+        mPersistedDataStorage.load(getKey(tabId, dataId),
+                (res) -> { callback.onResult(res == null ? null : ByteBuffer.wrap(res)); });
     }
 
     /**
@@ -134,6 +128,7 @@ public class LevelDBPersistedTabDataStorage implements PersistedTabDataStorage, 
         mPersistedDataStorage.performMaintenance(getKeysToKeep(tabIds, dataId), dataId);
     }
 
+    @VisibleForTesting
     public void performMaintenanceForTesting(
             List<Integer> tabIds, String dataId, Runnable onComplete) {
         mPersistedDataStorage.performMaintenanceForTesting(
@@ -155,7 +150,9 @@ public class LevelDBPersistedTabDataStorage implements PersistedTabDataStorage, 
         return String.format(Locale.US, "%d-%s", tabId, dataId);
     }
 
-    /** Destroy native instance of persisted_tab_state */
+    /**
+     * Destroy native instance of persisted_tab_state
+     */
     @Override
     public void destroy() {
         mPersistedDataStorage.destroy();

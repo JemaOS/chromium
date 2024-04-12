@@ -5,7 +5,9 @@ package org.chromium.chrome.browser.password_manager;
 
 import android.app.Activity;
 
-/** Shows the Google Password Manager UI if possible. */
+/**
+ * Shows the Google Password Manager UI if possible.
+ */
 public interface GooglePasswordManagerUIProvider {
     /**
      * Shows the Google Password Manager UI if possible.

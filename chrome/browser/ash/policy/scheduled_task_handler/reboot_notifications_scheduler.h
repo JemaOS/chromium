@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_POLICY_SCHEDULED_TASK_HANDLER_REBOOT_NOTIFICATIONS_SCHEDULER_H_
 #define CHROME_BROWSER_ASH_POLICY_SCHEDULED_TASK_HANDLER_REBOOT_NOTIFICATIONS_SCHEDULER_H_
 
-#include <optional>
 #include <vector>
 
 #include "base/functional/callback.h"
@@ -20,6 +19,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/session_manager/core/session_manager.h"
 #include "components/session_manager/core/session_manager_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class Clock;
@@ -97,7 +97,7 @@ class RebootNotificationsScheduler
   // dialog or notification.
   void OnRebootButtonClicked();
 
-  std::optional<Requester> GetCurrentRequesterForTesting() const;
+  absl::optional<Requester> GetCurrentRequesterForTesting() const;
 
   std::vector<Requester> GetRequestersForTesting() const;
 
@@ -148,7 +148,7 @@ class RebootNotificationsScheduler
                           session_manager::SessionManagerObserver>
       observation_{this};
 
-  raw_ptr<const base::Clock> clock_;
+  base::raw_ptr<const base::Clock> clock_;
 
   base::WeakPtrFactory<RebootNotificationsScheduler> weak_ptr_factory_{this};
 };

@@ -18,21 +18,13 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "components/lens/buildflags.h"
 #include "components/lens/lens_features.h"
+#include "components/services/screen_ai/buildflags/buildflags.h"
 #include "printing/buildflags/buildflags.h"
-#include "services/screen_ai/buildflags/buildflags.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/events/event_constants.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/crosapi/browser_util.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
 namespace {
-
-// For ChromeOS only: If you plan on adding a new accelerator and want it
-// displayed in the Shortcuts app, please follow the instructions at:
-// `ash/webui/shortcut_customization_ui/backend/accelerator_layout_table.h`.
 
 // NOTE: Between each ifdef block, keep the list in the same
 // (mostly-alphabetical) order as the Windows accelerators in
@@ -48,6 +40,7 @@ const AcceleratorMapping kAcceleratorMap[] = {
 #if !BUILDFLAG(IS_CHROMEOS)
     {ui::VKEY_F7, ui::EF_NONE, IDC_CARET_BROWSING_TOGGLE},
 #endif
+    {ui::VKEY_F12, ui::EF_NONE, IDC_DEV_TOOLS_TOGGLE},
     {ui::VKEY_ESCAPE, ui::EF_NONE, IDC_CLOSE_FIND_OR_STOP},
 
 #if !BUILDFLAG(IS_MAC)
@@ -122,7 +115,7 @@ const AcceleratorMapping kAcceleratorMap[] = {
     {ui::VKEY_8, ui::EF_ALT_DOWN, IDC_SELECT_TAB_7},
     {ui::VKEY_NUMPAD8, ui::EF_ALT_DOWN, IDC_SELECT_TAB_7},
     {ui::VKEY_BROWSER_FAVORITES, ui::EF_NONE, IDC_SHOW_BOOKMARK_BAR},
-#endif  // BUILDFLAG(IS_LINUX)
+#endif  // BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CHROMEOS)
     {ui::VKEY_B, ui::EF_SHIFT_DOWN | ui::EF_PLATFORM_ACCELERATOR,
      IDC_SHOW_BOOKMARK_BAR},
     {ui::VKEY_OEM_MINUS, ui::EF_PLATFORM_ACCELERATOR, IDC_ZOOM_MINUS},
@@ -143,11 +136,6 @@ const AcceleratorMapping kAcceleratorMap[] = {
     {ui::VKEY_F6, ui::EF_NONE, IDC_FOCUS_NEXT_PANE},
     {ui::VKEY_F6, ui::EF_SHIFT_DOWN, IDC_FOCUS_PREVIOUS_PANE},
     {ui::VKEY_F6, ui::EF_CONTROL_DOWN, IDC_FOCUS_WEB_CONTENTS_PANE},
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    // On Chrome OS, Control + Search + 7 toggles caret browsing.
-    // Note that VKEY_F7 is not a typo; Search + 7 maps to F7 for accelerators.
-    {ui::VKEY_F7, ui::EF_CONTROL_DOWN, IDC_CARET_BROWSING_TOGGLE},
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
     {ui::VKEY_F10, ui::EF_NONE, IDC_FOCUS_MENU_BAR},
     {ui::VKEY_F11, ui::EF_NONE, IDC_FULLSCREEN},
     {ui::VKEY_M, ui::EF_SHIFT_DOWN | ui::EF_PLATFORM_ACCELERATOR,
@@ -172,11 +160,6 @@ const AcceleratorMapping kAcceleratorMap[] = {
     // See crbug.com/683097
     {ui::VKEY_PRINT, ui::EF_NONE, IDC_PRINT},
 #endif  // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
-    // Chrome OS supports search-based shortcut to open feedback app.
-    {ui::VKEY_I, ui::EF_CONTROL_DOWN | ui::EF_COMMAND_DOWN, IDC_FEEDBACK},
-#endif  // BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 #if BUILDFLAG(IS_CHROMEOS)
     // Chrome OS keyboard does not have delete key, so assign it to backspace.
@@ -207,9 +190,9 @@ const AcceleratorMapping kAcceleratorMap[] = {
     {ui::VKEY_BROWSER_SEARCH, ui::EF_NONE, IDC_FOCUS_SEARCH},
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_MAC)
     {ui::VKEY_I, ui::EF_SHIFT_DOWN | ui::EF_ALT_DOWN, IDC_FEEDBACK},
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_MAC)
     {ui::VKEY_N, ui::EF_SHIFT_DOWN | ui::EF_PLATFORM_ACCELERATOR,
      IDC_NEW_INCOGNITO_WINDOW},
     {ui::VKEY_T, ui::EF_PLATFORM_ACCELERATOR, IDC_NEW_TAB},
@@ -226,6 +209,11 @@ const AcceleratorMapping kAcceleratorMap[] = {
 #if BUILDFLAG(ENABLE_PRINTING)
     {ui::VKEY_P, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN, IDC_BASIC_PRINT},
 #endif  // ENABLE_PRINTING
+    {ui::VKEY_I, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN, IDC_DEV_TOOLS},
+    {ui::VKEY_J, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN,
+     IDC_DEV_TOOLS_CONSOLE},
+    {ui::VKEY_C, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN,
+     IDC_DEV_TOOLS_INSPECT},
     {ui::VKEY_B, ui::EF_SHIFT_DOWN | ui::EF_ALT_DOWN, IDC_FOCUS_BOOKMARKS},
     {ui::VKEY_A, ui::EF_SHIFT_DOWN | ui::EF_ALT_DOWN,
      IDC_FOCUS_INACTIVE_POPUP_FOR_ACCESSIBILITY},
@@ -242,31 +230,40 @@ const AcceleratorMapping kAcceleratorMap[] = {
      IDC_SHOW_BOOKMARK_MANAGER},
     {ui::VKEY_J, ui::EF_CONTROL_DOWN, IDC_SHOW_DOWNLOADS},
     {ui::VKEY_H, ui::EF_CONTROL_DOWN, IDC_SHOW_HISTORY},
+    {ui::VKEY_U, ui::EF_CONTROL_DOWN, IDC_VIEW_SOURCE},
 #if !BUILDFLAG(IS_CHROMEOS)
     // On Chrome OS, these keys are assigned to change UI scale.
     {ui::VKEY_OEM_MINUS, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN,
      IDC_ZOOM_MINUS},
     {ui::VKEY_OEM_PLUS, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN, IDC_ZOOM_PLUS},
+    // TODO(https://crbug.com/1016439): This is a temporary hotkey. Chrome OS
+    // uses this for switching IMEs, but since this feature is only exposed via
+    // command line flag at the moment, we'll exclude them entirely for now.
+    {ui::VKEY_SPACE, ui::EF_CONTROL_DOWN, IDC_TOGGLE_QUICK_COMMANDS},
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 #endif  // !BUILDFLAG(IS_MAC)
 #if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE) && \
     (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
     {ui::VKEY_S, ui::EF_CONTROL_DOWN | ui::EF_SHIFT_DOWN,
-     IDC_CONTENT_CONTEXT_RUN_LAYOUT_EXTRACTION},
+     IDC_RUN_SCREEN_AI_VISUAL_ANNOTATIONS},
 #endif
 };
 
-const AcceleratorMapping kDevToolsAcceleratorMap[] = {
-    {ui::VKEY_F12, ui::EF_NONE, IDC_DEV_TOOLS_TOGGLE},
-#if !BUILDFLAG(IS_MAC)
-    {ui::VKEY_I, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN, IDC_DEV_TOOLS},
-    {ui::VKEY_J, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN,
-     IDC_DEV_TOOLS_CONSOLE},
-    {ui::VKEY_C, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN,
-     IDC_DEV_TOOLS_INSPECT},
-    {ui::VKEY_U, ui::EF_CONTROL_DOWN, IDC_VIEW_SOURCE},
-#endif  // !BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+// Accelerators to enable if features::IsNewShortcutMappingEnabled is false.
+const AcceleratorMapping kDisableWithNewMappingAcceleratorMap[] = {
+    // On Chrome OS, Control + Search + 7 toggles caret browsing.
+    // Note that VKEY_F7 is not a typo; Search + 7 maps to F7 for accelerators.
+    {ui::VKEY_F7, ui::EF_CONTROL_DOWN, IDC_CARET_BROWSING_TOGGLE},
 };
+
+// Accelerators to enable if features::IsNewShortcutMappingEnabled is true.
+const AcceleratorMapping kEnableWithNewMappingAcceleratorMap[] = {
+    // On Chrome OS, Control + Search + 7 toggles caret browsing.
+    {ui::VKEY_7, ui::EF_CONTROL_DOWN | ui::EF_COMMAND_DOWN,
+     IDC_CARET_BROWSING_TOGGLE},
+};
+#endif
 
 #if BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
 // Accelerators to enable if lens::features::kEnableRegionSearchKeyboardShortcut
@@ -294,32 +291,14 @@ const int kRepeatableCommandIds[] = {
     IDC_SELECT_NEXT_TAB,     IDC_SELECT_PREVIOUS_TAB,
 };
 
-std::vector<AcceleratorMapping>* GetAcceleratorsPointer() {
-  static base::NoDestructor<std::vector<AcceleratorMapping>> accelerators;
-  return accelerators.get();
-}
-
-}  // namespace
+} // namespace
 
 std::vector<AcceleratorMapping> GetAcceleratorList() {
-  std::vector<AcceleratorMapping>* accelerators = GetAcceleratorsPointer();
+  static base::NoDestructor<std::vector<AcceleratorMapping>> accelerators;
 
   if (accelerators->empty()) {
     accelerators->insert(accelerators->begin(), std::begin(kAcceleratorMap),
                          std::end(kAcceleratorMap));
-
-    bool enable_devtools = true;
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    // In Ash, DevTools is disabled by default if lacros is the only browser, in
-    // order not to confuse users by opening Ash browser windows.
-    enable_devtools = crosapi::browser_util::IsAshDevToolEnabled();
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-    if (enable_devtools) {
-      accelerators->insert(accelerators->begin(),
-                           std::begin(kDevToolsAcceleratorMap),
-                           std::end(kDevToolsAcceleratorMap));
-    }
-
     // See https://devblogs.microsoft.com/oldnewthing/20040329-00/?p=40003
     // Doing this check here and not at the bottom since kUIDebugAcceleratorMap
     // contains Ctrl+Alt keys but we don't enable those for the public.
@@ -328,6 +307,17 @@ std::vector<AcceleratorMapping> GetAcceleratorList() {
     for (auto& mapping : *accelerators)
       DCHECK((mapping.modifiers & kCtrlAlt) != kCtrlAlt)
           << "Accelerators with Ctrl+Alt are reserved by Windows.";
+#endif
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+    if (::features::IsNewShortcutMappingEnabled()) {
+      accelerators->insert(accelerators->begin(),
+                           std::begin(kEnableWithNewMappingAcceleratorMap),
+                           std::end(kEnableWithNewMappingAcceleratorMap));
+    } else {
+      accelerators->insert(accelerators->begin(),
+                           std::begin(kDisableWithNewMappingAcceleratorMap),
+                           std::end(kDisableWithNewMappingAcceleratorMap));
+    }
 #endif
 
 #if BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
@@ -347,11 +337,6 @@ std::vector<AcceleratorMapping> GetAcceleratorList() {
   }
 
   return *accelerators;
-}
-
-void ClearAcceleratorListForTesting() {
-  std::vector<AcceleratorMapping>* accelerators = GetAcceleratorsPointer();
-  accelerators->clear();
 }
 
 bool GetStandardAcceleratorForCommandId(int command_id,

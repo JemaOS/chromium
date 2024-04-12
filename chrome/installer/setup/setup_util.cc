@@ -41,6 +41,7 @@
 #include "base/win/windows_version.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
+#include "chrome/browser/chrome_for_testing/buildflags.h"
 #include "chrome/install_static/install_details.h"
 #include "chrome/install_static/install_modes.h"
 #include "chrome/install_static/install_util.h"
@@ -321,15 +322,12 @@ bool DeleteFileFromTempProcess(const base::FilePath& path,
   return ok != FALSE;
 }
 
-bool AdjustThreadPriority() {
-  const DWORD priority_class = ::GetPriorityClass(::GetCurrentProcess());
+bool AdjustProcessPriority() {
+  DWORD priority_class = ::GetPriorityClass(::GetCurrentProcess());
   if (priority_class == BELOW_NORMAL_PRIORITY_CLASS ||
       priority_class == IDLE_PRIORITY_CLASS) {
-    // Don't use SetPriorityClass with PROCESS_MODE_BACKGROUND_BEGIN because it
-    // will cap the process working set to 32 MiB. See
-    // https://crbug.com/1475179.
-    const BOOL result =
-        ::SetThreadPriority(::GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
+    BOOL result = ::SetPriorityClass(::GetCurrentProcess(),
+                                     PROCESS_MODE_BACKGROUND_BEGIN);
     PLOG_IF(WARNING, !result) << "Failed to enter background mode.";
     return !!result;
   }
@@ -666,11 +664,11 @@ base::Time GetConsoleSessionStartTime() {
   return base::Time::FromFileTime(filetime);
 }
 
-std::optional<std::string> DecodeDMTokenSwitchValue(
+absl::optional<std::string> DecodeDMTokenSwitchValue(
     const std::wstring& encoded_token) {
   if (encoded_token.empty()) {
     LOG(ERROR) << "Empty DMToken specified on the command line";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // The token passed on the command line is base64-encoded, but since this is
@@ -679,13 +677,13 @@ std::optional<std::string> DecodeDMTokenSwitchValue(
   if (!base::IsStringASCII(encoded_token) ||
       !base::Base64Decode(base::WideToASCII(encoded_token), &token)) {
     LOG(ERROR) << "DMToken passed on the command line is not correctly encoded";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return token;
 }
 
-std::optional<std::string> DecodeNonceSwitchValue(
+absl::optional<std::string> DecodeNonceSwitchValue(
     const std::string& encoded_nonce) {
   if (encoded_nonce.empty()) {
     // The nonce command line argument is optional.  If none is specified use
@@ -697,7 +695,7 @@ std::optional<std::string> DecodeNonceSwitchValue(
   std::string nonce;
   if (!base::Base64Decode(encoded_nonce, &nonce)) {
     LOG(ERROR) << "Nonce passed on the command line is not correctly encoded";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return nonce;
@@ -758,7 +756,7 @@ bool DeleteDMToken() {
 
     base::win::RegKey key;
     auto result = key.Open(HKEY_LOCAL_MACHINE, key_path.c_str(),
-                           KEY_QUERY_VALUE | KEY_SET_VALUE | wow_access);
+                           KEY_SET_VALUE | wow_access);
     if (result == ERROR_FILE_NOT_FOUND) {
       // The registry key which stores the DMToken value was not found, so
       // deletion is not necessary.
@@ -782,10 +780,9 @@ bool DeleteDMToken() {
       continue;
     }  // Else ignore the failure to write to the best-effort location.
 
-    // Delete the key if no other values or keys are present.
-    if (key.GetValueCount().value_or(1) == 0) {
-      key.DeleteKey(L"", base::win::RegKey::RecursiveDelete(false));
-    }
+    // Delete the key if no other values are present.
+    base::win::RegKey(HKEY_LOCAL_MACHINE, L"", KEY_QUERY_VALUE | wow_access)
+        .DeleteEmptyKey(key_path.c_str());
   }
 
   VLOG(1) << "Successfully deleted DMToken from the registry.";

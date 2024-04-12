@@ -9,23 +9,16 @@ import androidx.annotation.IntDef;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.browser_ui.share.ShareParams;
 
-/** Interface to expose sharing to external classes. */
+/**
+ * Interface to expose sharing to external classes.
+ */
 public interface ShareDelegate {
     // These values are persisted to logs. Entries should not be renumbered and numeric values
     // should never be reused.
-    @IntDef({
-        ShareOrigin.OVERFLOW_MENU,
-        ShareOrigin.TOP_TOOLBAR,
-        ShareOrigin.CONTEXT_MENU,
-        ShareOrigin.WEBSHARE_API,
-        ShareOrigin.MOBILE_ACTION_MODE,
-        ShareOrigin.EDIT_URL,
-        ShareOrigin.TAB_GROUP,
-        ShareOrigin.WEBAPP_NOTIFICATION,
-        ShareOrigin.FEED,
-        ShareOrigin.PAGE_INSIGHTS,
-        ShareOrigin.COUNT
-    })
+    @IntDef({ShareOrigin.OVERFLOW_MENU, ShareOrigin.TOP_TOOLBAR, ShareOrigin.CONTEXT_MENU,
+            ShareOrigin.WEBSHARE_API, ShareOrigin.MOBILE_ACTION_MODE, ShareOrigin.EDIT_URL,
+            ShareOrigin.TAB_GROUP, ShareOrigin.WEBAPP_NOTIFICATION, ShareOrigin.FEED,
+            ShareOrigin.COUNT})
     public @interface ShareOrigin {
         int OVERFLOW_MENU = 0;
         int TOP_TOOLBAR = 1;
@@ -36,10 +29,9 @@ public interface ShareDelegate {
         int TAB_GROUP = 6;
         int WEBAPP_NOTIFICATION = 7;
         int FEED = 8;
-        int PAGE_INSIGHTS = 9;
 
         // Must be the last one.
-        int COUNT = 10;
+        int COUNT = 9;
     }
 
     /**
@@ -61,6 +53,8 @@ public interface ShareDelegate {
      */
     void share(Tab currentTab, boolean shareDirectly, @ShareOrigin int shareOrigin);
 
-    /** Check if the custom share sheet is enabled. */
+    /**
+     * Check if the custom share sheet is enabled.
+     */
     boolean isSharingHubEnabled();
 }

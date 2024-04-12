@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/extensions/settings_overridden_params_providers.h"
 
 #include "base/strings/utf_string_conversions.h"
-#include "base/values.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_service_test_base.h"
 #include "chrome/browser/extensions/extension_web_ui.h"
@@ -16,6 +15,7 @@
 #include "chrome/test/base/search_test_utils.h"
 #include "components/search_engines/template_url_service.h"
 #include "extensions/common/extension_builder.h"
+#include "extensions/common/value_builder.h"
 
 class SettingsOverriddenParamsProvidersUnitTest
     : public extensions::ExtensionServiceTestBase {
@@ -45,7 +45,7 @@ class SettingsOverriddenParamsProvidersUnitTest
   const extensions::Extension* AddExtensionControllingNewTab(
       const char* name = "ntp override") {
     base::Value::Dict chrome_url_overrides =
-        base::Value::Dict().Set("newtab", "newtab.html");
+        extensions::DictionaryBuilder().Set("newtab", "newtab.html").Build();
     scoped_refptr<const extensions::Extension> extension =
         extensions::ExtensionBuilder(name)
             .SetLocation(extensions::mojom::ManifestLocation::kInternal)
@@ -64,7 +64,7 @@ class SettingsOverriddenParamsProvidersUnitTest
 TEST_F(SettingsOverriddenParamsProvidersUnitTest,
        GetExtensionControllingNewTab) {
   // With no extensions installed, there should be no controlling extension.
-  EXPECT_EQ(std::nullopt,
+  EXPECT_EQ(absl::nullopt,
             settings_overridden_params::GetNtpOverriddenParams(profile()));
 
   // Install an extension, but not one that overrides the NTP. There should
@@ -72,13 +72,13 @@ TEST_F(SettingsOverriddenParamsProvidersUnitTest,
   scoped_refptr<const extensions::Extension> regular_extension =
       extensions::ExtensionBuilder("regular").Build();
   service()->AddExtension(regular_extension.get());
-  EXPECT_EQ(std::nullopt,
+  EXPECT_EQ(absl::nullopt,
             settings_overridden_params::GetNtpOverriddenParams(profile()));
 
   // Finally, install an extension that overrides the NTP. It should be the
   // controlling extension.
   const extensions::Extension* ntp_extension = AddExtensionControllingNewTab();
-  std::optional<ExtensionSettingsOverriddenDialog::Params> params =
+  absl::optional<ExtensionSettingsOverriddenDialog::Params> params =
       settings_overridden_params::GetNtpOverriddenParams(profile());
   ASSERT_TRUE(params);
   EXPECT_EQ(ntp_extension->id(), params->controlling_extension_id);
@@ -99,7 +99,7 @@ TEST_F(SettingsOverriddenParamsProvidersUnitTest,
   // When there are multiple extensions that could override the NTP, we should
   // show a generic dialog (rather than prompting to go back to the default
   // NTP), because the other extension would just take over.
-  std::optional<ExtensionSettingsOverriddenDialog::Params> params =
+  absl::optional<ExtensionSettingsOverriddenDialog::Params> params =
       settings_overridden_params::GetNtpOverriddenParams(profile());
   ASSERT_TRUE(params);
   EXPECT_EQ(extension2->id(), params->controlling_extension_id);

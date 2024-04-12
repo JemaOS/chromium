@@ -19,6 +19,9 @@
         // now.
         forward_stdout_to: "log",
         forward_stderr_to: "log",
+
+        // Required to allow JIT in child processes such as renderers.
+        job_policy_ambient_mark_vmo_exec: "true",
     },
     capabilities: [
         {
@@ -72,6 +75,7 @@
                 "fuchsia.ui.composition.Flatland",
                 "fuchsia.ui.composition.ScreenCapture",
                 "fuchsia.ui.input3.Keyboard",
+                "fuchsia.ui.scenic.Scenic",
             ],
         },
         {

@@ -38,7 +38,7 @@ class FakeUserPrivateTokenKeyPermissionsManagerService
   void Shutdown() override;
 
  private:
-  raw_ptr<platform_keys::KeyPermissionsManager, DanglingUntriaged>
+  raw_ptr<platform_keys::KeyPermissionsManager, ExperimentalAsh>
       key_permissions_manager_ = nullptr;
 };
 

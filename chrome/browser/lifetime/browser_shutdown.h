@@ -100,6 +100,9 @@ bool RecordShutdownInfoPrefs();
 void ShutdownPostThreadsStop(RestartMode restart_mode);
 #endif
 
+// Called at startup to create a histogram from our previous shutdown time.
+void ReadLastShutdownInfo();
+
 // There are various situations where the browser process should continue to
 // run after the last browser window has closed - the Mac always continues
 // running until the user explicitly quits, and on Windows/Linux the application

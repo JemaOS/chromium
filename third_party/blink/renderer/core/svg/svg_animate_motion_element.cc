@@ -41,12 +41,8 @@ namespace {
 bool TargetCanHaveMotionTransform(const SVGElement& target) {
   // We don't have a special attribute name to verify the animation type. Check
   // the element name instead.
-  if (IsA<SVGClipPathElement>(target)) {
-    return true;
-  }
-  if (!IsA<SVGGraphicsElement>(target)) {
+  if (!IsA<SVGGraphicsElement>(target))
     return false;
-  }
   // Spec: SVG 1.1 section 19.2.15
   // FIXME: svgTag is missing. Needs to be checked, if transforming <svg> could
   // cause problems.
@@ -56,11 +52,11 @@ bool TargetCanHaveMotionTransform(const SVGElement& target) {
          IsA<SVGRectElement>(target) || IsA<SVGCircleElement>(target) ||
          IsA<SVGEllipseElement>(target) || IsA<SVGLineElement>(target) ||
          IsA<SVGPolylineElement>(target) || IsA<SVGPolygonElement>(target) ||
-         IsA<SVGTextElement>(target) || IsA<SVGAElement>(target) ||
+         IsA<SVGTextElement>(target) || IsA<SVGClipPathElement>(target) ||
+         IsA<SVGMaskElement>(target) || IsA<SVGAElement>(target) ||
          IsA<SVGForeignObjectElement>(target);
 }
-
-}  // namespace
+}
 
 SVGAnimateMotionElement::SVGAnimateMotionElement(Document& document)
     : SVGAnimationElement(svg_names::kAnimateMotionTag, document) {

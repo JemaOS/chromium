@@ -8,6 +8,8 @@
 #include "chrome/browser/enterprise/connectors/reporting/realtime_reporting_client.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "content/public/browser/browser_context.h"
+#include "extensions/browser/extension_system_provider.h"
+#include "extensions/browser/extensions_browser_client.h"
 
 namespace enterprise_connectors {
 
@@ -20,8 +22,7 @@ RealtimeReportingClient* RealtimeReportingClientFactory::GetForProfile(
 
 // static
 RealtimeReportingClientFactory* RealtimeReportingClientFactory::GetInstance() {
-  static base::NoDestructor<RealtimeReportingClientFactory> instance;
-  return instance.get();
+  return base::Singleton<RealtimeReportingClientFactory>::get();
 }
 
 RealtimeReportingClientFactory::RealtimeReportingClientFactory()
@@ -33,6 +34,8 @@ RealtimeReportingClientFactory::RealtimeReportingClientFactory()
               .WithGuest(ProfileSelection::kOwnInstance)
               .WithSystem(ProfileSelection::kNone)
               .Build()) {
+  DependsOn(
+      extensions::ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
   DependsOn(IdentityManagerFactory::GetInstance());
   DependsOn(ConnectorsServiceFactory::GetInstance());
 }

@@ -2,12 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
-import * as Animation from 'devtools/panels/animation/animation.js';
-
 (async function() {
   TestRunner.addResult(`Tests the matching of groups in AnimationModel.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
+  await TestRunner.loadLegacyModule('animation');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <style>
@@ -47,7 +45,7 @@ import * as Animation from 'devtools/panels/animation/animation.js';
   startTransition();
 
   function startTransition() {
-    var model = TestRunner.mainTarget.model(Animation.AnimationModel.AnimationModel);
+    var model = TestRunner.mainTarget.model(Animation.AnimationModel);
     model.ensureEnabled();
     model.addEventListener(Animation.AnimationModel.Events.AnimationGroupStarted, groupStarted);
     TestRunner.evaluateInPage('startCSSTransition()');

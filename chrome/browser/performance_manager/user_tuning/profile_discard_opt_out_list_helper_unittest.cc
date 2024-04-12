@@ -6,7 +6,6 @@
 
 #include <map>
 
-#include "base/json/values_util.h"
 #include "components/performance_manager/public/user_tuning/prefs.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
@@ -41,9 +40,8 @@ class FakeProfileDiscardOptOutListHelperDelegate
 class ProfileDiscardOptOutListHelperTest : public testing::Test {
  protected:
   void SetUp() override {
-    prefs_.registry()->RegisterDictionaryPref(
-        performance_manager::user_tuning::prefs::
-            kTabDiscardingExceptionsWithTime);
+    prefs_.registry()->RegisterListPref(
+        performance_manager::user_tuning::prefs::kTabDiscardingExceptions);
     prefs_.registry()->RegisterListPref(
         performance_manager::user_tuning::prefs::
             kManagedTabDiscardingExceptions);
@@ -68,23 +66,22 @@ class ProfileDiscardOptOutListHelperTest : public testing::Test {
   }
 
   TestingPrefServiceSimple prefs_;
-  raw_ptr<FakeProfileDiscardOptOutListHelperDelegate, DanglingUntriaged>
-      delegate_;
+  raw_ptr<FakeProfileDiscardOptOutListHelperDelegate> delegate_;
   std::unique_ptr<ProfileDiscardOptOutListHelper> helper_;
 };
 
 TEST_F(ProfileDiscardOptOutListHelperTest, TestUserSpecifiedList) {
-  base::Value::Dict user_specified_values;
-  user_specified_values.Set("foo", base::TimeToValue(base::Time::Now()));
-  user_specified_values.Set("bar", base::TimeToValue(base::Time::Now()));
+  base::Value::List user_specified_values;
+  user_specified_values.Append("foo");
+  user_specified_values.Append("bar");
 
-  prefs_.SetDict(
-      performance_manager::user_tuning::prefs::kTabDiscardingExceptionsWithTime,
+  prefs_.SetList(
+      performance_manager::user_tuning::prefs::kTabDiscardingExceptions,
       std::move(user_specified_values));
 
   EXPECT_EQ(1UL, delegate_->patterns_.size());
   EXPECT_THAT(delegate_->patterns_[kFirstProfileUniqueId],
-              testing::UnorderedElementsAre("foo", "bar"));
+              testing::ElementsAre("foo", "bar"));
 }
 
 TEST_F(ProfileDiscardOptOutListHelperTest, TestPolicySpecifiedList) {
@@ -98,17 +95,17 @@ TEST_F(ProfileDiscardOptOutListHelperTest, TestPolicySpecifiedList) {
 
   EXPECT_EQ(1UL, delegate_->patterns_.size());
   EXPECT_THAT(delegate_->patterns_[kFirstProfileUniqueId],
-              testing::UnorderedElementsAre("foo", "bar"));
+              testing::ElementsAre("foo", "bar"));
 }
 
 TEST_F(ProfileDiscardOptOutListHelperTest,
        TestPolicyAndUserSpecifiedListsMerged) {
-  base::Value::Dict user_specified_values;
-  user_specified_values.Set("foo", base::TimeToValue(base::Time::Now()));
-  user_specified_values.Set("bar", base::TimeToValue(base::Time::Now()));
+  base::Value::List user_specified_values;
+  user_specified_values.Append("foo");
+  user_specified_values.Append("bar");
 
-  prefs_.SetDict(
-      performance_manager::user_tuning::prefs::kTabDiscardingExceptionsWithTime,
+  prefs_.SetList(
+      performance_manager::user_tuning::prefs::kTabDiscardingExceptions,
       std::move(user_specified_values));
 
   base::Value::List policy_specified_values;
@@ -119,52 +116,51 @@ TEST_F(ProfileDiscardOptOutListHelperTest,
 
   EXPECT_EQ(1UL, delegate_->patterns_.size());
   EXPECT_THAT(delegate_->patterns_[kFirstProfileUniqueId],
-              testing::UnorderedElementsAre("foo", "bar", "baz"));
+              testing::ElementsAre("foo", "bar", "baz"));
 }
 
 TEST_F(ProfileDiscardOptOutListHelperTest, TestListsArePerProfile) {
-  base::Value::Dict user_specified_values;
-  user_specified_values.Set("foo", base::TimeToValue(base::Time::Now()));
-  user_specified_values.Set("bar", base::TimeToValue(base::Time::Now()));
+  base::Value::List user_specified_values;
+  user_specified_values.Append("foo");
+  user_specified_values.Append("bar");
 
-  prefs_.SetDict(
-      performance_manager::user_tuning::prefs::kTabDiscardingExceptionsWithTime,
+  prefs_.SetList(
+      performance_manager::user_tuning::prefs::kTabDiscardingExceptions,
       std::move(user_specified_values));
 
   // Add some exceptions to a first profile.
   EXPECT_EQ(1UL, delegate_->patterns_.size());
   EXPECT_THAT(delegate_->patterns_[kFirstProfileUniqueId],
-              testing::UnorderedElementsAre("foo", "bar"));
+              testing::ElementsAre("foo", "bar"));
 
   // Simulate adding a second profile and adding exceptions to it.
   TestingPrefServiceSimple other_prefs;
-  other_prefs.registry()->RegisterDictionaryPref(
-      performance_manager::user_tuning::prefs::
-          kTabDiscardingExceptionsWithTime);
+  other_prefs.registry()->RegisterListPref(
+      performance_manager::user_tuning::prefs::kTabDiscardingExceptions);
   other_prefs.registry()->RegisterListPref(
       performance_manager::user_tuning::prefs::kManagedTabDiscardingExceptions);
   AddProfile(kSecondProfileUniqueId, &other_prefs);
 
-  base::Value::Dict other_user_specified_values;
-  other_user_specified_values.Set("baz", base::TimeToValue(base::Time::Now()));
-  other_prefs.SetDict(
-      performance_manager::user_tuning::prefs::kTabDiscardingExceptionsWithTime,
+  base::Value::List other_user_specified_values;
+  other_user_specified_values.Append("baz");
+  other_prefs.SetList(
+      performance_manager::user_tuning::prefs::kTabDiscardingExceptions,
       std::move(other_user_specified_values));
 
   // The delegate should have been notified of different patterns for the 2
   // profiles.
   EXPECT_EQ(2UL, delegate_->patterns_.size());
   EXPECT_THAT(delegate_->patterns_[kFirstProfileUniqueId],
-              testing::UnorderedElementsAre("foo", "bar"));
+              testing::ElementsAre("foo", "bar"));
   EXPECT_THAT(delegate_->patterns_[kSecondProfileUniqueId],
-              testing::UnorderedElementsAre("baz"));
+              testing::ElementsAre("baz"));
 
   RemoveProfile(kSecondProfileUniqueId);
 
   // Removing a profile clears the exceptions associated with it.
   EXPECT_EQ(1UL, delegate_->patterns_.size());
   EXPECT_THAT(delegate_->patterns_[kFirstProfileUniqueId],
-              testing::UnorderedElementsAre("foo", "bar"));
+              testing::ElementsAre("foo", "bar"));
 }
 
 }  // namespace performance_manager::user_tuning

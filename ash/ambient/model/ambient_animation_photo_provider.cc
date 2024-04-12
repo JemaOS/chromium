@@ -57,16 +57,13 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
-#include "ash/ambient/metrics/ambient_metrics.h"
-#include "ash/ambient/resources/ambient_animation_resource_constants.h"
 #include "ash/ambient/resources/ambient_animation_static_resources.h"
 #include "ash/ambient/util/ambient_util.h"
+#include "ash/public/cpp/ambient/ambient_metrics.h"
 #include "ash/utility/cropping_util.h"
 #include "ash/utility/lottie_util.h"
 #include "base/check.h"
@@ -79,6 +76,7 @@
 #include "base/rand_util.h"
 #include "cc/paint/paint_flags.h"
 #include "cc/paint/skottie_frame_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_skia_rep.h"
@@ -146,7 +144,7 @@ class DynamicImageProvider {
   }
 
   const PhotoWithDetails& GetTopicForAssetSize(
-      const std::optional<gfx::Size>& asset_size) {
+      const absl::optional<gfx::Size>& asset_size) {
     const PhotoWithDetails* topic = nullptr;
     // If the |asset_size| is unavailable, this is unexpected but not fatal. The
     // choice to default to portrait is arbitrary.
@@ -205,7 +203,7 @@ class DynamicImageProvider {
 class AmbientAnimationPhotoProvider::StaticImageAssetImpl
     : public cc::SkottieFrameDataProvider::ImageAsset {
  public:
-  StaticImageAssetImpl(std::string_view asset_id,
+  StaticImageAssetImpl(base::StringPiece asset_id,
                        const AmbientAnimationStaticResources& static_resources)
       : image_(static_resources.GetStaticImageAsset(asset_id)) {
     DCHECK(!IsCustomizableLottieId(asset_id));
@@ -244,8 +242,8 @@ class AmbientAnimationPhotoProvider::DynamicImageAssetImpl
     : public cc::SkottieFrameDataProvider::ImageAsset {
  public:
   DynamicImageAssetImpl(
-      std::string_view asset_id,
-      std::optional<gfx::Size> size,
+      base::StringPiece asset_id,
+      absl::optional<gfx::Size> size,
       const base::WeakPtr<AmbientAnimationPhotoProvider>& provider)
       : asset_id_(asset_id), size_(std::move(size)), provider_(provider) {
     DCHECK(provider_);
@@ -295,7 +293,7 @@ class AmbientAnimationPhotoProvider::DynamicImageAssetImpl
 
   bool HasAssignedTopic() const { return !current_topic_.photo.isNull(); }
 
-  const std::optional<gfx::Size>& size() const { return size_; }
+  const absl::optional<gfx::Size>& size() const { return size_; }
 
   const std::string& asset_id() const { return asset_id_; }
   const ambient::util::ParsedDynamicAssetId& parsed_asset_id() const {
@@ -352,7 +350,7 @@ class AmbientAnimationPhotoProvider::DynamicImageAssetImpl
 
   const std::string asset_id_;
   ambient::util::ParsedDynamicAssetId parsed_asset_id_;
-  const std::optional<gfx::Size> size_;
+  const absl::optional<gfx::Size> size_;
   const base::WeakPtr<AmbientAnimationPhotoProvider> provider_;
   // Last animation frame timestamp that was observed.
   float last_observed_animation_timestamp_ = kAnimationTimestampInvalid;
@@ -386,9 +384,9 @@ AmbientAnimationPhotoProvider::~AmbientAnimationPhotoProvider() = default;
 
 scoped_refptr<cc::SkottieFrameDataProvider::ImageAsset>
 AmbientAnimationPhotoProvider::LoadImageAsset(
-    std::string_view asset_id,
+    base::StringPiece asset_id,
     const base::FilePath& resource_path,
-    const std::optional<gfx::Size>& size) {
+    const absl::optional<gfx::Size>& size) {
   // Note in practice, all of the image assets are loaded one time by Skottie
   // when the animation is initially loaded. So the set of assets does not
   // change once the animation starts rendering.
@@ -405,12 +403,7 @@ AmbientAnimationPhotoProvider::LoadImageAsset(
     // very image created by UX when the animation was built.
     auto static_asset = base::MakeRefCounted<StaticImageAssetImpl>(
         asset_id, *static_resources_);
-    const auto hash_id = cc::HashSkottieResourceId(asset_id);
-    static_assets_[hash_id] = static_asset;
-    if (hash_id ==
-        cc::HashSkottieResourceId(ambient::resources::kTreeShadowAssetId)) {
-      static_asset->set_enabled(enable_tree_shadow_);
-    }
+    static_assets_[cc::HashSkottieResourceId(asset_id)] = static_asset;
     return static_asset;
   }
 }
@@ -428,13 +421,11 @@ bool AmbientAnimationPhotoProvider::ToggleStaticImageAsset(
     bool enabled) {
   auto iter = static_assets_.find(asset_id);
   if (iter == static_assets_.end()) {
-    // When the view is first created, all assets might not be loaded yet. Store
-    // the `enabled` state to apply on the tree shadow asset when it is loaded.
-    enable_tree_shadow_ = enabled;
+    return false;
   } else {
     iter->second->set_enabled(enabled);
+    return true;
   }
-  return true;
 }
 
 // Invoked whenever an asset detects a new animation cycle has started. In
@@ -578,7 +569,7 @@ void AmbientAnimationPhotoProvider::RecordDynamicAssetMetrics() {
   float match_percentage =
       num_photo_orientation_matches * 100.f / total_num_assets_with_size;
   ambient::RecordAmbientModePhotoOrientationMatch(
-      match_percentage, static_resources_->GetUiSettings());
+      match_percentage, static_resources_->GetAmbientTheme());
 }
 
 }  // namespace ash

@@ -33,6 +33,9 @@ COMPONENT_EXPORT(UI_BASE) std::string GetBitmapDataUrl(const SkBitmap& bitmap);
 COMPONENT_EXPORT(UI_BASE)
 std::string GetPngDataUrl(const unsigned char* data, size_t size);
 
+COMPONENT_EXPORT(UI_BASE)
+std::string GetWebPDataUrl(const unsigned char* data, size_t size);
+
 // Extracts a disposition from click event arguments. |args| should contain
 // an integer button and booleans alt key, ctrl key, meta key, and shift key
 // (in that order), starting at |start_index|.
@@ -80,13 +83,6 @@ COMPONENT_EXPORT(UI_BASE) std::string GetFontFamily();
 COMPONENT_EXPORT(UI_BASE) std::string GetFontSize();
 COMPONENT_EXPORT(UI_BASE) std::string GetTextDirection();
 
-// A helper function that generates a string of HTML to be loaded. The returned
-// string has all $i8n{...} placeholders replaced with localized strings and
-// also includes an script that injects `loadTimeDataRaw` in the global `window`
-// scope.
-COMPONENT_EXPORT(UI_BASE)
-std::string GetLocalizedHtml(base::StringPiece html_template,
-                             const base::Value::Dict& strings);
 }  // namespace webui
 
 #endif  // UI_BASE_WEBUI_WEB_UI_UTIL_H_

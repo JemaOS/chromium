@@ -2,17 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {Module} from 'chrome://new-tab-page/lazy_load.js';
-import {ModuleDescriptor, ModuleRegistry, ModulesElement} from 'chrome://new-tab-page/lazy_load.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
+
+import {Module, ModuleDescriptor, ModuleDescriptorV2, ModuleHeight, ModuleRegistry, ModulesElement, ModuleWrapperElement} from 'chrome://new-tab-page/lazy_load.js';
 import {$$, NewTabPageProxy} from 'chrome://new-tab-page/new_tab_page.js';
-import type {PageRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
-import {PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
+import {PageCallbackRouter, PageHandlerRemote, PageRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
-import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
+import {fakeMetricsPrivate, MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
-import type {TestMock} from 'chrome://webui-test/test_mock.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 
 import {assertNotStyle, assertStyle, capture, createElement, initNullModule, installMock, render} from '../test_support.js';
 
@@ -21,12 +20,6 @@ suite('NewTabPageModulesModulesTest', () => {
   let callbackRouterRemote: PageRemote;
   let metrics: MetricsTracker;
   let moduleRegistry: TestMock<ModuleRegistry>;
-
-  suiteSetup(() => {
-    loadTimeData.overrideValues({
-      modulesRedesignedEnabled: false,
-    });
-  });
 
   setup(async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -68,11 +61,11 @@ suite('NewTabPageModulesModulesTest', () => {
       const modulesElement = await createModulesElement([
         {
           descriptor: fooDescriptor,
-          elements: [createElement()],
+          element: createElement(),
         },
         {
           descriptor: barDescriptor,
-          elements: [createElement()],
+          element: createElement(),
         },
       ]);
       callbackRouterRemote.setDisabledModules(
@@ -107,40 +100,6 @@ suite('NewTabPageModulesModulesTest', () => {
     });
   });
 
-  test('single module multiple element instances', async () => {
-    const fooDescriptor = new ModuleDescriptor('foo', initNullModule);
-    const barDescriptor = new ModuleDescriptor('bar', initNullModule);
-    handler.setResultFor('getModulesIdNames', {
-      data: [
-        {id: fooDescriptor.id, name: fooDescriptor.id},
-        {id: barDescriptor.id, name: barDescriptor.id},
-      ],
-    });
-
-    const modulesElement = await createModulesElement([
-      {
-        descriptor: fooDescriptor,
-        elements: Array(3).fill(0).map(_ => createElement()),
-      },
-      {
-        descriptor: barDescriptor,
-        elements: [createElement()],
-      },
-    ]);
-    callbackRouterRemote.setDisabledModules(false, []);
-    await callbackRouterRemote.$.flushForTesting();
-
-    const moduleContainers =
-        modulesElement.shadowRoot!.querySelectorAll('.module-container');
-    assertEquals(4, moduleContainers.length);
-    const histogram = 'NewTabPage.Modules.EnabledOnNTPLoad';
-    assertEquals(1, metrics.count(`${histogram}.foo`, true));
-    assertEquals(1, metrics.count(`${histogram}.bar`, true));
-    assertEquals(1, metrics.count('NewTabPage.Modules.VisibleOnNTPLoad', true));
-    assertEquals(1, handler.getCallCount('updateDisabledModules'));
-    assertEquals(1, handler.getCallCount('onModulesLoadedWithData'));
-  });
-
   suite('modules first run experience', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
@@ -166,11 +125,11 @@ suite('NewTabPageModulesModulesTest', () => {
         const modulesElement = await createModulesElement([
           {
             descriptor: fooDescriptor,
-            elements: [createElement()],
+            element: createElement(),
           },
           {
             descriptor: barDescriptor,
-            elements: [createElement()],
+            element: createElement(),
           },
         ]);
         callbackRouterRemote.setDisabledModules(
@@ -216,7 +175,7 @@ suite('NewTabPageModulesModulesTest', () => {
       const modulesElement = await createModulesElement([
         {
           descriptor: fooDescriptor,
-          elements: [createElement()],
+          element: createElement(),
         },
       ]);
       callbackRouterRemote.setModulesFreVisibility(true);
@@ -245,11 +204,11 @@ suite('NewTabPageModulesModulesTest', () => {
       const modulesElement = await createModulesElement([
         {
           descriptor: fooDescriptor,
-          elements: [createElement()],
+          element: createElement(),
         },
         {
           descriptor: barDescriptor,
-          elements: [createElement()],
+          element: createElement(),
         },
       ]);
       callbackRouterRemote.setModulesFreVisibility(true);
@@ -289,6 +248,248 @@ suite('NewTabPageModulesModulesTest', () => {
     });
   });
 
+  suite('modules redesigned layout', () => {
+    suiteSetup(() => {
+      loadTimeData.overrideValues({
+        modulesRedesignedLayoutEnabled: true,
+        modulesFirstRunExperienceEnabled: false,
+      });
+    });
+
+    test(`sibling short modules wrapped in a container`, async () => {
+      // Arrange.
+      const moduleArray = [];
+      for (let i = 0; i < 4; ++i) {
+        const module = createElement();
+        moduleArray.push(module);
+      }
+      const fooDescriptor = new ModuleDescriptorV2(
+          'foo', ModuleHeight.SHORT, async () => createElement());
+      const barDescriptor = new ModuleDescriptorV2(
+          'bar', ModuleHeight.SHORT, async () => createElement());
+      const bazDescriptor = new ModuleDescriptorV2(
+          'baz', ModuleHeight.SHORT, async () => createElement());
+      const quzDescriptor = new ModuleDescriptorV2(
+          'quz', ModuleHeight.TALL, async () => createElement());
+      handler.setResultFor('getModulesIdNames', {
+        data: [
+          {id: fooDescriptor.id, name: fooDescriptor.id},
+          {id: barDescriptor.id, name: barDescriptor.id},
+          {id: bazDescriptor.id, name: bazDescriptor.id},
+          {id: quzDescriptor.id, name: quzDescriptor.id},
+        ],
+      });
+
+      // Act.
+      const modulesElement = await createModulesElement([
+        {
+          descriptor: fooDescriptor,
+          element: moduleArray[0]!,
+        },
+        {
+          descriptor: barDescriptor,
+          element: moduleArray[1]!,
+        },
+        {
+          descriptor: bazDescriptor,
+          element: moduleArray[2]!,
+        },
+        {
+          descriptor: quzDescriptor,
+          element: moduleArray[3]!,
+        },
+      ]);
+
+      callbackRouterRemote.setDisabledModules(false, []);
+      await callbackRouterRemote.$.flushForTesting();
+
+      // Assert.
+      const modules =
+          Array.from(modulesElement.shadowRoot!.querySelectorAll('#modules'));
+      const moduleWrappers =
+          modulesElement.shadowRoot!.querySelectorAll('ntp-module-wrapper');
+      const moduleWrapperContainers =
+          modulesElement.shadowRoot!.querySelectorAll('.module-container');
+      const shortModuleSiblingsContainers =
+          modulesElement.shadowRoot!.querySelectorAll(
+              '.short-module-siblings-container');
+      assertEquals(4, moduleWrappers.length);
+      assertEquals(4, moduleWrapperContainers.length);
+      assertEquals(1, shortModuleSiblingsContainers.length);
+      assertEquals(modules[0]!.children[0], shortModuleSiblingsContainers[0]);
+      assertEquals(
+          moduleArray[0],
+          (shortModuleSiblingsContainers[0]!.children[0]!.children[0] as
+           ModuleWrapperElement)
+              .module.element);
+      assertEquals(
+          moduleArray[1],
+          (shortModuleSiblingsContainers[0]!.children[1]!.children[0] as
+           ModuleWrapperElement)
+              .module.element);
+    });
+
+    test('modules can be disabled and restored', async () => {
+      // Arrange.
+      let restoreCalled = false;
+      const moduleArray = [];
+      for (let i = 0; i < 3; ++i) {
+        const module = createElement();
+        moduleArray.push(module);
+      }
+      const fooDescriptor = new ModuleDescriptorV2(
+          'foo', ModuleHeight.SHORT, async () => createElement());
+      const barDescriptor = new ModuleDescriptorV2(
+          'bar', ModuleHeight.SHORT, async () => createElement());
+      const bazDescriptor = new ModuleDescriptorV2(
+          'baz', ModuleHeight.SHORT, async () => createElement());
+      handler.setResultFor('getModulesIdNames', {
+        data: [
+          {id: fooDescriptor.id, name: fooDescriptor.id},
+          {id: barDescriptor.id, name: barDescriptor.id},
+          {id: bazDescriptor.id, name: bazDescriptor.id},
+        ],
+      });
+
+      // Act.
+      const modulesElement = await createModulesElement([
+        {
+          descriptor: fooDescriptor,
+          element: moduleArray[0]!,
+        },
+        {
+          descriptor: barDescriptor,
+          element: moduleArray[1]!,
+        },
+        {
+          descriptor: bazDescriptor,
+          element: moduleArray[2]!,
+        },
+      ]);
+
+      callbackRouterRemote.setDisabledModules(false, []);
+      await callbackRouterRemote.$.flushForTesting();
+
+      // Assert.
+      const modules =
+          Array.from(modulesElement.shadowRoot!.querySelectorAll('#modules'));
+      const moduleWrappers =
+          modulesElement.shadowRoot!.querySelectorAll('ntp-module-wrapper');
+      const moduleWrapperContainers =
+          modulesElement.shadowRoot!.querySelectorAll('.module-container');
+      let shortModuleSiblingsContainers =
+          modulesElement.shadowRoot!.querySelectorAll(
+              '.short-module-siblings-container');
+      assertEquals(3, moduleWrappers.length);
+      assertEquals(3, moduleWrapperContainers.length);
+      assertEquals(1, shortModuleSiblingsContainers.length);
+      assertEquals(modules[0]!.children[0], shortModuleSiblingsContainers[0]);
+      assertEquals(
+          moduleArray[0],
+          (shortModuleSiblingsContainers[0]!.children[0]!.children[0] as
+           ModuleWrapperElement)
+              .module.element);
+      assertEquals(
+          moduleArray[1],
+          (shortModuleSiblingsContainers[0]!.children[1]!.children[0] as
+           ModuleWrapperElement)
+              .module.element);
+      assertNotStyle(moduleWrappers[0]!, 'display', 'none');
+      assertNotStyle(moduleWrapperContainers[0]!, 'display', 'none');
+      assertFalse(modulesElement.$.removeModuleToast.open);
+
+      // Act.
+      moduleWrappers[0]!.dispatchEvent(new CustomEvent('disable-module', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          message: 'Foo',
+          restoreCallback: () => {
+            restoreCalled = true;
+          },
+        },
+      }));
+
+      // Assert.
+      assertDeepEquals(['foo', true], handler.getArgs('setModuleDisabled')[0]);
+
+      // Act.
+      callbackRouterRemote.setDisabledModules(false, ['foo']);
+      await callbackRouterRemote.$.flushForTesting();
+
+      // Assert.
+      shortModuleSiblingsContainers =
+          modulesElement.shadowRoot!.querySelectorAll(
+              '.short-module-siblings-container');
+      assertEquals(1, shortModuleSiblingsContainers.length);
+      assertEquals(modules[0]!.children[1], shortModuleSiblingsContainers[0]);
+      assertEquals(
+          moduleArray[1],
+          (shortModuleSiblingsContainers[0]!.children[0]!.children[0] as
+           ModuleWrapperElement)
+              .module.element);
+      assertEquals(
+          moduleArray[2],
+          (shortModuleSiblingsContainers[0]!.children[1]!.children[0] as
+           ModuleWrapperElement)
+              .module.element);
+      assertNotStyle(moduleWrappers[0]!, 'display', 'none');
+      assertStyle(moduleWrapperContainers[0]!, 'display', 'none');
+      assertTrue(modulesElement.$.removeModuleToast.open);
+      assertEquals(
+          'Foo', modulesElement.$.removeModuleToastMessage.textContent!.trim());
+      assertEquals(1, metrics.count('NewTabPage.Modules.Disabled', 'foo'));
+      assertEquals(
+          1, metrics.count('NewTabPage.Modules.Disabled.ModuleRequest', 'foo'));
+      assertFalse(restoreCalled);
+
+      // Act.
+      await waitAfterNextRender(modulesElement);
+      const undoRemoveModuleButton =
+          modulesElement.shadowRoot!.querySelector('#undoRemoveModuleButton') as
+          HTMLElement;
+      undoRemoveModuleButton.click();
+
+      // Assert.
+      assertDeepEquals(['foo', false], handler.getArgs('setModuleDisabled')[1]);
+
+      // Act.
+      callbackRouterRemote.setDisabledModules(false, []);
+      await callbackRouterRemote.$.flushForTesting();
+
+      // Assert.
+      shortModuleSiblingsContainers =
+          modulesElement.shadowRoot!.querySelectorAll(
+              '.short-module-siblings-container');
+      assertEquals(1, shortModuleSiblingsContainers.length);
+      assertEquals(modules[0]!.children[0], shortModuleSiblingsContainers[0]);
+      assertEquals(
+          moduleArray[0],
+          (shortModuleSiblingsContainers[0]!.children[0]!.children[0] as
+           ModuleWrapperElement)
+              .module.element);
+      assertEquals(
+          moduleArray[1],
+          (shortModuleSiblingsContainers[0]!.children[1]!.children[0] as
+           ModuleWrapperElement)
+              .module.element);
+      assertNotStyle(moduleWrappers[0]!, 'display', 'none');
+      assertNotStyle(moduleWrapperContainers[0]!, 'display', 'none');
+      assertFalse(modulesElement.$.removeModuleToast.open);
+      assertTrue(restoreCalled);
+      assertEquals(1, metrics.count('NewTabPage.Modules.Enabled', 'foo'));
+      assertEquals(1, metrics.count('NewTabPage.Modules.Enabled.Toast', 'foo'));
+
+      // // Act.
+      window.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'z',
+        ctrlKey: true,
+      }));
+
+      // Assert: no crash.
+    });
+  });
+
   test('modules can be dismissed with no restore action', async () => {
     const fooDescriptor = new ModuleDescriptor('foo', initNullModule);
     handler.setResultFor('getModulesIdNames', {
@@ -301,7 +502,7 @@ suite('NewTabPageModulesModulesTest', () => {
     const modulesElement = await createModulesElement([
       {
         descriptor: fooDescriptor,
-        elements: [createElement()],
+        element: createElement(),
       },
     ]);
     callbackRouterRemote.setDisabledModules(false, []);
@@ -354,7 +555,7 @@ suite('NewTabPageModulesModulesTest', () => {
     const modulesElement = await createModulesElement([
       {
         descriptor: fooDescriptor,
-        elements: [createElement()],
+        element: createElement(),
       },
     ]);
     callbackRouterRemote.setDisabledModules(false, []);
@@ -396,9 +597,8 @@ suite('NewTabPageModulesModulesTest', () => {
     // Act.
     await waitAfterNextRender(modulesElement);
     const undoRemoveModuleButton =
-        modulesElement.shadowRoot!.querySelector<HTMLElement>(
-            '#undoRemoveModuleButton');
-    assertTrue(!!undoRemoveModuleButton);
+        modulesElement.shadowRoot!.querySelector('#undoRemoveModuleButton') as
+        HTMLElement;
     undoRemoveModuleButton.click();
 
     // Assert.
@@ -422,7 +622,7 @@ suite('NewTabPageModulesModulesTest', () => {
     // Act.
     const modulesElement = await createModulesElement([{
       descriptor: fooDescriptor,
-      elements: [createElement()],
+      element: createElement(),
     }]);
     callbackRouterRemote.setDisabledModules(false, []);
     await callbackRouterRemote.$.flushForTesting();
@@ -471,9 +671,8 @@ suite('NewTabPageModulesModulesTest', () => {
     // Act.
     await waitAfterNextRender(modulesElement);
     const undoRemoveModuleButton =
-        modulesElement.shadowRoot!.querySelector<HTMLElement>(
-            '#undoRemoveModuleButton');
-    assertTrue(!!undoRemoveModuleButton);
+        modulesElement.shadowRoot!.querySelector('#undoRemoveModuleButton') as
+        HTMLElement;
     undoRemoveModuleButton.click();
 
     // Assert.
@@ -513,11 +712,11 @@ suite('NewTabPageModulesModulesTest', () => {
     await createModulesElement([
       {
         descriptor: fooDescriptor,
-        elements: [createElement()],
+        element: createElement(),
       },
       {
         descriptor: barDescriptor,
-        elements: [createElement()],
+        element: createElement(),
       },
     ]);
 
@@ -540,11 +739,11 @@ suite('NewTabPageModulesModulesTest', () => {
     await createModulesElement([
       {
         descriptor: fooDescriptor,
-        elements: [createElement()],
+        element: createElement(),
       },
       {
         descriptor: barDescriptor,
-        elements: [createElement()],
+        element: createElement(),
       },
     ]);
 
@@ -570,12 +769,12 @@ suite('NewTabPageModulesModulesTest', () => {
         const module = createElement();
         moduleArray.push(module);
       }
-      const fooDescriptor =
-          new ModuleDescriptor('foo', async () => createElement());
-      const barDescriptor =
-          new ModuleDescriptor('bar', async () => createElement());
-      const fooBarDescriptor =
-          new ModuleDescriptor('foo bar', async () => createElement());
+      const fooDescriptor = new ModuleDescriptorV2(
+          'foo', ModuleHeight.TALL, async () => createElement());
+      const barDescriptor = new ModuleDescriptorV2(
+          'bar', ModuleHeight.TALL, async () => createElement());
+      const fooBarDescriptor = new ModuleDescriptorV2(
+          'foo bar', ModuleHeight.TALL, async () => createElement());
 
       handler.setResultFor('getModulesIdNames', {
         data: [
@@ -587,15 +786,15 @@ suite('NewTabPageModulesModulesTest', () => {
       const modulesElement = await createModulesElement([
         {
           descriptor: fooDescriptor,
-          elements: [moduleArray[0]!],
+          element: moduleArray[0]!,
         },
         {
           descriptor: barDescriptor,
-          elements: [moduleArray[1]!],
+          element: moduleArray[1]!,
         },
         {
           descriptor: fooBarDescriptor,
-          elements: [moduleArray[2]!],
+          element: moduleArray[2]!,
         },
       ]);
       callbackRouterRemote.setDisabledModules(false, []);
@@ -736,20 +935,19 @@ suite('NewTabPageModulesModulesTest', () => {
       assertEquals(secondPositionRect.y, firstModule.getBoundingClientRect().y);
     });
 
-    test('hidden module goes to end of NTP when layout changes', async () => {
+    test('drag tall module over short module sibling container', async () => {
       // Arrange.
-      let restoreCalled = false;
       const moduleArray = [];
       for (let i = 0; i < 3; ++i) {
         const module = createElement();
         moduleArray.push(module);
       }
-      const fooDescriptor =
-          new ModuleDescriptor('foo', async () => createElement());
-      const barDescriptor =
-          new ModuleDescriptor('bar', async () => createElement());
-      const fooBarDescriptor =
-          new ModuleDescriptor('foo bar', async () => createElement());
+      const fooDescriptor = new ModuleDescriptorV2(
+          'foo', ModuleHeight.TALL, async () => createElement());
+      const barDescriptor = new ModuleDescriptorV2(
+          'bar', ModuleHeight.SHORT, async () => createElement());
+      const fooBarDescriptor = new ModuleDescriptorV2(
+          'foo bar', ModuleHeight.SHORT, async () => createElement());
 
       handler.setResultFor('getModulesIdNames', {
         data: [
@@ -761,15 +959,105 @@ suite('NewTabPageModulesModulesTest', () => {
       const modulesElement = await createModulesElement([
         {
           descriptor: fooDescriptor,
-          elements: [moduleArray[0]!],
+          element: moduleArray[0]!,
         },
         {
           descriptor: barDescriptor,
-          elements: [moduleArray[1]!],
+          element: moduleArray[1]!,
         },
         {
           descriptor: fooBarDescriptor,
-          elements: [moduleArray[2]!],
+          element: moduleArray[2]!,
+        },
+      ]);
+      callbackRouterRemote.setDisabledModules(false, []);
+      await callbackRouterRemote.$.flushForTesting();
+
+      let moduleWrappers = Array.from(
+          modulesElement.shadowRoot!.querySelectorAll('ntp-module-wrapper'));
+      const tallModule = moduleWrappers[0];
+      const shortModule1 = moduleWrappers[1];
+      const shortModule2 = moduleWrappers[2];
+      assertTrue(!!tallModule);
+      assertTrue(!!shortModule1);
+      assertTrue(!!shortModule2);
+      assertStyle(tallModule, 'cursor', 'grab');
+      assertStyle(shortModule1, 'cursor', 'grab');
+      assertStyle(shortModule2, 'cursor', 'grab');
+
+      // Act.
+      tallModule.dispatchEvent(new MouseEvent('mousedown'));
+      document.dispatchEvent(new MouseEvent('mousemove'));
+
+      // Act.
+      shortModule1.dispatchEvent(new MouseEvent('mouseover'));
+
+      // Assert.
+      moduleWrappers = Array.from(
+          modulesElement.shadowRoot!.querySelectorAll('ntp-module-wrapper'));
+      assertEquals(0, moduleWrappers.indexOf(shortModule1));
+      assertEquals(1, moduleWrappers.indexOf(shortModule2));
+      assertEquals(2, moduleWrappers.indexOf(tallModule));
+
+      // Act.
+      shortModule2.dispatchEvent(new MouseEvent('mouseover'));
+
+      // Assert.
+      moduleWrappers = Array.from(
+          modulesElement.shadowRoot!.querySelectorAll('ntp-module-wrapper'));
+      assertEquals(0, moduleWrappers.indexOf(tallModule));
+      assertEquals(1, moduleWrappers.indexOf(shortModule1));
+      assertEquals(2, moduleWrappers.indexOf(shortModule2));
+
+      // Act.
+      shortModule1.dispatchEvent(new MouseEvent('mousedown'));
+      document.dispatchEvent(new MouseEvent('mousemove'));
+
+      // Act.
+      tallModule.dispatchEvent(new MouseEvent('mouseover'));
+
+      // Assert.
+      moduleWrappers = Array.from(
+          modulesElement.shadowRoot!.querySelectorAll('ntp-module-wrapper'));
+      assertEquals(0, moduleWrappers.indexOf(shortModule1));
+      assertEquals(1, moduleWrappers.indexOf(tallModule));
+      assertEquals(2, moduleWrappers.indexOf(shortModule2));
+    });
+
+    test('hidden module goes to end of NTP when layout changes', async () => {
+      // Arrange.
+      let restoreCalled = false;
+      const moduleArray = [];
+      for (let i = 0; i < 3; ++i) {
+        const module = createElement();
+        moduleArray.push(module);
+      }
+      const fooDescriptor = new ModuleDescriptorV2(
+          'foo', ModuleHeight.TALL, async () => createElement());
+      const barDescriptor = new ModuleDescriptorV2(
+          'bar', ModuleHeight.SHORT, async () => createElement());
+      const fooBarDescriptor = new ModuleDescriptorV2(
+          'foo bar', ModuleHeight.SHORT, async () => createElement());
+
+      handler.setResultFor('getModulesIdNames', {
+        data: [
+          {id: fooDescriptor.id, name: fooDescriptor.id},
+          {id: barDescriptor.id, name: barDescriptor.id},
+          {id: fooBarDescriptor.id, name: fooBarDescriptor.id},
+        ],
+      });
+      const modulesElement = await createModulesElement([
+        {
+          descriptor: fooDescriptor,
+          element: moduleArray[0]!,
+        },
+        {
+          descriptor: barDescriptor,
+          element: moduleArray[1]!,
+        },
+        {
+          descriptor: fooBarDescriptor,
+          element: moduleArray[2]!,
         },
       ]);
       callbackRouterRemote.setDisabledModules(false, []);
@@ -831,9 +1119,8 @@ suite('NewTabPageModulesModulesTest', () => {
       // // Act.
       await waitAfterNextRender(modulesElement);
       const undoRemoveModuleButton =
-          modulesElement.shadowRoot!.querySelector<HTMLElement>(
-              '#undoRemoveModuleButton');
-      assertTrue(!!undoRemoveModuleButton);
+          modulesElement.shadowRoot!.querySelector('#undoRemoveModuleButton') as
+          HTMLElement;
       undoRemoveModuleButton.click();
 
       // Assert.

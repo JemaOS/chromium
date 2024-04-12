@@ -70,7 +70,8 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
     static final HashMap<String, HashSet<Integer>> sIconSizesMap =
             new HashMap<String, HashSet<Integer>>();
 
-    @VisibleForTesting final ThumbnailGenerator mThumbnailGenerator;
+    @VisibleForTesting
+    final ThumbnailGenerator mThumbnailGenerator;
 
     // This should be initialized once.
     private File mDirectory;
@@ -81,21 +82,18 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
     private final int mMaxCacheBytes;
 
     // Number of bytes used in disk for cache.
-    @VisibleForTesting long mSizeBytes;
+    @VisibleForTesting
+    long mSizeBytes;
 
     // These references allow tests to wait on tasks instead of polling with CriteriaHelper.
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     AsyncTask<Void> mInitTask;
-
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     AsyncTask<Void> mLastClearTask;
-
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     AsyncTask<Void> mLastCacheThumbnailTask;
-
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     AsyncTask<Bitmap> mLastGetThumbnailTask;
-
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     AsyncTask<Void> mLastRemoveThumbnailTask;
 
@@ -118,7 +116,9 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
         }
     }
 
-    /** Writes to disk cache. */
+    /**
+     * Writes to disk cache.
+     */
     private class CacheThumbnailTask extends BackgroundOnlyAsyncTask<Void> {
         private final String mContentId;
         private final Bitmap mBitmap;
@@ -137,7 +137,9 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
         }
     }
 
-    /** Reads from disk cache. If missing, fetch from {@link ThumbnailGenerator}. */
+    /**
+     * Reads from disk cache. If missing, fetch from {@link ThumbnailGenerator}.
+     */
     private class GetThumbnailTask extends AsyncTask<Bitmap> {
         private final ThumbnailProvider.ThumbnailRequest mRequest;
 
@@ -148,7 +150,7 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
         @Override
         protected Bitmap doInBackground() {
             if (sDiskLruCache.contains(
-                    Pair.create(mRequest.getContentId(), mRequest.getIconSize()))) {
+                        Pair.create(mRequest.getContentId(), mRequest.getIconSize()))) {
                 return getFromDisk(mRequest.getContentId(), mRequest.getIconSize());
             }
             return null;
@@ -165,7 +167,9 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
         }
     }
 
-    /** Removes thumbnails with the given contentId from disk cache. */
+    /**
+     * Removes thumbnails with the given contentId from disk cache.
+     */
     private class RemoveThumbnailTask extends BackgroundOnlyAsyncTask<Void> {
         private final String mContentId;
 
@@ -189,9 +193,7 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
     }
 
     @VisibleForTesting
-    ThumbnailDiskStorage(
-            ThumbnailStorageDelegate delegate,
-            ThumbnailGenerator thumbnailGenerator,
+    ThumbnailDiskStorage(ThumbnailStorageDelegate delegate, ThumbnailGenerator thumbnailGenerator,
             int maxCacheSizeBytes) {
         ThreadUtils.assertOnUiThread();
         mDelegate = delegate;
@@ -210,13 +212,17 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
         return new ThumbnailDiskStorage(delegate, new ThumbnailGenerator(), MAX_CACHE_BYTES);
     }
 
-    /** Destroys the {@link ThumbnailGenerator}. */
+    /**
+     * Destroys the {@link ThumbnailGenerator}.
+     */
     public void destroy() {
         mThumbnailGenerator.destroy();
         mDestroyed = true;
     }
 
-    /** Clears all cached files. */
+    /**
+     * Clears all cached files.
+     */
     public void clear() {
         ThreadUtils.assertOnUiThread();
         mLastClearTask = new ClearTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
@@ -250,9 +256,8 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
 
         ThreadUtils.assertOnUiThread();
         if (bitmap != null && !TextUtils.isEmpty(contentId)) {
-            mLastCacheThumbnailTask =
-                    new CacheThumbnailTask(contentId, bitmap, iconSizePx)
-                            .executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
+            mLastCacheThumbnailTask = new CacheThumbnailTask(contentId, bitmap, iconSizePx)
+                                              .executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
         }
         mDelegate.onThumbnailRetrieved(contentId, bitmap);
     }
@@ -400,11 +405,8 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
             ThumbnailEntry entry = ThumbnailEntry.parseFrom(atomicFile.readFully());
             if (!entry.hasCompressedPng()) return null;
 
-            bitmap =
-                    BitmapFactory.decodeByteArray(
-                            entry.getCompressedPng().toByteArray(),
-                            0,
-                            entry.getCompressedPng().size());
+            bitmap = BitmapFactory.decodeByteArray(
+                    entry.getCompressedPng().toByteArray(), 0, entry.getCompressedPng().size());
         } catch (IOException e) {
             Log.e(TAG, "Error while reading from disk.", e);
         } finally {
@@ -414,7 +416,9 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
         return bitmap;
     }
 
-    /** Trim the cache to stay under the max cache size by removing the oldest entries. */
+    /**
+     * Trim the cache to stay under the max cache size by removing the oldest entries.
+     */
     @VisibleForTesting
     void trim() {
         ThreadUtils.assertOnBackgroundThread();
@@ -423,7 +427,9 @@ public class ThumbnailDiskStorage implements ThumbnailGeneratorCallback {
         }
     }
 
-    /** Clear all files in the disk cache. */
+    /**
+     * Clear all files in the disk cache.
+     */
     @VisibleForTesting
     void clearDiskCache() {
         ThreadUtils.assertOnBackgroundThread();

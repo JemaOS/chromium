@@ -40,7 +40,7 @@ class RTCPeerConnection;
 // while the ICE implementation is active, regardless of the number of
 // JavaScript references held to it.
 class MODULES_EXPORT RTCIceTransport final
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<RTCIceTransport>,
       public ExecutionContextLifecycleObserver,
       public IceTransportProxy::Delegate {

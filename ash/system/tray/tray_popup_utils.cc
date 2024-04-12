@@ -9,7 +9,6 @@
 #include <utility>
 
 #include "ash/constants/ash_constants.h"
-#include "ash/constants/ash_features.h"
 #include "ash/public/cpp/ash_view_ids.h"
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/session/session_controller_impl.h"
@@ -34,7 +33,6 @@
 #include "ui/gfx/geometry/rrect_f.h"
 #include "ui/gfx/paint_vector_icon.h"
 #include "ui/gfx/vector_icon_utils.h"
-#include "ui/views/animation/ink_drop_host.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/button/md_text_button.h"
@@ -46,7 +44,6 @@
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/painter.h"
-#include "ui/views/view_utils.h"
 
 namespace ash {
 
@@ -58,7 +55,7 @@ std::unique_ptr<views::LayoutManager> CreateDefaultCenterLayoutManager(
     bool use_wide_layout) {
   const auto insets =
       gfx::Insets::VH(kTrayPopupLabelVerticalPadding,
-                      use_wide_layout ? kWideTrayPopupLabelHorizontalPadding
+                      use_wide_layout ? kQsPopupLabelHorizontalPadding
                                       : kTrayPopupLabelHorizontalPadding);
   auto box_layout = std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical, insets);
@@ -104,15 +101,15 @@ void ConfigureDefaultSizeAndFlex(TriView* tri_view,
   int min_width = 0;
   switch (container) {
     case TriView::Container::START:
-      min_width = use_wide_layout ? kTrayPopupItemMinStartWidth
-                                  : kWideTrayPopupItemMinStartWidth;
+      min_width = use_wide_layout ? kQsPopupItemMinStartWidth
+                                  : kTrayPopupItemMinStartWidth;
       break;
     case TriView::Container::CENTER:
       tri_view->SetFlexForContainer(TriView::Container::CENTER, 1.f);
       break;
     case TriView::Container::END:
-      min_width = use_wide_layout ? kWideTrayPopupItemMinEndWidth
-                                  : kTrayPopupItemMinEndWidth;
+      min_width =
+          use_wide_layout ? kQsPopupItemMinEndWidth : kTrayPopupItemMinEndWidth;
       break;
   }
 
@@ -132,7 +129,7 @@ class HighlightPathGenerator : public views::HighlightPathGenerator {
   HighlightPathGenerator& operator=(const HighlightPathGenerator&) = delete;
 
   // views::HighlightPathGenerator:
-  std::optional<gfx::RRectF> GetRoundRect(const gfx::RectF& rect) override {
+  absl::optional<gfx::RRectF> GetRoundRect(const gfx::RectF& rect) override {
     gfx::RectF bounds = rect;
     bounds.Inset(gfx::InsetsF(GetInkDropInsets(ink_drop_style_)));
     float corner_radius = 0.f;
@@ -187,11 +184,11 @@ TriView* TrayPopupUtils::CreateSubHeaderRowView(bool start_visible) {
 TriView* TrayPopupUtils::CreateMultiTargetRowView(bool use_wide_layout) {
   TriView* tri_view = new TriView(0 /* padding_between_items */);
 
-  tri_view->SetInsets(gfx::Insets::TLBR(
-      0,
-      use_wide_layout ? kWideMenuExtraMarginFromLeftEdge
-                      : kMenuExtraMarginFromLeftEdge,
-      0, use_wide_layout ? kWideMenuExtraMarginsFromRightEdge : 0));
+  tri_view->SetInsets(
+      gfx::Insets::TLBR(0,
+                        use_wide_layout ? kQsExtraMarginFromLeftEdge
+                                        : kMenuExtraMarginFromLeftEdge,
+                        0, use_wide_layout ? kQsExtraMarginsFromRightEdge : 0));
 
   ConfigureDefaultSizeAndFlex(tri_view, TriView::Container::START,
                               use_wide_layout);
@@ -230,7 +227,7 @@ views::ImageView* TrayPopupUtils::CreateMainImageView(bool use_wide_layout) {
     image->SetPreferredSize(gfx::Size(kMenuIconSize, kMenuIconSize));
   } else {
     image->SetPreferredSize(
-        gfx::Size(kWideTrayPopupItemMinStartWidth, kTrayPopupItemMinHeight));
+        gfx::Size(kTrayPopupItemMinStartWidth, kTrayPopupItemMinHeight));
   }
   return image;
 }
@@ -242,17 +239,12 @@ std::unique_ptr<views::Painter> TrayPopupUtils::CreateFocusPainter() {
       kFocusBorderThickness, gfx::InsetsF());
 }
 
-void TrayPopupUtils::ConfigureHeader(views::View* view) {
+void TrayPopupUtils::ConfigureAsStickyHeader(views::View* view) {
+  view->SetID(VIEW_ID_STICKY_HEADER);
   view->SetBorder(views::CreateEmptyBorder(
       gfx::Insets::VH(kMenuSeparatorVerticalPadding, 0)));
   view->SetPaintToLayer();
   view->layer()->SetFillsBoundsOpaquely(false);
-}
-
-void TrayPopupUtils::ConfigureRowButtonInkdrop(views::InkDropHost* ink_drop) {
-  ink_drop->SetMode(views::InkDropHost::InkDropMode::ON);
-  ink_drop->SetVisibleOpacity(1.0f);  // The colors already contain opacity
-  ink_drop->SetBaseColorId(cros_tokens::kCrosSysRippleNeutralOnSubtle);
 }
 
 views::LabelButton* TrayPopupUtils::CreateTrayPopupButton(
@@ -260,7 +252,7 @@ views::LabelButton* TrayPopupUtils::CreateTrayPopupButton(
     const std::u16string& text) {
   auto button =
       std::make_unique<views::MdTextButton>(std::move(callback), text);
-  button->SetStyle(ui::ButtonStyle::kProminent);
+  button->SetProminent(true);
   return button.release();
 }
 
@@ -276,6 +268,14 @@ void TrayPopupUtils::InstallHighlightPathGenerator(
     TrayPopupInkDropStyle ink_drop_style) {
   views::HighlightPathGenerator::Install(
       host, std::make_unique<HighlightPathGenerator>(ink_drop_style));
+}
+
+views::Separator* TrayPopupUtils::CreateListSubHeaderSeparator() {
+  views::Separator* separator = new views::Separator();
+  separator->SetColorId(ui::kColorAshSystemUIMenuSeparator);
+  separator->SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(
+      kMenuSeparatorVerticalPadding - views::Separator::kThickness, 0, 0, 0)));
+  return separator;
 }
 
 views::Separator* TrayPopupUtils::CreateListItemSeparator(bool left_inset) {
@@ -294,23 +294,19 @@ bool TrayPopupUtils::CanOpenWebUISettings() {
   return Shell::Get()->session_controller()->ShouldEnableSettings();
 }
 
-bool TrayPopupUtils::CanShowNightLightFeatureTile() {
-  return Shell::Get()->session_controller()->ShouldEnableSettings() ||
-         (Shell::Get()->session_controller()->GetSessionState() ==
-          session_manager::SessionState::LOCKED);
-}
-
 void TrayPopupUtils::InitializeAsCheckableRow(HoverHighlightView* container,
                                               bool checked,
                                               bool enterprise_managed) {
   const int dip_size = GetDefaultSizeOfVectorIcon(kCheckCircleIcon);
-  // The mapping of `cros_tokens::kCrosSysSystemOnPrimaryContainer` cannot
-  // accommodate `check_mark` and other components, so we still want to
-  // guard with Jelly flag here.
-  ui::ImageModel check_mark = CreateCheckMark(
+  ui::ImageModel check_mark = ui::ImageModel::FromVectorIcon(
+      kHollowCheckCircleIcon,
+      // The mapping of `cros_tokens::kCrosSysSystemOnPrimaryContainer` cannot
+      // accommodate `check_mark` and other components, so we still want to
+      // guard with Jelly flag here.
       chromeos::features::IsJellyEnabled()
           ? cros_tokens::kCrosSysSystemOnPrimaryContainer
-          : static_cast<ui::ColorId>(kColorAshIconColorProminent));
+          : static_cast<ui::ColorId>(kColorAshIconColorProminent),
+      dip_size);
   if (enterprise_managed) {
     ui::ImageModel enterprise_managed_icon = ui::ImageModel::FromVectorIcon(
         chromeos::kEnterpriseIcon, kColorAshIconColorBlocked, dip_size);
@@ -323,33 +319,42 @@ void TrayPopupUtils::InitializeAsCheckableRow(HoverHighlightView* container,
 
 void TrayPopupUtils::UpdateCheckMarkVisibility(HoverHighlightView* container,
                                                bool visible) {
-  if (!container) {
+  if (!container)
     return;
-  }
-
   container->SetRightViewVisible(visible);
   container->SetAccessibilityState(
       visible ? HoverHighlightView::AccessibilityState::CHECKED_CHECKBOX
               : HoverHighlightView::AccessibilityState::UNCHECKED_CHECKBOX);
 }
 
-void TrayPopupUtils::UpdateCheckMarkColor(HoverHighlightView* container,
-                                          ui::ColorId color_id) {
-  if (!container || !container->right_view()) {
-    return;
-  }
+void TrayPopupUtils::SetLabelFontList(views::Label* label, FontStyle style) {
+  label->SetAutoColorReadabilityEnabled(false);
+  const gfx::FontList google_sans_font_list({"Google Sans"}, gfx::Font::NORMAL,
+                                            16, gfx::Font::Weight::MEDIUM);
+  const gfx::FontList roboto_font_list({"Roboto"}, gfx::Font::NORMAL, 16,
+                                       gfx::Font::Weight::MEDIUM);
 
-  auto check_mark = CreateCheckMark(color_id);
-  if (views::IsViewClass<views::ImageView>(container->right_view())) {
-    static_cast<views::ImageView*>(container->right_view())
-        ->SetImage(check_mark);
+  switch (style) {
+    case FontStyle::kTitle:
+      label->SetFontList(google_sans_font_list);
+      break;
+    case FontStyle::kPodMenuHeader:
+      label->SetFontList(roboto_font_list);
+      break;
+    case FontStyle::kSubHeader:
+      label->SetFontList(roboto_font_list.Derive(-1, gfx::Font::NORMAL,
+                                                 gfx::Font::Weight::MEDIUM));
+      break;
+    case FontStyle::kSmallTitle:
+      label->SetFontList(roboto_font_list.Derive(-3, gfx::Font::NORMAL,
+                                                 gfx::Font::Weight::MEDIUM));
+      break;
+    case FontStyle::kDetailedViewLabel:
+    case FontStyle::kSystemInfo:
+      label->SetFontList(roboto_font_list.Derive(-4, gfx::Font::NORMAL,
+                                                 gfx::Font::Weight::NORMAL));
+      break;
   }
-}
-
-ui::ImageModel TrayPopupUtils::CreateCheckMark(ui::ColorId color_id) {
-  return ui::ImageModel::FromVectorIcon(
-      kHollowCheckCircleIcon, color_id,
-      GetDefaultSizeOfVectorIcon(kCheckCircleIcon));
 }
 
 }  // namespace ash

@@ -9,16 +9,17 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/sync/sync_ui_util.h"
-#include "components/password_manager/core/browser/features/password_manager_features_util.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_service_utils.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "components/password_manager/core/browser/password_manager_features_util.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_service_utils.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/webui/web_ui_util.h"
 
 namespace password_manager {
 
-using password_manager::features_util::ShouldShowAccountStorageSettingToggle;
+using password_manager::features_util::IsOptedInForAccountStorage;
+using password_manager::features_util::ShouldShowAccountStorageOptIn;
 
 SyncHandler::SyncHandler(Profile* profile) : profile_(profile) {}
 
@@ -97,7 +98,8 @@ base::Value::Dict SyncHandler::GetSyncInfo() const {
   auto* identity_manager = IdentityManagerFactory::GetForProfile(profile_);
   dict.Set("isEligibleForAccountStorage",
            (!identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync) &&
-            ShouldShowAccountStorageSettingToggle(pref_service, sync_service)));
+            (IsOptedInForAccountStorage(pref_service, sync_service) ||
+             ShouldShowAccountStorageOptIn(pref_service, sync_service))));
   dict.Set("isSyncingPasswords",
            (sync_service->IsSyncFeatureEnabled() &&
             types.Has(syncer::UserSelectableType::kPasswords)));

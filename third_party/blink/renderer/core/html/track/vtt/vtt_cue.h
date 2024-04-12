@@ -72,7 +72,7 @@ class VTTCueBackgroundBox final : public HTMLDivElement {
   void SetTrack(TextTrack*);
   void Trace(Visitor*) const override;
 
-  const TextTrack* GetTrack() const { return track_.Get(); }
+  const TextTrack* GetTrack() const { return track_; }
 
  private:
   void DidRecalcStyle(const StyleRecalcChange) override;
@@ -104,7 +104,7 @@ class CORE_EXPORT VTTCue final : public TextTrackCue {
   VTTCue(Document&, double start_time, double end_time, const String& text);
   ~VTTCue() override;
 
-  VTTRegion* region() const { return region_.Get(); }
+  VTTRegion* region() const { return region_; }
   void setRegion(VTTRegion*);
 
   const String& vertical() const;
@@ -147,7 +147,7 @@ class CORE_EXPORT VTTCue final : public TextTrackCue {
 
   void UpdatePastAndFutureNodes(double movie_time) override;
 
-  std::optional<double> GetNextIntraCueTime(double movie_time) const override;
+  absl::optional<double> GetNextIntraCueTime(double movie_time) const override;
 
   void RemoveDisplayTree(RemovalNotification) override;
 

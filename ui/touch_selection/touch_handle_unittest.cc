@@ -64,6 +64,8 @@ class MockTouchHandleDrawable : public TouchHandleDrawable {
   raw_ptr<MockDrawableData> data_;
 };
 
+}  // namespace
+
 class TouchHandleTest : public testing::Test, public TouchHandleClient {
  public:
   TouchHandleTest()
@@ -677,5 +679,4 @@ TEST_F(TouchHandleTest, ViewportSizeChange) {
   EXPECT_FALSE(drawable().mirror_horizontal);
 }
 
-}  // namespace
 }  // namespace ui

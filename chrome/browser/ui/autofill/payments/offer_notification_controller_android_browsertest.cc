@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "base/memory/raw_ptr.h"
-#include "base/ranges/algorithm.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/autofill/autofill_uitest_util.h"
@@ -18,8 +17,12 @@
 #include "components/autofill/core/browser/data_model/autofill_offer_data.h"
 #include "components/autofill/core/browser/metrics/payments/offers_metrics.h"
 #include "components/autofill/core/browser/payments/autofill_offer_manager.h"
+#include "components/autofill/core/browser/payments/autofill_offer_notification_infobar_delegate_mobile.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "components/autofill/core/common/autofill_clock.h"
+#include "components/infobars/content/content_infobar_manager.h"
+#include "components/infobars/core/infobar.h"
+#include "components/infobars/core/infobar_delegate.h"
 #include "components/messages/android/message_enums.h"
 #include "components/messages/android/messages_feature.h"
 #include "components/messages/android/test/messages_test_helper.h"
@@ -70,9 +73,6 @@ class OfferNotificationControllerAndroidBrowserTest
   // AndroidBrowserTest
   void SetUpOnMainThread() override {
     personal_data_ = PersonalDataManagerFactory::GetForProfile(GetProfile());
-    // Mimic the user is signed in so payments integration is considered
-    // enabled.
-    personal_data_->SetSyncingForTest(true);
     // Wait for Personal Data Manager to be fully loaded to prevent that
     // spurious notifications deceive the tests.
     WaitForPersonalDataManagerToBeLoaded(GetProfile());
@@ -86,7 +86,7 @@ class OfferNotificationControllerAndroidBrowserTest
   Profile* GetProfile() { return chrome_test_utils::GetProfile(this); }
 
   AutofillOfferData* SetUpOfferDataWithDomains(const GURL& url) {
-    personal_data_->ClearAllServerDataForTesting();
+    personal_data_->ClearAllServerData();
     std::vector<GURL> merchant_origins;
     merchant_origins.emplace_back(url.DeprecatedGetOriginAsURL());
     std::vector<int64_t> eligible_instrument_ids = {0x4444};
@@ -125,16 +125,135 @@ class OfferNotificationControllerAndroidBrowserTest
   // CreditCard that is linked to the offer displayed in the offer notification.
   CreditCard card_;
   base::HistogramTester histogram_tester_;
+  base::test::ScopedFeatureList scoped_feature_list_;
 
  private:
   test::AutofillBrowserTestEnvironment autofill_environment_;
   raw_ptr<PersonalDataManager> personal_data_;
 };
 
+class OfferNotificationControllerAndroidBrowserTestForInfobar
+    : public OfferNotificationControllerAndroidBrowserTest {
+ public:
+  OfferNotificationControllerAndroidBrowserTestForInfobar() = default;
+
+  void SetUp() override {
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/{},
+        /*disabled_features=*/{messages::kMessagesForAndroidInfrastructure,
+                               messages::kMessagesForAndroidOfferNotification});
+    OfferNotificationControllerAndroidBrowserTest::SetUp();
+  }
+
+  infobars::InfoBar* GetInfoBar() {
+    infobars::ContentInfoBarManager* infobar_manager =
+        infobars::ContentInfoBarManager::FromWebContents(GetWebContents());
+    for (size_t i = 0; i < infobar_manager->infobar_count(); ++i) {
+      infobars::InfoBar* infobar = infobar_manager->infobar_at(i);
+      if (infobar->delegate()->GetIdentifier() ==
+          infobars::InfoBarDelegate::
+              AUTOFILL_OFFER_NOTIFICATION_INFOBAR_DELEGATE) {
+        return infobar;
+      }
+    }
+    return nullptr;
+  }
+
+  AutofillOfferNotificationInfoBarDelegateMobile* GetInfoBarDelegate(
+      infobars::InfoBar* infobar) {
+    return static_cast<AutofillOfferNotificationInfoBarDelegateMobile*>(
+        infobar->delegate());
+  }
+
+  void ShowOfferNotificationInfoBar(const AutofillOfferData* offer) {
+    offer_notification_controller_android_->ShowIfNecessary(offer, &card_);
+  }
+
+  void VerifyInfoBarShownCount(int count) {
+    histogram_tester_.ExpectTotalCount(
+        "Autofill.OfferNotificationInfoBarOffer.CardLinkedOffer", count);
+  }
+
+  void VerifyInfoBarResultMetric(
+      autofill_metrics::OfferNotificationInfoBarResultMetric metric,
+      int count) {
+    histogram_tester_.ExpectBucketCount(
+        "Autofill.OfferNotificationInfoBarResult.CardLinkedOffer", metric,
+        count);
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(OfferNotificationControllerAndroidBrowserTestForInfobar,
+                       ShowInfobarAndAccept) {
+  GURL offer_url = GetInitialUrl().DeprecatedGetOriginAsURL();
+  SetUpOfferDataWithDomains(offer_url);
+  ASSERT_TRUE(content::NavigateToURL(GetWebContents(), GetInitialUrl()));
+  // Verify that the infobar was shown and logged.
+  infobars::InfoBar* infobar = GetInfoBar();
+  ASSERT_TRUE(infobar);
+  VerifyInfoBarShownCount(1);
+
+  // Accept and close the infobar.
+  GetInfoBarDelegate(infobar)->Accept();
+  infobar->RemoveSelf();
+
+  // Verify histogram counts.
+  VerifyInfoBarResultMetric(
+      autofill_metrics::OfferNotificationInfoBarResultMetric::
+          OFFER_NOTIFICATION_INFOBAR_ACKNOWLEDGED,
+      1);
+}
+
+IN_PROC_BROWSER_TEST_F(OfferNotificationControllerAndroidBrowserTestForInfobar,
+                       ShowInfobarAndClose) {
+  GURL offer_url = GetInitialUrl().DeprecatedGetOriginAsURL();
+  SetUpOfferDataWithDomains(offer_url);
+  ASSERT_TRUE(content::NavigateToURL(GetWebContents(), GetInitialUrl()));
+  // Verify that the infobar was shown and logged.
+  infobars::InfoBar* infobar = GetInfoBar();
+  ASSERT_TRUE(infobar);
+  VerifyInfoBarShownCount(1);
+
+  // Dismiss and close the infobar.
+  GetInfoBarDelegate(infobar)->InfoBarDismissed();
+  infobar->RemoveSelf();
+
+  // Verify histogram counts.
+  VerifyInfoBarResultMetric(
+      autofill_metrics::OfferNotificationInfoBarResultMetric::
+          OFFER_NOTIFICATION_INFOBAR_CLOSED,
+      1);
+}
+
+IN_PROC_BROWSER_TEST_F(OfferNotificationControllerAndroidBrowserTestForInfobar,
+                       CrossTabStatusTracking) {
+  GURL offer_url = GetInitialUrl().DeprecatedGetOriginAsURL();
+  int64_t id = SetUpOfferDataWithDomains(offer_url)->GetOfferId();
+
+  SetShownOffer(id);
+  // Navigate to a different URL within the same domain and try to show the
+  // infobar.
+  offer_url = embedded_test_server()->GetURL(kHostName, "/simple_page.html");
+  ASSERT_TRUE(content::NavigateToURL(GetWebContents(), offer_url));
+
+  // Verify that the infobar was not shown again because it has already been
+  // marked as shown for this domain.
+  ASSERT_FALSE(GetInfoBar());
+  VerifyInfoBarShownCount(0);
+}
+
 class OfferNotificationControllerAndroidBrowserTestForMessagesUi
     : public OfferNotificationControllerAndroidBrowserTest {
  public:
   OfferNotificationControllerAndroidBrowserTestForMessagesUi() = default;
+
+  void SetUp() override {
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/{messages::kMessagesForAndroidInfrastructure,
+                              messages::kMessagesForAndroidOfferNotification},
+        /*disabled_features=*/{});
+    OfferNotificationControllerAndroidBrowserTest::SetUp();
+  }
 
   void VerifyMessageShownCountMetric(int count) {
     histogram_tester_.ExpectBucketCount(

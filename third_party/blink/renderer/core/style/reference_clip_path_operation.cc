@@ -18,6 +18,10 @@ void ReferenceClipPathOperation::RemoveClient(SVGResourceClient& client) {
   }
 }
 
+SVGResource* ReferenceClipPathOperation::Resource() const {
+  return resource_;
+}
+
 bool ReferenceClipPathOperation::operator==(const ClipPathOperation& o) const {
   if (!IsSameType(o)) {
     return false;

@@ -4,7 +4,7 @@
 
 #include "chrome/browser/page_load_metrics/observers/https_engagement_metrics/https_engagement_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/page_load_metrics/observers/https_engagement_metrics/https_engagement_service.h"
 
 // static
@@ -16,26 +16,19 @@ HttpsEngagementService* HttpsEngagementServiceFactory::GetForBrowserContext(
 
 // static
 HttpsEngagementServiceFactory* HttpsEngagementServiceFactory::GetInstance() {
-  static base::NoDestructor<HttpsEngagementServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<HttpsEngagementServiceFactory>::get();
 }
 
 HttpsEngagementServiceFactory::HttpsEngagementServiceFactory()
     : ProfileKeyedServiceFactory(
           "HttpEngagementKeyService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
-HttpsEngagementServiceFactory::~HttpsEngagementServiceFactory() = default;
+HttpsEngagementServiceFactory::~HttpsEngagementServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-HttpsEngagementServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* HttpsEngagementServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<HttpsEngagementService>();
+  return new HttpsEngagementService();
 }
 
 bool HttpsEngagementServiceFactory::ServiceIsCreatedWithBrowserContext() const {

@@ -12,10 +12,6 @@
 #include "content/public/browser/web_contents.h"
 #include "ui/views/native_window_tracker.h"
 
-#if defined(USE_AURA)
-#include "ui/aura/window.h"
-#endif
-
 namespace {
 
 gfx::NativeWindow NativeWindowForWebContents(content::WebContents* contents) {
@@ -24,10 +20,6 @@ gfx::NativeWindow NativeWindowForWebContents(content::WebContents* contents) {
 
   return contents->GetTopLevelNativeWindow();
 }
-
-#if defined(USE_AURA)
-bool g_root_checking_enabled = true;
-#endif
 
 }  // namespace
 
@@ -68,41 +60,7 @@ gfx::NativeWindow ExtensionInstallPromptShowParams::GetParentWindow() {
 bool ExtensionInstallPromptShowParams::WasParentDestroyed() {
   const bool parent_web_contents_destroyed =
       parent_web_contents_.WasInvalidated();
-  if (parent_web_contents_destroyed) {
-    return true;
-  }
-  if (native_window_tracker_) {
-    if (native_window_tracker_->WasNativeWindowDestroyed()) {
-      return true;
-    }
-#if defined(USE_AURA)
-    // If the window is not contained in a root window, then it's not connected
-    // to a display and can't be used as the context. To do otherwise results in
-    // checks later on assuming context has a root.
-    if (g_root_checking_enabled && !parent_window_->GetRootWindow()) {
-      return true;
-    }
-#endif
-  }
-  return false;
+  return parent_web_contents_destroyed ||
+         (native_window_tracker_ &&
+          native_window_tracker_->WasNativeWindowDestroyed());
 }
-
-namespace test {
-
-ScopedDisableRootChecking::ScopedDisableRootChecking() {
-#if defined(USE_AURA)
-  // There should be no need to support multiple ScopedDisableRootCheckings
-  // at a time.
-  DCHECK(g_root_checking_enabled);
-  g_root_checking_enabled = false;
-#endif
-}
-
-ScopedDisableRootChecking::~ScopedDisableRootChecking() {
-#if defined(USE_AURA)
-  DCHECK(!g_root_checking_enabled);
-  g_root_checking_enabled = true;
-#endif
-}
-
-}  // namespace test

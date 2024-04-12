@@ -10,9 +10,7 @@
 NSString* kFindPasteboardChangedNotification =
     @"kFindPasteboardChangedNotification_Chrome";
 
-@implementation FindPasteboard {
-  NSString* _findText;
-}
+@implementation FindPasteboard
 
 + (FindPasteboard*)sharedInstance {
   static FindPasteboard* instance = nil;
@@ -24,10 +22,10 @@ NSString* kFindPasteboardChangedNotification =
 
 - (instancetype)init {
   if ((self = [super init])) {
-    _findText = @"";
+    _findText.reset([[NSString alloc] init]);
 
-    // Check if the text in the find pasteboard has changed on app activate.
-    [NSNotificationCenter.defaultCenter
+    // Check if the text in the findboard has changed on app activate.
+    [[NSNotificationCenter defaultCenter]
         addObserver:self
            selector:@selector(loadTextFromPasteboard:)
                name:NSApplicationDidBecomeActiveNotification
@@ -39,7 +37,8 @@ NSString* kFindPasteboardChangedNotification =
 
 - (void)dealloc {
   // Since this is a singleton, this should only be executed in test code.
-  [NSNotificationCenter.defaultCenter removeObserver:self];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [super dealloc];
 }
 
 - (NSPasteboard*)findPasteboard {
@@ -67,15 +66,15 @@ NSString* kFindPasteboardChangedNotification =
 
   DCHECK(NSThread.isMainThread);
 
-  BOOL textChanged = ![_findText isEqualToString:newText];
+  BOOL textChanged = ![_findText.get() isEqualToString:newText];
   if (textChanged) {
-    _findText = [newText copy];
+    _findText.reset([newText copy]);
 
     NSPasteboard* findPasteboard = [self findPasteboard];
     [findPasteboard clearContents];
-    [findPasteboard writeObjects:@[ _findText ]];
+    [findPasteboard writeObjects:@[ _findText.get() ]];
 
-    [NSNotificationCenter.defaultCenter
+    [[NSNotificationCenter defaultCenter]
         postNotificationName:kFindPasteboardChangedNotification
                       object:self];
   }

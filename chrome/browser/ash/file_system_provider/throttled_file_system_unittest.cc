@@ -20,7 +20,8 @@
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 namespace {
 
 const char kExtensionId[] = "mbflcebpggnecokmikipoihdbecnjfoj";
@@ -37,15 +38,15 @@ void LogStatus(StatusLog* log, base::File::Error result) {
 
 // Writes a |result| to the |log| vector for opening a file.
 void LogOpen(OpenLog* log, int handle, base::File::Error result) {
-  log->emplace_back(handle, result);
+  log->push_back(std::make_pair(handle, result));
 }
 
 }  // namespace
 
 class FileSystemProviderThrottledFileSystemTest : public testing::Test {
  protected:
-  FileSystemProviderThrottledFileSystemTest() = default;
-  ~FileSystemProviderThrottledFileSystemTest() override = default;
+  FileSystemProviderThrottledFileSystemTest() {}
+  ~FileSystemProviderThrottledFileSystemTest() override {}
 
   void SetUp() override {}
 
@@ -158,4 +159,5 @@ TEST_F(FileSystemProviderThrottledFileSystemTest, AbortAfterRun) {
   EXPECT_EQ(0u, second_open_log.size());
 }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_ERROR_CONSOLE_ERROR_CONSOLE_FACTORY_H_
 #define CHROME_BROWSER_EXTENSIONS_ERROR_CONSOLE_ERROR_CONSOLE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace extensions {
@@ -21,13 +21,13 @@ class ErrorConsoleFactory : public ProfileKeyedServiceFactory {
   static ErrorConsoleFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<ErrorConsoleFactory>;
+  friend struct base::DefaultSingletonTraits<ErrorConsoleFactory>;
 
   ErrorConsoleFactory();
   ~ErrorConsoleFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

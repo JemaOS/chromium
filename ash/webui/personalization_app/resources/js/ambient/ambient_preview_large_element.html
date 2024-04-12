@@ -1,20 +1,5 @@
 <style include="common cros-button-style">
-  :host-context(body.jelly-enabled) #container {
-    background-color: var(--cros-bg-color);
-    border: none;
-    grid-template-areas:
-      '. slot           slot    slot      .'
-      '. image          image   image     .'
-      '. .              .       .         .'
-      '. message        message message   .'
-      '. mainpage-desc  .       thumbnail .'
-      '. .              .       .         .';
-    grid-template-columns: 20px auto 192px auto 20px;
-    grid-template-rows: auto auto 20px 192px 1fr 20px;
-  }
-
   #container {
-    border: 1px solid var(--cros-separator-color);
     border-radius: 16px;
     display: grid;
     grid-template-areas:
@@ -24,16 +9,12 @@
       '. message        message message   .'
       '. mainpage-desc  .       thumbnail .'
       '. .              .       .         .';
-    grid-template-columns: 20px minmax(0, 1fr) 16px 106px 20px;
-    grid-template-rows: auto minmax(158px, 220px) 20px 106px auto 24px;
+    grid-template-columns: 20px auto 192px auto 20px;
+    grid-template-rows: auto auto 20px 192px 1fr 20px;
     height: 100%;
   }
 
-  #container.ambient-mode-enabled {
-    grid-template-rows: auto minmax(158px, 220px) 20px auto 106px 24px;
-  }
-
-  :host-context(body.jelly-enabled) #container.ambient-mode-enabled {
+  #container.zero-state-disabled {
     grid-template-areas:
       '. slot          .'
       '. image         .'
@@ -43,6 +24,27 @@
       '. .             .';
     grid-template-columns: 20px minmax(0,1fr) 20px;
     grid-template-rows: auto auto 20px 130px 1fr 18px;
+  }
+
+  #container.jelly-disabled {
+    border: 1px solid var(--cros-separator-color);
+    grid-template-areas:
+      '. slot           slot    slot      .'
+      '. image          image   image     .'
+      '. .              .       .         .'
+      '. message        message message   .'
+      '. mainpage-desc  .       thumbnail .'
+      '. .              .       .         .';
+    grid-template-columns: 20px minmax(0, 1fr) 16px 106px 20px;
+    grid-template-rows: auto minmax(158px, 220px) 20px 106px auto 24px;
+  }
+
+  #container.jelly-disabled.zero-state-disabled {
+    grid-template-rows: auto minmax(158px, 220px) 20px auto 106px 24px;
+  }
+
+  :host-context(body.jelly-enabled) #container {
+    background-color: var(--cros-bg-color);
   }
 
   #ambientLabel {
@@ -56,16 +58,20 @@
     margin-top: 12px;
   }
 
-  #ambientLabel > cr-icon-button {
+  #ambientSubpageLink {
     --cr-icon-button-size: 44px;
     /* Make the arrow align with the thumbnail image */
     margin-inline-end: -18px;
   }
 
-  #ambientLabel > h2 {
+  #ambientLabel>h2 {
     color: var(--cros-text-color-primary);
     font: var(--personalization-app-label-font);
     margin: 12px 0;
+  }
+
+  #ambientLabel.enterprise {
+    opacity: var(--cros-disabled-opacity);
   }
 
   #messageContainer {
@@ -76,33 +82,36 @@
     justify-content: space-between;
   }
 
-  #messageContainer .text {
-    color: var(--cros-sys-on_primary_container, var(--cros-text-color-secondary));
+  #messageContainer.jelly-disabled .text {
+    color: var(--cros-text-color-secondary);
     font: var(--cros-body-1-font);
     line-height: 1.5;
     margin-top: 12px;
-    position: relative;
     text-align: center;
     width: unset;
   }
 
-  :host-context(body.jelly-enabled) #messageContainer .text {
-    font: var(--cros-body-2-font);
+  #messageContainer .text {
+    color: var(--cros-sys-on_primary_container, var(--cros-text-color-secondary));
+    font: var(--cros-body-1-font);
+    line-height: 1.5;
     margin-top: 56px;
+    position: relative;
+    text-align: center;
     width: 128px;
-  }
-
-  :host-context(body.jelly-enabled) #messageContainer cr-button {
-    margin-top: 8px;
   }
 
   #messageContainer cr-button {
     margin-bottom: 50px;
-    margin-top: 20px;
+    margin-top: 8px;
   }
 
   ambient-zero-state-svg {
     position: absolute;
+  }
+
+  #messageContainer.jelly-disabled cr-button {
+    margin-top: 20px;
   }
 
   #imageContainer,
@@ -122,21 +131,25 @@
     min-width: 278px;
   }
 
-  :host-context(body.jelly-enabled) .album-info-mainpage,
-  :host-context(body.jelly-enabled) #textPlaceholder {
-    align-items: center;
-  }
-
   .album-info-mainpage,
   #textPlaceholder {
-    align-items: flex-start;
+    align-items: center;
     display: flex;
     grid-area: mainpage-desc;
     justify-content: center;
   }
 
+  .jelly-disabled .album-info-mainpage,
+  .jelly-disabled #textPlaceholder {
+    align-items: flex-start;
+  }
+
   #textPlaceholder .placeholder:first-child {
     margin-top: 8px;
+  }
+
+  .album-info-mainpage:not(.jelly-disabled) span {
+    margin-inline: auto;
   }
 
   #imageContainer,
@@ -144,24 +157,36 @@
     grid-area: image;
   }
 
+  #imageContainer[ambient-mode-managed] img.disabled {
+    opacity: var(--cros-disabled-opacity);
+  }
+
+  #imageContainer img.disabled {
+    /**
+     * Use 50% for image instead of default cros-disabled-opacity.
+     * TODO(b/236415314) get this into design system as a semantic value.
+     */
+    opacity: 50%;
+  }
+
   #albumTitle {
     color: var(--cros-text-color-primary);
     font: var(--cros-display-7-font);
-    margin-top: 4px;
+    margin-top: 10px;
   }
 
-  :host-context(body.jelly-enabled) #albumTitle {
-    margin-top: 10px;
+  #albumTitle.jelly-disabled {
+    margin-top: 4px;
   }
 
   #albumDescription {
     color: var(--cros-text-color-secondary);
     font: var(--cros-body-2-font);
-    margin-top: 4px;
+    margin-top: 2px;
   }
 
-  :host-context(body.jelly-enabled) #albumDescription {
-    margin-top: 2px;
+  #albumDescription.jelly-disabled {
+    margin-top: 4px;
   }
 
   #collageContainer,
@@ -284,10 +309,6 @@
     border-radius: 16px;
   }
 
-  .help-link {
-    color: var(--text-color-action);
-    text-decoration: none;
-  }
 </style>
 <div class$="[[getPreviewContainerClass_(ambientModeEnabled_, loading_)]]" id="container">
   <!-- Use inline svg in order to reference the clip path by url() -->
@@ -305,9 +326,10 @@
   </svg>
   <template is="dom-if" if="[[isPersonalizationJellyEnabled_]]">
     <template is="dom-if" if="[[!isAmbientModeAllowed_]]">
-      <div id="ambientLabel" class="disabled">
+      <div id="ambientLabel" class="enterprise">
         <h2>$i18n{screensaverLabel}</h2>
         <cr-icon-button disabled
+            id="ambientSubpageLink"
             iron-icon="cr:chevron-right">
         </cr-icon-button>
       </div>
@@ -325,9 +347,8 @@
           $i18n{ambientModeMainPageEnterpriseUserMessage}
         </span>
         <cr-button class="primary action-button">
-          <!-- TODO(b/282827734): create new p-link for the support page -->
-          <a class="help-link" href="https://support.google.com/chromebook?p=wallpaper_fileerror"
-              target="_blank">$i18n{ambientModeLearnMoreLabel}</a>
+          <!-- TODO(b/258838122): on-click behavior -->
+          <div>$i18n{ambientModeLearnMoreLabel}</div>
         </cr-button>
       </div>
     </template>
@@ -338,6 +359,7 @@
         </h2>
         <cr-icon-button aria-label="$i18n{ariaLabelChangeScreensaver}"
             class="tast-open-subpage"
+            id="ambientSubpageLink"
             iron-icon="cr:chevron-right"
             on-click="onClickAmbientSubpageLink_">
         </cr-icon-button>
@@ -422,6 +444,7 @@
       </h2>
       <cr-icon-button aria-label="$i18n{ariaLabelChangeScreensaver}"
           class="tast-open-subpage"
+          id="ambientSubpageLink"
           iron-icon="cr:chevron-right"
           on-click="onClickAmbientSubpageLink_">
       </cr-icon-button>
@@ -444,7 +467,7 @@
           <img class="preview-image disabled"
               src="//personalization/images/slideshow.png">
         </div>
-        <div id="messageContainer">
+        <div class="jelly-disabled" id="messageContainer">
           <span class="text" id="turnOnDescription">
             $i18n{ambientModeMainPageZeroStateMessage}
           </span>
@@ -468,7 +491,7 @@
                 on-keypress="onClickPreviewImage_">
           </div>
           <h3 aria-label$="[[getPreviewTextAriaLabel_(firstPreviewAlbum_, topicSource_, previewAlbums_)]]"
-              class="preview-text-container album-info-mainpage"
+              class="preview-text-container album-info-mainpage jelly-disabled"
               id="textContainer">
             <span aria-hidden="true"
                 id="albumTitle"

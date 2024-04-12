@@ -19,7 +19,6 @@
 #include "third_party/blink/renderer/modules/payments/payment_test_helper.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 namespace {
@@ -43,7 +42,6 @@ class MockPaymentRequest : public GarbageCollected<MockPaymentRequest>,
 };
 
 TEST(PaymentRequestUpdateEventTest, OnUpdatePaymentDetailsCalled) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   PaymentRequestUpdateEvent* event = PaymentRequestUpdateEvent::Create(
       scope.GetExecutionContext(), event_type_names::kShippingaddresschange);
@@ -52,8 +50,7 @@ TEST(PaymentRequestUpdateEventTest, OnUpdatePaymentDetailsCalled) {
   event->SetPaymentRequest(request);
   event->SetEventPhase(Event::PhaseType::kCapturingPhase);
   auto* payment_details =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState());
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
   event->updateWith(scope.GetScriptState(), payment_details->Promise(),
                     scope.GetExceptionState());
   EXPECT_FALSE(scope.GetExceptionState().HadException());
@@ -61,11 +58,10 @@ TEST(PaymentRequestUpdateEventTest, OnUpdatePaymentDetailsCalled) {
   EXPECT_CALL(*request, OnUpdatePaymentDetails(testing::_));
   EXPECT_CALL(*request, OnUpdatePaymentDetailsFailure(testing::_)).Times(0);
 
-  payment_details->Resolve();
+  payment_details->Resolve("foo");
 }
 
 TEST(PaymentRequestUpdateEventTest, OnUpdatePaymentDetailsFailureCalled) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   PaymentRequestUpdateEvent* event = PaymentRequestUpdateEvent::Create(
       scope.GetExecutionContext(), event_type_names::kShippingaddresschange);
@@ -74,8 +70,7 @@ TEST(PaymentRequestUpdateEventTest, OnUpdatePaymentDetailsFailureCalled) {
   event->SetPaymentRequest(request);
   event->SetEventPhase(Event::PhaseType::kCapturingPhase);
   auto* payment_details =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState());
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
   event->updateWith(scope.GetScriptState(), payment_details->Promise(),
                     scope.GetExceptionState());
   EXPECT_FALSE(scope.GetExceptionState().HadException());
@@ -87,7 +82,6 @@ TEST(PaymentRequestUpdateEventTest, OnUpdatePaymentDetailsFailureCalled) {
 }
 
 TEST(PaymentRequestUpdateEventTest, CannotUpdateWithoutDispatching) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   PaymentRequestUpdateEvent* event = PaymentRequestUpdateEvent::Create(
       scope.GetExecutionContext(), event_type_names::kShippingaddresschange);
@@ -95,8 +89,7 @@ TEST(PaymentRequestUpdateEventTest, CannotUpdateWithoutDispatching) {
 
   event->updateWith(
       scope.GetScriptState(),
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState())
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState())
           ->Promise(),
       scope.GetExceptionState());
 
@@ -104,7 +97,6 @@ TEST(PaymentRequestUpdateEventTest, CannotUpdateWithoutDispatching) {
 }
 
 TEST(PaymentRequestUpdateEventTest, CannotUpdateTwice) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   PaymentRequestUpdateEvent* event = PaymentRequestUpdateEvent::Create(
       scope.GetExecutionContext(), event_type_names::kShippingaddresschange);
@@ -114,16 +106,14 @@ TEST(PaymentRequestUpdateEventTest, CannotUpdateTwice) {
   event->SetEventPhase(Event::PhaseType::kCapturingPhase);
   event->updateWith(
       scope.GetScriptState(),
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState())
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState())
           ->Promise(),
       scope.GetExceptionState());
   EXPECT_FALSE(scope.GetExceptionState().HadException());
 
   event->updateWith(
       scope.GetScriptState(),
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState())
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState())
           ->Promise(),
       scope.GetExceptionState());
 
@@ -131,7 +121,6 @@ TEST(PaymentRequestUpdateEventTest, CannotUpdateTwice) {
 }
 
 TEST(PaymentRequestUpdateEventTest, UpdaterNotRequired) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   PaymentRequestUpdateEvent* event = PaymentRequestUpdateEvent::Create(
       scope.GetExecutionContext(), event_type_names::kShippingaddresschange);
@@ -139,8 +128,7 @@ TEST(PaymentRequestUpdateEventTest, UpdaterNotRequired) {
 
   event->updateWith(
       scope.GetScriptState(),
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState())
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState())
           ->Promise(),
       scope.GetExceptionState());
 
@@ -148,7 +136,6 @@ TEST(PaymentRequestUpdateEventTest, UpdaterNotRequired) {
 }
 
 TEST(PaymentRequestUpdateEventTest, AddressChangeUpdateWithTimeout) {
-  test::TaskEnvironment task_environment;
   PaymentRequestV8TestingScope scope;
   MockFunctionScope funcs(scope.GetScriptState());
   PaymentRequest* request = PaymentRequest::Create(
@@ -178,8 +165,7 @@ TEST(PaymentRequestUpdateEventTest, AddressChangeUpdateWithTimeout) {
 
   event->updateWith(
       scope.GetScriptState(),
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState())
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState())
           ->Promise(),
       scope.GetExceptionState());
 
@@ -189,7 +175,6 @@ TEST(PaymentRequestUpdateEventTest, AddressChangeUpdateWithTimeout) {
 }
 
 TEST(PaymentRequestUpdateEventTest, OptionChangeUpdateWithTimeout) {
-  test::TaskEnvironment task_environment;
   PaymentRequestV8TestingScope scope;
   MockFunctionScope funcs(scope.GetScriptState());
   PaymentRequest* request = PaymentRequest::Create(
@@ -219,8 +204,7 @@ TEST(PaymentRequestUpdateEventTest, OptionChangeUpdateWithTimeout) {
 
   event->updateWith(
       scope.GetScriptState(),
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState())
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState())
           ->Promise(),
       scope.GetExceptionState());
 
@@ -230,7 +214,6 @@ TEST(PaymentRequestUpdateEventTest, OptionChangeUpdateWithTimeout) {
 }
 
 TEST(PaymentRequestUpdateEventTest, AddressChangePromiseTimeout) {
-  test::TaskEnvironment task_environment;
   PaymentRequestV8TestingScope scope;
   MockFunctionScope funcs(scope.GetScriptState());
   PaymentRequest* request = PaymentRequest::Create(
@@ -251,8 +234,7 @@ TEST(PaymentRequestUpdateEventTest, AddressChangePromiseTimeout) {
   static_cast<payments::mojom::blink::PaymentRequestClient*>(request)
       ->OnShippingAddressChange(BuildPaymentAddressForTest());
   auto* payment_details =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState());
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
   event->updateWith(scope.GetScriptState(), payment_details->Promise(),
                     scope.GetExceptionState());
   EXPECT_FALSE(scope.GetExceptionState().HadException());
@@ -265,11 +247,10 @@ TEST(PaymentRequestUpdateEventTest, AddressChangePromiseTimeout) {
       "PaymentRequestUpdateEvent.updateWith(promise) to resolve.",
       error_message);
 
-  payment_details->Resolve();
+  payment_details->Resolve("foo");
 }
 
 TEST(PaymentRequestUpdateEventTest, OptionChangePromiseTimeout) {
-  test::TaskEnvironment task_environment;
   PaymentRequestV8TestingScope scope;
   MockFunctionScope funcs(scope.GetScriptState());
   PaymentRequest* request = PaymentRequest::Create(
@@ -290,8 +271,7 @@ TEST(PaymentRequestUpdateEventTest, OptionChangePromiseTimeout) {
   static_cast<payments::mojom::blink::PaymentRequestClient*>(request)
       ->OnShippingAddressChange(BuildPaymentAddressForTest());
   auto* payment_details =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState());
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
   event->updateWith(scope.GetScriptState(), payment_details->Promise(),
                     scope.GetExceptionState());
   EXPECT_FALSE(scope.GetExceptionState().HadException());
@@ -304,11 +284,10 @@ TEST(PaymentRequestUpdateEventTest, OptionChangePromiseTimeout) {
       "PaymentRequestUpdateEvent.updateWith(promise) to resolve.",
       error_message);
 
-  payment_details->Resolve();
+  payment_details->Resolve("foo");
 }
 
 TEST(PaymentRequestUpdateEventTest, NotAllowUntrustedEvent) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   PaymentRequestUpdateEvent* event = PaymentRequestUpdateEvent::Create(
       scope.GetExecutionContext(), event_type_names::kShippingaddresschange);
@@ -316,8 +295,7 @@ TEST(PaymentRequestUpdateEventTest, NotAllowUntrustedEvent) {
 
   event->updateWith(
       scope.GetScriptState(),
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          scope.GetScriptState())
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState())
           ->Promise(),
       scope.GetExceptionState());
 

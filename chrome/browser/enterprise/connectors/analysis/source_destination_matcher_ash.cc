@@ -4,14 +4,13 @@
 
 #include "chrome/browser/enterprise/connectors/analysis/source_destination_matcher_ash.h"
 
-#include <optional>
-
 #include "base/files/file_path.h"
 #include "base/notreached.h"
 #include "base/values.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
 #include "chrome/browser/ash/guest_os/public/types.h"
 #include "storage/browser/file_system/file_system_url.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace storage {
 class FileSystemURL;
@@ -137,7 +136,7 @@ std::string SourceDestinationMatcherAsh::GetVolumeDescriptionFromPath(
 }
 
 // static
-std::optional<SourceDestinationMatcherAsh::FsType>
+absl::optional<SourceDestinationMatcherAsh::FsType>
 SourceDestinationMatcherAsh::StringToFsType(const std::string& s) {
   if (s == "TESTING") {
     return SourceDestinationMatcherAsh::FsType::kTesting;
@@ -184,7 +183,7 @@ SourceDestinationMatcherAsh::StringToFsType(const std::string& s) {
   if (s == "UNKNOWN_VM") {
     return SourceDestinationMatcherAsh::FsType::kUnknownVm;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::set<SourceDestinationMatcherAsh::FsType>

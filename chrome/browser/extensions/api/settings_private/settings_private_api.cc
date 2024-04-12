@@ -25,7 +25,7 @@ SettingsPrivateSetPrefFunction::~SettingsPrivateSetPrefFunction() {
 }
 
 ExtensionFunction::ResponseAction SettingsPrivateSetPrefFunction::Run() {
-  std::optional<api::settings_private::SetPref::Params> parameters =
+  absl::optional<api::settings_private::SetPref::Params> parameters =
       api::settings_private::SetPref::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(parameters);
 
@@ -76,7 +76,7 @@ SettingsPrivateGetPrefFunction::~SettingsPrivateGetPrefFunction() {
 }
 
 ExtensionFunction::ResponseAction SettingsPrivateGetPrefFunction::Run() {
-  std::optional<api::settings_private::GetPref::Params> parameters =
+  absl::optional<api::settings_private::GetPref::Params> parameters =
       api::settings_private::GetPref::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(parameters);
 
@@ -84,7 +84,7 @@ ExtensionFunction::ResponseAction SettingsPrivateGetPrefFunction::Run() {
       SettingsPrivateDelegateFactory::GetForBrowserContext(browser_context());
   DCHECK(delegate);
 
-  std::optional<base::Value::Dict> value = delegate->GetPref(parameters->name);
+  absl::optional<base::Value::Dict> value = delegate->GetPref(parameters->name);
   if (!value) {
     return RespondNow(Error("Pref * does not exist", parameters->name));
   }
@@ -118,7 +118,7 @@ SettingsPrivateSetDefaultZoomFunction::
 
 ExtensionFunction::ResponseAction
     SettingsPrivateSetDefaultZoomFunction::Run() {
-  std::optional<api::settings_private::SetDefaultZoom::Params> parameters =
+  absl::optional<api::settings_private::SetDefaultZoom::Params> parameters =
       api::settings_private::SetDefaultZoom::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(parameters);
 

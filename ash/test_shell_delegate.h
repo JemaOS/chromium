@@ -10,7 +10,6 @@
 
 #include "ash/shell_delegate.h"
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "chromeos/ash/services/multidevice_setup/public/mojom/multidevice_setup.mojom.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "url/gurl.h"
@@ -18,7 +17,6 @@
 namespace ash {
 
 class UserEducationDelegate;
-class WindowState;
 
 class TestShellDelegate : public ShellDelegate {
  public:
@@ -28,10 +26,6 @@ class TestShellDelegate : public ShellDelegate {
   TestShellDelegate& operator=(const TestShellDelegate&) = delete;
 
   ~TestShellDelegate() override;
-
-  int open_feedback_dialog_call_count() const {
-    return open_feedback_dialog_call_count_;
-  }
 
   // Allows tests to override the MultiDeviceSetup binding behavior for this
   // TestShellDelegate.
@@ -53,12 +47,10 @@ class TestShellDelegate : public ShellDelegate {
   bool CanShowWindowForUser(const aura::Window* window) const override;
   std::unique_ptr<CaptureModeDelegate> CreateCaptureModeDelegate()
       const override;
-  std::unique_ptr<ClipboardHistoryControllerDelegate>
-  CreateClipboardHistoryControllerDelegate() const override;
   std::unique_ptr<GameDashboardDelegate> CreateGameDashboardDelegate()
       const override;
-  std::unique_ptr<AcceleratorPrefsDelegate> CreateAcceleratorPrefsDelegate()
-      const override;
+  std::unique_ptr<GlanceablesDelegate> CreateGlanceablesDelegate(
+      GlanceablesController* controller) const override;
   AccessibilityDelegate* CreateAccessibilityDelegate() override;
   std::unique_ptr<BackGestureContextualNudgeDelegate>
   CreateBackGestureContextualNudgeDelegate(
@@ -70,7 +62,6 @@ class TestShellDelegate : public ShellDelegate {
   std::unique_ptr<SavedDeskDelegate> CreateSavedDeskDelegate() const override;
   std::unique_ptr<SystemSoundsDelegate> CreateSystemSoundsDelegate()
       const override;
-  std::unique_ptr<api::TasksDelegate> CreateTasksDelegate() const override;
   std::unique_ptr<UserEducationDelegate> CreateUserEducationDelegate()
       const override;
   scoped_refptr<network::SharedURLLoaderFactory>
@@ -81,8 +72,6 @@ class TestShellDelegate : public ShellDelegate {
       ShouldExitFullscreenCallback callback) override;
   bool ShouldWaitForTouchPressAck(gfx::NativeWindow window) override;
   int GetBrowserWebUITabStripHeight() override;
-  DeskProfilesDelegate* GetDeskProfilesDelegate() override;
-  void OpenMultitaskingSettings() override;
   void BindMultiDeviceSetup(
       mojo::PendingReceiver<multidevice_setup::mojom::MultiDeviceSetup>
           receiver) override;
@@ -90,12 +79,10 @@ class TestShellDelegate : public ShellDelegate {
       mojo::PendingReceiver<video_capture::mojom::MultiCaptureService> receiver)
       override;
   bool IsSessionRestoreInProgress() const override;
-  void SetUpEnvironmentForLockedFullscreen(
-      const WindowState& window_state) override {}
+  void SetUpEnvironmentForLockedFullscreen(bool locked) override {}
   const GURL& GetLastCommittedURLForWindowIfAny(aura::Window* window) override;
   void ForceSkipWarningUserOnClose(
-      const std::vector<raw_ptr<aura::Window, VectorExperimental>>& windows)
-      override {}
+      const std::vector<aura::Window*>& windows) override {}
 
   void SetCanGoBack(bool can_go_back);
   void SetShouldExitFullscreenBeforeLock(
@@ -105,9 +92,7 @@ class TestShellDelegate : public ShellDelegate {
   bool IsLoggingRedirectDisabled() const override;
   base::FilePath GetPrimaryUserDownloadsFolder() const override;
   void OpenFeedbackDialog(FeedbackSource source,
-                          const std::string& description_template,
-                          const std::string& category_tag) override;
-  void OpenProfileManager() override {}
+                          const std::string& description_template) override {}
   void SetLastCommittedURLForWindow(const GURL& url);
   version_info::Channel GetChannel() override;
   std::string GetVersionString() override;
@@ -137,18 +122,14 @@ class TestShellDelegate : public ShellDelegate {
   // True if window browser sessions are restoring.
   bool session_restore_in_progress_ = false;
 
-  std::unique_ptr<DeskProfilesDelegate> test_desk_profiles_delegate_;
-
   MultiDeviceSetupBinder multidevice_setup_binder_;
   UserEducationDelegateFactory user_education_delegate_factory_;
 
-  GURL last_committed_url_;
+  GURL last_committed_url_ = GURL::EmptyGURL();
 
   version_info::Channel channel_ = version_info::Channel::UNKNOWN;
 
   std::string version_string_;
-
-  int open_feedback_dialog_call_count_ = 0;
 };
 
 }  // namespace ash

@@ -8,12 +8,10 @@
 #include <string>
 #include <vector>
 
-#include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/string_piece.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/test/values_test_util.h"
-#include "chrome/browser/media/router/discovery/dial/device_description_fetcher.h"
 #include "chrome/browser/media/router/discovery/dial/dial_app_discovery_service.h"
 #include "chrome/browser/media/router/discovery/dial/dial_media_sink_service.h"
 #include "chrome/browser/media/router/discovery/dial/dial_url_fetcher.h"
@@ -98,30 +96,15 @@ class TestDialURLFetcher : public DialURLFetcher {
   ~TestDialURLFetcher() override;
   void Start(const GURL& url,
              const std::string& method,
-             const std::optional<std::string>& post_data,
+             const absl::optional<std::string>& post_data,
              int max_retries,
              bool set_origin_header) override;
   MOCK_METHOD4(DoStart,
                void(const GURL&,
                     const std::string&,
-                    const std::optional<std::string>&,
+                    const absl::optional<std::string>&,
                     int));
   void StartDownload() override;
-
- private:
-  const raw_ptr<network::TestURLLoaderFactory> factory_;
-};
-
-class TestDeviceDescriptionFetcher : public DeviceDescriptionFetcher {
- public:
-  TestDeviceDescriptionFetcher(
-      const DialDeviceData& device_data,
-      base::OnceCallback<void(const DialDeviceDescriptionData&)> success_cb,
-      base::OnceCallback<void(const std::string&)> error_cb,
-      network::TestURLLoaderFactory* factory);
-  ~TestDeviceDescriptionFetcher() override;
-
-  void Start() override;
 
  private:
   const raw_ptr<network::TestURLLoaderFactory> factory_;
@@ -143,7 +126,7 @@ class TestDialActivityManager : public DialActivityManager {
 
   void SetExpectedRequest(const GURL& url,
                           const std::string& method,
-                          const std::optional<std::string>& post_data);
+                          const absl::optional<std::string>& post_data);
 
   MOCK_METHOD0(OnFetcherCreated, void());
 
@@ -152,18 +135,18 @@ class TestDialActivityManager : public DialActivityManager {
 
   GURL expected_url_;
   std::string expected_method_;
-  std::optional<std::string> expected_post_data_;
+  absl::optional<std::string> expected_post_data_;
 };
 
 // Helper function to create an IP endpoint object.
-// If `num` is 1, returns 192.168.0.101:8009;
-// If `num` is 2, returns 192.168.0.102:8009.
+// If |num| is 1, returns 192.168.0.101:8009;
+// If |num| is 2, returns 192.168.0.102:8009.
 net::IPEndPoint CreateIPEndPoint(int num);
 
 // Helper function to create a DIAL media sink object.
-// If `num` is 1, returns a media sink object with following data:
+// If |num| is 1, returns a media sink object with following data:
 // {
-//   id: "dial:id1",
+//   id: "id 1",
 //   name: "friendly name 1",
 //   extra_data {
 //     model_name: "model name 1"

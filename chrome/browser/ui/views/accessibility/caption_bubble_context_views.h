@@ -39,12 +39,9 @@ class CaptionBubbleContextViews : public CaptionBubbleContextBrowser {
   bool IsActivatable() const override;
   std::unique_ptr<CaptionBubbleSessionObserver>
   GetCaptionBubbleSessionObserver() override;
-  OpenCaptionSettingsCallback GetOpenCaptionSettingsCallback() override;
 
  private:
-  void OpenCaptionSettings();
-
-  raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged> web_contents_;
+  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_;
 
   std::unique_ptr<CaptionBubbleSessionObserver> web_contents_observer_;
 };

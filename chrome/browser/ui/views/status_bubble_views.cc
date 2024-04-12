@@ -46,7 +46,7 @@
 #include "ui/views/controls/scrollbar/scroll_bar_views.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
+#include "ui/views/views_features.h"
 #include "ui/views/widget/root_view.h"
 #include "ui/views/widget/widget.h"
 #include "url/gurl.h"
@@ -87,8 +87,8 @@ constexpr auto kMaxExpansionStepDuration = base::Milliseconds(150);
 constexpr auto kDestroyPopupDelay = base::Seconds(10);
 
 const gfx::FontList& GetFont() {
-  return views::TypographyProvider::Get().GetFont(views::style::CONTEXT_LABEL,
-                                                  views::style::STYLE_PRIMARY);
+  return views::style::GetFont(views::style::CONTEXT_LABEL,
+                               views::style::STYLE_PRIMARY);
 }
 
 }  // namespace
@@ -128,9 +128,9 @@ class StatusBubbleViews::StatusViewAnimation
 // StatusView manages the display of the bubble, applying text changes and
 // fading in or out the bubble as required.
 class StatusBubbleViews::StatusView : public views::View {
-  METADATA_HEADER(StatusView, views::View)
-
  public:
+  METADATA_HEADER(StatusView);
+
   // The bubble can be in one of many states:
   enum class BubbleState {
     kHidden,
@@ -569,7 +569,7 @@ DEFINE_ENUM_CONVERTERS(StatusView::BubbleStyle,
                        {StatusView::BubbleStyle::kStandardRight,
                         u"kStandardRight"})
 
-BEGIN_METADATA(StatusView)
+BEGIN_METADATA(StatusView, views::View)
 ADD_PROPERTY_METADATA(std::u16string, Text)
 ADD_READONLY_PROPERTY_METADATA(StatusView::BubbleState, State)
 ADD_PROPERTY_METADATA(StatusView::BubbleStyle, Style)
@@ -742,7 +742,11 @@ void StatusBubbleViews::InitPopup() {
 #if !BUILDFLAG(IS_MAC)
     // Stack the popup above the base widget and below higher z-order windows.
     // This is unnecessary and even detrimental on Mac, see CreateBubbleWidget.
-    popup_->SetZOrderSublevel(ChromeWidgetSublevel::kSublevelHoverable);
+    if (base::FeatureList::IsEnabled(views::features::kWidgetLayering)) {
+      popup_->SetZOrderSublevel(ChromeWidgetSublevel::kSublevelHoverable);
+    } else {
+      popup_->StackAboveWidget(frame);
+    }
 #endif
     RepositionPopup();
   }
@@ -801,6 +805,11 @@ int StatusBubbleViews::GetWidthForURL(const std::u16string& url_string) {
   int elided_url_width = gfx::GetStringWidth(url_string, GetFont());
   // Add proper paddings
   return elided_url_width + (kShadowThickness + kTextHorizPadding) * 2 + 1;
+}
+
+void StatusBubbleViews::OnThemeChanged() {
+  if (popup_)
+    popup_->ThemeChanged();
 }
 
 void StatusBubbleViews::SetStatus(const std::u16string& status_text) {

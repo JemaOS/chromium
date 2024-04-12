@@ -20,10 +20,10 @@ public class FrozenNativePage implements NativePage {
     private final String mHost;
     private final String mTitle;
     private final int mBackgroundColor;
-    private final boolean mIsPdf;
-    private final String mCanonicalFilepath;
 
-    /** Creates a FrozenNativePage to replace the given NativePage and destroys the NativePage. */
+    /**
+     * Creates a FrozenNativePage to replace the given NativePage and destroys the NativePage.
+     */
     public static FrozenNativePage freeze(NativePage nativePage) {
         FrozenNativePage fnp = new FrozenNativePage(nativePage);
         nativePage.destroy();
@@ -35,8 +35,6 @@ public class FrozenNativePage implements NativePage {
         mUrl = nativePage.getUrl();
         mTitle = nativePage.getTitle();
         mBackgroundColor = nativePage.getBackgroundColor();
-        mIsPdf = nativePage.isPdf();
-        mCanonicalFilepath = nativePage.getCanonicalFilepath();
     }
 
     @Override
@@ -66,8 +64,18 @@ public class FrozenNativePage implements NativePage {
     }
 
     @Override
+    public @ColorInt int getToolbarTextBoxBackgroundColor(@ColorInt int defaultColor) {
+        return defaultColor;
+    }
+
+    @Override
     public @ColorInt int getToolbarSceneLayerBackground(@ColorInt int defaultColor) {
         return defaultColor;
+    }
+
+    @Override
+    public float getToolbarTextBoxAlpha(float defaultAlpha) {
+        return 1.f;
     }
 
     @Override
@@ -81,16 +89,6 @@ public class FrozenNativePage implements NativePage {
     @Override
     public boolean isFrozen() {
         return true;
-    }
-
-    @Override
-    public boolean isPdf() {
-        return mIsPdf;
-    }
-
-    @Override
-    public String getCanonicalFilepath() {
-        return mCanonicalFilepath;
     }
 
     @Override

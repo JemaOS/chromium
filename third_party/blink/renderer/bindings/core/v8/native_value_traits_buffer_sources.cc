@@ -7,7 +7,6 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
-#include "third_party/blink/renderer/core/typed_arrays/flexible_array_buffer_view.h"
 #include "third_party/blink/renderer/core/typed_arrays/typed_flexible_array_buffer_view.h"
 
 namespace blink {
@@ -296,6 +295,7 @@ struct RecipeTrait<
   static bool IsResizable(v8::Local<v8::Value> buffer) {
     return buffer.As<typename ABVTrait<T>::V8ViewType>()
         ->Buffer()
+        ->GetBackingStore()
         ->IsResizableByUserJavaScript();
   }
 };
@@ -308,8 +308,9 @@ DOMArrayBuffer* ToDOMArrayBuffer(v8::Isolate* isolate,
     return nullptr;
 
   v8::Local<v8::ArrayBuffer> v8_array_buffer = value.As<v8::ArrayBuffer>();
-  if (ScriptWrappable* array_buffer = ToScriptWrappable(v8_array_buffer)) {
-    return array_buffer->ToImpl<DOMArrayBuffer>();
+  if (DOMArrayBuffer* array_buffer =
+          ToScriptWrappable(v8_array_buffer)->ToImpl<DOMArrayBuffer>()) {
+    return array_buffer;
   }
 
   // Transfer the ownership of the allocated memory to a DOMArrayBuffer without
@@ -329,9 +330,10 @@ DOMSharedArrayBuffer* ToDOMSharedArrayBuffer(v8::Isolate* isolate,
 
   v8::Local<v8::SharedArrayBuffer> v8_shared_array_buffer =
       value.As<v8::SharedArrayBuffer>();
-  if (ScriptWrappable* shared_array_buffer =
-          ToScriptWrappable(v8_shared_array_buffer)) {
-    return shared_array_buffer->ToImpl<DOMSharedArrayBuffer>();
+  if (DOMSharedArrayBuffer* shared_array_buffer =
+          ToScriptWrappable(v8_shared_array_buffer)
+              ->ToImpl<DOMSharedArrayBuffer>()) {
+    return shared_array_buffer;
   }
 
   // Transfer the ownership of the allocated memory to a DOMArrayBuffer without
@@ -366,8 +368,9 @@ DOMViewType* ToDOMViewType(v8::Isolate* isolate, v8::Local<v8::Value> value) {
 
   v8::Local<typename Trait::V8ViewType> v8_view =
       value.As<typename Trait::V8ViewType>();
-  if (ScriptWrappable* blink_view = ToScriptWrappable(v8_view)) {
-    return blink_view->ToImpl<DOMViewType>();
+  if (DOMViewType* blink_view =
+          ToScriptWrappable(v8_view)->template ToImpl<DOMViewType>()) {
+    return blink_view;
   }
 
   v8::Local<v8::Object> v8_buffer = v8_view->Buffer();
@@ -398,8 +401,9 @@ DOMArrayBufferView* ToDOMArrayBufferView(v8::Isolate* isolate,
     return nullptr;
 
   v8::Local<v8::ArrayBufferView> v8_view = value.As<v8::ArrayBufferView>();
-  if (ScriptWrappable* blink_view = ToScriptWrappable(v8_view)) {
-    return blink_view->ToImpl<DOMArrayBufferView>();
+  if (DOMArrayBufferView* blink_view =
+          ToScriptWrappable(v8_view)->template ToImpl<DOMArrayBufferView>()) {
+    return blink_view;
   }
 
   if (v8_view->IsInt8Array())
@@ -698,11 +702,12 @@ DOMArrayBufferBase* NativeValueTraits<
 // ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-NotShared<T> NativeValueTraits<NotShared<T>>::NativeValue(
-    v8::Isolate* isolate,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+NotShared<T> NativeValueTraits<
+    NotShared<T>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    NativeValue(v8::Isolate* isolate,
+                v8::Local<v8::Value> value,
+                ExceptionState& exception_state) {
   return NativeValueImpl<
       RecipeTrait<NotShared<T>>, ToDOMViewType<T, kNotShared>,
       Nullablity::kIsNotNullable, BufferSizeCheck::kCheck,
@@ -711,12 +716,13 @@ NotShared<T> NativeValueTraits<NotShared<T>>::NativeValue(
 }
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-NotShared<T> NativeValueTraits<NotShared<T>>::ArgumentValue(
-    v8::Isolate* isolate,
-    int argument_index,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+NotShared<T> NativeValueTraits<
+    NotShared<T>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    ArgumentValue(v8::Isolate* isolate,
+                  int argument_index,
+                  v8::Local<v8::Value> value,
+                  ExceptionState& exception_state) {
   return ArgumentValueImpl<
       RecipeTrait<NotShared<T>>, ToDOMViewType<T, kNotShared>,
       Nullablity::kIsNotNullable, BufferSizeCheck::kCheck,
@@ -727,11 +733,12 @@ NotShared<T> NativeValueTraits<NotShared<T>>::ArgumentValue(
 // [AllowShared] ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-MaybeShared<T> NativeValueTraits<MaybeShared<T>>::NativeValue(
-    v8::Isolate* isolate,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+MaybeShared<T> NativeValueTraits<
+    MaybeShared<T>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    NativeValue(v8::Isolate* isolate,
+                v8::Local<v8::Value> value,
+                ExceptionState& exception_state) {
   return NativeValueImpl<RecipeTrait<MaybeShared<T>>,
                          ToDOMViewType<T, kMaybeShared>,
                          Nullablity::kIsNotNullable, BufferSizeCheck::kCheck,
@@ -740,12 +747,13 @@ MaybeShared<T> NativeValueTraits<MaybeShared<T>>::NativeValue(
 }
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-MaybeShared<T> NativeValueTraits<MaybeShared<T>>::ArgumentValue(
-    v8::Isolate* isolate,
-    int argument_index,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+MaybeShared<T> NativeValueTraits<
+    MaybeShared<T>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    ArgumentValue(v8::Isolate* isolate,
+                  int argument_index,
+                  v8::Local<v8::Value> value,
+                  ExceptionState& exception_state) {
   return ArgumentValueImpl<RecipeTrait<MaybeShared<T>>,
                            ToDOMViewType<T, kMaybeShared>,
                            Nullablity::kIsNotNullable, BufferSizeCheck::kCheck,
@@ -756,12 +764,12 @@ MaybeShared<T> NativeValueTraits<MaybeShared<T>>::ArgumentValue(
 // [AllowShared, BufferSourceTypeNoSizeLimit] ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-MaybeShared<T>
-NativeValueTraits<IDLBufferSourceTypeNoSizeLimit<MaybeShared<T>>>::NativeValue(
-    v8::Isolate* isolate,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+MaybeShared<T> NativeValueTraits<
+    IDLBufferSourceTypeNoSizeLimit<MaybeShared<T>>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    NativeValue(v8::Isolate* isolate,
+                v8::Local<v8::Value> value,
+                ExceptionState& exception_state) {
   return NativeValueImpl<
       RecipeTrait<MaybeShared<T>>, ToDOMViewType<T, kMaybeShared>,
       Nullablity::kIsNotNullable, BufferSizeCheck::kDoNotCheck,
@@ -770,12 +778,13 @@ NativeValueTraits<IDLBufferSourceTypeNoSizeLimit<MaybeShared<T>>>::NativeValue(
 }
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-MaybeShared<T> NativeValueTraits<IDLBufferSourceTypeNoSizeLimit<
-    MaybeShared<T>>>::ArgumentValue(v8::Isolate* isolate,
-                                    int argument_index,
-                                    v8::Local<v8::Value> value,
-                                    ExceptionState& exception_state) {
+MaybeShared<T> NativeValueTraits<
+    IDLBufferSourceTypeNoSizeLimit<MaybeShared<T>>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    ArgumentValue(v8::Isolate* isolate,
+                  int argument_index,
+                  v8::Local<v8::Value> value,
+                  ExceptionState& exception_state) {
   return ArgumentValueImpl<
       RecipeTrait<MaybeShared<T>>, ToDOMViewType<T, kMaybeShared>,
       Nullablity::kIsNotNullable, BufferSizeCheck::kDoNotCheck,
@@ -786,11 +795,12 @@ MaybeShared<T> NativeValueTraits<IDLBufferSourceTypeNoSizeLimit<
 // Nullable ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-NotShared<T> NativeValueTraits<IDLNullable<NotShared<T>>>::NativeValue(
-    v8::Isolate* isolate,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+NotShared<T> NativeValueTraits<
+    IDLNullable<NotShared<T>>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    NativeValue(v8::Isolate* isolate,
+                v8::Local<v8::Value> value,
+                ExceptionState& exception_state) {
   return NativeValueImpl<
       RecipeTrait<NotShared<T>>, ToDOMViewType<T, kNotShared>,
       Nullablity::kIsNullable, BufferSizeCheck::kCheck,
@@ -799,12 +809,13 @@ NotShared<T> NativeValueTraits<IDLNullable<NotShared<T>>>::NativeValue(
 }
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-NotShared<T> NativeValueTraits<IDLNullable<NotShared<T>>>::ArgumentValue(
-    v8::Isolate* isolate,
-    int argument_index,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+NotShared<T> NativeValueTraits<
+    IDLNullable<NotShared<T>>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    ArgumentValue(v8::Isolate* isolate,
+                  int argument_index,
+                  v8::Local<v8::Value> value,
+                  ExceptionState& exception_state) {
   return ArgumentValueImpl<
       RecipeTrait<NotShared<T>>, ToDOMViewType<T, kNotShared>,
       Nullablity::kIsNullable, BufferSizeCheck::kCheck,
@@ -815,11 +826,12 @@ NotShared<T> NativeValueTraits<IDLNullable<NotShared<T>>>::ArgumentValue(
 // Nullable [AllowShared] ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-MaybeShared<T> NativeValueTraits<IDLNullable<MaybeShared<T>>>::NativeValue(
-    v8::Isolate* isolate,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+MaybeShared<T> NativeValueTraits<
+    IDLNullable<MaybeShared<T>>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    NativeValue(v8::Isolate* isolate,
+                v8::Local<v8::Value> value,
+                ExceptionState& exception_state) {
   return NativeValueImpl<RecipeTrait<MaybeShared<T>>,
                          ToDOMViewType<T, kMaybeShared>,
                          Nullablity::kIsNullable, BufferSizeCheck::kCheck,
@@ -828,12 +840,13 @@ MaybeShared<T> NativeValueTraits<IDLNullable<MaybeShared<T>>>::NativeValue(
 }
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-MaybeShared<T> NativeValueTraits<IDLNullable<MaybeShared<T>>>::ArgumentValue(
-    v8::Isolate* isolate,
-    int argument_index,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+MaybeShared<T> NativeValueTraits<
+    IDLNullable<MaybeShared<T>>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
+    ArgumentValue(v8::Isolate* isolate,
+                  int argument_index,
+                  v8::Local<v8::Value> value,
+                  ExceptionState& exception_state) {
   return ArgumentValueImpl<RecipeTrait<MaybeShared<T>>,
                            ToDOMViewType<T, kMaybeShared>,
                            Nullablity::kIsNullable, BufferSizeCheck::kCheck,
@@ -844,9 +857,9 @@ MaybeShared<T> NativeValueTraits<IDLNullable<MaybeShared<T>>>::ArgumentValue(
 // Nullable [AllowShared, BufferSourceTypeNoSizeLimit] ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, DOMArrayBufferView>
-MaybeShared<T>
-NativeValueTraits<IDLNullable<IDLBufferSourceTypeNoSizeLimit<MaybeShared<T>>>>::
+MaybeShared<T> NativeValueTraits<
+    IDLNullable<IDLBufferSourceTypeNoSizeLimit<MaybeShared<T>>>,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>>::
     ArgumentValue(v8::Isolate* isolate,
                   int argument_index,
                   v8::Local<v8::Value> value,
@@ -861,11 +874,13 @@ NativeValueTraits<IDLNullable<IDLBufferSourceTypeNoSizeLimit<MaybeShared<T>>>>::
 // [AllowShared, FlexibleArrayBufferView] ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, FlexibleArrayBufferView>
-T NativeValueTraits<T>::ArgumentValue(v8::Isolate* isolate,
-                                      int argument_index,
-                                      v8::Local<v8::Value> value,
-                                      ExceptionState& exception_state) {
+T NativeValueTraits<T,
+                    typename std::enable_if_t<
+                        std::is_base_of<FlexibleArrayBufferView, T>::value>>::
+    ArgumentValue(v8::Isolate* isolate,
+                  int argument_index,
+                  v8::Local<v8::Value> value,
+                  ExceptionState& exception_state) {
   return ArgumentValueImpl<RecipeTrait<T>, ToFlexibleArrayBufferView,
                            Nullablity::kIsNotNullable, BufferSizeCheck::kCheck,
                            ResizableAllowance::kDisallowResizable,
@@ -877,12 +892,13 @@ T NativeValueTraits<T>::ArgumentValue(v8::Isolate* isolate,
 // ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, FlexibleArrayBufferView>
-T NativeValueTraits<IDLBufferSourceTypeNoSizeLimit<T>>::ArgumentValue(
-    v8::Isolate* isolate,
-    int argument_index,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+T NativeValueTraits<IDLBufferSourceTypeNoSizeLimit<T>,
+                    typename std::enable_if_t<
+                        std::is_base_of<FlexibleArrayBufferView, T>::value>>::
+    ArgumentValue(v8::Isolate* isolate,
+                  int argument_index,
+                  v8::Local<v8::Value> value,
+                  ExceptionState& exception_state) {
   return ArgumentValueImpl<
       RecipeTrait<T>, ToFlexibleArrayBufferView, Nullablity::kIsNotNullable,
       BufferSizeCheck::kDoNotCheck, ResizableAllowance::kDisallowResizable,
@@ -893,12 +909,13 @@ T NativeValueTraits<IDLBufferSourceTypeNoSizeLimit<T>>::ArgumentValue(
 // Nullable [AllowShared, FlexibleArrayBufferView] ArrayBufferView
 
 template <typename T>
-  requires std::derived_from<T, FlexibleArrayBufferView>
-T NativeValueTraits<IDLNullable<T>>::ArgumentValue(
-    v8::Isolate* isolate,
-    int argument_index,
-    v8::Local<v8::Value> value,
-    ExceptionState& exception_state) {
+T NativeValueTraits<IDLNullable<T>,
+                    typename std::enable_if_t<
+                        std::is_base_of<FlexibleArrayBufferView, T>::value>>::
+    ArgumentValue(v8::Isolate* isolate,
+                  int argument_index,
+                  v8::Local<v8::Value> value,
+                  ExceptionState& exception_state) {
   return ArgumentValueImpl<RecipeTrait<T>, ToFlexibleArrayBufferView,
                            Nullablity::kIsNullable, BufferSizeCheck::kCheck,
                            ResizableAllowance::kDisallowResizable,

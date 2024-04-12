@@ -10,7 +10,6 @@
 
 #include <cassert>
 #include <climits>
-#include <cstdlib>
 #include <string>
 
 namespace test_fonts {

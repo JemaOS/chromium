@@ -20,8 +20,7 @@
 // https://w3c.github.io/uievents/#interface-MutationEvent
 
 [
-    Exposed=Window,
-    RuntimeEnabled=MutationEvents
+    Exposed=Window
 ] interface MutationEvent : Event {
     // attrChangeType
     const unsigned short MODIFICATION = 1;
@@ -34,7 +33,7 @@
     readonly attribute DOMString      attrName;
     readonly attribute unsigned short attrChange;
     // TODO(foolip): None of the initMutationEvent() arguments should be optional.
-    [Measure] void initMutationEvent(DOMString type,
+    [Measure] void initMutationEvent(optional DOMString type = "undefined",
                                      optional boolean bubbles = false,
                                      optional boolean cancelable = false,
                                      optional Node? relatedNode = null,

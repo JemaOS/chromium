@@ -26,10 +26,8 @@
 #include "third_party/blink/renderer/platform/graphics/image_frame_generator.h"
 
 #include <memory>
-#include "base/features.h"
 #include "base/location.h"
 #include "base/test/metrics/histogram_tester.h"
-#include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/platform/graphics/image_decoding_store.h"
@@ -37,7 +35,6 @@
 #include "third_party/blink/renderer/platform/image-decoders/segment_reader.h"
 #include "third_party/blink/renderer/platform/scheduler/public/non_main_thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
@@ -65,7 +62,7 @@ class ImageFrameGeneratorTest : public testing::Test,
   void SetUp() override {
     ImageDecodingStore::Instance().SetCacheLimitInBytes(1024 * 1024);
     generator_ = ImageFrameGenerator::Create(FullSize(), false,
-                                             ColorBehavior::kIgnore, {});
+                                             ColorBehavior::Ignore(), {});
     data_ = SharedBuffer::Create();
     segment_reader_ = SegmentReader::CreateFromSharedBuffer(data_);
     UseMockImageDecoderFactory();
@@ -120,18 +117,17 @@ class ImageFrameGeneratorTest : public testing::Test,
     if (count > 1) {
       generator_ = nullptr;
       generator_ = ImageFrameGenerator::Create(FullSize(), true,
-                                               ColorBehavior::kIgnore, {});
+                                               ColorBehavior::Ignore(), {});
       UseMockImageDecoderFactory();
     }
   }
   void SetSupportedSizes(Vector<SkISize> sizes) {
     generator_ = nullptr;
     generator_ = ImageFrameGenerator::Create(
-        FullSize(), true, ColorBehavior::kIgnore, std::move(sizes));
+        FullSize(), true, ColorBehavior::Ignore(), std::move(sizes));
     UseMockImageDecoderFactory();
   }
 
-  test::TaskEnvironment task_environment_;
   scoped_refptr<SharedBuffer> data_;
   scoped_refptr<SegmentReader> segment_reader_;
   scoped_refptr<ImageFrameGenerator> generator_;
@@ -202,14 +198,6 @@ TEST_F(ImageFrameGeneratorTest, GetSupportedSizes) {
 }
 
 TEST_F(ImageFrameGeneratorTest, incompleteDecode) {
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
-  base::test::ScopedFeatureList feature_list;
-  // Since PartialLowEndModeOnMidRangeDevices is enabled, image decoders
-  // are destroyed because of the incomplete decode for saving memory.
-  feature_list.InitAndDisableFeature(
-      base::features::kPartialLowEndModeOnMidRangeDevices);
-#endif  // BUILDFLAG(IS_ANDROID)
-
   SetFrameStatus(ImageFrame::kFramePartial);
 
   char buffer[100 * 100 * 4];
@@ -257,14 +245,6 @@ TEST_F(ImageFrameGeneratorTest, LowEndDeviceDestroysDecoderOnPartialDecode) {
 }
 
 TEST_F(ImageFrameGeneratorTest, incompleteDecodeBecomesComplete) {
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
-  base::test::ScopedFeatureList feature_list;
-  // Since PartialLowEndModeOnMidRangeDevices is enabled, image decoders
-  // are destroyed because of the incomplete decode for saving memory.
-  feature_list.InitAndDisableFeature(
-      base::features::kPartialLowEndModeOnMidRangeDevices);
-#endif  // BUILDFLAG(IS_ANDROID)
-
   SetFrameStatus(ImageFrame::kFramePartial);
 
   char buffer[100 * 100 * 4];
@@ -343,16 +323,6 @@ TEST_F(ImageFrameGeneratorTest,
 }
 
 TEST_F(ImageFrameGeneratorTest, frameHasAlpha) {
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
-  base::test::ScopedFeatureList feature_list;
-  // Since PartialLowEndModeOnMidRangeDevices is enabled, image decoders
-  // are not cached because it makes ShouldDecodeToExternalMemory()
-  // return true. The value will be provided for ImageDecoderWrapper::
-  // ShouldRemoveDecoder() and ShouldRemoveDecoder() will return true.
-  feature_list.InitAndDisableFeature(
-      base::features::kPartialLowEndModeOnMidRangeDevices);
-#endif
-
   SetFrameStatus(ImageFrame::kFramePartial);
 
   char buffer[100 * 100 * 4];

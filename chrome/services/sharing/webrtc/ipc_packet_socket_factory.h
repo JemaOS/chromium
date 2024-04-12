@@ -44,8 +44,7 @@ class IpcPacketSocketFactory : public rtc::PacketSocketFactory {
       const rtc::ProxyInfo& proxy_info,
       const std::string& user_agent,
       const rtc::PacketSocketTcpOptions& opts) override;
-  std::unique_ptr<webrtc::AsyncDnsResolverInterface> CreateAsyncDnsResolver()
-      override;
+  rtc::AsyncResolverInterface* CreateAsyncResolver() override;
 
  private:
   mojo::SharedRemote<network::mojom::P2PSocketManager> socket_manager_;

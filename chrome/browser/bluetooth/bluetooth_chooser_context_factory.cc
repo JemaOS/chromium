@@ -32,21 +32,15 @@ BluetoothChooserContextFactory::GetForProfileIfExists(Profile* profile) {
 BluetoothChooserContextFactory::BluetoothChooserContextFactory()
     : ProfileKeyedServiceFactory(
           "BluetoothChooserContext",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 }
 
 BluetoothChooserContextFactory::~BluetoothChooserContextFactory() = default;
 
-std::unique_ptr<KeyedService>
-BluetoothChooserContextFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* BluetoothChooserContextFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<permissions::BluetoothChooserContext>(context);
+  return new permissions::BluetoothChooserContext(context);
 }
 
 void BluetoothChooserContextFactory::BrowserContextShutdown(

@@ -5,12 +5,9 @@
 /**
  * @fileoverview Contains the rules for output based on type information.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
-
 import {AbstractRole, ChromeVoxRole, CustomRole} from '../../common/role_type.js';
 
-import {OutputRoleInfo} from './output_role_info.js';
-import {OutputCustomEvent, OutputEventType, OutputFormatType, OutputNavigationType} from './output_types.js';
+import {OutputCustomEvent, OutputEventType, OutputFormatType} from './output_types.js';
 
 const EventType = chrome.automation.EventType;
 const RoleType = chrome.automation.RoleType;
@@ -31,9 +28,9 @@ export class OutputRule {
     this.event_ = this.getEvent_(event);
     /** @protected {!ChromeVoxRole} */
     this.role_ = CustomRole.DEFAULT;
-    /** @protected {!OutputNavigationType|undefined} */
+    /** @protected {string|undefined} */
     this.navigation_;
-    /** @protected {!OutputFormatType|undefined} */
+    /** @protected {string|undefined} */
     this.output_;
   }
 
@@ -59,24 +56,21 @@ export class OutputRule {
     });
   }
 
-  /** @return {string} */
-  get formatString() {
-    return OutputRule.RULES[this.event_][this.role_][this.output_];
-  }
-
   /**
    * @param {ChromeVoxRole|undefined} role
-   * @param {!OutputFormatType|!OutputNavigationType|undefined} formatName
+   * @param {ChromeVoxRole|undefined} parentRole
+   * @param {string|undefined} formatName
    * @return {boolean} true if the role was set, false otherwise.
    */
-  populateRole(role, formatName) {
-    if (this.hasRule_(role, formatName) && role) {
+  populateRole(role, parentRole, formatName) {
+    const eventBlock = OutputRule.RULES[this.event_];
+    if (role && eventBlock[role] && eventBlock[role][formatName]) {
       this.role_ = role;
       return true;
     } else if (
-        this.hasRule_(parent(role), formatName) &&
-        parent(role) !== CustomRole.NO_ROLE) {
-      this.role_ = parent(role);
+        parentRole && eventBlock[parentRole] &&
+        eventBlock[parentRole][formatName]) {
+      this.role_ = parentRole;
       return true;
     }
     return false;
@@ -91,7 +85,7 @@ export class OutputRule {
     this.role_ = role;
   }
 
-  /** @param {!OutputFormatType|undefined} output */
+  /** @param {string|undefined} output */
   set output(output) {
     this.output_ = output;
   }
@@ -104,60 +98,44 @@ export class OutputRule {
   get role() {
     return this.role_;
   }
-  /** @return {!OutputNavigationType|undefined} */
+  /** @return {string|undefined} */
   get navigation() {
     return this.navigation_;
   }
-  /** @return {!OutputFormatType|undefined} */
+  /** @return {string|undefined} */
   get output() {
     return this.output_;
-  }
-
-  // ========= Private methods =========
-
-  /**
-   * @param {ChromeVoxRole|undefined} role
-   * @param {!OutputFormatType|!OutputNavigationType|undefined} format
-   * @return {boolean} Whether there is a rule for this role/format combo.
-   * @private
-   */
-  hasRule_(role, format) {
-    const eventBlock = OutputRule.RULES[this.event_];
-    return role && eventBlock[role] && eventBlock[role][format];
   }
 }
 
 export class AncestryOutputRule extends OutputRule {
   /**
    * @param {!OutputEventType} eventType
-   * @param {ChromeVoxRole|undefined} role
-   * @param {!OutputNavigationType|undefined} navigationType
+   * @param {ChromeVoxRole|undefined} nodeRole
+   * @param {ChromeVoxRole|undefined} parentRole
+   * @param {string|undefined} formatName
    * @param {boolean} tryBraille
    */
-  constructor(eventType, role, navigationType, tryBraille) {
+  constructor(eventType, nodeRole, parentRole, formatName, tryBraille) {
     super(eventType);
+    /** @private {string|undefined} */
+    this.formatName_ = formatName;
 
-    this.populateRole(role, navigationType);
-    this.populateNavigation(navigationType);
+    this.populateRole(nodeRole, parentRole, formatName);
+    this.populateNavigation(formatName);
     this.populateOutput(tryBraille);
   }
 
-  /** @param {!OutputNavigationType|undefined} navigationType */
-  populateNavigation(navigationType) {
-    if (navigationType && OutputRule.RULES[this.event_][this.role_] &&
-        OutputRule.RULES[this.event_][this.role_][navigationType]) {
-      this.navigation_ = navigationType;
+  /** @param {string|undefined} formatName */
+  populateNavigation(formatName) {
+    if (formatName && OutputRule.RULES[this.event_][this.role_][formatName]) {
+      this.navigation_ = formatName;
     }
   }
 
   /** @param {boolean} tryBraille */
   populateOutput(tryBraille) {
-    if (!OutputRule.RULES[this.event_][this.role_]) {
-      // Invalid rule case.
-      return;
-    }
-
-    const rule = OutputRule.RULES[this.event_][this.role_][this.navigation_];
+    const rule = OutputRule.RULES[this.event_][this.role_][this.formatName_];
     if (rule && rule.speak) {
       this.output_ = OutputFormatType.SPEAK;
     }
@@ -168,27 +146,17 @@ export class AncestryOutputRule extends OutputRule {
 
   /** @return {boolean} */
   get defined() {
-    return Boolean(
-        OutputRule.RULES[this.event_][this.role_] &&
-        OutputRule.RULES[this.event_][this.role_][this.navigation_]);
+    return Boolean(OutputRule.RULES[this.event_][this.role_][this.formatName_]);
   }
 
   /** @return {string} */
   get enterFormat() {
-    const rule = OutputRule.RULES[this.event_][this.role_][this.navigation_];
+    const rule = OutputRule.RULES[this.event_][this.role_][this.formatName_];
     if (this.output_) {
       return rule[this.output_];
     }
     return rule || '';
   }
-}
-
-/**
- * @param {ChromeVoxRole|undefined} role
- * @return {!ChromeVoxRole}
- */
-function parent(role) {
-  return OutputRoleInfo[role]?.inherits ?? CustomRole.NO_ROLE;
 }
 
 /**
@@ -477,12 +445,6 @@ OutputRule.RULES = {
       speak: `@describe_window($name) $description $earcon(OBJECT_OPEN)`,
     },
   },
-  [EventType.CONTROLS_CHANGED]: {
-    [RoleType.TAB]: {
-      speak: `@describe_tab($name) @describe_index($posInSet, $setSize)
-          @aria_selected_true`,
-    },
-  },
   [EventType.MENU_START]: {
     [CustomRole.DEFAULT]:
         {speak: `@chrome_menu_opened($name)  $earcon(OBJECT_OPEN)`},
@@ -502,5 +464,3 @@ OutputRule.RULES = {
         {speak: `$earcon(ALERT_NONMODAL) $nameOrTextContent $description`},
   },
 };
-
-TestImportManager.exportForTesting(OutputRule);

@@ -11,8 +11,6 @@
 #include "ash/app_list/app_list_bubble_event_filter.h"
 #include "ash/app_list/app_list_controller_impl.h"
 #include "ash/app_list/app_list_event_targeter.h"
-#include "ash/app_list/apps_collections_controller.h"
-#include "ash/app_list/views/app_list_bubble_apps_collections_page.h"
 #include "ash/app_list/views/app_list_bubble_apps_page.h"
 #include "ash/app_list/views/app_list_bubble_view.h"
 #include "ash/app_list/views/app_list_drag_and_drop_host.h"
@@ -192,10 +190,7 @@ void AppListBubblePresenter::Show(int64_t display_id) {
     bubble_view_->AbortAllAnimations();
 
   is_target_visibility_show_ = true;
-
-  target_page_ = AppsCollectionsController::Get()->ShouldShowAppsCollection()
-                     ? AppListBubblePage::kAppsCollections
-                     : AppListBubblePage::kApps;
+  target_page_ = AppListBubblePage::kApps;
 
   controller_->OnVisibilityWillChange(/*visible=*/true, display_id);
 
@@ -365,7 +360,7 @@ void AppListBubblePresenter::UpdateContinueSectionVisibility() {
 }
 
 void AppListBubblePresenter::UpdateForNewSortingOrder(
-    const std::optional<AppListSortOrder>& new_order,
+    const absl::optional<AppListSortOrder>& new_order,
     bool animate,
     base::OnceClosure update_position_closure) {
   DCHECK_EQ(animate, !update_position_closure.is_null());
@@ -392,6 +387,12 @@ void AppListBubblePresenter::ShowEmbeddedAssistantUI() {
   }
 }
 
+void AppListBubblePresenter::BackOrExit() {
+  if (bubble_view_) {
+    bubble_view_->BackOrExit();
+  }
+}
+
 void AppListBubblePresenter::OnWidgetDestroying(views::Widget* widget) {
   DVLOG(1) << __PRETTY_FUNCTION__;
   // NOTE: While the widget is usually cached after Show(), this method can be
@@ -413,14 +414,11 @@ void AppListBubblePresenter::OnWindowActivated(ActivationReason reason,
   if (gained_active) {
     if (auto* container = GetContainerForWindow(gained_active)) {
       const int container_id = container->GetId();
-      // The bubble can be shown without activation if:
-      // 1. The bubble or one of its children (e.g. an uninstall dialog) gains
-      //    activation; OR
-      // 2. The shelf gains activation (e.g. by pressing Alt-Shift-L); OR
-      // 3. A help bubble container's descendant gains activation.
+      // If the bubble or one of its children (e.g. an uninstall dialog) gained
+      // activation, the bubble should stay open. Likewise, allow focus to move
+      // to the shelf (e.g. by pressing Alt-Shift-L).
       if (container_id == kShellWindowId_AppListContainer ||
-          container_id == kShellWindowId_ShelfContainer ||
-          container_id == kShellWindowId_HelpBubbleContainer) {
+          container_id == kShellWindowId_ShelfContainer) {
         return;
       }
     }
@@ -463,8 +461,7 @@ void AppListBubblePresenter::OnShelfShuttingDown() {
     bubble_view_->SetDragAndDropHostOfCurrentAppList(nullptr);
 }
 
-void AppListBubblePresenter::OnPressOutsideBubble(
-    const ui::LocatedEvent& event) {
+void AppListBubblePresenter::OnPressOutsideBubble() {
   // Presses outside the bubble could be activating a shelf item. Record the
   // app list state prior to dismissal.
   controller_->RecordAppListState();

@@ -58,10 +58,10 @@ class SessionsGetDevicesFunction : public ExtensionFunction {
                                 const sessions::SessionTab& tab,
                                 int tab_index,
                                 bool active);
-  std::optional<api::windows::Window> CreateWindowModel(
+  absl::optional<api::windows::Window> CreateWindowModel(
       const sessions::SessionWindow& window,
       const std::string& session_tag);
-  std::optional<api::sessions::Session> CreateSessionModel(
+  absl::optional<api::sessions::Session> CreateSessionModel(
       const sessions::SessionWindow& window,
       const std::string& session_tag);
   api::sessions::Device CreateDeviceModel(

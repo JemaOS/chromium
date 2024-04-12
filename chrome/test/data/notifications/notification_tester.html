@@ -24,7 +24,7 @@ function createNotification(iconUrl, title, text, tag, onclick) {
   });
   notification.onclick = onclick;
 
-  return createNotificationHelper(notification, true);
+  createNotificationHelper(notification, true);
 }
 
 // Cancels a notification with the given id. The notification must be showing,
@@ -34,46 +34,42 @@ function cancelNotification(id) {
   if (id < 0 || id > g_notifications.length) {
     var errorMsg = "Attempted to cancel notification with invalid ID.\n" +
         "ID: " + id + "\n# of notifications: " + g_notifications.length;
-    return sendResultToTest(errorMsg);
+    sendResultToTest(errorMsg);
   }
-  return new Promise(resolve => {
-    g_notifications[id].onclose = function() {
-      resolve(sendResultToTest(1));
-    }
-    g_notifications[id].close();
-  });
+  g_notifications[id].onclose = function() {
+    sendResultToTest(1);
+  }
+  g_notifications[id].close();
 }
 
 // Requests permission for this origin to create notifications. Immediately
 // sends the result without waiting for callbacks to complete.
 function requestPermissionAndRespond() {
   Notification.requestPermission(permissionCallbackNoResponse);
-  return sendResultToTest('requested');
+  sendResultToTest('requested');
 }
 
 // Requests permission for this origin to create notifications. The result will
 // be sent from the callback (permissionCallbackWithResponse);
 function requestPermission() {
-  return new Promise(resolve => {
-    Notification.requestPermission(resolve);
-  }).then(permissionCallbackWithResponse);
+  Notification.requestPermission(permissionCallbackWithResponse);
 }
 
 // Checks the notification permission status. The result will be sent directly
 // via permissionCallbackWithResponse.
 function queryPermissionStatus() {
-  return sendResultToTest(Notification.permission);
+  sendResultToTest(Notification.permission);
 }
 
 // Callback for requestPermissionAndRespond. Will send the permission status to
 // the test driver.
 function permissionCallbackWithResponse(permissionStatus) {
   if (permissionStatus === 'granted')
-    return sendResultToTest('request-callback-granted');
+    sendResultToTest('request-callback-granted');
   else if (permissionStatus === 'denied')
-    return sendResultToTest('request-callback-denied');
+    sendResultToTest('request-callback-denied');
   else if (permissionStatus === 'default')
-    return sendResultToTest('request-callback-default');
+    sendResultToTest('request-callback-default');
 }
 
 // Callback for requesting notification privileges.
@@ -83,23 +79,24 @@ function permissionCallbackNoResponse() {
 
 // Starts a screen capture session and reports success to the test driver.
 function startScreenCapture() {
-  return navigator.mediaDevices.getDisplayMedia({video: true}).then((stream) => {
+  navigator.mediaDevices.getDisplayMedia({video: true}).then((stream) => {
     g_mediaStream = stream;
-    return sendResultToTest('success');
+    sendResultToTest('success');
   }).catch(() => {
-    return sendResultToTest('error');
+    sendResultToTest('error');
   });
 }
 
 // Stops a screen capture session and reports success to the test driver.
 function stopScreenCapture() {
   if (!g_mediaStream) {
-    return sendResultToTest('error');
+    sendResultToTest('error');
+    return;
   }
   for (const track of g_mediaStream.getTracks())
     track.stop();
   g_mediaStream = null;
-  return sendResultToTest('success');
+  sendResultToTest('success');
 }
 
 // Helper function that adds a notification to |g_notifications| and shows
@@ -107,20 +104,18 @@ function stopScreenCapture() {
 // back on error. If |waitForDisplay| is true, the response will not be sent
 // until the notification is actually displayed.
 function createNotificationHelper(note, waitForDisplay) {
-  return new Promise(resolve => {
-    function sendNotificationIdToTest() {
-      resolve(sendResultToTest(g_notifications.length - 1));
-    }
-    g_notifications.push(note);
-    if (waitForDisplay)
-      note.onshow = sendNotificationIdToTest;
-    note.onerror = function() {
-      resolve(sendResultToTest(-1));
-    }
+  function sendNotificationIdToTest() {
+    sendResultToTest(g_notifications.length - 1);
+  }
+  g_notifications.push(note);
+  if (waitForDisplay)
+    note.onshow = sendNotificationIdToTest;
+  note.onerror = function() {
+    sendResultToTest(-1);
+  }
 
-    if (!waitForDisplay)
-      sendNotificationIdToTest();
-  });
+  if (!waitForDisplay)
+    sendNotificationIdToTest();
 }
 
 // Sends a result back to the main test logic.
@@ -130,7 +125,7 @@ function sendResultToTest(result) {
   window.document.title = stringResult;
   if (typeof stringResult != "string")
     stringResult = JSON.stringify(result);
-  return stringResult;
+  window.domAutomationController.send(stringResult);
 }
 
 </script>

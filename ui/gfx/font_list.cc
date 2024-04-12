@@ -11,7 +11,6 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
-#include "skia/ext/font_utils.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 #include "third_party/skia/include/core/SkTypeface.h"
 #include "ui/gfx/font_list_impl.h"
@@ -242,7 +241,7 @@ std::string FontList::FirstAvailableOrFirst(const std::string& font_name_list) {
     return std::string();
   if (families.size() == 1)
     return families[0];
-  sk_sp<SkFontMgr> fm(skia::DefaultFontMgr());
+  sk_sp<SkFontMgr> fm(SkFontMgr::RefDefault());
   for (const auto& family : families) {
     if (IsFontFamilyAvailable(family, fm.get()))
       return family;

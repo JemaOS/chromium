@@ -8,12 +8,9 @@
 #include "ash/constants/ash_features.h"
 #include "base/memory/raw_ptr.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/test/test_future.h"
 #include "base/unguessable_token.h"
 #include "chrome/browser/ash/crosapi/ash_requires_lacros_extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/speech/extension_api/tts_engine_extension_api.h"
 #include "chrome/browser/speech/tts_crosapi_util.h"
 #include "chromeos/crosapi/mojom/test_controller.mojom-test-utils.h"
@@ -22,9 +19,19 @@
 #include "content/public/browser/tts_controller.h"
 #include "content/public/browser/tts_utterance.h"
 #include "content/public/test/browser_test.h"
-#include "mojo/public/cpp/bindings/receiver.h"
 
 using crosapi::AshRequiresLacrosExtensionApiTest;
+
+namespace {
+
+void GiveItSomeTime(base::TimeDelta delta) {
+  base::RunLoop run_loop;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, run_loop.QuitClosure(), delta);
+  run_loop.Run();
+}
+
+}  // namespace
 
 namespace extensions {
 
@@ -96,12 +103,15 @@ class AshTtsApiTest : public AshRequiresLacrosExtensionApiTest,
   }
 
   void WaitUntilVoicesLoaded() {
-    ASSERT_TRUE(base::test::RunUntil([&] { return expected_voice_loaded_; }));
+    while (!expected_voice_loaded_) {
+      GiveItSomeTime(base::Milliseconds(100));
+    }
   }
 
   void WaitUntilTtsEventReceivedByLacrosUtteranceEventDelegate() {
-    ASSERT_TRUE(
-        base::test::RunUntil([&] { return tts_event_notified_in_lacros_; }));
+    while (!tts_event_notified_in_lacros_) {
+      GiveItSomeTime(base::Milliseconds(100));
+    }
   }
 
   void NotifyTtsEventReceivedByLacros(content::TtsEventType tts_event) {
@@ -145,7 +155,7 @@ class AshTtsApiTest : public AshRequiresLacrosExtensionApiTest,
     }
 
    private:
-    raw_ptr<extensions::AshTtsApiTest> owner_;
+    raw_ptr<extensions::AshTtsApiTest, ExperimentalAsh> owner_;
     mojo::Receiver<crosapi::mojom::TtsUtteranceClient> receiver_{this};
   };
 
@@ -190,15 +200,16 @@ IN_PROC_BROWSER_TEST_F(AshTtsApiTest, RegisterAshEngine) {
   EXPECT_TRUE(HasVoiceWithName("Amanda"));
 
   // Verify all the voices are loaded at Lacros side.
+  crosapi::mojom::StandaloneBrowserTestControllerAsyncWaiter waiter(
+      GetStandaloneBrowserTestController());
+
   std::vector<crosapi::mojom::TtsVoicePtr> mojo_voices;
-  ASSERT_TRUE(base::test::RunUntil([&] {
-    base::test::TestFuture<std::vector<crosapi::mojom::TtsVoicePtr>>
-        mojo_voices_future;
-    GetStandaloneBrowserTestController()->GetTtsVoices(
-        mojo_voices_future.GetCallback());
-    mojo_voices = mojo_voices_future.Take();
-    return !mojo_voices.empty();
-  }));
+  while (mojo_voices.size() == 0) {
+    waiter.GetTtsVoices(&mojo_voices);
+    if (mojo_voices.size() > 0)
+      break;
+    GiveItSomeTime(base::Milliseconds(100));
+  }
 
   EXPECT_TRUE(FoundVoiceInMojoVoices("Amy", mojo_voices));
   EXPECT_TRUE(FoundVoiceInMojoVoices("Alex", mojo_voices));
@@ -238,16 +249,16 @@ IN_PROC_BROWSER_TEST_F(AshTtsApiTest, SpeakLacrosUtteranceWithAshSpeechEngine) {
   EXPECT_FALSE(HasVoiceWithName("Tommy"));
 
   // Verify all the voices are loaded in Lacros.
+  crosapi::mojom::StandaloneBrowserTestControllerAsyncWaiter waiter(
+      GetStandaloneBrowserTestController());
 
   std::vector<crosapi::mojom::TtsVoicePtr> mojo_voices;
-  ASSERT_TRUE(base::test::RunUntil([&] {
-    base::test::TestFuture<std::vector<crosapi::mojom::TtsVoicePtr>>
-        mojo_voices_future;
-    GetStandaloneBrowserTestController()->GetTtsVoices(
-        mojo_voices_future.GetCallback());
-    mojo_voices = mojo_voices_future.Take();
-    return !mojo_voices.empty();
-  }));
+  while (mojo_voices.size() == 0) {
+    waiter.GetTtsVoices(&mojo_voices);
+    if (mojo_voices.size() > 0)
+      break;
+    GiveItSomeTime(base::Milliseconds(100));
+  }
 
   EXPECT_TRUE(FoundVoiceInMojoVoices("Amy", mojo_voices));
   EXPECT_TRUE(FoundVoiceInMojoVoices("Alex", mojo_voices));

@@ -51,9 +51,4 @@ void ManagementTransitionScreenHandler::ShowError() {
   CallExternalAPI("showStep", "error");
 }
 
-base::WeakPtr<ManagementTransitionScreenView>
-ManagementTransitionScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 }  // namespace ash

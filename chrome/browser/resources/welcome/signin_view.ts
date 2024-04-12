@@ -13,12 +13,10 @@ import '../strings.m.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {NavigationMixin} from './navigation_mixin.js';
-import type {OnboardingBackgroundElement} from './shared/onboarding_background.js';
+import {OnboardingBackgroundElement} from './shared/onboarding_background.js';
 import {getTemplate} from './signin_view.html.js';
-import type {SigninViewProxy} from './signin_view_proxy.js';
-import {SigninViewProxyImpl} from './signin_view_proxy.js';
-import type {WelcomeBrowserProxy} from './welcome_browser_proxy.js';
-import {WelcomeBrowserProxyImpl} from './welcome_browser_proxy.js';
+import {SigninViewProxy, SigninViewProxyImpl} from './signin_view_proxy.js';
+import {WelcomeBrowserProxy, WelcomeBrowserProxyImpl} from './welcome_browser_proxy.js';
 
 export interface SigninViewElement {
   $: {

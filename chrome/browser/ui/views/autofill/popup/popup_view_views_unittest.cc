@@ -5,60 +5,36 @@
 #include "chrome/browser/ui/views/autofill/popup/popup_view_views.h"
 
 #include <memory>
-#include <optional>
-#include <string>
-#include <vector>
 
 #include "base/containers/contains.h"
 #include "base/feature_list.h"
-#include "base/memory/weak_ptr.h"
 #include "base/strings/string_util.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/browser/autofill/mock_autofill_popup_controller.h"
-#include "chrome/browser/ui/autofill/autofill_popup_controller_impl.h"
-#include "chrome/browser/ui/autofill/autofill_popup_view.h"
-#include "chrome/browser/ui/browser_element_identifiers.h"
-#include "chrome/browser/ui/views/autofill/popup/popup_row_content_view.h"
+#include "chrome/browser/ui/views/autofill/popup/popup_cell_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_row_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_separator_view.h"
-#include "chrome/browser/ui/views/autofill/popup/popup_view_utils.h"
-#include "chrome/browser/ui/views/autofill/popup/popup_view_views_test_api.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_warning_view.h"
-#include "chrome/test/base/testing_profile.h"
 #include "chrome/test/views/chrome_views_test_base.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/browser/ui/popup_item_ids.h"
 #include "components/autofill/core/browser/ui/suggestion.h"
-#include "components/autofill/core/common/aliases.h"
 #include "components/autofill/core/common/autofill_features.h"
-#include "components/feature_engagement/public/feature_constants.h"
-#include "components/strings/grit/components_strings.h"
-#include "content/public/browser/web_contents.h"
-#include "content/public/common/input/native_web_keyboard_event.h"
-#include "content/public/test/test_renderer_host.h"
-#include "content/public/test/web_contents_tester.h"
+#include "content/public/browser/native_web_keyboard_event.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/common/frame/frame_policy.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/common/input/web_keyboard_event.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/base/l10n/l10n_util.h"
 #include "ui/compositor/canvas_painter.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/events/test/event_generator.h"
-#include "ui/gfx/geometry/point.h"
-#include "ui/gfx/geometry/point_f.h"
-#include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/geometry/vector2d.h"
-#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/test/ax_event_counter.h"
-#include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_utils.h"
 
@@ -66,49 +42,39 @@ namespace autofill {
 
 namespace {
 
-using ::testing::_;
-using ::testing::AllOf;
-using ::testing::Field;
 using ::testing::Mock;
 using ::testing::NiceMock;
-using ::testing::Optional;
 using ::testing::Return;
 using CellIndex = PopupViewViews::CellIndex;
 using CellType = PopupRowView::CellType;
 
 const std::vector<PopupItemId> kClickablePopupItemIds{
-    PopupItemId::kAutocompleteEntry,
-    PopupItemId::kPasswordEntry,
-    PopupItemId::kClearForm,
-    PopupItemId::kAutofillOptions,
-    PopupItemId::kDatalistEntry,
-    PopupItemId::kScanCreditCard,
-    PopupItemId::kAllSavedPasswordsEntry,
-    PopupItemId::kPasswordAccountStorageOptIn,
-    PopupItemId::kPasswordAccountStorageReSignin,
-    PopupItemId::kPasswordAccountStorageOptInAndGenerate,
-    PopupItemId::kPasswordAccountStorageEmpty,
-    PopupItemId::kVirtualCreditCardEntry,
+    POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY,
+    POPUP_ITEM_ID_PASSWORD_ENTRY,
+    POPUP_ITEM_ID_CLEAR_FORM,
+    POPUP_ITEM_ID_AUTOFILL_OPTIONS,
+    POPUP_ITEM_ID_DATALIST_ENTRY,
+    POPUP_ITEM_ID_SCAN_CREDIT_CARD,
+    POPUP_ITEM_ID_TITLE,
+    POPUP_ITEM_ID_CREDIT_CARD_SIGNIN_PROMO,
+    POPUP_ITEM_ID_USERNAME_ENTRY,
+    POPUP_ITEM_ID_ALL_SAVED_PASSWORDS_ENTRY,
+    POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN,
+    POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_RE_SIGNIN,
+    POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE,
+    POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_EMPTY,
+    POPUP_ITEM_ID_VIRTUAL_CREDIT_CARD_ENTRY,
 };
 
 const std::vector<PopupItemId> kUnclickablePopupItemIds{
-    PopupItemId::kInsecureContextPaymentDisabledMessage,
-    PopupItemId::kSeparator,
+    POPUP_ITEM_ID_INSECURE_CONTEXT_PAYMENT_DISABLED_MESSAGE,
+    POPUP_ITEM_ID_SEPARATOR,
 };
 
 bool IsClickable(PopupItemId id) {
   DCHECK(base::Contains(kClickablePopupItemIds, id) ^
          base::Contains(kUnclickablePopupItemIds, id));
   return base::Contains(kClickablePopupItemIds, id);
-}
-
-Suggestion CreateSuggestionWithChildren(
-    std::vector<Suggestion> children,
-    const std::u16string& name = u"Suggestion") {
-  Suggestion parent(name);
-  parent.popup_item_id = PopupItemId::kAddressEntry;
-  parent.children = std::move(children);
-  return parent;
 }
 
 }  // namespace
@@ -122,23 +88,6 @@ class PopupViewViewsTest : public ChromeViewsTestBase {
 
   void SetUp() override {
     ChromeViewsTestBase::SetUp();
-    profile_ = std::make_unique<TestingProfile>();
-    web_contents_ = content::WebContentsTester::CreateTestWebContents(
-        profile_.get(), nullptr);
-    web_contents_->Resize({0, 0, 1024, 768});
-    // Make sure the element is inside the web contents area.
-    autofill_popup_controller_.set_element_bounds(
-        autofill_popup_controller_.element_bounds() +
-        web_contents_->GetContainerBounds().OffsetFromOrigin());
-    ON_CALL(autofill_popup_controller_, GetWebContents())
-        .WillByDefault(Return(web_contents_.get()));
-    ON_CALL(autofill_popup_controller_, OpenSubPopup)
-        .WillByDefault(Return(autofill_popup_sub_controller_.GetWeakPtr()));
-    ON_CALL(autofill_popup_controller_, GetMainFillingProduct)
-        .WillByDefault([&controller = autofill_popup_controller_]() {
-          return GetFillingProductFromPopupItemId(
-              controller.GetSuggestionAt(0).popup_item_id);
-        });
 
     widget_ = CreateTestWidget();
     generator_ = std::make_unique<ui::test::EventGenerator>(
@@ -146,31 +95,23 @@ class PopupViewViewsTest : public ChromeViewsTestBase {
   }
 
   void TearDown() override {
-    // Set to nullptr to avoid dangling pointers.
-    view_ = nullptr;
     generator_.reset();
+    view_.reset();
     widget_.reset();
     ChromeViewsTestBase::TearDown();
   }
 
-  void ShowView(PopupViewViews* view, views::Widget& widget) {
-    widget.SetContentsView(view);
-    view->Show(AutoselectFirstSuggestion(false));
-  }
-
   void CreateAndShowView() {
-    view_ = new PopupViewViews(controller().GetWeakPtr());
-    ShowView(view_, *widget_);
+    view_ = std::make_unique<PopupViewViews>(controller().GetWeakPtr(),
+                                             widget_.get());
+    widget().SetContentsView(view_.get());
+    widget().Show();
+    view().SchedulePaint();
   }
 
-  void CreateAndShowView(const std::vector<PopupItemId>& ids) {
+  void CreateAndShowView(const std::vector<int>& ids) {
     controller().set_suggestions(ids);
     CreateAndShowView();
-  }
-
-  void UpdateSuggestions(const std::vector<PopupItemId>& ids) {
-    controller().set_suggestions(ids);
-    static_cast<AutofillPopupView&>(view()).OnSuggestionsChanged();
   }
 
   void Paint() {
@@ -205,9 +146,7 @@ class PopupViewViewsTest : public ChromeViewsTestBase {
     return GetRowViewAt(row_index).GetBoundsInScreen().CenterPoint();
   }
 
-  // Simulates the keyboard event and returns whether the event was handled.
-  bool SimulateKeyPress(int windows_key_code,
-                        PopupViewViews& view,
+  void SimulateKeyPress(int windows_key_code,
                         bool shift_modifier_pressed = false,
                         bool non_shift_modifier_pressed = false) {
     int modifiers = blink::WebInputEvent::kNoModifiers;
@@ -222,26 +161,20 @@ class PopupViewViewsTest : public ChromeViewsTestBase {
         blink::WebKeyboardEvent::Type::kRawKeyDown, modifiers,
         ui::EventTimeForNow());
     event.windows_key_code = windows_key_code;
-    return test_api(view).HandleKeyPressEvent(event);
-  }
-  bool SimulateKeyPress(int windows_key_code,
-                        bool shift_modifier_pressed = false,
-                        bool non_shift_modifier_pressed = false) {
-    return SimulateKeyPress(windows_key_code, view(), shift_modifier_pressed,
-                            non_shift_modifier_pressed);
+    view().HandleKeyPressEvent(event);
   }
 
  protected:
   views::View& GetRowViewAt(size_t index) {
     return *absl::visit([](views::View* view) { return view; },
-                        test_api(view()).rows()[index]);
+                        view().GetRowsForTesting()[index]);
   }
 
   PopupRowView& GetPopupRowViewAt(size_t index) {
-    return *absl::get<PopupRowView*>(test_api(view()).rows()[index]);
+    return view().GetPopupRowViewAt(index);
   }
 
-  size_t GetNumberOfRows() { return test_api(view()).rows().size(); }
+  size_t GetNumberOfRows() { return view().GetRowsForTesting().size(); }
 
   MockAutofillPopupController& controller() {
     return autofill_popup_controller_;
@@ -249,34 +182,12 @@ class PopupViewViewsTest : public ChromeViewsTestBase {
   ui::test::EventGenerator& generator() { return *generator_; }
   PopupViewViews& view() { return *view_; }
   views::Widget& widget() { return *widget_; }
-  content::WebContents& web_contents() { return *web_contents_; }
-
-  std::pair<std::unique_ptr<NiceMock<MockAutofillPopupController>>,
-            PopupViewViews*>
-  OpenSubView(PopupViewViews& view,
-              const std::vector<Suggestion>& suggestions = {
-                  Suggestion(u"Suggestion")}) {
-    auto sub_controller =
-        std::make_unique<NiceMock<MockAutofillPopupController>>();
-    sub_controller->set_suggestions(suggestions);
-    ON_CALL(*sub_controller, OpenSubPopup)
-        .WillByDefault(Return(autofill_popup_sub_controller_.GetWeakPtr()));
-    base::WeakPtr<AutofillPopupView> sub_view_ptr =
-        view.CreateSubPopupView(sub_controller->GetWeakPtr());
-    auto* sub_view = static_cast<PopupViewViews*>(sub_view_ptr.get());
-    sub_view->Show(AutoselectFirstSuggestion(false));
-    return {std::move(sub_controller), sub_view};
-  }
 
  private:
-  content::RenderViewHostTestEnabler render_view_host_test_enabler_;
-  std::unique_ptr<TestingProfile> profile_;
-  std::unique_ptr<content::WebContents> web_contents_;
   std::unique_ptr<views::Widget> widget_;
   std::unique_ptr<ui::test::EventGenerator> generator_;
-  raw_ptr<PopupViewViews> view_;
+  std::unique_ptr<PopupViewViews> view_;
   NiceMock<MockAutofillPopupController> autofill_popup_controller_;
-  NiceMock<MockAutofillPopupController> autofill_popup_sub_controller_;
 };
 
 class PopupViewViewsTestWithAnyPopupItemId
@@ -297,61 +208,28 @@ class PopupViewViewsTestWithClickablePopupItemId
 };
 
 TEST_F(PopupViewViewsTest, ShowHideTest) {
-  CreateAndShowView({PopupItemId::kAutocompleteEntry});
+  CreateAndShowView({0});
   EXPECT_CALL(controller(), AcceptSuggestion).Times(0);
+  EXPECT_CALL(controller(), AcceptSuggestionWithoutThreshold).Times(0);
   view().Hide();
-}
-
-TEST_F(PopupViewViewsTest, CanShowDropdownInBounds) {
-  CreateAndShowView({PopupItemId::kAutocompleteEntry, PopupItemId::kSeparator,
-                     PopupItemId::kAutofillOptions});
-
-  const int kSingleItemPopupHeight = view().GetPreferredSize().height();
-  const int kElementY = 10;
-  const int kElementHeight = 15;
-  controller().set_element_bounds({10, kElementY, 100, kElementHeight});
-
-  EXPECT_FALSE(test_api(view()).CanShowDropdownInBounds({0, 0, 100, 35}));
-
-  // Test a smaller than the popup height (-10px) available space.
-  EXPECT_FALSE(test_api(view()).CanShowDropdownInBounds(
-      {0, 0, 100, kElementY + kElementHeight + kSingleItemPopupHeight - 10}));
-
-  // Test a larger than the popup height (+10px) available space.
-  EXPECT_TRUE(test_api(view()).CanShowDropdownInBounds(
-      {0, 0, 100, kElementY + kElementHeight + kSingleItemPopupHeight + 10}));
-
-  view().Hide();
-
-  // Repeat the same tests as for the single-suggestion popup above,
-  // the list is scrollable so that the same restrictions apply.
-  CreateAndShowView({PopupItemId::kAutocompleteEntry,
-                     PopupItemId::kAutocompleteEntry,
-                     PopupItemId::kAutocompleteEntry, PopupItemId::kSeparator,
-                     PopupItemId::kAutofillOptions});
-  EXPECT_FALSE(test_api(view()).CanShowDropdownInBounds({0, 0, 100, 35}));
-  EXPECT_FALSE(test_api(view()).CanShowDropdownInBounds(
-      {0, 0, 100, kElementY + kElementHeight + kSingleItemPopupHeight - 10}));
-  EXPECT_TRUE(test_api(view()).CanShowDropdownInBounds(
-      {0, 0, 100, kElementY + kElementHeight + kSingleItemPopupHeight + 10}));
 }
 
 // This is a regression test for crbug.com/1113255.
 TEST_F(PopupViewViewsTest, ShowViewWithOnlyFooterItemsShouldNotCrash) {
   // Set suggestions to have only a footer item.
-  std::vector<PopupItemId> suggestion_ids = {PopupItemId::kClearForm};
+  std::vector<int> suggestion_ids = {PopupItemId::POPUP_ITEM_ID_CLEAR_FORM};
   controller().set_suggestions(suggestion_ids);
   CreateAndShowView();
 }
 
 TEST_F(PopupViewViewsTest, AccessibilitySelectedEvent) {
   views::test::AXEventCounter ax_counter(views::AXEventManager::Get());
-  CreateAndShowView({PopupItemId::kAutocompleteEntry, PopupItemId::kSeparator,
-                     PopupItemId::kAutofillOptions});
+  CreateAndShowView({POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY, POPUP_ITEM_ID_SEPARATOR,
+                     POPUP_ITEM_ID_AUTOFILL_OPTIONS});
 
   // Checks that a selection event is not sent when the view's |is_selected_|
   // member does not change.
-  GetPopupRowViewAt(0).SetSelectedCell(std::nullopt);
+  GetPopupRowViewAt(0).SetSelectedCell(absl::nullopt);
   EXPECT_EQ(0, ax_counter.GetCount(ax::mojom::Event::kSelection));
 
   // Checks that a selection event is sent when an unselected view becomes
@@ -366,14 +244,14 @@ TEST_F(PopupViewViewsTest, AccessibilitySelectedEvent) {
 
   // Checks that a new selection event is not sent when a selected view becomes
   // unselected.
-  GetPopupRowViewAt(0).SetSelectedCell(std::nullopt);
+  GetPopupRowViewAt(0).SetSelectedCell(absl::nullopt);
   EXPECT_EQ(1, ax_counter.GetCount(ax::mojom::Event::kSelection));
 }
 
 TEST_F(PopupViewViewsTest, AccessibilityTest) {
-  CreateAndShowView({PopupItemId::kDatalistEntry, PopupItemId::kSeparator,
-                     PopupItemId::kAutocompleteEntry,
-                     PopupItemId::kAutofillOptions});
+  CreateAndShowView({POPUP_ITEM_ID_DATALIST_ENTRY, POPUP_ITEM_ID_SEPARATOR,
+                     POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY,
+                     POPUP_ITEM_ID_AUTOFILL_OPTIONS});
 
   // Select first item.
   GetPopupRowViewAt(0).SetSelectedCell(PopupRowView::CellType::kContent);
@@ -382,10 +260,7 @@ TEST_F(PopupViewViewsTest, AccessibilityTest) {
 
   // Item 0.
   ui::AXNodeData node_data_0;
-  GetPopupRowViewAt(0)
-      .GetContentView()
-      .GetViewAccessibility()
-      .GetAccessibleNodeData(&node_data_0);
+  GetPopupRowViewAt(0).GetContentView().GetAccessibleNodeData(&node_data_0);
   EXPECT_EQ(ax::mojom::Role::kListBoxOption, node_data_0.role);
   EXPECT_EQ(1, node_data_0.GetIntAttribute(ax::mojom::IntAttribute::kPosInSet));
   EXPECT_EQ(3, node_data_0.GetIntAttribute(ax::mojom::IntAttribute::kSetSize));
@@ -394,7 +269,7 @@ TEST_F(PopupViewViewsTest, AccessibilityTest) {
 
   // Item 1 (separator).
   ui::AXNodeData node_data_1;
-  GetRowViewAt(1).GetViewAccessibility().GetAccessibleNodeData(&node_data_1);
+  GetRowViewAt(1).GetAccessibleNodeData(&node_data_1);
   EXPECT_FALSE(node_data_1.HasIntAttribute(ax::mojom::IntAttribute::kPosInSet));
   EXPECT_FALSE(node_data_1.HasIntAttribute(ax::mojom::IntAttribute::kSetSize));
   EXPECT_EQ(ax::mojom::Role::kSplitter, node_data_1.role);
@@ -403,10 +278,7 @@ TEST_F(PopupViewViewsTest, AccessibilityTest) {
 
   // Item 2.
   ui::AXNodeData node_data_2;
-  GetPopupRowViewAt(2)
-      .GetContentView()
-      .GetViewAccessibility()
-      .GetAccessibleNodeData(&node_data_2);
+  GetPopupRowViewAt(2).GetContentView().GetAccessibleNodeData(&node_data_2);
   EXPECT_EQ(2, node_data_2.GetIntAttribute(ax::mojom::IntAttribute::kPosInSet));
   EXPECT_EQ(3, node_data_2.GetIntAttribute(ax::mojom::IntAttribute::kSetSize));
   EXPECT_EQ(ax::mojom::Role::kListBoxOption, node_data_2.role);
@@ -415,10 +287,7 @@ TEST_F(PopupViewViewsTest, AccessibilityTest) {
 
   // Item 3 (footer).
   ui::AXNodeData node_data_3;
-  GetPopupRowViewAt(3)
-      .GetContentView()
-      .GetViewAccessibility()
-      .GetAccessibleNodeData(&node_data_3);
+  GetPopupRowViewAt(3).GetContentView().GetAccessibleNodeData(&node_data_3);
   EXPECT_EQ(3, node_data_3.GetIntAttribute(ax::mojom::IntAttribute::kPosInSet));
   EXPECT_EQ(3, node_data_3.GetIntAttribute(ax::mojom::IntAttribute::kSetSize));
   EXPECT_EQ(ax::mojom::Role::kListBoxOption, node_data_3.role);
@@ -426,46 +295,41 @@ TEST_F(PopupViewViewsTest, AccessibilityTest) {
       node_data_3.GetBoolAttribute(ax::mojom::BoolAttribute::kSelected));
 }
 
-// Gestures are not supported on MacOS.
-#if !BUILDFLAG(IS_MAC)
-TEST_F(PopupViewViewsTest, AcceptingOnTap) {
-  ON_CALL(controller(), ShouldIgnoreMouseObservedOutsideItemBoundsCheck)
-      .WillByDefault(Return(true));
+TEST_F(PopupViewViewsTest, Gestures) {
+  CreateAndShowView({POPUP_ITEM_ID_PASSWORD_ENTRY, POPUP_ITEM_ID_SEPARATOR,
+                     POPUP_ITEM_ID_ALL_SAVED_PASSWORDS_ENTRY});
 
-  CreateAndShowView({PopupItemId::kPasswordEntry});
+  // Tap down will select an element.
+  ui::GestureEvent tap_down_event(
+      /*x=*/0, /*y=*/0, /*flags=*/0, ui::EventTimeForNow(),
+      ui::GestureEventDetails(ui::ET_GESTURE_TAP_DOWN));
+  EXPECT_CALL(controller(), SelectSuggestion(absl::optional<size_t>(0u)));
+  GetPopupRowViewAt(0).GetContentView().OnGestureEvent(&tap_down_event);
 
   // Tapping will accept the selection.
+  ui::GestureEvent tap_event(/*x=*/0, /*y=*/0, /*flags=*/0,
+                             ui::EventTimeForNow(),
+                             ui::GestureEventDetails(ui::ET_GESTURE_TAP));
   EXPECT_CALL(controller(), AcceptSuggestion(0));
-  generator().GestureTapAt(
-      GetPopupRowViewAt(0).GetBoundsInScreen().CenterPoint());
-}
-
-TEST_F(PopupViewViewsTest, SelectionOnTouchAndUnselectionOnCancel) {
-  ON_CALL(controller(), ShouldIgnoreMouseObservedOutsideItemBoundsCheck)
-      .WillByDefault(Return(true));
-
-  CreateAndShowView({PopupItemId::kPasswordEntry});
-
-  // Tap down (initiated by generating a touch press) will select an element.
-  EXPECT_CALL(controller(), SelectSuggestion(0));
-  generator().PressTouch(
-      GetPopupRowViewAt(0).GetBoundsInScreen().CenterPoint());
+  GetPopupRowViewAt(0).GetContentView().OnGestureEvent(&tap_event);
 
   // Canceling gesture clears any selection.
-  EXPECT_CALL(controller(), UnselectSuggestion);
-  generator().CancelTouch();
+  ui::GestureEvent tap_cancel(
+      /*x=*/0, /*y=*/0, /*flags=*/0, ui::EventTimeForNow(),
+      ui::GestureEventDetails(ui::ET_GESTURE_TAP_CANCEL));
+  EXPECT_CALL(controller(), SelectSuggestion(absl::optional<size_t>()));
+  GetPopupRowViewAt(2).GetContentView().OnGestureEvent(&tap_cancel);
 }
-#endif  // !BUILDFLAG(IS_MAC)
 
 TEST_F(PopupViewViewsTest, ClickDisabledEntry) {
-  Suggestion opt_int_suggestion("dummy_main_text", "",
-                                Suggestion::Icon::kNoIcon,
-                                PopupItemId::kPasswordAccountStorageOptIn);
+  Suggestion opt_int_suggestion("", "", "",
+                                POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN);
   opt_int_suggestion.is_loading = Suggestion::IsLoading(true);
   controller().set_suggestions({opt_int_suggestion});
   CreateAndShowView();
 
   EXPECT_CALL(controller(), AcceptSuggestion).Times(0);
+  EXPECT_CALL(controller(), AcceptSuggestionWithoutThreshold).Times(0);
 
   gfx::Point inside_point(GetRowViewAt(0).x() + 1, GetRowViewAt(0).y() + 1);
   ui::MouseEvent click_mouse_event(
@@ -474,38 +338,10 @@ TEST_F(PopupViewViewsTest, ClickDisabledEntry) {
   widget().OnMouseEvent(&click_mouse_event);
 }
 
-TEST_F(PopupViewViewsTest, KeyboardFocusIsNotCapturedAutomaticallyForSubPopup) {
-  CreateAndShowView({PopupItemId::kAddressEntry});
-  auto [sub_controller, sub_view] = OpenSubView(view());
-
-  SimulateKeyPress(ui::VKEY_DOWN, *sub_view);
-  EXPECT_FALSE(sub_view->GetSelectedCell().has_value());
-
-  // VKEY_RIGHT is the focus capturing combination
-  SimulateKeyPress(ui::VKEY_RIGHT, *sub_view);
-  SimulateKeyPress(ui::VKEY_DOWN, *sub_view);
-  EXPECT_TRUE(sub_view->GetSelectedCell().has_value());
-}
-
-TEST_F(PopupViewViewsTest,
-       KeyboardFocusIsNotCapturedAutomaticallyForSubPopupRTL) {
-  base::i18n::SetRTLForTesting(true);
-
-  CreateAndShowView({PopupItemId::kAddressEntry});
-  auto [sub_controller, sub_view] = OpenSubView(view());
-
-  // VKEY_LEFT is the focus capturing combination for RTL environment.
-  SimulateKeyPress(ui::VKEY_LEFT, *sub_view);
-  SimulateKeyPress(ui::VKEY_DOWN, *sub_view);
-  EXPECT_TRUE(sub_view->GetSelectedCell().has_value());
-
-  base::i18n::SetRTLForTesting(false);
-}
-
 TEST_F(PopupViewViewsTest, CursorUpDownForSelectableCells) {
   // Set up the popup.
   CreateAndShowView(
-      {PopupItemId::kAutocompleteEntry, PopupItemId::kAutocompleteEntry});
+      {POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY, POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY});
 
   // By default, no row is selected.
   EXPECT_FALSE(view().GetSelectedCell().has_value());
@@ -513,150 +349,95 @@ TEST_F(PopupViewViewsTest, CursorUpDownForSelectableCells) {
   // Test wrapping before the front.
   SimulateKeyPress(ui::VKEY_UP);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(1u, CellType::kContent));
+            absl::make_optional<CellIndex>(1u, CellType::kContent));
 
   // Test wrapping after the end.
   SimulateKeyPress(ui::VKEY_DOWN);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(0u, CellType::kContent));
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
 
   SimulateKeyPress(ui::VKEY_DOWN);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(1u, CellType::kContent));
+            absl::make_optional<CellIndex>(1u, CellType::kContent));
 }
 
-TEST_F(PopupViewViewsTest, LeftAndRightKeyEventsAreHandled) {
-  // The control cell is present in suggestions with children.
-  controller().set_suggestions(
-      {CreateSuggestionWithChildren({Suggestion(u"Child #1")})});
-  CreateAndShowView();
-  view().SetSelectedCell(CellIndex{0, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
-
-  EXPECT_TRUE(SimulateKeyPress(ui::VKEY_RIGHT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kControl);
-
-  // Hitting right again does not do anything.
-  EXPECT_FALSE(SimulateKeyPress(ui::VKEY_RIGHT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kControl);
-
-  EXPECT_TRUE(SimulateKeyPress(ui::VKEY_LEFT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kContent);
-
-  EXPECT_FALSE(SimulateKeyPress(ui::VKEY_LEFT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kContent);
-}
-
-TEST_F(PopupViewViewsTest, LeftAndRightKeyEventsAreHandledForRTL) {
-  base::i18n::SetRTLForTesting(true);
-
-  // The control cell is present in suggestions with children.
-  controller().set_suggestions(
-      {CreateSuggestionWithChildren({Suggestion(u"Child #1")})});
-  CreateAndShowView();
-  view().SetSelectedCell(CellIndex{0, CellType::kControl},
-                         PopupCellSelectionSource::kNonUserInput);
-
-  EXPECT_TRUE(SimulateKeyPress(ui::VKEY_RIGHT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kContent);
-
-  // Hitting right again does not do anything.
-  EXPECT_FALSE(SimulateKeyPress(ui::VKEY_RIGHT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kContent);
-
-  EXPECT_TRUE(SimulateKeyPress(ui::VKEY_LEFT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kControl);
-
-  EXPECT_FALSE(SimulateKeyPress(ui::VKEY_LEFT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kControl);
-
-  base::i18n::SetRTLForTesting(false);
-}
-
-TEST_F(PopupViewViewsTest, LeftAndRightKeyEventsAreHandledWithoutControl) {
-  CreateAndShowView({PopupItemId::kAddressEntry});
-  view().SetSelectedCell(CellIndex{0, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
-
-  // Hitting right or left does not do anything, since there is only one cell to
-  // select.
-  EXPECT_FALSE(SimulateKeyPress(ui::VKEY_RIGHT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kContent);
-  EXPECT_FALSE(SimulateKeyPress(ui::VKEY_LEFT));
-  EXPECT_EQ(view().GetSelectedCell()->second, CellType::kContent);
-}
-
-TEST_F(PopupViewViewsTest, CursorLeftRightDownForAutocompleteEntries) {
+TEST_F(PopupViewViewsTest, CursorLeftRightForAutocompleteEntries) {
   base::test::ScopedFeatureList feature_list{
       features::kAutofillShowAutocompleteDeleteButton};
 
   // Set up the popup.
   CreateAndShowView(
-      {PopupItemId::kAutocompleteEntry, PopupItemId::kAutocompleteEntry});
+      {POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY, POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY});
 
-  view().SetSelectedCell(CellIndex{0, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
+  view().SetSelectedCell(CellIndex{0, CellType::kContent});
 
-  // Pressing left or right does nothing because the autocomplete cell is
-  // handling it itself.
+  // Pressing left does nothing because the left-most cell is already selected.
   SimulateKeyPress(ui::VKEY_LEFT);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(0u, CellType::kContent));
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
+
+  // Pressing right selects the control area.
   SimulateKeyPress(ui::VKEY_RIGHT);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(0u, CellType::kContent));
+            absl::make_optional<CellIndex>(0u, CellType::kControl));
 
-  // Going down selects the next cell.
+  // Going down respects the currently selected column.
   SimulateKeyPress(ui::VKEY_DOWN);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(1u, CellType::kContent));
+            absl::make_optional<CellIndex>(1u, CellType::kControl));
+
+  // Wrapping respects the currently selected column.
+  SimulateKeyPress(ui::VKEY_DOWN);
+  EXPECT_EQ(view().GetSelectedCell(),
+            absl::make_optional<CellIndex>(0u, CellType::kControl));
+
+  SimulateKeyPress(ui::VKEY_LEFT);
+  EXPECT_EQ(view().GetSelectedCell(),
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
 }
 
 TEST_F(PopupViewViewsTest, PageUpDownForSelectableCells) {
   // Set up the popup.
   CreateAndShowView(
-      {PopupItemId::kAutocompleteEntry, PopupItemId::kAutocompleteEntry,
-       PopupItemId::kAutocompleteEntry, PopupItemId::kAutocompleteEntry});
+      {POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY, POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY,
+       POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY, POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY});
 
   // Select the third row.
-  view().SetSelectedCell(CellIndex{2u, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
+  view().SetSelectedCell(CellIndex{2u, CellType::kContent});
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(2u, CellType::kContent));
+            absl::make_optional<CellIndex>(2u, CellType::kContent));
 
   // Page up selects the first line.
   SimulateKeyPress(ui::VKEY_PRIOR);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(0u, CellType::kContent));
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
 
   // Page down selects the last line.
   SimulateKeyPress(ui::VKEY_NEXT);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(3u, CellType::kContent));
+            absl::make_optional<CellIndex>(3u, CellType::kContent));
 }
 
 TEST_F(PopupViewViewsTest, MovingSelectionSkipsSeparator) {
-  CreateAndShowView({PopupItemId::kAddressEntry, PopupItemId::kSeparator,
-                     PopupItemId::kAutofillOptions});
-  view().SetSelectedCell(CellIndex{0u, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
+  CreateAndShowView(
+      {1, POPUP_ITEM_ID_SEPARATOR, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
+  view().SetSelectedCell(CellIndex{0u, CellType::kContent});
 
   // Going one down skips the separator.
   SimulateKeyPress(ui::VKEY_DOWN);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(2u, CellType::kContent));
+            absl::make_optional<CellIndex>(2u, CellType::kContent));
 
   // And going up does, too.
   SimulateKeyPress(ui::VKEY_UP);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(0u, CellType::kContent));
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
 }
 
 TEST_F(PopupViewViewsTest, MovingSelectionSkipsInsecureFormWarning) {
-  CreateAndShowView({PopupItemId::kAddressEntry, PopupItemId::kSeparator,
-                     PopupItemId::kInsecureContextPaymentDisabledMessage});
-  view().SetSelectedCell(CellIndex{0u, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
+  CreateAndShowView({1, POPUP_ITEM_ID_SEPARATOR,
+                     POPUP_ITEM_ID_INSECURE_CONTEXT_PAYMENT_DISABLED_MESSAGE});
+  view().SetSelectedCell(CellIndex{0u, CellType::kContent});
 
   // Cursor up skips the unselectable form warning when the last item cannot be
   // selected.
@@ -666,67 +447,94 @@ TEST_F(PopupViewViewsTest, MovingSelectionSkipsInsecureFormWarning) {
   // Cursor down selects the first element.
   SimulateKeyPress(ui::VKEY_DOWN);
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(0u, CellType::kContent));
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
 
   // Cursor up leads to no selection because the last item cannot be selected.
   SimulateKeyPress(ui::VKEY_UP);
   EXPECT_FALSE(view().GetSelectedCell());
 }
 
-TEST_F(PopupViewViewsTest, EscClosesSubPopup) {
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-      Suggestion(u"Suggestion #2"),
-  });
-  CreateAndShowView();
+TEST_F(PopupViewViewsTest, FillContentOnEnter) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      features::kAutofillPopupUseThresholdForKeyboardAndMobileAccept);
+  CreateAndShowView({1, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
 
-  CellIndex cell_content = CellIndex{0, CellType::kContent};
-  CellIndex cell_control = CellIndex{0, CellType::kControl};
+  // Select the first item.
+  view().SetSelectedCell(CellIndex{0u, CellType::kContent});
+  EXPECT_EQ(view().GetSelectedCell(),
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
 
-  view().SetSelectedCell(cell_control, PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  ASSERT_EQ(test_api(view()).GetOpenSubPopupRow(), cell_control.first);
-
-  SimulateKeyPress(ui::VKEY_ESCAPE);
-  EXPECT_EQ(view().GetSelectedCell(), cell_content);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
-}
-
-class PopupViewViewsTestKeyboard : public PopupViewViewsTest {
- public:
-  void SelectItem(size_t index) {
-    CreateAndShowView(
-        {PopupItemId::kAddressEntry, PopupItemId::kAutofillOptions});
-    // Select the `index`th item.
-    view().SetSelectedCell(CellIndex{index, CellType::kContent},
-                           PopupCellSelectionSource::kNonUserInput);
-    EXPECT_EQ(view().GetSelectedCell(),
-              std::make_optional<CellIndex>(index, CellType::kContent));
-  }
-
-  void SelectFirstSuggestion() { SelectItem(0); }
-};
-
-// Tests that hitting enter on a suggestion autofills it.
-TEST_F(PopupViewViewsTestKeyboard, FillOnEnter) {
-  SelectFirstSuggestion();
-  EXPECT_CALL(controller(), AcceptSuggestion(0));
+  // Because the first line is an autofillable entry, we expect that the tab
+  // key triggers autofill.
+  EXPECT_CALL(controller(), AcceptSuggestionWithoutThreshold(0));
   SimulateKeyPress(ui::VKEY_RETURN);
 }
 
-// Tests that hitting tab on a suggestion autofills it.
-TEST_F(PopupViewViewsTestKeyboard, FillOnTabPressed) {
-  SelectFirstSuggestion();
-  EXPECT_CALL(controller(), AcceptSuggestion(0));
+TEST_F(PopupViewViewsTest, FillContentOnEnterUsesThresholdIfFeatureEnabled) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillPopupUseThresholdForKeyboardAndMobileAccept};
+  CreateAndShowView({1, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
+
+  // Select the first item.
+  view().SetSelectedCell(CellIndex{0u, CellType::kContent});
+  EXPECT_EQ(view().GetSelectedCell(),
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
+
+  // Because the first line is an autofillable entry, we expect that the tab
+  // key triggers autofill.
+  EXPECT_CALL(controller(), AcceptSuggestion);
+  EXPECT_CALL(controller(), AcceptSuggestionWithoutThreshold).Times(0);
+  SimulateKeyPress(ui::VKEY_RETURN);
+}
+
+// Verify that pressing the tab key while an autofillable entry is selected
+// triggers the filling.
+TEST_F(PopupViewViewsTest, FillOnTabPressed) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      features::kAutofillPopupUseThresholdForKeyboardAndMobileAccept);
+  CreateAndShowView({1, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
+
+  // Select the first item.
+  view().SetSelectedCell(CellIndex{0u, CellType::kContent});
+  EXPECT_EQ(view().GetSelectedCell(),
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
+
+  // Because the first line is an autofillable entry, we expect that the tab
+  // key triggers autofill.
+  EXPECT_CALL(controller(), AcceptSuggestionWithoutThreshold);
   SimulateKeyPress(ui::VKEY_TAB);
 }
 
-// Tests that `tab` together with a modified (other than shift) does not
-// autofill a selected suggestion.
-TEST_F(PopupViewViewsTestKeyboard, NoFillOnTabPressedWithModifiers) {
-  SelectFirstSuggestion();
-  EXPECT_CALL(controller(), AcceptSuggestion(0)).Times(0);
+TEST_F(PopupViewViewsTest, FillOnTabPressedUsesThresholdIfFeatureEnabled) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillPopupUseThresholdForKeyboardAndMobileAccept};
+  CreateAndShowView({1, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
+
+  // Select the first item.
+  view().SetSelectedCell(CellIndex{0u, CellType::kContent});
+  EXPECT_EQ(view().GetSelectedCell(),
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
+
+  // Because the first line is an autofillable entry, we expect that the tab
+  // key triggers autofill.
+  EXPECT_CALL(controller(), AcceptSuggestion);
+  SimulateKeyPress(ui::VKEY_TAB);
+}
+
+TEST_F(PopupViewViewsTest, NoFillOnTabPressedWithModifiers) {
+  CreateAndShowView({1, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
+
+  // Select the first item.
+  view().SetSelectedCell(CellIndex{0u, CellType::kContent});
+  EXPECT_EQ(view().GetSelectedCell(),
+            absl::make_optional<CellIndex>(0u, CellType::kContent));
+
+  // Because the first line is an autofillable entry, we expect that the tab
+  // key triggers autofill.
+  EXPECT_CALL(controller(), AcceptSuggestion).Times(0);
+  EXPECT_CALL(controller(), AcceptSuggestionWithoutThreshold).Times(0);
   SimulateKeyPress(ui::VKEY_TAB, /*shift_modifier_pressed=*/false,
                    /*non_shift_modifier_pressed=*/true);
 }
@@ -736,24 +544,24 @@ TEST_F(PopupViewViewsTestKeyboard, NoFillOnTabPressedWithModifiers) {
 // a tab with the autofill settings).
 TEST_F(PopupViewViewsTest, NoAutofillOptionsTriggeredOnTabPressed) {
   // Set up the popup and select the options cell.
-  CreateAndShowView({PopupItemId::kAddressEntry, PopupItemId::kSeparator,
-                     PopupItemId::kAutofillOptions});
-  view().SetSelectedCell(CellIndex{2u, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
+  CreateAndShowView(
+      {1, POPUP_ITEM_ID_SEPARATOR, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
+  view().SetSelectedCell(CellIndex{2u, CellType::kContent});
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(2u, CellType::kContent));
+            absl::make_optional<CellIndex>(2u, CellType::kContent));
 
-  // Because the selected line is PopupItemId::kAutofillOptions, we expect that
+  // Because the selected line is POPUP_ITEM_ID_AUTOFILL_OPTIONS, we expect that
   // the tab key does not trigger anything.
   EXPECT_CALL(controller(), AcceptSuggestion).Times(0);
+  EXPECT_CALL(controller(), AcceptSuggestionWithoutThreshold).Times(0);
   SimulateKeyPress(ui::VKEY_TAB);
 }
 
 // This is a regression test for crbug.com/1309431 to ensure that we don't crash
 // when we press tab before a line is selected.
 TEST_F(PopupViewViewsTest, TabBeforeSelectingALine) {
-  CreateAndShowView({PopupItemId::kAddressEntry, PopupItemId::kSeparator,
-                     PopupItemId::kAutofillOptions});
+  CreateAndShowView(
+      {1, POPUP_ITEM_ID_SEPARATOR, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
   EXPECT_FALSE(view().GetSelectedCell().has_value());
 
   // The following should not crash:
@@ -761,8 +569,7 @@ TEST_F(PopupViewViewsTest, TabBeforeSelectingALine) {
 }
 
 TEST_F(PopupViewViewsTest, RemoveLine) {
-  CreateAndShowView({PopupItemId::kAddressEntry, PopupItemId::kAddressEntry,
-                     PopupItemId::kAutofillOptions});
+  CreateAndShowView({1, 1, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
 
   // If no cell is selected, pressing delete has no effect.
   EXPECT_FALSE(view().GetSelectedCell().has_value());
@@ -770,95 +577,57 @@ TEST_F(PopupViewViewsTest, RemoveLine) {
   SimulateKeyPress(ui::VKEY_DELETE, /*shift_modifier_pressed=*/true);
   Mock::VerifyAndClearExpectations(&controller());
 
-  view().SetSelectedCell(CellIndex{1u, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
+  view().SetSelectedCell(CellIndex{1u, CellType::kContent});
   EXPECT_EQ(view().GetSelectedCell(),
-            std::make_optional<CellIndex>(1u, CellType::kContent));
+            absl::make_optional<CellIndex>(1u, CellType::kContent));
 
   EXPECT_CALL(controller(), RemoveSuggestion).Times(0);
   // If no shift key is pressed, no suggestion is removed.
   SimulateKeyPress(ui::VKEY_DELETE, /*shift_modifier_pressed=*/false);
   Mock::VerifyAndClearExpectations(&controller());
 
-  EXPECT_CALL(controller(),
-              RemoveSuggestion(1, AutofillMetrics::SingleEntryRemovalMethod::
-                                      kKeyboardShiftDeletePressed));
+  EXPECT_CALL(controller(), RemoveSuggestion(1));
   SimulateKeyPress(ui::VKEY_DELETE, /*shift_modifier_pressed=*/true);
 }
 
-TEST_F(PopupViewViewsTest, RemoveAutofillInvokesController) {
-  CreateAndShowView({PopupItemId::kAddressEntry, PopupItemId::kAddressEntry,
-                     PopupItemId::kAutofillOptions});
+TEST_F(PopupViewViewsTest, RemoveAutofillRecordsNoAutocompleteDeletionMetrics) {
+  base::HistogramTester histogram_tester;
+  CreateAndShowView({1, 1, POPUP_ITEM_ID_AUTOFILL_OPTIONS});
 
-  view().SetSelectedCell(CellIndex{1u, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
+  view().SetSelectedCell(CellIndex{1u, CellType::kContent});
 
   // No metrics are recorded if the entry is not an Autocomplete entry.
-  EXPECT_CALL(controller(),
-              RemoveSuggestion(1, AutofillMetrics::SingleEntryRemovalMethod::
-                                      kKeyboardShiftDeletePressed))
-      .WillOnce(Return(true));
+  EXPECT_CALL(controller(), RemoveSuggestion(1)).WillOnce(Return(true));
   SimulateKeyPress(ui::VKEY_DELETE, /*shift_modifier_pressed=*/true);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.Autocomplete.SingleEntryRemovalMethod", 0);
+  histogram_tester.ExpectTotalCount("Autocomplete.Events", 0);
 }
 
-// Tests that pressing TAB selects a previously unselected Compose suggestion.
-TEST_F(PopupViewViewsTest, TabSelectsComposeSuggestion) {
-  CreateAndShowView({PopupItemId::kCompose});
-  ASSERT_FALSE(view().GetSelectedCell().has_value());
-  SimulateKeyPress(ui::VKEY_TAB, /*shift_modifier_pressed=*/false);
-  EXPECT_TRUE(view().GetSelectedCell().has_value());
-}
+TEST_F(PopupViewViewsTest, RemoveAutocompleteSuggestionRecordsMetrics) {
+  base::HistogramTester histogram_tester;
+  CreateAndShowView(
+      {POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY, POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY});
 
-// Tests that pressing Shift+TAB in the presence of an unselected Compose
-// suggestion does nothing.
-TEST_F(PopupViewViewsTest, ShiftTabDoesNotAffectComposeSuggestion) {
-  EXPECT_CALL(controller(), Hide).Times(0);
+  view().SetSelectedCell(CellIndex{1u, CellType::kContent});
 
-  CreateAndShowView({PopupItemId::kCompose});
-  ASSERT_FALSE(view().GetSelectedCell().has_value());
-  SimulateKeyPress(ui::VKEY_TAB, /*shift_modifier_pressed=*/true);
-  EXPECT_FALSE(view().GetSelectedCell().has_value());
-}
+  // If deletion fails, no metric is recorded.
+  EXPECT_CALL(controller(), RemoveSuggestion(1)).WillOnce(Return(false));
+  SimulateKeyPress(ui::VKEY_DELETE, /*shift_modifier_pressed=*/true);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.Autocomplete.SingleEntryRemovalMethod", 0);
+  histogram_tester.ExpectTotalCount("Autocomplete.Events", 0);
 
-// Tests that pressing TAB in the presence of a selected Compose suggestion
-// closes the popup.
-TEST_F(PopupViewViewsTest, TabWithSelectedComposeSuggestionHidesPopup) {
-  EXPECT_CALL(controller(), Hide(PopupHidingReason::kUserAborted));
-
-  CreateAndShowView({PopupItemId::kCompose});
-  view().SetSelectedCell(CellIndex{0u, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
-  SimulateKeyPress(ui::VKEY_TAB, /*shift_modifier_pressed=*/false);
-}
-
-// Tests that pressing Shift+TAB in the presence of a selected Compose
-// suggestion unselects the suggestion, but does not close the popup.
-TEST_F(PopupViewViewsTest, ShiftTabUnselectsComposeSuggestion) {
-  EXPECT_CALL(controller(), Hide).Times(0);
-
-  CreateAndShowView({PopupItemId::kCompose});
-  view().SetSelectedCell(CellIndex{0u, CellType::kContent},
-                         PopupCellSelectionSource::kNonUserInput);
-  SimulateKeyPress(ui::VKEY_TAB, /*shift_modifier_pressed=*/true);
-  EXPECT_FALSE(view().GetSelectedCell().has_value());
-}
-
-// Tests that pressing up/down cursor keys does not select a Compose suggestion.
-TEST_F(PopupViewViewsTest, CursorUpDownDoesNotSelectComposeSuggestion) {
-  CreateAndShowView({PopupItemId::kCompose});
-  ASSERT_FALSE(view().GetSelectedCell().has_value());
-  SimulateKeyPress(ui::VKEY_DOWN, /*shift_modifier_pressed=*/false);
-  EXPECT_FALSE(view().GetSelectedCell().has_value());
-  SimulateKeyPress(ui::VKEY_UP, /*shift_modifier_pressed=*/false);
-  EXPECT_FALSE(view().GetSelectedCell().has_value());
-}
-
-// Tests that pressing Esc closes a popup with a Compose suggestion.
-TEST_F(PopupViewViewsTest, EscapeClosesComposePopup) {
-  EXPECT_CALL(controller(), Hide(PopupHidingReason::kUserAborted));
-
-  CreateAndShowView({PopupItemId::kCompose});
-  SimulateKeyPress(ui::VKEY_ESCAPE, /*shift_modifier_pressed=*/false);
+  EXPECT_CALL(controller(), RemoveSuggestion(1)).WillOnce(Return(true));
+  SimulateKeyPress(ui::VKEY_DELETE, /*shift_modifier_pressed=*/true);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Autocomplete.SingleEntryRemovalMethod",
+      AutofillMetrics::AutocompleteSingleEntryRemovalMethod::
+          kKeyboardShiftDeletePressed,
+      1);
+  histogram_tester.ExpectUniqueSample(
+      "Autocomplete.Events",
+      AutofillMetrics::AutocompleteEvent::AUTOCOMPLETE_SUGGESTION_DELETED, 1);
 }
 
 // Ensure that the voice_over value of suggestions is presented to the
@@ -870,505 +639,21 @@ TEST_F(PopupViewViewsTest, VoiceOverTest) {
   suggestion.labels = {{Suggestion::Text(u"example.com")}};
   suggestion.voice_over = voice_over_value;
   suggestion.additional_label = u"\u2022\u2022\u2022\u2022";
-  suggestion.popup_item_id = PopupItemId::kPasswordEntry;
+  suggestion.frontend_id = POPUP_ITEM_ID_USERNAME_ENTRY;
 
   // Create autofill menu.
   controller().set_suggestions({suggestion});
-
   CreateAndShowView();
 
   // Verify that the accessibility layer gets the right string to read out.
   ui::AXNodeData node_data;
-  GetPopupRowViewAt(0)
-      .GetContentView()
-      .GetViewAccessibility()
-      .GetAccessibleNodeData(&node_data);
+  GetPopupRowViewAt(0).GetContentView().GetAccessibleNodeData(&node_data);
   EXPECT_EQ(voice_over_value,
             node_data.GetString16Attribute(ax::mojom::StringAttribute::kName));
 }
 
-TEST_F(PopupViewViewsTest, ExpandableSuggestionA11yMessageTest) {
-  // Set up the popup with suggestions.
-  std::u16string address_line = u"Address line #1";
-  Suggestion suggestion(address_line, PopupItemId::kAddressEntry);
-  suggestion.children = {Suggestion(PopupItemId::kFillFullAddress),
-                         Suggestion(PopupItemId::kFillFullName)};
-  controller().set_suggestions({suggestion});
-  CreateAndShowView();
-
-  // Verify that the accessibility layer gets the right string to read out.
-  ui::AXNodeData node_data;
-  GetPopupRowViewAt(0)
-      .GetViewAccessibility()
-      .GetAccessibleNodeData(&node_data);
-  EXPECT_EQ(node_data.GetString16Attribute(ax::mojom::StringAttribute::kName),
-            base::JoinString(
-                {address_line,
-                 l10n_util::GetStringFUTF16(
-                     IDS_AUTOFILL_EXPANDABLE_SUGGESTION_SUBMENU_HINT,
-                     l10n_util::GetStringUTF16(
-                         IDS_AUTOFILL_EXPANDABLE_SUGGESTION_EXPAND_SHORTCUT))},
-                u". "));
-
-  ui::AXNodeData content_node_data;
-  GetPopupRowViewAt(0)
-      .GetContentView()
-      .GetViewAccessibility()
-      .GetAccessibleNodeData(&content_node_data);
-  EXPECT_EQ(
-      content_node_data.GetString16Attribute(ax::mojom::StringAttribute::kName),
-      base::JoinString(
-          {address_line,
-           l10n_util::GetStringUTF16(
-               IDS_AUTOFILL_EXPANDABLE_SUGGESTION_FILL_ADDRESS_A11Y_ADDON),
-           l10n_util::GetStringFUTF16(
-               IDS_AUTOFILL_EXPANDABLE_SUGGESTION_SUBMENU_HINT,
-               l10n_util::GetStringUTF16(
-                   IDS_AUTOFILL_EXPANDABLE_SUGGESTION_EXPAND_SHORTCUT))},
-          u". "));
-}
-
-TEST_F(PopupViewViewsTest, UpdateSuggestionsNoCrash) {
-  CreateAndShowView({PopupItemId::kAddressEntry, PopupItemId::kSeparator,
-                     PopupItemId::kAutofillOptions});
-  UpdateSuggestions({PopupItemId::kAddressEntry});
-}
-
-TEST_F(PopupViewViewsTest, SubViewIsShownInChildWidget) {
-  CreateAndShowView({PopupItemId::kAddressEntry});
-  auto [sub_controller, sub_view] = OpenSubView(view());
-  views::Widget* sub_widget = sub_view->GetWidget();
-
-  EXPECT_EQ(view().GetWidget(), sub_widget->parent());
-}
-
-// Tests the event retriggering trick from `PopupBaseView::Widget`,
-// see `PopupBaseView::Widget::OnMouseEvent()` for details.
-TEST_F(PopupViewViewsTest, ChildWidgetRetriggersMouseMovesToParent) {
-  // The synthetic events further down originate directly inside the view
-  // bounds, this flag prevents ignoring them.
-  ON_CALL(controller(), ShouldIgnoreMouseObservedOutsideItemBoundsCheck)
-      .WillByDefault(Return(true));
-
-  CreateAndShowView({PopupItemId::kAddressEntry});
-  auto [sub_controller, sub_view] = OpenSubView(view());
-
-  ASSERT_EQ(view().GetSelectedCell(), std::nullopt);
-
-  PopupRowView* row = absl::get<PopupRowView*>(test_api(view()).rows()[0]);
-
-  // Mouse move inside parent, selection by MOUSE_ENTERED is expected.
-  generator().MoveMouseTo(row->GetBoundsInScreen().CenterPoint());
-  EXPECT_NE(view().GetSelectedCell(), std::nullopt);
-
-  // Mouse move outside parent, unselection by MOUSE_EXITED is expected.
-  generator().MoveMouseTo(row->GetBoundsInScreen().origin() -
-                          gfx::Vector2d(100, 100));
-  EXPECT_EQ(view().GetSelectedCell(), std::nullopt);
-}
-
-TEST_F(PopupViewViewsTest, SubViewIsClosedWithParent) {
-  controller().set_suggestions({PopupItemId::kAddressEntry});
-  PopupViewViews view(controller().GetWeakPtr());
-  views::Widget* widget = CreateTestWidget().release();
-  ShowView(&view, *widget);
-
-  auto [sub_controller, sub_view] = OpenSubView(view);
-  base::WeakPtr<views::Widget> sub_widget = sub_view->GetWidget()->GetWeakPtr();
-
-  ASSERT_FALSE(sub_widget->IsClosed());
-
-  EXPECT_CALL(controller(), ViewDestroyed());
-
-  widget->CloseNow();
-
-  EXPECT_TRUE(!sub_widget || sub_widget->IsClosed())
-      << "The sub-widget should be closed as its parent is closed.";
-}
-
-TEST_F(PopupViewViewsTest, CellOpensClosesSubPopupWithDelay) {
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-      Suggestion(u"Suggestion #2"),
-  });
-  CreateAndShowView();
-
-  CellIndex cell_0 = CellIndex{0, CellType::kControl};
-
-  view().SetSelectedCell(cell_0, PopupCellSelectionSource::kNonUserInput);
-  EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), std::nullopt)
-      << "Should be no sub-popups initially.";
-
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), cell_0.first)
-      << "Selected cell should have a sub-popup after the delay.";
-
-  view().SetSelectedCell(std::nullopt, PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), cell_0.first)
-      << "The cell should have no sub-popup by unselecting it.";
-}
-
-TEST_F(PopupViewViewsTest, CellSubPopupResetAfterSuggestionsUpdates) {
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-      Suggestion(u"Suggestion #2"),
-  });
-  CreateAndShowView();
-
-  view().SetSelectedCell(CellIndex{0, CellType::kControl},
-                         PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  EXPECT_NE(test_api(view()).GetOpenSubPopupRow(), std::nullopt)
-      << "Openning a sub-popup should happen.";
-
-  UpdateSuggestions({PopupItemId::kAddressEntry});
-  EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), std::nullopt)
-      << "The cell's sub-popup should be closed.";
-}
-
-// TODO(crbug.com/1515280): Enable on ChromeOS when test setup in the death
-// subprocess is fixed.
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
-// `PopupViewViewsTest` is not used in death tests because it sets up a complex
-// environment (namely creates a `TestingProfile`) that fails to be created in
-// the sub-process (see `ASSERT_DEATH` doc for details). This fail hides
-// the real death reason to be tested.
-using PopupViewViewsDeathTest = ChromeViewsTestBase;
-TEST_F(PopupViewViewsDeathTest, OpenSubPopupWithNoChildrenCheckCrash) {
-  NiceMock<MockAutofillPopupController> controller;
-  controller.set_suggestions({
-      // Regular suggestion with no children,
-      Suggestion(u"Suggestion #1"),
-      Suggestion(u"Suggestion #2"),
-  });
-  std::unique_ptr<views::Widget> widget = CreateTestWidget();
-  std::unique_ptr<PopupViewViews> view =
-      std::make_unique<PopupViewViews>(controller.GetWeakPtr());
-  raw_ptr<PopupViewViews> view_ptr = widget->SetContentsView(std::move(view));
-  view_ptr->Show(AutoselectFirstSuggestion(false));
-
-  ASSERT_DEATH(
-      view_ptr->SetSelectedCell(CellIndex{0, CellType::kControl},
-                                PopupCellSelectionSource::kNonUserInput),
-      "can_open_sub_popup");
-}
-#endif
-
-TEST_F(PopupViewViewsTest, SubPopupHidingOnNoSelection) {
-  ui::MouseEvent fake_event(ui::ET_MOUSE_MOVED, gfx::Point(), gfx::Point(),
-                            ui::EventTimeForNow(), ui::EF_IS_SYNTHESIZED, 0);
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-      Suggestion(u"Suggestion #2"),
-  });
-  CreateAndShowView();
-  CellIndex cell{0, CellType::kControl};
-
-  view().SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  ASSERT_EQ(test_api(view()).GetOpenSubPopupRow(), cell.first);
-
-  auto [sub_controller, sub_view] = OpenSubView(
-      view(), {CreateSuggestionWithChildren({Suggestion(u"Sub Child #1")})});
-  view().SetSelectedCell(std::nullopt, PopupCellSelectionSource::kNonUserInput);
-  sub_view->SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  ASSERT_EQ(test_api(*sub_view).GetOpenSubPopupRow(), cell.first);
-
-  auto [sub_sub_controller, sub_sub_view] = OpenSubView(
-      *sub_view,
-      {CreateSuggestionWithChildren({Suggestion(u"Sub Sub Child #1")})});
-  sub_view->SetSelectedCell(std::nullopt,
-                            PopupCellSelectionSource::kNonUserInput);
-  sub_sub_view->SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-  sub_sub_view->SetSelectedCell(std::nullopt,
-                                PopupCellSelectionSource::kNonUserInput);
-  sub_sub_view->OnMouseExited(fake_event);
-
-  task_environment()->FastForwardBy(
-      PopupViewViews::kNoSelectionHideSubPopupDelay);
-
-  EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
-  EXPECT_EQ(test_api(*sub_view).GetOpenSubPopupRow(), std::nullopt);
-}
-
-TEST_F(PopupViewViewsTest, SubPopupHidingIsCanceledOnSelection) {
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-      Suggestion(u"Suggestion #2"),
-  });
-  CreateAndShowView();
-  CellIndex cell{0, CellType::kControl};
-  view().SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  ASSERT_EQ(test_api(view()).GetOpenSubPopupRow(), cell.first);
-
-  auto [sub_controller, sub_view] = OpenSubView(
-      view(), {CreateSuggestionWithChildren({Suggestion(u"Sub Child #1")})});
-  view().SetSelectedCell(std::nullopt, PopupCellSelectionSource::kNonUserInput);
-
-  // This triggers the no-selection hiding timer.
-  sub_view->OnMouseExited(ui::MouseEvent(ui::ET_MOUSE_MOVED, gfx::Point(),
-                                         gfx::Point(), ui::EventTimeForNow(),
-                                         ui::EF_IS_SYNTHESIZED, 0));
-
-  // A cell is selected - the timer should be canceled.
-  view().SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(
-      PopupViewViews::kNoSelectionHideSubPopupDelay);
-  EXPECT_NE(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
-}
-
-TEST_F(PopupViewViewsTest, SubPopupHidingIsCanceledOnParentHiding) {
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-      Suggestion(u"Suggestion #2"),
-  });
-  CreateAndShowView();
-  CellIndex cell{0, CellType::kControl};
-  view().SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-
-  ASSERT_EQ(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
-
-  view().Hide();
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-
-  EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
-}
-
-TEST_F(PopupViewViewsTest, SubPopupOwnSelectionPreventsHiding) {
-  ui::MouseEvent fake_event(ui::ET_MOUSE_MOVED, gfx::Point(), gfx::Point(),
-                            ui::EventTimeForNow(), ui::EF_IS_SYNTHESIZED, 0);
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-      Suggestion(u"Suggestion #2"),
-  });
-  CreateAndShowView();
-  CellIndex cell{0, CellType::kControl};
-
-  view().SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  ASSERT_EQ(test_api(view()).GetOpenSubPopupRow(), cell.first);
-
-  auto [sub_controller, sub_view] = OpenSubView(
-      view(), {CreateSuggestionWithChildren({Suggestion(u"Sub Child #1")})});
-  view().SetSelectedCell(std::nullopt, PopupCellSelectionSource::kNonUserInput);
-  sub_view->SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-  ASSERT_EQ(test_api(*sub_view).GetOpenSubPopupRow(), cell.first);
-
-  auto [sub_sub_controller, sub_sub_view] = OpenSubView(
-      *sub_view,
-      {CreateSuggestionWithChildren({Suggestion(u"Sub Sub Child #1")})});
-  sub_view->SetSelectedCell(std::nullopt,
-                            PopupCellSelectionSource::kNonUserInput);
-  sub_sub_view->SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
-  sub_sub_view->SetSelectedCell(std::nullopt,
-                                PopupCellSelectionSource::kNonUserInput);
-  sub_sub_view->OnMouseExited(fake_event);
-
-  // The interrupting selection in the root popup, should prevent
-  // its sub-popup from closing, but not the middle one's sub-popup.
-  task_environment()->FastForwardBy(base::Milliseconds(1));
-  view().OnMouseEntered(fake_event);
-
-  task_environment()->FastForwardBy(
-      PopupViewViews::kNoSelectionHideSubPopupDelay);
-
-  EXPECT_NE(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
-  EXPECT_EQ(test_api(*sub_view).GetOpenSubPopupRow(), std::nullopt);
-}
-
-TEST_F(PopupViewViewsTest, SubPopupOpensWithNoAutoselectByMouse) {
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-  });
-  CreateAndShowView();
-
-  EXPECT_CALL(controller(),
-              OpenSubPopup(_, _, AutoselectFirstSuggestion(false)));
-
-  view().SetSelectedCell(CellIndex{0, CellType::kControl},
-                         PopupCellSelectionSource::kMouse);
-  task_environment()->FastForwardBy(PopupViewViews::kMouseOpenSubPopupDelay);
-}
-
-TEST_F(PopupViewViewsTest, SubPopupOpensWithAutoselectByRightKey) {
-  controller().set_suggestions({
-      CreateSuggestionWithChildren({Suggestion(u"Child #1")}),
-  });
-  CreateAndShowView();
-
-  EXPECT_CALL(controller(),
-              OpenSubPopup(_, _, AutoselectFirstSuggestion(true)));
-
-  SimulateKeyPress(ui::VKEY_DOWN);
-  SimulateKeyPress(ui::VKEY_RIGHT);
-  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
-}
-
-TEST_F(PopupViewViewsTest, SubPopupOpensForNonSelectableContentSelection) {
-  Suggestion suggestion = CreateSuggestionWithChildren({Suggestion(u"Child")});
-  suggestion.is_acceptable = false;
-  controller().set_suggestions({suggestion});
-  CreateAndShowView();
-
-  EXPECT_CALL(controller(), OpenSubPopup);
-
-  view().SetSelectedCell(CellIndex{0, CellType::kContent},
-                         PopupCellSelectionSource::kMouse);
-  task_environment()->FastForwardBy(PopupViewViews::kMouseOpenSubPopupDelay);
-}
-
-// TODO(crbug.com/1489673): Enable once the view shows itself properly.
-#if !BUILDFLAG(IS_MAC)
-// Tests that `GetPopupScreenLocation` returns the bounds and arrow position of
-// the popup.
-TEST_F(PopupViewViewsTest, GetPopupScreenLocation) {
-  CreateAndShowView({PopupItemId::kCompose});
-
-  using PopupScreenLocation = AutofillClient::PopupScreenLocation;
-  auto MatchesScreenLocation =
-      [](gfx::Rect bounds, PopupScreenLocation::ArrowPosition arrow_position) {
-        return Optional(
-            AllOf(Field(&PopupScreenLocation::bounds, bounds),
-                  Field(&PopupScreenLocation::arrow_position, arrow_position)));
-      };
-  EXPECT_THAT(
-      view().GetPopupScreenLocation(),
-      MatchesScreenLocation(widget().GetWindowBoundsInScreen(),
-                            PopupScreenLocation::ArrowPosition::kTopLeft));
-}
-#endif  // !BUILDFLAG(IS_MAC)
-
-// TODO(crbug.com/1523677): Rework into pixel tests and run on all available
-// platforms. The test below is a temporary solution to cover positioning
-// calculations in the popup. The exact numbers were obtained by observing
-// a local run, manually verified and hardcoded in the test with acceptable 15px
-// error, as on different machines the popup geometry/location slightly vary.
-#if BUILDFLAG(IS_LINUX)
-TEST_F(PopupViewViewsTest, PopupPositioning) {
-  constexpr gfx::Size kSmallWindow(300, 300);
-  constexpr gfx::Size kLargeWindow(1000, 1000);
-  constexpr gfx::SizeF kElementSize(100, 25);
-  constexpr gfx::PointF kLargeWindowTopLeftElement(0, 0);
-  constexpr gfx::PointF kLargeWindowBottomLeftElement(0, 975);
-  constexpr gfx::PointF kLargeWindowCenterElement(500, 500);
-  constexpr gfx::PointF kLargeWindowTopRightElement(900, 0);
-  constexpr gfx::PointF kLargeWindowBottomRightElement(900, 975);
-  constexpr gfx::PointF kSmallWindowTopLeftElement(0, 0);
-  constexpr gfx::PointF kSmallWindowLeftElement(0, 140);
-  constexpr gfx::PointF kSmallWindowTopElement(150, 0);
-  constexpr gfx::PointF kSmallWindowBottomElement(150, 275);
-  constexpr gfx::PointF kSmallWindowBottomRightElement(200, 275);
-  const std::vector<PopupItemId> kSmallPopupSuggestions(
-      2, PopupItemId::kAutocompleteEntry);
-  const std::vector<PopupItemId> kLargePopupSuggestions(
-      10, PopupItemId::kAutocompleteEntry);
-
-  struct TestCase {
-    const gfx::Size web_contents_bounds;
-    const gfx::PointF element_position;
-    const std::vector<PopupItemId> suggestions;
-    const gfx::Rect expected_popup_bounds;
-  } test_cases[]{
-      {kLargeWindow,
-       kLargeWindowTopLeftElement,
-       kSmallPopupSuggestions,
-       {25, 26, 164, 138}},
-      {kLargeWindow,
-       kLargeWindowBottomLeftElement,
-       kSmallPopupSuggestions,
-       {25, 840, 164, 134}},
-      {kLargeWindow,
-       kLargeWindowCenterElement,
-       kSmallPopupSuggestions,
-       {525, 526, 164, 138}},
-      {kLargeWindow,
-       kLargeWindowTopRightElement,
-       kSmallPopupSuggestions,
-       {832, 26, 164, 138}},
-      {kLargeWindow,
-       kLargeWindowBottomRightElement,
-       kSmallPopupSuggestions,
-       {832, 840, 164, 134}},
-      {kSmallWindow,
-       kSmallWindowTopLeftElement,
-       kSmallPopupSuggestions,
-       {25, 26, 164, 138}},
-      {kSmallWindow,
-       kSmallWindowTopLeftElement,
-       kLargePopupSuggestions,
-       {100, -10, 183, 308}},
-      {kSmallWindow,
-       kSmallWindowLeftElement,
-       kLargePopupSuggestions,
-       {100, -2, 183, 308}},
-      {kSmallWindow,
-       kSmallWindowTopElement,
-       kLargePopupSuggestions,
-       {117, 26, 179, 288}},
-      {kSmallWindow,
-       kSmallWindowBottomElement,
-       kLargePopupSuggestions,
-       {117, -10, 179, 284}},
-      {kSmallWindow,
-       kSmallWindowBottomRightElement,
-       kLargePopupSuggestions,
-       {17, 6, 183, 308}},
-  };
-
-  for (TestCase& test_case : test_cases) {
-    web_contents().Resize(gfx::Rect(test_case.web_contents_bounds));
-    controller().set_element_bounds(
-        gfx::RectF(test_case.element_position, kElementSize) +
-        web_contents().GetContainerBounds().OffsetFromOrigin());
-    CreateAndShowView(test_case.suggestions);
-
-    const gfx::Rect& expected = test_case.expected_popup_bounds;
-    const gfx::Rect& actual = widget().GetWindowBoundsInScreen();
-    // The exact position and size varies on different machines (e.g. because of
-    // different available fonts) and this comparison relaxation is to mitigate
-    // slightly different dimensions.
-    const int kPxError = 15;
-    EXPECT_NEAR(expected.x(), actual.x(), kPxError);
-    EXPECT_NEAR(expected.y(), actual.y(), kPxError);
-    EXPECT_NEAR(expected.width(), actual.width(), kPxError);
-    EXPECT_NEAR(expected.height(), actual.height(), kPxError);
-  }
-}
-#endif  // BUILDFLAG(IS_LINUX)
-
-TEST_F(PopupViewViewsTest, StandaloneCvcSuggestion_ElementId) {
-  Suggestion suggestion(u"dummy_main_text");
-  suggestion.feature_for_iph =
-      feature_engagement::kIPHAutofillVirtualCardCVCSuggestionFeature.name;
-  controller().set_suggestions({suggestion});
-  CreateAndShowView();
-
-  EXPECT_EQ(GetPopupRowViewAt(0).GetProperty(views::kElementIdentifierKey),
-            kAutofillStandaloneCvcSuggestionElementId);
-}
-
-TEST_F(PopupViewViewsTest, VirtualCardSuggestion_ElementId) {
-  Suggestion suggestion(u"dummy_main_text");
-  suggestion.feature_for_iph =
-      feature_engagement::kIPHAutofillVirtualCardSuggestionFeature.name;
-  controller().set_suggestions({suggestion});
-  CreateAndShowView();
-
-  EXPECT_EQ(GetPopupRowViewAt(0).GetProperty(views::kElementIdentifierKey),
-            kAutofillCreditCardSuggestionEntryElementId);
-}
-
-#if defined(MEMORY_SANITIZER) && BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_ShowClickTest DISABLED_ShowClickTest
-#else
-#define MAYBE_ShowClickTest ShowClickTest
-#endif
 // Tests that (only) clickable items trigger an AcceptSuggestion event.
-TEST_P(PopupViewViewsTestWithAnyPopupItemId, MAYBE_ShowClickTest) {
+TEST_P(PopupViewViewsTestWithAnyPopupItemId, ShowClickTest) {
   CreateAndShowView({popup_item_id()});
   EXPECT_CALL(controller(), AcceptSuggestion(0))
       .Times(IsClickable(popup_item_id()));
@@ -1377,6 +662,7 @@ TEST_P(PopupViewViewsTestWithAnyPopupItemId, MAYBE_ShowClickTest) {
   Paint();
   generator().MoveMouseTo(GetCenterOfSuggestion(0));
   generator().ClickLeftButton();
+  view().RemoveAllChildViews();
 }
 
 // Tests that after the mouse moves into the popup after display, clicking a
@@ -1384,12 +670,13 @@ TEST_P(PopupViewViewsTestWithAnyPopupItemId, MAYBE_ShowClickTest) {
 TEST_P(PopupViewViewsTestWithClickablePopupItemId,
        AcceptSuggestionIfUnfocusedAtPaint) {
   CreateAndShowView({popup_item_id()});
-  EXPECT_CALL(controller(), AcceptSuggestion(0));
+  EXPECT_CALL(controller(), AcceptSuggestion(0)).Times(1);
   generator().MoveMouseTo(gfx::Point(1000, 1000));
   ASSERT_FALSE(view().IsMouseHovered());
   Paint();
   generator().MoveMouseTo(GetCenterOfSuggestion(0));
   generator().ClickLeftButton();
+  view().RemoveAllChildViews();
 }
 
 // Tests that after the mouse moves from one suggestion to another, clicking the
@@ -1397,12 +684,13 @@ TEST_P(PopupViewViewsTestWithClickablePopupItemId,
 TEST_P(PopupViewViewsTestWithClickablePopupItemId,
        AcceptSuggestionIfMouseSelectedAnotherRow) {
   CreateAndShowView({popup_item_id(), popup_item_id()});
-  EXPECT_CALL(controller(), AcceptSuggestion);
+  EXPECT_CALL(controller(), AcceptSuggestion).Times(1);
   generator().MoveMouseTo(GetCenterOfSuggestion(0));
   ASSERT_TRUE(view().IsMouseHovered());
   Paint();
   generator().MoveMouseTo(GetCenterOfSuggestion(1));  // Selects another row.
   generator().ClickLeftButton();
+  view().RemoveAllChildViews();
 }
 
 // Tests that after the mouse moves from one suggestion to another and back to
@@ -1410,13 +698,14 @@ TEST_P(PopupViewViewsTestWithClickablePopupItemId,
 TEST_P(PopupViewViewsTestWithClickablePopupItemId,
        AcceptSuggestionIfMouseTemporarilySelectedAnotherRow) {
   CreateAndShowView({popup_item_id(), popup_item_id()});
-  EXPECT_CALL(controller(), AcceptSuggestion);
+  EXPECT_CALL(controller(), AcceptSuggestion).Times(1);
   generator().MoveMouseTo(GetCenterOfSuggestion(0));
   ASSERT_TRUE(view().IsMouseHovered());
   Paint();
   generator().MoveMouseTo(GetCenterOfSuggestion(1));  // Selects another row.
   generator().MoveMouseTo(GetCenterOfSuggestion(0));
   generator().ClickLeftButton();
+  view().RemoveAllChildViews();
 }
 
 // Tests that even if the mouse hovers a suggestion when the popup is displayed,
@@ -1425,7 +714,7 @@ TEST_P(PopupViewViewsTestWithClickablePopupItemId,
 TEST_P(PopupViewViewsTestWithClickablePopupItemId,
        AcceptSuggestionIfMouseExitedPopupSincePaint) {
   CreateAndShowView({popup_item_id()});
-  EXPECT_CALL(controller(), AcceptSuggestion);
+  EXPECT_CALL(controller(), AcceptSuggestion).Times(1);
   generator().MoveMouseTo(GetCenterOfSuggestion(0));
   ASSERT_TRUE(view().IsMouseHovered());
   Paint();
@@ -1433,6 +722,7 @@ TEST_P(PopupViewViewsTestWithClickablePopupItemId,
   ASSERT_FALSE(view().IsMouseHovered());
   generator().MoveMouseTo(GetCenterOfSuggestion(0));
   generator().ClickLeftButton();
+  view().RemoveAllChildViews();
 }
 
 // Tests that if the mouse hovers a suggestion when the popup is displayed,
@@ -1445,6 +735,7 @@ TEST_P(PopupViewViewsTestWithClickablePopupItemId,
   ASSERT_TRUE(view().IsMouseHovered());
   Paint();
   generator().ClickLeftButton();
+  view().RemoveAllChildViews();
 }
 
 // Tests that if the mouse hovers a suggestion when the popup is displayed and
@@ -1464,6 +755,7 @@ TEST_P(PopupViewViewsTestWithClickablePopupItemId,
     }
   }
   generator().ClickLeftButton();
+  view().RemoveAllChildViews();
 }
 
 INSTANTIATE_TEST_SUITE_P(All,

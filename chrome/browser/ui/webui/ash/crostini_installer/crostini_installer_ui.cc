@@ -32,6 +32,7 @@
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/web_dialogs/web_dialog_ui.h"
 #include "ui/webui/mojo_web_ui_controller.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 namespace {
 void AddStringResources(content::WebUIDataSource* source) {
@@ -98,7 +99,9 @@ void AddStringResources(content::WebUIDataSource* source) {
                             crostini::disk::kDownloadSizeBytes,
                             ui::DATA_UNITS_MEBIBYTE, /*show_units=*/true)));
   source->AddString("learnMoreUrl",
-                    std::string{chrome::kLinuxAppsLearnMoreURL} +
+  //---***JEMAOS BEGIN***---
+                    std::string{jemaos::constants::kLinuxAppsLearnMoreURL} +
+  //---***JEMAOS END***---
                         "&b=" + base::SysInfo::GetLsbReleaseBoard());
 
   source->AddString(
@@ -136,8 +139,8 @@ CrostiniInstallerUI::CrostiniInstallerUI(content::WebUI* web_ui)
   auto* profile = Profile::FromWebUI(web_ui);
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       profile, chrome::kChromeUICrostiniInstallerHost);
-  webui::EnableTrustedTypesCSP(source);
   webui::SetJSModuleDefaults(source);
+  source->DisableTrustedTypesCSP();
   AddStringResources(source);
   source->AddString("defaultContainerUsername",
                     crostini::DefaultContainerUserNameForProfile(profile));

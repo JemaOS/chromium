@@ -124,14 +124,14 @@ class ManagementTransitionScreenTest
 
   bool use_managed_account() { return GetParam().use_managed_account; }
 
-  std::optional<AccountId> GetAccountId() {
+  absl::optional<AccountId> GetAccountId() {
     if (use_managed_account()) {
       return AccountId::FromUserEmailGaiaId(
           FakeGaiaMixin::kEnterpriseUser1,
           FakeGaiaMixin::kEnterpriseUser1GaiaId);
     }
 
-    return std::nullopt;
+    return absl::nullopt;
   }
 
  protected:
@@ -159,9 +159,7 @@ IN_PROC_BROWSER_TEST_P(ManagementTransitionScreenTest,
   arc::SetArcPlayStoreEnabledForProfile(profile, true);
 }
 
-// TODO(https://crbug.com/316993299) disabled due to flake.
-IN_PROC_BROWSER_TEST_P(ManagementTransitionScreenTest,
-                       DISABLED_SuccessfulTransition) {
+IN_PROC_BROWSER_TEST_P(ManagementTransitionScreenTest, SuccessfulTransition) {
   OobeScreenWaiter(ManagementTransitionScreenView::kScreenId).Wait();
 
   test::OobeJS().ExpectVisiblePath(kManagementDialog);

@@ -20,7 +20,8 @@ Browser* GetBrowserForWebContents(content::WebContents* web_contents) {
   auto* browser_window =
       BrowserWindow::FindBrowserWindowWithWebContents(web_contents);
   auto* browser_view = static_cast<BrowserView*>(browser_window);
-  return browser_view ? browser_view->browser() : nullptr;
+  CHECK(browser_view);
+  return browser_view->browser();
 }
 
 }  // namespace companion

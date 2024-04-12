@@ -54,14 +54,15 @@ class NetworkThrottlingObserverTest : public ::testing::Test {
 TEST_F(NetworkThrottlingObserverTest, ThrottlingChangeCallsShill) {
   // Test that a change in the throttling policy value leads to
   // shill_manager_client being called.
+  base::Value::Dict updated_throttling_policy;
   constexpr bool enabled = true;
   constexpr uint32_t upload_rate = 1200;
   constexpr uint32_t download_rate = 2000;
-  auto updated_throttling_policy =
-      base::Value::Dict()
-          .Set("enabled", enabled)
-          .Set("upload_rate_kbits", static_cast<int>(upload_rate))
-          .Set("download_rate_kbits", static_cast<int>(download_rate));
+  updated_throttling_policy.Set("enabled", enabled);
+  updated_throttling_policy.Set("upload_rate_kbits",
+                                static_cast<int>(upload_rate));
+  updated_throttling_policy.Set("download_rate_kbits",
+                                static_cast<int>(download_rate));
 
   // Make sure throttling is disabled just before setting preferece.
   EXPECT_FALSE(GetNetworkThrottlingStatus().enabled);

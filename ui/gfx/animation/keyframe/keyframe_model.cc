@@ -74,9 +74,8 @@ void KeyframeModel::SetRunState(RunState run_state,
 void KeyframeModel::Pause(base::TimeDelta pause_offset) {
   // Convert pause offset which is in local time to monotonic time.
   // TODO(crbug.com/912407): This should be scaled by playbackrate.
-  base::TimeTicks monotonic_time = pause_offset +
-                                   start_time_.value_or(base::TimeTicks()) +
-                                   total_paused_duration_;
+  base::TimeTicks monotonic_time =
+      pause_offset + start_time_ + total_paused_duration_;
   SetRunState(PAUSED, monotonic_time);
 }
 
@@ -92,7 +91,7 @@ KeyframeModel::Phase KeyframeModel::CalculatePhase(
                                              : -time_offset_;
   base::TimeDelta before_active_boundary_time =
       std::max(opposite_time_offset, base::TimeDelta());
-  if ((local_time < before_active_boundary_time) ||
+  if (local_time < before_active_boundary_time ||
       (local_time == before_active_boundary_time && playback_rate_ < 0)) {
     return KeyframeModel::Phase::BEFORE;
   }
@@ -112,14 +111,14 @@ KeyframeModel::Phase KeyframeModel::CalculatePhase(
     active_after_boundary_time =
         std::max(opposite_time_offset + active_duration, base::TimeDelta());
   }
-  if ((local_time > active_after_boundary_time) ||
+  if (local_time > active_after_boundary_time ||
       (local_time == active_after_boundary_time && playback_rate_ > 0)) {
     return KeyframeModel::Phase::AFTER;
   }
   return KeyframeModel::Phase::ACTIVE;
 }
 
-std::optional<base::TimeDelta> KeyframeModel::CalculateActiveTime(
+absl::optional<base::TimeDelta> KeyframeModel::CalculateActiveTime(
     base::TimeTicks monotonic_time) const {
   base::TimeDelta local_time = ConvertMonotonicTimeToLocalTime(monotonic_time);
   KeyframeModel::Phase phase = CalculatePhase(local_time);
@@ -128,7 +127,7 @@ std::optional<base::TimeDelta> KeyframeModel::CalculateActiveTime(
     case KeyframeModel::Phase::BEFORE:
       if (fill_mode_ == FillMode::BACKWARDS || fill_mode_ == FillMode::BOTH)
         return std::max(local_time + time_offset_, base::TimeDelta());
-      return std::nullopt;
+      return absl::nullopt;
     case KeyframeModel::Phase::ACTIVE:
       return local_time + time_offset_;
     case KeyframeModel::Phase::AFTER:
@@ -139,10 +138,10 @@ std::optional<base::TimeDelta> KeyframeModel::CalculateActiveTime(
         return std::max(std::min(local_time + time_offset_, active_duration),
                         base::TimeDelta());
       }
-      return std::nullopt;
+      return absl::nullopt;
     default:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
@@ -252,8 +251,7 @@ base::TimeDelta KeyframeModel::ConvertMonotonicTimeToLocalTime(
 
   // If we're paused, time is 'stuck' at the pause time.
   base::TimeTicks time = (run_state_ == PAUSED) ? pause_time_ : monotonic_time;
-  return time - start_time_.value_or(base::TimeTicks()) -
-         total_paused_duration_;
+  return time - start_time_ - total_paused_duration_;
 }
 
 }  // namespace gfx

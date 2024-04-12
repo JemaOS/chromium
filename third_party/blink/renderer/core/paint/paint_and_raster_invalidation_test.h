@@ -20,7 +20,7 @@ const RasterInvalidationTracking* GetRasterInvalidationTracking(
 inline const RasterInvalidationTracking* GetRasterInvalidationTracking(
     const LocalFrameView& root_frame_view) {
   return GetRasterInvalidationTracking(root_frame_view, 0,
-                                       "Scrolling background of LayoutView");
+                                       "Scrolling background of LayoutNGView");
 }
 
 class PaintAndRasterInvalidationTest : public PaintControllerPaintTest {

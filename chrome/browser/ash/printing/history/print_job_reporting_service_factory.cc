@@ -4,7 +4,7 @@
 
 #include "chrome/browser/ash/printing/history/print_job_reporting_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/printing/history/print_job_reporting_service.h"
 
 namespace ash {
@@ -19,8 +19,7 @@ PrintJobReportingService* PrintJobReportingServiceFactory::GetForBrowserContext(
 // static
 PrintJobReportingServiceFactory*
 PrintJobReportingServiceFactory::GetInstance() {
-  static base::NoDestructor<PrintJobReportingServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<PrintJobReportingServiceFactory>::get();
 }
 
 PrintJobReportingServiceFactory::PrintJobReportingServiceFactory()
@@ -35,10 +34,11 @@ PrintJobReportingServiceFactory::PrintJobReportingServiceFactory()
 
 PrintJobReportingServiceFactory::~PrintJobReportingServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-PrintJobReportingServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PrintJobReportingServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return PrintJobReportingService::Create();
+  auto reporting_service = PrintJobReportingService::Create();
+
+  return reporting_service.release();
 }
 
 bool PrintJobReportingServiceFactory::ServiceIsNULLWhileTesting() const {

@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/login/security_token_session_controller.h"
 
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "ash/constants/notifier_catalogs.h"
@@ -18,8 +17,6 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
-#include "base/trace_event/trace_event.h"
-#include "chrome/browser/ash/crosapi/browser_manager.h"
 #include "chrome/browser/ash/crosapi/browser_util.h"
 #include "chrome/browser/ash/login/lock/screen_locker.h"
 #include "chrome/browser/browser_process.h"
@@ -151,7 +148,7 @@ void LoadStoredChallengeResponseSpkiKeysForUser(
 }
 
 std::string GetSubjectPublicKeyInfo(const net::X509Certificate& certificate) {
-  std::string_view spki_bytes;
+  base::StringPiece spki_bytes;
   if (!net::asn1::ExtractSPKIFromDERCert(
           net::x509_util::CryptoBufferAsStringPiece(certificate.cert_buffer()),
           &spki_bytes)) {
@@ -257,8 +254,6 @@ void SecurityTokenSessionController::OnCertificatesUpdated(
 }
 
 void SecurityTokenSessionController::OnSessionStateChanged() {
-  TRACE_EVENT0("login",
-               "SecurityTokenSessionController::OnSessionStateChanged");
   if (session_manager_->session_state() ==
       session_manager::SessionState::LOCKED) {
     had_lock_screen_transition_ = true;

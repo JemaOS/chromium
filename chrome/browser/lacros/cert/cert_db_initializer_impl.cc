@@ -4,7 +4,6 @@
 
 #include "chrome/browser/lacros/cert/cert_db_initializer_impl.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/check.h"
@@ -26,6 +25,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "crypto/scoped_nss_types.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using CrosapiCertDb = crosapi::mojom::CertDatabase;
 
@@ -67,7 +67,7 @@ void CertDbInitializerImpl::Start() {
     return InitializeReadOnlyCertDb();
   }
 
-  if (lacros_service->GetInterfaceVersion<CrosapiCertDb>() >=
+  if (lacros_service->GetInterfaceVersion(CrosapiCertDb::Uuid_) >=
       kAddAshCertDatabaseObserverMinVersion) {
     lacros_service->GetRemote<CrosapiCertDb>()->AddAshCertDatabaseObserver(
         receiver_.BindNewPipeAndPassRemote());
@@ -165,19 +165,7 @@ CertDbInitializerImpl::CreateNssCertDatabaseGetterForIOThread() {
                         base::Unretained(cert_db_initializer_io_.get()));
 }
 
-void CertDbInitializerImpl::OnCertsChangedInAsh(
-    crosapi::mojom::CertDatabaseChangeType change_type) {
+void CertDbInitializerImpl::OnCertsChangedInAsh() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  switch (change_type) {
-    case crosapi::mojom::CertDatabaseChangeType::kUnknown:
-      net::CertDatabase::GetInstance()->NotifyObserversTrustStoreChanged();
-      net::CertDatabase::GetInstance()->NotifyObserversClientCertStoreChanged();
-      break;
-    case crosapi::mojom::CertDatabaseChangeType::kTrustStore:
-      net::CertDatabase::GetInstance()->NotifyObserversTrustStoreChanged();
-      break;
-    case crosapi::mojom::CertDatabaseChangeType::kClientCertStore:
-      net::CertDatabase::GetInstance()->NotifyObserversClientCertStoreChanged();
-      break;
-  }
+  net::CertDatabase::GetInstance()->NotifyObserversCertDBChanged();
 }

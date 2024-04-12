@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "chrome/browser/ash/login/users/avatar/user_image_manager.h"
-#include "chrome/browser/ash/login/users/avatar/user_image_manager_registry.h"
+#include "chrome/browser/ash/login/users/chrome_user_manager.h"
 #include "chrome/browser/ash/settings/cros_settings.h"
 #include "components/policy/policy_constants.h"
 
@@ -16,7 +16,7 @@ namespace policy {
 namespace {
 
 ash::UserImageManager* GetUserImageManager(const std::string& user_id) {
-  return ash::UserImageManagerRegistry::Get()->GetManager(
+  return ash::ChromeUserManager::Get()->GetUserImageManager(
       CloudExternalDataPolicyHandler::GetAccountId(user_id));
 }
 
@@ -58,8 +58,8 @@ void UserAvatarImageExternalDataHandler::OnExternalDataFetched(
 void UserAvatarImageExternalDataHandler::RemoveForAccountId(
     const AccountId& account_id,
     base::OnceClosure on_removed) {
-  ash::UserImageManagerRegistry::Get()
-      ->GetManager(account_id)
+  ash::ChromeUserManager::Get()
+      ->GetUserImageManager(account_id)
       ->DeleteUserImage();
 
   std::move(on_removed).Run();

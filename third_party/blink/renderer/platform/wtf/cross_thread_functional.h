@@ -47,6 +47,8 @@ namespace WTF {
 
 namespace internal {
 
+// Deduction of the signature to avoid complicated calls to MakeUnboundRunType.
+
 template <typename Signature>
 auto MakeCrossThreadFunction(base::RepeatingCallback<Signature> callback) {
   return CrossThreadFunction<Signature>(std::move(callback));

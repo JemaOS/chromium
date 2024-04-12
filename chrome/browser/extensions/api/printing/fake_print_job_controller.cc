@@ -35,27 +35,24 @@ FakePrintJobController::FakePrintJobController() = default;
 
 FakePrintJobController::~FakePrintJobController() = default;
 
-void FakePrintJobController::CreatePrintJob(
-    std::unique_ptr<printing::MetafileSkia> pdf,
-    std::unique_ptr<printing::PrintSettings> settings,
-    uint32_t page_count,
-    crosapi::mojom::PrintJob::Source source,
-    const std::string& source_id,
-    PrintJobCreatedCallback callback) {
+scoped_refptr<printing::PrintJob> FakePrintJobController::StartPrintJob(
+    const std::string& extension_id,
+    std::unique_ptr<printing::MetafileSkia> metafile,
+    std::unique_ptr<printing::PrintSettings> settings) {
   auto job = base::MakeRefCounted<PrintJobForTesting>();
-  job->SetSource(source, source_id);
-  StartWatchingPrintJob(job, std::move(callback));
-
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&FakePrintJobController::CreatePrintJobImpl,
-                     weak_ptr_factory_.GetWeakPtr(), job, std::move(settings)));
+      FROM_HERE, base::BindOnce(&FakePrintJobController::StartPrinting,
+                                weak_ptr_factory_.GetWeakPtr(), job,
+                                extension_id, std::move(settings)));
+  return job;
 }
 
-void FakePrintJobController::CreatePrintJobImpl(
+void FakePrintJobController::StartPrinting(
     scoped_refptr<printing::PrintJob> job,
+    const std::string& extension_id,
     std::unique_ptr<printing::PrintSettings> settings) {
   job_id_++;
+  job->SetSource(printing::PrintJob::Source::kExtension, extension_id);
   auto document = base::MakeRefCounted<printing::PrintedDocument>(
       std::move(settings), std::u16string(),
       printing::PrintSettings::NewCookie());

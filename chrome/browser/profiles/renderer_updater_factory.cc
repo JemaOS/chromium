@@ -16,12 +16,7 @@
 RendererUpdaterFactory::RendererUpdaterFactory()
     : ProfileKeyedServiceFactory(
           "RendererUpdater",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(IdentityManagerFactory::GetInstance());
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
@@ -29,12 +24,11 @@ RendererUpdaterFactory::RendererUpdaterFactory()
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 }
 
-RendererUpdaterFactory::~RendererUpdaterFactory() = default;
+RendererUpdaterFactory::~RendererUpdaterFactory() {}
 
 // static
 RendererUpdaterFactory* RendererUpdaterFactory::GetInstance() {
-  static base::NoDestructor<RendererUpdaterFactory> instance;
-  return instance.get();
+  return base::Singleton<RendererUpdaterFactory>::get();
 }
 
 // static
@@ -43,10 +37,9 @@ RendererUpdater* RendererUpdaterFactory::GetForProfile(Profile* profile) {
       GetInstance()->GetServiceForBrowserContext(profile, true));
 }
 
-std::unique_ptr<KeyedService>
-RendererUpdaterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* RendererUpdaterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<RendererUpdater>(static_cast<Profile*>(context));
+  return new RendererUpdater(static_cast<Profile*>(context));
 }
 
 bool RendererUpdaterFactory::ServiceIsCreatedWithBrowserContext() const {

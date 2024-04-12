@@ -37,7 +37,6 @@ Got a performance mark event:
 Object: {
 	args: {
 		data: {
-			detail: string
 			navigationId: string
 			startTime: number
 		}
@@ -56,9 +55,7 @@ Object: {
 		startTime: number
 	}
 	cat: string
-	id2: {
-		local: string
-	}
+	id: string
 	name: string
 	ph: string
 	pid: number

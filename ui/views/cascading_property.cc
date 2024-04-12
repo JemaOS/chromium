@@ -5,7 +5,6 @@
 #include "ui/views/cascading_property.h"
 
 #include "ui/base/theme_provider.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/gfx/color_utils.h"
@@ -46,7 +45,7 @@ void SetCascadingColorProviderColor(
 }
 
 SkColor GetCascadingBackgroundColor(View* view) {
-  const std::optional<SkColor> color =
+  const absl::optional<SkColor> color =
       GetCascadingProperty(view, kCascadingBackgroundColor);
   return color.value_or(
       view->GetColorProvider()->GetColor(ui::kColorWindowBackground));
@@ -55,15 +54,10 @@ SkColor GetCascadingBackgroundColor(View* view) {
 SkColor GetCascadingAccentColor(View* view) {
   const SkColor default_color =
       view->GetColorProvider()->GetColor(ui::kColorFocusableBorderFocused);
-  const SkColor background_color = GetCascadingBackgroundColor(view);
-  return features::IsChromeRefresh2023()
-             ? color_utils::BlendForMinContrast(
-                   default_color, background_color, std::nullopt,
-                   color_utils::kMinimumVisibleContrastRatio)
-                   .color
-             : color_utils::PickGoogleColor(
-                   default_color, background_color,
-                   color_utils::kMinimumVisibleContrastRatio);
+
+  return color_utils::PickGoogleColor(
+      default_color, GetCascadingBackgroundColor(view),
+      color_utils::kMinimumVisibleContrastRatio);
 }
 
 }  // namespace views

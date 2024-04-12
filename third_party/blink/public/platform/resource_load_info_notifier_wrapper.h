@@ -5,8 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_PUBLIC_PLATFORM_RESOURCE_LOAD_INFO_NOTIFIER_WRAPPER_H_
 #define THIRD_PARTY_BLINK_PUBLIC_PLATFORM_RESOURCE_LOAD_INFO_NOTIFIER_WRAPPER_H_
 
-#include "base/sequence_checker.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/threading/thread_checker.h"
 #include "build/build_config.h"
 #include "net/base/request_priority.h"
 #include "services/network/public/mojom/fetch_api.mojom-shared.h"
@@ -51,8 +51,7 @@ class BLINK_PLATFORM_EXPORT ResourceLoadInfoNotifierWrapper {
       const std::string& http_method,
       const GURL& referrer,
       network::mojom::RequestDestination request_destination,
-      net::RequestPriority request_priority,
-      bool is_ad_resource);
+      net::RequestPriority request_priority);
   void NotifyResourceRedirectReceived(
       const net::RedirectInfo& redirect_info,
       network::mojom::URLResponseHeadPtr redirect_response);
@@ -64,7 +63,7 @@ class BLINK_PLATFORM_EXPORT ResourceLoadInfoNotifierWrapper {
   void NotifyResourceLoadCanceled(int net_error);
 
  private:
-  SEQUENCE_CHECKER(sequence_checker_);
+  THREAD_CHECKER(thread_checker_);
 
   // |weak_wrapper_resource_load_info_notifier_| should only be dereferenced on
   // the same thread as |task_runner_| runs on.
@@ -75,8 +74,6 @@ class BLINK_PLATFORM_EXPORT ResourceLoadInfoNotifierWrapper {
   // This struct holds the loading stats passed to
   // |weak_wrapper_resource_load_info_notifier_|.
   mojom::ResourceLoadInfoPtr resource_load_info_;
-
-  bool is_ad_resource_ = false;
 };
 
 }  // namespace blink

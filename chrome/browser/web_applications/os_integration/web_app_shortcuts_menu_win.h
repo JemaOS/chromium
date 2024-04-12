@@ -21,7 +21,7 @@ void SetUpdateJumpListForTesting(
     UpdateJumpListForTesting updateJumpListForTesting);
 
 std::wstring GenerateAppUserModelId(const base::FilePath& profile_path,
-                                    const webapps::AppId& app_id);
+                                    const AppId& app_id);
 
 namespace internals {
 

@@ -19,12 +19,12 @@ class KerberosSettingsRedirectElement extends PolymerElement {
     return getTemplate();
   }
 
-  private onCancelButtonClicked_(): void {
+  private onVisitWithoutTicket_(): void {
     chrome.send('dialogClose');
   }
 
   private onManageTickets_(): void {
-    chrome.send('dialogClose', ['openSettings']);
+    chrome.send('openSettings');
   }
 }
 

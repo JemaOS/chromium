@@ -35,7 +35,6 @@ import importlib
 import os
 import pathlib
 import sys
-import textwrap
 
 try:
     import cairocffi as cairo  # type: ignore
@@ -200,8 +199,7 @@ def _generate_test(test: Mapping[str, str], templates: Mapping[str, str],
             r'@assert pixel .* 0,0,0,0;', test['code']):
         print('Probable incorrect pixel test in %s' % name)
 
-    code = _expand_test_code(test['code'].strip())
-    code = textwrap.indent(code, '  ')
+    code = _expand_test_code(test['code'])
 
     expectation_html = ''
     if 'expected' in test and test['expected'] is not None:

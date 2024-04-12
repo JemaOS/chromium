@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,9 +22,8 @@ import androidx.annotation.Nullable;
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TraceEvent;
-import org.chromium.base.metrics.RecordHistogram;
-import org.chromium.base.version_info.Channel;
-import org.chromium.base.version_info.VersionConstants;
+import org.chromium.components.version_info.Channel;
+import org.chromium.components.version_info.VersionConstants;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -33,7 +32,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Proxies IInterfaces for System Services to add trace events for slow IPCs.
@@ -49,10 +47,6 @@ public class ServiceTracingProxyProvider {
     private static final String TRACE_FAILED = "Failed to trace IPCs: ";
     private static final String PROXY_PREP_FAILED = "Failed to prepare service for proxying: ";
 
-    private static final AtomicInteger sProxiesInstalled = new AtomicInteger();
-    private static final AtomicInteger sProxiesAttempted = new AtomicInteger();
-    private static final AtomicBoolean sProxyInstallCountHistogramRecorded = new AtomicBoolean();
-
     // Used to defeat Android's hidden API blocklist. I would tell you why it works, but the
     // truth is I don't know. Something to do with the calling class being loaded by the
     // boot classloader and double reflection.
@@ -60,7 +54,6 @@ public class ServiceTracingProxyProvider {
     private static final Method sGetMethod;
     private static final Method sGetDeclaredField;
     private static final Method sGetField;
-
     static {
         try {
             sGetDeclaredMethod =
@@ -104,11 +97,11 @@ public class ServiceTracingProxyProvider {
     }
 
     // DO NOT MODIFY THIS ARRAY. This is a reference to the service cache in ContextImpl.
-    private final Object[] mServiceCache;
+    private Object[] mServiceCache;
     // Same length as |mServiceCache|, true if the corresponding service has been proxied.
     AtomicBoolean[] mServiceCacheProxied;
 
-    private final Context mUnwrappedBaseContext;
+    private Context mUnwrappedBaseContext;
 
     private static boolean isEnabled() {
         // A lot of service bindings were uncached pre-R, so easier to start tracing at R+.
@@ -123,7 +116,7 @@ public class ServiceTracingProxyProvider {
     }
 
     /**
-     * @param baseContext The base context for an Application/Activity.
+     * @param unwrappedBaseContext The base context for an Application/Activity.
      */
     public static @Nullable ServiceTracingProxyProvider create(Context baseContext) {
         if (!isEnabled()) return null;
@@ -136,15 +129,10 @@ public class ServiceTracingProxyProvider {
     private ServiceTracingProxyProvider(Context unwrappedBaseContext) {
         assert unwrappedBaseContext.getClass().getName().equals("android.app.ContextImpl");
         mUnwrappedBaseContext = unwrappedBaseContext;
-        Object[] serviceCache;
         try {
-            serviceCache =
-                    (Object[])
-                            getField(
-                                    mUnwrappedBaseContext,
-                                    mUnwrappedBaseContext.getClass(),
-                                    "mServiceCache");
-            mServiceCacheProxied = new AtomicBoolean[serviceCache.length];
+            mServiceCache = (Object[]) getField(
+                    mUnwrappedBaseContext, mUnwrappedBaseContext.getClass(), "mServiceCache");
+            mServiceCacheProxied = new AtomicBoolean[mServiceCache.length];
             for (int i = 0; i < mServiceCacheProxied.length; ++i) {
                 mServiceCacheProxied[i] = new AtomicBoolean(false);
             }
@@ -154,46 +142,29 @@ public class ServiceTracingProxyProvider {
             unwrappedBaseContext.getSystemService(Context.WINDOW_SERVICE);
         } catch (Throwable throwable) {
             Log.d(TAG, TRACE_FAILED, throwable);
-            serviceCache = new Object[0];
+            mServiceCache = new Object[0];
         }
-        mServiceCache = serviceCache;
     }
 
     public void traceSystemServices() {
         for (int i = 0; i < mServiceCache.length; ++i) {
             if (mServiceCache[i] != null && !mServiceCacheProxied[i].get()) {
-                sProxiesAttempted.incrementAndGet();
-                if (traceService(
-                        mUnwrappedBaseContext, mServiceCache[i], mServiceCacheProxied[i])) {
-                    sProxiesInstalled.incrementAndGet();
-                }
+                traceService(mUnwrappedBaseContext, mServiceCache[i], mServiceCacheProxied[i]);
             }
-        }
-        int attempts = sProxiesAttempted.get();
-        if (attempts >= 40
-                && sProxyInstallCountHistogramRecorded.compareAndSet(
-                        /* expectedValue= */ false, true)) {
-            RecordHistogram.recordSparseHistogram(
-                    "Android.ServiceTracingProxyProvider.SuccessesOutOfInitialForty",
-                    sProxiesInstalled.get());
         }
     }
 
-    private static synchronized boolean traceService(
+    private static synchronized void traceService(
             Context context, Object service, AtomicBoolean serviceCacheProxied) {
-        if (serviceCacheProxied.get()) return false;
+        if (serviceCacheProxied.get()) return;
         try {
             Log.d(TAG, "Attempting to proxy " + service.getClass().getName());
             service = prepareServiceForProxying(service);
         } catch (Throwable throwable) {
             Log.d(TAG, PROXY_PREP_FAILED, throwable);
         }
-        boolean success = proxyService(context, service);
+        proxyService(context, service);
         serviceCacheProxied.set(true);
-        if (!success) {
-            Log.d(TAG, "Could not trace service: " + service.getClass().getName());
-        }
-        return success;
     }
 
     // Most services just store their interfaces as members in the service class, but some store
@@ -287,8 +258,7 @@ public class ServiceTracingProxyProvider {
     }
 
     @SuppressLint("NewApi") // Class requires API level 30.
-    private static boolean proxyService(Context context, Object service) {
-        boolean ret = false;
+    private static void proxyService(Context context, Object service) {
         try {
             // Search through the class's fields to find Interfaces for Binders.
             Field[] fields = service.getClass().getDeclaredFields();
@@ -309,34 +279,28 @@ public class ServiceTracingProxyProvider {
                 Class<?> type;
                 if (isGenericClass) {
                     if (!field.getGenericType().getTypeName().equals(genericTypeName)) continue;
-                    type =
-                            (Class<?>)
-                                    ((ParameterizedType) service.getClass().getGenericSuperclass())
-                                            .getActualTypeArguments()[0];
+                    type = (Class<?>) ((ParameterizedType) service.getClass()
+                                               .getGenericSuperclass())
+                                   .getActualTypeArguments()[0];
                 } else {
                     type = field.getType();
                 }
                 if (IInterface.class.isAssignableFrom(type) && type.isInterface()) {
                     Object impl = field.get(service);
                     if (impl == null) {
-                        Log.d(TAG, TRACE_FAILED + type + " is null");
+                        Log.d(TAG, TRACE_FAILED + type.toString() + " is null");
                         continue;
                     }
                     // Avoid double-proxying for shared/static bindings.
                     if (Proxy.isProxyClass(impl.getClass())) continue;
-                    Object listener =
-                            Proxy.newProxyInstance(
-                                    context.getClassLoader(),
-                                    new Class<?>[] {type},
-                                    new IPCListener(impl));
+                    Object listener = Proxy.newProxyInstance(
+                            context.getClassLoader(), new Class<?>[] {type}, new IPCListener(impl));
                     field.set(service, listener);
-                    Log.d(TAG, "Tracing Proxy installed on: " + type);
-                    ret = true;
+                    Log.d(TAG, "Tracing Proxy installed on: " + type.toString());
                 }
             }
         } catch (Throwable throwable) {
             Log.d(TAG, TRACE_FAILED, throwable);
         }
-        return ret;
     }
 }

@@ -4,7 +4,6 @@
 
 #include "chrome/browser/extensions/api/tabs/windows_event_router.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -25,8 +24,8 @@
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_util.h"
 #include "extensions/common/constants.h"
-#include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/common/mojom/event_dispatcher.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using content::BrowserContext;
 
@@ -64,10 +63,10 @@ bool ControllerVisibleToListener(WindowController* window_controller,
 bool WillDispatchWindowEvent(
     WindowController* window_controller,
     BrowserContext* browser_context,
-    mojom::ContextType target_context,
+    Feature::Context target_context,
     const Extension* extension,
     const base::Value::Dict* listener_filter,
-    std::optional<base::Value::List>& event_args_out,
+    absl::optional<base::Value::List>& event_args_out,
     mojom::EventFilteringInfoPtr& event_filtering_info_out) {
   bool has_filter =
       listener_filter &&
@@ -95,10 +94,10 @@ bool WillDispatchWindowEvent(
 bool WillDispatchWindowFocusedEvent(
     WindowController* window_controller,
     BrowserContext* browser_context,
-    mojom::ContextType target_context,
+    Feature::Context target_context,
     const Extension* extension,
     const base::Value::Dict* listener_filter,
-    std::optional<base::Value::List>& event_args_out,
+    absl::optional<base::Value::List>& event_args_out,
     mojom::EventFilteringInfoPtr& event_filtering_info_out) {
   int window_id = extension_misc::kUnknownWindowId;
   Profile* new_active_context = nullptr;
@@ -220,7 +219,7 @@ void WindowsEventRouter::OnWindowControllerAdded(
   // Since we don't populate tab info here, the context type doesn't matter.
   constexpr ExtensionTabUtil::PopulateTabBehavior populate_behavior =
       ExtensionTabUtil::kDontPopulateTabs;
-  constexpr mojom::ContextType context_type = mojom::ContextType::kUnspecified;
+  constexpr Feature::Context context_type = Feature::UNSPECIFIED_CONTEXT;
   args.Append(ExtensionTabUtil::CreateWindowValueForExtension(
       *window_controller->GetBrowser(), nullptr, populate_behavior,
       context_type));
@@ -259,7 +258,7 @@ void WindowsEventRouter::OnWindowBoundsChanged(
   // Since we don't populate tab info here, the context type doesn't matter.
   constexpr ExtensionTabUtil::PopulateTabBehavior populate_behavior =
       ExtensionTabUtil::kDontPopulateTabs;
-  constexpr mojom::ContextType context_type = mojom::ContextType::kUnspecified;
+  constexpr Feature::Context context_type = Feature::UNSPECIFIED_CONTEXT;
   args.Append(ExtensionTabUtil::CreateWindowValueForExtension(
       *window_controller->GetBrowser(), nullptr, populate_behavior,
       context_type));

@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <utility>
 
@@ -21,6 +20,7 @@
 #include "components/account_id/account_id.h"
 #include "components/user_manager/user_names.h"
 #include "google_apis/gaia/gaia_auth_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 
@@ -30,9 +30,8 @@ bool GetString(const base::Value::Dict& dict,
                const char* key,
                std::string* result) {
   const std::string* value = dict.FindString(key);
-  if (!value) {
+  if (!value)
     return false;
-  }
   *result = *value;
   return true;
 }
@@ -141,12 +140,11 @@ void SetDeviceLocalAccounts(ash::OwnerSettingsServiceAsh* service,
   base::Value::List list;
   for (std::vector<DeviceLocalAccount>::const_iterator it = accounts.begin();
        it != accounts.end(); ++it) {
-    auto entry =
-        base::Value::Dict()
-            .Set(ash::kAccountsPrefDeviceLocalAccountsKeyId, it->account_id)
-            .Set(ash::kAccountsPrefDeviceLocalAccountsKeyType, it->type)
-            .Set(ash::kAccountsPrefDeviceLocalAccountsKeyEphemeralMode,
-                 static_cast<int>(it->ephemeral_mode));
+    base::Value::Dict entry;
+    entry.Set(ash::kAccountsPrefDeviceLocalAccountsKeyId, it->account_id);
+    entry.Set(ash::kAccountsPrefDeviceLocalAccountsKeyType, it->type);
+    entry.Set(ash::kAccountsPrefDeviceLocalAccountsKeyEphemeralMode,
+              static_cast<int>(it->ephemeral_mode));
     if (it->type == DeviceLocalAccount::TYPE_KIOSK_APP) {
       entry.Set(ash::kAccountsPrefDeviceLocalAccountsKeyKioskAppId,
                 it->kiosk_app_id);
@@ -194,9 +192,8 @@ std::vector<DeviceLocalAccount> GetDeviceLocalAccounts(
   std::vector<DeviceLocalAccount> accounts;
 
   const base::Value::List* list = nullptr;
-  if (!cros_settings->GetList(ash::kAccountsPrefDeviceLocalAccounts, &list)) {
+  if (!cros_settings->GetList(ash::kAccountsPrefDeviceLocalAccounts, &list))
     return accounts;
-  }
 
   std::set<std::string> account_ids;
   for (size_t i = 0; i < list->size(); ++i) {
@@ -217,7 +214,7 @@ std::vector<DeviceLocalAccount> GetDeviceLocalAccounts(
       continue;
     }
 
-    std::optional<int> type =
+    absl::optional<int> type =
         entry_dict.FindInt(ash::kAccountsPrefDeviceLocalAccountsKeyType);
     if (!type || type.value() < 0 ||
         type.value() >= DeviceLocalAccount::TYPE_COUNT) {
@@ -229,7 +226,7 @@ std::vector<DeviceLocalAccount> GetDeviceLocalAccounts(
     DeviceLocalAccount::EphemeralMode ephemeral_mode_value =
         DeviceLocalAccount::EphemeralMode::kUnset;
     if (IsKioskType(static_cast<DeviceLocalAccount::Type>(type.value()))) {
-      std::optional<int> ephemeral_mode = entry_dict.FindInt(
+      absl::optional<int> ephemeral_mode = entry_dict.FindInt(
           ash::kAccountsPrefDeviceLocalAccountsKeyEphemeralMode);
       if (!ephemeral_mode || ephemeral_mode.value() < 0 ||
           ephemeral_mode.value() >

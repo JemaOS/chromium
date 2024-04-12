@@ -124,12 +124,11 @@ viz::TransferableResource UiResourceManager::PrepareResourceForExport(
 
   viz::TransferableResource transferable_resource =
       viz::TransferableResource::MakeGpu(
-          to_be_exported_resource->mailbox(), GL_TEXTURE_2D,
+          to_be_exported_resource->mailbox, GL_TEXTURE_2D,
           to_be_exported_resource->sync_token,
           to_be_exported_resource->resource_size,
           to_be_exported_resource->format,
-          to_be_exported_resource->is_overlay_candidate,
-          viz::TransferableResource::ResourceSource::kUI);
+          to_be_exported_resource->is_overlay_candidate);
 
   transferable_resource.id = resource_id;
   exported_resources_pool_[resource_id] = std::move(to_be_exported_resource);

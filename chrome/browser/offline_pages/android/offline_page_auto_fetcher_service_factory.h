@@ -11,7 +11,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace offline_pages {
@@ -31,12 +31,13 @@ class OfflinePageAutoFetcherServiceFactory : public ProfileKeyedServiceFactory {
 
  private:
   class ServiceDelegate;
-  friend base::NoDestructor<OfflinePageAutoFetcherServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      OfflinePageAutoFetcherServiceFactory>;
 
   OfflinePageAutoFetcherServiceFactory();
   ~OfflinePageAutoFetcherServiceFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
   std::unique_ptr<ServiceDelegate> service_delegate_;

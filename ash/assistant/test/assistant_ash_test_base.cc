@@ -90,7 +90,7 @@ class ChildViewCollector {
       Get(child, result);
   }
 
-  raw_ptr<const views::View> parent_;
+  raw_ptr<const views::View, ExperimentalAsh> parent_;
 };
 
 }  // namespace
@@ -140,7 +140,7 @@ void AssistantAshTestBase::CreateAndSwitchActiveUser(
   session_controller_client->Reset();
 
   session_controller_client->AddUserSession(
-      display_email, user_manager::UserType::kRegular,
+      display_email, user_manager::USER_TYPE_REGULAR,
       /*provide_pref_service=*/true,
       /*is_new_profile=*/false, given_name);
 
@@ -261,7 +261,7 @@ void AssistantAshTestBase::ClickOnAndWait(
   base::RunLoop().RunUntilIdle();
 }
 
-std::optional<assistant::AssistantInteractionMetadata>
+absl::optional<assistant::AssistantInteractionMetadata>
 AssistantAshTestBase::current_interaction() {
   return assistant_service()->current_interaction();
 }

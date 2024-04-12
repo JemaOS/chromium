@@ -16,7 +16,7 @@ import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bu
 import {BaseMixin} from '../base_mixin.js';
 
 import {getTemplate} from './file_system_site_entry_item.html.js';
-import type {FileSystemGrant} from './file_system_site_list.js';
+import {FileSystemGrant} from './file_system_site_list.js';
 
 const FileSystemSiteEntryItemElementBase = BaseMixin(PolymerElement);
 
@@ -52,7 +52,9 @@ export class FileSystemSiteEntryItemElement extends
   }
 
   private onRemoveGrantClick_() {
-    this.fire('revoke-grant', this.grant);
+    this.fire(
+        'revoke-grant',
+        {origin: this.grant.origin, filePath: this.grant.filePath});
   }
 }
 

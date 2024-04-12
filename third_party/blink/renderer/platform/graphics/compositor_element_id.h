@@ -24,7 +24,7 @@ enum class CompositorElementIdNamespace {
   kUniqueObjectId,
   kScroll,
   kStickyTranslation,
-  kAnchorPositionScrollTranslation,
+  kAnchorScrollTranslation,
   kPrimaryEffect,
   kPrimaryTransform,
   kEffectFilter,
@@ -37,7 +37,6 @@ enum class CompositorElementIdNamespace {
   kHorizontalScrollbar,
   kScrollCorner,
   kViewTransitionElement,
-  kElementCapture,
   kDOMNodeId,
   // The following values are for internal usage only.
   kMax = kDOMNodeId,

@@ -16,22 +16,20 @@
 <p class="output expectedtext">Expected output:<p><img src="/images/green-100x50.png" class="output expected" id="expected" alt="">
 <ul id="d"></ul>
 <script>
-promise_test(async t => {
+var t = async_test("drawImage() of an SVG image");
+_addTest(function(canvas, ctx) {
 
-  var canvas = document.getElementById('c');
-  var ctx = canvas.getContext('2d');
+fetch('/images/green.svg')
+  .then(response => response.blob())
+    .then(blob => {
+      createImageBitmap(blob)
+        .then(bitmap => {
+        ctx.drawImage(bitmap, 0, 0);
+        _assertPixelApprox(canvas, 50,25, 0,255,0,255, 2);
+    });
+});
 
-  const img = new Image();
-  const imageLoadPromise = new Promise((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = (err) => reject(err);
-  });
-  img.src = '/images/green.svg';
-  await imageLoadPromise;
 
-  ctx.drawImage(img, 0, 0);
-  _assertPixelApprox(canvas, 50, 25, 0, 255, 0, 255, 2);
-
-}, "drawImage() of an SVG image");
+});
 </script>
 

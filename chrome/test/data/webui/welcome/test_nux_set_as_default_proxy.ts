@@ -3,8 +3,9 @@
 // found in the LICENSE file.
 
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
-import type {NuxSetAsDefaultProxy} from 'chrome://welcome/set_as_default/nux_set_as_default_proxy.js';
-import type {DefaultBrowserInfo} from 'chrome://welcome/shared/nux_types.js';
+
+import {NuxSetAsDefaultProxy} from 'chrome://welcome/set_as_default/nux_set_as_default_proxy.js';
+import {DefaultBrowserInfo} from 'chrome://welcome/shared/nux_types.js';
 
 export class TestNuxSetAsDefaultProxy extends TestBrowserProxy implements
     NuxSetAsDefaultProxy {

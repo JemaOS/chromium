@@ -10,12 +10,7 @@
 
 #include "ash/shell_delegate.h"
 #include "base/functional/callback_forward.h"
-#include "base/memory/raw_ptr.h"
 #include "url/gurl.h"
-
-namespace ash {
-class WindowState;
-}
 
 class ChromeShellDelegate : public ash::ShellDelegate {
  public:
@@ -30,12 +25,10 @@ class ChromeShellDelegate : public ash::ShellDelegate {
   bool CanShowWindowForUser(const aura::Window* window) const override;
   std::unique_ptr<ash::CaptureModeDelegate> CreateCaptureModeDelegate()
       const override;
-  std::unique_ptr<ash::ClipboardHistoryControllerDelegate>
-  CreateClipboardHistoryControllerDelegate() const override;
   std::unique_ptr<ash::GameDashboardDelegate> CreateGameDashboardDelegate()
       const override;
-  std::unique_ptr<ash::AcceleratorPrefsDelegate>
-  CreateAcceleratorPrefsDelegate() const override;
+  std::unique_ptr<ash::GlanceablesDelegate> CreateGlanceablesDelegate(
+      ash::GlanceablesController* controller) const override;
   ash::AccessibilityDelegate* CreateAccessibilityDelegate() override;
   std::unique_ptr<ash::BackGestureContextualNudgeDelegate>
   CreateBackGestureContextualNudgeDelegate(
@@ -48,7 +41,6 @@ class ChromeShellDelegate : public ash::ShellDelegate {
       const override;
   std::unique_ptr<ash::SystemSoundsDelegate> CreateSystemSoundsDelegate()
       const override;
-  std::unique_ptr<ash::api::TasksDelegate> CreateTasksDelegate() const override;
   std::unique_ptr<ash::UserEducationDelegate> CreateUserEducationDelegate()
       const override;
   scoped_refptr<network::SharedURLLoaderFactory>
@@ -70,8 +62,7 @@ class ChromeShellDelegate : public ash::ShellDelegate {
       override;
   media_session::MediaSessionService* GetMediaSessionService() override;
   bool IsSessionRestoreInProgress() const override;
-  void SetUpEnvironmentForLockedFullscreen(
-      const ash::WindowState& window_state) override;
+  void SetUpEnvironmentForLockedFullscreen(bool locked) override;
   bool IsUiDevToolsStarted() const override;
   void StartUiDevTools() override;
   void StopUiDevTools() override;
@@ -79,21 +70,16 @@ class ChromeShellDelegate : public ash::ShellDelegate {
   bool IsLoggingRedirectDisabled() const override;
   base::FilePath GetPrimaryUserDownloadsFolder() const override;
   void OpenFeedbackDialog(ShellDelegate::FeedbackSource source,
-                          const std::string& description_template,
-                          const std::string& category_tag) override;
-  void OpenProfileManager() override;
+                          const std::string& description_template) override;
   static void SetDisableLoggingRedirectForTesting(bool value);
   static void ResetDisableLoggingRedirectForTesting();
   const GURL& GetLastCommittedURLForWindowIfAny(aura::Window* window) override;
   version_info::Channel GetChannel() override;
   void ForceSkipWarningUserOnClose(
-      const std::vector<raw_ptr<aura::Window, VectorExperimental>>& windows)
-      override;
+      const std::vector<aura::Window*>& windows) override;
   std::string GetVersionString() override;
   void ShouldExitFullscreenBeforeLock(
       ShouldExitFullscreenCallback callback) override;
-  ash::DeskProfilesDelegate* GetDeskProfilesDelegate() override;
-  void OpenMultitaskingSettings() override;
 };
 
 #endif  // CHROME_BROWSER_UI_ASH_CHROME_SHELL_DELEGATE_H_

@@ -5,20 +5,28 @@
 // clang-format off
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {CrIconButtonElement, LanguageHelper, SettingsAddLanguagesDialogElement, SettingsTranslatePageElement} from 'chrome://settings/lazy_load.js';
-import {LanguagesBrowserProxyImpl} from 'chrome://settings/lazy_load.js';
-import {CrSettingsPrefs} from 'chrome://settings/settings.js';
+import {CrIconButtonElement, LanguageHelper, LanguagesBrowserProxyImpl, SettingsAddLanguagesDialogElement, SettingsTranslatePageElement} from 'chrome://settings/lazy_load.js';
+import {CrSettingsPrefs, loadTimeData} from 'chrome://settings/settings.js';
 import {assertDeepEquals, assertEquals, assertTrue, assertFalse} from 'chrome://webui-test/chai_assert.js';
 import {FakeSettingsPrivate} from 'chrome://webui-test/fake_settings_private.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
 import {fakeDataBind} from 'chrome://webui-test/polymer_test_util.js';
 
-import type {FakeLanguageSettingsPrivate} from './fake_language_settings_private.js';
-import {getFakeLanguagePrefs} from './fake_language_settings_private.js';
+import {FakeLanguageSettingsPrivate, getFakeLanguagePrefs} from './fake_language_settings_private.js';
 import {TestLanguagesBrowserProxy} from './test_languages_browser_proxy.js';
 // clang-format on
 
-suite('TranslatePage', function() {
+const translate_page_tests = {
+  TestNames: {
+    TranslateSettings: 'base translate settings',
+    AlwaysTranslateDialog: 'always translate dialog',
+    NeverTranslateDialog: 'never translate dialog',
+  },
+};
+
+Object.assign(window, {translate_page_tests});
+
+suite('translate page settings', function() {
   let languageHelper: LanguageHelper;
   let translatePage: SettingsTranslatePageElement;
   let browserProxy: TestLanguagesBrowserProxy;
@@ -29,6 +37,9 @@ suite('TranslatePage', function() {
   const neverTranslatePref = 'translate_blocked_languages';
 
   suiteSetup(function() {
+    loadTimeData.overrideValues({
+      enableDesktopDetailedLanguageSettings: true,
+    });
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     CrSettingsPrefs.deferInitialization = true;
   });
@@ -36,7 +47,8 @@ suite('TranslatePage', function() {
   setup(function() {
     const settingsPrefs = document.createElement('settings-prefs');
     const settingsPrivate = new FakeSettingsPrivate(getFakeLanguagePrefs());
-    settingsPrefs.initialize(settingsPrivate);
+    settingsPrefs.initialize(
+        settingsPrivate as unknown as typeof chrome.settingsPrivate);
     document.body.appendChild(settingsPrefs);
     return CrSettingsPrefs.initialized.then(function() {
       // Set up test browser proxy.
@@ -77,7 +89,7 @@ suite('TranslatePage', function() {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
   });
 
-  suite('TranslateSettings', function() {
+  suite(translate_page_tests.TestNames.TranslateSettings, function() {
     test('change target language', function() {
       const targetLanguageSelector =
           translatePage.shadowRoot!.querySelector<HTMLSelectElement>(
@@ -221,7 +233,7 @@ suite('TranslatePage', function() {
     });
   });
 
-  suite('AlwaysTranslateDialog', function() {
+  suite(translate_page_tests.TestNames.AlwaysTranslateDialog, function() {
     let dialog: SettingsAddLanguagesDialogElement;
     let dialogClosedResolver: PromiseResolver<void>;
     let dialogClosedObserver: MutationObserver;
@@ -291,7 +303,7 @@ suite('TranslatePage', function() {
     });
   });
 
-  suite('NeverTranslateDialog', function() {
+  suite(translate_page_tests.TestNames.NeverTranslateDialog, function() {
     let dialog: SettingsAddLanguagesDialogElement;
     let dialogClosedResolver: PromiseResolver<void>;
     let dialogClosedObserver: MutationObserver;

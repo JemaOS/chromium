@@ -24,7 +24,8 @@ const char kCrosEulaDefaultUrl[] =
 
 // Interface for dependency injection between ConsolidatedConsentScreen and its
 // WebUI representation.
-class ConsolidatedConsentScreenView {
+class ConsolidatedConsentScreenView
+    : public base::SupportsWeakPtr<ConsolidatedConsentScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "consolidated-consent", "ConsolidatedConsentScreen"};
@@ -43,14 +44,10 @@ class ConsolidatedConsentScreenView {
   // Set the visibility of the usage opt-in. For non-demo scenarios, the screen
   // will stay in the `loading` step until this method is called.
   virtual void SetUsageOptinHidden(bool hidden) = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<ConsolidatedConsentScreenView> AsWeakPtr() = 0;
 };
 
-class ConsolidatedConsentScreenHandler final
-    : public ConsolidatedConsentScreenView,
-      public BaseScreenHandler {
+class ConsolidatedConsentScreenHandler : public ConsolidatedConsentScreenView,
+                                         public BaseScreenHandler {
  public:
   using TView = ConsolidatedConsentScreenView;
 
@@ -63,20 +60,17 @@ class ConsolidatedConsentScreenHandler final
   ConsolidatedConsentScreenHandler& operator=(
       const ConsolidatedConsentScreenHandler&) = delete;
 
+ private:
   // ConsolidatedConsentScreenView
   void Show(base::Value::Dict data) override;
   void SetUsageMode(bool enabled, bool managed) override;
   void SetBackupMode(bool enabled, bool managed) override;
   void SetLocationMode(bool enabled, bool managed) override;
   void SetUsageOptinHidden(bool hidden) override;
-  base::WeakPtr<ConsolidatedConsentScreenView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
- private:
-  base::WeakPtrFactory<ConsolidatedConsentScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

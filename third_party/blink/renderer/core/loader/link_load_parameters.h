@@ -5,10 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_LINK_LOAD_PARAMETERS_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_LINK_LOAD_PARAMETERS_H_
 
-#include <optional>
-
 #include "base/unguessable_token.h"
 #include "services/network/public/mojom/referrer_policy.mojom-blink-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/html/cross_origin_attribute.h"
 #include "third_party/blink/renderer/core/html/link_rel_attribute.h"
@@ -51,7 +50,7 @@ struct CORE_EXPORT LinkLoadParameters {
   String image_srcset;
   String image_sizes;
   String blocking;
-  std::optional<base::UnguessableToken> recursive_prefetch_token;
+  absl::optional<base::UnguessableToken> recursive_prefetch_token;
   Reason reason;
 };
 

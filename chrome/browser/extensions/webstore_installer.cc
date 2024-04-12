@@ -55,7 +55,6 @@
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/install/crx_install_error.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/extension_urls.h"
 #include "extensions/common/manifest_constants.h"
 #include "extensions/common/manifest_handlers/shared_module_info.h"
@@ -102,7 +101,7 @@ const base::FilePath::CharType kWebstoreDownloadFolder[] =
 base::FilePath* g_download_directory_for_tests = nullptr;
 
 base::FilePath GetDownloadFilePath(const base::FilePath& download_directory,
-                                   const extensions::ExtensionId& id) {
+                                   const std::string& id) {
   // Ensure the download directory exists. TODO(asargent) - make this use
   // common code from the downloads system.
   if (!base::DirectoryExists(download_directory) &&
@@ -130,7 +129,8 @@ void MaybeAppendAuthUserParameter(const std::string& authuser, GURL* url) {
   url::Component query(0, old_query.length());
   url::Component key, value;
   // Ensure that the URL doesn't already specify an authuser parameter.
-  while (url::ExtractQueryKeyValue(old_query, &query, &key, &value)) {
+  while (url::ExtractQueryKeyValue(
+             old_query.c_str(), &query, &key, &value)) {
     std::string key_string = old_query.substr(key.begin, key.len);
     if (key_string == kAuthUserQueryKey) {
       return;
@@ -188,8 +188,8 @@ GURL WebstoreInstaller::GetWebstoreInstallURL(
   if (cmd_line->HasSwitch(::switches::kAppsGalleryDownloadURL)) {
     std::string download_url =
         cmd_line->GetSwitchValueASCII(::switches::kAppsGalleryDownloadURL);
-    return GURL(base::StringPrintfNonConstexpr(download_url.c_str(),
-                                               extension_id.c_str()));
+    return GURL(base::StringPrintf(download_url.c_str(),
+                                   extension_id.c_str()));
   }
   std::vector<base::StringPiece> params;
   std::string extension_param = "id=" + extension_id;
@@ -209,6 +209,14 @@ GURL WebstoreInstaller::GetWebstoreInstallURL(
 
   return url;
 }
+
+void WebstoreInstaller::Delegate::OnExtensionDownloadStarted(
+    const std::string& id,
+    download::DownloadItem* item) {}
+
+void WebstoreInstaller::Delegate::OnExtensionDownloadProgress(
+    const std::string& id,
+    download::DownloadItem* item) {}
 
 WebstoreInstaller::Approval::Approval() = default;
 
@@ -232,7 +240,7 @@ WebstoreInstaller::Approval::CreateForSharedModule(Profile* profile) {
 std::unique_ptr<WebstoreInstaller::Approval>
 WebstoreInstaller::Approval::CreateWithNoInstallPrompt(
     Profile* profile,
-    const extensions::ExtensionId& extension_id,
+    const std::string& extension_id,
     base::Value::Dict parsed_manifest,
     bool strict_manifest_check) {
   std::unique_ptr<Approval> result(new Approval());
@@ -255,23 +263,19 @@ const WebstoreInstaller::Approval* WebstoreInstaller::GetAssociatedApproval(
 }
 
 WebstoreInstaller::WebstoreInstaller(Profile* profile,
-                                     SuccessCallback success_callback,
-                                     FailureCallback failure_callback,
+                                     Delegate* delegate,
                                      content::WebContents* web_contents,
-                                     const extensions::ExtensionId& id,
+                                     const std::string& id,
                                      std::unique_ptr<Approval> approval,
                                      InstallSource source)
     : web_contents_(web_contents->GetWeakPtr()),
       profile_(profile),
-      success_callback_(std::move(success_callback)),
-      failure_callback_(std::move(failure_callback)),
+      delegate_(delegate),
       id_(id),
       install_source_(source),
       approval_(approval.release()) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   DCHECK(web_contents);
-  CHECK(success_callback_);
-  CHECK(failure_callback_);
 
   extension_registry_observation_.Observe(ExtensionRegistry::Get(profile));
 }
@@ -302,7 +306,7 @@ void WebstoreInstaller::Start() {
 
   total_modules_ = pending_modules_.size();
 
-  std::set<extensions::ExtensionId> ids;
+  std::set<std::string> ids;
   std::list<SharedModuleInfo::ImportInfo>::const_iterator i;
   for (i = pending_modules_.begin(); i != pending_modules_.end(); ++i) {
     ids.insert(i->extension_id);
@@ -329,7 +333,7 @@ void WebstoreInstaller::Start() {
 }
 
 void WebstoreInstaller::OnInstallerDone(
-    const std::optional<CrxInstallError>& error) {
+    const absl::optional<CrxInstallError>& error) {
   if (!error) {
     return;
   }
@@ -385,6 +389,10 @@ void WebstoreInstaller::OnExtensionInstalled(
   }
 }
 
+void WebstoreInstaller::InvalidateDelegate() {
+  delegate_ = nullptr;
+}
+
 void WebstoreInstaller::SetDownloadDirectoryForTests(
     base::FilePath* directory) {
   g_download_directory_for_tests = directory;
@@ -398,7 +406,7 @@ WebstoreInstaller::~WebstoreInstaller() {
 }
 
 void WebstoreInstaller::OnDownloadStarted(
-    const extensions::ExtensionId& extension_id,
+    const std::string& extension_id,
     DownloadItem* item,
     download::DownloadInterruptReason interrupt_reason) {
   if (!item || interrupt_reason != download::DOWNLOAD_INTERRUPT_REASON_NONE) {
@@ -452,6 +460,8 @@ void WebstoreInstaller::OnDownloadStarted(
   }
 
   if (!download_started_) {
+    if (delegate_)
+      delegate_->OnExtensionDownloadStarted(id_, download_item_);
     download_started_ = true;
   }
 }
@@ -486,12 +496,18 @@ void WebstoreInstaller::OnDownloadUpdated(DownloadItem* download) {
 
       if (pending_modules_.size() == 1) {
         // The download is the last module - the extension main module.
+        if (delegate_)
+          delegate_->OnExtensionDownloadProgress(id_, download);
         extensions::InstallTracker* tracker =
             extensions::InstallTrackerFactory::GetForBrowserContext(profile_);
         tracker->OnDownloadProgress(id_, 100);
       }
       break;
     case DownloadItem::IN_PROGRESS: {
+      if (delegate_ && pending_modules_.size() == 1) {
+        // Only report download progress for the main module to |delegrate_|.
+        delegate_->OnExtensionDownloadProgress(id_, download);
+      }
       UpdateDownloadProgress();
       break;
     }
@@ -517,8 +533,9 @@ void WebstoreInstaller::DownloadNextPendingModule() {
   }
 }
 
-void WebstoreInstaller::DownloadCrx(const extensions::ExtensionId& extension_id,
-                                    InstallSource source) {
+void WebstoreInstaller::DownloadCrx(
+    const std::string& extension_id,
+    InstallSource source) {
   download_url_ = GetWebstoreInstallURL(extension_id, source);
   MaybeAppendAuthUserParameter(approval_->authuser, &download_url_);
 
@@ -543,9 +560,8 @@ void WebstoreInstaller::DownloadCrx(const extensions::ExtensionId& extension_id,
 // reports should narrow down exactly which pointer it is.  Collapsing all the
 // early-returns into a single branch makes it hard to see exactly which pointer
 // it is.
-void WebstoreInstaller::StartDownload(
-    const extensions::ExtensionId& extension_id,
-    const base::FilePath& file) {
+void WebstoreInstaller::StartDownload(const std::string& extension_id,
+                                      const base::FilePath& file) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   if (file.empty()) {
@@ -700,10 +716,10 @@ void WebstoreInstaller::StartCrxInstaller(const DownloadItem& download) {
 
 void WebstoreInstaller::ReportFailure(const std::string& error,
                                       FailureReason reason) {
-  CHECK(failure_callback_);
-  std::move(failure_callback_).Run(id_, error, reason);
-  success_callback_ = base::NullCallback();
-  extension_registry_observation_.Reset();
+  if (delegate_) {
+    delegate_->OnExtensionInstallFailure(id_, error, reason);
+    delegate_ = nullptr;
+  }
 
   extensions::InstallTracker* tracker =
       extensions::InstallTrackerFactory::GetForBrowserContext(profile_);
@@ -713,10 +729,10 @@ void WebstoreInstaller::ReportFailure(const std::string& error,
 }
 
 void WebstoreInstaller::ReportSuccess() {
-  CHECK(success_callback_);
-  std::move(success_callback_).Run(id_);
-  failure_callback_ = base::NullCallback();
-  extension_registry_observation_.Reset();
+  if (delegate_) {
+    delegate_->OnExtensionInstallSuccess(id_);
+    delegate_ = nullptr;
+  }
 
   Release();  // Balanced in Start().
 }

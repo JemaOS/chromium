@@ -5,13 +5,18 @@
 #ifndef CHROME_BROWSER_UI_COCOA_TOUCHBAR_CREDIT_CARD_AUTOFILL_TOUCH_BAR_CONTROLLER_H_
 #define CHROME_BROWSER_UI_COCOA_TOUCHBAR_CREDIT_CARD_AUTOFILL_TOUCH_BAR_CONTROLLER_H_
 
+#include "base/memory/raw_ptr.h"
+
 #import <Cocoa/Cocoa.h>
 
 namespace autofill {
 class AutofillPopupController;
 }
 
-@interface CreditCardAutofillTouchBarController : NSObject <NSTouchBarDelegate>
+@interface CreditCardAutofillTouchBarController : NSObject<NSTouchBarDelegate> {
+  raw_ptr<autofill::AutofillPopupController> _controller;  // weak
+  bool _is_credit_card_popup;
+}
 
 - (instancetype)initWithController:
     (autofill::AutofillPopupController*)controller;

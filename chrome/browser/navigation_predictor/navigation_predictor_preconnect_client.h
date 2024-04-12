@@ -5,14 +5,13 @@
 #ifndef CHROME_BROWSER_NAVIGATION_PREDICTOR_NAVIGATION_PREDICTOR_PRECONNECT_CLIENT_H_
 #define CHROME_BROWSER_NAVIGATION_PREDICTOR_NAVIGATION_PREDICTOR_PRECONNECT_CLIENT_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
 #include "base/sequence_checker.h"
 #include "base/timer/timer.h"
 #include "content/public/browser/visibility.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/origin.h"
 
 namespace content {
@@ -57,14 +56,14 @@ class NavigationPredictorPreconnectClient
   // Returns template URL service. Guaranteed to be non-null.
   bool IsSearchEnginePage() const;
 
-  std::optional<url::Origin> GetOriginToPreconnect(
+  absl::optional<url::Origin> GetOriginToPreconnect(
       const GURL& document_url) const;
 
   // MaybePreconnectNow preconnects to an origin server if it's allowed.
   void MaybePreconnectNow(size_t preconnects_attempted);
 
   // Returns true if the origin is publicly routable.
-  std::optional<bool> IsPubliclyRoutable(
+  absl::optional<bool> IsPubliclyRoutable(
       content::NavigationHandle* navigation_handle) const;
 
   // Used to get keyed services.

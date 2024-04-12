@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assertNotReached} from 'chrome://resources/js/assert.js';
+import {assertNotReached} from 'chrome://resources/js/assert_ts.js';
 
 import {ContentSettingsTypes} from '../site_settings/constants.js';
 
@@ -17,12 +17,8 @@ export function getLocalizationStringForContentType(
       return 'siteSettingsAdsMidSentence';
     case ContentSettingsTypes.AR:
       return 'siteSettingsArMidSentence';
-    case ContentSettingsTypes.AUTO_PICTURE_IN_PICTURE:
-      return 'siteSettingsAutoPictureInPictureMidSentence';
     case ContentSettingsTypes.AUTOMATIC_DOWNLOADS:
       return 'siteSettingsAutomaticDownloadsMidSentence';
-    case ContentSettingsTypes.AUTOMATIC_FULLSCREEN:
-      return 'siteSettingsAutomaticFullscreenMidSentence';
     case ContentSettingsTypes.BACKGROUND_SYNC:
       return 'siteSettingsBackgroundSyncMidSentence';
     case ContentSettingsTypes.BLUETOOTH_DEVICES:
@@ -73,12 +69,8 @@ export function getLocalizationStringForContentType(
       return 'siteSettingsSerialPortsMidSentence';
     case ContentSettingsTypes.SOUND:
       return 'siteSettingsSoundMidSentence';
-    case ContentSettingsTypes.STORAGE_ACCESS:
-      return 'siteSettingsStorageAccessMidSentence';
     case ContentSettingsTypes.USB_DEVICES:
       return 'siteSettingsUsbDevicesMidSentence';
-    case ContentSettingsTypes.WEB_PRINTING:
-      return 'siteSettingsWebPrintingMidSentence';
     case ContentSettingsTypes.VR:
       return 'siteSettingsVrMidSentence';
     case ContentSettingsTypes.WINDOW_MANAGEMENT:
@@ -87,9 +79,7 @@ export function getLocalizationStringForContentType(
       return 'siteSettingsZoomLevelsMidSentence';
     // The following members do not have a mid-sentence localization.
     case ContentSettingsTypes.ANTI_ABUSE:
-    case ContentSettingsTypes.JAVASCRIPT_JIT:
     case ContentSettingsTypes.PDF_DOCUMENTS:
-    case ContentSettingsTypes.PERFORMANCE:
     case ContentSettingsTypes.PRIVATE_NETWORK_DEVICES:
     case ContentSettingsTypes.SITE_DATA:
       return null;

@@ -8,30 +8,30 @@
  implemented_in="chrome/browser/chromeos/extensions/login_screen/login_state/login_state_api.h"]
 namespace loginState {
   enum ProfileType {
-    // Specifies that the extension is in the signin profile.
+    // The extension is in the signin profile.
     SIGNIN_PROFILE,
 
-    // Specifies that the extension is in the user profile.
+    // The extension is in the user profile.
     USER_PROFILE
   };
 
   enum SessionState {
-    // Specifies that the session state is unknown.
+    // The session state is unknown.
     UNKNOWN,
 
-    // Specifies that the user is in the out-of-box-experience screen.
+    // The user is in the out-of-box-experience screen.
     IN_OOBE_SCREEN,
 
-    // Specifies that the user is in the login screen.
+    // The user is in the login screen.
     IN_LOGIN_SCREEN,
 
-    // Specifies that the user is in the session.
+    // The user is in the session.
     IN_SESSION,
 
-    // Specifies that the user is in the lock screen.
+    // The user is in the lock screen.
     IN_LOCK_SCREEN,
 
-    // Specifies that the device is in RMA mode, finalizing repairs.
+    // The device is in RMA mode, finalizing repairs.
     IN_RMA_SCREEN
   };
 
@@ -40,10 +40,10 @@ namespace loginState {
 
   interface Functions {
     // Gets the type of the profile the extension is in.
-    static void getProfileType(ProfileTypeCallback callback);
+    [supportsPromises] static void getProfileType(ProfileTypeCallback callback);
 
     // Gets the current session state.
-    static void getSessionState(
+    [supportsPromises] static void getSessionState(
         SessionStateCallback callback);
   };
 

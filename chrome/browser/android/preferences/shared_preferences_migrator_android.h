@@ -5,8 +5,9 @@
 #ifndef CHROME_BROWSER_ANDROID_PREFERENCES_SHARED_PREFERENCES_MIGRATOR_ANDROID_H_
 #define CHROME_BROWSER_ANDROID_PREFERENCES_SHARED_PREFERENCES_MIGRATOR_ANDROID_H_
 
-#include <optional>
 #include <string>
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace android::shared_preferences {
 
@@ -14,13 +15,9 @@ namespace android::shared_preferences {
 void ClearKey(const std::string& shared_preference_key);
 
 // Attempts to get the value of a `SharedPreference` and then remove it.
-// Returns `std::nullopt` if the key cannot be found.
-std::optional<bool> GetAndClearBoolean(
+// Returns `absl::nullopt` if the key cannot be found.
+absl::optional<bool> GetAndClearBoolean(
     const std::string& shared_preference_key);
-
-// Attempts to get the value of a `SharedPreference` and then remove it.
-// Returns `std::nullopt` if the key cannot be found.
-std::optional<int> GetAndClearInt(const std::string& shared_preference_key);
 
 // Attempts to read a value of a `SharedPreference` returning
 // `default_value` if the value is empty.

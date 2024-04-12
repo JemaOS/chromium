@@ -29,8 +29,7 @@ class UIControlsAura {
                                            ui::KeyboardCode key,
                                            int key_event_types,
                                            base::OnceClosure task,
-                                           int accelerator_state,
-                                           KeyEventType wait_for) = 0;
+                                           int accelerator_state) = 0;
 
   // Simulate a mouse move. (x,y) are absolute screen coordinates.
   virtual bool SendMouseMove(int x, int y) = 0;

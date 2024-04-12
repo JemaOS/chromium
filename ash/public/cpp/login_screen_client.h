@@ -74,8 +74,20 @@ class ASH_PUBLIC_EXPORT LoginScreenClient {
   // Focus user pod of user with |account_id|.
   virtual void OnFocusPod(const AccountId& account_id) = 0;
 
+  // Notify that no user pod is focused.
+  virtual void OnNoPodFocused() = 0;
+
+  // Load wallpaper of user with |account_id|.
+  virtual void LoadWallpaper(const AccountId& account_id) = 0;
+
+  // Sign out current user.
+  virtual void SignOutUser() = 0;
+
   // Close add user screen.
   virtual void CancelAddUser() = 0;
+
+  // Launches guest mode.
+  virtual void LoginAsGuest() = 0;
 
   // Show guest terms of service screen.
   virtual void ShowGuestTosScreen() = 0;
@@ -99,12 +111,12 @@ class ASH_PUBLIC_EXPORT LoginScreenClient {
   // so the user does not need to type the account email.
   virtual void ShowGaiaSignin(const AccountId& prefilled_account) = 0;
 
-  // Starts the flow for recovering access to user's home directory.
-  // The value in |account_to_recover| should be non-empty AccountId.
-  virtual void StartUserRecovery(const AccountId& account_to_recover) = 0;
-
   // Show OS-Install screen.
   virtual void ShowOsInstallScreen() = 0;
+
+  virtual void ShowDataRestoreScreen() = 0;
+
+  virtual void ShowLocalSignin() = 0;
 
   // Notification that the remove user warning was shown.
   virtual void OnRemoveUserWarningShown() = 0;

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/no_destructor.h"
 #include "chrome/browser/profiles/profile.h"
 
 #include <stddef.h>
@@ -19,7 +20,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
-#include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/run_loop.h"
 #include "base/scoped_multi_source_observation.h"
@@ -48,7 +48,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/ui/test/test_browser_closed_waiter.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/pref_names.h"
@@ -75,8 +74,8 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/url_request/url_request_failed_job.h"
 #include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
+#include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/cpp/features.h"
-#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -93,6 +92,7 @@
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
+#include "extensions/common/value_builder.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -213,6 +213,30 @@ void SpinThreads() {
   // directory that contains them has been deleted.
   base::ThreadPoolInstance::Get()->FlushForTesting();
 }
+
+class BrowserCloseObserver : public BrowserListObserver {
+ public:
+  explicit BrowserCloseObserver(Browser* browser) : browser_(browser) {
+    BrowserList::AddObserver(this);
+  }
+
+  BrowserCloseObserver(const BrowserCloseObserver&) = delete;
+  BrowserCloseObserver& operator=(const BrowserCloseObserver&) = delete;
+
+  ~BrowserCloseObserver() override { BrowserList::RemoveObserver(this); }
+
+  void Wait() { run_loop_.Run(); }
+
+  // BrowserListObserver implementation.
+  void OnBrowserRemoved(Browser* browser) override {
+    if (browser == browser_)
+      run_loop_.Quit();
+  }
+
+ private:
+  raw_ptr<Browser, DanglingUntriaged> browser_;
+  base::RunLoop run_loop_;
+};
 
 }  // namespace
 
@@ -346,8 +370,8 @@ IN_PROC_BROWSER_TEST_F(ProfileBrowserTest, MAYBE_CreateNewProfileSynchronous) {
 // Test OnProfileCreate is called with is_new_profile set to false when
 // creating a profile synchronously with an existing prefs file.
 // TODO(crbug.com/1304167): Failing on Mac.
-// TODO(b/328177667): Flaky on linux-chromeos-rel.
-#if BUILDFLAG(IS_MAC) || (BUILDFLAG(IS_CHROMEOS) && defined(NDEBUG))
+// TODO(crbug.com/): Flaky on linux-chromeos-rel.
+#if BUILDFLAG(IS_MAC) || (BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG))
 #define MAYBE_CreateOldProfileSynchronous DISABLED_CreateOldProfileSynchronous
 #else
 #define MAYBE_CreateOldProfileSynchronous CreateOldProfileSynchronous
@@ -489,7 +513,7 @@ std::string GetExitTypePreferenceFromDisk(Profile* profile) {
   if (!base::ReadFileToString(prefs_path, &prefs))
     return std::string();
 
-  std::optional<base::Value> value = base::JSONReader::Read(prefs);
+  absl::optional<base::Value> value = base::JSONReader::Read(prefs);
   if (!value)
     return std::string();
 
@@ -535,15 +559,13 @@ IN_PROC_BROWSER_TEST_F(ProfileBrowserTest,
   // regression blocker for https://crbug.com/318527.
   // Need to use this WeakPtr workaround as the browser test harness runs all
   // tasks until idle when tearing down.
-  struct FailsIfCalledWhileOnStack {
+  struct FailsIfCalledWhileOnStack
+      : public base::SupportsWeakPtr<FailsIfCalledWhileOnStack> {
     void Fail() { ADD_FAILURE(); }
-    base::WeakPtrFactory<FailsIfCalledWhileOnStack> weak_ptr_factory{this};
   } fails_if_called_while_on_stack;
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &FailsIfCalledWhileOnStack::Fail,
-          fails_if_called_while_on_stack.weak_ptr_factory.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&FailsIfCalledWhileOnStack::Fail,
+                                fails_if_called_while_on_stack.AsWeakPtr()));
 
   // This retry loop reduces flakiness due to the fact that this ultimately
   // tests whether or not a code path hits a timed wait.
@@ -630,7 +652,8 @@ IN_PROC_BROWSER_TEST_F(ProfileBrowserTest,
   Profile* incognito_profile = incognito_browser->profile();
   mojo::Remote<network::mojom::URLLoaderFactory> url_loader_factory;
   url_loader_factory.Bind(extensions::CreateExtensionNavigationURLLoaderFactory(
-      incognito_profile, false /* is_web_view_request */));
+      incognito_profile, ukm::kInvalidSourceIdObj,
+      false /* is_web_view_request */));
 
   // Verify that the factory works fine while the profile is still alive.
   // We don't need to test with a real extension URL - it is sufficient to
@@ -764,8 +787,9 @@ class ProfileBrowserTestWithoutDestroyProfile : public ProfileBrowserTest {
 
 // Verifies destroying regular profile will result in destruction of OTR
 // profiles.
-// TODO(crbug.com/1468503): Re-enable this test on ChromeOS.
-#if BUILDFLAG(IS_CHROMEOS)
+// TODO(crbug.com/1225252): Flakily fails on ASAN/LSAN builds
+// TODO(crbug.com/1304167): Failing on Mac.
+#if defined(ADDRESS_SANITIZER) || BUILDFLAG(IS_MAC)
 #define MAYBE_DestroyRegularProfileBeforeOTRs \
   DISABLED_DestroyRegularProfileBeforeOTRs
 #else
@@ -800,10 +824,7 @@ IN_PROC_BROWSER_TEST_F(ProfileBrowserTestWithoutDestroyProfile,
   ProfileDestroyer::DestroyOriginalProfileWhenAppropriate(
       std::move(regular_profile));
 
-  waiter1.Wait();
   EXPECT_TRUE(waiter1.destroyed());
-
-  waiter2.Wait();
   EXPECT_TRUE(waiter2.destroyed());
 }
 
@@ -1059,22 +1080,22 @@ IN_PROC_BROWSER_TEST_F(ProfileBrowserTest, TestProfileTypes) {
 IN_PROC_BROWSER_TEST_F(ProfileBrowserTest, UnderOneMinute) {
   base::HistogramTester tester;
   Browser* browser = CreateGuestBrowser();
-  TestBrowserClosedWaiter close_waiter(browser);
+  BrowserCloseObserver close_observer(browser);
 
   BrowserList::CloseAllBrowsersWithProfile(browser->profile());
-  ASSERT_TRUE(close_waiter.WaitUntilClosed());
+  close_observer.Wait();
   tester.ExpectUniqueSample("Profile.Guest.OTR.Lifetime", 0, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(ProfileBrowserTest, OneHour) {
   base::HistogramTester tester;
   Browser* browser = CreateGuestBrowser();
-  TestBrowserClosedWaiter close_waiter(browser);
+  BrowserCloseObserver close_observer(browser);
 
   browser->profile()->SetCreationTimeForTesting(base::Time::Now() -
                                                 base::Seconds(60) * 60);
   BrowserList::CloseAllBrowsersWithProfile(browser->profile());
-  ASSERT_TRUE(close_waiter.WaitUntilClosed());
+  close_observer.Wait();
   tester.ExpectUniqueSample("Profile.Guest.OTR.Lifetime", 60, 1);
 }
 
@@ -1153,6 +1174,39 @@ IN_PROC_BROWSER_TEST_F(ProfileBrowserTest,
 
     EXPECT_EQ(chromeos::BrowserParamsProxy::Get()->SessionType(),
               crosapi::mojom::SessionType::kWebKioskSession);
+    EXPECT_TRUE(profile->IsMainProfile());
+
+    // Creating a profile causes an implicit connection attempt to a Mojo
+    // service, which occurs as part of a new task. Before deleting |profile|,
+    // ensure this task runs to prevent a crash.
+    FlushIoTaskRunnerAndSpinThreads();
+  }
+  FlushIoTaskRunnerAndSpinThreads();
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ProfileBrowserTest,
+    IsMainProfileReturnsTrueForActiveDirectoryEnrolledDevices) {
+  base::ScopedAllowBlockingForTesting allow_blocking;
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  {
+    base::FilePath profile_path =
+        temp_dir.GetPath().Append(chrome::kInitialProfile);
+    std::unique_ptr<Profile> profile(
+        CreateProfile(profile_path, /* delegate= */ nullptr,
+                      Profile::CREATE_MODE_SYNCHRONOUS));
+
+    crosapi::mojom::BrowserInitParamsPtr init_params =
+        crosapi::mojom::BrowserInitParams::New();
+    init_params->session_type = crosapi::mojom::SessionType::kRegularSession;
+    init_params->device_mode =
+        crosapi::mojom::DeviceMode::kEnterpriseActiveDirectory;
+    chromeos::BrowserInitParams::SetInitParamsForTests(std::move(init_params));
+
+    EXPECT_EQ(chromeos::BrowserParamsProxy::Get()->SessionType(),
+              crosapi::mojom::SessionType::kRegularSession);
     EXPECT_TRUE(profile->IsMainProfile());
 
     // Creating a profile causes an implicit connection attempt to a Mojo

@@ -4,7 +4,6 @@ Version: 0
 License: Apache 2.0
 License File: src/LICENSE
 Security Critical: no
-Shipped: yes
 
 Description:
 Library for protocol buffer mutation. Assistance library to in-process

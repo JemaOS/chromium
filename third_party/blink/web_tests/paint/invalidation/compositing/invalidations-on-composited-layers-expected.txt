@@ -11,6 +11,9 @@
       "bounds": [400, 400],
       "contentsOpaque": true,
       "backgroundColor": "#008000",
+      "invalidations": [
+        [0, 0, 400, 400]
+      ],
       "transform": 1
     },
     {
@@ -18,6 +21,9 @@
       "bounds": [75, 75],
       "contentsOpaque": true,
       "backgroundColor": "#0000FF",
+      "invalidations": [
+        [0, 0, 75, 75]
+      ],
       "transform": 2
     }
   ],

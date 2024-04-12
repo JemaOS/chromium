@@ -40,7 +40,7 @@
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/constants/ash_pref_names.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -113,7 +113,7 @@ ValidateAndConvertToTtsVoiceVector(const extensions::Extension* extension,
         continue;
       }
     }
-    if (std::optional<bool> remote =
+    if (absl::optional<bool> remote =
             voice_data.FindBool(constants::kRemoteKey)) {
       voice.remote = remote.value();
     }
@@ -568,7 +568,7 @@ ExtensionTtsEngineSendTtsAudioFunction::Run() {
   EXTENSION_FUNCTION_VALIDATE(char_index_value->is_int());
   char_index = char_index_value->GetInt();
 
-  std::optional<bool> is_last_buffer =
+  absl::optional<bool> is_last_buffer =
       audio->FindBool(tts_extension_api_constants::kIsLastBufferKey);
   EXTENSION_FUNCTION_VALIDATE(is_last_buffer);
 

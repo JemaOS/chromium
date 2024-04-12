@@ -13,9 +13,7 @@ class GPUTextureView : public DawnObject<WGPUTextureView> {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  explicit GPUTextureView(GPUDevice* device,
-                          WGPUTextureView texture_view,
-                          const String& label);
+  explicit GPUTextureView(GPUDevice* device, WGPUTextureView texture_view);
 
   GPUTextureView(const GPUTextureView&) = delete;
   GPUTextureView& operator=(const GPUTextureView&) = delete;

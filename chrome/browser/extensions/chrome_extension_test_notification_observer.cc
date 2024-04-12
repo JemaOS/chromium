@@ -14,9 +14,9 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/test_utils.h"
+#include "extensions/browser/notification_types.h"
 #include "extensions/browser/process_manager.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 
 namespace extensions {
 
@@ -31,6 +31,7 @@ bool HasPageActionVisibilityReachedTarget(
 }
 
 bool HaveAllExtensionRenderFrameHostsFinishedLoading(ProcessManager* manager) {
+  ProcessManager::FrameSet all_views = manager->GetAllFrames();
   for (content::RenderFrameHost* host : manager->GetAllFrames()) {
     if (content::WebContents::FromRenderFrameHost(host)->IsLoading())
       return false;
@@ -84,7 +85,10 @@ bool ChromeExtensionTestNotificationObserver::WaitForExtensionViewsToLoad() {
   base::RunLoop().RunUntilIdle();
 
   ProcessManager* manager = ProcessManager::Get(GetBrowserContext());
-  NotificationSet notification_set(manager);
+  NotificationSet notification_set;
+  notification_set.AddWebContentsDestroyed(manager);
+  notification_set.Add(content::NOTIFICATION_LOAD_STOP);
+  notification_set.AddExtensionFrameUnregistration(manager);
   WaitForCondition(
       base::BindRepeating(&HaveAllExtensionRenderFrameHostsFinishedLoading,
                           manager),
@@ -93,9 +97,9 @@ bool ChromeExtensionTestNotificationObserver::WaitForExtensionViewsToLoad() {
 }
 
 bool ChromeExtensionTestNotificationObserver::WaitForExtensionIdle(
-    const ExtensionId& extension_id) {
-  ProcessManager* manager = ProcessManager::Get(GetBrowserContext());
-  NotificationSet notification_set(manager);
+    const std::string& extension_id) {
+  NotificationSet notification_set;
+  notification_set.Add(content::NOTIFICATION_RENDERER_PROCESS_TERMINATED);
   WaitForCondition(base::BindRepeating(&util::IsExtensionIdle, extension_id,
                                        GetBrowserContext()),
                    &notification_set);
@@ -103,11 +107,11 @@ bool ChromeExtensionTestNotificationObserver::WaitForExtensionIdle(
 }
 
 bool ChromeExtensionTestNotificationObserver::WaitForExtensionNotIdle(
-    const ExtensionId& extension_id) {
-  ProcessManager* manager = ProcessManager::Get(GetBrowserContext());
-  NotificationSet notification_set(manager);
+    const std::string& extension_id) {
+  NotificationSet notification_set;
+  notification_set.Add(content::NOTIFICATION_LOAD_STOP);
   WaitForCondition(base::BindRepeating(
-                       [](const ExtensionId& extension_id,
+                       [](const std::string& extension_id,
                           content::BrowserContext* context) -> bool {
                          return !util::IsExtensionIdle(extension_id, context);
                        },

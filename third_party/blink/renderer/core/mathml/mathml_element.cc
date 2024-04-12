@@ -10,8 +10,10 @@
 #include "third_party/blink/renderer/core/css/parser/css_parser.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
+#include "third_party/blink/renderer/core/layout/ng/mathml/layout_ng_table_cell_with_anonymous_mrow.h"
 #include "third_party/blink/renderer/platform/wtf/text/character_visitor.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_to_number.h"
 
@@ -40,6 +42,9 @@ static inline bool IsDisallowedMathSizeAttribute(const AtomicString& value) {
 }
 
 bool MathMLElement::IsPresentationAttribute(const QualifiedName& name) const {
+  if (!RuntimeEnabledFeatures::MathMLCoreEnabled())
+    return Element::IsPresentationAttribute(name);
+
   if (name == html_names::kDirAttr || name == mathml_names::kMathsizeAttr ||
       name == mathml_names::kMathcolorAttr ||
       name == mathml_names::kMathbackgroundAttr ||
@@ -77,6 +82,11 @@ void MathMLElement::CollectStyleForPresentationAttribute(
     const QualifiedName& name,
     const AtomicString& value,
     MutableCSSPropertyValueSet* style) {
+  if (!RuntimeEnabledFeatures::MathMLCoreEnabled()) {
+    Element::CollectStyleForPresentationAttribute(name, value, style);
+    return;
+  }
+
   if (name == html_names::kDirAttr) {
     if (IsValidDirAttribute(value)) {
       AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kDirection,
@@ -120,6 +130,11 @@ void MathMLElement::CollectStyleForPresentationAttribute(
 }
 
 void MathMLElement::ParseAttribute(const AttributeModificationParams& param) {
+  if (!RuntimeEnabledFeatures::MathMLCoreEnabled()) {
+    Element::ParseAttribute(param);
+    return;
+  }
+
   const AtomicString& event_name =
       HTMLElement::EventNameForAttributeName(param.name);
   if (!event_name.IsNull()) {
@@ -132,14 +147,14 @@ void MathMLElement::ParseAttribute(const AttributeModificationParams& param) {
   Element::ParseAttribute(param);
 }
 
-std::optional<bool> MathMLElement::BooleanAttribute(
+absl::optional<bool> MathMLElement::BooleanAttribute(
     const QualifiedName& name) const {
   const AtomicString& value = FastGetAttribute(name);
   if (EqualIgnoringASCIICase(value, "true"))
     return true;
   if (EqualIgnoringASCIICase(value, "false"))
     return false;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 const CSSPrimitiveValue* MathMLElement::ParseMathLength(
@@ -161,7 +176,7 @@ const CSSPrimitiveValue* MathMLElement::ParseMathLength(
   return parsed_value;
 }
 
-std::optional<Length> MathMLElement::AddMathLengthToComputedStyle(
+absl::optional<Length> MathMLElement::AddMathLengthToComputedStyle(
     const CSSToLengthConversionData& conversion_data,
     const QualifiedName& attr_name,
     AllowPercentages allow_percentages,
@@ -170,7 +185,16 @@ std::optional<Length> MathMLElement::AddMathLengthToComputedStyle(
           ParseMathLength(attr_name, allow_percentages, value_range)) {
     return parsed_value->ConvertToLength(conversion_data);
   }
-  return std::nullopt;
+  return absl::nullopt;
+}
+
+LayoutObject* MathMLElement::CreateLayoutObject(const ComputedStyle& style) {
+  if (RuntimeEnabledFeatures::MathMLCoreEnabled() &&
+      Node::HasTagName(mathml_names::kMtdTag) &&
+      style.Display() == EDisplay::kTableCell) {
+    return MakeGarbageCollected<LayoutNGTableCellWithAnonymousMrow>(this);
+  }
+  return Element::CreateLayoutObject(style);
 }
 
 }  // namespace blink

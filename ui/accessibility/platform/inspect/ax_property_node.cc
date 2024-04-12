@@ -4,10 +4,9 @@
 
 #include "ui/accessibility/platform/inspect/ax_property_node.h"
 
-#include <optional>
-
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/platform/inspect/ax_inspect.h"
 
 namespace ui {
@@ -102,10 +101,10 @@ bool AXPropertyNode::IsDict() const {
   return name_or_value == "{}";
 }
 
-std::optional<int> AXPropertyNode::AsInt() const {
+absl::optional<int> AXPropertyNode::AsInt() const {
   int value = 0;
   if (!base::StringToInt(name_or_value, &value)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return value;
 }
@@ -127,23 +126,23 @@ const AXPropertyNode* AXPropertyNode::FindKey(const char* refkey) const {
   return nullptr;
 }
 
-std::optional<std::string> AXPropertyNode::FindStringKey(
+absl::optional<std::string> AXPropertyNode::FindStringKey(
     const char* refkey) const {
   for (const auto& param : arguments) {
     if (param.key == refkey) {
       return param.name_or_value;
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int> AXPropertyNode::FindIntKey(const char* refkey) const {
+absl::optional<int> AXPropertyNode::FindIntKey(const char* refkey) const {
   for (const auto& param : arguments) {
     if (param.key == refkey) {
       return param.AsInt();
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::string AXPropertyNode::ToString() const {

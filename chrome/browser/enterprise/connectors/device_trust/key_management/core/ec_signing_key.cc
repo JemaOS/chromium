@@ -5,7 +5,6 @@
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/ec_signing_key.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/check.h"
 #include "base/check_op.h"
@@ -27,7 +26,7 @@ class ECSigningKey : public crypto::UnexportableSigningKey {
   crypto::SignatureVerifier::SignatureAlgorithm Algorithm() const override;
   std::vector<uint8_t> GetSubjectPublicKeyInfo() const override;
   std::vector<uint8_t> GetWrappedKey() const override;
-  std::optional<std::vector<uint8_t>> SignSlowly(
+  absl::optional<std::vector<uint8_t>> SignSlowly(
       base::span<const uint8_t> data) override;
 
  private:
@@ -64,7 +63,7 @@ std::vector<uint8_t> ECSigningKey::GetWrappedKey() const {
   return wrapped;
 }
 
-std::optional<std::vector<uint8_t>> ECSigningKey::SignSlowly(
+absl::optional<std::vector<uint8_t>> ECSigningKey::SignSlowly(
     base::span<const uint8_t> data) {
   std::vector<uint8_t> signature;
   auto signer = crypto::ECSignatureCreator::Create(key_.get());
@@ -79,7 +78,7 @@ std::optional<std::vector<uint8_t>> ECSigningKey::SignSlowly(
 ECSigningKeyProvider::ECSigningKeyProvider() = default;
 ECSigningKeyProvider::~ECSigningKeyProvider() = default;
 
-std::optional<crypto::SignatureVerifier::SignatureAlgorithm>
+absl::optional<crypto::SignatureVerifier::SignatureAlgorithm>
 ECSigningKeyProvider::SelectAlgorithm(
     base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
         acceptable_algorithms) {
@@ -88,7 +87,7 @@ ECSigningKeyProvider::SelectAlgorithm(
       return crypto::SignatureVerifier::ECDSA_SHA256;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::unique_ptr<crypto::UnexportableSigningKey>
@@ -107,12 +106,6 @@ std::unique_ptr<crypto::UnexportableSigningKey>
 ECSigningKeyProvider::FromWrappedSigningKeySlowly(
     base::span<const uint8_t> wrapped_key) {
   return std::make_unique<ECSigningKey>(wrapped_key);
-}
-
-bool ECSigningKeyProvider::DeleteSigningKey(
-    base::span<const uint8_t> wrapped_key) {
-  // Software keys are stateless.
-  return true;
 }
 
 }  // namespace enterprise_connectors

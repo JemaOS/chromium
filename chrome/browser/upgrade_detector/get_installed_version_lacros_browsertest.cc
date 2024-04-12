@@ -68,7 +68,7 @@ class GetInstalledVersionLacrosBrowserTest : public InProcessBrowserTest {
 IN_PROC_BROWSER_TEST_F(
     GetInstalledVersionLacrosBrowserTest,
     DefaultToRunningRootfsVersionWhenOlderStatefulBrowserComponentVersion) {
-  auto params = chromeos::BrowserInitParams::GetForTests()->Clone();
+  auto params = crosapi::mojom::BrowserInitParams::New();
   params->lacros_selection =
       crosapi::mojom::BrowserInitParams::LacrosSelection::kRootfs;
   chromeos::BrowserInitParams::SetInitParamsForTests(std::move(params));

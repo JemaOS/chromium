@@ -22,16 +22,22 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.ui.base.WindowAndroid;
 
-/** Test for {@link FindToolbarManagerTest}. */
+/**
+ * Test for {@link FindToolbarManagerTest}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class FindToolbarManagerTest {
     private FindToolbarManager mFindToolbarManager;
 
-    @Mock private TabModelSelector mTabModelSelector;
-    @Mock private Tab mTab;
-    @Mock private ViewStub mViewStub;
-    @Mock private FindToolbar mFindToolbar;
+    @Mock
+    private TabModelSelector mTabModelSelector;
+    @Mock
+    private Tab mTab;
+    @Mock
+    private ViewStub mViewStub;
+    @Mock
+    private FindToolbar mFindToolbar;
 
     @Before
     public void setUp() {
@@ -39,13 +45,8 @@ public class FindToolbarManagerTest {
         Mockito.doReturn(mTab).when(mTabModelSelector).getCurrentTab();
         Mockito.doReturn(mFindToolbar).when(mViewStub).inflate();
 
-        mFindToolbarManager =
-                new FindToolbarManager(
-                        mViewStub,
-                        mTabModelSelector,
-                        Mockito.mock(WindowAndroid.class),
-                        null,
-                        null);
+        mFindToolbarManager = new FindToolbarManager(
+                mViewStub, mTabModelSelector, Mockito.mock(WindowAndroid.class), null, null);
     }
 
     @Test

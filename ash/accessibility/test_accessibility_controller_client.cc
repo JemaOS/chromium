@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/public/cpp/accessibility_controller.h"
 #include "base/time/time.h"
 #include "ui/gfx/geometry/point_f.h"
 
@@ -54,6 +54,10 @@ bool TestAccessibilityControllerClient::ToggleDictation() {
 
 void TestAccessibilityControllerClient::SilenceSpokenFeedback() {}
 
+void TestAccessibilityControllerClient::OnTwoFingerTouchStart() {}
+
+void TestAccessibilityControllerClient::OnTwoFingerTouchStop() {}
+
 bool TestAccessibilityControllerClient::ShouldToggleSpokenFeedbackViaTouch()
     const {
   return true;
@@ -67,8 +71,7 @@ void TestAccessibilityControllerClient::RequestSelectToSpeakStateChange() {
 }
 
 void TestAccessibilityControllerClient::
-    RequestAutoclickScrollableBoundsForPoint(
-        const gfx::Point& point_in_screen) {}
+    RequestAutoclickScrollableBoundsForPoint(gfx::Point& point_in_screen) {}
 
 void TestAccessibilityControllerClient::MagnifierBoundsChanged(
     const gfx::Rect& bounds_in_screen) {}
@@ -85,14 +88,9 @@ void TestAccessibilityControllerClient::OnSelectToSpeakPanelAction(
 void TestAccessibilityControllerClient::SetA11yOverrideWindow(
     aura::Window* a11y_override_window) {}
 
-std::string TestAccessibilityControllerClient::GetDictationDefaultLocale(
-    bool new_user) {
-  return "";
-}
-
-std::optional<Sound>
+absl::optional<Sound>
 TestAccessibilityControllerClient::GetPlayedEarconAndReset() {
-  return std::exchange(sound_key_, std::nullopt);
+  return std::exchange(sound_key_, absl::nullopt);
 }
 
 }  // namespace ash

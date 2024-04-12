@@ -22,6 +22,8 @@
 #include "components/translate/core/browser/translate_pref_names.h"
 #include "media/media_buildflags.h"
 #include "third_party/blink/public/common/peerconnection/webrtc_ip_handling_policy.h"
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ui/accessibility/accessibility_features.h"
@@ -56,21 +58,6 @@ void RegisterBrowserPrefs(PrefRegistrySimple* registry) {
   registry->RegisterIntegerPref(
       prefs::kMacRestoreLocationPermissionsExperimentCount, 0);
 #endif  // BUILDFLAG(IS_MAC)
-
-  registry->RegisterBooleanPref(prefs::kHoverCardImagesEnabled, true);
-
-  registry->RegisterBooleanPref(prefs::kHoverCardMemoryUsageEnabled, true);
-
-#if defined(USE_AURA)
-  registry->RegisterBooleanPref(prefs::kOverscrollHistoryNavigationEnabled,
-                                true);
-#endif
-  registry->RegisterIntegerPref(prefs::kToolbarAvatarLabelSettings, 0);
-
-  registry->RegisterTimePref(prefs::kDefaultBrowserLastDeclinedTime,
-                             base::Time());
-
-  registry->RegisterIntegerPref(prefs::kDefaultBrowserDeclinedCount, 0);
 }
 
 void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
@@ -80,6 +67,12 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
                                 GetHomeButtonAndHomePageIsNewTabPageFlags());
 
   registry->RegisterInt64Pref(prefs::kDefaultBrowserLastDeclined, 0);
+  bool reset_check_default = false;
+#if BUILDFLAG(IS_WIN)
+  reset_check_default = true;
+#endif
+  registry->RegisterBooleanPref(prefs::kResetCheckDefaultBrowser,
+                                reset_check_default);
   registry->RegisterBooleanPref(prefs::kWebAppCreateOnDesktop, true);
   registry->RegisterBooleanPref(prefs::kWebAppCreateInAppsMenu, true);
   registry->RegisterBooleanPref(prefs::kWebAppCreateInQuickLaunchBar, true);
@@ -88,9 +81,13 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterStringPref(prefs::kCloudPrintEmail, std::string());
   registry->RegisterBooleanPref(prefs::kCloudPrintProxyEnabled, true);
+  registry->RegisterBooleanPref(prefs::kCloudPrintSubmitEnabled, true);
   registry->RegisterDictionaryPref(prefs::kBrowserWindowPlacement);
   registry->RegisterDictionaryPref(prefs::kBrowserWindowPlacementPopup);
   registry->RegisterDictionaryPref(prefs::kAppWindowPlacement);
+  registry->RegisterBooleanPref(
+      prefs::kEnableDoNotTrack, false,
+      user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
 #if !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_ANDROID)
   registry->RegisterBooleanPref(prefs::kPrintPreviewUseSystemDefaultPrinter,
                                 false);
@@ -100,11 +97,24 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterStringPref(prefs::kWebRTCUDPPortRange, std::string());
   registry->RegisterBooleanPref(prefs::kWebRtcEventLogCollectionAllowed, false);
   registry->RegisterListPref(prefs::kWebRtcLocalIpsAllowedUrls);
+  registry->RegisterBooleanPref(prefs::kWebRTCAllowLegacyTLSProtocols, false);
   registry->RegisterBooleanPref(prefs::kWebRtcTextLogCollectionAllowed, true);
+
+  // Dictionaries to keep track of default tasks in the file browser.
+  registry->RegisterDictionaryPref(
+      prefs::kDefaultTasksByMimeType,
+      user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+  registry->RegisterDictionaryPref(
+      prefs::kDefaultTasksBySuffix,
+      user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
 
   // We need to register the type of these preferences in order to query
   // them even though they're only typically controlled via policy.
-  registry->RegisterBooleanPref(policy::policy_prefs::kHideWebStoreIcon, false);
+  registry->RegisterBooleanPref(policy::policy_prefs::kHideWebStoreIcon,
+      jemaos::switches::IsJemaExtendAccountEnabled());
+  // hide google web store for jema account,
+  // show both google web store and jemaos store for google account
+  registry->RegisterBooleanPref(jemaos::prefs::kPrefHideJemaOSStoreIcon, false);
   registry->RegisterBooleanPref(prefs::kSharedClipboardEnabled, true);
 
 #if BUILDFLAG(ENABLE_CLICK_TO_CALL)
@@ -159,16 +169,6 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(
       prefs::kHttpsOnlyModeEnabled, false,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
-  registry->RegisterBooleanPref(
-      prefs::kHttpsFirstModeIncognito, true,
-      user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterListPref(prefs::kHttpAllowlist);
   registry->RegisterBooleanPref(prefs::kHttpsUpgradesEnabled, true);
-
-  registry->RegisterDictionaryPref(prefs::kHttpsUpgradeFallbacks);
-  registry->RegisterDictionaryPref(prefs::kHttpsUpgradeNavigations);
-  registry->RegisterBooleanPref(prefs::kHttpsOnlyModeAutoEnabled, false);
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-  registry->RegisterStringPref(prefs::kEnterpriseLogoUrl, std::string());
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 }

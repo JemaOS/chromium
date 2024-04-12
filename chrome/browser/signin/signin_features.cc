@@ -9,7 +9,14 @@
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_ANDROID)
 // Enables the new style, "For You" First Run Experience
-BASE_FEATURE(kForYouFre, "ForYouFre", base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kForYouFre,
+             "ForYouFre",
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 // Whether the browser should be opened when the user closes the FRE window. If
@@ -31,30 +38,6 @@ const base::FeatureParam<SigninPromoVariant> kForYouFreSignInPromoVariant{
     /*default_value=*/SigninPromoVariant::kSignIn,
     /*options=*/&kSignInPromoVariantOptions};
 
-constexpr base::FeatureParam<WithDefaultBrowserStep>::Option
-    kWithDefaultBrowserStepOptions[] = {
-        {WithDefaultBrowserStep::kYes, "yes"},
-        {WithDefaultBrowserStep::kNo, "no"},
-        {WithDefaultBrowserStep::kForced, "forced"},
-};
-
-const base::FeatureParam<WithDefaultBrowserStep>
-    kForYouFreWithDefaultBrowserStep{
-        &kForYouFre, /*name=*/"with_default_browser_step",
-        /*default_value=*/WithDefaultBrowserStep::kYes,
-        /*options=*/&kWithDefaultBrowserStepOptions};
-
-constexpr base::FeatureParam<DefaultBrowserVariant>::Option
-    kDefaultBrowserVariantOptions[] = {
-        {DefaultBrowserVariant::kCurrent, "current"},
-        {DefaultBrowserVariant::kNew, "new"},
-};
-
-const base::FeatureParam<DefaultBrowserVariant> kForYouFreDefaultBrowserVariant{
-    &kForYouFre, /*name=*/"default_browser_variant",
-    /*default_value=*/DefaultBrowserVariant::kNew,
-    /*options=*/&kDefaultBrowserVariantOptions};
-
 // Feature that indicates that we should put the client in a study group
 // (provided through `kForYouFreStudyGroup`) to be able to look at metrics in
 // the long term. Does not affect the client's behavior by itself, instead this
@@ -70,22 +53,28 @@ const base::FeatureParam<std::string> kForYouFreStudyGroup{
     &kForYouFreSyntheticTrialRegistration, /*name=*/"group_name",
     /*default_value=*/""};
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
-#endif  // !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-// Enables the generation of pseudo-stable per-user per-device device
-// identifiers. This identifier can be reset by the user by powerwashing the
-// device.
-BASE_FEATURE(kStableDeviceId,
-             "StableDeviceId",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+BASE_FEATURE(kEnterpriseWelcomeTangibleSyncStyle,
+             "EnterpriseWelcomeTangibleSyncStyle",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_ANDROID)
 
 // Enables the client-side processing of the HTTP response header
 // Google-Accounts-RemoveLocalAccount.
 BASE_FEATURE(kProcessGaiaRemoveLocalAccountHeader,
              "ProcessGaiaRemoveLocalAccountHeader",
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables the sync promo after the sign-in intercept.
+BASE_FEATURE(kSyncPromoAfterSigninIntercept,
+             "SyncPromoAfterSigninIntercept",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables using new style (strings, illustration, and disclaimer if needed)
+// for the sign-in intercept bubble.
+BASE_FEATURE(kSigninInterceptBubbleV2,
+             "SigninInterceptBubbleV2",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables showing the enterprise dialog after every signin into a managed
 // account.
@@ -96,30 +85,8 @@ BASE_FEATURE(kShowEnterpriseDialogForAllManagedAccountsSignin,
 // Disables signout for enteprise managed profiles
 BASE_FEATURE(kDisallowManagedProfileSignout,
              "DisallowManagedProfileSignout",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-#if BUILDFLAG(ENABLE_MIRROR)
-BASE_FEATURE(kVerifyRequestInitiatorForMirrorHeaders,
-             "VerifyRequestInitiatorForMirrorHeaders",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(ENABLE_MIRROR)
-
-BASE_FEATURE(kProfilesReordering,
-             "ProfilesReordering",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-#if !BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kForceSigninFlowInProfilePicker,
-             "ForceSigninFlowInProfilePicker",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-extern const base::FeatureParam<bool>
-    kForceSigninReauthInProfilePickerUseAddSession{
-        &kForceSigninFlowInProfilePicker, /*name=*/"reauth_use_add_session",
-        /*default_value=*/false};
-#endif  // !BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-BASE_FEATURE(kPreconnectAccountCapabilitiesBeforeSignIn,
-             "PreconnectAccountCapabilitiesBeforeSignIn",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
+// Makes the profile creation flow use the "promo" flow version of the Gaia
+// sign-in page instead of one that mentions the Chrome sync benefits.
+BASE_FEATURE(kPromoGaiaFlow, "PromoGaiaFlow", base::FEATURE_ENABLED_BY_DEFAULT);

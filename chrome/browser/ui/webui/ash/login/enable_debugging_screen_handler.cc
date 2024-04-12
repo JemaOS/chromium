@@ -11,7 +11,7 @@
 #include "chrome/browser/ash/login/screens/enable_debugging_screen.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/login/localized_values_builder.h"
 #include "components/prefs/pref_registry_simple.h"
@@ -27,11 +27,6 @@ EnableDebuggingScreenHandler::~EnableDebuggingScreenHandler() = default;
 void EnableDebuggingScreenHandler::Show() {
   DVLOG(1) << "Showing enable debugging screen.";
   ShowInWebUI();
-}
-
-base::WeakPtr<EnableDebuggingScreenView>
-EnableDebuggingScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 void EnableDebuggingScreenHandler::DeclareLocalizedValues(

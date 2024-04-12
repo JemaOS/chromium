@@ -2,6 +2,3 @@ monorail: {
   component: "Tools>Stability>ClusterFuzz"
 }
 team_email: "chrome-security-bugs--@chromium.org"
-buganizer_public: {
-  component_id: 1457062
-}

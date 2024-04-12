@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
-import * as FormatterModule from 'devtools/models/formatter/formatter.js';
-
 (async function() {
   TestRunner.addResult(`The test verifies the CSS outline functionality.\n`);
+  await TestRunner.loadLegacyModule('sources');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
 <style id="styler">
@@ -76,7 +73,7 @@ svg|a {
   }
 
   function onStyleFetched(result) {
-    FormatterModule.FormatterWorkerPool.formatterWorkerPool().parseCSS(result, onRulesParsed);
+    Formatter.formatterWorkerPool().parseCSS(result, onRulesParsed);
   }
 
   TestRunner.evaluateInPage('getCSS()', onStyleFetched);

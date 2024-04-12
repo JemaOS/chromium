@@ -5,11 +5,10 @@
 <script src="/resources/testharnessreport.js"></script>
 <script src="/common/utils.js"></script>
 <script src="/service-workers/service-worker/resources/test-helpers.sub.js"></script>
-<script src="../resources/utils.js"></script>
-<script src="resources/utils.js"></script>
-
+<script src="/speculation-rules/prerender/resources/utils.js"></script>
 <body>
 <script>
+
 setup(() => assertSpeculationRulesIsSupported());
 
 promise_test(async t => {
@@ -50,3 +49,4 @@ promise_test(async t => {
    'Clients#matchAll()');
 
 </script>
+</body>

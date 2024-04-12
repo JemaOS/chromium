@@ -34,24 +34,16 @@ static_library("camera_app_ui") {
 
   deps = [
     ":document_scanning",
-    ":events_sender",
     ":mojo_bindings",
     ":window_managemet",
-    "//ash",
     "//ash/public/cpp",
-    "//ash/webui/common:trusted_types_util",
     "//ash/webui/system_apps/public:system_web_app_config",
     "//ash/webui/web_applications",
-    "//chromeos/ash/components/dbus/session_manager:session_manager",
-    "//chromeos/ash/components/mojo_service_manager",
     "//chromeos/utils",
     "//components/arc",
-    "//components/media_device_salt",
-    "//components/onc",
     "//content/public/browser",
     "//content/public/common",
     "//media/capture:capture_lib",
-    "//media/capture/video/chromeos/mojom:system_event_monitor",
     "//mojo/public/cpp/bindings",
     "//mojo/public/js:resources_grit",
     "//net",
@@ -62,6 +54,8 @@ static_library("camera_app_ui") {
 
 source_set("window_managemet") {
   sources = [
+    "camera_app_window_manager.cc",
+    "camera_app_window_manager.h",
     "camera_app_window_state_controller.cc",
     "camera_app_window_state_controller.h",
   ]
@@ -74,21 +68,6 @@ source_set("window_managemet") {
     "//mojo/public/cpp/bindings",
     "//ui/aura",
     "//ui/views",
-  ]
-}
-
-source_set("events_sender") {
-  sources = [
-    "camera_app_events_sender.cc",
-    "camera_app_events_sender.h",
-  ]
-
-  deps = [
-    ":mojo_bindings",
-    "//ash/constants",
-    "//base",
-    "//components/metrics/structured:structured_events",
-    "//mojo/public/cpp/bindings",
   ]
 }
 
@@ -114,21 +93,34 @@ source_set("document_scanning") {
   ]
 }
 
-mojom("mojo_bindings") {
-  sources = [
-    "camera_app_helper.mojom",
-    "events_sender.mojom",
-    "types.mojom",
+source_set("unit_tests") {
+  testonly = true
+
+  sources = [ "camera_app_window_manager_unittest.cc" ]
+
+  deps = [
+    ":window_managemet",
+    "//base",
+    "//base/test:test_support",
+    "//content/test:test_support",
+    "//testing/gmock",
+    "//testing/gtest",
+    "//ui/views",
+    "//ui/views:test_support",
   ]
+}
+
+mojom("mojo_bindings") {
+  sources = [ "camera_app_helper.mojom" ]
 
   deps = [
     "//ash/components/arc/mojom:camera_intent",
     "//chromeos/services/machine_learning/public/mojom:document_scanner_param_types",
-    "//media/capture/video/chromeos/mojom:system_event_monitor",
     "//ui/gfx/geometry/mojom",
     "//url/mojom:url_mojom_gurl",
   ]
   webui_module_path = "/ash/webui/camera_app_ui"
+  use_typescript_sources = true
 }
 
 cca_grd_prefix = "ash_camera_app"
@@ -146,7 +138,7 @@ generate_grd("build_grd") {
   out_grd = resources_grd_file
   grdp_files = [ generated_grdp_file ]
 
-  manifest_files = [ "$target_gen_dir/resources/build_ts_manifest.json" ]
+  manifest_files = [ "$target_gen_dir/resources/build_ts.manifest" ]
   input_files_base_dir = rebase_path("resources", "//")
   input_files = []
 
@@ -161,7 +153,7 @@ generate_grd("build_grd") {
   }
 
   # Image Files.
-  foreach(image, standalone_images) {
+  foreach(image, in_app_images) {
     input_files += [ "images/$image" ]
   }
   foreach(image, icon_images) {
@@ -197,18 +189,4 @@ generate_grd("build_generated_grdp") {
                   root_build_dir)
   input_files = [ "js/preload_images.js" ]
   out_grd = generated_grdp_file
-}
-
-source_set("unit_tests") {
-  testonly = true
-  sources = [ "camera_app_events_sender_unittest.cc" ]
-  deps = [
-    ":events_sender",
-    "//ash/constants",
-    "//base",
-    "//base/test:test_support",
-    "//components/metrics/structured:structured_events",
-    "//components/metrics/structured:test_support",
-    "//testing/gtest",
-  ]
 }

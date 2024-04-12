@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "chrome/browser/download/download_offline_content_provider.h"
 #include "chrome/browser/download/offline_item_utils.h"
@@ -26,8 +26,7 @@ void OnProfileCreated(DownloadOfflineContentProvider* provider,
 // static
 DownloadOfflineContentProviderFactory*
 DownloadOfflineContentProviderFactory::GetInstance() {
-  static base::NoDestructor<DownloadOfflineContentProviderFactory> instance;
-  return instance.get();
+  return base::Singleton<DownloadOfflineContentProviderFactory>::get();
 }
 
 // static

@@ -11,7 +11,7 @@ namespace blink {
 InterpolationValue CSSPercentageInterpolationType::MaybeConvertNeutral(
     const InterpolationValue&,
     ConversionCheckers&) const {
-  return InterpolationValue(MakeGarbageCollected<InterpolableNumber>(0));
+  return InterpolationValue(std::make_unique<InterpolableNumber>(0));
 }
 
 InterpolationValue CSSPercentageInterpolationType::MaybeConvertValue(
@@ -19,11 +19,10 @@ InterpolationValue CSSPercentageInterpolationType::MaybeConvertValue(
     const StyleResolverState*,
     ConversionCheckers&) const {
   auto* primitive_value = DynamicTo<CSSPrimitiveValue>(value);
-  if (!primitive_value || !primitive_value->IsPercentage()) {
+  if (!primitive_value || !primitive_value->IsPercentage())
     return nullptr;
-  }
-  return InterpolationValue(MakeGarbageCollected<InterpolableNumber>(
-      primitive_value->GetDoubleValue()));
+  return InterpolationValue(
+      std::make_unique<InterpolableNumber>(primitive_value->GetDoubleValue()));
 }
 
 const CSSValue* CSSPercentageInterpolationType::CreateCSSValue(

@@ -6,6 +6,7 @@
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
 <script src="/web-animations/testcommon.js"></script>
+<script src="/resources/declarative-shadow-dom-polyfill.js"></script>
 
 <main id=main></main>
 <script>
@@ -14,6 +15,10 @@
     main.append(template.content.cloneNode(true));
     main.offsetTop;
   }
+
+  setup(() => {
+    polyfill_declarative_shadow_dom(document);
+  });
 </script>
 <style>
   @keyframes anim {
@@ -26,18 +31,18 @@
   <style>
     .target {
       animation: anim 10s linear;
-      animation-timeline: --timeline;
+      animation-timeline: timeline;
     }
     main > .scroller {
-      scroll-timeline: --timeline x;
+      scroll-timeline: timeline horizontal;
     }
   </style>
   <div class=scroller>
     <div class=scroller>
-      <template shadowrootmode=open shadowrootclonable>
+      <template shadowrootmode=open>
         <style>
           :host {
-            scroll-timeline: --timeline y;
+            scroll-timeline: timeline vertical;
           }
         </style>
         <slot></slot>
@@ -55,7 +60,7 @@
     assert_equals(target.getAnimations().length, 1);
     let anim = target.getAnimations()[0];
     assert_not_equals(anim.timeline, null);
-    assert_equals(anim.timeline.axis, 'y');
+    assert_equals(anim.timeline.axis, 'vertical');
   }, 'Outer animation can see scroll timeline defined by :host');
 </script>
 
@@ -64,17 +69,17 @@
   <style>
     .target {
       animation: anim 10s linear;
-      animation-timeline: --timeline;
+      animation-timeline: timeline;
     }
     .host {
-      scroll-timeline: --timeline x;
+      scroll-timeline: timeline horizontal;
     }
   </style>
   <div class=host>
-    <template shadowrootmode=open shadowrootclonable>
+    <template shadowrootmode=open>
       <style>
         ::slotted(.scroller) {
-          scroll-timeline: --timeline y;
+          scroll-timeline: timeline vertical;
         }
       </style>
       <slot></slot>
@@ -93,7 +98,7 @@
     assert_equals(target.getAnimations().length, 1);
     let anim = target.getAnimations()[0];
     assert_not_equals(anim.timeline, null);
-    assert_equals(anim.timeline.axis, 'y');
+    assert_equals(anim.timeline.axis, 'vertical');
   }, 'Outer animation can see scroll timeline defined by ::slotted');
 </script>
 
@@ -101,14 +106,14 @@
 <template id=scroll_timeline_part>
   <style>
     .host {
-      scroll-timeline: --timeline y;
+      scroll-timeline: timeline vertical;
     }
     .host::part(foo) {
-      scroll-timeline: --timeline x;
+      scroll-timeline: timeline horizontal;
     }
   </style>
   <div class=host>
-    <template shadowrootmode=open shadowrootclonable>
+    <template shadowrootmode=open>
       <style>
           /* Not using 'anim' at document scope, due to https://crbug.com/1334534 */
           @keyframes anim2 {
@@ -117,7 +122,7 @@
           }
         .target {
           animation: anim2 10s linear;
-          animation-timeline: --timeline;
+          animation-timeline: timeline;
         }
       </style>
       <div part=foo>
@@ -135,7 +140,7 @@
     assert_equals(target.getAnimations().length, 1);
     let anim = target.getAnimations()[0];
     assert_not_equals(anim.timeline, null);
-    assert_equals(anim.timeline.axis, 'x');
+    assert_equals(anim.timeline.axis, 'horizontal');
   }, 'Inner animation can see scroll timeline defined by ::part');
 </script>
 
@@ -144,18 +149,18 @@
   <style>
     .target {
       animation: anim 10s linear;
-      animation-timeline: --timeline;
+      animation-timeline: timeline;
     }
     .host {
-      scroll-timeline: --timeline x;
+      scroll-timeline: timeline horizontal;
     }
   </style>
   <div class=scroller>
     <div class=host>
-      <template shadowrootmode=open shadowrootclonable>
+      <template shadowrootmode=open>
         <style>
           div {
-            scroll-timeline: --timeline y;
+            scroll-timeline: timeline vertical;
           }
         </style>
         <div>
@@ -175,6 +180,6 @@
     assert_equals(target.getAnimations().length, 1);
     let anim = target.getAnimations()[0];
     assert_not_equals(anim.timeline, null);
-    assert_equals(anim.timeline.axis, 'y');
+    assert_equals(anim.timeline.axis, 'vertical');
   }, 'Slotted element can see scroll timeline within the shadow');
 </script>

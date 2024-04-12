@@ -20,17 +20,15 @@
 #include "third_party/blink/renderer/core/layout/svg/svg_resources.h"
 
 #include "base/ranges/algorithm.h"
-#include "third_party/blink/renderer/core/css/properties/longhands.h"
+#include "third_party/blink/renderer/core/layout/ng/svg/layout_ng_svg_text.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_resource_filter.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_resource_paint_server.h"
-#include "third_party/blink/renderer/core/layout/svg/layout_svg_text.h"
 #include "third_party/blink/renderer/core/paint/filter_effect_builder.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/reference_clip_path_operation.h"
 #include "third_party/blink/renderer/core/style/style_svg_resource.h"
 #include "third_party/blink/renderer/core/svg/graphics/filters/svg_filter_builder.h"
 #include "third_party/blink/renderer/core/svg/svg_filter_primitive_standard_attributes.h"
-#include "third_party/blink/renderer/core/svg/svg_length_functions.h"
 #include "third_party/blink/renderer/core/svg/svg_resource.h"
 #include "third_party/blink/renderer/platform/graphics/filters/filter.h"
 #include "third_party/blink/renderer/platform/graphics/filters/filter_effect.h"
@@ -49,53 +47,25 @@ SVGElementResourceClient& SVGResources::EnsureClient(
 }
 
 gfx::RectF SVGResources::ReferenceBoxForEffects(
-    const LayoutObject& layout_object,
-    GeometryBox geometry_box,
-    ForeignObjectQuirk foreign_object_quirk) {
+    const LayoutObject& layout_object) {
+  // For SVG foreign objects, remove the position part of the bounding box. The
+  // position is already baked into the transform, and we don't want to re-apply
+  // the offset when, e.g., using "objectBoundingBox" for clipPathUnits.
+  // Use the frame size since it should have the proper zoom applied.
+  if (layout_object.IsSVGForeignObject()) {
+    return gfx::RectF(gfx::SizeF(To<LayoutBox>(layout_object).Size()));
+  }
+
   // Text "sub-elements" (<tspan>, <textpath>, <a>) should use the entire
   // <text>s object bounding box rather then their own.
   // https://svgwg.org/svg2-draft/text.html#ObjectBoundingBoxUnitsTextObjects
   const LayoutObject* obb_layout_object = &layout_object;
   if (layout_object.IsSVGInline()) {
     obb_layout_object =
-        LayoutSVGText::LocateLayoutSVGTextAncestor(&layout_object);
+        LayoutNGSVGText::LocateLayoutSVGTextAncestor(&layout_object);
   }
   DCHECK(obb_layout_object);
-
-  gfx::RectF box;
-  switch (geometry_box) {
-    case GeometryBox::kPaddingBox:
-    case GeometryBox::kContentBox:
-    case GeometryBox::kFillBox:
-      box = obb_layout_object->ObjectBoundingBox();
-      break;
-    case GeometryBox::kMarginBox:
-    case GeometryBox::kBorderBox:
-    case GeometryBox::kStrokeBox:
-      box = obb_layout_object->StrokeBoundingBox();
-      break;
-    case GeometryBox::kViewBox: {
-      const SVGViewportResolver viewport_resolver(obb_layout_object);
-      box.set_size(viewport_resolver.ResolveViewport());
-      break;
-    }
-    default:
-      NOTREACHED();
-  }
-
-  if (foreign_object_quirk == ForeignObjectQuirk::kEnabled &&
-      obb_layout_object->IsSVGForeignObject()) {
-    // For SVG foreign objects, remove the position part of the bounding box.
-    // The position is already baked into the transform, and we don't want to
-    // re-apply the offset when, e.g., using "objectBoundingBox" for
-    // clipPathUnits. Similarly, the reference box should have zoom applied.
-    // This simple approach only works because foreign objects do not support
-    // strokes.
-    box.set_origin(gfx::PointF());
-    box.Scale(obb_layout_object->StyleRef().EffectiveZoom());
-  }
-
-  return box;
+  return obb_layout_object->ObjectBoundingBox();
 }
 
 void SVGResources::UpdateEffects(LayoutObject& object,
@@ -215,10 +185,9 @@ class SVGElementResourceClient::FilterData final
   FilterData(FilterEffect* last_effect, SVGFilterGraphNodeMap* node_map)
       : last_effect_(last_effect), node_map_(node_map) {}
 
-  bool HasEffects() const { return last_effect_ != nullptr; }
+  bool HasEffects() const { return last_effect_; }
   sk_sp<PaintFilter> BuildPaintFilter() {
-    return paint_filter_builder::Build(last_effect_.Get(),
-                                       kInterpolationSpaceSRGB);
+    return paint_filter_builder::Build(last_effect_, kInterpolationSpaceSRGB);
   }
 
   // Perform a finegrained invalidation of the filter chain for the
@@ -360,9 +329,7 @@ void SVGElementResourceClient::UpdateFilterData(
       reference_box == operations.ReferenceBox())
     return;
   const ComputedStyle& style = object.StyleRef();
-  FilterEffectBuilder builder(
-      reference_box, 1, style.VisitedDependentColor(GetCSSPropertyColor()),
-      style.UsedColorScheme());
+  FilterEffectBuilder builder(reference_box, 1);
   builder.SetShorthandScale(1 / style.EffectiveZoom());
   const FilterOperations& filter = style.Filter();
   // If the filter is a single 'url(...)' reference we can optimize some
@@ -433,7 +400,7 @@ void SVGResourceInvalidator::InvalidateEffects() {
     if (SVGElementResourceClient* client = SVGResources::GetClient(object_))
       client->InvalidateFilterData();
   }
-  if (style.HasClipPath() || style.HasMaskForSVG()) {
+  if (style.HasClipPath() || style.MaskerResource()) {
     object_.SetShouldDoFullPaintInvalidation();
     object_.SetNeedsPaintPropertyUpdate();
   }

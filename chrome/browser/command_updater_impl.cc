@@ -5,17 +5,17 @@
 #include "chrome/browser/command_updater_impl.h"
 
 #include <algorithm>
-#include <optional>
 
 #include "base/check.h"
 #include "base/observer_list.h"
 #include "chrome/browser/command_observer.h"
 #include "chrome/browser/command_updater_delegate.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 struct CommandUpdaterImpl::Command {
   // Empty optional means not specified yet and thus implicitly disabled.
-  std::optional<bool> enabled;
-  base::ObserverList<CommandObserver>::UncheckedAndDanglingUntriaged observers;
+  absl::optional<bool> enabled;
+  base::ObserverList<CommandObserver>::Unchecked observers;
 };
 
 CommandUpdaterImpl::CommandUpdaterImpl(CommandUpdaterDelegate* delegate)
@@ -31,9 +31,8 @@ bool CommandUpdaterImpl::SupportsCommand(int id) const {
 
 bool CommandUpdaterImpl::IsCommandEnabled(int id) const {
   auto command = commands_.find(id);
-  if (command == commands_.end() || command->second->enabled == std::nullopt) {
+  if (command == commands_.end() || command->second->enabled == absl::nullopt)
     return false;
-  }
   return *command->second->enabled;
 }
 

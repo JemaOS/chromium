@@ -17,20 +17,19 @@
 #include "ui/views/background.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/label.h"
-#include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
 #include "ui/views/widget/widget.h"
 
 namespace ui::ime {
 
 namespace {
 
+const bool kUseModernSkin = true;
+
 // VerticalCandidateLabel is used for rendering candidate text in
 // the vertical candidate window.
 class VerticalCandidateLabel : public views::Label {
-  METADATA_HEADER(VerticalCandidateLabel, views::Label)
-
  public:
+  METADATA_HEADER(VerticalCandidateLabel);
   VerticalCandidateLabel() = default;
   VerticalCandidateLabel(const VerticalCandidateLabel&) = delete;
   VerticalCandidateLabel& operator=(const VerticalCandidateLabel&) = delete;
@@ -40,27 +39,25 @@ class VerticalCandidateLabel : public views::Label {
   // views::Label:
   // Returns the preferred size, but guarantees that the width has at
   // least kMinCandidateLabelWidth pixels.
-  gfx::Size CalculatePreferredSize(
-      const views::SizeBounds& available_size) const override {
-    gfx::Size size = Label::CalculatePreferredSize(available_size);
+  gfx::Size CalculatePreferredSize() const override {
+    gfx::Size size = Label::CalculatePreferredSize();
     size.SetToMax(gfx::Size(kMinCandidateLabelWidth, 0));
     size.SetToMin(gfx::Size(kMaxCandidateLabelWidth, size.height()));
     return size;
   }
 };
 
-BEGIN_METADATA(VerticalCandidateLabel)
+BEGIN_METADATA(VerticalCandidateLabel, views::Label)
 END_METADATA
 
 // The label text is not set in this class.
 class ShortcutLabel : public views::Label {
-  METADATA_HEADER(ShortcutLabel, views::Label)
-
  public:
+  METADATA_HEADER(ShortcutLabel);
   explicit ShortcutLabel(ui::CandidateWindow::Orientation orientation)
       : orientation_(orientation) {
     // TODO(tapted): Get this FontList from views::style.
-    if (orientation == ui::CandidateWindow::VERTICAL) {
+    if (orientation == ui::CandidateWindow::VERTICAL && !kUseModernSkin) {
       SetFontList(font_list().Derive(kFontSizeDelta, gfx::Font::NORMAL,
                                      gfx::Font::Weight::BOLD));
     } else {
@@ -70,7 +67,10 @@ class ShortcutLabel : public views::Label {
     // candidate_label, like Chinese font for Chinese input method?
 
     // Setup paddings.
-    const auto kVerticalShortcutLabelInsets = gfx::Insets::TLBR(1, 6, 1, 6);
+    const auto kVerticalShortcutLabelInsets =
+      kUseModernSkin
+      ? gfx::Insets::TLBR(8, 12, 8, 4)
+      : gfx::Insets::TLBR(1, 6, 1, 6);
     const auto kHorizontalShortcutLabelInsets = gfx::Insets::TLBR(1, 3, 1, 0);
     const gfx::Insets insets = (orientation == ui::CandidateWindow::VERTICAL
                                     ? kVerticalShortcutLabelInsets
@@ -87,7 +87,7 @@ class ShortcutLabel : public views::Label {
   void OnThemeChanged() override {
     Label::OnThemeChanged();
     // Add decoration based on the orientation.
-    if (orientation_ == ui::CandidateWindow::VERTICAL) {
+    if (orientation_ == ui::CandidateWindow::VERTICAL && !kUseModernSkin) {
       // Set the background color.
       SkColor blackish = color_utils::AlphaBlend(
           SK_ColorBLACK,
@@ -100,7 +100,7 @@ class ShortcutLabel : public views::Label {
   const ui::CandidateWindow::Orientation orientation_;
 };
 
-BEGIN_METADATA(ShortcutLabel)
+BEGIN_METADATA(ShortcutLabel, views::Label)
 END_METADATA
 
 // Creates an annotation label. Sets no text by default.
@@ -191,10 +191,23 @@ void CandidateView::SetHighlighted(bool highlighted) {
 
   highlighted_ = highlighted;
   if (highlighted) {
-    SetBackground(views::CreateThemedSolidBackground(
-        ui::kColorTextfieldSelectionBackground));
-    SetBorder(
-        views::CreateThemedSolidBorder(1, ui::kColorFocusableBorderFocused));
+    NotifyAccessibilityEvent(ax::mojom::Event::kSelection, false);
+
+    if (index_in_page_ == 0) {
+      SetBackground(views::CreateThemedRoundedRectBackground(
+            kJemaColorTextfieldSelectionBackground, background_radius_, 0, 0));
+    } else if (index_in_page_ == page_size_ - 1) {
+      SetBackground(views::CreateThemedRoundedRectBackground(
+            kJemaColorTextfieldSelectionBackground, 0, background_radius_, 0));
+    } else {
+      SetBackground(views::CreateThemedSolidBackground(
+          ui::kJemaColorTextfieldSelectionBackground));
+    }
+
+    if (!kUseModernSkin) {
+      SetBorder(
+          views::CreateThemedSolidBorder(1, ui::kColorFocusableBorderFocused));
+    }
 
     // Cancel currently focused one.
     for (View* view : parent()->children()) {
@@ -203,7 +216,9 @@ void CandidateView::SetHighlighted(bool highlighted) {
     }
   } else {
     SetBackground(nullptr);
-    SetBorder(views::CreateEmptyBorder(1));
+    if (!kUseModernSkin) {
+      SetBorder(views::CreateEmptyBorder(1));
+    }
   }
   SchedulePaint();
 }
@@ -213,8 +228,7 @@ void CandidateView::StateChanged(ButtonState old_state) {
   int text_style = GetState() == STATE_DISABLED ? views::style::STYLE_DISABLED
                                                 : views::style::STYLE_PRIMARY;
   shortcut_label_->SetEnabledColorId(
-      views::TypographyProvider::Get().GetColorId(views::style::CONTEXT_LABEL,
-                                                  text_style));
+      views::style::GetColorId(views::style::CONTEXT_LABEL, text_style));
   if (GetState() == STATE_PRESSED)
     SetHighlighted(true);
 }
@@ -243,7 +257,7 @@ bool CandidateView::OnMouseDragged(const ui::MouseEvent& event) {
   return views::Button::OnMouseDragged(event);
 }
 
-void CandidateView::Layout(PassKey) {
+void CandidateView::Layout() {
   const int padding_width =
       orientation_ == ui::CandidateWindow::VERTICAL ? 4 : 6;
   int x = 0;
@@ -294,6 +308,15 @@ void CandidateView::SetPositionData(int index, int total) {
   total_candidates_ = total;
 }
 
+void CandidateView::SetIndexData(int index, int total) {
+  index_in_page_ = index;
+  page_size_ = total;
+}
+
+void CandidateView::SetBackgroundRadius(float radius) {
+  background_radius_ = radius;
+}
+
 void CandidateView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   Button::GetAccessibleNodeData(node_data);
   node_data->role = ax::mojom::Role::kImeCandidate;
@@ -304,7 +327,7 @@ void CandidateView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
                              total_candidates_);
 }
 
-BEGIN_METADATA(CandidateView)
+BEGIN_METADATA(CandidateView, views::Button)
 END_METADATA
 
 }  // namespace ui::ime

@@ -35,7 +35,7 @@ class MODULES_EXPORT DOMTaskSignal final : public AbortSignal {
   DOMTaskSignal(ScriptState*,
                 const AtomicString& priority,
                 DOMTaskSignal* source_task_signal,
-                const HeapVector<Member<AbortSignal>>& source_abort_signals);
+                HeapVector<Member<AbortSignal>>& source_abort_signals);
   ~DOMTaskSignal() override;
 
   // task_signal.idl
@@ -52,6 +52,7 @@ class MODULES_EXPORT DOMTaskSignal final : public AbortSignal {
   bool IsTaskSignal() const override { return true; }
 
   void Trace(Visitor*) const override;
+  bool HasPendingActivity() const override;
 
   bool HasFixedPriority() const;
 
@@ -61,7 +62,6 @@ class MODULES_EXPORT DOMTaskSignal final : public AbortSignal {
   AbortSignalCompositionManager* GetCompositionManager(
       AbortSignalCompositionType) override;
   void OnSignalSettled(AbortSignalCompositionType) override;
-  bool IsSettledFor(AbortSignalCompositionType) const override;
 
   AtomicString priority_;
   HeapLinkedHashSet<WeakMember<AlgorithmHandle>> priority_change_algorithms_;

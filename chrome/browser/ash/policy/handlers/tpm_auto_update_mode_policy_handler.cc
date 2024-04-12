@@ -55,7 +55,7 @@ AutoUpdateMode GetTPMAutoUpdateModeSetting(
   if (!tpm_settings)
     return AutoUpdateMode::kNever;
 
-  std::optional<int> auto_update_mode = tpm_settings->GetDict().FindInt(
+  absl::optional<int> auto_update_mode = tpm_settings->GetDict().FindInt(
       ash::tpm_firmware_update::kSettingsKeyAutoUpdateMode);
 
   // Policy not set.

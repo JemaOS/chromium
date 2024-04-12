@@ -33,14 +33,6 @@ using testing::_;
 namespace ui {
 namespace {
 
-class MockCompositorObserver : public CompositorObserver {
- public:
-  MOCK_METHOD2(OnCompositorVisibilityChanging,
-               void(Compositor* compositor, bool visible));
-  MOCK_METHOD2(OnCompositorVisibilityChanged,
-               void(Compositor* compositor, bool visible));
-};
-
 class CompositorTest : public testing::Test {
  public:
   CompositorTest() = default;
@@ -337,8 +329,6 @@ TEST_F(CompositorTestWithMessageLoop, MoveThroughputTracker) {
   }
 }
 
-#if BUILDFLAG(IS_CHROMEOS)
-// ui::ThroughputTracker is only supported on ChromeOS
 TEST_F(CompositorTestWithMessageLoop, ThroughputTracker) {
   auto root_layer = std::make_unique<Layer>(ui::LAYER_SOLID_COLOR);
   viz::ParentLocalSurfaceIdAllocator allocator;
@@ -354,8 +344,8 @@ TEST_F(CompositorTestWithMessageLoop, ThroughputTracker) {
   base::RunLoop run_loop;
   tracker.Start(base::BindLambdaForTesting(
       [&](const cc::FrameSequenceMetrics::CustomReportData& data) {
-        EXPECT_GT(data.frames_expected_v3, 0u);
-        EXPECT_GT(data.frames_expected_v3 - data.frames_dropped_v3, 0u);
+        EXPECT_GT(data.frames_expected, 0u);
+        EXPECT_GT(data.frames_produced, 0u);
         run_loop.Quit();
       }));
 
@@ -467,7 +457,6 @@ TEST_F(CompositorTestWithMessageLoop, ThroughputTrackerInvoluntaryReport) {
   // Stop() fails but no DCHECK or crash.
   EXPECT_FALSE(tracker.Stop());
 }
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_WIN)
 // TODO(crbug.com/608436): Flaky on windows trybots
@@ -500,7 +489,7 @@ TEST_F(CompositorTestWithMessageLoop, MAYBE_CreateAndReleaseOutputSurface) {
 class LayerDelegateThatAddsDuringUpdateVisualState : public LayerDelegate {
  public:
   explicit LayerDelegateThatAddsDuringUpdateVisualState(Layer* parent)
-      : parent_(*parent) {}
+      : parent_(parent) {}
 
   bool update_visual_state_called() const {
     return update_visual_state_called_;
@@ -517,7 +506,7 @@ class LayerDelegateThatAddsDuringUpdateVisualState : public LayerDelegate {
                                   float new_device_scale_factor) override {}
 
  private:
-  const raw_ref<Layer> parent_;
+  raw_ptr<Layer> parent_;
   std::vector<std::unique_ptr<Layer>> added_layers_;
   bool update_visual_state_called_ = false;
 };
@@ -546,35 +535,9 @@ TEST_F(CompositorTestWithMessageLoop, AddLayerDuringUpdateVisualState) {
   DrawWaiterForTest::WaitForCompositingEnded(compositor());
   EXPECT_TRUE(child_layer_delegate.update_visual_state_called());
   compositor()->SetRootLayer(nullptr);
-}
-
-TEST_F(CompositorTestWithMessageLoop, CompositorVisibilityChanges) {
-  testing::StrictMock<MockCompositorObserver> observer;
-  compositor()->AddObserver(&observer);
-
-  EXPECT_CALL(observer, OnCompositorVisibilityChanging(compositor(), false))
-      .Times(1);
-  EXPECT_CALL(observer, OnCompositorVisibilityChanged(compositor(), false))
-      .Times(1);
-  compositor()->SetVisible(false);
-  ::testing::Mock::VerifyAndClearExpectations(&observer);
-
-  EXPECT_CALL(observer, OnCompositorVisibilityChanging(compositor(), true))
-      .Times(1);
-  EXPECT_CALL(observer, OnCompositorVisibilityChanged(compositor(), true))
-      .Times(1);
-  compositor()->SetVisible(true);
-  ::testing::Mock::VerifyAndClearExpectations(&observer);
-
-  // Verify no calls if visibility isn't changed.
-  EXPECT_CALL(observer, OnCompositorVisibilityChanging(compositor(), _))
-      .Times(0);
-  EXPECT_CALL(observer, OnCompositorVisibilityChanged(compositor(), _))
-      .Times(0);
-  compositor()->SetVisible(true);
-  ::testing::Mock::VerifyAndClearExpectations(&observer);
-
-  compositor()->RemoveObserver(&observer);
+  child_layer2.reset();
+  child_layer.reset();
+  root_layer.reset();
 }
 
 }  // namespace ui

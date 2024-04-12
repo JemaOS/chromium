@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <map>
-#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -23,6 +22,7 @@
 #include "components/flags_ui/flags_test_helpers.h"
 #include "components/flags_ui/flags_ui_metrics.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace about_flags {
 
@@ -50,9 +50,7 @@ std::set<std::string> GetAllPublicSwitchesAndFeaturesForTesting() {
         result.insert(entry.switches.command_line_switch);
         break;
       case flags_ui::FeatureEntry::ORIGIN_LIST_VALUE:
-      case flags_ui::FeatureEntry::STRING_VALUE:
-        // Do nothing, origin list values and string values are not added as
-        // feature flags.
+        // Do nothing, origin list values are not added as feature flags.
         break;
       case flags_ui::FeatureEntry::MULTI_VALUE:
         for (int j = 0; j < entry.NumOptions(); ++j) {
@@ -262,7 +260,7 @@ class AboutFlagsHistogramTest : public ::testing::Test {
 };
 
 TEST_F(AboutFlagsHistogramTest, CheckHistograms) {
-  std::optional<base::HistogramEnumEntryMap> login_custom_flags =
+  absl::optional<base::HistogramEnumEntryMap> login_custom_flags =
       base::ReadEnumFromEnumsXml("LoginCustomFlags");
   ASSERT_TRUE(login_custom_flags)
       << "Error reading enum 'LoginCustomFlags' from "

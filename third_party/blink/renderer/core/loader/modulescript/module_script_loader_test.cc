@@ -40,7 +40,6 @@
 #include "third_party/blink/renderer/platform/loader/testing/test_resource_fetcher_properties.h"
 #include "third_party/blink/renderer/platform/testing/mock_context_lifecycle_notifier.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_loader_mock_factory.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
@@ -66,7 +65,7 @@ class TestModuleScriptLoaderClient final
   }
 
   bool WasNotifyFinished() const { return was_notify_finished_; }
-  ModuleScript* GetModuleScript() { return module_script_.Get(); }
+  ModuleScript* GetModuleScript() { return module_script_; }
 
  private:
   bool was_notify_finished_ = false;
@@ -86,7 +85,7 @@ class ModuleScriptLoaderTestModulator final : public DummyModulator {
     return KURL(base_url, module_request);
   }
 
-  ScriptState* GetScriptState() override { return script_state_.Get(); }
+  ScriptState* GetScriptState() override { return script_state_; }
 
   ModuleScriptFetcher* CreateModuleScriptFetcher(
       ModuleScriptCustomFetchType custom_fetch_type,
@@ -95,11 +94,11 @@ class ModuleScriptLoaderTestModulator final : public DummyModulator {
     if (auto* scope = DynamicTo<WorkletGlobalScope>(execution_context)) {
       EXPECT_EQ(ModuleScriptCustomFetchType::kWorkletAddModule,
                 custom_fetch_type);
-      return MakeGarbageCollected<WorkletModuleScriptFetcher>(scope, pass_key);
+      return MakeGarbageCollected<WorkletModuleScriptFetcher>(
+          scope->GetModuleResponsesMap(), pass_key);
     }
     EXPECT_EQ(ModuleScriptCustomFetchType::kNone, custom_fetch_type);
-    return MakeGarbageCollected<DocumentModuleScriptFetcher>(execution_context,
-                                                             pass_key);
+    return MakeGarbageCollected<DocumentModuleScriptFetcher>(pass_key);
   }
 
   void Trace(Visitor*) const override;
@@ -121,7 +120,6 @@ class ModuleScriptLoaderTest : public PageTestBase {
   ModuleScriptLoaderTest(const ModuleScriptLoaderTest&) = delete;
   ModuleScriptLoaderTest& operator=(const ModuleScriptLoaderTest&) = delete;
   void SetUp() override;
-  void TearDown() override;
 
   void InitializeForDocument();
   void InitializeForWorklet();
@@ -146,8 +144,9 @@ class ModuleScriptLoaderTest : public PageTestBase {
         ->RunUntilIdle();
   }
 
+ private:
   const base::TickClock* GetTickClock() override {
-    return PageTestBase::GetTickClock();
+    return platform_->test_task_runner()->GetMockTickClock();
   }
 
  protected:
@@ -166,17 +165,10 @@ void ModuleScriptLoaderTest::SetUp() {
   PageTestBase::SetUp(gfx::Size(500, 500));
 }
 
-void ModuleScriptLoaderTest::TearDown() {
-  if (global_scope_) {
-    global_scope_->Dispose();
-    global_scope_->NotifyContextDestroyed();
-  }
-}
-
 ModuleScriptLoaderTest::ModuleScriptLoaderTest()
-    : PageTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME),
-      url_("https://example.test"),
+    : url_("https://example.test"),
       security_origin_(SecurityOrigin::Create(url_)) {
+  platform_->AdvanceClockSeconds(1.);  // For non-zero DocumentParserTimings
 }
 
 void ModuleScriptLoaderTest::InitializeForDocument() {
@@ -226,7 +218,8 @@ void ModuleScriptLoaderTest::InitializeForWorklet() {
       base::UnguessableToken::Create() /* agent_cluster_id */);
   creation_params->parent_context_token = GetFrame().GetLocalFrameToken();
   global_scope_ = MakeGarbageCollected<FakeWorkletGlobalScope>(
-      std::move(creation_params), *reporting_proxy_, &GetFrame());
+      std::move(creation_params), *reporting_proxy_, &GetFrame(),
+      false /* create_microtask_queue */);
   global_scope_->ScriptController()->Initialize(NullURL());
   modulator_ = MakeGarbageCollected<ModuleScriptLoaderTestModulator>(
       global_scope_->ScriptController()->GetScriptState());

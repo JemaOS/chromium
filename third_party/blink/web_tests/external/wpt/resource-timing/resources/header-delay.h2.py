@@ -2,16 +2,14 @@ from time import sleep
 
 def handle_headers(frame, request, response):
     delay = int(request.GET.first(b"delay")) / 1000
-
-    if b"with100" in request.GET:
-        sleep(delay)
-        response.writer.write_raw_header_frame(headers=[(b":status", b"103")], end_headers=True)
+    sleep(delay)
+    response.writer.write_raw_header_frame(headers=[(b":status", b"100")], end_headers=True)
+    sleep(delay)
 
     if b"with103" in request.GET:
-        sleep(delay)
         response.writer.write_raw_header_frame(headers=[(b":status", b"103")], end_headers=True)
+        sleep(delay)
 
-    sleep(delay)
     response.status = 200
 
     if b"tao" in request.GET:

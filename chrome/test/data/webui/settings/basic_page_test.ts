@@ -12,8 +12,7 @@ import {isChromeOS, isLacros} from 'chrome://resources/js/platform.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {PrivacyGuideBrowserProxy, SettingsBasicPageElement, SettingsIdleLoadElement, SettingsPrefsElement, SettingsSectionElement, SyncStatus} from 'chrome://settings/settings.js';
-import {CrSettingsPrefs, MetricsBrowserProxyImpl, pageVisibility, PerformanceBrowserProxyImpl, PrivacyGuideBrowserProxyImpl, PrivacyGuideInteractions, Router, routes, StatusAction} from 'chrome://settings/settings.js';
+import {CrSettingsPrefs, MetricsBrowserProxyImpl, pageVisibility, PerformanceBrowserProxyImpl, PrivacyGuideBrowserProxy, PrivacyGuideBrowserProxyImpl, PrivacyGuideInteractions, Router, routes, SettingsBasicPageElement, SettingsIdleLoadElement, SettingsPrefsElement, SettingsSectionElement, StatusAction, SyncStatus} from 'chrome://settings/settings.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 import {eventToPromise, isChildVisible, isVisible} from 'chrome://webui-test/test_util.js';
@@ -42,7 +41,7 @@ class TestPrivacyGuideBrowserProxy extends TestBrowserProxy implements
   }
 }
 
-suite('BasicPage', () => {
+suite('SettingsBasicPage', () => {
   let page: SettingsBasicPageElement;
   let settingsPrefs: SettingsPrefsElement;
 
@@ -91,6 +90,7 @@ suite('BasicPage', () => {
       'people',
       'search',
       'autofill',
+      'safetyCheck',
       'privacy',
     ];
     if (!isChromeOS && !isLacros) {
@@ -106,7 +106,6 @@ suite('BasicPage', () => {
     }
   });
 
-  // TODO(crbug/1469277): Remove after SafetyHub launched.
   test('safetyCheckVisibilityTest', function() {
     function querySafetyCheckSection() {
       return page.shadowRoot!.querySelector('#safetyCheckSettingsSection');
@@ -116,10 +115,16 @@ suite('BasicPage', () => {
     page.pageVisibility = pageVisibility;
     flush();
 
-    // When enabled, SafetyHub replaces SafetyCheck by default.
-    assertFalse(
+    assertTrue(
         !!querySafetyCheckSection(),
-        'SafetyCheck should not be visible with default page visibility');
+        'Safety check section should be visible with default page visibility');
+    // Set the visibility of the pages under test to "false".
+    page.pageVisibility = Object.assign(pageVisibility || {}, {
+      safetyCheck: false,
+    });
+    flush();
+
+    assertFalse(!!querySafetyCheckSection());
   });
 
   function assertActiveSection(section: string) {
@@ -243,10 +248,10 @@ suite('BasicPage', () => {
     Router.getInstance().navigateTo(routes.CLEAR_BROWSER_DATA);
     await whenDone;
     await flushTasks();
-    assertPrivacyActiveSections();
+    assertPriacyActiveSections();
   });
 
-  function assertPrivacyActiveSections() {
+  function assertPriacyActiveSections() {
     const activeSections =
         page.shadowRoot!.querySelectorAll<SettingsSectionElement>(
             'settings-section[active]');
@@ -256,12 +261,11 @@ suite('BasicPage', () => {
         routes.PRIVACY.section,
         activeSections[0]!.getAttribute('nest-under-section'));
     assertFalse(isChildVisible(page, '#privacyGuidePromo'));
-    // Safety Hub.
-    assertEquals('safetyHubEntryPoint', activeSections[1]!.section);
+    // Safety check.
+    assertEquals(routes.SAFETY_CHECK.section, activeSections[1]!.section);
     assertEquals(
         routes.PRIVACY.section,
         activeSections[1]!.getAttribute('nest-under-section'));
-    assertTrue(isChildVisible(page, '#safetyHubEntryPointSection'));
     // Privacy section.
     assertEquals(routes.PRIVACY.section, activeSections[2]!.section);
   }
@@ -274,7 +278,7 @@ suite('BasicPage', () => {
     Router.getInstance().navigateTo(routes.PRIVACY);
     await whenDone;
     await flushTasks();
-    assertPrivacyActiveSections();
+    assertPriacyActiveSections();
   });
 });
 
@@ -360,8 +364,8 @@ suite('PrivacyGuidePromo', () => {
         routes.PRIVACY.section,
         activeSections[0]!.getAttribute('nest-under-section'));
     assertTrue(isChildVisible(page, '#privacyGuidePromo'));
-    // Safety Hub entry point.
-    assertEquals('safetyHubEntryPoint', activeSections[1]!.section);
+    // Safety check.
+    assertEquals(routes.SAFETY_CHECK.section, activeSections[1]!.section);
     assertEquals(
         routes.PRIVACY.section,
         activeSections[1]!.getAttribute('nest-under-section'));
@@ -369,22 +373,20 @@ suite('PrivacyGuidePromo', () => {
     assertEquals(routes.PRIVACY.section, activeSections[2]!.section);
   });
 
-  test('privacyGuidePromoVisibilitySupervisedAccount', function() {
+  test('privacyGuidePromoVisibilityChildAccount', function() {
     assertTrue(isChildVisible(page, '#privacyGuidePromo'));
 
-    // The user signs in to a supervised user account. This hides the privacy
-    // guide promo.
-    let syncStatus: SyncStatus = {
-      supervisedUser: true,
-      statusAction: StatusAction.NO_ACTION,
-    };
+    // The user signs in to a child user account. This hides the privacy guide
+    // promo.
+    let syncStatus:
+        SyncStatus = {childUser: true, statusAction: StatusAction.NO_ACTION};
     webUIListenerCallback('sync-status-changed', syncStatus);
     flush();
     assertFalse(isChildVisible(page, '#privacyGuidePromo'));
 
-    // The user is no longer signed in to a supervised user account. This
-    // doesn't show the promo.
-    syncStatus = {supervisedUser: false, statusAction: StatusAction.NO_ACTION};
+    // The user is no longer signed in to a child user account. This doesn't
+    // show the promo.
+    syncStatus = {childUser: false, statusAction: StatusAction.NO_ACTION};
     webUIListenerCallback('sync-status-changed', syncStatus);
     flush();
     assertFalse(isChildVisible(page, '#privacyGuidePromo'));
@@ -436,7 +438,7 @@ suite('PrivacyGuidePromo', () => {
   });
 });
 
-suite('Performance', () => {
+suite('SettingsBasicPagePerformance', () => {
   let page: SettingsBasicPageElement;
   let performanceBrowserProxy: TestPerformanceBrowserProxy;
 
@@ -446,10 +448,6 @@ suite('Performance', () => {
 
   function queryBatterySettingsSection(): SettingsSectionElement|null {
     return page.shadowRoot!.querySelector('#batterySettingsSection');
-  }
-
-  function querySpeedSettingsSection(): SettingsSectionElement|null {
-    return page.shadowRoot!.querySelector('#speedSettingsSection');
   }
 
   async function createNewBasicPage() {
@@ -466,24 +464,6 @@ suite('Performance', () => {
     assertTrue(sections.length > 1);
   }
 
-  test('performanceSectionTitlesVisible', async function() {
-    await createNewBasicPage();
-    page.pageVisibility = pageVisibility;
-    flush();
-
-    assertEquals(
-        queryPerformanceSettingsSection()!.shadowRoot!.querySelector('h2')
-            ?.innerText,
-        loadTimeData.getString('memoryPageTitle'));
-    assertEquals(
-        queryBatterySettingsSection()!.shadowRoot!.querySelector('h2')
-            ?.innerText,
-        loadTimeData.getString('batteryPageTitle'));
-    assertEquals(
-        querySpeedSettingsSection()!.shadowRoot!.querySelector('h2')?.innerText,
-        loadTimeData.getString('speedPageTitle'));
-  });
-
   test('performanceVisibilityTestFeaturesAvailable', async function() {
     await createNewBasicPage();
     // Set the visibility of the pages under test to their default value.
@@ -493,9 +473,6 @@ suite('Performance', () => {
     assertTrue(
         !!queryBatterySettingsSection(),
         'Battery section should exist with default page visibility');
-    assertTrue(
-        !!querySpeedSettingsSection(),
-        'Speed section should exist with default page visibility');
     assertTrue(
         !!queryPerformanceSettingsSection(),
         'Performance section should exist with default page visibility');
@@ -509,9 +486,6 @@ suite('Performance', () => {
     assertFalse(
         !!queryBatterySettingsSection(),
         'Battery section should not exist when visibility is false');
-    assertFalse(
-        !!querySpeedSettingsSection(),
-        'Speed section should not exist when visibility is false');
     assertFalse(
         !!queryPerformanceSettingsSection(),
         'Performance section should not exist when visibility is false');
@@ -535,91 +509,5 @@ suite('Performance', () => {
         batterySettingsSection.hidden,
         'Battery section should be visible after being notified that the ' +
             'device has a battery');
-  });
-});
-
-// TODO(crbug/1469277): Remove after SafetyHub launched.
-suite('SafetyHubDisabled', () => {
-  let page: SettingsBasicPageElement;
-
-  setup(async function() {
-    loadTimeData.overrideValues({enableSafetyHub: false});
-
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    page = document.createElement('settings-basic-page');
-    document.body.appendChild(page);
-    flush();
-    await page.shadowRoot!
-        .querySelector<SettingsIdleLoadElement>('#advancedPageTemplate')!.get();
-    const sections = page.shadowRoot!.querySelectorAll('settings-section');
-    assertTrue(sections.length > 1);
-  });
-
-  test('load page', function() {
-    // This will fail if there are any asserts or errors in the Settings page.
-  });
-
-
-  test('safety check visible', function() {
-    function querySafetyCheckSection() {
-      return page.shadowRoot!.querySelector('#safetyCheckSettingsSection');
-    }
-
-    // Set the visibility of the pages under test to their default value.
-    page.pageVisibility = pageVisibility;
-    flush();
-
-    assertTrue(
-        !!querySafetyCheckSection(),
-        'Safety check section should be visible with default page visibility');
-
-    // Set the visibility of the pages under test to "false".
-    page.pageVisibility = Object.assign(pageVisibility || {}, {
-      safetyCheck: false,
-    });
-    flush();
-
-    assertFalse(!!querySafetyCheckSection());
-  });
-
-  test('safety hub not visible', function() {
-    function querySafetyHubSection() {
-      return page.shadowRoot!.querySelector('#safetyHubEntryPointSection');
-    }
-
-    // Set the visibility of the pages under test to their default value.
-    page.pageVisibility = pageVisibility;
-    flush();
-
-    assertFalse(
-        !!querySafetyHubSection(),
-        'Safety Hub section should not be visible with default visibility');
-  });
-});
-
-suite('ExperimentalAdvanced', () => {
-  let page: SettingsBasicPageElement;
-
-  function createBasicPage() {
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    page = document.createElement('settings-basic-page');
-    document.body.appendChild(page);
-    flush();
-  }
-
-  test('sectionNotVisible', function() {
-    loadTimeData.overrideValues({showAdvancedFeaturesMainControl: false});
-    createBasicPage();
-    const sectionElement =
-        page.shadowRoot!.querySelector('settings-section[section=ai]');
-    assertFalse(!!sectionElement);
-  });
-
-  test('sectionVisible', function() {
-    loadTimeData.overrideValues({showAdvancedFeaturesMainControl: true});
-    createBasicPage();
-    const sectionElement =
-        page.shadowRoot!.querySelector('settings-section[section=ai]');
-    assertTrue(!!sectionElement);
   });
 });

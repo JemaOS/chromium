@@ -13,11 +13,11 @@ OverviewAnimationStateWaiter::OverviewAnimationStateWaiter(
     OverviewAnimationState expected_state,
     DoneCallback callback)
     : expected_state_(expected_state), callback_(std::move(callback)) {
-  OverviewController::Get()->AddObserver(this);
+  Shell::Get()->overview_controller()->AddObserver(this);
 }
 
 OverviewAnimationStateWaiter::~OverviewAnimationStateWaiter() {
-  OverviewController::Get()->RemoveObserver(this);
+  Shell::Get()->overview_controller()->RemoveObserver(this);
 }
 
 void OverviewAnimationStateWaiter::Cancel() {

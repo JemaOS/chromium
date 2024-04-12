@@ -11,6 +11,7 @@
 #include "ash/public/cpp/locale_update_controller.h"
 #include "ash/shell.h"
 #include "ash/system/model/system_tray_model.h"
+#include "ash/system/unified/feature_pod_button.h"
 #include "ash/system/unified/feature_tile.h"
 #include "ash/system/unified/unified_system_tray.h"
 #include "ash/system/unified/unified_system_tray_bubble.h"
@@ -23,9 +24,18 @@
 namespace ash {
 namespace {
 
-class LocaleFeaturePodControllerTest : public NoSessionAshTestBase {
+// Tests are parameterized by feature QsRevamp.
+class LocaleFeaturePodControllerTest
+    : public NoSessionAshTestBase,
+      public testing::WithParamInterface<bool> {
  public:
-  LocaleFeaturePodControllerTest() = default;
+  LocaleFeaturePodControllerTest() {
+    if (IsQsRevampEnabled()) {
+      feature_list_.InitAndEnableFeature(features::kQsRevamp);
+    } else {
+      feature_list_.InitAndDisableFeature(features::kQsRevamp);
+    }
+  }
 
   LocaleFeaturePodControllerTest(const LocaleFeaturePodControllerTest&) =
       delete;
@@ -34,6 +44,8 @@ class LocaleFeaturePodControllerTest : public NoSessionAshTestBase {
 
   ~LocaleFeaturePodControllerTest() override = default;
 
+  bool IsQsRevampEnabled() const { return GetParam(); }
+
   void SetUp() override {
     NoSessionAshTestBase::SetUp();
     GetPrimaryUnifiedSystemTray()->ShowBubble();
@@ -41,6 +53,7 @@ class LocaleFeaturePodControllerTest : public NoSessionAshTestBase {
 
   void TearDown() override {
     tile_.reset();
+    button_.reset();
     controller_.reset();
     NoSessionAshTestBase::TearDown();
   }
@@ -48,7 +61,11 @@ class LocaleFeaturePodControllerTest : public NoSessionAshTestBase {
   void SetUpButton() {
     controller_ =
         std::make_unique<LocaleFeaturePodController>(tray_controller());
-    tile_ = controller_->CreateTile();
+    if (IsQsRevampEnabled()) {
+      tile_ = controller_->CreateTile();
+    } else {
+      button_ = base::WrapUnique(controller_->CreateButton());
+    }
   }
 
   UnifiedSystemTrayController* tray_controller() {
@@ -57,18 +74,23 @@ class LocaleFeaturePodControllerTest : public NoSessionAshTestBase {
         ->unified_system_tray_controller();
   }
 
-  bool IsButtonVisible() { return tile_->GetVisible(); }
+  bool IsButtonVisible() {
+    return IsQsRevampEnabled() ? tile_->GetVisible() : button_->GetVisible();
+  }
 
   const char* GetToggledOnHistogramName() {
-    return "Ash.QuickSettings.FeaturePod.ToggledOn";
+    return IsQsRevampEnabled() ? "Ash.QuickSettings.FeaturePod.ToggledOn"
+                               : "Ash.UnifiedSystemView.FeaturePod.ToggledOn";
   }
 
   const char* GetToggledOffHistogramName() {
-    return "Ash.QuickSettings.FeaturePod.ToggledOff";
+    return IsQsRevampEnabled() ? "Ash.QuickSettings.FeaturePod.ToggledOff"
+                               : "Ash.UnifiedSystemView.FeaturePod.ToggledOff";
   }
 
   const char* GetDiveInHistogramName() {
-    return "Ash.QuickSettings.FeaturePod.DiveIn";
+    return IsQsRevampEnabled() ? "Ash.QuickSettings.FeaturePod.DiveIn"
+                               : "Ash.UnifiedSystemView.FeaturePod.DiveIn";
   }
 
   void PressIcon() { controller_->OnIconPressed(); }
@@ -76,11 +98,17 @@ class LocaleFeaturePodControllerTest : public NoSessionAshTestBase {
   void PressLabel() { controller_->OnLabelPressed(); }
 
  private:
+  base::test::ScopedFeatureList feature_list_;
   std::unique_ptr<LocaleFeaturePodController> controller_;
+  std::unique_ptr<FeaturePodButton> button_;
   std::unique_ptr<FeatureTile> tile_;
 };
 
-TEST_F(LocaleFeaturePodControllerTest, ButtonVisibility) {
+INSTANTIATE_TEST_SUITE_P(QsRevamp,
+                         LocaleFeaturePodControllerTest,
+                         testing::Bool());
+
+TEST_P(LocaleFeaturePodControllerTest, ButtonVisibility) {
   constexpr char kDefaultLocaleIsoCode[] = "en-US";
   // The button is invisible if the locale list is unset.
   SetUpButton();
@@ -100,7 +128,7 @@ TEST_F(LocaleFeaturePodControllerTest, ButtonVisibility) {
   EXPECT_TRUE(IsButtonVisible());
 }
 
-TEST_F(LocaleFeaturePodControllerTest, IconUMATracking) {
+TEST_P(LocaleFeaturePodControllerTest, IconUMATracking) {
   std::vector<LocaleInfo> locale_list;
   constexpr char kDefaultLocaleIsoCode[] = "en-US";
   locale_list.emplace_back(kDefaultLocaleIsoCode, u"English (United States)");
@@ -130,7 +158,7 @@ TEST_F(LocaleFeaturePodControllerTest, IconUMATracking) {
                                       /*expected_count=*/1);
 }
 
-TEST_F(LocaleFeaturePodControllerTest, LabelUMATracking) {
+TEST_P(LocaleFeaturePodControllerTest, LabelUMATracking) {
   SetUpButton();
 
   // No metrics logged before clicking on any views.

@@ -32,7 +32,7 @@ class TestHostedEffect : public VcHostedEffect {
   TestHostedEffect& operator=(const TestHostedEffect&) = delete;
   ~TestHostedEffect() = default;
 
-  std::optional<int> GetEffectState() { return 0; }
+  absl::optional<int> GetEffectState() { return 0; }
 };
 
 }  // namespace

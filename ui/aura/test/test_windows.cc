@@ -50,10 +50,9 @@ Window* CreateTestWindowWithDelegateAndType(WindowDelegate* delegate,
   Window* window = new Window(delegate, type);
   window->SetId(id);
   window->Init(ui::LAYER_TEXTURED);
-  window->SetProperty(client::kResizeBehaviorKey,
-                      client::kResizeBehaviorCanResize |
-                          client::kResizeBehaviorCanMaximize |
-                          client::kResizeBehaviorCanFullscreen);
+  window->SetProperty(
+      client::kResizeBehaviorKey,
+      client::kResizeBehaviorCanResize | client::kResizeBehaviorCanMaximize);
   window->SetBounds(bounds);
   if (show_on_creation)
     window->Show();
@@ -66,7 +65,7 @@ template <typename T>
 bool ObjectIsAbove(T* upper, T* lower) {
   DCHECK_EQ(upper->parent(), lower->parent());
   DCHECK_NE(upper, lower);
-  const auto& children = upper->parent()->children();
+  const std::vector<T*>& children = upper->parent()->children();
   const size_t upper_i = base::ranges::find(children, upper) - children.begin();
   const size_t lower_i = base::ranges::find(children, lower) - children.begin();
   return upper_i > lower_i;

@@ -22,6 +22,9 @@ class NotificationTriggerSchedulerAndroid
       const NotificationTriggerSchedulerAndroid&) = delete;
   ~NotificationTriggerSchedulerAndroid() override;
 
+  // NotificationTriggerScheduler
+  void ScheduleTrigger(base::Time timestamp) override;
+
  protected:
   NotificationTriggerSchedulerAndroid();
 

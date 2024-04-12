@@ -14,11 +14,21 @@
 
 namespace blink {
 
-V8TestingScope::V8TestingScope(const KURL& url)
-    : V8TestingScope(DummyPageHolder::CreateAndCommitNavigation(url)) {}
+std::unique_ptr<DummyPageHolder> V8TestingScope::CreateDummyPageHolder(
+    const KURL& url) {
+  std::unique_ptr<DummyPageHolder> holder = std::make_unique<DummyPageHolder>();
+  if (url.IsValid()) {
+    holder->GetFrame().Loader().CommitNavigation(
+        WebNavigationParams::CreateWithHTMLBufferForTesting(
+            SharedBuffer::Create(), url),
+        nullptr /* extra_data */);
+    blink::test::RunPendingTasks();
+  }
+  return holder;
+}
 
-V8TestingScope::V8TestingScope(std::unique_ptr<DummyPageHolder> holder)
-    : holder_(std::move(holder)),
+V8TestingScope::V8TestingScope(const KURL& url)
+    : holder_(CreateDummyPageHolder(url)),
       handle_scope_(GetIsolate()),
       context_(GetScriptState()->GetContext()),
       context_scope_(GetContext()),

@@ -66,6 +66,10 @@ DedicatedWorkerThread::DedicatedWorkerThread(
 
 DedicatedWorkerThread::~DedicatedWorkerThread() = default;
 
+void DedicatedWorkerThread::ClearWorkerBackingThread() {
+  worker_backing_thread_ = nullptr;
+}
+
 WorkerOrWorkletGlobalScope* DedicatedWorkerThread::CreateWorkerGlobalScope(
     std::unique_ptr<GlobalScopeCreationParams> creation_params) {
   DCHECK(pending_dedicated_worker_host_);

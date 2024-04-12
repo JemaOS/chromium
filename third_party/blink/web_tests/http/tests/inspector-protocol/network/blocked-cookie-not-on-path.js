@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startBlank(
       `Verifies that cookies not within the current path of the request to a domain send Network.*ExtraInfo events with corresponding blocked cookies.\n`);
   await dp.Network.enable();

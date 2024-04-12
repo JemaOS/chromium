@@ -2,15 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-import * as Console from 'devtools/panels/console/console.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Tests that console revokes lazily handled promise rejections.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('console');
   await TestRunner.evaluateInPagePromise(`
       var p = [];
@@ -29,10 +23,10 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
   `);
 
   var messageAddedListener = ConsoleTestRunner.wrapListener(messageAdded);
-  const consoleModel = SDK.TargetManager.TargetManager.instance().primaryPageTarget().model(SDK.ConsoleModel.ConsoleModel);
+  const consoleModel = SDK.targetManager.primaryPageTarget().model(SDK.ConsoleModel);
   consoleModel.addEventListener(SDK.ConsoleModel.Events.MessageAdded, messageAddedListener);
-  Console.ConsoleView.ConsoleView.instance().setImmediatelyFilterMessagesForTest();
-  Common.Settings.moduleSetting('console-group-similar').set(false);
+  Console.ConsoleView.instance().setImmediatelyFilterMessagesForTest();
+  Common.settings.moduleSetting('consoleGroupSimilar').set(false);
   TestRunner.addResult('Creating promise');
   TestRunner.evaluateInPageWithTimeout('createPromises()');
 
@@ -62,7 +56,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
 
     // Turn on verbose filter.
     TestRunner.addResult(`\nEnable verbose filter`);
-    Console.ConsoleView.ConsoleViewFilter.levelFilterSetting().set(Console.ConsoleFilter.ConsoleFilter.allLevelsFilterValue());
+    Console.ConsoleViewFilter.levelFilterSetting().set(Console.ConsoleFilter.allLevelsFilterValue());
     await ConsoleTestRunner.dumpConsoleCounters();
 
     TestRunner.completeTest();

@@ -58,8 +58,7 @@ account_manager::AccountManagerFacade* GetAccountManagerFacade(
         GetAccountManagerFactory()->GetAccountManager(profile_path);
     auto account_manager_facade =
         std::make_unique<account_manager::AccountManagerFacadeImpl>(
-            std::move(remote), remote_version,
-            account_manager_for_tests->GetWeakPtr());
+            std::move(remote), remote_version, account_manager_for_tests);
     it = account_manager_facade_map
              ->emplace(profile_path, std::move(account_manager_facade))
              .first;

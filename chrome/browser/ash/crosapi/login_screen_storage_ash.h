@@ -48,12 +48,12 @@ class LoginScreenStorageAsh : public mojom::LoginScreenStorage {
                 const login_manager::LoginScreenStorageMetadata& metadata,
                 const std::string& data,
                 StoreCallback callback,
-                std::optional<std::string> error);
+                absl::optional<std::string> error);
 
   // Passed as a callback to the `LoginScreenStorageRetrieve` D-Bus method.
   void OnRetrieved(RetrieveCallback callback,
-                   std::optional<std::string> data,
-                   std::optional<std::string> error);
+                   absl::optional<std::string> data,
+                   absl::optional<std::string> error);
 
   // This class supports any number of connections.
   mojo::ReceiverSet<mojom::LoginScreenStorage> receivers_;

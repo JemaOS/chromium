@@ -5,7 +5,7 @@
 // This file contains many long export lines that exceed the max-len limit */
 /* eslint-disable max-len */
 
-export type {
+export {
   PointF,
 } from 'chrome://resources/mojo/ui/gfx/geometry/mojom/geometry.mojom-webui.js';
 export {
@@ -16,10 +16,9 @@ export {
   CameraAppHelperRemote,
   CameraUsageOwnershipMonitorCallbackRouter,
   DocumentOutputFormat,
+  DocumentScannerReadyState,
   ExternalScreenMonitorCallbackRouter,
   FileMonitorResult,
-  LidStateMonitorCallbackRouter,
-  ScreenLockedMonitorCallbackRouter,
   ScreenState,
   ScreenStateMonitorCallbackRouter,
   StorageMonitorCallbackRouter,
@@ -30,43 +29,11 @@ export {
   WindowStateMonitorCallbackRouter,
   WindowStateType,
 } from '../../mojom/ash/webui/camera_app_ui/camera_app_helper.mojom-webui.js';
-export type {
-  WifiConfig,
-} from '../../mojom/ash/webui/camera_app_ui/camera_app_helper.mojom-webui.js';
-export {
-  AndroidIntentResultType,
-  AspectRatioSet,
-  BarcodeContentType,
-  DocScanActionType,
-  DocScanFixType,
-  DocScanResultType,
-  Facing,
-  GifResultType,
-  GridType,
-  LaunchType,
-  LowStorageActionType,
-  Mode,
-  PerfEventType,
-  RecordType,
-  ResolutionLevel,
-  ShutterType,
-  TimerType,
-  UserBehavior,
-} from '../../mojom/ash/webui/camera_app_ui/events_sender.mojom-webui.js';
-export type {
-  CaptureEventParams,
-  EventsSenderRemote,
-} from '../../mojom/ash/webui/camera_app_ui/events_sender.mojom-webui.js';
-export {
-  WifiEapMethod,
-  WifiEapPhase2Method,
-  WifiSecurityType,
-} from '../../mojom/ash/webui/camera_app_ui/types.mojom-webui.js';
 export {
   Rotation,
 } from
     '../../mojom/chromeos/services/machine_learning/public/mojom/document_scanner_param_types.mojom-webui.js';
-export type {
+export {
   Blob as MojoBlob,
 } from '../../mojom/media/capture/mojom/image_capture.mojom-webui.js';
 export {
@@ -79,30 +46,20 @@ export {
   DocumentCornersObserverCallbackRouter,
   Effect,
   GetCameraAppDeviceStatus,
+  ReprocessResultListenerCallbackRouter,
   ResultMetadataObserverCallbackRouter,
-  StillCaptureResultObserverCallbackRouter,
   StreamType,
 } from
     '../../mojom/media/capture/video/chromeos/mojom/camera_app.mojom-webui.js';
 export {
   CameraFacing,
-} from
-    '../../mojom/media/capture/video/chromeos/mojom/camera_common.mojom-webui.js';
-export type {
   CameraInfo,
 } from
     '../../mojom/media/capture/video/chromeos/mojom/camera_common.mojom-webui.js';
 export {
-  PortraitModeSegResult,
-} from
-    '../../mojom/media/capture/video/chromeos/mojom/camera_features.mojom-webui.js';
-export {
-  EntryType,
-} from
-    '../../mojom/media/capture/video/chromeos/mojom/camera_metadata.mojom-webui.js';
-export type {
   CameraMetadata,
   CameraMetadataEntry,
+  EntryType,
 } from
     '../../mojom/media/capture/video/chromeos/mojom/camera_metadata.mojom-webui.js';
 export {
@@ -118,7 +75,3 @@ export {
   CameraMetadataTag,
 } from
     '../../mojom/media/capture/video/chromeos/mojom/camera_metadata_tags.mojom-webui.js';
-export {
-  LidState,
-} from
-    '../../mojom/media/capture/video/chromeos/mojom/system_event_monitor.mojom-webui.js';

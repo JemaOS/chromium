@@ -9,12 +9,10 @@
 #include "third_party/blink/renderer/core/html/track/text_track.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
 TEST(TextTrackListTest, InvalidateTrackIndexes) {
-  test::TaskEnvironment task_environment;
   // Create and fill the list
   auto* list = MakeGarbageCollected<TextTrackList>(
       MakeGarbageCollected<HTMLVideoElement>(
@@ -22,8 +20,8 @@ TEST(TextTrackListTest, InvalidateTrackIndexes) {
   const size_t kNumTextTracks = 4;
   TextTrack* text_tracks[kNumTextTracks];
   for (size_t i = 0; i < kNumTextTracks; ++i) {
-    text_tracks[i] = MakeGarbageCollected<TextTrack>(
-        AtomicString("subtitles"), g_empty_atom, g_empty_atom, *list->Owner());
+    text_tracks[i] =
+        MakeGarbageCollected<TextTrack>("subtitles", "", "", *list->Owner());
     list->Append(text_tracks[i]);
   }
 

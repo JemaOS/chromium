@@ -5,8 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSSOM_CSS_MATH_MAX_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSSOM_CSS_MATH_MAX_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/cssom/css_math_variadic.h"
 
@@ -39,7 +38,7 @@ class CORE_EXPORT CSSMathMax final : public CSSMathVariadic {
  private:
   void BuildCSSText(Nested, ParenLess, StringBuilder&) const final;
 
-  std::optional<CSSNumericSumValue> SumValue() const final;
+  absl::optional<CSSNumericSumValue> SumValue() const final;
 };
 
 }  // namespace blink

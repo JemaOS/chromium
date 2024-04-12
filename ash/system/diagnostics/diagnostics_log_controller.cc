@@ -24,6 +24,10 @@
 #include "base/task/thread_pool.h"
 #include "components/session_manager/session_manager_types.h"
 
+#include "jemaos/switches/misc/misc_constants.h"
+#include "third_party/zlib/google/zip.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
+
 namespace ash {
 namespace diagnostics {
 
@@ -163,19 +167,105 @@ std::string DiagnosticsLogController::GenerateSessionStringOnBlockingPool()
   // Add the network events section.
   log_pieces.push_back(networking_log_->GetNetworkEvents());
 
-  std::string input_log_contents = keyboard_input_log_->GetLogContents();
-  if (!input_log_contents.empty()) {
-    log_pieces.push_back(kKeyboardLogSectionHeader);
-    log_pieces.push_back(std::move(input_log_contents));
+  if (features::IsInputInDiagnosticsAppEnabled()) {
+    std::string input_log_contents = keyboard_input_log_->GetLogContents();
+    if (!input_log_contents.empty()) {
+      log_pieces.push_back(kKeyboardLogSectionHeader);
+      log_pieces.push_back(std::move(input_log_contents));
+    }
   }
 
   return base::JoinString(log_pieces, "\n");
 }
 
+void DiagnosticsLogController::GetJemaOsHwtunerInfo() {
+  jemaos::ash::JemaOSShellClient* shellClient = jemaos::ash::JemaOSShellClient::Get();
+  if (!shellClient) {
+    return;
+  }
+  jemaos_hwtuner_info_ = "";
+  shellClient->SyncExec(
+      jemaos::constants::kJemaOSHwtunerCommand,
+      base::BindOnce(&DiagnosticsLogController::OnJemaOSHwtunerInfoReceived,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void DiagnosticsLogController::OnJemaOSHwtunerInfoReceived(absl::optional<jemaos::ash::ShellState> state) {
+  if (state && state->code == 0) {
+    jemaos_hwtuner_info_ = state->result;
+  } else {
+    jemaos_hwtuner_info_ = "";
+  }
+}
+
+bool DiagnosticsLogController::JemaosCreateSystemInfoTempDirectory() {
+  if (!base::CreateNewTempDirectory(
+        FILE_PATH_LITERAL(jemaos::constants::kJemaOSSystemTempPrefix),
+        &jemaos_system_info_temp_path_)) {
+    return false;
+  }
+
+  jemaos_system_info_temp_path_ = jemaos_system_info_temp_path_.Append(
+      base::FilePath(jemaos::constants::kJemaOSSystemInfoFileName));
+
+  return true;
+}
+
+bool DiagnosticsLogController::CompressSessionLog(
+    const base::FilePath& file_path, const base::FilePath& dest) {
+  const base::FilePath base_dir = file_path.DirName();
+
+  base::File file(dest,
+      base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+  if (!file.IsValid())
+    return false;
+
+  std::vector<base::FilePath> files_to_zip;
+  files_to_zip.push_back(file_path.BaseName());
+  return zip::ZipFiles(base_dir, files_to_zip, file.GetPlatformFile());
+}
+
 bool DiagnosticsLogController::GenerateSessionLogOnBlockingPool(
-    const base::FilePath& save_file_path) {
+    const base::FilePath& save_file_path,
+    const std::string& jemaos_system_info) {
   DCHECK(!save_file_path.empty());
-  return base::WriteFile(save_file_path, GenerateSessionStringOnBlockingPool());
+
+  if (!JemaosCreateSystemInfoTempDirectory()) {
+    LOG(ERROR) << "Failed to create system info temp directory";
+    return false;
+  }
+
+  std::vector<std::string> log_pieces;
+
+  if (!jemaos_hwtuner_info_.empty()) {
+    log_pieces.push_back(jemaos::constants::kJemaOSHwtunerInfoSectionName);
+    log_pieces.push_back(jemaos_hwtuner_info_);
+  }
+
+  if (!jemaos_system_info.empty()) {
+    log_pieces.push_back(jemaos::constants::kJemaOSSystemInfoHeader);
+    log_pieces.push_back(jemaos_system_info);
+  }
+  if (log_pieces.size() > 0) {
+    if (!base::WriteFile(jemaos_system_info_temp_path_,
+          base::JoinString(log_pieces, "\n"))) {
+      LOG(ERROR) << "Failed to write jemaos system info to temp file";
+      return false;
+    }
+    if (!base::AppendToFile(jemaos_system_info_temp_path_,
+          GenerateSessionStringOnBlockingPool())) {
+      LOG(ERROR) << "Failed to write system info to temp file";
+      return false;
+    }
+  } else {
+    if (!base::WriteFile(jemaos_system_info_temp_path_,
+          GenerateSessionStringOnBlockingPool())) {
+      LOG(ERROR) << "Failed to write system info to temp file";
+      return false;
+    }
+  }
+
+  return CompressSessionLog(jemaos_system_info_temp_path_, save_file_path);
 }
 
 void DiagnosticsLogController::ResetAndInitializeLogWriters() {
@@ -226,6 +316,7 @@ void DiagnosticsLogController::ResetLogBasePath() {
       g_instance->log_base_path_ = user_dir.Append(kDiaganosticsDirName);
       return;
     }
+    GetJemaOsHwtunerInfo();
   }
 
   // Use diagnostics temporary path for Guest, KioskApp, and no user states.

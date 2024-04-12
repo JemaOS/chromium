@@ -28,8 +28,7 @@ bool MiniFile::Create(const wchar_t* path) {
     return false;
   handle_ =
       ::CreateFileW(path_.get(), DELETE | GENERIC_WRITE, FILE_SHARE_DELETE,
-                    nullptr, CREATE_ALWAYS,
-                    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+                    nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
   if (handle_ != INVALID_HANDLE_VALUE)
     return true;
   path_.clear();

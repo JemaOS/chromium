@@ -21,9 +21,11 @@ namespace leveldb_proto {
 class ProtoDatabaseProvider;
 }  // namespace leveldb_proto
 
-namespace nearby::sharing::proto {
+namespace nearbyshare {
+namespace proto {
 class PublicCertificate;
-}  // namespace nearby::sharing::proto
+}  // namespace proto
+}  // namespace nearbyshare
 
 // Implements NearbyShareCertificateStorage using Prefs to store private
 // certificates and LevelDB Proto to store public certificates. Must be
@@ -55,8 +57,9 @@ class NearbyShareCertificateStorageImpl : public NearbyShareCertificateStorage {
 
   NearbyShareCertificateStorageImpl(
       PrefService* pref_service,
-      std::unique_ptr<leveldb_proto::ProtoDatabase<
-          nearby::sharing::proto::PublicCertificate>> proto_database);
+      std::unique_ptr<
+          leveldb_proto::ProtoDatabase<nearbyshare::proto::PublicCertificate>>
+          proto_database);
   ~NearbyShareCertificateStorageImpl() override;
   NearbyShareCertificateStorageImpl(NearbyShareCertificateStorageImpl&) =
       delete;
@@ -64,15 +67,15 @@ class NearbyShareCertificateStorageImpl : public NearbyShareCertificateStorage {
 
   // NearbyShareCertificateStorage
   void GetPublicCertificates(PublicCertificateCallback callback) override;
-  std::optional<std::vector<NearbySharePrivateCertificate>>
+  absl::optional<std::vector<NearbySharePrivateCertificate>>
   GetPrivateCertificates() const override;
-  std::optional<base::Time> NextPublicCertificateExpirationTime()
+  absl::optional<base::Time> NextPublicCertificateExpirationTime()
       const override;
   void ReplacePrivateCertificates(
       const std::vector<NearbySharePrivateCertificate>& private_certificates)
       override;
   void AddPublicCertificates(
-      const std::vector<nearby::sharing::proto::PublicCertificate>&
+      const std::vector<nearbyshare::proto::PublicCertificate>&
           public_certificates,
       ResultCallback callback) override;
   void RemoveExpiredPublicCertificates(base::Time now,
@@ -104,9 +107,9 @@ class NearbyShareCertificateStorageImpl : public NearbyShareCertificateStorage {
 
   InitStatus init_status_ = InitStatus::kUninitialized;
   size_t num_initialize_attempts_ = 0;
-  raw_ptr<PrefService> pref_service_;
+  raw_ptr<PrefService, ExperimentalAsh> pref_service_;
   std::unique_ptr<
-      leveldb_proto::ProtoDatabase<nearby::sharing::proto::PublicCertificate>>
+      leveldb_proto::ProtoDatabase<nearbyshare::proto::PublicCertificate>>
       db_;
   ExpirationList public_certificate_expirations_;
   base::queue<base::OnceClosure> deferred_callbacks_;

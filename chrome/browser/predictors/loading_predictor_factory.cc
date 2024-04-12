@@ -19,8 +19,7 @@ LoadingPredictor* LoadingPredictorFactory::GetForProfile(Profile* profile) {
 
 // static
 LoadingPredictorFactory* LoadingPredictorFactory::GetInstance() {
-  static base::NoDestructor<LoadingPredictorFactory> instance;
-  return instance.get();
+  return base::Singleton<LoadingPredictorFactory>::get();
 }
 
 LoadingPredictorFactory::LoadingPredictorFactory()
@@ -36,17 +35,16 @@ LoadingPredictorFactory::LoadingPredictorFactory()
   DependsOn(PredictorDatabaseFactory::GetInstance());
 }
 
-LoadingPredictorFactory::~LoadingPredictorFactory() = default;
+LoadingPredictorFactory::~LoadingPredictorFactory() {}
 
-std::unique_ptr<KeyedService>
-LoadingPredictorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* LoadingPredictorFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
   if (!IsLoadingPredictorEnabled(profile))
     return nullptr;
 
-  return std::make_unique<LoadingPredictor>(LoadingPredictorConfig(), profile);
+  return new LoadingPredictor(LoadingPredictorConfig(), profile);
 }
 
 }  // namespace predictors

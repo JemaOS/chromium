@@ -34,10 +34,9 @@ InstallStageTrackerFactory::InstallStageTrackerFactory()
 
 InstallStageTrackerFactory::~InstallStageTrackerFactory() = default;
 
-std::unique_ptr<KeyedService>
-InstallStageTrackerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* InstallStageTrackerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<InstallStageTracker>(context);
+  return new InstallStageTracker(context);
 }
 
 }  // namespace extensions

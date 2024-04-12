@@ -10,7 +10,6 @@
 
 #include "base/command_line.h"
 #include "base/containers/contains.h"
-#include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "chrome/browser/ash/login/existing_user_controller.h"
 #include "chrome/browser/ash/login/session/user_session_manager.h"
@@ -22,13 +21,11 @@
 #include "chrome/browser/ash/login/test/oobe_screens_utils.h"
 #include "chrome/browser/ash/login/test/profile_prepared_waiter.h"
 #include "chrome/browser/ash/login/test/session_manager_state_waiter.h"
-#include "chrome/browser/ash/login/test/user_auth_config.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/ui/webui/ash/login/gaia_screen_handler.h"
 #include "chromeos/ash/components/login/auth/auth_status_consumer.h"
-#include "chromeos/ash/components/login/auth/public/auth_types.h"
 #include "chromeos/ash/components/login/auth/public/key.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
 #include "chromeos/ash/components/login/auth/stub_authenticator_builder.h"
@@ -47,19 +44,15 @@ bool g_instance_created = false;
 constexpr char kGmailDomain[] = "@gmail.com";
 constexpr char kManagedDomain[] = "@example.com";
 
-AccountId CreateAccountId(int id, const std::string& domain) {
-  const std::string email = "test_user_" + base::NumberToString(id) + domain;
-  const std::string gaia_id = base::NumberToString(id) + "111111111";
-  return AccountId::FromUserEmailGaiaId(email, gaia_id);
-}
-
 void AppendUsers(LoginManagerMixin::UserList* users,
                  const std::string& domain,
                  int n,
                  CryptohomeMixin* cryptohome_mixin) {
   int num = users->size();
   for (int i = 0; i < n; ++i, ++num) {
-    auto account_id = CreateAccountId(num, domain);
+    const std::string email = "test_user_" + base::NumberToString(num) + domain;
+    const std::string gaia_id = base::NumberToString(num) + "111111111";
+    const AccountId account_id = AccountId::FromUserEmailGaiaId(email, gaia_id);
     users->push_back(LoginManagerMixin::TestUserInfo(account_id));
 
     if (cryptohome_mixin != nullptr) {
@@ -71,24 +64,10 @@ void AppendUsers(LoginManagerMixin::UserList* users,
 }  // namespace
 
 // static
-AccountId LoginManagerMixin::CreateConsumerAccountId(int unique_number) {
-  return CreateAccountId(unique_number, kGmailDomain);
-}
-
-// static
 UserContext LoginManagerMixin::CreateDefaultUserContext(
     const TestUserInfo& user_info) {
   UserContext user_context(user_info.user_type, user_info.account_id);
-  if (user_info.auth_config.factors.Has(ash::AshAuthFactor::kGaiaPassword)) {
-    user_context.SetKey(Key(user_info.auth_config.online_password));
-    user_context.SetGaiaPassword(
-        GaiaPassword(user_info.auth_config.online_password));
-  } else if (user_info.auth_config.factors.Has(
-                 ash::AshAuthFactor::kLocalPassword)) {
-    user_context.SetKey(Key(user_info.auth_config.local_password));
-    user_context.SetLocalPasswordInput(
-        LocalPasswordInput(user_info.auth_config.local_password));
-  }
+  user_context.SetKey(Key("password"));
   return user_context;
 }
 
@@ -124,7 +103,7 @@ LoginManagerMixin::LoginManagerMixin(InProcessBrowserTestMixinHost* host,
   DCHECK(!g_instance_created);
   g_instance_created = true;
 
-  if (cryptohome_mixin_ != nullptr) {
+  if (cryptohome_mixin != nullptr) {
     for (const auto& user : initial_users_) {
       cryptohome_mixin_->MarkUserAsExisting(user.account_id);
     }
@@ -164,12 +143,12 @@ void LoginManagerMixin::SetUpLocalState() {
     ScopedDictPrefUpdate user_token_update(g_browser_process->local_state(),
                                            "OAuthTokenStatus");
     user_token_update->Set(user.account_id.GetUserEmail(),
-                           static_cast<int>(user.auth_config.token_status));
+                           static_cast<int>(user.token_status));
 
     user_manager::KnownUser known_user(g_browser_process->local_state());
     known_user.UpdateId(user.account_id);
 
-    if (user.user_type == user_manager::UserType::kChild) {
+    if (user.user_type == user_manager::USER_TYPE_CHILD) {
       known_user.SetProfileRequiresPolicy(
           user.account_id,
           user_manager::ProfileRequiresPolicy::kPolicyRequired);
@@ -185,11 +164,6 @@ void LoginManagerMixin::SetUpLocalState() {
 }
 
 void LoginManagerMixin::SetUpOnMainThread() {
-  if (cryptohome_mixin_ != nullptr) {
-    for (const auto& user : initial_users_) {
-      cryptohome_mixin_->ApplyAuthConfig(user.account_id, user.auth_config);
-    }
-  }
   test::UserSessionManagerTestApi session_manager_test_api(
       UserSessionManager::GetInstance());
   session_manager_test_api.SetShouldLaunchBrowserInTests(
@@ -253,7 +227,7 @@ void LoginManagerMixin::LoginWithDefaultContext(
 }
 
 void LoginManagerMixin::LoginAsNewRegularUser(
-    std::optional<UserContext> user_context) {
+    absl::optional<UserContext> user_context) {
   LoginDisplayHost::default_host()->StartWizard(GaiaView::kScreenId);
   test::WaitForOobeJSReady();
   ASSERT_FALSE(session_manager::SessionManager::Get()->IsSessionStarted());
@@ -274,7 +248,7 @@ void LoginManagerMixin::LoginAsNewChildUser() {
   ASSERT_FALSE(session_manager::SessionManager::Get()->IsSessionStarted());
   TestUserInfo test_child_user_(
       AccountId::FromUserEmailGaiaId(test::kTestEmail, test::kTestGaiaId),
-      test::kDefaultAuthSetup, user_manager::UserType::kChild);
+      user_manager::USER_TYPE_CHILD);
   UserContext user_context = CreateDefaultUserContext(test_child_user_);
   user_context.SetRefreshToken(FakeGaiaMixin::kFakeRefreshToken);
   ASSERT_TRUE(fake_gaia_mixin_) << "Pass FakeGaiaMixin into constructor";

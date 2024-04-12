@@ -55,10 +55,10 @@ absl::Status UniversalSentenceEncoderPreprocessor::Preprocess(
     const std::string& text) {
   // All input tensors must be populated, even though we're only using the
   // response text input tensor.
-  TFLITE_RETURN_IF_ERROR(PopulateTensor(std::string(""), GetTensor(kQueryTextIndex)));
-  TFLITE_RETURN_IF_ERROR(
+  RETURN_IF_ERROR(PopulateTensor(std::string(""), GetTensor(kQueryTextIndex)));
+  RETURN_IF_ERROR(
       PopulateTensor(std::string(""), GetTensor(kResponseContextIndex)));
-  TFLITE_RETURN_IF_ERROR(PopulateTensor(text, GetTensor(kResponseTextIndex)));
+  RETURN_IF_ERROR(PopulateTensor(text, GetTensor(kResponseTextIndex)));
   return absl::OkStatus();
 }
 

@@ -64,15 +64,15 @@ void EmitErrorBlocked(const String& url, Document& document) {
 
 void AddWarningHeader(FetchParameters* params) {
   params->MutableResourceRequest().AddHttpHeaderField(
-      AtomicString("Intervention"),
-      AtomicString("<https://www.chromestatus.com/feature/5718547946799104>; "
-                   "level=\"warning\""));
+      "Intervention",
+      "<https://www.chromestatus.com/feature/5718547946799104>; "
+      "level=\"warning\"");
 }
 
 void AddHeader(FetchParameters* params) {
   params->MutableResourceRequest().AddHttpHeaderField(
-      AtomicString("Intervention"),
-      AtomicString("<https://www.chromestatus.com/feature/5718547946799104>"));
+      "Intervention",
+      "<https://www.chromestatus.com/feature/5718547946799104>");
 }
 
 bool IsConnectionEffectively2G(WebEffectiveConnectionType effective_type) {
@@ -212,15 +212,8 @@ void PossiblyFetchBlockedDocWriteScript(
       cross_origin, resource->Encoding(), FetchParameters::kIdleLoad));
   params.SetRenderBlockingBehavior(RenderBlockingBehavior::kNonBlocking);
   AddHeader(&params);
-
-  // If streaming is not allowed, no compile hints are needed either.
-  constexpr v8_compile_hints::V8CrowdsourcedCompileHintsProducer*
-      kNoCompileHintsProducer = nullptr;
-  constexpr v8_compile_hints::V8CrowdsourcedCompileHintsConsumer*
-      kNoCompileHintsConsumer = nullptr;
   ScriptResource::Fetch(params, element_document.Fetcher(), nullptr,
-                        context->GetIsolate(), ScriptResource::kNoStreaming,
-                        kNoCompileHintsProducer, kNoCompileHintsConsumer);
+                        ScriptResource::kNoStreaming);
 }
 
 }  // namespace blink

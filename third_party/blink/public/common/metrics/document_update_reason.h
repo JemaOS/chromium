@@ -20,7 +20,6 @@ enum class DocumentUpdateReason {
   kBaseColor,
   kBeginMainFrame,
   kCanvas,
-  kComputedStyle,
   kContextMenu,
   kDisplayLock,
   kViewTransition,
@@ -38,18 +37,15 @@ enum class DocumentUpdateReason {
   kOverlay,
   kPagePopup,
   kPlugin,
-  kPopover,
   kPrinting,
   kScroll,
   kSelection,
   kSizeChange,
   kSpatialNavigation,
   kSpellCheck,
-  kSMILAnimation,
   kSVGImage,
   kTapHighlight,
   kTest,
-  kWebAnimation,
   kUnknown
 };
 

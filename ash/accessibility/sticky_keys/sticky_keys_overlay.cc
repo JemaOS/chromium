@@ -14,8 +14,6 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
@@ -49,8 +47,6 @@ const int kSlideAnimationDurationMs = 100;
 ///////////////////////////////////////////////////////////////////////////////
 //  StickyKeyOverlayLabel
 class StickyKeyOverlayLabel : public views::Label {
-  METADATA_HEADER(StickyKeyOverlayLabel, views::Label)
-
  public:
   explicit StickyKeyOverlayLabel(const std::string& key_name);
 
@@ -103,16 +99,11 @@ void StickyKeyOverlayLabel::SetKeyState(StickyKeyState state) {
   SetFontList(font_list().DeriveWithStyle(style));
 }
 
-BEGIN_METADATA(StickyKeyOverlayLabel)
-END_METADATA
-
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
 //  StickyKeysOverlayView
 class StickyKeysOverlayView : public views::View {
-  METADATA_HEADER(StickyKeysOverlayView, views::View)
-
  public:
   StickyKeysOverlayView();
 
@@ -208,9 +199,6 @@ void StickyKeysOverlayView::AddKeyLabel(ui::EventFlags modifier,
   AddChildView(label);
   modifier_label_map_[modifier] = label;
 }
-
-BEGIN_METADATA(StickyKeysOverlayView)
-END_METADATA
 
 ///////////////////////////////////////////////////////////////////////////////
 //  StickyKeysOverlay

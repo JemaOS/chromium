@@ -32,6 +32,7 @@ import org.mockito.MockitoAnnotations;
 
 import org.chromium.base.Callback;
 import org.chromium.base.metrics.RecordHistogram;
+import org.chromium.base.metrics.UmaRecorderHolder;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.notifications.NotificationUmaTracker.NotificationRationaleResult;
 import org.chromium.chrome.browser.notifications.R;
@@ -40,19 +41,24 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 
-/** Tests for {@link NotificationPermissionRationaleBottomSheet}. */
+/**
+ * Tests for {@link NotificationPermissionRationaleBottomSheet}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 public class NotificationPermissionRationaleBottomSheetTest {
     private BottomSheetController mBottomSheetController;
     private Context mContext;
 
-    @Captor ArgumentCaptor<BottomSheetObserver> mBottomSheetObserverCaptor;
+    @Captor
+    ArgumentCaptor<BottomSheetObserver> mBottomSheetObserverCaptor;
 
-    @Mock Callback<Integer> mMockCallback;
+    @Mock
+    Callback<Integer> mMockCallback;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        UmaRecorderHolder.resetForTesting();
         mBottomSheetController = Mockito.mock(BottomSheetController.class);
         when(mBottomSheetController.requestShowContent(any(), anyBoolean())).thenReturn(true);
 
@@ -81,11 +87,9 @@ public class NotificationPermissionRationaleBottomSheetTest {
 
         verify(mMockCallback, never()).onResult(anyInt());
         // Check that the custom view contains the expected title and message.
-        assertThat(
-                bottomSheetTitle,
+        assertThat(bottomSheetTitle,
                 withText(R.string.notification_permission_rationale_dialog_title));
-        assertThat(
-                bottomSheetMessage,
+        assertThat(bottomSheetMessage,
                 withText(R.string.notification_permission_rationale_dialog_message));
     }
 
@@ -97,14 +101,12 @@ public class NotificationPermissionRationaleBottomSheetTest {
         bottomSheet.showRationaleUi(mMockCallback);
 
         View bottomSheetContentView = bottomSheet.getContentView();
-        View bottomSheetNegativeButton =
-                bottomSheetContentView.findViewById(
-                        R.id.notification_permission_rationale_negative_button);
+        View bottomSheetNegativeButton = bottomSheetContentView.findViewById(
+                R.id.notification_permission_rationale_negative_button);
         bottomSheetNegativeButton.performClick();
 
         verify(mMockCallback).onResult(RationaleUiResult.REJECTED);
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         "Mobile.SystemNotification.Permission.RationaleResult",
                         NotificationRationaleResult.NEGATIVE_BUTTON_CLICKED));
@@ -122,8 +124,7 @@ public class NotificationPermissionRationaleBottomSheetTest {
         mBottomSheetObserverCaptor.getValue().onSheetClosed(StateChangeReason.BACK_PRESS);
 
         verify(mMockCallback).onResult(RationaleUiResult.REJECTED);
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         "Mobile.SystemNotification.Permission.RationaleResult",
                         NotificationRationaleResult.BOTTOM_SHEET_BACK_PRESS));
@@ -141,8 +142,7 @@ public class NotificationPermissionRationaleBottomSheetTest {
         mBottomSheetObserverCaptor.getValue().onSheetClosed(StateChangeReason.SWIPE);
 
         verify(mMockCallback).onResult(RationaleUiResult.REJECTED);
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         "Mobile.SystemNotification.Permission.RationaleResult",
                         NotificationRationaleResult.BOTTOM_SHEET_SWIPE));
@@ -160,8 +160,7 @@ public class NotificationPermissionRationaleBottomSheetTest {
         mBottomSheetObserverCaptor.getValue().onSheetClosed(StateChangeReason.TAP_SCRIM);
 
         verify(mMockCallback).onResult(RationaleUiResult.REJECTED);
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         "Mobile.SystemNotification.Permission.RationaleResult",
                         NotificationRationaleResult.BOTTOM_SHEET_TAP_SCRIM));
@@ -175,14 +174,12 @@ public class NotificationPermissionRationaleBottomSheetTest {
         bottomSheet.showRationaleUi(mMockCallback);
 
         View bottomSheetContentView = bottomSheet.getContentView();
-        View bottomSheetPositiveButton =
-                bottomSheetContentView.findViewById(
-                        R.id.notification_permission_rationale_positive_button);
+        View bottomSheetPositiveButton = bottomSheetContentView.findViewById(
+                R.id.notification_permission_rationale_positive_button);
         bottomSheetPositiveButton.performClick();
 
         verify(mMockCallback).onResult(RationaleUiResult.ACCEPTED);
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         "Mobile.SystemNotification.Permission.RationaleResult",
                         NotificationRationaleResult.POSITIVE_BUTTON_CLICKED));
@@ -202,8 +199,7 @@ public class NotificationPermissionRationaleBottomSheetTest {
         bottomSheet.destroy();
 
         verify(mMockCallback).onResult(RationaleUiResult.REJECTED);
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         "Mobile.SystemNotification.Permission.RationaleResult",
                         NotificationRationaleResult.BOTTOM_SHEET_DESTROYED));
@@ -219,8 +215,7 @@ public class NotificationPermissionRationaleBottomSheetTest {
         bottomSheet.destroy();
 
         verify(mMockCallback).onResult(RationaleUiResult.NOT_SHOWN);
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         "Mobile.SystemNotification.Permission.RationaleResult",
                         NotificationRationaleResult.BOTTOM_SHEET_NEVER_OPENED));

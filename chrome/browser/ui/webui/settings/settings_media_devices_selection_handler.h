@@ -7,14 +7,15 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
+#include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/ui/webui/settings/settings_page_ui_handler.h"
-#include "components/media_effects/media_device_info.h"
+#include "content/public/browser/web_contents.h"
 
 namespace settings {
 
 // Handler for media devices selection in content settings.
 class MediaDevicesSelectionHandler
-    : public media_effects::MediaDeviceInfo::Observer,
+    : public MediaCaptureDevicesDispatcher::Observer,
       public SettingsPageUIHandler {
  public:
   explicit MediaDevicesSelectionHandler(Profile* profile);
@@ -30,46 +31,38 @@ class MediaDevicesSelectionHandler
   void OnJavascriptDisallowed() override;
   void RegisterMessages() override;
 
-  // MediaDeviceInfo::Observer:
-  void OnAudioDevicesChanged(
-      const std::optional<std::vector<media::AudioDeviceDescription>>& devices)
-      override;
-  void OnVideoDevicesChanged(
-      const std::optional<std::vector<media::VideoCaptureDeviceInfo>>& devices)
-      override;
-
-  void SetWebUiForTest(content::WebUI* web_ui);
+  // MediaCaptureDevicesDispatcher::Observer:
+  void OnUpdateAudioDevices(const blink::MediaStreamDevices& devices) override;
+  void OnUpdateVideoDevices(const blink::MediaStreamDevices& devices) override;
 
  private:
-  // Requests initialization of the devices menu.
-  void InitializeCaptureDevices(const base::Value::List& args);
+  enum DeviceType {
+    AUDIO,
+    VIDEO,
+  };
 
-  // Sets the preferred audio/video capture device for media. |args| includes
-  // the media type (kAuudio/kVideo) and the unique id of the new default device
+  // Fetches the list of default capture devices.
+  void GetDefaultCaptureDevices(const base::Value::List& args);
+
+  // Sets the default audio/video capture device for media. |args| includes the
+  // media type (kAuudio/kVideo) and the unique id of the new default device
   // that the user has chosen.
-  void SetPreferredCaptureDevice(const base::Value::List& args);
+  void SetDefaultCaptureDevice(const base::Value::List& args);
 
   // Helpers methods to update the device menus.
-  void UpdateDevicesMenu(
-      const std::vector<media::AudioDeviceDescription>& devices);
-  void UpdateDevicesMenu(
-      const std::vector<media::VideoCaptureDeviceInfo>& devices);
+  void UpdateDevicesMenuForType(DeviceType type);
+  void UpdateDevicesMenu(DeviceType type,
+                         const blink::MediaStreamDevices& devices);
 
   // Gets the human readable name of the device.
   std::string GetDeviceDisplayName(
-      const media::AudioDeviceDescription& device) const;
-  // Gets the human readable name of the device.
-  std::string GetDeviceDisplayName(
-      const media::VideoCaptureDeviceInfo& device) const;
+      const blink::MediaStreamDevice& device) const;
 
   raw_ptr<Profile> profile_;  // Weak pointer.
 
-  base::ScopedObservation<media_effects::MediaDeviceInfo,
-                          media_effects::MediaDeviceInfo::Observer>
+  base::ScopedObservation<MediaCaptureDevicesDispatcher,
+                          MediaCaptureDevicesDispatcher::Observer>
       observation_{this};
-
-  std::vector<media::AudioDeviceDescription> audio_device_infos_;
-  std::vector<media::VideoCaptureDeviceInfo> video_device_infos_;
 };
 
 }  // namespace settings

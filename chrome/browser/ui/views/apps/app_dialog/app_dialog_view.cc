@@ -43,5 +43,5 @@ void AppDialogView::SetLabelText(const std::u16string& text) {
   label_->SetText(text);
 }
 
-BEGIN_METADATA(AppDialogView)
+BEGIN_METADATA(AppDialogView, views::BubbleDialogDelegateView)
 END_METADATA

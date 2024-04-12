@@ -18,8 +18,7 @@ AccessCodeCastPrefUpdaterImpl::AccessCodeCastPrefUpdaterImpl(
 }
 
 void AccessCodeCastPrefUpdaterImpl::UpdateDevicesDict(
-    const MediaSinkInternal& sink,
-    base::OnceClosure on_updated_callback) {
+    const MediaSinkInternal& sink) {
   ScopedDictPrefUpdate update(pref_service_, prefs::kAccessCodeCastDevices);
 
   // In order to make sure that the same sink won't be added to the network
@@ -27,14 +26,11 @@ void AccessCodeCastPrefUpdaterImpl::UpdateDevicesDict(
   // ensure that the same sink (possibly with a different older stored named)
   // isn't stored twice in the cast list.
   for (auto existing_sink_ids :
-       AccessCodeCastPrefUpdaterImpl::GetMatchingIPEndPoints(
-           pref_service_->GetDict(prefs::kAccessCodeCastDevices),
-           sink.cast_data().ip_endpoint)) {
+       GetMatchingIPEndPoints(sink.cast_data().ip_endpoint)) {
     update->Remove(existing_sink_ids);
   }
 
   update->Set(sink.id(), CreateValueDictFromMediaSinkInternal(sink));
-  std::move(on_updated_callback).Run();
 }
 
 // This stored preference looks like:
@@ -45,59 +41,44 @@ void AccessCodeCastPrefUpdaterImpl::UpdateDevicesDict(
 //     "<sink_id_2>": "12372347312312347234",
 //   }
 void AccessCodeCastPrefUpdaterImpl::UpdateDeviceAddedTimeDict(
-    const MediaSink::Id sink_id,
-    base::OnceClosure on_updated_callback) {
+    const MediaSink::Id sink_id) {
   ScopedDictPrefUpdate update(pref_service_,
                               prefs::kAccessCodeCastDeviceAdditionTime);
 
   // If the key doesn't exist, or exists but isn't a DictionaryValue, a new
   // DictionaryValue will be created and attached to the path in that location.
   update->Set(sink_id, base::TimeToValue(base::Time::Now()));
-  std::move(on_updated_callback).Run();
 }
 
-void AccessCodeCastPrefUpdaterImpl::GetDevicesDict(
-    base::OnceCallback<void(base::Value::Dict)> get_devices_callback) {
-  std::move(get_devices_callback)
-      .Run(pref_service_->GetDict(prefs::kAccessCodeCastDevices).Clone());
+const base::Value::Dict& AccessCodeCastPrefUpdaterImpl::GetDevicesDict() {
+  return pref_service_->GetDict(prefs::kAccessCodeCastDevices);
 }
 
-void AccessCodeCastPrefUpdaterImpl::GetDeviceAddedTimeDict(
-    base::OnceCallback<void(base::Value::Dict)>
-        get_device_added_time_callback) {
-  std::move(get_device_added_time_callback)
-      .Run(pref_service_->GetDict(prefs::kAccessCodeCastDeviceAdditionTime)
-               .Clone());
+const base::Value::Dict&
+AccessCodeCastPrefUpdaterImpl::GetDeviceAddedTimeDict() {
+  return pref_service_->GetDict(prefs::kAccessCodeCastDeviceAdditionTime);
 }
 
 void AccessCodeCastPrefUpdaterImpl::RemoveSinkIdFromDevicesDict(
-    const MediaSink::Id sink_id,
-    base::OnceClosure on_sink_removed_callback) {
+    const MediaSink::Id sink_id) {
   ScopedDictPrefUpdate update(pref_service_, prefs::kAccessCodeCastDevices);
   update->Remove(sink_id);
-  std::move(on_sink_removed_callback).Run();
 }
 
 void AccessCodeCastPrefUpdaterImpl::RemoveSinkIdFromDeviceAddedTimeDict(
-    const MediaSink::Id sink_id,
-    base::OnceClosure on_sink_removed_callback) {
+    const MediaSink::Id sink_id) {
   ScopedDictPrefUpdate update(pref_service_,
                               prefs::kAccessCodeCastDeviceAdditionTime);
   update->Remove(sink_id);
-  std::move(on_sink_removed_callback).Run();
 }
 
-void AccessCodeCastPrefUpdaterImpl::ClearDevicesDict(
-    base::OnceClosure on_cleared_callback) {
+void AccessCodeCastPrefUpdaterImpl::ClearDevicesDict() {
   pref_service_->SetDict(prefs::kAccessCodeCastDevices, base::Value::Dict());
-  std::move(on_cleared_callback).Run();
 }
 
-void AccessCodeCastPrefUpdaterImpl::ClearDeviceAddedTimeDict(
-    base::OnceClosure on_cleared_callback) {
+void AccessCodeCastPrefUpdaterImpl::ClearDeviceAddedTimeDict() {
   pref_service_->SetDict(prefs::kAccessCodeCastDeviceAdditionTime,
                          base::Value::Dict());
-  std::move(on_cleared_callback).Run();
 }
 
 void AccessCodeCastPrefUpdaterImpl::UpdateDevicesDictForTest(

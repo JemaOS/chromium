@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/global_media_controls/media_notification_service.h"
@@ -14,20 +14,14 @@
 MediaNotificationServiceFactory::MediaNotificationServiceFactory()
     : ProfileKeyedServiceFactory(
           "MediaNotificationService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
-MediaNotificationServiceFactory::~MediaNotificationServiceFactory() = default;
+MediaNotificationServiceFactory::~MediaNotificationServiceFactory() {}
 
 // static
 MediaNotificationServiceFactory*
 MediaNotificationServiceFactory::GetInstance() {
-  static base::NoDestructor<MediaNotificationServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<MediaNotificationServiceFactory>::get();
 }
 
 // static
@@ -37,13 +31,12 @@ MediaNotificationService* MediaNotificationServiceFactory::GetForProfile(
       GetInstance()->GetServiceForBrowserContext(profile, true));
 }
 
-std::unique_ptr<KeyedService>
-MediaNotificationServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* MediaNotificationServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   bool show_from_all_profiles = false;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   show_from_all_profiles = true;
 #endif
-  return std::make_unique<MediaNotificationService>(
-      Profile::FromBrowserContext(context), show_from_all_profiles);
+  return new MediaNotificationService(Profile::FromBrowserContext(context),
+                                      show_from_all_profiles);
 }

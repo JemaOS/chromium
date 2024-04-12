@@ -4,7 +4,7 @@
 
 #include "ash/system/accessibility/switch_access/switch_access_menu_view.h"
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/bubble/bubble_constants.h"
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/shell.h"
@@ -17,7 +17,6 @@
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/accessibility/mojom/ax_node_data.mojom-shared.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/events/event.h"
 #include "ui/views/layout/table_layout.h"
 
@@ -27,7 +26,7 @@ namespace {
 constexpr int kMaxColumns = 3;
 
 struct ButtonInfo {
-  raw_ptr<const gfx::VectorIcon> icon;
+  raw_ptr<const gfx::VectorIcon, ExperimentalAsh> icon;
   int label_id;
 };
 
@@ -157,7 +156,8 @@ void SwitchAccessMenuView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   node_data->role = ax::mojom::Role::kMenu;
 }
 
-BEGIN_METADATA(SwitchAccessMenuView)
-END_METADATA
+const char* SwitchAccessMenuView::GetClassName() const {
+  return "SwitchAccessMenuView";
+}
 
 }  // namespace ash

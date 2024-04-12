@@ -5,12 +5,12 @@
 #ifndef UI_BASE_MODELS_MENU_MODEL_H_
 #define UI_BASE_MODELS_MENU_MODEL_H_
 
-#include <optional>
 #include <string>
 
 #include "base/component_export.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/models/menu_model_delegate.h"
 #include "ui/base/models/menu_separator_types.h"
@@ -47,12 +47,14 @@ class COMPONENT_EXPORT(UI_BASE) MenuModel
                        // selected.
   };
 
-  // ID to use for TYPE_TITLE items.
-  static constexpr int kTitleId = -2;
-
   MenuModel();
 
   virtual ~MenuModel();
+
+  // Returns true if any of the items within the model have icons. Not all
+  // platforms support icons in menus natively and so this is a hint for
+  // triggering a custom rendering mode.
+  virtual bool HasIcons() const = 0;
 
   // Returns the number of items in the menu.
   virtual size_t GetItemCount() const = 0;
@@ -171,9 +173,10 @@ class COMPONENT_EXPORT(UI_BASE) MenuModel
                                            MenuModel** model,
                                            size_t* index);
 
-  virtual std::optional<ui::ColorId> GetForegroundColorId(size_t index);
-  virtual std::optional<ui::ColorId> GetSubmenuBackgroundColorId(size_t index);
-  virtual std::optional<ui::ColorId> GetSelectedBackgroundColorId(size_t index);
+  virtual absl::optional<ui::ColorId> GetForegroundColorId(size_t index);
+  virtual absl::optional<ui::ColorId> GetSubmenuBackgroundColorId(size_t index);
+  virtual absl::optional<ui::ColorId> GetSelectedBackgroundColorId(
+      size_t index);
 
  private:
   // MenuModelDelegate. Weak. Could be null.

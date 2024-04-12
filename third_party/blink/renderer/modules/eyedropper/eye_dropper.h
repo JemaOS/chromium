@@ -9,7 +9,6 @@
 
 #include "third_party/blink/public/mojom/choosers/color_chooser.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 
@@ -17,10 +16,11 @@ namespace blink {
 
 class AbortSignal;
 class ColorSelectionOptions;
-class ColorSelectionResult;
 enum class DOMExceptionCode;
 class ExceptionState;
 class ScopedAbortState;
+class ScriptPromise;
+class ScriptPromiseResolver;
 
 // The EyeDropper API enables developers to use a browser-supplied eyedropper
 // in their web applications. This feature is still
@@ -40,9 +40,9 @@ class EyeDropper final : public ScriptWrappable {
 
   // Opens the eyedropper and replaces the cursor with a browser-defined
   // preview.
-  ScriptPromiseTyped<ColorSelectionResult> open(ScriptState*,
-                                                const ColorSelectionOptions*,
-                                                ExceptionState&);
+  ScriptPromise open(ScriptState*,
+                     const ColorSelectionOptions*,
+                     ExceptionState&);
 
   void Trace(Visitor*) const override;
 
@@ -50,16 +50,15 @@ class EyeDropper final : public ScriptWrappable {
   class OpenAbortAlgorithm;
 
   void AbortCallback(AbortSignal* signal);
-  void EyeDropperResponseHandler(
-      std::unique_ptr<ScopedAbortState>,
-      ScriptPromiseResolverTyped<ColorSelectionResult>*,
-      bool,
-      uint32_t);
+  void EyeDropperResponseHandler(std::unique_ptr<ScopedAbortState>,
+                                 ScriptPromiseResolver*,
+                                 bool,
+                                 uint32_t);
   void EndChooser(std::unique_ptr<ScopedAbortState>);
   void RejectPromiseHelper(DOMExceptionCode, const WTF::String&);
 
   HeapMojoRemote<mojom::blink::EyeDropperChooser> eye_dropper_chooser_;
-  Member<ScriptPromiseResolverTyped<ColorSelectionResult>> resolver_;
+  Member<ScriptPromiseResolver> resolver_;
 };
 
 }  // namespace blink

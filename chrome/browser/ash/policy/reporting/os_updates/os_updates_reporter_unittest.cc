@@ -3,11 +3,8 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ash/policy/reporting/os_updates/os_updates_reporter.h"
-
 #include <memory>
-#include <string_view>
 
-#include "base/functional/callback_helpers.h"
 #include "base/test/scoped_chromeos_version_info.h"
 #include "chrome/browser/ash/policy/reporting/user_event_reporter_helper_testing.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -74,7 +71,7 @@ class TestHelper {
 
     ON_CALL(*mock_queue, AddRecord(_, ::reporting::Priority::SECURITY, _))
         .WillByDefault(
-            [this, status](std::string_view record_string,
+            [this, status](base::StringPiece record_string,
                            ::reporting::Priority event_priority,
                            ::reporting::ReportQueue::EnqueueCallback cb) {
               ++report_count_;
@@ -282,9 +279,11 @@ TEST_P(PowerwashTest, PolicyEnabled) {
 
   // Fake a powerwash.
   if (remote_requested_) {
-    session_manager->StartRemoteDeviceWipe(enterprise_management::SignedData());
+    session_manager->StartRemoteDeviceWipe(
+        enterprise_management::SignedData(),
+        enterprise_management::PolicyFetchRequest::NONE);
   } else {
-    session_manager->StartDeviceWipe(base::DoNothing());
+    session_manager->StartDeviceWipe();
   }
 
   // Verify event.
@@ -314,9 +313,11 @@ TEST_P(PowerwashTest, PolicyDisabled) {
 
   // Fake a powerwash.
   if (remote_requested_) {
-    session_manager->StartRemoteDeviceWipe(enterprise_management::SignedData());
+    session_manager->StartRemoteDeviceWipe(
+        enterprise_management::SignedData(),
+        enterprise_management::PolicyFetchRequest::NONE);
   } else {
-    session_manager->StartDeviceWipe(base::DoNothing());
+    session_manager->StartDeviceWipe();
   }
 
   // Verify that no event was reported.

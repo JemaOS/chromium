@@ -4,7 +4,6 @@
 
 #include "chrome/browser/sharesheet/sharesheet_service.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -12,21 +11,19 @@
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "chrome/browser/apps/app_service/app_icon/app_icon_util.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
-#include "chrome/browser/nearby_sharing/common/nearby_share_features.h"
-#include "chrome/browser/nearby_sharing/common/nearby_share_resource_getter.h"
 #include "chrome/browser/sharesheet/share_action/share_action.h"
 #include "chrome/browser/sharesheet/sharesheet_service_delegator.h"
 #include "chrome/browser/sharesheet/sharesheet_types.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/drive/drive_api_util.h"
 #include "components/services/app_service/public/cpp/app_launch_util.h"
 #include "components/services/app_service/public/cpp/app_types.h"
-#include "components/services/app_service/public/cpp/icon_effects.h"
 #include "components/services/app_service/public/cpp/intent.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/views/view.h"
@@ -54,14 +51,6 @@ gfx::NativeWindow GetNativeWindowFromWebContents(
   return web_contents->GetTopLevelNativeWindow();
 }
 
-bool HasHostedDocument(const apps::Intent& intent) {
-  return base::ranges::any_of(
-      intent.files, [](const apps::IntentFilePtr& file) {
-        return drive::util::HasHostedDocumentExtension(
-            base::FilePath(file->url.ExtractFileName()));
-      });
-}
-
 }  // namespace
 
 SharesheetService::SharesheetService(Profile* profile)
@@ -77,7 +66,20 @@ void SharesheetService::ShowBubble(content::WebContents* web_contents,
                                    LaunchSource source,
                                    DeliveredCallback delivered_callback,
                                    CloseCallback close_callback) {
-  ShowBubble(std::move(intent), source,
+  ShowBubble(std::move(intent),
+             /*contains_hosted_document=*/false, source,
+             base::BindOnce(&GetNativeWindowFromWebContents,
+                            web_contents->GetWeakPtr()),
+             std::move(delivered_callback), std::move(close_callback));
+}
+
+void SharesheetService::ShowBubble(content::WebContents* web_contents,
+                                   apps::IntentPtr intent,
+                                   bool contains_hosted_document,
+                                   LaunchSource source,
+                                   DeliveredCallback delivered_callback,
+                                   CloseCallback close_callback) {
+  ShowBubble(std::move(intent), contains_hosted_document, source,
              base::BindOnce(&GetNativeWindowFromWebContents,
                             web_contents->GetWeakPtr()),
              std::move(delivered_callback), std::move(close_callback));
@@ -85,16 +87,16 @@ void SharesheetService::ShowBubble(content::WebContents* web_contents,
 
 void SharesheetService::ShowBubble(
     apps::IntentPtr intent,
+    bool contains_hosted_document,
     LaunchSource source,
     GetNativeWindowCallback get_native_window_callback,
     DeliveredCallback delivered_callback,
     CloseCallback close_callback) {
   DCHECK(intent);
   DCHECK(intent->IsShareIntent());
-  CHECK(delivered_callback);
-
   SharesheetMetrics::RecordSharesheetLaunchSource(source);
-  PrepareToShowBubble(std::move(intent), std::move(get_native_window_callback),
+  PrepareToShowBubble(std::move(intent), contains_hosted_document,
+                      std::move(get_native_window_callback),
                       std::move(delivered_callback), std::move(close_callback));
 }
 
@@ -113,23 +115,19 @@ void SharesheetService::ShowNearbyShareBubbleForArc(
     LaunchSource source,
     DeliveredCallback delivered_callback,
     CloseCallback close_callback,
-    ActionCleanupCallback cleanup_callback) {
+    ActionCleanupCallback action_cleanup_callback) {
   DCHECK(intent);
   DCHECK(intent->IsShareIntent());
 
-  const std::u16string action_name =
-      features::IsNameEnabled()
-          ? NearbyShareResourceGetter::GetInstance()->GetStringWithFeatureName(
-                IDS_NEARBY_SHARE_FEATURE_NAME_PH)
-          : l10n_util::GetStringUTF16(IDS_NEARBY_SHARE_FEATURE_NAME);
-  ShareAction* share_action =
-      share_action_cache_->GetActionFromName(action_name);
+  ShareAction* share_action = share_action_cache_->GetActionFromName(
+      l10n_util::GetStringUTF16(IDS_NEARBY_SHARE_FEATURE_NAME));
   if (!share_action || !share_action->ShouldShowAction(
                            intent, false /*contains_google_document=*/)) {
     std::move(delivered_callback).Run(SharesheetResult::kCancel);
     return;
   }
-  share_action->SetActionCleanupCallbackForArc(std::move(cleanup_callback));
+  share_action->SetActionCleanupCallbackForArc(
+      std::move(action_cleanup_callback));
   SharesheetMetrics::RecordSharesheetLaunchSource(source);
 
   if (!native_window) {
@@ -202,8 +200,8 @@ bool SharesheetService::OnAcceleratorPressed(
              : share_action->OnAcceleratorPressed(accelerator);
 }
 
-bool SharesheetService::HasShareTargets(const apps::IntentPtr& intent) {
-  bool contains_hosted_document = HasHostedDocument(*intent);
+bool SharesheetService::HasShareTargets(const apps::IntentPtr& intent,
+                                        bool contains_hosted_document) {
   std::vector<apps::IntentLaunchInfo> intent_launch_info =
       app_service_proxy_->GetAppsForIntent(intent);
 
@@ -224,6 +222,7 @@ const gfx::VectorIcon* SharesheetService::GetVectorIcon(
 void SharesheetService::ShowBubbleForTesting(
     gfx::NativeWindow native_window,
     apps::IntentPtr intent,
+    bool contains_hosted_document,
     LaunchSource source,
     DeliveredCallback delivered_callback,
     CloseCallback close_callback,
@@ -233,7 +232,7 @@ void SharesheetService::ShowBubbleForTesting(
   for (int i = 0; i < num_actions_to_add; ++i) {
     share_action_cache_->AddShareActionForTesting();  // IN-TEST
   }
-  auto targets = GetActionsForIntent(intent);
+  auto targets = GetActionsForIntent(intent, contains_hosted_document);
   OnReadyToShowBubble(native_window, std::move(intent),
                       std::move(delivered_callback), std::move(close_callback),
                       std::move(targets));
@@ -253,11 +252,11 @@ void SharesheetService::SetSelectedAppForTesting(
 
 void SharesheetService::PrepareToShowBubble(
     apps::IntentPtr intent,
+    bool contains_hosted_document,
     GetNativeWindowCallback get_native_window_callback,
     DeliveredCallback delivered_callback,
     CloseCallback close_callback) {
-  bool contains_hosted_document = HasHostedDocument(*intent);
-  auto targets = GetActionsForIntent(intent);
+  auto targets = GetActionsForIntent(intent, contains_hosted_document);
 
   std::vector<apps::IntentLaunchInfo> intent_launch_info =
       contains_hosted_document ? std::vector<apps::IntentLaunchInfo>()
@@ -272,16 +271,16 @@ void SharesheetService::PrepareToShowBubble(
 }
 
 std::vector<TargetInfo> SharesheetService::GetActionsForIntent(
-    const apps::IntentPtr& intent) {
-  bool contains_hosted_document = HasHostedDocument(*intent);
+    const apps::IntentPtr& intent,
+    bool contains_hosted_document) {
   std::vector<TargetInfo> targets;
   auto& actions = share_action_cache_->GetShareActions();
   auto iter = actions.begin();
   while (iter != actions.end()) {
     if ((*iter)->ShouldShowAction(intent, contains_hosted_document)) {
-      targets.emplace_back(TargetType::kAction, std::nullopt,
+      targets.emplace_back(TargetType::kAction, absl::nullopt,
                            (*iter)->GetActionName(), (*iter)->GetActionName(),
-                           std::nullopt, std::nullopt, false);
+                           absl::nullopt, absl::nullopt, false);
     }
     ++iter;
   }
@@ -300,16 +299,24 @@ void SharesheetService::LoadAppIcons(
 
   // Making a copy because we move |intent_launch_info| out below.
   auto app_id = intent_launch_info[index].app_id;
-  uint32_t icon_effects = app_service_proxy_->GetIconEffects(app_id);
-  if (intent_launch_info[index].is_dlp_blocked) {
-    icon_effects |= apps::IconEffects::kBlocked;
+  absl::optional<apps::IconKey> icon_key =
+      app_service_proxy_->GetIconKey(app_id);
+  if (icon_key.has_value()) {
+    if (intent_launch_info[index].is_dlp_blocked) {
+      icon_key->icon_effects |= apps::IconEffects::kBlocked;
+    }
+    app_service_proxy_->LoadIconFromIconKey(
+        app_service_proxy_->AppRegistryCache().GetAppType(app_id), app_id,
+        icon_key.value(), apps::IconType::kStandard, kIconSize,
+        /*allow_placeholder_icon=*/false,
+        base::BindOnce(&SharesheetService::OnIconLoaded,
+                       weak_factory_.GetWeakPtr(),
+                       std::move(intent_launch_info), std::move(targets), index,
+                       std::move(callback)));
+  } else {
+    OnIconLoaded(std::move(intent_launch_info), std::move(targets), index,
+                 std::move(callback), std::make_unique<apps::IconValue>());
   }
-  app_service_proxy_->LoadIconWithIconEffects(
-      app_id, icon_effects, apps::IconType::kStandard, kIconSize,
-      /*allow_placeholder_icon=*/false,
-      base::BindOnce(&SharesheetService::OnIconLoaded,
-                     weak_factory_.GetWeakPtr(), std::move(intent_launch_info),
-                     std::move(targets), index, std::move(callback)));
 }
 
 void SharesheetService::OnIconLoaded(
@@ -441,12 +448,7 @@ SharesheetServiceDelegator* SharesheetService::GetDelegator(
 void SharesheetService::RecordUserActionMetrics(
     const std::u16string& target_name) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  const std::u16string quick_share_name =
-      features::IsNameEnabled()
-          ? NearbyShareResourceGetter::GetInstance()->GetStringWithFeatureName(
-                IDS_NEARBY_SHARE_FEATURE_NAME_PH)
-          : l10n_util::GetStringUTF16(IDS_NEARBY_SHARE_FEATURE_NAME);
-  if (target_name == quick_share_name) {
+  if (target_name == l10n_util::GetStringUTF16(IDS_NEARBY_SHARE_FEATURE_NAME)) {
     SharesheetMetrics::RecordSharesheetActionMetrics(
         SharesheetMetrics::UserAction::kNearbyAction);
   } else if (target_name ==
@@ -480,6 +482,7 @@ void SharesheetService::RecordUserActionMetrics(
       case apps::AppType::kBuiltIn:
       case apps::AppType::kCrostini:
       case apps::AppType::kChromeApp:
+      case apps::AppType::kMacOs:
       case apps::AppType::kPluginVm:
       case apps::AppType::kStandaloneBrowser:
       case apps::AppType::kRemote:
@@ -509,6 +512,7 @@ void SharesheetService::RecordTargetCountMetrics(
         ++web_app_count;
         break;
       case TargetType::kAction:
+        RecordShareActionMetrics(target.launch_name);
         break;
       case TargetType::kUnknown:
         NOTREACHED();
@@ -518,7 +522,41 @@ void SharesheetService::RecordTargetCountMetrics(
   SharesheetMetrics::RecordSharesheetWebAppCount(web_app_count);
 }
 
+void SharesheetService::RecordShareActionMetrics(
+    const std::u16string& target_name) {
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  if (target_name == l10n_util::GetStringUTF16(IDS_NEARBY_SHARE_FEATURE_NAME)) {
+    SharesheetMetrics::RecordSharesheetShareAction(
+        SharesheetMetrics::UserAction::kNearbyAction);
+  } else if (target_name ==
+             l10n_util::GetStringUTF16(IDS_FILE_BROWSER_SHARE_BUTTON_LABEL)) {
+    SharesheetMetrics::RecordSharesheetShareAction(
+        SharesheetMetrics::UserAction::kDriveAction);
+  } else if (target_name ==
+             l10n_util::GetStringUTF16(
+                 IDS_SHARESHEET_COPY_TO_CLIPBOARD_SHARE_ACTION_LABEL)) {
+    SharesheetMetrics::RecordSharesheetShareAction(
+        SharesheetMetrics::UserAction::kCopyAction);
+  } else if (target_name == u"example") {
+    // This is a test. Do nothing.
+  } else {
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+    NOTREACHED();
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  }
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+}
+
 void SharesheetService::RecordShareDataMetrics(const apps::IntentPtr& intent) {
+  // Record whether or not we're sharing a drive folder.
+
+  // If |intent| has a |drive_share_url| but does not contain |share_text|,
+  // it is a Drive Folder.
+  const bool is_drive_folder = intent->drive_share_url.has_value() &&
+                               intent->drive_share_url.value().is_valid() &&
+                               intent->share_text.value_or("").empty();
+  SharesheetMetrics::RecordSharesheetIsDriveFolder(is_drive_folder);
+
   // Record file count.
   SharesheetMetrics::RecordSharesheetFilesSharedCount(intent->files.size());
 }

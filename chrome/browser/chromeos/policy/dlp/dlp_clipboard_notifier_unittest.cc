@@ -5,7 +5,6 @@
 #include "chrome/browser/chromeos/policy/dlp/dlp_clipboard_notifier.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback_helpers.h"
@@ -23,7 +22,7 @@
 #include "testing/gmock/include/gmock/gmock-matchers.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/base/clipboard/clipboard_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/data_transfer_policy/data_transfer_endpoint.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/views/widget/widget.h"
@@ -74,8 +73,8 @@ class MockDlpClipboardNotifier : public DlpClipboardNotifier {
   MOCK_METHOD1(ShowBlockBubble, void(const std::u16string& text));
   MOCK_METHOD3(ShowWarningBubble,
                void(const std::u16string& text,
-                    base::OnceCallback<void(views::Widget*)> proceed_cb,
-                    base::OnceCallback<void(views::Widget*)> cancel_cb));
+                    base::RepeatingCallback<void(views::Widget*)> proceed_cb,
+                    base::RepeatingCallback<void(views::Widget*)> cancel_cb));
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   MOCK_CONST_METHOD3(ShowToast,
                      void(const std::string& id,
@@ -107,23 +106,19 @@ class MockDlpClipboardNotifier : public DlpClipboardNotifier {
 }  // namespace
 
 class ClipboardBubbleTestWithParam
-    : public ::testing::TestWithParam<std::optional<ui::EndpointType>> {
+    : public ::testing::TestWithParam<absl::optional<ui::EndpointType>> {
  public:
   ClipboardBubbleTestWithParam() = default;
   ClipboardBubbleTestWithParam(const ClipboardBubbleTestWithParam&) = delete;
   ClipboardBubbleTestWithParam& operator=(const ClipboardBubbleTestWithParam&) =
       delete;
   ~ClipboardBubbleTestWithParam() override = default;
-
- private:
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::MainThreadType::DEFAULT};
 };
 
 TEST_P(ClipboardBubbleTestWithParam, BlockBubble) {
   ::testing::StrictMock<MockDlpClipboardNotifier> notifier;
   ui::DataTransferEndpoint data_src((GURL(kExampleUrl)));
-  std::optional<ui::DataTransferEndpoint> data_dst;
+  absl::optional<ui::DataTransferEndpoint> data_dst;
   auto param = GetParam();
   if (param.has_value())
     data_dst.emplace(CreateEndpoint(param.value()));
@@ -136,7 +131,7 @@ TEST_P(ClipboardBubbleTestWithParam, BlockBubble) {
 TEST_P(ClipboardBubbleTestWithParam, WarnBubble) {
   ::testing::StrictMock<MockDlpClipboardNotifier> notifier;
   ui::DataTransferEndpoint data_src((GURL(kExampleUrl)));
-  std::optional<ui::DataTransferEndpoint> data_dst;
+  absl::optional<ui::DataTransferEndpoint> data_dst;
   auto param = GetParam();
   if (param.has_value())
     data_dst.emplace(CreateEndpoint(param.value()));
@@ -145,12 +140,13 @@ TEST_P(ClipboardBubbleTestWithParam, WarnBubble) {
                                     views::Widget::ClosedReason::kUnspecified));
   EXPECT_CALL(notifier, ShowWarningBubble);
 
-  notifier.WarnOnPaste(data_src, data_dst, base::DoNothing());
+  notifier.WarnOnPaste(&data_src, base::OptionalToPtr(data_dst),
+                       base::DoNothing());
 }
 
 INSTANTIATE_TEST_SUITE_P(DlpClipboardNotifierTest,
                          ClipboardBubbleTestWithParam,
-                         ::testing::Values(std::nullopt,
+                         ::testing::Values(absl::nullopt,
                                            ui::EndpointType::kDefault,
 #if BUILDFLAG(IS_CHROMEOS_ASH)
                                            ui::EndpointType::kUnknownVm,
@@ -177,8 +173,7 @@ TEST_P(ClipboardBubbleButtonsTestWithParam, ProceedPressed) {
               CloseWidget(testing::_,
                           views::Widget::ClosedReason::kAcceptButtonClicked));
 
-  notifier.ProceedPressed(std::make_unique<ui::ClipboardData>(), data_dst,
-                          base::DoNothing(), nullptr);
+  notifier.ProceedPressed(data_dst, base::DoNothing(), nullptr);
 
   EXPECT_TRUE(notifier.DidUserApproveDst(&data_dst));
 }
@@ -291,10 +286,8 @@ TEST_F(DlpClipboardNotifierTest, ProceedSavedHistory) {
                           views::Widget::ClosedReason::kAcceptButtonClicked))
       .Times(2);
 
-  notifier.ProceedPressed(std::make_unique<ui::ClipboardData>(), url_dst,
-                          base::DoNothing(), nullptr);
-  notifier.ProceedPressed(std::make_unique<ui::ClipboardData>(), default_dst,
-                          base::DoNothing(), nullptr);
+  notifier.ProceedPressed(url_dst, base::DoNothing(), nullptr);
+  notifier.ProceedPressed(default_dst, base::DoNothing(), nullptr);
 
   EXPECT_TRUE(notifier.DidUserApproveDst(&url_dst));
   EXPECT_TRUE(notifier.DidUserApproveDst(&default_dst));
@@ -316,10 +309,8 @@ TEST_F(DlpClipboardNotifierTest, ProceedSavedHistoryVMs) {
                           views::Widget::ClosedReason::kAcceptButtonClicked))
       .Times(2);
 
-  notifier.ProceedPressed(std::make_unique<ui::ClipboardData>(), arc_dst,
-                          base::DoNothing(), nullptr);
-  notifier.ProceedPressed(std::make_unique<ui::ClipboardData>(), crostini_dst,
-                          base::DoNothing(), nullptr);
+  notifier.ProceedPressed(arc_dst, base::DoNothing(), nullptr);
+  notifier.ProceedPressed(crostini_dst, base::DoNothing(), nullptr);
 
   EXPECT_TRUE(notifier.DidUserApproveDst(&arc_dst));
   EXPECT_TRUE(notifier.DidUserApproveDst(&crostini_dst));
@@ -424,7 +415,7 @@ TEST_P(ToastTestWithParam, WarnToast) {
 
   EXPECT_CALL(notifier, CloseWidget(testing::_,
                                     views::Widget::ClosedReason::kUnspecified));
-  notifier.WarnOnPaste(data_src, data_dst, base::DoNothing());
+  notifier.WarnOnPaste(&data_src, &data_dst, base::DoNothing());
 }
 
 INSTANTIATE_TEST_SUITE_P(

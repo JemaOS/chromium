@@ -4,18 +4,16 @@
 
 import '../strings.m.js';
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 
 // <if expr="is_chromeos">
 import {NativeLayerCrosImpl} from '../native_layer_cros.js';
-
 // </if>
 
-import type {Cdd, ColorCapability, ColorOption, CopiesCapability} from './cdd.js';
+import {Cdd, ColorCapability, ColorOption, CopiesCapability} from './cdd.js';
 
 // <if expr="is_chromeos">
-import type {PrinterStatus} from './printer_status_cros.js';
-import {getStatusReasonFromPrinterStatus, PrinterStatusReason} from './printer_status_cros.js';
+import {getStatusReasonFromPrinterStatus, PrinterStatus, PrinterStatusReason} from './printer_status_cros.js';
 // </if>
 
 /**
@@ -354,10 +352,6 @@ export class Destination {
    */
   get printerStatusReason(): PrinterStatusReason|null {
     return this.printerStatusReason_;
-  }
-
-  set printerStatusReason(printerStatusReason: PrinterStatusReason) {
-    this.printerStatusReason_ = printerStatusReason;
   }
 
   setPrinterStatusRetryTimeoutForTesting(timeoutMs: number) {

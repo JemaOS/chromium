@@ -150,5 +150,5 @@ void TabIconView::PaintButtonContents(gfx::Canvas* canvas) {
   PaintFavicon(canvas, DefaultFavicon::GetInstance().icon());
 }
 
-BEGIN_METADATA(TabIconView)
+BEGIN_METADATA(TabIconView, views::MenuButton)
 END_METADATA

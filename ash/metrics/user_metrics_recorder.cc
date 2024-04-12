@@ -15,7 +15,6 @@
 #include "ash/metrics/pointer_metrics_recorder.h"
 #include "ash/metrics/stylus_metrics_recorder.h"
 #include "ash/metrics/touch_usage_metrics_recorder.h"
-#include "ash/metrics/wm_feature_metrics_recorder.h"
 #include "ash/public/cpp/accessibility_controller_enums.h"
 #include "ash/public/cpp/shelf_item.h"
 #include "ash/public/cpp/shelf_model.h"
@@ -67,9 +66,7 @@ void RecordShelfItemCounts() {
 
 }  // namespace
 
-UserMetricsRecorder::UserMetricsRecorder()
-    : wm_feature_metrics_recorder_(
-          std::make_unique<WMFeatureMetricsRecorder>()) {
+UserMetricsRecorder::UserMetricsRecorder() {
   StartTimer();
   login_metrics_recorder_ = std::make_unique<LoginMetricsRecorder>();
 }
@@ -127,20 +124,23 @@ void UserMetricsRecorder::OnShellShuttingDown() {
   desktop_task_switch_metric_recorder_.reset();
 
   // To clean up `pointer_metrics_recorder_`, `touch_usage_metrics_recorder_`
-  // and `stylus_metrics_recorder_`, `wm_feature_metrics_recorder_` properly, a
-  // valid shell instance is required, so explicitly delete them before the
-  // shell instance becomes invalid.
+  // and `stylus_metrics_recorder_` properly, a valid shell instance is
+  // required, so explicitly delete them before the shell instance becomes
+  // invalid.
   pointer_metrics_recorder_.reset();
   touch_usage_metrics_recorder_.reset();
   stylus_metrics_recorder_.reset();
-  wm_feature_metrics_recorder_.reset();
 }
 
 void UserMetricsRecorder::RecordPeriodicMetrics() {
   if (IsUserInActiveDesktopEnvironment()) {
     RecordShelfItemCounts();
     RecordPeriodicAppListMetrics();
-    wm_feature_metrics_recorder_->RecordPeriodicalWMMetrics();
+
+    base::UmaHistogramBoolean(
+        "Ash.AppNotificationBadgingPref",
+        Shell::Get()->session_controller()->GetActivePrefService()->GetBoolean(
+            prefs::kAppNotificationBadgingEnabled));
   }
 }
 

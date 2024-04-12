@@ -69,7 +69,7 @@ class SearchProviderAsh : public mojom::SearchResultsPublisher,
   // mojom::SearchResultsPublisher overrides:
   void OnSearchResultsReceived(
       mojom::SearchStatus status,
-      std::optional<std::vector<mojom::SearchResultPtr>> results) override;
+      absl::optional<std::vector<mojom::SearchResultPtr>> results) override;
 
   bool IsSearchControllerConnected() const;
 

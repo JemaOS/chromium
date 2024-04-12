@@ -18,6 +18,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/base/attributes.h"
+#include "absl/base/internal/raw_logging.h"
 #include "absl/log/internal/test_actions.h"
 #include "absl/log/internal/test_helpers.h"
 #include "absl/log/internal/test_matchers.h"
@@ -204,7 +205,7 @@ class ReentrancyTest : public ::testing::Test {
               << "The log is coming from *inside the sink*.";
           break;
         default:
-          LOG(FATAL) << "Invalid mode " << static_cast<int>(mode_);
+          ABSL_RAW_LOG(FATAL, "Invalid mode %d.\n", static_cast<int>(mode_));
       }
     }
 

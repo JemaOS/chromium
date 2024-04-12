@@ -152,7 +152,7 @@ void SettingsPrivateEventRouter::SendPrefChange(const std::string& pref_name) {
     return;
   }
 
-  std::optional<api::settings_private::PrefObject> pref_object =
+  absl::optional<api::settings_private::PrefObject> pref_object =
       prefs_util_->GetPref(pref_name);
 
   std::vector<api::settings_private::PrefObject> prefs;
@@ -161,16 +161,15 @@ void SettingsPrivateEventRouter::SendPrefChange(const std::string& pref_name) {
 
   auto args(api::settings_private::OnPrefsChanged::Create(prefs));
 
-  std::unique_ptr<Event> extension_event =
-      std::make_unique<Event>(events::SETTINGS_PRIVATE_ON_PREFS_CHANGED,
-                              api::settings_private::OnPrefsChanged::kEventName,
-                              std::move(args), context_);
+  std::unique_ptr<Event> extension_event(new Event(
+      events::SETTINGS_PRIVATE_ON_PREFS_CHANGED,
+      api::settings_private::OnPrefsChanged::kEventName, std::move(args)));
   event_router->BroadcastEvent(std::move(extension_event));
 }
 
-std::unique_ptr<SettingsPrivateEventRouter> SettingsPrivateEventRouter::Create(
+SettingsPrivateEventRouter* SettingsPrivateEventRouter::Create(
     content::BrowserContext* context) {
-  return std::make_unique<SettingsPrivateEventRouter>(context);
+  return new SettingsPrivateEventRouter(context);
 }
 
 }  // namespace extensions

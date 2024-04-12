@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "base/functional/callback.h"
-#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "build/build_config.h"
@@ -20,8 +19,6 @@
 #include "ui/views/controls/textfield/textfield_controller.h"
 #include "ui/views/layout/animating_layout_manager.h"
 #include "ui/views/layout/box_layout_view.h"
-#include "ui/views/layout/delegating_layout_manager.h"
-#include "ui/views/metadata/view_factory.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/view.h"
 #include "ui/views/view_observer.h"
@@ -40,6 +37,8 @@ class MenuModel;
 
 namespace views {
 class Button;
+class EditableComboboxMenuModel;
+class EditableComboboxPreTargetHandler;
 class MenuRunner;
 class Textfield;
 
@@ -48,14 +47,14 @@ class InteractionTestUtilSimulatorViews;
 }  // namespace test
 
 // Textfield that also shows a drop-down list with suggestions.
-class VIEWS_EXPORT EditableCombobox : public View,
-                                      public TextfieldController,
-                                      public ViewObserver,
-                                      public AnimatingLayoutManager::Observer,
-                                      public LayoutDelegate {
-  METADATA_HEADER(EditableCombobox, View)
-
+class VIEWS_EXPORT EditableCombobox
+    : public View,
+      public TextfieldController,
+      public ViewObserver,
+      public views::AnimatingLayoutManager::Observer {
  public:
+  METADATA_HEADER(EditableCombobox);
+
   // A strategy that can be used to customize the display of the drop-down menu.
   // It is only intended to be used by classes that extend `EditableCombobox`.
   class MenuDecorationStrategy {
@@ -71,7 +70,7 @@ class VIEWS_EXPORT EditableCombobox : public View,
   EditableCombobox();
 
   // |combobox_model|: The ComboboxModel that gives us the items to show in the
-  // drop-down list.
+  // menu.
   // |filter_on_edit|: Whether to only show the items that are case-insensitive
   // completions of the current textfield content.
   // |show_on_empty|: Whether to show the drop-down list when there is no
@@ -96,7 +95,7 @@ class VIEWS_EXPORT EditableCombobox : public View,
   const std::u16string& GetText() const;
   void SetText(const std::u16string& text);
 
-  const std::u16string& GetPlaceholderText() const;
+  std::u16string GetPlaceholderText() const;
   void SetPlaceholderText(const std::u16string& text);
 
   const gfx::FontList& GetFontList() const;
@@ -167,6 +166,7 @@ class VIEWS_EXPORT EditableCombobox : public View,
   const ui::ComboboxModel* GetComboboxModel() const;
 
   // Overridden from View:
+  void Layout() override;
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
   void RequestFocus() override;
   bool GetNeedsNotificationWhenVisibleBoundsChange() const override;
@@ -185,10 +185,6 @@ class VIEWS_EXPORT EditableCombobox : public View,
   // Overridden from views::AnimatingLayoutManager::Observer:
   void OnLayoutIsAnimatingChanged(views::AnimatingLayoutManager* source,
                                   bool is_animating) override;
-
-  // Overridden from LayoutDelegate:
-  ProposedLayout CalculateProposedLayout(
-      const SizeBounds& size_bounds) const override;
 
   bool ShouldApplyInkDropEffects();
 
@@ -228,15 +224,6 @@ class VIEWS_EXPORT EditableCombobox : public View,
   base::ScopedObservation<View, ViewObserver> observation_{this};
 };
 
-BEGIN_VIEW_BUILDER(VIEWS_EXPORT, EditableCombobox, View)
-VIEW_BUILDER_PROPERTY(base::RepeatingClosure, Callback)
-VIEW_BUILDER_PROPERTY(std::unique_ptr<ui::ComboboxModel>, Model)
-VIEW_BUILDER_PROPERTY(std::u16string, PlaceholderText)
-VIEW_BUILDER_PROPERTY(std::u16string, Text)
-END_VIEW_BUILDER
-
 }  // namespace views
-
-DEFINE_VIEW_BUILDER(VIEWS_EXPORT, EditableCombobox)
 
 #endif  // UI_VIEWS_CONTROLS_EDITABLE_COMBOBOX_EDITABLE_COMBOBOX_H_

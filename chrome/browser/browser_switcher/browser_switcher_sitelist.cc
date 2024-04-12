@@ -6,10 +6,8 @@
 
 #include <string.h>
 
-#include <optional>
 #include <sstream>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -17,12 +15,14 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/values.h"
 #include "chrome/browser/browser_switcher/browser_switcher_prefs.h"
 #include "chrome/browser/browser_switcher/ieem_sitelist_parser.h"
 #include "components/prefs/pref_service.h"
 #include "components/url_formatter/url_fixer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/re2/src/re2/re2.h"
 #include "url/gurl.h"
 #include "url/url_util.h"
@@ -36,8 +36,8 @@ namespace {
 //
 // If |token| is not in |input|, return a pointer to the null-byte at the end
 // of |input|.
-auto StringFindInsensitiveASCII(std::string_view input,
-                                std::string_view token) {
+const char* StringFindInsensitiveASCII(base::StringPiece input,
+                                       base::StringPiece token) {
   return base::ranges::search(input, token, std::equal_to<>(),
                               &base::ToLowerASCII<char>,
                               &base::ToLowerASCII<char>);
@@ -45,9 +45,10 @@ auto StringFindInsensitiveASCII(std::string_view input,
 
 // Checks if the omitted prefix for a non-fully specific prefix is one of the
 // expected parts that are allowed to be omitted (e.g. "https://").
-bool IsValidPrefix(std::string_view prefix) {
+bool IsValidPrefix(base::StringPiece prefix) {
   static re2::LazyRE2 re = {"(https?|file):(//)?"};
-  return prefix.empty() || re2::RE2::FullMatch(prefix, *re);
+  re2::StringPiece converted_prefix(prefix.data(), prefix.size());
+  return (prefix.empty() || re2::RE2::FullMatch(converted_prefix, *re));
 }
 
 // Checks whether |patterns| contains a pattern that matches |url|, and returns
@@ -91,7 +92,7 @@ class WildcardRule : public Rule {
 // string, then some simple string searches.
 class DefaultModeRule : public Rule {
  public:
-  explicit DefaultModeRule(std::string_view original_rule)
+  explicit DefaultModeRule(base::StringPiece original_rule)
       : Rule(original_rule) {
     canonical_ = std::string(original_rule);
 
@@ -136,7 +137,7 @@ class DefaultModeRule : public Rule {
     GURL base_url(placeholder);
 
     GURL relative_url = base_url.Resolve(canonical_);
-    std::string_view spec = relative_url.possibly_invalid_spec();
+    base::StringPiece spec = relative_url.possibly_invalid_spec();
 
     // The parsed URL might start with "ftp://XXX/" or "ftp://". Remove that
     // prefix.
@@ -155,28 +156,28 @@ class DefaultModeRule : public Rule {
   ~DefaultModeRule() override = default;
 
   bool Matches(const NoCopyUrl& url) const override {
-    std::string_view pattern = canonical_;
+    base::StringPiece pattern = canonical_;
 
-    if (pattern.find('/') != std::string_view::npos) {
+    if (pattern.find('/') != base::StringPiece::npos) {
       // Check that the prefix is valid. The URL's hostname/scheme have
       // already been case-normalized, so that part of the URL is always
       // case-insensitive.
       size_t pos = url.spec().find(pattern);
-      if (pos != std::string_view::npos &&
-          IsValidPrefix(std::string_view(url.spec().data(), pos))) {
+      if (pos != base::StringPiece::npos &&
+          IsValidPrefix(base::StringPiece(url.spec().data(), pos))) {
         return true;
       }
       if (!url.spec_without_port().empty()) {
         pos = url.spec_without_port().find(pattern);
-        return pos != std::string_view::npos &&
+        return pos != base::StringPiece::npos &&
                IsValidPrefix(
-                   std::string_view(url.spec_without_port().data(), pos));
+                   base::StringPiece(url.spec_without_port().data(), pos));
       }
       return false;
     }
 
     // Compare hosts and ports, case-insensitive.
-    auto it = StringFindInsensitiveASCII(url.host_and_port(), pattern);
+    const char* it = StringFindInsensitiveASCII(url.host_and_port(), pattern);
     return it != url.host_and_port().end();
   }
 
@@ -200,7 +201,7 @@ class DefaultModeRule : public Rule {
 // with the URL to be matched.
 class IESiteListModeRule : public Rule {
  public:
-  explicit IESiteListModeRule(std::string_view original_rule)
+  explicit IESiteListModeRule(base::StringPiece original_rule)
       : Rule(original_rule) {
     // Parse the string as a URL and extract its parts.
     //
@@ -283,7 +284,7 @@ class IESiteListModeRule : public Rule {
       return false;
 
     // Compare paths, case-insensitively. They must match at the beginning.
-    auto pos = StringFindInsensitiveASCII(url.path_piece(), path_);
+    const char* pos = StringFindInsensitiveASCII(url.path_piece(), path_);
     if (pos != url.path_piece().begin())
       return false;
 
@@ -320,9 +321,9 @@ class IESiteListModeRule : public Rule {
   }
 
  private:
-  std::optional<std::string> scheme_;
+  absl::optional<std::string> scheme_;
   std::string host_;
-  std::optional<int> port_;
+  absl::optional<int> port_;
   // Always at least a "/".
   std::string path_;
 
@@ -331,7 +332,7 @@ class IESiteListModeRule : public Rule {
 
 }  // namespace
 
-std::unique_ptr<Rule> CanonicalizeRule(std::string_view original_rule,
+std::unique_ptr<Rule> CanonicalizeRule(base::StringPiece original_rule,
                                        ParsingMode parsing_mode) {
   std::unique_ptr<Rule> rule;
 

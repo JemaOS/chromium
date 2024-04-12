@@ -4,14 +4,13 @@
 
 #include "chrome/browser/download/offline_item_model_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/download/offline_item_model_manager.h"
 #include "content/public/browser/browser_context.h"
 
 // static
 OfflineItemModelManagerFactory* OfflineItemModelManagerFactory::GetInstance() {
-  static base::NoDestructor<OfflineItemModelManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<OfflineItemModelManagerFactory>::get();
 }
 
 // static
@@ -24,17 +23,11 @@ OfflineItemModelManager* OfflineItemModelManagerFactory::GetForBrowserContext(
 OfflineItemModelManagerFactory::OfflineItemModelManagerFactory()
     : ProfileKeyedServiceFactory(
           "OfflineItemModelManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 OfflineItemModelManagerFactory::~OfflineItemModelManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-OfflineItemModelManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* OfflineItemModelManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<OfflineItemModelManager>(context);
+  return new OfflineItemModelManager(context);
 }

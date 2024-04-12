@@ -55,7 +55,8 @@ struct GlyphBoundsAccumulator {
 
   // Unite a glyph bounding box to |bounds|.
   template <bool is_horizontal_run>
-  void Unite(gfx::RectF bounds_for_glyph, GlyphOffset glyph_offset) {
+  void Unite(gfx::RectF bounds_for_glyph,
+             ShapeResult::GlyphOffset glyph_offset) {
     if (UNLIKELY(bounds_for_glyph.IsEmpty()))
       return;
 
@@ -74,7 +75,7 @@ struct GlyphBoundsAccumulator {
   // Non-template version of |Unite()|, see above.
   void Unite(bool is_horizontal_run,
              gfx::RectF bounds_for_glyph,
-             GlyphOffset glyph_offset) {
+             ShapeResult::GlyphOffset glyph_offset) {
     is_horizontal_run ? Unite<true>(bounds_for_glyph, glyph_offset)
                       : Unite<false>(bounds_for_glyph, glyph_offset);
   }

@@ -12,7 +12,9 @@
 #include "ui/gfx/geometry/size.h"
 
 struct Environment {
-  Environment() { logging::SetMinLogLevel(logging::LOGGING_FATAL); }
+  Environment() {
+    logging::SetMinLogLevel(logging::LOG_FATAL);
+  }
 };
 
 Environment* env = new Environment();

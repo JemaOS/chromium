@@ -33,26 +33,30 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 @Config(manifest = Config.NONE)
 @LooperMode(Mode.PAUSED)
 public class ToastManagerTest {
-    @Mock Toast mToast;
-    @Mock Toast mToastNext;
-    @Mock android.widget.Toast mAndroidToastObject;
-    @Mock android.widget.Toast mAndroidToastObjectNext;
+    @Mock
+    Toast mToast;
+    @Mock
+    Toast mToastNext;
+    @Mock
+    android.widget.Toast mAndroidToastObject;
+    @Mock
+    android.widget.Toast mAndroidToastObjectNext;
 
     private static final String TOAST_MSG = "now";
     private static final String TOAST_MSG_NEXT = "next";
-
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        ToastManager.setEnabledForTesting(true);
     }
 
     @After
     public void tearDown() {
         waitForIdleUi();
         ToastManager.resetForTesting();
-        mToast = null;
         clearInvocations(mAndroidToastObject);
         clearInvocations(mAndroidToastObjectNext);
+        ToastManager.setEnabledForTesting(false);
     }
 
     private static void waitForIdleUi() {
@@ -64,7 +68,9 @@ public class ToastManagerTest {
     public void showToast() {
         doReturn(mAndroidToastObject).when(mToast).getAndroidToast();
 
-        ToastManager.getInstance().requestShow(mToast);
+        ToastManager toastManager = ToastManager.getInstance();
+
+        toastManager.requestShow(mToast);
         verify(mAndroidToastObject).show();
     }
 
@@ -86,9 +92,7 @@ public class ToastManagerTest {
         toastManager.cancel(mToast);
         assertFalse("The current toast should have canceled", toastManager.isShowingForTesting());
         toastManager.requestShow(mToastNext);
-        assertEquals(
-                "The next toast should show right away",
-                mToastNext,
+        assertEquals("The next toast should show right away", mToastNext,
                 toastManager.getCurrentToast());
         verify(mAndroidToastObjectNext).show();
     }

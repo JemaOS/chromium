@@ -19,7 +19,6 @@ class SigninUIError;
 struct AccountInfo;
 
 namespace policy {
-class ProfileSeparationPolicies;
 class UserCloudSigninRestrictionPolicyFetcher;
 }
 
@@ -72,7 +71,7 @@ class TurnSyncOnHelperDelegateImpl : public TurnSyncOnHelper::Delegate,
   void OnProfileSigninRestrictionsFetched(
       const AccountInfo& account_info,
       signin::SigninChoiceCallback callback,
-      const policy::ProfileSeparationPolicies& profile_separation_policies);
+      const std::string& signin_restriction);
 #endif  //! BUILDFLAG(IS_CHROMEOS_LACROS)
 
   void OnProfileCheckComplete(const AccountInfo& account_info,

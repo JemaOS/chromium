@@ -13,7 +13,6 @@
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "media/base/audio_bus.h"
-#include "media/base/audio_glitch_info.h"
 #include "third_party/blink/public/platform/modules/webrtc/webrtc_logging.h"
 
 namespace blink {
@@ -171,7 +170,7 @@ void PeerConnectionRemoteAudioSource::OnData(const void* audio_data,
                                sample_rate, frames_int));
   }
 
-  MediaStreamAudioSource::DeliverDataToTracks(*audio_bus_, playout_time, {});
+  MediaStreamAudioSource::DeliverDataToTracks(*audio_bus_, playout_time);
 
 #ifndef NDEBUG
   if (is_only_thread_here)

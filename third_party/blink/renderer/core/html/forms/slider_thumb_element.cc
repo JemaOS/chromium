@@ -43,9 +43,9 @@
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
-#include "third_party/blink/renderer/core/layout/flex/layout_flexible_box.h"
-#include "third_party/blink/renderer/core/layout/layout_ng_block_flow.h"
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
+#include "third_party/blink/renderer/core/layout/ng/flex/layout_ng_flexible_box.h"
+#include "third_party/blink/renderer/core/layout/ng/layout_ng_block_flow.h"
 #include "ui/base/ui_base_features.h"
 
 namespace blink {
@@ -88,12 +88,12 @@ bool SliderThumbElement::MatchesReadWritePseudoClass() const {
   return HostInput() && HostInput()->MatchesReadWritePseudoClass();
 }
 
-void SliderThumbElement::DragFrom(const PhysicalOffset& point) {
+void SliderThumbElement::DragFrom(const LayoutPoint& point) {
   StartDragging();
   SetPositionFromPoint(point);
 }
 
-void SliderThumbElement::SetPositionFromPoint(const PhysicalOffset& point) {
+void SliderThumbElement::SetPositionFromPoint(const LayoutPoint& point) {
   HTMLInputElement* input(HostInput());
   Element* track_element = input->EnsureShadowSubtree()->getElementById(
       shadow_element_names::kIdSliderTrack);
@@ -104,7 +104,8 @@ void SliderThumbElement::SetPositionFromPoint(const PhysicalOffset& point) {
   if (!input_object || !thumb_box || !track_box)
     return;
 
-  PhysicalOffset point_in_track = track_box->AbsoluteToLocalPoint(point);
+  PhysicalOffset point_in_track =
+      track_box->AbsoluteToLocalPoint(PhysicalOffsetToBeNoop(point));
   const bool is_vertical = !thumb_box->StyleRef().IsHorizontalWritingMode();
   bool is_left_to_right_direction =
       thumb_box->StyleRef().IsLeftToRightDirection();
@@ -116,20 +117,20 @@ void SliderThumbElement::SetPositionFromPoint(const PhysicalOffset& point) {
       thumb_box->LocalToAncestorPoint(PhysicalOffset(), input_box) -
       track_box->LocalToAncestorPoint(PhysicalOffset(), input_box);
   if (is_vertical) {
-    track_size = track_box->ContentHeight() - thumb_box->Size().height;
-    position = point_in_track.top - thumb_box->Size().height / 2;
+    track_size = track_box->ContentHeight() - thumb_box->Size().Height();
+    position = point_in_track.top - thumb_box->Size().Height() / 2;
     if (is_left_to_right_direction &&
         !RuntimeEnabledFeatures::
             FormControlsVerticalWritingModeDirectionSupportEnabled()) {
-      position -= thumb_box->MarginBottom();
+      position -= thumb_box->MarginBottom() - track_size;
     } else {
       position -= is_left_to_right_direction ? thumb_box->MarginTop()
                                              : thumb_box->MarginBottom();
     }
     current_position = thumb_offset.top;
   } else {
-    track_size = track_box->ContentWidth() - thumb_box->Size().width;
-    position = point_in_track.left - thumb_box->Size().width / 2;
+    track_size = track_box->ContentWidth() - thumb_box->Size().Width();
+    position = point_in_track.left - thumb_box->Size().Width() / 2;
     position -= is_left_to_right_direction ? thumb_box->MarginLeft()
                                            : thumb_box->MarginRight();
     current_position = thumb_offset.left;
@@ -243,10 +244,8 @@ void SliderThumbElement::DefaultEventHandler(Event& event) {
     return;
   }
   if (event_type == event_type_names::kMousemove) {
-    if (in_drag_mode_) {
-      SetPositionFromPoint(
-          PhysicalOffset::FromPointFFloor(mouse_event.AbsoluteLocation()));
-    }
+    if (in_drag_mode_)
+      SetPositionFromPoint(LayoutPoint(mouse_event.AbsoluteLocation()));
     return;
   }
 
@@ -308,8 +307,8 @@ void SliderThumbElement::AdjustStyle(ComputedStyleBuilder& builder) {
   const ComputedStyle& host_style = host->ComputedStyleRef();
 
   if (host_style.EffectiveAppearance() == kSliderVerticalPart &&
-      RuntimeEnabledFeatures::
-          NonStandardAppearanceValueSliderVerticalEnabled()) {
+      !RuntimeEnabledFeatures::
+          RemoveNonStandardAppearanceValueSliderVerticalEnabled()) {
     builder.SetEffectiveAppearance(kSliderThumbVerticalPart);
   } else if (host_style.EffectiveAppearance() == kSliderHorizontalPart) {
     builder.SetEffectiveAppearance(kSliderThumbHorizontalPart);
@@ -335,7 +334,7 @@ HTMLInputElement* SliderContainerElement::HostInput() const {
 }
 
 LayoutObject* SliderContainerElement::CreateLayoutObject(const ComputedStyle&) {
-  return MakeGarbageCollected<LayoutFlexibleBox>(this);
+  return MakeGarbageCollected<LayoutNGFlexibleBox>(this);
 }
 
 void SliderContainerElement::DefaultEventHandler(Event& event) {
@@ -378,9 +377,9 @@ void SliderContainerElement::HandleTouchEvent(TouchEvent* event) {
       start_point_ = touches->item(0)->AbsoluteLocation();
       sliding_direction_ = Direction::kNoMove;
       touch_started_ = true;
-      thumb->SetPositionFromPoint(start_point_);
+      thumb->SetPositionFromPoint(touches->item(0)->AbsoluteLocation());
     } else if (touch_started_) {
-      PhysicalOffset current_point = touches->item(0)->AbsoluteLocation();
+      LayoutPoint current_point = touches->item(0)->AbsoluteLocation();
       if (sliding_direction_ == Direction::kNoMove) {
         // Still needs to update the direction.
         sliding_direction_ = GetDirection(current_point, start_point_);
@@ -389,7 +388,7 @@ void SliderContainerElement::HandleTouchEvent(TouchEvent* event) {
       // sliding_direction_ has been updated, so check whether it's okay to
       // slide again.
       if (CanSlide()) {
-        thumb->SetPositionFromPoint(current_point);
+        thumb->SetPositionFromPoint(touches->item(0)->AbsoluteLocation());
         event->SetDefaultHandled();
       }
     }
@@ -397,12 +396,12 @@ void SliderContainerElement::HandleTouchEvent(TouchEvent* event) {
 }
 
 SliderContainerElement::Direction SliderContainerElement::GetDirection(
-    const PhysicalOffset& point1,
-    const PhysicalOffset& point2) {
+    LayoutPoint& point1,
+    LayoutPoint& point2) {
   if (point1 == point2) {
     return Direction::kNoMove;
   }
-  if ((point1.left - point2.left).Abs() >= (point1.top - point2.top).Abs()) {
+  if ((point1.X() - point2.X()).Abs() >= (point1.Y() - point2.Y()).Abs()) {
     return Direction::kHorizontal;
   }
   return Direction::kVertical;

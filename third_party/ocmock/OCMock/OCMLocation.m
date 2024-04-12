@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2014-2021 Erik Doernenburg and contributors
+ *  Copyright (c) 2014-2015 Erik Doernenburg and contributors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may
  *  not use these files except in compliance with the License. You may obtain
@@ -16,7 +16,6 @@
 
 #import "OCMLocation.h"
 
-
 @implementation OCMLocation
 
 + (instancetype)locationWithTestCase:(id)aTestCase file:(NSString *)aFile line:(NSUInteger)aLine
@@ -26,13 +25,13 @@
 
 - (instancetype)initWithTestCase:(id)aTestCase file:(NSString *)aFile line:(NSUInteger)aLine
 {
-    if((self = [super init]))
+    if ((self = [super init]))
     {
         testCase = aTestCase;
         file = [aFile retain];
         line = aLine;
     }
-
+    
     return self;
 }
 
@@ -64,3 +63,4 @@ OCMLocation *OCMMakeLocation(id testCase, const char *fileCString, int line)
 {
     return [OCMLocation locationWithTestCase:testCase file:[NSString stringWithUTF8String:fileCString] line:line];
 }
+

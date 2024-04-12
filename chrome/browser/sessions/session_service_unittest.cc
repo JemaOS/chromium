@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/containers/adapters.h"
@@ -54,13 +53,18 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/page_state/page_state.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/skia/include/core/SkColor.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chromeos/components/kiosk/kiosk_test_utils.h"
-#endif  // BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chromeos/ash/components/login/login_state/login_state.h"
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+#include "chromeos/startup/browser_init_params.h"
+#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
 using content::NavigationEntry;
 using sessions::ContentTestHelper;
@@ -90,14 +94,14 @@ class SessionServiceTest : public BrowserWithTestWindowTest {
     BrowserWithTestWindowTest::TearDown();
   }
 
-  std::optional<SessionServiceEvent> FindMostRecentEventOfType(
+  absl::optional<SessionServiceEvent> FindMostRecentEventOfType(
       SessionServiceEventLogType type) {
     auto events = GetSessionServiceEvents(browser()->profile());
     for (const SessionServiceEvent& event : base::Reversed(events)) {
       if (event.type == type)
         return event;
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   void DestroySessionService() {
@@ -193,6 +197,22 @@ class SessionServiceTest : public BrowserWithTestWindowTest {
     helper_.PrepareTabInWindow(window2_id, tab2_id, 0, true);
     UpdateNavigation(window2_id, tab2_id, *nav2, true);
   }
+
+#if BUILDFLAG(IS_CHROMEOS)
+  void FakeKioskSession() {
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+    ASSERT_TRUE(ash::LoginState::IsInitialized());
+    ash::LoginState::Get()->SetLoggedInState(
+        ash::LoginState::LoggedInState::LOGGED_IN_ACTIVE,
+        ash::LoginState::LoggedInUserType::LOGGED_IN_USER_KIOSK);
+#else   // BUILDFLAG(IS_CHROMEOS_LACROS)
+    crosapi::mojom::BrowserInitParamsPtr init_params =
+        chromeos::BrowserInitParams::GetForTests()->Clone();
+    init_params->session_type = crosapi::mojom::SessionType::kWebKioskSession;
+    chromeos::BrowserInitParams::SetInitParamsForTests(std::move(init_params));
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+  }
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
   SessionService* service() { return helper_.service(); }
 
@@ -1140,15 +1160,15 @@ TEST_F(SessionServiceTest, TabGroupDefaultsToNone) {
 
   // Verify that the recorded tab has no group.
   sessions::SessionTab* tab = windows[0]->tabs[0].get();
-  EXPECT_EQ(std::nullopt, tab->group);
+  EXPECT_EQ(absl::nullopt, tab->group);
 }
 
 TEST_F(SessionServiceTest, TabGroupsSaved) {
   const tab_groups::TabGroupId group1 = tab_groups::TabGroupId::GenerateNew();
   const tab_groups::TabGroupId group2 = tab_groups::TabGroupId::GenerateNew();
   constexpr int kNumTabs = 5;
-  const std::array<std::optional<tab_groups::TabGroupId>, kNumTabs> groups = {
-      std::nullopt, group1, group1, std::nullopt, group2};
+  const std::array<absl::optional<tab_groups::TabGroupId>, kNumTabs> groups = {
+      absl::nullopt, group1, group1, absl::nullopt, group2};
 
   // Create |kNumTabs| tabs with group IDs in |groups|.
   for (int tab_ndx = 0; tab_ndx < kNumTabs; ++tab_ndx) {
@@ -1180,8 +1200,8 @@ TEST_F(SessionServiceTest, TabGroupMetadataSaved) {
                                      tab_groups::TabGroupColorId::kBlue),
       tab_groups::TabGroupVisualData(u"Bar",
                                      tab_groups::TabGroupColorId::kGreen)};
-  const std::array<std::optional<std::string>, kNumGroups> saved_guids = {
-      base::Uuid::GenerateRandomV4().AsLowercaseString(), std::nullopt};
+  const std::array<absl::optional<std::string>, kNumGroups> saved_guids = {
+      base::Uuid::GenerateRandomV4().AsLowercaseString(), absl::nullopt};
 
   // Create |kNumGroups| tab groups, each with one tab.
   for (int group_ndx = 0; group_ndx < kNumGroups; ++group_ndx) {
@@ -1215,7 +1235,7 @@ TEST_F(SessionServiceTest, TabGroupMetadataSaved) {
       EXPECT_EQ(saved_guids[group_ndx],
                 tab_groups[group_id]->saved_guid.value());
     } else {
-      EXPECT_EQ(std::nullopt, tab_groups[group_id]->saved_guid);
+      EXPECT_EQ(absl::nullopt, tab_groups[group_id]->saved_guid);
     }
   }
 }
@@ -1459,18 +1479,7 @@ TEST_F(SessionServiceTest, DisableSaving) {
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
-class SessionServiceKioskTest : public SessionServiceTest {
- public:
-  void LogIn(const std::string& email) override {
-    chromeos::SetUpFakeKioskSession(email);
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    ash_test_helper()->test_session_controller_client()->AddUserSession(
-        email, user_manager::UserType::kKioskApp);
-#endif
-  }
-};
-
-TEST_F(SessionServiceTest, OpenedWindowNotRestored) {
+TEST_F(SessionServiceTest, OpenedWindowNotRestoredInKiosk) {
   // These preparation is necessary for `ShouldRestore` function to return true
   // in the regular user session.
   helper_.SetHasOpenTrackableBrowsers(false);
@@ -1478,13 +1487,8 @@ TEST_F(SessionServiceTest, OpenedWindowNotRestored) {
   service()->WindowClosed(window_id);
   // Make sure `ShouldRestore` returns true for the regular user session.
   EXPECT_TRUE(session_service_->ShouldRestore(browser()));
-}
 
-TEST_F(SessionServiceKioskTest, OpenedWindowNotRestored) {
-  helper_.SetHasOpenTrackableBrowsers(false);
-  service()->WindowClosing(window_id);
-  service()->WindowClosed(window_id);
-  // Make sure `ShouldRestore` returns true for the kiosk user session.
+  FakeKioskSession();
   EXPECT_FALSE(session_service_->ShouldRestore(browser()));
 }
 #endif  //  BUILDFLAG(IS_CHROMEOS)

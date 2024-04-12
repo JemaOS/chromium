@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.compositor.layouts;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.graphics.RectF;
 
 import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
@@ -44,6 +45,9 @@ class MockLayoutHost implements LayoutManagerHost, LayoutRenderHost {
     public void didSwapFrame(int pendingFrameCount) {}
 
     @Override
+    public void onSurfaceCreated() {}
+
+    @Override
     public void onSurfaceResized(int width, int height) {}
 
     @Override
@@ -81,9 +85,22 @@ class MockLayoutHost implements LayoutManagerHost, LayoutRenderHost {
     }
 
     @Override
+    public int getTopControlsHeightPixels() {
+        return 0;
+    }
+
+    @Override
+    public int getBottomControlsHeightPixels() {
+        return 0;
+    }
+
+    @Override
     public LayoutRenderHost getLayoutRenderHost() {
         return this;
     }
+
+    @Override
+    public void pushDebugRect(Rect rect, int color) {}
 
     @Override
     public void setContentOverlayVisibility(boolean visible, boolean canBeFocusable) {}
@@ -110,5 +127,6 @@ class MockLayoutHost implements LayoutManagerHost, LayoutRenderHost {
     public void onContentChanged() {}
 
     @Override
-    public void hideKeyboard(Runnable postHideTask) {}
+    public void hideKeyboard(Runnable postHideTask) {
+    }
 }

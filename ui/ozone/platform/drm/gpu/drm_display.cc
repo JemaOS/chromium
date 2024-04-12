@@ -5,16 +5,15 @@
 #include "ui/ozone/platform/drm/gpu/drm_display.h"
 
 #include <xf86drmMode.h>
-
-#include <algorithm>
 #include <memory>
 
+#include "base/cxx17_backports.h"
 #include "base/logging.h"
 #include "base/trace_event/trace_event.h"
 #include "build/chromeos_buildflags.h"
 #include "ui/display/display_features.h"
-#include "ui/display/types/display_color_management.h"
 #include "ui/display/types/display_snapshot.h"
+#include "ui/display/types/gamma_ramp_rgb_entry.h"
 #include "ui/gfx/color_space.h"
 #include "ui/ozone/platform/drm/common/drm_util.h"
 #include "ui/ozone/platform/drm/gpu/drm_device.h"
@@ -30,6 +29,18 @@ std::vector<drmModeModeInfo> GetDrmModeVector(drmModeConnector* connector) {
     modes.push_back(connector->modes[i]);
 
   return modes;
+}
+
+void FillPowerFunctionValues(std::vector<display::GammaRampRGBEntry>* table,
+                             size_t table_size,
+                             float max_value,
+                             float exponent) {
+  for (size_t i = 0; i < table_size; i++) {
+    const uint16_t v = max_value * std::numeric_limits<uint16_t>::max() *
+                       pow((static_cast<float>(i) + 1) / table_size, exponent);
+    struct display::GammaRampRGBEntry gamma_entry = {v, v, v};
+    table->push_back(gamma_entry);
+  }
 }
 
 }  // namespace
@@ -149,12 +160,13 @@ DrmDisplay::DrmDisplay(const scoped_refptr<DrmDevice>& drm,
       is_hdr_capable_ &&
       base::FeatureList::IsEnabled(display::features::kUseHDRTransferFunction);
 
-  if (is_hdr_capable_ &&
-      base::FeatureList::IsEnabled(
-          display::features::kEnableExternalDisplayHDR10Mode)) {
-    current_color_space_ = display_snapshot.color_space();
-    SetColorspaceProperty(display_snapshot.color_space());
-    SetHdrOutputMetadata(display_snapshot.color_space());
+  if (base::FeatureList::IsEnabled(
+          display::features::kEnableExternalDisplayHDR10Mode) &&
+      display_snapshot.color_space() == gfx::ColorSpace::CreateHDR10()) {
+    current_color_space_ = gfx::ColorSpace::CreateHDR10();
+    // More likely it should be end users' choice to turn on the hdr mode or
+    // not. For now we always turn it on.
+    SetHDR10Mode();
   }
 #endif
 }
@@ -300,89 +312,66 @@ bool DrmDisplay::SetHDCPState(
                                  kContentProtectionStates));
 }
 
-void DrmDisplay::SetColorTemperatureAdjustment(
-    const display::ColorTemperatureAdjustment& cta) {
-  drm_->plane_manager()->SetColorTemperatureAdjustment(crtc_, cta);
-}
-
-void DrmDisplay::SetColorCalibration(
-    const display::ColorCalibration& calibration) {
-  drm_->plane_manager()->SetColorCalibration(crtc_, calibration);
-}
-
-void DrmDisplay::SetGammaAdjustment(
-    const display::GammaAdjustment& adjustment) {
-  drm_->plane_manager()->SetGammaAdjustment(crtc_, adjustment);
-}
-
 void DrmDisplay::SetColorMatrix(const std::vector<float>& color_matrix) {
-  // TODO(https://crbug.com/1505062): Remove callers of this function.
+  if (!drm_->plane_manager()->SetColorMatrix(crtc_, color_matrix)) {
+    LOG(ERROR) << "Failed to set color matrix for display: crtc_id = " << crtc_;
+  }
 }
 
 void DrmDisplay::SetBackgroundColor(const uint64_t background_color) {
   drm_->plane_manager()->SetBackgroundColor(crtc_, background_color);
 }
 
-void DrmDisplay::SetGammaCorrection(const display::GammaCurve& degamma,
-                                    const display::GammaCurve& gamma) {
-  // TODO(https://crbug.com/1505062): Remove callers of this function.
+void DrmDisplay::SetGammaCorrection(
+    const std::vector<display::GammaRampRGBEntry>& degamma_lut,
+    const std::vector<display::GammaRampRGBEntry>& gamma_lut) {
+  // When both |degamma_lut| and |gamma_lut| are empty they are interpreted as
+  // "linear/pass-thru" [1]. If the display |is_hdr_capable_| we have to make
+  // sure the |current_color_space_| is considered properly.
+  // [1]
+  // https://www.kernel.org/doc/html/v4.19/gpu/drm-kms.html#color-management-properties
+  if (degamma_lut.empty() && gamma_lut.empty() && is_hdr_capable_)
+    SetColorSpace(current_color_space_);
+  else
+    CommitGammaCorrection(degamma_lut, gamma_lut);
 }
 
 bool DrmDisplay::SetPrivacyScreen(bool enabled) {
   return privacy_screen_property_->SetPrivacyScreenProperty(enabled);
 }
 
-gfx::HDRStaticMetadata::Eotf DrmDisplay::GetEotf(
-    const gfx::ColorSpace::TransferID transfer_id) {
-  if (!is_hdr_capable_) {
-    return gfx::HDRStaticMetadata::Eotf::kGammaSdrRange;
-  }
-
-  switch (transfer_id) {
-    case gfx::ColorSpace::TransferID::PQ:
-      return gfx::HDRStaticMetadata::Eotf::kPq;
-    case gfx::ColorSpace::TransferID::HLG:
-      return gfx::HDRStaticMetadata::Eotf::kHlg;
-    case gfx::ColorSpace::TransferID::SRGB_HDR:
-    case gfx::ColorSpace::TransferID::LINEAR_HDR:
-    case gfx::ColorSpace::TransferID::CUSTOM_HDR:
-    case gfx::ColorSpace::TransferID::PIECEWISE_HDR:
-    case gfx::ColorSpace::TransferID::SCRGB_LINEAR_80_NITS:
-      return gfx::HDRStaticMetadata::Eotf::kGammaHdrRange;
-    default:
-      NOTREACHED();
-      return gfx::HDRStaticMetadata::Eotf::kGammaSdrRange;
-  }
-}
-
-bool DrmDisplay::SetHdrOutputMetadata(const gfx::ColorSpace color_space) {
+bool DrmDisplay::SetHDR10Mode() {
   DCHECK(connector_);
   DCHECK(hdr_static_metadata_.has_value());
-  DCHECK(color_space.IsValid());
+  ScopedDrmPropertyPtr color_space_property(
+      drm_->GetProperty(connector_.get(), kColorSpace));
+  if (!color_space_property) {
+    PLOG(INFO) << "'" << kColorSpace << "' property doesn't exist.";
+    return false;
+  }
+  if (!drm_->SetProperty(
+          connector_->connector_id, color_space_property->prop_id,
+          GetEnumValueForName(*drm_, color_space_property->prop_id,
+                              kColorSpaceBT2020RGBEnumName))) {
+    PLOG(INFO) << "Cannot set '" << kColorSpaceBT2020RGBEnumName
+               << "' to 'Colorspace' property.";
+    return false;
+  }
 
   drm_hdr_output_metadata* hdr_output_metadata =
       static_cast<drm_hdr_output_metadata*>(
           malloc(sizeof(drm_hdr_output_metadata)));
   hdr_output_metadata->metadata_type = 0;
   hdr_output_metadata->hdmi_metadata_type1.metadata_type = 0;
-
-  gfx::HDRStaticMetadata::Eotf eotf = GetEotf(color_space.GetTransferID());
-  DCHECK(hdr_static_metadata_->IsEotfSupported(eotf));
-  hdr_output_metadata->hdmi_metadata_type1.eotf = static_cast<uint8_t>(eotf);
-
+  hdr_output_metadata->hdmi_metadata_type1.eotf = 2;  // PQ
   hdr_output_metadata->hdmi_metadata_type1.max_cll = 0;
-  hdr_output_metadata->hdmi_metadata_type1.max_fall =
-      hdr_static_metadata_->max_avg;
-  // This value is coded as an unsigned 16-bit value in units of 1 cd/m2,
-  // where 0x0001 represents 1 cd/m2 and 0xFFFF represents 65535 cd/m2.
+  hdr_output_metadata->hdmi_metadata_type1.max_fall = 0;
   hdr_output_metadata->hdmi_metadata_type1.max_display_mastering_luminance =
       hdr_static_metadata_->max;
-  // This value is coded as an unsigned 16-bit value in units of 0.0001 cd/m2,
-  // where 0x0001 represents 0.0001 cd/m2 and 0xFFFF represents 6.5535 cd/m2.
   hdr_output_metadata->hdmi_metadata_type1.min_display_mastering_luminance =
-      hdr_static_metadata_->min * 10000.0;
-
-  SkColorSpacePrimaries primaries = color_space.GetPrimaries();
+      hdr_static_metadata_->min;
+  gfx::ColorSpace hdr10 = gfx::ColorSpace::CreateHDR10();
+  SkColorSpacePrimaries primaries = hdr10.GetPrimaries();
   constexpr int kPrimariesFixedPoint = 50000;
   hdr_output_metadata->hdmi_metadata_type1.display_primaries[0].x =
       primaries.fRX * kPrimariesFixedPoint;
@@ -422,24 +411,39 @@ bool DrmDisplay::SetHdrOutputMetadata(const gfx::ColorSpace color_space) {
   return true;
 }
 
-bool DrmDisplay::SetColorspaceProperty(const gfx::ColorSpace color_space) {
-  DCHECK(connector_);
-  DCHECK(hdr_static_metadata_.has_value());
-  ScopedDrmPropertyPtr color_space_property(
-      drm_->GetProperty(connector_.get(), kColorSpace));
-  if (!color_space_property) {
-    PLOG(INFO) << "'" << kColorSpace << "' property doesn't exist.";
-    return false;
-  }
-  if (!drm_->SetProperty(
-          connector_->connector_id, color_space_property->prop_id,
-          GetEnumValueForName(*drm_, color_space_property->prop_id,
-                              GetNameForColorspace(color_space)))) {
-    PLOG(INFO) << "Cannot set '" << GetNameForColorspace(color_space)
-               << "' to 'Colorspace' property.";
-    return false;
-  }
-  return true;
+void DrmDisplay::SetColorSpace(const gfx::ColorSpace& color_space) {
+  // There's only something to do if the display supports HDR.
+  if (!is_hdr_capable_)
+    return;
+  current_color_space_ = color_space;
+
+  // When |color_space| is HDR we can simply leave the gamma tables empty, which
+  // is interpreted as "linear/pass-thru", see [1]. However when we have an SDR
+  // |color_space|, we need to write a scaled down |gamma| function to prevent
+  // the mode change brightness to be visible.
+  std::vector<display::GammaRampRGBEntry> degamma;
+  std::vector<display::GammaRampRGBEntry> gamma;
+  if (current_color_space_.IsHDR())
+    return CommitGammaCorrection(degamma, gamma);
+
+  // TODO(mcasas) This should be the inverse value of DisplayChangeObservers's
+  // FillDisplayColorSpaces's kHDRLevel, move to a common place.
+  // TODO(b/165822222): adjust this level based on the display brightness.
+  constexpr float kSDRLevel = 0.85;
+  // TODO(mcasas): Retrieve this from the |drm_| HardwareDisplayPlaneManager.
+  constexpr size_t kNumGammaSamples = 64ul;
+  // Only using kSDRLevel of the available values shifts the contrast ratio, we
+  // restore it via a smaller local gamma correction using this exponent.
+  constexpr float kExponent = 1.2;
+  FillPowerFunctionValues(&gamma, kNumGammaSamples, kSDRLevel, kExponent);
+  CommitGammaCorrection(degamma, gamma);
+}
+
+void DrmDisplay::CommitGammaCorrection(
+    const std::vector<display::GammaRampRGBEntry>& degamma_lut,
+    const std::vector<display::GammaRampRGBEntry>& gamma_lut) {
+  if (!drm_->plane_manager()->SetGammaCorrection(crtc_, degamma_lut, gamma_lut))
+    LOG(ERROR) << "Failed to set gamma tables for display: crtc_id = " << crtc_;
 }
 
 }  // namespace ui

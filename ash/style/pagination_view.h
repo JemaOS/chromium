@@ -42,9 +42,9 @@ class PaginationModel;
 // current indicator position, and then expand at the target indicator position.
 class ASH_EXPORT PaginationView : public views::View,
                                   public PaginationModelObserver {
-  METADATA_HEADER(PaginationView, views::View)
-
  public:
+  METADATA_HEADER(PaginationView);
+
   enum class Orientation {
     kHorizontal,
     kVertical,
@@ -61,7 +61,7 @@ class ASH_EXPORT PaginationView : public views::View,
 
   // views::View:
   gfx::Size CalculatePreferredSize() const override;
-  void Layout(PassKey) override;
+  void Layout() override;
 
  private:
   // A filled circle with pagination motion effects.
@@ -90,20 +90,20 @@ class ASH_EXPORT PaginationView : public views::View,
   void SelectedPageChanged(int old_selected, int new_selected) override;
   void TransitionChanged() override;
 
-  raw_ptr<PaginationModel> const model_;
+  base::raw_ptr<PaginationModel> const model_;
   const Orientation orientation_;
 
   // The scroll view with an indicator container as its contents. The scroll
   // view is owned by this and the container is owned by the scroll view.
-  raw_ptr<views::ScrollView> indicator_scroll_view_ = nullptr;
-  raw_ptr<IndicatorContainer> indicator_container_ = nullptr;
+  base::raw_ptr<views::ScrollView> indicator_scroll_view_ = nullptr;
+  base::raw_ptr<IndicatorContainer> indicator_container_ = nullptr;
 
   // The selector dot view which is owned by this.
-  raw_ptr<SelectorDotView> selector_dot_ = nullptr;
+  base::raw_ptr<SelectorDotView> selector_dot_ = nullptr;
 
   // The arrow buttons owned by this.
-  raw_ptr<views::ImageButton> backward_arrow_button_ = nullptr;
-  raw_ptr<views::ImageButton> forward_arrow_button_ = nullptr;
+  base::raw_ptr<views::ImageButton> backward_arrow_button_ = nullptr;
+  base::raw_ptr<views::ImageButton> forward_arrow_button_ = nullptr;
 
   base::ScopedObservation<PaginationModel, PaginationModelObserver>
       model_observation_{this};

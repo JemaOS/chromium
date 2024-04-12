@@ -10,7 +10,7 @@
 #include "ash/wm/window_util.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/client/transient_window_client.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/aura/window.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -42,7 +42,10 @@ gfx::Rect GetClientAreaBoundsInScreen(aura::Window* window) {
 
 }  // namespace
 
-WindowPreviewView::WindowPreviewView(aura::Window* window) : window_(window) {
+WindowPreviewView::WindowPreviewView(aura::Window* window,
+                                     bool trilinear_filtering_on_init)
+    : window_(window),
+      trilinear_filtering_on_init_(trilinear_filtering_on_init) {
   DCHECK(window);
   aura::client::GetTransientWindowClient()->AddObserver(this);
 
@@ -51,9 +54,8 @@ WindowPreviewView::WindowPreviewView(aura::Window* window) : window_(window) {
 }
 
 WindowPreviewView::~WindowPreviewView() {
-  for (aura::Window* window : unparented_transient_children_) {
+  for (auto* window : unparented_transient_children_)
     window->RemoveObserver(this);
-  }
   for (auto entry : mirror_views_)
     entry.first->RemoveObserver(this);
   aura::client::GetTransientWindowClient()->RemoveObserver(this);
@@ -85,7 +87,7 @@ gfx::Size WindowPreviewView::CalculatePreferredSize() const {
       gfx::ScaleSize(union_rect.size(), scale.x(), scale.y()));
 }
 
-void WindowPreviewView::Layout(PassKey) {
+void WindowPreviewView::Layout() {
   const gfx::RectF union_rect = GetUnionRect();
   if (union_rect.IsEmpty())
     return;  // Avoids divide by zero below.
@@ -157,11 +159,12 @@ void WindowPreviewView::AddWindow(aura::Window* window) {
   if (!window->HasObserver(this))
     window->AddObserver(this);
 
-  auto mirror_view = window_util::IsArcPipWindow(window)
-                         ? std::make_unique<WindowMirrorViewPip>(window)
-                         : std::make_unique<WindowMirrorView>(window);
-  mirror_views_[window] = mirror_view.get();
-  AddChildView(std::move(mirror_view));
+  auto* mirror_view =
+      window_util::IsArcPipWindow(window)
+          ? new WindowMirrorViewPip(window, trilinear_filtering_on_init_)
+          : new WindowMirrorView(window, trilinear_filtering_on_init_);
+  mirror_views_[window] = mirror_view;
+  AddChildView(mirror_view);
 }
 
 void WindowPreviewView::RemoveWindow(aura::Window* window) {
@@ -178,10 +181,11 @@ void WindowPreviewView::RemoveWindow(aura::Window* window) {
     return;
 
   auto* view = it->second;
-  RemoveChildViewT(view);
+  RemoveChildView(view);
   it->first->RemoveObserver(this);
 
   mirror_views_.erase(it);
+  delete view;
 }
 
 gfx::RectF WindowPreviewView::GetUnionRect() const {
@@ -190,8 +194,5 @@ gfx::RectF WindowPreviewView::GetUnionRect() const {
     bounds.Union(GetClientAreaBoundsInScreen(entry.first));
   return gfx::RectF(bounds);
 }
-
-BEGIN_METADATA(WindowPreviewView)
-END_METADATA
 
 }  // namespace ash

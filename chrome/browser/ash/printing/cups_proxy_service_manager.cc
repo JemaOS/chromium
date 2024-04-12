@@ -14,8 +14,7 @@
 
 namespace ash {
 
-CupsProxyServiceManager::CupsProxyServiceManager(Profile* profile)
-    : profile_(profile) {
+CupsProxyServiceManager::CupsProxyServiceManager() {
   // Don't wait for the daemon if the feature is turned off anyway.
   if (base::FeatureList::IsEnabled(features::kPluginVm)) {
     CupsProxyClient::Get()->WaitForServiceToBeAvailable(
@@ -34,16 +33,8 @@ void CupsProxyServiceManager::OnDaemonAvailable(bool daemon_available) {
 
   // Attempt to start the service, which will then bootstrap a connection
   // with the daemon.
-  service_was_started_ = true;
   cups_proxy::CupsProxyService::Spawn(
-      std::make_unique<CupsProxyServiceDelegateImpl>(profile_));
-}
-
-void CupsProxyServiceManager::Shutdown() {
-  if (service_was_started_) {
-    cups_proxy::CupsProxyService::Shutdown();
-  }
-  profile_ = nullptr;
+      std::make_unique<CupsProxyServiceDelegateImpl>());
 }
 
 }  // namespace ash

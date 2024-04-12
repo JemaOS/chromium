@@ -7,7 +7,6 @@
 
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_content_manager.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_content_restriction_set.h"
 #include "chromeos/crosapi/mojom/dlp.mojom.h"
@@ -35,9 +34,10 @@ class DlpContentManagerLacros : public DlpContentManager,
   static DlpContentManagerLacros* Get();
 
   // DlpContentManager overrides:
-  void CheckScreenShareRestriction(const content::DesktopMediaID& media_id,
-                                   const std::u16string& application_title,
-                                   WarningCallback callback) override;
+  void CheckScreenShareRestriction(
+      const content::DesktopMediaID& media_id,
+      const std::u16string& application_title,
+      OnDlpRestrictionCheckedCallback callback) override;
   void OnScreenShareStarted(
       const std::string& label,
       std::vector<content::DesktopMediaID> screen_share_ids,
@@ -112,8 +112,7 @@ class DlpContentManagerLacros : public DlpContentManager,
       content::WebContents* web_contents) const override;
 
   // Tracks set of known confidential WebContents* for each Window*.
-  base::flat_map<aura::Window*,
-                 base::flat_set<raw_ptr<content::WebContents, CtnExperimental>>>
+  base::flat_map<aura::Window*, base::flat_set<content::WebContents*>>
       window_webcontents_;
 
   // Tracks current restrictions applied to Window* based on visible

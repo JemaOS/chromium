@@ -4,11 +4,9 @@
 
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/persistence/mac_key_persistence_delegate.h"
 
-#include <Security/Security.h>
 #include <utility>
 
 #include "base/check.h"
-#include "base/memory/scoped_refptr.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/mac/secure_enclave_signing_key.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/shared_command_constants.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/signing_key_pair.h"
@@ -44,7 +42,8 @@ bool MacKeyPersistenceDelegate::StoreKeyPair(KeyTrustLevel trust_level,
     return client_->DeleteKey(SecureEnclaveClient::KeyType::kPermanent);
   }
 
-  auto key_type = SecureEnclaveClient::GetTypeFromWrappedKey(wrapped);
+  auto key_type = SecureEnclaveClient::GetTypeFromWrappedKey(
+      base::make_span(wrapped.data(), wrapped.size()));
 
   if (!key_type ||
       key_type.value() == SecureEnclaveClient::KeyType::kTemporary) {
@@ -57,52 +56,42 @@ bool MacKeyPersistenceDelegate::StoreKeyPair(KeyTrustLevel trust_level,
   return true;
 }
 
-scoped_refptr<SigningKeyPair> MacKeyPersistenceDelegate::LoadKeyPair(
-    KeyStorageType type,
-    LoadPersistedKeyResult* result) {
-  SecureEnclaveSigningKeyProvider provider;
-  OSStatus error;
-  auto signing_key = provider.LoadStoredSigningKeySlowly(
-      SecureEnclaveClient::KeyType::kPermanent, &error);
-  if (!signing_key) {
-    LoadPersistedKeyResult error_result =
-        error == errSecItemNotFound ? LoadPersistedKeyResult::kNotFound
-                                    : LoadPersistedKeyResult::kUnknown;
-    return ReturnLoadKeyError(error_result, result);
+std::unique_ptr<SigningKeyPair> MacKeyPersistenceDelegate::LoadKeyPair() {
+  SecureEnclaveClient::KeyType key_type =
+      SecureEnclaveClient::KeyType::kPermanent;
+  std::vector<uint8_t> key_label;
+  if (!client_->GetStoredKeyLabel(key_type, key_label) || key_label.empty()) {
+    return nullptr;
   }
 
-  if (result) {
-    *result = LoadPersistedKeyResult::kSuccess;
+  SecureEnclaveSigningKeyProvider provider(key_type);
+  auto signing_key = provider.FromWrappedSigningKeySlowly(key_label);
+  if (!signing_key) {
+    return nullptr;
   }
-  return base::MakeRefCounted<SigningKeyPair>(std::move(signing_key),
-                                              BPKUR::CHROME_BROWSER_HW_KEY);
+
+  return std::make_unique<SigningKeyPair>(std::move(signing_key),
+                                          BPKUR::CHROME_BROWSER_HW_KEY);
 }
 
-scoped_refptr<SigningKeyPair> MacKeyPersistenceDelegate::CreateKeyPair() {
+std::unique_ptr<SigningKeyPair> MacKeyPersistenceDelegate::CreateKeyPair() {
   // Moving a previous signing key to temporary key storage if a key exists.
   client_->UpdateStoredKeyLabel(SecureEnclaveClient::KeyType::kPermanent,
                                 SecureEnclaveClient::KeyType::kTemporary);
 
   // The permanent key provider creates a new signing key pair in the permanent
   // key storage.
-  SecureEnclaveSigningKeyProvider provider;
-  auto signing_key = provider.GenerateSigningKeySlowly();
+  SecureEnclaveClient::KeyType key_type =
+      SecureEnclaveClient::KeyType::kPermanent;
+  SecureEnclaveSigningKeyProvider provider(key_type);
+  auto acceptable_algorithms = {crypto::SignatureVerifier::ECDSA_SHA256};
+  auto signing_key = provider.GenerateSigningKeySlowly(acceptable_algorithms);
   if (!signing_key) {
     return nullptr;
   }
 
-  return base::MakeRefCounted<SigningKeyPair>(std::move(signing_key),
-                                              BPKUR::CHROME_BROWSER_HW_KEY);
-}
-
-bool MacKeyPersistenceDelegate::PromoteTemporaryKeyPair() {
-  // TODO(b/290068552): Implement this method.
-  return true;
-}
-
-bool MacKeyPersistenceDelegate::DeleteKeyPair(KeyStorageType type) {
-  // TODO(b/290068552): Implement this method.
-  return true;
+  return std::make_unique<SigningKeyPair>(std::move(signing_key),
+                                          BPKUR::CHROME_BROWSER_HW_KEY);
 }
 
 void MacKeyPersistenceDelegate::CleanupTemporaryKeyData() {

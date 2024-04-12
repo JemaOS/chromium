@@ -25,7 +25,7 @@
 namespace arc {
 class ArcIntentHelperBridge;
 class IntentFilter;
-}  // namespace arc
+}
 #endif
 
 class Profile;
@@ -116,8 +116,6 @@ arc::IntentFilter ConvertAppServiceToArcIntentFilter(
     const std::string& package_name,
     const apps::IntentFilterPtr& intent_filter);
 
-// Create App Service intent filter from ARC intent filter, could return
-// nullptr if the intent filter from ARC is not valid.
 apps::IntentFilterPtr CreateIntentFilterForArc(
     const arc::IntentFilter& arc_intent_filter);
 #endif

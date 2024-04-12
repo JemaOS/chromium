@@ -24,7 +24,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         net::features::kThirdPartyStoragePartitioning, toggle);
 
     // General deserialization test.
-    std::optional<blink::StorageKey> maybe_storage_key =
+    absl::optional<blink::StorageKey> maybe_storage_key =
         blink::StorageKey::Deserialize(serialized_storage_key);
     if (maybe_storage_key) {
       assert(maybe_storage_key->Serialize() == serialized_storage_key);

@@ -10,7 +10,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 class Profile;
@@ -32,7 +32,7 @@ class AutocompleteHistoryManagerFactory : public ProfileKeyedServiceFactory {
   static AutocompleteHistoryManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<AutocompleteHistoryManagerFactory>;
+  friend struct base::DefaultSingletonTraits<AutocompleteHistoryManagerFactory>;
 
   AutocompleteHistoryManagerFactory();
   ~AutocompleteHistoryManagerFactory() override;

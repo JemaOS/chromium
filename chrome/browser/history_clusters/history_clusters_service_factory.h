@@ -25,9 +25,6 @@ class HistoryClustersServiceFactory : public ProfileKeyedServiceFactory {
 
   static void EnsureFactoryBuilt();
 
-  // Returns the default factory, useful in tests where it's null by default.
-  static TestingFactory GetDefaultFactory();
-
  private:
   friend base::NoDestructor<HistoryClustersServiceFactory>;
 
@@ -35,7 +32,7 @@ class HistoryClustersServiceFactory : public ProfileKeyedServiceFactory {
   ~HistoryClustersServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

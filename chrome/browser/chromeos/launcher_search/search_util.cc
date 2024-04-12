@@ -4,9 +4,8 @@
 
 #include "chrome/browser/chromeos/launcher_search/search_util.h"
 
-#include <string_view>
-
 #include "base/functional/callback_helpers.h"
+#include "base/strings/string_piece.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
 #include "components/omnibox/browser/autocomplete_controller.h"
@@ -63,7 +62,7 @@ SearchResult::OmniboxType MatchTypeToOmniboxType(
     case AutocompleteMatchType::PHYSICAL_WEB_OVERFLOW_DEPRECATED:
     case AutocompleteMatchType::TAB_SEARCH_DEPRECATED:
     case AutocompleteMatchType::DOCUMENT_SUGGESTION:
-    case AutocompleteMatchType::PEDAL:
+    case AutocompleteMatchType::PEDAL_DEPRECATED:
     case AutocompleteMatchType::HISTORY_CLUSTER:
     case AutocompleteMatchType::STARTER_PACK:
       return SearchResult::OmniboxType::kDomain;
@@ -218,7 +217,7 @@ ui::PageTransition PageTransitionToUiPageTransition(
 
 SearchResultPtr CreateAnswerResult(const AutocompleteMatch& match,
                                    AutocompleteController* controller,
-                                   std::u16string_view query,
+                                   base::StringPiece16 query,
                                    const AutocompleteInput& input) {
   SearchResultPtr result = CreateBaseResult(match, controller, input);
 

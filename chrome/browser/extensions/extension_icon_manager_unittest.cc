@@ -20,9 +20,8 @@
 #include "components/crx_file/id_util.h"
 #include "content/public/test/browser_task_environment.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/base/resource/resource_scale_factor.h"
+#include "ui/base/layout.h"
 #include "ui/display/display_list.h"
 #include "ui/display/display_switches.h"
 #include "ui/display/test/test_screen.h"
@@ -74,19 +73,17 @@ class ExtensionIconManagerTest : public testing::Test,
 
   ~ExtensionIconManagerTest() override = default;
 
-  void OnImageLoaded(const ExtensionId& extension_id) override {
+  void OnImageLoaded(const std::string& extension_id) override {
     unwaited_image_loads_++;
     if (waiting_) {
-      std::move(quit_closure_).Run();
+      base::RunLoop::QuitCurrentWhenIdleDeprecated();
     }
   }
 
   void WaitForImageLoad() {
-    base::RunLoop loop;
-    quit_closure_ = loop.QuitWhenIdleClosure();
     if (unwaited_image_loads_ == 0) {
       waiting_ = true;
-      loop.Run();
+      base::RunLoop().Run();
       waiting_ = false;
     }
     ASSERT_GT(unwaited_image_loads_, 0);
@@ -101,14 +98,12 @@ class ExtensionIconManagerTest : public testing::Test,
 
   // Whether we are currently waiting for an image load.
   bool waiting_;
-
-  base::OnceClosure quit_closure_;
 };
 
 // Returns the default icon that ExtensionIconManager gives when an extension
 // doesn't have an icon.
 gfx::Image GetDefaultIcon() {
-  ExtensionId dummy_id = crx_file::id_util::GenerateId("whatever");
+  std::string dummy_id = crx_file::id_util::GenerateId("whatever");
   ExtensionIconManager manager;
   return manager.GetIcon(dummy_id);
 }
@@ -172,6 +167,7 @@ TEST_F(ExtensionIconManagerTest, LoadComponentExtensionResource) {
       deserializer.Deserialize(nullptr, nullptr);
   ASSERT_TRUE(manifest.get());
   ASSERT_TRUE(manifest->is_dict());
+
   std::string error;
   scoped_refptr<Extension> extension(Extension::Create(
       manifest_path.DirName(), mojom::ManifestLocation::kComponent,
@@ -205,7 +201,6 @@ TEST_F(ExtensionIconManagerTest, LoadComponentExtensionResource) {
 TEST_F(ExtensionIconManagerTest, ScaleFactors) {
   auto profile = std::make_unique<TestingProfile>();
   const gfx::Image default_icon = GetDefaultIcon();
-  base::RunLoop loop1;
 
   base::FilePath test_dir;
   ASSERT_TRUE(base::PathService::Get(chrome::DIR_TEST_DATA, &test_dir));
@@ -251,7 +246,6 @@ TEST_F(ExtensionIconManagerTest, ScaleFactors) {
 
     icon_manager.LoadIcon(profile.get(), extension.get());
     WaitForImageLoad();
-
     gfx::Image icon = icon_manager.GetIcon(extension->id());
     // Determine if the default icon fallback will be used. We'll use the
     // default when none of the supported scale factors can find an appropriate
@@ -282,22 +276,20 @@ TEST_F(ExtensionIconManagerTest, ScaleFactors) {
       const bool has_representation = image_skia.HasRepresentation(scale);
       // We shouldn't have a representation if the extension didn't provide a
       // big enough icon.
-      if (gfx::kFaviconSize * scale > kMaxIconSizeInManifest) {
+      if (gfx::kFaviconSize * scale > kMaxIconSizeInManifest)
         EXPECT_FALSE(has_representation);
-      } else {
-        EXPECT_EQ(ui::IsScaleFactorSupported(scale_factor), has_representation);
-      }
+      else
+        EXPECT_EQ(ui::IsSupportedScale(scale), has_representation);
     }
   }
 
-  // Now check that the scale factors for active displays are respected,
-  // even when it's not a supported scale.
+  // Now check that the scale factors for active displays are respected, even
+  // when it's not a supported scale.
   ScopedSetDeviceScaleFactor scoped_dsf(1.5f);
   ExtensionIconManager icon_manager;
   icon_manager.set_observer(this);
   icon_manager.LoadIcon(profile.get(), extension.get());
   WaitForImageLoad();
-
   gfx::ImageSkia icon = icon_manager.GetIcon(extension->id()).AsImageSkia();
   EXPECT_TRUE(icon.HasRepresentation(1.5f));
 }

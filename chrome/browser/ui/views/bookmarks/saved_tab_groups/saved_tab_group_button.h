@@ -6,16 +6,15 @@
 #define CHROME_BROWSER_UI_VIEWS_BOOKMARKS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_BUTTON_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "chrome/browser/ui/views/event_utils.h"
 #include "components/saved_tab_groups/saved_tab_group.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "content/public/browser/page.h"
 #include "content/public/browser/page_navigator.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/controls/button/menu_button.h"
@@ -23,21 +22,20 @@
 #include "ui/views/drag_controller.h"
 
 class Browser;
+class SavedTabGroupKeyedService;
 
 namespace gfx {
 class Canvas;
 }
 
-namespace tab_groups {
-
-class SavedTabGroupKeyedService;
-
-// The visual representation of a SavedTabGroup shown in the bookmarks bar.
+// The display button for the Saved Tab Group in the bookmarks bar.
+// Note: we currently recreate this button if any content (title, tabs, color,
+// etc.) changes
+// TODO(dljames): Find a way to not recreate the button for each update.
 class SavedTabGroupButton : public views::MenuButton,
                             public views::DragController {
-  METADATA_HEADER(SavedTabGroupButton, views::MenuButton)
-
  public:
+  METADATA_HEADER(SavedTabGroupButton);
   SavedTabGroupButton(
       const SavedTabGroup& group,
       base::RepeatingCallback<content::PageNavigator*()> page_navigator,
@@ -57,12 +55,6 @@ class SavedTabGroupButton : public views::MenuButton,
       const override;
   void OnThemeChanged() override;
 
-  // views::View
-  bool OnKeyPressed(const ui::KeyEvent& event) override;
-
-  // views::LabelButton
-  bool IsTriggerableEvent(const ui::Event& e) override;
-
   // views::DragController
   void WriteDragDataForView(View* sender,
                             const gfx::Point& press_pt,
@@ -76,7 +68,7 @@ class SavedTabGroupButton : public views::MenuButton,
   // displayed in the context menu.
   void UpdateButtonData(const SavedTabGroup& group);
 
-  tab_groups::TabGroupColorId tab_group_color_id() const {
+  tab_groups::TabGroupColorId tab_group_color_id() {
     return tab_group_color_id_;
   }
 
@@ -86,8 +78,6 @@ class SavedTabGroupButton : public views::MenuButton,
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kMoveGroupToNewWindowMenuItem);
 
  private:
-  std::u16string GetAccessibleNameForButton() const;
-  void SetTextProperties(const SavedTabGroup& group);
   void UpdateButtonLayout();
   void TabMenuItemPressed(const GURL& url, int event_flags);
   void MoveGroupToNewWindowPressed(int event_flags);
@@ -105,7 +95,7 @@ class SavedTabGroupButton : public views::MenuButton,
   base::Uuid guid_;
 
   // The local guid used to identify the group in the tabstrip if it is open.
-  std::optional<tab_groups::TabGroupId> local_group_id_;
+  absl::optional<tab_groups::TabGroupId> local_group_id_;
 
   // The tabs to be displayed in the context menu. Currently supports tab
   // title, url, and favicon.
@@ -122,7 +112,5 @@ class SavedTabGroupButton : public views::MenuButton,
   // Context menu controller used for this View.
   views::DialogModelContextMenuController context_menu_controller_;
 };
-
-}  // namespace tab_groups
 
 #endif  // CHROME_BROWSER_UI_VIEWS_BOOKMARKS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_BUTTON_H_

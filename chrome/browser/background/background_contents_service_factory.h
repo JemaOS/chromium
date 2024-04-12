@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_BACKGROUND_BACKGROUND_CONTENTS_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_BACKGROUND_BACKGROUND_CONTENTS_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class BackgroundContentsService;
@@ -26,13 +26,13 @@ class BackgroundContentsServiceFactory : public ProfileKeyedServiceFactory {
       const BackgroundContentsServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<BackgroundContentsServiceFactory>;
+  friend struct base::DefaultSingletonTraits<BackgroundContentsServiceFactory>;
 
   BackgroundContentsServiceFactory();
   ~BackgroundContentsServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

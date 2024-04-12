@@ -26,9 +26,9 @@
 #include "components/webdata/common/webdata_constants.h"
 #include "content/public/common/content_constants.h"
 #include "sql/database.h"
-#include "sql/sqlite_result_code_values.h"
 #include "sql/statement.h"
 #include "storage/browser/database/database_tracker.h"
+#include "third_party/sqlite/sqlite3.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/constants/ash_constants.h"
@@ -105,7 +105,8 @@ class SqliteIntegrityTest : public DiagnosticsTest {
 
     int errors = 0;
     {  // Scope the statement and database so they close properly.
-      sql::Database database({.page_size = 4096, .cache_size = 500});
+      sql::Database database(
+          {.exclusive_locking = true, .page_size = 4096, .cache_size = 500});
       scoped_refptr<ErrorRecorder> recorder(new ErrorRecorder);
 
       // Set the error callback so that we can get useful results in a debug
@@ -133,7 +134,7 @@ class SqliteIntegrityTest : public DiagnosticsTest {
       }
       if (!statement.is_valid()) {
         int error = database.GetErrorCode();
-        if (static_cast<int>(sql::SqliteResultCode::kBusy) == error) {
+        if (SQLITE_BUSY == error) {
           RecordFailure(DIAG_SQLITE_DB_LOCKED,
                         "Database locked by another process");
         } else {
@@ -168,9 +169,10 @@ class SqliteIntegrityTest : public DiagnosticsTest {
   }
 
  private:
-  class ErrorRecorder : public base::RefCounted<ErrorRecorder> {
+  class ErrorRecorder : public base::RefCounted<ErrorRecorder>,
+                        public base::SupportsWeakPtr<ErrorRecorder> {
    public:
-    ErrorRecorder() = default;
+    ErrorRecorder() : has_error_(false), sqlite_error_(0), last_errno_(0) {}
 
     ErrorRecorder(const ErrorRecorder&) = delete;
     ErrorRecorder& operator=(const ErrorRecorder&) = delete;
@@ -193,19 +195,14 @@ class SqliteIntegrityTest : public DiagnosticsTest {
                                 message_.c_str());
     }
 
-    base::WeakPtr<ErrorRecorder> AsWeakPtr() {
-      return weak_ptr_factory_.GetWeakPtr();
-    }
-
    private:
     friend class base::RefCounted<ErrorRecorder>;
     ~ErrorRecorder() {}
 
-    bool has_error_ = false;
-    int sqlite_error_ = 0;
-    int last_errno_ = 0;
+    bool has_error_;
+    int sqlite_error_;
+    int last_errno_;
     std::string message_;
-    base::WeakPtrFactory<ErrorRecorder> weak_ptr_factory_{this};
   };
 
   uint32_t flags_;

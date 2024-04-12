@@ -31,48 +31,70 @@
 namespace blink {
 
 // static
-ScriptPromiseTyped<IDLUndefined> InternalsPermission::setPermission(
+ScriptPromise InternalsPermission::setPermission(
     ScriptState* script_state,
     Internals&,
     const ScriptValue& raw_descriptor,
     const String& state,
+    const String& origin,
+    const String& embedding_origin,
     ExceptionState& exception_state) {
   mojom::blink::PermissionDescriptorPtr descriptor =
       ParsePermissionDescriptor(script_state, raw_descriptor, exception_state);
   if (exception_state.HadException() || !script_state->ContextIsValid())
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
 
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
-  const SecurityOrigin* security_origin = window->GetSecurityOrigin();
-  if (security_origin->IsOpaque()) {
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kNotAllowedError,
-        "Unable to set permission for an opaque origin.");
-    return ScriptPromiseTyped<IDLUndefined>();
+  KURL url;
+  if (origin.IsNull()) {
+    const SecurityOrigin* security_origin = window->GetSecurityOrigin();
+    if (security_origin->IsOpaque()) {
+      exception_state.ThrowDOMException(
+          DOMExceptionCode::kNotAllowedError,
+          "Unable to set permission for an opaque origin.");
+      return ScriptPromise();
+    }
+    url = KURL(security_origin->ToString());
+    DCHECK(url.IsValid());
+  } else {
+    url = KURL(origin);
+    if (!url.IsValid()) {
+      exception_state.ThrowDOMException(DOMExceptionCode::kSyntaxError,
+                                        "'" + origin + "' is not a valid URL.");
+      return ScriptPromise();
+    }
   }
-  KURL url = KURL(security_origin->ToString());
-  DCHECK(url.IsValid());
 
-  Frame& top_frame = window->GetFrame()->Tree().Top();
-  const SecurityOrigin* top_security_origin =
-      top_frame.GetSecurityContext()->GetSecurityOrigin();
-  if (top_security_origin->IsOpaque()) {
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kNotAllowedError,
-        "Unable to set permission for an opaque embedding origin.");
-    return ScriptPromiseTyped<IDLUndefined>();
+  KURL embedding_url;
+  if (embedding_origin.IsNull()) {
+    Frame& top_frame = window->GetFrame()->Tree().Top();
+    const SecurityOrigin* top_security_origin =
+        top_frame.GetSecurityContext()->GetSecurityOrigin();
+    if (top_security_origin->IsOpaque()) {
+      exception_state.ThrowDOMException(
+          DOMExceptionCode::kNotAllowedError,
+          "Unable to set permission for an opaque embedding origin.");
+      return ScriptPromise();
+    }
+    embedding_url = KURL(top_security_origin->ToString());
+  } else {
+    embedding_url = KURL(embedding_origin);
+    if (!embedding_url.IsValid()) {
+      exception_state.ThrowDOMException(
+          DOMExceptionCode::kSyntaxError,
+          "'" + embedding_origin + "' is not a valid URL.");
+      return ScriptPromise();
+    }
   }
-  KURL embedding_url = KURL(top_security_origin->ToString());
 
   mojo::Remote<test::mojom::blink::PermissionAutomation> permission_automation;
   Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(
       permission_automation.BindNewPipeAndPassReceiver());
   DCHECK(permission_automation.is_bound());
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
   auto* raw_permission_automation = permission_automation.get();
   raw_permission_automation->SetPermission(
       std::move(descriptor), ToPermissionStatus(state.Utf8()), url,
@@ -80,7 +102,7 @@ ScriptPromiseTyped<IDLUndefined> InternalsPermission::setPermission(
       WTF::BindOnce(
           // While we only really need |resolver|, we also take the
           // mojo::Remote<> so that it remains alive after this function exits.
-          [](ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+          [](ScriptPromiseResolver* resolver,
              mojo::Remote<test::mojom::blink::PermissionAutomation>,
              bool success) {
             if (success)

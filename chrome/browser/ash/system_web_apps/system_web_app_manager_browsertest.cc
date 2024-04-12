@@ -38,7 +38,6 @@
 #include "chrome/browser/ash/app_list/test/chrome_app_list_test_support.h"
 #include "chrome/browser/ash/extensions/default_app_order.h"
 #include "chrome/browser/ash/file_manager/file_manager_test_util.h"
-#include "chrome/browser/ash/file_manager/volume.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
 #include "chrome/browser/ash/system_web_apps/test_support/system_web_app_browsertest_base.h"
 #include "chrome/browser/ash/system_web_apps/test_support/test_system_web_app_installation.h"
@@ -86,7 +85,6 @@
 #include "extensions/browser/browsertest_util.h"
 #include "extensions/common/constants.h"
 #include "third_party/blink/public/common/features.h"
-#include "third_party/blink/public/mojom/context_menu/context_menu.mojom.h"
 #include "ui/base/idle/idle.h"
 #include "ui/base/idle/scoped_set_idle_state.h"
 #include "ui/display/display.h"
@@ -121,7 +119,7 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerBrowserTestBasicInstall, Install) {
   Browser* app_browser;
   LaunchAppWithoutWaiting(GetAppType(), &app_browser);
 
-  webapps::AppId app_id = app_browser->app_controller()->app_id();
+  web_app::AppId app_id = app_browser->app_controller()->app_id();
   EXPECT_EQ(GetManager().GetAppIdForSystemApp(GetAppType()), app_id);
   EXPECT_TRUE(GetManager().IsSystemWebApp(app_id));
 
@@ -267,34 +265,9 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerBrowserTest, UpdatesLaunchStats) {
       << "Expect app to exist";
 }
 
-class SystemWebAppManagerLaunchWithUrlBrowserTest
-    : public TestProfileTypeMixin<SystemWebAppBrowserTestBase> {
- public:
-  SystemWebAppManagerLaunchWithUrlBrowserTest() {
-    SetSystemWebAppInstallation(
-        TestSystemWebAppInstallation::SetUpAppLaunchWithUrl());
-  }
-};
-
-IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchWithUrlBrowserTest,
-                       LaunchWithCallback) {
-  WaitForTestSystemAppInstall();
-  content::TestNavigationObserver navigation_observer(GetStartUrl());
-  navigation_observer.StartWatchingNewWebContents();
-  ash::SystemAppLaunchParams params;
-  params.launch_source = apps::LaunchSource::kFromOtherApp;
-  params.url = GetStartUrl();
-  bool is_called = false;
-  LaunchSystemWebAppAsync(
-      browser()->profile(), GetAppType(), params, nullptr,
-      base::BindLambdaForTesting(
-          [&is_called](apps::LaunchResult&& callback_result) {
-            is_called = true;
-          }));
-  navigation_observer.Wait();
-  EXPECT_TRUE(is_called);
-}
-
+// The helper methods in this class uses ExecuteScriptXXX instead of ExecJs and
+// EvalJs because of some quirks surrounding origin trials and content security
+// policies.
 class SystemWebAppManagerFileHandlingBrowserTestBase
     : public TestProfileTypeMixin<SystemWebAppBrowserTestBase> {
  public:
@@ -331,9 +304,8 @@ class SystemWebAppManagerFileHandlingBrowserTestBase
 
   // Must be called before WaitAndExposeLaunchParamsToWindow. This sets up the
   // promise used to wait for launchParam callback.
-  [[nodiscard]] ::testing::AssertionResult PrepareToReceiveLaunchParams(
-      content::WebContents* web_contents) {
-    return content::ExecJs(
+  bool PrepareToReceiveLaunchParams(content::WebContents* web_contents) {
+    return content::ExecuteScript(
         web_contents,
         "window.launchParamsPromise = new Promise(resolve => {"
         "  window.resolveLaunchParamsPromise = resolve;"
@@ -347,15 +319,24 @@ class SystemWebAppManagerFileHandlingBrowserTestBase
   // Must be called after PrepareToReceiveLaunchParams. This method waits for
   // launchParams being received, the stores it to a |js_property_name| on JS
   // window object.
-  [[nodiscard]] ::testing::AssertionResult WaitAndExposeLaunchParamsToWindow(
+  bool WaitAndExposeLaunchParamsToWindow(
       content::WebContents* web_contents,
       const std::string js_property_name = "launchParams") {
-    return content::ExecJs(
+    bool launch_params_received;
+    EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
         web_contents,
         content::JsReplace("window.launchParamsPromise.then(launchParams => {"
-                           "  window[$1] = launchParams"
-                           "})",
-                           js_property_name));
+                           "  window[$1] = launchParams;"
+                           "  domAutomationController.send(true);"
+                           "});",
+                           js_property_name),
+        &launch_params_received));
+    return launch_params_received;
+  }
+
+  std::string GetJsStatementValueAsString(content::WebContents* web_contents,
+                                          const std::string& js_statement) {
+    return content::EvalJs(web_contents, js_statement).ExtractString();
   }
 
  private:
@@ -388,9 +369,9 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchFilesBrowserTest,
   // Check the App is launched with the correct launch file.
   EXPECT_TRUE(PrepareToReceiveLaunchParams(web_contents));
   EXPECT_TRUE(WaitAndExposeLaunchParamsToWindow(web_contents, "launchParams1"));
-  EXPECT_EQ(
-      temp_file_path.BaseName().AsUTF8Unsafe(),
-      content::EvalJs(web_contents, "window.launchParams1.files[0].name"));
+  EXPECT_EQ(temp_file_path.BaseName().AsUTF8Unsafe(),
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams1.files[0].name"));
 
   // Second launch.
   base::FilePath temp_file_path2;
@@ -404,9 +385,9 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchFilesBrowserTest,
   EXPECT_TRUE(WaitAndExposeLaunchParamsToWindow(web_contents, "launchParams2"));
 
   // Second launch_files are correct.
-  EXPECT_EQ(
-      temp_file_path2.BaseName().AsUTF8Unsafe(),
-      content::EvalJs(web_contents, "window.launchParams2.files[0].name"));
+  EXPECT_EQ(temp_file_path2.BaseName().AsUTF8Unsafe(),
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams2.files[0].name"));
 }
 
 IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchFilesBrowserTest,
@@ -434,6 +415,9 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchFilesBrowserTest,
   histograms.ExpectTotalCount("Apps.DefaultAppLaunch.FromOtherApp", 1);
 }
 
+// The helper methods in this class uses ExecuteScriptXXX instead of ExecJs and
+// EvalJs because of some quirks surrounding origin trials and content security
+// policies.
 class SystemWebAppManagerLaunchDirectoryBrowserTest
     : public SystemWebAppManagerFileHandlingBrowserTestBase {
  public:
@@ -442,23 +426,26 @@ class SystemWebAppManagerLaunchDirectoryBrowserTest
             IncludeLaunchDirectory::kYes) {}
 
   // Returns the content of |file_handle_or_promise| file handle.
-  [[nodiscard]] content::EvalJsResult ReadContentFromJsFileHandle(
+  std::string ReadContentFromJsFileHandle(
       content::WebContents* web_contents,
       const std::string& file_handle_or_promise) {
     return content::EvalJs(web_contents,
                            "Promise.resolve(" + file_handle_or_promise + ")" +
-                               ".then(async fileHandle => {"
+                               ".then(async (fileHandle) => {"
                                "  const file = await fileHandle.getFile();"
-                               "  return file.text();"
-                               "})");
+                               "  const content = await file.text();"
+                               "  return content;"
+                               "});")
+        .ExtractString();
   }
 
-  // Writes |content_to_write| to |file_handle_or_promise| file handle.
-  [[nodiscard]] ::testing::AssertionResult WriteContentToJsFileHandle(
-      content::WebContents* web_contents,
-      const std::string& file_handle_or_promise,
-      const std::string& content_to_write) {
-    return content::ExecJs(
+  // Writes |content_to_write| to |file_handle_or_promise| file handle. Returns
+  // whether JavaScript execution finishes.
+  bool WriteContentToJsFileHandle(content::WebContents* web_contents,
+                                  const std::string& file_handle_or_promise,
+                                  const std::string& content_to_write) {
+    bool file_written;
+    EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
         web_contents,
         content::JsReplace(
             "Promise.resolve(" + file_handle_or_promise + ")" +
@@ -466,20 +453,29 @@ class SystemWebAppManagerLaunchDirectoryBrowserTest
                 "  const writable = await fileHandle.createWritable();"
                 "  await writable.write($1);"
                 "  await writable.close();"
-                "})",
-            content_to_write));
+                "  window.domAutomationController.send(true);"
+                "});",
+            content_to_write),
+        &file_written));
+    return file_written;
   }
 
   // Remove file by |file_name| from |dir_handle_or_promise| directory handle.
-  [[nodiscard]] ::testing::AssertionResult RemoveFileFromJsDirectoryHandle(
-      content::WebContents* web_contents,
-      const std::string& dir_handle_or_promise,
-      const std::string& file_name) {
-    return content::ExecJs(
-        web_contents, content::JsReplace(
-                          "Promise.resolve(" + dir_handle_or_promise + ")" +
-                              ".then(dir_handle => dir_handle.removeEntry($1))",
-                          file_name));
+  // Returns whether JavaScript execution finishes.
+  bool RemoveFileFromJsDirectoryHandle(content::WebContents* web_contents,
+                                       const std::string& dir_handle_or_promise,
+                                       const std::string& file_name) {
+    bool file_removed;
+    EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
+        web_contents,
+        content::JsReplace("Promise.resolve(" + dir_handle_or_promise + ")" +
+                               ".then(async (dir_handle) => {"
+                               "  await dir_handle.removeEntry($1);"
+                               "  domAutomationController.send(true);"
+                               "});",
+                           file_name),
+        &file_removed));
+    return file_removed;
   }
 
   std::string ReadFileContent(const base::FilePath& path) {
@@ -578,16 +574,17 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchDirectoryBrowserTest,
   EXPECT_TRUE(WaitAndExposeLaunchParamsToWindow(web_contents, "launchParams1"));
 
   // Check launch directory and launch files are correct.
-  EXPECT_EQ("directory", content::EvalJs(web_contents,
-                                         "window.launchParams1.files[0].kind"));
-  EXPECT_EQ(
-      temp_directory.GetPath().BaseName().AsUTF8Unsafe(),
-      content::EvalJs(web_contents, "window.launchParams1.files[0].name"));
-  EXPECT_EQ("file", content::EvalJs(web_contents,
-                                    "window.launchParams1.files[1].kind"));
-  EXPECT_EQ(
-      temp_file_path.BaseName().AsUTF8Unsafe(),
-      content::EvalJs(web_contents, "window.launchParams1.files[1].name"));
+  EXPECT_EQ("directory",
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams1.files[0].kind"));
+  EXPECT_EQ(temp_directory.GetPath().BaseName().AsUTF8Unsafe(),
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams1.files[0].name"));
+  EXPECT_EQ("file", GetJsStatementValueAsString(
+                        web_contents, "window.launchParams1.files[1].kind"));
+  EXPECT_EQ(temp_file_path.BaseName().AsUTF8Unsafe(),
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams1.files[1].name"));
 
   // Second launch.
   base::ScopedTempDir temp_directory2;
@@ -603,16 +600,17 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchDirectoryBrowserTest,
   EXPECT_TRUE(WaitAndExposeLaunchParamsToWindow(web_contents, "launchParams2"));
 
   // Check the second launch directory and launch files are correct.
-  EXPECT_EQ("directory", content::EvalJs(web_contents,
-                                         "window.launchParams2.files[0].kind"));
-  EXPECT_EQ(
-      temp_directory2.GetPath().BaseName().AsUTF8Unsafe(),
-      content::EvalJs(web_contents, "window.launchParams2.files[0].name"));
-  EXPECT_EQ("file", content::EvalJs(web_contents,
-                                    "window.launchParams2.files[1].kind"));
-  EXPECT_EQ(
-      temp_file_path2.BaseName().AsUTF8Unsafe(),
-      content::EvalJs(web_contents, "window.launchParams2.files[1].name"));
+  EXPECT_EQ("directory",
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams2.files[0].kind"));
+  EXPECT_EQ(temp_directory2.GetPath().BaseName().AsUTF8Unsafe(),
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams2.files[0].name"));
+  EXPECT_EQ("file", GetJsStatementValueAsString(
+                        web_contents, "window.launchParams2.files[1].kind"));
+  EXPECT_EQ(temp_file_path2.BaseName().AsUTF8Unsafe(),
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams2.files[1].name"));
 }
 
 IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchDirectoryBrowserTest,
@@ -647,51 +645,63 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerLaunchDirectoryBrowserTest,
 class SystemWebAppManagerLaunchDirectoryFileSystemProviderBrowserTest
     : public SystemWebAppManagerLaunchDirectoryBrowserTest {
  public:
-  [[nodiscard]] content::EvalJsResult FileHandleIsGif(
-      content::WebContents* web_contents,
-      const std::string& file_handle_or_promise) {
-    return content::EvalJs(
+  bool CheckFileIsGif(content::WebContents* web_contents,
+                      const std::string& file_handle_or_promise) {
+    bool is_gif_signature;
+    EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
         web_contents,
         "Promise.resolve(" + file_handle_or_promise + ")" +
-            ".then(async fileHandle => {"
-            "  const file = await fileHandle.getFile();"
+            ".then(async file => {"
             "  const arrayBuf = await file.arrayBuffer();"
             "  const bytes = new Uint8Array(arrayBuf.slice(0, 3));"
-            "  return bytes[0] === 0x47     /* G */"
-            "      && bytes[1] === 0x49     /* I */"
-            "      && bytes[2] === 0x46;    /* F */"
-            "});");
+            "  const isGifSignature = bytes[0] === 0x47        /* G */"
+            "                         && bytes[1] === 0x49     /* I */ "
+            "                         && bytes[2] === 0x46;    /* F */"
+            "  domAutomationController.send(isGifSignature);"
+            "});",
+        &is_gif_signature));
+    return is_gif_signature;
   }
 
-  [[nodiscard]] content::EvalJsResult FileHandleIsPng(
-      content::WebContents* web_contents,
-      const std::string& file_handle_or_promise) {
-    return content::EvalJs(
+  bool CheckFileIsPng(content::WebContents* web_contents,
+                      const std::string& file_handle_or_promise) {
+    bool is_png_signature;
+    EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
         web_contents,
         "Promise.resolve(" + file_handle_or_promise + ")" +
-            ".then(async fileHandle => {"
-            "  const file = await fileHandle.getFile();"
+            ".then(async file => {"
             "  const arrayBuf = await file.arrayBuffer();"
             "  const bytes = new Uint8Array(arrayBuf.slice(0, 4));"
-            "  return bytes[0] === 0x89     /* 0x89 */"
-            "      && bytes[1] === 0x50     /* P */"
-            "      && bytes[2] === 0x4E     /* N */"
-            "      && bytes[3] === 0x47;    /* G */"
-            "});");
+            "  const isPngSignature = bytes[0] === 0x89        /* 0x89 */"
+            "                         && bytes[1] === 0x50     /* P */"
+            "                         && bytes[2] === 0x4E     /* N */"
+            "                         && bytes[3] === 0x47;    /* G */"
+            "  domAutomationController.send(isPngSignature);"
+            "});",
+        &is_png_signature));
+    return is_png_signature;
   }
 
   // Returns whether the file is written.
-  [[nodiscard]] ::testing::AssertionResult CanWriteFile(
-      content::WebContents* web_contents,
-      const std::string& file_handle_or_promise) {
-    return content::ExecJs(
+  bool CheckCanWriteFile(content::WebContents* web_contents,
+                         const std::string& file_handle_or_promise) {
+    bool file_written;
+    EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
         web_contents,
         "Promise.resolve(" + file_handle_or_promise + ")" +
             ".then(async fileHandle => {"
-            "  const writable = await fileHandle.createWritable();"
-            "  await writable.write('test');"
-            "  await writable.close();"
-            "});");
+            "  try {"
+            "    const writable = await fileHandle.createWritable();"
+            "    await writable.write('test');"
+            "    await writable.close();"
+            "    domAutomationController.send(true);"
+            "  } catch(err) {"
+            "    console.error('write failed: ' + err.message);"
+            "    domAutomationController.send(false);"
+            "  }"
+            "});",
+        &file_written));
+    return file_written;
   }
 
   void InstallTestFileSystemProvider(Profile* profile) {
@@ -709,12 +719,6 @@ class SystemWebAppManagerLaunchDirectoryFileSystemProviderBrowserTest
 IN_PROC_BROWSER_TEST_P(
     SystemWebAppManagerLaunchDirectoryFileSystemProviderBrowserTest,
     LaunchFromFileSystemProvider_ReadFiles) {
-  // TODO(b/287166490): Fix the test and remove this.
-  if (GetParam().crosapi_state == TestProfileParam::CrosapiParam::kEnabled) {
-    GTEST_SKIP()
-        << "Skipping test body for CrosapiParam::kEnabled, see b/287166490.";
-  }
-
   Profile* profile = browser()->profile();
 
   WaitForTestSystemAppInstall();
@@ -732,28 +736,31 @@ IN_PROC_BROWSER_TEST_P(
 
   // Check the launch file is the one we expect, and we can read the file.
   EXPECT_EQ(kTestGifFile,
-            content::EvalJs(web_contents, "window.launchParams.files[1].name"));
-  EXPECT_EQ(true,
-            FileHandleIsGif(web_contents, "window.launchParams.files[1]"));
+            GetJsStatementValueAsString(web_contents,
+                                        "window.launchParams.files[1].name"));
+  EXPECT_TRUE(
+      CheckFileIsGif(web_contents, "window.launchParams.files[1].getFile()"));
 
   // Check we can list the directory.
-  EXPECT_EQ(base::StrCat({kTestPngFile, ";", kTestGifFile}),
-            content::EvalJs(
-                web_contents,
-                "(async function() {"
-                "  let fileNames = [];"
-                "  const files = await window.launchParams.files[0].keys();"
-                "  for await (const name of files)"
-                "    fileNames.push(name);"
-                "  return fileNames.sort().join(';');"
-                "})();"));
+  std::string file_names =
+      content::EvalJs(
+          web_contents,
+          "(async function() {"
+          "  let fileNames = [];"
+          "  const files = await window.launchParams.files[0].keys();"
+          "  for await (const name of files)"
+          "    fileNames.push(name);"
+          "  return fileNames.sort().join(';');"
+          "})();")
+          .ExtractString();
+  EXPECT_EQ(base::StrCat({kTestPngFile, ";", kTestGifFile}), file_names);
 
   // Verify we can read a file (other than launch file) inside the directory.
-  EXPECT_EQ(true, FileHandleIsPng(
-                      web_contents,
-                      content::JsReplace(
-                          "window.launchParams.files[0].getFileHandle($1)",
-                          kTestPngFile)));
+  EXPECT_TRUE(CheckFileIsPng(
+      web_contents,
+      content::JsReplace("window.launchParams.files[0].getFileHandle($1).then("
+                         "  fileHandle => fileHandle.getFile())",
+                         kTestPngFile)));
 }
 
 // Test that the File System Access implementation doesn't cause a crash when
@@ -761,12 +768,6 @@ IN_PROC_BROWSER_TEST_P(
 IN_PROC_BROWSER_TEST_P(
     SystemWebAppManagerLaunchDirectoryFileSystemProviderBrowserTest,
     LaunchFromFileSystemProvider_WriteFileFails) {
-  // TODO(b/287166490): Fix the test and remove this.
-  if (GetParam().crosapi_state == TestProfileParam::CrosapiParam::kEnabled) {
-    GTEST_SKIP()
-        << "Skipping test body for CrosapiParam::kEnabled, see b/287166490.";
-  }
-
   Profile* profile = browser()->profile();
 
   WaitForTestSystemAppInstall();
@@ -779,11 +780,11 @@ IN_PROC_BROWSER_TEST_P(
   EXPECT_TRUE(WaitAndExposeLaunchParamsToWindow(web_contents, "launchParams"));
 
   // Try to write the file.
-  EXPECT_FALSE(CanWriteFile(web_contents, "window.launchParams.files[1]"));
+  EXPECT_FALSE(CheckCanWriteFile(web_contents, "window.launchParams.files[1]"));
 
   // Do a no-op JavaScript to check the page is still operational. If the page
   // crashed, the following call will fail.
-  EXPECT_TRUE(content::ExecJs(web_contents, "(function(){})();"));
+  EXPECT_TRUE(content::ExecuteScript(web_contents, "(function() {})();"));
 }
 
 // Test that the File System Access implementation doesn't cause a crash when
@@ -791,12 +792,6 @@ IN_PROC_BROWSER_TEST_P(
 IN_PROC_BROWSER_TEST_P(
     SystemWebAppManagerLaunchDirectoryFileSystemProviderBrowserTest,
     LaunchFromFileSystemProvider_DeleteFileFails) {
-  // TODO(b/287166490): Fix the test and remove this.
-  if (GetParam().crosapi_state == TestProfileParam::CrosapiParam::kEnabled) {
-    GTEST_SKIP()
-        << "Skipping test body for CrosapiParam::kEnabled, see b/287166490.";
-  }
-
   Profile* profile = browser()->profile();
 
   WaitForTestSystemAppInstall();
@@ -808,15 +803,22 @@ IN_PROC_BROWSER_TEST_P(
   EXPECT_TRUE(PrepareToReceiveLaunchParams(web_contents));
   EXPECT_TRUE(WaitAndExposeLaunchParamsToWindow(web_contents, "launchParams"));
 
-  // Deleting the file should fail.
-  EXPECT_FALSE(content::ExecJs(
+  // Try to delete the file.
+  bool file_deleted;
+  EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
       web_contents,
-      content::JsReplace("window.launchParams.files[0].removeEntry($1)",
-                         "readonly.png")));
+      content::JsReplace("window.launchParams.files[0].removeEntry($1)"
+                         ".then("
+                         "  _ => domAutomationController.send(true),"
+                         "  error => domAutomationController.send(false)"
+                         ");",
+                         "readonly.png"),
+      &file_deleted));
+  EXPECT_FALSE(file_deleted);
 
   // Do a no-op JavaScript to check the page is still operational. If the page
   // crashed, the following call will fail.
-  EXPECT_TRUE(content::ExecJs(web_contents, "(function() {})();"));
+  EXPECT_TRUE(content::ExecuteScript(web_contents, "(function() {})();"));
 }
 
 class SystemWebAppManagerNotShownInLauncherTest
@@ -832,7 +834,7 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerNotShownInLauncherTest,
                        NotShownInLauncher) {
   WaitForTestSystemAppInstall();
 
-  webapps::AppId app_id =
+  web_app::AppId app_id =
       GetManager().GetAppIdForSystemApp(GetAppType()).value();
 
   GetAppServiceProxy(browser()->profile())
@@ -863,7 +865,7 @@ class SystemWebAppManagerNotShownInSearchTest
 IN_PROC_BROWSER_TEST_P(SystemWebAppManagerNotShownInSearchTest,
                        NotShownInSearch) {
   WaitForTestSystemAppInstall();
-  webapps::AppId app_id =
+  web_app::AppId app_id =
       GetManager().GetAppIdForSystemApp(GetAppType()).value();
 
   GetAppServiceProxy(browser()->profile())
@@ -885,7 +887,7 @@ class SystemWebAppManagerHandlesFileOpenIntentsTest
 IN_PROC_BROWSER_TEST_P(SystemWebAppManagerHandlesFileOpenIntentsTest,
                        HandlesFileOpenIntents) {
   WaitForTestSystemAppInstall();
-  webapps::AppId app_id =
+  web_app::AppId app_id =
       GetManager().GetAppIdForSystemApp(GetAppType()).value();
 
   GetAppServiceProxy(browser()->profile())
@@ -907,7 +909,7 @@ class SystemWebAppManagerAdditionalSearchTermsTest
 IN_PROC_BROWSER_TEST_P(SystemWebAppManagerAdditionalSearchTermsTest,
                        AdditionalSearchTerms) {
   WaitForTestSystemAppInstall();
-  webapps::AppId app_id =
+  web_app::AppId app_id =
       GetManager().GetAppIdForSystemApp(GetAppType()).value();
 
   // AdditionalSearchTerms is flaky on Windows as it's a Chrome OS feature.
@@ -934,7 +936,6 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerHasTabStripTest, HasTabStrip) {
   Browser* browser;
   EXPECT_TRUE(LaunchApp(GetAppType(), &browser));
   EXPECT_TRUE(browser->app_controller()->has_tab_strip());
-  EXPECT_FALSE(browser->app_controller()->ShouldHideNewTabButton());
 }
 
 class SystemWebAppManagerHasNoTabStripTest
@@ -1070,11 +1071,6 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerInstallAllAppsBrowserTest,
           type_and_info.second->GetInstallUrl(),
           type_and_info.second->GetWebAppInfo()->start_url));
     }
-
-    // Check app's web app shortcuts fields is self-consistent.
-    auto install_info = type_and_info.second->GetWebAppInfo();
-    EXPECT_EQ(install_info->shortcuts_menu_icon_bitmaps.size(),
-              install_info->shortcuts_menu_item_infos.size());
   }
 
   // Check each SWA app has their own unique origin (i.e. doesn't share origin
@@ -1101,7 +1097,7 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerInstallAllAppsBrowserTest,
     if (type_and_info.first == SystemWebAppType::TERMINAL)
       continue;
 
-    std::optional<std::string> app_id =
+    absl::optional<std::string> app_id =
         GetManager().GetAppIdForSystemApp(type_and_info.first);
     EXPECT_TRUE(app_id);
 
@@ -1139,15 +1135,6 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerInstallAllAppsBrowserTest,
              "//chrome/browser/ash/extensions/default_app_order.cc, which "
              "should match the order in go/default-apps";
     }
-  }
-
-  // Verify that all system web apps have an icon.
-  for (const auto& [_, delegate] : app_map) {
-    const auto info = delegate->GetWebAppInfo();
-    EXPECT_FALSE(info->manifest_icons.empty())
-        << delegate->GetInternalName() << " needs a manifest icon";
-    EXPECT_FALSE(delegate->GetWebAppInfo()->icon_bitmaps.empty())
-        << delegate->GetInternalName() << " needs an icon bitmap";
   }
 }
 
@@ -1188,7 +1175,7 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerChromeUntrustedTest, Install) {
   Browser* app_browser;
   LaunchAppWithoutWaiting(GetAppType(), &app_browser);
 
-  webapps::AppId app_id =
+  web_app::AppId app_id =
       GetManager().GetAppIdForSystemApp(GetAppType()).value();
   EXPECT_EQ(app_id, app_browser->app_controller()->app_id());
   EXPECT_TRUE(GetManager().IsSystemWebApp(app_id));
@@ -1368,7 +1355,7 @@ class SystemWebAppManagerAppSuspensionBrowserTest
  public:
   SystemWebAppManagerAppSuspensionBrowserTest() = default;
 
-  apps::Readiness GetAppReadiness(const webapps::AppId& app_id) {
+  apps::Readiness GetAppReadiness(const web_app::AppId& app_id) {
     apps::Readiness readiness;
     bool app_found =
         GetAppServiceProxy(browser()->profile())
@@ -1380,8 +1367,8 @@ class SystemWebAppManagerAppSuspensionBrowserTest
     return readiness;
   }
 
-  std::optional<apps::IconKey> GetAppIconKey(const webapps::AppId& app_id) {
-    std::optional<apps::IconKey> icon_key;
+  absl::optional<apps::IconKey> GetAppIconKey(const web_app::AppId& app_id) {
+    absl::optional<apps::IconKey> icon_key;
     bool app_found =
         GetAppServiceProxy(browser()->profile())
             ->AppRegistryCache()
@@ -1407,7 +1394,7 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerAppSuspensionBrowserTest,
     update->Append(static_cast<int>(policy::SystemFeature::kOsSettings));
   }
   WaitForTestSystemAppInstall();
-  std::optional<webapps::AppId> settings_id =
+  absl::optional<web_app::AppId> settings_id =
       GetManager().GetAppIdForSystemApp(SystemWebAppType::SETTINGS);
   DCHECK(settings_id.has_value());
 
@@ -1437,7 +1424,7 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerAppSuspensionBrowserTest,
       "screenplay-44570758-2d0f-4ed9-8172-102244523249");
 
   WaitForTestSystemAppInstall();
-  std::optional<webapps::AppId> settings_id =
+  absl::optional<web_app::AppId> settings_id =
       GetManager().GetAppIdForSystemApp(SystemWebAppType::SETTINGS);
   DCHECK(settings_id.has_value());
   EXPECT_EQ(apps::Readiness::kReady, GetAppReadiness(*settings_id));
@@ -1483,14 +1470,12 @@ class SystemWebAppManagerShortcutTest
 
 IN_PROC_BROWSER_TEST_P(SystemWebAppManagerShortcutTest, ShortcutUrl) {
   WaitForTestSystemAppInstall();
-  webapps::AppId app_id =
+  web_app::AppId app_id =
       GetManager()
           .GetAppIdForSystemApp(SystemWebAppType::SHORTCUT_CUSTOMIZATION)
           .value();
   Browser* browser;
-  content::WebContents* web_contents =
-      LaunchApp(SystemWebAppType::SHORTCUT_CUSTOMIZATION, &browser);
-  EXPECT_TRUE(web_contents);
+  EXPECT_TRUE(LaunchApp(SystemWebAppType::SHORTCUT_CUSTOMIZATION, &browser));
 
   std::unique_ptr<ui::SimpleMenuModel> menu_model;
   {
@@ -1524,7 +1509,9 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppManagerShortcutTest, ShortcutUrl) {
   check_shortcut(menu_model->GetItemCount() - 1, 1, u"Two");
 
   const int command_id = LAUNCH_APP_SHORTCUT_FIRST + 1;
-  content::LoadStopObserver url_observer(web_contents);
+  ui_test_utils::UrlLoadObserver url_observer(
+      GURL("chrome://test-system-app/pwa.html#two"),
+      content::NotificationService::AllSources());
   menu_model->ActivatedAt(menu_model->GetIndexOfCommandId(command_id).value(),
                           ui::EF_LEFT_MOUSE_BUTTON);
   url_observer.Wait();
@@ -1787,10 +1774,10 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppAccessibilityTest,
 
   // Launcher-B to find minimize button.
   speech_monitor_.Call([&]() {
-    // Search+B to switch pane.
+    // F6 to switch pane.
     ui::test::EventGenerator generator(app_window->GetRootWindow());
-    generator.PressAndReleaseKeyAndModifierKeys(
-        ui::VKEY_B, ui::EF_COMMAND_DOWN | ui::EF_FINAL);
+    generator.PressAndReleaseKey(ui::VKEY_B,
+                                 ui::EF_COMMAND_DOWN | ui::EF_FINAL);
   });
   speech_monitor_.ExpectSpeech("Minimize");
   speech_monitor_.ExpectSpeech("Button");
@@ -1871,7 +1858,7 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppIconHealthMetricsTest,
   base::FilePath icon_path =
       SystemWebAppManager::GetWebAppProvider(browser()->profile())
           ->icon_manager()
-          .GetIconFilePathForTesting(app_id, web_app::IconPurpose::ANY, 32);
+          .GetIconFilePathForTesting(app_id, IconPurpose::ANY, 32);
 
   {
     base::ScopedAllowBlockingForTesting allow_blocking;
@@ -1906,7 +1893,7 @@ IN_PROC_BROWSER_TEST_P(SystemWebAppIconHealthMetricsTest,
       SystemWebAppManager::kIconsFixedOnReinstallHistogramName, true, 1);
 }
 
-INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
+INSTANTIATE_SYSTEM_WEB_APP_TEST_SUITE_REGULAR_PREF_MIGRATION_P(
     SystemWebAppManagerBrowserTestBasicInstall);
 
 INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
@@ -1933,7 +1920,7 @@ INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
 INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
     SystemWebAppManagerAdditionalSearchTermsTest);
 
-INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
+INSTANTIATE_SYSTEM_WEB_APP_TEST_SUITE_REGULAR_PREF_MIGRATION_P(
     SystemWebAppManagerChromeUntrustedTest);
 
 INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
@@ -1974,8 +1961,5 @@ INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
 
 INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
     SystemWebAppManagerContextMenuBrowserTest);
-
-INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_REGULAR_PROFILE_P(
-    SystemWebAppManagerLaunchWithUrlBrowserTest);
 
 }  // namespace ash

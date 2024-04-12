@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_ANDROID_SMS_ANDROID_SMS_APP_MANAGER_IMPL_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
@@ -14,8 +13,10 @@
 #include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "chrome/browser/ash/android_sms/android_sms_app_manager.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
+class PrefRegistrySimple;
 class PrefService;
 class Profile;
 
@@ -58,35 +59,39 @@ class AndroidSmsAppManagerImpl : public AndroidSmsAppManager {
 
   ~AndroidSmsAppManagerImpl() override;
 
+  static void RegisterProfilePrefs(PrefRegistrySimple* registry);
+
  private:
   friend class AndroidSmsAppManagerImplTest;
 
   // AndroidSmsAppManager:
-  std::optional<GURL> GetCurrentAppUrl() override;
+  absl::optional<GURL> GetCurrentAppUrl() override;
 
   // AndroidSmsAppHelperDelegate:
   void SetUpAndroidSmsApp() override;
   void SetUpAndLaunchAndroidSmsApp() override;
   void TearDownAndroidSmsApp() override;
+  bool HasAppBeenManuallyUninstalledByUser() override;
   bool IsAppInstalled() override;
   bool IsAppRegistryReady() override;
   void ExecuteOnAppRegistryReady(base::OnceClosure task) override;
 
-  std::optional<PwaDomain> GetInstalledPwaDomain();
-  std::optional<PwaDomain> GetInstalledPwaDomainForMigration();
+  absl::optional<PwaDomain> GetInstalledPwaDomain();
+  absl::optional<PwaDomain> GetInstalledPwaDomainForMigration();
   void CompleteAsyncInitialization();
   void NotifyInstalledAppUrlChangedIfNecessary();
-  void OnSetUpNewAppResult(const std::optional<PwaDomain>& migrating_from,
+  void OnSetUpNewAppResult(const absl::optional<PwaDomain>& migrating_from,
                            const GURL& install_url,
                            bool success);
-  void OnRemoveOldAppResult(const std::optional<PwaDomain>& migrating_from,
+  void OnRemoveOldAppResult(const absl::optional<PwaDomain>& migrating_from,
                             bool success);
   void HandleAppSetupFinished();
 
-  raw_ptr<Profile> profile_;
-  raw_ptr<AndroidSmsAppSetupController> setup_controller_;
-  raw_ptr<app_list::AppListSyncableService> app_list_syncable_service_;
-  raw_ptr<PrefService> pref_service_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
+  raw_ptr<AndroidSmsAppSetupController, ExperimentalAsh> setup_controller_;
+  raw_ptr<app_list::AppListSyncableService, ExperimentalAsh>
+      app_list_syncable_service_;
+  raw_ptr<PrefService, ExperimentalAsh> pref_service_;
 
   // True if installation is in currently in progress.
   bool is_new_app_setup_in_progress_ = false;
@@ -97,7 +102,7 @@ class AndroidSmsAppManagerImpl : public AndroidSmsAppManager {
 
   // The installed app URL, initialized when app registry is ready and updated
   // any time NotifyInstalledAppUrlChanged() is invoked.
-  std::optional<GURL> last_installed_url_;
+  absl::optional<GURL> last_installed_url_;
 
   std::unique_ptr<PwaDelegate> pwa_delegate_;
   base::WeakPtrFactory<AndroidSmsAppManagerImpl> weak_ptr_factory_{this};

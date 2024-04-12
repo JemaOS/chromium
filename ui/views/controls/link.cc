@@ -33,7 +33,7 @@ Link::Link(const std::u16string& title, int text_context, int text_style)
 
   SetAccessibilityProperties(ax::mojom::Role::kLink, title);
   // Prevent invisible links from being announced by screen reader.
-  GetViewAccessibility().SetIsIgnored(title.empty());
+  GetViewAccessibility().OverrideIsIgnored(title.empty());
 
   // Label() indirectly calls SetText(), but at that point our virtual override
   // will not be reached.  Call it explicitly here to configure focus.
@@ -45,7 +45,7 @@ Link::Link(const std::u16string& title, int text_context, int text_style)
 Link::~Link() = default;
 
 SkColor Link::GetColor() const {
-  // TODO(crbug.com/1446855): Use TypographyProvider::GetColorId().
+  // TODO(tapted): Use style::GetColor().
   const ui::ColorProvider* color_provider = GetColorProvider();
   DCHECK(color_provider);
   if (!GetEnabled())
@@ -53,12 +53,6 @@ SkColor Link::GetColor() const {
 
   if (requested_enabled_color_.has_value())
     return requested_enabled_color_.value();
-
-  if (GetTextContext() == style::CONTEXT_BUBBLE_FOOTER) {
-    return color_provider->GetColor(
-        pressed_ ? ui::kColorLinkForegroundPressedOnBubbleFooter
-                 : ui::kColorLinkForegroundOnBubbleFooter);
-  }
 
   return color_provider->GetColor(pressed_ ? ui::kColorLinkForegroundPressed
                                            : ui::kColorLinkForeground);
@@ -183,7 +177,7 @@ void Link::SetFontList(const gfx::FontList& font_list) {
 void Link::SetText(const std::u16string& text) {
   Label::SetText(text);
   // Prevent invisible links from being announced by screen reader.
-  GetViewAccessibility().SetIsIgnored(text.empty());
+  GetViewAccessibility().OverrideIsIgnored(text.empty());
   ConfigureFocus();
 }
 
@@ -241,7 +235,7 @@ void Link::ConfigureFocus() {
   }
 }
 
-BEGIN_METADATA(Link)
+BEGIN_METADATA(Link, Label)
 ADD_READONLY_PROPERTY_METADATA(SkColor, Color, ui::metadata::SkColorConverter)
 ADD_PROPERTY_METADATA(bool, ForceUnderline)
 END_METADATA

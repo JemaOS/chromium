@@ -52,7 +52,7 @@ class HomeToOverviewNudgeControllerWithNudgesDisabledTest : public AshTestBase {
  public:
   HomeToOverviewNudgeControllerWithNudgesDisabledTest() {
     scoped_feature_list_.InitAndDisableFeature(
-        features::kHideShelfControlsInTabletMode);
+        ash::features::kContextualNudges);
   }
   ~HomeToOverviewNudgeControllerWithNudgesDisabledTest() override = default;
 
@@ -70,8 +70,9 @@ class HomeToOverviewNudgeControllerWithNudgesDisabledTest : public AshTestBase {
 class HomeToOverviewNudgeControllerTest : public AshTestBase {
  public:
   HomeToOverviewNudgeControllerTest() {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kHideShelfControlsInTabletMode);
+    scoped_feature_list_.InitWithFeatures(
+        {features::kContextualNudges, features::kHideShelfControlsInTabletMode},
+        {});
   }
   ~HomeToOverviewNudgeControllerTest() override = default;
 

@@ -123,7 +123,7 @@ TEST_F(ChromeMetricsServicesManagerClientTest, PopulateStartupVisibility) {
               metrics_state_manager->is_background_session());
 }
 
-// Verifies that IsClientInSampleForMetrics() uses the "MetricsReporting"
+// Verifies that IsClientInSample() uses the "MetricsReporting" sampling
 // feature to determine sampling if the |kUsePostFREFixSamplingTrial| pref is
 // not set. This is the case if 1) this is a non-Android platform, or 2) this is
 // an Android client that is not using the new sampling trial.
@@ -133,8 +133,7 @@ TEST_F(IsClientInSampleTest, UsesMetricsReportingFeature) {
     feature_list.InitAndDisableFeature(
         metrics::internal::kMetricsReportingFeature);
     // The client should not be considered sampled in.
-    EXPECT_FALSE(
-        ChromeMetricsServicesManagerClient::IsClientInSampleForMetrics());
+    EXPECT_FALSE(ChromeMetricsServicesManagerClient::IsClientInSample());
   }
 
   {
@@ -142,13 +141,12 @@ TEST_F(IsClientInSampleTest, UsesMetricsReportingFeature) {
     feature_list.InitAndEnableFeature(
         metrics::internal::kMetricsReportingFeature);
     // The client should be considered sampled in.
-    EXPECT_TRUE(
-        ChromeMetricsServicesManagerClient::IsClientInSampleForMetrics());
+    EXPECT_TRUE(ChromeMetricsServicesManagerClient::IsClientInSample());
   }
 }
 
 #if BUILDFLAG(IS_ANDROID)
-// Verifies that IsClientInSampleForMetrics() uses the post-FRE-fix sampling
+// Verifies that IsClientInSample() uses the post-FRE-fix sampling
 // feature to determine sampling if the |kUsePostFREFixSamplingTrial| pref is
 // set.
 TEST_F(IsClientInSampleTest, UsesPostFREFixFeatureWhenPrefSet) {
@@ -160,8 +158,7 @@ TEST_F(IsClientInSampleTest, UsesPostFREFixFeatureWhenPrefSet) {
     feature_list.InitAndDisableFeature(
         metrics::internal::kPostFREFixMetricsReportingFeature);
     // The client should not be considered sampled in.
-    EXPECT_FALSE(
-        ChromeMetricsServicesManagerClient::IsClientInSampleForMetrics());
+    EXPECT_FALSE(ChromeMetricsServicesManagerClient::IsClientInSample());
   }
 
   {
@@ -169,51 +166,7 @@ TEST_F(IsClientInSampleTest, UsesPostFREFixFeatureWhenPrefSet) {
     feature_list.InitAndEnableFeature(
         metrics::internal::kPostFREFixMetricsReportingFeature);
     // The client should be considered sampled in.
-    EXPECT_TRUE(
-        ChromeMetricsServicesManagerClient::IsClientInSampleForMetrics());
+    EXPECT_TRUE(ChromeMetricsServicesManagerClient::IsClientInSample());
   }
 }
 #endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
-TEST_F(IsClientInSampleTest, IsClientInSampleForCrashesTest) {
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitAndEnableFeature(
-        metrics::internal::kMetricsReportingFeature);
-    EXPECT_TRUE(
-        ChromeMetricsServicesManagerClient::IsClientInSampleForCrashes());
-  }
-
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitAndEnableFeatureWithParameters(
-        metrics::internal::kMetricsReportingFeature,
-        {{"disable_crashes", "true"}});
-    EXPECT_FALSE(
-        ChromeMetricsServicesManagerClient::IsClientInSampleForCrashes());
-  }
-
-#if BUILDFLAG(IS_ANDROID)
-  // Set the |kUsePostFREFixSamplingTrial| pref to true.
-  local_state()->SetBoolean(metrics::prefs::kUsePostFREFixSamplingTrial, true);
-
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitAndEnableFeature(
-        metrics::internal::kPostFREFixMetricsReportingFeature);
-    EXPECT_TRUE(
-        ChromeMetricsServicesManagerClient::IsClientInSampleForCrashes());
-  }
-
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitAndEnableFeatureWithParameters(
-        metrics::internal::kPostFREFixMetricsReportingFeature,
-        {{"disable_crashes", "true"}});
-    EXPECT_FALSE(
-        ChromeMetricsServicesManagerClient::IsClientInSampleForCrashes());
-  }
-#endif  // BUILDFLAG(IS_ANDROID)
-}
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)

@@ -5,14 +5,12 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_DOWNLOAD_BUBBLE_DOWNLOAD_BUBBLE_PARTIAL_VIEW_H_
 #define CHROME_BROWSER_UI_VIEWS_DOWNLOAD_BUBBLE_DOWNLOAD_BUBBLE_PARTIAL_VIEW_H_
 
-#include <optional>
+#include <memory>
 
 #include "base/functional/callback_forward.h"
 #include "chrome/browser/download/download_ui_model.h"
-#include "chrome/browser/ui/download/download_bubble_row_list_view_info.h"
-#include "chrome/browser/ui/views/download/bubble/download_bubble_primary_view.h"
 #include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/views/focus/focus_manager.h"
+#include "ui/views/view.h"
 
 class Browser;
 class DownloadBubbleUIController;
@@ -20,43 +18,34 @@ class DownloadBubbleNavigationHandler;
 
 // This class encapsulates the "partial view" in the download bubble. This gives
 // a compact representation of downloads that recently completed.
-class DownloadBubblePartialView : public DownloadBubblePrimaryView,
-                                  public views::FocusChangeListener {
-  METADATA_HEADER(DownloadBubblePartialView, DownloadBubblePrimaryView)
-
+class DownloadBubblePartialView : public views::View {
  public:
-  DownloadBubblePartialView(
-      base::WeakPtr<Browser> browser,
-      base::WeakPtr<DownloadBubbleUIController> bubble_controller,
-      base::WeakPtr<DownloadBubbleNavigationHandler> navigation_handler,
-      const DownloadBubbleRowListViewInfo& info,
-      base::OnceClosure on_interacted_closure);
+  METADATA_HEADER(DownloadBubblePartialView);
+
+  static std::unique_ptr<DownloadBubblePartialView> Create(
+      Browser* browser,
+      DownloadBubbleUIController* bubble_controller,
+      DownloadBubbleNavigationHandler* navigation_handler,
+      std::vector<DownloadUIModel::DownloadUIModelPtr> rows,
+      base::OnceClosure on_mouse_entered_closure);
+
   DownloadBubblePartialView(const DownloadBubblePartialView&) = delete;
   DownloadBubblePartialView& operator=(const DownloadBubblePartialView&) =
       delete;
   ~DownloadBubblePartialView() override;
 
-  // DownloadBubblePrimaryView:
-  base::StringPiece GetVisibleTimeHistogramName() const override;
-  void AddedToWidget() override;
-  void RemovedFromWidget() override;
+  // views::View
   void OnMouseEntered(const ui::MouseEvent& event) override;
-  bool IsPartialView() const override;
-
-  // views::FocusChangeListener:
-  void OnWillChangeFocus(views::View* before, views::View* now) override;
-  void OnDidChangeFocus(views::View* before, views::View* now) override {}
 
  private:
-  // Run the |on_interacted_closure_|.
-  void OnInteracted();
+  DownloadBubblePartialView(
+      Browser* browser,
+      DownloadBubbleUIController* bubble_controller,
+      DownloadBubbleNavigationHandler* navigation_handler,
+      std::vector<DownloadUIModel::DownloadUIModelPtr> rows,
+      base::OnceClosure on_mouse_entered_closure);
 
-  // A callback to be run when this view has been hovered over by the mouse or
-  // focused by the keyboard.
-  base::OnceClosure on_interacted_closure_;
-
-  // Records the end time of the last download if it is successful.
-  std::optional<base::Time> last_download_completed_time_;
+  base::OnceClosure on_mouse_entered_closure_;
 };
 
-#endif  // CHROME_BROWSER_UI_VIEWS_DOWNLOAD_BUBBLE_DOWNLOAD_BUBBLE_PARTIAL_VIEW_H_
+#endif

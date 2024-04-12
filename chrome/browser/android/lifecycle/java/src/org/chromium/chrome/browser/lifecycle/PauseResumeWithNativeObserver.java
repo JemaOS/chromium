@@ -15,6 +15,8 @@ public interface PauseResumeWithNativeObserver extends LifecycleObserver {
      */
     void onResumeWithNative();
 
-    /** Similar to {@link #onResumeWithNative}, but for the pause event. */
+    /**
+     * Similar to {@link #onResumeWithNative}, but for the pause event.
+     */
     void onPauseWithNative();
 }

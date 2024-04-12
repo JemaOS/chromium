@@ -19,6 +19,9 @@
 #include "components/device_signals/core/common/signals_features.h"
 #include "extensions/common/mojom/api_permission_id.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
+//---***JEMAOS BEGIN***---
+#include "jemaos/extensions/common/grit/jemaos_extensions_resources.h"
+//---***JEMAOS END***---
 
 using extensions::mojom::APIPermissionID;
 
@@ -632,9 +635,6 @@ ChromePermissionMessageRule::GetAllRules() {
       {IDS_EXTENSION_PROMPT_WARNING_BOOKMARKS,
        {APIPermissionID::kBookmark},
        {}},
-      {IDS_EXTENSION_PROMPT_WARNING_READING_LIST,
-       {APIPermissionID::kReadingList},
-       {}},
       {IDS_EXTENSION_PROMPT_WARNING_CLIPBOARD_READWRITE,
        {APIPermissionID::kClipboardRead, APIPermissionID::kClipboardWrite},
        {}},
@@ -719,9 +719,6 @@ ChromePermissionMessageRule::GetAllRules() {
       {IDS_EXTENSION_PROMPT_WARNING_ENTERPRISE_DEVICE_ATTRIBUTES,
        {APIPermissionID::kEnterpriseDeviceAttributes},
        {}},
-      {IDS_EXTENSION_PROMPT_WARNING_ENTERPRISE_KIOSK_INPUT,
-       {APIPermissionID::kEnterpriseKioskInput},
-       {}},
       {IDS_EXTENSION_PROMPT_WARNING_ENTERPRISE_NETWORKING_ATTRIBUTES,
        {APIPermissionID::kEnterpriseNetworkingAttributes},
        {}},
@@ -746,17 +743,11 @@ ChromePermissionMessageRule::GetAllRules() {
       {IDS_EXTENSION_PROMPT_WARNING_CHROMEOS_ATTACHED_DEVICE_INFO,
        {APIPermissionID::kChromeOSAttachedDeviceInfo},
        {}},
-      {IDS_EXTENSION_PROMPT_WARNING_CHROMEOS_BLUETOOTH_PERIPHERALS_INFO,
-       {APIPermissionID::kChromeOSBluetoothPeripheralsInfo},
-       {}},
       {IDS_EXTENSION_PROMPT_WARNING_CHROMEOS_DIAGNOSTICS,
        {APIPermissionID::kChromeOSDiagnostics},
        {}},
       {IDS_EXTENSION_PROMPT_WARNING_CHROMEOS_EVENTS,
        {APIPermissionID::kChromeOSEvents},
-       {}},
-      {IDS_EXTENSION_PROMPT_WARNING_CHROMEOS_MANAGEMENT_AUDIO,
-       {APIPermissionID::kChromeOSManagementAudio},
        {}},
       {IDS_EXTENSION_PROMPT_WARNING_CHROMEOS_TELEMETRY,
        {APIPermissionID::kChromeOSTelemetry},
@@ -766,6 +757,12 @@ ChromePermissionMessageRule::GetAllRules() {
        {}},
       {IDS_EXTENSION_PROMPT_WARNING_CHROMEOS_TELEMETRY_NETWORK_INFORMATION,
        {APIPermissionID::kChromeOSTelemetryNetworkInformation},
+       {}},
+      {IDS_EXTENSION_PROMPT_WARNING_JEMAOS_PRIVATE_API,
+       {APIPermissionID::kJemaOSPrivate},
+       {}},
+      {IDS_EXTENSION_PROMPT_WARNING_JEMAOS_SHELL_CLIENT_API,
+       {APIPermissionID::kJemaOSShellClient},
        {}}};
 
   return std::vector<ChromePermissionMessageRule>(

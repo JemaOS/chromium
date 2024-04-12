@@ -1,18 +1,26 @@
 import fnmatch as _stdlib_fnmatch
 import os
-from typing import Iterable, List, Text
+
+MYPY = False
+if MYPY:
+    # MYPY is set to True when run under Mypy.
+    from typing import Iterable
+    from typing import List
+    from typing import Text
 
 
 __all__ = ["fnmatch", "fnmatchcase", "filter", "translate"]
 
 
-def fnmatch(name: Text, pat: Text) -> bool:
+def fnmatch(name, pat):
+    # type: (Text, Text) -> bool
     name = os.path.normcase(name)
     pat = os.path.normcase(pat)
     return fnmatchcase(name, pat)
 
 
-def fnmatchcase(name: Text, pat: Text) -> bool:
+def fnmatchcase(name, pat):
+    # type: (Text, Text) -> bool
     if '?' not in pat and '[' not in pat:
         wildcards = pat.count("*")
         if wildcards == 0:
@@ -24,7 +32,8 @@ def fnmatchcase(name: Text, pat: Text) -> bool:
     return _stdlib_fnmatch.fnmatchcase(name, pat)
 
 
-def filter(names: Iterable[Text], pat: Text) -> List[Text]:
+def filter(names, pat):
+    # type: (Iterable[Text], Text) -> List[Text]
     return [n for n in names if fnmatch(n, pat)]
 
 

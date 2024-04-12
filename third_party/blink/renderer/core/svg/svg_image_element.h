@@ -60,7 +60,7 @@ class CORE_EXPORT SVGImageElement final
     return GetImageLoader().HasPendingActivity();
   }
 
-  ScriptPromiseTyped<IDLUndefined> decode(ScriptState*, ExceptionState&);
+  ScriptPromise decode(ScriptState*, ExceptionState&);
 
   // Exposed for testing.
   ImageResourceContent* CachedImage() const {
@@ -99,12 +99,6 @@ class CORE_EXPORT SVGImageElement final
   bool SelfHasRelativeLengths() const override;
   void DidMoveToNewDocument(Document& old_document) override;
   SVGImageLoader& GetImageLoader() const override { return *image_loader_; }
-
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const override;
-  void SynchronizeAllSVGAttributes() const override;
-  void CollectExtraStyleForPresentationAttribute(
-      MutableCSSPropertyValueSet* style) override;
 
   bool is_default_overridden_intrinsic_size_;
 

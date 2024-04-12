@@ -6,26 +6,22 @@
 #define UI_BASE_DRAGDROP_OS_EXCHANGE_DATA_H_
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "build/build_config.h"
+
 #include "base/component_export.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback_forward.h"
-#include "build/build_config.h"
 #include "ui/base/dragdrop/os_exchange_data_provider.h"
 
 class GURL;
 
 namespace base {
 class Pickle;
-}
-
-namespace url {
-class Origin;
 }
 
 namespace ui {
@@ -79,14 +75,11 @@ class COMPONENT_EXPORT(UI_BASE) OSExchangeData {
   const OSExchangeDataProvider& provider() const { return *provider_; }
   OSExchangeDataProvider& provider() { return *provider_; }
 
-  // Marks drag data as tainted by the renderer, with `origin` as the source of
-  // the data. This is used to:
-  // - avoid granting privileges to a renderer when dragging in tainted data,
-  //   since it could allow potential escalation of privileges.
-  // - track the origin where the drag data came from.
-  void MarkRendererTaintedFromOrigin(const url::Origin& origin);
-  bool IsRendererTainted() const;
-  std::optional<url::Origin> GetRendererTaintedOrigin() const;
+  // Marks drag data as tainted if it originates from the renderer. This is used
+  // to avoid granting privileges to a renderer when dragging in tainted data,
+  // since it could allow potential escalation of privileges.
+  void MarkOriginatedFromRenderer();
+  bool DidOriginateFromRenderer() const;
 
   // Marks drag data as from privileged WebContents. This is used to
   // make sure non-privileged WebContents will not accept drop data from
@@ -116,19 +109,21 @@ class COMPONENT_EXPORT(UI_BASE) OSExchangeData {
   void SetPickledData(const ClipboardFormatType& format,
                       const base::Pickle& data);
 
-  // These functions retrieve data of the specified type. If the data is
-  // present, it is returned, and if not, nullopt is returned.
-
+  // These functions retrieve data of the specified type. If data exists, the
+  // functions return and the result is in the out parameter. If the data does
+  // not exist, the out parameter is not touched. The out parameter cannot be
+  // NULL.
   // GetString() returns the plain text representation of the pasteboard
   // contents.
-  std::optional<std::u16string> GetString() const;
-  using UrlInfo = OSExchangeDataProvider::UrlInfo;
-  std::optional<UrlInfo> GetURLAndTitle(FilenameToURLPolicy policy) const;
-  std::optional<std::vector<GURL>> GetURLs(FilenameToURLPolicy policy) const;
-  // Return information about the contained files, if any.
-  std::optional<std::vector<FileInfo>> GetFilenames() const;
-  std::optional<base::Pickle> GetPickledData(
-      const ClipboardFormatType& format) const;
+  bool GetString(std::u16string* data) const;
+  bool GetURLAndTitle(FilenameToURLPolicy policy,
+                      GURL* url,
+                      std::u16string* title) const;
+  // Return the path of a file, if available.
+  bool GetFilename(base::FilePath* path) const;
+  bool GetFilenames(std::vector<FileInfo>* file_names) const;
+  bool GetPickledData(const ClipboardFormatType& format,
+                      base::Pickle* data) const;
 
   // Test whether or not data of certain types is present, without actually
   // returning anything.
@@ -147,8 +142,8 @@ class COMPONENT_EXPORT(UI_BASE) OSExchangeData {
   // Windows).
   void SetFileContents(const base::FilePath& filename,
                        const std::string& file_contents);
-  using FileContentsInfo = OSExchangeDataProvider::FileContentsInfo;
-  std::optional<FileContentsInfo> GetFileContents() const;
+  bool GetFileContents(base::FilePath* filename,
+                       std::string* file_contents) const;
 
 #if BUILDFLAG(IS_WIN)
   // Methods used to query and retrieve file data from a drag source
@@ -171,19 +166,19 @@ class COMPONENT_EXPORT(UI_BASE) OSExchangeData {
   // retrieves the display names but not the temp file paths. The temp files
   // are only created upon drop via a call to the async method
   // GetVirtualFilesAsTempFiles.
-  std::optional<std::vector<FileInfo>> GetVirtualFilenames() const;
+  bool GetVirtualFilenames(std::vector<FileInfo>* file_names) const;
 
   // Retrieves "virtual file" contents via creation of intermediary temp files.
   // Method is called on dropping on the Chromium drop target. Since creating
   // the temp files involves file I/O, the method is asynchronous and the caller
   // must provide a callback function that receives a vector of pairs of temp
-  // file paths and display names. The method will invoke the callback with an
-  // empty vector if there are no virtual files in the data object.
-  //
+  // file paths and display names. Method immediately returns false if there are
+  // no virtual files in the data object, in which case the callback will never
+  // be invoked.
   // TODO(https://crbug.com/951574): Implement virtual file extraction to
   // dynamically stream data to the renderer when File's bytes are actually
   // requested
-  void GetVirtualFilesAsTempFiles(
+  bool GetVirtualFilesAsTempFiles(
       base::OnceCallback<void(const std::vector</*temp path*/ std::pair<
                                   base::FilePath,
                                   /*display name*/ base::FilePath>>&)> callback)
@@ -194,8 +189,7 @@ class COMPONENT_EXPORT(UI_BASE) OSExchangeData {
   // Adds a snippet of HTML.  |html| is just raw html but this sets both
   // text/html and CF_HTML.
   void SetHtml(const std::u16string& html, const GURL& base_url);
-  using HtmlInfo = OSExchangeDataProvider::HtmlInfo;
-  std::optional<HtmlInfo> GetHtml() const;
+  bool GetHtml(std::u16string* html, GURL* base_url) const;
   bool HasHtml() const;
 #endif
 

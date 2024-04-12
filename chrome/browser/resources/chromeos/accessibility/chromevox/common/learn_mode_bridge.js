@@ -6,7 +6,6 @@
  * @fileoverview Provides an interface for other renderers to communicate with
  * the ChromeVox learn mode page.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
 
 import {BrailleKeyEvent} from './braille/braille_key_types.js';
 import {BridgeConstants} from './bridge_constants.js';
@@ -54,11 +53,4 @@ export class LearnModeBridge {
   static onKeyUp(event) {
     return BridgeHelper.sendMessage(TARGET, Action.ON_KEY_UP, event);
   }
-
-  /** @return {!Promise} */
-  static ready() {
-    return BridgeHelper.sendMessage(TARGET, Action.READY);
-  }
 }
-
-TestImportManager.exportForTesting(LearnModeBridge);

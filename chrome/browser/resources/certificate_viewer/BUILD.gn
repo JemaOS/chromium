@@ -3,26 +3,17 @@
 # found in the LICENSE file.
 
 import("//chrome/common/features.gni")
-import("//ui/webui/resources/tools/build_webui.gni")
+import("//tools/typescript/ts_library.gni")
 
 assert(enable_webui_certificate_viewer)
 
-build_webui("build") {
-  grd_prefix = "certificate_viewer"
-
-  static_files = [
-    "certificate_viewer.css",
-    "certificate_viewer.html",
-  ]
-
-  non_web_component_files = [ "certificate_viewer.ts" ]
-
-  ts_composite = true
-  ts_definitions = [ "//tools/typescript/definitions/chrome_send.d.ts" ]
-  ts_deps = [
+ts_library("build_ts") {
+  root_dir = "."
+  out_dir = "$target_gen_dir/tsc"
+  in_files = [ "certificate_viewer.ts" ]
+  deps = [
     "//ui/webui/resources/cr_elements:build_ts",
     "//ui/webui/resources/js:build_ts",
   ]
-
-  webui_context_type = "trusted"
+  definitions = [ "//tools/typescript/definitions/chrome_send.d.ts" ]
 }

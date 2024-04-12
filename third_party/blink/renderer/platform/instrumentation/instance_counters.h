@@ -40,7 +40,6 @@ namespace blink {
 
 #define INSTANCE_COUNTERS_LIST(V)  \
   V(AudioHandler)                  \
-  V(AudioWorkletProcessor)         \
   V(Document)                      \
   V(Frame)                         \
   V(JSEventListener)               \

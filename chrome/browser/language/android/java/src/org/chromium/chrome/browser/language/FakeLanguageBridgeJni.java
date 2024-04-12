@@ -7,7 +7,9 @@ package org.chromium.chrome.browser.language;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Fake implementation of LanguageBridge native methods used for testing. */
+/**
+ * Fake implementation of LanguageBridge native methods used for testing.
+ */
 public class FakeLanguageBridgeJni implements LanguageBridge.Natives {
     private ArrayList<String> mULPLanguages;
 

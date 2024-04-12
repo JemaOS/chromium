@@ -11,7 +11,9 @@ import androidx.test.uiautomator.UiObject2;
 
 import java.util.List;
 
-/** Locator wrapper around UiAutomator BySelector. */
+/**
+ * Locator wrapper around UiAutomator BySelector.
+ */
 class BySelectorUi2Locator implements IUi2Locator {
     private final BySelector mSelector;
 
@@ -41,6 +43,7 @@ class BySelectorUi2Locator implements IUi2Locator {
 
     @Override
     public String toString() {
-        return "BySelectorLocator{" + "mSelector=" + mSelector + '}';
+        return "BySelectorLocator{"
+                + "mSelector=" + mSelector + '}';
     }
 }

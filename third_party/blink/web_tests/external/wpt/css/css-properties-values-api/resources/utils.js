@@ -144,8 +144,7 @@ function animation_test(property, values, description) {
     // iterationComposite is set to something other than "replace".
     animation.currentTime = duration * 2.5;
 
-    const assert_equals_function = values.assert_function || assert_equals;
-    assert_equals_function(getComputedStyle(target).getPropertyValue(name), values.expected);
+    assert_equals(getComputedStyle(target).getPropertyValue(name), values.expected);
   }, description);
 };
 
@@ -205,9 +204,6 @@ function transition_test(options, description) {
     });
 
     target.style.transition = `${options.transitionProperty} 1s -500ms linear`;
-    if (options.behavior) {
-      target.style.transitionBehavior = options.behavior;
-    }
     target.style.setProperty(customProperty, options.to);
 
     const animations = target.getAnimations();

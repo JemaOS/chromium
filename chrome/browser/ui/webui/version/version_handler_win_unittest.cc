@@ -15,7 +15,7 @@ class WebUIWindowsVersion : public testing::Test {
 
   void SetUp() override {
     ASSERT_NO_FATAL_FAILURE(registry_override_manager_.OverrideRegistry(root));
-    EXPECT_EQ(ubr_key.Create(root, ubr_loc, KEY_ALL_ACCESS), ERROR_SUCCESS);
+    ubr_key.Create(root, ubr_loc, KEY_ALL_ACCESS);
     EXPECT_TRUE(ubr_key.Valid());
   }
   void TearDown() override {

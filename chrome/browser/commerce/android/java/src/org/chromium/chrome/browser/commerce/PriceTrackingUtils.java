@@ -6,10 +6,9 @@ package org.chromium.chrome.browser.commerce;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.Callback;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.profiles.Profile;
 
 /**
@@ -28,15 +27,10 @@ public class PriceTrackingUtils {
         setPriceTrackingStateForBookmark(profile, bookmarkId, enabled, callback, false);
     }
 
-    public static void setPriceTrackingStateForBookmark(
-            Profile profile,
-            long bookmarkId,
-            boolean enabled,
-            Callback<Boolean> callback,
-            boolean bookmarkCreatedForPriceTracking) {
-        PriceTrackingUtilsJni.get()
-                .setPriceTrackingStateForBookmark(
-                        profile, bookmarkId, enabled, callback, bookmarkCreatedForPriceTracking);
+    public static void setPriceTrackingStateForBookmark(Profile profile, long bookmarkId,
+            boolean enabled, Callback<Boolean> callback, boolean bookmarkCreatedForPriceTracking) {
+        PriceTrackingUtilsJni.get().setPriceTrackingStateForBookmark(
+                profile, bookmarkId, enabled, callback, bookmarkCreatedForPriceTracking);
     }
 
     public static void isBookmarkPriceTracked(
@@ -45,15 +39,10 @@ public class PriceTrackingUtils {
     }
 
     @NativeMethods
-    @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
+    @VisibleForTesting
     public interface Natives {
-        void setPriceTrackingStateForBookmark(
-                Profile profile,
-                long bookmarkId,
-                boolean enabled,
-                Callback<Boolean> callback,
-                boolean bookmarkCreatedForPriceTracking);
-
+        void setPriceTrackingStateForBookmark(Profile profile, long bookmarkId, boolean enabled,
+                Callback<Boolean> callback, boolean bookmarkCreatedForPriceTracking);
         void isBookmarkPriceTracked(Profile profile, long bookmarkId, Callback<Boolean> callback);
     }
 }

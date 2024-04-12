@@ -104,7 +104,7 @@ file_manager::util::FileSystemURLAndHandle GetFileSystemURL(
 void GetMetadataOnIOThread(
     scoped_refptr<storage::FileSystemContext> context,
     const storage::FileSystemURL& url,
-    storage::FileSystemOperation::GetMetadataFieldSet flags,
+    int flags,
     storage::FileSystemOperation::GetMetadataCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
   context->operation_runner()->GetMetadata(
@@ -206,7 +206,7 @@ void ArcFileSystemBridge::GetFileName(const std::string& url,
                                             true /* fail_on_path_separators */,
                                             &unescaped_file_name)) {
     LOG(ERROR) << "Invalid URL: " << url << " " << url_decoded;
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
   std::move(callback).Run(unescaped_file_name);
@@ -228,8 +228,8 @@ void ArcFileSystemBridge::GetFileSize(const std::string& url,
 void ArcFileSystemBridge::GetFileSizeInternal(const GURL& url_decoded,
                                               GetFileSizeCallback callback) {
   GetMetadata(url_decoded,
-              {storage::FileSystemOperation::GetMetadataField::kIsDirectory,
-               storage::FileSystemOperation::GetMetadataField::kSize},
+              storage::FileSystemOperation::GET_METADATA_FIELD_IS_DIRECTORY |
+                  storage::FileSystemOperation::GET_METADATA_FIELD_SIZE,
               base::BindOnce([](base::File::Error result,
                                 const base::File::Info& file_info) -> int64_t {
                 if (result == base::File::FILE_OK && !file_info.is_directory &&
@@ -246,25 +246,25 @@ void ArcFileSystemBridge::GetLastModified(const GURL& url,
   GURL url_decoded = DecodeFromChromeContentProviderUrl(url);
   if (url_decoded.is_empty() || !IsUrlAllowed(url_decoded)) {
     LOG(ERROR) << "Invalid URL: " << url << " " << url_decoded;
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
   GetMetadata(url_decoded,
-              {storage::FileSystemOperation::GetMetadataField::kLastModified},
+              storage::FileSystemOperation::GET_METADATA_FIELD_LAST_MODIFIED,
               base::BindOnce([](base::File::Error result,
                                 const base::File::Info& file_info)
-                                 -> std::optional<base::Time> {
+                                 -> absl::optional<base::Time> {
                 if (result != base::File::FILE_OK) {
-                  return std::nullopt;
+                  return absl::nullopt;
                 }
-                return std::make_optional(file_info.last_modified);
+                return absl::make_optional(file_info.last_modified);
               }).Then(std::move(callback)));
 }
 
 void ArcFileSystemBridge::GetMetadata(
     const GURL& url_decoded,
-    storage::FileSystemOperation::GetMetadataFieldSet flags,
+    int flags,
     storage::FileSystemOperation::GetMetadataCallback callback) {
   scoped_refptr<storage::FileSystemContext> context =
       GetFileSystemContext(profile_);
@@ -295,7 +295,7 @@ void ArcFileSystemBridge::GetFileType(const std::string& url,
   GURL url_decoded = DecodeFromChromeContentProviderUrl(GURL(url));
   if (url_decoded.is_empty() || !IsUrlAllowed(url_decoded)) {
     LOG(ERROR) << "Invalid URL: " << url << " " << url_decoded;
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
   scoped_refptr<storage::FileSystemContext> context =
@@ -305,7 +305,8 @@ void ArcFileSystemBridge::GetFileType(const std::string& url,
   extensions::app_file_handler_util::GetMimeTypeForLocalPath(
       profile_, file_system_url_and_handle.url.path(),
       base::BindOnce([](const std::string& mime_type) {
-        return mime_type.empty() ? std::nullopt : std::make_optional(mime_type);
+        return mime_type.empty() ? absl::nullopt
+                                 : absl::make_optional(mime_type);
       }).Then(std::move(callback)));
 }
 
@@ -329,7 +330,7 @@ void ArcFileSystemBridge::GetVirtualFileId(const std::string& url,
   GURL url_decoded = DecodeFromChromeContentProviderUrl(GURL(url));
   if (url_decoded.is_empty() || !IsUrlAllowed(url_decoded)) {
     LOG(ERROR) << "Invalid URL: " << url << " " << url_decoded;
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -416,7 +417,7 @@ void ArcFileSystemBridge::OnMediaStoreUriAdded(
 
   if (!is_valid) {
     LOG(ERROR) << "`OnMediaStoreUriAdded()` called with invalid payload.";
-    DUMP_WILL_BE_NOTREACHED_NORETURN();
+    NOTREACHED();
     return;
   }
 
@@ -431,7 +432,7 @@ void ArcFileSystemBridge::GenerateVirtualFileId(
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (size < 0) {
     LOG(ERROR) << "Failed to get file size " << url_decoded;
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
   ash::VirtualFileProviderClient::Get()->GenerateVirtualFileId(
@@ -443,7 +444,7 @@ void ArcFileSystemBridge::GenerateVirtualFileId(
 void ArcFileSystemBridge::OnGenerateVirtualFileId(
     const GURL& url_decoded,
     GenerateVirtualFileIdCallback callback,
-    const std::optional<std::string>& id) {
+    const absl::optional<std::string>& id) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   DCHECK(id.has_value());
   DCHECK_EQ(id_to_url_.count(id.value()), 0u);
@@ -454,7 +455,7 @@ void ArcFileSystemBridge::OnGenerateVirtualFileId(
 
 void ArcFileSystemBridge::OpenFileById(const GURL& url_decoded,
                                        OpenFileToReadCallback callback,
-                                       const std::optional<std::string>& id) {
+                                       const absl::optional<std::string>& id) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!id.has_value()) {
     LOG(ERROR) << "Missing ID";

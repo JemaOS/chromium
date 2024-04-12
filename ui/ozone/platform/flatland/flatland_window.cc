@@ -7,6 +7,7 @@
 #include <fidl/fuchsia.ui.pointer/cpp/hlcpp_conversion.h>
 #include <fidl/fuchsia.ui.views/cpp/hlcpp_conversion.h>
 #include <lib/async/default.h>
+#include <lib/ui/scenic/cpp/view_identity.h>
 
 #include <algorithm>
 #include <cstdint>

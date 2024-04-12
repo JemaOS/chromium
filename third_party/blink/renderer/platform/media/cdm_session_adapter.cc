@@ -28,10 +28,7 @@ const char kCreateCdmUMAName[] = "CreateCdm";
 const char kTimeToCreateCdmUMAName[] = "CreateCdmTime";
 }  // namespace
 
-CdmSessionAdapter::CdmSessionAdapter(media::KeySystems* key_systems)
-    : key_systems_(key_systems), trace_id_(0) {
-  DCHECK(key_systems_);
-}
+CdmSessionAdapter::CdmSessionAdapter() : trace_id_(0) {}
 
 CdmSessionAdapter::~CdmSessionAdapter() = default;
 
@@ -76,8 +73,8 @@ void CdmSessionAdapter::GetStatusForPolicy(
 
 std::unique_ptr<WebContentDecryptionModuleSessionImpl>
 CdmSessionAdapter::CreateSession(WebEncryptedMediaSessionType session_type) {
-  return std::make_unique<WebContentDecryptionModuleSessionImpl>(
-      this, session_type, key_systems_);
+  return std::make_unique<WebContentDecryptionModuleSessionImpl>(this,
+                                                                 session_type);
 }
 
 bool CdmSessionAdapter::RegisterSession(
@@ -195,7 +192,7 @@ void CdmSessionAdapter::OnCdmCreated(
   cdm_ = cdm;
 
   std::move(web_cdm_created_cb_)
-      .Run(new WebContentDecryptionModuleImpl(this, key_systems_), "");
+      .Run(new WebContentDecryptionModuleImpl(this), "");
 }
 
 void CdmSessionAdapter::OnSessionMessage(const std::string& session_id,

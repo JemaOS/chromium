@@ -32,19 +32,17 @@ class ForwardingUnderlyingSource : public UnderlyingSourceBase {
       : UnderlyingSourceBase(readable_stream_wrapper->GetScriptState()),
         readable_stream_wrapper_(readable_stream_wrapper) {}
 
-  ScriptPromise Start(ScriptState* script_state, ExceptionState&) override {
+  ScriptPromise Start(ScriptState* script_state) override {
     readable_stream_wrapper_->SetController(Controller());
     return ScriptPromise::CastUndefined(script_state);
   }
 
-  ScriptPromise Pull(ScriptState* script_state, ExceptionState&) override {
+  ScriptPromise pull(ScriptState* script_state) override {
     readable_stream_wrapper_->Pull();
     return ScriptPromise::CastUndefined(script_state);
   }
 
-  ScriptPromise Cancel(ScriptState* script_state,
-                       ScriptValue reason,
-                       ExceptionState&) override {
+  ScriptPromise Cancel(ScriptState* script_state, ScriptValue reason) override {
     readable_stream_wrapper_->CloseStream();
     return ScriptPromise::CastUndefined(script_state);
   }
@@ -100,10 +98,9 @@ class ForwardingUnderlyingSink : public UnderlyingSinkBase {
       WritableStreamWrapper* writable_stream_wrapper)
       : writable_stream_wrapper_(writable_stream_wrapper) {}
 
-  ScriptPromiseTyped<IDLUndefined> start(
-      ScriptState* script_state,
-      WritableStreamDefaultController* controller,
-      ExceptionState&) override {
+  ScriptPromise start(ScriptState* script_state,
+                      WritableStreamDefaultController* controller,
+                      ExceptionState&) override {
     class AbortAlgorithm final : public AbortSignal::Algorithm {
      public:
       explicit AbortAlgorithm(WritableStreamWrapper* writable_stream_wrapper)
@@ -123,29 +120,26 @@ class ForwardingUnderlyingSink : public UnderlyingSinkBase {
     writable_stream_wrapper_->SetController(controller);
     abort_handle_ = Controller()->signal()->AddAlgorithm(
         MakeGarbageCollected<AbortAlgorithm>(writable_stream_wrapper_));
-    return ToResolvedUndefinedPromise(script_state);
+    return ScriptPromise::CastUndefined(script_state);
   }
 
-  ScriptPromiseTyped<IDLUndefined> write(
-      ScriptState*,
-      ScriptValue chunk,
-      WritableStreamDefaultController* controller,
-      ExceptionState& exception_state) override {
+  ScriptPromise write(ScriptState*,
+                      ScriptValue chunk,
+                      WritableStreamDefaultController* controller,
+                      ExceptionState& exception_state) override {
     DCHECK_EQ(writable_stream_wrapper_->Controller(), controller);
     return writable_stream_wrapper_->Write(chunk, exception_state);
   }
 
-  ScriptPromiseTyped<IDLUndefined> close(ScriptState* script_state,
-                                         ExceptionState&) override {
+  ScriptPromise close(ScriptState* script_state, ExceptionState&) override {
     writable_stream_wrapper_->CloseStream();
     abort_handle_.Clear();
-    return ToResolvedUndefinedPromise(script_state);
+    return ScriptPromise::CastUndefined(script_state);
   }
 
-  ScriptPromiseTyped<IDLUndefined> abort(
-      ScriptState* script_state,
-      ScriptValue reason,
-      ExceptionState& exception_state) override {
+  ScriptPromise abort(ScriptState* script_state,
+                      ScriptValue reason,
+                      ExceptionState& exception_state) override {
     return close(script_state, exception_state);
   }
 
@@ -222,7 +216,7 @@ WritableStreamWrapper::WritableStreamWrapper(ScriptState* script_state)
     : StreamWrapper(script_state) {}
 
 bool WritableStreamWrapper::Locked() const {
-  return WritableStream::IsLocked(writable_.Get());
+  return WritableStream::IsLocked(writable_);
 }
 
 void WritableStreamWrapper::Trace(Visitor* visitor) const {

@@ -13,7 +13,7 @@ namespace ash {
 
 // Interface for dependency injection between ResetScreen and its actual
 // representation, either views based or WebUI.
-class ResetView {
+class ResetView : public base::SupportsWeakPtr<ResetView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"reset", "ResetScreen"};
 
@@ -43,12 +43,11 @@ class ResetView {
   virtual bool GetIsRollbackAvailable() = 0;
   virtual bool GetIsRollbackRequested() = 0;
   virtual bool GetIsTpmFirmwareUpdateChecked() = 0;
-
-  virtual base::WeakPtr<ResetView> AsWeakPtr() = 0;
 };
 
 // WebUI implementation of ResetScreenActor.
-class ResetScreenHandler final : public ResetView, public BaseScreenHandler {
+class ResetScreenHandler : public ResetView,
+                           public BaseScreenHandler {
  public:
   using TView = ResetView;
 
@@ -78,7 +77,6 @@ class ResetScreenHandler final : public ResetView, public BaseScreenHandler {
   bool GetIsRollbackAvailable() override;
   bool GetIsRollbackRequested() override;
   bool GetIsTpmFirmwareUpdateChecked() override;
-  base::WeakPtr<ResetView> AsWeakPtr() override;
 
  private:
   void HandleSetTpmFirmwareUpdateChecked(bool value);
@@ -89,7 +87,6 @@ class ResetScreenHandler final : public ResetView, public BaseScreenHandler {
   bool is_rollback_requested_ = false;
   bool is_tpm_firmware_update_checked_ = false;
   bool is_showing_confirmation_dialog_ = false;
-  base::WeakPtrFactory<ResetView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

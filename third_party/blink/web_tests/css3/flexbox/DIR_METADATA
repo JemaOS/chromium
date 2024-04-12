@@ -1,6 +1,3 @@
-monorail: {
+monorail {
   component: "Blink>Layout>Flexbox"
-}
-buganizer_public: {
-  component_id: 1456825
 }

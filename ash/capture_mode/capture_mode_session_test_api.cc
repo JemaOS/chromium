@@ -6,26 +6,20 @@
 
 #include "ash/capture_mode/capture_mode_controller.h"
 #include "ash/capture_mode/capture_mode_session.h"
-#include "ash/capture_mode/capture_mode_types.h"
 #include "ash/capture_mode/recording_type_menu_view.h"
 
 namespace ash {
 
 CaptureModeSessionTestApi::CaptureModeSessionTestApi()
-    // Will we have to change this test API to use BaseCaptureModeSession,
-    // despite it not being used for the null session?
-    : session_(static_cast<CaptureModeSession*>(
-          CaptureModeController::Get()->capture_mode_session())) {
+    : session_(CaptureModeController::Get()->capture_mode_session()) {
   DCHECK(CaptureModeController::Get()->IsActive());
   DCHECK(session_);
-  CHECK_EQ(session_->session_type(), SessionType::kReal);
 }
 
 CaptureModeSessionTestApi::CaptureModeSessionTestApi(
-    BaseCaptureModeSession* session)
-    : session_(static_cast<CaptureModeSession*>(session)) {
+    CaptureModeSession* session)
+    : session_(session) {
   DCHECK(session_);
-  CHECK_EQ(session_->session_type(), SessionType::kReal);
 }
 
 CaptureModeBarView* CaptureModeSessionTestApi::GetCaptureModeBarView() {
@@ -39,10 +33,6 @@ CaptureModeSessionTestApi::GetCaptureModeSettingsView() {
 
 CaptureLabelView* CaptureModeSessionTestApi::GetCaptureLabelView() {
   return session_->capture_label_view_;
-}
-
-views::Label* CaptureModeSessionTestApi::GetCaptureLabelInternalView() {
-  return GetCaptureLabelView()->label_;
 }
 
 RecordingTypeMenuView* CaptureModeSessionTestApi::GetRecordingTypeMenuView() {
@@ -95,10 +85,8 @@ CaptureModeSessionTestApi::GetHighlightableWindow(aura::Window* window) {
 
 CaptureModeSessionFocusCycler::HighlightableView*
 CaptureModeSessionTestApi::GetCurrentFocusedView() {
-  const auto items =
-      session_->focus_cycler_->GetGroupItems(GetCurrentFocusGroup());
-  CHECK(!items.empty());
-  return items[GetCurrentFocusIndex()];
+  return session_->focus_cycler_->GetGroupItems(
+      GetCurrentFocusGroup())[GetCurrentFocusIndex()];
 }
 
 bool CaptureModeSessionTestApi::HasFocus() {
@@ -110,12 +98,8 @@ bool CaptureModeSessionTestApi::IsFolderSelectionDialogShown() {
          session_->folder_selection_dialog_controller_->dialog_window();
 }
 
-bool CaptureModeSessionTestApi::AreAllUisVisible() {
+bool CaptureModeSessionTestApi::IsAllUisVisible() {
   return session_->is_all_uis_visible_;
-}
-
-gfx::Rect CaptureModeSessionTestApi::GetSelectedWindowTargetBounds() {
-  return session_->GetSelectedWindowTargetBounds();
 }
 
 }  // namespace ash

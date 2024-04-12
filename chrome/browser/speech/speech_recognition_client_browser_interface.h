@@ -67,7 +67,6 @@ class SpeechRecognitionClientBrowserInterface
  private:
   void OnSpeechRecognitionAvailabilityChanged();
   void OnSpeechRecognitionLanguageChanged();
-  void OnSpeechRecognitionMaskOffensiveWordsChanged();
   void NotifyObservers(bool enabled);
 
   mojo::RemoteSet<media::mojom::SpeechRecognitionBrowserObserver>

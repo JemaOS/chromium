@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as ElementsModule from 'devtools/panels/elements/elements.js';
-
 (async function() {
   TestRunner.addResult(`Tests elements drag and drop operation internals, verifies post-move selection.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <div id="container">
@@ -35,13 +31,13 @@ import * as ElementsModule from 'devtools/panels/elements/elements.js';
 
     function testDragAndDrop(next) {
       var treeOutline = ElementsTestRunner.firstElementsTreeOutline();
-      treeOutline.addEventListener(ElementsModule.ElementsTreeOutline.ElementsTreeOutline.Events.SelectedNodeChanged, selectionChanged);
+      treeOutline.addEventListener(Elements.ElementsTreeOutline.Events.SelectedNodeChanged, selectionChanged);
 
       function selectionChanged() {
         TestRunner.addResult('===== Moved child2 =====');
         ElementsTestRunner.dumpElementsTree(containerNode);
         TestRunner.addResult(
-            'Selection: ' + ElementsModule.DOMPath.fullQualifiedSelector(treeOutline.selectedDOMNode()));
+            'Selection: ' + Elements.DOMPath.fullQualifiedSelector(treeOutline.selectedDOMNode()));
         next();
       }
 

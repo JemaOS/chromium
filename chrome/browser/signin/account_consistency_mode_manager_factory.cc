@@ -10,8 +10,7 @@
 // static
 AccountConsistencyModeManagerFactory*
 AccountConsistencyModeManagerFactory::GetInstance() {
-  static base::NoDestructor<AccountConsistencyModeManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<AccountConsistencyModeManagerFactory>::get();
 }
 
 // static
@@ -29,13 +28,12 @@ AccountConsistencyModeManagerFactory::AccountConsistencyModeManagerFactory()
 AccountConsistencyModeManagerFactory::~AccountConsistencyModeManagerFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-AccountConsistencyModeManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AccountConsistencyModeManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   DCHECK(!context->IsOffTheRecord());
   Profile* profile = Profile::FromBrowserContext(context);
 
-  return std::make_unique<AccountConsistencyModeManager>(profile);
+  return new AccountConsistencyModeManager(profile);
 }
 
 void AccountConsistencyModeManagerFactory::RegisterProfilePrefs(

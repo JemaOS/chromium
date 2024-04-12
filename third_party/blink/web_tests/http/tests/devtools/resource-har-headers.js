@@ -2,16 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ApplicationTestRunner} from 'application_test_runner';
-import {NetworkTestRunner} from 'network_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   'use strict';
   TestRunner.addResult(`Tests the nondeterministic bits of HAR conversion via the magic of hard-coded values.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('application_test_runner');
+  await TestRunner.loadTestModule('network_test_runner');
 
   function visibleNewlines(s) {
     return s.replace(/\r/, '\\r').replace(/\n/, '\\n');
@@ -31,7 +26,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
     request.resourceSize = 1000;
     request.setTransferSize(539);  // 39 = header size at the end of the day
     request.setPriority('VeryHigh');
-    request.setResourceType(Common.ResourceType.resourceTypes.Fetch);
+    request.setResourceType(Common.resourceTypes.Fetch);
 
     // sample timing values used here are copied from a real request
     request.setIssueTime(357904.060558);
@@ -61,7 +56,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
     url: 'http://example.com/inspector-test.js',
     lineNumber: 117
   };
-  var testRequest = SDK.NetworkRequest.NetworkRequest.create(
+  var testRequest = SDK.NetworkRequest.create(
       'testRequest', 'http://example.com/inspector-test.js',
       'http://example.com/fake-document-url', 1, 1, fakeInitiator);
   setRequestValues(testRequest);

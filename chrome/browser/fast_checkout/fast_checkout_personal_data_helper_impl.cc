@@ -4,9 +4,6 @@
 
 #include "chrome/browser/fast_checkout/fast_checkout_personal_data_helper_impl.h"
 
-#include <functional>
-#include <vector>
-
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -21,7 +18,8 @@ FastCheckoutPersonalDataHelperImpl::GetPersonalDataManager() const {
   Profile* profile =
       Profile::FromBrowserContext(web_contents_->GetBrowserContext());
   autofill::PersonalDataManager* pdm =
-      autofill::PersonalDataManagerFactory::GetForProfile(profile);
+      autofill::PersonalDataManagerFactory::GetForProfile(
+          profile->GetOriginalProfile());
   DCHECK(pdm);
   return pdm;
 }
@@ -36,7 +34,7 @@ FastCheckoutPersonalDataHelperImpl::GetCreditCardsToSuggest() const {
   std::vector<autofill::CreditCard*> cards_to_suggest =
       GetPersonalDataManager()->GetCreditCardsToSuggest();
   // Do not offer cards with empty number.
-  std::erase_if(cards_to_suggest, [](const autofill::CreditCard* card) {
+  base::EraseIf(cards_to_suggest, [](const autofill::CreditCard* card) {
     return !card->HasRawInfo(autofill::CREDIT_CARD_NUMBER);
   });
   return cards_to_suggest;
@@ -64,7 +62,8 @@ std::vector<autofill::CreditCard*>
 FastCheckoutPersonalDataHelperImpl::GetValidCreditCards() const {
   std::vector<autofill::CreditCard*> cards =
       GetPersonalDataManager()->GetCreditCardsToSuggest();
-  std::erase_if(cards, std::not_fn(&autofill::CreditCard::IsCompleteValidCard));
+  base::EraseIf(cards,
+                base::not_fn(&autofill::CreditCard::IsCompleteValidCard));
   return cards;
 }
 
@@ -75,7 +74,7 @@ FastCheckoutPersonalDataHelperImpl::GetValidAddressProfiles() const {
   std::vector<autofill::AutofillProfile*> profiles =
       pdm->GetProfilesToSuggest();
 
-  std::erase_if(profiles,
+  base::EraseIf(profiles,
                 [&pdm, this](const autofill::AutofillProfile* profile) {
                   return !IsCompleteAddressProfile(profile, pdm->app_locale());
                 });

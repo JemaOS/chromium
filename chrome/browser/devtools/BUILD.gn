@@ -17,8 +17,6 @@ if (!is_android) {
   import("$_inspector_protocol/inspector_protocol.gni")
 
   _protocol_generated = [
-    "protocol/autofill.cc",
-    "protocol/autofill.h",
     "protocol/browser.cc",
     "protocol/browser.h",
     "protocol/cast.cc",
@@ -32,8 +30,6 @@ if (!is_android) {
     "protocol/security.h",
     "protocol/storage.cc",
     "protocol/storage.h",
-    "protocol/system_info.cc",
-    "protocol/system_info.h",
     "protocol/target.cc",
     "protocol/target.h",
   ]
@@ -110,14 +106,9 @@ static_library("devtools") {
 
     # Similar bandaid as the above. Since we cannot depend on
     # //chrome/browser:browser, we include indirect dependencies here.
-    "//chrome/browser/autofill:autofill",
-    "//components/autofill/content/browser:browser",
-    "//components/autofill/core/browser:browser",
     "//components/paint_preview/buildflags:buildflags",
-    "//components/variations/service:service",
     "//content/public/browser",
     "//net",
-    "//services/metrics/public/cpp:ukm_builders",
     "//services/viz/privileged/mojom/compositing",
     "//third_party/blink/public:buildflags",
     "//ui/events:dom_keycode_converter",
@@ -142,13 +133,11 @@ static_library("devtools") {
       "//components/keep_alive_registry",
       "//components/keyed_service/content",
       "//components/language/core/browser",
-      "//components/metrics/structured:structured_events",
       "//components/pref_registry",
       "//components/prefs",
-      "//components/search_engines:search_engines",
       "//components/sessions",
       "//components/signin/public/identity_manager:identity_manager",
-      "//components/sync/service",
+      "//components/sync/driver:driver",
       "//components/sync_preferences",
       "//components/viz/host",
       "//components/web_modal",
@@ -160,17 +149,11 @@ static_library("devtools") {
       "//ui/base/cursor",
       "//ui/base/cursor/mojom:cursor_type",
       "//ui/shell_dialogs",
-      "//ui/views/controls/webview",
     ]
-    if (is_chromeos) {
-      deps += [ "//chromeos/constants" ]
-    }
     if (is_chromeos_ash) {
       deps += [ "//ash/constants" ]
     }
     sources += [
-      "aida_client.cc",
-      "aida_client.h",
       "chrome_devtools_manager_delegate.cc",
       "chrome_devtools_manager_delegate.h",
       "chrome_devtools_session.cc",
@@ -232,16 +215,12 @@ static_library("devtools") {
       "devtools_window.h",
       "global_confirm_info_bar.cc",
       "global_confirm_info_bar.h",
-      "process_sharing_infobar_delegate.cc",
-      "process_sharing_infobar_delegate.h",
       "remote_debugging_server.cc",
       "remote_debugging_server.h",
       "serialize_host_descriptions.cc",
       "serialize_host_descriptions.h",
       "url_constants.cc",
       "url_constants.h",
-      "visual_logging.cc",
-      "visual_logging.h",
     ]
     if (enable_service_discovery) {
       sources += [
@@ -264,15 +243,12 @@ static_library("devtools") {
       "//components/media_router/browser",
       "//components/media_router/common/mojom:media_router",
       "//components/payments/content",
-      "//components/privacy_sandbox/privacy_sandbox_attestations",
       "//components/security_state/content",
       "//components/subresource_filter/content/browser:browser",
       "//components/webapps/browser",
       "//third_party/inspector_protocol:crdtp",
     ]
     sources += [
-      "protocol/autofill_handler.cc",
-      "protocol/autofill_handler.h",
       "protocol/browser_handler.cc",
       "protocol/browser_handler.h",
       "protocol/cast_handler.cc",
@@ -285,8 +261,6 @@ static_library("devtools") {
       "protocol/security_handler.h",
       "protocol/storage_handler.cc",
       "protocol/storage_handler.h",
-      "protocol/system_info_handler.cc",
-      "protocol/system_info_handler.h",
       "protocol/target_handler.cc",
       "protocol/target_handler.h",
     ]
@@ -327,17 +301,11 @@ static_library("test_support") {
       "//chrome/browser/ui",
       "//content/public/browser",
       "//content/test:test_support",
-      "//net",
-      "//net/traffic_annotation:test_support",
     ]
 
     sources += [
-      "device/adb/mock_adb_server.cc",
-      "device/adb/mock_adb_server.h",
       "devtools_window_testing.cc",
       "devtools_window_testing.h",
     ]
-
-    defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   }
 }

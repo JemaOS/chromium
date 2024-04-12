@@ -37,8 +37,7 @@ CalendarKeyedService* CalendarKeyedServiceFactory::GetService(
       GetInstance()->GetServiceForBrowserContext(context, /*create=*/true));
 }
 
-std::unique_ptr<KeyedService>
-  CalendarKeyedServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CalendarKeyedServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* const profile = Profile::FromBrowserContext(context);
   user_manager::User* user = ProfileHelper::Get()->GetUserByProfile(profile);
@@ -48,7 +47,7 @@ std::unique_ptr<KeyedService>
   if (!user->HasGaiaAccount())
     return nullptr;
 
-  return std::make_unique<CalendarKeyedService>(profile, user->GetAccountId());
+  return new CalendarKeyedService(profile, user->GetAccountId());
 }
 
 }  // namespace ash

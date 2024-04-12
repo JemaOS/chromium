@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {dp} = await testRunner.startBlank(
       `Tests canceling a bluetooth device request prompt after a device option is prompted.`);
 

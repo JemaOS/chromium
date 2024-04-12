@@ -17,10 +17,6 @@
 class AppListControllerDelegate;
 class Profile;
 
-namespace ash {
-enum class AppListItemContext;
-}
-
 namespace app_list {
 
 class AppContextMenuDelegate;
@@ -31,11 +27,10 @@ class AppContextMenu : public ui::SimpleMenuModel::Delegate {
   AppContextMenu(AppContextMenuDelegate* delegate,
                  Profile* profile,
                  const std::string& app_id,
-                 AppListControllerDelegate* controller,
-                 ash::AppListItemContext item_context);
+                 AppListControllerDelegate* controller);
   AppContextMenu(const AppContextMenu&) = delete;
   AppContextMenu& operator=(const AppContextMenu&) = delete;
-  ~AppContextMenu() override;
+  ~AppContextMenu() override = default;
 
   using GetMenuModelCallback =
       base::OnceCallback<void(std::unique_ptr<ui::SimpleMenuModel>)>;
@@ -65,8 +60,6 @@ class AppContextMenu : public ui::SimpleMenuModel::Delegate {
   void AddContextMenuOption(ui::SimpleMenuModel* menu_model,
                             ash::CommandId command_id,
                             int string_id);
-  // Helper method to add reorder context menu options.
-  void AddReorderMenuOption(ui::SimpleMenuModel* menu_model);
 
   const std::string& app_id() const { return app_id_; }
   Profile* profile() const { return profile_; }
@@ -78,13 +71,6 @@ class AppContextMenu : public ui::SimpleMenuModel::Delegate {
   raw_ptr<Profile> profile_;
   const std::string app_id_;
   raw_ptr<AppListControllerDelegate, DanglingUntriaged> controller_;
-
-  // The SimpleMenuModel that contains reorder options. Could be nullptr if
-  // sorting is not available.
-  std::unique_ptr<ui::SimpleMenuModel> reorder_submenu_;
-
-  // Where this item is being shown (e.g. the apps grid or recent apps).
-  const ash::AppListItemContext item_context_;
 };
 
 }  // namespace app_list

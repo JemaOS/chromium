@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function (testRunner) {
   const { page, session, dp } = await testRunner.startBlank(
     `Test that change callback is invoked during permission emulation`);
 

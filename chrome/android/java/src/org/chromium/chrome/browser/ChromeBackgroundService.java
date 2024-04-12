@@ -9,7 +9,8 @@ import org.chromium.chrome.browser.base.SplitCompatGcmTaskService;
 
 /** See {@link ChromeBackgroundServiceImpl}. */
 public class ChromeBackgroundService extends SplitCompatGcmTaskService {
-    private static @IdentifierNameString String sImplClassName =
+    @IdentifierNameString
+    private static String sImplClassName =
             "org.chromium.chrome.browser.ChromeBackgroundServiceImpl";
 
     public ChromeBackgroundService() {

@@ -1,10 +1,7 @@
-<style include="demo">
+<link rel="stylesheet" href="../demo.css">
+<style>
   cr-input {
     --cr-input-error-display: none;
-  }
-
-  #toastContent {
-    flex: 1;
   }
 </style>
 
@@ -33,10 +30,8 @@
 </div>
 
 <cr-toast id="toast" duration="[[duration_]]">
-  <div id="toastContent">[[message_]]</div>
+  <div>[[message_]]</div>
   <cr-button hidden$="[[!showDismissButton_]]" on-click="onHideToastClick_">
     Dismiss
   </cr-button>
 </cr-toast>
-
-<cr-toast-manager duration="[[duration_]]"></cr-toast-manager>

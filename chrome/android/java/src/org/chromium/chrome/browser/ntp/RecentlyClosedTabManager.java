@@ -10,7 +10,9 @@ import org.chromium.chrome.browser.tabmodel.TabModel;
 
 import java.util.List;
 
-/** Manages a list of recently closed tabs. */
+/**
+ * Manages a list of recently closed tabs.
+ */
 public interface RecentlyClosedTabManager {
     /**
      * Sets the {@link Runnable} to be called whenever the list of recently closed entries changes.
@@ -53,7 +55,9 @@ public interface RecentlyClosedTabManager {
      */
     void openMostRecentlyClosedEntry(TabModel tabModel);
 
-    /** Clears all recently closed tabs. */
+    /**
+     * Clears all recently closed tabs.
+     */
     void clearRecentlyClosedEntries();
 
     /**

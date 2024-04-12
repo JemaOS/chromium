@@ -1,12 +1,11 @@
 Name: cpuinfo
 Short Name: cpuinfo
 URL: https://github.com/pytorch/cpuinfo
-Version: 6543fec09b2f04ac4a666882998b534afc9c1349
-Date: 2024-03-18
+Version: b40bae27785787b6dd70788986fd96434cf90ae2
+Date: 2022-04-22
 License: BSD
 License File: src/LICENSE
 Security Critical: Yes
-Shipped: yes
 
 Description:
 cpuinfo is a library to detect essential for performance optimization

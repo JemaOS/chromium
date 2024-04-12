@@ -59,7 +59,6 @@ class TestPlatform : public TestingPlatformSupport {
       const WebAudioSinkDescriptor& sink_descriptor,
       unsigned number_of_output_channels,
       const WebAudioLatencyHint& latency_hint,
-      std::optional<float> sample_rate,
       media::AudioRendererSink::RenderCallback*) override {
     CHECK(webaudio_device_ != nullptr)
         << "Calling CreateAudioDevice (via AudioDestination::Create) multiple "
@@ -91,17 +90,16 @@ class AudioCallback : public AudioIOCallback {
     frames_processed_ += frames_to_process;
   }
 
-  MOCK_METHOD(void, OnRenderError, (), (final));
-
   AudioCallback() = default;
   int frames_processed_ = 0;
 };
 
 class AudioDestinationTest
-    : public ::testing::TestWithParam<std::optional<float>> {
+    : public ::testing::TestWithParam<absl::optional<float>> {
  public:
-  void CountWASamplesProcessedForRate(std::optional<float> sample_rate) {
+  void CountWASamplesProcessedForRate(absl::optional<float> sample_rate) {
     WebAudioLatencyHint latency_hint(WebAudioLatencyHint::kCategoryInteractive);
+    AudioCallback callback;
 
     const int channel_count =
         Platform::Current()->AudioHardwareOutputChannels();
@@ -116,7 +114,7 @@ class AudioDestinationTest
     // AudioContextRenderSizeHintCategory.
     constexpr int render_quantum_frames = 128;
     scoped_refptr<AudioDestination> destination = AudioDestination::Create(
-        callback_, sink_descriptor, channel_count, latency_hint, sample_rate,
+        callback, sink_descriptor, channel_count, latency_hint, sample_rate,
         render_quantum_frames);
     destination->Start();
 
@@ -127,22 +125,23 @@ class AudioDestinationTest
     // Calculate the expected number of frames to be consumed to produce
     // |request_frames| frames.
     int exact_frames_required = request_frames;
-
+    if (destination->SampleRate() !=
+        Platform::Current()->AudioHardwareSampleRate()) {
+      exact_frames_required =
+          std::ceil(request_frames * destination->SampleRate() /
+                    Platform::Current()->AudioHardwareSampleRate());
+      // The internal resampler requires media::SincResampler::KernelSize() / 2
+      // more frames to flush the output. See sinc_resampler.cc for details.
+      exact_frames_required +=
+          media::SincResampler::KernelSizeFromRequestFrames(request_frames) / 2;
+    }
     const int expected_frames_processed =
         std::ceil(exact_frames_required /
                   static_cast<double>(destination->RenderQuantumFrames())) *
         destination->RenderQuantumFrames();
 
-    // TODO(crbug.com/329876634): Replace it so that it tests the path passing
-    // through the bad device_params (`if (!device_params.IsValid())`) in the
-    // constructor of `RendererWebAudioDeviceImpl`.
-    destination->OnRenderError();
-
-    EXPECT_EQ(expected_frames_processed, callback_.frames_processed_);
+    EXPECT_EQ(expected_frames_processed, callback.frames_processed_);
   }
-
- protected:
-  AudioCallback callback_;
 };
 
 TEST_P(AudioDestinationTest, ResamplingTest) {
@@ -151,7 +150,6 @@ TEST_P(AudioDestinationTest, ResamplingTest) {
     InSequence s;
 
     EXPECT_CALL(platform->web_audio_device(), Start).Times(1);
-    EXPECT_CALL(callback_, OnRenderError).Times(1);
     EXPECT_CALL(platform->web_audio_device(), Stop).Times(1);
   }
 
@@ -160,7 +158,7 @@ TEST_P(AudioDestinationTest, ResamplingTest) {
 
 INSTANTIATE_TEST_SUITE_P(/* no label */,
                          AudioDestinationTest,
-                         ::testing::Values(std::optional<float>(),
+                         ::testing::Values(absl::optional<float>(),
                                            8000,
                                            24000,
                                            44100,

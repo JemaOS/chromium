@@ -284,14 +284,7 @@ class BookmarksSnapshotTest : public UserDataSnapshotBrowserTestBase {
 IN_PROC_BROWSER_TEST_F(BookmarksSnapshotTest, PRE_PRE_PRE_Test) {}
 IN_PROC_BROWSER_TEST_F(BookmarksSnapshotTest, PRE_PRE_Test) {}
 IN_PROC_BROWSER_TEST_F(BookmarksSnapshotTest, PRE_Test) {}
-// TODO(crbug.com/326168468): Flaky on TSan.
-#if defined(THREAD_SANITIZER)
-#define MAYBE_Test DISABLED_Test
-#else
-#define MAYBE_Test Test
-#endif
-IN_PROC_BROWSER_TEST_F(BookmarksSnapshotTest, MAYBE_Test) {}
-#undef MAYBE_Test
+IN_PROC_BROWSER_TEST_F(BookmarksSnapshotTest, Test) {}
 
 class HistorySnapshotTest : public UserDataSnapshotBrowserTestBase {
   struct HistoryEntry {
@@ -360,27 +353,27 @@ class HistorySnapshotTest : public UserDataSnapshotBrowserTestBase {
   const std::vector<HistoryEntry> history_entries_{
       HistoryEntry("https://www.website.com",
                    "website",
-                   base::Time::FromSecondsSinceUnixEpoch(1000),
+                   base::Time::FromDoubleT(1000),
                    history::VisitSource::SOURCE_BROWSED),
       HistoryEntry("https://www.website1.com",
                    "website1",
-                   base::Time::FromSecondsSinceUnixEpoch(10001),
+                   base::Time::FromDoubleT(10001),
                    history::VisitSource::SOURCE_EXTENSION),
       HistoryEntry("https://www.website2.com",
                    "website2",
-                   base::Time::FromSecondsSinceUnixEpoch(10002),
+                   base::Time::FromDoubleT(10002),
                    history::VisitSource::SOURCE_FIREFOX_IMPORTED),
       HistoryEntry("https://www.website3.com",
                    "website3",
-                   base::Time::FromSecondsSinceUnixEpoch(10003),
+                   base::Time::FromDoubleT(10003),
                    history::VisitSource::SOURCE_IE_IMPORTED),
       HistoryEntry("https://www.website4.com",
                    "website4",
-                   base::Time::FromSecondsSinceUnixEpoch(10004),
+                   base::Time::FromDoubleT(10004),
                    history::VisitSource::SOURCE_SAFARI_IMPORTED),
       HistoryEntry("https://www.website5.com",
                    "website5",
-                   base::Time::FromSecondsSinceUnixEpoch(10005),
+                   base::Time::FromDoubleT(10005),
                    history::VisitSource::SOURCE_SYNCED),
   };
 };
@@ -388,14 +381,7 @@ class HistorySnapshotTest : public UserDataSnapshotBrowserTestBase {
 IN_PROC_BROWSER_TEST_F(HistorySnapshotTest, PRE_PRE_PRE_Test) {}
 IN_PROC_BROWSER_TEST_F(HistorySnapshotTest, PRE_PRE_Test) {}
 IN_PROC_BROWSER_TEST_F(HistorySnapshotTest, PRE_Test) {}
-// TODO(crbug.com/326168468): Flaky on TSan.
-#if defined(THREAD_SANITIZER)
-#define MAYBE_Test DISABLED_Test
-#else
-#define MAYBE_Test Test
-#endif
-IN_PROC_BROWSER_TEST_F(HistorySnapshotTest, MAYBE_Test) {}
-#undef MAYBE_Test
+IN_PROC_BROWSER_TEST_F(HistorySnapshotTest, Test) {}
 
 class TabsSnapshotTest : public UserDataSnapshotBrowserTestBase {
  protected:
@@ -444,14 +430,7 @@ class TabsSnapshotTest : public UserDataSnapshotBrowserTestBase {
 IN_PROC_BROWSER_TEST_F(TabsSnapshotTest, PRE_PRE_PRE_Test) {}
 IN_PROC_BROWSER_TEST_F(TabsSnapshotTest, PRE_PRE_Test) {}
 IN_PROC_BROWSER_TEST_F(TabsSnapshotTest, PRE_Test) {}
-// TODO(crbug.com/326168468): Flaky on TSan.
-#if defined(THREAD_SANITIZER)
-#define MAYBE_Test DISABLED_Test
-#else
-#define MAYBE_Test Test
-#endif
-IN_PROC_BROWSER_TEST_F(TabsSnapshotTest, MAYBE_Test) {}
-#undef MAYBE_Test
+IN_PROC_BROWSER_TEST_F(TabsSnapshotTest, Test) {}
 
 // Tests that Google Chrome does not takes snapshots on mid-milestone updates.
 IN_PROC_BROWSER_TEST_F(InProcessBrowserTest, SameMilestoneSnapshot) {

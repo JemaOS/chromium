@@ -42,7 +42,8 @@ void PictureInPictureWindow::AddedEventListener(
                       WebFeature::kPictureInPictureWindowResizeEventListener);
   }
 
-  EventTarget::AddedEventListener(event_type, registered_listener);
+  EventTargetWithInlineData::AddedEventListener(event_type,
+                                                registered_listener);
 }
 
 bool PictureInPictureWindow::HasPendingActivity() const {
@@ -50,7 +51,7 @@ bool PictureInPictureWindow::HasPendingActivity() const {
 }
 
 void PictureInPictureWindow::Trace(Visitor* visitor) const {
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
 }
 

@@ -38,23 +38,23 @@ class EventListenerOptions;
 
 // RegisteredEventListener represents 'event listener' defined in the DOM
 // standard. https://dom.spec.whatwg.org/#concept-event-listener
-class RegisteredEventListener final
-    : public GarbageCollected<RegisteredEventListener> {
+class RegisteredEventListener final {
+  DISALLOW_NEW();
+
  public:
   RegisteredEventListener();
   RegisteredEventListener(EventListener* listener,
                           const AddEventListenerOptionsResolved* options);
-  RegisteredEventListener(const RegisteredEventListener& that) = delete;
-  RegisteredEventListener& operator=(const RegisteredEventListener& that) =
-      delete;
+  RegisteredEventListener(const RegisteredEventListener& that);
+  RegisteredEventListener& operator=(const RegisteredEventListener& that);
 
   void Trace(Visitor* visitor) const;
 
   AddEventListenerOptionsResolved* Options() const;
 
-  const EventListener* Callback() const { return callback_.Get(); }
+  const EventListener* Callback() const { return callback_; }
 
-  EventListener* Callback() { return callback_.Get(); }
+  EventListener* Callback() { return callback_; }
 
   void SetCallback(EventListener* listener);
 
@@ -83,10 +83,6 @@ class RegisteredEventListener final
 
   bool ShouldFire(const Event&) const;
 
-  bool Removed() const { return removed_; }
-
-  void SetRemoved() { removed_ = true; }
-
  private:
   Member<EventListener> callback_;
   unsigned use_capture_ : 1;
@@ -95,7 +91,6 @@ class RegisteredEventListener final
   unsigned blocked_event_warning_emitted_ : 1;
   unsigned passive_forced_for_document_target_ : 1;
   unsigned passive_specified_ : 1;
-  unsigned removed_ : 1;
 };
 
 bool operator==(const RegisteredEventListener&, const RegisteredEventListener&);

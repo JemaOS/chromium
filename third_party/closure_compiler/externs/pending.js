@@ -66,11 +66,3 @@ AnimationEffect.prototype.getTiming = function() {};
 
 /** @return {!Array<!Object>} */
 AnimationEffect.prototype.getKeyframes = function() {};
-
-/**
- * https://developer.mozilla.org/en-US/docs/Web/API/structuredClone
- * @param {T} obj
- * @return {T}
- * @template T
- */
-function structuredClone(obj) {}

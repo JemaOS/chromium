@@ -24,17 +24,13 @@ class Size;
 namespace ash {
 
 // We force at least this many DIPs for any window on the screen.
-inline constexpr int kMinimumOnScreenArea = 25;
-
-// This specifies how much percent (30%) of a window rect must be visible when
-// the window is added to the workspace.
-inline constexpr float kMinimumPercentOnScreenArea = 0.3f;
+const int kMinimumOnScreenArea = 25;
 
 // In clamshell mode, users can snap left/right for horizontal display and
 // top/bottom for vertical display. For primary-landscape-oriented display,
 // |kPrimary| and |kSecondary| are left snap and right snap.
 // For other orientation see the table of description for
-// `IsLayoutHorizontal()`.
+// `SplitViewController::IsLayoutHorizontal()`.
 enum class SnapViewType { kPrimary, kSecondary };
 
 // Adjusts |bounds| so that the size does not exceed |max_size|.
@@ -84,6 +80,9 @@ ASH_EXPORT gfx::Rect GetSnappedWindowBounds(const gfx::Rect& work_area,
 // orientation of this |display|.
 chromeos::OrientationType GetSnapDisplayOrientation(
     const display::Display& display);
+
+// Moves the window to the center of the display.
+ASH_EXPORT void CenterWindow(aura::Window* window);
 
 // Sets the bounds of |window| to |bounds_in_screen|. This may move |window|
 // to |display| if necessary.

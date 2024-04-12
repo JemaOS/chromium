@@ -5,7 +5,6 @@
 #include "chrome/browser/notifications/notification_display_service_tester.h"
 
 #include "base/functional/bind.h"
-#include "base/memory/singleton.h"
 #include "chrome/browser/notifications/notification_display_service.h"
 #include "chrome/browser/notifications/notification_display_service_factory.h"
 #include "chrome/browser/notifications/stub_notification_display_service.h"
@@ -105,7 +104,7 @@ NotificationDisplayServiceTester::GetDisplayedNotificationsForType(
   return display_service_->GetDisplayedNotificationsForType(type);
 }
 
-std::optional<message_center::Notification>
+absl::optional<message_center::Notification>
 NotificationDisplayServiceTester::GetNotification(
     const std::string& notification_id) const {
   return display_service_->GetNotification(notification_id);
@@ -120,8 +119,8 @@ NotificationDisplayServiceTester::GetMetadataForNotification(
 void NotificationDisplayServiceTester::SimulateClick(
     NotificationHandler::Type notification_type,
     const std::string& notification_id,
-    std::optional<int> action_index,
-    std::optional<std::u16string> reply) {
+    absl::optional<int> action_index,
+    absl::optional<std::u16string> reply) {
   display_service_->SimulateClick(notification_type, notification_id,
                                   std::move(action_index), std::move(reply));
 }

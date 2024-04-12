@@ -6,17 +6,19 @@ package org.chromium.ui.base;
 
 import android.view.View;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
+import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.LocaleUtils;
-import org.chromium.base.ResettersForTesting;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 
 import java.util.Locale;
 
-/** This class provides the locale related methods for the native library. */
+/**
+ * This class provides the locale related methods for the native library.
+ */
 @JNINamespace("l10n_util")
 public class LocalizationUtils {
 
@@ -27,9 +29,7 @@ public class LocalizationUtils {
 
     private static Boolean sIsLayoutRtlForTesting;
 
-    private LocalizationUtils() {
-        /* cannot be instantiated */
-    }
+    private LocalizationUtils() { /* cannot be instantiated */ }
 
     @CalledByNative
     private static Locale getJavaLocale(String language, String country, String variant) {
@@ -55,15 +55,15 @@ public class LocalizationUtils {
         if (sIsLayoutRtlForTesting != null) return sIsLayoutRtlForTesting;
 
         return ContextUtils.getApplicationContext()
-                        .getResources()
-                        .getConfiguration()
-                        .getLayoutDirection()
+                       .getResources()
+                       .getConfiguration()
+                       .getLayoutDirection()
                 == View.LAYOUT_DIRECTION_RTL;
     }
 
+    @VisibleForTesting
     public static void setRtlForTesting(boolean shouldBeRtl) {
         sIsLayoutRtlForTesting = shouldBeRtl;
-        ResettersForTesting.register(() -> sIsLayoutRtlForTesting = null);
     }
 
     /**
@@ -127,7 +127,6 @@ public class LocalizationUtils {
     @NativeMethods
     interface Natives {
         int getFirstStrongCharacterDirection(String string);
-
         String getNativeUiLocale();
     }
 }

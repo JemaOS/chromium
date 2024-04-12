@@ -13,14 +13,11 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "chrome/browser/cart/cart_service_factory.h"
-#include "chrome/browser/commerce/shopping_service_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/new_tab_page/modules/history_clusters/cart/cart_processor.h"
-#include "chrome/browser/new_tab_page/modules/history_clusters/discount/discount_processor.h"
 #include "chrome/browser/new_tab_page/modules/history_clusters/history_clusters.mojom.h"
 #include "chrome/browser/new_tab_page/modules/history_clusters/history_clusters_module_service.h"
 #include "chrome/browser/new_tab_page/modules/history_clusters/history_clusters_module_service_factory.h"
-#include "chrome/browser/new_tab_page/modules/history_clusters/history_clusters_module_util.h"
 #include "chrome/browser/new_tab_page/modules/history_clusters/ranking/history_clusters_module_ranking_metrics_logger.h"
 #include "chrome/browser/new_tab_page/modules/history_clusters/ranking/history_clusters_module_ranking_signals.h"
 #include "chrome/browser/profiles/profile.h"
@@ -28,24 +25,95 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/side_panel/history_clusters/history_clusters_tab_helper.h"
-#include "chrome/browser/ui/tabs/tab_group.h"
-#include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "components/history/core/browser/url_row.h"
 #include "components/history_clusters/core/history_cluster_type_utils.h"
 #include "components/history_clusters/core/history_clusters_service.h"
+#include "components/history_clusters/core/history_clusters_service_task.h"
 #include "components/history_clusters/core/history_clusters_util.h"
 #include "components/history_clusters/public/mojom/history_cluster_types.mojom.h"
 #include "components/keyed_service/core/service_access_type.h"
 #include "components/search/ntp_features.h"
 #include "components/strings/grit/components_strings.h"
+#include "ui/base/l10n/l10n_util.h"
+#include "url/url_util.h"
 
 namespace {
 
-// The minimum number of visits to render a layout is 2 URL visits plus a SRP
-// visit.
-constexpr int kMinRequiredVisits = 3;
+history::ClusterVisit GenerateSampleVisit(
+    history::VisitID visit_id,
+    const std::string& page_title,
+    const GURL& url,
+    bool has_url_keyed_image,
+    const base::Time visit_time = base::Time::Now()) {
+  history::URLRow url_row = history::URLRow(url);
+  url_row.set_title(base::UTF8ToUTF16(page_title));
+  history::VisitRow visit_row;
+  visit_row.visit_id = visit_id;
+  visit_row.visit_time = visit_time;
+  visit_row.is_known_to_sync = true;
+  auto content_annotations = history::VisitContentAnnotations();
+  content_annotations.has_url_keyed_image = has_url_keyed_image;
+  history::AnnotatedVisit annotated_visit;
+  annotated_visit.url_row = std::move(url_row);
+  annotated_visit.visit_row = std::move(visit_row);
+  annotated_visit.content_annotations = std::move(content_annotations);
+  history::ClusterVisit sample_visit;
+  sample_visit.normalized_url = url;
+  sample_visit.url_for_display =
+      history_clusters::ComputeURLForDisplay(url, false);
+  sample_visit.annotated_visit = std::move(annotated_visit);
 
-constexpr int kMinRequiredRelatedSearches = 3;
+  return sample_visit;
+}
+
+history::Cluster GenerateSampleCluster(int num_visits, int num_images) {
+  const base::Time current_time = base::Time::Now();
+  const std::vector<std::tuple<std::string, GURL, base::Time>>
+      kSampleUrlVisitData = {
+          {"Pixel 7 Pro - The all-pro Google phone.",
+           GURL("https://store.google.com/product/pixel_7?hl=en-US"),
+           current_time - base::Minutes(1)},
+          {"Pixel Buds Pro - How premium sounds.",
+           GURL("https://store.google.com/product/pixel_buds_pro?hl=en-US"),
+           current_time - base::Hours(1)},
+          {"Pixel Watch - Help by Google. Health by Fitbit.",
+           GURL("https://store.google.com/product/google_pixel_watch?hl=en-US"),
+           current_time - base::Hours(4)},
+          {"Next Door Bells - Know who's knocking.",
+           GURL("https://store.google.com/product/nest_doorbell?hl=en-US"),
+           current_time - base::Hours(8)}};
+
+  std::vector<history::ClusterVisit> sample_visits;
+  for (int i = 0; i < num_visits; i++) {
+    const std::tuple<std::string, GURL, base::Time> kSampleData =
+        kSampleUrlVisitData.at(i % kSampleUrlVisitData.size());
+    sample_visits.push_back(GenerateSampleVisit(
+        i, std::get<0>(kSampleData), std::get<1>(kSampleData), (i < num_images),
+        std::get<2>(kSampleData)));
+  }
+
+  std::string kSampleSearchQuery = "google store products";
+  url::RawCanonOutputT<char> encoded_query;
+  url::EncodeURIComponent(kSampleSearchQuery.c_str(),
+                          kSampleSearchQuery.length(), &encoded_query);
+  sample_visits.insert(
+      sample_visits.begin(),
+      GenerateSampleVisit(
+          0, kSampleSearchQuery + " - Google Search",
+          GURL("https://www.google.com/search?q=" +
+               std::string(encoded_query.data(), encoded_query.length())),
+          false));
+
+  return history::Cluster(
+      0, sample_visits, {},
+      /*should_show_on_prominent_ui_surfaces=*/true,
+      /*label=*/
+      l10n_util::GetStringFUTF16(
+          IDS_HISTORY_CLUSTERS_CLUSTER_LABEL_SEARCH_TERMS,
+          base::UTF8ToUTF16(kSampleSearchQuery)),
+      /*raw_label=*/base::UTF8ToUTF16(kSampleSearchQuery), {},
+      {"new google products", "google devices", "google stuff"}, 0);
+}
 
 }  // namespace
 
@@ -53,20 +121,17 @@ HistoryClustersPageHandler::HistoryClustersPageHandler(
     mojo::PendingReceiver<ntp::history_clusters::mojom::PageHandler>
         pending_receiver,
     content::WebContents* web_contents)
-    : profile_(Profile::FromBrowserContext(web_contents->GetBrowserContext())),
+    : receiver_(this, std::move(pending_receiver)),
+      profile_(Profile::FromBrowserContext(web_contents->GetBrowserContext())),
       web_contents_(web_contents),
       ranking_metrics_logger_(
           std::make_unique<HistoryClustersModuleRankingMetricsLogger>(
-              web_contents_->GetPrimaryMainFrame()->GetPageUkmSourceId())),
-      receiver_(this, std::move(pending_receiver)) {
+              web_contents_->GetPrimaryMainFrame()->GetPageUkmSourceId())) {
   if (base::FeatureList::IsEnabled(
           ntp_features::kNtpChromeCartInHistoryClusterModule)) {
     cart_processor_ = std::make_unique<CartProcessor>(
         CartServiceFactory::GetForProfile(profile_));
   }
-
-    discount_processor_ = std::make_unique<DiscountProcessor>(
-        commerce::ShoppingServiceFactory::GetForBrowserContext(profile_));
 }
 
 HistoryClustersPageHandler::~HistoryClustersPageHandler() {
@@ -103,30 +168,26 @@ void HistoryClustersPageHandler::GetClusters(GetClustersCallback callback) {
   if (!fake_data_param.empty()) {
     const std::vector<std::string> kFakeDataParams = base::SplitString(
         fake_data_param, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    if (kFakeDataParams.size() != 3) {
+    if (kFakeDataParams.size() != 2) {
       LOG(ERROR) << "Invalid history clusters fake data selection parameter "
                     "format.";
       std::move(callback).Run({});
       return;
     }
 
-    int num_clusters;
     int num_visits;
     int num_images;
-    if (!base::StringToInt(kFakeDataParams.at(0), &num_clusters) ||
-        !base::StringToInt(kFakeDataParams.at(1), &num_visits) ||
-        !base::StringToInt(kFakeDataParams.at(2), &num_images) ||
+    if (!base::StringToInt(kFakeDataParams.at(0), &num_visits) ||
+        !base::StringToInt(kFakeDataParams.at(1), &num_images) ||
         num_visits < num_images) {
       std::move(callback).Run({});
       return;
     }
 
     std::vector<history_clusters::mojom::ClusterPtr> clusters_mojom;
-    for (int i = 0; i < num_clusters; i++) {
-      clusters_mojom.push_back(history_clusters::ClusterToMojom(
-          TemplateURLServiceFactory::GetForProfile(profile_),
-          GenerateSampleCluster(i, num_visits, num_images)));
-    }
+    clusters_mojom.push_back(history_clusters::ClusterToMojom(
+        TemplateURLServiceFactory::GetForProfile(profile_),
+        GenerateSampleCluster(num_visits, num_images)));
     std::move(callback).Run(std::move(clusters_mojom));
     return;
   }
@@ -137,13 +198,7 @@ void HistoryClustersPageHandler::GetClusters(GetClustersCallback callback) {
     std::move(callback).Run({});
     return;
   }
-
-  history_clusters::QueryClustersFilterParams filter_params =
-      CreateFilterParamsFromFeatureFlags(kMinRequiredVisits,
-                                         kMinRequiredRelatedSearches);
-  history_clusters_module_service->GetClusters(
-      std::move(filter_params),
-      static_cast<size_t>(kMinRequiredRelatedSearches),
+  fetch_clusters_task_ = history_clusters_module_service->GetClusters(
       base::BindOnce(&HistoryClustersPageHandler::CallbackWithClusterData,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
@@ -160,14 +215,6 @@ void HistoryClustersPageHandler::GetCartForCluster(
   cart_processor_->GetCartForCluster(std::move(cluster), std::move(callback));
 }
 
-void HistoryClustersPageHandler::GetDiscountsForCluster(
-    history_clusters::mojom::ClusterPtr cluster,
-    GetDiscountsForClusterCallback callback) {
-  DCHECK(discount_processor_);
-  discount_processor_->GetDiscountsForCluster(std::move(cluster),
-                                              std::move(callback));
-}
-
 void HistoryClustersPageHandler::ShowJourneysSidePanel(
     const std::string& query) {
   // TODO(crbug.com/1341399): Revisit integration with the side panel once the
@@ -178,12 +225,7 @@ void HistoryClustersPageHandler::ShowJourneysSidePanel(
 }
 
 void HistoryClustersPageHandler::OpenUrlsInTabGroup(
-    const std::vector<GURL>& urls,
-    const std::optional<std::string>& tab_group_name) {
-  // This method is different from HistoryClustersHandler::OpenUrlsInTabGroup:
-  //  - It takes over the current tab instead of opening new background tabs.
-  //  - It inserts the new tabs into the location of the current tab.
-
+    const std::vector<GURL>& urls) {
   if (urls.empty()) {
     return;
   }
@@ -216,17 +258,7 @@ void HistoryClustersPageHandler::OpenUrlsInTabGroup(
 
   tab_indices.insert(tab_indices.begin(), model->GetIndexOfWebContents(
                                               model->GetActiveWebContents()));
-
-  auto new_group_id = model->AddToNewGroup(tab_indices);
-  if (!new_group_id.is_empty() && tab_group_name) {
-    if (auto* group_model = model->group_model()) {
-      auto* tab_group = group_model->GetTabGroup(new_group_id);
-      // Copy and modify the existing visual data with a new title.
-      tab_groups::TabGroupVisualData visual_data = *tab_group->visual_data();
-      visual_data.SetTitle(base::UTF8ToUTF16(*tab_group_name));
-      tab_group->SetVisualData(visual_data);
-    }
-  }
+  model->AddToNewGroup(tab_indices);
 
   if (tab_indices.size() > 1) {
     model->ActivateTabAt(tab_indices.at(1));
@@ -234,8 +266,7 @@ void HistoryClustersPageHandler::OpenUrlsInTabGroup(
 }
 
 void HistoryClustersPageHandler::DismissCluster(
-    const std::vector<history_clusters::mojom::URLVisitPtr> visits,
-    int64_t cluster_id) {
+    const std::vector<history_clusters::mojom::URLVisitPtr> visits) {
   if (visits.empty()) {
     return;
   }
@@ -249,15 +280,10 @@ void HistoryClustersPageHandler::DismissCluster(
       profile_, ServiceAccessType::EXPLICIT_ACCESS);
   history_service->HideVisits(visit_ids, base::BindOnce([]() {}),
                               &hide_visits_task_tracker_);
-  ranking_metrics_logger_->SetDismissed(cluster_id);
 }
 
 void HistoryClustersPageHandler::RecordClick(int64_t cluster_id) {
   ranking_metrics_logger_->SetClicked(cluster_id);
-}
-
-void HistoryClustersPageHandler::RecordDisabled(int64_t cluster_id) {
-  ranking_metrics_logger_->SetDisabled(cluster_id);
 }
 
 void HistoryClustersPageHandler::RecordLayoutTypeShown(

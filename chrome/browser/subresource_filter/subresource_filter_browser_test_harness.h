@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
@@ -95,6 +94,8 @@ class SubresourceFilterBrowserTest : public PlatformBrowserTest {
   ~SubresourceFilterBrowserTest() override;
 
   // Names of DocumentLoad histograms.
+  static constexpr const char kDocumentLoadActivationLevel[] =
+      "SubresourceFilter.DocumentLoad.ActivationState";
 
   static constexpr const char kSubresourceLoadsTotalForPage[] =
       "SubresourceFilter.PageLoad.NumSubresourceLoads.Total";
@@ -183,7 +184,7 @@ class SubresourceFilterBrowserTest : public PlatformBrowserTest {
   void SetRulesetToDisallowURLsWithPathSuffix(const std::string& suffix);
 
   void SetRulesetToDisallowURLsWithSubstrings(
-      std::vector<std::string_view> substrings);
+      std::vector<base::StringPiece> substrings);
 
   void SetRulesetWithRules(const std::vector<proto::UrlRule>& rules);
 
@@ -210,8 +211,7 @@ class SubresourceFilterBrowserTest : public PlatformBrowserTest {
   std::unique_ptr<TestSafeBrowsingDatabaseHelper> database_helper_;
 
   // Owned by the profile.
-  raw_ptr<SubresourceFilterProfileContext, AcrossTasksDanglingUntriaged>
-      profile_context_;
+  raw_ptr<SubresourceFilterProfileContext, DanglingUntriaged> profile_context_;
 };
 
 // This class automatically syncs the SubresourceFilter SafeBrowsing list

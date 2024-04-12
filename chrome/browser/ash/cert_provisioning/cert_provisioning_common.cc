@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/cert_provisioning/cert_provisioning_common.h"
 
-#include <optional>
 #include <string>
 
 #include "base/functional/callback_helpers.h"
@@ -26,12 +25,13 @@
 #include "components/account_id/account_id.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/user_manager/user.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace cert_provisioning {
 
 namespace {
-std::optional<AccountId> GetAccountId(CertScope scope, Profile* profile) {
+absl::optional<AccountId> GetAccountId(CertScope scope, Profile* profile) {
   switch (scope) {
     case CertScope::kDevice: {
       return EmptyAccountId();
@@ -40,7 +40,7 @@ std::optional<AccountId> GetAccountId(CertScope scope, Profile* profile) {
       user_manager::User* user =
           ProfileHelper::Get()->GetUserByProfile(profile);
       if (!user) {
-        return std::nullopt;
+        return absl::nullopt;
       }
 
       return user->GetAccountId();
@@ -146,13 +146,11 @@ CertProfile::CertProfile(CertProfileId profile_id,
       protocol_version(protocol_version) {}
 
 CertProfile::CertProfile(const CertProfile& other) = default;
-CertProfile& CertProfile::operator=(const CertProfile&) = default;
-CertProfile::CertProfile(CertProfile&& source) = default;
-CertProfile& CertProfile::operator=(CertProfile&&) = default;
+
 CertProfile::CertProfile() = default;
 CertProfile::~CertProfile() = default;
 
-std::optional<CertProfile> CertProfile::MakeFromValue(
+absl::optional<CertProfile> CertProfile::MakeFromValue(
     const base::Value::Dict& value) {
   static_assert(kVersion == 6, "This function should be updated");
 
@@ -160,15 +158,15 @@ std::optional<CertProfile> CertProfile::MakeFromValue(
   const std::string* name = value.FindString(kCertProfileNameKey);
   const std::string* policy_version =
       value.FindString(kCertProfilePolicyVersionKey);
-  std::optional<bool> is_va_enabled =
+  absl::optional<bool> is_va_enabled =
       value.FindBool(kCertProfileIsVaEnabledKey);
-  std::optional<int> renewal_period_sec =
+  absl::optional<int> renewal_period_sec =
       value.FindInt(kCertProfileRenewalPeroidSec);
-  std::optional<int> protocol_version =
+  absl::optional<int> protocol_version =
       value.FindInt(kCertProfileProtocolVersion);
 
   if (!id || !policy_version) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   CertProfile result;
@@ -178,7 +176,7 @@ std::optional<CertProfile> CertProfile::MakeFromValue(
   result.is_va_enabled = is_va_enabled.value_or(true);
   result.renewal_period = base::Seconds(renewal_period_sec.value_or(0));
 
-  std::optional<ProtocolVersion> parsed_protocol_version =
+  absl::optional<ProtocolVersion> parsed_protocol_version =
       ParseProtocolVersion(protocol_version);
   if (!parsed_protocol_version) {
     LOG(ERROR) << "Failed to parse ProtocolVersion "
@@ -187,7 +185,7 @@ std::optional<CertProfile> CertProfile::MakeFromValue(
                        : std::string());
     // If a protocol version is delivered which this client doesn't
     // understand, there's no point using it.
-    return std::nullopt;
+    return absl::nullopt;
   }
   result.protocol_version = *parsed_protocol_version;
 
@@ -219,8 +217,8 @@ bool CertProfileComparator::operator()(const CertProfile& a,
 
 //==============================================================================
 
-std::optional<ProtocolVersion> ParseProtocolVersion(
-    std::optional<int> protocol_version_value) {
+absl::optional<ProtocolVersion> ParseProtocolVersion(
+    absl::optional<int> protocol_version_value) {
   switch (protocol_version_value.value_or(
       base::strict_cast<int>(ProtocolVersion::kStatic))) {
     case base::strict_cast<int>(ProtocolVersion::kStatic):
@@ -228,7 +226,7 @@ std::optional<ProtocolVersion> ParseProtocolVersion(
     case base::strict_cast<int>(ProtocolVersion::kDynamic):
       return ProtocolVersion::kDynamic;
     default:
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
@@ -265,12 +263,12 @@ std::string GetKeyName(CertProfileId profile_id) {
   return kKeyNamePrefix + profile_id;
 }
 
-::attestation::VerifiedAccessFlow GetVaFlowType(CertScope scope) {
+attestation::AttestationKeyType GetVaKeyType(CertScope scope) {
   switch (scope) {
     case CertScope::kUser:
-      return ::attestation::ENTERPRISE_USER;
+      return attestation::AttestationKeyType::KEY_USER;
     case CertScope::kDevice:
-      return ::attestation::ENTERPRISE_MACHINE;
+      return attestation::AttestationKeyType::KEY_DEVICE;
   }
 }
 

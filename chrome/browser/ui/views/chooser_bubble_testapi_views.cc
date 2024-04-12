@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
+#include "chrome/browser/ui/chooser_bubble_testapi.h"
 
 #include "base/test/bind.h"
-#include "chrome/browser/ui/chooser_bubble_testapi.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/views/widget/any_widget_observer.h"
 #include "ui/views/widget/widget.h"
 
@@ -41,7 +41,7 @@ class ChooserBubbleUiWaiterViews : public ChooserBubbleUiWaiter {
   }
 
  private:
-  std::optional<base::RunLoop> run_loop_;
+  absl::optional<base::RunLoop> run_loop_;
   views::AnyWidgetObserver observer_;
 };
 

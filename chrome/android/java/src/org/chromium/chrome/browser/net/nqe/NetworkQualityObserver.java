@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.net.nqe;
 
 import org.chromium.net.EffectiveConnectionType;
 
-/** Interface for observing changes to the current Network Quality Estimate. */
+/**
+ * Interface for observing changes to the current Network Quality Estimate.
+ */
 public interface NetworkQualityObserver {
     /**
      * Called when there is a change in the effective connection type.

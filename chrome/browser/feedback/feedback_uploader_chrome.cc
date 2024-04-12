@@ -71,15 +71,10 @@ FeedbackUploaderChrome::FeedbackUploaderChrome(content::BrowserContext* context)
       FROM_HERE,
       base::BindOnce(&FeedbackReport::LoadReportsAndQueue,
                      feedback_reports_path(),
-                     base::BindRepeating(&QueueSingleReport,
-                                         weak_ptr_factory_.GetWeakPtr())));
+                     base::BindRepeating(&QueueSingleReport, AsWeakPtr())));
 }
 
 FeedbackUploaderChrome::~FeedbackUploaderChrome() = default;
-
-base::WeakPtr<FeedbackUploader> FeedbackUploaderChrome::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
 
 void FeedbackUploaderChrome::PrimaryAccountAccessTokenAvailable(
     GoogleServiceAuthError error,

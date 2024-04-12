@@ -5,8 +5,7 @@
 #ifndef UI_GFX_GEOMETRY_MASK_FILTER_INFO_H_
 #define UI_GFX_GEOMETRY_MASK_FILTER_INFO_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/geometry_skia_export.h"
 #include "ui/gfx/geometry/linear_gradient.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -44,7 +43,7 @@ class GEOMETRY_SKIA_EXPORT MaskFilterInfo {
            rounded_corner_bounds_.GetType() != RRectF::Type::kRect;
   }
 
-  const std::optional<gfx::LinearGradient>& gradient_mask() const {
+  const absl::optional<gfx::LinearGradient>& gradient_mask() const {
     return gradient_mask_;
   }
 
@@ -73,7 +72,7 @@ class GEOMETRY_SKIA_EXPORT MaskFilterInfo {
   RRectF rounded_corner_bounds_;
 
   // Shader based linear gradient mask to be applied to a layer.
-  std::optional<gfx::LinearGradient> gradient_mask_;
+  absl::optional<gfx::LinearGradient> gradient_mask_;
 };
 
 inline bool operator==(const MaskFilterInfo& lhs, const MaskFilterInfo& rhs) {

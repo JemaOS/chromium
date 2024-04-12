@@ -11,7 +11,7 @@
 #include "chrome/browser/history/chrome_history_backend_client.h"
 #include "chrome/browser/history/history_utils.h"
 #include "chrome/browser/profiles/sql_init_error_message_ids.h"
-#include "chrome/browser/ui/profiles/profile_error_dialog.h"
+#include "chrome/browser/ui/profile_error_dialog.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_utils.h"
 #include "components/bookmarks/browser/model_loader.h"
@@ -63,12 +63,13 @@ ChromeHistoryClient::CreateBackendClient() {
       bookmark_model_ ? bookmark_model_->model_loader() : nullptr);
 }
 
-void ChromeHistoryClient::UpdateBookmarkLastUsedTime(int64_t bookmark_node_id,
-                                                     base::Time time) {
+void ChromeHistoryClient::UpdateBookmarkLastUsedTime(
+    const base::Uuid& bookmark_node_uuid,
+    base::Time time) {
   if (!bookmark_model_)
     return;
   const bookmarks::BookmarkNode* node =
-      GetBookmarkNodeByID(bookmark_model_, bookmark_node_id);
+      bookmarks::GetBookmarkNodeByUuid(bookmark_model_, bookmark_node_uuid);
   // This call is async so the BookmarkNode could have already been deleted.
   if (!node)
     return;
@@ -85,24 +86,29 @@ void ChromeHistoryClient::StopObservingBookmarkModel() {
 void ChromeHistoryClient::BookmarkModelChanged() {
 }
 
-void ChromeHistoryClient::BookmarkModelBeingDeleted() {
+void ChromeHistoryClient::BookmarkModelBeingDeleted(
+    bookmarks::BookmarkModel* model) {
+  DCHECK_EQ(model, bookmark_model_);
   StopObservingBookmarkModel();
 }
 
 void ChromeHistoryClient::BookmarkNodeRemoved(
+    bookmarks::BookmarkModel* bookmark_model,
     const bookmarks::BookmarkNode* parent,
     size_t old_index,
     const bookmarks::BookmarkNode* node,
     const std::set<GURL>& removed_urls) {
-  BaseBookmarkModelObserver::BookmarkNodeRemoved(parent, old_index, node,
-                                                 removed_urls);
+  BaseBookmarkModelObserver::BookmarkNodeRemoved(bookmark_model, parent,
+                                                 old_index, node, removed_urls);
   if (on_bookmarks_removed_)
     on_bookmarks_removed_.Run(removed_urls);
 }
 
 void ChromeHistoryClient::BookmarkAllUserNodesRemoved(
+    bookmarks::BookmarkModel* bookmark_model,
     const std::set<GURL>& removed_urls) {
-  BaseBookmarkModelObserver::BookmarkAllUserNodesRemoved(removed_urls);
+  BaseBookmarkModelObserver::BookmarkAllUserNodesRemoved(bookmark_model,
+                                                         removed_urls);
   if (on_bookmarks_removed_)
     on_bookmarks_removed_.Run(removed_urls);
 }

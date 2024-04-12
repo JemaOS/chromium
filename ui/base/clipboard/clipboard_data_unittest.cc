@@ -5,13 +5,13 @@
 #include "ui/base/clipboard/clipboard_data.h"
 
 #include <memory>
-#include <optional>
 
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/base/clipboard/clipboard_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/data_transfer_policy/data_transfer_endpoint.h"
 #include "ui/gfx/image/image_unittest_util.h"
+#include "ui/gfx/skia_util.h"
 #include "url/gurl.h"
 
 namespace ui {
@@ -35,12 +35,12 @@ TEST(ClipboardDataTest, BitmapTest) {
 TEST(ClipboardDataTest, DataSrcTest) {
   GURL url("www.example.com");
   ClipboardData data1;
-  data1.set_source(std::make_optional<DataTransferEndpoint>(url));
+  data1.set_source(std::make_unique<DataTransferEndpoint>(url));
 
   ClipboardData data2;
   EXPECT_NE(data1, data2);
 
-  data2.set_source(std::make_optional<DataTransferEndpoint>(url));
+  data2.set_source(std::make_unique<DataTransferEndpoint>(url));
   EXPECT_EQ(data1, data2);
 }
 
@@ -57,12 +57,12 @@ TEST(ClipboardDataTest, Equivalence) {
   EXPECT_TRUE(data2.GetBitmapIfPngNotEncoded().has_value());
 
   // The PNGs have not yet been encoded.
-  EXPECT_EQ(data1.maybe_png(), std::nullopt);
-  EXPECT_EQ(data2.maybe_png(), std::nullopt);
+  EXPECT_EQ(data1.maybe_png(), absl::nullopt);
+  EXPECT_EQ(data2.maybe_png(), absl::nullopt);
 
   // Encode the PNG of one of the clipboards.
-  auto png1 = clipboard_util::EncodeBitmapToPng(
-      data1.GetBitmapIfPngNotEncoded().value());
+  auto png1 =
+      ClipboardData::EncodeBitmapData(data1.GetBitmapIfPngNotEncoded().value());
   data1.SetPngDataAfterEncoding(png1);
 
   // Comparing the clipboards when only one has an encoded PNG checks the cached

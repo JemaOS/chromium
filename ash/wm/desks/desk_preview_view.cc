@@ -6,13 +6,13 @@
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <utility>
 
 #include "ash/public/cpp/window_properties.h"
 #include "ash/shell.h"
-#include "ash/strings/grit/ash_strings.h"
 #include "ash/style/style_util.h"
-#include "ash/wallpaper/views/wallpaper_base_view.h"
+#include "ash/wallpaper/wallpaper_base_view.h"
 #include "ash/wm/desks/desk.h"
 #include "ash/wm/desks/desk_bar_view_base.h"
 #include "ash/wm/desks/desk_mini_view.h"
@@ -21,6 +21,7 @@
 #include "ash/wm/desks/desks_util.h"
 #include "ash/wm/float/float_controller.h"
 #include "ash/wm/mru_window_tracker.h"
+#include "ash/wm/overview/overview_constants.h"
 #include "ash/wm/overview/overview_utils.h"
 #include "ash/wm/window_state.h"
 #include "ash/wm/window_util.h"
@@ -28,22 +29,24 @@
 #include "ash/wm/workspace/workspace_layout_manager.h"
 #include "ash/wm/workspace_controller.h"
 #include "base/containers/adapters.h"
+#include "base/containers/contains.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
-#include "base/trace_event/trace_event.h"
 #include "chromeos/constants/chromeos_features.h"
+#include "chromeos/ui/wm/features.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/aura/client/aura_constants.h"
 #include "ui/color/color_provider.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_tree_owner.h"
 #include "ui/compositor/layer_type.h"
+#include "ui/compositor/paint_recorder.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/gfx/geometry/vector2d_f.h"
+#include "ui/gfx/skia_paint_util.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/border.h"
 
@@ -61,7 +64,12 @@ constexpr int kDeskPreviewMinHeight = 48;
 constexpr int kUseSmallerHeightDividerWidthThreshold = 600;
 
 // The rounded corner radii, also in dips.
-constexpr gfx::RoundedCornersF kCornerRadius(8);
+constexpr int kCornerRadius = 4;
+constexpr gfx::RoundedCornersF kCornerRadiiOld(kCornerRadius);
+
+// The rounded corner radii when feature flag Jellyroll is enabled.
+// TODO(conniekxu): After CrOS Next is launched, remove `kCornerRadiiOld`.
+constexpr gfx::RoundedCornersF kCornerRadii(8);
 
 // Used for painting the highlight when the context menu is open.
 constexpr float kHighlightTransparency = 0.3f * 0xFF;
@@ -119,9 +127,9 @@ const LayerData GetLayerDataEntry(
 // Get the z-order of all-desk `window` in `desk` for `root`. If it does not
 // exist, then nullopt is returned. Please note, the z-order information is
 // retrieved from the stored stacking data of `desk` for all-desk windows.
-std::optional<size_t> GetWindowZOrderForDeskAndRoot(const aura::Window* window,
-                                                    const Desk* desk,
-                                                    const aura::Window* root) {
+absl::optional<size_t> GetWindowZOrderForDeskAndRoot(const aura::Window* window,
+                                                     const Desk* desk,
+                                                     const aura::Window* root) {
   const auto& adw_by_root = desk->all_desk_window_stacking();
 
   if (auto it = adw_by_root.find(root); it != adw_by_root.end()) {
@@ -131,7 +139,7 @@ std::optional<size_t> GetWindowZOrderForDeskAndRoot(const aura::Window* window,
     }
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // Recursively mirrors `source_layer` and its children and adds them as children
@@ -152,7 +160,7 @@ void MirrorLayerTree(
   parent->Add(mirror);
 
   // Calculate child layers.
-  std::vector<raw_ptr<ui::Layer, VectorExperimental>> children;
+  std::vector<ui::Layer*> children;
   if (visible_on_all_desks_windows_to_mirror.empty()) {
     // Without all desk windows, there is no need to reorder layers, just use
     // them as is.
@@ -184,7 +192,7 @@ void MirrorLayerTree(
 
     // Define what to use for layer ordering.
     struct LayerOrderData {
-      raw_ptr<ui::Layer> layer;
+      raw_ptr<ui::Layer, ExperimentalAsh> layer;
       // z-order in target desk.
       size_t primary_key;
       // z-order in active desk.
@@ -207,9 +215,9 @@ void MirrorLayerTree(
       // Find z order of `window`. If `features::IsPerDeskZOrderEnabled()` is
       // not on, default value of zero will be used so `window` would be put
       // on top.
-      std::optional<size_t> target_desk_order =
+      absl::optional<size_t> target_desk_order =
           GetWindowZOrderForDeskAndRoot(window, desk, root);
-      std::optional<size_t> active_desk_order = GetWindowZOrderForDeskAndRoot(
+      absl::optional<size_t> active_desk_order = GetWindowZOrderForDeskAndRoot(
           window, DesksController::Get()->active_desk(), root);
       layer_orders.push_back({.layer = window->layer(),
                               .primary_key = target_desk_order.value_or(0),
@@ -219,7 +227,7 @@ void MirrorLayerTree(
 
     // Step 2: Populate child layers from `source_layer` with their orders.
     size_t order = 0;
-    for (ui::Layer* it : base::Reversed(source_layer->children())) {
+    for (auto* it : base::Reversed(source_layer->children())) {
       while (primary_key_taken.contains(order)) {
         order++;
       }
@@ -237,27 +245,17 @@ void MirrorLayerTree(
         });
     children.reserve(layer_orders.size());
     for (const auto& lo : layer_orders) {
-      children.emplace_back(lo.layer.get());
+      children.emplace_back(lo.layer);
     }
   }
 
-  for (ui::Layer* child : children) {
+  for (auto* child : children) {
     // Visible on all desks windows only needed to be added to the subtree once
     // so use an empty set for subsequent calls.
     MirrorLayerTree(child, mirror, layers_data, base::flat_set<aura::Window*>(),
                     desk_container);
   }
 
-  // Disables rounded corners sync on the mirroring layer. Changes on its source
-  // layer's rounded corners shouldn't affect the rounded corners of the
-  // mirroring layer.
-  // On entering overview, the rounded corners of the windows get updated after
-  // the starting animation completes. These rounded corners are added
-  // specifically for the visuals of the windows inside overview, whereas the
-  // desk previews reflect the windows visuals outside of overview. Hence, these
-  // changes of the rounded corners on the source layers should not show up on
-  // the mirror layers. See http://b/293946863.
-  mirror->set_sync_rounded_corners_with_source(false);
   mirror->set_sync_bounds_with_source(true);
   if (layer_data.should_force_mirror_visible) {
     mirror->SetVisible(true);
@@ -323,9 +321,13 @@ void GetLayersData(aura::Window* window,
     layer_data.should_clear_transform = true;
   }
 
-  for (aura::Window* child : window->children()) {
+  for (auto* child : window->children())
     GetLayersData(child, out_layers_data);
-  }
+}
+
+gfx::RoundedCornersF GetRoundedCorner() {
+  return chromeos::features::IsJellyrollEnabled() ? kCornerRadii
+                                                  : kCornerRadiiOld;
 }
 
 }  // namespace
@@ -342,8 +344,6 @@ DeskPreviewView::DeskPreviewView(PressedCallback callback,
       force_occlusion_tracker_visible_(
           std::make_unique<aura::WindowOcclusionTracker::ScopedForceVisible>(
               mini_view->GetDeskContainer())) {
-  TRACE_EVENT0("ui", "DeskPreviewView::DeskPreviewView");
-
   DCHECK(mini_view_);
 
   SetFocusPainter(nullptr);
@@ -356,15 +356,21 @@ DeskPreviewView::DeskPreviewView(PressedCallback callback,
   wallpaper_preview_->SetPaintToLayer();
   auto* wallpaper_preview_layer = wallpaper_preview_->layer();
   wallpaper_preview_layer->SetFillsBoundsOpaquely(false);
-  wallpaper_preview_layer->SetRoundedCornerRadius(kCornerRadius);
+  wallpaper_preview_layer->SetRoundedCornerRadius(GetRoundedCorner());
   wallpaper_preview_layer->SetIsFastRoundedCorner(true);
   AddChildView(wallpaper_preview_.get());
+
+  if (!chromeos::features::IsJellyrollEnabled()) {
+    shadow_ = SystemShadow::CreateShadowOnNinePatchLayerForView(
+        wallpaper_preview_, kDefaultShadowType);
+    shadow_->SetRoundedCornerRadius(kCornerRadius);
+  }
 
   desk_mirrored_contents_view_->SetPaintToLayer(ui::LAYER_NOT_DRAWN);
   ui::Layer* contents_view_layer = desk_mirrored_contents_view_->layer();
   contents_view_layer->SetMasksToBounds(true);
   contents_view_layer->SetName("Desk mirrored contents view");
-  contents_view_layer->SetRoundedCornerRadius(kCornerRadius);
+  contents_view_layer->SetRoundedCornerRadius(GetRoundedCorner());
   contents_view_layer->SetIsFastRoundedCorner(true);
   AddChildView(desk_mirrored_contents_view_.get());
 
@@ -373,12 +379,10 @@ DeskPreviewView::DeskPreviewView(PressedCallback callback,
   highlight_overlay_->SetVisible(false);
   ui::Layer* highlight_overlay_layer = highlight_overlay_->layer();
   highlight_overlay_layer->SetName("DeskPreviewView highlight overlay");
-  highlight_overlay_layer->SetRoundedCornerRadius(kCornerRadius);
+  highlight_overlay_layer->SetRoundedCornerRadius(GetRoundedCorner());
   highlight_overlay_layer->SetIsFastRoundedCorner(true);
 
   RecreateDeskContentsMirrorLayers();
-
-  UpdateAccessibleName();
 }
 
 DeskPreviewView::~DeskPreviewView() = default;
@@ -402,8 +406,6 @@ void DeskPreviewView::SetHighlightOverlayVisibility(bool visible) {
 }
 
 void DeskPreviewView::RecreateDeskContentsMirrorLayers() {
-  TRACE_EVENT0("ui", "DeskPreviewView::RecreateDeskContentsMirrorLayers");
-
   auto* desk_container = mini_view_->GetDeskContainer();
   DCHECK(desk_container);
   DCHECK(desk_container->layer());
@@ -417,10 +419,11 @@ void DeskPreviewView::RecreateDeskContentsMirrorLayers() {
 
   // If there is a floated window that belongs to this desk, since it doesn't
   // belong to `desk_container`, we need to add it separately.
-  aura::Window* floated_window =
-      Shell::Get()->float_controller()->FindFloatedWindowOfDesk(
-          mini_view_->desk());
-  if (floated_window) {
+  aura::Window* floated_window = nullptr;
+  if (chromeos::wm::features::IsWindowLayoutMenuEnabled() &&
+      (floated_window =
+           Shell::Get()->float_controller()->FindFloatedWindowOfDesk(
+               mini_view_->desk()))) {
     GetLayersData(floated_window, &layers_data);
   }
 
@@ -460,57 +463,21 @@ void DeskPreviewView::RecreateDeskContentsMirrorLayers() {
       std::make_unique<ui::LayerTreeOwner>(
           std::move(mirrored_content_root_layer));
 
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
-void DeskPreviewView::Close(bool primary_action) {
-  // The primary action (Ctrl + W) is to remove the desk and not close the
-  // windows (combine the desk with one on the right or left). The secondary
-  // action (Ctrl + Shift + W) is to close the desk and all its applications.
-  mini_view_->OnRemovingDesk(primary_action
-                                 ? DeskCloseType::kCombineDesks
-                                 : DeskCloseType::kCloseAllWindowsAndWait);
-}
-
-void DeskPreviewView::Swap(bool right) {
-  const int old_index = mini_view_->owner_bar()->GetMiniViewIndex(mini_view_);
-  CHECK_NE(old_index, -1);
-
-  int new_index = right ? old_index + 1 : old_index - 1;
-  if (new_index < 0 ||
-      new_index ==
-          static_cast<int>(mini_view_->owner_bar()->mini_views().size())) {
-    return;
-  }
-
-  auto* desks_controller = DesksController::Get();
-  desks_controller->ReorderDesk(old_index, new_index);
-  desks_controller->UpdateDesksDefaultNames();
-}
-
-void DeskPreviewView::UpdateAccessibleName() {
-  if (Desk* desk = mini_view_->desk()) {
-    SetAccessibleName(l10n_util::GetStringFUTF16(
-        desk->is_active() ? IDS_ASH_DESKS_DESK_PREVIEW_ACTIVE
-                          : IDS_ASH_DESKS_DESK_PREVIEW_INACTIVE,
-        desk->name()));
-  }
+const char* DeskPreviewView::GetClassName() const {
+  return "DeskPreviewView";
 }
 
 void DeskPreviewView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
-  views::Button::GetAccessibleNodeData(node_data);
-
   // Avoid failing accessibility checks if we don't have a name.
-  if (GetAccessibleName().empty()) {
+  views::Button::GetAccessibleNodeData(node_data);
+  if (GetAccessibleName().empty())
     node_data->SetNameExplicitlyEmpty();
-  }
-
-  node_data->AddStringAttribute(
-      ax::mojom::StringAttribute::kRoleDescription,
-      l10n_util::GetStringUTF8(IDS_ASH_DESKS_DESK_PREVIEW_ROLE_DESCRIPTION));
 }
 
-void DeskPreviewView::Layout(PassKey) {
+void DeskPreviewView::Layout() {
   const gfx::Rect bounds = GetContentsBounds();
   wallpaper_preview_->SetBoundsRect(bounds);
   desk_mirrored_contents_view_->SetBoundsRect(bounds);
@@ -531,7 +498,7 @@ void DeskPreviewView::Layout(PassKey) {
   DCHECK(desk_mirrored_contents_layer);
   desk_mirrored_contents_layer->SetTransform(transform);
 
-  LayoutSuperclass<Button>(this);
+  Button::Layout();
 }
 
 bool DeskPreviewView::OnMousePressed(const ui::MouseEvent& event) {
@@ -593,65 +560,66 @@ void DeskPreviewView::OnThemeChanged() {
 }
 
 void DeskPreviewView::OnFocus() {
-  if (mini_view_->owner_bar()->type() == DeskBarViewBase::Type::kOverview) {
-    MoveFocusToView(this);
+  if (mini_view_->owner_bar()->overview_grid()) {
+    UpdateOverviewHighlightForFocusAndSpokenFeedback(this);
   }
 
-  mini_view_->UpdateDeskButtonVisibility();
   mini_view_->UpdateFocusColor();
   View::OnFocus();
 }
 
 void DeskPreviewView::OnBlur() {
-  mini_view_->UpdateDeskButtonVisibility();
   mini_view_->UpdateFocusColor();
   View::OnBlur();
-}
-
-void DeskPreviewView::AboutToRequestFocusFromTabTraversal(bool reverse) {
-  if (reverse) {
-    mini_view_->OnPreviewOrProfileAboutToBeFocusedByReverseTab();
-  }
 }
 
 views::View* DeskPreviewView::GetView() {
   return this;
 }
 
-void DeskPreviewView::MaybeActivateFocusedView() {
-  DesksController::Get()->ActivateDesk(
-      mini_view_->desk(),
-      mini_view_->owner_bar()->type() == DeskBarViewBase::Type::kDeskButton
-          ? DesksSwitchSource::kDeskButtonMiniViewButton
-          : DesksSwitchSource::kMiniViewButton);
+void DeskPreviewView::MaybeActivateHighlightedView() {
+  DesksController::Get()->ActivateDesk(mini_view_->desk(),
+                                       DesksSwitchSource::kMiniViewButton);
 }
 
-void DeskPreviewView::MaybeCloseFocusedView(bool primary_action) {
-  Close(primary_action);
+void DeskPreviewView::MaybeCloseHighlightedView(bool primary_action) {
+  // The primary action (Ctrl + W) is to remove the desk and not close the
+  // windows (combine the desk with one on the right or left). The secondary
+  // action (Ctrl + Shift + W) is to close the desk and all its applications.
+  mini_view_->OnRemovingDesk(primary_action
+                                 ? DeskCloseType::kCombineDesks
+                                 : DeskCloseType::kCloseAllWindowsAndWait);
 }
 
-void DeskPreviewView::MaybeSwapFocusedView(bool right) {
-  Swap(right);
+void DeskPreviewView::MaybeSwapHighlightedView(bool right) {
+  const int old_index = mini_view_->owner_bar()->GetMiniViewIndex(mini_view_);
+  DCHECK_NE(old_index, -1);
+
+  int new_index = right ? old_index + 1 : old_index - 1;
+  if (new_index < 0 ||
+      new_index ==
+          static_cast<int>(mini_view_->owner_bar()->mini_views().size())) {
+    return;
+  }
+
+  auto* desks_controller = DesksController::Get();
+  desks_controller->ReorderDesk(old_index, new_index);
+  desks_controller->UpdateDesksDefaultNames();
 }
 
-bool DeskPreviewView::MaybeActivateFocusedViewOnOverviewExit(
+bool DeskPreviewView::MaybeActivateHighlightedViewOnOverviewExit(
     OverviewSession* overview_session) {
-  MaybeActivateFocusedView();
+  MaybeActivateHighlightedView();
   return true;
 }
 
-void DeskPreviewView::OnFocusableViewFocused() {
-  mini_view_->UpdateDeskButtonVisibility();
+void DeskPreviewView::OnViewHighlighted() {
   mini_view_->UpdateFocusColor();
   mini_view_->owner_bar()->ScrollToShowViewIfNecessary(mini_view_);
 }
 
-void DeskPreviewView::OnFocusableViewBlurred() {
-  mini_view_->UpdateDeskButtonVisibility();
+void DeskPreviewView::OnViewUnhighlighted() {
   mini_view_->UpdateFocusColor();
 }
-
-BEGIN_METADATA(DeskPreviewView)
-END_METADATA
 
 }  // namespace ash

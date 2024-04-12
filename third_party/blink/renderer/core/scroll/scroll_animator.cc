@@ -109,6 +109,10 @@ ScrollResult ScrollAnimator::UserScroll(
   // scroll, the callback is invoked immediately without being stored.
   DCHECK(HasRunningAnimation() || on_finish_.is_null());
 
+#if BUILDFLAG(IS_MAC)
+  have_scrolled_since_page_load_ = true;
+#endif
+
   ScrollableArea::ScrollCallback run_on_return(BindOnce(
       [](ScrollableArea::ScrollCallback callback,
          ScrollableArea::ScrollCompletionMode mode) {
@@ -404,10 +408,18 @@ void ScrollAnimator::CancelAnimation() {
   ScrollAnimatorCompositorCoordinator::CancelAnimation();
   if (on_finish_)
     std::move(on_finish_).Run(ScrollableArea::ScrollCompletionMode::kFinished);
+#if BUILDFLAG(IS_MAC)
+  have_scrolled_since_page_load_ = false;
+#endif
 }
 
 void ScrollAnimator::TakeOverCompositorAnimation() {
   ScrollAnimatorCompositorCoordinator::TakeOverCompositorAnimation();
+}
+
+void ScrollAnimator::MainThreadScrollingDidChange() {
+  ReattachCompositorAnimationIfNeeded(
+      GetScrollableArea()->GetCompositorAnimationTimeline());
 }
 
 bool ScrollAnimator::RegisterAndScheduleAnimation() {

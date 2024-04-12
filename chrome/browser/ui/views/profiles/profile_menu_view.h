@@ -34,6 +34,8 @@ class Browser;
 // It displays a list of profiles and allows users to switch between profiles.
 class ProfileMenuView : public ProfileMenuViewBase {
  public:
+  METADATA_HEADER(ProfileMenuView);
+
   ProfileMenuView(views::Button* anchor_button, Browser* browser);
   ~ProfileMenuView() override;
 
@@ -65,13 +67,13 @@ class ProfileMenuView : public ProfileMenuViewBase {
   void OnExitProfileButtonClicked();
   void OnSyncSettingsButtonClicked();
   void OnSyncErrorButtonClicked(AvatarSyncErrorType error);
-  void OnSigninButtonClicked(CoreAccountInfo account,
-                             ActionableItem button_type);
+  void OnSigninAccountButtonClicked(CoreAccountInfo account);
   void OnCookiesClearedOnExitLinkClicked();
 #if BUILDFLAG(ENABLE_DICE_SUPPORT) || BUILDFLAG(IS_CHROMEOS_LACROS)
   void OnSignoutButtonClicked();
 #endif
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
+  void OnSigninButtonClicked();
   void OnOtherProfileSelected(const base::FilePath& profile_path);
   void OnAddNewProfileButtonClicked();
   void OnManageProfilesButtonClicked();
@@ -96,12 +98,11 @@ class ProfileMenuView : public ProfileMenuViewBase {
 
   std::u16string menu_title_;
   std::u16string menu_subtitle_;
-  std::u16string management_label_;
 
 #if !BUILDFLAG(IS_CHROMEOS)
   // A profile switcher object needed if the user triggers opening other
   // profile in a web app.
-  std::optional<WebAppProfileSwitcher> app_profile_switcher_;
+  absl::optional<WebAppProfileSwitcher> app_profile_switcher_;
 #endif
 };
 

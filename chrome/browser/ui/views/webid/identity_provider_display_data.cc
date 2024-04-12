@@ -9,14 +9,12 @@ IdentityProviderDisplayData::IdentityProviderDisplayData(
     const content::IdentityProviderMetadata& idp_metadata,
     const content::ClientMetadata& client_metadata,
     const std::vector<content::IdentityRequestAccount>& accounts,
-    bool request_permission,
-    bool has_login_status_mismatch)
+    bool request_permission)
     : idp_etld_plus_one(idp_etld_plus_one),
       idp_metadata(idp_metadata),
       client_metadata(client_metadata),
       accounts(accounts),
-      request_permission(request_permission),
-      has_login_status_mismatch(has_login_status_mismatch) {}
+      request_permission(request_permission) {}
 
 IdentityProviderDisplayData::IdentityProviderDisplayData(
     const IdentityProviderDisplayData& other) = default;

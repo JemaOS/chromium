@@ -10,7 +10,6 @@
 #include "chrome/browser/ui/color/chrome_color_provider_utils.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
-#include "components/user_education/common/user_education_class_properties.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkPath.h"
 #include "ui/base/ui_base_features.h"
@@ -75,17 +74,10 @@ SkColor GetToolbarInkDropBaseColor(const views::View* host_view) {
                         : gfx::kPlaceholderColor;
 }
 
-void ConfigureInkDropForToolbar(
-    views::Button* host,
-    std::unique_ptr<views::HighlightPathGenerator> highlight_generator) {
+void ConfigureInkDropForToolbar(views::Button* host) {
   host->SetHasInkDropActionOnClick(true);
-
-  if (!highlight_generator) {
-    highlight_generator =
-        std::make_unique<ToolbarButtonHighlightPathGenerator>();
-  }
-  views::HighlightPathGenerator::Install(host, std::move(highlight_generator));
-
+  views::HighlightPathGenerator::Install(
+      host, std::make_unique<ToolbarButtonHighlightPathGenerator>());
   views::InkDrop::Get(host)->SetMode(views::InkDropHost::InkDropMode::ON);
   views::InkDrop::Get(host)->SetVisibleOpacity(kToolbarInkDropVisibleOpacity);
   views::InkDrop::Get(host)->SetHighlightOpacity(
@@ -94,60 +86,43 @@ void ConfigureInkDropForToolbar(
       base::BindRepeating(&GetToolbarInkDropBaseColor, host));
 
   if (features::IsChromeRefresh2023()) {
-    ConfigureToolbarInkdropForRefresh2023(host, kColorToolbarInkDropHover,
-                                          kColorToolbarInkDropRipple);
+    views::InkDrop::Get(host)->SetLayerRegion(views::LayerRegion::kAbove);
+    views::InkDrop::Get(host)->SetCreateRippleCallback(base::BindRepeating(
+        [](views::Button* host) -> std::unique_ptr<views::InkDropRipple> {
+          // TODO(shibalik): Replace with a local color token once theme colors
+          // is handled with chrome refresh.
+          const auto* color_provider = host->GetColorProvider();
+          const SkColor pressed_color =
+              color_provider
+                  ? color_provider->GetColor(kColorToolbarInkDropRipple)
+                  : gfx::kPlaceholderColor;
+          const float pressed_alpha = SkColorGetA(pressed_color);
+
+          return std::make_unique<views::FloodFillInkDropRipple>(
+              views::InkDrop::Get(host), host->size(),
+              host->GetLocalBounds().CenterPoint(),
+              SkColorSetA(pressed_color, SK_AlphaOPAQUE),
+              pressed_alpha / SK_AlphaOPAQUE);
+        },
+        host));
+    views::InkDrop::Get(host)->SetCreateHighlightCallback(base::BindRepeating(
+        [](views::Button* host) {
+          // TODO(shibalik): Replace with a local color token once theme colors
+          // is handled with chrome refresh.
+          const auto* color_provider = host->GetColorProvider();
+          const SkColor hover_color =
+              color_provider
+                  ? color_provider->GetColor(kColorToolbarInkDropHover)
+                  : gfx::kPlaceholderColor;
+          const float hover_alpha = SkColorGetA(hover_color);
+
+          auto ink_drop_highlight = std::make_unique<views::InkDropHighlight>(
+              host->size(), host->height() / 2,
+              gfx::PointF(host->GetLocalBounds().CenterPoint()),
+              SkColorSetA(hover_color, SK_AlphaOPAQUE));
+          ink_drop_highlight->set_visible_opacity(hover_alpha / SK_AlphaOPAQUE);
+          return ink_drop_highlight;
+        },
+        host));
   }
-}
-
-void ConfigureToolbarInkdropForRefresh2023(
-    views::View* const host,
-    const ChromeColorIds hover_color_id,
-    const ChromeColorIds ripple_color_id) {
-  CHECK(features::IsChromeRefresh2023());
-  views::InkDrop::Get(host)->SetLayerRegion(views::LayerRegion::kAbove);
-  CreateToolbarInkdropCallbacks(host, hover_color_id, ripple_color_id);
-}
-
-void CreateToolbarInkdropCallbacks(views::View* const host,
-                                   const ChromeColorIds hover_color_id,
-                                   const ChromeColorIds ripple_color_id) {
-  views::InkDrop::Get(host)->SetCreateRippleCallback(base::BindRepeating(
-      [](views::View* host, ChromeColorIds ripple_color_id)
-          -> std::unique_ptr<views::InkDropRipple> {
-        const auto* color_provider = host->GetColorProvider();
-        const SkColor pressed_color =
-            color_provider ? color_provider->GetColor(ripple_color_id)
-                           : gfx::kPlaceholderColor;
-        const float pressed_alpha = SkColorGetA(pressed_color);
-
-        return std::make_unique<views::FloodFillInkDropRipple>(
-            views::InkDrop::Get(host), host->size(),
-            host->GetLocalBounds().CenterPoint(),
-            SkColorSetA(pressed_color, SK_AlphaOPAQUE),
-            pressed_alpha / SK_AlphaOPAQUE);
-      },
-      host, ripple_color_id));
-
-  views::InkDrop::Get(host)->SetCreateHighlightCallback(base::BindRepeating(
-      [](views::View* host, ChromeColorIds hover_color_id) {
-        const auto* color_provider = host->GetColorProvider();
-        SkColor hover_color = color_provider
-                                  ? color_provider->GetColor(hover_color_id)
-                                  : gfx::kPlaceholderColor;
-
-        // override the hover color if this is triggered by `user_education`.
-        if (host->GetProperty(user_education::kHasInProductHelpPromoKey)) {
-          hover_color = color_provider->GetColor(
-              ui::kColorButtonFeatureAttentionHighlight);
-        }
-
-        const float hover_alpha = SkColorGetA(hover_color);
-
-        auto ink_drop_highlight = std::make_unique<views::InkDropHighlight>(
-            gfx::SizeF(host->size()), SkColorSetA(hover_color, SK_AlphaOPAQUE));
-
-        ink_drop_highlight->set_visible_opacity(hover_alpha / SK_AlphaOPAQUE);
-        return ink_drop_highlight;
-      },
-      host, hover_color_id));
 }

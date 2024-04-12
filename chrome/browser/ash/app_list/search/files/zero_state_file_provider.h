@@ -47,7 +47,7 @@ class ZeroStateFileProvider : public SearchProvider,
  private:
   // Called when file suggestion data are fetched from the service.
   void OnSuggestFileDataFetched(
-      const std::optional<std::vector<ash::FileSuggestData>>& suggest_results);
+      const absl::optional<std::vector<ash::FileSuggestData>>& suggest_results);
 
   // Builds the search results from file suggestions then publishes the results.
   void SetSearchResults(
@@ -61,11 +61,11 @@ class ZeroStateFileProvider : public SearchProvider,
   void OnFileSuggestionUpdated(ash::FileSuggestionType type) override;
 
   // The reference to profile to get ZeroStateFileProvider service.
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
 
   ash::ThumbnailLoader thumbnail_loader_;
 
-  const raw_ptr<ash::FileSuggestKeyedService> file_suggest_service_;
+  const base::raw_ptr<ash::FileSuggestKeyedService> file_suggest_service_;
 
   base::TimeTicks query_start_time_;
 

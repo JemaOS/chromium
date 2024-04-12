@@ -7,9 +7,9 @@
 
 #include "chrome/browser/ui/webui/signin/signin_web_dialog_ui.h"
 
-namespace content {
+namespace ui {
 class WebUI;
-}  // namespace content
+}
 
 class SigninErrorUI : public SigninWebDialogUI {
  public:

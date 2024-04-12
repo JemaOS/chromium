@@ -24,12 +24,11 @@
 
 namespace chrome {
 
-content::WebContents* AddAndReturnTabAt(
-    Browser* browser,
-    const GURL& url,
-    int idx,
-    bool foreground,
-    std::optional<tab_groups::TabGroupId> group) {
+void AddTabAt(Browser* browser,
+              const GURL& url,
+              int idx,
+              bool foreground,
+              absl::optional<tab_groups::TabGroupId> group) {
   // Time new tab page creation time.  We keep track of the timing data in
   // WebContents, but we want to include the time it takes to create the
   // WebContents object too.
@@ -43,21 +42,11 @@ content::WebContents* AddAndReturnTabAt(
   Navigate(&params);
 
   if (!params.navigated_or_inserted_contents)
-    return nullptr;
+    return;
 
   CoreTabHelper* core_tab_helper =
       CoreTabHelper::FromWebContents(params.navigated_or_inserted_contents);
   core_tab_helper->set_new_tab_start_time(new_tab_start_time);
-
-  return params.navigated_or_inserted_contents;
-}
-
-void AddTabAt(Browser* browser,
-              const GURL& url,
-              int idx,
-              bool foreground,
-              std::optional<tab_groups::TabGroupId> group) {
-  /*void*/ AddAndReturnTabAt(browser, url, idx, foreground, std::move(group));
 }
 
 content::WebContents* AddSelectedTabWithURL(Browser* browser,
@@ -102,8 +91,7 @@ void CloseWebContents(Browser* browser,
                       bool add_to_history) {
   int index = browser->tab_strip_model()->GetIndexOfWebContents(contents);
   if (index == TabStripModel::kNoTab) {
-    DUMP_WILL_BE_NOTREACHED_NORETURN()
-        << "CloseWebContents called for tab not in our strip";
+    NOTREACHED() << "CloseWebContents called for tab not in our strip";
     return;
   }
 

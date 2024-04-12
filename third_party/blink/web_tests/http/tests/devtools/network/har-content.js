@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {NetworkTestRunner} from 'network_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-
 (async function() {
   TestRunner.addResult(`Tests conversion of Inspector's resource representation into HAR format.\n`);
+  await TestRunner.loadTestModule('network_test_runner');
   await TestRunner.showPanel('network');
 
   await TestRunner.NetworkAgent.setCacheDisabled(true);
@@ -21,7 +17,7 @@ import * as Common from 'devtools/core/common/common.js';
 
   async function makeHAR() {
     var stream = new TestRunner.StringOutputStream(onSaved);
-    var progress = new Common.Progress.Progress();
+    var progress = new Common.Progress();
     await NetworkTestRunner.writeHARLog(
         stream, NetworkTestRunner.networkRequests(), progress);
     progress.done();

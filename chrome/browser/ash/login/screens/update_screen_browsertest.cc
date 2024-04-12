@@ -5,13 +5,10 @@
 #include "chrome/browser/ash/login/screens/update_screen.h"
 
 #include <memory>
-#include <optional>
 
 #include "ash/constants/ash_features.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
-#include "base/metrics/histogram_base.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/scoped_mock_time_message_loop_task_runner.h"
 #include "base/test/simple_test_tick_clock.h"
@@ -32,13 +29,14 @@
 #include "chrome/browser/ui/webui/ash/login/oobe_ui.h"
 #include "chrome/browser/ui/webui/ash/login/update_screen_handler.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chromeos/ash/components/dbus/update_engine/fake_update_engine_client.h"
 #include "chromeos/ash/components/network/network_connection_handler.h"
 #include "chromeos/ash/components/network/network_handler.h"
 #include "chromeos/dbus/power/fake_power_manager_client.h"
 #include "content/public/test/browser_test.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace ash {
@@ -54,8 +52,8 @@ const test::UIPath kCellularPermissionBack = {"oobe-update",
 const test::UIPath kLowBatteryWarningMessage = {"oobe-update",
                                                 "battery-warning"};
 const test::UIPath kErrorMessage = {"error-message"};
-const test::UIPath kBetterUpdateCheckingForUpdatesDialog = {"oobe-update",
-                                                            "checking-update"};
+const test::UIPath kBetterUpdateCheckingForUpdatesDialog = {
+    "oobe-update", "checking-for-updates-dialog"};
 const test::UIPath kUpdateInProgressDialog = {"oobe-update",
                                               "update-in-progress-dialog"};
 const test::UIPath kRestartingDialog = {"oobe-update", "restarting-dialog"};
@@ -205,7 +203,6 @@ class UpdateScreenTest : public OobeBaseTest,
   }
 
   void ShowUpdateScreen() {
-    WaitForOobeUI();
     WizardController::default_controller()->AdvanceToScreen(
         UpdateView::kScreenId);
     // When opt out option is not available we try to wait and don't show the
@@ -262,17 +259,17 @@ class UpdateScreenTest : public OobeBaseTest,
 
   NetworkPortalDetectorMixin network_portal_detector_{&mixin_host_};
 
-  raw_ptr<UpdateScreen, DanglingUntriaged> update_screen_ = nullptr;
+  raw_ptr<UpdateScreen, ExperimentalAsh> update_screen_ = nullptr;
   // Version updater - owned by `update_screen_`.
-  raw_ptr<VersionUpdater, DanglingUntriaged> version_updater_ = nullptr;
+  raw_ptr<VersionUpdater, ExperimentalAsh> version_updater_ = nullptr;
   // Error screen - owned by OobeUI.
-  raw_ptr<ErrorScreen, DanglingUntriaged> error_screen_ = nullptr;
+  raw_ptr<ErrorScreen, ExperimentalAsh> error_screen_ = nullptr;
 
   base::SimpleTestTickClock tick_clock_;
 
   base::HistogramTester histogram_tester_;
 
-  std::optional<UpdateScreen::Result> last_screen_result_;
+  absl::optional<UpdateScreen::Result> last_screen_result_;
 
  private:
   void HandleScreenExit(UpdateScreen::Result result) {
@@ -846,7 +843,9 @@ IN_PROC_BROWSER_TEST_P(UpdateScreenTest, TestInitialLowBatteryStatus) {
   test::OobeJS().ExpectVisiblePath(kLowBatteryWarningMessage);
 }
 
-IN_PROC_BROWSER_TEST_P(UpdateScreenTest, TestBatteryWarningDuringUpdateStages) {
+// TODO(crbug.com/1324627): Fix this test.
+IN_PROC_BROWSER_TEST_P(UpdateScreenTest,
+                       DISABLED_TestBatteryWarningDuringUpdateStages) {
   base::ScopedMockTimeMessageLoopTaskRunner mocked_task_runner;
   SetTickClockAndDefaultDelaysForTesting(
       mocked_task_runner->GetMockTickClock());
@@ -960,7 +959,9 @@ IN_PROC_BROWSER_TEST_P(UpdateScreenTest,
   test::OobeJS().ExpectHiddenPath(kLowBatteryWarningMessage);
 }
 
-IN_PROC_BROWSER_TEST_P(UpdateScreenTest, TestUpdateCompletedRebootNeeded) {
+// TODO(crbug.com/1324627): Fix this test.
+IN_PROC_BROWSER_TEST_P(UpdateScreenTest,
+                       DISABLED_TestUpdateCompletedRebootNeeded) {
   base::ScopedMockTimeMessageLoopTaskRunner mocked_task_runner;
   SetTickClockAndDefaultDelaysForTesting(
       mocked_task_runner->GetMockTickClock());
@@ -986,14 +987,15 @@ IN_PROC_BROWSER_TEST_P(UpdateScreenTest, TestUpdateCompletedRebootNeeded) {
   ASSERT_EQ(update_engine_client()->reboot_after_update_call_count(), 1);
 
   // Simulate the situation where reboot does not happen in time.
-  ASSERT_TRUE(version_updater_->get_reboot_timer_for_testing()->IsRunning());
+  ASSERT_TRUE(version_updater_->GetRebootTimerForTesting()->IsRunning());
   mocked_task_runner->FastForwardBy(kTimeDefaultWaiting);
 
   test::OobeJS().ExpectHiddenPath(kRestartingDialog);
   test::OobeJS().ExpectVisiblePath(kBetterUpdateCompletedDialog);
 }
 
-IN_PROC_BROWSER_TEST_P(UpdateScreenTest, UpdateScreenSteps) {
+// TODO(crbug.com/1324627): Fix this test.
+IN_PROC_BROWSER_TEST_P(UpdateScreenTest, DISABLED_UpdateScreenSteps) {
   base::ScopedMockTimeMessageLoopTaskRunner mocked_task_runner;
   SetTickClockAndDefaultDelaysForTesting(
       mocked_task_runner->GetMockTickClock());
@@ -1085,7 +1087,7 @@ IN_PROC_BROWSER_TEST_P(UpdateScreenTest, UpdateScreenSteps) {
   ASSERT_EQ(update_engine_client()->reboot_after_update_call_count(), 1);
 
   // Simulate the situation where reboot does not happen in time.
-  ASSERT_TRUE(version_updater_->get_reboot_timer_for_testing()->IsRunning());
+  ASSERT_TRUE(version_updater_->GetRebootTimerForTesting()->IsRunning());
   mocked_task_runner->FastForwardBy(kTimeDefaultWaiting);
 
   test::OobeJS().ExpectHiddenPath(kBetterUpdateCheckingForUpdatesDialog);
@@ -1094,7 +1096,8 @@ IN_PROC_BROWSER_TEST_P(UpdateScreenTest, UpdateScreenSteps) {
   test::OobeJS().ExpectVisiblePath(kBetterUpdateCompletedDialog);
 }
 
-IN_PROC_BROWSER_TEST_P(UpdateScreenTest, UpdateOverCellularShown) {
+// TODO(crbug.com/1324627): Fix this test.
+IN_PROC_BROWSER_TEST_P(UpdateScreenTest, DISABLED_UpdateOverCellularShown) {
   base::ScopedMockTimeMessageLoopTaskRunner mocked_task_runner;
   SetTickClockAndDefaultDelaysForTesting(
       mocked_task_runner->GetMockTickClock());

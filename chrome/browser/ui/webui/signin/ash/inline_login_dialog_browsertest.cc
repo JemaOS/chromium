@@ -38,9 +38,8 @@ class ChildModalDialogDelegate : public views::DialogDelegateView {
     SetFocusBehavior(FocusBehavior::ALWAYS);
     // Dialogs that take focus must have a name and role to pass accessibility
     // checks.
-    GetViewAccessibility().SetRole(ax::mojom::Role::kDialog);
-    GetViewAccessibility().SetName("Test dialog",
-                                   ax::mojom::NameFrom::kAttribute);
+    GetViewAccessibility().OverrideRole(ax::mojom::Role::kDialog);
+    GetViewAccessibility().OverrideName("Test dialog");
   }
   ChildModalDialogDelegate(const ChildModalDialogDelegate&) = delete;
   ChildModalDialogDelegate& operator=(const ChildModalDialogDelegate&) = delete;
@@ -78,7 +77,7 @@ IN_PROC_BROWSER_TEST_F(InlineLoginDialogTest,
 
 IN_PROC_BROWSER_TEST_F(InlineLoginDialogTest, ReturnsEmptyDialogArgs) {
   auto* dialog = new InlineLoginDialog(
-      GURL(chrome::kChromeUIChromeSigninURL), /*options=*/std::nullopt,
+      GURL(chrome::kChromeUIChromeSigninURL), /*options=*/absl::nullopt,
       /*close_dialog_closure=*/base::DoNothing());
   EXPECT_TRUE(InlineLoginDialog::IsShown());
   EXPECT_EQ(dialog->GetDialogArgs(), "");
@@ -98,13 +97,13 @@ IN_PROC_BROWSER_TEST_F(InlineLoginDialogTest, ReturnsCorrectDialogArgs) {
                             /*close_dialog_closure=*/base::DoNothing());
   EXPECT_TRUE(InlineLoginDialog::IsShown());
 
-  std::optional<base::Value> args =
+  absl::optional<base::Value> args =
       base::JSONReader::Read(dialog->GetDialogArgs());
   ASSERT_TRUE(args.has_value());
   EXPECT_TRUE(args.value().is_dict());
   const base::Value::Dict& dict = args.value().GetDict();
-  std::optional<bool> is_available_in_arc = dict.FindBool("isAvailableInArc");
-  std::optional<bool> show_arc_availability_picker =
+  absl::optional<bool> is_available_in_arc = dict.FindBool("isAvailableInArc");
+  absl::optional<bool> show_arc_availability_picker =
       dict.FindBool("showArcAvailabilityPicker");
   ASSERT_TRUE(is_available_in_arc.has_value());
   ASSERT_TRUE(show_arc_availability_picker.has_value());

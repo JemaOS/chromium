@@ -38,7 +38,7 @@ class CertProvisioningSerializer {
   static bool DeserializeWorker(const base::Value::Dict& saved_worker,
                                 CertProvisioningWorkerDynamic* worker);
 
-  static std::optional<ProtocolVersion> GetProtocolVersion(
+  static absl::optional<ProtocolVersion> GetProtocolVersion(
       const base::Value::Dict& saved_worker);
 
  private:

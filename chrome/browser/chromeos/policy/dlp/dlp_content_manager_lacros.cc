@@ -4,8 +4,7 @@
 
 #include "chrome/browser/chromeos/policy/dlp/dlp_content_manager_lacros.h"
 
-#include <vector>
-
+#include "base/containers/cxx20_erase.h"
 #include "chrome/browser/ui/lacros/window_utility.h"
 #include "chromeos/crosapi/mojom/dlp.mojom.h"
 #include "chromeos/lacros/lacros_service.h"
@@ -84,7 +83,7 @@ DlpContentManagerLacros* DlpContentManagerLacros::Get() {
 void DlpContentManagerLacros::CheckScreenShareRestriction(
     const content::DesktopMediaID& media_id,
     const std::u16string& application_title,
-    WarningCallback callback) {
+    OnDlpRestrictionCheckedCallback callback) {
   if (media_id.type == content::DesktopMediaID::Type::TYPE_WEB_CONTENTS) {
     ProcessScreenShareRestriction(
         application_title,
@@ -101,7 +100,7 @@ void DlpContentManagerLacros::CheckScreenShareRestriction(
   }
 
   int dlp_mojo_version =
-      lacros_service->GetInterfaceVersion<crosapi::mojom::Dlp>();
+      lacros_service->GetInterfaceVersion(crosapi::mojom::Dlp::Uuid_);
   if (dlp_mojo_version < int{crosapi::mojom::Dlp::MethodMinVersions::
                                  kCheckScreenShareRestrictionMinVersion}) {
     LOG(WARNING) << "DLP mojo service version does not support screen share "
@@ -152,7 +151,7 @@ void DlpContentManagerLacros::OnScreenShareStopped(
       lacros_service->GetRemote<crosapi::mojom::Dlp>()->OnScreenShareStopped(
           label, ConvertToScreenShareArea(media_id));
     }
-    std::erase_if(
+    base::EraseIf(
         running_remote_screen_shares_,
         [=](const std::unique_ptr<
             DlpContentManagerLacros::ScreenShareStateChangeDelegate>& delegate)
@@ -262,7 +261,7 @@ void DlpContentManagerLacros::OnWindowDestroying(aura::Window* window) {
 
 void DlpContentManagerLacros::UpdateRestrictions(aura::Window* window) {
   DlpContentRestrictionSet new_restrictions;
-  for (content::WebContents* web_contents : window_webcontents_[window]) {
+  for (auto* web_contents : window_webcontents_[window]) {
     if (web_contents->GetNativeView()->IsVisible()) {
       new_restrictions.UnionWith(confidential_web_contents_[web_contents]);
     }

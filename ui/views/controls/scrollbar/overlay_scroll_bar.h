@@ -14,10 +14,10 @@ namespace views {
 
 // The transparent scrollbar which overlays its contents.
 class VIEWS_EXPORT OverlayScrollBar : public ScrollBar {
-  METADATA_HEADER(OverlayScrollBar, ScrollBar)
-
  public:
-  explicit OverlayScrollBar(Orientation orientation);
+  METADATA_HEADER(OverlayScrollBar);
+
+  explicit OverlayScrollBar(bool horizontal);
 
   OverlayScrollBar(const OverlayScrollBar&) = delete;
   OverlayScrollBar& operator=(const OverlayScrollBar&) = delete;
@@ -34,8 +34,6 @@ class VIEWS_EXPORT OverlayScrollBar : public ScrollBar {
 
  private:
   class Thumb : public BaseScrollBarThumb {
-    METADATA_HEADER(Thumb, BaseScrollBarThumb)
-
    public:
     explicit Thumb(OverlayScrollBar* scroll_bar);
 

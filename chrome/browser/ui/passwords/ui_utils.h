@@ -78,10 +78,6 @@ std::u16string GetManagePasswordsDialogTitleText(
     const url::Origin& password_origin_url,
     bool has_credentials);
 
-// Returns text that is used when manage passwords bubble is used as a
-// confirmation.
-std::u16string GetConfirmationManagePasswordsDialogTitleText(bool is_update);
-
 // Returns an username in the form that should be shown in the bubble.
 std::u16string GetDisplayUsername(const password_manager::PasswordForm& form);
 
@@ -103,26 +99,25 @@ bool IsSyncingAutosignSetting(Profile* profile);
 
 // Constructs a URL to the Google Password Manager with the specified
 // |referrer|.
+// ---***JEMAOS BEGIN***---
 GURL GetGooglePasswordManagerURL(
-    password_manager::ManagePasswordsReferrer referrer);
+    password_manager::ManagePasswordsReferrer referrer, Profile *profile);
+// ---***JEMAOS END***---
 
 #if !BUILDFLAG(IS_ANDROID)
-// Navigates to the Google Password Manager page.
+// Navigates to the Google Password Manager, i.e. passwords.google.com.
+void NavigateToGooglePasswordManager(
+    Profile* profile,
+    password_manager::ManagePasswordsReferrer referrer);
+
+// Navigates to either the Google Password Manager or the Chrome Password
+// Settings page, depending on the user's password syncing state and whether the
+// corresponding feature flag is enabled.
 void NavigateToManagePasswordsPage(
     Browser* browser,
     password_manager::ManagePasswordsReferrer referrer);
 
-// Navigates to the Google Password Manager subpage to show the credential
-// details for the `password_domain_name`.
-void NavigateToPasswordDetailsPage(
-    Browser* browser,
-    const std::string& password_domain_name,
-    password_manager::ManagePasswordsReferrer referrer);
-
-// Navigates to the Password Manager settings page and focuses the account store
-// toggle.
-void NavigateToManagePasswordsSettingsAccountStoreToggle(Browser* browser);
-
+// Navigates to Passwords Checkup page.
 void NavigateToPasswordCheckupPage(Profile* profile);
 #endif  // !BUILDFLAG(IS_ANDROID)
 

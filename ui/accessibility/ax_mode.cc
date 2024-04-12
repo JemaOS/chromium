@@ -51,17 +51,14 @@ std::string AXMode::ToString() const {
       case AXMode::kLabelImages:
         flag_name = "kLabelImages";
         break;
-      case AXMode::kPDFPrinting:
-        flag_name = "kPDFPrinting";
+      case AXMode::kPDF:
+        flag_name = "kPDF";
         break;
       case AXMode::kPDFOcr:
         flag_name = "kPDFOcr";
         break;
       case AXMode::kHTMLMetadata:
         flag_name = "kHTMLMetadata";
-        break;
-      case AXMode::kAnnotateMainNode:
-        flag_name = "kAnnotateMainNode";
         break;
     }
 

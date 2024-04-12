@@ -18,15 +18,13 @@
 #include "ash/assistant/ui/main_stage/ui_element_container_view.h"
 #include "ash/assistant/util/animation_util.h"
 #include "ash/assistant/util/assistant_util.h"
+#include "ash/constants/ash_features.h"
 #include "ash/public/cpp/assistant/controller/assistant_interaction_controller.h"
 #include "ash/public/cpp/assistant/controller/assistant_ui_controller.h"
 #include "ash/public/cpp/style/color_provider.h"
-#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/time/time.h"
-#include "components/feature_engagement/public/feature_constants.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
 #include "ui/compositor/layer.h"
@@ -84,32 +82,24 @@ constexpr base::TimeDelta kZeroStateAnimationTranslateUpDuration =
 // These classes exist to solely to provide a class name to UI devtools. They
 // don't follow the style guide so they can be shorter.
 class ContentContainer : public views::View {
-  METADATA_HEADER(ContentContainer, views::View)
+ public:
+  const char* GetClassName() const override { return "ContentContainer"; }
 };
-
-BEGIN_METADATA(ContentContainer)
-END_METADATA
 
 class MainContentContainer : public views::View {
-  METADATA_HEADER(MainContentContainer, views::View)
+ public:
+  const char* GetClassName() const override { return "MainContentContainer"; }
 };
-
-BEGIN_METADATA(MainContentContainer)
-END_METADATA
 
 class DividerContainer : public views::View {
-  METADATA_HEADER(DividerContainer, views::View)
+ public:
+  const char* GetClassName() const override { return "DividerContainer"; }
 };
-
-BEGIN_METADATA(DividerContainer)
-END_METADATA
 
 class FooterContainer : public views::View {
-  METADATA_HEADER(FooterContainer, views::View)
+ public:
+  const char* GetClassName() const override { return "FooterContainer"; }
 };
-
-BEGIN_METADATA(FooterContainer)
-END_METADATA
 
 // A view is considered shown when it is visible and not in the process of
 // fading out.
@@ -129,12 +119,7 @@ AppListAssistantMainStage::AppListAssistantMainStage(
     AssistantViewDelegate* delegate)
     : delegate_(delegate) {
   SetID(AssistantViewID::kMainStage);
-  if (base::FeatureList::IsEnabled(
-          feature_engagement::kIPHLauncherSearchHelpUiFeature)) {
-    InitLayoutWithIph();
-  } else {
-    InitLayout();
-  }
+  InitLayout();
 
   assistant_controller_observation_.Observe(AssistantController::Get());
   AssistantInteractionController::Get()->GetModel()->AddObserver(this);
@@ -160,7 +145,7 @@ void AppListAssistantMainStage::OnThemeChanged() {
 
 void AppListAssistantMainStage::OnViewPreferredSizeChanged(views::View* view) {
   PreferredSizeChanged();
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
@@ -181,42 +166,6 @@ void AppListAssistantMainStage::InitLayout() {
   layout->SetFlexForView(AddChildView(CreateContentLayoutContainer()), 1);
 
   AddChildView(CreateFooterLayoutContainer());
-}
-
-void AppListAssistantMainStage::InitLayoutWithIph() {
-  // The children of AppListAssistantMainStage will be animated on their own
-  // layers and we want them to be clipped by their parent layer.
-  SetPaintToLayer();
-  layer()->SetFillsBoundsOpaquely(false);
-  layer()->SetMasksToBounds(true);
-
-  // The layout container stacks two views.
-  // On top is a main content container including the line separator, progress
-  // indicator query view, `ui_element_container_` and `footer_`.
-  // The `zero_state_view_` is laid out above of the main content container. As
-  // such, it floats above and does not cause repositioning to any of content
-  // layout's underlying views.
-  auto* stack_layout = SetLayoutManager(std::make_unique<StackLayout>());
-
-  auto* main_content_layout_container =
-      AddChildView(CreateMainContentLayoutContainer());
-  // Currently `CreateMainContentLayoutContainer()` is reused for both layouts
-  // with/without IPH. So add the footer here separately.
-  main_content_layout_container->AddChildView(CreateFooterLayoutContainer());
-
-  // Do not respect height, otherwise bounds will not be set correctly for
-  // scrolling.
-  stack_layout->SetRespectDimensionForView(
-      main_content_layout_container, StackLayout::RespectDimension::kWidth);
-
-  // Zero state, which will be animated on its own layer.
-  zero_state_view_ =
-      AddChildView(std::make_unique<AssistantZeroStateView>(delegate_));
-  zero_state_view_->SetPaintToLayer();
-  zero_state_view_->layer()->SetFillsBoundsOpaquely(false);
-  // Expand the height of the `zero_state_view_` to the host height.
-  stack_layout->SetRespectDimensionForView(
-      zero_state_view_, StackLayout::RespectDimension::kWidth);
 }
 
 std::unique_ptr<views::View>
@@ -366,7 +315,6 @@ void AppListAssistantMainStage::AnimateInZeroState() {
 void AppListAssistantMainStage::AnimateInFooter() {
   // Set up our pre-animation values.
   footer_->layer()->SetOpacity(0.f);
-  footer_->SetVisible(true);
 
   // Animate the footer to 100% opacity with delay.
   footer_->layer()->GetAnimator()->StartAnimation(CreateLayerAnimationSequence(
@@ -408,7 +356,7 @@ void AppListAssistantMainStage::OnCommittedQueryChanged(
           // ...then fade in.
           CreateOpacityElement(1.f, kDividerAnimationFadeInDuration)));
 
-  MaybeHideZeroStateAndShowFooter();
+  MaybeHideZeroState();
 }
 
 void AppListAssistantMainStage::OnPendingQueryChanged(
@@ -432,7 +380,7 @@ void AppListAssistantMainStage::OnPendingQueryChanged(
           CreateOpacityElement(1.f, kQueryAnimationFadeInDuration)));
 
   if (!query.Empty())
-    MaybeHideZeroStateAndShowFooter();
+    MaybeHideZeroState();
 }
 
 void AppListAssistantMainStage::OnPendingQueryCleared(bool due_to_commit) {
@@ -446,7 +394,7 @@ void AppListAssistantMainStage::OnPendingQueryCleared(bool due_to_commit) {
 
 void AppListAssistantMainStage::OnResponseChanged(
     const scoped_refptr<AssistantResponse>& response) {
-  MaybeHideZeroStateAndShowFooter();
+  MaybeHideZeroState();
 
   // Show the horizontal separator.
   horizontal_separator_->layer()->GetAnimator()->StartAnimation(
@@ -467,8 +415,8 @@ void AppListAssistantMainStage::OnResponseChanged(
 void AppListAssistantMainStage::OnUiVisibilityChanged(
     AssistantVisibility new_visibility,
     AssistantVisibility old_visibility,
-    std::optional<AssistantEntryPoint> entry_point,
-    std::optional<AssistantExitPoint> exit_point) {
+    absl::optional<AssistantEntryPoint> entry_point,
+    absl::optional<AssistantExitPoint> exit_point) {
   if (assistant::util::IsStartingSession(new_visibility, old_visibility)) {
     const bool from_search =
         entry_point == AssistantEntryPoint::kLauncherSearchResult;
@@ -477,23 +425,22 @@ void AppListAssistantMainStage::OnUiVisibilityChanged(
   }
 
   query_view_->SetQuery(AssistantNullQuery());
+
+  footer_->SetVisible(true);
+  footer_->layer()->SetOpacity(1.f);
+  footer_->SetCanProcessEventsWithinSubtree(true);
 }
 
 void AppListAssistantMainStage::InitializeUIForBubbleView() {
   InitializeUIForStartingSession(/*from_search=*/false);
 }
 
-void AppListAssistantMainStage::MaybeHideZeroStateAndShowFooter() {
+void AppListAssistantMainStage::MaybeHideZeroState() {
   if (!IsShown(zero_state_view_))
     return;
 
   assistant::util::FadeOutAndHide(zero_state_view_,
                                   kZeroStateAnimationFadeOutDuration);
-
-  if (base::FeatureList::IsEnabled(
-          feature_engagement::kIPHLauncherSearchHelpUiFeature)) {
-    AnimateInFooter();
-  }
 }
 
 void AppListAssistantMainStage::InitializeUIForStartingSession(
@@ -503,23 +450,16 @@ void AppListAssistantMainStage::InitializeUIForStartingSession(
   progress_indicator_->layer()->SetOpacity(0.f);
   horizontal_separator_->layer()->SetOpacity(from_search ? 1.f : 0.f);
 
-  footer_->InitializeUIForBubbleView();
-  if (from_search) {
-    zero_state_view_->SetVisible(false);
-    AnimateInFooter();
-  } else {
+  if (!from_search)
     AnimateInZeroState();
+  else
+    zero_state_view_->SetVisible(false);
 
-    if (base::FeatureList::IsEnabled(
-            feature_engagement::kIPHLauncherSearchHelpUiFeature)) {
-      footer_->SetVisible(false);
-    } else {
-      AnimateInFooter();
-    }
-  }
+  footer_->InitializeUIForBubbleView();
+  AnimateInFooter();
 }
 
-BEGIN_METADATA(AppListAssistantMainStage)
+BEGIN_METADATA(AppListAssistantMainStage, views::View)
 END_METADATA
 
 }  // namespace ash

@@ -17,7 +17,6 @@
 #include "third_party/blink/renderer/core/animation/keyframe_effect_model.h"
 #include "third_party/blink/renderer/core/animation/pending_animations.h"
 #include "third_party/blink/renderer/core/animation/string_keyframe.h"
-#include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
@@ -35,7 +34,7 @@ class AnimationEffectStackTest : public PageTestBase {
     PageTestBase::SetUp(gfx::Size());
     GetDocument().GetAnimationClock().ResetTimeForTesting();
     timeline = GetDocument().Timeline();
-    element = GetDocument().CreateElementForBinding(AtomicString("foo"));
+    element = GetDocument().CreateElementForBinding("foo");
   }
 
   Animation* Play(KeyframeEffect* effect, double start_time) {
@@ -115,7 +114,7 @@ class AnimationEffectStackTest : public PageTestBase {
     // z-index is stored as a straight number value.
     EXPECT_TRUE(typed_value->GetInterpolableValue().IsNumber());
     return To<InterpolableNumber>(&typed_value->GetInterpolableValue())
-        ->Value(CSSToLengthConversionData());
+        ->Value();
   }
 
   Persistent<DocumentTimeline> timeline;

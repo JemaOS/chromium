@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/policy/enrollment/enrollment_requisition_manager.h"
 
-#include <string_view>
-
 #include "base/logging.h"
 #include "build/chromeos_buildflags.h"
 #include "build/config/chromebox_for_meetings/buildflags.h"
@@ -25,7 +23,7 @@ using ::ash::system::StatisticsProvider;
 const char EnrollmentRequisitionManager::kNoRequisition[] = "none";
 const char EnrollmentRequisitionManager::kRemoraRequisition[] = "remora";
 const char EnrollmentRequisitionManager::kSharkRequisition[] = "shark";
-const char EnrollmentRequisitionManager::kDemoRequisition[] = "cros-demo-mode";
+const char EnrollmentRequisitionManager::kRialtoRequisition[] = "rialto";
 
 // static
 void EnrollmentRequisitionManager::Initialize() {
@@ -41,14 +39,17 @@ void EnrollmentRequisitionManager::Initialize() {
   const PrefService::Preference* pref =
       local_state->FindPreference(prefs::kDeviceEnrollmentRequisition);
   if (pref->IsDefaultValue()) {
-    const std::optional<std::string_view> requisition =
+    const absl::optional<base::StringPiece> requisition =
         provider->GetMachineStatistic(ash::system::kOemDeviceRequisitionKey);
 
     if (requisition && !requisition->empty()) {
+      // TODO(b/259661300): Remove copy of `requisition` once
+      // `PrefService::SetString()` uses StringPiece as an argument.
       local_state->SetString(prefs::kDeviceEnrollmentRequisition,
-                             requisition.value());
+                             std::string(requisition.value()));
       if (requisition == kRemoraRequisition ||
-          requisition == kSharkRequisition) {
+          requisition == kSharkRequisition ||
+          requisition == kRialtoRequisition) {
         SetDeviceEnrollmentAutoStart();
       } else {
         const bool auto_start = StatisticsProvider::FlagValueToBool(
@@ -158,8 +159,6 @@ void EnrollmentRequisitionManager::RegisterPrefs(PrefRegistrySimple* registry) {
                                std::string());
   registry->RegisterBooleanPref(prefs::kDeviceEnrollmentAutoStart, false);
   registry->RegisterBooleanPref(prefs::kDeviceEnrollmentCanExit, true);
-  registry->RegisterStringPref(prefs::kEnrollmentVersionOS, std::string());
-  registry->RegisterStringPref(prefs::kEnrollmentVersionBrowser, std::string());
 }
 
 }  // namespace policy

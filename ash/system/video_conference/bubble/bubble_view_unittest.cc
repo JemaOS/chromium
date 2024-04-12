@@ -11,14 +11,11 @@
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/style/icon_button.h"
-#include "ash/style/tab_slider.h"
-#include "ash/style/tab_slider_button.h"
 #include "ash/system/camera/camera_effects_controller.h"
 #include "ash/system/status_area_widget.h"
 #include "ash/system/status_area_widget_test_helper.h"
 #include "ash/system/unified/unified_system_tray.h"
 #include "ash/system/video_conference/bubble/bubble_view_ids.h"
-#include "ash/system/video_conference/bubble/set_value_effects_view.h"
 #include "ash/system/video_conference/effects/fake_video_conference_effects.h"
 #include "ash/system/video_conference/effects/video_conference_tray_effects_delegate.h"
 #include "ash/system/video_conference/effects/video_conference_tray_effects_manager_types.h"
@@ -28,9 +25,6 @@
 #include "ash/test/ash_test_base.h"
 #include "base/command_line.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/unguessable_token.h"
-#include "chromeos/crosapi/mojom/video_conference.mojom-shared.h"
-#include "chromeos/crosapi/mojom/video_conference.mojom.h"
 
 namespace ash::video_conference {
 
@@ -59,7 +53,8 @@ class SquareCinnamonCereal : public VcEffectsDelegate {
         base::BindRepeating(&SquareCinnamonCereal::OnEffectControlActivated,
                             base::Unretained(this),
                             /*effect_id=*/VcEffectId::kTestEffect,
-                            /*value=*/std::nullopt));
+                            /*value=*/absl::nullopt));
+    state->set_disabled_icon(&kVideoConferenceBackgroundBlurOffIcon);
     effect->AddState(std::move(state));
 
     AddEffect(std::move(effect));
@@ -69,9 +64,11 @@ class SquareCinnamonCereal : public VcEffectsDelegate {
   ~SquareCinnamonCereal() override = default;
 
   // VcEffectsDelegate:
-  std::optional<int> GetEffectState(VcEffectId effect_id) override { return 0; }
+  absl::optional<int> GetEffectState(VcEffectId effect_id) override {
+    return 0;
+  }
   void OnEffectControlActivated(VcEffectId effect_id,
-                                std::optional<int> state) override {}
+                                absl::optional<int> state) override {}
 };
 
 // A fake `kSetValue` effect.
@@ -103,20 +100,12 @@ class SnackNationForever : public VcEffectsDelegate {
   ~SnackNationForever() override = default;
 
   // VcEffectsDelegate:
-  std::optional<int> GetEffectState(VcEffectId effect_id) override { return 0; }
+  absl::optional<int> GetEffectState(VcEffectId effect_id) override {
+    return 0;
+  }
   void OnEffectControlActivated(VcEffectId effect_id,
-                                std::optional<int> state) override {}
+                                absl::optional<int> state) override {}
 };
-
-crosapi::mojom::VideoConferenceMediaAppInfoPtr CreateFakeMediaApp(
-    const crosapi::mojom::VideoConferenceAppType app_type) {
-  return crosapi::mojom::VideoConferenceMediaAppInfo::New(
-      base::UnguessableToken::Create(),
-      /*last_activity_time=*/base::Time::Now(), /*is_capturing_camera=*/true,
-      /*is_capturing_microphone=*/true, /*is_capturing_screen=*/false,
-      u"Test App Name",
-      /*url=*/GURL(), app_type);
-}
 
 }  // namespace
 
@@ -129,8 +118,9 @@ class BubbleViewTest : public AshTestBase {
 
   // AshTestBase:
   void SetUp() override {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kFeatureManagementVideoConference);
+    scoped_feature_list_.InitAndEnableFeature(features::kVideoConference);
+    base::CommandLine::ForCurrentProcess()->AppendSwitch(
+        switches::kCameraEffectsSupportedByHardware);
 
     // Instantiates a fake controller (the real one is created in
     // `ChromeBrowserMainExtraPartsAsh::PreProfileInit()` which is not called in
@@ -154,7 +144,7 @@ class BubbleViewTest : public AshTestBase {
     // EffectsManager by default. It is not the case anymore since we removed
     // the old Flags. The fix for that is easy: we just need to manually
     // unregister CameraEffectsController in these tests.
-    controller()->GetEffectsManager().UnregisterDelegate(
+    controller()->effects_manager().UnregisterDelegate(
         Shell::Get()->camera_effects_controller());
   }
 
@@ -164,6 +154,15 @@ class BubbleViewTest : public AshTestBase {
     shaggy_fur_.reset();
     super_cuteness_.reset();
     controller_.reset();
+  }
+
+  views::View* GetSetValueEffectButton(int index) {
+    // Map `index` to a `BubbleViewID`, for lookup.
+    BubbleViewID id =
+        static_cast<BubbleViewID>(index + BubbleViewID::kSetValueButtonMin);
+    DCHECK_GE(id, BubbleViewID::kSetValueButtonMin);
+    DCHECK_LE(id, BubbleViewID::kSetValueButtonMax);
+    return bubble_view()->GetViewByID(id);
   }
 
   VideoConferenceTray* video_conference_tray() {
@@ -204,11 +203,6 @@ class BubbleViewTest : public AshTestBase {
   views::View* toggle_effect_button() {
     return bubble_view()->GetViewByID(
         video_conference::BubbleViewID::kToggleEffectsButton);
-  }
-
-  views::View* linux_app_warning_view() {
-    return bubble_view()->GetViewByID(
-        video_conference::BubbleViewID::kLinuxAppWarningView);
   }
 
   ash::fake_video_conference::OfficeBunnyEffect* office_bunny() {
@@ -263,7 +257,7 @@ TEST_F(BubbleViewTest, RegisterToggleEffect) {
   LeftClickOn(toggle_bubble_button());
 
   // Add one toggle effect.
-  controller()->GetEffectsManager().RegisterDelegate(office_bunny());
+  controller()->effects_manager().RegisterDelegate(office_bunny());
 
   // Open up the bubble, toggle effects container view is present/visible.
   LeftClickOn(toggle_bubble_button());
@@ -273,7 +267,7 @@ TEST_F(BubbleViewTest, RegisterToggleEffect) {
 
 TEST_F(BubbleViewTest, UnregisterToggleEffect) {
   // Add one toggle effect.
-  controller()->GetEffectsManager().RegisterDelegate(office_bunny());
+  controller()->effects_manager().RegisterDelegate(office_bunny());
 
   // Open up the bubble, toggle effects are present/visible.
   LeftClickOn(toggle_bubble_button());
@@ -284,7 +278,7 @@ TEST_F(BubbleViewTest, UnregisterToggleEffect) {
   LeftClickOn(toggle_bubble_button());
 
   // Remove the toggle effect.
-  controller()->GetEffectsManager().UnregisterDelegate(office_bunny());
+  controller()->effects_manager().UnregisterDelegate(office_bunny());
 
   // Open up the bubble again, no effects present.
   LeftClickOn(toggle_bubble_button());
@@ -293,7 +287,7 @@ TEST_F(BubbleViewTest, UnregisterToggleEffect) {
 
 TEST_F(BubbleViewTest, ToggleButtonClicked) {
   // Add one toggle effect.
-  controller()->GetEffectsManager().RegisterDelegate(office_bunny());
+  controller()->effects_manager().RegisterDelegate(office_bunny());
 
   // Click to open the bubble, toggle effect button is present/visible.
   LeftClickOn(toggle_bubble_button());
@@ -318,7 +312,7 @@ TEST_F(BubbleViewTest, RegisterSetValueEffect) {
   LeftClickOn(toggle_bubble_button());
 
   // Add one set-value effect.
-  controller()->GetEffectsManager().RegisterDelegate(shaggy_fur());
+  controller()->effects_manager().RegisterDelegate(shaggy_fur());
 
   // Open up the bubble, set-value effects container view is present/visible.
   LeftClickOn(toggle_bubble_button());
@@ -328,7 +322,7 @@ TEST_F(BubbleViewTest, RegisterSetValueEffect) {
 
 TEST_F(BubbleViewTest, UnregisterSetValueEffect) {
   // Add one set-value effect.
-  controller()->GetEffectsManager().RegisterDelegate(shaggy_fur());
+  controller()->effects_manager().RegisterDelegate(shaggy_fur());
 
   // Open up the bubble, set-value effects are present/visible.
   LeftClickOn(toggle_bubble_button());
@@ -339,7 +333,7 @@ TEST_F(BubbleViewTest, UnregisterSetValueEffect) {
   LeftClickOn(toggle_bubble_button());
 
   // Remove the set-value effect.
-  controller()->GetEffectsManager().UnregisterDelegate(shaggy_fur());
+  controller()->effects_manager().UnregisterDelegate(shaggy_fur());
 
   // Open up the bubble again, no effects present.
   LeftClickOn(toggle_bubble_button());
@@ -354,36 +348,37 @@ TEST_F(BubbleViewTest, SetValueButtonClicked) {
       shaggy_fur()->GetEffectById(VcEffectId::kTestEffect)->GetNumStates(), 2);
 
   // Add one set-value effect.
-  controller()->GetEffectsManager().RegisterDelegate(shaggy_fur());
+  controller()->effects_manager().RegisterDelegate(shaggy_fur());
 
-  // Ensures initial states are correct.
-  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(/*state_value=*/0), 0);
-  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(/*state_value=*/1), 0);
-
-  // Click to open the bubble. There should be 1 view in the set-value effects
-  // view, which belongs to the added test effect.
+  // Click to open the bubble, effect value 0 button is present/visible.
   LeftClickOn(toggle_bubble_button());
+  views::View* button = GetSetValueEffectButton(0);
+  EXPECT_TRUE(button);
+  EXPECT_TRUE(button->GetVisible());
 
-  EXPECT_EQ(1u, set_value_effects_view()->children().size());
+  // Effect button for value 0 has not yet been clicked.
+  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(0), 0);
 
-  auto* shaggy_fur_slider =
-      static_cast<video_conference::SetValueEffectSlider*>(
-          set_value_effects_view()->children()[0]);
-  EXPECT_EQ(VcEffectId::kTestEffect, shaggy_fur_slider->effect_id());
-
-  auto* tab_slider = shaggy_fur_slider->tab_slider();
-
-  // Click the effect value 1 button, verify that the value has been "activated"
+  // Click the effect value 0 button, verify that the value has been "activated"
   // once.
-  LeftClickOn(tab_slider->GetButtonAtIndex(1));
-  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(/*state_value=*/1), 1);
+  LeftClickOn(button);
+  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(0), 1);
 
-  // Click the effect value 0 button, verify that value 0 has been "activated"
-  // once, and confirm that value 1 has still only been activated once i.e. we
-  // just activated value 0 and not value 1.
-  LeftClickOn(tab_slider->GetButtonAtIndex(0));
-  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(/*state_value=*/0), 1);
-  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(/*state_value=*/1), 1);
+  // Now test another button, confirm that set-value effect button 1 is
+  // present/visible.
+  button = GetSetValueEffectButton(1);
+  EXPECT_TRUE(button);
+  EXPECT_TRUE(button->GetVisible());
+
+  // Effect button for value 1 has not yet been clicked.
+  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(1), 0);
+
+  // Click the effect value 1 button, verify that value 1 has been "activated"
+  // once, and confirm that value 0 has still only been activated once i.e. we
+  // just activated value 1 and not value 0.
+  LeftClickOn(button);
+  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(1), 1);
+  EXPECT_EQ(shaggy_fur()->GetNumActivationsForTesting(0), 1);
 }
 
 TEST_F(BubbleViewTest, ValidEffectState) {
@@ -395,7 +390,7 @@ TEST_F(BubbleViewTest, ValidEffectState) {
       2);
 
   // Add one set-value effect.
-  controller()->GetEffectsManager().RegisterDelegate(super_cuteness());
+  controller()->effects_manager().RegisterDelegate(super_cuteness());
 
   // Effect will NOT return an invalid state.
   super_cuteness()->set_has_invalid_effect_state_for_testing(false);
@@ -417,7 +412,7 @@ TEST_F(BubbleViewTest, InvalidEffectState) {
       2);
 
   // Add one set-value effect.
-  controller()->GetEffectsManager().RegisterDelegate(super_cuteness());
+  controller()->effects_manager().RegisterDelegate(super_cuteness());
 
   // Effect WILL return an invalid state.
   super_cuteness()->set_has_invalid_effect_state_for_testing(true);
@@ -425,34 +420,6 @@ TEST_F(BubbleViewTest, InvalidEffectState) {
   // Click to open the bubble, a single set-value effect view is NOT present.
   LeftClickOn(toggle_bubble_button());
   EXPECT_FALSE(single_set_value_effect_view());
-}
-
-TEST_F(BubbleViewTest, LinuxAppWarningView) {
-  controller()->ClearMediaApps();
-  controller()->AddMediaApp(CreateFakeMediaApp(
-      /*app_type=*/crosapi::mojom::VideoConferenceAppType::kChromeApp));
-
-  // Click to open the bubble, the linux app warning view is NOT present.
-  LeftClickOn(toggle_bubble_button());
-  EXPECT_FALSE(linux_app_warning_view());
-
-  // Close the bubble.
-  LeftClickOn(toggle_bubble_button());
-
-  controller()->AddMediaApp(CreateFakeMediaApp(
-      /*app_type=*/crosapi::mojom::VideoConferenceAppType::kCrostiniVm));
-
-  // When there's a linux app alongside a non-linux app, the linux app warning
-  // view is present only when there's effect(s) available.
-  LeftClickOn(toggle_bubble_button());
-  EXPECT_FALSE(linux_app_warning_view());
-
-  LeftClickOn(toggle_bubble_button());
-
-  controller()->GetEffectsManager().RegisterDelegate(office_bunny());
-  LeftClickOn(toggle_bubble_button());
-  ASSERT_TRUE(linux_app_warning_view());
-  EXPECT_TRUE(linux_app_warning_view()->GetVisible());
 }
 
 // The four `bool` params are as follows, if 'true':
@@ -474,8 +441,9 @@ class ResourceDependencyTest
 
   // AshTestBase:
   void SetUp() override {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kFeatureManagementVideoConference);
+    scoped_feature_list_.InitAndEnableFeature(features::kVideoConference);
+    base::CommandLine::ForCurrentProcess()->AppendSwitch(
+        switches::kCameraEffectsSupportedByHardware);
 
     // Here we have to create the global instance of `CrasAudioHandler` before
     // `FakeVideoConferenceTrayController`, so we do it here and not do it in
@@ -515,9 +483,9 @@ class ResourceDependencyTest
   void CreateTestEffects(
       VcHostedEffect::ResourceDependencyFlags dependency_flags) {
     toggle_effect_ = std::make_unique<SquareCinnamonCereal>(dependency_flags);
-    controller()->GetEffectsManager().RegisterDelegate(toggle_effect_.get());
+    controller()->effects_manager().RegisterDelegate(toggle_effect_.get());
     set_value_effect_ = std::make_unique<SnackNationForever>(dependency_flags);
-    controller()->GetEffectsManager().RegisterDelegate(set_value_effect_.get());
+    controller()->effects_manager().RegisterDelegate(set_value_effect_.get());
   }
 
   VideoConferenceTray* video_conference_tray() {

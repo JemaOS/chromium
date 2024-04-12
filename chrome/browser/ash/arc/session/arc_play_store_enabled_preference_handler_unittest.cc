@@ -32,7 +32,6 @@
 #include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
 #include "chromeos/ash/components/dbus/upstart/upstart_client.h"
 #include "components/consent_auditor/fake_consent_auditor.h"
-#include "components/session_manager/core/session_manager.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
@@ -56,7 +55,7 @@ constexpr char kTestGaiaId[] = "1234567890";
 class ArcPlayStoreEnabledPreferenceHandlerTest : public testing::Test {
  public:
   ArcPlayStoreEnabledPreferenceHandlerTest()
-      : fake_user_manager_(std::make_unique<ash::FakeChromeUserManager>()) {}
+      : user_manager_enabler_(std::make_unique<ash::FakeChromeUserManager>()) {}
 
   ArcPlayStoreEnabledPreferenceHandlerTest(
       const ArcPlayStoreEnabledPreferenceHandlerTest&) = delete;
@@ -92,8 +91,8 @@ class ArcPlayStoreEnabledPreferenceHandlerTest : public testing::Test {
             profile_.get(), arc_session_manager_.get());
     const AccountId account_id(AccountId::FromUserEmailGaiaId(
         profile()->GetProfileUserName(), kTestGaiaId));
-    fake_user_manager_->AddUser(account_id);
-    fake_user_manager_->LoginUser(account_id);
+    GetFakeUserManager()->AddUser(account_id);
+    GetFakeUserManager()->LoginUser(account_id);
 
     identity_test_env_profile_adaptor_->identity_test_env()
         ->MakePrimaryAccountAvailable(kTestEmail,
@@ -121,6 +120,10 @@ class ArcPlayStoreEnabledPreferenceHandlerTest : public testing::Test {
   ArcPlayStoreEnabledPreferenceHandler* preference_handler() const {
     return preference_handler_.get();
   }
+  ash::FakeChromeUserManager* GetFakeUserManager() const {
+    return static_cast<ash::FakeChromeUserManager*>(
+        user_manager::UserManager::Get());
+  }
 
   consent_auditor::FakeConsentAuditor* consent_auditor() const {
     return static_cast<consent_auditor::FakeConsentAuditor*>(
@@ -143,9 +146,7 @@ class ArcPlayStoreEnabledPreferenceHandlerTest : public testing::Test {
 
  private:
   content::BrowserTaskEnvironment task_environment_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
-  session_manager::SessionManager session_manager_;
+  user_manager::ScopedUserManager user_manager_enabler_;
   base::ScopedTempDir temp_dir_;
   std::unique_ptr<IdentityTestEnvironmentProfileAdaptor>
       identity_test_env_profile_adaptor_;
@@ -307,8 +308,7 @@ TEST_F(ArcPlayStoreEnabledPreferenceHandlerTest,
   // ARC is enable and already provisoned by manual mode blocks the start.
   ASSERT_EQ(ArcSessionManager::State::STOPPED, arc_session_manager()->state());
 
-  arc_session_manager()->AllowActivation(
-      ArcSessionManager::AllowActivationReason::kImmediateActivation);
+  arc_session_manager()->AllowActivation();
   arc_session_manager()->RequestEnable();
 
   // Now ARC started by manual request.

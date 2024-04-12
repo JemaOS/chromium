@@ -36,17 +36,20 @@ void GeneratedPref::ApplyControlledByFromPref(
     api::settings_private::PrefObject* pref_object,
     const PrefService::Preference* pref) {
   if (pref->IsManaged()) {
-    pref_object->controlled_by = settings_api::ControlledBy::kDevicePolicy;
+    pref_object->controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_DEVICE_POLICY;
     return;
   }
 
   if (pref->IsExtensionControlled()) {
-    pref_object->controlled_by = settings_api::ControlledBy::kExtension;
+    pref_object->controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_EXTENSION;
     return;
   }
 
   if (pref->IsManagedByCustodian()) {
-    pref_object->controlled_by = settings_api::ControlledBy::kChildRestriction;
+    pref_object->controlled_by =
+        settings_api::ControlledBy::CONTROLLED_BY_CHILD_RESTRICTION;
     return;
   }
 
@@ -59,14 +62,16 @@ void GeneratedPref::ApplyControlledByFromContentSettingSource(
     content_settings::SettingSource setting_source) {
   switch (setting_source) {
     case content_settings::SETTING_SOURCE_POLICY:
-      pref_object->controlled_by = settings_api::ControlledBy::kDevicePolicy;
+      pref_object->controlled_by =
+          settings_api::ControlledBy::CONTROLLED_BY_DEVICE_POLICY;
       break;
     case content_settings::SETTING_SOURCE_EXTENSION:
-      pref_object->controlled_by = settings_api::ControlledBy::kExtension;
+      pref_object->controlled_by =
+          settings_api::ControlledBy::CONTROLLED_BY_EXTENSION;
       break;
     case content_settings::SETTING_SOURCE_SUPERVISED:
       pref_object->controlled_by =
-          settings_api::ControlledBy::kChildRestriction;
+          settings_api::ControlledBy::CONTROLLED_BY_CHILD_RESTRICTION;
       break;
     default:
       NOTREACHED();
@@ -80,7 +85,7 @@ void GeneratedPref::AddUserSelectableValue(
   if (!pref_object->user_selectable_values) {
     pref_object->user_selectable_values.emplace();
   }
-  pref_object->user_selectable_values->Append(value);
+  pref_object->user_selectable_values->push_back(base::Value(value));
 }
 
 }  // namespace settings_private

@@ -15,6 +15,7 @@ import org.mockito.MockitoAnnotations;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.ContextUtils;
+import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.R;
 import org.chromium.components.browser_ui.widget.MoreProgressButton;
@@ -22,21 +23,26 @@ import org.chromium.components.browser_ui.widget.MoreProgressButton;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
-/** Tests for the {@link HistoryAdapter}. */
+/**
+ * Tests for the {@link HistoryAdapter}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class HistoryAdapterTest {
     private StubbedHistoryProvider mHistoryProvider;
     private HistoryAdapter mAdapter;
 
-    @Mock private MoreProgressButton mMockButton;
-    @Mock private HistoryContentManager mContentManager;
+    @Mock
+    private MoreProgressButton mMockButton;
+    @Mock
+    private HistoryContentManager mContentManager;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         mHistoryProvider = new StubbedHistoryProvider();
-        mAdapter = new HistoryAdapter(mContentManager, mHistoryProvider);
+        mAdapter = new HistoryAdapter(
+                mContentManager, mHistoryProvider, new ObservableSupplierImpl<>(), (vg) -> null);
         mAdapter.generateHeaderItemsForTest();
         mAdapter.generateFooterItemsForTest(mMockButton);
     }
@@ -194,9 +200,8 @@ public class HistoryAdapterTest {
         mAdapter.loadMoreItems();
 
         // All items should now be loaded.
-        checkAdapterContents(
-                mAdapter, true, false, null, null, item1, item2, item3, item4, null, item5, item6,
-                null, item7);
+        checkAdapterContents(mAdapter, true, false, null, null, item1, item2, item3, item4, null,
+                item5, item6, null, item7);
         Assert.assertFalse(mAdapter.canLoadMoreItems());
     }
 
@@ -231,9 +236,8 @@ public class HistoryAdapterTest {
         mAdapter.startLoadingItems();
 
         checkAdapterContents(mAdapter, true, false, null, null, item1, item2);
-        Assert.assertEquals(
-                ContextUtils.getApplicationContext()
-                        .getString(R.string.android_history_blocked_site),
+        Assert.assertEquals(ContextUtils.getApplicationContext().getString(
+                                    R.string.android_history_blocked_site),
                 item2.getTitle());
         Assert.assertTrue(item2.wasBlockedVisit());
     }

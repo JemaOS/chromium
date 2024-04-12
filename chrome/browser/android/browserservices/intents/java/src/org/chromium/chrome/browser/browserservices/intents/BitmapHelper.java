@@ -11,7 +11,9 @@ import android.util.Base64;
 
 import java.io.ByteArrayOutputStream;
 
-/** This class contains functions for bitmap manipulation. */
+/**
+ * This class contains functions for bitmap manipulation.
+ */
 public class BitmapHelper {
     /**
      * Compresses a bitmap into a PNG and converts into a Base64 encoded string.

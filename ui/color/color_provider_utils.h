@@ -14,7 +14,6 @@
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_id.mojom.h"
-#include "ui/color/color_mixer.h"
 #include "ui/color/color_provider_manager.h"
 
 namespace ui {
@@ -33,15 +32,11 @@ class COMPONENT_EXPORT(COLOR) ColorProviderUtilsCallbacks {
 
 // Converts the ColorMode.
 base::StringPiece COMPONENT_EXPORT(COLOR)
-    ColorModeName(ColorProviderKey::ColorMode color_mode);
+    ColorModeName(ColorProviderManager::ColorMode color_mode);
 
 // Converts the ContrastMode.
 base::StringPiece COMPONENT_EXPORT(COLOR)
-    ContrastModeName(ColorProviderKey::ContrastMode contrast_mode);
-
-// Converts the ForcedColors.
-base::StringPiece COMPONENT_EXPORT(COLOR)
-    ForcedColorsName(ColorProviderKey::ForcedColors forced_colors);
+    ContrastModeName(ColorProviderManager::ContrastMode contrast_mode);
 
 // Converts SystemTheme.
 base::StringPiece COMPONENT_EXPORT(COLOR)
@@ -76,66 +71,10 @@ RendererColorMap COMPONENT_EXPORT(COLOR)
 ColorProvider COMPONENT_EXPORT(COLOR) CreateColorProviderFromRendererColorMap(
     const RendererColorMap& renderer_color_map);
 
-// Adds colors for emulating Windows 10 default high contrast color themes
-// to `mixer`. Used to support the devtools forced colors emulation feature.
-void COMPONENT_EXPORT(COLOR)
-    AddEmulatedForcedColorsToMixer(ColorMixer& mixer, bool dark_mode);
-
-// Creates a color provider emulating Windows 10 default high contrast color
-// themes.
-ColorProvider COMPONENT_EXPORT(COLOR)
-    CreateEmulatedForcedColorsColorProvider(bool dark_mode);
-
-// TODO(samomekarajr): Forced colors web tests currently rely on specific set of
-// hardcoded colors for for determining which system colors to render. This
-// function should be updated once the web driver support spec for forced colors
-// mode is updated.
-ColorProvider COMPONENT_EXPORT(COLOR)
-    CreateEmulatedForcedColorsColorProviderForTest();
-
-// TODO(crbug.com/40779801): Enhance this function by incorporating platform
-// specific overrides, particularly for CSS system colors.
-// Creates a default fallback color provider for Blink Pages that are not
-// associated with a web view. This includes tests, dummy pages, and non
-// ordinary pages. These scenarios do not use the normal machinery to establish
-// color providers in the renderer. The color mappings for this provider are
-// derived from old Aura colors for controls.
-ColorProvider COMPONENT_EXPORT(COLOR)
-    CreateDefaultColorProviderForBlink(bool dark_mode);
-
-// Scrollbars have three main colors. This function completes the
-// definition of colors for all scrollbar parts in relation to the three main
-// ones.
-void COMPONENT_EXPORT(COLOR)
-    CompleteScrollbarColorsDefinition(ui::ColorMixer& mixer);
-
-// Completes color definitions for the controls defined in
-// NativeThemeBase::ControlColorId when in forced colors mode.
-void COMPONENT_EXPORT(COLOR)
-    CompleteControlsForcedColorsDefinition(ui::ColorMixer& mixer);
-
-// Completes default color definitions for the RendererColorIds that are non
-// web native.
-void COMPONENT_EXPORT(COLOR)
-    CompleteDefaultNonWebNativeRendererColorIdsDefinition(
-        ui::ColorMixer& mixer);
-
-// Completes default color definitions for the CSS system colors.
-void COMPONENT_EXPORT(COLOR)
-    CompleteDefaultCssSystemColorDefinition(ui::ColorMixer& mixer,
-                                            bool dark_mode);
-
-// Returns a default set of color maps for tests and non ordinary pages. These
-// places do not use the normal machinery to establish a color provider in the
-// renderer since they are not associated with a web view.
-RendererColorMap COMPONENT_EXPORT(COLOR)
-    GetDefaultBlinkColorProviderColorMaps(bool dark_mode,
-                                          bool is_forced_colors);
-
 // Returns true if `color_provider` and `renderer_color_map` map renderer
 // color ids to the same SkColor.
 bool COMPONENT_EXPORT(COLOR) IsRendererColorMappingEquivalent(
-    const ColorProvider* color_provider,
+    const ColorProvider& color_provider,
     const RendererColorMap& renderer_color_map);
 
 // Sets the callback for converting a ChromeColorId to a string name. This is

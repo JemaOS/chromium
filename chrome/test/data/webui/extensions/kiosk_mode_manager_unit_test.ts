@@ -8,15 +8,23 @@
  * chrome.developerPrivate API.
  */
 
-import type {ExtensionsManagerElement} from 'chrome://extensions/extensions.js';
-import {KioskBrowserProxyImpl, Service} from 'chrome://extensions/extensions.js';
+import {ExtensionsManagerElement, KioskBrowserProxyImpl, Service} from 'chrome://extensions/extensions.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
 import {TestKioskBrowserProxy} from './test_kiosk_browser_proxy.js';
 import {TestService} from './test_service.js';
 
-suite('ExtensionManagerUnitTest', function() {
+const extension_manager_unit_tests = {
+  suiteName: 'ExtensionManagerUnitTest',
+  TestNames: {
+    KioskMode: 'kiosk mode',
+  },
+};
+
+Object.assign(window, {extension_manager_unit_tests});
+
+suite(extension_manager_unit_tests.suiteName, function() {
   let manager: ExtensionsManagerElement;
 
   let service: TestService;
@@ -44,7 +52,7 @@ suite('ExtensionManagerUnitTest', function() {
   });
 
   test(
-      'KioskMode', async function() {
+      extension_manager_unit_tests.TestNames.KioskMode, async function() {
         assertFalse(
             !!manager.shadowRoot!.querySelector('extensions-kiosk-dialog'));
 

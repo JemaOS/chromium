@@ -14,10 +14,12 @@
 #include "chrome/browser/ui/ash/shelf/chrome_shelf_controller_util.h"
 #include "chrome/browser/ui/ash/shelf/chrome_shelf_prefs.h"
 #include "chrome/browser/ui/ash/shelf/shelf_controller_helper.h"
-#include "chrome/browser/ui/webui/app_management/app_management_page_handler_chromeos.h"
+#include "chrome/browser/ui/webui/app_management/app_management_page_handler.h"
+
+using app_management::mojom::OptionalBool;
 
 AppManagementShelfDelegate::AppManagementShelfDelegate(
-    AppManagementPageHandlerChromeOs* page_handler,
+    AppManagementPageHandler* page_handler,
     Profile* profile)
     : page_handler_(page_handler),
       shelf_controller_helper_(
@@ -71,22 +73,24 @@ bool AppManagementShelfDelegate::IsPolicyPinned(
   }
   // The app doesn't exist on the shelf - check launcher prefs instead.
   std::vector<std::string> policy_pinned_apps =
-      ChromeShelfPrefs::GetAppsPinnedByPolicy(
-          shelf_controller_helper_->profile());
+      shelf_controller->shelf_prefs()->GetAppsPinnedByPolicy(
+          shelf_controller_helper_.get());
   return base::Contains(policy_pinned_apps, app_id);
 }
 
 void AppManagementShelfDelegate::SetPinned(const std::string& app_id,
-                                           bool pinned) {
+                                           OptionalBool pinned) {
   auto* shelf_controller = ChromeShelfController::instance();
   if (!shelf_controller) {
     return;
   }
 
-  if (pinned) {
+  if (pinned == OptionalBool::kTrue) {
     PinAppWithIDToShelf(app_id);
-  } else {
+  } else if (pinned == OptionalBool::kFalse) {
     UnpinAppWithIDFromShelf(app_id);
+  } else {
+    NOTREACHED();
   }
 }
 

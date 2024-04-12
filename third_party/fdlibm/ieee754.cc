@@ -21,7 +21,6 @@
 #include <limits>
 
 #include "base/bit_cast.h"
-#include "base/compiler_specific.h"
 #include "build/build_config.h"
 #include "third_party/fdlibm/overflowing-math.h"
 

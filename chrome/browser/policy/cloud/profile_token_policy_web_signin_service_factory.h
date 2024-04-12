@@ -34,7 +34,7 @@ class ProfileTokenPolicyWebSigninServiceFactory
 
  protected:
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 
   // Overridden to cause this object to be created when the profile is created.

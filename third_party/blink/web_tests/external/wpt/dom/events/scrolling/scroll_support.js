@@ -14,10 +14,8 @@ async function waitForScrollendEvent(test, target, timeoutMs = 500) {
   return waitForEvent("scrollend", test, target, timeoutMs);
 }
 
-async function waitForScrollendEventNoTimeout(target) {
-  return new Promise((resolve) => {
-    target.addEventListener("scrollend", resolve);
-  });
+async function waitForOverscrollEvent(test, target, timeoutMs = 500) {
+  return waitForEvent("overscroll", test, target, timeoutMs);
 }
 
 async function waitForPointercancelEvent(test, target, timeoutMs = 500) {
@@ -26,15 +24,17 @@ async function waitForPointercancelEvent(test, target, timeoutMs = 500) {
 
 // Resets the scroll position to (0,0).  If a scroll is required, then the
 // promise is not resolved until the scrollend event is received.
-async function waitForScrollReset(test, scroller, x = 0, y = 0) {
+async function waitForScrollReset(test, scroller, timeoutMs = 500) {
   return new Promise(resolve => {
-    if (scroller.scrollTop == x && scroller.scrollLeft == y) {
+    if (scroller.scrollTop == 0 &&
+        scroller.scrollLeft == 0) {
       resolve();
     } else {
       const eventTarget =
         scroller == document.scrollingElement ? document : scroller;
-      scroller.scrollTo(x, y);
-      waitForScrollendEventNoTimeout(eventTarget).then(resolve);
+      scroller.scrollTop = 0;
+      scroller.scrollLeft = 0;
+      waitForScrollendEvent(test, eventTarget, timeoutMs).then(resolve);
     }
   });
 }
@@ -113,13 +113,13 @@ function waitForCompositorCommit() {
   });
 }
 
-// Please don't remove this. This is necessary for chromium-based browsers. It
-// can be a no-op on user-agents that do not have a separate compositor thread.
-// TODO(crbug.com/1509054): This shouldn't be necessary if the test harness
-// deferred running the tests until after paint holding.
+// Please don't remove this. This is necessary for chromium-based browsers.
+// This shouldn't be necessary if the test harness deferred running the tests
+// until after paint holding. This can be a no-op on user-agents that do not
+// have a separate compositor thread.
 async function waitForCompositorReady() {
   const animation =
-      document.body.animate({ opacity: [ 0, 1 ] }, {duration: 1 });
+      document.body.animate({ opacity: [ 1, 1 ] }, {duration: 1 });
   return animation.finished;
 }
 

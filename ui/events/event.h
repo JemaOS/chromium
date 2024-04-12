@@ -35,7 +35,6 @@ namespace ui {
 
 class CancelModeEvent;
 class Event;
-class EventRewriter;
 class EventTarget;
 class KeyEvent;
 class LocatedEvent;
@@ -44,7 +43,7 @@ class MouseWheelEvent;
 class ScrollEvent;
 class TouchEvent;
 
-enum class DomCode : uint32_t;
+enum class DomCode;
 
 // Note: In order for Clone() to work properly, every concrete class
 // transitively inheriting Event must implement Clone() explicitly, even if any
@@ -71,7 +70,7 @@ class EVENTS_EXPORT Event {
     void set_time_stamp(base::TimeTicks time) { event_->time_stamp_ = time; }
 
    private:
-    raw_ptr<Event, AcrossTasksDanglingUntriaged> event_;
+    raw_ptr<Event, DanglingUntriaged> event_;
   };
 
   void SetNativeEvent(const PlatformEvent& event);
@@ -88,7 +87,7 @@ class EVENTS_EXPORT Event {
 
   // This is only intended to be used externally by classes that are modifying
   // events in an EventRewriter.
-  void SetFlags(int flags);
+  void set_flags(int flags) { flags_ = flags; }
 
   EventTarget* target() const { return target_; }
   EventPhase phase() const { return phase_; }
@@ -290,17 +289,6 @@ class EVENTS_EXPORT Event {
   void SetHandled();
   bool handled() const { return result_ != ER_UNHANDLED; }
 
-  // Marks the event as skipped. This immediately stops the propagation of the
-  // event like `StopPropagation()` but sets an extra bit so that the dispatcher
-  // of the event can use this extra information to decide to handle the event
-  // themselves. For example in the case of ash-chrome - lacros-chrome
-  // interaction in ChromeOS, lacros-chrome can mark the event as 'skipped' to
-  // stop the propagation, but also notifies ash-chroem that the event was not
-  // handled in lacros. Note that `handled()` will still return true to stop the
-  // event from being passed to the next phase. Note that SetSkipped() can be
-  // called only for cancelable events.
-  void SetSkipped();
-
   // For debugging. Not a stable serialization format.
   virtual std::string ToString() const;
 
@@ -322,24 +310,20 @@ class EVENTS_EXPORT Event {
 
   void set_time_stamp(base::TimeTicks time_stamp) { time_stamp_ = time_stamp; }
 
-  // Override per concrete class if some data needs to get invalidated or
-  // updated when the event flags are updated.
-  virtual void OnFlagsUpdated() {}
-
  private:
   friend class EventTestApi;
-  friend class EventRewriter;
 
   EventType type_;
   base::TimeTicks time_stamp_;
   LatencyInfo latency_;
   int flags_;
   PlatformEvent native_event_;
+  bool delete_native_event_ = false;
   bool cancelable_ = true;
   // Neither Event copy constructor nor the assignment operator copies
   // `target_`, as `target_` should be explicitly set so the setter will be
   // responsible for tracking it.
-  raw_ptr<EventTarget, AcrossTasksDanglingUntriaged> target_ = nullptr;
+  raw_ptr<EventTarget, DanglingUntriaged> target_ = nullptr;
   EventPhase phase_ = EP_PREDISPATCH;
   EventResult result_ = ER_UNHANDLED;
 
@@ -475,7 +459,7 @@ class EVENTS_EXPORT MouseEvent : public LocatedEvent {
         movement_(model.movement_),
         pointer_details_(model.pointer_details_) {
     SetType(type);
-    SetFlags(flags);
+    set_flags(flags);
   }
 
   // Note: Use the ctor for MouseWheelEvent if type is ET_MOUSEWHEEL.
@@ -513,7 +497,7 @@ class EVENTS_EXPORT MouseEvent : public LocatedEvent {
     // TODO(eirage): convert this to builder pattern.
     void set_movement(const gfx::Vector2dF& movement) {
       event_->movement_ = movement;
-      event_->SetFlags(event_->flags() | EF_UNADJUSTED_MOUSE);
+      event_->set_flags(event_->flags() | EF_UNADJUSTED_MOUSE);
     }
 
    private:
@@ -640,7 +624,7 @@ class EVENTS_EXPORT MouseWheelEvent : public MouseEvent {
       base::TimeTicks time_stamp,
       int flags,
       int changed_button_flags,
-      const std::optional<gfx::Vector2d> tick_120ths = std::nullopt);
+      const absl::optional<gfx::Vector2d> tick_120ths = absl::nullopt);
 
   // DEPRECATED: Prefer the constructor that takes gfx::PointF.
   MouseWheelEvent(const gfx::Vector2d& offset,
@@ -683,6 +667,7 @@ class EVENTS_EXPORT TouchEvent : public LocatedEvent {
       : LocatedEvent(model, source, target),
         unique_event_id_(model.unique_event_id_),
         may_cause_scrolling_(model.may_cause_scrolling_),
+        hovering_(false),
         pointer_details_(model.pointer_details_) {}
 
   TouchEvent(EventType type,
@@ -828,12 +813,12 @@ class EVENTS_EXPORT KeyEvent : public Event {
            base::TimeTicks time_stamp,
            bool is_char = false);
 
-  // Create an event with event type.
-  KeyEvent(EventType type,
+  // Create a character event.
+  KeyEvent(char16_t character,
            KeyboardCode key_code,
            DomCode code,
            int flags,
-           base::TimeTicks time_stamp);
+           base::TimeTicks time_stamp = base::TimeTicks());
 
   // Used for synthetic events with code of DOM KeyboardEvent (e.g. 'KeyA')
   // See also: ui/events/keycodes/dom/dom_values.txt
@@ -850,13 +835,6 @@ class EVENTS_EXPORT KeyEvent : public Event {
 
   // Sets whether to enable synthesizing key repeat in InitializeNative().
   static void SetSynthesizeKeyRepeatEnabled(bool enabled);
-
-  static ui::KeyEvent FromCharacter(
-      char16_t character,
-      KeyboardCode key_code,
-      DomCode code,
-      int flags,
-      base::TimeTicks time_stamp = base::TimeTicks());
 
   void InitializeNative();
 
@@ -930,10 +908,6 @@ class EVENTS_EXPORT KeyEvent : public Event {
   // Normalizes flags_ so that it describes the state after the event.
   // (Native X11 event flags describe the state before the event.)
   void NormalizeFlags();
-
-  // Invalidates the DomKey associated with this event as the flags updating can
-  // change the semantic meaning of the key.
-  void OnFlagsUpdated() override;
 
   // Event:
   std::string ToString() const override;

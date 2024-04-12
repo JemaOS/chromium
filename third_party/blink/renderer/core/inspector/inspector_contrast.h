@@ -46,8 +46,8 @@ class CORE_EXPORT InspectorContrast {
 
  private:
   void SortElementsByPaintOrder(HeapVector<Member<Node>>&, Document*);
-  HeapVector<Member<Node>> ElementsFromRect(const PhysicalRect& rect,
-                                            Document& document);
+  std::vector<Node*> ElementsFromRect(const PhysicalRect& rect,
+                                      Document& document);
   bool GetColorsFromRect(PhysicalRect rect,
                          Document& document,
                          Element* top_element,

@@ -24,9 +24,9 @@ namespace signin {
 class IdentityManager;
 }  // namespace signin
 
-namespace variations {
+namespace Variations {
 class VariationsClient;
-}  // namespace variations
+}  // namespace Variations
 
 // Delegate class that enables FetchDiscountWorker to use discount-related
 // functionalities from CartService.
@@ -42,7 +42,7 @@ class CartDiscountServiceDelegate {
   virtual void UpdateFreeListingCoupons(const CouponService::CouponsMap& map);
 
  private:
-  raw_ptr<CartService, DanglingUntriaged> cart_service_;
+  raw_ptr<CartService> cart_service_;
 };
 
 // This is used to fetch discounts for active Carts in cart_db. It starts
@@ -96,8 +96,7 @@ class FetchDiscountWorker {
   // This is used to fetch the oauth token.
   std::unique_ptr<const signin::PrimaryAccountAccessTokenFetcher>
       access_token_fetcher_;
-  const raw_ptr<variations::VariationsClient, DanglingUntriaged>
-      chrome_variations_client_;
+  const raw_ptr<variations::VariationsClient> chrome_variations_client_;
 
   // This is run in the UI thread, it loads all active carts.
   void PrepareToFetch();

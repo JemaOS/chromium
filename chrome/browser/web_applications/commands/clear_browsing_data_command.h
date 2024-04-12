@@ -7,7 +7,6 @@
 
 #include "base/functional/callback_forward.h"
 #include "base/time/time.h"
-#include "base/values.h"
 
 namespace web_app {
 
@@ -16,8 +15,8 @@ class AllAppsLock;
 // Clears the browsing data for web app, given the inclusive time range.
 void ClearWebAppBrowsingData(const base::Time& begin_time,
                              const base::Time& end_time,
-                             AllAppsLock& lock,
-                             base::Value::Dict& debug_value);
+                             base::OnceClosure done,
+                             AllAppsLock& lock);
 
 }  // namespace web_app
 

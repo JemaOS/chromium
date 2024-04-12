@@ -11,12 +11,12 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_authentication_response_js_on.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_public_key_credential_creation_options.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_registration_response_js_on.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_authenticationresponsejson_registrationresponsejson.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/modules/credentialmanagement/credential_manager_proxy.h"
 #include "third_party/blink/renderer/modules/credentialmanagement/json.h"
+#include "third_party/blink/renderer/modules/credentialmanagement/scoped_promise_resolver.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
@@ -27,12 +27,13 @@ namespace {
 // https://www.w3.org/TR/webauthn/#dom-publickeycredential-type-slot:
 constexpr char kPublicKeyCredentialType[] = "public-key";
 
-void OnIsUserVerifyingComplete(ScriptPromiseResolverTyped<IDLBoolean>* resolver,
-                               bool available) {
-  resolver->Resolve(available);
+void OnIsUserVerifyingComplete(
+    std::unique_ptr<ScopedPromiseResolver> scoped_resolver,
+    bool available) {
+  scoped_resolver->Release()->Resolve(available);
 }
 
-std::optional<std::string> AuthenticatorAttachmentToString(
+absl::optional<std::string> AuthenticatorAttachmentToString(
     mojom::blink::AuthenticatorAttachment authenticator_attachment) {
   switch (authenticator_attachment) {
     case mojom::blink::AuthenticatorAttachment::PLATFORM:
@@ -40,7 +41,7 @@ std::optional<std::string> AuthenticatorAttachmentToString(
     case mojom::blink::AuthenticatorAttachment::CROSS_PLATFORM:
       return "cross-platform";
     case mojom::blink::AuthenticatorAttachment::NO_PREFERENCE:
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 }  // namespace
@@ -60,16 +61,17 @@ PublicKeyCredential::PublicKeyCredential(
       extension_outputs_(extension_outputs) {}
 
 // static
-ScriptPromiseTyped<IDLBoolean>
+ScriptPromise
 PublicKeyCredential::isUserVerifyingPlatformAuthenticatorAvailable(
     ScriptState* script_state) {
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<IDLBoolean>>(
-      script_state);
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   // Ignore calls if the current realm execution context is no longer valid,
   // e.g., because the responsible document was detached.
-  if (!resolver->GetExecutionContext()) {
+  DCHECK(resolver->GetExecutionContext());
+  if (resolver->GetExecutionContext()->IsContextDestroyed()) {
+    resolver->Reject();
     return promise;
   }
 
@@ -81,7 +83,8 @@ PublicKeyCredential::isUserVerifyingPlatformAuthenticatorAvailable(
   auto* authenticator =
       CredentialManagerProxy::From(script_state)->Authenticator();
   authenticator->IsUserVerifyingPlatformAuthenticatorAvailable(
-      WTF::BindOnce(&OnIsUserVerifyingComplete, WrapPersistent(resolver)));
+      WTF::BindOnce(&OnIsUserVerifyingComplete,
+                    std::make_unique<ScopedPromiseResolver>(resolver)));
   return promise;
 }
 
@@ -92,12 +95,10 @@ PublicKeyCredential::getClientExtensionResults() const {
 }
 
 // static
-ScriptPromiseTyped<IDLBoolean>
-PublicKeyCredential::isConditionalMediationAvailable(
+ScriptPromise PublicKeyCredential::isConditionalMediationAvailable(
     ScriptState* script_state) {
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<IDLBoolean>>(
-      script_state);
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   // Ignore calls if the current realm execution context is no longer valid,
   // e.g., because the responsible document was detached.
@@ -111,10 +112,11 @@ PublicKeyCredential::isConditionalMediationAvailable(
       WebFeature::kCredentialManagerIsConditionalMediationAvailable);
   auto* authenticator =
       CredentialManagerProxy::From(script_state)->Authenticator();
-  authenticator->IsConditionalMediationAvailable(
-      WTF::BindOnce([](ScriptPromiseResolverTyped<IDLBoolean>* resolver,
-                       bool available) { resolver->Resolve(available); },
-                    WrapPersistent(resolver)));
+  authenticator->IsConditionalMediationAvailable(WTF::BindOnce(
+      [](std::unique_ptr<ScopedPromiseResolver> resolver, bool available) {
+        resolver->Release()->Resolve(available);
+      },
+      std::make_unique<ScopedPromiseResolver>(resolver)));
   return promise;
 }
 
@@ -163,16 +165,6 @@ PublicKeyCredential::toJSON(ScriptState* script_state) const {
           }},
       response_json);
   return result;
-}
-
-// static
-const PublicKeyCredentialCreationOptions*
-PublicKeyCredential::parseCreationOptionsFromJSON(
-    ScriptState* script_state,
-    const PublicKeyCredentialCreationOptionsJSON* options,
-    ExceptionState& exception_state) {
-  return PublicKeyCredentialOptionsFromJSON(script_state, options,
-                                            exception_state);
 }
 
 void PublicKeyCredential::Trace(Visitor* visitor) const {

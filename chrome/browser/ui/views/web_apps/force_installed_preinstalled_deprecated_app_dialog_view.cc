@@ -4,27 +4,25 @@
 
 #include "chrome/browser/ui/views/web_apps/force_installed_preinstalled_deprecated_app_dialog_view.h"
 
-#include <optional>
-
 #include "base/auto_reset.h"
 #include "base/containers/contains.h"
 #include "base/containers/flat_map.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/ptr_util.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/web_applications/extension_status_utils.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/constrained_window/constrained_window_views.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/ui_base_types.h"
@@ -41,9 +39,9 @@
 
 namespace {
 
-std::optional<ForceInstalledPreinstalledDeprecatedAppDialogView::LinkConfig>&
+absl::optional<ForceInstalledPreinstalledDeprecatedAppDialogView::LinkConfig>&
 GetLinkConfigForTesting() {
-  static base::NoDestructor<std::optional<
+  static base::NoDestructor<absl::optional<
       ForceInstalledPreinstalledDeprecatedAppDialogView::LinkConfig>>
       g_testing_link_config;
   return *g_testing_link_config;
@@ -59,36 +57,24 @@ GetChromeAppConfigs() {
       g_chrome_app_configs(
           {{extension_misc::kGmailAppId,
             {.link = GURL("https://mail.google.com/mail/?usp=chrome_app"),
-             .link_text = u"mail.google.com",
-             .site = ForceInstalledPreinstalledDeprecatedAppDialogView::Site::
-                 kGmail}},
+             .link_text = u"mail.google.com"}},
            {extension_misc::kGoogleDocsAppId,
             {.link = GURL("https://docs.google.com/document/?usp=chrome_app"),
-             .link_text = u"docs.google.com",
-             .site = ForceInstalledPreinstalledDeprecatedAppDialogView::Site::
-                 kDocs}},
+             .link_text = u"docs.google.com"}},
            {extension_misc::kGoogleDriveAppId,
             {.link = GURL("https://drive.google.com/?lfhs=2"),
-             .link_text = u"drive.google.com",
-             .site = ForceInstalledPreinstalledDeprecatedAppDialogView::Site::
-                 kDrive}},
+             .link_text = u"drive.google.com"}},
            {extension_misc::kGoogleSheetsAppId,
             {.link =
                  GURL("https://docs.google.com/spreadsheets/?usp=chrome_app"),
-             .link_text = u"sheets.google.com",
-             .site = ForceInstalledPreinstalledDeprecatedAppDialogView::Site::
-                 kSheets}},
+             .link_text = u"sheets.google.com"}},
            {extension_misc::kGoogleSlidesAppId,
             {.link =
                  GURL("https://docs.google.com/presentation/?usp=chrome_app"),
-             .link_text = u"slides.google.com",
-             .site = ForceInstalledPreinstalledDeprecatedAppDialogView::Site::
-                 kSlides}},
+             .link_text = u"slides.google.com"}},
            {extension_misc::kYoutubeAppId,
             {.link = GURL("https://www.youtube.com/?feature=ytca"),
-             .link_text = u"www.youtube.com",
-             .site = ForceInstalledPreinstalledDeprecatedAppDialogView::Site::
-                 kYoutube}}});
+             .link_text = u"www.youtube.com"}}});
   return *g_chrome_app_configs;
 }
 
@@ -124,15 +110,12 @@ void ForceInstalledPreinstalledDeprecatedAppDialogView::CreateAndShowDialog(
       l10n_util::GetStringUTF16(
           IDS_FORCE_INSTALLED_PREINSTALLED_DEPRECATED_APPS_GO_TO_SITE_BUTTON));
   delegate->SetAcceptCallback(base::BindOnce(
-      [](base::WeakPtr<content::WebContents> web_contents, GURL url,
-         Site site) {
-        base::UmaHistogramEnumeration(
-            "Extensions.ForceInstalledPreInstalledDeprecatedAppOpenUrl", site);
+      [](base::WeakPtr<content::WebContents> web_contents, GURL url) {
         web_contents->OpenURL(content::OpenURLParams(
             url, content::Referrer(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
             ui::PAGE_TRANSITION_LINK, /*is_renderer_initiated=*/false));
       },
-      web_contents->GetWeakPtr(), link_config.link, link_config.site));
+      web_contents->GetWeakPtr(), link_config.link));
   delegate->SetContentsView(
       base::WrapUnique<ForceInstalledPreinstalledDeprecatedAppDialogView>(
           new ForceInstalledPreinstalledDeprecatedAppDialogView(
@@ -147,13 +130,13 @@ void ForceInstalledPreinstalledDeprecatedAppDialogView::CreateAndShowDialog(
 }
 
 // static
-base::AutoReset<std::optional<
+base::AutoReset<absl::optional<
     ForceInstalledPreinstalledDeprecatedAppDialogView::LinkConfig>>
 ForceInstalledPreinstalledDeprecatedAppDialogView::
     SetOverrideLinkConfigForTesting(
         const ForceInstalledPreinstalledDeprecatedAppDialogView::LinkConfig&
             link_config) {
-  return base::AutoReset<std::optional<
+  return base::AutoReset<absl::optional<
       ForceInstalledPreinstalledDeprecatedAppDialogView::LinkConfig>>(
       &GetLinkConfigForTesting(), link_config);  // IN-TEST
 }
@@ -181,9 +164,8 @@ ForceInstalledPreinstalledDeprecatedAppDialogView::
       views::StyledLabel::RangeStyleInfo::CreateForLink(base::BindRepeating(
           [](base::WeakPtr<content::WebContents> web_contents, GURL url,
              const ui::Event& event) {
-            if (!web_contents) {
+            if (!web_contents)
               return;
-            }
             web_contents->OpenURL(content::OpenURLParams(
                 url, content::Referrer(),
                 ui::DispositionFromEventFlags(
@@ -197,9 +179,8 @@ ForceInstalledPreinstalledDeprecatedAppDialogView::
   learn_more->SetCallback(base::BindRepeating(
       [](base::WeakPtr<content::WebContents> web_contents,
          const ui::Event& event) {
-        if (!web_contents) {
+        if (!web_contents)
           return;
-        }
         web_contents->OpenURL(content::OpenURLParams(
             GURL(chrome::kChromeAppsDeprecationLearnMoreURL),
             content::Referrer(),
@@ -213,5 +194,5 @@ ForceInstalledPreinstalledDeprecatedAppDialogView::
   learn_more->SetHorizontalAlignment(gfx::ALIGN_LEFT);
 }
 
-BEGIN_METADATA(ForceInstalledPreinstalledDeprecatedAppDialogView)
+BEGIN_METADATA(ForceInstalledPreinstalledDeprecatedAppDialogView, views::View)
 END_METADATA

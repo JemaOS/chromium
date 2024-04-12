@@ -14,7 +14,7 @@ struct VectorIcon;
 
 namespace message_center {
 struct ButtonInfo;
-class NotificationItem;
+struct NotificationItem;
 class RichNotificationData;
 }  // namespace message_center
 
@@ -72,4 +72,4 @@ class NotificationTesterHandler : public content::WebUIMessageHandler {
 
 }  // namespace ash
 
-#endif  // CHROME_BROWSER_UI_WEBUI_ASH_NOTIFICATION_TESTER_NOTIFICATION_TESTER_HANDLER_H_
+#endif

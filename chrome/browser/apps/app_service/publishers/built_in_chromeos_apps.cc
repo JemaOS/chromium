@@ -44,7 +44,8 @@ apps::AppPtr CreateApp(const app_list::InternalApp& internal_app) {
   }
 
   app->icon_key =
-      apps::IconKey(internal_app.icon_resource_id, apps::IconEffects::kNone);
+      apps::IconKey(apps::IconKey::kDoesNotChangeOverTime,
+                    internal_app.icon_resource_id, apps::IconEffects::kNone);
 
   app->recommendable = internal_app.recommendable;
   app->searchable = internal_app.searchable;
@@ -78,6 +79,23 @@ void BuiltInChromeOsApps::Initialize() {
   }
   AppPublisher::Publish(std::move(apps), AppType::kBuiltIn,
                         /*should_notify_initialized=*/true);
+}
+
+void BuiltInChromeOsApps::LoadIcon(const std::string& app_id,
+                                   const IconKey& icon_key,
+                                   IconType icon_type,
+                                   int32_t size_hint_in_dip,
+                                   bool allow_placeholder_icon,
+                                   apps::LoadIconCallback callback) {
+  constexpr bool is_placeholder_icon = false;
+  if (icon_key.resource_id != IconKey::kInvalidResourceId) {
+    LoadIconFromResource(
+        icon_type, size_hint_in_dip, icon_key.resource_id, is_placeholder_icon,
+        static_cast<IconEffects>(icon_key.icon_effects), std::move(callback));
+    return;
+  }
+  // On failure, we still run the callback, with an empty IconValue.
+  std::move(callback).Run(std::make_unique<IconValue>());
 }
 
 void BuiltInChromeOsApps::Launch(const std::string& app_id,

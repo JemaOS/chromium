@@ -5,9 +5,7 @@
 #ifndef CHROME_BROWSER_UI_ASH_SCREENSHOT_AREA_H_
 #define CHROME_BROWSER_UI_ASH_SCREENSHOT_AREA_H_
 
-#include <optional>
-
-#include "base/memory/raw_ptr_exclusion.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/rect.h"
 
 namespace aura {
@@ -33,14 +31,13 @@ struct ScreenshotArea {
   ScreenshotArea(const ScreenshotArea& area);
 
   const ScreenshotType type;
-  // RAW_PTR_EXCLUSION: Makes `VideoCaptureInfo` a complex struct.
-  RAW_PTR_EXCLUSION const aura::Window* window = nullptr;
-  const std::optional<const gfx::Rect> rect;
+  const aura::Window* window = nullptr;
+  const absl::optional<const gfx::Rect> rect;
 
  private:
   ScreenshotArea(ScreenshotType type,
                  const aura::Window* window,
-                 std::optional<const gfx::Rect> rect);
+                 absl::optional<const gfx::Rect> rect);
 };
 
 #endif  // CHROME_BROWSER_UI_ASH_SCREENSHOT_AREA_H_

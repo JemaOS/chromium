@@ -1,17 +1,14 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {AxeCoreTestRunner} from 'axe_core_test_runner';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-
 (async function() {
+  await TestRunner.loadTestModule('axe_core_test_runner');
   TestRunner.addResult(
       'Tests accessibility in the web audio tool using the axe-core linter.');
 
-  await UI.ViewManager.ViewManager.instance().showView('web-audio');
-  const widget = await UI.ViewManager.ViewManager.instance().view('web-audio').widget();
+  await UI.viewManager.showView('web-audio');
+  const widget = await UI.viewManager.view('web-audio').widget();
 
   await AxeCoreTestRunner.runValidation(widget.element);
   TestRunner.completeTest();

@@ -80,8 +80,7 @@ SharingHubBubbleActionButton::SharingHubBubbleActionButton(
       action_info.title, views::style::CONTEXT_MENU));
   title_->SetCanProcessEventsWithinSubtree(false);
 
-  GetViewAccessibility().SetName(title_->GetText(),
-                                 ax::mojom::NameFrom::kAttribute);
+  GetViewAccessibility().OverrideName(title_->GetText());
 }
 
 SharingHubBubbleActionButton::~SharingHubBubbleActionButton() = default;
@@ -123,7 +122,7 @@ void SharingHubBubbleActionButton::UpdateColors() {
                                   : views::style::STYLE_PRIMARY);
 }
 
-BEGIN_METADATA(SharingHubBubbleActionButton)
+BEGIN_METADATA(SharingHubBubbleActionButton, Button)
 END_METADATA
 
 }  // namespace sharing_hub

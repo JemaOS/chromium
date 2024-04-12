@@ -5,9 +5,8 @@
 // clang-format off
 import 'chrome://resources/cr_elements/cr_radio_button/cr_card_radio_button.js';
 
-import type {CrCardRadioButtonElement} from 'chrome://resources/cr_elements/cr_radio_button/cr_card_radio_button.js';
+import {CrCardRadioButtonElement} from 'chrome://resources/cr_elements/cr_radio_button/cr_card_radio_button.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {PaperRippleElement} from '//resources/polymer/v3_0/paper-ripple/paper-ripple.js';
 
 // clang-format on
 
@@ -52,39 +51,19 @@ suite('cr-card-radio-button', function() {
   // Setting selection by mouse/keyboard is cr-radio-group's job, so
   // these tests simply set states programmatically and make sure the element
   // is visually correct.
-  test('Checked', async () => {
+  test('Checked', () => {
     assertNotChecked();
     radioButton.checked = true;
-    await radioButton.updateComplete;
     assertChecked();
     radioButton.checked = false;
-    await radioButton.updateComplete;
     assertNotChecked();
   });
 
-  test('Disabled', async () => {
+  test('Disabled', () => {
     assertNotDisabled();
     radioButton.disabled = true;
-    await radioButton.updateComplete;
     assertDisabled();
     radioButton.disabled = false;
-    await radioButton.updateComplete;
     assertNotChecked();
-  });
-
-  test('Ripple', function() {
-    function getRipple() {
-      return radioButton.shadowRoot!.querySelector<PaperRippleElement>('#ink');
-    }
-
-    assertFalse(!!getRipple());
-    radioButton.dispatchEvent(
-        new CustomEvent('focus', {bubbles: true, composed: true}));
-    const ripple = getRipple();
-    assertTrue(!!ripple);
-    assertTrue(ripple.holdDown);
-    radioButton.dispatchEvent(
-        new CustomEvent('up', {bubbles: true, composed: true}));
-    assertFalse(ripple.holdDown);
   });
 });

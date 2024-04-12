@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "ash/components/arc/mojom/accessibility_helper.mojom.h"
 #include "ash/components/arc/mojom/adbd.mojom.h"
 #include "ash/components/arc/mojom/app.mojom.h"
 #include "ash/components/arc/mojom/app_permissions.mojom.h"
@@ -16,7 +17,6 @@
 #include "ash/components/arc/mojom/bluetooth.mojom.h"
 #include "ash/components/arc/mojom/boot_phase_monitor.mojom.h"
 #include "ash/components/arc/mojom/camera.mojom.h"
-#include "ash/components/arc/mojom/chrome_feature_flags.mojom.h"
 #include "ash/components/arc/mojom/clipboard.mojom.h"
 #include "ash/components/arc/mojom/compatibility_mode.mojom.h"
 #include "ash/components/arc/mojom/crash_collector.mojom.h"
@@ -32,6 +32,7 @@
 #include "ash/components/arc/mojom/keymaster.mojom.h"
 #include "ash/components/arc/mojom/keymint.mojom.h"
 #include "ash/components/arc/mojom/kiosk.mojom.h"
+#include "ash/components/arc/mojom/lock_screen.mojom.h"
 #include "ash/components/arc/mojom/media_session.mojom.h"
 #include "ash/components/arc/mojom/memory.mojom.h"
 #include "ash/components/arc/mojom/metrics.mojom.h"
@@ -41,6 +42,7 @@
 #include "ash/components/arc/mojom/notifications.mojom.h"
 #include "ash/components/arc/mojom/obb_mounter.mojom.h"
 #include "ash/components/arc/mojom/oemcrypto.mojom.h"
+#include "ash/components/arc/mojom/payment_app.mojom.h"
 #include "ash/components/arc/mojom/pip.mojom.h"
 #include "ash/components/arc/mojom/policy.mojom.h"
 #include "ash/components/arc/mojom/power.mojom.h"
@@ -48,6 +50,7 @@
 #include "ash/components/arc/mojom/privacy_items.mojom.h"
 #include "ash/components/arc/mojom/process.mojom.h"
 #include "ash/components/arc/mojom/property.mojom.h"
+#include "ash/components/arc/mojom/rotation_lock.mojom.h"
 #include "ash/components/arc/mojom/screen_capture.mojom.h"
 #include "ash/components/arc/mojom/sharesheet.mojom.h"
 #include "ash/components/arc/mojom/storage_manager.mojom.h"
@@ -69,9 +72,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/ranges/algorithm.h"
-#include "chromeos/components/payments/mojom/payment_app.mojom.h"
 #include "chromeos/components/sensors/mojom/cros_sensor_service.mojom.h"
-#include "services/accessibility/android/public/mojom/accessibility_helper.mojom.h"
 
 namespace arc {
 
@@ -90,7 +91,7 @@ ArcBridgeHostImpl::~ArcBridgeHostImpl() {
 }
 
 void ArcBridgeHostImpl::OnAccessibilityHelperInstanceReady(
-    mojo::PendingRemote<ax::android::mojom::AccessibilityHelperInstance>
+    mojo::PendingRemote<mojom::AccessibilityHelperInstance>
         accessibility_helper_remote) {
   OnInstanceReady(arc_bridge_service_->accessibility_helper(),
                   std::move(accessibility_helper_remote));
@@ -150,13 +151,6 @@ void ArcBridgeHostImpl::OnBootPhaseMonitorInstanceReady(
 void ArcBridgeHostImpl::OnCameraInstanceReady(
     mojo::PendingRemote<mojom::CameraInstance> camera_remote) {
   OnInstanceReady(arc_bridge_service_->camera(), std::move(camera_remote));
-}
-
-void ArcBridgeHostImpl::OnChromeFeatureFlagsInstanceReady(
-    mojo::PendingRemote<mojom::ChromeFeatureFlagsInstance>
-        chrome_feature_flags_remote) {
-  OnInstanceReady(arc_bridge_service_->chrome_feature_flags(),
-                  std::move(chrome_feature_flags_remote));
 }
 
 void ArcBridgeHostImpl::OnClipboardInstanceReady(
@@ -250,6 +244,12 @@ void ArcBridgeHostImpl::OnKioskInstanceReady(
   OnInstanceReady(arc_bridge_service_->kiosk(), std::move(kiosk_remote));
 }
 
+void ArcBridgeHostImpl::OnLockScreenInstanceReady(
+    mojo::PendingRemote<mojom::LockScreenInstance> lock_screen_remote) {
+  OnInstanceReady(arc_bridge_service_->lock_screen(),
+                  std::move(lock_screen_remote));
+}
+
 void ArcBridgeHostImpl::OnMediaSessionInstanceReady(
     mojo::PendingRemote<mojom::MediaSessionInstance> media_session_remote) {
   OnInstanceReady(arc_bridge_service_->media_session(),
@@ -311,8 +311,7 @@ void ArcBridgeHostImpl::OnOemCryptoInstanceReady(
 }
 
 void ArcBridgeHostImpl::OnPaymentAppInstanceReady(
-    mojo::PendingRemote<chromeos::payments::mojom::PaymentAppInstance>
-        payment_app_remote) {
+    mojo::PendingRemote<mojom::PaymentAppInstance> payment_app_remote) {
   OnInstanceReady(arc_bridge_service_->payment_app(),
                   std::move(payment_app_remote));
 }
@@ -352,6 +351,12 @@ void ArcBridgeHostImpl::OnProcessInstanceReady(
 void ArcBridgeHostImpl::OnPropertyInstanceReady(
     mojo::PendingRemote<mojom::PropertyInstance> property_remote) {
   OnInstanceReady(arc_bridge_service_->property(), std::move(property_remote));
+}
+
+void ArcBridgeHostImpl::OnRotationLockInstanceReady(
+    mojo::PendingRemote<mojom::RotationLockInstance> rotation_lock_remote) {
+  OnInstanceReady(arc_bridge_service_->rotation_lock(),
+                  std::move(rotation_lock_remote));
 }
 
 void ArcBridgeHostImpl::OnScreenCaptureInstanceReady(

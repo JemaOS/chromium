@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_DIPS_DIPS_SERVICE_H_
 #define CHROME_BROWSER_DIPS_DIPS_SERVICE_H_
 
-#include "base/functional/bind.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -24,7 +24,6 @@ class Profile;
 
 namespace content {
 class BrowserContext;
-class DipsDelegate;
 }
 
 namespace content_settings {
@@ -37,16 +36,10 @@ class PersistentRepeatingTimer;
 
 class DIPSService : public KeyedService {
  public:
-  using RecordBounceCallback = base::RepeatingCallback<void(
-      const GURL& url,
-      const GURL& initial_url,
-      const GURL& final_url,
-      base::Time time,
-      bool stateful,
-      base::RepeatingCallback<void(const GURL&)> content_settings_callback)>;
+  using RecordBounceCallback = base::RepeatingCallback<
+      void(const GURL& url, base::Time time, bool stateful)>;
   using DeletedSitesCallback =
       base::OnceCallback<void(const std::vector<std::string>& sites)>;
-  using CheckInteractionCallback = base::OnceCallback<void(bool)>;
 
   ~DIPSService() override;
 
@@ -58,16 +51,6 @@ class DIPSService : public KeyedService {
   static DIPSService* Get(content::BrowserContext* context);
 
   base::SequenceBound<DIPSStorage>* storage() { return &storage_; }
-  void RecordBounceForTesting(
-      const GURL& url,
-      const GURL& initial_url,
-      const GURL& final_url,
-      base::Time time,
-      bool stateful,
-      base::RepeatingCallback<void(const GURL&)> content_settings_callback) {
-    RecordBounce(url, initial_url, final_url, time, stateful,
-                 content_settings_callback);
-  }
 
   DIPSCookieMode GetCookieMode() const;
 
@@ -80,22 +63,15 @@ class DIPSService : public KeyedService {
   // with no grace period.
   void DeleteEligibleSitesImmediately(DeletedSitesCallback callback);
 
-  void HandleRedirectChain(
-      std::vector<DIPSRedirectInfoPtr> redirects,
-      DIPSRedirectChainInfoPtr chain,
-      base::RepeatingCallback<void(const GURL&)> content_settings_callback);
-
-  void DidSiteHaveInteractionSince(const GURL& url,
-                                   base::Time bound,
-                                   CheckInteractionCallback callback) const;
+  void HandleRedirectChain(std::vector<DIPSRedirectInfoPtr> redirects,
+                           DIPSRedirectChainInfoPtr chain);
 
   // This allows unit-testing the metrics emitted by HandleRedirect() without
   // instantiating DIPSService.
   static void HandleRedirectForTesting(const DIPSRedirectInfo& redirect,
                                        const DIPSRedirectChainInfo& chain,
                                        RecordBounceCallback callback) {
-    HandleRedirect(redirect, chain, callback,
-                   base::BindRepeating([](const GURL& final_url) {}));
+    HandleRedirect(redirect, chain, callback);
   }
 
   void SetStorageClockForTesting(base::Clock* clock) {
@@ -112,24 +88,6 @@ class DIPSService : public KeyedService {
   void AddObserver(Observer* observer);
   void RemoveObserver(const Observer* observer);
 
-  void AddOpenSite(const std::string& site) {
-    if (open_sites_.contains(site)) {
-      open_sites_.at(site)++;
-    } else {
-      open_sites_.insert({site, 1});
-    }
-  }
-
-  void RemoveOpenSite(const std::string& site) {
-    CHECK(open_sites_.contains(site));
-    if (open_sites_.contains(site)) {
-      open_sites_.at(site)--;
-      if (open_sites_.at(site) == 0) {
-        open_sites_.erase(site);
-      }
-    }
-  }
-
  private:
   // So DIPSServiceFactory::BuildServiceInstanceFor can call the constructor.
   friend class DIPSServiceFactory;
@@ -139,24 +97,14 @@ class DIPSService : public KeyedService {
   void Shutdown() override;
   bool IsShuttingDown() const { return !cookie_settings_; }
 
-  void GotState(
-      std::vector<DIPSRedirectInfoPtr> redirects,
-      DIPSRedirectChainInfoPtr chain,
-      size_t index,
-      base::RepeatingCallback<void(const GURL&)> content_settings_callback,
-      const DIPSState url_state);
-  void RecordBounce(
-      const GURL& url,
-      const GURL& initial_url,
-      const GURL& final_url,
-      base::Time time,
-      bool stateful,
-      base::RepeatingCallback<void(const GURL&)> content_settings_callback);
-  static void HandleRedirect(
-      const DIPSRedirectInfo& redirect,
-      const DIPSRedirectChainInfo& chain,
-      RecordBounceCallback callback,
-      base::RepeatingCallback<void(const GURL&)> content_settings_callback);
+  void GotState(std::vector<DIPSRedirectInfoPtr> redirects,
+                DIPSRedirectChainInfoPtr chain,
+                size_t index,
+                const DIPSState url_state);
+  void RecordBounce(const GURL& url, base::Time time, bool stateful);
+  static void HandleRedirect(const DIPSRedirectInfo& redirect,
+                             const DIPSRedirectChainInfo& chain,
+                             RecordBounceCallback callback);
 
   scoped_refptr<base::SequencedTaskRunner> CreateTaskRunner();
   void InitializeStorageWithEngagedSites(bool prepopulated);
@@ -166,29 +114,26 @@ class DIPSService : public KeyedService {
   void OnStorageInitialized();
   void OnTimerFired();
   void DeleteDIPSEligibleState(DeletedSitesCallback callback,
+                               base::Time deletion_start,
                                std::vector<std::string> sites_to_clear);
   void PostDeletionTaskToUIThread(base::OnceClosure callback,
+                                  base::Time deletion_start,
                                   std::vector<std::string> sites_to_clear);
   void RunDeletionTaskOnUIThread(
       std::unique_ptr<content::BrowsingDataFilterBuilder> filter,
       base::OnceClosure callback);
 
-  // Checks whether |third_party_url| is allowed to use third-party cookies when
-  // embedded under |first_party_url|. Factors the following into account:
-  // - Global 3PC setting
-  // - Exceptions to allow 3PC for all sites under |first_party_url|
-  // - Exceptions to block 3PC for all sites under |first_party url|
-  // - Exceptions to allow 3PC for |third_party_url| when embedded by any other
-  // site
-  // - Granular exceptions to allow 3PC for |third_party_url| when embedded
-  // under |first_party_url|
-  bool Are3PCAllowed(const GURL& first_party_url,
-                     const GURL& third_party_url) const;
+  bool ShouldBlockThirdPartyCookies() const;
+  bool HasCookieException(const std::string& site) const;
 
   base::RunLoop wait_for_file_deletion_;
   base::RunLoop wait_for_prepopulating_;
   raw_ptr<content::BrowserContext> browser_context_;
   scoped_refptr<content_settings::CookieSettings> cookie_settings_;
+  // The return value of CookieSettings::ShouldBlockThirdPartyCookies(), cached
+  // by Shutdown() (since we release our CookieSettings but may need the value
+  // later).
+  absl::optional<bool> cached_should_block_3pcs_;
   // The persisted timer controlling how often incidental state is cleared.
   // This timer is null if the DIPS feature isn't enabled with a valid TimeDelta
   // given for its `timer_delay` parameter.
@@ -196,10 +141,7 @@ class DIPSService : public KeyedService {
   std::unique_ptr<signin::PersistentRepeatingTimer> repeating_timer_;
   base::SequenceBound<DIPSStorage> storage_;
   base::ObserverList<Observer> observers_;
-  std::optional<DIPSBrowserSigninDetector> dips_browser_signin_detector_;
-  std::unique_ptr<content::DipsDelegate> dips_delegate_;
-
-  std::map<std::string, int> open_sites_;
+  absl::optional<DIPSBrowserSigninDetector> dips_browser_signin_detector_;
 
   base::WeakPtrFactory<DIPSService> weak_factory_{this};
 };

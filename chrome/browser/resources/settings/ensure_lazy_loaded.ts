@@ -18,6 +18,7 @@ export function ensureLazyLoaded(): Promise<void> {
         Promise
             .all([
               'settings-appearance-page', 'settings-autofill-section',
+              'settings-password-check', 'passwords-section',
               'settings-payments-section',
               'settings-clear-browsing-data-dialog',
               'settings-search-engines-page',

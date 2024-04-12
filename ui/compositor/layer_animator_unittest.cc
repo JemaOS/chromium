@@ -69,11 +69,9 @@ std::vector<LayerAnimationSequence*> CreateMultiSequence(
 
 // Creates a default animator with timers disabled for test. |delegate| and
 // |observer| are attached if non-null.
-scoped_refptr<LayerAnimator> CreateDefaultTestAnimator(
-    LayerAnimationDelegate* delegate,
-    LayerAnimationObserver* observer) {
-  scoped_refptr<LayerAnimator> animator =
-      LayerAnimator::CreateDefaultAnimator();
+LayerAnimator* CreateDefaultTestAnimator(LayerAnimationDelegate* delegate,
+                                         LayerAnimationObserver* observer) {
+  LayerAnimator* animator(LayerAnimator::CreateDefaultAnimator());
   animator->set_disable_timer_for_test(true);
   if (delegate)
     animator->SetDelegate(delegate);
@@ -84,23 +82,20 @@ scoped_refptr<LayerAnimator> CreateDefaultTestAnimator(
 
 // Creates a default animator with timers disabled for test. |delegate| is
 // attached if non-null.
-scoped_refptr<LayerAnimator> CreateDefaultTestAnimator(
-    LayerAnimationDelegate* delegate) {
+LayerAnimator* CreateDefaultTestAnimator(LayerAnimationDelegate* delegate) {
   return CreateDefaultTestAnimator(delegate, nullptr);
 }
 
 // Creates a default animator with timers disabled for test.
-scoped_refptr<LayerAnimator> CreateDefaultTestAnimator() {
+LayerAnimator* CreateDefaultTestAnimator() {
   return CreateDefaultTestAnimator(nullptr, nullptr);
 }
 
 // Creates an implicit animator with timers disabled for test. |delegate| and
 // |observer| are attached if non-null.
-scoped_refptr<LayerAnimator> CreateImplicitTestAnimator(
-    LayerAnimationDelegate* delegate,
-    LayerAnimationObserver* observer) {
-  scoped_refptr<LayerAnimator> animator =
-      LayerAnimator::CreateImplicitAnimator();
+LayerAnimator* CreateImplicitTestAnimator(LayerAnimationDelegate* delegate,
+                                          LayerAnimationObserver* observer) {
+  LayerAnimator* animator(LayerAnimator::CreateImplicitAnimator());
   animator->set_disable_timer_for_test(true);
   if (delegate)
     animator->SetDelegate(delegate);
@@ -111,13 +106,12 @@ scoped_refptr<LayerAnimator> CreateImplicitTestAnimator(
 
 // Creates an implicit animator with timers disabled for test. |delegate| is
 // attached if non-null.
-scoped_refptr<LayerAnimator> CreateImplicitTestAnimator(
-    LayerAnimationDelegate* delegate) {
+LayerAnimator* CreateImplicitTestAnimator(LayerAnimationDelegate* delegate) {
   return CreateImplicitTestAnimator(delegate, nullptr);
 }
 
 // Creates an implicit animator with timers disabled for test.
-scoped_refptr<LayerAnimator> CreateImplicitTestAnimator() {
+LayerAnimator* CreateImplicitTestAnimator() {
   return CreateImplicitTestAnimator(nullptr, nullptr);
 }
 
@@ -414,7 +408,7 @@ class CountCheckingLayerAnimationObserver : public LayerAnimationObserver {
 // happen.
 TEST(LayerAnimatorTest, ImplicitAnimation) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateImplicitTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateImplicitTestAnimator(&delegate));
   base::TimeTicks now = base::TimeTicks::Now();
   animator->SetBrightness(0.5);
   EXPECT_TRUE(animator->is_animating());
@@ -427,7 +421,7 @@ TEST(LayerAnimatorTest, ImplicitAnimation) {
 // are not started.
 TEST(LayerAnimatorTest, NoImplicitAnimation) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   animator->SetBrightness(0.5);
   EXPECT_FALSE(animator->is_animating());
   EXPECT_FLOAT_EQ(delegate.GetBrightnessForAnimation(), 0.5);
@@ -439,7 +433,7 @@ TEST(LayerAnimatorTest, NoImplicitAnimation) {
 // skips the stopped animation to the end.
 TEST(LayerAnimatorTest, StopAnimatingProperty) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateImplicitTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateImplicitTestAnimator(&delegate));
   double target_opacity(0.5);
   gfx::Rect target_bounds(0, 0, 50, 50);
   animator->SetOpacity(target_opacity);
@@ -457,7 +451,7 @@ TEST(LayerAnimatorTest, StopAnimatingProperty) {
 // values.
 TEST(LayerAnimatorTest, StopAnimating) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateImplicitTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateImplicitTestAnimator(&delegate));
   double target_opacity(0.5);
   gfx::Rect target_bounds(0, 0, 50, 50);
   animator->SetOpacity(target_opacity);
@@ -480,7 +474,7 @@ TEST(LayerAnimatorTest, AbortAllAnimations) {
                                    PropertyChangeReason::NOT_FROM_ANIMATION);
   delegate.SetBoundsFromAnimation(initial_bounds,
                                   PropertyChangeReason::NOT_FROM_ANIMATION);
-  scoped_refptr<LayerAnimator> animator = CreateImplicitTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateImplicitTestAnimator(&delegate));
   double target_opacity(0.5);
   gfx::Rect target_bounds(0, 0, 50, 50);
   animator->SetOpacity(target_opacity);
@@ -496,7 +490,7 @@ TEST(LayerAnimatorTest, AbortAllAnimations) {
 // trivial case and should result in the animation being started immediately.
 TEST(LayerAnimatorTest, ScheduleAnimationThatCanRunImmediately) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_brightness(0.0);
   double middle_brightness(0.5);
@@ -578,7 +572,7 @@ TEST(LayerAnimatorTest, ScheduleThreadedAnimationThatCanRunImmediately) {
 // should start immediately and should progress in lock step.
 TEST(LayerAnimatorTest, ScheduleTwoAnimationsThatCanRunImmediately) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_brightness(0.0);
   double middle_brightness(0.5);
@@ -692,7 +686,7 @@ TEST(LayerAnimatorTest, ScheduleThreadedAndNonThreadedAnimations) {
 // animations should run one after another.
 TEST(LayerAnimatorTest, ScheduleTwoAnimationsOnSameProperty) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_brightness(0.0);
   double middle_brightness(0.5);
@@ -744,7 +738,7 @@ TEST(LayerAnimatorTest, ScheduleTwoAnimationsOnSameProperty) {
 // order.
 TEST(LayerAnimatorTest, ScheduleBlockedAnimation) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_grayscale(0.0);
   double middle_grayscale(0.5);
@@ -822,7 +816,7 @@ TEST(LayerAnimatorTest, ScheduleBlockedAnimation) {
 // the second grayscale animation starts.
 TEST(LayerAnimatorTest, ScheduleTogether) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_grayscale(0.0);
   double target_grayscale(1.0);
@@ -875,7 +869,7 @@ TEST(LayerAnimatorTest, ScheduleTogether) {
 // case (see the trival case for ScheduleAnimation).
 TEST(LayerAnimatorTest, StartAnimationThatCanRunImmediately) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_brightness(0.0);
   double middle_brightness(0.5);
@@ -955,7 +949,7 @@ TEST(LayerAnimatorTest, StartThreadedAnimationThatCanRunImmediately) {
 // Preempt by immediately setting new target.
 TEST(LayerAnimatorTest, PreemptBySettingNewTarget) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_opacity(0.0);
   double target_opacity(1.0);
@@ -982,7 +976,7 @@ TEST(LayerAnimatorTest, PreemptBySettingNewTarget) {
 // Preempt by animating to new target, with a non-threaded animation.
 TEST(LayerAnimatorTest, PreemptByImmediatelyAnimatingToNewTarget) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_brightness(0.0);
   double middle_brightness(0.5);
@@ -1104,7 +1098,7 @@ TEST(LayerAnimatorTest, PreemptThreadedByImmediatelyAnimatingToNewTarget) {
 // Preempt by enqueuing the new animation.
 TEST(LayerAnimatorTest, PreemptEnqueueNewAnimation) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_brightness(0.0);
   double middle_brightness(0.5);
@@ -1157,7 +1151,7 @@ TEST(LayerAnimatorTest, PreemptEnqueueNewAnimation) {
 // animation started.
 TEST(LayerAnimatorTest, PreemptyByReplacingQueuedAnimations) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_brightness(0.0);
   double middle_brightness(0.5);
@@ -1212,7 +1206,7 @@ TEST(LayerAnimatorTest, PreemptyByReplacingQueuedAnimations) {
 
 TEST(LayerAnimatorTest, StartTogetherSetsLastStepTime) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_grayscale(0.0);
   double target_grayscale(1.0);
@@ -1251,7 +1245,7 @@ TEST(LayerAnimatorTest, StartTogetherSetsLastStepTime) {
 // Preempt by immediately setting new target.
 TEST(LayerAnimatorTest, MultiPreemptBySettingNewTarget) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_opacity(0.0);
   double target_opacity(1.0);
@@ -1289,7 +1283,7 @@ TEST(LayerAnimatorTest, MultiPreemptBySettingNewTarget) {
 // Preempt by animating to new target.
 TEST(LayerAnimatorTest, MultiPreemptByImmediatelyAnimatingToNewTarget) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_grayscale(0.0);
   double middle_grayscale(0.5);
@@ -1444,7 +1438,7 @@ TEST(LayerAnimatorTest, MultiPreemptThreadedByImmediatelyAnimatingToNewTarget) {
 // Preempt by enqueuing the new animation.
 TEST(LayerAnimatorTest, MultiPreemptEnqueueNewAnimation) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_grayscale(0.0);
   double middle_grayscale(0.5);
@@ -1510,7 +1504,7 @@ TEST(LayerAnimatorTest, MultiPreemptEnqueueNewAnimation) {
 // animation started.
 TEST(LayerAnimatorTest, MultiPreemptByReplacingQueuedAnimations) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_grayscale(0.0);
   double middle_grayscale(0.5);
@@ -1581,7 +1575,7 @@ TEST(LayerAnimatorTest, MultiPreemptByReplacingQueuedAnimations) {
 // Test that non-threaded cyclic sequences continue to animate.
 TEST(LayerAnimatorTest, CyclicSequences) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_brightness(0.0);
   double target_brightness(1.0);
@@ -1766,7 +1760,7 @@ TEST(LayerAnimatorTest, AddObserverExplicit) {
 // when the object goes out of scope.
 TEST(LayerAnimatorTest, ImplicitAnimationObservers) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   TestImplicitAnimationObserver observer(false);
 
   EXPECT_FALSE(observer.animations_completed());
@@ -2350,7 +2344,7 @@ TEST(LayerAnimatorTest, TrilinearFilteringInTwoAnimations) {
 // when the object goes out of scope due to the animation being interrupted.
 TEST(LayerAnimatorTest, InterruptedImplicitAnimationObservers) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   TestImplicitAnimationObserver observer(false);
 
   EXPECT_FALSE(observer.animations_completed());
@@ -2399,7 +2393,7 @@ TEST(LayerAnimatorTest, AnimatorKeptAliveBySettings) {
 // when the animator is destroyed unless explicitly requested.
 TEST(LayerAnimatorTest, ImplicitObserversAtAnimatorDestruction) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   TestImplicitAnimationObserver observer_notify(true);
   TestImplicitAnimationObserver observer_do_not_notify(false);
 
@@ -2426,7 +2420,7 @@ TEST(LayerAnimatorTest, ImplicitObserversAtAnimatorDestruction) {
 
 TEST(LayerAnimatorTest, AbortedAnimationStatusInImplicitObservers) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   TestImplicitAnimationObserver observer(false);
 
   EXPECT_FALSE(observer.animations_completed());
@@ -2464,7 +2458,7 @@ TEST(LayerAnimatorTest, AbortedAnimationStatusInImplicitObservers) {
 
 TEST(LayerAnimatorTest, RemoveObserverShouldRemoveFromSequences) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   TestLayerAnimationObserver observer;
   TestLayerAnimationObserver removed_observer;
 
@@ -2522,7 +2516,7 @@ TEST(LayerAnimatorTest, ObserverReleasedBeforeAnimationSequenceEnds) {
 
 TEST(LayerAnimatorTest, ObserverAttachedAfterAnimationStarted) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   TestImplicitAnimationObserver observer(false);
 
@@ -2555,7 +2549,7 @@ TEST(LayerAnimatorTest, ObserverAttachedAfterAnimationStarted) {
 
 TEST(LayerAnimatorTest, ObserverDetachedBeforeAnimationFinished) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   TestImplicitAnimationObserver observer(false);
 
@@ -2759,7 +2753,7 @@ TEST(LayerAnimatorTest, ObserverDeletesAnimationsOnAbort) {
 // cancels the original animation.
 TEST(LayerAnimatorTest, SettingPropertyDuringAnAnimation) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   double start_opacity(0.0);
   double target_opacity(1.0);
@@ -2785,7 +2779,7 @@ TEST(LayerAnimatorTest, SettingPropertyDuringAnAnimation) {
 // second sequence to be leaked.
 TEST(LayerAnimatorTest, ImmediatelySettingNewTargetDoesNotLeak) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   animator->set_preemption_strategy(LayerAnimator::IMMEDIATELY_SET_NEW_TARGET);
 
   gfx::Rect start_bounds(0, 0, 50, 50);
@@ -2824,7 +2818,7 @@ TEST(LayerAnimatorTest, ImmediatelySettingNewTargetDoesNotLeak) {
 // Verifies GetTargetOpacity() works when multiple sequences are scheduled.
 TEST(LayerAnimatorTest, GetTargetOpacity) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   animator->set_preemption_strategy(LayerAnimator::ENQUEUE_NEW_ANIMATION);
 
   delegate.SetOpacityFromAnimation(0.0,
@@ -2844,7 +2838,7 @@ TEST(LayerAnimatorTest, GetTargetOpacity) {
 // Verifies GetTargetBrightness() works when multiple sequences are scheduled.
 TEST(LayerAnimatorTest, GetTargetBrightness) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   animator->set_preemption_strategy(LayerAnimator::ENQUEUE_NEW_ANIMATION);
 
   delegate.SetBrightnessFromAnimation(0.0,
@@ -2864,7 +2858,7 @@ TEST(LayerAnimatorTest, GetTargetBrightness) {
 // Verifies GetTargetGrayscale() works when multiple sequences are scheduled.
 TEST(LayerAnimatorTest, GetTargetGrayscale) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   animator->set_preemption_strategy(LayerAnimator::ENQUEUE_NEW_ANIMATION);
 
   delegate.SetGrayscaleFromAnimation(0.0,
@@ -2884,7 +2878,7 @@ TEST(LayerAnimatorTest, GetTargetGrayscale) {
 // Verifies color property is modified appropriately.
 TEST(LayerAnimatorTest, Color) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   SkColor start_color  = SkColorSetARGB( 64, 20, 40,  60);
   SkColor middle_color = SkColorSetARGB(128, 35, 70, 120);
@@ -2920,7 +2914,7 @@ TEST(LayerAnimatorTest, Color) {
 
 // Verifies SchedulePauseForProperties().
 TEST(LayerAnimatorTest, SchedulePauseForProperties) {
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator();
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator());
   animator->set_preemption_strategy(LayerAnimator::ENQUEUE_NEW_ANIMATION);
   animator->SchedulePauseForProperties(
       base::Milliseconds(100),
@@ -2934,7 +2928,7 @@ TEST(LayerAnimatorTest, SchedulePauseForProperties) {
 // input properties is animated.
 TEST(LayerAnimatorTest, IsAnimatingOnePropertyOf) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateImplicitTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateImplicitTestAnimator(&delegate));
   animator->set_preemption_strategy(LayerAnimator::ENQUEUE_NEW_ANIMATION);
   animator->SetBrightness(0.5f);
   animator->SetGrayscale(0.5f);
@@ -3171,7 +3165,7 @@ TEST(LayerAnimatorTest, ObserverDeletesAnimatorAfterAborted) {
 
 TEST(LayerAnimatorTest, TestSetterRespectEnqueueStrategy) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   float start_opacity = 0.0f;
   float target_opacity = 1.0f;
@@ -3239,7 +3233,7 @@ TEST(LayerAnimatorTest, LayerAnimatorCollectionTickTime) {
 TEST(LayerAnimatorTest,
      SequencesAreRemovedFromQueueBeforeBeingNotifiedOfStarted) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
   AbortAnimationsOnStartedLayerAnimationObserver aborting_observer(
       animator.get());
@@ -3441,7 +3435,7 @@ class LayerOwnerAnimationObserver : public LayerAnimationObserver {
 };
 
 TEST(LayerAnimatorTest, ObserverDeletesLayerInStopAnimating) {
-  scoped_refptr<LayerAnimator> animator = CreateImplicitTestAnimator();
+  scoped_refptr<LayerAnimator> animator(CreateImplicitTestAnimator());
   LayerOwnerAnimationObserver observer(animator.get());
   LayerAnimationDelegate* delegate = observer.animator_layer();
 
@@ -3473,7 +3467,7 @@ TEST(LayerAnimatorTest, ObserverDeletesLayerInStopAnimating) {
 
 TEST(LayerAnimatorTest,
      SetPropertyWithObserverThatDeletesLayerInStopAnimating) {
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator();
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator());
   LayerOwnerAnimationObserver observer(animator.get());
   LayerAnimationDelegate* delegate = observer.animator_layer();
 
@@ -3549,7 +3543,7 @@ class CountCyclesObserver : public LayerAnimationObserver {
 // cycle has ended.
 TEST(LayerAnimatorTest, ObserverGetsNotifiedOnCycleEnded) {
   TestLayerAnimationDelegate delegate;
-  scoped_refptr<LayerAnimator> animator = CreateDefaultTestAnimator(&delegate);
+  scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
   CountCyclesObserver observer(animator.get());
 
   constexpr base::TimeDelta kAnimationDuration = base::Seconds(1);
@@ -3795,8 +3789,7 @@ TEST(LayerAnimatorObserverNotificationOrderTest,
      ObserverAddedAfterAnimationStarts) {
   for (int is_cyclic = 0; is_cyclic <= 0; is_cyclic++) {
     TestLayerAnimationDelegate delegate;
-    scoped_refptr<LayerAnimator> animator =
-        CreateDefaultTestAnimator(&delegate);
+    scoped_refptr<LayerAnimator> animator(CreateDefaultTestAnimator(&delegate));
 
     constexpr base::TimeDelta kAnimationDuration = base::Seconds(1);
     LayerAnimationSequence* sequence = new LayerAnimationSequence(

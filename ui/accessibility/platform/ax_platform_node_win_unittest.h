@@ -14,7 +14,6 @@
 #include "base/win/atl.h"  // Must be before UIAutomationCore.h
 #include "ui/accessibility/ax_position.h"
 #include "ui/accessibility/platform/ax_fragment_root_delegate_win.h"
-#include "ui/accessibility/platform/sequence_affine_com_object_root_win.h"
 
 #include <UIAutomationCore.h>
 
@@ -50,8 +49,9 @@ class TestFragmentRootDelegate : public AXFragmentRootDelegateWin {
   bool is_control_element_ = true;
 };
 
-class MockIRawElementProviderSimple : public SequenceAffineComObjectRoot,
-                                      public IRawElementProviderSimple {
+class MockIRawElementProviderSimple
+    : public CComObjectRootEx<CComMultiThreadModel>,
+      public IRawElementProviderSimple {
  public:
   BEGIN_COM_MAP(MockIRawElementProviderSimple)
   COM_INTERFACE_ENTRY(IRawElementProviderSimple)

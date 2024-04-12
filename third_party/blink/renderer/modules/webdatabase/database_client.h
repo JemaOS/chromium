@@ -49,7 +49,7 @@ class MODULES_EXPORT DatabaseClient : public GarbageCollected<DatabaseClient>,
  public:
   static const char kSupplementName[];
 
-  DatabaseClient(Page& page);
+  DatabaseClient();
 
   DatabaseClient(const DatabaseClient&) = delete;
   DatabaseClient& operator=(const DatabaseClient&) = delete;
@@ -71,6 +71,8 @@ class MODULES_EXPORT DatabaseClient : public GarbageCollected<DatabaseClient>,
  private:
   Member<InspectorDatabaseAgent> inspector_agent_;
 };
+
+MODULES_EXPORT void ProvideDatabaseClientTo(Page&, DatabaseClient*);
 
 }  // namespace blink
 

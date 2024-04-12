@@ -47,9 +47,9 @@
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/chrome_pages.h"
-#include "chrome/browser/ui/profiles/profile_colors_util.h"
-#include "chrome/browser/ui/profiles/profile_customization_bubble_sync_controller.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/profile_picker.h"
+#include "chrome/browser/ui/signin/profile_colors_util.h"
+#include "chrome/browser/ui/signin/profile_customization_bubble_sync_controller.h"
 #include "chrome/browser/ui/tab_modal_confirm_dialog.h"
 #include "chrome/browser/ui/tab_modal_confirm_dialog_delegate.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -63,7 +63,7 @@
 #include "chrome/browser/ui/webui/signin/turn_sync_on_helper_delegate_impl.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
 #include "components/password_manager/core/browser/password_reuse_manager.h"
 #include "components/prefs/pref_service.h"
@@ -180,6 +180,11 @@ credential_provider::UiExitCodes ValidateSigninEmail(
 
 #endif
 
+void LogHistogramValue(signin_metrics::AccessPointAction action) {
+  UMA_HISTOGRAM_ENUMERATION("Signin.AllAccessPointActions", action,
+                            signin_metrics::HISTOGRAM_MAX);
+}
+
 void SetProfileLocked(const base::FilePath profile_path, bool locked) {
   if (profile_path.empty())
     return;
@@ -226,7 +231,7 @@ void OnSigninComplete(Profile* profile,
     if (reuse_manager) {
       reuse_manager->SaveGaiaPasswordHash(
           username, base::UTF8ToUTF16(password),
-          /*is_sync_password_for_metrics=*/true,
+          /*is_primary_account_=*/true,
           password_manager::metrics_util::GaiaPasswordHashChange::
               SAVED_ON_CHROME_SIGNIN);
     }
@@ -370,7 +375,7 @@ void InlineSigninHelper::OnClientOAuthSuccessAndBrowserOpened(
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile_);
 
-  std::string sync_email =
+  std::string primary_email =
       identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSync)
           .email;
 
@@ -379,8 +384,7 @@ void InlineSigninHelper::OnClientOAuthSuccessAndBrowserOpened(
         PasswordReuseManagerFactory::GetForProfile(profile_);
     if (reuse_manager) {
       reuse_manager->SaveGaiaPasswordHash(
-          sync_email, base::UTF8ToUTF16(password_),
-          /*is_sync_password_for_metrics=*/!sync_email.empty(),
+          primary_email, base::UTF8ToUTF16(password_), !primary_email.empty(),
           password_manager::metrics_util::GaiaPasswordHashChange::
               SAVED_ON_CHROME_SIGNIN);
     }
@@ -389,14 +393,14 @@ void InlineSigninHelper::OnClientOAuthSuccessAndBrowserOpened(
   if (reason == HandlerSigninReason::kReauthentication) {
     DCHECK(identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin) &&
            chrome::enterprise_util::UserAcceptedAccountManagement(profile_));
-    // TODO(b/278545484): support LST binding for refresh tokens created by
-    // InlineSigninHelper.
+
     identity_manager->GetAccountsMutator()->AddOrUpdateAccount(
         gaia_id_, email_, result.refresh_token,
         result.is_under_advanced_protection,
-        signin_metrics::AccessPoint::ACCESS_POINT_FORCED_SIGNIN,
         signin_metrics::SourceForRefreshTokenOperation::
             kInlineLoginHandler_Signin);
+
+    signin_metrics::LogSigninReason(signin_metrics::Reason::kReauthentication);
   } else {
     if (confirm_untrusted_signin_) {
       // Display a confirmation dialog to the user.
@@ -445,13 +449,10 @@ void InlineSigninHelper::CreateSyncStarter(const std::string& refresh_token) {
   }
 
   Browser* browser = chrome::FindLastActiveWithProfile(profile_);
-  // TODO(b/278545484): support LST binding for refresh tokens created by
-  // InlineSigninHelper.
   CoreAccountId account_id =
       identity_manager->GetAccountsMutator()->AddOrUpdateAccount(
           gaia_id_, email_, refresh_token,
           /*is_under_advanced_protection=*/false,
-          signin_metrics::AccessPoint::ACCESS_POINT_FORCED_SIGNIN,
           signin_metrics::SourceForRefreshTokenOperation::
               kInlineLoginHandler_Signin);
 
@@ -460,7 +461,8 @@ void InlineSigninHelper::CreateSyncStarter(const std::string& refresh_token) {
 
   new TurnSyncOnHelper(
       profile_, signin::GetAccessPointForEmbeddedPromoURL(current_url_),
-      signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO, account_id,
+      signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO,
+      signin::GetSigninReasonForEmbeddedPromoURL(current_url_), account_id,
       TurnSyncOnHelper::SigninAbortedMode::REMOVE_ACCOUNT, std::move(delegate),
       base::BindOnce(&OnSigninComplete, profile_, email_, password_,
                      is_force_sign_in_with_usermanager_));
@@ -575,6 +577,8 @@ void InlineLoginHandlerImpl::SetExtraInitParams(base::Value::Dict& params) {
     } break;
   }
   params.Set("flow", flow);
+
+  LogHistogramValue(signin_metrics::HISTOGRAM_SHOWN);
 }
 
 void InlineLoginHandlerImpl::CompleteLogin(const CompleteLoginParams& params) {
@@ -616,7 +620,7 @@ void InlineLoginHandlerImpl::CompleteLogin(const CompleteLoginParams& params) {
       FinishCompleteLoginParams(
           this, partition, current_url, path, confirm_untrusted_signin_,
           params.email, params.gaia_id, params.password, params.auth_code,
-          force_sign_in_with_usermanager),
+          params.choose_what_to_sync, force_sign_in_with_usermanager),
       profile);
 }
 
@@ -630,6 +634,7 @@ InlineLoginHandlerImpl::FinishCompleteLoginParams::FinishCompleteLoginParams(
     const std::string& gaia_id,
     const std::string& password,
     const std::string& auth_code,
+    bool choose_what_to_sync,
     bool is_force_sign_in_with_usermanager)
     : handler(handler),
       partition(partition),
@@ -640,6 +645,7 @@ InlineLoginHandlerImpl::FinishCompleteLoginParams::FinishCompleteLoginParams(
       gaia_id(gaia_id),
       password(password),
       auth_code(auth_code),
+      choose_what_to_sync(choose_what_to_sync),
       is_force_sign_in_with_usermanager(is_force_sign_in_with_usermanager) {}
 
 InlineLoginHandlerImpl::FinishCompleteLoginParams::FinishCompleteLoginParams(
@@ -697,6 +703,16 @@ void InlineLoginHandlerImpl::FinishCompleteLogin(
       return;
     }
   }
+
+  signin_metrics::AccessPoint access_point =
+      signin::GetAccessPointForEmbeddedPromoURL(params.url);
+  LogHistogramValue(signin_metrics::HISTOGRAM_ACCEPTED);
+  bool switch_to_advanced =
+      params.choose_what_to_sync &&
+      (access_point != signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS);
+  LogHistogramValue(switch_to_advanced
+                        ? signin_metrics::HISTOGRAM_WITH_ADVANCED
+                        : signin_metrics::HISTOGRAM_WITH_DEFAULTS);
 
   SigninUIError can_offer_error = SigninUIError::Ok();
   switch (reason) {
@@ -774,7 +790,8 @@ void InlineLoginHandlerImpl::SendLSTFetchResultsMessage(
 }
 
 Browser* InlineLoginHandlerImpl::GetDesktopBrowser() {
-  Browser* browser = chrome::FindBrowserWithTab(web_ui()->GetWebContents());
+  Browser* browser =
+      chrome::FindBrowserWithWebContents(web_ui()->GetWebContents());
   if (!browser)
     browser = chrome::FindLastActiveWithProfile(Profile::FromWebUI(web_ui()));
   return browser;

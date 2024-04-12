@@ -21,11 +21,13 @@
 #include "chrome/browser/ash/login/test/logged_in_user_mixin.h"
 #include "chrome/browser/ash/policy/core/user_policy_test_helper.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/mixin_based_in_process_browser_test.h"
 #include "components/prefs/pref_service.h"
 #include "components/session_manager/core/session_manager.h"
+#include "content/public/browser/notification_service.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -98,7 +100,7 @@ class ScreenTimeControllerTest : public MixinBasedInProcessBrowserTest {
     const user_manager::UserManager* const user_manager =
         user_manager::UserManager::Get();
     EXPECT_EQ(user_manager->GetActiveUser()->GetType(),
-              user_manager::UserType::kChild);
+              user_manager::USER_TYPE_CHILD);
     child_profile_ =
         ProfileHelper::Get()->GetProfileByUser(user_manager->GetActiveUser());
 
@@ -140,7 +142,7 @@ class ScreenTimeControllerTest : public MixinBasedInProcessBrowserTest {
 
   scoped_refptr<base::TestMockTimeTaskRunner> task_runner_;
 
-  raw_ptr<Profile, DanglingUntriaged> child_profile_ = nullptr;
+  raw_ptr<Profile, ExperimentalAsh> child_profile_ = nullptr;
 
  private:
   LoggedInUserMixin logged_in_user_mixin_{&mixin_host_,
@@ -148,7 +150,7 @@ class ScreenTimeControllerTest : public MixinBasedInProcessBrowserTest {
                                           embedded_test_server(),
                                           this,
                                           true /*should_launch_browser*/,
-                                          std::nullopt /*account_id*/,
+                                          absl::nullopt /*account_id*/,
                                           false /*include_initial_user*/};
 };
 

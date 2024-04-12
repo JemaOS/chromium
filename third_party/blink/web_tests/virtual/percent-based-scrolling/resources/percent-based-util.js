@@ -45,7 +45,7 @@ function calculateExpectedScroll(container, pixelsToScrollX, pixelsToScrollY) {
     );
   }
 
-  return {x: Math.round(expectedScrollX), y: Math.round(expectedScrollY)};
+  return {x: expectedScrollX, y: expectedScrollY};
 }
 
 // This is an inverse of the above function.

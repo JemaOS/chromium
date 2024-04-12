@@ -73,16 +73,15 @@ bool ReferenceFilterOperation::IsEqualAssumingSameType(
 }
 
 gfx::RectF BlurFilterOperation::MapRect(const gfx::RectF& rect) const {
-  return FEGaussianBlur::MapEffect(
-      gfx::SizeF(FloatValueForLength(std_deviation_.X(), 0),
-                 FloatValueForLength(std_deviation_.Y(), 0)),
-      rect);
+  float std_deviation = FloatValueForLength(std_deviation_, 0);
+  return FEGaussianBlur::MapEffect(gfx::SizeF(std_deviation, std_deviation),
+                                   rect);
 }
 
 gfx::RectF DropShadowFilterOperation::MapRect(const gfx::RectF& rect) const {
   float std_deviation = shadow_.Blur();
   return FEDropShadow::MapEffect(gfx::SizeF(std_deviation, std_deviation),
-                                 shadow_.Offset(), rect);
+                                 shadow_.Location(), rect);
 }
 
 gfx::RectF BoxReflectFilterOperation::MapRect(const gfx::RectF& rect) const {

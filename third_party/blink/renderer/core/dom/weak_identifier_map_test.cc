@@ -7,7 +7,6 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/thread_state.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -27,7 +26,6 @@ class WeakIdentifierMapTest : public ::testing::Test {
     ThreadState::Current()->CollectAllGarbageForTesting(
         ThreadState::StackState::kNoHeapPointers);
   }
-  test::TaskEnvironment task_environment_;
 };
 
 DECLARE_WEAK_IDENTIFIER_MAP(WeakIdentifierMapTest::TestClass);

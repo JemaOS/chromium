@@ -110,30 +110,29 @@ class TestAXNodeWrapper : public AXPlatformNodeDelegate {
   AXPlatformNode* GetFromNodeID(int32_t id) override;
   AXPlatformNode* GetFromTreeIDAndNodeID(const ui::AXTreeID& ax_tree_id,
                                          int32_t id) override;
-  std::optional<size_t> GetIndexInParent() const override;
-  std::optional<int> GetTableRowCount() const override;
-  std::optional<int> GetTableColCount() const override;
-  std::optional<int> GetTableAriaColCount() const override;
-  std::optional<int> GetTableAriaRowCount() const override;
-  std::optional<int> GetTableCellCount() const override;
+  absl::optional<size_t> GetIndexInParent() const override;
+  absl::optional<int> GetTableRowCount() const override;
+  absl::optional<int> GetTableColCount() const override;
+  absl::optional<int> GetTableAriaColCount() const override;
+  absl::optional<int> GetTableAriaRowCount() const override;
+  absl::optional<int> GetTableCellCount() const override;
   std::vector<int32_t> GetColHeaderNodeIds() const override;
   std::vector<int32_t> GetColHeaderNodeIds(int col_index) const override;
   std::vector<int32_t> GetRowHeaderNodeIds() const override;
   std::vector<int32_t> GetRowHeaderNodeIds(int row_index) const override;
   bool IsTableRow() const override;
-  std::optional<int> GetTableRowRowIndex() const override;
+  absl::optional<int> GetTableRowRowIndex() const override;
   bool IsTableCellOrHeader() const override;
-  std::optional<int> GetTableCellIndex() const override;
-  std::optional<int> GetTableCellColIndex() const override;
-  std::optional<int> GetTableCellRowIndex() const override;
-  std::optional<int> GetTableCellColSpan() const override;
-  std::optional<int> GetTableCellRowSpan() const override;
-  std::optional<int> GetTableCellAriaColIndex() const override;
-  std::optional<int> GetTableCellAriaRowIndex() const override;
-  std::optional<int32_t> GetCellId(int row_index, int col_index) const override;
-  std::optional<int32_t> GetCellIdAriaCoords(int aria_row_index,
-                                             int aria_col_index) const override;
-  std::optional<int32_t> CellIndexToId(int cell_index) const override;
+  absl::optional<int> GetTableCellIndex() const override;
+  absl::optional<int> GetTableCellColIndex() const override;
+  absl::optional<int> GetTableCellRowIndex() const override;
+  absl::optional<int> GetTableCellColSpan() const override;
+  absl::optional<int> GetTableCellRowSpan() const override;
+  absl::optional<int> GetTableCellAriaColIndex() const override;
+  absl::optional<int> GetTableCellAriaRowIndex() const override;
+  absl::optional<int32_t> GetCellId(int row_index,
+                                    int col_index) const override;
+  absl::optional<int32_t> CellIndexToId(int cell_index) const override;
   bool IsCellOrHeaderOfAriaGrid() const override;
   gfx::AcceleratedWidget GetTargetForNativeAccessibilityEvent() override;
   bool AccessibilityPerformAction(const AXActionData& data) override;
@@ -146,14 +145,14 @@ class TestAXNodeWrapper : public AXPlatformNodeDelegate {
   bool ShouldIgnoreHoveredStateForTesting() override;
   const ui::AXUniqueId& GetUniqueId() const override;
   bool HasVisibleCaretOrSelection() const override;
-  std::vector<AXPlatformNode*> GetSourceNodesForReverseRelations(
+  std::set<AXPlatformNode*> GetSourceNodesForReverseRelations(
       ax::mojom::IntAttribute attr) override;
-  std::vector<AXPlatformNode*> GetSourceNodesForReverseRelations(
+  std::set<AXPlatformNode*> GetSourceNodesForReverseRelations(
       ax::mojom::IntListAttribute attr) override;
   bool IsOrderedSetItem() const override;
   bool IsOrderedSet() const override;
-  std::optional<int> GetPosInSet() const override;
-  std::optional<int> GetSetSize() const override;
+  absl::optional<int> GetPosInSet() const override;
+  absl::optional<int> GetSetSize() const override;
   SkColor GetColor() const override;
   SkColor GetBackgroundColor() const override;
 
@@ -197,7 +196,7 @@ class TestAXNodeWrapper : public AXPlatformNodeDelegate {
   AXOffscreenResult DetermineOffscreenResult(gfx::RectF bounds) const;
 
   raw_ptr<AXTree> tree_;
-  raw_ptr<AXNode, DanglingUntriaged> node_;
+  raw_ptr<AXNode> node_;
   ui::AXUniqueId unique_id_;
   raw_ptr<AXPlatformNode> platform_node_;
   gfx::AcceleratedWidget native_event_target_;

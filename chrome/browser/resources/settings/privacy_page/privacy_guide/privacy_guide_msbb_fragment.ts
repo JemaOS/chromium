@@ -7,16 +7,16 @@
  * 'privacy-guide-msbb-fragment' is the fragment in a privacy guide card
  * that contains the MSBB setting with a two-column description.
  */
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 import '../../controls/settings_toggle_button.js';
 import './privacy_guide_description_item.js';
 import './privacy_guide_fragment_shared.css.js';
 
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
+import {PrefsMixin} from 'chrome://resources/cr_components/settings_prefs/prefs_mixin.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {MetricsBrowserProxy} from '../../metrics_browser_proxy.js';
-import {MetricsBrowserProxyImpl, PrivacyGuideSettingsStates, PrivacyGuideStepsEligibleAndReached} from '../../metrics_browser_proxy.js';
+import {MetricsBrowserProxy, MetricsBrowserProxyImpl, PrivacyGuideSettingsStates, PrivacyGuideStepsEligibleAndReached} from '../../metrics_browser_proxy.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
 import {getTemplate} from './privacy_guide_msbb_fragment.html.js';
 
@@ -41,6 +41,11 @@ export class PrivacyGuideMsbbFragmentElement extends
         type: Object,
         notify: true,
       },
+
+      isJemaProfile_: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('isJemaProfile'),
+      },
     };
   }
 
@@ -55,11 +60,6 @@ export class PrivacyGuideMsbbFragmentElement extends
   }
 
   override focus() {
-    // The fragment element is focused when it becomes visible. Move the focus
-    // to the fragment header, so that the newly shown content of the fragment
-    // is downwards from the focus position. This allows users of screen readers
-    // to continue navigating the screen reader position downwards through the
-    // newly visible content.
     this.shadowRoot!.querySelector<HTMLElement>('[focus-element]')!.focus();
   }
 

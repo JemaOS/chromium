@@ -19,10 +19,10 @@
 //   - for use by Abseil internal code that Mutex itself depends on
 //   - for async signal safety (see below)
 
-// SpinLock with a base_internal::SchedulingMode::SCHEDULE_KERNEL_ONLY is async
-// signal safe. If a spinlock is used within a signal handler, all code that
-// acquires the lock must ensure that the signal cannot arrive while they are
-// holding the lock. Typically, this is done by blocking the signal.
+// SpinLock is async signal safe.  If a spinlock is used within a signal
+// handler, all code that acquires the lock must ensure that the signal cannot
+// arrive while they are holding the lock.  Typically, this is done by blocking
+// the signal.
 //
 // Threads waiting on a SpinLock may be woken in an arbitrary order.
 
@@ -41,19 +41,11 @@
 #include "absl/base/internal/tsan_mutex_interface.h"
 #include "absl/base/thread_annotations.h"
 
-namespace tcmalloc {
-namespace tcmalloc_internal {
-
-class AllocationGuardSpinLockHolder;
-
-}  // namespace tcmalloc_internal
-}  // namespace tcmalloc
-
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
-class ABSL_LOCKABLE ABSL_ATTRIBUTE_WARN_UNUSED SpinLock {
+class ABSL_LOCKABLE SpinLock {
  public:
   SpinLock() : lockword_(kSpinLockCooperative) {
     ABSL_TSAN_MUTEX_CREATE(this, __tsan_mutex_not_static);
@@ -145,7 +137,6 @@ class ABSL_LOCKABLE ABSL_ATTRIBUTE_WARN_UNUSED SpinLock {
 
   // Provide access to protected method above.  Use for testing only.
   friend struct SpinLockTest;
-  friend class tcmalloc::tcmalloc_internal::AllocationGuardSpinLockHolder;
 
  private:
   // lockword_ is used to store the following:
@@ -180,10 +171,6 @@ class ABSL_LOCKABLE ABSL_ATTRIBUTE_WARN_UNUSED SpinLock {
     return scheduling_mode == base_internal::SCHEDULE_COOPERATIVE_AND_KERNEL;
   }
 
-  bool IsCooperative() const {
-    return lockword_.load(std::memory_order_relaxed) & kSpinLockCooperative;
-  }
-
   uint32_t TryLockInternal(uint32_t lock_value, uint32_t wait_cycles);
   void SlowLock() ABSL_ATTRIBUTE_COLD;
   void SlowUnlock(uint32_t lock_value) ABSL_ATTRIBUTE_COLD;
@@ -202,15 +189,6 @@ class ABSL_LOCKABLE ABSL_ATTRIBUTE_WARN_UNUSED SpinLock {
 
 // Corresponding locker object that arranges to acquire a spinlock for
 // the duration of a C++ scope.
-//
-// TODO(b/176172494): Use only [[nodiscard]] when baseline is raised.
-// TODO(b/6695610): Remove forward declaration when #ifdef is no longer needed.
-#if ABSL_HAVE_CPP_ATTRIBUTE(nodiscard)
-class [[nodiscard]] SpinLockHolder;
-#else
-class ABSL_MUST_USE_RESULT ABSL_ATTRIBUTE_TRIVIAL_ABI SpinLockHolder;
-#endif
-
 class ABSL_SCOPED_LOCKABLE SpinLockHolder {
  public:
   inline explicit SpinLockHolder(SpinLock* l) ABSL_EXCLUSIVE_LOCK_FUNCTION(l)

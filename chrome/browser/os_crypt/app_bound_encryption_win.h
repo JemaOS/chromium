@@ -12,21 +12,6 @@
 
 namespace os_crypt {
 
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class SupportLevel {
-  kSupported = 0,
-  kNotSystemLevel = 1,
-  kNotLocalDisk = 2,
-  kApiFailed = 3,
-  kMaxValue = kApiFailed,
-};
-
-// Returns whether or not app-bound encryption is supported on the current
-// platform configuration. If this does not return kSupported then Encrypt and
-// Decrypt operations will fail. This can be called on any thread.
-SupportLevel GetAppBoundEncryptionSupportLevel();
-
 // Encrypts a string with a Protection level of `level`. See
 // `src/chrome/elevation_service/elevation-service_idl.idl` for the definition
 // of available protection levels.
@@ -47,14 +32,12 @@ HRESULT EncryptAppBoundString(ProtectionLevel level,
 // This returns an HRESULT as defined by src/chrome/elevation_service/elevator.h
 // or S_OK for success. If the call fails then `last_error` will be set to the
 // value returned from the most recent failing Windows API call or
-// ERROR_GEN_FAILURE, and `log_message` may contain an extended log message, if
-// supplied.
+// ERROR_GEN_FAILURE.
 //
 // This should be called on a COM-enabled thread.
 HRESULT DecryptAppBoundString(const std::string& ciphertext,
                               std::string& plaintext,
-                              DWORD& last_error,
-                              std::string* log_message = nullptr);
+                              DWORD& last_error);
 
 }  // namespace os_crypt
 

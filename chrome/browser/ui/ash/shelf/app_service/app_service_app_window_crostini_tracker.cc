@@ -125,7 +125,7 @@ void AppServiceAppWindowCrostiniTracker::OnWindowVisibilityChanged(
   // app's name, but this may be null in the case of apps with no associated
   // launcher entry (i.e. no .desktop file), in which case the app's name is
   // unknown.
-  std::optional<guest_os::GuestOsRegistryService::Registration> registration =
+  absl::optional<guest_os::GuestOsRegistryService::Registration> registration =
       registry_service->GetRegistration(shelf_app_id);
   RegisterCrostiniWindowForForceClose(
       window, registration.has_value() ? registration->Name() : "");

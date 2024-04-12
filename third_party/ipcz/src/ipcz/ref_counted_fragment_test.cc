@@ -165,7 +165,8 @@ TEST_F(RefCountedFragmentTest, Move) {
 }
 
 TEST_F(RefCountedFragmentTest, Free) {
-  auto node = MakeRefCounted<Node>(Node::Type::kNormal, kTestDriver);
+  auto node = MakeRefCounted<Node>(Node::Type::kNormal, kTestDriver,
+                                   IPCZ_INVALID_DRIVER_HANDLE);
   DriverMemoryWithMapping buffer = NodeLinkMemory::AllocateMemory(kTestDriver);
   auto memory =
       NodeLinkMemory::Create(std::move(node), std::move(buffer.mapping));
@@ -177,7 +178,8 @@ TEST_F(RefCountedFragmentTest, Free) {
   for (size_t i = 0; i < kNumAllocations; ++i) {
     Fragment fragment = memory->AllocateFragment(sizeof(TestObject));
     EXPECT_TRUE(fragment.is_addressable());
-    FragmentRef<TestObject> ref(kAdoptExistingRef, memory, fragment);
+    FragmentRef<TestObject> ref(RefCountedFragment::kAdoptExistingRef, memory,
+                                fragment);
   }
 }
 

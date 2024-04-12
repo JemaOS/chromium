@@ -150,14 +150,12 @@ inline ImageBitmapSource* ToImageBitmapSourceInternal(
   return nullptr;
 }
 
-ScriptPromiseTyped<ImageBitmap> ImageBitmapFactories::CreateImageBitmapFromBlob(
+ScriptPromise ImageBitmapFactories::CreateImageBitmapFromBlob(
     ScriptState* script_state,
     ImageBitmapSource* bitmap_source,
-    std::optional<gfx::Rect> crop_rect,
+    absl::optional<gfx::Rect> crop_rect,
     const ImageBitmapOptions* options) {
-  if (!script_state->ContextIsValid()) {
-    return ScriptPromiseTyped<ImageBitmap>();
-  }
+  DCHECK(script_state->ContextIsValid());
 
   // imageOrientation: 'from-image' will be used to replace imageOrientation:
   // 'none'. Adding a deprecation warning when 'none' is called in
@@ -178,7 +176,7 @@ ScriptPromiseTyped<ImageBitmap> ImageBitmapFactories::CreateImageBitmapFromBlob(
   return loader->Promise();
 }
 
-ScriptPromiseTyped<ImageBitmap> ImageBitmapFactories::CreateImageBitmap(
+ScriptPromise ImageBitmapFactories::CreateImageBitmap(
     ScriptState* script_state,
     const V8ImageBitmapSource* bitmap_source,
     const ImageBitmapOptions* options,
@@ -188,12 +186,12 @@ ScriptPromiseTyped<ImageBitmap> ImageBitmapFactories::CreateImageBitmap(
   ImageBitmapSource* bitmap_source_internal =
       ToImageBitmapSourceInternal(bitmap_source, options, false);
   if (!bitmap_source_internal)
-    return ScriptPromiseTyped<ImageBitmap>();
-  return CreateImageBitmap(script_state, bitmap_source_internal, std::nullopt,
+    return ScriptPromise();
+  return CreateImageBitmap(script_state, bitmap_source_internal, absl::nullopt,
                            options, exception_state);
 }
 
-ScriptPromiseTyped<ImageBitmap> ImageBitmapFactories::CreateImageBitmap(
+ScriptPromise ImageBitmapFactories::CreateImageBitmap(
     ScriptState* script_state,
     const V8ImageBitmapSource* bitmap_source,
     int sx,
@@ -207,22 +205,22 @@ ScriptPromiseTyped<ImageBitmap> ImageBitmapFactories::CreateImageBitmap(
   ImageBitmapSource* bitmap_source_internal =
       ToImageBitmapSourceInternal(bitmap_source, options, true);
   if (!bitmap_source_internal)
-    return ScriptPromiseTyped<ImageBitmap>();
+    return ScriptPromise();
   gfx::Rect crop_rect = NormalizedCropRect(sx, sy, sw, sh);
   return CreateImageBitmap(script_state, bitmap_source_internal, crop_rect,
                            options, exception_state);
 }
 
-ScriptPromiseTyped<ImageBitmap> ImageBitmapFactories::CreateImageBitmap(
+ScriptPromise ImageBitmapFactories::CreateImageBitmap(
     ScriptState* script_state,
     ImageBitmapSource* bitmap_source,
-    std::optional<gfx::Rect> crop_rect,
+    absl::optional<gfx::Rect> crop_rect,
     const ImageBitmapOptions* options,
     ExceptionState& exception_state) {
   if (crop_rect && (crop_rect->width() == 0 || crop_rect->height() == 0)) {
     exception_state.ThrowRangeError(String::Format(
         "The crop rect %s is 0.", crop_rect->width() ? "height" : "width"));
-    return ScriptPromiseTyped<ImageBitmap>();
+    return ScriptPromise();
   }
 
   if (bitmap_source->IsBlob()) {
@@ -237,7 +235,7 @@ ScriptPromiseTyped<ImageBitmap> ImageBitmapFactories::CreateImageBitmap(
         String::Format(
             "The source image %s is 0.",
             bitmap_source->BitmapSourceSize().width() ? "height" : "width"));
-    return ScriptPromiseTyped<ImageBitmap>();
+    return ScriptPromise();
   }
 
   return bitmap_source->CreateImageBitmap(script_state, crop_rect, options,
@@ -250,14 +248,13 @@ ImageBitmapFactories& ImageBitmapFactories::From(ExecutionContext& context) {
   ImageBitmapFactories* supplement =
       Supplement<ExecutionContext>::From<ImageBitmapFactories>(context);
   if (!supplement) {
-    supplement = MakeGarbageCollected<ImageBitmapFactories>(context);
+    supplement = MakeGarbageCollected<ImageBitmapFactories>();
     Supplement<ExecutionContext>::ProvideTo(context, supplement);
   }
   return *supplement;
 }
 
-ImageBitmapFactories::ImageBitmapFactories(ExecutionContext& context)
-    : Supplement(context) {}
+ImageBitmapFactories::ImageBitmapFactories() : Supplement(nullptr) {}
 
 void ImageBitmapFactories::AddLoader(ImageBitmapLoader* loader) {
   pending_loaders_.insert(loader);
@@ -275,7 +272,7 @@ void ImageBitmapFactories::Trace(Visitor* visitor) const {
 
 ImageBitmapFactories::ImageBitmapLoader::ImageBitmapLoader(
     ImageBitmapFactories& factory,
-    std::optional<gfx::Rect> crop_rect,
+    absl::optional<gfx::Rect> crop_rect,
     ScriptState* script_state,
     const ImageBitmapOptions* options)
     : ExecutionContextLifecycleObserver(ExecutionContext::From(script_state)),
@@ -283,8 +280,7 @@ ImageBitmapFactories::ImageBitmapLoader::ImageBitmapLoader(
           this,
           GetExecutionContext()->GetTaskRunner(TaskType::kFileReading))),
       factory_(&factory),
-      resolver_(MakeGarbageCollected<ScriptPromiseResolverTyped<ImageBitmap>>(
-          script_state)),
+      resolver_(MakeGarbageCollected<ScriptPromiseResolver>(script_state)),
       crop_rect_(crop_rect),
       options_(options) {}
 
@@ -371,11 +367,11 @@ void DecodeImageOnDecoderThread(
       SegmentReader::CreateFromSkData(
           SkData::MakeWithoutCopy(contents.Data(), contents.DataLength())),
       data_complete, alpha_option, ImageDecoder::kDefaultBitDepth,
-      color_behavior, Platform::GetMaxDecodedImageBytes());
+      color_behavior);
   sk_sp<SkImage> frame;
   ImageOrientationEnum orientation = ImageOrientationEnum::kDefault;
   if (decoder) {
-    orientation = decoder->Orientation();
+    orientation = decoder->Orientation().Orientation();
     frame = ImageBitmap::GetSkImageFromDecoder(std::move(decoder));
   }
   PostCrossThreadTask(*task_runner, FROM_HERE,
@@ -394,8 +390,8 @@ void ImageBitmapFactories::ImageBitmapLoader::ScheduleAsyncImageBitmapDecoding(
           ? ImageDecoder::AlphaOption::kAlphaPremultiplied
           : ImageDecoder::AlphaOption::kAlphaNotPremultiplied;
   ColorBehavior color_behavior = options_->colorSpaceConversion() == "none"
-                                     ? ColorBehavior::kIgnore
-                                     : ColorBehavior::kTag;
+                                     ? ColorBehavior::Ignore()
+                                     : ColorBehavior::Tag();
   worker_pool::PostTask(
       FROM_HERE,
       CrossThreadBindOnce(

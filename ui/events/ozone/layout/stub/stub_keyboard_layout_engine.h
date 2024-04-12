@@ -28,8 +28,7 @@ class COMPONENT_EXPORT(EVENTS_OZONE_LAYOUT) StubKeyboardLayoutEngine
 
   // KeyboardLayoutEngineOzone:
   bool CanSetCurrentLayout() const override;
-  void SetCurrentLayoutByName(const std::string& layout_name,
-                              base::OnceCallback<void(bool)> callback) override;
+  bool SetCurrentLayoutByName(const std::string& layout_name) override;
   bool SetCurrentLayoutFromBuffer(const char* keymap_string,
                                   size_t size) override;
   bool UsesISOLevel5Shift() const override;

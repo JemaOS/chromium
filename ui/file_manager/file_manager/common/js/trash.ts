@@ -6,6 +6,9 @@
  * @fileoverview Trash implementation is based on
  * https://specifications.freedesktop.org/trash-spec/trashspec-1.0.html.
  *
+ * This file is checked via TS, so we suppress Closure checks.
+ * @suppress {checkTypes}
+ *
  * When you move /dir/hello.txt to trash, you get:
  *  .Trash/files/hello.txt
  *  .Trash/info/hello.trashinfo
@@ -21,28 +24,28 @@
 
 import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
 
-import type {VolumeManager} from '../../background/js/volume_manager.js';
-import type {FilesAppEntry} from '../../common/js/files_app_entry_types.js';
+import {VolumeManager} from '../../externs/volume_manager.js';
 
 import {parseTrashInfoFiles, startIOTask} from './api.js';
-import {isDirectoryEntry, isFileEntry} from './entry_utils.js';
+import {isFileSystemDirectoryEntry, isFileSystemFileEntry} from './entry_utils.js';
 import {FakeEntryImpl} from './files_app_entry_types.js';
-import {recordMediumCount} from './metrics.js';
-import {str} from './translations.js';
-import {RootType, VolumeType} from './volume_manager_types.js';
+import {metrics} from './metrics.js';
+import {str, util} from './util.js';
+import {VolumeManagerCommon} from './volume_manager_types.js';
 
 /**
  * Configuration for where Trash is stored in a volume.
  */
 export class TrashConfig {
   /**
-   * The id representing this specific TrashConfig.
+   * The id represetngin this specific TrashConfig.
    */
   readonly id: string;
 
   constructor(
-      readonly volumeType: VolumeType, readonly topDir: string,
-      readonly trashDir: string, readonly deleteIsForever: boolean) {
+      readonly volumeType: VolumeManagerCommon.VolumeType,
+      readonly topDir: string, readonly trashDir: string,
+      readonly deleteIsForever: boolean) {
     this.id = `${volumeType}-${topDir}`;
   }
 }
@@ -51,21 +54,21 @@ export class TrashConfig {
  * Volumes supported for Trash, and location of Trash dir. Items will be
  * searched in order.
  */
-export const TRASH_CONFIG = [
+const TRASH_CONFIG = [
   // MyFiles/Downloads is a separate volume on a physical device, and doing a
   // move from MyFiles/Downloads/<path> to MyFiles/.Trash actually does a
   // copy across volumes, so we have a dedicated MyFiles/Downloads/.Trash.
   new TrashConfig(
-      VolumeType.DOWNLOADS, '/Downloads/', '/Downloads/.Trash/',
-      /*deleteIsForever=*/ true),
+      VolumeManagerCommon.VolumeType.DOWNLOADS, '/Downloads/',
+      '/Downloads/.Trash/', /*deleteIsForever=*/ true),
   new TrashConfig(
-      VolumeType.DOWNLOADS, '/', '/.Trash/',
+      VolumeManagerCommon.VolumeType.DOWNLOADS, '/', '/.Trash/',
       /*deleteIsForever=*/ true),
 ];
 
 if (loadTimeData.getBoolean('FILES_TRASH_DRIVE_ENABLED')) {
   TRASH_CONFIG.push(new TrashConfig(
-      VolumeType.DRIVE, '/', '/.Trash-1000/',
+      VolumeManagerCommon.VolumeType.DRIVE, '/', '/.Trash-1000/',
       /*deleteIsForever=*/ false));
 }
 
@@ -133,12 +136,11 @@ export function isAllTrashEntries(
  * from trash will delete forever.
  */
 export function deleteIsForever(
-    entries: Array<Entry|FilesAppEntry>,
-    volumeManager: VolumeManager): boolean {
+    entries: FileSystemEntry[], volumeManager: VolumeManager): boolean {
   const enabledTrashVolumeURLs = getEnabledTrashVolumeURLs(
       volumeManager, /*includeTrashPath=*/ false,
       /*deleteIsForeverOnly=*/ true);
-  return entries.every((e: Entry|FilesAppEntry) => {
+  return entries.every((e: FileSystemEntry) => {
     for (const volumeURL of enabledTrashVolumeURLs) {
       if (e.toURL().startsWith(volumeURL)) {
         return true;
@@ -153,8 +155,10 @@ export function deleteIsForever(
  * trashed.
  */
 export function shouldMoveToTrash(
-    entries: Array<Entry|FilesAppEntry>,
-    volumeManager: VolumeManager): boolean {
+    entries: FileSystemEntry[], volumeManager: VolumeManager): boolean {
+  if (!util.isTrashEnabled()) {
+    return false;
+  }
   const urls: Array<{volume: string, volumeAndTrashPath: string}> = [];
   for (let i = 0; i < volumeManager.volumeInfoList.length; i++) {
     const volumeInfo = volumeManager.volumeInfoList.item(i);
@@ -249,12 +253,13 @@ export class TrashEntry implements Entry {
   /**
    * The trash root type.
    */
-  readonly rootType = RootType.TRASH;
+  readonly rootType = VolumeManagerCommon.RootType.TRASH;
 
   /**
    * The type name of TrashEntry.
    */
-  readonly typeName = 'TrashEntry';
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  readonly type_name = 'TrashEntry';
 
   /**
    * True if the trashed item is a file, false otherwise.
@@ -315,7 +320,7 @@ export class TrashEntry implements Entry {
    * Pass through to filesEntry. Overrides FileEntry.
    */
   file(success: FileCallback, error: ErrorCallback) {
-    if (isFileEntry(this.filesEntry)) {
+    if (isFileSystemFileEntry(this.filesEntry)) {
       this.filesEntry.file(success, error);
       return;
     }
@@ -328,7 +333,7 @@ export class TrashEntry implements Entry {
   getFile(
       path: string, options: FileSystemFlags, success: FileSystemEntryCallback,
       error: ErrorCallback) {
-    if (isDirectoryEntry(this.filesEntry)) {
+    if (isFileSystemDirectoryEntry(this.filesEntry)) {
       this.filesEntry.getFile(path, options, success, error);
       return;
     }
@@ -339,7 +344,7 @@ export class TrashEntry implements Entry {
    * Remove filesEntry first, then remove infoEntry. Overrides DirectoryEntry.
    */
   removeRecursively(success: VoidCallback, error: ErrorCallback) {
-    if (isDirectoryEntry(this.filesEntry)) {
+    if (isFileSystemDirectoryEntry(this.filesEntry)) {
       this.filesEntry.removeRecursively(
           () => this.infoEntry.remove(success, error), error);
       return;
@@ -542,7 +547,7 @@ class TrashDirectoryReader implements FileSystemDirectoryReader {
 
     if (entriesToDelete.length > 0) {
       startIOTask(
-          chrome.fileManagerPrivate.IoTaskType.DELETE, entriesToDelete, {
+          chrome.fileManagerPrivate.IOTaskType.DELETE, entriesToDelete, {
             showNotification: false,
             destinationFolder: undefined,
             password: undefined,
@@ -550,7 +555,7 @@ class TrashDirectoryReader implements FileSystemDirectoryReader {
     }
 
     // Record the amount of files seen for this particularly directory reader.
-    recordMediumCount(
+    metrics.recordMediumCount(
         /*name=*/ `TrashFiles.${this.config_.volumeType}`, result.length);
   }
 
@@ -565,7 +570,7 @@ class TrashDirectoryReader implements FileSystemDirectoryReader {
  */
 export class TrashRootEntry extends FakeEntryImpl {
   constructor() {
-    super(str('TRASH_ROOT_LABEL'), RootType.TRASH);
+    super(str('TRASH_ROOT_LABEL'), VolumeManagerCommon.RootType.TRASH);
   }
 }
 

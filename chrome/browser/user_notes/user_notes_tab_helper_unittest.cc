@@ -70,14 +70,10 @@ class UserNotesTabHelperTest : public ChromeRenderViewHostTestHarness {
   void SetUp() override {
     scoped_feature_list_.InitAndEnableFeature(user_notes::kUserNotes);
 
-    UserNoteServiceFactory::SetServiceForTesting(&mock_user_note_service_);
+    UserNoteServiceFactory::SetServiceForTesting(
+        std::make_unique<MockUserNoteService>());
 
     ChromeRenderViewHostTestHarness::SetUp();
-  }
-
-  void TearDown() override {
-    ChromeRenderViewHostTestHarness::TearDown();
-    UserNoteServiceFactory::SetServiceForTesting(nullptr);
   }
 
   void AttachTabHelper(std::unique_ptr<UserNotesTabHelper> tab_helper) {
@@ -102,7 +98,6 @@ class UserNotesTabHelperTest : public ChromeRenderViewHostTestHarness {
   }
 
   base::test::ScopedFeatureList scoped_feature_list_;
-  MockUserNoteService mock_user_note_service_;
 };
 
 // Tests that by the time `UserNotesTabHelper::DidFinishNavigation` is called,

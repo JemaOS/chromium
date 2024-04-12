@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_APPS_APK_WEB_APP_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_ASH_APPS_APK_WEB_APP_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -33,13 +33,13 @@ class ApkWebAppServiceFactory : public ProfileKeyedServiceFactory {
   static ApkWebAppServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<ApkWebAppServiceFactory>;
+  friend struct base::DefaultSingletonTraits<ApkWebAppServiceFactory>;
 
   ApkWebAppServiceFactory();
   ~ApkWebAppServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

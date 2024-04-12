@@ -9,6 +9,7 @@
 #include "base/test/bind.h"
 #include "chrome/browser/ash/bruschetta/bruschetta_launcher.h"
 #include "chrome/browser/ash/bruschetta/bruschetta_service.h"
+#include "chrome/browser/ash/bruschetta/bruschetta_service_factory.h"
 #include "chrome/browser/ash/bruschetta/fake_bruschetta_launcher.h"
 #include "chrome/browser/ash/guest_os/guest_id.h"
 #include "chrome/browser/ash/guest_os/guest_os_session_tracker.h"
@@ -22,6 +23,7 @@ namespace bruschetta {
 class BruschettaMountProviderTest : public testing::Test {
  protected:
   BruschettaMountProviderTest() {
+    BruschettaServiceFactory::EnableForTesting(&profile_);
     BruschettaMountProvider provider{&profile_, id_};
 
     guest_os::GuestOsSessionTracker::GetForProfile(&profile_)
@@ -38,7 +40,7 @@ class BruschettaMountProviderTest : public testing::Test {
   guest_os::GuestId id_{guest_os::VmType::BRUSCHETTA, "vm_name", ""};
   guest_os::GuestInfo info_{id_, 32, "username", base::FilePath("/home/dir"),
                             "",  123};
-  raw_ptr<FakeBruschettaLauncher> launcher_;
+  raw_ptr<FakeBruschettaLauncher, ExperimentalAsh> launcher_;
   BruschettaMountProvider provider_{&profile_, id_};
 };
 

@@ -9,33 +9,13 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/scoped_feature_list.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/events/base_event_utils.h"
-#include "ui/events/event.h"
 #include "ui/views/accessibility/view_accessibility.h"
-#include "ui/views/actions/action_view_controller.h"
 #include "ui/views/controls/styled_label.h"
-#include "ui/views/test/button_test_api.h"
 #include "ui/views/test/views_test_base.h"
-#include "ui/views/widget/widget.h"
 
 namespace views {
-
-class TestCheckbox : public Checkbox {
- public:
-  explicit TestCheckbox(const std::u16string& label = std::u16string(),
-                        int button_context = style::CONTEXT_BUTTON)
-      : Checkbox(label, Button::PressedCallback(), button_context) {}
-
-  TestCheckbox(const TestCheckbox&) = delete;
-  TestCheckbox& operator=(const TestCheckbox&) = delete;
-
-  using Checkbox::GetIconCheckColor;
-  using Checkbox::GetIconImageColor;
-  using Checkbox::GetIconState;
-};
 
 class CheckboxTest : public ViewsTestBase {
  public:
@@ -58,7 +38,7 @@ class CheckboxTest : public ViewsTestBase {
     widget_->Init(std::move(params));
     widget_->Show();
 
-    widget_->SetContentsView(std::make_unique<TestCheckbox>());
+    checkbox_ = widget_->SetContentsView(std::make_unique<Checkbox>());
   }
 
   void TearDown() override {
@@ -67,22 +47,11 @@ class CheckboxTest : public ViewsTestBase {
   }
 
  protected:
-  TestCheckbox* checkbox() {
-    return static_cast<TestCheckbox*>(widget_->GetContentsView());
-  }
+  Checkbox* checkbox() { return checkbox_; }
 
  private:
   std::unique_ptr<Widget> widget_;
-};
-
-class CheckboxTestRefreshOnly : public CheckboxTest {
- public:
-  CheckboxTestRefreshOnly() {
-    scoped_feature_list_.InitWithFeatures({features::kChromeRefresh2023}, {});
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
+  raw_ptr<Checkbox> checkbox_ = nullptr;
 };
 
 TEST_F(CheckboxTest, AccessibilityTest) {
@@ -107,74 +76,6 @@ TEST_F(CheckboxTest, AccessibilityTest) {
                 ax::mojom::IntListAttribute::kLabelledbyIds)[0],
             label_data.id);
   EXPECT_EQ(ax_data.role, ax::mojom::Role::kCheckBox);
-}
-
-TEST_F(CheckboxTest, TestCorrectCheckColor) {
-  // Enabled
-  checkbox()->SetChecked(true);
-  int icon_state = checkbox()->GetIconState(Button::ButtonState::STATE_NORMAL);
-  SkColor actual = checkbox()->GetIconCheckColor(icon_state);
-  SkColor expected =
-      checkbox()->GetColorProvider()->GetColor(ui::kColorCheckboxCheck);
-  EXPECT_EQ(actual, expected);
-
-  // Disabled
-  icon_state = checkbox()->GetIconState(Button::ButtonState::STATE_DISABLED);
-  actual = checkbox()->GetIconCheckColor(icon_state);
-  expected =
-      checkbox()->GetColorProvider()->GetColor(ui::kColorCheckboxCheckDisabled);
-  EXPECT_EQ(actual, expected);
-}
-
-TEST_F(CheckboxTestRefreshOnly, TestCorrectContainerColor) {
-  // Enabled
-  checkbox()->SetChecked(true);
-  int icon_state = checkbox()->GetIconState(Button::ButtonState::STATE_NORMAL);
-  SkColor actual = checkbox()->GetIconImageColor(icon_state);
-  SkColor expected =
-      checkbox()->GetColorProvider()->GetColor(ui::kColorCheckboxContainer);
-  EXPECT_EQ(actual, expected);
-
-  // Disabled
-  icon_state = checkbox()->GetIconState(Button::ButtonState::STATE_DISABLED);
-  actual = checkbox()->GetIconImageColor(icon_state);
-  expected = checkbox()->GetColorProvider()->GetColor(
-      ui::kColorCheckboxContainerDisabled);
-  EXPECT_EQ(actual, expected);
-}
-
-using CheckboxActionViewControllerTest = CheckboxTest;
-
-TEST_F(CheckboxActionViewControllerTest, TestActionViewInterface) {
-  std::unique_ptr<actions::ActionItem> action_item =
-      actions::ActionItem::Builder()
-          .SetActionId(0)
-          .SetEnabled(false)
-          .SetChecked(true)
-          .Build();
-  checkbox()->GetActionViewInterface()->ActionItemChangedImpl(
-      action_item.get());
-  // Test some properties to ensure that the right ActionViewInterface is linked
-  // to the view.
-  EXPECT_TRUE(checkbox()->GetChecked());
-  EXPECT_FALSE(checkbox()->GetEnabled());
-}
-
-TEST_F(CheckboxActionViewControllerTest, TestCheckboxClicked) {
-  ActionViewController view_controller = ActionViewController();
-  std::unique_ptr<actions::ActionItem> action_item =
-      actions::ActionItem::Builder()
-          .SetActionId(0)
-          .SetEnabled(false)
-          .SetChecked(false)
-          .Build();
-  EXPECT_FALSE(action_item->GetChecked());
-  view_controller.CreateActionViewRelationship(checkbox(),
-                                               action_item->GetAsWeakPtr());
-  // The checked property is tied together for all checkboxes that are linked to
-  // the same ActionItem.
-  checkbox()->SetChecked(true);
-  EXPECT_TRUE(action_item->GetChecked());
 }
 
 }  // namespace views

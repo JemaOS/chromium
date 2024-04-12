@@ -10,13 +10,13 @@
 #include "third_party/blink/renderer/core/css/parser/css_parser_context.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
-#include "third_party/blink/renderer/core/layout/box_fragment_builder.h"
-#include "third_party/blink/renderer/core/layout/constraint_space_builder.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_child_layout_context.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_node.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
-#include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
-#include "third_party/blink/renderer/core/paint/box_fragment_painter.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_inline_child_layout_context.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_inline_node.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_box_fragment_builder.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_constraint_space_builder.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_physical_box_fragment.h"
+#include "third_party/blink/renderer/core/paint/ng/ng_box_fragment_painter.h"
 #include "third_party/blink/renderer/core/paint/paint_info.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
@@ -53,9 +53,8 @@ void FormattedText::Dispose() {
 void FormattedText::UpdateComputedStylesIfNeeded(
     Document& document,
     const FontDescription& defaultFont) {
-  const ComputedStyle* style =
-      document.GetStyleResolver().StyleForFormattedText(
-          /*is_text_run*/ false, defaultFont, GetCssPropertySet());
+  auto style = document.GetStyleResolver().StyleForFormattedText(
+      /*is_text_run*/ false, defaultFont, GetCssPropertySet());
   block_->SetStyle(style, LayoutObject::ApplyStyleChanges::kNo);
   block_->SetHorizontalWritingMode(style->IsHorizontalWritingMode());
   for (auto& text_run : text_runs_)
@@ -184,26 +183,26 @@ PaintRecord FormattedText::PaintFormattedText(Document& document,
     return PaintRecord();
 
   UpdateComputedStylesIfNeeded(document, font);
-  BlockNode block_node(block_);
+  NGBlockNode block_node(block_);
 
-  ConstraintSpaceBuilder builder(
+  NGConstraintSpaceBuilder builder(
       WritingMode::kHorizontalTb,
       {block_->StyleRef().GetWritingMode(), block_->StyleRef().Direction()},
       /* is_new_fc */ true);
   LogicalSize available_size = {inline_constraint_, block_constraint_};
   builder.SetAvailableSize(available_size);
-  ConstraintSpace space = builder.ToConstraintSpace();
-  const LayoutResult* block_results = block_node.Layout(space, nullptr);
+  NGConstraintSpace space = builder.ToConstraintSpace();
+  const NGLayoutResult* block_results = block_node.Layout(space, nullptr);
   const auto& fragment =
-      To<PhysicalBoxFragment>(block_results->GetPhysicalFragment());
-  block_->RecalcVisualOverflow();
-  bounds = gfx::RectF{block_->VisualOverflowRect()};
-  PaintRecordBuilder paint_record_builder;
-  PaintInfo paint_info(paint_record_builder.Context(), CullRect::Infinite(),
+      To<NGPhysicalBoxFragment>(block_results->PhysicalFragment());
+  block_->RecalcFragmentsVisualOverflow();
+  bounds = gfx::RectF{block_->PhysicalVisualOverflowRect()};
+  auto* paint_record_builder = MakeGarbageCollected<PaintRecordBuilder>();
+  PaintInfo paint_info(paint_record_builder->Context(), CullRect::Infinite(),
                        PaintPhase::kForeground);
-  BoxFragmentPainter(fragment).PaintObject(
+  NGBoxFragmentPainter(fragment).PaintObject(
       paint_info, PhysicalOffset(LayoutUnit(x), LayoutUnit(y)));
-  return paint_record_builder.EndRecording();
+  return paint_record_builder->EndRecording();
 }
 
 bool FormattedText::CheckViewExists(ExceptionState* exception_state) const {

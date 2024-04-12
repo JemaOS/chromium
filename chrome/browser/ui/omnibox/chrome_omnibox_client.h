@@ -17,19 +17,20 @@
 #include "components/omnibox/browser/favicon_cache.h"
 #include "components/omnibox/browser/omnibox.mojom-shared.h"
 #include "components/omnibox/browser/omnibox_client.h"
+#include "components/omnibox/browser/on_device_tail_model_observer.h"
 
-class Browser;
+class ChromeOmniboxEditModelDelegate;
 class GURL;
-class LocationBar;
 class Profile;
 
-class ChromeOmniboxClient final : public OmniboxClient {
+class ChromeOmniboxClient : public OmniboxClient {
  public:
-  ChromeOmniboxClient(LocationBar* location_bar,
-                      Browser* browser,
+  ChromeOmniboxClient(ChromeOmniboxEditModelDelegate* edit_model_delegate,
                       Profile* profile);
+
   ChromeOmniboxClient(const ChromeOmniboxClient&) = delete;
   ChromeOmniboxClient& operator=(const ChromeOmniboxClient&) = delete;
+
   ~ChromeOmniboxClient() override;
 
   // OmniboxClient.
@@ -39,13 +40,11 @@ class ChromeOmniboxClient final : public OmniboxClient {
   const GURL& GetURL() const override;
   const std::u16string& GetTitle() const override;
   gfx::Image GetFavicon() const override;
-  ukm::SourceId GetUKMSourceId() const override;
   bool IsLoading() const override;
   bool IsPasteAndGoEnabled() const override;
   bool IsDefaultSearchProviderEnabled() const override;
   SessionID GetSessionID() const override;
-  PrefService* GetPrefs() override;
-  bookmarks::CoreBookmarkModel* GetBookmarkModel() override;
+  bookmarks::BookmarkModel* GetBookmarkModel() override;
   AutocompleteControllerEmitter* GetAutocompleteControllerEmitter() override;
   TemplateURLService* GetTemplateURLService() override;
   const AutocompleteSchemeClassifier& GetSchemeClassifier() const override;
@@ -58,15 +57,6 @@ class ChromeOmniboxClient final : public OmniboxClient {
   gfx::Image GetSizedIcon(const gfx::VectorIcon& vector_icon_type,
                           SkColor vector_icon_color) const override;
   gfx::Image GetSizedIcon(const gfx::Image& icon) const override;
-  std::u16string GetFormattedFullURL() const override;
-  std::u16string GetURLForDisplay() const override;
-  GURL GetNavigationEntryURL() const override;
-  metrics::OmniboxEventProto::PageClassification GetPageClassification(
-      OmniboxFocusSource focus_source,
-      bool is_prefetch) override;
-  security_state::SecurityLevel GetSecurityLevel() const override;
-  net::CertStatus GetCertStatus() const override;
-  const gfx::VectorIcon& GetVectorIcon() const override;
   bool ProcessExtensionKeyword(const std::u16string& text,
                                const TemplateURL* template_url,
                                const AutocompleteMatch& match,
@@ -101,22 +91,6 @@ class ChromeOmniboxClient final : public OmniboxClient {
       size_t index,
       const AutocompleteMatch& match,
       omnibox::mojom::NavigationPredictor navigation_predictor) override;
-  void OnAutocompleteAccept(
-      const GURL& destination_url,
-      TemplateURLRef::PostContent* post_content,
-      WindowOpenDisposition disposition,
-      ui::PageTransition transition,
-      AutocompleteMatchType::Type match_type,
-      base::TimeTicks match_selection_timestamp,
-      bool destination_url_entered_without_scheme,
-      bool destination_url_entered_with_http_scheme,
-      const std::u16string& text,
-      const AutocompleteMatch& match,
-      const AutocompleteMatch& alternative_nav_match,
-      IDNA2008DeviationCharacter deviation_char_in_hostname) override;
-  void OnInputInProgress(bool in_progress) override;
-  void OnPopupVisibilityChanged() override;
-  base::WeakPtr<OmniboxClient> AsWeakPtr() override;
 
   // Update shortcuts when a navigation succeeds.
   static void OnSuccessfulNavigation(Profile* profile,
@@ -134,13 +108,12 @@ class ChromeOmniboxClient final : public OmniboxClient {
                        int result_index,
                        const SkBitmap& bitmap);
 
-  // Implemented by `LocationBarView` which owns `OmniboxView` which owns this.
-  const raw_ptr<LocationBar> location_bar_;
-  const raw_ptr<Browser, DanglingUntriaged> browser_;
-  const raw_ptr<Profile> profile_;
+  raw_ptr<ChromeOmniboxEditModelDelegate> edit_model_delegate_;
+  raw_ptr<Profile> profile_;
   ChromeAutocompleteSchemeClassifier scheme_classifier_;
   std::vector<BitmapFetcherService::RequestId> request_ids_;
   FaviconCache favicon_cache_;
+  std::unique_ptr<OnDeviceTailModelObserver> tail_model_observer_;
 
   base::WeakPtrFactory<ChromeOmniboxClient> weak_factory_{this};
 };

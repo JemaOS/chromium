@@ -14,8 +14,8 @@ class RelocatablePositionTest : public EditingTestBase {};
 
 TEST_F(RelocatablePositionTest, position) {
   SetBodyContent("<b>foo</b><textarea>bar</textarea>");
-  Node* boldface = GetDocument().QuerySelector(AtomicString("b"));
-  Node* textarea = GetDocument().QuerySelector(AtomicString("textarea"));
+  Node* boldface = GetDocument().QuerySelector("b");
+  Node* textarea = GetDocument().QuerySelector("textarea");
 
   Position position(textarea, PositionAnchorType::kBeforeAnchor);
   RelocatablePosition relocatable_position(position);
@@ -35,7 +35,7 @@ TEST_F(RelocatablePositionTest, position) {
 
 TEST_F(RelocatablePositionTest, positionAnchorTypes) {
   SetBodyContent("<div>text</div>");
-  Node* node = GetDocument().QuerySelector(AtomicString("div"));
+  Node* node = GetDocument().QuerySelector("div");
 
   Position before(node, PositionAnchorType::kBeforeAnchor);
   Position offset0(node, 0);

@@ -7,11 +7,10 @@
 
 #include <stdint.h>
 
-#include <algorithm>
-#include <compare>
 #include <cstddef>
 #include <functional>
 #include <tuple>
+#include <algorithm>
 
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
@@ -115,11 +114,15 @@ class IdentifiableSurface {
     // GenericFamilyType.
     kGenericFontLookup = 4,
 
-    // Reserved 5.
-    // Was kExtensionFileAccess.
+    // Represents an attempt to access files made publicly accessible by
+    // extensions via web_accessible_resources. This may be recorded both in the
+    // renderer and the browser. Browser-side events will be associated with
+    // the top frame's navigation ID, not a child frame. Render-side events are
+    // associated with document's ID.
+    kExtensionFileAccess = 5,
 
-    // Reserved 6.
-    // Was kExtensionContentScript.
+    // Extension running content-script. Input is the extension ID.
+    kExtensionContentScript = 6,
 
     // Represents making a measurement of one of the above surfacess. This
     // metric is retained even if filtering discards the surface.
@@ -155,8 +158,8 @@ class IdentifiableSurface {
     // FontSelectionRequest (i.e. weight, width and slope).
     kLocalFontLookupAsLastResort = 14,
 
-    // Reserved 15.
-    // Was kExtensionCancelRequest.
+    // Extension cancelled a network request. Input is the extension ID.
+    kExtensionCancelRequest = 15,
 
     // WebGLRenderingContext.getShaderPrecisionFormat() is a high entropy API
     // that leaks entropy about the underlying GL implementation.
@@ -257,12 +260,6 @@ class IdentifiableSurface {
     // sampled in the browser.
     kFontFamilyAvailable = 38,
 
-    // Represents determining that a local font exists or does not, based on a
-    // name lookup that is allowed to match either a unique name or a family
-    // name. This occurs when a font-family CSS rule doesn't match any
-    // @font-face rule. Input is the lookup name. Output is a bool.
-    kLocalFontExistenceByUniqueOrFamilyName = 39,
-
     // We can use values up to and including |kMax|.
     kMax = (1 << kTypeBits) - 1
   };
@@ -276,17 +273,17 @@ class IdentifiableSurface {
     kDocumentCreated_NavigationSourceId = 3,
     kWorkerClientAdded_ClientSourceId = 4,
     kWorkerClientAdded_WorkerType = 5,
-    kMaxValue = kWorkerClientAdded_WorkerType
+    kMax = kWorkerClientAdded_WorkerType
   };
 
   enum class WorkerType : uint64_t {
     kSharedWorker = 0,
     kServiceWorker = 1,
-    kMaxValue = kServiceWorker,
+    kMax = kServiceWorker,
   };
 
   static_assert(
-      static_cast<uint64_t>(ReservedSurfaceMetrics::kMaxValue) <
+      static_cast<uint64_t>(ReservedSurfaceMetrics::kMax) <
           std::min(
               ukm::builders::Identifiability::kGeneratorVersion_926NameHash,
               ukm::builders::Identifiability::kStudyGeneration_626NameHash),
@@ -349,15 +346,10 @@ class IdentifiableSurface {
     kHorizontalViewportSegments = 23,
     kVerticalViewportSegments = 24,
     kAspectRatioNormalized = 25,
-    kPrefersReducedTransparency = 26,
-    kInvertedColors = 27,
-    kScripting = 28,
-    kDisplayState = 29,
-    kResizable = 30,
     // We can use enum values up to and including 63, see static_assert below.
-    kMaxValue = kResizable
+    kMax = kAspectRatioNormalized
   };
-  static_assert(static_cast<int>(MediaFeatureName::kMaxValue) < 64,
+  static_assert(static_cast<int>(MediaFeatureName::kMax) < 64,
                 "MediaFeatureName only allows values < 64 since we use it in "
                 "a uint64_t bitfield inside document.h to track if a media "
                 "feature has already been sampled");
@@ -403,11 +395,6 @@ class IdentifiableSurface {
 
   constexpr bool IsValid() const { return metric_hash_ != kInvalidHash; }
 
-  friend constexpr auto operator<=>(const IdentifiableSurface& lhs,
-                                    const IdentifiableSurface& rhs) = default;
-  friend constexpr bool operator==(const IdentifiableSurface& lhs,
-                                   const IdentifiableSurface& rhs) = default;
-
  private:
   constexpr explicit IdentifiableSurface(uint64_t metric_hash)
       : metric_hash_(metric_hash) {}
@@ -437,10 +424,48 @@ class IdentifiableSurface {
   uint64_t metric_hash_;
 };
 
+constexpr bool operator<(const IdentifiableSurface& left,
+                         const IdentifiableSurface& right) {
+  return left.ToUkmMetricHash() < right.ToUkmMetricHash();
+}
+
+constexpr bool operator<=(const IdentifiableSurface& left,
+                          const IdentifiableSurface& right) {
+  return left.ToUkmMetricHash() <= right.ToUkmMetricHash();
+}
+
+constexpr bool operator>(const IdentifiableSurface& left,
+                         const IdentifiableSurface& right) {
+  return left.ToUkmMetricHash() > right.ToUkmMetricHash();
+}
+
+constexpr bool operator>=(const IdentifiableSurface& left,
+                          const IdentifiableSurface& right) {
+  return left.ToUkmMetricHash() >= right.ToUkmMetricHash();
+}
+
+constexpr bool operator==(const IdentifiableSurface& left,
+                          const IdentifiableSurface& right) {
+  return left.ToUkmMetricHash() == right.ToUkmMetricHash();
+}
+
+constexpr bool operator!=(const IdentifiableSurface& left,
+                          const IdentifiableSurface& right) {
+  return left.ToUkmMetricHash() != right.ToUkmMetricHash();
+}
+
 // Hash function compatible with std::hash.
 struct IdentifiableSurfaceHash {
   size_t operator()(const IdentifiableSurface& s) const {
     return std::hash<uint64_t>{}(s.ToUkmMetricHash());
+  }
+};
+
+// Compare function compatible with std::less
+struct IdentifiableSurfaceCompLess {
+  bool operator()(const IdentifiableSurface& lhs,
+                  const IdentifiableSurface& rhs) const {
+    return lhs.ToUkmMetricHash() < rhs.ToUkmMetricHash();
   }
 };
 

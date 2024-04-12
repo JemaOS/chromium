@@ -21,7 +21,6 @@
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/views/frame/browser_frame.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chromeos/ui/base/window_properties.h"
 #include "chromeos/ui/base/window_state_type.h"
 #include "components/app_restore/app_restore_info.h"
@@ -62,11 +61,11 @@ class BrowserWindowStateDelegate : public ash::WindowStateDelegate {
   // Overridden from ash::WindowStateDelegate.
   void ToggleLockedFullscreen(ash::WindowState* window_state) override {
     ash::Shell::Get()->shell_delegate()->SetUpEnvironmentForLockedFullscreen(
-        *window_state);
+        window_state->IsPinned());
   }
 
  private:
-  raw_ptr<Browser> browser_;  // not owned.
+  raw_ptr<Browser, ExperimentalAsh> browser_;  // not owned.
 };
 
 }  // namespace
@@ -200,25 +199,14 @@ views::Widget::InitParams BrowserFrameAsh::GetWidgetParams() {
   // This is only needed for ash. For lacros, Exo tags the associated
   // ShellSurface as being of AppType::LACROS.
   bool is_app = browser->is_type_app() || browser->is_type_app_popup();
-  web_app::AppBrowserController* controller = browser->app_controller();
-  if (controller && controller->system_app()) {
-    params.init_properties_container.SetProperty(
-        aura::client::kAppType, static_cast<int>(ash::AppType::SYSTEM_APP));
-  } else {
-    params.init_properties_container.SetProperty(
-        aura::client::kAppType,
-        static_cast<int>(is_app ? ash::AppType::CHROME_APP
-                                : ash::AppType::BROWSER));
-  }
+  params.init_properties_container.SetProperty(
+      aura::client::kAppType, static_cast<int>(is_app ? ash::AppType::CHROME_APP
+                                                      : ash::AppType::BROWSER));
 
   app_restore::ModifyWidgetParams(restore_id, &params);
   // Override session restore bounds with Full Restore bounds if they exist.
-  if (!params.bounds.IsEmpty()) {
+  if (!params.bounds.IsEmpty())
     browser->set_override_bounds(params.bounds);
-  } else {
-    params.bounds = browser->create_params().initial_bounds;
-  }
-  params.display_id = browser->create_params().display_id;
 
   return params;
 }
@@ -240,12 +228,7 @@ bool BrowserFrameAsh::ShouldRestorePreviousBrowserWidgetState() const {
   // restore.
   const int32_t restore_id =
       browser_view_->browser()->create_params().restore_id;
-  // Don't restore unresizable browser apps, because they can get stuck at a
-  // broken size, or the browser being dragged because it should use the
-  // specified bounds.
-  return !app_restore::HasWindowInfo(restore_id) &&
-         browser_view_->browser()->create_params().can_resize &&
-         !browser_view_->browser()->create_params().in_tab_dragging;
+  return !app_restore::HasWindowInfo(restore_id);
 }
 
 bool BrowserFrameAsh::ShouldUseInitialVisibleOnAllWorkspaces() const {

@@ -14,9 +14,6 @@ import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
-import dagger.Lazy;
-
-import org.chromium.base.BuildInfo;
 import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider;
 import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider.TwaDisclosureUi;
 import org.chromium.chrome.browser.browserservices.ui.view.DisclosureInfobar;
@@ -28,6 +25,8 @@ import org.chromium.chrome.browser.lifecycle.NativeInitObserver;
 import org.chromium.components.browser_ui.notifications.NotificationManagerProxy;
 
 import javax.inject.Inject;
+
+import dagger.Lazy;
 
 /**
  * Determines which of the versions of the "Running in Chrome" UI is displayed to the user.
@@ -46,8 +45,7 @@ public class DisclosureUiPicker implements NativeInitObserver {
     private final NotificationManagerProxy mNotificationManager;
 
     @Inject
-    public DisclosureUiPicker(
-            Lazy<DisclosureInfobar> disclosureInfobar,
+    public DisclosureUiPicker(Lazy<DisclosureInfobar> disclosureInfobar,
             Lazy<DisclosureSnackbar> disclosureSnackbar,
             Lazy<DisclosureNotification> disclosureNotification,
             BrowserServicesIntentDataProvider intentDataProvider,
@@ -72,18 +70,16 @@ public class DisclosureUiPicker implements NativeInitObserver {
 
         if (mIntentDataProvider.getTwaDisclosureUi() == TwaDisclosureUi.V1_INFOBAR) {
             mDisclosureInfobar.get().showIfNeeded();
-        } else if (areHeadsUpNotificationsEnabled()) {
+        } else if (areNotificationsEnabled()) {
             mDisclosureNotification.get().onStartWithNative();
         } else {
             mDisclosureSnackbar.get().showIfNeeded();
         }
     }
 
-    private boolean areHeadsUpNotificationsEnabled() {
+    private boolean areNotificationsEnabled() {
         if (!mNotificationManager.areNotificationsEnabled()) return false;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true;
-        // Android Automotive doesn't currently allow heads-up notifications.
-        if (BuildInfo.getInstance().isAutomotive) return false;
 
         return isChannelEnabled(WEBAPPS) && isChannelEnabled(WEBAPPS_QUIET);
     }

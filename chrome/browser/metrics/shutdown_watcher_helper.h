@@ -4,12 +4,11 @@
 #ifndef CHROME_BROWSER_METRICS_SHUTDOWN_WATCHER_HELPER_H_
 #define CHROME_BROWSER_METRICS_SHUTDOWN_WATCHER_HELPER_H_
 
-#include <optional>
-
 #include "base/threading/thread_checker.h"
 #include "base/threading/watchdog.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // ShutdownWatcherHelper is useless on Android because there is no shutdown,
 // Chrome is always killed one way or another (swiped away in the task
@@ -35,7 +34,7 @@ class ShutdownWatcherHelper : public base::Watchdog::Delegate {
   void Alarm() override;
 
  private:
-  std::optional<base::Watchdog> shutdown_watchdog_;
+  absl::optional<base::Watchdog> shutdown_watchdog_;
   THREAD_CHECKER(thread_checker_);
 };
 

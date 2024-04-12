@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_SAFE_BROWSING_DOWNLOAD_PROTECTION_DOWNLOAD_REQUEST_MAKER_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
@@ -36,8 +35,7 @@ class DownloadRequestMaker {
 
   static std::unique_ptr<DownloadRequestMaker> CreateFromDownloadItem(
       scoped_refptr<BinaryFeatureExtractor> binary_feature_extractor,
-      download::DownloadItem* item,
-      base::optional_ref<const std::string> password = std::nullopt);
+      download::DownloadItem* item);
 
   static std::unique_ptr<DownloadRequestMaker> CreateFromFileSystemAccess(
       scoped_refptr<BinaryFeatureExtractor> binary_feature_extractor,
@@ -55,11 +53,7 @@ class DownloadRequestMaker {
       int64_t length,
       const std::vector<ClientDownloadRequest::Resource>& resources,
       bool is_user_initiated,
-      ReferrerChainData* referrer_chain_data,
-      base::optional_ref<const std::string> password,
-      const std::string& previous_token,
-      base::OnceCallback<void(const FileAnalyzer::Results&)>
-          on_results_callback);
+      ReferrerChainData* referrer_chain_data);
 
   DownloadRequestMaker(const DownloadRequestMaker&) = delete;
   DownloadRequestMaker& operator=(const DownloadRequestMaker&) = delete;
@@ -100,13 +94,10 @@ class DownloadRequestMaker {
   // The current path to the file contents.
   const base::FilePath full_path_;
 
-  const std::optional<std::string> password_;
-
-  // Callback used for handling behavior specific to download items of file
-  // system accesses.
-  base::OnceCallback<void(const FileAnalyzer::Results&)> on_results_callback_;
-
   Callback callback_;
+
+  // Start time of a given asynchronous task. Used for metrics.
+  base::Time start_time_;
 
   base::WeakPtrFactory<DownloadRequestMaker> weakptr_factory_{this};
 };

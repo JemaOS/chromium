@@ -60,10 +60,11 @@ void SoundContentSettingObserver::ReadyToCommitNavigation(
                        ->GetLastCommittedURL();
 
   content_settings::SettingInfo setting_info;
-  ContentSetting setting = host_content_settings_map_->GetContentSetting(
+  const base::Value setting = host_content_settings_map_->GetWebsiteSetting(
       url, url, ContentSettingsType::SOUND, &setting_info);
 
-  if (setting != CONTENT_SETTING_ALLOW) {
+  if (content_settings::ValueToContentSetting(setting) !=
+      CONTENT_SETTING_ALLOW) {
     return;
   }
 

@@ -8,7 +8,8 @@
 #include "base/files/file.h"
 #include "chromeos/ash/components/dbus/smbprovider/smb_provider_client.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 // These values are written to logs. New enum values may be added, but existing
 // enums must never be renumbered or values reused. Must be kept in sync
@@ -37,6 +38,7 @@ enum class SmbMountResult {
 // Translates an smbprovider::ErrorType to an SmbMountResult.
 SmbMountResult TranslateErrorToMountResult(smbprovider::ErrorType error);
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_SMB_ERRORS_H_

@@ -116,12 +116,13 @@ gfx::FontList ItemCounterFontInFolderIcon(ash::AppListConfigType type) {
   return ui::ResourceBundle::GetSharedInstance().GetFontListForDetails(details);
 }
 
-int FolderIconDimensionForType(ash::AppListConfigType type) {
+// See "App drag over folder" in go/cros-launcher-spec.
+int UnclippedIconDimensionForType(ash::AppListConfigType type) {
   switch (type) {
     case ash::AppListConfigType::kRegular:
-      return 68;
+      return 76;
     case ash::AppListConfigType::kDense:
-      return 50;
+      return 56;
   }
 }
 
@@ -131,15 +132,6 @@ int IconVisibleDimensionForType(ash::AppListConfigType type) {
       return 60;
     case ash::AppListConfigType::kDense:
       return 44;
-  }
-}
-
-int IconExtendedBackgroundDimension(ash::AppListConfigType type) {
-  switch (type) {
-    case ash::AppListConfigType::kRegular:
-      return 76;
-    case ash::AppListConfigType::kDense:
-      return 56;
   }
 }
 
@@ -161,62 +153,8 @@ int ItemIconInFolderIconDimensionForType(ash::AppListConfigType type) {
   }
 }
 
-int HostBadgeIconDimensionForType(ash::AppListConfigType type) {
-  switch (type) {
-    case ash::AppListConfigType::kRegular:
-      return 26;
-    case ash::AppListConfigType::kDense:
-      return 20;
-  }
-}
-
-int ShortcutIconBorderMarginForType(ash::AppListConfigType type) {
-  switch (type) {
-    case ash::AppListConfigType::kRegular:
-      return 4;
-    case ash::AppListConfigType::kDense:
-      return 3;
-  }
-}
-
-int ShortcutTeardropCornerRadiusForType(ash::AppListConfigType type) {
-  switch (type) {
-    case ash::AppListConfigType::kRegular:
-      return 16;
-    case ash::AppListConfigType::kDense:
-      return 12;
-  }
-}
-
-int BadgeIconBorderMarginForType(ash::AppListConfigType type) {
-  switch (type) {
-    case ash::AppListConfigType::kRegular:
-      return 3;
-    case ash::AppListConfigType::kDense:
-      return 2;
-  }
-}
-
-int PromiseIconDimensionInstalling(ash::AppListConfigType type) {
-  switch (type) {
-    case ash::AppListConfigType::kRegular:
-      return 52;
-    case ash::AppListConfigType::kDense:
-      return 36;
-  }
-}
-
-int PromiseIconDimensionPending(ash::AppListConfigType type) {
-  switch (type) {
-    case ash::AppListConfigType::kRegular:
-      return 48;
-    case ash::AppListConfigType::kDense:
-      return 32;
-  }
-}
-
 int ItemIconInFolderIconMargin() {
-  return 2;
+  return features::IsAppCollectionFolderRefreshEnabled() ? 2 : 4;
 }
 
 }  // namespace
@@ -263,24 +201,15 @@ AppListConfig::AppListConfig(AppListConfigType type)
       app_title_max_line_height_(AppTitleMaxLineHeightForType(type)),
       app_title_font_(AppTitleFontForType(type)),
       item_counter_in_folder_icon_font_(ItemCounterFontInFolderIcon(type)),
-      folder_bubble_radius_(IconExtendedBackgroundDimension(type) / 2),
+      folder_bubble_radius_(UnclippedIconDimensionForType(type) / 2),
       icon_visible_dimension_(IconVisibleDimensionForType(type)),
-      folder_icon_dimension_(FolderIconDimensionForType(type)),
+      unclipped_icon_dimension_(UnclippedIconDimensionForType(type)),
       folder_icon_radius_(IconVisibleDimensionForType(type) / 2),
-      icon_extended_background_dimension_(
-          IconExtendedBackgroundDimension(type)),
       icon_extended_background_radius_(IconExtendedBackgroundRadius(type)),
       item_icon_in_folder_icon_dimension_(
           ItemIconInFolderIconDimensionForType(type)),
       item_icon_in_folder_icon_margin_(ItemIconInFolderIconMargin()),
-      shortcut_host_badge_icon_dimension_(HostBadgeIconDimensionForType(type)),
-      shortcut_host_badge_icon_border_margin_(
-          BadgeIconBorderMarginForType(type)),
-      shortcut_teardrop_corner_radius_(
-          ShortcutTeardropCornerRadiusForType(type)),
-      shortcut_background_border_margin_(ShortcutIconBorderMarginForType(type)),
-      promise_icon_dimension_installing_(PromiseIconDimensionInstalling(type)),
-      promise_icon_dimension_pending_(PromiseIconDimensionPending(type)) {}
+      folder_dropping_circle_radius_(folder_bubble_radius_) {}
 
 AppListConfig::AppListConfig(const AppListConfig& base_config, float scale_x)
     : type_(base_config.type_),
@@ -303,11 +232,9 @@ AppListConfig::AppListConfig(const AppListConfig& base_config, float scale_x)
       folder_bubble_radius_(Scale(base_config.folder_bubble_radius_, scale_x)),
       icon_visible_dimension_(
           Scale(base_config.icon_visible_dimension_, scale_x)),
-      folder_icon_dimension_(
-          Scale(base_config.folder_icon_dimension_, scale_x)),
+      unclipped_icon_dimension_(
+          Scale(base_config.unclipped_icon_dimension_, scale_x)),
       folder_icon_radius_(Scale(base_config.folder_icon_radius_, scale_x)),
-      icon_extended_background_dimension_(
-          Scale(base_config.icon_extended_background_dimension_, scale_x)),
       icon_extended_background_radius_(
           Scale(base_config.icon_extended_background_radius_, scale_x)),
 
@@ -315,38 +242,9 @@ AppListConfig::AppListConfig(const AppListConfig& base_config, float scale_x)
           Scale(base_config.item_icon_in_folder_icon_dimension_, scale_x)),
       item_icon_in_folder_icon_margin_(
           Scale(base_config.item_icon_in_folder_icon_margin_, scale_x)),
-      shortcut_host_badge_icon_dimension_(
-          Scale(base_config.shortcut_host_badge_icon_dimension_, scale_x)),
-      shortcut_host_badge_icon_border_margin_(
-          Scale(base_config.shortcut_host_badge_icon_border_margin_, scale_x)),
-      shortcut_teardrop_corner_radius_(
-          Scale(base_config.shortcut_teardrop_corner_radius_, scale_x)),
-      shortcut_background_border_margin_(
-          Scale(base_config.shortcut_background_border_margin_, scale_x)),
-      promise_icon_dimension_installing_(
-          Scale(base_config.promise_icon_dimension_installing_, scale_x)),
-      promise_icon_dimension_pending_(
-          Scale(base_config.promise_icon_dimension_pending_, scale_x)) {}
+      folder_dropping_circle_radius_(
+          Scale(base_config.folder_dropping_circle_radius_, scale_x)) {}
 
 AppListConfig::~AppListConfig() = default;
-
-int AppListConfig::GetShortcutHostBadgeIconContainerDimension() const {
-  return shortcut_host_badge_icon_dimension_ +
-         2 * shortcut_host_badge_icon_border_margin_;
-}
-
-int AppListConfig::GetShortcutBackgroundContainerDimension() const {
-  return grid_icon_dimension_;
-}
-
-int AppListConfig::GetShortcutTeardropCornerRadius() const {
-  return shortcut_teardrop_corner_radius_;
-}
-
-gfx::Size AppListConfig::GetShortcutIconSize() const {
-  const int dimension =
-      grid_icon_dimension_ - 2 * shortcut_background_border_margin_;
-  return gfx::Size(dimension, dimension);
-}
 
 }  // namespace ash

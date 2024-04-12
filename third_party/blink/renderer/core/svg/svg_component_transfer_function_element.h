@@ -59,10 +59,6 @@ class SVGComponentTransferFunctionElement : public SVGElement {
   }
 
  private:
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const override;
-  void SynchronizeAllSVGAttributes() const override;
-
   Member<SVGAnimatedNumberList> table_values_;
   Member<SVGAnimatedNumber> slope_;
   Member<SVGAnimatedNumber> intercept_;

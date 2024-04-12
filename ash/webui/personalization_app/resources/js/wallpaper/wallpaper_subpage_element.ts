@@ -7,16 +7,14 @@
  * personalization SWA.
  */
 
-import {isSeaPenEnabled} from 'chrome://resources/ash/common/sea_pen/load_time_booleans.js';
-
 import {CurrentWallpaper, WallpaperType} from '../../personalization_app.mojom-webui.js';
 import {isGooglePhotosIntegrationEnabled} from '../load_time_booleans.js';
-import {Paths, PersonalizationRouterElement, QueryParams} from '../personalization_router_element.js';
+import {Paths, PersonalizationRouter, QueryParams} from '../personalization_router_element.js';
 import {WithPersonalizationStore} from '../personalization_store.js';
 
 import {getTemplate} from './wallpaper_subpage_element.html.js';
 
-export class WallpaperSubpageElement extends WithPersonalizationStore {
+export class WallpaperSubpage extends WithPersonalizationStore {
   static get is() {
     return 'wallpaper-subpage';
   }
@@ -44,12 +42,6 @@ export class WallpaperSubpageElement extends WithPersonalizationStore {
         type: Boolean,
         computed: 'computeIsGooglePhotosAlbumShared_(queryParams)',
       },
-      isSeaPenEnabled_: {
-        type: Boolean,
-        value() {
-          return isSeaPenEnabled();
-        },
-      },
     };
   }
 
@@ -58,7 +50,6 @@ export class WallpaperSubpageElement extends WithPersonalizationStore {
   private currentSelected_: CurrentWallpaper|null;
   private isGooglePhotosIntegrationEnabled_: boolean;
   private isGooglePhotosAlbumShared_: boolean;
-  private isSeaPenEnabled_: boolean;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -68,7 +59,7 @@ export class WallpaperSubpageElement extends WithPersonalizationStore {
 
   private onCurrentSelectedChanged_(value: CurrentWallpaper|null) {
     if (value && value.type === WallpaperType.kPolicy) {
-      PersonalizationRouterElement.reloadAtRoot();
+      PersonalizationRouter.reloadAtRoot();
     }
   }
 
@@ -95,4 +86,4 @@ export class WallpaperSubpageElement extends WithPersonalizationStore {
   }
 }
 
-customElements.define(WallpaperSubpageElement.is, WallpaperSubpageElement);
+customElements.define(WallpaperSubpage.is, WallpaperSubpage);

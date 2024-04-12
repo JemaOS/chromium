@@ -10,7 +10,7 @@ import './settings_select.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {DpiCapability, DpiOption, SelectOption} from '../data/cdd.js';
+import {DpiCapability, DpiOption, SelectOption} from '../data/cdd.js';
 
 import {getTemplate} from './dpi_settings.html.js';
 import {SettingsMixin} from './settings_mixin.js';
@@ -63,7 +63,8 @@ export class PrintPreviewDpiSettingsElement extends
       return null;
     }
 
-    const result: LabelledDpiCapability = structuredClone(this.capability);
+    const result =
+        JSON.parse(JSON.stringify(this.capability)) as LabelledDpiCapability;
     this.capability.option.forEach((dpiOption, index) => {
       const hDpi = dpiOption.horizontal_dpi || 0;
       const vDpi = dpiOption.vertical_dpi || 0;

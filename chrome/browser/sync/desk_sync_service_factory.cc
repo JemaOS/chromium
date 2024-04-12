@@ -4,7 +4,7 @@
 
 #include "chrome/browser/sync/desk_sync_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/model_type_store_service_factory.h"
 #include "chrome/browser/ui/ash/multi_user/multi_user_util.h"
@@ -21,8 +21,7 @@ desks_storage::DeskSyncService* DeskSyncServiceFactory::GetForProfile(
 
 // static
 DeskSyncServiceFactory* DeskSyncServiceFactory::GetInstance() {
-  static base::NoDestructor<DeskSyncServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<DeskSyncServiceFactory>::get();
 }
 
 DeskSyncServiceFactory::DeskSyncServiceFactory()
@@ -37,8 +36,7 @@ DeskSyncServiceFactory::DeskSyncServiceFactory()
   DependsOn(ModelTypeStoreServiceFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-DeskSyncServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* DeskSyncServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   const AccountId account_id =
@@ -49,6 +47,6 @@ DeskSyncServiceFactory::BuildServiceInstanceForBrowserContext(
 
   // This instance will be wrapped in a |std::unique_ptr|, owned by
   // |KeyedServiceFactory| and associated with the given browser context.
-  return std::make_unique<desks_storage::DeskSyncService>(
+  return new desks_storage::DeskSyncService(
       chrome::GetChannel(), std::move(store_factory), account_id);
 }

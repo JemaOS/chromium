@@ -33,23 +33,23 @@ class CORE_EXPORT SpeculationRule final
       Vector<KURL>,
       DocumentRulePredicate*,
       RequiresAnonymousClientIPWhenCrossOrigin,
-      std::optional<mojom::blink::SpeculationTargetHint> target_hint,
-      std::optional<network::mojom::ReferrerPolicy>,
+      absl::optional<mojom::blink::SpeculationTargetHint> target_hint,
+      absl::optional<network::mojom::ReferrerPolicy>,
       mojom::blink::SpeculationEagerness,
       network::mojom::blink::NoVarySearchPtr,
-      mojom::blink::SpeculationInjectionType);
+      mojom::blink::SpeculationInjectionWorld);
   ~SpeculationRule();
 
   const Vector<KURL>& urls() const { return urls_; }
-  DocumentRulePredicate* predicate() const { return predicate_.Get(); }
+  DocumentRulePredicate* predicate() const { return predicate_; }
   bool requires_anonymous_client_ip_when_cross_origin() const {
     return requires_anonymous_client_ip_.value();
   }
-  std::optional<mojom::blink::SpeculationTargetHint>
+  absl::optional<mojom::blink::SpeculationTargetHint>
   target_browsing_context_name_hint() const {
     return target_browsing_context_name_hint_;
   }
-  std::optional<network::mojom::ReferrerPolicy> referrer_policy() const {
+  absl::optional<network::mojom::ReferrerPolicy> referrer_policy() const {
     return referrer_policy_;
   }
   mojom::blink::SpeculationEagerness eagerness() const { return eagerness_; }
@@ -57,8 +57,8 @@ class CORE_EXPORT SpeculationRule final
       const {
     return no_vary_search_expected_;
   }
-  mojom::blink::SpeculationInjectionType injection_type() const {
-    return injection_type_;
+  mojom::blink::SpeculationInjectionWorld injection_world() const {
+    return injection_world_;
   }
 
   void Trace(Visitor*) const;
@@ -67,13 +67,13 @@ class CORE_EXPORT SpeculationRule final
   const Vector<KURL> urls_;
   const Member<DocumentRulePredicate> predicate_;
   const RequiresAnonymousClientIPWhenCrossOrigin requires_anonymous_client_ip_;
-  const std::optional<mojom::blink::SpeculationTargetHint>
+  const absl::optional<mojom::blink::SpeculationTargetHint>
       target_browsing_context_name_hint_;
-  const std::optional<network::mojom::ReferrerPolicy> referrer_policy_;
+  const absl::optional<network::mojom::ReferrerPolicy> referrer_policy_;
   mojom::blink::SpeculationEagerness eagerness_;
   network::mojom::blink::NoVarySearchPtr no_vary_search_expected_;
-  mojom::blink::SpeculationInjectionType injection_type_ =
-      mojom::blink::SpeculationInjectionType::kNone;
+  mojom::blink::SpeculationInjectionWorld injection_world_ =
+      mojom::blink::SpeculationInjectionWorld::kNone;
 };
 
 }  // namespace blink

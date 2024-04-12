@@ -8,8 +8,7 @@
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace base {
-template <typename T>
-class NoDestructor;
+template <typename T> struct DefaultSingletonTraits;
 }
 
 class Profile;
@@ -25,7 +24,7 @@ class ProfileStatisticsFactory : public ProfileKeyedServiceFactory {
   static ProfileStatisticsFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<ProfileStatisticsFactory>;
+  friend struct base::DefaultSingletonTraits<ProfileStatisticsFactory>;
 
   ProfileStatisticsFactory();
 

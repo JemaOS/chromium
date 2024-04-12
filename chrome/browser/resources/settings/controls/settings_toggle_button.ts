@@ -10,14 +10,16 @@ import '//resources/cr_elements/cr_shared_style.css.js';
 import '//resources/cr_elements/cr_shared_vars.css.js';
 import '//resources/cr_elements/action_link.css.js';
 import '//resources/cr_elements/cr_toggle/cr_toggle.js';
-import '/shared/settings/controls/cr_policy_pref_indicator.js';
-import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
+import '//resources/cr_elements/policy/cr_policy_pref_indicator.js';
 import '//resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
+// <if expr='chromeos_ash'>
+import '//resources/cr_elements/chromeos/cros_color_overrides.css.js';
 
-import type {CrToggleElement} from '//resources/cr_elements/cr_toggle/cr_toggle.js';
+// </if>
+
+import {CrToggleElement} from '//resources/cr_elements/cr_toggle/cr_toggle.js';
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {SettingsBooleanControlMixin} from '/shared/settings/controls/settings_boolean_control_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
 import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
 
 import {getTemplate} from './settings_toggle_button.html.js';
@@ -79,12 +81,9 @@ export class SettingsToggleButtonElement extends
         reflectToAttribute: true,
       },
 
-      learnMoreAriaLabel: {
-        type: String,
-        value: '',
-      },
-
+      // <if expr="chromeos_ash">
       icon: String,
+      // </if>
 
       subLabelIcon: String,
     };
@@ -100,8 +99,9 @@ export class SettingsToggleButtonElement extends
   ariaShowLabel: boolean;
   ariaShowSublabel: boolean;
   elideLabel: boolean;
+  // <if expr="chromeos_ash">
   icon: string;
-  learnMoreAriaLabel: string;
+  // </if>
   learnMoreUrl: string;
   subLabelWithLink: string;
   subLabelIcon: string;
@@ -136,17 +136,6 @@ export class SettingsToggleButtonElement extends
     return this.ariaLabel || this.label;
   }
 
-  private getLearnMoreAriaLabelledBy_(): string {
-    return this.learnMoreAriaLabel ? 'learn-more-aria-label' :
-                                     'sub-label-text learn-more';
-  }
-
-  getBubbleAnchor() {
-    const anchor = this.shadowRoot!.querySelector<HTMLElement>('#control');
-    assert(anchor);
-    return anchor;
-  }
-
   private onDisableOrPrefChange_() {
     this.toggleAttribute('effectively-disabled_', this.controlDisabled());
   }
@@ -179,7 +168,6 @@ export class SettingsToggleButtonElement extends
       attrs: [
         'id',
         'is',
-        'aria-description',
         'aria-hidden',
         'aria-label',
         'aria-labelledby',

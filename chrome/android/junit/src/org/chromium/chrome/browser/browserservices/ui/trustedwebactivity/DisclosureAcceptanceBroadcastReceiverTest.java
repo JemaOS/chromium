@@ -28,14 +28,16 @@ import org.chromium.chrome.browser.browserservices.BrowserServicesStore;
 import org.chromium.components.browser_ui.notifications.NotificationManagerProxy;
 import org.chromium.components.browser_ui.notifications.PendingIntentProvider;
 
-/** Tests for {@link DisclosureAcceptanceBroadcastReceiver}. */
+/**
+ * Tests for {@link DisclosureAcceptanceBroadcastReceiver}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(
-        manifest = Config.NONE,
-        shadows = {ShadowPendingIntent.class})
+@Config(manifest = Config.NONE, shadows = {ShadowPendingIntent.class})
 public class DisclosureAcceptanceBroadcastReceiverTest {
-    @Mock public NotificationManagerProxy mNotificationManager;
-    @Mock public BrowserServicesStore mStore;
+    @Mock
+    public NotificationManagerProxy mNotificationManager;
+    @Mock
+    public BrowserServicesStore mStore;
 
     private DisclosureAcceptanceBroadcastReceiver mService;
 
@@ -54,9 +56,8 @@ public class DisclosureAcceptanceBroadcastReceiverTest {
         int id = 0;
         String packageName = "com.example";
 
-        PendingIntentProvider provider =
-                DisclosureAcceptanceBroadcastReceiver.createPendingIntent(
-                        context, tag, id, packageName);
+        PendingIntentProvider provider = DisclosureAcceptanceBroadcastReceiver.createPendingIntent(
+                context, tag, id, packageName);
 
         mService.onReceive(context, extractIntent(provider));
         verify(mNotificationManager).cancel(eq(tag), eq(id));
@@ -70,9 +71,8 @@ public class DisclosureAcceptanceBroadcastReceiverTest {
         int id = 0;
         String packageName = "com.example";
 
-        PendingIntentProvider provider =
-                DisclosureAcceptanceBroadcastReceiver.createPendingIntent(
-                        context, tag, id, packageName);
+        PendingIntentProvider provider = DisclosureAcceptanceBroadcastReceiver.createPendingIntent(
+                context, tag, id, packageName);
 
         mService.onReceive(context, extractIntent(provider));
         verify(mStore).setUserAcceptedTwaDisclosureForPackage(eq(packageName));

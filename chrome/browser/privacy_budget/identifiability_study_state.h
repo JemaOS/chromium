@@ -14,11 +14,12 @@
 #include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
 #include "base/sequence_checker.h"
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/thread_annotations.h"
 #include "chrome/browser/privacy_budget/encountered_surface_tracker.h"
 #include "chrome/browser/privacy_budget/mesa_distribution.h"
 #include "chrome/browser/privacy_budget/privacy_budget_prefs.h"
+#include "chrome/browser/privacy_budget/privacy_budget_reid_score_estimator.h"
 #include "chrome/browser/privacy_budget/representative_surface_set.h"
 #include "chrome/browser/privacy_budget/surface_set_equivalence.h"
 #include "chrome/browser/privacy_budget/surface_set_valuation.h"
@@ -36,10 +37,6 @@ class SurfaceSetEquivalence;
 namespace blink {
 class IdentifiableSurface;
 }  // namespace blink
-
-namespace content {
-class RenderProcessHost;
-}  // namespace content
 
 namespace test_utils {
 class InspectableIdentifiabilityStudyState;
@@ -115,8 +112,10 @@ class IdentifiabilityStudyState {
   // Initializes from fields persisted in `pref_service_`.
   void InitFromPrefs();
 
-  // Initializes a new renderer process.
-  void InitializeRenderer(content::RenderProcessHost* render_process_host);
+  // Checks if this surface is part of a set of surfaces we want to estimate the
+  // Reid score of. If so, stores its value for later estimation.
+  void MaybeStoreValueForComputingReidScore(blink::IdentifiableSurface surface,
+                                            blink::IdentifiableToken token);
 
   // The largest offset that we can select. At worst `seen_surfaces_` must keep
   // track of this many (+1) surfaces. This value is approximately based on the
@@ -144,16 +143,16 @@ class IdentifiabilityStudyState {
   friend class test_utils::InspectableIdentifiabilityStudyState;
 
   using SurfaceSelectionRateMap =
-      base::flat_map<blink::IdentifiableSurface, int>;
+      base::flat_map<blink::IdentifiableSurface,
+                     int,
+                     blink::IdentifiableSurfaceCompLess>;
   using TypeSelectionRateMap =
       base::flat_map<blink::IdentifiableSurface::Type, int>;
 
   // Initializes global study settings based on FeatureLists and FieldTrial
-  // lists.
-  void InitializeGlobalStudySettings();
-
-  // Determines if the meta experiment must be activated for this client.
-  bool IsMetaExperimentActive();
+  // lists. This step is required for enabling the study and must be called
+  // prior to constructing an `IdentifiabilityStudyState` object.
+  static void InitializeGlobalStudySettings();
 
   // Checks that the invariants hold. When DCHECK_IS_ON() this call is
   // expensive. Noop otherwise.
@@ -390,11 +389,9 @@ class IdentifiabilityStudyState {
   // Where kSettings is the PrivacyBudgetSettingsProvider singleton.
   EncounteredSurfaceTracker surface_encounters_;
 
-  // Whether the meta experiment (i.e. reporting the meta surfaces, which
-  // include information only about usage of APIs) is active or not. Note that
-  // this setting is independent from the rest of the Identifiability Study, and
-  // can be enabled / disabled separately.
-  const bool meta_experiment_active_;
+  // Keeps track of the list of surfaces for which we need to estimate the Reid
+  // score.
+  PrivacyBudgetReidScoreEstimator reid_estimator_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

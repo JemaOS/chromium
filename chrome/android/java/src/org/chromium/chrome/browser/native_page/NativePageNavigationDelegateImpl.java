@@ -16,13 +16,16 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
-import org.chromium.chrome.browser.tabmodel.document.ChromeAsyncTabLauncher;
+import org.chromium.chrome.browser.tabmodel.document.TabDelegate;
 import org.chromium.chrome.browser.ui.native_page.NativePageHost;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.mojom.WindowOpenDisposition;
 
-/** {@link NativePageNavigationDelegate} implementation. */
+/**
+ * {@link NativePageNavigationDelegate} implementation.
+ */
 public class NativePageNavigationDelegateImpl implements NativePageNavigationDelegate {
+    private static final String TAG = "PageNavDelegate";
     private final Profile mProfile;
     private final TabModelSelector mTabModelSelector;
     private final Tab mTab;
@@ -30,12 +33,8 @@ public class NativePageNavigationDelegateImpl implements NativePageNavigationDel
     protected final Activity mActivity;
     protected final NativePageHost mHost;
 
-    public NativePageNavigationDelegateImpl(
-            Activity activity,
-            Profile profile,
-            NativePageHost host,
-            TabModelSelector tabModelSelector,
-            Tab tab) {
+    public NativePageNavigationDelegateImpl(Activity activity, Profile profile, NativePageHost host,
+            TabModelSelector tabModelSelector, Tab tab) {
         mActivity = activity;
         mProfile = profile;
         mHost = host;
@@ -50,7 +49,8 @@ public class NativePageNavigationDelegateImpl implements NativePageNavigationDel
     }
 
     @Override
-    public @Nullable Tab openUrl(int windowOpenDisposition, LoadUrlParams loadUrlParams) {
+    @Nullable
+    public Tab openUrl(int windowOpenDisposition, LoadUrlParams loadUrlParams) {
         Tab loadingTab = null;
 
         switch (windowOpenDisposition) {
@@ -82,19 +82,13 @@ public class NativePageNavigationDelegateImpl implements NativePageNavigationDel
 
     @Override
     public Tab openUrlInGroup(int windowOpenDisposition, LoadUrlParams loadUrlParams) {
-        return mTabModelSelector.openNewTab(
-                loadUrlParams,
-                TabLaunchType.FROM_LONGPRESS_BACKGROUND_IN_GROUP,
-                mTab,
-                /* incognito= */ false);
+        return mTabModelSelector.openNewTab(loadUrlParams,
+                TabLaunchType.FROM_LONGPRESS_BACKGROUND_IN_GROUP, mTab, /* incognito = */ false);
     }
 
     private void openUrlInNewWindow(LoadUrlParams loadUrlParams) {
-        ChromeAsyncTabLauncher chromeAsyncTabLauncher = new ChromeAsyncTabLauncher(false);
-        chromeAsyncTabLauncher.launchTabInOtherWindow(
-                loadUrlParams,
-                mActivity,
-                mHost.getParentId(),
+        TabDelegate tabDelegate = new TabDelegate(false);
+        tabDelegate.createTabInOtherWindow(loadUrlParams, mActivity, mHost.getParentId(),
                 MultiWindowUtils.getAdjacentWindowActivity(mActivity));
     }
 
@@ -104,23 +98,16 @@ public class NativePageNavigationDelegateImpl implements NativePageNavigationDel
             tabLaunchType = TabLaunchType.FROM_LONGPRESS_FOREGROUND;
         }
         return mTabModelSelector.openNewTab(
-                loadUrlParams, tabLaunchType, mTab, /* incognito= */ false);
+                loadUrlParams, tabLaunchType, mTab, /* incognito = */ false);
     }
 
     private void saveUrlForOffline(String url) {
         if (mTab != null) {
-            OfflinePageBridge.getForProfile(mProfile)
-                    .scheduleDownload(
-                            mTab.getWebContents(),
-                            OfflinePageBridge.NTP_SUGGESTIONS_NAMESPACE,
-                            url,
-                            DownloadUiActionFlags.ALL);
+            OfflinePageBridge.getForProfile(mProfile).scheduleDownload(mTab.getWebContents(),
+                    OfflinePageBridge.NTP_SUGGESTIONS_NAMESPACE, url, DownloadUiActionFlags.ALL);
         } else {
-            RequestCoordinatorBridge.getForProfile(mProfile)
-                    .savePageLater(
-                            url,
-                            OfflinePageBridge.NTP_SUGGESTIONS_NAMESPACE,
-                            /* userRequested= */ true);
+            RequestCoordinatorBridge.getForProfile(mProfile).savePageLater(
+                    url, OfflinePageBridge.NTP_SUGGESTIONS_NAMESPACE, true /* userRequested */);
         }
     }
 }

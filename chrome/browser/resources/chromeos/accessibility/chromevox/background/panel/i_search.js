@@ -5,11 +5,10 @@
 /**
  * @fileoverview The logic behind incremental search.
  */
-import {AutomationPredicate} from '/common/automation_predicate.js';
-import {AutomationUtil} from '/common/automation_util.js';
-import {constants} from '/common/constants.js';
-import {Cursor} from '/common/cursors/cursor.js';
-import {TestImportManager} from '/common/testing/test_import_manager.js';
+import {AutomationPredicate} from '../../../common/automation_predicate.js';
+import {AutomationUtil} from '../../../common/automation_util.js';
+import {constants} from '../../../common/constants.js';
+import {Cursor} from '../../../common/cursors/cursor.js';
 
 import {ISearchHandler} from './i_search_handler.js';
 
@@ -83,5 +82,3 @@ export class ISearch {
     clearTimeout(this.callbackId_);
   }
 }
-
-TestImportManager.exportForTesting(ISearch);

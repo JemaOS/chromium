@@ -13,8 +13,6 @@
 #include "ui/base/models/combobox_model.h"
 #include "ui/base/models/image_model.h"
 
-class BrowserView;
-
 // A model for the side panel entry combobox. This is used to switch
 // between available entries within the side panel. The SidePanelCoordinator
 // will handle adding and removing side panel entries from this model as their
@@ -34,7 +32,7 @@ class SidePanelComboboxModel : public ui::ComboboxModel {
     ui::ImageModel icon;
   };
 
-  explicit SidePanelComboboxModel(BrowserView* browser_view);
+  SidePanelComboboxModel();
   SidePanelComboboxModel(const SidePanelComboboxModel&) = delete;
   SidePanelComboboxModel& operator=(const SidePanelComboboxModel&) = delete;
   ~SidePanelComboboxModel() override;
@@ -63,10 +61,8 @@ class SidePanelComboboxModel : public ui::ComboboxModel {
   size_t GetItemCount() const override;
   std::u16string GetItemAt(size_t index) const override;
   ui::ImageModel GetIconAt(size_t index) const override;
-  bool IsItemEnabledAt(size_t index) const override;
 
  private:
-  const raw_ptr<BrowserView> browser_view_;
   std::vector<Item> entries_;
 };
 

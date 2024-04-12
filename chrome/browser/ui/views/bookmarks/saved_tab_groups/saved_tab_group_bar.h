@@ -5,20 +5,20 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_BOOKMARKS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_BAR_H_
 #define CHROME_BROWSER_UI_VIEWS_BOOKMARKS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_BAR_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_button.h"
 #include "components/saved_tab_groups/saved_tab_group_model.h"
 #include "components/saved_tab_groups/saved_tab_group_model_observer.h"
 #include "content/public/browser/page.h"
-#include "ui/base/metadata/metadata_header_macros.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/views/accessible_pane_view.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/widget/widget_observer.h"
 
 class Browser;
+class SavedTabGroupButton;
+class SavedTabGroupDragData;
 
 namespace content {
 class PageNavigator;
@@ -28,19 +28,12 @@ namespace views {
 class Widget;
 }
 
-namespace tab_groups {
-
-class SavedTabGroupButton;
-class SavedTabGroupDragData;
-
 // The view for accessing SavedTabGroups from the bookmarks bar. Is responsible
 // for rendering the SavedTabGroupButtons with the bounds that are defined by
 // its parent, BookmarkBarView.
 class SavedTabGroupBar : public views::AccessiblePaneView,
                          public SavedTabGroupModelObserver,
                          public views::WidgetObserver {
-  METADATA_HEADER(SavedTabGroupBar, views::AccessiblePaneView)
-
  public:
   SavedTabGroupBar(Browser* browser, bool animations_enabled);
   SavedTabGroupBar(Browser* browser,
@@ -68,41 +61,31 @@ class SavedTabGroupBar : public views::AccessiblePaneView,
   void OnDragEntered(const ui::DropTargetEvent& event) override;
   int OnDragUpdated(const ui::DropTargetEvent& event) override;
   void OnDragExited() override;
+  void OnDragDone() override;
   views::View::DropCallback GetDropCallback(
       const ui::DropTargetEvent& event) override;
   void OnPaint(gfx::Canvas* canvas) override;
-  void Layout(PassKey) override;
 
   // SavedTabGroupModelObserver
   void SavedTabGroupAddedLocally(const base::Uuid& guid) override;
   void SavedTabGroupRemovedLocally(const SavedTabGroup* removed_group) override;
-  void SavedTabGroupLocalIdChanged(const base::Uuid& saved_group_id) override;
   void SavedTabGroupUpdatedLocally(
       const base::Uuid& group_guid,
-      const std::optional<base::Uuid>& tab_guid = std::nullopt) override;
+      const absl::optional<base::Uuid>& tab_guid = absl::nullopt) override;
   void SavedTabGroupReorderedLocally() override;
-  void SavedTabGroupReorderedFromSync() override;
-  void SavedTabGroupTabsReorderedLocally(const base::Uuid& group_guid) override;
   void SavedTabGroupAddedFromSync(const base::Uuid& guid) override;
   void SavedTabGroupRemovedFromSync(
       const SavedTabGroup* removed_group) override;
   void SavedTabGroupUpdatedFromSync(
       const base::Uuid& group_guid,
-      const std::optional<base::Uuid>& tab_guid = std::nullopt) override;
+      const absl::optional<base::Uuid>& tab_guid = absl::nullopt) override;
 
   // WidgetObserver
   void OnWidgetDestroying(views::Widget* widget) override;
 
   // Calculates what the visible width would be when a restriction on width is
   // placed on the bar.
-  int CalculatePreferredWidthRestrictedBy(int width_restriction) const;
-
-  // Calculates what the visible width would be when a restriction on width is
-  // placed on the bar. Should only get invoked behind TabGroupsSaveV2.
-  // TODO(crbug.com/329659664): Rename once V2 ships.
-  int V2CalculatePreferredWidthRestrictedBy(int width_restriction) const;
-
-  bool IsOverflowButtonVisible();
+  int CalculatePreferredWidthRestrictedBy(int width_restriction);
 
  private:
   // Overrides the View methods needed to be a drop target for saved tab groups.
@@ -119,10 +102,6 @@ class SavedTabGroupBar : public views::AccessiblePaneView,
   // Updates the button (color, name, tab list) denoted by `guid` in the
   // `SavedTabGroupBar` if the `guid` exists in `saved_tab_group_model_`.
   void SavedTabGroupUpdated(const base::Uuid& guid);
-
-  // Reorders all groups in the bookmarks to match the state of
-  // `saved_tab_group_model_`.
-  void SavedTabGroupReordered();
 
   // Adds the button to the child views for a new tab group at a specific index.
   // This function then verifies if the added button and overflow button should
@@ -151,38 +130,15 @@ class SavedTabGroupBar : public views::AccessiblePaneView,
   // group into the tabstrip.
   void MaybeShowOverflowMenu();
 
-  // Updates the contents of the overflow menu if it is open.
-  void UpdateOverflowMenu();
+  // Hides the overflow menu if it is open.
+  void HideOverflowMenu();
 
   // TODO: Move implementation inside of STGOverflowButton.
   void HideOverflowButton();
   void ShowOverflowButton();
 
-  // Returns the number of currently visible groups. Does not include the
-  // overflow button or button housed in its view.
-  int GetNumberOfVisibleGroups() const;
-
-  // Updates the visibilites of all buttons up to `last_index_visible`. The
-  // overflow button will be displayed based on `should_show_overflow`.
-  void UpdateButtonVisibilities(bool should_show_overflow,
-                                size_t last_visible_button_index);
-
-  // Returns true if we should show the overflow button because there is not
-  // enough space to display all the buttons or if there are more buttons than
-  // the maximum visible.
-  bool ShouldShowOverflowButtonForWidth(int max_width) const;
-
-  // Finds the index of the last button that can be displayed within the given
-  // width. Guaranteed to not exceed `kMaxVisibleButtons`. Does not include the
-  // overflow button. Returns -1 to indicate that no tab groups button is
-  // visible with the given width.
-  int CalculateLastVisibleButtonIndexForWidth(int max_width) const;
-
   // Updates the drop index in `drag_data_` based on the current drag location.
   void UpdateDropIndex();
-
-  // Returns the drop index for the current drag session, if any.
-  std::optional<size_t> GetDropIndex() const;
 
   // Reorders the dragged group to its new index.
   void HandleDrop();
@@ -192,17 +148,17 @@ class SavedTabGroupBar : public views::AccessiblePaneView,
 
   // Calculates the index in the saved tab groups bar at which we should show a
   // drop indicator, or nullopt if we should not show an indicator in the bar.
-  std::optional<int> CalculateDropIndicatorIndexInBar() const;
+  absl::optional<int> CalculateDropIndicatorIndexInBar() const;
 
   // Calculates the index (in saved tab group model space, so across the bar and
   // the overflow menu) at which we should show a drop indicator, or nullopt if
   // we should not show an indicator anywhere at all.
-  std::optional<int> CalculateDropIndicatorIndexInCombinedSpace() const;
+  absl::optional<int> CalculateDropIndicatorIndexInCombinedSpace() const;
 
   // Provides a callback that returns the page navigator
   base::RepeatingCallback<content::PageNavigator*()> GetPageNavigatorGetter();
 
-  raw_ptr<views::MenuButton, AcrossTasksDanglingUntriaged> overflow_button_;
+  raw_ptr<views::MenuButton, DanglingUntriaged> overflow_button_;
 
   // Used to show the overflow menu when clicked.
   raw_ptr<views::BubbleDialogDelegate> bubble_delegate_ = nullptr;
@@ -211,8 +167,7 @@ class SavedTabGroupBar : public views::AccessiblePaneView,
   raw_ptr<SavedTabGroupModel> saved_tab_group_model_;
 
   // The page navigator used to create tab groups
-  raw_ptr<content::PageNavigator, AcrossTasksDanglingUntriaged>
-      page_navigator_ = nullptr;
+  raw_ptr<content::PageNavigator, DanglingUntriaged> page_navigator_ = nullptr;
   raw_ptr<Browser> browser_;
 
   // During a drag and drop session, `drag_data_` owns the state for the drag.
@@ -233,7 +188,5 @@ class SavedTabGroupBar : public views::AccessiblePaneView,
   // safety if BookmarkBarView is deleted after getting the callback.
   base::WeakPtrFactory<SavedTabGroupBar> weak_ptr_factory_{this};
 };
-
-}  // namespace tab_groups
 
 #endif  // CHROME_BROWSER_UI_VIEWS_BOOKMARKS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_BAR_H_

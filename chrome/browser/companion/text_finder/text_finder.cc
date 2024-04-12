@@ -17,7 +17,6 @@ TextFinder::TextFinder(
     FinishedCallback callback,
     AgentDisconnectHandler agent_disconnect_handler)
     : text_directive_(text_directive), receiver_(this) {
-  DCHECK(!text_directive.empty());
   InitializeAndBindToAnnotationAgent(agent_container, std::move(callback));
   SetAgentDisconnectHandler(std::move(agent_disconnect_handler));
 }

@@ -26,17 +26,17 @@ RemoteAppsManager* RemoteAppsManagerFactory::GetForProfile(Profile* profile) {
 RemoteAppsManagerFactory* RemoteAppsManagerFactory::GetInstance() {
   // TODO(crbug.com/1269752): Restore use of base::NoDestructor when
   // it no longer causes unit_test failures.
-  static base::NoDestructor<RemoteAppsManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<RemoteAppsManagerFactory>::get();
 }
 
 RemoteAppsManagerFactory::RemoteAppsManagerFactory()
-    : ProfileKeyedServiceFactory("RemoteAppsManager",
-                                 ProfileSelections::Builder()
-                                     .WithGuest(ProfileSelection::kOriginalOnly)
-                                     .WithSystem(ProfileSelection::kNone)
-                                     .WithAshInternals(ProfileSelection::kNone)
-                                     .Build()) {
+    : ProfileKeyedServiceFactory(
+          "RemoteAppsManager",
+          ProfileSelections::Builder()
+              .WithGuest(ProfileSelections::kRegularProfileDefault)
+              .WithSystem(ProfileSelection::kNone)
+              .WithAshInternals(ProfileSelection::kNone)
+              .Build()) {
   DependsOn(app_list::AppListSyncableServiceFactory::GetInstance());
   DependsOn(apps::AppServiceProxyFactory::GetInstance());
   DependsOn(extensions::EventRouterFactory::GetInstance());
@@ -44,8 +44,7 @@ RemoteAppsManagerFactory::RemoteAppsManagerFactory()
 
 RemoteAppsManagerFactory::~RemoteAppsManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-RemoteAppsManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* RemoteAppsManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   ProfileHelper* profile_helper = ProfileHelper::Get();
   if (!profile_helper)
@@ -53,12 +52,12 @@ RemoteAppsManagerFactory::BuildServiceInstanceForBrowserContext(
 
   Profile* profile = Profile::FromBrowserContext(context);
   user_manager::User* user = profile_helper->GetUserByProfile(profile);
-  if (!user || (user->GetType() != user_manager::UserType::kPublicAccount &&
-                user->GetType() != user_manager::UserType::kRegular)) {
+  if (!user || (user->GetType() != user_manager::USER_TYPE_PUBLIC_ACCOUNT &&
+                user->GetType() != user_manager::USER_TYPE_REGULAR)) {
     return nullptr;
   }
 
-  return std::make_unique<RemoteAppsManager>(profile);
+  return new RemoteAppsManager(profile);
 }
 
 bool RemoteAppsManagerFactory::ServiceIsCreatedWithBrowserContext() const {

@@ -21,4 +21,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests, 'textarea_append.html');
+setUpAndRunTests(allTests, 'textarea_append.html');

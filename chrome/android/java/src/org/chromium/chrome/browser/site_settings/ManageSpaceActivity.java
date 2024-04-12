@@ -25,7 +25,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.chromium.base.Log;
 import org.chromium.base.metrics.RecordUserAction;
-import org.chromium.base.version_info.VersionInfo;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.about_settings.AboutChromeSettings;
 import org.chromium.chrome.browser.init.BrowserParts;
@@ -33,9 +32,8 @@ import org.chromium.chrome.browser.init.ChromeBrowserInitializer;
 import org.chromium.chrome.browser.init.EmptyBrowserParts;
 import org.chromium.chrome.browser.notifications.channels.SiteChannelsManager;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.settings.SettingsLauncherImpl;
 import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityPreferencesManager;
 import org.chromium.components.browser_ui.settings.SettingsLauncher;
@@ -45,6 +43,7 @@ import org.chromium.components.browser_ui.site_settings.SiteSettingsCategory;
 import org.chromium.components.browser_ui.site_settings.Website;
 import org.chromium.components.browser_ui.site_settings.Website.StoredDataClearedCallback;
 import org.chromium.components.browser_ui.site_settings.WebsitePermissionsFetcher;
+import org.chromium.components.version_info.VersionInfo;
 
 import java.util.Collection;
 
@@ -77,11 +76,8 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
 
         setContentView(R.layout.manage_space_activity);
         Resources r = getResources();
-        setTitle(
-                String.format(
-                        r.getString(R.string.storage_management_activity_label),
-                        r.getString(R.string.app_name)));
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        setTitle(String.format(r.getString(R.string.storage_management_activity_label),
+                r.getString(R.string.app_name)));
 
         mSiteDataSizeText = (TextView) findViewById(R.id.site_data_storage_size_text);
         mSiteDataSizeText.setText(R.string.storage_management_computing_size);
@@ -104,27 +100,22 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
         mClearAllDataButton.setOnClickListener(this);
         super.onCreate(savedInstanceState);
 
-        BrowserParts parts =
-                new EmptyBrowserParts() {
-                    @Override
-                    public void finishNativeInitialization() {
-                        ManageSpaceActivity.this.finishNativeInitialization();
-                    }
-
-                    @Override
-                    public void onStartupFailure(Exception failureCause) {
-                        mSiteDataSizeText.setText(R.string.storage_management_startup_failure);
-                        mUnimportantSiteDataSizeText.setText(
-                                R.string.storage_management_startup_failure);
-                    }
-                };
+        BrowserParts parts = new EmptyBrowserParts() {
+            @Override
+            public void finishNativeInitialization() {
+                ManageSpaceActivity.this.finishNativeInitialization();
+            }
+            @Override
+            public void onStartupFailure(Exception failureCause) {
+                mSiteDataSizeText.setText(R.string.storage_management_startup_failure);
+                mUnimportantSiteDataSizeText.setText(R.string.storage_management_startup_failure);
+            }
+        };
 
         String productVersion =
                 AboutChromeSettings.getApplicationVersion(this, VersionInfo.getProductVersion());
-        String failedVersion =
-                ChromeSharedPreferences.getInstance()
-                        .readString(
-                                ChromePreferenceKeys.SETTINGS_WEBSITE_FAILED_BUILD_VERSION, null);
+        String failedVersion = SharedPreferencesManager.getInstance().readString(
+                ChromePreferenceKeys.SETTINGS_WEBSITE_FAILED_BUILD_VERSION, null);
         if (TextUtils.equals(failedVersion, productVersion)) {
             parts.onStartupFailure(null);
             return;
@@ -134,9 +125,8 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
         // java-side the pref will be written before the process dies. We want to make sure we
         // don't attempt to start the browser process and have it kill chrome. This activity is
         // used to clear data for the chrome app, so it must be particularly error resistant.
-        ChromeSharedPreferences.getInstance()
-                .writeStringSync(
-                        ChromePreferenceKeys.SETTINGS_WEBSITE_FAILED_BUILD_VERSION, productVersion);
+        SharedPreferencesManager.getInstance().writeStringSync(
+                ChromePreferenceKeys.SETTINGS_WEBSITE_FAILED_BUILD_VERSION, productVersion);
 
         try {
             ChromeBrowserInitializer.getInstance().handlePreNativeStartupAndLoadLibraries(parts);
@@ -168,14 +158,8 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
     protected void onStop() {
         super.onStop();
 
-        ChromeSharedPreferences.getInstance()
-                .writeString(ChromePreferenceKeys.SETTINGS_WEBSITE_FAILED_BUILD_VERSION, null);
-    }
-
-    @Override
-    public boolean onSupportNavigateUp() {
-        finish();
-        return true;
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.SETTINGS_WEBSITE_FAILED_BUILD_VERSION, null);
     }
 
     @VisibleForTesting
@@ -190,7 +174,7 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
 
     /** This refreshes the storage numbers by fetching all site permissions. */
     private void refreshStorageNumbers() {
-        Profile profile = ProfileManager.getLastUsedRegularProfile();
+        Profile profile = Profile.getLastUsedRegularProfile();
         WebsitePermissionsFetcher fetcher = new WebsitePermissionsFetcher(profile);
         fetcher.fetchPreferencesForCategory(
                 SiteSettingsCategory.createFromType(profile, SiteSettingsCategory.Type.USE_STORAGE),
@@ -218,28 +202,24 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
         if (view == mClearUnimportantButton) {
             if (mUnimportantDialog == null) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setPositiveButton(
-                        R.string.ok,
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int id) {
-                                mUnimportantDialog = null;
-                                clearUnimportantData();
-                            }
-                        });
+                builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+                        mUnimportantDialog = null;
+                        clearUnimportantData();
+                    }
+                });
                 builder.setNegativeButton(R.string.cancel, null);
-                builder.setTitle(R.string.storage_delete_site_storage_title);
+                builder.setTitle(R.string.storage_clear_site_storage_title);
                 builder.setMessage(R.string.storage_management_clear_unimportant_dialog_text);
                 mUnimportantDialog = builder.create();
             }
             mUnimportantDialog.show();
         } else if (view == mManageSiteDataButton) {
             Bundle initialArguments = new Bundle();
-            initialArguments.putString(
-                    SingleCategorySettings.EXTRA_CATEGORY,
+            initialArguments.putString(SingleCategorySettings.EXTRA_CATEGORY,
                     SiteSettingsCategory.preferenceKey(SiteSettingsCategory.Type.USE_STORAGE));
-            initialArguments.putString(
-                    SingleCategorySettings.EXTRA_TITLE,
+            initialArguments.putString(SingleCategorySettings.EXTRA_TITLE,
                     getString(R.string.website_settings_storage));
             SettingsLauncher settingsLauncher = new SettingsLauncherImpl();
             settingsLauncher.launchSettingsActivity(this, AllSiteSettings.class, initialArguments);
@@ -247,18 +227,16 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
             final ActivityManager activityManager =
                     (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setPositiveButton(
-                    R.string.ok,
-                    new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int id) {
-                            SearchActivityPreferencesManager.resetCachedValues();
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                SiteChannelsManager.getInstance().deleteAllSiteChannels();
-                            }
-                            activityManager.clearApplicationUserData();
-                        }
-                    });
+            builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int id) {
+                    SearchActivityPreferencesManager.resetCachedValues();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        SiteChannelsManager.getInstance().deleteAllSiteChannels();
+                    }
+                    activityManager.clearApplicationUserData();
+                }
+            });
             builder.setNegativeButton(R.string.cancel, null);
             builder.setTitle(R.string.storage_management_reset_app_dialog_title);
             builder.setMessage(R.string.storage_management_reset_app_dialog_text);
@@ -290,7 +268,7 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
 
     private class UnimportantSiteDataClearer
             implements WebsitePermissionsFetcher.WebsitePermissionsCallback,
-                    StoredDataClearedCallback {
+                       StoredDataClearedCallback {
         // We keep track of the number of sites waiting to be cleared, and when it reaches 0 we can
         // set our testing variable.
         private int mNumSitesClearing;
@@ -300,11 +278,10 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
          * asynchronously, and at the end we update the UI with the new storage numbers.
          */
         public void clearData() {
-            Profile profile = ProfileManager.getLastUsedRegularProfile();
+            Profile profile = Profile.getLastUsedRegularProfile();
             WebsitePermissionsFetcher fetcher = new WebsitePermissionsFetcher(profile, true);
-            fetcher.fetchPreferencesForCategory(
-                    SiteSettingsCategory.createFromType(
-                            profile, SiteSettingsCategory.Type.USE_STORAGE),
+            fetcher.fetchPreferencesForCategory(SiteSettingsCategory.createFromType(profile,
+                                                        SiteSettingsCategory.Type.USE_STORAGE),
                     this);
         }
 
@@ -323,7 +300,7 @@ public class ManageSpaceActivity extends AppCompatActivity implements View.OnCli
                 if (site.getLocalStorageInfo() == null
                         || !site.getLocalStorageInfo().isDomainImportant()) {
                     mNumSitesClearing++;
-                    site.clearAllStoredData(ProfileManager.getLastUsedRegularProfile(), this);
+                    site.clearAllStoredData(Profile.getLastUsedRegularProfile(), this);
                 } else {
                     siteStorageLeft += site.getTotalUsage();
                 }

@@ -32,8 +32,8 @@ namespace {
 // TestAXTreeSourceViews provides a root with a default tree ID.
 class TestAXTreeSourceViews : public AXTreeSourceViews {
  public:
-  TestAXTreeSourceViews(ui::AXNodeID root_id, AXAuraObjCache* cache)
-      : AXTreeSourceViews(root_id, ui::AXTreeID::CreateNewAXTreeID(), cache) {}
+  TestAXTreeSourceViews(AXAuraObjWrapper* root, AXAuraObjCache* cache)
+      : AXTreeSourceViews(root, ui::AXTreeID::CreateNewAXTreeID(), cache) {}
   TestAXTreeSourceViews(const TestAXTreeSourceViews&) = delete;
   TestAXTreeSourceViews& operator=(const TestAXTreeSourceViews&) = delete;
   ~TestAXTreeSourceViews() override = default;
@@ -70,17 +70,14 @@ class AXTreeSourceViewsTest : public ViewsTestBase {
   }
 
   void TearDown() override {
-    label1_ = nullptr;
-    label2_ = nullptr;
-    textfield_ = nullptr;
     widget_.reset();
     ViewsTestBase::TearDown();
   }
 
   UniqueWidgetPtr widget_;
-  raw_ptr<Label, AcrossTasksDanglingUntriaged> label1_ = nullptr;
-  raw_ptr<Label, AcrossTasksDanglingUntriaged> label2_ = nullptr;
-  raw_ptr<Textfield, AcrossTasksDanglingUntriaged> textfield_ = nullptr;
+  raw_ptr<Label> label1_ = nullptr;         // Owned by views hierarchy.
+  raw_ptr<Label> label2_ = nullptr;         // Owned by views hierarchy.
+  raw_ptr<Textfield> textfield_ = nullptr;  // Owned by views hierarchy.
 };
 
 TEST_F(AXTreeSourceViewsTest, Basics) {
@@ -88,7 +85,7 @@ TEST_F(AXTreeSourceViewsTest, Basics) {
 
   // Start the tree at the Widget's contents view.
   AXAuraObjWrapper* root = cache.GetOrCreate(widget_->GetContentsView());
-  TestAXTreeSourceViews tree(root->GetUniqueId(), &cache);
+  TestAXTreeSourceViews tree(root, &cache);
   EXPECT_EQ(root, tree.GetRoot());
 
   // The root has no parent.
@@ -138,8 +135,7 @@ TEST_F(AXTreeSourceViewsTest, Basics) {
 
 TEST_F(AXTreeSourceViewsTest, GetTreeDataWithFocus) {
   AXAuraObjCache cache;
-  TestAXTreeSourceViews tree(cache.GetOrCreate(widget_.get())->GetUniqueId(),
-                             &cache);
+  TestAXTreeSourceViews tree(cache.GetOrCreate(widget_.get()), &cache);
   textfield_->RequestFocus();
 
   ui::AXTreeData tree_data;
@@ -150,12 +146,11 @@ TEST_F(AXTreeSourceViewsTest, GetTreeDataWithFocus) {
 
 TEST_F(AXTreeSourceViewsTest, IgnoredView) {
   View* ignored_view = new View();
-  ignored_view->GetViewAccessibility().SetIsIgnored(true);
+  ignored_view->GetViewAccessibility().OverrideIsIgnored(true);
   widget_->GetContentsView()->AddChildView(ignored_view);
 
   AXAuraObjCache cache;
-  TestAXTreeSourceViews tree(cache.GetOrCreate(widget_.get())->GetUniqueId(),
-                             &cache);
+  TestAXTreeSourceViews tree(cache.GetOrCreate(widget_.get()), &cache);
   EXPECT_TRUE(cache.GetOrCreate(ignored_view) != nullptr);
 }
 
@@ -165,8 +160,7 @@ TEST_F(AXTreeSourceViewsTest, ViewWithChildTreeHasNoChildren) {
       ui::AXTreeID::CreateNewAXTreeID());
 
   AXAuraObjCache cache;
-  TestAXTreeSourceViews tree(cache.GetOrCreate(widget_.get())->GetUniqueId(),
-                             &cache);
+  TestAXTreeSourceViews tree(cache.GetOrCreate(widget_.get()), &cache);
   auto* ax_obj = cache.GetOrCreate(contents_view);
   EXPECT_TRUE(ax_obj != nullptr);
   tree.CacheChildrenIfNeeded(ax_obj);

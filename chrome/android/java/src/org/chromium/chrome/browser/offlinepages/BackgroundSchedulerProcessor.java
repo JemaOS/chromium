@@ -4,8 +4,9 @@
 
 package org.chromium.chrome.browser.offlinepages;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.base.Callback;
-import org.chromium.base.ResettersForTesting;
 import org.chromium.chrome.browser.device.DeviceConditions;
 
 /** Class allowing for mocking out calls to BackgroundSchedulerBridge.  */
@@ -20,10 +21,9 @@ public class BackgroundSchedulerProcessor {
         return sInstance;
     }
 
+    @VisibleForTesting
     static void setInstanceForTesting(BackgroundSchedulerProcessor instance) {
-        var oldValue = sInstance;
         sInstance = instance;
-        ResettersForTesting.register(() -> sInstance = oldValue);
     }
 
     /**

@@ -4,8 +4,6 @@
 
 #include "ash/style/switch.h"
 
-#include <utility>
-
 #include "ash/style/switch.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/insets.h"
@@ -31,13 +29,8 @@ constexpr int kFocusPadding = 2;
 // Switch:
 
 Switch::Switch(PressedCallback callback)
-    : views::ToggleButton(std::move(callback), /*has_thumb_shadow=*/false) {
+    : views::ToggleButton(callback, /*has_thumb_shadow=*/false) {
   SetBorder(views::CreateEmptyBorder(gfx::Insets(kSwitchInnerPadding)));
-  // Disable the inset outline.
-  SetInnerBorderEnabled(false);
-  auto* focus_ring = views::FocusRing::Get(this);
-  focus_ring->SetOutsetFocusRingDisabled(true);
-  focus_ring->SetColorId(ui::kColorAshFocusRing);
 }
 
 Switch::~Switch() = default;
@@ -59,10 +52,7 @@ SkPath Switch::GetFocusRingPath() const {
 }
 
 gfx::Rect Switch::GetTrackBounds() const {
-  gfx::Rect track_bounds(GetContentsBounds());
-  // Clamp to preferred track size if the preferred size is not used.
-  track_bounds.ClampToCenteredSize(GetPreferredSize() - GetInsets().size());
-  return track_bounds;
+  return GetContentsBounds();
 }
 
 gfx::Rect Switch::GetThumbBounds() const {
@@ -76,7 +66,7 @@ gfx::Rect Switch::GetThumbBounds() const {
   return bounds;
 }
 
-BEGIN_METADATA(Switch)
+BEGIN_METADATA(Switch, views::ToggleButton)
 END_METADATA
 
 }  // namespace ash

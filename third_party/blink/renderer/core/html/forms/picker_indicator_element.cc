@@ -51,11 +51,6 @@ PickerIndicatorElement::PickerIndicatorElement(
       picker_indicator_owner_(&picker_indicator_owner) {
   SetShadowPseudoId(shadow_element_names::kPseudoCalendarPickerIndicator);
   setAttribute(html_names::kIdAttr, shadow_element_names::kIdPickerIndicator);
-  // Set the tooltip title.
-  setAttribute(
-      html_names::kTitleAttr,
-      AtomicString(
-          this->picker_indicator_owner_->AriaLabelForPickerIndicator()));
 }
 
 PickerIndicatorElement::~PickerIndicatorElement() {
@@ -143,7 +138,7 @@ void PickerIndicatorElement::ClosePopup() {
 }
 
 bool PickerIndicatorElement::HasOpenedPopup() const {
-  return chooser_ != nullptr;
+  return chooser_;
 }
 
 void PickerIndicatorElement::DetachLayoutTree(bool performing_reattach) {
@@ -152,7 +147,7 @@ void PickerIndicatorElement::DetachLayoutTree(bool performing_reattach) {
 }
 
 AXObject* PickerIndicatorElement::PopupRootAXObject() const {
-  return chooser_ ? chooser_->RootAXObject(&OwnerElement()) : nullptr;
+  return chooser_ ? chooser_->RootAXObject() : nullptr;
 }
 
 bool PickerIndicatorElement::IsPickerIndicatorElement() const {
@@ -174,9 +169,9 @@ void PickerIndicatorElement::DidNotifySubtreeInsertionsToDocument() {
   // web tests.  Once we do have it, this early return should be removed.
   if (WebTestSupport::IsRunningWebTest())
     return;
-  setAttribute(html_names::kTabindexAttr, AtomicString("0"));
-  setAttribute(html_names::kAriaHaspopupAttr, AtomicString("menu"));
-  setAttribute(html_names::kRoleAttr, AtomicString("button"));
+  setAttribute(html_names::kTabindexAttr, "0");
+  setAttribute(html_names::kAriaHaspopupAttr, "menu");
+  setAttribute(html_names::kRoleAttr, "button");
   setAttribute(
       html_names::kAriaLabelAttr,
       AtomicString(

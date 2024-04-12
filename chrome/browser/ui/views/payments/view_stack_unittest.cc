@@ -74,18 +74,16 @@ class ViewStackTest : public ChromeViewsTestBase {
   // Pushes a view on the stack, waits for its animation to be over, then
   // returns a pointer to the pushed view.
   views::View* PushViewOnStackAndWait() {
-    base::RunLoop loop;
     std::unique_ptr<TestStackView> view = std::make_unique<TestStackView>();
     views::View* view_ptr = view.get();
 
     view_stack_->Push(std::move(view), true);
     EXPECT_TRUE(view_stack_->slide_in_animator_->IsAnimating());
     view_stack_->slide_in_animator_->SetAnimationDelegate(
-        view_ptr,
-        std::unique_ptr<gfx::AnimationDelegate>(
-            new gfx::TestAnimationDelegate(loop.QuitWhenIdleClosure())));
+        view_ptr, std::unique_ptr<gfx::AnimationDelegate>(
+                      new gfx::TestAnimationDelegate()));
 
-    loop.Run();
+    base::RunLoop().Run();
     EXPECT_FALSE(view_stack_->slide_in_animator_->IsAnimating());
     return view_ptr;
   }
@@ -93,16 +91,14 @@ class ViewStackTest : public ChromeViewsTestBase {
   // Pops |n| views from the stack, then waits for |top_view_ptr|'s animation to
   // be over.
   void PopManyAndWait(int n, views::View* top_view_ptr) {
-    base::RunLoop loop;
     view_stack_->PopMany(n);
 
     EXPECT_TRUE(view_stack_->slide_out_animator_->IsAnimating());
     view_stack_->slide_out_animator_->SetAnimationDelegate(
-        top_view_ptr,
-        std::unique_ptr<gfx::AnimationDelegate>(
-            new gfx::TestAnimationDelegate(loop.QuitWhenIdleClosure())));
+        top_view_ptr, std::unique_ptr<gfx::AnimationDelegate>(
+                          new gfx::TestAnimationDelegate()));
 
-    loop.Run();
+    base::RunLoop().Run();
     EXPECT_FALSE(view_stack_->slide_out_animator_->IsAnimating());
   }
 
@@ -124,8 +120,6 @@ TEST_F(ViewStackTest, TestPushStateAddsViewToChildren) {
 }
 
 TEST_F(ViewStackTest, TestPopStateRemovesChildViewAndCleansUpState) {
-  base::RunLoop loop1;
-  base::RunLoop loop2;
   TestStackView::Observer observer;
   std::unique_ptr<TestStackView> view = std::make_unique<TestStackView>();
   view->AddObserver(&observer);
@@ -136,11 +130,11 @@ TEST_F(ViewStackTest, TestPopStateRemovesChildViewAndCleansUpState) {
   view_stack_->slide_in_animator_->SetAnimationDelegate(
       view_ptr,
       std::unique_ptr<gfx::AnimationDelegate>(
-          new gfx::TestAnimationDelegate(loop1.QuitWhenIdleClosure())));
+          new gfx::TestAnimationDelegate()));
 
   AssertViewCompletelyNextToStack(view_ptr);
 
-  loop1.Run();
+  base::RunLoop().Run();
   AssertViewOnTopOfStack(view_ptr);
   EXPECT_FALSE(view_stack_->slide_in_animator_->IsAnimating());
   view_stack_->Pop();
@@ -149,9 +143,9 @@ TEST_F(ViewStackTest, TestPopStateRemovesChildViewAndCleansUpState) {
   view_stack_->slide_out_animator_->SetAnimationDelegate(
       view_ptr,
       std::unique_ptr<gfx::AnimationDelegate>(
-          new gfx::TestAnimationDelegate(loop2.QuitWhenIdleClosure())));
+          new gfx::TestAnimationDelegate()));
 
-  loop2.Run();
+  base::RunLoop().Run();
   EXPECT_FALSE(view_stack_->slide_out_animator_->IsAnimating());
 
   ASSERT_TRUE(observer.view_deleted());
@@ -159,7 +153,6 @@ TEST_F(ViewStackTest, TestPopStateRemovesChildViewAndCleansUpState) {
 
 TEST_F(ViewStackTest, TestDeletingViewCleansUpState) {
   TestStackView::Observer observer;
-  base::RunLoop loop;
   std::unique_ptr<TestStackView> view = std::make_unique<TestStackView>();
   view->AddObserver(&observer);
   views::View* view_ptr = view.get();
@@ -169,11 +162,11 @@ TEST_F(ViewStackTest, TestDeletingViewCleansUpState) {
   view_stack_->slide_in_animator_->SetAnimationDelegate(
       view_ptr,
       std::unique_ptr<gfx::AnimationDelegate>(
-          new gfx::TestAnimationDelegate(loop.QuitWhenIdleClosure())));
+          new gfx::TestAnimationDelegate()));
 
   AssertViewCompletelyNextToStack(view_ptr);
 
-  loop.Run();
+  base::RunLoop().Run();
   AssertViewOnTopOfStack(view_ptr);
   EXPECT_FALSE(view_stack_->slide_in_animator_->IsAnimating());
   view_stack_->Pop();
@@ -186,8 +179,6 @@ TEST_F(ViewStackTest, TestDeletingViewCleansUpState) {
 
 TEST_F(ViewStackTest, TestLayoutUpdatesAnimations) {
   TestStackView::Observer observer;
-  base::RunLoop loop1;
-  base::RunLoop loop2;
   std::unique_ptr<TestStackView> view = std::make_unique<TestStackView>();
   view->AddObserver(&observer);
   views::View* view_ptr = view.get();
@@ -197,11 +188,11 @@ TEST_F(ViewStackTest, TestLayoutUpdatesAnimations) {
   view_stack_->slide_in_animator_->SetAnimationDelegate(
       view_ptr,
       std::unique_ptr<gfx::AnimationDelegate>(
-          new gfx::TestAnimationDelegate(loop1.QuitWhenIdleClosure())));
+          new gfx::TestAnimationDelegate()));
 
   view_stack_->SetBounds(10, 10, 30, 30);
 
-  loop1.Run();
+  base::RunLoop().Run();
   AssertViewOnTopOfStack(view_ptr);
   EXPECT_FALSE(view_stack_->slide_in_animator_->IsAnimating());
   view_stack_->Pop();
@@ -210,9 +201,9 @@ TEST_F(ViewStackTest, TestLayoutUpdatesAnimations) {
   view_stack_->slide_out_animator_->SetAnimationDelegate(
       view_ptr,
       std::unique_ptr<gfx::AnimationDelegate>(
-          new gfx::TestAnimationDelegate(loop2.QuitWhenIdleClosure())));
+          new gfx::TestAnimationDelegate()));
 
-  loop2.Run();
+  base::RunLoop().Run();
   EXPECT_FALSE(view_stack_->slide_out_animator_->IsAnimating());
 
   ASSERT_TRUE(observer.view_deleted());

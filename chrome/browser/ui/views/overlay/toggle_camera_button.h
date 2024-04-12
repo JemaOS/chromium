@@ -9,9 +9,9 @@
 #include "ui/base/metadata/metadata_header_macros.h"
 
 class ToggleCameraButton : public OverlayWindowImageButton {
-  METADATA_HEADER(ToggleCameraButton, OverlayWindowImageButton)
-
  public:
+  METADATA_HEADER(ToggleCameraButton);
+
   explicit ToggleCameraButton(PressedCallback callback);
   ToggleCameraButton(const ToggleCameraButton&) = delete;
   ToggleCameraButton& operator=(const ToggleCameraButton&) = delete;

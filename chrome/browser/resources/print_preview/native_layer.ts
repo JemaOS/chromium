@@ -4,10 +4,10 @@
 
 import {sendWithPromise} from 'chrome://resources/js/cr.js';
 
-import type {Cdd} from './data/cdd.js';
-import type {PrinterType} from './data/destination.js';
-import type {LocalDestinationInfo} from './data/local_parsers.js';
-import type {MeasurementSystemUnitType} from './data/measurement_system.js';
+import {Cdd} from './data/cdd.js';
+import {PrinterType} from './data/destination.js';
+import {LocalDestinationInfo} from './data/local_parsers.js';
+import {MeasurementSystemUnitType} from './data/measurement_system.js';
 
 /**
  * Enumeration of background graphics printing mode restrictions used by
@@ -162,7 +162,7 @@ export interface NativeLayer {
    * @return Promise that will resolve when the print request is
    *     finished or rejected.
    */
-  doPrint(printTicket: string): Promise<string|undefined>;
+  print(printTicket: string): Promise<string|undefined>;
 
   /** Requests that the current pending print request be cancelled. */
   cancelPendingPrintRequest(): void;
@@ -227,8 +227,8 @@ export class NativeLayerImpl implements NativeLayer {
     chrome.send('managePrinters');
   }
 
-  doPrint(printTicket: string) {
-    return sendWithPromise('doPrint', printTicket);
+  print(printTicket: string) {
+    return sendWithPromise('print', printTicket);
   }
 
   cancelPendingPrintRequest() {

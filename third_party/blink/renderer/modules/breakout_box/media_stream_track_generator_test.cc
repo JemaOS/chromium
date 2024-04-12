@@ -32,7 +32,6 @@
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/testing/io_task_runner_testing_platform_support.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 using testing::_;
 
@@ -45,8 +44,9 @@ ScriptValue CreateVideoFrameChunk(ScriptState* script_state) {
       media::VideoFrame::CreateBlackFrame(gfx::Size(10, 5));
   VideoFrame* video_frame = MakeGarbageCollected<VideoFrame>(
       std::move(media_frame), ExecutionContext::From(script_state));
-  return ScriptValue(script_state->GetIsolate(),
-                     ToV8Traits<VideoFrame>::ToV8(script_state, video_frame));
+  return ScriptValue(
+      script_state->GetIsolate(),
+      ToV8Traits<VideoFrame>::ToV8(script_state, video_frame).ToLocalChecked());
 }
 
 ScriptValue CreateAudioDataChunk(ScriptState* script_state) {
@@ -56,8 +56,9 @@ ScriptValue CreateAudioDataChunk(ScriptState* script_state) {
           /*channel_count=*/2,
           /*sample_rate=*/44100,
           /*frame_count=*/500, base::TimeDelta()));
-  return ScriptValue(script_state->GetIsolate(),
-                     ToV8Traits<AudioData>::ToV8(script_state, audio_data));
+  return ScriptValue(
+      script_state->GetIsolate(),
+      ToV8Traits<AudioData>::ToV8(script_state, audio_data).ToLocalChecked());
 }
 
 }  // namespace
@@ -70,7 +71,6 @@ class MediaStreamTrackGeneratorTest : public testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform_;
 };
 

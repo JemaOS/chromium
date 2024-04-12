@@ -60,8 +60,7 @@ String ComputeCSSPropertyValue(SVGElement* element, CSSPropertyID id) {
   // Refer to comment in Element::computedStyle.
   DCHECK(element->InActiveDocument());
 
-  element->GetDocument().UpdateStyleAndLayoutTreeForElement(
-      element, DocumentUpdateReason::kSMILAnimation);
+  element->GetDocument().UpdateStyleAndLayoutTreeForNode(element);
 
   // Don't include any properties resulting from CSS Transitions/Animations or
   // SMIL animations, as we want to retrieve the "base value".
@@ -69,7 +68,7 @@ String ComputeCSSPropertyValue(SVGElement* element, CSSPropertyID id) {
   if (!style)
     return "";
   const CSSValue* value = CSSProperty::Get(id).CSSValueFromComputedStyle(
-      *style, element->GetLayoutObject(), false, CSSValuePhase::kResolvedValue);
+      *style, element->GetLayoutObject(), false);
   return value ? value->CssText() : "";
 }
 
@@ -87,7 +86,7 @@ QualifiedName ConstructQualifiedName(const SVGElement& svg_element,
   if (attribute_name.empty())
     return AnyQName();
   if (!attribute_name.Contains(':'))
-    return QualifiedName(attribute_name);
+    return QualifiedName(g_null_atom, attribute_name, g_null_atom);
 
   AtomicString prefix;
   AtomicString local_name;
@@ -216,11 +215,10 @@ void SVGAnimateElement::ClearTargetProperty() {
 }
 
 void SVGAnimateElement::UpdateTargetProperty() {
-  if (targetElement()) {
+  if (SVGElement* target = targetElement())
     ResolveTargetProperty();
-  } else {
+  else
     ClearTargetProperty();
-  }
 }
 
 bool SVGAnimateElement::HasValidAnimation() const {

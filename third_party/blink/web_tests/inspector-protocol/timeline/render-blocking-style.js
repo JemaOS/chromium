@@ -1,15 +1,17 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   // The number includes the imported CSS files
   const numberOfURLs = 18;
 
   // Test traces
-  var {page, session, dp} = await testRunner.startBlank('Tests various style traces.');
+  var {page, session, dp} = await testRunner.startHTML(`
+      <head></head>
+      <body>
+      </body>
+  `, 'Tests various style traces.');
 
   var TracingHelper = await testRunner.loadScript('../resources/tracing-test.js');
   var tracingHelper = new TracingHelper(testRunner, session);
   await tracingHelper.startTracing();
-  await page.navigate('../resources/disabled-stylesheet.html');
-
   dp.Network.enable();
   session.evaluate(`
     (function performActions() {

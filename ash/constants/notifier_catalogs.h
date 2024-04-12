@@ -79,7 +79,7 @@ enum class NotificationCatalogName {
   kBluetoothPairingRequest = 64,
   // [Deprecated] kBluetoothPairedDevice = 65,
   kCellularSetup = 66,
-  // [Deprecated] kScreenSecurity = 67,
+  kScreenSecurity = 67,
   kWifiToggle = 68,
   kUSBPeripheralInvalidDpCable = 69,
   kUSBPeripheralInvalidUSB4ValidTBTCable = 70,
@@ -167,7 +167,7 @@ enum class NotificationCatalogName {
   kArcLowDiskSpacePostStop = 152,
   kMultiCapture = 153,
   kPrivacyHubCamera = 154,
-  // [Deprecated] kPrivacyHubHWCameraSwitchOffSWCameraSwitchOn = 155,
+  kPrivacyHubHWCameraSwitchOffSWCameraSwitchOn = 155,
   kEcheAppNetworkSetting = 156,
   kPrivacyHubMicAndCamera = 157,
   kArcVmDataMigration = 158,
@@ -184,63 +184,34 @@ enum class NotificationCatalogName {
   kHotspot = 169,
   kGeolocationSwitch = 170,
   kMultiCaptureOnLogin = 171,
-  kFloatingWorkspace = 172,
-  kScalableIphNotification = 173,
-  // [Deprecated] kUpdateNotification = 174,
-  kSubAppsUninstall = 175,
-  kNetworkCarrierUnlock = 176,
-  kCoralFeature = 177,
-  kInputDeviceSettings = 178,
-  kDocumentScanning = 179,
-  kMaxValue = kDocumentScanning
+  kJemaOSMiscStatefulUpdate = 172,
+  kJemaOSDataBackup = 173,
+  kMaxValue = kJemaOSDataBackup
 };
 
 // A living catalog that registers system nudges.
 // Current values should not be renumbered or removed. Please keep in sync with
-// "NudgeCatalogName" in tools/metrics/histograms/metadata/ash/enums.xml.
+// "NudgeCatalogName" in tools/metrics/histograms/enums.xml.
 // To deprecate comment out the entry.
-// Please call `SystemNudgeController::MaybeRecordNudgeAction()` (old nudges) or
-// `AnchoredNudgeManager::Get()->MaybeRecordNudgeAction()` when the nudge's
+// Please call `SystemNudgeController::RecordNudgeAction` when the nudge's
 // suggested action is performed by the user, if applicable.
 enum class NudgeCatalogName {
   kTestCatalogName = 0,
   kDictation = 1,
   // [Deprecated] kMultipaste = 2,
-  // [Deprecated] kDarkLightMode = 3,
+  kDarkLightMode = 3,
   kAutozoom = 4,
-  // [Deprecated] kAdaptiveCharging = 5,
+  kAdaptiveCharging = 5,
   kPhoneHub = 6,
   kClipboardHistoryZeroState = 7,
   kClipboardHistoryOnboarding = 8,
   kDisableDiacritics = 9,
-  kClipboardHistoryDuplicateCopy = 10,
-  kVideoConferenceTraySpeakOnMuteDetected = 11,
-  kVideoConferenceTrayMicrophoneUseWhileHWDisabled = 12,
-  kVideoConferenceTrayMicrophoneUseWhileSWDisabled = 13,
-  kVideoConferenceTrayCameraUseWhileHWDisabled = 14,
-  kVideoConferenceTrayCameraUseWhileSWDisabled = 15,
-  kVideoConferenceTraySpeakOnMuteOptIn = 16,
-  // [Deprecated] kVideoConferenceTraySpeakOnMuteOptInConfirmation = 17,
-  kScalableIphBubble = 18,
-  kVideoConferenceTrayCameraMicrophoneUseWhileDisabled = 19,
-  kMultitaskMenuClamshell = 20,
-  kMultitaskMenuTablet = 21,
-  kCaptureModeEducationShortcutNudge = 22,
-  kCaptureModeEducationShortcutTutorial = 23,
-  kCaptureModeEducationQuickSettingsNudge = 24,
-  kGameDashboardControlsNudge = 25,
-  // [Deprecated] kWebsiteTelemetryReportingNudge = 26,
-  kStandaloneWindowMigrationUx = 27,
-  kFocusModeEndingMomentNudge = 28,
-  kPineEducationNudge = 29,
-  kGrowthCampaignNudge = 30,
-  kSearchTopRowKeyPressed = 31,
-  kMaxValue = kSearchTopRowKeyPressed
+  kMaxValue = kDisableDiacritics,
 };
 
 // A living catalog that registers toasts.
 // Current values should not be renumbered or removed. Please keep in sync with
-// "ToastCatalogName" in tools/metrics/histograms/metadata/ash/enums.xml
+// "ToastCatalogName" in tools/metrics/histograms/enums.xml.
 // To deprecate comment out the entry.
 enum class ToastCatalogName {
   kVirtualDesksLimitMax = 0,
@@ -258,12 +229,12 @@ enum class ToastCatalogName {
   kEncourageUnlock = 12,
   kNetworkAutoConnect = 13,
   kAssistantLoading = 14,
-  kTestCatalogName = 15,
+  kToastManagerUnittest = 15,
   kMaximumDeskLaunchTemplate = 16,
-  // [Deprecated] kEnterOverviewGesture = 17,
-  // [Deprecated] kExitOverviewGesture = 18,
-  // [Deprecated] kNextDeskGesture = 19,
-  // [Deprecated] kPreviousDeskGesture = 20,
+  kEnterOverviewGesture = 17,
+  kExitOverviewGesture = 18,
+  kNextDeskGesture = 19,
+  kPreviousDeskGesture = 20,
   kMoveVisibleOnAllDesksWindow = 21,
   kAppCannotSnap = 22,
   kCrostiniUnsupportedVirtualKeyboard = 23,
@@ -280,21 +251,15 @@ enum class ToastCatalogName {
   kUndoCloseAll = 34,
   kEcheAppToast = 35,
   // [Deprecated] kDeprecateAssistantStylus = 36,
-  // [Deprecated] kEcheTrayCopyPasteNotImplemented = 37,
+  kEcheTrayCopyPasteNotImplemented = 37,
   kEcheTrayTabletModeNotSupported = 38,
   kNotificationCenterTrayNoNotifications = 39,
-  // [Deprecated] kCopyToClipboardAction = 40,
-  // [Deprecated] kVideoConferenceTraySpeakOnMuteDetected = 41,
+  kCopyToClipboardAction = 40,
+  kVideoConferenceTraySpeakOnMuteDetected = 41,
   kCopyGifToClipboardAction = 42,
-  // [Deprecated] kVideoConferenceTrayUseWhileDisabled = 43,
-  kBatterySaverDisabled = 44,
-  kDictationNoFocusedTextField = 45,
-  kBatterySaverEnabled = 46,
-  kDictationMicMuted = 47,
-  kVideoConferenceTraySpeakOnMuteOptInConfirmation = 48,
-  kAppNotClosable = 49,
-  kGameDashboardEnterTablet = 50,
-  kMaxValue = kGameDashboardEnterTablet
+  kVideoConferenceTrayUseWhileDisabled = 43,
+  kImeShowJemaLanguageState = 44,
+  kMaxValue = kImeShowJemaLanguageState,
 };
 
 }  // namespace ash

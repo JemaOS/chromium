@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UI_TOOLBAR_BACK_FORWARD_MENU_MODEL_H_
 #define CHROME_BROWSER_UI_TOOLBAR_BACK_FORWARD_MENU_MODEL_H_
 
-#include <optional>
 #include <string>
 
 #include "base/containers/flat_set.h"
@@ -14,7 +13,7 @@
 #include "base/task/cancelable_task_tracker.h"
 #include "base/time/time.h"
 #include "components/favicon/core/favicon_service.h"
-#include "content/public/browser/web_contents_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/models/menu_model.h"
 #include "ui/base/window_open_disposition.h"
 
@@ -36,8 +35,7 @@ class WebContents;
 // Interface for the showing of the dropdown menu for the Back/Forward buttons.
 // Actual implementations are platform-specific.
 ///////////////////////////////////////////////////////////////////////////////
-class BackForwardMenuModel : public ui::MenuModel,
-                             public content::WebContentsObserver {
+class BackForwardMenuModel : public ui::MenuModel {
  public:
   // These are IDs used to identify individual UI elements within the
   // browser window using View::GetViewByID.
@@ -50,7 +48,12 @@ class BackForwardMenuModel : public ui::MenuModel,
 
   ~BackForwardMenuModel() override;
 
-  // ui::MenuModel:
+  // MenuModel implementation.
+  bool HasIcons() const override;
+  // Returns how many items the menu should show, including history items,
+  // chapter-stops, separators and the Show Full History link. This function
+  // uses GetHistoryItemCount() and GetChapterStopCount() internally to figure
+  // out the total number of items to show.
   size_t GetItemCount() const override;
   ItemType GetTypeAt(size_t index) const override;
   ui::MenuSeparatorType GetSeparatorTypeAt(size_t index) const override;
@@ -70,11 +73,6 @@ class BackForwardMenuModel : public ui::MenuModel,
   void MenuWillShow() override;
   void MenuWillClose() override;
 
-  // content::WebContentsObserver:
-  void NavigationEntryCommitted(
-      const content::LoadCommittedDetails& load_details) override;
-  void NavigationEntriesDeleted() override;
-
   // Is the item at |index| a separator?
   bool IsSeparator(size_t index) const;
 
@@ -85,7 +83,6 @@ class BackForwardMenuModel : public ui::MenuModel,
   FRIEND_TEST_ALL_PREFIXES(BackFwdMenuModelTest, ChapterStops);
   FRIEND_TEST_ALL_PREFIXES(BackFwdMenuModelTest, EscapeLabel);
   FRIEND_TEST_ALL_PREFIXES(BackFwdMenuModelTest, FaviconLoadTest);
-  FRIEND_TEST_ALL_PREFIXES(BackFwdMenuModelTest, NavigationWhenMenuShownTest);
   FRIEND_TEST_ALL_PREFIXES(BackFwdMenuModelIncognitoTest, IncognitoCaseTest);
   FRIEND_TEST_ALL_PREFIXES(ChromeNavigationBrowserTest,
                            NoUserActivationSetSkipOnBackForward);
@@ -131,8 +128,8 @@ class BackForwardMenuModel : public ui::MenuModel,
   // heading over to WikiPedia for pages W1 and W2 and then back to Google for
   // pages G4 and G5 then G3, W2 and G5 are considered chapter-stops. The return
   // value from this function is an index into the NavigationEntryList vector.
-  std::optional<size_t> GetIndexOfNextChapterStop(size_t start_from,
-                                                  bool forward) const;
+  absl::optional<size_t> GetIndexOfNextChapterStop(size_t start_from,
+                                                   bool forward) const;
 
   // Finds a given chapter-stop starting at the currently active entry in the
   // NavigationEntryList vector advancing first forward or backward by |offset|
@@ -148,9 +145,9 @@ class BackForwardMenuModel : public ui::MenuModel,
   // this function is an index into the NavigationEntryList vector. If |offset|
   // is out of bounds or if we skip too far (run out of chapter-stops) this
   // function returns nullopt.
-  std::optional<size_t> FindChapterStop(size_t offset,
-                                        bool forward,
-                                        size_t skip) const;
+  absl::optional<size_t> FindChapterStop(size_t offset,
+                                         bool forward,
+                                         size_t skip) const;
 
   // How many items (max) to show in the back/forward history menu dropdown.
   static const size_t kMaxHistoryItems;
@@ -162,7 +159,7 @@ class BackForwardMenuModel : public ui::MenuModel,
   // functions and converts it into an index into the NavigationEntryList
   // vector. |index| can point to a separator, or the
   // "Show Full History" link in which case this function returns nullopt.
-  std::optional<size_t> MenuIndexToNavEntryIndex(size_t index) const;
+  absl::optional<size_t> MenuIndexToNavEntryIndex(size_t index) const;
 
   // Does the item have a command associated with it?
   bool ItemHasCommand(size_t index) const;
@@ -186,7 +183,7 @@ class BackForwardMenuModel : public ui::MenuModel,
   // E.g. BuildActionName("Click", 2) returns "BackMenu_Click2".
   // An index of nullopt means no index.
   std::string BuildActionName(const std::string& name,
-                              std::optional<size_t> index) const;
+                              absl::optional<size_t> index) const;
 
   // Returns true if "Show Full History" item should be visible. It is visible
   // only in outside incognito mode.
@@ -216,7 +213,7 @@ class BackForwardMenuModel : public ui::MenuModel,
   // from `MenuWillClose()` and `ActivateAt()`. Since it will be read once or
   // twice depending on whether any of the menu item is activated, the timestamp
   // will not be reset.
-  std::optional<base::TimeTicks> menu_model_open_timestamp_;
+  absl::optional<base::TimeTicks> menu_model_open_timestamp_;
 };
 
 #endif  // CHROME_BROWSER_UI_TOOLBAR_BACK_FORWARD_MENU_MODEL_H_

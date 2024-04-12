@@ -19,26 +19,26 @@ ArcProvisioningResult::ArcProvisioningResult(ArcProvisioningResult&& other) =
     default;
 ArcProvisioningResult::~ArcProvisioningResult() = default;
 
-std::optional<mojom::GMSSignInError> ArcProvisioningResult::gms_sign_in_error()
+absl::optional<mojom::GMSSignInError> ArcProvisioningResult::gms_sign_in_error()
     const {
   if (!sign_in_error() || !sign_in_error()->is_sign_in_error())
-    return std::nullopt;
+    return absl::nullopt;
 
   return sign_in_error()->get_sign_in_error();
 }
 
-std::optional<mojom::GMSCheckInError>
+absl::optional<mojom::GMSCheckInError>
 ArcProvisioningResult::gms_check_in_error() const {
   if (!sign_in_error() || !sign_in_error()->is_check_in_error())
-    return std::nullopt;
+    return absl::nullopt;
 
   return sign_in_error()->get_check_in_error();
 }
 
-std::optional<mojom::CloudProvisionFlowError>
+absl::optional<mojom::CloudProvisionFlowError>
 ArcProvisioningResult::cloud_provision_flow_error() const {
   if (!sign_in_error() || !sign_in_error()->is_cloud_provision_flow_error())
-    return std::nullopt;
+    return absl::nullopt;
 
   return sign_in_error()->get_cloud_provision_flow_error();
 }
@@ -50,10 +50,10 @@ const mojom::ArcSignInError* ArcProvisioningResult::sign_in_error() const {
   return sign_in_result()->get_error().get();
 }
 
-std::optional<mojom::GeneralSignInError> ArcProvisioningResult::general_error()
+absl::optional<mojom::GeneralSignInError> ArcProvisioningResult::general_error()
     const {
   if (!sign_in_error() || !sign_in_error()->is_general_error())
-    return std::nullopt;
+    return absl::nullopt;
 
   return sign_in_error()->get_general_error();
 }
@@ -62,9 +62,9 @@ bool ArcProvisioningResult::is_success() const {
   return sign_in_result() && sign_in_result()->is_success();
 }
 
-std::optional<ArcStopReason> ArcProvisioningResult::stop_reason() const {
+absl::optional<ArcStopReason> ArcProvisioningResult::stop_reason() const {
   if (!absl::holds_alternative<ArcStopReason>(result_))
-    return std::nullopt;
+    return absl::nullopt;
 
   return absl::get<ArcStopReason>(result_);
 }

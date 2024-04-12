@@ -10,9 +10,11 @@
 
 namespace blink {
 
-void ActiveScriptWrappableBase::RegisterActiveScriptWrappable(
-    v8::Isolate* isolate) {
-  V8PerIsolateData::From(isolate)->GetActiveScriptWrappableManager()->Add(this);
+void ActiveScriptWrappableBase::RegisterActiveScriptWrappable() {
+  DCHECK(ThreadState::Current());
+  V8PerIsolateData::From(ThreadState::Current()->GetIsolate())
+      ->GetActiveScriptWrappableManager()
+      ->Add(this);
 }
 
 }  // namespace blink

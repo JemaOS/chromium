@@ -15,7 +15,6 @@
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -28,8 +27,6 @@ class SurroundingTextTest : public testing::Test {
 
  private:
   void SetUp() override;
-
-  test::TaskEnvironment task_environment_;
 
   std::unique_ptr<DummyPageHolder> dummy_page_holder_;
 };
@@ -44,7 +41,7 @@ void SurroundingTextTest::SetHTML(const String& content) {
 }
 
 EphemeralRange SurroundingTextTest::Select(int start, int end) {
-  Element* element = GetDocument().getElementById(AtomicString("selection"));
+  Element* element = GetDocument().getElementById("selection");
   return EphemeralRange(Position(element->firstChild(), start),
                         Position(element->firstChild(), end));
 }
@@ -291,7 +288,7 @@ TEST_F(SurroundingTextTest, TextAreaSelection) {
              "<p>Second paragraph</p>"));
 
   TextControlElement* text_ctrl = reinterpret_cast<TextControlElement*>(
-      GetDocument().getElementById(AtomicString("selection")));
+      GetDocument().getElementById("selection"));
 
   text_ctrl->SetSelectionRange(4, 7);
   EphemeralRange selection = text_ctrl->Selection().ComputeRange();
@@ -308,7 +305,7 @@ TEST_F(SurroundingTextTest, EmptyInputElementWithChild) {
   SetHTML(String("<input type=\"text\" id=\"input_name\"/>"));
 
   TextControlElement* input_element = reinterpret_cast<TextControlElement*>(
-      GetDocument().getElementById(AtomicString("input_name")));
+      GetDocument().getElementById("input_name"));
   input_element->SetInnerEditorValue("John Smith");
   GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kTest);
 

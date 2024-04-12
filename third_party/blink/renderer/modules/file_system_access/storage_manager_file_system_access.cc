@@ -7,7 +7,10 @@
 #include <utility>
 
 #include "mojo/public/cpp/bindings/pending_remote.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/blink/public/common/browser_interface_broker_proxy.h"
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_error.mojom-blink.h"
+#include "third_party/blink/public/mojom/file_system_access/file_system_access_manager.mojom-blink.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
@@ -15,7 +18,6 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/modules/file_system_access/file_system_access_error.h"
-#include "third_party/blink/renderer/modules/file_system_access/file_system_access_manager.h"
 #include "third_party/blink/renderer/modules/file_system_access/file_system_directory_handle.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -29,22 +31,41 @@ namespace {
 // The name to use for the root directory of a sandboxed file system.
 constexpr const char kSandboxRootDirectoryName[] = "";
 
+// Gets the OPFS for the default bucket.
+void GetSandboxedFileSystemForDefaultBucket(ScriptPromiseResolver* resolver) {
+  mojo::Remote<mojom::blink::FileSystemAccessManager> manager;
+  resolver->GetExecutionContext()->GetBrowserInterfaceBroker().GetInterface(
+      manager.BindNewPipeAndPassReceiver());
+
+  auto* raw_manager = manager.get();
+  raw_manager->GetSandboxedFileSystem(WTF::BindOnce(
+      [](ScriptPromiseResolver* resolver,
+         mojo::Remote<mojom::blink::FileSystemAccessManager>,
+         mojom::blink::FileSystemAccessErrorPtr result,
+         mojo::PendingRemote<mojom::blink::FileSystemAccessDirectoryHandle>
+             handle) {
+        StorageManagerFileSystemAccess::DidGetSandboxedFileSystem(
+            resolver, std::move(result), std::move(handle));
+      },
+      WrapPersistent(resolver), std::move(manager)));
+}
+
 // Called with the result of browser-side permissions checks.
 void OnGotAccessAllowed(
-    ScriptPromiseResolverTyped<FileSystemDirectoryHandle>* resolver,
-    base::OnceCallback<void(
-        ScriptPromiseResolverTyped<FileSystemDirectoryHandle>*)> on_allowed,
-    const mojom::blink::FileSystemAccessErrorPtr result) {
+    ScriptPromiseResolver* resolver,
+    base::OnceCallback<void(ScriptPromiseResolver*)> on_allowed,
+    bool allow_access) {
   if (!resolver->GetExecutionContext() ||
       !resolver->GetScriptState()->ContextIsValid()) {
     return;
   }
 
-  if (result->status != mojom::blink::FileSystemAccessStatus::kOk) {
+  if (!allow_access) {
     auto* const isolate = resolver->GetScriptState()->GetIsolate();
     ScriptState::Scope scope(resolver->GetScriptState());
     resolver->Reject(V8ThrowDOMException::CreateOrEmpty(
-        isolate, DOMExceptionCode::kSecurityError, result->message));
+        isolate, DOMExceptionCode::kSecurityError,
+        "Storage directory access is denied."));
     return;
   }
 
@@ -54,59 +75,32 @@ void OnGotAccessAllowed(
 }  // namespace
 
 // static
-ScriptPromiseTyped<FileSystemDirectoryHandle>
-StorageManagerFileSystemAccess::getDirectory(ScriptState* script_state,
-                                             const StorageManager& storage,
-                                             ExceptionState& exception_state) {
-  return CheckGetDirectoryIsAllowed(
-      script_state, exception_state,
-      WTF::BindOnce([](ScriptPromiseResolverTyped<FileSystemDirectoryHandle>*
-                           resolver) {
-        FileSystemAccessManager::From(resolver->GetExecutionContext())
-            ->GetSandboxedFileSystem(WTF::BindOnce(
-                &StorageManagerFileSystemAccess::DidGetSandboxedFileSystem,
-                WrapPersistent(resolver)));
-      }));
+ScriptPromise StorageManagerFileSystemAccess::getDirectory(
+    ScriptState* script_state,
+    const StorageManager& storage,
+    ExceptionState& exception_state) {
+  auto run_if_allowed = WTF::BindOnce(&GetSandboxedFileSystemForDefaultBucket);
+  return CheckGetDirectoryIsAllowed(script_state, exception_state,
+                                    std::move(run_if_allowed));
 }
 
 // static
-ScriptPromiseTyped<FileSystemDirectoryHandle>
-StorageManagerFileSystemAccess::CheckGetDirectoryIsAllowed(
+ScriptPromise StorageManagerFileSystemAccess::CheckGetDirectoryIsAllowed(
     ScriptState* script_state,
     ExceptionState& exception_state,
-    base::OnceCallback<void(
-        ScriptPromiseResolverTyped<FileSystemDirectoryHandle>*)> on_allowed) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<FileSystemDirectoryHandle>>(
-      script_state, exception_state.GetContext());
-  auto result = resolver->Promise();
+    base::OnceCallback<void(ScriptPromiseResolver*)> on_allowed) {
+  ExecutionContext* context = ExecutionContext::From(script_state);
 
-  CheckGetDirectoryIsAllowed(
-      ExecutionContext::From(script_state),
-      WTF::BindOnce(&OnGotAccessAllowed, WrapPersistent(resolver),
-                    std::move(on_allowed)));
-
-  return result;
-}
-
-// static
-void StorageManagerFileSystemAccess::CheckGetDirectoryIsAllowed(
-    ExecutionContext* context,
-    base::OnceCallback<void(mojom::blink::FileSystemAccessErrorPtr)> callback) {
   if (!context->GetSecurityOrigin()->CanAccessFileSystem()) {
     if (context->IsSandboxed(network::mojom::blink::WebSandboxFlags::kOrigin)) {
-      std::move(callback).Run(mojom::blink::FileSystemAccessError::New(
-          mojom::blink::FileSystemAccessStatus::kSecurityError,
-          base::File::Error::FILE_ERROR_SECURITY,
+      exception_state.ThrowSecurityError(
           "Storage directory access is denied because the context is "
-          "sandboxed and lacks the 'allow-same-origin' flag."));
-      return;
+          "sandboxed and lacks the 'allow-same-origin' flag.");
+      return ScriptPromise();
+    } else {
+      exception_state.ThrowSecurityError("Storage directory access is denied.");
+      return ScriptPromise();
     }
-    std::move(callback).Run(mojom::blink::FileSystemAccessError::New(
-        mojom::blink::FileSystemAccessStatus::kSecurityError,
-        base::File::Error::FILE_ERROR_SECURITY,
-        "Storage directory access is denied."));
-    return;
   }
 
   SECURITY_DCHECK(context->IsWindow() || context->IsWorkerGlobalScope());
@@ -114,11 +108,8 @@ void StorageManagerFileSystemAccess::CheckGetDirectoryIsAllowed(
   if (auto* window = DynamicTo<LocalDOMWindow>(context)) {
     LocalFrame* frame = window->GetFrame();
     if (!frame) {
-      std::move(callback).Run(mojom::blink::FileSystemAccessError::New(
-          mojom::blink::FileSystemAccessStatus::kSecurityError,
-          base::File::Error::FILE_ERROR_SECURITY,
-          "Storage directory access is denied."));
-      return;
+      exception_state.ThrowSecurityError("Storage directory access is denied.");
+      return ScriptPromise();
     }
     content_settings_client = frame->GetContentSettingsClient();
   } else {
@@ -126,34 +117,26 @@ void StorageManagerFileSystemAccess::CheckGetDirectoryIsAllowed(
         To<WorkerGlobalScope>(context)->ContentSettingsClient();
   }
 
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise result = resolver->Promise();
+
+  auto got_access_callback = WTF::BindOnce(
+      &OnGotAccessAllowed, WrapPersistent(resolver), std::move(on_allowed));
   if (content_settings_client) {
     content_settings_client->AllowStorageAccess(
         WebContentSettingsClient::StorageType::kFileSystem,
-        WTF::BindOnce(
-            [](base::OnceCallback<void(mojom::blink::FileSystemAccessErrorPtr)>
-                   callback,
-               bool is_allowed) {
-              std::move(callback).Run(
-                  is_allowed ? mojom::blink::FileSystemAccessError::New(
-                                   mojom::blink::FileSystemAccessStatus::kOk,
-                                   base::File::FILE_OK, "")
-                             : mojom::blink::FileSystemAccessError::New(
-                                   mojom::blink::FileSystemAccessStatus::
-                                       kSecurityError,
-                                   base::File::Error::FILE_ERROR_SECURITY,
-                                   "Storage directory access is denied."));
-            },
-            std::move(callback)));
-    return;
+        std::move(got_access_callback));
+  } else {
+    std::move(got_access_callback).Run(true);
   }
 
-  std::move(callback).Run(mojom::blink::FileSystemAccessError::New(
-      mojom::blink::FileSystemAccessStatus::kOk, base::File::FILE_OK, ""));
+  return result;
 }
 
 // static
 void StorageManagerFileSystemAccess::DidGetSandboxedFileSystem(
-    ScriptPromiseResolverTyped<FileSystemDirectoryHandle>* resolver,
+    ScriptPromiseResolver* resolver,
     mojom::blink::FileSystemAccessErrorPtr result,
     mojo::PendingRemote<mojom::blink::FileSystemAccessDirectoryHandle> handle) {
   ExecutionContext* context = resolver->GetExecutionContext();
@@ -165,27 +148,6 @@ void StorageManagerFileSystemAccess::DidGetSandboxedFileSystem(
   }
   resolver->Resolve(MakeGarbageCollected<FileSystemDirectoryHandle>(
       context, kSandboxRootDirectoryName, std::move(handle)));
-}
-
-void StorageManagerFileSystemAccess::DidGetSandboxedFileSystemForDevtools(
-    ExecutionContext* context,
-    base::OnceCallback<void(mojom::blink::FileSystemAccessErrorPtr,
-                            FileSystemDirectoryHandle*)> callback,
-    mojom::blink::FileSystemAccessErrorPtr result,
-    mojo::PendingRemote<mojom::blink::FileSystemAccessDirectoryHandle> handle) {
-  if (!context) {
-    return;
-  }
-
-  if (result->status != mojom::blink::FileSystemAccessStatus::kOk) {
-    std::move(callback).Run(std::move(result), nullptr);
-    return;
-  }
-
-  std::move(callback).Run(
-      std::move(result),
-      MakeGarbageCollected<FileSystemDirectoryHandle>(
-          context, kSandboxRootDirectoryName, std::move(handle)));
 }
 
 }  // namespace blink

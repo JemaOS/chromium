@@ -9,6 +9,7 @@
 #include "base/run_loop.h"
 #include "base/values.h"
 #include "content/public/test/browser_task_environment.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -39,7 +40,7 @@ class TestExternalRegistryLoader : public ExternalRegistryLoader {
   ~TestExternalRegistryLoader() override {}
 
   base::Value::Dict LoadPrefsOnBlockingThread() override {
-    return base::Value::Dict().Set(kDummyRegistryKey, id_++);
+    return DictionaryBuilder().Set(kDummyRegistryKey, id_++).Build();
   }
   void LoadFinished(base::Value::Dict prefs) override {
     ++load_finished_count_;

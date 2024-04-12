@@ -55,11 +55,7 @@ public class DropDataContentProvider extends ContentProvider {
     }
 
     @Override
-    public Cursor query(
-            Uri uri,
-            String[] projection,
-            String selection,
-            String[] selectionArgs,
+    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
             String sortOrder) {
         return mDropDataProviderImpl.query(uri, projection);
     }

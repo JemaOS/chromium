@@ -174,9 +174,9 @@ class EventBasedStatusReportingServiceTest : public testing::Test {
   content::BrowserTaskEnvironment task_environment_;
   ArcAppTest arc_test_;
   std::unique_ptr<TestingProfile> profile_;
-  raw_ptr<TestingConsumerStatusReportingService, DanglingUntriaged>
+  raw_ptr<TestingConsumerStatusReportingService, ExperimentalAsh>
       test_consumer_status_reporting_service_;
-  raw_ptr<TestingScreenTimeController, DanglingUntriaged>
+  raw_ptr<TestingScreenTimeController, ExperimentalAsh>
       test_screen_time_controller_;
   session_manager::SessionManager session_manager_;
   std::unique_ptr<EventBasedStatusReportingService> service_;

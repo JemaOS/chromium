@@ -111,9 +111,7 @@ void ArcAppShortcutSearchResult::Open(int event_flags) {
 
 void ArcAppShortcutSearchResult::OnAppImageUpdated(
     const std::string& app_id,
-    const gfx::ImageSkia& image,
-    bool is_placeholder_icon,
-    const std::optional<gfx::ImageSkia>& badge_image) {
+    const gfx::ImageSkia& image) {
   SetBadgeIcon(ui::ImageModel::FromImageSkia(image));
 }
 
@@ -139,7 +137,7 @@ std::u16string ArcAppShortcutSearchResult::ComputeAccessibleName() const {
 }
 
 void ArcAppShortcutSearchResult::OnIconDecoded(const gfx::ImageSkia& icon) {
-  SetIcon(IconInfo(ui::ImageModel::FromImageSkia(icon), kAppIconDimension));
+  SetIcon(IconInfo(icon, kAppIconDimension));
 }
 
 }  // namespace app_list

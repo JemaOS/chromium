@@ -26,6 +26,7 @@
 // https://drafts.fxtf.org/filter-effects/#InterfaceSVGFEColorMatrixElement
 
 [
+    DoNotCheckConstants,
     Exposed=Window
 ] interface SVGFEColorMatrixElement : SVGElement {
     // Color Matrix Types

@@ -12,8 +12,18 @@
 namespace blink {
 namespace cssvalue {
 
-CSSURIValue::CSSURIValue(CSSUrlData url_data)
-    : CSSValue(kURIClass), url_data_(std::move(url_data)) {}
+CSSURIValue::CSSURIValue(const AtomicString& relative_url,
+                         const AtomicString& absolute_url)
+    : CSSValue(kURIClass),
+      relative_url_(relative_url),
+      is_local_(relative_url.StartsWith('#')),
+      absolute_url_(absolute_url) {}
+
+CSSURIValue::CSSURIValue(const AtomicString& absolute_url)
+    : CSSURIValue(absolute_url, absolute_url) {}
+
+CSSURIValue::CSSURIValue(const AtomicString& relative_url, const KURL& url)
+    : CSSURIValue(relative_url, AtomicString(url.GetString())) {}
 
 CSSURIValue::~CSSURIValue() = default;
 
@@ -21,17 +31,21 @@ SVGResource* CSSURIValue::EnsureResourceReference() const {
   if (!resource_) {
     resource_ = MakeGarbageCollected<ExternalSVGResource>(AbsoluteUrl());
   }
-  return resource_.Get();
+  return resource_;
 }
 
 void CSSURIValue::ReResolveUrl(const Document& document) const {
-  if (url_data_.ReResolveUrl(document)) {
-    resource_ = nullptr;
+  KURL url = document.CompleteURL(relative_url_);
+  AtomicString url_string(url.GetString());
+  if (url_string == absolute_url_) {
+    return;
   }
+  absolute_url_ = url_string;
+  resource_ = nullptr;
 }
 
 String CSSURIValue::CustomCSSText() const {
-  return url_data_.CssText();
+  return SerializeURI(relative_url_);
 }
 
 AtomicString CSSURIValue::FragmentIdentifier() const {
@@ -59,22 +73,34 @@ const AtomicString& CSSURIValue::NormalizedFragmentIdentifier() const {
 }
 
 KURL CSSURIValue::AbsoluteUrl() const {
-  return KURL(url_data_.ResolvedUrl());
+  return KURL(absolute_url_);
 }
 
 bool CSSURIValue::IsLocal(const Document& document) const {
-  return url_data_.IsLocal(document);
+  return is_local_ ||
+         EqualIgnoringFragmentIdentifier(AbsoluteUrl(), document.Url());
 }
 
 bool CSSURIValue::Equals(const CSSURIValue& other) const {
-  return url_data_ == other.url_data_;
+  // If only one has the 'local url' flag set, the URLs can't match.
+  if (is_local_ != other.is_local_) {
+    return false;
+  }
+  if (is_local_) {
+    return relative_url_ == other.relative_url_;
+  }
+  return absolute_url_ == other.absolute_url_;
 }
 
 CSSURIValue* CSSURIValue::ComputedCSSValue(
     const KURL& base_url,
     const WTF::TextEncoding& charset) const {
+  if (!charset.IsValid()) {
+    return MakeGarbageCollected<CSSURIValue>(
+        AtomicString(KURL(base_url, relative_url_).GetString()));
+  }
   return MakeGarbageCollected<CSSURIValue>(
-      url_data_.MakeResolved(base_url, charset));
+      AtomicString(KURL(base_url, relative_url_, charset).GetString()));
 }
 
 void CSSURIValue::TraceAfterDispatch(blink::Visitor* visitor) const {

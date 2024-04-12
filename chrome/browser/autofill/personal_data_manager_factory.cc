@@ -4,7 +4,7 @@
 
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/autofill/autofill_image_fetcher_factory.h"
 #include "chrome/browser/autofill/strike_database_factory.h"
 #include "chrome/browser/browser_process.h"
@@ -12,15 +12,13 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
-#include "chrome/browser/webdata_services/web_data_service_factory.h"
-#include "components/autofill/content/browser/content_autofill_shared_storage_handler.h"
+#include "chrome/browser/web_data_service_factory.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "components/autofill/core/browser/strike_databases/strike_database.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/sync/base/command_line_switches.h"
 #include "components/variations/service/variations_service.h"
-#include "content/public/browser/storage_partition.h"
 
 namespace autofill {
 
@@ -54,19 +52,13 @@ PersonalDataManager* PersonalDataManagerFactory::GetForBrowserContext(
 
 // static
 PersonalDataManagerFactory* PersonalDataManagerFactory::GetInstance() {
-  static base::NoDestructor<PersonalDataManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<PersonalDataManagerFactory>::get();
 }
 
 PersonalDataManagerFactory::PersonalDataManagerFactory()
     : ProfileKeyedServiceFactory(
           "PersonalDataManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(IdentityManagerFactory::GetInstance());
   DependsOn(HistoryServiceFactory::GetInstance());
   DependsOn(WebDataServiceFactory::GetInstance());
@@ -94,27 +86,21 @@ KeyedService* PersonalDataManagerFactory::BuildPersonalDataManager(
   auto* history_service = HistoryServiceFactory::GetForProfile(
       profile, ServiceAccessType::EXPLICIT_ACCESS);
 
+  // This is null for OTR profiles.
   auto* strike_database = StrikeDatabaseFactory::GetForProfile(profile);
 
   // The AutofillImageFetcherFactory redirects to the original profile.
   auto* image_fetcher = AutofillImageFetcherFactory::GetForProfile(profile);
 
+  // This is null for OTR profiles.
   auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
 
   auto* sync_service = SyncServiceFactory::GetForProfile(profile);
 
-  auto* shared_storage_manager =
-      profile->GetDefaultStoragePartition()->GetSharedStorageManager();
-  auto shared_storage_handler =
-      shared_storage_manager
-          ? std::make_unique<ContentAutofillSharedStorageHandler>(
-                *shared_storage_manager)
-          : nullptr;
-
   service->Init(local_storage, account_storage, profile->GetPrefs(),
                 g_browser_process->local_state(), identity_manager,
                 history_service, sync_service, strike_database, image_fetcher,
-                std::move(shared_storage_handler));
+                profile->IsOffTheRecord());
 
   return service;
 }

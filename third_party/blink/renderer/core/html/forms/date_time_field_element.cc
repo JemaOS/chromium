@@ -27,7 +27,6 @@
 
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
 #include "third_party/blink/renderer/core/dom/document.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/text.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/editing/position.h"
@@ -35,6 +34,7 @@
 #include "third_party/blink/renderer/core/events/keyboard_event.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html_names.h"
+#include "third_party/blink/renderer/core/layout/text_run_constructor.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/text/platform_locale.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -51,6 +51,11 @@ DateTimeFieldElement::DateTimeFieldElement(Document& document,
 void DateTimeFieldElement::Trace(Visitor* visitor) const {
   visitor->Trace(field_owner_);
   HTMLSpanElement::Trace(visitor);
+}
+
+float DateTimeFieldElement::ComputeTextWidth(const ComputedStyle& style,
+                                             const String& text) {
+  return style.GetFont().Width(ConstructTextRun(text, style));
 }
 
 void DateTimeFieldElement::DefaultEventHandler(Event& event) {
@@ -82,11 +87,8 @@ void DateTimeFieldElement::DefaultKeyboardEventHandler(
     return;
 
   const String& key = keyboard_event.key();
-  bool is_horizontal =
-      GetComputedStyle() ? GetComputedStyle()->IsHorizontalWritingMode() : true;
 
-  if ((is_horizontal && key == "ArrowLeft") ||
-      (!is_horizontal && key == "ArrowUp")) {
+  if (key == "ArrowLeft") {
     if (!field_owner_)
       return;
     // FIXME: We'd like to use FocusController::advanceFocus(FocusDirectionLeft,
@@ -96,8 +98,7 @@ void DateTimeFieldElement::DefaultKeyboardEventHandler(
     return;
   }
 
-  if ((is_horizontal && key == "ArrowRight") ||
-      (!is_horizontal && key == "ArrowDown")) {
+  if (key == "ArrowRight") {
     if (!field_owner_)
       return;
     // FIXME: We'd like to use
@@ -111,8 +112,7 @@ void DateTimeFieldElement::DefaultKeyboardEventHandler(
   if (IsFieldOwnerReadOnly())
     return;
 
-  if ((is_horizontal && key == "ArrowDown") ||
-      (!is_horizontal && key == "ArrowLeft")) {
+  if (key == "ArrowDown") {
     if (keyboard_event.getModifierState("Alt"))
       return;
     keyboard_event.SetDefaultHandled();
@@ -120,8 +120,7 @@ void DateTimeFieldElement::DefaultKeyboardEventHandler(
     return;
   }
 
-  if ((is_horizontal && key == "ArrowUp") ||
-      (!is_horizontal && key == "ArrowRight")) {
+  if (key == "ArrowUp") {
     keyboard_event.SetDefaultHandled();
     StepUp();
     return;
@@ -153,7 +152,7 @@ void DateTimeFieldElement::SetFocused(bool value,
     }
   }
 
-  Element::SetFocused(value, focus_type);
+  ContainerNode::SetFocused(value, focus_type);
 }
 
 void DateTimeFieldElement::FocusOnNextField() {
@@ -222,7 +221,7 @@ void DateTimeFieldElement::SetDisabled() {
                           style_change_extra_data::g_disabled));
 }
 
-bool DateTimeFieldElement::SupportsFocus(UpdateBehavior) const {
+bool DateTimeFieldElement::SupportsFocus() const {
   return !IsDisabled() && !IsFieldOwnerDisabled();
 }
 

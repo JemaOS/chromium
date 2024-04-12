@@ -4,17 +4,12 @@
 
 #include "chrome/updater/policy/service.h"
 
-#include <algorithm>
-#include <concepts>
-#include <functional>
-#include <optional>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "base/check.h"
-#include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/logging.h"
@@ -26,7 +21,6 @@
 #include "base/strings/stringprintf.h"
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
-#include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/updater/constants.h"
 #include "chrome/updater/external_constants.h"
@@ -38,6 +32,7 @@
 #elif BUILDFLAG(IS_MAC)
 #include "chrome/updater/policy/mac/managed_preference_policy_manager.h"
 #endif
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace updater {
 
@@ -64,67 +59,36 @@ PolicyService::PolicyManagers SortManagers(
   return {managers_vector, managers_map};
 }
 
-#if BUILDFLAG(IS_WIN)
-bool CloudPolicyOverridesPlatformPolicy(
-    PolicyService::PolicyManagerVector providers) {
-  PolicyService::PolicyManagerVector::const_iterator it =
-      std::find_if(providers.begin(), providers.end(),
-                   [](scoped_refptr<PolicyManagerInterface> p) {
-                     return p && p->CloudPolicyOverridesPlatformPolicy();
-                   });
-
-  return it == providers.end() ? false
-                               : *(*it)->CloudPolicyOverridesPlatformPolicy();
-}
-#endif
-
-}  // namespace
-
 PolicyService::PolicyManagerVector CreatePolicyManagerVector(
     bool should_take_policy_critical_section,
     scoped_refptr<ExternalConstants> external_constants,
     scoped_refptr<PolicyManagerInterface> dm_policy_manager) {
-  // The order of the policy managers:
-  //   1) External constants policy manager (if present).
-  //   2) Group policy manager (Windows only). **
-  //   3) DM policy manager (if present). **
-  //   4) Managed preferences policy manager(macOS only).
-  //   5) The default value policy manager.
-  // ** If `CloudPolicyOverridesPlatformPolicy`, then the DM policy manager
-  //    has a higher priority than the group policy manger.
   PolicyService::PolicyManagerVector managers;
-  if (dm_policy_manager) {
-    managers.push_back(std::move(dm_policy_manager));
+  if (external_constants) {
+    managers.push_back(base::MakeRefCounted<PolicyManager>(
+        external_constants->GroupPolicies()));
   }
-  scoped_refptr<PolicyManagerInterface> external_constants_policy_manager =
-      external_constants ? base::MakeRefCounted<PolicyManager>(
-                               external_constants->GroupPolicies())
-                         : nullptr;
+
 #if BUILDFLAG(IS_WIN)
-  auto group_policy_manager = base::MakeRefCounted<GroupPolicyManager>(
-      should_take_policy_critical_section,
-      external_constants->IsMachineManaged());
-  if (CloudPolicyOverridesPlatformPolicy({dm_policy_manager,
-                                          group_policy_manager,
-                                          external_constants_policy_manager})) {
-    VLOG(1) << __func__ << ": CloudPolicyOverridesPlatformPolicy=1";
-    managers.push_back(std::move(group_policy_manager));
-  } else {
-    managers.insert(managers.begin(), std::move(group_policy_manager));
-  }
+  managers.push_back(base::MakeRefCounted<GroupPolicyManager>(
+      should_take_policy_critical_section));
 #endif
-  if (external_constants_policy_manager) {
-    managers.insert(managers.begin(), external_constants_policy_manager);
-  }
+
+  if (dm_policy_manager)
+    managers.push_back(std::move(dm_policy_manager));
+
 #if BUILDFLAG(IS_MAC)
   // Managed preference policy manager is being deprecated and thus has a lower
   // priority than DM policy manager.
-  managers.push_back(CreateManagedPreferencePolicyManager(
-      external_constants->IsMachineManaged()));
+  managers.push_back(CreateManagedPreferencePolicyManager());
 #endif
+
   managers.push_back(GetDefaultValuesPolicyManager());
+
   return managers;
 }
+
+}  // namespace
 
 PolicyService::PolicyManagers::PolicyManagers(
     PolicyManagerVector manager_vector,
@@ -144,8 +108,9 @@ PolicyService::PolicyService(
     : policy_managers_(SortManagers(CreatePolicyManagerVector(
           /*should_take_policy_critical_section*/ false,
           external_constants,
-          CreateDMPolicyManager(external_constants->IsMachineManaged())))),
-      external_constants_(external_constants) {
+          CreateDMPolicyManager()))),
+      external_constants_(external_constants),
+      policy_fetcher_(base::MakeRefCounted<PolicyFetcher>(this)) {
   VLOG(1) << "Current effective policies:" << std::endl
           << GetAllPoliciesAsString();
 }
@@ -155,16 +120,11 @@ PolicyService::~PolicyService() = default;
 void PolicyService::FetchPolicies(base::OnceCallback<void(int)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  auto fetcher = base::MakeRefCounted<PolicyFetcher>(
-      external_constants_->DeviceManagementURL(),
-      PolicyServiceProxyConfiguration::Get(this),
-      external_constants_->IsMachineManaged());
-  fetcher->FetchPolicies(base::BindOnce(&PolicyService::FetchPoliciesDone, this,
-                                        fetcher, std::move(callback)));
+  policy_fetcher_->FetchPolicies(base::BindOnce(
+      &PolicyService::FetchPoliciesDone, this, std::move(callback)));
 }
 
 void PolicyService::FetchPoliciesDone(
-    scoped_refptr<PolicyFetcher> fetcher,
     base::OnceCallback<void(int)> callback,
     int result,
     scoped_refptr<PolicyManagerInterface> dm_policy_manager) {
@@ -213,124 +173,113 @@ std::string PolicyService::source() const {
   return base::JoinString(sources, ";");
 }
 
-PolicyStatus<bool> PolicyService::CloudPolicyOverridesPlatformPolicy() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(
-      &PolicyManagerInterface::CloudPolicyOverridesPlatformPolicy);
-}
-
 PolicyStatus<base::TimeDelta> PolicyService::GetLastCheckPeriod() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(&PolicyManagerInterface::GetLastCheckPeriod);
+  return QueryPolicy(
+      base::BindRepeating(&PolicyManagerInterface::GetLastCheckPeriod));
 }
 
 PolicyStatus<UpdatesSuppressedTimes> PolicyService::GetUpdatesSuppressedTimes()
     const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(&PolicyManagerInterface::GetUpdatesSuppressedTimes);
+  return QueryPolicy(
+      base::BindRepeating(&PolicyManagerInterface::GetUpdatesSuppressedTimes));
 }
 
-PolicyStatus<std::string> PolicyService::GetDownloadPreference() const {
+PolicyStatus<std::string> PolicyService::GetDownloadPreferenceGroupPolicy()
+    const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(
-      &PolicyManagerInterface::GetDownloadPreference,
-      base::BindRepeating([](std::optional<std::string> download_preference) {
-        return (download_preference.has_value() &&
-                base::EqualsCaseInsensitiveASCII(download_preference.value(),
-                                                 kDownloadPreferenceCacheable))
-                   ? download_preference
-                   : std::nullopt;
-      }));
+  return QueryPolicy(base::BindRepeating(
+      &PolicyManagerInterface::GetDownloadPreferenceGroupPolicy));
 }
 
 PolicyStatus<int> PolicyService::GetPackageCacheSizeLimitMBytes() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(&PolicyManagerInterface::GetPackageCacheSizeLimitMBytes);
+  return QueryPolicy(base::BindRepeating(
+      &PolicyManagerInterface::GetPackageCacheSizeLimitMBytes));
 }
 
 PolicyStatus<int> PolicyService::GetPackageCacheExpirationTimeDays() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(
-      &PolicyManagerInterface::GetPackageCacheExpirationTimeDays);
+  return QueryPolicy(base::BindRepeating(
+      &PolicyManagerInterface::GetPackageCacheExpirationTimeDays));
 }
 
 PolicyStatus<int> PolicyService::GetPolicyForAppInstalls(
     const std::string& app_id) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return QueryAppPolicy(
-      &PolicyManagerInterface::GetEffectivePolicyForAppInstalls, app_id);
+      base::BindRepeating(
+          &PolicyManagerInterface::GetEffectivePolicyForAppInstalls),
+      app_id);
 }
 
 PolicyStatus<int> PolicyService::GetPolicyForAppUpdates(
     const std::string& app_id) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (app_id == kUpdaterAppId) {
-    return {};  // Self-updates for the updater can't be disabled by policy.
-  }
   return QueryAppPolicy(
-      &PolicyManagerInterface::GetEffectivePolicyForAppUpdates, app_id);
+      base::BindRepeating(
+          &PolicyManagerInterface::GetEffectivePolicyForAppUpdates),
+      app_id);
 }
 
 PolicyStatus<std::string> PolicyService::GetTargetChannel(
     const std::string& app_id) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryAppPolicy(&PolicyManagerInterface::GetTargetChannel, app_id);
+  return QueryAppPolicy(
+      base::BindRepeating(&PolicyManagerInterface::GetTargetChannel), app_id);
 }
 
 PolicyStatus<std::string> PolicyService::GetTargetVersionPrefix(
     const std::string& app_id) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryAppPolicy(&PolicyManagerInterface::GetTargetVersionPrefix,
-                        app_id);
+  return QueryAppPolicy(
+      base::BindRepeating(&PolicyManagerInterface::GetTargetVersionPrefix),
+      app_id);
 }
 
 PolicyStatus<bool> PolicyService::IsRollbackToTargetVersionAllowed(
     const std::string& app_id) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return QueryAppPolicy(
-      &PolicyManagerInterface::IsRollbackToTargetVersionAllowed, app_id);
+      base::BindRepeating(
+          &PolicyManagerInterface::IsRollbackToTargetVersionAllowed),
+      app_id);
 }
 
 PolicyStatus<std::string> PolicyService::GetProxyMode() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return QueryPolicy(
-      &PolicyManagerInterface::GetProxyMode,
-      base::BindRepeating([](std::optional<std::string> proxy_mode) {
-        return (proxy_mode.has_value() &&
-                base::Contains(std::vector<std::string>(
-                                   {kProxyModeDirect, kProxyModeSystem,
-                                    kProxyModeFixedServers, kProxyModePacScript,
-                                    kProxyModeAutoDetect}),
-                               base::ToLowerASCII(proxy_mode.value())))
-                   ? proxy_mode
-                   : std::nullopt;
-      }));
+      base::BindRepeating(&PolicyManagerInterface::GetProxyMode));
 }
 
 PolicyStatus<std::string> PolicyService::GetProxyPacUrl() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(&PolicyManagerInterface::GetProxyPacUrl);
+  return QueryPolicy(
+      base::BindRepeating(&PolicyManagerInterface::GetProxyPacUrl));
 }
 
 PolicyStatus<std::string> PolicyService::GetProxyServer() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(&PolicyManagerInterface::GetProxyServer);
+  return QueryPolicy(
+      base::BindRepeating(&PolicyManagerInterface::GetProxyServer));
 }
 
 PolicyStatus<std::vector<std::string>> PolicyService::GetForceInstallApps()
     const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return QueryPolicy(&PolicyManagerInterface::GetForceInstallApps);
+  return QueryPolicy(
+      base::BindRepeating(&PolicyManagerInterface::GetForceInstallApps));
 }
 
 PolicyStatus<int> PolicyService::DeprecatedGetLastCheckPeriodMinutes() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return QueryPolicy(
-      &PolicyManagerInterface::GetLastCheckPeriod,
-      base::BindRepeating([](std::optional<base::TimeDelta> period) {
-        // TODO: C++23: `return period.transform(&base::TimeDelta::InMinutes);`
-        return period ? std::make_optional(period->InMinutes()) : std::nullopt;
-      }));
+      base::BindRepeating(&PolicyManagerInterface::GetLastCheckPeriod)
+          .Then(base::BindRepeating([](absl::optional<base::TimeDelta> period) {
+            return period ? absl::optional<int>(period->InMinutes())
+                          : absl::nullopt;
+          })));
 }
 
 std::set<std::string> PolicyService::GetAppsWithPolicy() const {
@@ -350,164 +299,18 @@ std::set<std::string> PolicyService::GetAppsWithPolicy() const {
   return apps_with_policy;
 }
 
-base::Value PolicyService::GetAllPolicies() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  base::Value::Dict policies;
-
-  const PolicyStatus<bool> cloud_policy_override_platform_policy =
-      CloudPolicyOverridesPlatformPolicy();
-  if (cloud_policy_override_platform_policy) {
-    policies.Set(
-        "CloudPolicyOverridesPlatformPolicy",
-        base::Value::Dict()
-            .Set("value", cloud_policy_override_platform_policy.policy())
-            .Set("source",
-                 cloud_policy_override_platform_policy.effective_policy()
-                     ->source));
-  }
-
-  const PolicyStatus<base::TimeDelta> last_check_period = GetLastCheckPeriod();
-  if (last_check_period) {
-    policies.Set(
-        "LastCheckPeriod",
-        base::Value::Dict()
-            .Set("value", last_check_period.policy().InMinutes())
-            .Set("source", last_check_period.effective_policy()->source));
-  }
-
-  const PolicyStatus<UpdatesSuppressedTimes> update_supressed_times =
-      GetUpdatesSuppressedTimes();
-  if (update_supressed_times) {
-    policies.Set(
-        "UpdatesSuppressed",
-        base::Value::Dict()
-            .Set("StartHour", update_supressed_times.policy().start_hour_)
-            .Set("StartMinute", update_supressed_times.policy().start_minute_)
-            .Set("Duration", update_supressed_times.policy().duration_minute_)
-            .Set("source", update_supressed_times.effective_policy()->source));
-  }
-
-  const PolicyStatus<std::string> download_preference = GetDownloadPreference();
-  if (download_preference) {
-    policies.Set(
-        "DownloadPreference",
-        base::Value::Dict()
-            .Set("value", download_preference.policy())
-            .Set("source", update_supressed_times.effective_policy()->source));
-  }
-
-  const PolicyStatus<int> cache_size_limit = GetPackageCacheSizeLimitMBytes();
-  if (cache_size_limit) {
-    policies.Set(
-        "PackageCacheSizeLimit",
-        base::Value::Dict()
-            .Set("value", cache_size_limit.policy())
-            .Set("source", cache_size_limit.effective_policy()->source));
-  }
-
-  const PolicyStatus<int> cache_expiration_time =
-      GetPackageCacheExpirationTimeDays();
-  if (cache_expiration_time) {
-    policies.Set(
-        "PackageCacheExpires",
-        base::Value::Dict()
-            .Set("value", cache_expiration_time.policy())
-            .Set("source", cache_expiration_time.effective_policy()->source));
-  }
-
-  const PolicyStatus<std::string> proxy_mode = GetProxyMode();
-  if (proxy_mode) {
-    policies.Set("ProxyMode",
-                 base::Value::Dict()
-                     .Set("value", proxy_mode.policy())
-                     .Set("source", proxy_mode.effective_policy()->source));
-  }
-  const PolicyStatus<std::string> proxy_pac_url = GetProxyPacUrl();
-  if (proxy_pac_url) {
-    policies.Set("ProxyPacURL",
-                 base::Value::Dict()
-                     .Set("value", proxy_pac_url.policy())
-                     .Set("source", proxy_pac_url.effective_policy()->source));
-  }
-  const PolicyStatus<std::string> proxy_server = GetProxyServer();
-  if (proxy_server) {
-    policies.Set("ProxyServer",
-                 base::Value::Dict()
-                     .Set("value", proxy_server.policy())
-                     .Set("source", proxy_server.effective_policy()->source));
-  }
-
-  for (const std::string& app_id : GetAppsWithPolicy()) {
-    base::Value::Dict app_policies;
-    const PolicyStatus<int> app_install = GetPolicyForAppInstalls(app_id);
-    if (app_install) {
-      app_policies.Set(
-          "Install",
-          base::Value::Dict()
-              .Set("value", app_install.policy())
-              .Set("source", app_install.effective_policy()->source));
-    }
-    const PolicyStatus<int> app_update = GetPolicyForAppUpdates(app_id);
-    if (app_update) {
-      app_policies.Set(
-          "Update", base::Value::Dict()
-                        .Set("value", app_update.policy())
-                        .Set("source", app_update.effective_policy()->source));
-    }
-    const PolicyStatus<std::string> target_channel = GetTargetChannel(app_id);
-    if (target_channel) {
-      app_policies.Set(
-          "TargetChannel",
-          base::Value::Dict()
-              .Set("value", target_channel.policy())
-              .Set("source", target_channel.effective_policy()->source));
-    }
-    const PolicyStatus<std::string> target_version_prefix =
-        GetTargetVersionPrefix(app_id);
-    if (target_version_prefix) {
-      app_policies.Set(
-          "TargetVersionPrefix",
-          base::Value::Dict()
-              .Set("value", target_version_prefix.policy())
-              .Set("source", target_version_prefix.effective_policy()->source));
-    }
-    const PolicyStatus<bool> rollback_allowed =
-        IsRollbackToTargetVersionAllowed(app_id);
-    if (rollback_allowed) {
-      app_policies.Set(
-          "RollbackToTargetVersionAllowed",
-          base::Value::Dict()
-              .Set("value", rollback_allowed.policy())
-              .Set("source", rollback_allowed.effective_policy()->source));
-    }
-
-    policies.Set(app_id, std::move(app_policies));
-  }
-  return base::Value(std::move(policies));
-}
-
 std::string PolicyService::GetAllPoliciesAsString() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   std::vector<std::string> policies;
 
-  const PolicyStatus<bool> cloud_policy_override_platform_policy =
-      CloudPolicyOverridesPlatformPolicy();
-  if (cloud_policy_override_platform_policy) {
-    policies.push_back(base::StringPrintf(
-        "CloudPolicyOverridesPlatformPolicy = %d (%s)",
-        cloud_policy_override_platform_policy.policy(),
-        cloud_policy_override_platform_policy.effective_policy()
-            ->source.c_str()));
-  }
-
-  const PolicyStatus<base::TimeDelta> last_check_period = GetLastCheckPeriod();
+  PolicyStatus<base::TimeDelta> last_check_period = GetLastCheckPeriod();
   if (last_check_period) {
     policies.push_back(base::StringPrintf(
         "LastCheckPeriod = %d (%s)", last_check_period.policy().InMinutes(),
         last_check_period.effective_policy()->source.c_str()));
   }
 
-  const PolicyStatus<UpdatesSuppressedTimes> update_supressed_times =
+  PolicyStatus<UpdatesSuppressedTimes> update_supressed_times =
       GetUpdatesSuppressedTimes();
   if (update_supressed_times) {
     policies.push_back(base::StringPrintf(
@@ -519,42 +322,42 @@ std::string PolicyService::GetAllPoliciesAsString() const {
         update_supressed_times.effective_policy()->source.c_str()));
   }
 
-  const PolicyStatus<std::string> download_preference = GetDownloadPreference();
+  PolicyStatus<std::string> download_preference =
+      GetDownloadPreferenceGroupPolicy();
   if (download_preference) {
     policies.push_back(base::StringPrintf(
         "DownloadPreference = %s (%s)", download_preference.policy().c_str(),
         download_preference.effective_policy()->source.c_str()));
   }
 
-  const PolicyStatus<int> cache_size_limit = GetPackageCacheSizeLimitMBytes();
+  PolicyStatus<int> cache_size_limit = GetPackageCacheSizeLimitMBytes();
   if (cache_size_limit) {
     policies.push_back(base::StringPrintf(
-        "PackageCacheSizeLimit = %d MB (%s)", cache_size_limit.policy(),
+        "CacheSizeLimit = %d MB (%s)", cache_size_limit.policy(),
         cache_size_limit.effective_policy()->source.c_str()));
   }
 
-  const PolicyStatus<int> cache_expiration_time =
-      GetPackageCacheExpirationTimeDays();
+  PolicyStatus<int> cache_expiration_time = GetPackageCacheExpirationTimeDays();
   if (cache_expiration_time) {
     policies.push_back(base::StringPrintf(
-        "PackageCacheExpires = %d days (%s)", cache_expiration_time.policy(),
+        "CacheExpires = %d days (%s)", cache_expiration_time.policy(),
         cache_expiration_time.effective_policy()->source.c_str()));
   }
 
-  const PolicyStatus<std::string> proxy_mode = GetProxyMode();
+  PolicyStatus<std::string> proxy_mode = GetProxyMode();
   if (proxy_mode) {
     policies.push_back(
         base::StringPrintf("ProxyMode = %s (%s)", proxy_mode.policy().c_str(),
                            proxy_mode.effective_policy()->source.c_str()));
   }
 
-  const PolicyStatus<std::string> proxy_pac_url = GetProxyPacUrl();
+  PolicyStatus<std::string> proxy_pac_url = GetProxyPacUrl();
   if (proxy_pac_url) {
     policies.push_back(base::StringPrintf(
         "ProxyPacURL = %s (%s)", proxy_pac_url.policy().c_str(),
         proxy_pac_url.effective_policy()->source.c_str()));
   }
-  const PolicyStatus<std::string> proxy_server = GetProxyServer();
+  PolicyStatus<std::string> proxy_server = GetProxyServer();
   if (proxy_server) {
     policies.push_back(base::StringPrintf(
         "ProxyServer = %s (%s)", proxy_server.policy().c_str(),
@@ -563,26 +366,26 @@ std::string PolicyService::GetAllPoliciesAsString() const {
 
   for (const std::string& app_id : GetAppsWithPolicy()) {
     std::vector<std::string> app_policies;
-    const PolicyStatus<int> app_install = GetPolicyForAppInstalls(app_id);
+    PolicyStatus<int> app_install = GetPolicyForAppInstalls(app_id);
     if (app_install) {
       app_policies.push_back(
           base::StringPrintf("Install = %d (%s)", app_install.policy(),
                              app_install.effective_policy()->source.c_str()));
     }
 
-    const PolicyStatus<int> app_update = GetPolicyForAppUpdates(app_id);
+    PolicyStatus<int> app_update = GetPolicyForAppUpdates(app_id);
     if (app_update) {
       app_policies.push_back(
           base::StringPrintf("Update = %d (%s)", app_update.policy(),
                              app_update.effective_policy()->source.c_str()));
     }
-    const PolicyStatus<std::string> target_channel = GetTargetChannel(app_id);
+    PolicyStatus<std::string> target_channel = GetTargetChannel(app_id);
     if (target_channel) {
       app_policies.push_back(base::StringPrintf(
           "TargetChannel = %s (%s)", target_channel.policy().c_str(),
           target_channel.effective_policy()->source.c_str()));
     }
-    const PolicyStatus<std::string> target_version_prefix =
+    PolicyStatus<std::string> target_version_prefix =
         GetTargetVersionPrefix(app_id);
     if (target_version_prefix) {
       app_policies.push_back(base::StringPrintf(
@@ -590,7 +393,7 @@ std::string PolicyService::GetAllPoliciesAsString() const {
           target_version_prefix.policy().c_str(),
           target_version_prefix.effective_policy()->source.c_str()));
     }
-    const PolicyStatus<bool> rollback_allowed =
+    PolicyStatus<bool> rollback_allowed =
         IsRollbackToTargetVersionAllowed(app_id);
     if (rollback_allowed) {
       app_policies.push_back(base::StringPrintf(
@@ -606,69 +409,41 @@ std::string PolicyService::GetAllPoliciesAsString() const {
                             base::JoinString(policies, "\n  ").c_str());
 }
 
-bool PolicyService::AreUpdatesSuppressedNow(const base::Time& now) const {
+template <typename T>
+PolicyStatus<T> PolicyService::QueryPolicy(
+    const base::RepeatingCallback<absl::optional<T>(
+        const PolicyManagerInterface*)>& policy_query_callback) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  const PolicyStatus<UpdatesSuppressedTimes> suppression =
-      GetUpdatesSuppressedTimes();
-  if (!suppression || !suppression.policy().valid()) {
-    return false;
-  }
-  base::Time::Exploded now_local;
-  now.LocalExplode(&now_local);
-  const bool are_updates_suppressed =
-      suppression.policy().contains(now_local.hour, now_local.minute);
-  VLOG(0) << __func__ << ": Updates are "
-          << (are_updates_suppressed ? "" : "not ") << "suppressed: now=" << now
-          << ": UpdatesSuppressedTimes: start_hour_:"
-          << suppression.policy().start_hour_
-          << ": start_minute_:" << suppression.policy().start_minute_
-          << ": duration_minute_:" << suppression.policy().duration_minute_;
-  return are_updates_suppressed;
-}
-
-template <typename T, typename U>
-PolicyStatus<U> PolicyService::QueryPolicy(
-    PolicyQueryFunction<T> policy_query_function,
-    const base::RepeatingCallback<std::optional<U>(std::optional<T>)>&
-        transform) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  PolicyStatus<U> status;
+  absl::optional<T> query_result;
+  PolicyStatus<T> status;
   for (const scoped_refptr<PolicyManagerInterface>& policy_manager :
        policy_managers_.vector) {
-    const std::optional<U> transformed_result =
-        [&transform](std::optional<T> query_result) {
-          if constexpr (std::same_as<T, U>) {
-            return transform.is_null() ? std::move(query_result)
-                                       : transform.Run(std::move(query_result));
-          } else {
-            CHECK(!transform.is_null());
-            return transform.Run(std::move(query_result));
-          }
-        }(std::invoke(policy_query_function, policy_manager));
-    if (transformed_result.has_value()) {
-      status.AddPolicyIfNeeded(policy_manager->HasActiveDevicePolicies(),
-                               policy_manager->source(),
-                               transformed_result.value());
-    }
+    query_result = policy_query_callback.Run(policy_manager.get());
+    if (!query_result)
+      continue;
+    status.AddPolicyIfNeeded(policy_manager->HasActiveDevicePolicies(),
+                             policy_manager->source(), query_result.value());
   }
+
   return status;
 }
 
 template <typename T>
 PolicyStatus<T> PolicyService::QueryAppPolicy(
-    AppPolicyQueryFunction<T> policy_query_function,
+    const base::RepeatingCallback<
+        absl::optional<T>(const PolicyManagerInterface*, const std::string&)>&
+        policy_query_callback,
     const std::string& app_id) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  absl::optional<T> query_result;
   PolicyStatus<T> status;
   for (const scoped_refptr<PolicyManagerInterface>& policy_manager :
        policy_managers_.vector) {
-    std::optional<T> query_result =
-        std::invoke(policy_query_function, policy_manager, app_id);
-    if (query_result.has_value()) {
-      status.AddPolicyIfNeeded(policy_manager->HasActiveDevicePolicies(),
-                               policy_manager->source(), query_result.value());
-    }
+    query_result = policy_query_callback.Run(policy_manager.get(), app_id);
+    if (!query_result)
+      continue;
+    status.AddPolicyIfNeeded(policy_manager->HasActiveDevicePolicies(),
+                             policy_manager->source(), query_result.value());
   }
 
   return status;
@@ -681,12 +456,12 @@ PolicyServiceProxyConfiguration::PolicyServiceProxyConfiguration(
 PolicyServiceProxyConfiguration& PolicyServiceProxyConfiguration::operator=(
     const PolicyServiceProxyConfiguration&) = default;
 
-std::optional<PolicyServiceProxyConfiguration>
+absl::optional<PolicyServiceProxyConfiguration>
 PolicyServiceProxyConfiguration::Get(
     scoped_refptr<PolicyService> policy_service) {
-  const PolicyStatus<std::string> proxy_mode = policy_service->GetProxyMode();
+  PolicyStatus<std::string> proxy_mode = policy_service->GetProxyMode();
   if (!proxy_mode || proxy_mode.policy().compare(kProxyModeSystem) == 0) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   VLOG(2) << "Using policy proxy " << proxy_mode.policy();
 
@@ -694,8 +469,7 @@ PolicyServiceProxyConfiguration::Get(
 
   bool is_policy_config_valid = true;
   if (proxy_mode.policy().compare(kProxyModeFixedServers) == 0) {
-    const PolicyStatus<std::string> proxy_url =
-        policy_service->GetProxyServer();
+    PolicyStatus<std::string> proxy_url = policy_service->GetProxyServer();
     if (!proxy_url) {
       VLOG(1) << "Fixed server mode proxy has no URL specified.";
       is_policy_config_valid = false;
@@ -703,23 +477,20 @@ PolicyServiceProxyConfiguration::Get(
       policy_service_proxy_configuration.proxy_url = proxy_url.policy();
     }
   } else if (proxy_mode.policy().compare(kProxyModePacScript) == 0) {
-    const PolicyStatus<std::string> proxy_pac_url =
-        policy_service->GetProxyPacUrl();
+    PolicyStatus<std::string> proxy_pac_url;
     if (!proxy_pac_url) {
       VLOG(1) << "PAC proxy policy has no PAC URL specified.";
       is_policy_config_valid = false;
     } else {
       policy_service_proxy_configuration.proxy_pac_url = proxy_pac_url.policy();
     }
-  } else if (proxy_mode.policy().compare(kProxyModeAutoDetect) == 0) {
+  } else if (proxy_mode.policy().compare(kProxyModeAutoDetect)) {
     policy_service_proxy_configuration.proxy_auto_detect = true;
-  } else {
-    is_policy_config_valid = false;
   }
 
   if (!is_policy_config_valid) {
     VLOG(1) << "Configuration set by policy was invalid.";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return policy_service_proxy_configuration;

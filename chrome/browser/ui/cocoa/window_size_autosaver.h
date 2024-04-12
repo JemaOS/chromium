@@ -5,13 +5,15 @@
 #ifndef CHROME_BROWSER_UI_COCOA_WINDOW_SIZE_AUTOSAVER_H_
 #define CHROME_BROWSER_UI_COCOA_WINDOW_SIZE_AUTOSAVER_H_
 
-#import <AppKit/AppKit.h>
+#include "base/memory/raw_ptr.h"
 
 class PrefService;
+@class NSWindow;
 
 // WindowSizeAutosaver is a helper class that makes it easy to let windows
 // autoremember their position or position and size in a PrefService object.
-// To use this, add a |WindowSizeAutosaver* __strong| to your window
+// To use this, add a |base::scoped_nsobject<WindowSizeAutosaver>| to your
+// window
 // controller and initialize it in the window controller's init method, passing
 // a window and an autosave name. The autosaver will register for "window moved"
 // and "window resized" notifications and write the current window state to the
@@ -20,7 +22,11 @@ class PrefService;
 //
 // Note: Your xib file should have "Visible at launch" UNCHECKED, so that the
 // initial repositioning is not visible.
-@interface WindowSizeAutosaver : NSObject
+@interface WindowSizeAutosaver : NSObject {
+  NSWindow* _window;  // weak
+  raw_ptr<PrefService> _prefService;  // weak
+  const char* _path;
+}
 
 - (instancetype)initWithWindow:(NSWindow*)window
                    prefService:(PrefService*)prefs
@@ -28,3 +34,4 @@ class PrefService;
 @end
 
 #endif  // CHROME_BROWSER_UI_COCOA_WINDOW_SIZE_AUTOSAVER_H_
+

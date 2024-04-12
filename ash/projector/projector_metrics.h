@@ -18,7 +18,7 @@ namespace ash {
 // When removing an unused enumerator, comment it out, making it clear the value
 // was previously used.
 // Please keep in sync with "ProjectorToolbar" in
-// src/tools/metrics/histograms/metadata/ash/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class ProjectorToolbar {
   // kToolbarOpened = 0,
   // kToolbarClosed = 1,
@@ -42,7 +42,7 @@ enum class ProjectorToolbar {
   // kToolbarLocationTopCenter = 19,
   // kToolbarLocationBottomCenter = 20,
   // Add future entries above this comment, in sync with
-  // "ProjectorToolbar" in src/tools/metrics/histograms/metadata/ash/enums.xml.
+  // "ProjectorToolbar" in src/tools/metrics/histograms/enums.xml.
   // Update kMaxValue to the last value.
   kMaxValue = kMarkerTool
 };
@@ -50,7 +50,7 @@ enum class ProjectorToolbar {
 // These enum values represent marker colors on the Projector toolbar and log to
 // UMA. Entries should not be renumbered and numeric values should never be
 // reused. Please keep in sync with "ProjectorMarkerColor" in
-// src/tools/metrics/histograms/metadata/ash/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class ProjectorMarkerColor {
   // kBlack = 0,
   // kWhite = 1,
@@ -59,8 +59,7 @@ enum class ProjectorMarkerColor {
   kYellow = 4,
   kMagenta = 5,
   // Add future entries above this comment, in sync with
-  // "ProjectorMarkerColor" in
-  // src/tools/metrics/histograms/metadata/ash/enums.xml.
+  // "ProjectorMarkerColor" in src/tools/metrics/histograms/enums.xml.
   // Update kMaxValue to the last value.
   kMaxValue = kMagenta
 };
@@ -68,7 +67,7 @@ enum class ProjectorMarkerColor {
 // These enum values represent steps in the Projector creation flow and log to
 // UMA. Entries should not be renumbered and numeric values should never be
 // reused. Please keep in sync with "ProjectorCreationFlow" in
-// src/tools/metrics/histograms/metadata/ash/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class ProjectorCreationFlow {
   kSessionStarted = 0,
   kRecordingStarted = 1,
@@ -76,32 +75,43 @@ enum class ProjectorCreationFlow {
   kRecordingEnded = 3,
   kSessionStopped = 4,
   // Add future entries above this comment, in sync with
-  // "ProjectorCreationFlow" in
-  // src/tools/metrics/histograms/metadata/ash/enums.xml. Update kMaxValue to
-  // the last value.
+  // "ProjectorCreationFlow" in src/tools/metrics/histograms/enums.xml.
+  // Update kMaxValue to the last value.
   kMaxValue = kSessionStopped
 };
 
 // These enum values represent user-facing errors in the Projector creation flow
 // and log to UMA. Entries should not be renumbered and numeric values should
 // never be reused. Please keep in sync with "ProjectorCreationFlowError" in
-// src/tools/metrics/histograms/metadata/ash/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class ProjectorCreationFlowError {
   kSaveError = 0,
   kTranscriptionError = 1,
   kSessionAbortedByAudioPolicyDisabled = 2,
   // Add future entries above this comment, in sync with
-  // "ProjectorCreationFlowError" in
-  // src/tools/metrics/histograms/metadata/ash/enums.xml. Update kMaxValue to
-  // the last value.
+  // "ProjectorCreationFlowError" in src/tools/metrics/histograms/enums.xml.
+  // Update kMaxValue to the last value.
   kMaxValue = kSessionAbortedByAudioPolicyDisabled
 };
 
 // These enum values represent potential error that occurs at policy value
 // change handling and log to UMA. Entries should not be renumbered and numeric
 // values should never be reused. Please keep in sync with
+// "ProjectorPolicyChangeHandlingError" in
+// src/tools/metrics/histograms/enums.xml.
+enum class ProjectorPolicyChangeHandlingError {
+  kSwaManager = 0,
+  kWebAppProvider = 1,
+  kWebAppProviderOnRegistryReady = 2,
+  kSyncBridge = 3,
+  kMaxValue = kSyncBridge
+};
+
+// These enum values represent potential error that occurs at policy value
+// change handling and log to UMA. Entries should not be renumbered and numeric
+// values should never be reused. Please keep in sync with
 // "OnDeviceToServerSpeechRecognitionFallbackReason" in
-// src/tools/metrics/histograms/metadata/ash/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 // This enum is the smiliar to the `OnDeviceRecognitionAvailability` because
 // all fallback reasons are related to on device recognition is not supported.
 enum class OnDeviceToServerSpeechRecognitionFallbackReason : int {
@@ -159,6 +169,11 @@ void RecordPendingScreencastBatchIOTaskDuration(const base::TimeDelta duration);
 
 // Records the interval between the UI changes of pending screencasts.
 void RecordPendingScreencastChangeInterval(const base::TimeDelta interval);
+
+// Records potential error occurs at policy change.
+// TODO(b/240497023): remove this once confirmed the nullptr should never
+// occurs and the nullptr check is converted to DCEHCK.
+void RecordPolicyChangeHandlingError(ProjectorPolicyChangeHandlingError error);
 
 void RecordOnDeviceToServerSpeechRecognitionFallbackReason(
     OnDeviceToServerSpeechRecognitionFallbackReason reason);

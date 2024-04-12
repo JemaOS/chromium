@@ -4,12 +4,12 @@
 
 #include "ui/accessibility/ax_assistant_structure.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node.h"
 #include "ui/accessibility/ax_role_properties.h"
@@ -181,44 +181,44 @@ std::u16string GetText(const AXNode* node) {
 // Get string representation of ax::mojom::Role. We are not using ToString() in
 // ax_enums.h since the names are subject to change in the future and
 // we are only interested in a subset of the roles.
-std::optional<std::string> AXRoleToString(ax::mojom::Role role) {
+absl::optional<std::string> AXRoleToString(ax::mojom::Role role) {
   switch (role) {
     case ax::mojom::Role::kArticle:
-      return std::optional<std::string>("article");
+      return absl::optional<std::string>("article");
     case ax::mojom::Role::kBanner:
-      return std::optional<std::string>("banner");
+      return absl::optional<std::string>("banner");
     case ax::mojom::Role::kCaption:
-      return std::optional<std::string>("caption");
+      return absl::optional<std::string>("caption");
     case ax::mojom::Role::kComplementary:
-      return std::optional<std::string>("complementary");
+      return absl::optional<std::string>("complementary");
     case ax::mojom::Role::kDate:
-      return std::optional<std::string>("date");
+      return absl::optional<std::string>("date");
     case ax::mojom::Role::kDateTime:
-      return std::optional<std::string>("date_time");
+      return absl::optional<std::string>("date_time");
     case ax::mojom::Role::kDefinition:
-      return std::optional<std::string>("definition");
+      return absl::optional<std::string>("definition");
     case ax::mojom::Role::kDetails:
-      return std::optional<std::string>("details");
+      return absl::optional<std::string>("details");
     case ax::mojom::Role::kDocument:
-      return std::optional<std::string>("document");
+      return absl::optional<std::string>("document");
     case ax::mojom::Role::kFeed:
-      return std::optional<std::string>("feed");
+      return absl::optional<std::string>("feed");
     case ax::mojom::Role::kHeading:
-      return std::optional<std::string>("heading");
+      return absl::optional<std::string>("heading");
     case ax::mojom::Role::kIframe:
-      return std::optional<std::string>("iframe");
+      return absl::optional<std::string>("iframe");
     case ax::mojom::Role::kIframePresentational:
-      return std::optional<std::string>("iframe_presentational");
+      return absl::optional<std::string>("iframe_presentational");
     case ax::mojom::Role::kList:
-      return std::optional<std::string>("list");
+      return absl::optional<std::string>("list");
     case ax::mojom::Role::kListItem:
-      return std::optional<std::string>("list_item");
+      return absl::optional<std::string>("list_item");
     case ax::mojom::Role::kMain:
-      return std::optional<std::string>("main");
+      return absl::optional<std::string>("main");
     case ax::mojom::Role::kParagraph:
-      return std::optional<std::string>("paragraph");
+      return absl::optional<std::string>("paragraph");
     default:
-      return std::optional<std::string>();
+      return absl::optional<std::string>();
   }
 }
 
@@ -232,12 +232,8 @@ struct WalkAXTreeConfig {
   bool should_select_leaf;
 };
 
-// |parent_absolute_clipped_rect| is the parent of the current subtree, and its
-// coordinates are relative to the top of the page.
 void WalkAXTreeDepthFirst(const AXNode* node,
-                          const gfx::Rect& parent_absolute_clipped_rect,
-                          const gfx::Rect& parent_absolute_unclipped_rect,
-                          const int root_scroll_y,
+                          const gfx::Rect& rect,
                           const AXTreeUpdate& update,
                           const AXTree* tree,
                           WalkAXTreeConfig* config,
@@ -269,31 +265,23 @@ void WalkAXTreeDepthFirst(const AXNode* node,
     result->underline = node->HasTextStyle(ax::mojom::TextStyle::kUnderline);
   }
 
-  const gfx::Rect& absolute_clipped_rect =
+  const gfx::Rect& absolute_rect =
       gfx::ToEnclosingRect(tree->GetTreeBounds(node));
-  const gfx::Rect& absolute_unclipped_rect = gfx::ToEnclosingRect(
+  const gfx::Rect& unclipped_rect = gfx::ToEnclosingRect(
       tree->GetTreeBounds(node, nullptr, /* clip_bounds = */ false));
 
-  // Calculate the parent relative bounds. For the root node, these bounds are
-  // the same as the absolute bounds above.
-  gfx::Rect parent_relative_clipped_rect = absolute_clipped_rect;
-  gfx::Rect parent_relative_unclipped_rect = absolute_unclipped_rect;
+  gfx::Rect parent_relative_rect = absolute_rect;
+  gfx::Rect parent_relative_unclipped_rect = unclipped_rect;
   bool is_root = !node->GetUnignoredParent();
   if (!is_root) {
-    parent_relative_clipped_rect.Offset(
-        -parent_absolute_clipped_rect.OffsetFromOrigin());
-    parent_relative_unclipped_rect.Offset(
-        -parent_absolute_unclipped_rect.OffsetFromOrigin());
+    parent_relative_rect.Offset(-rect.OffsetFromOrigin());
+    parent_relative_unclipped_rect.Offset(-rect.OffsetFromOrigin());
   }
-
-  result->rect = parent_relative_clipped_rect;
-  result->unclipped_rect = parent_relative_unclipped_rect;
-
-  // Create a Rect for the absolute unclipped bounds with the scrolling of the
-  // root container removed.
-  gfx::Rect absolute_unclipped_rect_unscrolled = absolute_unclipped_rect;
-  absolute_unclipped_rect_unscrolled.Offset(0, root_scroll_y);
-  result->page_absolute_rect = absolute_unclipped_rect_unscrolled;
+  result->rect = gfx::Rect(parent_relative_rect.x(), parent_relative_rect.y(),
+                           absolute_rect.width(), absolute_rect.height());
+  result->unclipped_rect = gfx::Rect(
+      parent_relative_unclipped_rect.x(), parent_relative_unclipped_rect.y(),
+      unclipped_rect.width(), unclipped_rect.height());
 
   // Selection state comes from the tree data rather than
   // GetUnignoredSelection() which uses AXPosition, as AXPosition requires a
@@ -318,7 +306,7 @@ void WalkAXTreeDepthFirst(const AXNode* node,
     }
     if (end_selection > 0)
       result->selection =
-          std::make_optional<gfx::Range>(start_selection, end_selection);
+          absl::make_optional<gfx::Range>(start_selection, end_selection);
   }
 
   result->html_tag =
@@ -327,22 +315,17 @@ void WalkAXTreeDepthFirst(const AXNode* node,
       node->GetStringAttribute(ax::mojom::StringAttribute::kDisplay);
   result->html_attributes = node->GetHtmlAttributes();
 
-  // Always add root scroll values for debugging scrolling.
-  result->html_attributes.emplace_back("root_scroll_y",
-                                       base::NumberToString(root_scroll_y));
-
   std::string class_name =
       node->GetStringAttribute(ax::mojom::StringAttribute::kClassName);
   if (!class_name.empty())
-    result->html_attributes.emplace_back("class", class_name);
+    result->html_attributes.push_back({"class", class_name});
 
   for (auto iter = node->UnignoredChildrenBegin();
        iter != node->UnignoredChildrenEnd(); ++iter) {
     auto* n = AddChild(assistant_tree);
     result->children_indices.push_back(assistant_tree->nodes.size() - 1);
-    WalkAXTreeDepthFirst(iter.get(), absolute_clipped_rect,
-                         absolute_unclipped_rect, root_scroll_y, update, tree,
-                         config, assistant_tree, n);
+    WalkAXTreeDepthFirst(iter.get(), absolute_rect, update, tree, config,
+                         assistant_tree, n);
   }
 }
 
@@ -369,13 +352,8 @@ std::unique_ptr<AssistantTree> CreateAssistantTree(const AXTreeUpdate& update) {
   WalkAXTreeConfig config{
       false,         // should_select_leaf
   };
-
-  int root_scroll_y = 0;
-  tree->root()->GetIntAttribute(ax::mojom::IntAttribute::kScrollY,
-                                &root_scroll_y);
-
-  WalkAXTreeDepthFirst(tree->root(), gfx::Rect(), gfx::Rect(), root_scroll_y,
-                       update, tree.get(), &config, assistant_tree.get(), root);
+  WalkAXTreeDepthFirst(tree->root(), gfx::Rect(), update, tree.get(), &config,
+                       assistant_tree.get(), root);
   return assistant_tree;
 }
 
@@ -452,10 +430,9 @@ const char* AXRoleToAndroidClassName(ax::mojom::Role role, bool has_parent) {
     case ax::mojom::Role::kMenuItemCheckBox:
     case ax::mojom::Role::kMenuItemRadio:
       return kAXMenuItemClassname;
+    case ax::mojom::Role::kPre:
     case ax::mojom::Role::kStaticText:
       return kAXTextViewClassname;
-    case ax::mojom::Role::kPreDeprecated:
-      NOTREACHED_NORETURN();
     default:
       return kAXViewClassname;
   }

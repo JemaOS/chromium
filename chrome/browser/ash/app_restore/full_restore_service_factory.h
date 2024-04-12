@@ -35,7 +35,7 @@ class FullRestoreServiceFactory : public ProfileKeyedServiceFactory {
       delete;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

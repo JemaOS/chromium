@@ -20,9 +20,9 @@
 // This class allows users to confirm sync signin in cases where signin is
 // untrusted.
 class OneClickSigninDialogView : public views::DialogDelegateView {
-  METADATA_HEADER(OneClickSigninDialogView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(OneClickSigninDialogView);
+
   OneClickSigninDialogView(const OneClickSigninDialogView&) = delete;
   OneClickSigninDialogView& operator=(const OneClickSigninDialogView&) = delete;
   ~OneClickSigninDialogView() override;

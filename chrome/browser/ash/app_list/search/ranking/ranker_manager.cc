@@ -16,6 +16,7 @@
 #include "chrome/browser/ash/app_list/search/ranking/removed_results_ranker.h"
 #include "chrome/browser/ash/app_list/search/ranking/score_normalizing_ranker.h"
 #include "chrome/browser/ash/app_list/search/ranking/util.h"
+#include "chrome/browser/ash/app_list/search/search_controller.h"
 #include "chrome/browser/ash/app_list/search/search_features.h"
 #include "chrome/browser/ash/app_list/search/util/score_normalizer.h"
 #include "chrome/browser/ash/app_list/search/util/score_normalizer.pb.h"
@@ -31,7 +32,7 @@ constexpr base::TimeDelta kStandardWriteDelay = base::Seconds(3);
 
 }  // namespace
 
-RankerManager::RankerManager(Profile* profile) {
+RankerManager::RankerManager(Profile* profile, SearchController* controller) {
   // Score normalization parameters:
   ScoreNormalizer::Params score_normalizer_params;
   // Change this version number when changing the number of bins below.
@@ -74,21 +75,21 @@ RankerManager::RankerManager(Profile* profile) {
   // 2. Score normalization, a precursor to other ranking.
   AddRanker(std::make_unique<ScoreNormalizingRanker>(
       score_normalizer_params,
-      ash::PersistentProto<ScoreNormalizerProto>(
+      PersistentProto<ScoreNormalizerProto>(
           state_dir.AppendASCII("score_norm.pb"), kStandardWriteDelay)));
 
   // 3. Ranking for results.
   // 3a. Most-frequently-recently-used (MRFU) ranking.
   auto mrfu_ranker = std::make_unique<MrfuResultRanker>(
       mrfu_result_params,
-      ash::PersistentProto<MrfuCacheProto>(
-          state_dir.AppendASCII("mrfu_results.pb"), kStandardWriteDelay));
+      PersistentProto<MrfuCacheProto>(state_dir.AppendASCII("mrfu_results.pb"),
+                                      kStandardWriteDelay));
   AddRanker(std::move(mrfu_ranker));
 
   // 3b. Ensembling between MRFU and normalized score ranking.
   auto ftrl_ranker = std::make_unique<FtrlRanker>(
       FtrlRanker::RankingKind::kResults, ftrl_result_params,
-      ash::PersistentProto<FtrlOptimizerProto>(
+      PersistentProto<FtrlOptimizerProto>(
           state_dir.AppendASCII("ftrl_results.pb"), kStandardWriteDelay));
   ftrl_ranker->AddExpert(std::make_unique<ResultScoringShim>(
       ResultScoringShim::ScoringMember::kNormalizedRelevance));
@@ -99,12 +100,11 @@ RankerManager::RankerManager(Profile* profile) {
   // 4. Ranking for categories
   AddRanker(std::make_unique<MrfuCategoryRanker>(
       mrfu_category_params,
-      ash::PersistentProto<MrfuCacheProto>(
+      PersistentProto<MrfuCacheProto>(
           state_dir.AppendASCII("mrfu_categories.pb"), kStandardWriteDelay)));
 
-  // TODO(b/274921356): Temporarily comment out the `KeywordRanker` construction
-  // to avoid any possible crashes. Re-enable it when we make sure this problem
-  // has been fixed.
+  // TODO(b/274921356): Temporarly comment out the `KeywordRanker` construction to avoid any 
+  // possible crashes. Re-enable it when we make sure this problem has been fixed.
   //
   // if (search_features::IsLauncherKeywordExtractionScoringEnabled()) {
   //   AddRanker(std::make_unique<KeywordRanker>());
@@ -120,9 +120,10 @@ RankerManager::RankerManager(Profile* profile) {
 RankerManager::~RankerManager() {}
 
 void RankerManager::Start(const std::u16string& query,
+                          ResultsMap& results,
                           CategoriesList& categories) {
   for (auto& ranker : rankers_) {
-    ranker->Start(query, categories);
+    ranker->Start(query, results, categories);
   }
 }
 

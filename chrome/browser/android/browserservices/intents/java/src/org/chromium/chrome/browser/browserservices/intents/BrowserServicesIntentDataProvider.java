@@ -4,9 +4,6 @@
 
 package org.chromium.chrome.browser.browserservices.intents;
 
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW;
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_POSITION_END;
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION_NONE;
 import static androidx.browser.customtabs.CustomTabsIntent.CLOSE_BUTTON_POSITION_DEFAULT;
 
 import android.app.PendingIntent;
@@ -34,17 +31,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.Collections;
 import java.util.List;
 
-/** Base class for model classes which parse incoming intent for customization data. */
+/**
+ * Base class for model classes which parse incoming intent for customization data.
+ */
 public abstract class BrowserServicesIntentDataProvider {
     // The type of UI for Custom Tab to use.
-    @IntDef({
-        CustomTabsUiType.DEFAULT,
-        CustomTabsUiType.MEDIA_VIEWER,
-        CustomTabsUiType.INFO_PAGE,
-        CustomTabsUiType.READER_MODE,
-        CustomTabsUiType.MINIMAL_UI_WEBAPP,
-        CustomTabsUiType.OFFLINE_PAGE
-    })
+    @IntDef({CustomTabsUiType.DEFAULT, CustomTabsUiType.MEDIA_VIEWER, CustomTabsUiType.INFO_PAGE,
+            CustomTabsUiType.READER_MODE, CustomTabsUiType.MINIMAL_UI_WEBAPP,
+            CustomTabsUiType.OFFLINE_PAGE})
     @Retention(RetentionPolicy.SOURCE)
     public @interface CustomTabsUiType {
         int DEFAULT = 0;
@@ -57,11 +51,8 @@ public abstract class BrowserServicesIntentDataProvider {
     }
 
     // The type of Disclosure for TWAs to use.
-    @IntDef({
-        TwaDisclosureUi.DEFAULT,
-        TwaDisclosureUi.V1_INFOBAR,
-        TwaDisclosureUi.V2_NOTIFICATION_OR_SNACKBAR
-    })
+    @IntDef({TwaDisclosureUi.DEFAULT, TwaDisclosureUi.V1_INFOBAR,
+            TwaDisclosureUi.V2_NOTIFICATION_OR_SNACKBAR})
     @Retention(RetentionPolicy.SOURCE)
     public @interface TwaDisclosureUi {
         int DEFAULT = -1;
@@ -69,14 +60,26 @@ public abstract class BrowserServicesIntentDataProvider {
         int V2_NOTIFICATION_OR_SNACKBAR = 1;
     }
 
-    @IntDef({
-        ACTIVITY_SIDE_SHEET_SLIDE_IN_DEFAULT,
-        ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_BOTTOM,
-        ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_SIDE
-    })
+    @IntDef({ACTIVITY_SIDE_SHEET_POSITION_DEFAULT, ACTIVITY_SIDE_SHEET_POSITION_START,
+            ACTIVITY_SIDE_SHEET_POSITION_END})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActivitySideSheetPosition {}
+    /**
+     * Applies the default position for the Custom Tab Activity when it behaves as a
+     * side sheet. Same as {@link #ACTIVITY_SIDE_SHEET_POSITION_END}.
+     */
+    public static final int ACTIVITY_SIDE_SHEET_POSITION_DEFAULT = 0;
+
+    /** Position the side sheet on the start side of the screen. */
+    public static final int ACTIVITY_SIDE_SHEET_POSITION_START = 1;
+
+    /** Position the side sheet on the end side of the screen. */
+    public static final int ACTIVITY_SIDE_SHEET_POSITION_END = 2;
+
+    @IntDef({ACTIVITY_SIDE_SHEET_SLIDE_IN_DEFAULT, ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_BOTTOM,
+            ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_SIDE})
     @Retention(RetentionPolicy.SOURCE)
     public @interface ActivitySideSheetSlideInBehavior {}
-
     /**
      * Side sheet's default slide-in behavior. Same as
      * {@link ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_SIDE}.
@@ -89,6 +92,104 @@ public abstract class BrowserServicesIntentDataProvider {
     /** Side shset's slide-in behavior for side-wise animation. */
     public static final int ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_SIDE = 2;
 
+    @IntDef({ACTIVITY_HEIGHT_DEFAULT, ACTIVITY_HEIGHT_ADJUSTABLE, ACTIVITY_HEIGHT_FIXED})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActivityHeightResizeBehavior {}
+
+    /**
+     * Applies the default height resize behavior for the Custom Tab Activity when it behaves as a
+     * bottom sheet. Same as {@link #ACTIVITY_HEIGHT_ADJUSTABLE}.
+     */
+    public static final int ACTIVITY_HEIGHT_DEFAULT = 0;
+
+    /**
+     * The Custom Tab Activity, when it behaves as a bottom sheet, can have its height manually
+     * resized by the user.
+     */
+    public static final int ACTIVITY_HEIGHT_ADJUSTABLE = 1;
+
+    /**
+     * The Custom Tab Activity, when it behaves as a bottom sheet, cannot have its height manually
+     * resized by the user.
+     */
+    public static final int ACTIVITY_HEIGHT_FIXED = 2;
+
+    @IntDef({ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DEFAULT, ACTIVITY_SIDE_SHEET_DECORATION_TYPE_NONE,
+            ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW,
+            ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DIVIDER})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface SideSheetDecorationType {}
+    /**
+     * Side sheet's default decoration type. Same as
+     * {@link ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW}.
+     */
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DEFAULT = 0;
+    /**
+     * Side sheet with no decorations - the activity is not bordered by any shadow or divider line.
+     */
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_NONE = 1;
+    /**
+     * Side sheet with shadow decoration - the activity is bordered by a shadow effect.
+     */
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW = 2;
+    /**
+     * Side sheet with a divider line - the activity is bordered by a thin opaque line.
+     */
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DIVIDER = 3;
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_MAX = 3;
+
+    @IntDef({ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_DEFAULT, ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_NONE,
+            ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_TOP})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface SideSheetRoundedCornersPosition {}
+
+    /**
+     * Side sheet's default rounded corner configuration. Same as
+     * {@link ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_NONE}
+     */
+    public static final int ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_DEFAULT = 0;
+    /**
+     * Side sheet with no rounded corners.
+     */
+    public static final int ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_NONE = 1;
+    /**
+     * Side sheet with the inner top corner rounded (if positioned on the right of the screen, this
+     * will be the top left corner)
+     */
+    public static final int ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_TOP = 2;
+    public static final int ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_MAX = 2;
+
+    @IntDef({ACTIVITY_LAYOUT_STATE_NONE, ACTIVITY_LAYOUT_STATE_BOTTOM_SHEET,
+            ACTIVITY_LAYOUT_STATE_BOTTOM_SHEET_MAXIMIZED, ACTIVITY_LAYOUT_STATE_SIDE_SHEET,
+            ACTIVITY_LAYOUT_STATE_SIDE_SHEET_MAXIMIZED, ACTIVITY_LAYOUT_STATE_FULL_SCREEN})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActivityLayoutState {}
+    /**
+     * The activity's layout state is unknown.
+     */
+    public static final int ACTIVITY_LAYOUT_STATE_NONE = 0;
+    /**
+     * The activity is being displayed as a bottom-sheet at its initial height.
+     */
+    public static final int ACTIVITY_LAYOUT_STATE_BOTTOM_SHEET = 1;
+    /**
+     * The activity is being displayed as a bottom-sheet at its maximized height.
+     */
+    public static final int ACTIVITY_LAYOUT_STATE_BOTTOM_SHEET_MAXIMIZED = 2;
+    /**
+     * The activity is being displayed as a side-sheet at its initial width.
+     */
+    public static final int ACTIVITY_LAYOUT_STATE_SIDE_SHEET = 3;
+    /**
+     * The activity is being displayed as a side-sheet at its maximized width.
+     */
+    public static final int ACTIVITY_LAYOUT_STATE_SIDE_SHEET_MAXIMIZED = 4;
+    /**
+     * The activity is being displayed over the whole window.
+     */
+    public static final int ACTIVITY_LAYOUT_STATE_FULL_SCREEN = 5;
+    public static final int ACTIVITY_LAYOUT_STATE_MAX = 5;
+
     /**
      * @return The type of the Activity;
      */
@@ -97,21 +198,24 @@ public abstract class BrowserServicesIntentDataProvider {
     /**
      * @return the Intent this instance was created with.
      */
-    public @Nullable Intent getIntent() {
+    @Nullable
+    public Intent getIntent() {
         return null;
     }
 
     /**
      * @return The session specified in the intent, or null.
      */
-    public @Nullable CustomTabsSessionToken getSession() {
+    @Nullable
+    public CustomTabsSessionToken getSession() {
         return null;
     }
 
     /**
      * @return The keep alive service intent specified in the intent, or null.
      */
-    public @Nullable Intent getKeepAliveServiceIntent() {
+    @Nullable
+    public Intent getKeepAliveServiceIntent() {
         return null;
     }
 
@@ -127,7 +231,8 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return The package name of the client app. This is used for a workaround in order to
      *         retrieve the client's animation resources.
      */
-    public @Nullable String getClientPackageName() {
+    @Nullable
+    public String getClientPackageName() {
         return null;
     }
 
@@ -161,7 +266,8 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return The URL that should be used from this intent.
      * Must be called only after native has loaded.
      */
-    public @Nullable String getUrlToLoad() {
+    @Nullable
+    public String getUrlToLoad() {
         return null;
     }
 
@@ -172,36 +278,14 @@ public abstract class BrowserServicesIntentDataProvider {
         return true;
     }
 
-    /**
-     * @return Whether scroll on content view may drag/resize the custom tab.
-     */
-    public boolean contentScrollMayResizeTab() {
-        return false;
-    }
-
-    /**
-     * @return ColorProvider to be used.
-     */
-    public abstract @NonNull ColorProvider getColorProvider();
-
-    /**
-     * @return ColorProvider when the system is in light mode.
-     */
-    public @NonNull ColorProvider getLightColorProvider() {
-        return getColorProvider();
-    }
-
-    /**
-     * @return ColorProvider when the system is in dark mode.
-     */
-    public @NonNull ColorProvider getDarkColorProvider() {
-        return getColorProvider();
-    }
+    @NonNull
+    public abstract ColorProvider getColorProvider();
 
     /**
      * @return The drawable of the icon of close button shown in the custom tab toolbar.
      */
-    public @Nullable Drawable getCloseButtonDrawable() {
+    @Nullable
+    public Drawable getCloseButtonDrawable() {
         return null;
     }
 
@@ -237,7 +321,8 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return The {@link RemoteViews} to show on the bottom bar, or null if the extra is not
      *         specified.
      */
-    public @Nullable RemoteViews getBottomBarRemoteViews() {
+    @Nullable
+    public RemoteViews getBottomBarRemoteViews() {
         return null;
     }
 
@@ -252,7 +337,8 @@ public abstract class BrowserServicesIntentDataProvider {
     /**
      * @return The {@link PendingIntent} that is sent when the user clicks on the remote view.
      */
-    public @Nullable PendingIntent getRemoteViewsPendingIntent() {
+    @Nullable
+    public PendingIntent getRemoteViewsPendingIntent() {
         return null;
     }
 
@@ -260,7 +346,8 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return The {@link PendingIntent} that is sent when the user swipes up from the secondary
      *         (bottom) toolbar.
      */
-    public @Nullable PendingIntent getSecondaryToolbarSwipeUpPendingIntent() {
+    @Nullable
+    public PendingIntent getSecondaryToolbarSwipeUpPendingIntent() {
         return null;
     }
 
@@ -273,7 +360,7 @@ public abstract class BrowserServicesIntentDataProvider {
     }
 
     /**
-     * @return Titles of menu items that were passed from client app via intent.
+      @return Titles of menu items that were passed from client app via intent.
      */
     public List<String> getMenuTitles() {
         return Collections.emptyList();
@@ -286,14 +373,16 @@ public abstract class BrowserServicesIntentDataProvider {
         return false;
     }
 
-    public @CustomTabsUiType int getUiType() {
+    @CustomTabsUiType
+    public int getUiType() {
         return CustomTabsUiType.DEFAULT;
     }
 
     /**
      * @return URL that should be loaded in place of the URL in {@link Intent#getData()}.
      */
-    public @Nullable String getMediaViewerUrl() {
+    @Nullable
+    public String getMediaViewerUrl() {
         return null;
     }
 
@@ -351,12 +440,17 @@ public abstract class BrowserServicesIntentDataProvider {
         return getActivityType() == ActivityType.WEB_APK;
     }
 
-    /** Returns {@link TrustedWebActivityDisplayMode} supplied in the intent. */
-    public @Nullable TrustedWebActivityDisplayMode getTwaDisplayMode() {
+    /**
+     * Returns {@link TrustedWebActivityDisplayMode} supplied in the intent.
+     */
+    @Nullable
+    public TrustedWebActivityDisplayMode getTwaDisplayMode() {
         return null;
     }
 
-    /** Returns {@link ScreenOrientationLockType} supplied in the intent. */
+    /**
+     * Returns {@link ScreenOrientationLockType} supplied in the intent.
+     */
     public int getDefaultOrientation() {
         return ScreenOrientationLockType.DEFAULT;
     }
@@ -364,7 +458,8 @@ public abstract class BrowserServicesIntentDataProvider {
     /**
      * @return The component name of the module entry point, or null if not specified.
      */
-    public @Nullable ComponentName getModuleComponentName() {
+    @Nullable
+    public ComponentName getModuleComponentName() {
         return null;
     }
 
@@ -372,7 +467,8 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return The resource identifier for the dex that contains module code. {@code 0} if no dex
      * resource is provided.
      */
-    public @Nullable String getModuleDexAssetName() {
+    @Nullable
+    public String getModuleDexAssetName() {
         return null;
     }
 
@@ -388,7 +484,8 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return ISO 639 code of target language the page should be translated to.
      * This method requires native.
      */
-    public @Nullable String getTranslateLanguage() {
+    @Nullable
+    public String getTranslateLanguage() {
         return null;
     }
 
@@ -404,22 +501,32 @@ public abstract class BrowserServicesIntentDataProvider {
      * Returns {@link ShareTarget} describing the share target, or null if there is no associated
      * share target.
      */
-    public @Nullable ShareTarget getShareTarget() {
+    @Nullable
+    public ShareTarget getShareTarget() {
         return null;
     }
 
-    /** Returns {@link ShareData} if there is data to be shared, and null otherwise. */
-    public @Nullable ShareData getShareData() {
+    /**
+     * Returns {@link ShareData} if there is data to be shared, and null otherwise.
+     */
+    @Nullable
+    public ShareData getShareData() {
         return null;
     }
 
-    /** Returns {@link WebappExtras} if the intent targets a webapp, and null otherwise. */
-    public @Nullable WebappExtras getWebappExtras() {
+    /**
+     * Returns {@link WebappExtras} if the intent targets a webapp, and null otherwise.
+     */
+    @Nullable
+    public WebappExtras getWebappExtras() {
         return null;
     }
 
-    /** Returns {@link WebApkExtras} if the intent targets a WebAPK, and null otherwise. */
-    public @Nullable WebApkExtras getWebApkExtras() {
+    /**
+     * Returns {@link WebApkExtras} if the intent targets a WebAPK, and null otherwise.
+     */
+    @Nullable
+    public WebApkExtras getWebApkExtras() {
         return null;
     }
 
@@ -448,7 +555,8 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return The {@link CustomButtonParams} (either on the toolbar or bottom bar) with the given
      *         {@code id}, or null if no such button can be found.
      */
-    public final @Nullable CustomButtonParams getButtonParamsForId(int id) {
+    @Nullable
+    public final CustomButtonParams getButtonParamsForId(int id) {
         List<CustomButtonParams> customButtonParams = getAllCustomButtons();
         for (CustomButtonParams params : customButtonParams) {
             // A custom button params will always carry an ID. If the client calls updateVisuals()
@@ -472,7 +580,8 @@ public abstract class BrowserServicesIntentDataProvider {
         return getUiType() == CustomTabsUiType.INFO_PAGE;
     }
 
-    public @TwaDisclosureUi int getTwaDisclosureUi() {
+    @TwaDisclosureUi
+    public int getTwaDisclosureUi() {
         return TwaDisclosureUi.DEFAULT;
     }
 
@@ -498,6 +607,7 @@ public abstract class BrowserServicesIntentDataProvider {
     /**
      * @return Whether the intent is partial custom tabs side sheet or bottom sheet.
      */
+
     public boolean isPartialCustomTab() {
         return false;
     }
@@ -537,10 +647,12 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return An int representing the side sheet rounded corner position for the Activity
      */
     public int getActivitySideSheetRoundedCornersPosition() {
-        return ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION_NONE;
+        return ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_NONE;
     }
 
-    /** Returns the {@link CloseButtonPosition}. */
+    /**
+     * Returns the {@link CloseButtonPosition}.
+     */
     public @CloseButtonPosition int getCloseButtonPosition() {
         return CLOSE_BUTTON_POSITION_DEFAULT;
     }
@@ -553,12 +665,16 @@ public abstract class BrowserServicesIntentDataProvider {
         return false;
     }
 
-    /** Returns the partial custom tab toolbar corner radius. */
+    /**
+     * Returns the partial custom tab toolbar corner radius.
+     */
     public @Px int getPartialTabToolbarCornerRadius() {
         return 0;
     }
 
-    /** Returns false as by default PCCT is resizable. */
+    /**
+     * Returns false as by default PCCT is resizable.
+     */
     public boolean isPartialCustomTabFixedHeight() {
         return false;
     }
@@ -567,11 +683,11 @@ public abstract class BrowserServicesIntentDataProvider {
      * @return true, as by default having a PCCT launched still allows interaction with the
      * background application
      */
-    public boolean canInteractWithBackground() {
-        return false;
-    }
+    public boolean canInteractWithBackground() { return false; }
 
-    /** Return false since by default side panel does not show maximize button. */
+    /**
+     * Return false since by default side panel does not show maximize button.
+     */
     public boolean showSideSheetMaximizeButton() {
         return false;
     }

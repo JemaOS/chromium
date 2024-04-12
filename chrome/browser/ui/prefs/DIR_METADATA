@@ -1,6 +1,3 @@
-monorail: {
+monorail {
   component: "Internals>Preferences"
-}
-buganizer_public: {
-  component_id: 1456271
 }

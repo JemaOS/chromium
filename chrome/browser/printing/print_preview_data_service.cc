@@ -55,7 +55,8 @@ class PrintPreviewDataStore {
       return;
 
     DCHECK(data);
-    DCHECK(printing::LooksLikePdf(*data));
+    DCHECK(printing::LooksLikePdf(
+        base::span<const char>(data->front_as<const char>(), data->size())));
 
     page_data_map_[index] = std::move(data);
   }

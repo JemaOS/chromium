@@ -19,19 +19,19 @@
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/history/web_history_service_factory.h"
 #include "chrome/browser/password_manager/account_password_store_factory.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/sync_service_factory.h"
+#include "chrome/browser/web_data_service_factory.h"
 #include "chrome/browser/webauthn/chrome_authenticator_request_delegate.h"
-#include "chrome/browser/webdata_services/web_data_service_factory.h"
 #include "components/browsing_data/core/counters/autofill_counter.h"
 #include "components/browsing_data/core/counters/browsing_data_counter.h"
 #include "components/browsing_data/core/counters/history_counter.h"
 #include "components/browsing_data/core/counters/passwords_counter.h"
 #include "components/browsing_data/core/pref_names.h"
 #include "components/history/core/browser/web_history_service.h"
-#include "components/password_manager/core/browser/password_store/password_store_interface.h"
-#include "components/sync/service/sync_service.h"
+#include "components/password_manager/core/browser/password_store_interface.h"
+#include "components/sync/driver/sync_service.h"
 #include "extensions/buildflags/buildflags.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -101,11 +101,11 @@ BrowsingDataCounterFactory::GetForProfileAndPref(Profile* profile,
         nullptr;
 #endif
     return std::make_unique<browsing_data::SigninDataCounter>(
-        ProfilePasswordStoreFactory::GetForProfile(
-            profile, ServiceAccessType::EXPLICIT_ACCESS),
+        PasswordStoreFactory::GetForProfile(profile,
+                                            ServiceAccessType::EXPLICIT_ACCESS),
         AccountPasswordStoreFactory::GetForProfile(
             profile, ServiceAccessType::EXPLICIT_ACCESS),
-        profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile),
+        SyncServiceFactory::GetForProfile(profile),
         std::move(credential_store));
   }
 
@@ -137,11 +137,6 @@ BrowsingDataCounterFactory::GetForProfileAndPref(Profile* profile,
     return std::make_unique<HostedAppsCounter>(profile);
   }
 #endif
-
-  if (pref_name == browsing_data::prefs::kCloseTabs) {
-    // Tab counter is not implemented yet.
-    return nullptr;
-  }
 
   return nullptr;
 }

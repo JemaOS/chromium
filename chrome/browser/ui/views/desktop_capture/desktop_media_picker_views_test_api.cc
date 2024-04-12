@@ -40,15 +40,11 @@ void DesktopMediaPickerViewsTestApi::FocusSourceAtIndex(size_t index,
 
 bool DesktopMediaPickerViewsTestApi::AudioSupported(
     DesktopMediaList::Type type) const {
-  return picker_->dialog_->AudioSupported(type);
+  return DesktopMediaPickerDialogView::AudioSupported(type);
 }
 
-void DesktopMediaPickerViewsTestApi::FocusAudioShareControl() {
-  if (base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign)) {
-    GetActivePane()->RequestFocus();
-  } else {
-    picker_->dialog_->audio_share_checkbox_->RequestFocus();
-  }
+void DesktopMediaPickerViewsTestApi::FocusAudioCheckbox() {
+  picker_->dialog_->audio_share_checkbox_->RequestFocus();
 }
 
 void DesktopMediaPickerViewsTestApi::PressMouseOnSourceAtIndex(
@@ -113,12 +109,13 @@ DesktopMediaPickerViewsTestApi::GetSelectedSourceListType() const {
   return picker_->dialog_->GetSelectedSourceListType();
 }
 
-std::optional<int> DesktopMediaPickerViewsTestApi::GetSelectedSourceId() const {
+absl::optional<int> DesktopMediaPickerViewsTestApi::GetSelectedSourceId()
+    const {
   DesktopMediaListController* controller =
       picker_->dialog_->GetSelectedController();
-  std::optional<content::DesktopMediaID> source = controller->GetSelection();
-  return source.has_value() ? std::optional<int>(source.value().id)
-                            : std::nullopt;
+  absl::optional<content::DesktopMediaID> source = controller->GetSelection();
+  return source.has_value() ? absl::optional<int>(source.value().id)
+                            : absl::nullopt;
 }
 
 bool DesktopMediaPickerViewsTestApi::HasSourceAtIndex(size_t index) const {
@@ -137,38 +134,8 @@ DesktopMediaPickerViewsTestApi::GetSelectedController() {
   return picker_->dialog_->GetSelectedController();
 }
 
-bool DesktopMediaPickerViewsTestApi::HasAudioShareControl() const {
-  if (base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign)) {
-    return GetActivePane() && GetActivePane()->AudioOffered();
-  } else {
-    return picker_->dialog_->audio_share_checkbox_;
-  }
-}
-
-std::u16string DesktopMediaPickerViewsTestApi::GetAudioLabelText() const {
-  if (!base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign)) {
-    // TODO(crbug.com/324276558): To be removed when cleaning up
-    // DisplayMediaPickerRedesign
-    return std::u16string();
-  }
-
-  return GetActivePane()->GetAudioLabelText();
-}
-
-void DesktopMediaPickerViewsTestApi::SetAudioSharingApprovedByUser(bool allow) {
-  if (base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign)) {
-    GetActivePane()->SetAudioSharingApprovedByUser(allow);
-  } else {
-    picker_->dialog_->audio_share_checkbox_->SetChecked(allow);
-  }
-}
-
-bool DesktopMediaPickerViewsTestApi::IsAudioSharingApprovedByUser() const {
-  if (base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign)) {
-    return picker_->dialog_->IsAudioSharingApprovedByUser();
-  } else {
-    return picker_->dialog_->audio_share_checkbox_->GetChecked();
-  }
+views::Checkbox* DesktopMediaPickerViewsTestApi::GetAudioShareCheckbox() {
+  return picker_->dialog_->audio_share_checkbox_;
 }
 
 views::MdTextButton* DesktopMediaPickerViewsTestApi::GetReselectButton() {
@@ -193,26 +160,13 @@ views::View* DesktopMediaPickerViewsTestApi::GetSourceAtIndex(size_t index) {
 const views::TableView* DesktopMediaPickerViewsTestApi::GetTableView() const {
   views::View* list = picker_->dialog_->GetSelectedController()->view_;
   return IsDesktopMediaTabList(list)
-             ? static_cast<DesktopMediaTabList*>(list)->table_.get()
+             ? static_cast<DesktopMediaTabList*>(list)->list_.get()
              : nullptr;
 }
 
 views::TableView* DesktopMediaPickerViewsTestApi::GetTableView() {
   views::View* list = picker_->dialog_->GetSelectedController()->view_;
   return IsDesktopMediaTabList(list)
-             ? static_cast<DesktopMediaTabList*>(list)->table_.get()
+             ? static_cast<DesktopMediaTabList*>(list)->list_.get()
              : nullptr;
-}
-
-const DesktopMediaPaneView* DesktopMediaPickerViewsTestApi::GetActivePane()
-    const {
-  return const_cast<DesktopMediaPickerViewsTestApi*>(this)->GetActivePane();
-}
-
-DesktopMediaPaneView* DesktopMediaPickerViewsTestApi::GetActivePane() {
-  const int index = picker_->dialog_->GetSelectedTabIndex();
-  CHECK_GE(index, 0);
-  CHECK_LT(static_cast<size_t>(index), picker_->dialog_->categories_.size());
-  CHECK(picker_->dialog_->categories_[index].pane);
-  return picker_->dialog_->categories_[index].pane;
 }

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,10 +11,9 @@ import './start_setup_page.js';
 import '//resources/ash/common/cr.m.js';
 import '//resources/polymer/v3_0/iron-pages/iron-pages.js';
 
-import {assert} from '//resources/ash/common/assert.js';
 import {WebUIListenerBehavior} from '//resources/ash/common/web_ui_listener_behavior.js';
+import {assert} from '//resources/ash/common/assert.js';
 import {Polymer} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {HostDevice} from 'chrome://resources/mojo/chromeos/ash/services/multidevice_setup/public/mojom/multidevice_setup.mojom-webui.js';
 
 import {MojoInterfaceProvider, MojoInterfaceProviderImpl} from './mojo_api.js';
@@ -28,7 +27,7 @@ export const PageName = {
   START: 'start-setup-page',
 };
 
-export const MultiDeviceSetup = Polymer({
+const MultiDeviceSetup = Polymer({
   _template: getTemplate(),
   is: 'multidevice-setup',
 
@@ -191,7 +190,6 @@ export const MultiDeviceSetup = Polymer({
   updateLocalizedContent() {
     this.$.ironPages.querySelectorAll('.ui-page')
         .forEach(page => page.i18nUpdateLocale());
-    this.$.buttonBar.i18nUpdateLocale();
   },
 
   initializeSetupFlow() {

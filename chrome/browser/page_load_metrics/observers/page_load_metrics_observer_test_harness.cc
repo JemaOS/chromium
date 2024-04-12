@@ -28,13 +28,8 @@ void PageLoadMetricsObserverTestHarness::SetUp() {
       web_contents(), this,
       base::BindRepeating(
           &PageLoadMetricsObserverTestHarness::RegisterObservers,
-          base::Unretained(this)),
-      IsNonTabWebUI());
+          base::Unretained(this)));
   web_contents()->WasShown();
-}
-
-bool PageLoadMetricsObserverTestHarness::IsNonTabWebUI() const {
-  return false;
 }
 
 void PageLoadMetricsObserverTestHarness::InitializeFeatureList() {

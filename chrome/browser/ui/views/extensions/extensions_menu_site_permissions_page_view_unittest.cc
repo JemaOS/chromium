@@ -6,8 +6,8 @@
 
 #include "base/feature_list.h"
 #include "chrome/browser/extensions/chrome_test_extension_loader.h"
-#include "chrome/browser/extensions/permissions/scripting_permissions_modifier.h"
-#include "chrome/browser/extensions/permissions/site_permissions_helper.h"
+#include "chrome/browser/extensions/scripting_permissions_modifier.h"
+#include "chrome/browser/extensions/site_permissions_helper.h"
 #include "chrome/browser/ui/views/extensions/extensions_menu_coordinator.h"
 #include "chrome/browser/ui/views/extensions/extensions_menu_site_permissions_page_view.h"
 #include "chrome/browser/ui/views/extensions/extensions_menu_view_controller.h"
@@ -71,7 +71,7 @@ class ExtensionsSitePermissionsPageViewUnitTest
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
-  raw_ptr<content::WebContentsTester, DanglingUntriaged> web_contents_tester_;
+  raw_ptr<content::WebContentsTester> web_contents_tester_;
 };
 
 ExtensionsSitePermissionsPageViewUnitTest::
@@ -101,7 +101,8 @@ bool ExtensionsSitePermissionsPageViewUnitTest::IsSitePermissionsPageOpened(
 std::vector<extensions::ExtensionId>
 ExtensionsSitePermissionsPageViewUnitTest::GetExtensionsShowingRequests() {
   return extensions_container()
-      ->GetRequestAccessButton()
+      ->GetExtensionsToolbarControls()
+      ->request_access_button_for_testing()
       ->GetExtensionIdsForTesting();
 }
 
@@ -333,7 +334,7 @@ TEST_F(ExtensionsSitePermissionsPageViewUnitTest,
   ShowSitePermissionsPage(extension->id());
   EXPECT_TRUE(IsSitePermissionsPageOpened(extension->id()));
 
-  UpdateUserSiteAccess(*extension, web_contents,
+  UpdateUserSiteAccess(*extension.get(), web_contents,
                        PermissionsManager::UserSiteAccess::kOnClick);
 
   auto* on_click_button =
@@ -363,7 +364,7 @@ TEST_F(ExtensionsSitePermissionsPageViewUnitTest,
   ShowSitePermissionsPage(extension->id());
   EXPECT_TRUE(IsSitePermissionsPageOpened(extension->id()));
 
-  UpdateUserSiteAccess(*extension, web_contents,
+  UpdateUserSiteAccess(*extension.get(), web_contents,
                        PermissionsManager::UserSiteAccess::kOnSite);
 
   auto* on_click_button =
@@ -401,7 +402,7 @@ TEST_F(ExtensionsSitePermissionsPageViewUnitTest,
   ShowSitePermissionsPage(extension->id());
   EXPECT_TRUE(IsSitePermissionsPageOpened(extension->id()));
 
-  UpdateUserSiteAccess(*extension, web_contents,
+  UpdateUserSiteAccess(*extension.get(), web_contents,
                        PermissionsManager::UserSiteAccess::kOnAllSites);
 
   auto* on_click_button =
@@ -444,44 +445,24 @@ TEST_F(ExtensionsSitePermissionsPageViewUnitTest,
 // permissions controls updates the page contents.
 TEST_F(ExtensionsSitePermissionsPageViewUnitTest,
        PageNavigationWithMenuOpen_UserMaintainsRuntimeHostPermissionsControls) {
-  constexpr char kUrlA[] = "http://www.a.com";
-  const GURL url_A(kUrlA);
-  auto extension = InstallExtension("Extension", {"activeTab"}, {url_A.spec()});
+  auto extension =
+      InstallExtensionWithHostPermissions("Extension", {"<all_urls>"});
 
-  NavigateAndCommit(kUrlA);
+  NavigateAndCommit("http://www.a.com");
+
   ShowSitePermissionsPage(extension->id());
-
-  // Menu should be open in site permissions page because the extension has site
-  // permissions.
   EXPECT_FALSE(IsMainPageOpened());
   EXPECT_TRUE(IsSitePermissionsPageOpened(extension->id()));
 
-  auto* on_click_button =
-      site_permissions_page()->GetSiteAccessButtonForTesting(
-          PermissionsManager::UserSiteAccess::kOnClick);
-  auto* on_site_button = site_permissions_page()->GetSiteAccessButtonForTesting(
-      PermissionsManager::UserSiteAccess::kOnSite);
-  auto* on_all_sites_button =
-      site_permissions_page()->GetSiteAccessButtonForTesting(
-          PermissionsManager::UserSiteAccess::kOnAllSites);
-
-  // Extension requested access to url A, thus user can select "on site" or "on
-  // click" access.
-  EXPECT_TRUE(on_click_button->GetEnabled());
-  EXPECT_TRUE(on_site_button->GetEnabled());
-  EXPECT_FALSE(on_all_sites_button->GetEnabled());
-
-  // While the menu is open, navigate to an url where the extension should
-  // also have a site permissions page.
+  // While the menu is open, navigate to an url where extension also should have
+  // a site permissions page.
   NavigateAndCommit("http://www.b.com");
 
   // Menu should stay open in site permissions page for `extension`.
   EXPECT_FALSE(IsMainPageOpened());
   EXPECT_TRUE(IsSitePermissionsPageOpened(extension->id()));
-
-  // Extension didn't request specific access to url B, but it has active tab
-  // access. Thus, user can only select "on click" access.
-  EXPECT_TRUE(on_click_button->GetEnabled());
-  EXPECT_FALSE(on_site_button->GetEnabled());
-  EXPECT_FALSE(on_all_sites_button->GetEnabled());
 }
+
+// TODO(crbug.com/1390952): Verify page content changes when extension is
+// updated. This will be easier to do once we have the site access radio
+// buttons, as we can change to the correct site access.

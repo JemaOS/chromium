@@ -10,27 +10,16 @@
 
 namespace blink {
 
-namespace {
-
-String FromLayoutUnit(LayoutUnit value) {
-  // Request full precision, avoid scientific notation. 14 is just enough for a
-  // LayoutUnit (8 for the integer part (we can represent just above 30
-  // million), plus 6 for the fractional part (1/64)).
-  return String::Number(value.ToDouble(), 14);
-}
-
-}  // anonymous namespace
-
 String LayoutUnit::ToString() const {
   if (value_ == LayoutUnit::Max().RawValue())
-    return "LayoutUnit::max(" + FromLayoutUnit(*this) + ")";
+    return "LayoutUnit::max(" + String::Number(ToDouble()) + ")";
   if (value_ == LayoutUnit::Min().RawValue())
-    return "LayoutUnit::min(" + FromLayoutUnit(*this) + ")";
+    return "LayoutUnit::min(" + String::Number(ToDouble()) + ")";
   if (value_ == LayoutUnit::NearlyMax().RawValue())
-    return "LayoutUnit::nearlyMax(" + FromLayoutUnit(*this) + ")";
+    return "LayoutUnit::nearlyMax(" + String::Number(ToDouble()) + ")";
   if (value_ == LayoutUnit::NearlyMin().RawValue())
-    return "LayoutUnit::nearlyMin(" + FromLayoutUnit(*this) + ")";
-  return FromLayoutUnit(*this);
+    return "LayoutUnit::nearlyMin(" + String::Number(ToDouble()) + ")";
+  return String::Number(ToDouble());
 }
 
 std::ostream& operator<<(std::ostream& stream, const LayoutUnit& value) {

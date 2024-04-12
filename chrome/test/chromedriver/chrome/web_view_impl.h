@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
@@ -18,7 +17,6 @@
 struct BrowserInfo;
 class DevToolsClient;
 class DownloadDirectoryOverrideManager;
-class FedCmTracker;
 class FrameTracker;
 class GeolocationOverrideManager;
 class MobileEmulationOverrideManager;
@@ -32,34 +30,28 @@ class CastTracker;
 
 class WebViewImpl : public WebView {
  public:
-  static std::unique_ptr<WebViewImpl> CreateServiceWorkerWebView(
-      const std::string& id,
-      const bool w3c_compliant,
-      const BrowserInfo* browser_info,
-      std::unique_ptr<DevToolsClient> client);
-  static std::unique_ptr<WebViewImpl> CreateTopLevelWebView(
-      const std::string& id,
-      const bool w3c_compliant,
-      const BrowserInfo* browser_info,
-      std::unique_ptr<DevToolsClient> client,
-      std::optional<MobileDevice> mobile_device,
-      std::string page_load_strategy);
+  WebViewImpl(const std::string& id,
+              const bool w3c_compliant,
+              const WebViewImpl* parent,
+              const BrowserInfo* browser_info,
+              std::unique_ptr<DevToolsClient> client);
+
   WebViewImpl(const std::string& id,
               const bool w3c_compliant,
               const WebViewImpl* parent,
               const BrowserInfo* browser_info,
               std::unique_ptr<DevToolsClient> client,
-              std::optional<MobileDevice> mobile_device,
+              absl::optional<MobileDevice> mobile_device,
               std::string page_load_strategy);
   ~WebViewImpl() override;
-  std::unique_ptr<WebViewImpl> CreateChild(const std::string& session_id,
-                                           const std::string& target_id) const;
+  WebViewImpl* CreateChild(const std::string& session_id,
+                           const std::string& target_id) const;
 
   // Overridden from WebView:
   bool IsServiceWorker() const override;
   std::string GetId() override;
   bool WasCrashed() override;
-  Status AttachTo(DevToolsClient* root_client);
+  Status AttachTo(DevToolsClient* parent);
   Status AttachChildView(WebViewImpl* child);
   Status HandleEventsUntil(const ConditionalFunc& conditional_func,
                            const Timeout& timeout) override;
@@ -69,8 +61,7 @@ class WebViewImpl : public WebView {
   Status Reload(const Timeout* timeout) override;
   Status Freeze(const Timeout* timeout) override;
   Status Resume(const Timeout* timeout) override;
-  Status StartBidiServer(std::string bidi_mapper_script,
-                         const base::Value::Dict& mapper_options) override;
+  Status StartBidiServer(std::string bidi_mapper_script) override;
   Status PostBidiCommand(base::Value::Dict command) override;
   Status SendCommand(const std::string& cmd,
                      const base::Value::Dict& params) override;
@@ -89,11 +80,16 @@ class WebViewImpl : public WebView {
                                  const std::string& function,
                                  const base::Value::List& args,
                                  const base::TimeDelta& timeout,
-                                 std::unique_ptr<base::Value>* result) override;
+                                 std::unique_ptr<base::Value>* result);
   Status CallFunction(const std::string& frame,
                       const std::string& function,
                       const base::Value::List& args,
                       std::unique_ptr<base::Value>* result) override;
+  Status CallAsyncFunction(const std::string& frame,
+                           const std::string& function,
+                           const base::Value::List& args,
+                           const base::TimeDelta& timeout,
+                           std::unique_ptr<base::Value>* result) override;
   Status CallUserSyncScript(const std::string& frame,
                             const std::string& script,
                             const base::Value::List& args,
@@ -110,16 +106,16 @@ class WebViewImpl : public WebView {
                             std::string* out_frame) override;
   Status DispatchMouseEvents(const std::vector<MouseEvent>& events,
                              const std::string& frame,
-                             bool async_dispatch_events) override;
+                             bool async_dispatch_events = false) override;
   Status DispatchTouchEvent(const TouchEvent& event,
-                            bool async_dispatch_events) override;
+                            bool async_dispatch_events = false) override;
   Status DispatchTouchEvents(const std::vector<TouchEvent>& events,
-                             bool async_dispatch_events) override;
+                             bool async_dispatch_events = false) override;
   Status DispatchTouchEventWithMultiPoints(
       const std::vector<TouchEvent>& events,
-      bool async_dispatch_events) override;
+      bool async_dispatch_events = false) override;
   Status DispatchKeyEvents(const std::vector<KeyEvent>& events,
-                           bool async_dispatch_events) override;
+                           bool async_dispatch_events = false) override;
   Status GetCookies(base::Value* cookies,
                     const std::string& current_page_url) override;
   Status DeleteCookie(const std::string& name,
@@ -170,7 +166,6 @@ class WebViewImpl : public WebView {
                                    const base::Value& element,
                                    int* backend_node_id) override;
   bool IsNonBlocking() const override;
-  Status GetFedCmTracker(FedCmTracker** out_tracker) override;
   FrameTracker* GetFrameTracker() const override;
   std::unique_ptr<base::Value> GetCastSinks() override;
   std::unique_ptr<base::Value> GetCastIssueMessage() override;
@@ -181,20 +176,13 @@ class WebViewImpl : public WebView {
   void Unlock();
   bool IsLocked() const;
   void SetDetached();
-  bool IsDetached() const override;
-
- protected:
-  WebViewImpl(const std::string& id,
-              const bool w3c_compliant,
-              const WebViewImpl* parent,
-              const BrowserInfo* browser_info,
-              std::unique_ptr<DevToolsClient> client);
+  bool IsDetached() const;
 
  private:
-  WebView* GetTargetForFrame(const std::string& frame);
+  WebViewImpl* GetTargetForFrame(const std::string& frame);
   Status GetLoaderId(const std::string& frame_id,
-                     const Timeout& timeout,
-                     std::string& loader_id);
+                     std::string* loader_id,
+                     Timeout* timeout);
   Status CallFunctionWithTimeoutInternal(std::string frame,
                                          std::string function,
                                          base::Value::List args,
@@ -203,48 +191,39 @@ class WebViewImpl : public WebView {
   Status CallAsyncFunctionInternal(const std::string& frame,
                                    const std::string& function,
                                    const base::Value::List& args,
+                                   bool is_user_supplied,
                                    const base::TimeDelta& timeout,
                                    std::unique_ptr<base::Value>* result);
   Status IsNotPendingNavigation(const std::string& frame_id,
                                 const Timeout* timeout,
                                 bool* is_not_pending);
-  Status ResolveElementReferencesInPlace(const std::string& expected_frame_id,
-                                         const std::string& context_id,
-                                         const std::string& object_group_name,
-                                         const std::string& expected_loader_id,
-                                         bool w3c_compliant,
-                                         const Timeout& timeout,
-                                         base::Value& arg,
-                                         base::Value::List& nodes);
-  Status ResolveElementReferencesInPlace(const std::string& expected_frame_id,
-                                         const std::string& context_id,
-                                         const std::string& object_group_name,
-                                         const std::string& expected_loader_id,
-                                         bool w3c_compliant,
-                                         const Timeout& timeout,
-                                         base::Value::Dict& arg_dict,
-                                         base::Value::List& nodes);
-  Status ResolveElementReferencesInPlace(const std::string& expected_frame_id,
-                                         const std::string& context_id,
-                                         const std::string& object_group_name,
-                                         const std::string& expected_loader_id,
-                                         bool w3c_compliant,
-                                         const Timeout& timeout,
-                                         base::Value::List& arg_list,
-                                         base::Value::List& nodes);
-  Status CreateElementReferences(const std::string& frame_id,
-                                 const std::string& loader_id,
+  Status ResolveElementReferences(base::Value* arg,
+                                  base::Value::List* nodes,
+                                  const std::string& context_id,
+                                  const std::string& object_group_name,
+                                  const std::string& expected_loader_id,
+                                  bool w3c_compliant);
+  Status ResolveElementReferences(base::Value::Dict* arg_dict,
+                                  base::Value::List* nodes,
+                                  const std::string& context_id,
+                                  const std::string& object_group_name,
+                                  const std::string& expected_loader_id,
+                                  bool w3c_compliant);
+  Status ResolveElementReferences(base::Value::List* arg_list,
+                                  base::Value::List* nodes,
+                                  const std::string& context_id,
+                                  const std::string& object_group_name,
+                                  const std::string& expected_loader_id,
+                                  bool w3c_compliant);
+  Status CreateElementReferences(base::Value* res,
                                  const base::Value::List& nodes,
-                                 base::Value& res);
+                                 const std::string& loader_id);
 
   Status InitProfileInternal();
   Status StopProfileInternal();
   Status DispatchTouchEventsForMouseEvents(
       const std::vector<MouseEvent>& events,
       const std::string& frame);
-
-  std::unique_ptr<PageLoadStrategy> CreatePageLoadStrategy(
-      const std::string& strategy);
 
   std::string id_;
   bool w3c_compliant_;
@@ -268,7 +247,6 @@ class WebViewImpl : public WebView {
       download_directory_override_manager_;
   std::unique_ptr<HeapSnapshotTaker> heap_snapshot_taker_;
   std::unique_ptr<CastTracker> cast_tracker_;
-  std::unique_ptr<FedCmTracker> fedcm_tracker_;
   bool is_service_worker_;
 };
 

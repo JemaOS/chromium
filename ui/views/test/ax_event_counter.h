@@ -30,17 +30,17 @@ class AXEventCounter : public views::AXEventObserver {
   // Returns the number of events of a certain type registered since the
   // creation of this AXEventManager object and prior to the count being
   // manually reset.
-  int GetCount(ax::mojom::Event event_type) const;
+  int GetCount(ax::mojom::Event event_type);
 
   // Returns the number of events of a certain type on a certain role registered
   // since the creation of this AXEventManager object and prior to the count
   // being manually reset.
-  int GetCount(ax::mojom::Event event_type, ax::mojom::Role role) const;
+  int GetCount(ax::mojom::Event event_type, ax::mojom::Role role);
 
   // Returns the number of events of a certain type on a specific view since the
   // creation of this AXEventManager object and prior to the count being
   // manually reset.
-  int GetCount(ax::mojom::Event event_type, views::View* view) const;
+  int GetCount(ax::mojom::Event event_type, views::View* view);
 
   // Sets all counters to 0.
   void ResetAllCounts();
@@ -52,10 +52,10 @@ class AXEventCounter : public views::AXEventObserver {
   void OnViewEvent(views::View* view, ax::mojom::Event event_type) override;
 
  private:
-  mutable base::flat_map<ax::mojom::Event, int> event_counts_;
-  mutable base::flat_map<std::pair<ax::mojom::Event, ax::mojom::Role>, int>
+  base::flat_map<ax::mojom::Event, int> event_counts_;
+  base::flat_map<std::pair<ax::mojom::Event, ax::mojom::Role>, int>
       event_counts_for_role_;
-  mutable base::flat_map<std::pair<ax::mojom::Event, views::View*>, int>
+  base::flat_map<std::pair<ax::mojom::Event, views::View*>, int>
       event_counts_for_view_;
   ax::mojom::Event wait_for_event_type_ = ax::mojom::Event::kNone;
   raw_ptr<base::RunLoop> run_loop_ = nullptr;

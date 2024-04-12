@@ -6,7 +6,6 @@
 #include <string>
 
 #include "base/command_line.h"
-#include "base/containers/to_vector.h"
 #include "base/files/file_path_watcher.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
@@ -22,7 +21,7 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/apps/platform_apps/shortcut_manager.h"
 #include "chrome/browser/browser_features.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "chrome/browser/policy/policy_test_utils.h"
 #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
 #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
@@ -47,8 +46,8 @@
 #include "components/keep_alive_registry/scoped_keep_alive.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/password_manager/core/browser/password_form.h"
-#include "components/password_manager/core/browser/password_store/password_store_consumer.h"
-#include "components/password_manager/core/browser/password_store/password_store_interface.h"
+#include "components/password_manager/core/browser/password_store_consumer.h"
+#include "components/password_manager/core/browser/password_store_interface.h"
 #include "components/policy/core/common/policy_map.h"
 #include "components/policy/policy_constants.h"
 #include "components/prefs/pref_service.h"
@@ -60,9 +59,9 @@
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/constants/ash_switches.h"
 #include "base/path_service.h"
+#include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/common/chrome_paths.h"
 #include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #endif
 
@@ -230,13 +229,15 @@ class PasswordStoreConsumerVerifier
 base::FilePath GetFirstNonSigninNonLockScreenAppProfile(
     ProfileAttributesStorage* storage) {
   std::vector<ProfileAttributesEntry*> entries =
-      storage->GetAllProfilesAttributesSortedByNameWithCheck();
+      storage->GetAllProfilesAttributesSortedByName();
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+  const base::FilePath signin_path = ash::ProfileHelper::GetSigninProfileDir();
+  const base::FilePath lock_screen_apps_path =
+      ash::ProfileHelper::GetLockScreenAppProfilePath();
+
   for (ProfileAttributesEntry* entry : entries) {
     base::FilePath profile_path = entry->GetPath();
-    std::string base_name = profile_path.BaseName().value();
-    if (base_name != ash::kSigninBrowserContextBaseName &&
-        base_name != ash::kLockScreenAppBrowserContextBaseName) {
+    if (profile_path != signin_path && profile_path != lock_screen_apps_path) {
       return profile_path;
     }
   }
@@ -654,23 +655,6 @@ IN_PROC_BROWSER_TEST_P(ProfileManagerBrowserTest, AddMultipleProfiles) {
   // Verifies that the browser doesn't crash when it is restarted.
 }
 
-// Regression test for https://crbug.com/1472849
-IN_PROC_BROWSER_TEST_F(ProfileManagerBrowserTestBase,
-                       ConcurrentCreationAsyncAndSync) {
-  ProfileManager* profile_manager = g_browser_process->profile_manager();
-  base::FilePath profile_path =
-      profile_manager->GenerateNextProfileDirectoryPath();
-  // Initiate asynchronous creation.
-  profile_manager->CreateProfileAsync(profile_path, base::DoNothing());
-  // The profile is being created, but creation is not complete.
-  EXPECT_EQ(nullptr, profile_manager->GetProfileByPath(profile_path));
-  // Request synchronous creation of the same profile, this should not crash.
-  Profile* profile = profile_manager->GetProfile(profile_path);
-  // The profile has been loaded.
-  EXPECT_EQ(profile, profile_manager->GetProfileByPath(profile_path));
-  EXPECT_EQ(profile->GetPath(), profile_path);
-}
-
 IN_PROC_BROWSER_TEST_P(ProfileManagerBrowserTest, EphemeralProfile) {
   // If multiprofile mode is not enabled, you can't switch between profiles.
   if (!profiles::IsMultipleProfilesEnabled())
@@ -779,8 +763,8 @@ IN_PROC_BROWSER_TEST_P(ProfileManagerBrowserTest, DeletePasswords) {
   form.blocked_by_user = false;
 
   scoped_refptr<password_manager::PasswordStoreInterface> password_store =
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS)
+      PasswordStoreFactory::GetForProfile(profile,
+                                          ServiceAccessType::EXPLICIT_ACCESS)
           .get();
   ASSERT_TRUE(password_store.get());
 
@@ -871,7 +855,7 @@ INSTANTIATE_TEST_SUITE_P(DestroyProfileOnBrowserClose,
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 
 const base::FilePath::CharType kNonAsciiProfileDir[] =
-    FILE_PATH_LITERAL("\u0645\u0635\u0631");
+    FILE_PATH_LITERAL("\xd9\x85\xd8\xb5\xd8\xb1");
 
 class ProfileManagerNonAsciiBrowserTest : public ProfileManagerBrowserTestBase {
  protected:
@@ -918,10 +902,13 @@ IN_PROC_BROWSER_TEST_F(ProfileManagerNonAsciiBrowserTest,
       g_browser_process->profile_manager()
           ->GetProfileAttributesStorage()
           .GetAllProfilesAttributes();
-  EXPECT_THAT(base::ToVector(entries,
-                             [](const auto* entry) {
-                               return entry->GetPath().BaseName().value();
-                             }),
+  std::vector<base::FilePath::StringType> actual_paths;
+  base::ranges::transform(entries, std::back_inserter(actual_paths),
+                          [](const ProfileAttributesEntry* entry) {
+                            return entry->GetPath().BaseName().value();
+                          });
+
+  EXPECT_THAT(actual_paths,
               ::testing::UnorderedElementsAreArray(expected_paths));
 }
 

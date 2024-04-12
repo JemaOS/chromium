@@ -125,9 +125,9 @@ class KioskAppData : public KioskAppDataBase,
   void OnWebstoreResponseParseFailure(const std::string& extension_id,
                                       const std::string& error) override;
 
-  // Helper function for testing for the existence of `key` in
-  // `response`. Passes `key`'s content via `value` and returns
-  // true when `key` is present.
+  // Helper function for testing for the existence of |key| in
+  // |response|. Passes |key|'s content via |value| and returns
+  // true when |key| is present.
   bool CheckResponseKeyValue(const std::string& extension_id,
                              const base::Value::Dict& response,
                              const char* key,
@@ -139,9 +139,9 @@ class KioskAppData : public KioskAppDataBase,
 
   void OnCrxLoadFinished(const CrxLoader* crx_loader);
 
-  void OnIconLoadDone(std::optional<gfx::ImageSkia> icon);
+  void OnIconLoadDone(absl::optional<gfx::ImageSkia> icon);
 
-  raw_ptr<KioskAppDataDelegate> delegate_;  // not owned.
+  raw_ptr<KioskAppDataDelegate, ExperimentalAsh> delegate_;  // not owned.
   Status status_;
 
   GURL update_url_;

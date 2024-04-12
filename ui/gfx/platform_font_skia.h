@@ -26,7 +26,7 @@ class GFX_EXPORT PlatformFontSkia : public PlatformFont {
   // Wraps the provided SkTypeface without triggering a font rematch.
   PlatformFontSkia(sk_sp<SkTypeface> typeface,
                    int font_size_pixels,
-                   const std::optional<FontRenderParams>& params);
+                   const absl::optional<FontRenderParams>& params);
 
   PlatformFontSkia(const PlatformFontSkia&) = delete;
   PlatformFontSkia& operator=(const PlatformFontSkia&) = delete;

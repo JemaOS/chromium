@@ -61,6 +61,7 @@ class CORE_EXPORT WorkletGlobalScope
   String UserAgent() const final { return user_agent_; }
   bool IsContextThread() const final;
   void AddConsoleMessageImpl(ConsoleMessage*, bool discard_duplicates) final;
+  void AddInspectorIssue(mojom::blink::InspectorIssueInfoPtr) final;
   void AddInspectorIssue(AuditsIssue) final;
   void ExceptionThrown(ErrorEvent*) final;
   CoreProbeSink* GetProbeSink() final;
@@ -77,11 +78,6 @@ class CORE_EXPORT WorkletGlobalScope
   const base::UnguessableToken& GetDevToolsToken() const override;
   bool IsInitialized() const final { return true; }
   CodeCacheHost* GetCodeCacheHost() override;
-  std::optional<mojo::PendingRemote<network::mojom::blink::URLLoaderFactory>>
-  FindRaceNetworkRequestURLLoaderFactory(
-      const base::UnguessableToken& token) override {
-    return std::nullopt;
-  }
 
   // Returns `blob_url_store_pending_remote_` for use when instantiating the
   // PublicURLManager in threaded worklet contexts. This method should only be
@@ -123,22 +119,25 @@ class CORE_EXPORT WorkletGlobalScope
 
   void Trace(Visitor*) const override;
 
-  // ActiveScriptWrappable.
-  bool HasPendingActivity() const override;
-
   HttpsState GetHttpsState() const override { return https_state_; }
 
   // Constructs an instance as a main thread worklet. Must be called on the main
   // thread.
+  // When |create_microtask_queue| is true, creates a microtask queue separated
+  // from the Isolate's default microtask queue.
   WorkletGlobalScope(std::unique_ptr<GlobalScopeCreationParams>,
                      WorkerReportingProxy&,
-                     LocalFrame*);
+                     LocalFrame*,
+                     bool create_microtask_queue);
 
   // Constructs an instance as a threaded worklet. Must be called on a worker
   // thread.
+  // When |create_microtask_queue| is true, creates a microtask queue separated
+  // from the Isolate's default microtask queue.
   WorkletGlobalScope(std::unique_ptr<GlobalScopeCreationParams>,
                      WorkerReportingProxy&,
-                     WorkerThread*);
+                     WorkerThread*,
+                     bool create_microtask_queue);
 
   const BrowserInterfaceBrokerProxy& GetBrowserInterfaceBroker() const override;
 
@@ -148,7 +147,7 @@ class CORE_EXPORT WorkletGlobalScope
   // Returns the ExecutionContextToken that uniquely identifies the parent
   // context that created this worklet. Note that this will always be a
   // LocalFrameToken.
-  std::optional<ExecutionContextToken> GetParentExecutionContextToken()
+  absl::optional<ExecutionContextToken> GetParentExecutionContextToken()
       const final {
     return frame_token_;
   }
@@ -170,7 +169,8 @@ class CORE_EXPORT WorkletGlobalScope
                      v8::Isolate*,
                      ThreadType,
                      LocalFrame*,
-                     WorkerThread*);
+                     WorkerThread*,
+                     bool create_microtask_queue);
 
   // Returns a destination used for fetching worklet scripts.
   // https://html.spec.whatwg.org/C/#worklet-destination-type

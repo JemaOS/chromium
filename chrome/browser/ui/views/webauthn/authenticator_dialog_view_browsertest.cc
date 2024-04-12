@@ -7,7 +7,8 @@
 #include <memory>
 #include <utility>
 
-#include "build/build_config.h"
+#include "base/strings/utf_string_conversions.h"
+#include "base/test/scoped_feature_list.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -18,13 +19,11 @@
 #include "chrome/browser/ui/webauthn/authenticator_request_sheet_model.h"
 #include "chrome/browser/ui/webauthn/sheet_models.h"
 #include "chrome/browser/webauthn/authenticator_request_dialog_model.h"
+#include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
+#include "device/fido/features.h"
+#include "ui/gfx/paint_vector_icon.h"
 #include "ui/views/controls/label.h"
-
-#if BUILDFLAG(IS_WIN)
-#include "device/fido/win/authenticator.h"
-#include "device/fido/win/fake_webauthn_api.h"
-#endif  // BUILDFLAG(IS_WIN)
 
 namespace {
 
@@ -43,6 +42,7 @@ class TestSheetModel : public AuthenticatorRequestSheetModel {
  private:
   // AuthenticatorRequestSheetModel:
   bool IsActivityIndicatorVisible() const override { return true; }
+  bool IsBackButtonVisible() const override { return true; }
   bool IsCancelButtonVisible() const override { return true; }
   std::u16string GetCancelButtonLabel() const override {
     return u"Test Cancel";
@@ -51,6 +51,11 @@ class TestSheetModel : public AuthenticatorRequestSheetModel {
   bool IsAcceptButtonVisible() const override { return true; }
   bool IsAcceptButtonEnabled() const override { return true; }
   std::u16string GetAcceptButtonLabel() const override { return u"Test OK"; }
+
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override {
+    return gfx::kNoneIcon;
+  }
 
   std::u16string GetStepTitle() const override { return u"Test Title"; }
 
@@ -104,21 +109,6 @@ class TestSheetView : public AuthenticatorRequestSheetView {
 
 class AuthenticatorDialogViewTest : public DialogBrowserTest {
  public:
-#if BUILDFLAG(IS_WIN)
-  // TODO(https://crbug.com/1517923): Make this test work with webauth versions
-  // that support hybrid mode.
-  void SetUpOnMainThread() override {
-    DialogBrowserTest::SetUpOnMainThread();
-
-    // Set up the fake Windows platform authenticator.
-    fake_webauthn_api_ = std::make_unique<device::FakeWinWebAuthnApi>();
-    fake_webauthn_api_->set_version(WEBAUTHN_API_VERSION_4);
-    win_webauthn_api_override_ =
-        std::make_unique<device::WinWebAuthnApi::ScopedOverride>(
-            fake_webauthn_api_.get());
-  }
-#endif  // BUILDFLAG(IS_WIN)
-
   // DialogBrowserTest:
   void ShowUi(const std::string& name) override {
     dialog_model_ = std::make_unique<AuthenticatorRequestDialogModel>(
@@ -144,19 +134,16 @@ class AuthenticatorDialogViewTest : public DialogBrowserTest {
       // "Manage devices" button to be shown.
       device::FidoRequestHandlerBase::TransportAvailabilityInfo
           transport_availability;
-      transport_availability.request_type =
-          device::FidoRequestType::kGetAssertion;
       transport_availability.available_transports = {
           AuthenticatorTransport::kUsbHumanInterfaceDevice,
           AuthenticatorTransport::kHybrid};
 
-      std::vector<std::unique_ptr<device::cablev2::Pairing>> phones;
-      auto pairing = std::make_unique<device::cablev2::Pairing>();
-      pairing->from_sync_deviceinfo = false;
-      pairing->name = "Phone";
-      phones.emplace_back(std::move(pairing));
+      std::array<uint8_t, device::kP256X962Length> public_key = {0};
+      AuthenticatorRequestDialogModel::PairedPhone phone("Phone", 0,
+                                                         public_key);
       dialog_model_->set_cable_transport_info(
-          /*extension_is_v2=*/std::nullopt, std::move(phones),
+          /*extension_is_v2=*/absl::nullopt,
+          /*paired_phones=*/{phone},
           /*contact_phone_callback=*/base::DoNothing(), "fido://qrcode");
       dialog_model_->StartFlow(std::move(transport_availability),
                                /*is_conditional_mediation=*/false);
@@ -183,13 +170,6 @@ class AuthenticatorDialogViewTest : public DialogBrowserTest {
   }
 
   std::unique_ptr<AuthenticatorRequestDialogModel> dialog_model_;
-
- protected:
-#if BUILDFLAG(IS_WIN)
-  std::unique_ptr<device::FakeWinWebAuthnApi> fake_webauthn_api_;
-  std::unique_ptr<device::WinWebAuthnApi::ScopedOverride>
-      win_webauthn_api_override_;
-#endif  // BUILDFLAG(IS_WIN)
 };
 
 // Test the dialog with a custom delegate.

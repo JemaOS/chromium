@@ -11,8 +11,6 @@
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
-#include "chrome/browser/renderer_host/chrome_navigation_ui_data.h"
-#include "chrome/browser/ssl/https_first_mode_settings_tracker.h"
 #include "chrome/browser/ssl/https_only_mode_tab_helper.h"
 #include "chrome/browser/ssl/https_upgrades_util.h"
 #include "chrome/common/chrome_features.h"
@@ -99,8 +97,7 @@ net::RedirectInfo SetupRedirect(
   response_head->response_start = response_head->request_start;
   std::string header_string = base::StringPrintf(
       "HTTP/1.1 %i Temporary Redirect\n"
-      "Location: %s\n"
-      "Non-Authoritative-Reason: HttpsUpgrades\n",
+      "Location: %s\n",
       net::HTTP_TEMPORARY_REDIRECT, new_url.spec().c_str());
   response_head->headers = base::MakeRefCounted<net::HttpResponseHeaders>(
       net::HttpUtil::AssembleRawHeaders(header_string));
@@ -111,7 +108,7 @@ net::RedirectInfo SetupRedirect(
           : net::RedirectInfo::FirstPartyURLPolicy::NEVER_CHANGE_URL,
       request.referrer_policy, request.referrer.spec(),
       net::HTTP_TEMPORARY_REDIRECT, new_url,
-      /*referrer_policy_header=*/std::nullopt,
+      /*referrer_policy_header=*/absl::nullopt,
       /*insecure_scheme_was_upgraded=*/false);
   return redirect_info;
 }
@@ -152,20 +149,6 @@ bool DoesInsecureContentSettingDisableUpgrading(const GURL& url,
 #endif
 }
 
-// Check for net errors that should not result in an HTTPS-First Mode
-// interstitial. These cover cases where the error is most likely related to the
-// local network conditions or a transient error, where it is more useful to
-// show the user a network error page than the HTTPS-First Mode interstitial.
-// (Or, in the case of HTTPS Upgrades, we don't want to fallback and allowlist
-// the hostname yet -- instead we want to show the network error page and then
-// retry the HTTPS upgrade again later.)
-bool IsHttpsFirstModeExemptedError(int error) {
-  return net::IsHostnameResolutionError(error) ||
-         error == net::ERR_NETWORK_CHANGED ||
-         error == net::ERR_INTERNET_DISCONNECTED ||
-         error == net::ERR_ADDRESS_UNREACHABLE;
-}
-
 }  // namespace
 
 using RequestHandler = HttpsUpgradesInterceptor::RequestHandler;
@@ -174,9 +157,7 @@ using security_interstitials::https_only_mode::NavigationRequestSecurityLevel;
 
 // static
 std::unique_ptr<HttpsUpgradesInterceptor>
-HttpsUpgradesInterceptor::MaybeCreateInterceptor(
-    int frame_tree_node_id,
-    content::NavigationUIData* navigation_ui_data) {
+HttpsUpgradesInterceptor::MaybeCreateInterceptor(int frame_tree_node_id) {
   auto* web_contents =
       content::WebContents::FromFrameTreeNodeId(frame_tree_node_id);
   // Could be null if the FrameTreeNode's RenderFrameHost is shutting down.
@@ -190,29 +171,19 @@ HttpsUpgradesInterceptor::MaybeCreateInterceptor(
       !g_browser_process->profile_manager()->IsValidProfile(profile)) {
     return nullptr;
   }
-
   PrefService* prefs = profile->GetPrefs();
   bool https_first_mode_enabled =
-      prefs && prefs->GetBoolean(prefs::kHttpsOnlyModeEnabled);
-
-  if (base::FeatureList::IsEnabled(features::kHttpsFirstModeIncognito)) {
-    if (profile->IsIncognitoProfile() && prefs &&
-        prefs->GetBoolean(prefs::kHttpsFirstModeIncognito)) {
-      https_first_mode_enabled = true;
-    }
-  }
-
-  return std::make_unique<HttpsUpgradesInterceptor>(
-      frame_tree_node_id, https_first_mode_enabled, navigation_ui_data);
+      base::FeatureList::IsEnabled(features::kHttpsFirstModeV2) && prefs &&
+      prefs->GetBoolean(prefs::kHttpsOnlyModeEnabled);
+  return std::make_unique<HttpsUpgradesInterceptor>(frame_tree_node_id,
+                                                    https_first_mode_enabled);
 }
 
 HttpsUpgradesInterceptor::HttpsUpgradesInterceptor(
     int frame_tree_node_id,
-    bool http_interstitial_enabled_by_pref,
-    content::NavigationUIData* navigation_ui_data)
+    bool http_interstitial_enabled_by_pref)
     : frame_tree_node_id_(frame_tree_node_id),
-      http_interstitial_enabled_by_pref_(http_interstitial_enabled_by_pref),
-      navigation_ui_data_(navigation_ui_data) {}
+      http_interstitial_enabled_by_pref_(http_interstitial_enabled_by_pref) {}
 
 HttpsUpgradesInterceptor::~HttpsUpgradesInterceptor() = default;
 
@@ -256,23 +227,6 @@ void HttpsUpgradesInterceptor::MaybeCreateLoader(
     tab_helper = HttpsOnlyModeTabHelper::FromWebContents(web_contents);
   }
 
-  StatefulSSLHostStateDelegate* state =
-      static_cast<StatefulSSLHostStateDelegate*>(
-          profile->GetSSLHostStateDelegate());
-  auto* storage_partition =
-      web_contents->GetPrimaryMainFrame()->GetStoragePartition();
-
-  // Set up the interstitial state before checking any exclusions to upgrades,
-  // as some may depend on this being configured.
-  interstitial_state_ = std::make_unique<
-      security_interstitials::https_only_mode::HttpInterstitialState>();
-  interstitial_state_->enabled_by_pref = http_interstitial_enabled_by_pref_;
-  // StatefulSSLHostStateDelegate can be null during tests.
-  if (state && state->IsHttpsEnforcedForUrl(tentative_resource_request.url,
-                                            storage_partition)) {
-    interstitial_state_->enabled_by_engagement_heuristic = true;
-  }
-
   // Exclude HTTPS URLs.
   if (tentative_resource_request.url.SchemeIs(url::kHttpsScheme)) {
     RecordNavigationRequestSecurityLevel(
@@ -291,6 +245,8 @@ void HttpsUpgradesInterceptor::MaybeCreateLoader(
 
   // Exclude "localhost" (and loopback addresses) as they do not expose traffic
   // over the network.
+  // TODO(crbug.com/1394910): Extend the exemption list for HTTPS-Upgrades
+  // beyond just localhost.
   if (net::IsLocalhost(tentative_resource_request.url)) {
     RecordNavigationRequestSecurityLevel(
         NavigationRequestSecurityLevel::kLocalhost);
@@ -298,7 +254,24 @@ void HttpsUpgradesInterceptor::MaybeCreateLoader(
     return;
   }
 
+  StatefulSSLHostStateDelegate* state =
+      static_cast<StatefulSSLHostStateDelegate*>(
+          profile->GetSSLHostStateDelegate());
+  auto* storage_partition =
+      web_contents->GetPrimaryMainFrame()->GetStoragePartition();
+
+  interstitial_state_ = std::make_unique<
+      security_interstitials::https_only_mode::HttpInterstitialState>();
+  interstitial_state_->enabled_by_pref = http_interstitial_enabled_by_pref_;
+  // StatefulSSLHostStateDelegate can be null during tests.
+  if (state && state->IsHttpsEnforcedForHost(
+                   tentative_resource_request.url.host(), storage_partition)) {
+    interstitial_state_->enabled_by_engagement_heuristic = true;
+  }
+
   // Don't exclude local-network requests (for now) but record metrics for them.
+  // TODO(crbug.com/1394910): Extend the exemption list for HTTPS-Upgrades
+  // beyond just localhost.
   if (net::IsHostnameNonUnique(tentative_resource_request.url.host())) {
     RecordNavigationRequestSecurityLevel(
         NavigationRequestSecurityLevel::kNonUniqueHostname);
@@ -310,40 +283,11 @@ void HttpsUpgradesInterceptor::MaybeCreateLoader(
     // Chrome shows the HTTP interstitial before navigation to them.
     // Potentially, these could fast-fail instead and skip directly to the
     // interstitial.
-    //
-    // In any case, record this as a fallback event so that we don't
-    // auto-enable HFM due to typically secure user heuristic and start showing
-    // interstitials on it.
-    // HttpsUpgradesBrowserTest.
-    //   UrlWithHttpScheme_NonUniqueHostname_ShouldNotInterstitial_TypicallySecureUser
-    // should fail when this check is removed.
-    HttpsFirstModeService* hfm_service =
-        HttpsFirstModeServiceFactory::GetForProfile(profile);
-    if (hfm_service) {
-      hfm_service->RecordHttpsUpgradeFallbackEvent();
-    }
     if (base::FeatureList::IsEnabled(features::kHttpsUpgrades) &&
-        !IsInterstitialEnabled(*interstitial_state_)) {
+        !interstitial_state_->enabled_by_pref) {
       std::move(callback).Run({});
       return;
     }
-  }
-
-  // If the URL was typed with an explicit http:// URL, it is opted-out from
-  // upgrades.
-  ChromeNavigationUIData* chrome_navigation_ui_data =
-      static_cast<ChromeNavigationUIData*>(navigation_ui_data_);
-  if (chrome_navigation_ui_data &&
-      chrome_navigation_ui_data->url_is_typed_with_http_scheme() &&
-      !IsInterstitialEnabled(*interstitial_state_)) {
-    if (state) {
-      state->AllowHttpForHost(tentative_resource_request.url.host(),
-                              storage_partition);
-    }
-    RecordNavigationRequestSecurityLevel(
-        NavigationRequestSecurityLevel::kExplicitHttpScheme);
-    std::move(callback).Run({});
-    return;
   }
 
   // Check whether this host would be upgraded to HTTPS by HSTS. This requires a
@@ -358,7 +302,7 @@ void HttpsUpgradesInterceptor::MaybeCreateLoader(
   auto query_complete_callback = base::BindOnce(
       &HttpsUpgradesInterceptor::MaybeCreateLoaderOnHstsQueryCompleted,
       weak_factory_.GetWeakPtr(), tentative_resource_request,
-      std::move(callback));
+      std::move(callback), profile, web_contents, tab_helper);
   network::mojom::NetworkContext* network_context =
       profile->GetDefaultStoragePartition()->GetNetworkContext();
   network_context->IsHSTSActiveForHost(
@@ -371,27 +315,11 @@ void HttpsUpgradesInterceptor::MaybeCreateLoader(
 void HttpsUpgradesInterceptor::MaybeCreateLoaderOnHstsQueryCompleted(
     const network::ResourceRequest& tentative_resource_request,
     content::URLLoaderRequestInterceptor::LoaderCallback callback,
+    Profile* profile,
+    content::WebContents* web_contents,
+    HttpsOnlyModeTabHelper* tab_helper,
     bool is_hsts_active_for_host) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  // Reconstruct objects here instead of binding them as parameters to this
-  // callback method.
-  //
-  // It's possible for the WebContents to be destroyed during the
-  // asynchronous HSTS query call, before this callback is run. If it no longer
-  // exists, don't upgrade and return. (See crbug.com/1499515.)
-  content::WebContents* web_contents =
-      content::WebContents::FromFrameTreeNodeId(frame_tree_node_id_);
-  if (!web_contents) {
-    std::move(callback).Run({});
-    return;
-  }
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents->GetBrowserContext());
-  HttpsOnlyModeTabHelper* tab_helper =
-      HttpsOnlyModeTabHelper::FromWebContents(web_contents);
-  CHECK(profile);
-  CHECK(tab_helper);
 
   // Don't upgrade this request if HSTS is active for this host.
   if (is_hsts_active_for_host) {
@@ -423,9 +351,8 @@ void HttpsUpgradesInterceptor::MaybeCreateLoaderOnHstsQueryCompleted(
 
   // Next check whether the HTTP or HTTPS versions of the URL has "Insecure
   // Content" allowed in content settings. We treat this as a sign to not do
-  // silent HTTPS Upgrades for the site overall and not show an HTTPS-First Mode
-  // interstitial for Engaged Sites. The main HTTPS-First Mode ignores this
-  // setting.
+  // silent HTTPS Upgrades for the site overall. (HTTPS-First Mode ignores this
+  // setting.)
   if (!interstitial_state_->enabled_by_pref &&
       DoesInsecureContentSettingDisableUpgrading(tentative_resource_request.url,
                                                  profile)) {
@@ -438,7 +365,8 @@ void HttpsUpgradesInterceptor::MaybeCreateLoaderOnHstsQueryCompleted(
   // Then check whether the host has been allowlisted by the user (or by a
   // previous upgrade attempt failing).
   // TODO(crbug.com/1394910): Distinguish HTTPS-First Mode and HTTPS-Upgrades
-  // allowlist entries.
+  // allowlist entries, and ensure that HTTPS-Upgrades allowlist entries don't
+  // downgrade Page Info.
   // TODO(crbug.com/1394910): Move this to a helper function `IsAllowlisted()`,
   // especially once this gets more complicated for HFM vs. Upgrades.
   StatefulSSLHostStateDelegate* state =
@@ -492,11 +420,12 @@ void HttpsUpgradesInterceptor::MaybeCreateLoaderOnHstsQueryCompleted(
   // disable HTTPS-Upgrades entirely. Abort if HFM is disabled and the
   // enterprise policy is set.
   if (!prefs->GetBoolean(prefs::kHttpsUpgradesEnabled) &&
-      !IsInterstitialEnabled(*interstitial_state_)) {
+      !interstitial_state_->enabled_by_pref) {
     RecordHttpsFirstModeNavigation(Event::kUpgradeNotAttempted,
                                    *interstitial_state_);
     RecordNavigationRequestSecurityLevel(
         NavigationRequestSecurityLevel::kAllowlisted);
+
     std::move(callback).Run({});
     return;
   }
@@ -505,68 +434,17 @@ void HttpsUpgradesInterceptor::MaybeCreateLoaderOnHstsQueryCompleted(
   // navigations to HTTPS, with HTTPS-First Mode additionally enabling the
   // HTTP interstitial on fallback.
   if (!base::FeatureList::IsEnabled(features::kHttpsUpgrades) &&
-      !IsInterstitialEnabled(*interstitial_state_)) {
+      !interstitial_state_->enabled_by_pref) {
     // Don't upgrade the request and let the default loader continue, but record
     // that the request *would have* upgraded, had upgrading been enabled.
     RecordHttpsFirstModeNavigation(Event::kUpgradeNotAttempted,
                                    *interstitial_state_);
     RecordNavigationRequestSecurityLevel(
         NavigationRequestSecurityLevel::kInsecure);
+
     std::move(callback).Run({});
     return;
   }
-
-  // If the request URL is in the set of URLs that HttpsUpgradesInterceptor has
-  // already processed, skip upgrading and trigger fallback to HTTP to avoid a
-  // redirect loop.
-  if (base::Contains(urls_seen_, tentative_resource_request.url)) {
-    // Record failure type metrics for upgraded navigations.
-    RecordHttpsFirstModeNavigation(Event::kUpgradeFailed, *interstitial_state_);
-    RecordHttpsFirstModeNavigation(Event::kUpgradeRedirectLoop,
-                                   *interstitial_state_);
-
-    // If HTTPS-First Mode is not enabled (so no interstitial will be shown),
-    // add the fallback hostname to the allowlist now before triggering
-    // fallback. HTTPS-First Mode handles this on the user proceeding through
-    // the interstitial only.
-    // TODO(crbug.com/1446193): Distinguish HTTPS-First Mode and HTTPS-Upgrades
-    // allowlist entries, and ensure that HTTPS-Upgrades allowlist entries don't
-    // downgrade Page Info.
-    // TODO(crbug.com/1394910): Move this to a helper function
-    // `AddUrlToAllowlist()`, especially once this gets more complicated for
-    // HFM vs. Upgrades.
-    if (!IsInterstitialEnabled(*interstitial_state_)) {
-      // StatefulSSLHostStateDelegate can be null during tests.
-      if (state) {
-        state->AllowHttpForHost(
-            tab_helper->fallback_url().host(),
-            web_contents->GetPrimaryMainFrame()->GetStoragePartition());
-      }
-      // Also record this fallback event so that we can auto-enable HFM based on
-      // browsing patterns later on.
-      HttpsFirstModeService* hfm_service =
-          HttpsFirstModeServiceFactory::GetForProfile(profile);
-      // HttpsFirstModeService can be null in tests.
-      if (hfm_service) {
-        hfm_service->RecordHttpsUpgradeFallbackEvent();
-      }
-    }
-
-    tab_helper->set_is_navigation_upgraded(false);
-    tab_helper->set_is_navigation_fallback(true);
-    tab_helper->add_failed_upgrade(tab_helper->fallback_url());
-
-    // Note: If `fallback_url` is the same as the request URL, this
-    // could skip doing an additional redirect, but then the NavigationThrottle
-    // doesn't have the ability to act on this navigation request and apply
-    // the HTTPS-First Mode interstitial. If we add a better way to "fast fail"
-    // navigations directly to the interstitial, then we could probably use that
-    // here as well as an optimization.
-    std::move(callback).Run(CreateRedirectHandler(tab_helper->fallback_url()));
-    return;
-  }
-  // Not a redirect loop. Add the current request URL to the set of URLs seen.
-  urls_seen_.insert(tentative_resource_request.url);
 
   RecordNavigationRequestSecurityLevel(
       NavigationRequestSecurityLevel::kUpgraded);
@@ -586,8 +464,11 @@ bool HttpsUpgradesInterceptor::MaybeCreateLoaderForResponse(
     mojo::ScopedDataPipeConsumerHandle* response_body,
     mojo::PendingRemote<network::mojom::URLLoader>* loader,
     mojo::PendingReceiver<network::mojom::URLLoaderClient>* client_receiver,
-    blink::ThrottlingURLLoader* url_loader) {
+    blink::ThrottlingURLLoader* url_loader,
+    bool* skip_other_interceptors,
+    bool* will_return_unsafe_redirect) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   // When an upgraded navigation fails, this method creates a loader to trigger
   // the fallback to HTTP.
   //
@@ -623,27 +504,6 @@ bool HttpsUpgradesInterceptor::MaybeCreateLoaderForResponse(
     return false;
   }
 
-  // If the navigation resulted in an exempted transient network error, don't
-  // intercept the failure and allow the normal net error page to trigger. Set
-  // the exempt-error flag so if the net error page is reloaded we can try
-  // continuing with the upgrade (and fallback to the original URL if the
-  // transient network error goes away and the navigation fails).
-  // Currently this is only done if the HTTPS-First Mode interstitial is
-  // enabled, because otherwise these would cause the interstitial to be shown
-  // which is confusing. HTTPS-Upgrades will silently fall back to HTTP for
-  // these errors.
-  //
-  // However, if this is a request to a non-unique hostname, don't prefer
-  // net error as it is likely non-recoverable -- we want to fallback to HTTP
-  // and the HTTPS-First Mode interstitial in this case. (In particular, this
-  // avoids breaking corporate single-label hostnames.)
-  if (IsInterstitialEnabled(*interstitial_state_) &&
-      IsHttpsFirstModeExemptedError(status.error_code) &&
-      !net::IsHostnameNonUnique(request.url.host())) {
-    tab_helper->set_is_exempt_error(true);
-    return false;
-  }
-
   Profile* profile =
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
   StatefulSSLHostStateDelegate* state =
@@ -664,7 +524,7 @@ bool HttpsUpgradesInterceptor::MaybeCreateLoaderForResponse(
   }
 
   // If HTTPS-First Mode is not enabled (so no interstitial will be shown),
-  // add the fallback hostname to the allowlist now before triggering fallback.
+  // add the hostname to the allowlist now before triggering fallback.
   // HTTPS-First Mode handles this on the user proceeding through the
   // interstitial only.
   // TODO(crbug.com/1394910): Distinguish HTTPS-First Mode and HTTPS-Upgrades
@@ -673,21 +533,12 @@ bool HttpsUpgradesInterceptor::MaybeCreateLoaderForResponse(
   // TODO(crbug.com/1394910): Move this to a helper function
   // `AddUrlToAllowlist()`, especially once this gets more complicated for
   // HFM vs. Upgrades.
-  if (!IsInterstitialEnabled(*interstitial_state_)) {
+  if (!interstitial_state_->enabled_by_pref) {
     // StatefulSSLHostStateDelegate can be null during tests.
     if (state) {
       state->AllowHttpForHost(
-          tab_helper->fallback_url().host(),
+          request.url.host(),
           web_contents->GetPrimaryMainFrame()->GetStoragePartition());
-    }
-
-    // Also record this fallback event so that we can auto-enable HFM based on
-    // browsing patterns later on.
-    HttpsFirstModeService* hfm_service =
-        HttpsFirstModeServiceFactory::GetForProfile(profile);
-    // HttpsFirstModeService can be null in tests.
-    if (hfm_service) {
-      hfm_service->RecordHttpsUpgradeFallbackEvent();
     }
   }
 

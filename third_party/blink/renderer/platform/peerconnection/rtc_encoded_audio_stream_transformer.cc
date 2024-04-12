@@ -61,9 +61,8 @@ class RTCEncodedAudioStreamTransformerDelegate
   void Transform(
       std::unique_ptr<webrtc::TransformableFrameInterface> frame) override {
     base::AutoLock locker(source_task_runner_lock_);
-    auto audio_frame =
-        base::WrapUnique(static_cast<webrtc::TransformableAudioFrameInterface*>(
-            frame.release()));
+    auto audio_frame = base::WrapUnique(
+        static_cast<webrtc::TransformableFrameInterface*>(frame.release()));
     PostCrossThreadTask(
         *source_task_runner_, FROM_HERE,
         CrossThreadBindOnce(&RTCEncodedAudioStreamTransformer::Broker::
@@ -103,7 +102,7 @@ void RTCEncodedAudioStreamTransformer::Broker::
 }
 
 void RTCEncodedAudioStreamTransformer::Broker::TransformFrameOnSourceTaskRunner(
-    std::unique_ptr<webrtc::TransformableAudioFrameInterface> frame) {
+    std::unique_ptr<webrtc::TransformableFrameInterface> frame) {
   base::AutoLock locker(transformer_lock_);
   if (transformer_) {
     transformer_->TransformFrame(std::move(frame));
@@ -139,17 +138,10 @@ void RTCEncodedAudioStreamTransformer::Broker::ClearTransformer() {
 }
 
 void RTCEncodedAudioStreamTransformer::Broker::SendFrameToSink(
-    std::unique_ptr<webrtc::TransformableAudioFrameInterface> frame) {
+    std::unique_ptr<webrtc::TransformableFrameInterface> frame) {
   base::AutoLock locker(transformer_lock_);
   if (transformer_) {
     transformer_->SendFrameToSink(std::move(frame));
-  }
-}
-
-void RTCEncodedAudioStreamTransformer::Broker::StartShortCircuiting() {
-  base::AutoLock locker(transformer_lock_);
-  if (transformer_) {
-    transformer_->StartShortCircuiting();
   }
 }
 
@@ -169,9 +161,6 @@ void RTCEncodedAudioStreamTransformer::RegisterTransformedFrameCallback(
     rtc::scoped_refptr<webrtc::TransformedFrameCallback> callback) {
   base::AutoLock locker(sink_lock_);
   send_frame_to_sink_cb_ = callback;
-  if (short_circuit_) {
-    callback->StartShortCircuiting();
-  }
 }
 
 void RTCEncodedAudioStreamTransformer::UnregisterTransformedFrameCallback() {
@@ -180,7 +169,7 @@ void RTCEncodedAudioStreamTransformer::UnregisterTransformedFrameCallback() {
 }
 
 void RTCEncodedAudioStreamTransformer::TransformFrame(
-    std::unique_ptr<webrtc::TransformableAudioFrameInterface> frame) {
+    std::unique_ptr<webrtc::TransformableFrameInterface> frame) {
   base::AutoLock locker(source_lock_);
   // If no transformer callback has been set, drop the frame.
   if (!transformer_callback_)
@@ -189,18 +178,10 @@ void RTCEncodedAudioStreamTransformer::TransformFrame(
 }
 
 void RTCEncodedAudioStreamTransformer::SendFrameToSink(
-    std::unique_ptr<webrtc::TransformableAudioFrameInterface> frame) {
+    std::unique_ptr<webrtc::TransformableFrameInterface> frame) {
   base::AutoLock locker(sink_lock_);
   if (send_frame_to_sink_cb_)
     send_frame_to_sink_cb_->OnTransformedFrame(std::move(frame));
-}
-
-void RTCEncodedAudioStreamTransformer::StartShortCircuiting() {
-  base::AutoLock locker(sink_lock_);
-  short_circuit_ = true;
-  if (send_frame_to_sink_cb_) {
-    send_frame_to_sink_cb_->StartShortCircuiting();
-  }
 }
 
 void RTCEncodedAudioStreamTransformer::SetTransformerCallback(

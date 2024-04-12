@@ -32,7 +32,7 @@
 
 .mode-subgroup > .item > div.label {
   border-radius: var(--border-radius-rounded-with-short-side);
-  font: var(--cros-button-1-font);
+  font: 500 14px/20px var(--default-font-family);
   line-height: 20px;
   padding: 6px 16px;
   z-index: 0;

@@ -51,31 +51,25 @@ void BluetoothDevicesObserver::InitializeOnAdapterReady(
 
 bool BluetoothDevicesObserver::IsConnectedBluetoothDevice(
     const ui::InputDevice& input_device) const {
-  return GetConnectedBluetoothDevice(input_device) != nullptr;
-}
-
-device::BluetoothDevice* BluetoothDevicesObserver::GetConnectedBluetoothDevice(
-    const ui::InputDevice& input_device) const {
   if (!bluetooth_adapter_ || !bluetooth_adapter_->IsPresent() ||
       !bluetooth_adapter_->IsInitialized() ||
       !bluetooth_adapter_->IsPowered()) {
-    return nullptr;
+    return false;
   }
 
   // Since there is no map from an InputDevice to a BluetoothDevice. We just
   // comparing their vendor id and product id to guess a match.
   for (auto* device : bluetooth_adapter_->GetDevices()) {
-    if (!device->IsConnected()) {
+    if (!device->IsConnected())
       continue;
-    }
 
     if (device->GetVendorID() == input_device.vendor_id &&
         device->GetProductID() == input_device.product_id) {
-      return device;
+      return true;
     }
   }
 
-  return nullptr;
+  return false;
 }
 
 }  // namespace ash

@@ -35,10 +35,8 @@ class WebContentsViewRectProvider extends RectProvider {
 
     private final Callback<ManualFillingComponent> mOnManualFillingComponentChanged =
             fillComponent -> observeBottomInsetSupplier(fillComponent.getBottomInsetSupplier());
-    private final Callback<Integer> mOnBottomInsetChanged =
-            bottomInset ->
-                    updateVisibleRectForPopup(
-                            bottomInset, getValueOrNull(mBrowserControlsSupplier));
+    private final Callback<Integer> mOnBottomInsetChanged = bottomInset
+            -> updateVisibleRectForPopup(bottomInset, getValueOrNull(mBrowserControlsSupplier));
     private final Callback<BrowserControlsManager> mOnBrowserControlsChanged =
             ctrlMgr -> updateVisibleRectForPopup(getValueOrNull(mBottomInsetSupplier), ctrlMgr);
 
@@ -50,8 +48,7 @@ class WebContentsViewRectProvider extends RectProvider {
      * @param browserControlsSupplier A {@link ObservableSupplier<BrowserControlsManager>}.
      * @param manualFillingComponentSupplier A {@link ObservableSupplier<ManualFillingComponent>}.
      */
-    public WebContentsViewRectProvider(
-            WebContents webContents,
+    public WebContentsViewRectProvider(WebContents webContents,
             ObservableSupplier<BrowserControlsManager> browserControlsSupplier,
             ObservableSupplier<ManualFillingComponent> manualFillingComponentSupplier) {
         assert webContents != null;
@@ -63,7 +60,9 @@ class WebContentsViewRectProvider extends RectProvider {
         observeBrowserControlsSupplier(browserControlsSupplier);
     }
 
-    /** Stops observing the suppliers given in the constructor. */
+    /**
+     * Stops observing the suppliers given in the constructor.
+     */
     public void dismiss() {
         observeManualFillingComponentSupplier(null);
         observeBrowserControlsSupplier(null);
@@ -91,8 +90,7 @@ class WebContentsViewRectProvider extends RectProvider {
         mManualFillingComponentSupplier = supplier;
         if (mManualFillingComponentSupplier != null) {
             mManualFillingComponentSupplier.addObserver(mOnManualFillingComponentChanged);
-            observeBottomInsetSupplier(
-                    mManualFillingComponentSupplier.hasValue()
+            observeBottomInsetSupplier(mManualFillingComponentSupplier.hasValue()
                             ? mManualFillingComponentSupplier.get().getBottomInsetSupplier()
                             : null);
         }
@@ -128,7 +126,7 @@ class WebContentsViewRectProvider extends RectProvider {
         if (!mRect.equals(rect)) setRect(rect); // Update and notify only if the rect changes.
     }
 
-    private static @Nullable <T> T getValueOrNull(@Nullable Supplier<T> supplier) {
+    private static @Nullable<T> T getValueOrNull(@Nullable Supplier<T> supplier) {
         return supplier != null ? supplier.get() : null;
     }
 }

@@ -16,11 +16,8 @@ enum class IbanBubbleType {
   // Save prompt when the user is saving locally.
   kLocalSave = 1,
 
-  // Save prompt when the user is saving to the GPay server.
-  kUploadSave = 2,
-
   // The manage IBAN bubble after IBAN is saved.
-  kManageSavedIban = 3
+  kManageSavedIban = 2
 };
 
 }  // namespace autofill

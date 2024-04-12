@@ -23,11 +23,11 @@ PressureMetrics::PressureMetrics(const char* histogram_name,
 
 PressureMetrics::~PressureMetrics() = default;
 
-std::optional<PressureMetrics::Sample> PressureMetrics::CollectCurrentPressure()
-    const {
+absl::optional<PressureMetrics::Sample>
+PressureMetrics::CollectCurrentPressure() const {
   std::string content;
   if (!ReadFileToString(metric_path_, &content) || content.empty()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Example file content:
@@ -37,7 +37,7 @@ std::optional<PressureMetrics::Sample> PressureMetrics::CollectCurrentPressure()
       content, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (lines.size() != 2 || !base::StartsWith(lines[0], kSomePrefix) ||
       !base::StartsWith(lines[1], kFullPrefix)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   base::StringPairs some_kv_pairs;
@@ -49,7 +49,7 @@ std::optional<PressureMetrics::Sample> PressureMetrics::CollectCurrentPressure()
       !base::SplitStringIntoKeyValuePairs(
           lines[1].substr(std::size(kFullPrefix)), '=', ' ', &full_kv_pairs) ||
       full_kv_pairs.size() != 4) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   Sample sample;
@@ -59,7 +59,7 @@ std::optional<PressureMetrics::Sample> PressureMetrics::CollectCurrentPressure()
       !base::StringToDouble(full_kv_pairs[0].second, &sample.full_avg10) ||
       !base::StringToDouble(full_kv_pairs[1].second, &sample.full_avg60) ||
       !base::StringToDouble(full_kv_pairs[2].second, &sample.full_avg300)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return sample;

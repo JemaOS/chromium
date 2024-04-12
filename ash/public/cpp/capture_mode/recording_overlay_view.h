@@ -6,7 +6,6 @@
 #define ASH_PUBLIC_CPP_CAPTURE_MODE_RECORDING_OVERLAY_VIEW_H_
 
 #include "ash/public/cpp/ash_public_export.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/view.h"
 
 namespace ash {
@@ -18,15 +17,13 @@ namespace ash {
 // view can host a |views::WebView| and its associated |WebContents|, to show
 // things such as ink annotations.
 class ASH_PUBLIC_EXPORT RecordingOverlayView : public views::View {
-  METADATA_HEADER(RecordingOverlayView, views::View)
-
  public:
-  ~RecordingOverlayView() override;
+  ~RecordingOverlayView() override = default;
 
   // TODO(afakhry): Add new APIs here as needed.
 
  protected:
-  RecordingOverlayView();
+  RecordingOverlayView() = default;
 };
 
 }  // namespace ash

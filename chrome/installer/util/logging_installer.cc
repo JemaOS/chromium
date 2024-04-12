@@ -97,9 +97,9 @@ void InitInstallerLogging(const installer::InitialPreferences& prefs) {
 
   if (prefs.GetBool(installer::initial_preferences::kVerboseLogging, &value) &&
       value) {
-    logging::SetMinLogLevel(logging::LOGGING_VERBOSE);
+    logging::SetMinLogLevel(logging::LOG_VERBOSE);
   } else {
-    logging::SetMinLogLevel(logging::LOGGING_ERROR);
+    logging::SetMinLogLevel(logging::LOG_ERROR);
   }
 
   // Enable ETW logging.

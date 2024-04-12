@@ -41,8 +41,7 @@ RemoteAppsProxyLacrosFactory::RemoteAppsProxyLacrosFactory()
 
 RemoteAppsProxyLacrosFactory::~RemoteAppsProxyLacrosFactory() = default;
 
-std::unique_ptr<KeyedService>
-RemoteAppsProxyLacrosFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* RemoteAppsProxyLacrosFactory::BuildServiceInstanceFor(
     content::BrowserContext* browser_context) const {
   if (!chromeos::LacrosService::Get()
            ->IsAvailable<
@@ -51,7 +50,7 @@ RemoteAppsProxyLacrosFactory::BuildServiceInstanceForBrowserContext(
   }
 
   Profile* profile = Profile::FromBrowserContext(browser_context);
-  return std::make_unique<RemoteAppsProxyLacros>(profile);
+  return new RemoteAppsProxyLacros(profile);
 }
 
 bool RemoteAppsProxyLacrosFactory::ServiceIsNULLWhileTesting() const {

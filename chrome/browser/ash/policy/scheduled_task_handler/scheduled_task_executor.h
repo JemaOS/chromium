@@ -5,11 +5,10 @@
 #ifndef CHROME_BROWSER_ASH_POLICY_SCHEDULED_TASK_HANDLER_SCHEDULED_TASK_EXECUTOR_H_
 #define CHROME_BROWSER_ASH_POLICY_SCHEDULED_TASK_HANDLER_SCHEDULED_TASK_EXECUTOR_H_
 
-#include <optional>
-
 #include "base/functional/callback_forward.h"
 #include "base/time/time.h"
 #include "chromeos/dbus/power/native_timer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/icu/source/i18n/unicode/calendar.h"
 
 namespace policy {
@@ -42,11 +41,11 @@ class ScheduledTaskExecutor {
 
     // Only set when frequency is |kWeekly|. Corresponds to UCAL_DAY_OF_WEEK in
     // icu::Calendar. Values between 1 (SUNDAY) to 7 (SATURDAY).
-    std::optional<UCalendarDaysOfWeek> day_of_week;
+    absl::optional<UCalendarDaysOfWeek> day_of_week;
 
     // Only set when frequency is |kMonthly|. Corresponds to UCAL_DAY_OF_MONTH
     // in icu::Calendar i.e. values between 1 to 31.
-    std::optional<int> day_of_month;
+    absl::optional<int> day_of_month;
   };
 
   virtual ~ScheduledTaskExecutor() = default;

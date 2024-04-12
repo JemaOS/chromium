@@ -7,20 +7,15 @@
 
 #include "base/auto_reset.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/time/time.h"
 #include "chrome/browser/web_applications/os_integration/os_integration_manager.h"
 #include "chrome/browser/web_applications/web_app_callback_app_identity.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_ui_manager.h"
 #include "chrome/test/base/in_process_browser_test.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/test/content_mock_cert_verifier.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "url/gurl.h"
-
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ui/chromeos/test_util.h"
-#endif
 
 class Profile;
 
@@ -37,11 +32,7 @@ namespace web_app {
 class WebAppProvider;
 
 // Base class for tests of user interface support for web applications.
-#if BUILDFLAG(IS_CHROMEOS)
-class WebAppControllerBrowserTest : public ChromeOSBrowserUITest {
-#else
 class WebAppControllerBrowserTest : public InProcessBrowserTest {
-#endif
  public:
   WebAppControllerBrowserTest();
   WebAppControllerBrowserTest(const WebAppControllerBrowserTest&) = delete;
@@ -53,24 +44,23 @@ class WebAppControllerBrowserTest : public InProcessBrowserTest {
 
   Profile* profile();
 
-  webapps::AppId InstallPWA(const GURL& app_url);
+  AppId InstallPWA(const GURL& app_url);
 
-  webapps::AppId InstallWebApp(std::unique_ptr<WebAppInstallInfo> web_app_info);
+  AppId InstallWebApp(std::unique_ptr<WebAppInstallInfo> web_app_info);
 
-  void UninstallWebApp(const webapps::AppId& app_id);
+  void UninstallWebApp(const AppId& app_id);
 
   // Launches the app as a window and returns the browser.
-  Browser* LaunchWebAppBrowser(const webapps::AppId&);
+  Browser* LaunchWebAppBrowser(const AppId&);
 
   // Launches the app, waits for the app url to load.
-  Browser* LaunchWebAppBrowserAndWait(const webapps::AppId&);
+  Browser* LaunchWebAppBrowserAndWait(const AppId&);
 
   // Launches the app, waits for it to load and finish the installability check.
-  Browser* LaunchWebAppBrowserAndAwaitInstallabilityCheck(
-      const webapps::AppId&);
+  Browser* LaunchWebAppBrowserAndAwaitInstallabilityCheck(const AppId&);
 
   // Launches the app as a tab and returns the browser.
-  Browser* LaunchBrowserForWebAppInTab(const webapps::AppId&);
+  Browser* LaunchBrowserForWebAppInTab(const AppId&);
 
   // Simulates a page calling window.open on an URL and waits for the
   // navigation.
@@ -88,22 +78,13 @@ class WebAppControllerBrowserTest : public InProcessBrowserTest {
 
   Browser* NavigateInNewWindowAndAwaitInstallabilityCheck(const GURL&);
 
-  std::optional<webapps::AppId> FindAppWithUrlInScope(const GURL& url);
-
-  // Opens |url| in a new popup window with the dimensions |popup_size|.
-  Browser* OpenPopupAndWait(Browser* browser,
-                            const GURL& url,
-                            const gfx::Size& popup_size);
+  absl::optional<AppId> FindAppWithUrlInScope(const GURL& url);
 
  protected:
-  WebAppControllerBrowserTest(
-      const std::vector<base::test::FeatureRef>& enabled_features,
-      const std::vector<base::test::FeatureRef>& disabled_features);
-
-  std::optional<OsIntegrationManager::ScopedSuppressForTesting>
+  absl::optional<OsIntegrationManager::ScopedSuppressForTesting>
       os_hooks_suppress_;
 
-  content::WebContents* OpenApplication(const webapps::AppId&);
+  content::WebContents* OpenApplication(const AppId&);
 
   net::EmbeddedTestServer* https_server() { return &https_server_; }
 
@@ -118,13 +99,10 @@ class WebAppControllerBrowserTest : public InProcessBrowserTest {
   void TearDown() override;
   void SetUpInProcessBrowserTestFixture() override;
   void TearDownInProcessBrowserTestFixture() override;
-  void TearDownOnMainThread() override;
   void SetUpCommandLine(base::CommandLine* command_line) override;
   void SetUpOnMainThread() override;
 
  private:
-  base::TimeTicks start_time_ = base::TimeTicks::Now();
-
   base::test::ScopedFeatureList scoped_feature_list_;
   net::EmbeddedTestServer https_server_;
   base::CallbackListSubscription create_services_subscription_;
@@ -132,7 +110,7 @@ class WebAppControllerBrowserTest : public InProcessBrowserTest {
   // Similar to net::MockCertVerifier, but also updates the CertVerifier
   // used by the NetworkService.
   content::ContentMockCertVerifier cert_verifier_;
-  base::AutoReset<std::optional<AppIdentityUpdate>> update_dialog_scope_;
+  base::AutoReset<absl::optional<AppIdentityUpdate>> update_dialog_scope_;
 };
 
 }  // namespace web_app

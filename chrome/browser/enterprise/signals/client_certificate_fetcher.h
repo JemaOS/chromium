@@ -9,8 +9,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "net/base/host_port_pair.h"
-#include "net/cert/x509_certificate.h"
 #include "net/ssl/client_cert_identity.h"
 #include "url/gurl.h"
 
@@ -27,23 +25,11 @@ class SSLCertRequestInfo;
 
 namespace enterprise_signals {
 
-// Class that wraps a ProfileNetworkContextService instance to allow easier
-// mocking of that instance in unit tests.
-class ProfileNetworkContextServiceWrapper {
- public:
-  virtual ~ProfileNetworkContextServiceWrapper() = default;
-
-  virtual std::unique_ptr<net::ClientCertStore> CreateClientCertStore() = 0;
-  virtual void FlushCachedClientCertIfNeeded(
-      const net::HostPortPair& host,
-      const scoped_refptr<net::X509Certificate>& certificate) = 0;
-};
-
 class ClientCertificateFetcher {
  public:
-  ClientCertificateFetcher(std::unique_ptr<ProfileNetworkContextServiceWrapper>
-                               profile_network_context_service_wrapper,
-                           Profile* profile);
+  ClientCertificateFetcher(
+      std::unique_ptr<net::ClientCertStore> client_cert_store,
+      content::BrowserContext* browser_context);
   ~ClientCertificateFetcher();
 
   static std::unique_ptr<ClientCertificateFetcher> Create(
@@ -57,13 +43,12 @@ class ClientCertificateFetcher {
       FetchAutoSelectedCertificateForUrlCallback callback);
 
  private:
-  void OnGetClientCertsComplete(const GURL& url,
-                                net::ClientCertIdentityList client_certs);
+  void OnGetClientCertsComplete(net::ClientCertIdentityList client_certs);
 
-  std::unique_ptr<ProfileNetworkContextServiceWrapper>
-      profile_network_context_service_wrapper_;
   std::unique_ptr<net::ClientCertStore> client_cert_store_;
   raw_ptr<Profile> profile_;
+
+  GURL requesting_url_;
 
   FetchAutoSelectedCertificateForUrlCallback fetch_callback_;
   scoped_refptr<net::SSLCertRequestInfo> cert_request_info_;

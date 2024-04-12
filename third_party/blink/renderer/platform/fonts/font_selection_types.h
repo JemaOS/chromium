@@ -29,6 +29,7 @@
 #include <algorithm>
 
 #include "third_party/blink/renderer/platform/platform_export.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_table_deleted_value_type.h"
 #include "third_party/blink/renderer/platform/wtf/hash_traits.h"
@@ -49,53 +50,57 @@ class PLATFORM_EXPORT FontSelectionValue {
   FontSelectionValue() = default;
 
   // Explicit because it is lossy.
-  explicit constexpr FontSelectionValue(int x)
+  explicit FontSelectionValue(int x)
       : backing_(ClampTo<int16_t>(x * fractionalEntropy)) {}
 
   // Explicit because it is lossy.
-  explicit constexpr FontSelectionValue(float x)
+  explicit FontSelectionValue(float x)
       : backing_(ClampTo<int16_t>(x * fractionalEntropy)) {}
 
   // Explicit because it is lossy.
-  explicit constexpr FontSelectionValue(double x)
+  explicit FontSelectionValue(double x)
       : backing_(ClampTo<int16_t>(x * fractionalEntropy)) {}
 
-  constexpr operator float() const {
+  operator float() const {
     // floats have 23 fractional bits, but only 14 fractional bits are
     // necessary, so every value can be represented losslessly.
     return backing_ / static_cast<float>(fractionalEntropy);
   }
 
-  constexpr FontSelectionValue operator+(const FontSelectionValue& other) const;
-  constexpr FontSelectionValue operator-(const FontSelectionValue& other) const;
-  constexpr FontSelectionValue operator*(const FontSelectionValue& other) const;
-  constexpr FontSelectionValue operator/(const FontSelectionValue& other) const;
-  constexpr FontSelectionValue operator-() const;
-  constexpr bool operator==(const FontSelectionValue& other) const;
-  constexpr bool operator!=(const FontSelectionValue& other) const;
-  constexpr bool operator<(const FontSelectionValue& other) const;
-  constexpr bool operator<=(const FontSelectionValue& other) const;
-  constexpr bool operator>(const FontSelectionValue& other) const;
-  constexpr bool operator>=(const FontSelectionValue& other) const;
+  FontSelectionValue operator+(const FontSelectionValue other) const;
+  FontSelectionValue operator-(const FontSelectionValue other) const;
+  FontSelectionValue operator*(const FontSelectionValue other) const;
+  FontSelectionValue operator/(const FontSelectionValue other) const;
+  FontSelectionValue operator-() const;
+  bool operator==(const FontSelectionValue other) const;
+  bool operator!=(const FontSelectionValue other) const;
+  bool operator<(const FontSelectionValue other) const;
+  bool operator<=(const FontSelectionValue other) const;
+  bool operator>(const FontSelectionValue other) const;
+  bool operator>=(const FontSelectionValue other) const;
 
   int16_t RawValue() const { return backing_; }
 
   String ToString() const;
 
-  static constexpr FontSelectionValue MaximumValue() {
-    return FontSelectionValue(std::numeric_limits<int16_t>::max(),
-                              RawTag::RawTag);
+  static const FontSelectionValue& MaximumValue() {
+    DEFINE_THREAD_SAFE_STATIC_LOCAL(
+        const FontSelectionValue, maximumValue,
+        (std::numeric_limits<int16_t>::max(), RawTag::RawTag));
+    return maximumValue;
   }
 
-  static constexpr FontSelectionValue MinimumValue() {
-    return FontSelectionValue(std::numeric_limits<int16_t>::min(),
-                              RawTag::RawTag);
+  static const FontSelectionValue& MinimumValue() {
+    DEFINE_THREAD_SAFE_STATIC_LOCAL(
+        const FontSelectionValue, minimumValue,
+        (std::numeric_limits<int16_t>::min(), RawTag::RawTag));
+    return minimumValue;
   }
 
  protected:
   enum class RawTag { RawTag };
 
-  constexpr FontSelectionValue(int16_t rawValue, RawTag) : backing_(rawValue) {}
+  FontSelectionValue(int16_t rawValue, RawTag) : backing_(rawValue) {}
 
  private:
   static constexpr int fractionalEntropy = 4;
@@ -104,145 +109,208 @@ class PLATFORM_EXPORT FontSelectionValue {
   int16_t backing_{0};
 };
 
-inline constexpr FontSelectionValue FontSelectionValue::operator+(
-    const FontSelectionValue& other) const {
+inline FontSelectionValue FontSelectionValue::operator+(
+    const FontSelectionValue other) const {
   return FontSelectionValue(backing_ + other.backing_, RawTag::RawTag);
 }
 
-inline constexpr FontSelectionValue FontSelectionValue::operator-(
-    const FontSelectionValue& other) const {
+inline FontSelectionValue FontSelectionValue::operator-(
+    const FontSelectionValue other) const {
   return FontSelectionValue(backing_ - other.backing_, RawTag::RawTag);
 }
 
-inline constexpr FontSelectionValue FontSelectionValue::operator*(
-    const FontSelectionValue& other) const {
+inline FontSelectionValue FontSelectionValue::operator*(
+    const FontSelectionValue other) const {
   return FontSelectionValue(
       static_cast<int32_t>(backing_) * other.backing_ / fractionalEntropy,
       RawTag::RawTag);
 }
 
-inline constexpr FontSelectionValue FontSelectionValue::operator/(
-    const FontSelectionValue& other) const {
+inline FontSelectionValue FontSelectionValue::operator/(
+    const FontSelectionValue other) const {
   return FontSelectionValue(
       static_cast<int32_t>(backing_) / other.backing_ * fractionalEntropy,
       RawTag::RawTag);
 }
 
-inline constexpr FontSelectionValue FontSelectionValue::operator-() const {
+inline FontSelectionValue FontSelectionValue::operator-() const {
   return FontSelectionValue(-backing_, RawTag::RawTag);
 }
 
-inline constexpr bool FontSelectionValue::operator==(
-    const FontSelectionValue& other) const {
+inline bool FontSelectionValue::operator==(
+    const FontSelectionValue other) const {
   return backing_ == other.backing_;
 }
 
-inline constexpr bool FontSelectionValue::operator!=(
-    const FontSelectionValue& other) const {
+inline bool FontSelectionValue::operator!=(
+    const FontSelectionValue other) const {
   return !operator==(other);
 }
 
-inline constexpr bool FontSelectionValue::operator<(
-    const FontSelectionValue& other) const {
+inline bool FontSelectionValue::operator<(
+    const FontSelectionValue other) const {
   return backing_ < other.backing_;
 }
 
-inline constexpr bool FontSelectionValue::operator<=(
-    const FontSelectionValue& other) const {
+inline bool FontSelectionValue::operator<=(
+    const FontSelectionValue other) const {
   return backing_ <= other.backing_;
 }
 
-inline constexpr bool FontSelectionValue::operator>(
-    const FontSelectionValue& other) const {
+inline bool FontSelectionValue::operator>(
+    const FontSelectionValue other) const {
   return backing_ > other.backing_;
 }
 
-inline constexpr bool FontSelectionValue::operator>=(
-    const FontSelectionValue& other) const {
+inline bool FontSelectionValue::operator>=(
+    const FontSelectionValue other) const {
   return backing_ >= other.backing_;
 }
 
-inline constexpr FontSelectionValue kItalicThreshold = FontSelectionValue(14);
-
-static constexpr inline bool isItalic(FontSelectionValue fontStyle) {
-  return fontStyle >= kItalicThreshold;
+static inline const FontSelectionValue& ItalicThreshold() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, italicThreshold,
+                                  (14));
+  return italicThreshold;
 }
 
-inline constexpr FontSelectionValue kFontSelectionZeroValue =
-    FontSelectionValue(0);
-
-inline constexpr FontSelectionValue kNormalSlopeValue = FontSelectionValue();
-
-inline constexpr FontSelectionValue kItalicSlopeValue = FontSelectionValue(14);
-
-inline constexpr FontSelectionValue kMaxObliqueValue = FontSelectionValue(90);
-
-inline constexpr FontSelectionValue kMinObliqueValue = FontSelectionValue(-90);
-
-inline constexpr FontSelectionValue kBoldThreshold = FontSelectionValue(600);
-
-inline constexpr FontSelectionValue kMinWeightValue = FontSelectionValue(1);
-
-inline constexpr FontSelectionValue kMaxWeightValue = FontSelectionValue(1000);
-
-inline constexpr FontSelectionValue kBlackWeightValue = FontSelectionValue(900);
-
-inline constexpr FontSelectionValue kExtraBoldWeightValue =
-    FontSelectionValue(800);
-
-inline constexpr FontSelectionValue kBoldWeightValue = FontSelectionValue(700);
-
-inline constexpr FontSelectionValue kSemiBoldWeightValue =
-    FontSelectionValue(600);
-
-inline constexpr FontSelectionValue kMediumWeightValue =
-    FontSelectionValue(500);
-
-inline constexpr FontSelectionValue kNormalWeightValue =
-    FontSelectionValue(400);
-
-inline constexpr FontSelectionValue kLightWeightValue = FontSelectionValue(300);
-
-inline constexpr FontSelectionValue kExtraLightWeightValue =
-    FontSelectionValue(200);
-
-inline constexpr FontSelectionValue kThinWeightValue = FontSelectionValue(100);
-
-static constexpr inline bool isFontWeightBold(FontSelectionValue fontWeight) {
-  return fontWeight >= kBoldThreshold;
+static inline bool isItalic(FontSelectionValue fontStyle) {
+  return fontStyle >= ItalicThreshold();
 }
 
-inline constexpr FontSelectionValue kUpperWeightSearchThreshold =
-    FontSelectionValue(500);
+static inline const FontSelectionValue& FontSelectionZeroValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  fontSelectionZeroValue, (0));
+  return fontSelectionZeroValue;
+}
 
-inline constexpr FontSelectionValue kLowerWeightSearchThreshold =
-    FontSelectionValue(400);
+static inline const FontSelectionValue& NormalSlopeValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, normalSlopeValue,
+                                  ());
+  return normalSlopeValue;
+}
 
-inline constexpr FontSelectionValue kUltraCondensedWidthValue =
-    FontSelectionValue(50);
+static inline const FontSelectionValue& ItalicSlopeValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, italicValue, (14));
+  return italicValue;
+}
 
-inline constexpr FontSelectionValue kExtraCondensedWidthValue =
-    FontSelectionValue(62.5f);
+static inline const FontSelectionValue& MaxObliqueValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, maxObliqueValue,
+                                  (90));
+  return maxObliqueValue;
+}
 
-inline constexpr FontSelectionValue kCondensedWidthValue =
-    FontSelectionValue(75);
+static inline const FontSelectionValue& MinObliqueValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, minObliqueValue,
+                                  (-90));
+  return minObliqueValue;
+}
 
-inline constexpr FontSelectionValue kSemiCondensedWidthValue =
-    FontSelectionValue(87.5f);
+static inline const FontSelectionValue& BoldThreshold() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, boldThreshold,
+                                  (600));
+  return boldThreshold;
+}
 
-inline constexpr FontSelectionValue kNormalWidthValue = FontSelectionValue(100);
+static inline const FontSelectionValue& MinWeightValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, minWeightValue,
+                                  (1));
+  return minWeightValue;
+}
 
-inline constexpr FontSelectionValue kSemiExpandedWidthValue =
-    FontSelectionValue(112.5f);
+static inline const FontSelectionValue& MaxWeightValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, maxWeightValue,
+                                  (1000));
+  return maxWeightValue;
+}
 
-inline constexpr FontSelectionValue kExpandedWidthValue =
-    FontSelectionValue(125);
+static inline const FontSelectionValue& BoldWeightValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, boldWeightValue,
+                                  (700));
+  return boldWeightValue;
+}
 
-inline constexpr FontSelectionValue kExtraExpandedWidthValue =
-    FontSelectionValue(150);
+static inline const FontSelectionValue& NormalWeightValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, normalWeightValue,
+                                  (400));
+  return normalWeightValue;
+}
 
-inline constexpr FontSelectionValue kUltraExpandedWidthValue =
-    FontSelectionValue(200);
+static inline const FontSelectionValue& LightWeightValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, lightWeightValue,
+                                  (200));
+  return lightWeightValue;
+}
+
+static inline bool isFontWeightBold(FontSelectionValue fontWeight) {
+  return fontWeight >= BoldThreshold();
+}
+
+static inline const FontSelectionValue& UpperWeightSearchThreshold() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  upperWeightSearchThreshold, (500));
+  return upperWeightSearchThreshold;
+}
+
+static inline const FontSelectionValue& LowerWeightSearchThreshold() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  lowerWeightSearchThreshold, (400));
+  return lowerWeightSearchThreshold;
+}
+
+static inline const FontSelectionValue& UltraCondensedWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  ultraCondensedWidthValue, (50));
+  return ultraCondensedWidthValue;
+}
+
+static inline const FontSelectionValue& ExtraCondensedWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  extraCondensedWidthValue, (62.5f));
+  return extraCondensedWidthValue;
+}
+
+static inline const FontSelectionValue& CondensedWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, condensedWidthValue,
+                                  (75));
+  return condensedWidthValue;
+}
+
+static inline const FontSelectionValue& SemiCondensedWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  semiCondensedWidthValue, (87.5f));
+  return semiCondensedWidthValue;
+}
+
+static inline const FontSelectionValue& NormalWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, normalWidthValue,
+                                  (100.0f));
+  return normalWidthValue;
+}
+
+static inline const FontSelectionValue& SemiExpandedWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  semiExpandedWidthValue, (112.5f));
+  return semiExpandedWidthValue;
+}
+
+static inline const FontSelectionValue& ExpandedWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue, expandedWidthValue,
+                                  (125));
+  return expandedWidthValue;
+}
+
+static inline const FontSelectionValue& ExtraExpandedWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  extraExpandedWidthValue, (150));
+  return extraExpandedWidthValue;
+}
+
+static inline const FontSelectionValue& UltraExpandedWidthValue() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(const FontSelectionValue,
+                                  ultraExpandedWidthValue, (200));
+  return ultraExpandedWidthValue;
+}
 
 struct FontSelectionRange {
   enum RangeType { kSetFromAuto, kSetExplicitly };
@@ -250,12 +318,11 @@ struct FontSelectionRange {
   explicit FontSelectionRange(FontSelectionValue single_value)
       : minimum(single_value), maximum(single_value) {}
 
-  FontSelectionRange(const FontSelectionValue& minimum,
-                     const FontSelectionValue maximum)
+  FontSelectionRange(FontSelectionValue minimum, FontSelectionValue maximum)
       : minimum(minimum), maximum(maximum) {}
 
-  FontSelectionRange(const FontSelectionValue& minimum,
-                     const FontSelectionValue& maximum,
+  FontSelectionRange(FontSelectionValue minimum,
+                     FontSelectionValue maximum,
                      RangeType type)
       : minimum(minimum), maximum(maximum), type(type) {}
 
@@ -295,7 +362,9 @@ struct FontSelectionRange {
   FontSelectionValue minimum{FontSelectionValue(1)};
   FontSelectionValue maximum{FontSelectionValue(0)};
 
-  RangeType type = kSetFromAuto;
+  RangeType type = RuntimeEnabledFeatures::CSSFontFaceAutoVariableRangeEnabled()
+                       ? kSetFromAuto
+                       : kSetExplicitly;
 };
 
 struct PLATFORM_EXPORT FontSelectionRequest {
@@ -388,9 +457,9 @@ struct FontSelectionCapabilities {
     return !(*this == other);
   }
 
-  FontSelectionRange width{kFontSelectionZeroValue, kFontSelectionZeroValue};
-  FontSelectionRange slope{kFontSelectionZeroValue, kFontSelectionZeroValue};
-  FontSelectionRange weight{kFontSelectionZeroValue, kFontSelectionZeroValue};
+  FontSelectionRange width{FontSelectionZeroValue(), FontSelectionZeroValue()};
+  FontSelectionRange slope{FontSelectionZeroValue(), FontSelectionZeroValue()};
+  FontSelectionRange weight{FontSelectionZeroValue(), FontSelectionZeroValue()};
   bool is_deleted_value_{false};
 };
 

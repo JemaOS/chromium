@@ -4,11 +4,10 @@
 
 #include "chrome/browser/ui/views/autofill/update_address_profile_view.h"
 
-#include <algorithm>
-
 #include "base/ranges/algorithm.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/ui/autofill/save_update_address_profile_bubble_controller.h"
 #include "chrome/browser/ui/views/autofill/autofill_bubble_utils.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/grit/theme_resources.h"
@@ -23,7 +22,6 @@
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/image_button_factory.h"
 #include "ui/views/controls/image_view.h"
-#include "ui/views/layout/box_layout_view.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/layout/table_layout_view.h"
 #include "ui/views/style/typography.h"
@@ -35,9 +33,9 @@ namespace {
 constexpr int kIconSize = 16;
 constexpr int kValuesLabelWidth = 190;
 
-const gfx::VectorIcon& GetVectorIconForType(FieldType type) {
+const gfx::VectorIcon& GetVectorIconForType(ServerFieldType type) {
   switch (type) {
-    case NAME_FULL:
+    case NAME_FULL_WITH_HONORIFIC_PREFIX:
       return kAccountCircleIcon;
     case ADDRESS_HOME_ADDRESS:
       return vector_icons::kLocationOnIcon;
@@ -86,27 +84,16 @@ std::unique_ptr<views::View> CreateValuesView(
             gfx::Insets::VH(0, ChromeLayoutProvider::Get()->GetDistanceMetric(
                                    views::DISTANCE_RELATED_LABEL_HORIZONTAL)));
 
+    auto icon_view = std::make_unique<views::ImageView>();
+    icon_view->SetImage(ui::ImageModel::FromVectorIcon(
+        GetVectorIconForType(diff_entry.type), icon_color, kIconSize));
+
+    value_row->AddChildView(std::move(icon_view));
     auto label_view =
         std::make_unique<views::Label>(value, views::style::CONTEXT_LABEL);
     label_view->SetMultiLine(true);
     label_view->SizeToFit(kValuesLabelWidth);
     label_view->SetHorizontalAlignment(gfx::HorizontalAlignment::ALIGN_LEFT);
-
-    auto icon_view = std::make_unique<views::ImageView>();
-    icon_view->SetImage(ui::ImageModel::FromVectorIcon(
-        GetVectorIconForType(diff_entry.type), icon_color, kIconSize));
-
-    // The container aligns the icon vertically in the middle of the first label
-    // line, the icon size is expected to be smaller than the label height.
-    auto icon_container =
-        views::Builder<views::BoxLayoutView>()
-            .SetPreferredSize(gfx::Size(kIconSize, label_view->GetLineHeight()))
-            .SetCrossAxisAlignment(
-                views::BoxLayout::CrossAxisAlignment::kCenter)
-            .Build();
-
-    icon_container->AddChildView(std::move(icon_view));
-    value_row->AddChildView(std::move(icon_container));
     value_row->AddChildView(std::move(label_view));
   }
   return view;
@@ -136,9 +123,6 @@ void AddValuesRow(views::TableLayoutView* layout_view,
   if (are_new_values) {
     std::unique_ptr<views::ImageButton> edit_button =
         CreateEditButton(std::move(edit_button_callback));
-
-    edit_button->SetProperty(views::kElementIdentifierKey,
-                             UpdateAddressProfileView::kEditButtonViewId);
     layout_view->AddChildView(std::move(edit_button));
   }
 }
@@ -161,23 +145,29 @@ bool HasAddressEntry(const std::vector<ProfileValueDifference>& diff) {
 }  // namespace
 
 UpdateAddressProfileView::UpdateAddressProfileView(
-    std::unique_ptr<UpdateAddressBubbleController> controller,
     views::View* anchor_view,
-    content::WebContents* web_contents)
-    : AddressBubbleBaseView(anchor_view, web_contents),
-      controller_(std::move(controller)) {
+    content::WebContents* web_contents,
+    SaveUpdateAddressProfileBubbleController* controller)
+    : LocationBarBubbleDelegateView(anchor_view, web_contents),
+      controller_(controller) {
+  // Since this is an update prompt, original profile must be set. Otherwise, it
+  // would have been a save prompt.
+  DCHECK(controller_->GetOriginalProfile());
+
   auto* layout_provider = views::LayoutProvider::Get();
 
-  SetAcceptCallback(base::BindOnce(
-      &UpdateAddressBubbleController::OnUserDecision,
-      base::Unretained(controller_.get()),
-      AutofillClient::AddressPromptUserDecision::kAccepted, std::nullopt));
-  SetCancelCallback(base::BindOnce(
-      &UpdateAddressBubbleController::OnUserDecision,
-      base::Unretained(controller_.get()),
-      AutofillClient::AddressPromptUserDecision::kDeclined, std::nullopt));
+  set_fixed_width(layout_provider->GetDistanceMetric(
+      views::DISTANCE_BUBBLE_PREFERRED_WIDTH));
 
-  SetProperty(views::kElementIdentifierKey, kTopViewId);
+  SetAcceptCallback(base::BindOnce(
+      &SaveUpdateAddressProfileBubbleController::OnUserDecision,
+      base::Unretained(controller_),
+      AutofillClient::SaveAddressProfileOfferUserDecision::kAccepted));
+  SetCancelCallback(base::BindOnce(
+      &SaveUpdateAddressProfileBubbleController::OnUserDecision,
+      base::Unretained(controller_),
+      AutofillClient::SaveAddressProfileOfferUserDecision::kDeclined));
+
   SetTitle(controller_->GetWindowTitle());
   SetButtonLabel(ui::DIALOG_BUTTON_OK,
                  l10n_util::GetStringUTF16(
@@ -197,11 +187,11 @@ UpdateAddressProfileView::UpdateAddressProfileView(
                                   0));
 
   std::vector<ProfileValueDifference> profile_diff = GetProfileDifferenceForUi(
-      controller_->GetProfileToSave(), controller_->GetOriginalProfile(),
+      controller_->GetProfileToSave(), *controller_->GetOriginalProfile(),
       g_browser_process->GetApplicationLocale());
 
   std::u16string subtitle = GetProfileDescription(
-      controller_->GetOriginalProfile(),
+      *controller_->GetOriginalProfile(),
       g_browser_process->GetApplicationLocale(),
       /*include_address_and_contacts=*/!HasAddressEntry(profile_diff));
   if (!subtitle.empty()) {
@@ -248,8 +238,9 @@ UpdateAddressProfileView::UpdateAddressProfileView(
       main_content_view, profile_diff,
       /*show_row_label=*/has_non_empty_original_values,
       /*edit_button_callback=*/
-      base::BindRepeating(&UpdateAddressBubbleController::OnEditButtonClicked,
-                          base::Unretained(controller_.get())));
+      base::BindRepeating(
+          &SaveUpdateAddressProfileBubbleController::OnEditButtonClicked,
+          base::Unretained(controller_)));
 
   if (has_non_empty_original_values) {
     main_content_view->AddPaddingRow(
@@ -265,20 +256,11 @@ UpdateAddressProfileView::UpdateAddressProfileView(
     SetFootnoteView(
         views::Builder<views::Label>()
             .SetText(footer_message)
-            .SetTextContext(views::style::CONTEXT_BUBBLE_FOOTER)
-            .SetTextStyle(views::style::STYLE_SECONDARY)
             .SetHorizontalAlignment(gfx::HorizontalAlignment::ALIGN_LEFT)
             .SetMultiLine(true)
             .Build());
   }
-
-  set_fixed_width(std::max(
-      main_content_view->GetPreferredSize().width() + margins().width(),
-      layout_provider->GetDistanceMetric(
-          views::DISTANCE_BUBBLE_PREFERRED_WIDTH)));
 }
-
-UpdateAddressProfileView::~UpdateAddressProfileView() = default;
 
 bool UpdateAddressProfileView::ShouldShowCloseButton() const {
   return true;
@@ -311,9 +293,5 @@ void UpdateAddressProfileView::Hide() {
 
   controller_ = nullptr;
 }
-
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(UpdateAddressProfileView, kTopViewId);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(UpdateAddressProfileView,
-                                      kEditButtonViewId);
 
 }  // namespace autofill

@@ -31,7 +31,8 @@ Length AddLengths(const Length& lhs, const Length& rhs) {
   PixelsAndPercent lhs_pap = lhs.GetPixelsAndPercent();
   PixelsAndPercent rhs_pap = rhs.GetPixelsAndPercent();
 
-  PixelsAndPercent result = lhs_pap + rhs_pap;
+  PixelsAndPercent result = PixelsAndPercent(lhs_pap.pixels + rhs_pap.pixels,
+                                             lhs_pap.percent + rhs_pap.percent);
   if (result.percent == 0)
     return Length(result.pixels, Length::kFixed);
   if (result.pixels == 0)
@@ -57,7 +58,7 @@ TransformOperation::OperationType GetTypeForTranslate(const Length& x,
 }
 }  // namespace
 
-TransformOperation* TranslateTransformOperation::Accumulate(
+scoped_refptr<TransformOperation> TranslateTransformOperation::Accumulate(
     const TransformOperation& other) {
   DCHECK(other.CanBlendWith(*this));
 
@@ -65,11 +66,11 @@ TransformOperation* TranslateTransformOperation::Accumulate(
   Length new_x = AddLengths(x_, other_op.x_);
   Length new_y = AddLengths(y_, other_op.y_);
   double new_z = z_ + other_op.z_;
-  return MakeGarbageCollected<TranslateTransformOperation>(
+  return TranslateTransformOperation::Create(
       new_x, new_y, new_z, GetTypeForTranslate(new_x, new_y, new_z));
 }
 
-TransformOperation* TranslateTransformOperation::Blend(
+scoped_refptr<TransformOperation> TranslateTransformOperation::Blend(
     const TransformOperation* from,
     double progress,
     bool blend_to_identity) {
@@ -77,7 +78,7 @@ TransformOperation* TranslateTransformOperation::Blend(
 
   const Length zero_length = Length::Fixed(0);
   if (blend_to_identity) {
-    return MakeGarbageCollected<TranslateTransformOperation>(
+    return TranslateTransformOperation::Create(
         zero_length.Blend(x_, progress, Length::ValueRange::kAll),
         zero_length.Blend(y_, progress, Length::ValueRange::kAll),
         blink::Blend(z_, 0., progress), type_);
@@ -91,16 +92,15 @@ TransformOperation* TranslateTransformOperation::Blend(
 
   CommonPrimitiveForInterpolation(from, type);
 
-  return MakeGarbageCollected<TranslateTransformOperation>(
+  return TranslateTransformOperation::Create(
       x_.Blend(from_x, progress, Length::ValueRange::kAll),
       y_.Blend(from_y, progress, Length::ValueRange::kAll),
       blink::Blend(from_z, z_, progress), type);
 }
 
-TranslateTransformOperation* TranslateTransformOperation::ZoomTranslate(
-    double factor) {
-  return MakeGarbageCollected<TranslateTransformOperation>(
-      x_.Zoom(factor), y_.Zoom(factor), z_ * factor, type_);
+scoped_refptr<TranslateTransformOperation>
+TranslateTransformOperation::ZoomTranslate(double factor) {
+  return Create(x_.Zoom(factor), y_.Zoom(factor), z_ * factor, type_);
 }
 
 void TranslateTransformOperation::CommonPrimitiveForInterpolation(

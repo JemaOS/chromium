@@ -7,7 +7,7 @@
 #import <AppKit/AppKit.h>
 #import <CoreGraphics/CoreGraphics.h>
 
-#include "base/apple/scoped_cftyperef.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "cc/paint/paint_canvas.h"
 #include "skia/ext/skia_utils_mac.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
@@ -18,6 +18,7 @@ GraphicsContextCanvas::GraphicsContextCanvas(cc::PaintCanvas* canvas,
                                              const SkIRect& paint_rect,
                                              SkScalar bitmap_scale_factor)
     : canvas_(canvas),
+      cg_context_(0),
       bitmap_scale_factor_(bitmap_scale_factor),
       paint_rect_(paint_rect) {
   // Callers should just avoid painting at all when this is the case.
@@ -41,30 +42,30 @@ void GraphicsContextCanvas::ReleaseIfNeeded() {
                      0);
   canvas_->restore();
 
-  cg_context_.reset();
+  CGContextRelease(cg_context_);
+  cg_context_ = 0;
 }
 
 CGContextRef GraphicsContextCanvas::CgContext() {
-  ReleaseIfNeeded();  // This flushes any prior bitmap use.
+  ReleaseIfNeeded();  // This flushes any prior bitmap use
 
   // Allocate an offscreen and draw into that, relying on the
   // compositing step to apply skia's clip.
-  base::apple::ScopedCFTypeRef<CGColorSpaceRef> color_space(
+  base::ScopedCFTypeRef<CGColorSpaceRef> color_space(
       CGColorSpaceCreateWithName(kCGColorSpaceSRGB));
 
   bool result = offscreen_.tryAllocN32Pixels(
       SkScalarCeilToInt(bitmap_scale_factor_ * paint_rect_.width()),
       SkScalarCeilToInt(bitmap_scale_factor_ * paint_rect_.height()));
   DCHECK(result);
-  if (!result) {
-    return nullptr;
-  }
+  if (!result)
+    return 0;
   offscreen_.eraseColor(0);
   int display_height = offscreen_.height();
-  cg_context_.reset(CGBitmapContextCreate(
+  cg_context_ = CGBitmapContextCreate(
       offscreen_.getPixels(), offscreen_.width(), offscreen_.height(), 8,
-      offscreen_.rowBytes(), color_space.get(),
-      uint32_t{kCGBitmapByteOrder32Host} | kCGImageAlphaPremultipliedFirst));
+      offscreen_.rowBytes(), color_space,
+      uint32_t{kCGBitmapByteOrder32Host} | kCGImageAlphaPremultipliedFirst);
   DCHECK(cg_context_);
 
   SkMatrix matrix = canvas_->getLocalToDevice().asM33();
@@ -73,10 +74,9 @@ CGContextRef GraphicsContextCanvas::CgContext() {
   matrix.postScale(bitmap_scale_factor_, -bitmap_scale_factor_);
   matrix.postTranslate(0, SkIntToScalar(display_height));
 
-  CGContextConcatCTM(cg_context_.get(),
-                     skia::SkMatrixToCGAffineTransform(matrix));
+  CGContextConcatCTM(cg_context_, skia::SkMatrixToCGAffineTransform(matrix));
 
-  return cg_context_.get();
+  return cg_context_;
 }
 
 }  // namespace blink

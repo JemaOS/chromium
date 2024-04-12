@@ -4,8 +4,6 @@
 
 #include "ash/system/update/update_notification_controller.h"
 
-#include <optional>
-
 #include "ash/constants/notifier_catalogs.h"
 #include "ash/public/cpp/notification_utils.h"
 #include "ash/public/cpp/system_tray_client.h"
@@ -24,6 +22,7 @@
 #include "base/task/thread_pool.h"
 #include "chromeos/ash/components/dbus/update_engine/update_engine_client.h"
 #include "components/vector_icons/vector_icons.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/chromeos/devicetype_utils.h"
 #include "ui/gfx/vector_icon_types.h"
@@ -78,14 +77,14 @@ UpdateNotificationController::~UpdateNotificationController() {
 }
 
 void UpdateNotificationController::GenerateUpdateNotification(
-    std::optional<bool> slow_boot_file_path_exists) {
+    absl::optional<bool> slow_boot_file_path_exists) {
   if (!ShouldShowUpdate()) {
     message_center::MessageCenter::Get()->RemoveNotification(
         kNotificationId, false /* by_user */);
     return;
   }
 
-  if (slow_boot_file_path_exists != std::nullopt) {
+  if (slow_boot_file_path_exists != absl::nullopt) {
     slow_boot_file_path_exists_ = slow_boot_file_path_exists.value();
   }
 
@@ -209,7 +208,7 @@ std::u16string UpdateNotificationController::GetMessage() const {
                                       system_app_name);
   }
 
-  std::optional<int> body_message_id = std::nullopt;
+  absl::optional<int> body_message_id = absl::nullopt;
   switch (model_->relaunch_notification_state().requirement_type) {
     case RelaunchNotificationState::kRecommendedNotOverdue:
       body_message_id = model_->rollback()
@@ -285,11 +284,11 @@ void UpdateNotificationController::RestartForUpdate() {
 void UpdateNotificationController::RestartCancelled() {
   confirmation_dialog_ = nullptr;
   // Put the notification back.
-  GenerateUpdateNotification(std::nullopt);
+  GenerateUpdateNotification(absl::nullopt);
 }
 
 void UpdateNotificationController::HandleNotificationClick(
-    std::optional<int> button_index) {
+    absl::optional<int> button_index) {
   DCHECK(ShouldShowUpdate());
 
   if (!button_index) {

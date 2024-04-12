@@ -11,7 +11,6 @@
 #include "third_party/blink/renderer/core/editing/position_with_affinity.h"
 #include "third_party/blink/renderer/core/editing/text_affinity.h"
 #include "third_party/blink/renderer/core/html/html_iframe_element.h"
-#include "third_party/blink/renderer/core/layout/hit_test_location.h"
 #include "third_party/blink/renderer/core/page/print_context.h"
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
@@ -35,14 +34,14 @@ TEST_F(LayoutViewTest, UpdateCountersLayout) {
   )HTML");
 
   UpdateAllLifecyclePhasesForTest();
-  Element* inc = GetElementById("inc");
+  Element* inc = GetDocument().getElementById("inc");
 
-  inc->setAttribute(html_names::kClassAttr, AtomicString("incX"));
+  inc->setAttribute("class", "incX");
   GetDocument().UpdateStyleAndLayoutTree();
   EXPECT_FALSE(GetDocument().View()->NeedsLayout());
 
   UpdateAllLifecyclePhasesForTest();
-  inc->setAttribute(html_names::kClassAttr, AtomicString("incY"));
+  inc->setAttribute("class", "incY");
   GetDocument().UpdateStyleAndLayoutTree();
   EXPECT_TRUE(GetDocument().View()->NeedsLayout());
 }
@@ -52,7 +51,7 @@ TEST_F(LayoutViewTest, DisplayNoneFrame) {
     <iframe id="iframe" style="display:none"></iframe>
   )HTML");
 
-  auto* iframe = To<HTMLIFrameElement>(GetElementById("iframe"));
+  auto* iframe = To<HTMLIFrameElement>(GetDocument().getElementById("iframe"));
   Document* frame_doc = iframe->contentDocument();
   ASSERT_TRUE(frame_doc);
   frame_doc->OverrideIsInitialEmptyDocument();
@@ -104,7 +103,7 @@ TEST_F(LayoutViewTest, NamedPages) {
   ASSERT_TRUE(view);
 
   ScopedPrintContext print_context(&GetDocument().View()->GetFrame());
-  print_context->BeginPrintMode(WebPrintParams(gfx::SizeF(500, 500)));
+  print_context->BeginPrintMode(500, 500);
 
   EXPECT_EQ(view->NamedPageAtIndex(0), AtomicString());
   EXPECT_EQ(view->NamedPageAtIndex(1), AtomicString());
@@ -140,7 +139,7 @@ TEST_F(LayoutViewTest, NamedPagesAbsPos) {
   ASSERT_TRUE(view);
 
   ScopedPrintContext print_context(&GetDocument().View()->GetFrame());
-  print_context->BeginPrintMode(WebPrintParams(gfx::SizeF(500, 500)));
+  print_context->BeginPrintMode(500, 500);
 
   EXPECT_EQ(view->NamedPageAtIndex(0), "woohoo");
   EXPECT_EQ(view->NamedPageAtIndex(1), "woohoo");
@@ -160,13 +159,11 @@ class LayoutViewHitTestTest : public testing::WithParamInterface<HitTestConfig>,
       : RenderingTest(MakeGarbageCollected<SingleChildLocalFrameClient>()) {}
 
  protected:
-  bool IsAndroidOrWindowsOrChromeOSEditingBehavior() {
+  bool IsAndroidOrWindowsEditingBehavior() {
     return GetParam().editing_behavior ==
                mojom::EditingBehavior::kEditingAndroidBehavior ||
            GetParam().editing_behavior ==
-               mojom::EditingBehavior::kEditingWindowsBehavior ||
-           GetParam().editing_behavior ==
-               mojom::EditingBehavior::kEditingChromeOSBehavior;
+               mojom::EditingBehavior::kEditingWindowsBehavior;
   }
 
   void SetUp() override {
@@ -222,7 +219,7 @@ TEST_P(LayoutViewHitTestTest, BlockInInlineBelowBottom) {
   EXPECT_EQ(cd_2, HitTest(25, 20));
 
   // hit test below line 2
-  if (IsAndroidOrWindowsOrChromeOSEditingBehavior()) {
+  if (IsAndroidOrWindowsEditingBehavior()) {
     EXPECT_EQ(cd_0, HitTest(0, 50));
     EXPECT_EQ(cd_0, HitTest(5, 50));
     EXPECT_EQ(cd_1, HitTest(10, 50));
@@ -254,12 +251,12 @@ TEST_P(LayoutViewHitTestTest, BlockInInlineWithListItem) {
   // |LayoutObject::CreatePositionWithAffinity()| for anonymous block
   // containing list marker.
   // LayoutNGBlockFlow (anonymous)
-  //    LayoutInsideListMarker {::marker}
+  //    LayoutNGInsideListMarker {::marker}
   //      LayoutText (anonymous)
   //      LayoutInline {SPAN}
   EXPECT_EQ(PositionWithAffinity(Position(span, 0)), HitTest(0, 5));
   EXPECT_EQ(PositionWithAffinity(Position(span, 0)), HitTest(0, 10));
-  if (IsAndroidOrWindowsOrChromeOSEditingBehavior()) {
+  if (IsAndroidOrWindowsEditingBehavior()) {
     EXPECT_EQ(PositionWithAffinity(Position(abc, 1)), HitTest(10, 5));
     EXPECT_EQ(PositionWithAffinity(Position(abc, 1)), HitTest(10, 10));
     EXPECT_EQ(PositionWithAffinity(Position(abc, 3), TextAffinity::kUpstream),
@@ -350,7 +347,7 @@ TEST_P(LayoutViewHitTestTest, FloatLeftLeft) {
       "#target { width: 70px; }"
       ".float { float: left; margin-right: 10px; }");
   SetBodyInnerHTML("<div id=target><div class=float>ab</div>xy</div>");
-  // FragmentItem
+  // NGFragmentItem
   //   [0] kLine (30,0)x(20,10)
   //   [1] kBox/Floating (0,0)x(20,10)
   //   [2] kText "xy" (30,0)x(20,10)
@@ -385,7 +382,7 @@ TEST_P(LayoutViewHitTestTest, FloatLeftMiddle) {
       "#target { width: 70px; }"
       ".float { float: left; margin-right: 10px; }");
   SetBodyInnerHTML("<div id=target>x<div class=float>ab</div>y</div>");
-  // FragmentItem
+  // NGFragmentItem
   //   [0] kLine (30,0)x(20,10)
   //   [1] kText "x" (30,0)x(10,10)
   //   [1] kBox/Floating (0,0)x(20,10)
@@ -420,7 +417,7 @@ TEST_P(LayoutViewHitTestTest, FloatLeftRight) {
       "#target { width: 70px; }"
       ".float { float: left; margin-right: 10px; }");
   SetBodyInnerHTML("<div id=target>xy<div class=float>ab</div></div>");
-  // FragmentItem
+  // NGFragmentItem
   //   [0] kLine (30,0)x(20,10)
   //   [1] kText "xy" (30,0)x(20,10)
   //   [2] kBox/Floating (0,0)x(20,10)
@@ -455,7 +452,7 @@ TEST_P(LayoutViewHitTestTest, FloatRightLeft) {
       "#target { width: 50px; }"
       ".float { float: right; }");
   SetBodyInnerHTML("<div id=target>xy<div class=float>ab</div></div>");
-  // FragmentItem
+  // NGFragmentItem
   //   [0] kLine (0,0)x(20,10)
   //   [1] kBox/Floating (30,0)x(20,10)
   auto& target = *GetElementById("target");
@@ -501,7 +498,7 @@ TEST_P(LayoutViewHitTestTest, FloatRightMiddle) {
       "#target { width: 50px; }"
       ".float { float: right; }");
   SetBodyInnerHTML("<div id=target>x<div class=float>ab</div>y</div>");
-  // FragmentItem
+  // NGFragmentItem
   //   [0] kLine (0,0)x(20,10)
   //   [1] kText "x" (0,0)x(10,10)
   //   [2] kBox/Floating (30,0)x(20,10)
@@ -573,10 +570,10 @@ TEST_P(LayoutViewHitTestTest, PositionAbsolute) {
       "#target { width: 70px; }"
       ".abspos { position: absolute; left: 40px; top: 0px; }");
   SetBodyInnerHTML("<div id=target><div class=abspos>ab</div>xy</div>");
-  // FragmentItem
+  // NGFragmentItem
   //   [0] kLine (0,0)x(20,10)
   //   [2] kText "xy" (30,0)x(20,10)
-  // Note: position:absolute isn't in FragmentItems of #target.
+  // Note: position:absolute isn't in NGFragmentItems of #target.
   auto& target = *GetElementById("target");
   auto& ab = *To<Text>(target.firstChild()->firstChild());
   auto& xy = *To<Text>(target.lastChild());
@@ -626,9 +623,9 @@ TEST_P(LayoutViewHitTestTest, HitTestHorizontal) {
   //   |                  |
   //   |------------------|
   // (50, 180)         (250, 180)
-  auto* div = GetElementById("div");
-  auto* text1 = GetElementById("span1")->firstChild();
-  auto* text2 = GetElementById("span2")->firstChild();
+  auto* div = GetDocument().getElementById("div");
+  auto* text1 = GetDocument().getElementById("span1")->firstChild();
+  auto* text2 = GetDocument().getElementById("span2")->firstChild();
 
   HitTestResult result;
   // In body, but not in any descendants.
@@ -684,7 +681,7 @@ TEST_P(LayoutViewHitTestTest, HitTestHorizontal) {
   EXPECT_EQ(GetDocument().documentElement(), result.InnerNode());
   EXPECT_EQ(PhysicalOffset(51, 181), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text1, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -695,7 +692,7 @@ TEST_P(LayoutViewHitTestTest, HitTestHorizontal) {
   EXPECT_EQ(div, result.InnerNode());
   EXPECT_EQ(PhysicalOffset(1, 79), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text1, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -706,7 +703,7 @@ TEST_P(LayoutViewHitTestTest, HitTestHorizontal) {
   EXPECT_EQ(div, result.InnerNode());
   EXPECT_EQ(PhysicalOffset(1, 11), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text1, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -744,9 +741,9 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalLR) {
   //   |   Z              |
   //   |------------------|
   // (50, 180)         (250, 180)
-  auto* div = GetElementById("div");
-  auto* text1 = GetElementById("span1")->firstChild();
-  auto* text2 = GetElementById("span2")->firstChild();
+  auto* div = GetDocument().getElementById("div");
+  auto* text1 = GetDocument().getElementById("span1")->firstChild();
+  auto* text2 = GetDocument().getElementById("span2")->firstChild();
 
   HitTestResult result;
   // In body, but not in any descendants.
@@ -770,7 +767,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalLR) {
   EXPECT_EQ(GetDocument().documentElement(), result.InnerNode());
   EXPECT_EQ(PhysicalOffset(251, 101), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text1, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -781,7 +778,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalLR) {
   EXPECT_EQ(div, result.InnerNode());
   EXPECT_EQ(PhysicalOffset(199, 1), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text1, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -800,7 +797,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalLR) {
   EXPECT_EQ(div, result.InnerNode());
   EXPECT_EQ(PhysicalOffset(11, 1), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text1, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -854,9 +851,9 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRL) {
   //   |              Z   |
   //   |------------------|
   // (50, 180)         (250, 180)
-  auto* div = GetElementById("div");
-  auto* text1 = GetElementById("span1")->firstChild();
-  auto* text2 = GetElementById("span2")->firstChild();
+  auto* div = GetDocument().getElementById("div");
+  auto* text1 = GetDocument().getElementById("span1")->firstChild();
+  auto* text2 = GetDocument().getElementById("span2")->firstChild();
 
   HitTestResult result;
   // In body, but not in any descendants.
@@ -865,7 +862,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRL) {
   EXPECT_EQ(GetDocument().body(), result.InnerNode());
   EXPECT_EQ(PhysicalOffset(1, 1), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text1, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -876,7 +873,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRL) {
   EXPECT_EQ(div, result.InnerNode());
   EXPECT_EQ(PhysicalOffset(1, 1), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text1, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -920,7 +917,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRL) {
   EXPECT_EQ(GetDocument().documentElement(), result.InnerNode());
   EXPECT_EQ(PhysicalOffset(51, 181), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text2, 3), TextAffinity::kUpstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -931,7 +928,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRL) {
   EXPECT_EQ(div, result.InnerNode());
   EXPECT_EQ(PhysicalOffset(1, 79), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text2, 3), TextAffinity::kUpstream)
           : PositionWithAffinity(Position(text2, 3), TextAffinity::kDownstream),
       result.GetPosition());
@@ -979,15 +976,15 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRLRoot) {
   // .                           .
   // +----...--------------------+ (800, 600)
 
-  auto* div = GetElementById("div");
-  auto* text = GetElementById("span")->firstChild();
+  auto* div = GetDocument().getElementById("div");
+  auto* text = GetDocument().getElementById("span")->firstChild();
   HitTestResult result;
   // Not in any element. Should fallback to documentElement.
   GetLayoutView().HitTest(HitTestLocation(PhysicalOffset(1, 1)), result);
   EXPECT_EQ(GetDocument().documentElement(), result.InnerNode());
   EXPECT_EQ(PhysicalOffset(-599, 1), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text, 5), TextAffinity::kDownstream),
       result.GetPosition());
@@ -998,7 +995,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRLRoot) {
   EXPECT_EQ(div, result.InnerNode());
   EXPECT_EQ(PhysicalOffset(1, 1), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text, 5), TextAffinity::kDownstream),
       result.GetPosition());
@@ -1009,7 +1006,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRLRoot) {
   EXPECT_EQ(GetDocument().documentElement(), result.InnerNode());
   EXPECT_EQ(PhysicalOffset(201, 1), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text, 0), TextAffinity::kDownstream)
           : PositionWithAffinity(Position(text, 0), TextAffinity::kDownstream),
       result.GetPosition());
@@ -1036,7 +1033,7 @@ TEST_P(LayoutViewHitTestTest, HitTestVerticalRLRoot) {
   EXPECT_EQ(GetDocument().documentElement(), result.InnerNode());
   EXPECT_EQ(PhysicalOffset(-1, 81), result.LocalPoint());
   EXPECT_EQ(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
+      IsAndroidOrWindowsEditingBehavior()
           ? PositionWithAffinity(Position(text, 5), TextAffinity::kUpstream)
           : PositionWithAffinity(Position(text, 5), TextAffinity::kDownstream),
       result.GetPosition());
@@ -1051,14 +1048,12 @@ TEST_P(LayoutViewHitTestTest, PseudoElementAfterBlock) {
   SetBodyInnerHTML("<div><p id=target>ab</p></div>");
   const auto& text_ab = *To<Text>(GetElementById("target")->firstChild());
   // In legacy layout, this position comes from |LayoutBlock::PositionBox()|
-  // for mac/unix, or |LayoutObject::FindPosition()| on
-  // android/windows/chromeos.
+  // for mac/unix, or |LayoutObject::FindPosition()| on android/windows.
   const auto expected = PositionWithAffinity(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior() ? Position(text_ab, 2)
-                                                    : Position(text_ab, 0),
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
-          ? TextAffinity::kUpstream
-          : TextAffinity::kDownstream);
+      IsAndroidOrWindowsEditingBehavior() ? Position(text_ab, 2)
+                                          : Position(text_ab, 0),
+      IsAndroidOrWindowsEditingBehavior() ? TextAffinity::kUpstream
+                                          : TextAffinity::kDownstream);
 
   EXPECT_EQ(expected, HitTest(20, 5)) << "after ab";
   EXPECT_EQ(expected, HitTest(25, 5)) << "at X";
@@ -1105,14 +1100,12 @@ TEST_P(LayoutViewHitTestTest, PseudoElementAfterBlockWithMargin) {
   SetBodyInnerHTML("<div><p id=target>ab</p></div>");
   const auto& text_ab = *To<Text>(GetElementById("target")->firstChild());
   // In legacy layout, this position comes from |LayoutBlock::PositionBox()|
-  // for mac/unix, or |LayoutObject::FindPosition()| on
-  // android/windows/chromeos.
+  // for mac/unix, or |LayoutObject::FindPosition()| on android/windows.
   const auto expected = PositionWithAffinity(
-      IsAndroidOrWindowsOrChromeOSEditingBehavior() ? Position(text_ab, 2)
-                                                    : Position(text_ab, 0),
-      IsAndroidOrWindowsOrChromeOSEditingBehavior()
-          ? TextAffinity::kUpstream
-          : TextAffinity::kDownstream);
+      IsAndroidOrWindowsEditingBehavior() ? Position(text_ab, 2)
+                                          : Position(text_ab, 0),
+      IsAndroidOrWindowsEditingBehavior() ? TextAffinity::kUpstream
+                                          : TextAffinity::kDownstream);
 
   EXPECT_EQ(expected, HitTest(20, 5)) << "after ab";
   EXPECT_EQ(expected, HitTest(25, 5)) << "at margin-left";
@@ -1185,7 +1178,7 @@ TEST_P(LayoutViewHitTestTest, ScrolledInlineChildren) {
 
   const auto& text = *To<Text>(sample.firstChild());
 
-  if (IsAndroidOrWindowsOrChromeOSEditingBehavior()) {
+  if (IsAndroidOrWindowsEditingBehavior()) {
     EXPECT_EQ(PositionWithAffinity(Position(text, 2)), HitTest(5, 5));
     EXPECT_EQ(PositionWithAffinity(Position(text, 2)), HitTest(5, 15));
     EXPECT_EQ(PositionWithAffinity(Position(text, 2)), HitTest(5, 25));
@@ -1302,7 +1295,7 @@ TEST_P(LayoutViewHitTestTest, TextAndInputsWithRtlDirection) {
                 HitTest(x, y));
     }
   }
-  if (IsAndroidOrWindowsOrChromeOSEditingBehavior()) {
+  if (IsAndroidOrWindowsEditingBehavior()) {
     for (int x : {0, 25, 50, 75, 99}) {
       EXPECT_EQ(PositionWithAffinity(Position::AfterNode(*input_2)),
                 HitTest(x, 100));
@@ -1339,7 +1332,7 @@ TEST_P(LayoutViewHitTestTest, TextCombineOneTextNode) {
   //        LayoutText {#text} at (5,0) size 100x100
   //          text run at (5,0) width 100: "a"
   //        LayoutInline {C} at (5,100) size 100x100
-  //          LayoutTextCombine (anonymous) at (5,100) size 100x100
+  //          LayoutNGTextCombine (anonymous) at (5,100) size 100x100
   //            LayoutText {#text} at (-5,0) size 110x100
   //              text run at (0,0) width 500: "01234"
   //        LayoutText {#text} at (5,200) size 100x100
@@ -1363,7 +1356,7 @@ TEST_P(LayoutViewHitTestTest, TextCombineOneTextNode) {
       PositionWithAffinity(Position(text_01234, 5), TextAffinity::kUpstream),
       HitTest(100, 150));
   // TODO(yosin): should be text_01234@5
-  if (IsAndroidOrWindowsOrChromeOSEditingBehavior()) {
+  if (IsAndroidOrWindowsEditingBehavior()) {
     EXPECT_EQ(PositionWithAffinity(Position(text_b, 0)), HitTest(110, 150));
     EXPECT_EQ(PositionWithAffinity(Position(text_b, 0)), HitTest(120, 150));
   } else {
@@ -1385,7 +1378,7 @@ TEST_P(LayoutViewHitTestTest, TextCombineTwoTextNodes) {
   //         LayoutText {#text} at (5,0) size 100x100
   //           text run at (5,0) width 100: "a"
   //         LayoutInline {C} at (5,100) size 100x100
-  //           LayoutTextCombine (anonymous) at (5,100) size 100x100
+  //           LayoutNGTextCombine (anonymous) at (5,100) size 100x100
   //             LayoutText {#text} at (-5,0) size 66x100
   //               text run at (0,0) width 300: "012"
   //             LayoutWordBreak {WBR} at (61,0) size 0x100
@@ -1417,7 +1410,7 @@ TEST_P(LayoutViewHitTestTest, TextCombineTwoTextNodes) {
   EXPECT_EQ(PositionWithAffinity(Position(text_34, 2), TextAffinity::kUpstream),
             HitTest(100, 150));
   // TODO(yosin): should be text_012@5
-  if (IsAndroidOrWindowsOrChromeOSEditingBehavior()) {
+  if (IsAndroidOrWindowsEditingBehavior()) {
     EXPECT_EQ(PositionWithAffinity(Position(text_b, 0)), HitTest(110, 150));
     EXPECT_EQ(PositionWithAffinity(Position(text_b, 0)), HitTest(120, 150));
   } else {

@@ -6,9 +6,9 @@
 
 #include <cstring>
 
+#include "base/guid.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_util.h"
-#include "base/uuid.h"
 #include "net/base/url_util.h"
 #include "third_party/blink/public/common/frame/fenced_frame_sandbox_flags.h"
 #include "url/gurl.h"
@@ -31,7 +31,7 @@ bool IsValidUrnUuidURL(const GURL& url) {
   const std::string& spec = url.spec();
   return base::StartsWith(spec, kURNUUIDprefix,
                           base::CompareCase::INSENSITIVE_ASCII) &&
-         base::Uuid::ParseCaseInsensitive(
+         base::GUID::ParseCaseInsensitive(
              base::StringPiece(spec).substr(std::strlen(kURNUUIDprefix)))
              .is_valid();
 }
@@ -67,18 +67,6 @@ void RecordFencedFrameUnsandboxedFlags(network::mojom::WebSandboxFlags flags) {
 void RecordFencedFrameFailedSandboxLoadInTopLevelFrame(bool is_main_frame) {
   base::UmaHistogramBoolean(kFencedFrameFailedSandboxLoadInTopLevelFrame,
                             is_main_frame);
-}
-
-// If more event types besides click are supported for fenced events, this
-// function should operate on a global map of unfenced event_type_name ->
-// fenced event_type_name. Also, these functions use raw string literals to
-// represent event types. While this isn't ideal, the already-defined constants
-// for event types (in the blink::event_type_names namespace) aren't exported
-// by Blink's public interface. Wrapping the equivalent literals in this
-// function ensures that if names need to be changed later, changes are only
-// needed in one file.
-bool CanNotifyEventTypeAcrossFence(const std::string& event_type) {
-  return event_type == "click";
 }
 
 }  // namespace blink

@@ -5,16 +5,15 @@
 #include "chrome/browser/win/conflicts/inspection_results_cache.h"
 
 #include <string>
-#include <string_view>
 #include <utility>
 
-#include "base/containers/span.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/important_file_writer.h"
 #include "base/hash/md5.h"
 #include "base/pickle.h"
 #include "base/ranges/algorithm.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 
 namespace {
@@ -120,7 +119,7 @@ base::Pickle SerializeInspectionResultsCache(
 
   // Append the md5 digest of the data to detect serializations errors.
   base::MD5Digest md5_digest;
-  base::MD5Sum(pickle.payload_bytes(), &md5_digest);
+  base::MD5Sum(pickle.payload(), pickle.payload_size(), &md5_digest);
   pickle.WriteBytes(&md5_digest, sizeof(md5_digest));
 
   return pickle;
@@ -168,8 +167,8 @@ ReadCacheResult DeserializeInspectionResultsCache(
 
   // Check if the md5 checksum matches.
   base::MD5Digest md5_digest;
-  base::span<const uint8_t> payload = pickle.payload_bytes();
-  base::MD5Sum(payload.first(payload.size() - sizeof(md5_digest)), &md5_digest);
+  base::MD5Sum(pickle.payload(), pickle.payload_size() - sizeof(md5_digest),
+               &md5_digest);
   if (!base::ranges::equal(read_md5_digest->a, md5_digest.a))
     return ReadCacheResult::kFailInvalidMD5;
 
@@ -190,10 +189,10 @@ void AddInspectionResultToCache(
   DCHECK(insert_result.second);
 }
 
-std::optional<ModuleInspectionResult> GetInspectionResultFromCache(
+absl::optional<ModuleInspectionResult> GetInspectionResultFromCache(
     const ModuleInfoKey& module_key,
     InspectionResultsCache* inspection_results_cache) {
-  std::optional<ModuleInspectionResult> inspection_result;
+  absl::optional<ModuleInspectionResult> inspection_result;
 
   auto it = inspection_results_cache->find(module_key);
   if (it != inspection_results_cache->end()) {
@@ -209,11 +208,14 @@ ReadCacheResult ReadInspectionResultsCache(
     const base::FilePath& file_path,
     uint32_t min_time_stamp,
     InspectionResultsCache* inspection_results_cache) {
+  if (!base::FeatureList::IsEnabled(kInspectionResultsCache))
+    return ReadCacheResult::kSuccess;
+
   std::string contents;
   if (!ReadFileToString(file_path, &contents))
     return ReadCacheResult::kFailReadFile;
 
-  base::Pickle pickle = base::Pickle::WithData(base::as_byte_span(contents));
+  base::Pickle pickle(contents.data(), contents.length());
   InspectionResultsCache temporary_result;
   ReadCacheResult read_result = DeserializeInspectionResultsCache(
       min_time_stamp, pickle, &temporary_result);
@@ -228,11 +230,14 @@ ReadCacheResult ReadInspectionResultsCache(
 bool WriteInspectionResultsCache(
     const base::FilePath& file_path,
     const InspectionResultsCache& inspection_results_cache) {
+  if (!base::FeatureList::IsEnabled(kInspectionResultsCache))
+    return true;
+
   base::Pickle pickle =
       SerializeInspectionResultsCache(inspection_results_cache);
 
   // TODO(1022041): Investigate if using WriteFileAtomically() in a
   // CONTINUE_ON_SHUTDOWN sequence can cause too many corrupted caches.
   return base::ImportantFileWriter::WriteFileAtomically(
-      file_path, std::string_view(pickle.data_as_char(), pickle.size()));
+      file_path, base::StringPiece(pickle.data_as_char(), pickle.size()));
 }

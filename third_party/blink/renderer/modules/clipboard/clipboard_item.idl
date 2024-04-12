@@ -15,6 +15,4 @@
     CallWith=ScriptState,
     RaisesException
   ] Promise<Blob> getType(DOMString type);
-
-  [Measure] static boolean supports(DOMString type);
 };

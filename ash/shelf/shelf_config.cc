@@ -4,9 +4,7 @@
 
 #include "ash/public/cpp/shelf_config.h"
 
-#include <optional>
-
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/accessibility/accessibility_observer.h"
 #include "ash/app_list/app_list_controller_impl.h"
 #include "ash/constants/ash_features.h"
@@ -16,16 +14,25 @@
 #include "ash/style/dark_light_mode_controller_impl.h"
 #include "ash/system/model/system_tray_model.h"
 #include "ash/wm/overview/overview_controller.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/scoped_observation.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
-#include "ui/display/tablet_state.h"
 
 namespace ash {
 
 namespace {
+
+// Used in as a value in histogram to record the reason shelf navigation buttons
+// are shown in tablet mode.
+// The values assigned to enum items should not be changed/reassigned.
+constexpr int kControlButtonsShownForShelfNavigationButtonsSetting = 1;
+constexpr int kControlButtonsShownForSpokenFeedback = 1 << 1;
+constexpr int kControlButtonsShownForSwitchAccess = 1 << 2;
+constexpr int kControlButtonsShownForAutoclick = 1 << 3;
+constexpr int kControlButtonsShownReasonCount = 1 << 4;
 
 // When any edge of the primary display is less than or equal to this threshold,
 // dense shelf will be active.
@@ -38,6 +45,33 @@ constexpr float kDragHideRatioThreshold = 0.4f;
 constexpr int kSystemShelfSizeTabletModeDense = 48;
 constexpr int kSystemShelfSizeTabletModeNormal = 56;
 constexpr int kElevatedSystemShelfSizeTabletMode = 136;
+
+// Records the histogram value tracking the reason shelf control buttons are
+// shown in tablet mode.
+void RecordReasonForShowingShelfControls() {
+  AccessibilityControllerImpl* accessibility_controller =
+      Shell::Get()->accessibility_controller();
+  int buttons_shown_reason_mask = 0;
+
+  if (accessibility_controller
+          ->tablet_mode_shelf_navigation_buttons_enabled()) {
+    buttons_shown_reason_mask |=
+        kControlButtonsShownForShelfNavigationButtonsSetting;
+  }
+
+  if (accessibility_controller->spoken_feedback().enabled())
+    buttons_shown_reason_mask |= kControlButtonsShownForSpokenFeedback;
+
+  if (accessibility_controller->switch_access().enabled())
+    buttons_shown_reason_mask |= kControlButtonsShownForSwitchAccess;
+
+  if (accessibility_controller->autoclick().enabled())
+    buttons_shown_reason_mask |= kControlButtonsShownForAutoclick;
+
+  base::UmaHistogramExactLinear(
+      "Ash.Shelf.NavigationButtonsInTabletMode.ReasonShown",
+      buttons_shown_reason_mask, kControlButtonsShownReasonCount);
+}
 
 int IsDenseForCurrentScreen() {
   const gfx::Rect screen_size =
@@ -73,7 +107,7 @@ class ShelfConfig::ShelfAccessibilityObserver : public AccessibilityObserver {
  private:
   base::RepeatingClosure accessibility_state_changed_callback_;
 
-  base::ScopedObservation<AccessibilityController, AccessibilityObserver>
+  base::ScopedObservation<AccessibilityControllerImpl, AccessibilityObserver>
       observation_{this};
 };
 
@@ -112,11 +146,6 @@ ShelfConfig::ShelfConfig()
     : shelf_button_icon_size_(44),
       shelf_button_icon_size_median_(40),
       shelf_button_icon_size_dense_(36),
-      shelf_shortcut_icon_size_(30),
-      shelf_shortcut_icon_border_size_(3),
-      shelf_shortcut_host_badge_icon_size_(14),
-      shelf_shortcut_host_badge_border_size_(2),
-      shelf_shortcut_teardrop_corner_radius_(8),
       shelf_button_size_(56),
       shelf_button_size_median_(52),
       shelf_button_size_dense_(48),
@@ -162,20 +191,24 @@ void ShelfConfig::Init() {
   Shell* const shell = Shell::Get();
 
   shell->app_list_controller()->AddObserver(this);
+  display_observer_.emplace(this);
   shell->system_tray_model()->virtual_keyboard()->AddObserver(this);
   shell->overview_controller()->AddObserver(this);
   shell->session_controller()->AddObserver(this);
 
-  in_tablet_mode_ = display::Screen::GetScreen()->InTabletMode();
+  shell->tablet_mode_controller()->AddObserver(this);
+  in_tablet_mode_ = shell->IsInTabletMode();
   UpdateConfig(is_app_list_visible_, /*tablet_mode_changed=*/false);
 }
 
 void ShelfConfig::Shutdown() {
   Shell* const shell = Shell::Get();
+  shell->tablet_mode_controller()->RemoveObserver(this);
 
   shell->session_controller()->RemoveObserver(this);
   shell->overview_controller()->RemoveObserver(this);
   shell->system_tray_model()->virtual_keyboard()->RemoveObserver(this);
+  display_observer_.reset();
   shell->app_list_controller()->RemoveObserver(this);
 }
 
@@ -208,41 +241,31 @@ void ShelfConfig::OnSplitViewStateChanged(
   UpdateConfig(is_app_list_visible_, /*tablet_mode_changed=*/false);
 }
 
+void ShelfConfig::OnTabletModeStarting() {
+  // Update the shelf config at the "starting" stage of the tablet mode
+  // transition, so that the shelf bounds are set and remains stable during the
+  // transition animation. Otherwise, updating the shelf bounds during the
+  // animation will lead to work-area bounds changes which lead to many
+  // re-layouts, hurting the animation's smoothness. https://crbug.com/1044316.
+  DCHECK(!in_tablet_mode_);
+  in_tablet_mode_ = true;
+
+  UpdateConfig(is_app_list_visible_, /*tablet_mode_changed=*/true);
+}
+
 void ShelfConfig::OnSessionStateChanged(session_manager::SessionState state) {
   UpdateConfig(is_app_list_visible_, /*tablet_mode_changed=*/false);
 }
 
-void ShelfConfig::OnDisplayTabletStateChanged(display::TabletState state) {
-  switch (state) {
-    case display::TabletState::kInClamshellMode:
-      break;
-    case display::TabletState::kEnteringTabletMode:
-      // Update the shelf config at the "starting" stage of the tablet mode
-      // transition, so that the shelf bounds are set and remains stable during
-      // the transition animation. Otherwise, updating the shelf bounds during
-      // the animation will lead to work-area bounds changes which lead to many
-      // re-layouts, hurting the animation's smoothness.
-      // https://crbug.com/1044316.
-      DCHECK(!in_tablet_mode_);
-      in_tablet_mode_ = true;
+void ShelfConfig::OnTabletModeEnding() {
+  // Many events can lead to UpdateConfig being called as a result of
+  // OnTabletModeEnded(), therefore we need to listen to the "ending" stage
+  // rather than the "ended", so |in_tablet_mode_| gets updated correctly, and
+  // the shelf bounds are stabilized early so as not to have multiple
+  // unnecessary work-area bounds changes.
+  in_tablet_mode_ = false;
 
-      UpdateConfig(is_app_list_visible_, /*tablet_mode_changed=*/true);
-      break;
-    case display::TabletState::kInTabletMode:
-      break;
-    case display::TabletState::kExitingTabletMode:
-      // Many events can lead to UpdateConfig being called as a result of
-      // kInClamshellMode event, therefore we need to listen to the "ending"
-      // stage rather than the "ended", so `in_tablet_mode_` gets updated
-      // correctly, and the shelf bounds are stabilized early so as not to have
-      // multiple unnecessary work-area bounds changes.
-      in_tablet_mode_ = false;
-
-      UpdateConfig(is_app_list_visible_, /*tablet_mode_changed=*/true);
-
-      has_shown_elevated_app_bar_ = std::nullopt;
-      break;
-  }
+  UpdateConfig(is_app_list_visible_, /*tablet_mode_changed=*/true);
 }
 
 void ShelfConfig::OnDisplayMetricsChanged(const display::Display& display,
@@ -301,26 +324,6 @@ int ShelfConfig::GetShelfButtonIconSize(HotseatDensity density) const {
   }
 }
 
-int ShelfConfig::GetShelfShortcutIconSize() const {
-  return shelf_shortcut_icon_size_;
-}
-
-int ShelfConfig::GetShelfShortcutIconBorderSize() const {
-  return shelf_shortcut_icon_border_size_;
-}
-
-int ShelfConfig::GetShelfShortcutHostBadgeIconSize() const {
-  return shelf_shortcut_host_badge_icon_size_;
-}
-
-int ShelfConfig::GetShelfShortcutHostBadgeBorderSize() const {
-  return shelf_shortcut_host_badge_border_size_;
-}
-
-int ShelfConfig::GetShelfShortcutTeardropCornerRadiusSize() const {
-  return shelf_shortcut_teardrop_corner_radius_;
-}
-
 int ShelfConfig::GetHotseatSize(HotseatDensity density) const {
   if (!in_tablet_mode_)
     return shelf_size();
@@ -374,9 +377,8 @@ int ShelfConfig::control_border_radius() const {
 }
 
 int ShelfConfig::control_button_edge_spacing(bool is_primary_axis_edge) const {
-  if (is_primary_axis_edge) {
-    return in_tablet_mode_ ? (is_in_app_ ? 0 : 8) : 6;
-  }
+  if (is_primary_axis_edge)
+    return in_tablet_mode_ ? 8 : 6;
 
   return (shelf_size() - control_size()) / 2;
 }
@@ -407,6 +409,12 @@ void ShelfConfig::UpdateConfig(bool new_is_app_list_visible,
       in_tablet_mode_ && features::IsHideShelfControlsInTabletModeEnabled();
   const bool new_shelf_controls_shown =
       !can_hide_shelf_controls || ShelfControlsForcedShownForAccessibility();
+  // Record reason to show shelf control buttons only if tablet mode changes, or
+  // if the buttons visibility state changes
+  if (can_hide_shelf_controls && new_shelf_controls_shown &&
+      (tablet_mode_changed || !shelf_controls_shown_)) {
+    RecordReasonForShowingShelfControls();
+  }
 
   // TODO(https://crbug.com/1058205): Test this behavior.
   // If the virtual keyboard is shown, the back button and in-app shelf should
@@ -466,9 +474,7 @@ SkColor ShelfConfig::GetShelfControlButtonColor(
     return is_in_app_ ? SK_ColorTRANSPARENT : GetDefaultShelfColor(widget);
   }
   return widget->GetColorProvider()->GetColor(
-      chromeos::features::IsJellyEnabled()
-          ? static_cast<ui::ColorId>(cros_tokens::kCrosSysSystemOnBase)
-          : kColorAshControlBackgroundColorInactive);
+      kColorAshControlBackgroundColorInactive);
 }
 
 SkColor ShelfConfig::GetMaximizedShelfColor(const views::Widget* widget) const {
@@ -550,18 +556,12 @@ int ShelfConfig::GetSystemShelfSizeInTabletMode() const {
                                    : kSystemShelfSizeTabletModeNormal;
 }
 
-int ShelfConfig::GetTabletModeShelfInsetsAndRecordUMA() {
-  if (!has_shown_elevated_app_bar_.has_value() ||
-      has_shown_elevated_app_bar_.value() != elevate_tablet_mode_app_bar_) {
-    has_shown_elevated_app_bar_ = elevate_tablet_mode_app_bar_;
-    // This method can be called more than once during the app bar rendering.
-    // Records only once when `elevate_tablet_mode_app_bar_` changes.
-    base::UmaHistogramBoolean("Ash.Shelf.ShowStackedHotseat",
-                              elevate_tablet_mode_app_bar_);
+int ShelfConfig::GetSystemShelfInsetsInTabletMode() const {
+  if (elevate_tablet_mode_app_bar_) {
+    return kElevatedSystemShelfSizeTabletMode;
+  } else {
+    return GetSystemShelfSizeInTabletMode();
   }
-
-  return elevate_tablet_mode_app_bar_ ? kElevatedSystemShelfSizeTabletMode
-                                      : GetSystemShelfSizeInTabletMode();
 }
 
 int ShelfConfig::GetMinimumInlineAppBarSize() const {

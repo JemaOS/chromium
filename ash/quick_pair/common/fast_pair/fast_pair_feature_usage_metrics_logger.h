@@ -5,14 +5,13 @@
 #ifndef ASH_QUICK_PAIR_COMMON_FAST_PAIR_FAST_PAIR_FEATURE_USAGE_METRICS_LOGGER_H_
 #define ASH_QUICK_PAIR_COMMON_FAST_PAIR_FAST_PAIR_FEATURE_USAGE_METRICS_LOGGER_H_
 
-#include <optional>
-
 #include "base/component_export.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chromeos/ash/components/feature_usage/feature_usage_metrics.h"
 #include "device/bluetooth/bluetooth_adapter.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace quick_pair {
@@ -33,7 +32,7 @@ class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
   // feature_usage::FeatureUsageMetrics::Delegate:
   bool IsEligible() const override;
   bool IsEnabled() const override;
-  std::optional<bool> IsAccessible() const override;
+  absl::optional<bool> IsAccessible() const override;
   void RecordUsage(bool success);
 
  private:

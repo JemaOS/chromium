@@ -46,7 +46,7 @@ phone_hub_metrics::Screen TetherConnectionPendingView::GetScreenForMetrics()
   return Screen::kTetherConnectionPending;
 }
 
-BEGIN_METADATA(TetherConnectionPendingView)
+BEGIN_METADATA(TetherConnectionPendingView, views::View)
 END_METADATA
 
 }  // namespace ash

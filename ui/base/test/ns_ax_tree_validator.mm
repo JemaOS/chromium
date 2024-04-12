@@ -15,25 +15,25 @@ id<NSAccessibility> ToNSAccessibility(id obj) {
   return [obj conformsToProtocol:@protocol(NSAccessibility)] ? obj : nil;
 }
 
-void PrintNSAXTreeHelper(id<NSAccessibility> node, int depth) {
+void PrintNSAXTreeHelper(id<NSAccessibility> root, int depth) {
   std::string desc;
-  for (int i = 0; i < depth; i++) {
+  for (int i = 0; i < depth; i++)
     desc += "  ";
-  }
-  desc += base::SysNSStringToUTF8([NSString stringWithFormat:@"%@", node]);
+  desc += base::SysNSStringToUTF8([NSString stringWithFormat:@"%@", root]);
   LOG(INFO) << desc;
-  for (id child in node.accessibilityChildren) {
+  for (id child in root.accessibilityChildren)
     PrintNSAXTreeHelper(child, depth + 1);
-  }
 }
-}  // namespace
+
+}
 
 namespace ui {
 
 NSAXTreeProblemDetails::NSAXTreeProblemDetails(ProblemType type,
                                                id node_a,
-                                               id node_b)
-    : type(type), node_a(node_a), node_b(node_b) {}
+                                               id node_b,
+                                               id node_c)
+    : type(type), node_a(node_a), node_b(node_b), node_c(node_c) {}
 
 std::string NSAXTreeProblemDetails::ToString() {
   NSString* s;
@@ -41,6 +41,10 @@ std::string NSAXTreeProblemDetails::ToString() {
     case NSAX_NOT_CHILD_OF_PARENT:
       s = [NSString
           stringWithFormat:@"Node %@ isn't a child of %@", node_a, node_b];
+      break;
+    case NSAX_CHILD_PARENT_NOT_THIS:
+      s = [NSString stringWithFormat:@"Node %@'s child %@'s parent is %@",
+                                     node_a, node_b, node_c];
       break;
     case NSAX_NOT_NSACCESSIBILITY:
       s = [NSString stringWithFormat:@"Node %@ does not conform to"
@@ -56,50 +60,41 @@ std::string NSAXTreeProblemDetails::ToString() {
   return base::SysNSStringToUTF8(s);
 }
 
-std::optional<NSAXTreeProblemDetails> ValidateNSAXTree(id<NSAccessibility> node,
-                                                       size_t* nodes_visited) {
-  if (!ToNSAccessibility(node)) {
-    return std::make_optional<NSAXTreeProblemDetails>(
-        NSAXTreeProblemDetails::NSAX_NOT_NSACCESSIBILITY, node, nil);
+absl::optional<NSAXTreeProblemDetails> ValidateNSAXTree(
+    id<NSAccessibility> root,
+    size_t* nodes_visited) {
+  if (!ToNSAccessibility(root)) {
+    return absl::make_optional<NSAXTreeProblemDetails>(
+        NSAXTreeProblemDetails::NSAX_NOT_NSACCESSIBILITY, root, nil, nil);
   }
   (*nodes_visited)++;
 
-  // NSThemeWidgetZoomMenuRemoteView, a class new in macOS 14, violates
-  // invariants; its actual accessibility parent chain is [NSWindow,
-  // _NSThemeZoomWidgetCell] but when asked for its parent it returns the
-  // NSWindow, which doesn't have it as a child. This is an invariant that
-  // should hold (FB13557859). TODO(https://crbug.com/1490347): When FB13557859
-  // is fixed, remove this workaround.
-  bool skip_due_to_fb13557859 =
-      node.class == NSClassFromString(@"NSThemeWidgetZoomMenuRemoteView");
-
-  if (node.accessibilityParent && !skip_due_to_fb13557859) {
-    id<NSAccessibility> parent = ToNSAccessibility(node.accessibilityParent);
+  if (root.accessibilityParent) {
+    id<NSAccessibility> parent = ToNSAccessibility(root.accessibilityParent);
     if (!parent) {
-      return std::make_optional<NSAXTreeProblemDetails>(
-          NSAXTreeProblemDetails::NSAX_PARENT_NOT_NSACCESSIBILITY, node,
-          parent);
+      return absl::make_optional<NSAXTreeProblemDetails>(
+          NSAXTreeProblemDetails::NSAX_PARENT_NOT_NSACCESSIBILITY, root, parent,
+          nil);
     }
 
     NSArray<id<NSAccessibility>>* parent_children =
         parent.accessibilityChildren;
 
-    if (![parent_children containsObject:node]) {
-      return std::make_optional<NSAXTreeProblemDetails>(
-          NSAXTreeProblemDetails::NSAX_NOT_CHILD_OF_PARENT, node, parent);
+    if ([parent_children indexOfObjectIdenticalTo:root] == NSNotFound) {
+      return absl::make_optional<NSAXTreeProblemDetails>(
+          NSAXTreeProblemDetails::NSAX_NOT_CHILD_OF_PARENT, root, parent, nil);
     }
   }
 
-  NSArray<id<NSAccessibility>>* children = node.accessibilityChildren;
+  NSArray<id<NSAccessibility>>* children = root.accessibilityChildren;
   for (id<NSAccessibility> child in children) {
-    std::optional<NSAXTreeProblemDetails> details =
+    absl::optional<NSAXTreeProblemDetails> details =
         ValidateNSAXTree(child, nodes_visited);
-    if (details.has_value()) {
+    if (details.has_value())
       return details;
-    }
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void PrintNSAXTree(id<NSAccessibility> root) {

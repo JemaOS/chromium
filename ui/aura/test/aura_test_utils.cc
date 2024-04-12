@@ -31,12 +31,7 @@ class WindowTreeHostTestApi {
 
   void disable_ime() { host_->dispatcher_->set_skip_ime(true); }
 
-  bool accelerated_widget_made_visible() {
-    return host_->accelerated_widget_made_visible_;
-  }
-
-  static const base::flat_set<raw_ptr<WindowTreeHost, CtnExperimental>>&
-  GetThrottledHosts() {
+  static const base::flat_set<WindowTreeHost*>& GetThrottledHosts() {
     return WindowTreeHost::GetThrottledHostsForTesting();
   }
 
@@ -63,13 +58,8 @@ void DisableNativeWindowOcclusionTracking(WindowTreeHost* host) {
   NativeWindowOcclusionTracker::DisableNativeWindowOcclusionTracking(host);
 }
 
-const base::flat_set<raw_ptr<WindowTreeHost, CtnExperimental>>&
-GetThrottledHosts() {
+const base::flat_set<WindowTreeHost*>& GetThrottledHosts() {
   return WindowTreeHostTestApi::GetThrottledHosts();
-}
-
-bool AcceleratedWidgetMadeVisible(WindowTreeHost* host) {
-  return WindowTreeHostTestApi(host).accelerated_widget_made_visible();
 }
 
 }  // namespace test

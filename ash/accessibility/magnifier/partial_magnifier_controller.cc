@@ -36,12 +36,22 @@ PartialMagnifierController::~PartialMagnifierController() {
   Shell::Get()->RemovePreTargetHandler(this);
 }
 
+void PartialMagnifierController::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void PartialMagnifierController::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
+}
+
 void PartialMagnifierController::SetEnabled(bool enabled) {
   if (is_enabled_ == enabled)
     return;
 
   is_enabled_ = enabled;
   SetActive(false);
+  for (auto& observer : observers_)
+    observer.OnPartialMagnificationStateChanged(enabled);
 }
 
 void PartialMagnifierController::SwitchTargetRootWindowIfNeeded(
@@ -72,6 +82,10 @@ void PartialMagnifierController::OnTouchEvent(ui::TouchEvent* event) {
   OnLocatedEvent(event, event->pointer_details());
 }
 
+void PartialMagnifierController::OnMouseEvent(ui::MouseEvent* event) {
+  OnLocatedEvent(event, event->pointer_details());
+}
+
 void PartialMagnifierController::SetActive(bool active) {
   // Fail if we're trying to activate while disabled.
   DCHECK(is_enabled_ || !active);
@@ -90,7 +104,14 @@ void PartialMagnifierController::OnLocatedEvent(
   if (!is_enabled_)
     return;
 
-  if (pointer_details.pointer_type != ui::EventPointerType::kPen) {
+  const bool is_mouse_event =
+      pointer_details.pointer_type == ui::EventPointerType::kMouse;
+
+  if (is_mouse_event && !allow_mouse_following_)
+    return;
+
+  if (pointer_details.pointer_type != ui::EventPointerType::kPen &&
+      !is_mouse_event) {
     return;
   }
 
@@ -99,13 +120,14 @@ void PartialMagnifierController::OnLocatedEvent(
   aura::Window* event_root = target->GetRootWindow();
   gfx::Point screen_point = event->root_location();
   wm::ConvertPointToScreen(event_root, &screen_point);
+  const bool palette_contains_point =
+      palette_utils::PaletteContainsPointInScreen(screen_point);
 
   SwitchTargetRootWindowIfNeeded(event_root);
 
-  const bool palette_contains_point =
-      palette_utils::PaletteContainsPointInScreen(screen_point);
   // If the stylus is pressed on the palette icon or widget, do not activate.
-  if (event->type() == ui::ET_TOUCH_PRESSED && !palette_contains_point) {
+  if ((event->type() == ui::ET_TOUCH_PRESSED && !palette_contains_point) ||
+      is_mouse_event) {
     SetActive(true);
   }
 
@@ -118,10 +140,10 @@ void PartialMagnifierController::OnLocatedEvent(
 
   magnifier_glass_->ShowFor(current_root_window_, event->root_location());
 
-  // If the stylus is over the palette icon or widget, do not consume the event.
-  if (!palette_contains_point) {
+  // If the stylus is over the palette icon or widget or if the magnifier is
+  // following the mouse, do not consume the event.
+  if (!palette_contains_point && !is_mouse_event)
     event->StopPropagation();
-  }
 }
 
 }  // namespace ash

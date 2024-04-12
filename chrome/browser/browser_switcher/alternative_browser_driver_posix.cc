@@ -6,13 +6,11 @@
 
 #include <stdlib.h>
 
-#include <string_view>
-
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "base/process/launch.h"
 #include "base/ranges/algorithm.h"
-
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
@@ -91,13 +89,12 @@ void ExpandEnvironmentVariables(std::string* arg) {
   static re2::LazyRE2 re = {
       "\\$\\{([a-zA-Z_][a-zA-Z_0-9]*)\\}|\\$([a-zA-Z_][a-zA-Z_0-9]*)"};
   std::string out;
-  std::string_view view(*arg);
-  std::string_view submatch[3] = {};
+  re2::StringPiece submatch[3] = {nullptr};
   size_t start = 0;
   bool matched = false;
-  while (re->Match(view, start, arg->size(), re2::RE2::Anchor::UNANCHORED,
+  while (re->Match(*arg, start, arg->size(), re2::RE2::Anchor::UNANCHORED,
                    submatch, std::size(submatch))) {
-    out.append(view, start, submatch[0].data() - (arg->data() + start));
+    out.append(*arg, start, submatch[0].data() - (arg->data() + start));
     if (submatch[0] == kUrlVarName) {
       // Don't treat '${url}' as an environment variable, leave it as is.
       out.append(kUrlVarName);
@@ -107,12 +104,12 @@ void ExpandEnvironmentVariables(std::string* arg) {
       if (var_value != nullptr)
         out.append(var_value);
     }
-    start = submatch[0].end() - view.begin();
+    start = submatch[0].end() - arg->data();
     matched = true;
   }
   if (!matched)
     return;
-  out.append(view.data() + start, view.size() - start);
+  out.append(arg->data() + start, arg->size() - start);
   std::swap(out, *arg);
 }
 
@@ -141,7 +138,7 @@ void AppendCommandLineArguments(base::CommandLine* cmd_line,
     cmd_line->AppendArg(url.spec());
 }
 
-const BrowserVarMapping* FindBrowserMapping(std::string_view path) {
+const BrowserVarMapping* FindBrowserMapping(base::StringPiece path) {
 #if BUILDFLAG(IS_MAC)
   // Unlike most POSIX platforms, MacOS always has another browser than Chrome,
   // so admins don't have to explicitly configure one.

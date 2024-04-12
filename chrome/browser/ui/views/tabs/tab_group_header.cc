@@ -66,7 +66,7 @@
 namespace {
 
 // The amount of padding between the label and the sync icon.
-constexpr int kSyncIconPaddingFromLabel = 2;
+constexpr int kSyncIconPaddingFromLabel = 4;
 
 class TabGroupHighlightPathGenerator : public views::HighlightPathGenerator {
  public:
@@ -88,8 +88,8 @@ class TabGroupHighlightPathGenerator : public views::HighlightPathGenerator {
   }
 
  private:
-  const raw_ptr<const views::View, AcrossTasksDanglingUntriaged> chip_;
-  const raw_ptr<const views::View, AcrossTasksDanglingUntriaged> title_;
+  const raw_ptr<const views::View, DanglingUntriaged> chip_;
+  const raw_ptr<const views::View, DanglingUntriaged> title_;
   const raw_ref<const TabGroupStyle> style_;
 };
 
@@ -105,7 +105,7 @@ TabGroupHeader::TabGroupHeader(TabSlotController& tab_slot_controller,
           title_chip_->AddChildView(std::make_unique<views::ImageView>())),
       saved_tab_group_service_(
           tab_slot_controller_->GetBrowser()
-              ? tab_groups::SavedTabGroupServiceFactory::GetForProfile(
+              ? SavedTabGroupServiceFactory::GetForProfile(
                     tab_slot_controller_->GetBrowser()->profile())
               : nullptr),
       group_style_(style),
@@ -122,14 +122,10 @@ TabGroupHeader::TabGroupHeader(TabSlotController& tab_slot_controller,
   title_->SetAutoColorReadabilityEnabled(false);
   title_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
   title_->SetElideBehavior(gfx::FADE_TAIL);
+
+  // TODO(crbug.com/1399944): Remove this code after typography is updated.
   if (features::IsChromeRefresh2023()) {
-    title_->SetLineHeight(20);
-    if (base::FeatureList::IsEnabled(
-            features::kChromeRefresh2023TopChromeFont)) {
-      title_->SetTextStyle(views::style::STYLE_BODY_4_EMPHASIS);
-    }
-  } else {
-    title_->SetTextStyle(views::style::STYLE_BODY_4);
+    title_->SetLineHeight(16);
   }
 
   // Enable keyboard focus.
@@ -212,8 +208,7 @@ bool TabGroupHeader::OnMousePressed(const ui::MouseEvent& event) {
 }
 
 bool TabGroupHeader::OnMouseDragged(const ui::MouseEvent& event) {
-  // TODO: ensure ignoring return value is ok.
-  std::ignore = tab_slot_controller_->ContinueDrag(this, event);
+  tab_slot_controller_->ContinueDrag(this, event);
   return true;
 }
 
@@ -385,7 +380,7 @@ void TabGroupHeader::ShowContextMenuForViewImpl(
 #endif
 
   editor_bubble_tracker_.Opened(TabGroupEditorBubbleView::Show(
-      tab_slot_controller_->GetBrowser(), group().value(), this, std::nullopt,
+      tab_slot_controller_->GetBrowser(), group().value(), this, absl::nullopt,
       nullptr, kStopContextMenuPropagation));
 }
 
@@ -395,22 +390,12 @@ bool TabGroupHeader::DoesIntersectRect(const views::View* target,
   // visually the header is basically a rectangle between two tab separators.
   // The distance from the endge of the view to the tab separator is half of the
   // overlap distance. We should only accept events between the separators.
-  const views::Widget* widget = GetWidget();
-  bool extend_hittest = widget->IsMaximized() || widget->IsFullscreen();
-
   gfx::Rect contents_rect = GetLocalBounds();
-  contents_rect.Inset(gfx::Insets::TLBR(
-      extend_hittest ? 0 : GetLayoutConstant(TAB_STRIP_PADDING),
-      tab_style_->GetTabOverlap() / 2, 0, tab_style_->GetTabOverlap() / 2));
+  contents_rect.Inset(gfx::Insets::VH(0, tab_style_->GetTabOverlap() / 2));
   return contents_rect.Intersects(rect);
 }
 
 int TabGroupHeader::GetDesiredWidth() const {
-  if (features::IsChromeRefresh2023()) {
-    const int overlap_margin = group_style_->GetTabGroupViewOverlap() * 2;
-    return overlap_margin + title_chip_->width();
-  }
-
   // If the tab group is collapsed, we want the right margin of the title to
   // match the left margin. The left margin is always the group stroke inset.
   // Using these values also guarantees the chip aligns with the collapsed
@@ -424,7 +409,7 @@ int TabGroupHeader::GetDesiredWidth() const {
   // during layout however; that would cause an the margin to be visually uneven
   // when the header is in the first slot and thus wouldn't overlap anything to
   // the left.
-  const int overlap_margin = group_style_->GetTabGroupViewOverlap() * 2;
+  const int overlap_margin = tab_style_->GetTabOverlap() * 2;
 
   // The empty and non-empty chips have different sizes and corner radii, but
   // both should look nestled against the group stroke of the tab to the right.
@@ -479,7 +464,7 @@ void TabGroupHeader::VisualsChanged() {
 
     // Set the radius such that the chip nestles snugly against the tab corner
     // radius, taking into account the group underline stroke.
-    const int corner_radius = group_style_->GetChipCornerRadius();
+    const int corner_radius = TabGroupStyle::GetChipCornerRadius();
 
     // TODO(crbug.com/1416895): The math of the layout in this function is done
     // arithmetically and can be hard to understand. This should instead be done
@@ -510,44 +495,38 @@ void TabGroupHeader::VisualsChanged() {
 
     // horizontal and vertical insets of the title chip.
     const gfx::Insets title_chip_insets =
-        group_style_->GetInsetsForHeaderChip(ShouldShowSyncIcon());
-    const int title_chip_vertical_inset =
-        features::IsChromeRefresh2023() ? 0 : title_chip_insets.top();
-    const int title_chip_horizontal_inset_left = title_chip_insets.left();
-    const int title_chip_horizontal_inset_right = title_chip_insets.right();
+        group_style_->GetInsetsForHeaderChip();
+    const int title_chip_vertical_inset = title_chip_insets.top();
+    const int title_chip_horizontal_inset = title_chip_insets.left();
 
     // Width of title chip should atleast be the width of an empty title chip.
     const int title_chip_width =
         std::max(group_style_->GetEmptyTitleChipBounds(this).width(),
-                 content_width + title_chip_horizontal_inset_left +
-                     title_chip_horizontal_inset_right);
+                 content_width + 2 * title_chip_horizontal_inset);
 
     // The bounds and background for the `title_chip_` is set here.
-    const gfx::Point title_chip_origin =
-        group_style_->GetTitleChipOffset(text_height);
-    title_chip_->SetBounds(title_chip_origin.x(), title_chip_origin.y(),
-                           title_chip_width,
+    const int title_chip_content_y_coord =
+        (GetLayoutConstant(TAB_HEIGHT) - text_height) / 2 -
+        title_chip_vertical_inset;
+    title_chip_->SetBounds(TabGroupUnderline::GetStrokeInset(),
+                           title_chip_content_y_coord, title_chip_width,
                            text_height + 2 * title_chip_vertical_inset);
     title_chip_->SetBackground(
         views::CreateRoundedRectBackground(color, corner_radius));
 
     // Bounds and background of the `title_` and the `sync_icon` are set here.
-    const int start_of_sync_icon = title_chip_horizontal_inset_left;
-    if (!ShouldShowSyncIcon()) {
-      sync_icon_->SetBounds(0, 0, 0, 0);
-      title_->SetBounds(title_chip_horizontal_inset_left,
-                        title_chip_vertical_inset, text_width, text_height);
-    } else {
-      sync_icon_->SetBounds(start_of_sync_icon, title_chip_vertical_inset,
-                            sync_icon_size.width(), text_height);
-      title_->SetBounds(start_of_sync_icon + sync_icon_size.width() +
-                            padding_between_label_sync_icon,
-                        title_chip_vertical_inset, text_width, text_height);
-    }
+    // Cannot use `title_chip_horizontal_inset` as x coordinate in the case
+    // `title_chip_width` is the width of an empty title chip.
+    const int start_of_sync_icon = (title_chip_->width() - content_width) / 2;
+    sync_icon_->SetBounds(start_of_sync_icon, title_chip_vertical_inset,
+                          sync_icon_size.width(), text_height);
+    title_->SetBounds(start_of_sync_icon + sync_icon_size.width() +
+                          padding_between_label_sync_icon,
+                      title_chip_vertical_inset, text_width, text_height);
   }
 
   if (views::FocusRing::Get(this)) {
-    views::FocusRing::Get(this)->DeprecatedLayoutImmediately();
+    views::FocusRing::Get(this)->Layout();
   }
 
   const bool collapsed_state =
@@ -564,10 +543,6 @@ void TabGroupHeader::VisualsChanged() {
 }
 
 int TabGroupHeader::GetCollapsedHeaderWidth() const {
-  if (features::IsChromeRefresh2023()) {
-    return GetTabSizeInfo().standard_width;
-  }
-
   const int title_adjustment =
       group_style_->GetTitleAdjustmentToTabGroupHeaderDesiredWidth(
           title_->GetText());
@@ -589,7 +564,7 @@ void TabGroupHeader::RemoveObserverFromWidget(views::Widget* widget) {
   widget->RemoveObserver(&editor_bubble_tracker_);
 }
 
-BEGIN_METADATA(TabGroupHeader)
+BEGIN_METADATA(TabGroupHeader, TabSlotView)
 ADD_READONLY_PROPERTY_METADATA(int, DesiredWidth)
 END_METADATA
 

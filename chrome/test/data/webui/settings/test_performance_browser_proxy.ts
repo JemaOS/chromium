@@ -2,32 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {PerformanceBrowserProxy} from 'chrome://settings/settings.js';
+import {PerformanceBrowserProxy} from 'chrome://settings/settings.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 export class TestPerformanceBrowserProxy extends TestBrowserProxy implements
     PerformanceBrowserProxy {
-  private currentSites_: string[] = [];
-  private validationResults_: Record<string, boolean> = {};
+  private validationResult_: boolean = true;
 
   constructor() {
     super([
-      'getCurrentOpenSites',
       'getDeviceHasBattery',
       'openBatterySaverFeedbackDialog',
-      'openMemorySaverFeedbackDialog',
-      'openSpeedFeedbackDialog',
+      'openHighEfficiencyFeedbackDialog',
       'validateTabDiscardExceptionRule',
     ]);
-  }
-
-  setCurrentOpenSites(currentSites: string[]) {
-    this.currentSites_ = currentSites;
-  }
-
-  getCurrentOpenSites() {
-    this.methodCalled('getCurrentOpenSites');
-    return Promise.resolve(this.currentSites_);
   }
 
   getDeviceHasBattery() {
@@ -39,20 +27,16 @@ export class TestPerformanceBrowserProxy extends TestBrowserProxy implements
     this.methodCalled('openBatterySaverFeedbackDialog');
   }
 
-  openMemorySaverFeedbackDialog() {
-    this.methodCalled('openMemorySaverFeedbackDialog');
+  openHighEfficiencyFeedbackDialog() {
+    this.methodCalled('openHighEfficiencyFeedbackDialog');
   }
 
-  openSpeedFeedbackDialog() {
-    this.methodCalled('openSpeedFeedbackDialog');
-  }
-
-  setValidationResults(results: Record<string, boolean>) {
-    this.validationResults_ = results;
+  setValidationResult(result: boolean) {
+    this.validationResult_ = result;
   }
 
   validateTabDiscardExceptionRule(rule: string) {
     this.methodCalled('validateTabDiscardExceptionRule', rule);
-    return Promise.resolve(this.validationResults_[rule] ?? true);
+    return Promise.resolve(this.validationResult_);
   }
 }

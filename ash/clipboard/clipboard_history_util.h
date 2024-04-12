@@ -5,14 +5,11 @@
 #ifndef ASH_CLIPBOARD_CLIPBOARD_HISTORY_UTIL_H_
 #define ASH_CLIPBOARD_CLIPBOARD_HISTORY_UTIL_H_
 
-#include <list>
-#include <optional>
 #include <string>
-#include <string_view>
-#include <vector>
 
 #include "ash/ash_export.h"
-#include "chromeos/crosapi/mojom/clipboard_history.mojom.h"
+#include "base/strings/string_piece_forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/models/image_model.h"
 
 namespace ui {
@@ -58,14 +55,9 @@ enum class Action {
 // IDs for the views used by the clipboard history menu.
 enum MenuViewID {
   // We start at 1 because 0 is not a valid view ID.
-  kContentsViewID = 1,
-  kCtrlVLabelID,
-  kDeleteButtonViewID,
-  kDisplayTextLabelID,
-  kFooterContentViewID,
-  kFooterContentV2LabelID,
-  kFooterContentV2ViewID,
-  kSecondaryDisplayTextLabelID,
+  kDeleteButtonViewID = 1,
+
+  kMainButtonViewID
 };
 
 // Modes for specifying a clipboard history pause's semantics.
@@ -114,7 +106,7 @@ enum class ReorderType {
 
 // Returns the main format of the specified clipboard `data`.
 // NOTE: One `ui::ClipboardData` instance may contain multiple formats.
-ASH_EXPORT std::optional<ui::ClipboardInternalFormat> CalculateMainFormat(
+ASH_EXPORT absl::optional<ui::ClipboardInternalFormat> CalculateMainFormat(
     const ui::ClipboardData& data);
 
 // Returns true if `data` contains the specified `format`.
@@ -138,7 +130,7 @@ ASH_EXPORT bool ContainsFileSystemData(const ui::ClipboardData& data);
 // referenced by `source_list` to reduce memory copies.
 ASH_EXPORT void GetSplitFileSystemData(
     const ui::ClipboardData& data,
-    std::vector<std::u16string_view>* source_list,
+    std::vector<base::StringPiece16>* source_list,
     std::u16string* sources);
 
 // Returns the count of copied files contained by the clipboard data.
@@ -147,13 +139,6 @@ ASH_EXPORT size_t GetCountOfCopiedFiles(const ui::ClipboardData& data);
 // Returns file system sources contained in `data`. If `data` does not contain
 // file system sources, an empty string is returned.
 ASH_EXPORT std::u16string GetFileSystemSources(const ui::ClipboardData& data);
-
-// Returns the icon representation of the shortcut modifier key based on
-// keyboard layout and whether the Assistant feature is enabled.
-ASH_EXPORT const gfx::VectorIcon& GetShortcutKeyIcon();
-
-// Returns the name of the shortcut modifier key based on keyboard layout.
-ASH_EXPORT std::u16string GetShortcutKeyName();
 
 // Returns true if `data` is supported by clipboard history.
 ASH_EXPORT bool IsSupported(const ui::ClipboardData& data);
@@ -168,13 +153,6 @@ ASH_EXPORT ui::ImageModel GetIconForFileClipboardItem(
 // Returns a placeholder image to display for HTML items while their previews
 // render.
 ASH_EXPORT ui::ImageModel GetHtmlPreviewPlaceholder();
-
-// Returns an item descriptor based on `item`.
-crosapi::mojom::ClipboardHistoryItemDescriptor ItemToDescriptor(
-    const ClipboardHistoryItem& item);
-
-// Calculates the preferred width for clipboard history menu item views.
-int GetPreferredItemViewWidth();
 
 }  // namespace clipboard_history_util
 }  // namespace ash

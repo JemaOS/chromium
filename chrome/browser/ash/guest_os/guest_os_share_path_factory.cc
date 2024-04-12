@@ -6,8 +6,6 @@
 
 #include "base/no_destructor.h"
 #include "chrome/browser/ash/crostini/crostini_manager_factory.h"
-#include "chrome/browser/ash/drive/drive_integration_service.h"
-#include "chrome/browser/ash/file_manager/volume_manager_factory.h"
 #include "chrome/browser/ash/guest_os/guest_os_share_path.h"
 #include "chrome/browser/profiles/profile.h"
 
@@ -29,23 +27,20 @@ GuestOsSharePathFactory::GuestOsSharePathFactory()
     : ProfileKeyedServiceFactory(
           "GuestOsSharePath",
           ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kNone)
-              .WithAshInternals(ProfileSelection::kNone)
-              .WithSystem(ProfileSelection::kNone)
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {
   DependsOn(crostini::CrostiniManagerFactory::GetInstance());
-  DependsOn(file_manager::VolumeManagerFactory::GetInstance());
-  DependsOn(drive::DriveIntegrationServiceFactory::GetInstance());
 }
 
 GuestOsSharePathFactory::~GuestOsSharePathFactory() = default;
 
-std::unique_ptr<KeyedService>
-GuestOsSharePathFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* GuestOsSharePathFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<GuestOsSharePath>(profile);
+  return new GuestOsSharePath(profile);
 }
 
 }  // namespace guest_os

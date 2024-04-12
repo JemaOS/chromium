@@ -7,7 +7,6 @@
 
 #include <dawn/webgpu.h>
 #include <memory>
-#include <optional>
 #include <string>
 
 namespace blink {
@@ -25,7 +24,7 @@ struct OwnedProgrammableStage {
       delete;
   OwnedProgrammableStage& operator=(OwnedProgrammableStage&& desc) = delete;
 
-  std::optional<std::string> entry_point;
+  std::string entry_point;
   std::unique_ptr<std::string[]> constantKeys;
   std::unique_ptr<WGPUConstantEntry[]> constants;
   uint32_t constantCount = 0;

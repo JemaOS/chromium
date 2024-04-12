@@ -2,8 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {EMOJI_PICKER_READY, EmojiButton, EmojiGroupComponent, EmojiPickerApiProxy, EmojiPickerApp} from 'chrome://emoji-picker/emoji_picker.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {EmojiGroupComponent} from 'chrome://emoji-picker/emoji_group.js';
+import {EmojiPicker} from 'chrome://emoji-picker/emoji_picker.js';
+import {EmojiPickerApiProxyImpl} from 'chrome://emoji-picker/emoji_picker_api_proxy.js';
+import {EMOJI_PICKER_READY} from 'chrome://emoji-picker/events.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertTrue} from 'chrome://webui-test/chai_assert.js';
 
@@ -43,8 +46,7 @@ export function deepQuerySelector(root: Element, path: string[]): HTMLElement|
  * evaluates to a truthy value.
  */
 export async function waitForCondition<T>(
-    condition: () => T, message: string,
-    maxWait = 5000): Promise<NonNullable<T>> {
+    condition: () => T, message: string, maxWait = 5000): Promise<T> {
   const interval = 10;
   let waiting = 0;
 
@@ -137,14 +139,10 @@ export function isGroupButtonActive(element: Element|null): boolean {
  */
 export function initialiseEmojiPickerForTest(
     incognito = false, localStorage: Array<{key: string, value: string}> = []) {
-  const setIncognito = (incognito: boolean) => {
-    EmojiPickerApiProxy.getInstance().isIncognitoTextField = async () =>
-        ({incognito});
-  };
-
   // Set default incognito state to False.
-  setIncognito(incognito);
-  EmojiPickerApp.configs = () => ({
+  EmojiPickerApiProxyImpl.getInstance().isIncognitoTextField = async () =>
+      ({incognito: incognito});
+  EmojiPicker.configs = () => ({
     dataUrls: {
       emoji: [
         '/emoji_test_ordering_start.json',
@@ -165,70 +163,14 @@ export function initialiseEmojiPickerForTest(
     window.localStorage.setItem(key, value);
   }
 
-  let emojiPicker =
-      document.createElement('emoji-picker-app') as EmojiPickerApp;
+  const emojiPicker = document.createElement('emoji-picker');
 
   const findInEmojiPicker = (...path: string[]) =>
       deepQuerySelector(emojiPicker, path);
 
-  const waitUntilFindInEmojiPicker = async(...path: string[]):
-      Promise<HTMLElement> => {
-        await waitForCondition(
-            () => findInEmojiPicker(...path) !== null,
-            'element should not be null');
-        return findInEmojiPicker(...path)!;
-      };
-
   const findEmojiFirstButton = (...path: string[]) => {
     const emojiElement = findInEmojiPicker(...path);
     return (emojiElement as EmojiGroupComponent | null)?.firstEmojiButton();
-  };
-
-  const findEmojiButtonByText = (text: string, group: HTMLElement) => {
-    const buttons = Array.from(
-        group.shadowRoot!.querySelectorAll<HTMLElement>('.emoji-button'));
-    return buttons.find(button => button.innerText === text) ?? null;
-  };
-
-  const findGroup = (groupId: string) =>
-      findInEmojiPicker(`[data-group="${groupId}"] > emoji-group`);
-
-  const findSearchGroup = (category: string) =>
-      findInEmojiPicker('emoji-search', `emoji-group[category="${category}"]`);
-
-  const expectEmojiButton = (text: string, getGroup = () => findGroup('0')) =>
-      waitForCondition(() => {
-        const group = getGroup();
-        return group ? findEmojiButtonByText(text, group) : null;
-      }, `wait for emoji ${text} to render`);
-
-  const expectEmojiButtons =
-      (texts: string[], getGroup?: () => HTMLElement | null) =>
-          Promise.all(texts.map(text => expectEmojiButton(text, getGroup)));
-
-  const findVariant = (text: string, button: HTMLElement) => {
-    const variants =
-        button.parentElement?.querySelector<HTMLElement>('emoji-variants');
-
-    if (!variants || variants.style.display === 'none') {
-      return null;
-    }
-
-    const variantButtons =
-        Array.from(variants?.shadowRoot!.querySelectorAll('emoji-button'));
-    const component =
-        variantButtons.find(button => (button as EmojiButton).emoji === text);
-
-    return component?.shadowRoot!.querySelector<HTMLElement>('#emoji-button') ??
-        null;
-  };
-
-  const clickVariant = async (text: string, button: HTMLElement) => {
-    dispatchMouseEvent(button, 2);
-    const variant = await waitForCondition(
-        () => findVariant(text, button),
-        `wait for variants for emoji ${text} to render`);
-    variant.click();
   };
 
   const scrollDown = (height: number) => {
@@ -251,33 +193,18 @@ export function initialiseEmojiPickerForTest(
   };
 
   // Wait until emoji data is loaded before executing tests.
-  const createReadyPromise = () => new Promise<void>((resolve) => {
+  const readyPromise = new Promise<void>((resolve) => {
     emojiPicker.addEventListener(EMOJI_PICKER_READY, () => {
       flush();
       resolve();
     });
     document.body.appendChild(emojiPicker);
   });
-
-  const reload = async () => {
-    emojiPicker.remove();
-    emojiPicker = document.createElement('emoji-picker-app');
-    await createReadyPromise();
-  };
-
   return {
     emojiPicker,
     findInEmojiPicker,
-    waitUntilFindInEmojiPicker,
     findEmojiFirstButton,
-    expectEmojiButton,
-    expectEmojiButtons,
-    clickVariant,
-    findGroup,
-    findSearchGroup,
-    readyPromise: createReadyPromise(),
-    reload,
-    setIncognito,
+    readyPromise,
     scrollDown,
     scrollToBottom,
   };

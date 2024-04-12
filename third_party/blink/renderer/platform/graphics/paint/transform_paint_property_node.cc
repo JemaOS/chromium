@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/platform/graphics/paint/transform_paint_property_node.h"
 
 #include "base/memory/values_equivalent.h"
-#include "third_party/blink/renderer/platform/graphics/paint/scroll_paint_property_node.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/transforms/affine_transform.h"
 
@@ -46,9 +45,9 @@ TransformPaintPropertyNode::State::ComputeTransformChange(
   }
 
   if ((direct_compositing_reasons & CompositingReason::kStickyPosition) ||
-      (direct_compositing_reasons & CompositingReason::kAnchorPosition)) {
-    // The compositor handles sticky offset changes and anchor position
-    // translation offset changes automatically.
+      (direct_compositing_reasons & CompositingReason::kAnchorScroll)) {
+    // The compositor handles sticky offset changes and anchor-scroll offset
+    // changes automatically.
     DCHECK(transform_and_origin.matrix.Preserves2dAxisAlignment());
     DCHECK(other.matrix.Preserves2dAxisAlignment());
     return PaintPropertyChangeType::kChangedOnlyCompositedValues;
@@ -71,16 +70,20 @@ PaintPropertyChangeType TransformPaintPropertyNode::State::ComputeChange(
     const State& other,
     const AnimationState& animation_state) const {
   // Whether or not a node is considered a frame root should be invariant.
-  DCHECK_EQ(is_frame_paint_offset_translation,
-            other.is_frame_paint_offset_translation);
+  DCHECK_EQ(flags.is_frame_paint_offset_translation,
+            other.flags.is_frame_paint_offset_translation);
 
   // Changes other than compositing reason and the transform are not simple.
-  if (flattens_inherited_transform != other.flattens_inherited_transform ||
-      in_subtree_of_page_scale != other.in_subtree_of_page_scale ||
-      animation_is_axis_aligned != other.animation_is_axis_aligned ||
-      is_frame_paint_offset_translation !=
-          other.is_frame_paint_offset_translation ||
-      is_for_svg_child != other.is_for_svg_child ||
+  if (flags.flattens_inherited_transform !=
+          other.flags.flattens_inherited_transform ||
+      flags.in_subtree_of_page_scale != other.flags.in_subtree_of_page_scale ||
+      flags.animation_is_axis_aligned !=
+          other.flags.animation_is_axis_aligned ||
+      flags.delegates_to_parent_for_backface !=
+          other.flags.delegates_to_parent_for_backface ||
+      flags.is_frame_paint_offset_translation !=
+          other.flags.is_frame_paint_offset_translation ||
+      flags.is_for_svg_child != other.flags.is_for_svg_child ||
       backface_visibility != other.backface_visibility ||
       rendering_context_id != other.rendering_context_id ||
       compositor_element_id != other.compositor_element_id ||
@@ -91,8 +94,8 @@ PaintPropertyChangeType TransformPaintPropertyNode::State::ComputeChange(
       scroll != other.scroll ||
       scroll_translation_for_fixed != other.scroll_translation_for_fixed ||
       !base::ValuesEquivalent(sticky_constraint, other.sticky_constraint) ||
-      !base::ValuesEquivalent(anchor_position_scroll_data,
-                              other.anchor_position_scroll_data) ||
+      !base::ValuesEquivalent(anchor_scroll_containers_data,
+                              other.anchor_scroll_containers_data) ||
       visible_frame_element_id != other.visible_frame_element_id) {
     return PaintPropertyChangeType::kChangedOnlyValues;
   }
@@ -133,8 +136,11 @@ const TransformPaintPropertyNode& TransformPaintPropertyNode::Root() {
   DEFINE_STATIC_REF(
       TransformPaintPropertyNode, root,
       base::AdoptRef(new TransformPaintPropertyNode(
-          nullptr, State{.scroll = &ScrollPaintPropertyNode::Root(),
-                         .in_subtree_of_page_scale = false})));
+          nullptr, State{{},
+                         &ScrollPaintPropertyNode::Root(),
+                         nullptr,
+                         State::Flags{false /* flattens_inherited_transform */,
+                                      false /* in_subtree_of_page_scale */}})));
   return *root;
 }
 
@@ -153,23 +159,8 @@ bool TransformPaintPropertyNodeOrAlias::Changed(
   return relative_to_node.Changed(change, TransformPaintPropertyNode::Root());
 }
 
-void TransformPaintPropertyNodeOrAlias::ClearChangedToRoot(
-    int sequence_number) const {
-  for (auto* n = this; n && n->ChangedSequenceNumber() != sequence_number;
-       n = n->Parent()) {
-    n->ClearChanged(sequence_number);
-    if (n->IsParentAlias()) {
-      continue;
-    }
-    if (const auto* scroll =
-            static_cast<const TransformPaintPropertyNode*>(n)->ScrollNode()) {
-      scroll->ClearChangedToRoot(sequence_number);
-    }
-  }
-}
-
 std::unique_ptr<JSONObject> TransformPaintPropertyNode::ToJSON() const {
-  auto json = TransformPaintPropertyNodeOrAlias::ToJSON();
+  auto json = ToJSONBase();
   if (IsIdentityOr2dTranslation()) {
     if (!Get2dTranslation().IsZero())
       json->SetString("translation2d", String(Get2dTranslation().ToString()));
@@ -180,12 +171,10 @@ std::unique_ptr<JSONObject> TransformPaintPropertyNode::ToJSON() const {
     json->SetString("matrix", matrix.Replace("\n", ", "));
     json->SetString("origin", String(Origin().ToString()));
   }
-  if (!state_.flattens_inherited_transform) {
+  if (!state_.flags.flattens_inherited_transform)
     json->SetBoolean("flattensInheritedTransform", false);
-  }
-  if (!state_.in_subtree_of_page_scale) {
+  if (!state_.flags.in_subtree_of_page_scale)
     json->SetBoolean("in_subtree_of_page_scale", false);
-  }
   if (state_.backface_visibility != BackfaceVisibility::kInherited) {
     json->SetString("backface",
                     state_.backface_visibility == BackfaceVisibility::kVisible

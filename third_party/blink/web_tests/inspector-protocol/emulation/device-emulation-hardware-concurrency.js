@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session} = await testRunner.startBlank(
       'Tests that overriding hardware concurrency changes the navigator property');
 

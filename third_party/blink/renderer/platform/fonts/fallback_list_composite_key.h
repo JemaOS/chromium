@@ -5,7 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_FONTS_FALLBACK_LIST_COMPOSITE_KEY_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_FONTS_FALLBACK_LIST_COMPOSITE_KEY_H_
 
-#include "third_party/blink/renderer/platform/fonts/alternate_font_family.h"
 #include "third_party/blink/renderer/platform/fonts/font_cache_key.h"
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
@@ -30,20 +29,7 @@ struct FallbackListCompositeKey {
         letter_spacing_(font_description.LetterSpacing()),
         word_spacing_(font_description.WordSpacing()),
         bitmap_fields_(font_description.BitmapFields()),
-        auxiliary_bitmap_fields_(font_description.AuxiliaryBitmapFields()) {
-    const FontFamily* current_family = &font_description.Family();
-    while (current_family) {
-      if (!current_family->FamilyName().empty()) {
-        Add(CaseFoldingHash::GetHash(AdjustFamilyNameToAvoidUnsupportedFonts(
-            current_family->FamilyName())));
-        // Discriminate between quoted generic names, referring to a named
-        // family, vs unquoted referring to the generic. The name itself is
-        // stored identically in both cases.
-        WTF::AddIntToHash(hash_, current_family->FamilyIsGeneric() ? 2u : 1u);
-      }
-      current_family = current_family->Next();
-    }
-  }
+        auxiliary_bitmap_fields_(font_description.AuxiliaryBitmapFields()) {}
   FallbackListCompositeKey()
       : hash_(0),
         computed_size_(0),
@@ -59,10 +45,10 @@ struct FallbackListCompositeKey {
         bitmap_fields_(0),
         auxiliary_bitmap_fields_(0) {}
 
-  void Add(unsigned key) {
+  void Add(FontCacheKey key) {
     font_cache_keys_.push_back(key);
     // Djb2 with the first bit reserved for deleted.
-    hash_ = (((hash_ << 5) + hash_) + key) << 1;
+    hash_ = (((hash_ << 5) + hash_) + key.GetHash()) << 1;
   }
 
   unsigned GetHash() const { return hash_; }
@@ -80,7 +66,7 @@ struct FallbackListCompositeKey {
 
  private:
   static const unsigned kDeletedValueHash = 1;
-  Vector<unsigned> font_cache_keys_;
+  Vector<FontCacheKey> font_cache_keys_;
   unsigned hash_;
 
   float computed_size_;

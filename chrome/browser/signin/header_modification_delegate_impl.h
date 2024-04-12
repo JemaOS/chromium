@@ -10,6 +10,7 @@
 #include "build/buildflag.h"
 #include "chrome/browser/signin/header_modification_delegate.h"
 #include "components/content_settings/core/browser/cookie_settings.h"
+#include "content/public/browser/browser_thread.h"
 #include "extensions/buildflags/buildflags.h"
 
 class Profile;
@@ -55,6 +56,7 @@ class HeaderModificationDelegateImpl : public HeaderModificationDelegate {
 
  private:
   raw_ptr<Profile> profile_;
+  bool dontProcessHeader_;
   scoped_refptr<content_settings::CookieSettings> cookie_settings_;
 
 #if BUILDFLAG(IS_ANDROID)

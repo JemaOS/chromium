@@ -8,7 +8,6 @@
 #include "ash/ash_export.h"
 #include "ash/system/holding_space/holding_space_animation_registry.h"
 #include "ash/system/holding_space/holding_space_item_view.h"
-#include "base/memory/raw_ptr.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/metadata/view_factory.h"
 
@@ -27,9 +26,9 @@ class RoundedImageView;
 // A button with an image derived from a file's thumbnail and file's name as the
 // label.
 class ASH_EXPORT HoldingSpaceItemChipView : public HoldingSpaceItemView {
-  METADATA_HEADER(HoldingSpaceItemChipView, HoldingSpaceItemView)
-
  public:
+  METADATA_HEADER(HoldingSpaceItemChipView);
+
   HoldingSpaceItemChipView(HoldingSpaceViewDelegate* delegate,
                            const HoldingSpaceItem* item);
   HoldingSpaceItemChipView(const HoldingSpaceItemChipView&) = delete;
@@ -40,9 +39,8 @@ class ASH_EXPORT HoldingSpaceItemChipView : public HoldingSpaceItemView {
   // HoldingSpaceItemView:
   views::View* GetTooltipHandlerForPoint(const gfx::Point& point) override;
   std::u16string GetTooltipText(const gfx::Point& point) const override;
-  void OnHoldingSpaceItemUpdated(
-      const HoldingSpaceItem* item,
-      const HoldingSpaceItemUpdatedFields& updated_fields) override;
+  void OnHoldingSpaceItemUpdated(const HoldingSpaceItem* item,
+                                 uint32_t updated_fields) override;
   void OnPrimaryActionVisibilityChanged(bool visible) override;
   void OnSelectionUiChanged() override;
   void OnMouseEvent(ui::MouseEvent* event) override;
@@ -64,13 +62,13 @@ class ASH_EXPORT HoldingSpaceItemChipView : public HoldingSpaceItemView {
   void UpdateSecondaryAction();
 
   // Owned by view hierarchy.
-  raw_ptr<RoundedImageView> image_ = nullptr;
-  raw_ptr<views::Label> primary_label_ = nullptr;
-  raw_ptr<views::Label> secondary_label_ = nullptr;
-  raw_ptr<views::View> secondary_action_container_ = nullptr;
-  raw_ptr<views::ImageButton> secondary_action_pause_ = nullptr;
-  raw_ptr<views::ImageButton> secondary_action_resume_ = nullptr;
-  raw_ptr<ProgressIndicator> progress_indicator_ = nullptr;
+  RoundedImageView* image_ = nullptr;
+  views::Label* primary_label_ = nullptr;
+  views::Label* secondary_label_ = nullptr;
+  views::View* secondary_action_container_ = nullptr;
+  views::ImageButton* secondary_action_pause_ = nullptr;
+  views::ImageButton* secondary_action_resume_ = nullptr;
+  ProgressIndicator* progress_indicator_ = nullptr;
 
   base::CallbackListSubscription image_skia_changed_subscription_;
   base::CallbackListSubscription progress_ring_animation_changed_subscription_;

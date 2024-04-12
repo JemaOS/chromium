@@ -14,11 +14,11 @@ import android.graphics.Color;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
-import android.view.animation.Interpolator;
 import android.widget.FrameLayout.LayoutParams;
 import android.widget.ProgressBar;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.view.ViewCompat;
 
 import org.chromium.base.MathUtils;
@@ -27,7 +27,7 @@ import org.chromium.chrome.browser.theme.ThemeUtils;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.browser_ui.widget.ClipDrawableProgressBar;
 import org.chromium.ui.UiUtils;
-import org.chromium.ui.interpolators.Interpolators;
+import org.chromium.ui.interpolators.BakedBezierInterpolator;
 import org.chromium.ui.util.ColorUtils;
 
 /**
@@ -36,7 +36,9 @@ import org.chromium.ui.util.ColorUtils;
  * instead of jumping.
  */
 public class ToolbarProgressBar extends ClipDrawableProgressBar {
-    /** Interface for progress bar animation interpolation logics. */
+    /**
+     * Interface for progress bar animation interpolation logics.
+     */
     interface AnimationLogic {
         /**
          * Resets internal data. It must be called on every loading start.
@@ -60,7 +62,6 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
      * animation starts.
      */
     private static final long ANIMATION_START_THRESHOLD = 5000;
-
     private static final long HIDE_DELAY_MS = 100;
 
     private static final float THEMED_BACKGROUND_WHITE_FRACTION = 0.2f;
@@ -106,74 +107,64 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
     private boolean mIsAttachedToWindow;
 
     /** The progress bar's anchor view. */
-    @Nullable private View mAnchorView;
+    @Nullable
+    private View mAnchorView;
 
     /** The progress bar's height. */
     private final int mProgressBarHeight;
 
     /** The current running animator that controls the fade in/out of the progress bar. */
-    @Nullable private Animator mFadeAnimator;
+    @Nullable
+    private Animator mFadeAnimator;
 
-    private final OnLayoutChangeListener mOnLayoutChangeListener =
-            (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
-                    updateTopMargin();
+    private final OnLayoutChangeListener mOnLayoutChangeListener = (view, left, top, right, bottom,
+            oldLeft, oldTop, oldRight, oldBottom) -> updateTopMargin();
 
-    private final Runnable mStartSmoothIndeterminate =
-            new Runnable() {
-                @Override
-                public void run() {
-                    if (!mIsStarted) return;
-                    mAnimationLogic.reset(getProgress());
-                    mSmoothProgressAnimator.start();
+    private final Runnable mStartSmoothIndeterminate = new Runnable() {
+        @Override
+        public void run() {
+            if (!mIsStarted) return;
+            mAnimationLogic.reset(getProgress());
+            mSmoothProgressAnimator.start();
 
-                    if (mAnimatingView != null) {
-                        int width =
-                                Math.abs(
-                                        getDrawable().getBounds().right
-                                                - getDrawable().getBounds().left);
-                        mAnimatingView.update(getProgress() * width);
-                        mAnimatingView.startAnimation();
-                    }
-                }
-            };
+            if (mAnimatingView != null) {
+                int width =
+                        Math.abs(getDrawable().getBounds().right - getDrawable().getBounds().left);
+                mAnimatingView.update(getProgress() * width);
+                mAnimatingView.startAnimation();
+            }
+        }
+    };
 
     private final TimeAnimator mSmoothProgressAnimator = new TimeAnimator();
-
     {
-        mSmoothProgressAnimator.setTimeListener(
-                new TimeListener() {
-                    @Override
-                    public void onTimeUpdate(
-                            TimeAnimator animation, long totalTimeMs, long deltaTimeMs) {
-                        // If we are at the target progress already, do nothing.
-                        if (MathUtils.areFloatsEqual(getProgress(), mTargetProgress)) return;
+        mSmoothProgressAnimator.setTimeListener(new TimeListener() {
+            @Override
+            public void onTimeUpdate(TimeAnimator animation, long totalTimeMs, long deltaTimeMs) {
+                // If we are at the target progress already, do nothing.
+                if (MathUtils.areFloatsEqual(getProgress(), mTargetProgress)) return;
 
-                        // Cap progress bar animation frame time so that it doesn't jump too much
-                        // even when the animation is janky.
-                        float progress =
-                                mAnimationLogic.updateProgress(
-                                        mTargetProgress,
-                                        Math.min(deltaTimeMs, PROGRESS_FRAME_TIME_CAP_MS) * 0.001f,
-                                        getWidth());
-                        progress = Math.max(progress, 0);
+                // Cap progress bar animation frame time so that it doesn't jump too much even when
+                // the animation is janky.
+                float progress = mAnimationLogic.updateProgress(mTargetProgress,
+                        Math.min(deltaTimeMs, PROGRESS_FRAME_TIME_CAP_MS) * 0.001f, getWidth());
+                progress = Math.max(progress, 0);
 
-                        // TODO(mdjones): Find a sane way to have this call setProgressInternal so
-                        // the finish logic can be recycled. Consider stopping the progress
-                        // throttle if the smooth animation is running.
-                        ToolbarProgressBar.super.setProgress(progress);
+                // TODO(mdjones): Find a sane way to have this call setProgressInternal so the
+                // finish logic can be recycled. Consider stopping the progress throttle if the
+                // smooth animation is running.
+                ToolbarProgressBar.super.setProgress(progress);
 
-                        if (mAnimatingView != null) {
-                            int width =
-                                    Math.abs(
-                                            getDrawable().getBounds().right
-                                                    - getDrawable().getBounds().left);
-                            mAnimatingView.update(progress * width);
-                        }
+                if (mAnimatingView != null) {
+                    int width = Math.abs(
+                            getDrawable().getBounds().right - getDrawable().getBounds().left);
+                    mAnimatingView.update(progress * width);
+                }
 
-                        // If progress is at 100%, start hiding the progress bar.
-                        if (MathUtils.areFloatsEqual(getProgress(), 1.f)) finish(true);
-                    }
-                });
+                // If progress is at 100%, start hiding the progress bar.
+                if (MathUtils.areFloatsEqual(getProgress(), 1.f)) finish(true);
+            }
+        });
     }
 
     /**
@@ -279,7 +270,9 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
         UiUtils.insertAfter(mProgressBarContainer, mAnimatingView, this);
     }
 
-    /** Start showing progress bar animation. */
+    /**
+     * Start showing progress bar animation.
+     */
     public void start() {
         ThreadUtils.assertOnUiThread();
 
@@ -369,8 +362,8 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
 
         long duration = (long) Math.abs(alphaDiff * ALPHA_ANIMATION_DURATION_MS);
 
-        Interpolator interpolator = Interpolators.LINEAR_OUT_SLOW_IN_INTERPOLATOR;
-        if (alphaDiff < 0) interpolator = Interpolators.FAST_OUT_LINEAR_IN_INTERPOLATOR;
+        BakedBezierInterpolator interpolator = BakedBezierInterpolator.FADE_IN_CURVE;
+        if (alphaDiff < 0) interpolator = BakedBezierInterpolator.FADE_OUT_CURVE;
 
         if (mFadeAnimator != null) mFadeAnimator.cancel();
 
@@ -380,9 +373,8 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
         mFadeAnimator = alphaFade;
 
         if (mAnimatingView != null) {
-            alphaFade =
-                    ObjectAnimator.ofFloat(
-                            mAnimatingView, ALPHA, mAnimatingView.getAlpha(), targetAlpha);
+            alphaFade = ObjectAnimator.ofFloat(
+                    mAnimatingView, ALPHA, mAnimatingView.getAlpha(), targetAlpha);
             alphaFade.setDuration(duration);
             alphaFade.setInterpolator(interpolator);
 
@@ -443,7 +435,7 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
         // All colors use a single path if using the status bar color as the background.
         if (mUseStatusBarColorAsBackground) {
             if (isDefaultTheme) color = Color.BLACK;
-            setForegroundColor(getContext().getColor(R.color.baseline_neutral_60));
+            setForegroundColor(getContext().getColor(R.color.modern_grey_400));
             setBackgroundColor(ColorUtils.getDarkenedColorForStatusBar(color));
             return;
         }
@@ -463,9 +455,8 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
                     ColorUtils.getColorWithOverlay(color, Color.WHITE, ANIMATION_WHITE_FRACTION));
         }
 
-        setBackgroundColor(
-                ColorUtils.getColorWithOverlay(
-                        color, Color.WHITE, THEMED_BACKGROUND_WHITE_FRACTION));
+        setBackgroundColor(ColorUtils.getColorWithOverlay(
+                color, Color.WHITE, THEMED_BACKGROUND_WHITE_FRACTION));
     }
 
     @Override
@@ -492,16 +483,23 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
     /**
      * @return The number of times the progress bar has been triggered.
      */
+    @VisibleForTesting
     public int getStartCountForTesting() {
         return mProgressStartCount;
     }
 
-    /** Reset the number of times the progress bar has been triggered. */
+    /**
+     * Reset the number of times the progress bar has been triggered.
+     */
+    @VisibleForTesting
     public void resetStartCountForTesting() {
         mProgressStartCount = 0;
     }
 
-    /** Start the indeterminate progress bar animation. */
+    /**
+     * Start the indeterminate progress bar animation.
+     */
+    @VisibleForTesting
     public void startIndeterminateAnimationForTesting() {
         mStartSmoothIndeterminate.run();
     }
@@ -509,6 +507,7 @@ public class ToolbarProgressBar extends ClipDrawableProgressBar {
     /**
      * @return The indeterminate animator.
      */
+    @VisibleForTesting
     public Animator getIndeterminateAnimatorForTesting() {
         return mSmoothProgressAnimator;
     }

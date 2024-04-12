@@ -76,14 +76,7 @@ void MockCertProvisioningWorker::SetExpectations(
   EXPECT_CALL(*this, IsWaiting).WillRepeatedly(Return(is_waiting));
   EXPECT_CALL(*this, GetCertProfile).WillRepeatedly(ReturnRef(cert_profile_));
   EXPECT_CALL(*this, GetFailureMessage)
-      .WillRepeatedly(Return(failure_message_));
-}
-
-void MockCertProvisioningWorker::ResetExpected() {
-  testing::InSequence seq;
-  EXPECT_CALL(*this, IsWorkerMarkedForReset).WillOnce(Return(false));
-  EXPECT_CALL(*this, MarkWorkerForReset);
-  EXPECT_CALL(*this, IsWorkerMarkedForReset).WillRepeatedly(Return(true));
+      .WillRepeatedly(ReturnRef(failure_message_));
 }
 
 }  // namespace cert_provisioning

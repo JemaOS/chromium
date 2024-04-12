@@ -2,9 +2,6 @@
 
 var unexpected = [
   // https://html.spec.whatwg.org/
-  "ApplicationCache",
-  "SharedWorker",
-  "CanvasPath",
   "DedicatedWorkerGlobalScope",
   "AbstractView",
   "AbstractWorker",

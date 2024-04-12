@@ -83,8 +83,8 @@ HRESULT AXPlatformNodeTextChildProviderWin::get_TextRange(
 
   AXPlatformNodeWin* container = GetTextContainer(owner_.Get());
   if (container && container->IsDescendant(owner())) {
-    AXPlatformNodeTextProviderWin::GetRangeFromChild(container, owner(),
-                                                     result);
+    *result =
+        AXPlatformNodeTextProviderWin::GetRangeFromChild(container, owner());
   }
 
   return S_OK;

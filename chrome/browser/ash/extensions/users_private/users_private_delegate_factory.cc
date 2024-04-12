@@ -22,8 +22,7 @@ UsersPrivateDelegate* UsersPrivateDelegateFactory::GetForBrowserContext(
 
 // static
 UsersPrivateDelegateFactory* UsersPrivateDelegateFactory::GetInstance() {
-  static base::NoDestructor<UsersPrivateDelegateFactory> instance;
-  return instance.get();
+  return base::Singleton<UsersPrivateDelegateFactory>::get();
 }
 
 UsersPrivateDelegateFactory::UsersPrivateDelegateFactory()
@@ -38,10 +37,9 @@ UsersPrivateDelegateFactory::UsersPrivateDelegateFactory()
 
 UsersPrivateDelegateFactory::~UsersPrivateDelegateFactory() = default;
 
-std::unique_ptr<KeyedService>
-UsersPrivateDelegateFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* UsersPrivateDelegateFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<UsersPrivateDelegate>(static_cast<Profile*>(profile));
+  return new UsersPrivateDelegate(static_cast<Profile*>(profile));
 }
 
 }  // namespace extensions

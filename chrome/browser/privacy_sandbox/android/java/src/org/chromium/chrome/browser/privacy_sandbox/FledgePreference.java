@@ -17,8 +17,12 @@ import org.chromium.components.browser_ui.settings.ImageButtonPreference;
 import org.chromium.components.favicon.LargeIconBridge;
 import org.chromium.url.GURL;
 
-/** A Preference to represent a site using FLEDGE. */
+/**
+ * A Preference to represent a site using FLEDGE.
+ */
 public class FledgePreference extends ImageButtonPreference {
+    private static final int FAVICON_PADDING_DP = 4;
+
     // The ETLD+1 that used Fledge.
     private final @NonNull String mSite;
     private final LargeIconBridge mLargeIconBridge;
@@ -33,7 +37,8 @@ public class FledgePreference extends ImageButtonPreference {
         setTitle(site);
     }
 
-    public @NonNull String getSite() {
+    @NonNull
+    public String getSite() {
         return mSite;
     }
 
@@ -46,10 +51,7 @@ public class FledgePreference extends ImageButtonPreference {
 
         if (!mFaviconFetched) {
             // Since Fledge is only available in secure contexts, use https as scheme.
-            FaviconLoader.loadFavicon(
-                    getContext(),
-                    mLargeIconBridge,
-                    new GURL("https://" + mSite),
+            FaviconLoader.loadFavicon(getContext(), mLargeIconBridge, new GURL("https://" + mSite),
                     this::onFaviconAvailable);
             mFaviconFetched = true;
         }

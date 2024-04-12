@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "third_party/blink/renderer/modules/peerconnection/peer_connection_tracker.h"
-
 #include <memory>
 
-#include "base/run_loop.h"
 #include "base/types/pass_key.h"
+#include "third_party/blink/renderer/modules/peerconnection/peer_connection_tracker.h"
+
+#include "base/run_loop.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/peerconnection/peer_connection_tracker.mojom-blink.h"
@@ -16,14 +16,12 @@
 #include "third_party/blink/renderer/modules/peerconnection/fake_rtc_rtp_transceiver_impl.h"
 #include "third_party/blink/renderer/modules/peerconnection/mock_peer_connection_dependency_factory.h"
 #include "third_party/blink/renderer/modules/peerconnection/mock_rtc_peer_connection_handler_client.h"
-#include "third_party/blink/renderer/modules/peerconnection/mock_rtc_peer_connection_handler_platform.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_peer_connection_handler.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/peerconnection/rtc_offer_options_platform.h"
 #include "third_party/blink/renderer/platform/peerconnection/rtc_rtp_receiver_platform.h"
 #include "third_party/blink/renderer/platform/peerconnection/rtc_rtp_sender_platform.h"
 #include "third_party/blink/renderer/platform/peerconnection/rtc_rtp_transceiver_platform.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 using ::testing::_;
 
@@ -96,7 +94,7 @@ std::unique_ptr<RTCRtpTransceiverPlatform> CreateDefaultTransceiver() {
   transceiver = std::make_unique<blink::FakeRTCRtpTransceiverImpl>(
       String(), std::move(sender), std::move(receiver),
       webrtc::RtpTransceiverDirection::kSendOnly /* direction */,
-      std::nullopt /* current_direction */);
+      absl::nullopt /* current_direction */);
   return transceiver;
 }
 
@@ -107,26 +105,23 @@ class MockPeerConnectionHandler : public RTCPeerConnectionHandler {
  public:
   MockPeerConnectionHandler()
       : MockPeerConnectionHandler(
-            MakeGarbageCollected<MockPeerConnectionDependencyFactory>(),
-            MakeGarbageCollected<MockRTCPeerConnectionHandlerClient>()) {}
+            MakeGarbageCollected<MockPeerConnectionDependencyFactory>()) {}
   MOCK_METHOD0(CloseClientPeerConnection, void());
   MOCK_METHOD1(OnThermalStateChange, void(mojom::blink::DeviceThermalState));
   MOCK_METHOD1(OnSpeedLimitChange, void(int));
 
  private:
   explicit MockPeerConnectionHandler(
-      MockPeerConnectionDependencyFactory* factory,
-      MockRTCPeerConnectionHandlerClient* client)
+      MockPeerConnectionDependencyFactory* factory)
       : RTCPeerConnectionHandler(
-            client,
+            &client_,
             factory,
             blink::scheduler::GetSingleThreadTaskRunnerForTesting(),
             /*encoded_insertable_streams=*/false),
-        factory_(factory),
-        client_(client) {}
+        factory_(factory) {}
 
   Persistent<MockPeerConnectionDependencyFactory> factory_;
-  Persistent<MockRTCPeerConnectionHandlerClient> client_;
+  MockRTCPeerConnectionHandlerClient client_;
 };
 
 webrtc::PeerConnectionInterface::RTCConfiguration DefaultConfig() {
@@ -156,7 +151,6 @@ class PeerConnectionTrackerTest : public ::testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<MockPeerConnectionTrackerHost> mock_host_;
   Persistent<PeerConnectionTracker> tracker_;
   std::unique_ptr<MockPeerConnectionHandler> mock_handler_;
@@ -316,13 +310,13 @@ TEST_F(PeerConnectionTrackerTest, AddTransceiverWithOptionalValuesNull) {
   blink::FakeRTCRtpTransceiverImpl transceiver(
       String(),
       blink::FakeRTCRtpSenderImpl(
-          std::nullopt, {},
+          absl::nullopt, {},
           blink::scheduler::GetSingleThreadTaskRunnerForTesting()),
       blink::FakeRTCRtpReceiverImpl(
           "receiverTrackId", {},
           blink::scheduler::GetSingleThreadTaskRunnerForTesting()),
       webrtc::RtpTransceiverDirection::kInactive /* direction */,
-      std::nullopt /* current_direction */);
+      absl::nullopt /* current_direction */);
   String update_value;
   EXPECT_CALL(*mock_host_,
               UpdatePeerConnection(_, String("transceiverAdded"), _))

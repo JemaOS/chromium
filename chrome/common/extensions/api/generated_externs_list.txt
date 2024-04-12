@@ -7,6 +7,7 @@ braille_display_private.idl
 chromeos_info_private.json
 command_line_private.json
 crash_report_private.idl
+file_manager_private.idl
 file_system_provider.idl
 input_method_private.json
 language_settings_private.idl
@@ -15,7 +16,5 @@ quick_unlock_private.idl
 settings_private.idl
 speech_recognition_private.idl
 tabs.json
-# TODO(b/290700654): Used by https://chromium.googlesource.com/apps/libapps/
-terminal_private.json
 tts.json
 windows.json

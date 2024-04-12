@@ -50,10 +50,8 @@ public class FakeCredentialManagerLauncherTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeLauncher.getAccountCredentialManagerIntent(
-                ManagePasswordsReferrer.CHROME_SETTINGS,
-                TEST_EMAIL_ADDRESS,
-                successCallbackHelper::notifyCalled,
+        mFakeLauncher.getAccountCredentialManagerIntent(ManagePasswordsReferrer.CHROME_SETTINGS,
+                TEST_EMAIL_ADDRESS, successCallbackHelper::notifyCalled,
                 failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
@@ -71,11 +69,8 @@ public class FakeCredentialManagerLauncherTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeLauncher.getAccountCredentialManagerIntent(
-                ManagePasswordsReferrer.CHROME_SETTINGS,
-                null,
-                successCallbackHelper::notifyCalled,
-                failureCallbackHelper::notifyCalled);
+        mFakeLauncher.getAccountCredentialManagerIntent(ManagePasswordsReferrer.CHROME_SETTINGS,
+                null, successCallbackHelper::notifyCalled, failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
         shadowOf(getMainLooper()).idle();
@@ -83,9 +78,8 @@ public class FakeCredentialManagerLauncherTest {
         assertEquals(0, successCallbackHelper.getCallCount());
         // Verify that failure callback was called.
 
-        assertTrue(
-                failureCallbackHelper.getOnlyPayloadBlocking()
-                        instanceof CredentialManagerBackendException);
+        assertTrue(failureCallbackHelper.getOnlyPayloadBlocking()
+                           instanceof CredentialManagerBackendException);
         assertEquals(
                 ((CredentialManagerBackendException) failureCallbackHelper.getOnlyPayloadBlocking())
                         .errorCode,
@@ -104,8 +98,7 @@ public class FakeCredentialManagerLauncherTest {
         mFakeLauncher.getAccountCredentialManagerIntent(
                 org.chromium.chrome.browser.password_manager.ManagePasswordsReferrer
                         .CHROME_SETTINGS,
-                TEST_EMAIL_ADDRESS,
-                successCallbackHelper::notifyCalled,
+                TEST_EMAIL_ADDRESS, successCallbackHelper::notifyCalled,
                 failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
@@ -126,10 +119,8 @@ public class FakeCredentialManagerLauncherTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeLauncher.getLocalCredentialManagerIntent(
-                ManagePasswordsReferrer.CHROME_SETTINGS,
-                successCallbackHelper::notifyCalled,
-                failureCallbackHelper::notifyCalled);
+        mFakeLauncher.getLocalCredentialManagerIntent(ManagePasswordsReferrer.CHROME_SETTINGS,
+                successCallbackHelper::notifyCalled, failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
         shadowOf(getMainLooper()).idle();
@@ -148,10 +139,8 @@ public class FakeCredentialManagerLauncherTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeLauncher.getLocalCredentialManagerIntent(
-                ManagePasswordsReferrer.CHROME_SETTINGS,
-                successCallbackHelper::notifyCalled,
-                failureCallbackHelper::notifyCalled);
+        mFakeLauncher.getLocalCredentialManagerIntent(ManagePasswordsReferrer.CHROME_SETTINGS,
+                successCallbackHelper::notifyCalled, failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
         shadowOf(getMainLooper()).idle();

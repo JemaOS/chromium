@@ -24,20 +24,15 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_HTML_ANCHOR_ELEMENT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_HTML_ANCHOR_ELEMENT_H_
 
-#include "base/time/time.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html/rel_list.h"
 #include "third_party/blink/renderer/core/html_names.h"
-#include "third_party/blink/renderer/core/loader/navigation_policy.h"
 #include "third_party/blink/renderer/core/url/dom_url_utils.h"
 #include "third_party/blink/renderer/platform/link_hash.h"
-#include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
 
 namespace blink {
-
-class MouseEvent;
 
 // Link relation bitmask values.
 // FIXME: Uncomment as the various link relations are implemented.
@@ -61,9 +56,7 @@ enum {
   //     RelationTag         = 0x00010000,
   //     RelationUp          = 0x00020000,
   kRelationNoOpener = 0x00040000,
-  kRelationOpener = 0x00080000,
-  kRelationPrivacyPolicy = 0x00100000,
-  kRelationTermsOfService = 0x00200000,
+  kRelationOpener = 0x00080000
 };
 
 class CORE_EXPORT HTMLAnchorElement : public HTMLElement, public DOMURLUtils {
@@ -104,29 +97,17 @@ class CORE_EXPORT HTMLAnchorElement : public HTMLElement, public DOMURLUtils {
 
   void SendPings(const KURL& destination_url) const;
 
-  // Element overrides:
-  void SetHovered(bool hovered) override;
-
-  Element* interestTargetElement();
-
-  AtomicString interestAction() const;
-
   void Trace(Visitor*) const override;
 
  protected:
   void ParseAttribute(const AttributeModificationParams&) override;
-  bool SupportsFocus(UpdateBehavior update_behavior =
-                         UpdateBehavior::kStyleAndLayout) const override;
-
-  void FinishParsingChildren() final;
+  bool SupportsFocus() const override;
 
  private:
   void AttributeChanged(const AttributeModificationParams&) override;
   bool ShouldHaveFocusAppearance() const final;
-  bool IsFocusable(UpdateBehavior update_behavior =
-                       UpdateBehavior::kStyleAndLayout) const override;
-  bool IsKeyboardFocusable(UpdateBehavior update_behavior =
-                               UpdateBehavior::kStyleAndLayout) const override;
+  bool IsMouseFocusable() const override;
+  bool IsKeyboardFocusable() const override;
   void DefaultEventHandler(Event&) final;
   bool HasActivationBehavior() const override;
   void SetActive(bool active) final;
@@ -138,12 +119,7 @@ class CORE_EXPORT HTMLAnchorElement : public HTMLElement, public DOMURLUtils {
   bool IsInteractiveContent() const final;
   InsertionNotificationRequest InsertedInto(ContainerNode&) override;
   void RemovedFrom(ContainerNode&) override;
-  void NavigateToHyperlink(ResourceRequest,
-                           NavigationPolicy,
-                           bool is_trusted,
-                           base::TimeTicks platform_time_stamp,
-                           KURL);
-  void HandleClick(MouseEvent&);
+  void HandleClick(Event&);
 
   unsigned link_relations_ : 31;
   mutable LinkHash cached_visited_link_hash_;

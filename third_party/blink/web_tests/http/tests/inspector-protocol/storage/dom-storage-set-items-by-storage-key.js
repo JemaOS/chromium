@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {dp, session, page} = await testRunner.startBlank(
       `Tests that settnig DOMStorage by storage-key works differently to doing so by origin\n`);
 

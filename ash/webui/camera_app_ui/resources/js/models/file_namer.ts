@@ -8,8 +8,14 @@ import {
   VideoType,
 } from '../type.js';
 
+/**
+ * The prefix of image files.
+ */
 export const IMAGE_PREFIX = 'IMG_';
 
+/**
+ * The prefix of video files.
+ */
 export const VIDEO_PREFIX = 'VID_';
 
 /**
@@ -28,7 +34,10 @@ const BURST_SUFFIX = '_BURST';
 const BURST_COVER_SUFFIX = '_COVER';
 
 /**
- * Transforms from capture timestamp to datetime name as YYYYMMDD_HHMMSS.
+ * Transforms from capture timestamp to datetime name.
+ *
+ * @param timestamp Timestamp to be transformed.
+ * @return Transformed datetime name.
  */
 function timestampToDatetimeName(timestamp: number): string {
   function pad(n: number) {
@@ -76,8 +85,7 @@ export class Filenamer {
   private burstCount = 0;
 
   /**
-   * @param timestamp Optional timestamp of camera session. If |timestamp| is
-   *     not given, it will use current time.
+   * @param timestamp Timestamp of camera session.
    */
   constructor(timestamp?: number) {
     this.timestamp = timestamp ?? Date.now();
@@ -87,6 +95,7 @@ export class Filenamer {
    * Creates new filename for burst image.
    *
    * @param isCover If the image is set as cover of the burst.
+   * @return New filename.
    */
   newBurstName(isCover: boolean): string {
     function prependZeros(n: number, width: number) {
@@ -99,6 +108,8 @@ export class Filenamer {
 
   /**
    * Creates new filename for video.
+   *
+   * @return New filename.
    */
   newVideoName(videoType: VideoType): string {
     return VIDEO_PREFIX + timestampToDatetimeName(this.timestamp) + '.' +
@@ -107,13 +118,17 @@ export class Filenamer {
 
   /**
    * Creates new filename for image.
+   *
+   * @return New filename.
    */
   newImageName(): string {
     return IMAGE_PREFIX + timestampToDatetimeName(this.timestamp) + '.jpg';
   }
 
   /**
-   * Creates new filename for document.
+   * Creates new filename for pdf.
+   *
+   * @return New filename.
    */
   newDocumentName(mimeType: MimeType): string {
     const ext = (() => {
@@ -131,14 +146,20 @@ export class Filenamer {
   }
 
   /**
-   * Gets the metadata name from given |imageName|.
+   * Get the metadata name from image name.
+   *
+   * @param imageName Name of image to derive the metadata name.
+   * @return Metadata name of the image.
    */
   static getMetadataName(imageName: string): string {
     return imageName.replace(/\.[^/.]+$/, '.json');
   }
 
   /**
-   * Returns true if given |fileName| matches the format that CCA generates.
+   * Returns true if the file name matches the format that CCA generates.
+   *
+   * @param fileName Name of the file.
+   * @return True if it matches CCA file naming format.
    */
   static isCCAFileFormat(fileName: string): boolean {
     return FILE_NAME_PATTERN.test(fileName);

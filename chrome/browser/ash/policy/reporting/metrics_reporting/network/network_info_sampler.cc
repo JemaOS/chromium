@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/policy/reporting/metrics_reporting/network/network_info_sampler.h"
 
-#include <optional>
 #include <utility>
 
 #include "ash/constants/ash_features.h"
@@ -14,11 +13,12 @@
 #include "chromeos/ash/components/network/network_state_handler.h"
 #include "chromeos/ash/components/network/network_type_pattern.h"
 #include "components/reporting/proto/synced/metric_data.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 namespace {
 
-std::optional<NetworkDeviceType> GetNetworkDeviceType(
+absl::optional<NetworkDeviceType> GetNetworkDeviceType(
     const ::ash::NetworkTypePattern& type) {
   if (type.Equals(::ash::NetworkTypePattern::Cellular())) {
     return NetworkDeviceType::CELLULAR_DEVICE;
@@ -29,7 +29,7 @@ std::optional<NetworkDeviceType> GetNetworkDeviceType(
   if (type.Equals(::ash::NetworkTypePattern::WiFi())) {
     return NetworkDeviceType::WIFI_DEVICE;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -45,7 +45,7 @@ void NetworkInfoSampler::MaybeCollect(OptionalMetricCallback callback) {
       metric_data.mutable_info_data()->mutable_networks_info();
   for (const auto* device : device_list) {
     auto type = ::ash::NetworkTypePattern::Primitive(device->type());
-    std::optional<NetworkDeviceType> device_type = GetNetworkDeviceType(type);
+    absl::optional<NetworkDeviceType> device_type = GetNetworkDeviceType(type);
     if (!device_type.has_value()) {
       continue;
     }
@@ -87,7 +87,7 @@ void NetworkInfoSampler::MaybeCollect(OptionalMetricCallback callback) {
     return;
   }
 
-  std::move(callback).Run(std::nullopt);
+  std::move(callback).Run(absl::nullopt);
 }
 
 }  // namespace reporting

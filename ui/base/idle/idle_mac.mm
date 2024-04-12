@@ -9,11 +9,16 @@
 
 #include "ui/base/idle/idle_internal.h"
 
-@interface MacScreenMonitor : NSObject
+@interface MacScreenMonitor : NSObject {
+ @private
+  BOOL _screensaverRunning;
+  BOOL _screenLocked;
+}
 
-@property(readonly, nonatomic, getter=isScreensaverRunning)
-    BOOL screensaverRunning;
-@property(readonly, nonatomic, getter=isScreenLocked) BOOL screenLocked;
+@property (readonly,
+           nonatomic,
+           getter=isScreensaverRunning) BOOL screensaverRunning;
+@property (readonly, nonatomic, getter=isScreenLocked) BOOL screenLocked;
 
 @end
 
@@ -25,7 +30,7 @@
 - (instancetype)init {
   if ((self = [super init])) {
     NSDistributedNotificationCenter* distCenter =
-        NSDistributedNotificationCenter.defaultCenter;
+          [NSDistributedNotificationCenter defaultCenter];
     [distCenter addObserver:self
                    selector:@selector(onScreenSaverStarted:)
                        name:@"com.apple.screensaver.didstart"
@@ -47,7 +52,8 @@
 }
 
 - (void)dealloc {
-  [NSDistributedNotificationCenter.defaultCenter removeObserver:self];
+  [[NSDistributedNotificationCenter defaultCenter] removeObserver:self];
+  [super dealloc];
 }
 
 - (void)onScreenSaverStarted:(NSNotification*)notification {
@@ -91,7 +97,8 @@ bool CheckIdleStateIsLocked() {
   if (IdleStateForTesting().has_value())
     return IdleStateForTesting().value() == IDLE_STATE_LOCKED;
 
-  return g_screenMonitor.screensaverRunning || g_screenMonitor.screenLocked;
+  return [g_screenMonitor isScreensaverRunning] ||
+      [g_screenMonitor isScreenLocked];
 }
 
 }  // namespace ui

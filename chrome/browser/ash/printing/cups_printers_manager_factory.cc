@@ -4,7 +4,7 @@
 
 #include "chrome/browser/ash/printing/cups_printers_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/printing/cups_printers_manager.h"
 #include "chrome/browser/ash/printing/cups_printers_manager_proxy.h"
 #include "chrome/browser/ash/printing/synced_printers_manager_factory.h"
@@ -15,8 +15,7 @@ namespace ash {
 
 // static
 CupsPrintersManagerFactory* CupsPrintersManagerFactory::GetInstance() {
-  static base::NoDestructor<CupsPrintersManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<CupsPrintersManagerFactory>::get();
 }
 
 // static
@@ -47,8 +46,7 @@ CupsPrintersManagerProxy* CupsPrintersManagerFactory::GetProxy() {
   return proxy_.get();
 }
 
-std::unique_ptr<KeyedService>
-CupsPrintersManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CupsPrintersManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   auto* profile = Profile::FromBrowserContext(context);
   // This condition still needs to be explicitly stated here despite having
@@ -62,12 +60,11 @@ CupsPrintersManagerFactory::BuildServiceInstanceForBrowserContext(
     return nullptr;
   }
 
-  std::unique_ptr<CupsPrintersManager> manager =
-      CupsPrintersManager::Create(profile);
+  auto manager = CupsPrintersManager::Create(profile);
   if (ProfileHelper::IsPrimaryProfile(profile)) {
     proxy_->SetManager(manager.get());
   }
-  return manager;
+  return manager.release();
 }
 
 void CupsPrintersManagerFactory::BrowserContextShutdown(

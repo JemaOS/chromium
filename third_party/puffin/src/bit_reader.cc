@@ -4,8 +4,6 @@
 
 #include "puffin/src/bit_reader.h"
 
-#include <cstring>
-
 #include "puffin/src/logging.h"
 
 namespace puffin {

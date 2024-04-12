@@ -21,9 +21,8 @@ CALayerFrameSink* CALayerFrameSink::FromAcceleratedWidget(
 #if BUILDFLAG(IS_MAC)
   return AcceleratedWidgetMac::Get(widget);
 #else
-  id object = (__bridge id)(void*)widget;
-  if ([object isKindOfClass:[CALayerFrameSinkProvider class]]) {
-    return [(CALayerFrameSinkProvider*)object frameSink];
+  if ([widget isKindOfClass:[CALayerFrameSinkProvider class]]) {
+    return [(CALayerFrameSinkProvider*)widget frameSink];
   }
   return nullptr;
 #endif

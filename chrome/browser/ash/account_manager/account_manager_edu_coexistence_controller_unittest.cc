@@ -102,9 +102,10 @@ class AccountManagerEducoexistenceControllerTest : public testing::Test {
  private:
   // To support context of browser threads.
   content::BrowserTaskEnvironment task_environment_;
-  raw_ptr<account_manager::AccountManager> account_manager_ = nullptr;
-  raw_ptr<account_manager::AccountManagerFacade> account_manager_facade_ =
+  raw_ptr<account_manager::AccountManager, ExperimentalAsh> account_manager_ =
       nullptr;
+  raw_ptr<account_manager::AccountManagerFacade, ExperimentalAsh>
+      account_manager_facade_ = nullptr;
   network::TestURLLoaderFactory test_url_loader_factory_;
   TestingProfile testing_profile_;
 };

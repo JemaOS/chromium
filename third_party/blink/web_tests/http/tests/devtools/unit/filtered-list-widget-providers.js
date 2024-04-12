@@ -1,9 +1,6 @@
-
-import {TestRunner} from 'test_runner';
-
-import * as QuickOpen from 'devtools/ui/legacy/components/quick_open/quick_open.js';
-
 (async function() {
+  await TestRunner.loadLegacyModule('quick_open');
+
   TestRunner.addResult(
       'Test that FilteredListWidget.setProvider changes the provider.');
 
@@ -21,7 +18,7 @@ import * as QuickOpen from 'devtools/ui/legacy/components/quick_open/quick_open.
     }
   };
 
-  var filteredListWidget = new QuickOpen.FilteredListWidget.FilteredListWidget(null, []);
+  var filteredListWidget = new QuickOpen.FilteredListWidget(null, []);
   filteredListWidget.showAsDialog();
 
   TestRunner.runTests([

@@ -4,13 +4,10 @@
 
 #include "ash/projector/ui/projector_button.h"
 
-#include <utility>
-
 #include "ash/public/cpp/style/color_provider.h"
 #include "ash/resources/vector_icons/vector_icons.h"
-#include "ash/style/ash_color_id.h"
+#include "ash/style/ash_color_provider.h"
 #include "ash/style/style_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/paint_vector_icon.h"
 #include "ui/views/accessibility/view_accessibility.h"
@@ -28,7 +25,7 @@ constexpr gfx::Insets kButtonPadding{0};
 
 ProjectorButton::ProjectorButton(views::Button::PressedCallback callback,
                                  const std::u16string& name)
-    : ToggleImageButton(std::move(callback)), name_(name) {
+    : ToggleImageButton(callback), name_(name) {
   SetPreferredSize(gfx::Size(kProjectorButtonSize, kProjectorButtonSize));
   SetBorder(views::CreateEmptyBorder(kButtonPadding));
 
@@ -47,25 +44,26 @@ void ProjectorButton::OnPaintBackground(gfx::Canvas* canvas) {
   if (!GetToggled()) {
     return;
   }
-  const auto* color_provider = GetColorProvider();
+  auto* color_provider = AshColorProvider::Get();
   // Draw a filled background for the button.
   cc::PaintFlags flags;
   flags.setAntiAlias(true);
   flags.setStyle(cc::PaintFlags::kFill_Style);
-  flags.setColor(
-      color_provider->GetColor(kColorAshControlBackgroundColorInactive));
+  flags.setColor(color_provider->GetControlsLayerColor(
+      AshColorProvider::ControlsLayerType::kControlBackgroundColorInactive));
   const gfx::RectF bounds(GetContentsBounds());
   canvas->DrawCircle(bounds.CenterPoint(), bounds.width() / 2, flags);
 
   // Draw a border on the background circle.
   cc::PaintFlags border_flags;
-  border_flags.setAntiAlias(true);
-  border_flags.setStyle(cc::PaintFlags::kStroke_Style);
-  border_flags.setColor(color_provider->GetColor(kColorAshHairlineBorderColor));
-  border_flags.setStrokeWidth(kProjectorButtonBorderSize);
+  flags.setAntiAlias(true);
+  flags.setStyle(cc::PaintFlags::kStroke_Style);
+  flags.setColor(color_provider->GetControlsLayerColor(
+      AshColorProvider::ControlsLayerType::kHairlineBorderColor));
+  flags.setStrokeWidth(kProjectorButtonBorderSize);
   canvas->DrawCircle(bounds.CenterPoint(),
                      (bounds.width() - kProjectorButtonBorderSize * 2) / 2,
-                     border_flags);
+                     flags);
 }
 
 void ProjectorButton::OnThemeChanged() {
@@ -82,8 +80,5 @@ void ProjectorButton::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   node_data->role = ax::mojom::Role::kButton;
   node_data->SetName(name_);
 }
-
-BEGIN_METADATA(ProjectorButton)
-END_METADATA
 
 }  // namespace ash

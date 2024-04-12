@@ -27,7 +27,7 @@ UserActivation* NavigatorUserActivation::userActivation(Navigator& navigator) {
 }
 
 UserActivation* NavigatorUserActivation::userActivation() {
-  return user_activation_.Get();
+  return user_activation_;
 }
 
 void NavigatorUserActivation::Trace(Visitor* visitor) const {

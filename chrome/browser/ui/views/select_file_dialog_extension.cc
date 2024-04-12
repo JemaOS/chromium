@@ -6,11 +6,11 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
 #include "ash/public/cpp/shell_window_ids.h"
+#include "ash/public/cpp/tablet_mode.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/location.h"
@@ -29,9 +29,11 @@
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/ui/login_web_dialog.h"
 #include "chrome/browser/ash/login/ui/webui_login_view.h"
-#include "chrome/browser/ash/policy/dlp/dlp_files_controller_ash.h"
+#include "chrome/browser/ash/policy/dlp/dlp_files_controller.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_file_destination.h"
+#include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager.h"
+#include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager_factory.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_view_host.h"
@@ -41,15 +43,16 @@
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/views/extensions/extension_dialog.h"
 #include "chrome/browser/ui/webui/ash/system_web_dialog_delegate.h"
 #include "chromeos/ui/base/window_properties.h"
 #include "extensions/browser/app_window/app_window.h"
 #include "extensions/browser/app_window/native_app_window.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/window.h"
 #include "ui/base/base_window.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/color/color_provider.h"
-#include "ui/display/screen.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/shell_dialogs/select_file_policy.h"
 #include "ui/shell_dialogs/selected_file_info.h"
@@ -185,6 +188,15 @@ SelectFileDialogExtension::RoutingID GetRoutingID(
   return "";
 }
 
+// Returns an instance of DlpFilesController if there is one.
+policy::DlpFilesController* GetDlpFilesController() {
+  policy::DlpRulesManager* rules_manager =
+      policy::DlpRulesManagerFactory::GetForPrimaryProfile();
+  if (!rules_manager)
+    return nullptr;
+  return rules_manager->GetDlpFilesController();
+}
+
 }  // namespace
 
 // A customization of SystemWebDialogDelegate that provides notifications
@@ -202,7 +214,7 @@ class SystemFilesAppDialogDelegate : public ash::SystemWebDialogDelegate {
   ~SystemFilesAppDialogDelegate() override = default;
 
   void SetModal(bool modal) {
-    set_dialog_modal_type(modal ? ui::MODAL_TYPE_WINDOW : ui::MODAL_TYPE_NONE);
+    set_modal_type(modal ? ui::MODAL_TYPE_WINDOW : ui::MODAL_TYPE_NONE);
   }
 
   FrameKind GetWebDialogFrameKind() const override {
@@ -452,8 +464,7 @@ void SelectFileDialogExtension::SelectFileWithFileManagerParams(
                                     owner.android_task_id.has_value() ||
                                     owner.lacros_window_id.has_value();
 
-  can_resize_ =
-      !display::Screen::GetScreen()->InTabletMode() && !is_for_capture_mode;
+  can_resize_ = !ash::TabletMode::IsInTabletMode() && !is_for_capture_mode;
 
   // Obtain BaseWindow and WebContents if the owner window is browser.
   if (!skip_finding_browser)
@@ -530,7 +541,7 @@ void SelectFileDialogExtension::SelectFileImpl(
   Owner owner;
   owner.window = owner_window;
   if (caller && caller->is_valid()) {
-    owner.dialog_caller.emplace(*caller);
+    owner.dialog_caller.emplace(caller->spec());
   }
   SelectFileWithFileManagerParams(type, title, default_path, file_types,
                                   file_type_index, params, owner,
@@ -547,7 +558,7 @@ bool SelectFileDialogExtension::IsResizeable() const {
 }
 
 void SelectFileDialogExtension::ApplyPolicyAndNotifyListener(
-    std::optional<policy::DlpFileDestination> dialog_caller) {
+    absl::optional<policy::DlpFileDestination> dialog_caller) {
   if (!listener_)
     return;
 
@@ -562,8 +573,7 @@ void SelectFileDialogExtension::ApplyPolicyAndNotifyListener(
     return;
   }
 
-  if (auto* files_controller =
-          policy::DlpFilesControllerAsh::GetForPrimaryProfile();
+  if (auto* files_controller = GetDlpFilesController();
       files_controller && type_ == Type::SELECT_SAVEAS_FILE) {
     files_controller->CheckIfDownloadAllowed(
         dialog_caller.value(),
@@ -605,10 +615,11 @@ void SelectFileDialogExtension::NotifyListener(
       listener_->FileSelectionCanceled(params_);
       break;
     case SINGLE_FILE:
-      listener_->FileSelected(selection_files[0], selection_index_, params_);
+      listener_->FileSelectedWithExtraInfo(selection_files[0], selection_index_,
+                                           params_);
       break;
     case MULTIPLE_FILES:
-      listener_->MultiFilesSelected(selection_files, params_);
+      listener_->MultiFilesSelectedWithExtraInfo(selection_files, params_);
       break;
     default:
       NOTREACHED_NORETURN();

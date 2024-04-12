@@ -5,8 +5,11 @@
 #include "chrome/browser/content_settings/page_specific_content_settings_delegate.h"
 
 #include "build/build_config.h"
+#include "chrome/browser/browsing_data/access_context_audit_service.h"
+#include "chrome/browser/browsing_data/access_context_audit_service_factory.h"
 #include "chrome/browser/browsing_data/browsing_data_file_system_util.h"
 #include "chrome/browser/browsing_data/chrome_browsing_data_model_delegate.h"
+#include "chrome/browser/browsing_data/cookies_tree_model.h"
 #include "chrome/browser/content_settings/chrome_content_settings_utils.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
@@ -15,30 +18,38 @@
 #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/chrome_switches.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/common/renderer_configuration.mojom.h"
 #include "components/content_settings/browser/page_specific_content_settings.h"
 #include "components/content_settings/core/common/content_settings_utils.h"
-#include "components/content_settings/core/common/features.h"
-#include "components/permissions/permission_decision_auto_blocker.h"
 #include "components/permissions/permission_recovery_success_rate_tracker.h"
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+#include "components/guest_view/browser/guest_view_base.h"
+#endif
+#include "components/permissions/permission_decision_auto_blocker.h"
 #include "components/permissions/permission_uma_util.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/navigation_handle.h"
-#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
-#include "extensions/buildflags/buildflags.h"
 #include "ipc/ipc_channel_proxy.h"
-#include "pdf/buildflags.h"
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "components/guest_view/browser/guest_view_base.h"
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+namespace {
 
-#if BUILDFLAG(ENABLE_PDF)
-#include "base/features.h"
-#include "chrome/browser/pdf/pdf_viewer_stream_manager.h"
-#include "pdf/pdf_features.h"
-#endif  // BUILDFLAG(ENABLE_PDF)
+void RecordOriginStorageAccess(const url::Origin& origin,
+                               AccessContextAuditDatabase::StorageAPIType type,
+                               content::Page& page) {
+  if (page.GetMainDocument().IsFencedFrameRoot())
+    return;
+  auto* access_context_audit_service =
+      AccessContextAuditServiceFactory::GetForProfile(
+          Profile::FromBrowserContext(
+              page.GetMainDocument().GetBrowserContext()));
+  if (access_context_audit_service)
+    access_context_audit_service->RecordStorageAPIAccess(
+        origin, type, page.GetMainDocument().GetLastCommittedOrigin());
+}
+
+}  // namespace
 
 using content_settings::PageSpecificContentSettings;
 
@@ -47,11 +58,13 @@ namespace chrome {
 PageSpecificContentSettingsDelegate::PageSpecificContentSettingsDelegate(
     content::WebContents* web_contents)
     : WebContentsObserver(web_contents) {
-  if (base::FeatureList::IsEnabled(
-          content_settings::features::kImprovedSemanticsActivityIndicators)) {
-    media_observation_.Observe(MediaCaptureDevicesDispatcher::GetInstance()
-                                   ->GetMediaStreamCaptureIndicator()
-                                   .get());
+  auto* access_context_audit_service =
+      AccessContextAuditServiceFactory::GetForProfile(
+          Profile::FromBrowserContext(web_contents->GetBrowserContext()));
+  if (access_context_audit_service) {
+    cookie_access_helper_ =
+        std::make_unique<AccessContextAuditService::CookieAccessHelper>(
+            access_context_audit_service);
   }
 }
 
@@ -64,44 +77,6 @@ PageSpecificContentSettingsDelegate::FromWebContents(
     content::WebContents* web_contents) {
   return static_cast<PageSpecificContentSettingsDelegate*>(
       PageSpecificContentSettings::GetDelegateForWebContents(web_contents));
-}
-
-void PageSpecificContentSettingsDelegate::OnIsCapturingVideoChanged(
-    content::WebContents* web_contents,
-    bool is_capturing_video) {
-  OnCapturingStateChanged(web_contents, ContentSettingsType::MEDIASTREAM_CAMERA,
-                          is_capturing_video);
-}
-
-void PageSpecificContentSettingsDelegate::OnIsCapturingAudioChanged(
-    content::WebContents* web_contents,
-    bool is_capturing_audio) {
-  OnCapturingStateChanged(web_contents, ContentSettingsType::MEDIASTREAM_MIC,
-                          is_capturing_audio);
-}
-
-void PageSpecificContentSettingsDelegate::OnCapturingStateChanged(
-    content::WebContents* web_contents,
-    ContentSettingsType type,
-    bool is_capturing) {
-  DCHECK(web_contents);
-
-  PageSpecificContentSettings* pscs = PageSpecificContentSettings::GetForFrame(
-      web_contents->GetPrimaryMainFrame());
-
-  if (pscs == nullptr) {
-    // There are cases, e.g. MPArch, where there is no active instance of
-    // PageSpecificContentSettings for a frame.
-    return;
-  }
-
-  pscs->OnCapturingStateChanged(type, is_capturing);
-
-  content::WebContents* pip_web_contents =
-      PictureInPictureWindowManager::GetInstance()->GetChildWebContents();
-  if (pip_web_contents && pip_web_contents != web_contents) {
-    OnCapturingStateChanged(pip_web_contents, type, is_capturing);
-  }
 }
 
 void PageSpecificContentSettingsDelegate::UpdateLocationBar() {
@@ -119,17 +94,17 @@ void PageSpecificContentSettingsDelegate::UpdateLocationBar() {
   PageSpecificContentSettings::MicrophoneCameraState state =
       pscs->GetMicrophoneCameraState();
 
-  if (state.Has(PageSpecificContentSettings::kCameraAccessed) ||
-      state.Has(PageSpecificContentSettings::kMicrophoneAccessed)) {
+  if ((state & PageSpecificContentSettings::CAMERA_ACCESSED) ||
+      (state & PageSpecificContentSettings::MICROPHONE_ACCESSED)) {
     auto* permission_tracker =
         permissions::PermissionRecoverySuccessRateTracker::FromWebContents(
             web_contents());
 
-    if (state.Has(PageSpecificContentSettings::kMicrophoneAccessed)) {
+    if (state & PageSpecificContentSettings::MICROPHONE_ACCESSED) {
       permission_tracker->TrackUsage(ContentSettingsType::MEDIASTREAM_MIC);
     }
 
-    if (state.Has(PageSpecificContentSettings::kCameraAccessed)) {
+    if (state & PageSpecificContentSettings::CAMERA_ACCESSED) {
       permission_tracker->TrackUsage(ContentSettingsType::MEDIASTREAM_CAMERA);
     }
   }
@@ -212,9 +187,47 @@ void PageSpecificContentSettingsDelegate::SetDefaultRendererContentSettingRules(
   }
 }
 
+std::vector<storage::FileSystemType>
+PageSpecificContentSettingsDelegate::GetAdditionalFileSystemTypes() {
+  return browsing_data_file_system_util::GetAdditionalFileSystemTypes();
+}
+
+browsing_data::CookieHelper::IsDeletionDisabledCallback
+PageSpecificContentSettingsDelegate::GetIsDeletionDisabledCallback() {
+  return CookiesTreeModel::GetCookieDeletionDisabledCallback(
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext()));
+}
+
+bool PageSpecificContentSettingsDelegate::IsMicrophoneCameraStateChanged(
+    PageSpecificContentSettings::MicrophoneCameraState microphone_camera_state,
+    const std::string& media_stream_selected_audio_device,
+    const std::string& media_stream_selected_video_device) {
+  PrefService* prefs = GetPrefs();
+  scoped_refptr<MediaStreamCaptureIndicator> media_indicator =
+      MediaCaptureDevicesDispatcher::GetInstance()
+          ->GetMediaStreamCaptureIndicator();
+
+  if ((microphone_camera_state &
+       PageSpecificContentSettings::MICROPHONE_ACCESSED) &&
+      prefs->GetString(prefs::kDefaultAudioCaptureDevice) !=
+          media_stream_selected_audio_device &&
+      media_indicator->IsCapturingAudio(web_contents()))
+    return true;
+
+  if ((microphone_camera_state &
+       PageSpecificContentSettings::CAMERA_ACCESSED) &&
+      prefs->GetString(prefs::kDefaultVideoCaptureDevice) !=
+          media_stream_selected_video_device &&
+      media_indicator->IsCapturingVideo(web_contents()))
+    return true;
+
+  return false;
+}
+
 PageSpecificContentSettings::MicrophoneCameraState
 PageSpecificContentSettingsDelegate::GetMicrophoneCameraState() {
-  PageSpecificContentSettings::MicrophoneCameraState state;
+  PageSpecificContentSettings::MicrophoneCameraState state =
+      PageSpecificContentSettings::MICROPHONE_CAMERA_NOT_ACCESSED;
 
   // Include capture devices in the state if there are still consumers of the
   // approved media stream.
@@ -222,9 +235,9 @@ PageSpecificContentSettingsDelegate::GetMicrophoneCameraState() {
       MediaCaptureDevicesDispatcher::GetInstance()
           ->GetMediaStreamCaptureIndicator();
   if (media_indicator->IsCapturingAudio(web_contents()))
-    state.Put(PageSpecificContentSettings::kMicrophoneAccessed);
+    state |= PageSpecificContentSettings::MICROPHONE_ACCESSED;
   if (media_indicator->IsCapturingVideo(web_contents()))
-    state.Put(PageSpecificContentSettings::kCameraAccessed);
+    state |= PageSpecificContentSettings::CAMERA_ACCESSED;
 
   return state;
 }
@@ -263,11 +276,11 @@ void PageSpecificContentSettingsDelegate::OnContentAllowed(
   GetSettingsMap()->GetWebsiteSetting(web_contents()->GetLastCommittedURL(),
                                       web_contents()->GetLastCommittedURL(),
                                       type, &setting_info);
-  const base::Time grant_time = setting_info.metadata.last_modified();
+  const base::Time grant_time = setting_info.metadata.last_modified;
   if (grant_time.is_null())
     return;
   permissions::PermissionUmaUtil::RecordTimeElapsedBetweenGrantAndUse(
-      type, base::Time::Now() - grant_time, setting_info.source);
+      type, base::Time::Now() - grant_time);
   permissions::PermissionUmaUtil::RecordPermissionUsage(
       type, web_contents()->GetBrowserContext(), web_contents(),
       web_contents()->GetLastCommittedURL());
@@ -281,30 +294,48 @@ void PageSpecificContentSettingsDelegate::OnContentBlocked(
   }
 }
 
-bool PageSpecificContentSettingsDelegate::IsFrameAllowlistedForJavaScript(
-    content::RenderFrameHost* render_frame_host) {
-#if BUILDFLAG(ENABLE_PDF)
-  // OOPIF PDF viewer only.
-  if (!base::FeatureList::IsEnabled(chrome_pdf::features::kPdfOopif)) {
-    return false;
+void PageSpecificContentSettingsDelegate::OnCookieAccessAllowed(
+    const net::CookieList& accessed_cookies,
+    content::Page& page) {
+  if (page.GetMainDocument().IsFencedFrameRoot())
+    return;
+  if (cookie_access_helper_) {
+    cookie_access_helper_->RecordCookieAccess(
+        accessed_cookies, page.GetMainDocument().GetLastCommittedOrigin());
   }
+}
 
-  // There should be a `pdf::PdfViewerStreamManager` if `render_frame_host`'s
-  // `content::WebContents` has a PDF.
-  auto* pdf_viewer_stream_manager =
-      pdf::PdfViewerStreamManager::FromRenderFrameHost(render_frame_host);
-  if (!pdf_viewer_stream_manager) {
-    return false;
-  }
+void PageSpecificContentSettingsDelegate::OnServiceWorkerAccessAllowed(
+    const url::Origin& origin,
+    content::Page& page) {
+  RecordOriginStorageAccess(
+      origin, AccessContextAuditDatabase::StorageAPIType::kServiceWorker, page);
+}
 
-  // Allow the PDF extension frame and PDF content frame to use JavaScript.
-  if (pdf_viewer_stream_manager->IsPdfExtensionHost(render_frame_host) ||
-      pdf_viewer_stream_manager->IsPdfContentHost(render_frame_host)) {
-    return true;
-  }
-#endif  // BUILDFLAG(ENABLE_PDF)
-
-  return false;
+void PageSpecificContentSettingsDelegate::OnStorageAccessAllowed(
+    content_settings::mojom::ContentSettingsManager::StorageType storage_type,
+    const url::Origin& origin,
+    content::Page& page) {
+  AccessContextAuditDatabase::StorageAPIType out_type = ([storage_type]() {
+    switch (storage_type) {
+      case StorageType::CACHE:
+        return AccessContextAuditDatabase::StorageAPIType::kCacheStorage;
+      case StorageType::DATABASE:
+        return AccessContextAuditDatabase::StorageAPIType::kWebDatabase;
+      case StorageType::FILE_SYSTEM:
+        return AccessContextAuditDatabase::StorageAPIType::kFileSystem;
+      case StorageType::INDEXED_DB:
+        return AccessContextAuditDatabase::StorageAPIType::kIndexedDB;
+      case StorageType::LOCAL_STORAGE:
+        return AccessContextAuditDatabase::StorageAPIType::kLocalStorage;
+      case StorageType::SESSION_STORAGE:
+        return AccessContextAuditDatabase::StorageAPIType::kSessionStorage;
+      case StorageType::WEB_LOCKS:
+        NOTREACHED();
+        return AccessContextAuditDatabase::StorageAPIType::kCacheStorage;
+    }
+  })();
+  RecordOriginStorageAccess(origin, out_type, page);
 }
 
 void PageSpecificContentSettingsDelegate::PrimaryPageChanged(

@@ -5,16 +5,15 @@
 #ifndef CHROME_BROWSER_UI_ASH_SYSTEM_TRAY_CLIENT_IMPL_H_
 #define CHROME_BROWSER_UI_ASH_SYSTEM_TRAY_CLIENT_IMPL_H_
 
-#include <optional>
-#include <string_view>
-
 #include "ash/public/cpp/system_tray_client.h"
 #include "ash/public/cpp/update_types.h"
 #include "base/memory/raw_ptr.h"
+#include "base/strings/string_piece.h"
 #include "chrome/browser/ash/system/system_clock_observer.h"
 #include "chrome/browser/upgrade_detector/upgrade_observer.h"
 #include "components/access_code_cast/common/access_code_cast_metrics.h"
 #include "components/policy/core/common/cloud/cloud_policy_store.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 struct DeviceEnterpriseInfo;
@@ -61,11 +60,10 @@ class SystemTrayClientImpl : public ash::SystemTrayClient,
 
   // ash::SystemTrayClient:
   void ShowSettings(int64_t display_id) override;
-  void ShowAccountSettings() override;
   void ShowBluetoothSettings() override;
   void ShowBluetoothSettings(const std::string& device_id) override;
   void ShowBluetoothPairingDialog(
-      std::optional<std::string_view> device_address) override;
+      absl::optional<base::StringPiece> device_address) override;
   void ShowDateSettings() override;
   void ShowSetTimeDialog() override;
   void ShowDisplaySettings() override;
@@ -74,7 +72,6 @@ class SystemTrayClientImpl : public ash::SystemTrayClient,
   void ShowPowerSettings() override;
   void ShowPrivacyAndSecuritySettings() override;
   void ShowPrivacyHubSettings() override;
-  void ShowSpeakOnMuteDetectionSettings() override;
   void ShowSmartPrivacySettings() override;
   void ShowChromeSlow() override;
   void ShowIMESettings() override;
@@ -85,7 +82,6 @@ class SystemTrayClientImpl : public ash::SystemTrayClient,
   void ShowAboutChromeOSDetails() override;
   void ShowAccessibilityHelp() override;
   void ShowAccessibilitySettings() override;
-  void ShowColorCorrectionSettings() override;
   void ShowGestureEducationHelp() override;
   void ShowPaletteHelp() override;
   void ShowPaletteSettings() override;
@@ -93,19 +89,16 @@ class SystemTrayClientImpl : public ash::SystemTrayClient,
   void ShowNetworkConfigure(const std::string& network_id) override;
   void ShowNetworkCreate(const std::string& type) override;
   void ShowSettingsCellularSetup(bool show_psim_flow) override;
-  void ShowMobileDataSubpage() override;
   void ShowSettingsSimUnlock() override;
-  void ShowApnSubpage(const std::string& network_id) override;
   void ShowThirdPartyVpnCreate(const std::string& extension_id) override;
   void ShowArcVpnCreate(const std::string& app_id) override;
   void ShowNetworkSettings(const std::string& network_id) override;
-  void ShowHotspotSubpage() override;
   void ShowMultiDeviceSetup() override;
   void ShowFirmwareUpdate() override;
   void SetLocaleAndExit(const std::string& locale_iso_code) override;
   void ShowAccessCodeCastingDialog(
       AccessCodeCastDialogOpenLocation open_location) override;
-  void ShowCalendarEvent(const std::optional<GURL>& event_url,
+  void ShowCalendarEvent(const absl::optional<GURL>& event_url,
                          const base::Time& date,
                          bool& opened_pwa,
                          GURL& finalized_event_url) override;
@@ -116,10 +109,6 @@ class SystemTrayClientImpl : public ash::SystemTrayClient,
   void ShowEolInfoPage() override;
   void RecordEolNoticeShown() override;
   bool IsUserFeedbackEnabled() override;
-  void ShowGraphicsTabletSettings() override;
-  void ShowMouseSettings() override;
-  void ShowTouchpadSettings() override;
-  void ShowRemapKeysSubpage(int device_id) override;
 
  protected:
   // Used by mocks in tests.

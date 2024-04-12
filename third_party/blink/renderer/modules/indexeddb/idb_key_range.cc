@@ -26,6 +26,7 @@
 #include "third_party/blink/renderer/modules/indexeddb/idb_key_range.h"
 
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
+#include "third_party/blink/renderer/bindings/modules/v8/to_v8_for_modules.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_binding_for_modules.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/modules/indexeddb/idb_database.h"
@@ -79,17 +80,11 @@ IDBKeyRange::IDBKeyRange(std::unique_ptr<IDBKey> lower,
 }
 
 ScriptValue IDBKeyRange::LowerValue(ScriptState* script_state) const {
-  if (auto* lower = Lower()) {
-    return ScriptValue(script_state->GetIsolate(), lower->ToV8(script_state));
-  }
-  return ScriptValue();
+  return ScriptValue::From(script_state, Lower());
 }
 
 ScriptValue IDBKeyRange::UpperValue(ScriptState* script_state) const {
-  if (auto* upper = Upper()) {
-    return ScriptValue(script_state->GetIsolate(), upper->ToV8(script_state));
-  }
-  return ScriptValue();
+  return ScriptValue::From(script_state, Upper());
 }
 
 IDBKeyRange* IDBKeyRange::only(std::unique_ptr<IDBKey> key,

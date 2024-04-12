@@ -31,10 +31,9 @@
 #include "content/public/browser/web_contents.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "ash/constants/ash_features.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/common/webui_url_constants.h"
 #endif
 
@@ -98,7 +97,7 @@ void SSLErrorControllerClient::Proceed() {
   // Hosted Apps should not be allowed to run if there is a problem with their
   // certificate. So, when users click proceed on an interstitial, move the tab
   // to a regular Chrome window and proceed as usual there.
-  Browser* browser = chrome::FindBrowserWithTab(web_contents_);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents_);
   if (web_app::AppBrowserController::IsWebApp(browser))
     chrome::OpenInChrome(browser);
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
@@ -110,9 +109,6 @@ void SSLErrorControllerClient::Proceed() {
           profile->GetSSLHostStateDelegate());
   // StatefulSSLHostStateDelegate can be null during tests.
   if (state) {
-    // Notifies the browser process when a certificate exception is allowed.
-    web_contents_->SetAlwaysSendSubresourceNotifications();
-
     state->AllowCert(
         request_url_.host(), *ssl_info_.cert.get(), cert_error_,
         web_contents_->GetPrimaryMainFrame()->GetStoragePartition());
@@ -130,9 +126,7 @@ void SSLErrorControllerClient::LaunchDateAndTimeSettings() {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
       ProfileManager::GetActiveUserProfile(),
-      ash::features::IsOsSettingsRevampWayfindingEnabled()
-          ? chromeos::settings::mojom::kSystemPreferencesSectionPath
-          : chromeos::settings::mojom::kDateAndTimeSectionPath);
+      chromeos::settings::mojom::kDateAndTimeSectionPath);
 #else
   base::ThreadPool::PostTask(
       FROM_HERE, {base::TaskPriority::USER_VISIBLE, base::MayBlock()},

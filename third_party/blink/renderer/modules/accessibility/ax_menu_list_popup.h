@@ -42,11 +42,6 @@ class AXMenuListPopup final : public AXMockObject {
   AXMenuListPopup(const AXMenuListPopup&) = delete;
   AXMenuListPopup& operator=(const AXMenuListPopup&) = delete;
 
-  void Trace(Visitor*) const override;
-
-  void Init(AXObject* parent) override;
-  void Detach() override;
-
   AXRestriction Restriction() const override;
   bool IsOffScreen() const override;
 
@@ -54,7 +49,6 @@ class AXMenuListPopup final : public AXMockObject {
   void DidShow();
   void DidHide();
   AXObject* ActiveDescendant() final;
-  AXObject* owner() const { return owner_; }
 
  private:
   bool IsMenuListPopup() const override { return true; }
@@ -71,8 +65,6 @@ class AXMenuListPopup final : public AXMockObject {
 
   // Note that this may be -1 if nothing is selected.
   int active_index_;
-
-  Member<AXObject> owner_;
 };
 
 template <>

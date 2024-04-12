@@ -10,7 +10,6 @@
 #include "chrome/browser/download/background_download_service_factory.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/signin/identity_manager_factory.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "content/public/browser/browser_context.h"
 
@@ -45,16 +44,14 @@ OptimizationGuideKeyedServiceFactory::OptimizationGuideKeyedServiceFactory()
               .WithAshInternals(ProfileSelection::kNone)
               .Build()) {
   DependsOn(BackgroundDownloadServiceFactory::GetInstance());
-  DependsOn(IdentityManagerFactory::GetInstance());
 }
 
 OptimizationGuideKeyedServiceFactory::~OptimizationGuideKeyedServiceFactory() =
     default;
 
-std::unique_ptr<KeyedService> 
-  OptimizationGuideKeyedServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* OptimizationGuideKeyedServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<OptimizationGuideKeyedService>(context);
+  return new OptimizationGuideKeyedService(context);
 }
 
 bool OptimizationGuideKeyedServiceFactory::ServiceIsCreatedWithBrowserContext()

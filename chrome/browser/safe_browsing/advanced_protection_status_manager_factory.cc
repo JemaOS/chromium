@@ -31,8 +31,7 @@ AdvancedProtectionStatusManagerFactory::GetForProfile(Profile* profile) {
 // static
 AdvancedProtectionStatusManagerFactory*
 AdvancedProtectionStatusManagerFactory::GetInstance() {
-  static base::NoDestructor<AdvancedProtectionStatusManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<AdvancedProtectionStatusManagerFactory>::get();
 }
 
 // static
@@ -44,22 +43,16 @@ AdvancedProtectionStatusManagerFactory::GetDefaultFactoryForTesting() {
 AdvancedProtectionStatusManagerFactory::AdvancedProtectionStatusManagerFactory()
     : ProfileKeyedServiceFactory(
           "AdvancedProtectionStatusManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
 AdvancedProtectionStatusManagerFactory::
-    ~AdvancedProtectionStatusManagerFactory() = default;
+    ~AdvancedProtectionStatusManagerFactory() {}
 
-std::unique_ptr<KeyedService>
-AdvancedProtectionStatusManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AdvancedProtectionStatusManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return BuildService(context);
+  return BuildService(context).release();
 }
 
 bool AdvancedProtectionStatusManagerFactory::

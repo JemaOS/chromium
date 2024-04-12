@@ -37,11 +37,11 @@ PopupWarningView::PopupWarningView(const Suggestion& suggestion)
 PopupWarningView::~PopupWarningView() = default;
 
 void PopupWarningView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
-  node_data->role = ax::mojom::Role::kAlert;
+  node_data->role = ax::mojom::Role::kStaticText;
   node_data->SetNameChecked(text_value_);
 }
 
-BEGIN_METADATA(PopupWarningView)
+BEGIN_METADATA(PopupWarningView, views::View)
 END_METADATA
 
 }  // namespace autofill

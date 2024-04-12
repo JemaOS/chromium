@@ -14,7 +14,6 @@
 #include "chrome/browser/ui/views/autofill/payments/local_card_migration_dialog_view.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
-#include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -36,7 +35,7 @@ LocalCardMigrationIconView::LocalCardMigrationIconView(
   SetID(VIEW_ID_MIGRATE_LOCAL_CREDIT_CARD_BUTTON);
   SetUpForInOutAnimation();
   SetAccessibilityProperties(
-      /*role*/ std::nullopt,
+      /*role*/ absl::nullopt,
       l10n_util::GetStringUTF16(IDS_TOOLTIP_MIGRATE_LOCAL_CARD));
 }
 
@@ -44,9 +43,8 @@ LocalCardMigrationIconView::~LocalCardMigrationIconView() {}
 
 views::BubbleDialogDelegate* LocalCardMigrationIconView::GetBubble() const {
   ManageMigrationUiController* controller = GetController();
-  if (!controller) {
+  if (!controller)
     return nullptr;
-  }
 
   LocalCardMigrationFlowStep step = controller->GetFlowStep();
   DCHECK_NE(step, LocalCardMigrationFlowStep::UNKNOWN);
@@ -64,9 +62,8 @@ views::BubbleDialogDelegate* LocalCardMigrationIconView::GetBubble() const {
 }
 
 void LocalCardMigrationIconView::UpdateImpl() {
-  if (!GetWebContents()) {
+  if (!GetWebContents())
     return;
-  }
 
   // |controller| may be nullptr due to lazy initialization.
   ManageMigrationUiController* controller = GetController();
@@ -112,9 +109,8 @@ void LocalCardMigrationIconView::UpdateImpl() {
     // glitches.
     // TODO(pbos): Fix this and remove check. Calling SetHighlighted(false) with
     // !GetHighighted() should be a no-op.
-    if (views::InkDrop::Get(this)->GetHighlighted()) {
+    if (views::InkDrop::Get(this)->GetHighlighted())
       SetHighlighted(false);
-    }
     // Handle corner cases where users navigate away or close the tab.
     UnpauseAnimation();
   }
@@ -124,9 +120,7 @@ void LocalCardMigrationIconView::OnExecuting(
     PageActionIconView::ExecuteSource execute_source) {}
 
 const gfx::VectorIcon& LocalCardMigrationIconView::GetVectorIcon() const {
-  return OmniboxFieldTrial::IsChromeRefreshIconsEnabled()
-             ? kCreditCardChromeRefreshIcon
-             : kCreditCardIcon;
+  return kCreditCardIcon;
 }
 
 const gfx::VectorIcon& LocalCardMigrationIconView::GetVectorIconBadge() const {
@@ -140,9 +134,8 @@ const gfx::VectorIcon& LocalCardMigrationIconView::GetVectorIconBadge() const {
 
 ManageMigrationUiController* LocalCardMigrationIconView::GetController() const {
   content::WebContents* web_contents = GetWebContents();
-  if (!web_contents) {
+  if (!web_contents)
     return nullptr;
-  }
 
   return autofill::ManageMigrationUiController::FromWebContents(web_contents);
 }
@@ -169,7 +162,7 @@ void LocalCardMigrationIconView::AnimationEnded(
   UpdateIconImage();
 }
 
-BEGIN_METADATA(LocalCardMigrationIconView)
+BEGIN_METADATA(LocalCardMigrationIconView, PageActionIconView)
 END_METADATA
 
 }  // namespace autofill

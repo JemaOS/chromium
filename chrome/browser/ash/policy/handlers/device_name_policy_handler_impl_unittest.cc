@@ -116,7 +116,7 @@ class DeviceNamePolicyHandlerImplTest : public testing::Test {
               handler_->GetDeviceNamePolicy());
 
     // GetHostnameChosenByAdministrator() should therefore return null.
-    const std::optional<std::string> hostname =
+    const absl::optional<std::string> hostname =
         handler_->GetHostnameChosenByAdministrator();
     EXPECT_FALSE(hostname);
   }
@@ -130,7 +130,7 @@ class DeviceNamePolicyHandlerImplTest : public testing::Test {
               handler_->GetDeviceNamePolicy());
 
     // GetHostnameChosenByAdministrator() should therefore return null.
-    const std::optional<std::string> hostname =
+    const absl::optional<std::string> hostname =
         handler_->GetHostnameChosenByAdministrator();
     EXPECT_FALSE(hostname);
   }
@@ -154,7 +154,7 @@ class DeviceNamePolicyHandlerImplTest : public testing::Test {
         after);
     // Check GetHostnameChosenByAdministrator() returns the expected hostname
     // value.
-    const std::optional<std::string> hostname_chosen_by_administrator =
+    const absl::optional<std::string> hostname_chosen_by_administrator =
         handler_->GetHostnameChosenByAdministrator();
     EXPECT_EQ(hostname_chosen_by_administrator, hostname_template);
 

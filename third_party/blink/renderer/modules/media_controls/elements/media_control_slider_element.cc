@@ -47,8 +47,7 @@ void SetSegmentDivPosition(blink::HTMLDivElement* segment,
   builder.Append("px; left: ");
   builder.AppendNumber(segment_left);
   builder.Append("px;");
-  segment->setAttribute(blink::html_names::kStyleAttr,
-                        builder.ToAtomicString());
+  segment->setAttribute("style", builder.ToAtomicString());
 }
 
 }  // namespace.
@@ -93,7 +92,7 @@ MediaControlSliderElement::MediaControlSliderElement(
           MakeGarbageCollected<MediaControlSliderElementResizeObserverDelegate>(
               this))) {
   setType(input_type_names::kRange);
-  setAttribute(html_names::kStepAttr, AtomicString("any"));
+  setAttribute(html_names::kStepAttr, "any");
   OnControlsShown();
 }
 
@@ -127,11 +126,11 @@ void MediaControlSliderElement::SetupBarSegments() {
   //   - div::internal-track-segment-highlight-before (blue highlight)
   //   - div::internal-track-segment-highlight-after (dark gray highlight)
   HTMLDivElement* background = MediaControlElementsHelper::CreateDiv(
-      AtomicString("-internal-track-segment-background"), &track);
+      "-internal-track-segment-background", &track);
   segment_highlight_before_ = MediaControlElementsHelper::CreateDiv(
-      AtomicString("-internal-track-segment-highlight-before"), background);
+      "-internal-track-segment-highlight-before", background);
   segment_highlight_after_ = MediaControlElementsHelper::CreateDiv(
-      AtomicString("-internal-track-segment-highlight-after"), background);
+      "-internal-track-segment-highlight-after", background);
 }
 
 void MediaControlSliderElement::SetBeforeSegmentPosition(

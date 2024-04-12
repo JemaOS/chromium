@@ -7,10 +7,8 @@ import {
   assertInstanceof,
   assertString,
 } from '../assert.js';
-import {AsyncJobQueue} from '../async_job_queue.js';
 import * as error from '../error.js';
 import * as expert from '../expert.js';
-import * as loadTimeData from '../models/load_time_data.js';
 import {DeviceOperator} from '../mojo/device_operator.js';
 import * as state from '../state.js';
 import {
@@ -73,8 +71,6 @@ class Reconfigurer {
 
   readonly capturePreferrer = new CaptureCandidatePreferrer();
 
-  private readonly failedDevices = new Set<string>();
-
   constructor(
       private readonly preview: Preview,
       private readonly modes: Modes,
@@ -90,7 +86,10 @@ class Reconfigurer {
     this.shouldSuspend = value;
   }
 
-  getDeviceIdsSortedbyPreferredFacing(cameraInfo: CameraInfo): string[] {
+  /**
+   * Gets the video device ids sorted by preference.
+   */
+  private getDeviceIdCandidates(cameraInfo: CameraInfo): string[] {
     let devices: Array<Camera3DeviceInfo|MediaDeviceInfo>;
     /**
      * Object mapping from device id to facing. Set to null for fake cameras.
@@ -108,35 +107,20 @@ class Reconfigurer {
       devices = cameraInfo.devicesInfo;
     }
 
-    const preferredFacing = this.initialFacing ?? util.getDefaultFacing();
+    const preferredFacing =
+        this.config?.facing ?? this.initialFacing ?? util.getDefaultFacing();
+    // Put the selected video device id first.
     const sorted = devices.map((device) => device.deviceId).sort((a, b) => {
       if (a === b) {
         return 0;
       }
-      if (facings?.[a] === preferredFacing) {
+      if (this.config !== null ? a === this.config.deviceId :
+                                 (facings && facings[a] === preferredFacing)) {
         return -1;
       }
       return 1;
     });
     return sorted;
-  }
-
-  /**
-   * Gets the video device ids sorted by preference.
-   */
-  private getDeviceIdCandidates(cameraInfo: CameraInfo): string[] {
-    const deviceIds = this.getDeviceIdsSortedbyPreferredFacing(cameraInfo);
-    // If there is no preferred device or the device is not in the list,
-    // return devices sorted by preferred facing.
-    if (this.config === null || !deviceIds.includes(this.config.deviceId)) {
-      return deviceIds;
-    }
-    // Put the preferred device on the top of the list.
-    function rotation(devices: string[], leftRotateNum: number): string[] {
-      return devices.slice(leftRotateNum)
-          .concat(devices.slice(0, leftRotateNum));
-    }
-    return rotation(deviceIds, deviceIds.indexOf(this.config.deviceId));
   }
 
   private async getModeCandidates(deviceId: string): Promise<Mode[]> {
@@ -199,16 +183,10 @@ class Reconfigurer {
   /**
    * Checks if PTZ can be enabled.
    */
-  private async checkEnablePTZ(
-      c: ConfigureCandidate, builtinPTZSupport: boolean): Promise<void> {
+  private async checkEnablePTZ(c: ConfigureCandidate): Promise<void> {
     const enablePTZ = await (async () => {
       if (!this.preview.isSupportPTZ()) {
         return false;
-      }
-      // In case of digital zoom PTZ or fake camera, PTZ is supported in all
-      // capture and preview resolutions.
-      if (!builtinPTZSupport) {
-        return true;
       }
       const modeSupport = state.get(state.State.USE_FAKE_CAMERA) ||
           (c.captureCandidate.resolution !== null &&
@@ -232,15 +210,7 @@ class Reconfigurer {
   }
 
   /**
-   * Reset the failed devices list so the next reconfiguration
-   * will try to open those devices.
-   */
-  resetFailedDevices(): void {
-    this.failedDevices.clear();
-  }
-
-  /**
-   * @return If the configuration finished successfully.
+   * @return If the reconfiguration finished successfully.
    */
   async startConfigure(cameraInfo: CameraInfo): Promise<boolean> {
     if (this.shouldSuspend) {
@@ -254,17 +224,7 @@ class Reconfigurer {
       if (this.shouldSuspend) {
         return false;
       }
-      if (this.failedDevices.has(c.deviceId)) {
-        // Check if the devices is released from other apps. If not,
-        // we skip using it as a constraint to open a stream.
-        const deviceOperator = DeviceOperator.getInstance();
-        if (deviceOperator !== null) {
-          const inUse = await deviceOperator.isDeviceInUse(c.deviceId);
-          if (inUse) {
-            continue;
-          }
-        }
-      }
+
       let facing = c.deviceId !== null ?
           cameraInfo.getCamera3DeviceInfo(c.deviceId)?.facing ?? null :
           null;
@@ -286,8 +246,7 @@ class Reconfigurer {
         facing = this.preview.getFacing();
         const deviceId = assertString(this.preview.getDeviceId());
 
-        const builtinPTZSupport = cameraInfo.hasBuiltinPTZSupport(c.deviceId);
-        await this.checkEnablePTZ(c, builtinPTZSupport);
+        await this.checkEnablePTZ(c);
         factory.setPreviewVideo(this.preview.getVideo());
         factory.setFacing(facing);
         await this.modes.updateMode(factory);
@@ -327,25 +286,14 @@ class Reconfigurer {
           if (e.name === 'NotReadableError') {
             // TODO(b/187879603): Remove this hacked once we understand more
             // about such error.
+            // We cannot get the camera facing from stream since it might
+            // not be successfully opened. Therefore, we asked the camera
+            // facing via Mojo API.
             let facing: Facing|null = null;
-            let errorMessage: string = e.message;
-            const deviceOperator = DeviceOperator.getInstance();
             if (deviceOperator !== null) {
-              // We cannot get the camera facing from stream since it might
-              // not be successfully opened. Therefore, we asked the camera
-              // facing via Mojo API.
               facing = await deviceOperator.getCameraFacing(c.deviceId);
-              // If 'NotReadableError' is thrown while the device is in use,
-              // it means that the devices is used by Lacros.
-              // In this case, we add it into `failedDevices` and skip using
-              // it to open a stream until it is not in use.
-              const inUse = await deviceOperator.isDeviceInUse(c.deviceId);
-              if (inUse) {
-                this.failedDevices.add(c.deviceId);
-                errorMessage = 'Lacros is using the camera';
-              }
             }
-            errorToReport = new Error(`${errorMessage} (facing = ${facing})`);
+            errorToReport = new Error(`${e.message} (facing = ${facing})`);
             errorToReport.name = 'NotReadableError';
           } else {
             errorToReport = e;
@@ -359,7 +307,7 @@ class Reconfigurer {
   }
 
   /**
-   * Stops extra stream and preview stream.
+   * Stop extra stream and preview stream.
    */
   private async stopStreams() {
     await this.modes.clear();
@@ -375,9 +323,9 @@ class Capturer {
     return this.modes.current.startCapture();
   }
 
-  async stop() {
+  stop() {
     assert(this.modes.current !== null);
-    await this.modes.current.stopCapture();
+    this.modes.current.stopCapture();
   }
 
   takeVideoSnapshot() {
@@ -386,9 +334,9 @@ class Capturer {
     }
   }
 
-  async toggleVideoRecordingPause(): Promise<void> {
+  toggleVideoRecordingPause() {
     if (this.modes.current instanceof Video) {
-      await this.modes.current.togglePaused();
+      this.modes.current.togglePaused();
     }
   }
 }
@@ -414,8 +362,6 @@ export class OperationScheduler {
   private ongoingOperationType: OperationType|null = null;
 
   private pendingReconfigureWaiters: Array<CancelableEvent<boolean>> = [];
-
-  private readonly togglePausedEventQueue = new AsyncJobQueue('drop');
 
   constructor(
       private readonly listener: EventListener,
@@ -444,9 +390,7 @@ export class OperationScheduler {
   async initialize(cameraViewUI: CameraViewUI): Promise<void> {
     this.modes.initialize(cameraViewUI);
     await StreamManager.getInstance().deviceUpdate();
-    if (!loadTimeData.isVideoCaptureDisallowed()) {
-      await this.firstInfoUpdate.wait();
-    }
+    await this.firstInfoUpdate.wait();
   }
 
   private doUpdate(cameraInfo: CameraInfo) {
@@ -463,13 +407,10 @@ export class OperationScheduler {
   }
 
   async reconfigure(): Promise<boolean> {
-    // If |startReconfigure| is invoked before the first update of camera info,
-    // it will hit the assertion in |startReconfigure| and cause CCA hang.
-    await this.firstInfoUpdate.wait();
     if (this.ongoingOperationType !== null) {
       const event = new CancelableEvent<boolean>();
       this.pendingReconfigureWaiters.push(event);
-      await this.stopCapture();
+      this.stopCapture();
       return event.wait();
     }
     return this.startReconfigure();
@@ -482,16 +423,9 @@ export class OperationScheduler {
   }
 
   toggleVideoRecordingPause(): void {
-    this.togglePausedEventQueue.push(async () => {
-      if (this.ongoingOperationType !== OperationType.CAPTURE) {
-        return;
-      }
-      try {
-        await this.capturer.toggleVideoRecordingPause();
-      } catch (e) {
-        error.reportError(ErrorType.RESUME_PAUSE_FAILURE, ErrorLevel.ERROR, e);
-      }
-    });
+    if (this.ongoingOperationType === OperationType.CAPTURE) {
+      this.capturer.toggleVideoRecordingPause();
+    }
   }
 
   private clearPendingReconfigureWaiters() {
@@ -510,9 +444,9 @@ export class OperationScheduler {
       this.pendingUpdateInfo = null;
     }
     if (this.pendingReconfigureWaiters.length !== 0) {
-      const succeed = this.startReconfigure();
+      const starting = this.startReconfigure();
       for (const waiter of this.pendingReconfigureWaiters) {
-        waiter.signalAs(succeed);
+        waiter.signalAs(starting);
       }
       this.pendingReconfigureWaiters = [];
     }
@@ -531,35 +465,28 @@ export class OperationScheduler {
     }
   }
 
-  async stopCapture(): Promise<void> {
-    if (this.ongoingOperationType !== OperationType.CAPTURE) {
-      return;
+  stopCapture(): void {
+    if (this.ongoingOperationType === OperationType.CAPTURE) {
+      this.capturer.stop();
     }
-    await this.togglePausedEventQueue.flush();
-    await this.capturer.stop();
   }
 
-  private startReconfigure(): Promise<boolean> {
+  private async startReconfigure(): Promise<boolean> {
     assert(this.ongoingOperationType === null);
     this.ongoingOperationType = OperationType.RECONFIGURE;
 
     const cameraInfo = assertInstanceof(this.cameraInfo, CameraInfo);
-    const startPromise = this.reconfigurer.start(cameraInfo);
-    // This is for processing after the current reconfigure is done.
-    void (async () => {
-      try {
-        const succeed = await startPromise;
-        if (!succeed) {
-          this.clearPendingReconfigureWaiters();
-        }
-      } catch (e) {
+    try {
+      const succeed = await this.reconfigurer.start(cameraInfo);
+      if (!succeed) {
         this.clearPendingReconfigureWaiters();
-      } finally {
-        this.finishOperation();
       }
-    })();
-    // Only returns the "start" part, so the returned promise is resolved
-    // before all the waiters are resolved to keep the order correct.
-    return startPromise;
+      return succeed;
+    } catch (e) {
+      this.clearPendingReconfigureWaiters();
+      throw e;
+    } finally {
+      this.finishOperation();
+    }
   }
 }

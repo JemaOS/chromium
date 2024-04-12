@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_EXTENSIONS_API_QUICK_UNLOCK_PRIVATE_QUICK_UNLOCK_PRIVATE_ASH_UTILS_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
@@ -15,6 +14,7 @@
 #include "chromeos/ash/components/login/auth/auth_performer.h"
 #include "chromeos/ash/components/login/auth/auth_status_consumer.h"
 #include "content/public/browser/browser_thread.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // This file contains the legacy and new implementations of the
 // quickUnlockPrivate.getAuthToken extension API call. The legacy
@@ -25,6 +25,7 @@
 class Profile;
 
 namespace ash {
+class ExtendedAuthenticator;
 class UserContext;
 class AuthenticationError;
 class AuthPerformer;
@@ -38,6 +39,69 @@ struct TokenInfo;
 }  // namespace quick_unlock_private
 }  // namespace api
 
+//
+// A single-use adaptor to make calls to
+//   ash::ExtendedAuthenticator::AuthenticateToCheck()
+// and pass result back to a single callback. Re. object lifetime, caller just
+// have to call:
+//
+//   scoped_refptr<LegacyQuickUnlockPrivateGetAuthTokenHelper> helper =
+//      base::MakeRefCounted<LegacyQuickUnlockPrivateGetAuthTokenHelper>(...);
+//   ...
+//   // Attach |helper| to a ash::ExtendedAuthenticator.
+//   ...
+//   // Bind callback and pass as argument.
+//   helper->Run(...);
+//
+// Hereafter, the caller need not worry about |helper|'s lifetime.
+class LegacyQuickUnlockPrivateGetAuthTokenHelper
+    : public ash::AuthStatusConsumer,
+      public base::RefCountedThreadSafe<
+          LegacyQuickUnlockPrivateGetAuthTokenHelper,
+          content::BrowserThread::DeleteOnUIThread> {
+ public:
+  using TokenInfo = api::quick_unlock_private::TokenInfo;
+
+  // The only error message that this class ever returns, even if the error is
+  // some internal error and not due to an incorrect password. Should
+  // eventually be refactored/removed together with this legacy class.
+  static const char kPasswordIncorrect[];
+
+  // |error_message| is empty if |success|, and non-empty otherwise.
+  // |token_info| is non-null if |success|, and null otherwise.
+  using ResultCallback =
+      base::OnceCallback<void(bool success,
+                              std::unique_ptr<TokenInfo> token_info,
+                              const std::string& error_message)>;
+
+  explicit LegacyQuickUnlockPrivateGetAuthTokenHelper(Profile* profile);
+  LegacyQuickUnlockPrivateGetAuthTokenHelper(
+      const LegacyQuickUnlockPrivateGetAuthTokenHelper&) = delete;
+  LegacyQuickUnlockPrivateGetAuthTokenHelper& operator=(
+      const LegacyQuickUnlockPrivateGetAuthTokenHelper&) = delete;
+
+  void Run(ash::ExtendedAuthenticator* extended_authenticator,
+           const std::string& password,
+           ResultCallback callback);
+
+ protected:
+  ~LegacyQuickUnlockPrivateGetAuthTokenHelper() override;
+
+ private:
+  friend class base::RefCountedThreadSafe<
+      LegacyQuickUnlockPrivateGetAuthTokenHelper>;
+  friend class base::DeleteHelper<LegacyQuickUnlockPrivateGetAuthTokenHelper>;
+  friend struct content::BrowserThread::DeleteOnThread<
+      content::BrowserThread::UI>;
+
+  // AuthStatusConsumer overrides.
+  void OnAuthFailure(const ash::AuthFailure& error) override;
+  void OnAuthSuccess(const ash::UserContext& user_context) override;
+
+  raw_ptr<Profile> profile_;
+  ResultCallback callback_;
+};
+
 class QuickUnlockPrivateGetAuthTokenHelper {
  public:
   QuickUnlockPrivateGetAuthTokenHelper(Profile*, std::string password);
@@ -49,8 +113,8 @@ class QuickUnlockPrivateGetAuthTokenHelper {
       const QuickUnlockPrivateGetAuthTokenHelper&) = delete;
 
   using Callback = base::OnceCallback<void(
-      std::optional<api::quick_unlock_private::TokenInfo> token,
-      std::optional<ash::AuthenticationError>)>;
+      absl::optional<api::quick_unlock_private::TokenInfo> token,
+      absl::optional<ash::AuthenticationError>)>;
 
   // `Run` does the following:
   // 1. Switch to the UI thread (all communication with the cryptohome daemon
@@ -70,15 +134,15 @@ class QuickUnlockPrivateGetAuthTokenHelper {
   void OnAuthSessionStarted(Callback,
                             bool user_exists,
                             std::unique_ptr<ash::UserContext>,
-                            std::optional<ash::AuthenticationError>);
+                            absl::optional<ash::AuthenticationError>);
 
   void OnAuthenticated(Callback,
                        std::unique_ptr<ash::UserContext>,
-                       std::optional<ash::AuthenticationError>);
+                       absl::optional<ash::AuthenticationError>);
 
   void OnAuthFactorsConfiguration(Callback,
                                   std::unique_ptr<ash::UserContext>,
-                                  std::optional<ash::AuthenticationError>);
+                                  absl::optional<ash::AuthenticationError>);
 
   raw_ptr<Profile> profile_;
   std::string password_;

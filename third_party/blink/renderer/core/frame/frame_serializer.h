@@ -33,7 +33,6 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/attribute.h"
-#include "third_party/blink/renderer/core/html/html_template_element.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl_hash.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
@@ -51,10 +50,9 @@ class CSSValue;
 class Document;
 class Element;
 class FontResource;
-class HTMLTemplateElement;
 class ImageResourceContent;
 class LocalFrame;
-class ShadowRoot;
+class Node;
 
 struct SerializedResource;
 
@@ -113,10 +111,11 @@ class CORE_EXPORT FrameSerializer : public FrameSerializerResourceDelegate {
       return Vector<Attribute>();
     }
 
-    // Returns a shadow tree that needs to be serialized.
-    virtual std::pair<ShadowRoot*, HTMLTemplateElement*> GetShadowTree(
+    // Returns an auxiliary DOM tree, i.e. shadow tree, that needs to be
+    // serialized.
+    virtual std::pair<Node*, Element*> GetAuxiliaryDOMTree(
         const Element&) const {
-      return std::pair<ShadowRoot*, HTMLTemplateElement*>();
+      return std::pair<Node*, Element*>();
     }
   };
 

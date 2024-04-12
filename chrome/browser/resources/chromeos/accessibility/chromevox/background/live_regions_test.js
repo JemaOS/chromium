@@ -12,7 +12,13 @@ ChromeVoxLiveRegionsTest = class extends ChromeVoxE2ETest {
   async setUpDeferred() {
     await super.setUpDeferred();
 
-    globalThis.EventType = chrome.automation.EventType;
+    // Alphabetical based on file path.
+    await importModule(
+        'ChromeVoxState', '/chromevox/background/chromevox_state.js');
+    await importModule('LiveRegions', '/chromevox/background/live_regions.js');
+    await importModule('Output', '/chromevox/background/output/output.js');
+    await importModule('QueueMode', '/chromevox/common/tts_types.js');
+
     globalThis.RoleType = chrome.automation.RoleType;
     globalThis.TreeChangeType = chrome.automation.TreeChangeType;
   }
@@ -297,11 +303,11 @@ AX_TEST_F(
       let clicks = 0;
       div.addEventListener('click', () => {
         clicks++;
-        if (clicks === 1) {
+        if (clicks == 1) {
           input.value = 'bb';
           input.selectionStart = 2;
           input.selectionEnd = 2;
-        } else if (clicks === 2) {
+        } else if (clicks == 2) {
           input.value = 'bba';
           input.selectionStart = 3;
           input.selectionEnd = 3;
@@ -391,42 +397,5 @@ AX_TEST_F(
           .expectSpeech('hello')
           .call(button.doDefault.bind(button))
           .expectSpeech('there');
-      await mockFeedback.replay();
-    });
-
-AX_TEST_F(
-    'ChromeVoxLiveRegionsTest', 'AnnounceDesktopLiveRegionChanged',
-    async function() {
-      const mockFeedback = this.createMockFeedback();
-      await this.runWithLoadedTree(``);
-
-      const fakeEvent = containerLiveStatus => {
-        return {
-          target: {
-            containerLiveStatus,
-            name: containerLiveStatus,
-            root: this.desktop_,
-            children: [],
-            standardActions: [],
-            htmlAttributes: {},
-            state: {},
-            unclippedLocation: {},
-            addEventListener() {},
-            makeVisible() {},
-            removeEventListener() {},
-            setAccessibilityFocus() {},
-          },
-          type: EventType.LIVE_REGION_CHANGED,
-        };
-      };
-
-      const onLiveRegionChanged = status => () =>
-          DesktopAutomationInterface.instance.onLiveRegionChanged_(
-              fakeEvent(status));
-
-      mockFeedback.call(onLiveRegionChanged('assertive'))
-          .expectSpeechWithQueueMode('assertive', QueueMode.CATEGORY_FLUSH)
-          .call(onLiveRegionChanged('polite'))
-          .expectSpeechWithQueueMode('polite', QueueMode.QUEUE);
       await mockFeedback.replay();
     });

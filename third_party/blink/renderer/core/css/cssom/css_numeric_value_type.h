@@ -30,7 +30,7 @@ class CORE_EXPORT CSSNumericValueType {
   static constexpr unsigned kNumBaseTypes =
       static_cast<unsigned>(BaseType::kNumBaseTypes);
 
-  static String BaseTypeToString(BaseType);
+  static AtomicString BaseTypeToString(BaseType);
 
   explicit CSSNumericValueType(
       CSSPrimitiveValue::UnitType = CSSPrimitiveValue::UnitType::kNumber);

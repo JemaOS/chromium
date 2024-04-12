@@ -27,8 +27,8 @@ PrefService* local_state() {
 
 ArcVmmSwapScheduler::ArcVmmSwapScheduler(
     base::RepeatingCallback<void(bool)> swap_callback,
-    std::optional<base::TimeDelta> minimum_swapout_interval,
-    std::optional<base::TimeDelta> swappable_checking_period,
+    absl::optional<base::TimeDelta> minimum_swapout_interval,
+    absl::optional<base::TimeDelta> swappable_checking_period,
     std::unique_ptr<PeaceDurationProvider> peace_duration_provider)
     : swap_callback_(swap_callback) {
   // Set callback to disable vmm-swap feature immdiately after the ARC get
@@ -55,6 +55,10 @@ ArcVmmSwapScheduler::ArcVmmSwapScheduler(
 ArcVmmSwapScheduler::~ArcVmmSwapScheduler() = default;
 
 void ArcVmmSwapScheduler::SetSwappable(bool swappable) {
+  if (swappable == swappable_) {
+    return;
+  }
+  swappable_ = swappable;
   if (swappable) {
     swap_callback_.Run(true);
   } else {
@@ -67,9 +71,7 @@ void ArcVmmSwapScheduler::OnVmSwapping(
   if (signal.name() != kArcVmName) {
     return;
   }
-  if (signal.state() == vm_tools::concierge::SWAPPING_OUT) {
-    local_state()->SetTime(prefs::kArcVmmSwapOutTime, base::Time::Now());
-  }
+  local_state()->SetTime(prefs::kArcVmmSwapOutTime, base::Time::Now());
 }
 
 void ArcVmmSwapScheduler::SetSwapoutThrottleInterval(base::TimeDelta interval) {
@@ -98,9 +100,6 @@ void ArcVmmSwapScheduler::UpdateSwappableStateByObservation() {
     if (!last_swap_out_time.is_null()) {
       auto past = base::Time::Now() - last_swap_out_time;
       if (past < minimum_swapout_interval_) {
-        DVLOG(1) << "Swappable checking be throttled due to last swap on "
-                 << last_swap_out_time
-                 << " is not meet time interval requirement.";
         return;
       }
     }

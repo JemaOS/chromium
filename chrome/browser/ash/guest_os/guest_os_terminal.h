@@ -24,7 +24,7 @@ class Profile;
 
 namespace guest_os {
 
-// web_app::GenerateAppId(/*manifest_id=*/std::nullopt,
+// web_app::GenerateAppId(/*manifest_id=*/absl::nullopt,
 //     GURL("chrome-untrusted://terminal/html/terminal.html"))
 extern const char kTerminalSystemAppId[];
 
@@ -112,15 +112,7 @@ enum class TerminalSetting {
   kAllowImagesInline = 70,
   kTheme = 71,
   kThemeVariations = 72,
-  kFindResultColor = 73,
-  kFindResultSelectedColor = 74,
-  kLineHeightPaddingSize = 75,
-  kKeybindingsOsDefaults = 76,
-  kScreenPaddingSize = 77,
-  kScreenBorderSize = 78,
-  kScreenBorderColor = 79,
-  kLineHeight = 80,
-  kMaxValue = kLineHeight,
+  kMaxValue = kThemeVariations,
 };
 
 const std::string& GetTerminalHomeUrl();
@@ -139,11 +131,10 @@ void LaunchTerminal(Profile* profile,
                     const std::string& cwd = "",
                     const std::vector<std::string>& terminal_args = {});
 
-void LaunchTerminalHome(Profile* profile, int64_t display_id, int restore_id);
+void LaunchTerminalHome(Profile* profile, int64_t display_id);
 
 void LaunchTerminalWithUrl(Profile* profile,
                            int64_t display_id,
-                           int restore_id,
                            const GURL& url);
 
 void LaunchTerminalWithIntent(
@@ -163,7 +154,7 @@ void RecordTerminalSettingsChangesUMAs(Profile* profile);
 std::string GetTerminalSettingBackgroundColor(
     Profile* profile,
     GURL url,
-    std::optional<SkColor> opener_background_color);
+    absl::optional<SkColor> opener_background_color);
 
 // Returns terminal setting 'pass-ctrl-w'.
 bool GetTerminalSettingPassCtrlW(Profile* profile);
@@ -177,7 +168,7 @@ std::string ShortcutIdFromContainerId(Profile* profile,
 
 // Parse Intent extras from shortcut ID.
 base::flat_map<std::string, std::string> ExtrasFromShortcutId(
-    const base::Value::Dict& shortcut);
+    const base::Value& shortcut);
 
 // Returns list of SSH connections {<profile-id>, <description>}.
 std::vector<std::pair<std::string, std::string>> GetSSHConnections(

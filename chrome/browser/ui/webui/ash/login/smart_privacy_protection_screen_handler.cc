@@ -22,11 +22,6 @@ void SmartPrivacyProtectionScreenHandler::Show() {
   ShowInWebUI();
 }
 
-base::WeakPtr<SmartPrivacyProtectionView>
-SmartPrivacyProtectionScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 void SmartPrivacyProtectionScreenHandler::DeclareLocalizedValues(
     ::login::LocalizedValuesBuilder* builder) {
   builder->Add("smartPrivacyProtectionScreenTitle",

@@ -12,7 +12,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/version.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/notifications/kiosk_external_update_notification.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/version_info/version_info.h"
@@ -52,8 +52,8 @@ ParseExternalUpdateManifest(const base::FilePath& external_update_dir) {
                         KioskExternalUpdater::ErrorCode::kNone);
 }
 
-// Copies `external_crx_file` to `temp_crx_file`, and removes `temp_dir`
-// created for unpacking `external_crx_file`.
+// Copies |external_crx_file| to |temp_crx_file|, and removes |temp_dir|
+// created for unpacking |external_crx_file|.
 bool CopyExternalCrxAndDeleteTempDir(const base::FilePath& external_crx_file,
                                      const base::FilePath& temp_crx_file,
                                      const base::FilePath& temp_dir) {
@@ -61,8 +61,8 @@ bool CopyExternalCrxAndDeleteTempDir(const base::FilePath& external_crx_file,
   return base::CopyFile(external_crx_file, temp_crx_file);
 }
 
-// Returns true if `version_1` < `version_2`, and
-// if `update_for_same_version` is true and `version_1` = `version_2`.
+// Returns true if |version_1| < |version_2|, and
+// if |update_for_same_version| is true and |version_1| = |version_2|.
 bool ShouldUpdateForHigherVersion(const std::string& version_1,
                                   const std::string& version_2,
                                   bool update_for_same_version) {
@@ -208,14 +208,14 @@ void KioskExternalUpdater::ProcessParsedManifest(
   const base::Value& parsed_manifest = result.first;
   ErrorCode parsing_error = result.second;
   if (parsing_error == ErrorCode::kNoManifest) {
-    KioskChromeAppManager::Get()->OnKioskAppExternalUpdateComplete(false);
+    KioskAppManager::Get()->OnKioskAppExternalUpdateComplete(false);
     return;
   }
   if (parsing_error == ErrorCode::kInvalidManifest) {
     NotifyKioskUpdateProgress(
         ui::ResourceBundle::GetSharedInstance().GetLocalizedString(
             IDS_KIOSK_EXTERNAL_UPDATE_INVALID_MANIFEST));
-    KioskChromeAppManager::Get()->OnKioskAppExternalUpdateComplete(false);
+    KioskAppManager::Get()->OnKioskAppExternalUpdateComplete(false);
     return;
   }
 
@@ -228,8 +228,8 @@ void KioskExternalUpdater::ProcessParsedManifest(
     std::string app_id = manifest.first;
     std::string cached_version_str;
     base::FilePath cached_crx;
-    if (!KioskChromeAppManager::Get()->GetCachedCrx(app_id, &cached_crx,
-                                                    &cached_version_str)) {
+    if (!KioskAppManager::Get()->GetCachedCrx(app_id, &cached_crx,
+                                              &cached_version_str)) {
       LOG(WARNING) << "Can't find app in existing cache " << app_id;
       continue;
     }
@@ -260,8 +260,8 @@ void KioskExternalUpdater::ProcessParsedManifest(
     }
 
     ExternalUpdate update;
-    KioskChromeAppManager::App app;
-    if (KioskChromeAppManager::Get()->GetApp(app_id, &app)) {
+    KioskAppManager::App app;
+    if (KioskAppManager::Get()->GetApp(app_id, &app)) {
       update.app_name = app.name;
     } else {
       NOTREACHED();
@@ -278,7 +278,7 @@ void KioskExternalUpdater::ProcessParsedManifest(
     NotifyKioskUpdateProgress(
         ui::ResourceBundle::GetSharedInstance().GetLocalizedString(
             IDS_KIOSK_EXTERNAL_UPDATE_NO_UPDATES));
-    KioskChromeAppManager::Get()->OnKioskAppExternalUpdateComplete(false);
+    KioskAppManager::Get()->OnKioskAppExternalUpdateComplete(false);
     return;
   }
 
@@ -336,8 +336,8 @@ bool KioskExternalUpdater::ShouldDoExternalUpdate(
 
   std::string existing_version_str;
   base::FilePath existing_path;
-  bool cached = KioskChromeAppManager::Get()->GetCachedCrx(
-      app_id, &existing_path, &existing_version_str);
+  bool cached = KioskAppManager::Get()->GetCachedCrx(app_id, &existing_path,
+                                                     &existing_version_str);
   DCHECK(cached);
 
   // Compare app version.
@@ -350,9 +350,8 @@ bool KioskExternalUpdater::ShouldDoExternalUpdate(
 
   // Check minimum browser version.
   if (!min_browser_version.empty() &&
-      !ShouldUpdateForHigherVersion(
-          min_browser_version, std::string(version_info::GetVersionNumber()),
-          true)) {
+      !ShouldUpdateForHigherVersion(min_browser_version,
+                                    version_info::GetVersionNumber(), true)) {
     external_updates_[app_id].error = l10n_util::GetStringFUTF16(
         IDS_KIOSK_EXTERNAL_UPDATE_REQUIRE_HIGHER_BROWSER_VERSION,
         base::UTF8ToUTF16(min_browser_version));
@@ -382,7 +381,7 @@ void KioskExternalUpdater::PutValidatedExtension(const std::string& app_id,
     return;
   }
 
-  KioskChromeAppManager::Get()->PutValidatedExternalExtension(
+  KioskAppManager::Get()->PutValidatedExternalExtension(
       app_id, crx_file, version,
       base::BindOnce(&KioskExternalUpdater::OnPutValidatedExtension,
                      weak_factory_.GetWeakPtr()));
@@ -424,7 +423,7 @@ void KioskExternalUpdater::MayBeNotifyKioskAppUpdate() {
 
   NotifyKioskUpdateProgress(GetUpdateReportMessage());
   NotifyKioskAppUpdateAvailable();
-  KioskChromeAppManager::Get()->OnKioskAppExternalUpdateComplete(
+  KioskAppManager::Get()->OnKioskAppExternalUpdateComplete(
       IsAllExternalUpdatesSucceeded());
 }
 
@@ -433,7 +432,7 @@ void KioskExternalUpdater::NotifyKioskAppUpdateAvailable() {
 
   for (const auto& it : external_updates_) {
     if (it.second.update_status == UpdateStatus::kSuccess) {
-      KioskChromeAppManager::Get()->OnKioskAppCacheUpdated(it.first);
+      KioskAppManager::Get()->OnKioskAppCacheUpdated(it.first);
     }
   }
 }

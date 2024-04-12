@@ -16,7 +16,6 @@ idl_test(
       CompositionEvent: ['new CompositionEvent("event")'],
       UIEvent: ['new UIEvent("event")'],
       InputEvent: ['new InputEvent("event")'],
-      TextEvent: ['(() => { const ev = document.createEvent("TextEvent"); ev.initTextEvent("event"); return ev; })()'],
     });
   }
 );

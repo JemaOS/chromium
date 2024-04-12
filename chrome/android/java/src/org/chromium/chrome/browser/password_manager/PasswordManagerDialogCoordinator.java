@@ -13,6 +13,8 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.ui.modaldialog.DialogDismissalCause;
@@ -29,25 +31,18 @@ public class PasswordManagerDialogCoordinator {
     private final PasswordManagerDialogMediator mMediator;
     private PropertyModel mModel;
 
-    public PasswordManagerDialogCoordinator(
-            ModalDialogManager modalDialogManager,
-            View androidContentView,
-            BrowserControlsStateProvider browserControlsStateProvider) {
-        mMediator =
-                new PasswordManagerDialogMediator(
-                        new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS),
-                        modalDialogManager,
-                        androidContentView,
-                        browserControlsStateProvider);
+    public PasswordManagerDialogCoordinator(ModalDialogManager modalDialogManager,
+            View androidContentView, BrowserControlsStateProvider browserControlsStateProvider) {
+        mMediator = new PasswordManagerDialogMediator(
+                new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS), modalDialogManager,
+                androidContentView, browserControlsStateProvider);
     }
 
     public void initialize(Context context, PasswordManagerDialogContents contents) {
-        View customView =
-                contents.getHelpButtonCallback() != null
-                        ? LayoutInflater.from(context)
-                                .inflate(R.layout.password_manager_dialog_with_help_button, null)
-                        : LayoutInflater.from(context)
-                                .inflate(R.layout.password_manager_dialog, null);
+        View customView = contents.getHelpButtonCallback() != null
+                ? LayoutInflater.from(context).inflate(
+                        R.layout.password_manager_dialog_with_help_button, null)
+                : LayoutInflater.from(context).inflate(R.layout.password_manager_dialog, null);
         mModel = buildModel(contents);
         mMediator.initialize(mModel, customView, contents);
         PropertyModelChangeProcessor.create(
@@ -71,6 +66,7 @@ public class PasswordManagerDialogCoordinator {
                 .build();
     }
 
+    @VisibleForTesting
     public PasswordManagerDialogMediator getMediatorForTesting() {
         return mMediator;
     }

@@ -38,15 +38,14 @@ class WebAppUrlHandlingBrowserTest : public WebAppNavigationBrowserTest {
     ASSERT_TRUE(embedded_test_server()->Start());
   }
 
-  webapps::AppId InstallTestApp(const char* path, bool await_metric) {
+  AppId InstallTestApp(const char* path, bool await_metric) {
     GURL start_url = embedded_test_server()->GetURL(path);
     page_load_metrics::PageLoadMetricsTestWaiter metrics_waiter(
         browser()->tab_strip_model()->GetActiveWebContents());
     if (await_metric)
       metrics_waiter.AddWebFeatureExpectation(url_handling_feature);
 
-    webapps::AppId app_id =
-        web_app::InstallWebAppFromPage(browser(), start_url);
+    AppId app_id = web_app::InstallWebAppFromPage(browser(), start_url);
     if (await_metric)
       metrics_waiter.Wait();
 
@@ -69,7 +68,7 @@ class WebAppUrlHandlingBrowserTest : public WebAppNavigationBrowserTest {
 };
 
 IN_PROC_BROWSER_TEST_F(WebAppUrlHandlingBrowserTest, BasicUrlHandlers) {
-  webapps::AppId app_id = InstallTestApp(
+  AppId app_id = InstallTestApp(
       "/banners/"
       "manifest_test_page.html?manifest=manifest_url_handlers.json",
       /*await_metric=*/true);
@@ -96,7 +95,7 @@ IN_PROC_BROWSER_TEST_F(WebAppUrlHandlingBrowserTest, BasicUrlHandlers) {
 }
 
 IN_PROC_BROWSER_TEST_F(WebAppUrlHandlingBrowserTest, NoUrlHandlers) {
-  webapps::AppId app_id =
+  AppId app_id =
       InstallTestApp("/banners/manifest_test_page.html?manifest=manifest.json",
                      /*await_metric=*/false);
   apps::UrlHandlers url_handlers =

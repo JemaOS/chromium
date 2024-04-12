@@ -115,7 +115,7 @@ int TabStripScrollSessionWithTimer::CalculateSpeed() {
 
 double TabStripScrollSessionWithTimer::CalculateBaseScrollOffset() {
   return kNumberOfTabsScrolledPerSecond *
-         TabStyle::Get()->GetMinimumInactiveWidth() *
+         TabStyleViews::Create()->GetMinimumInactiveWidth() *
          (kScrollTimerDelay / base::Milliseconds(1000));
 }
 
@@ -186,5 +186,5 @@ TabStripScrollSessionWithTimer::GetTabScrollDirection() {
 }
 
 int TabStripScrollSession::GetScrollableOffset() const {
-  return TabStyle::Get()->GetMinimumInactiveWidth() / 5;
+  return TabStyleViews::Create()->GetMinimumInactiveWidth() / 5;
 }

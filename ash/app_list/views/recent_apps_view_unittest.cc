@@ -23,13 +23,11 @@
 #include "ash/public/cpp/app_list/app_list_types.h"
 #include "ash/shell.h"
 #include "ash/test/ash_test_base.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/strings/stringprintf.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/vector2d.h"
-#include "ui/views/controls/label.h"
 
 namespace ash {
 namespace {
@@ -39,15 +37,13 @@ namespace {
 aura::Window* FindMenuWindow(aura::Window* root) {
   if (root->GetType() == aura::client::WINDOW_TYPE_MENU)
     return root;
-  for (aura::Window* child : root->children()) {
+  for (auto* child : root->children()) {
     auto* menu_in_child = FindMenuWindow(child);
     if (menu_in_child)
       return menu_in_child;
   }
   return nullptr;
 }
-
-}  // namespace
 
 // Parameterized to test recent apps in the app list bubble and tablet mode.
 class RecentAppsViewTest : public AshTestBase,
@@ -136,11 +132,6 @@ class RecentAppsViewTest : public AshTestBase,
     for (auto* view : views)
       ids.push_back(view->item()->id());
     return ids;
-  }
-
- protected:
-  AppListItemView::DragState GetDragState(AppListItemView* view) {
-    return view->drag_state_;
   }
 
   std::unique_ptr<test::AppsGridViewTestApi> test_api_;
@@ -444,46 +435,5 @@ TEST_P(RecentAppsViewTest, RemoveAppsRemovesFromRecentAppsUntilHides) {
   EXPECT_FALSE(GetRecentAppsView()->GetVisible());
 }
 
-TEST_P(RecentAppsViewTest, AttemptTouchDragRecentApp) {
-  AddAppResults(5);
-  ShowAppList();
-
-  AppListItemView* view = GetAppListItemViews()[0];
-  EXPECT_EQ(GetDragState(view), AppListItemView::DragState::kNone);
-
-  auto* generator = GetEventGenerator();
-  gfx::Point from = view->GetBoundsInScreen().CenterPoint();
-  generator->MoveTouch(from);
-  generator->PressTouch();
-
-  // Attempt to fire the touch drag timer. Recent apps view should not trigger
-  // the timer.
-  EXPECT_FALSE(view->FireTouchDragTimerForTest());
-
-  // Verify the apps did not enter dragged state.
-  EXPECT_EQ(GetDragState(view), AppListItemView::DragState::kNone);
-  EXPECT_TRUE(view->title()->GetVisible());
-}
-
-TEST_P(RecentAppsViewTest, AttemptMouseDragRecentApp) {
-  AddAppResults(5);
-  ShowAppList();
-
-  AppListItemView* view = GetAppListItemViews()[0];
-  EXPECT_EQ(GetDragState(view), AppListItemView::DragState::kNone);
-
-  auto* generator = GetEventGenerator();
-  gfx::Point from = view->GetBoundsInScreen().CenterPoint();
-  generator->MoveMouseTo(from);
-  generator->PressLeftButton();
-
-  // Attempt to fire the mouse drag timer. Recent apps view should not trigger
-  // the timer.
-  EXPECT_FALSE(view->FireMouseDragTimerForTest());
-
-  // Verify the apps did not enter dragged state.
-  EXPECT_EQ(GetDragState(view), AppListItemView::DragState::kNone);
-  EXPECT_TRUE(view->title()->GetVisible());
-}
-
+}  // namespace
 }  // namespace ash

@@ -18,6 +18,10 @@ namespace ash {
 struct ASH_PUBLIC_EXPORT OnlineWallpaperParams {
   // The user's account id.
   AccountId account_id;
+  // The unique identifier of the wallpaper.
+  uint64_t asset_id;
+  // The wallpaper url.
+  GURL url;
   // The wallpaper collection id .e.g. city_for_chromebook.
   std::string collection_id;
   // The layout of the wallpaper, used for wallpaper resizing.
@@ -38,6 +42,8 @@ struct ASH_PUBLIC_EXPORT OnlineWallpaperParams {
   std::vector<OnlineWallpaperVariant> variants;
 
   OnlineWallpaperParams(const AccountId& account_id,
+                        uint64_t asset_id,
+                        const GURL& url,
                         const std::string& collection_id,
                         WallpaperLayout layout,
                         bool preview_mode,

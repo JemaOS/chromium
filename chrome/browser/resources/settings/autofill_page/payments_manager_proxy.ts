@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {PersonalDataChangedListener} from './autofill_manager_proxy.js';
+import {PersonalDataChangedListener} from './autofill_manager_proxy.js';
 
 /**
  * Interface for all callbacks to the payments autofill API.
@@ -36,6 +36,11 @@ export interface PaymentsManagerProxy {
   removeCreditCard(guid: string): void;
 
   /**
+   * @param guid The GUID to credit card to remove from the cache.
+   */
+  clearCachedCreditCard(guid: string): void;
+
+  /**
    * Saves the given credit card.
    */
   saveCreditCard(creditCard: chrome.autofillPrivate.CreditCardEntry): void;
@@ -59,14 +64,14 @@ export interface PaymentsManagerProxy {
   logServerCardLinkClicked(): void;
 
   /**
-   * Logs that the server IBAN's "Edit in Google Pay" link was clicked.
-   */
-  logServerIbanLinkClicked(): void;
-
-  /**
    * Enables FIDO authentication for card unmasking.
    */
   setCreditCardFidoAuthEnabledState(enabled: boolean): void;
+
+  /**
+   * Requests the list of UPI IDs from personal data.
+   */
+  getUpiIdList(): Promise<string[]>;
 
   /**
    * Enrolls the card into virtual cards.
@@ -82,35 +87,6 @@ export interface PaymentsManagerProxy {
    * A null response means that there is no platform authenticator.
    */
   isUserVerifyingPlatformAuthenticatorAvailable(): Promise<boolean|null>;
-
-  /**
-   * Authenticate the user via device authentication and flip the mandatory auth
-   * toggle is successful.
-   */
-  authenticateUserAndFlipMandatoryAuthToggle(): void;
-
-  /**
-   * Returns the local card based on the `guid` provided. The user could
-   * also be challenged with a reauth if that is enabled. For a
-   * successful auth, the local card is returned otherwise return a null object.
-   */
-  getLocalCard(guid: string):
-      Promise<chrome.autofillPrivate.CreditCardEntry|null>;
-
-  // <if expr="is_win or is_macosx">
-  /**
-   * Returns true if there is authentication available on this device (biometric
-   * or screen lock), false otherwise.
-   */
-  checkIfDeviceAuthAvailable(): Promise<boolean>;
-  // </if>
-
-  /**
-   * Bulk delete all the CVCs (server and local) from the local webdata
-   * database. For server CVCs, this will also clear them from the Chrome
-   * sync server and thus other devices.
-   */
-  bulkDeleteAllCvcs(): void;
 }
 
 /**
@@ -141,6 +117,10 @@ export class PaymentsManagerImpl implements PaymentsManagerProxy {
     chrome.autofillPrivate.removeEntry(guid);
   }
 
+  clearCachedCreditCard(guid: string) {
+    chrome.autofillPrivate.maskCreditCard(guid);
+  }
+
   saveCreditCard(creditCard: chrome.autofillPrivate.CreditCardEntry) {
     chrome.autofillPrivate.saveCreditCard(creditCard);
   }
@@ -161,12 +141,12 @@ export class PaymentsManagerImpl implements PaymentsManagerProxy {
     chrome.autofillPrivate.logServerCardLinkClicked();
   }
 
-  logServerIbanLinkClicked() {
-    chrome.autofillPrivate.logServerIbanLinkClicked();
-  }
-
   setCreditCardFidoAuthEnabledState(enabled: boolean) {
     chrome.autofillPrivate.setCreditCardFIDOAuthEnabledState(enabled);
+  }
+
+  getUpiIdList() {
+    return chrome.autofillPrivate.getUpiIdList();
   }
 
   addVirtualCard(cardId: string) {
@@ -184,24 +164,6 @@ export class PaymentsManagerImpl implements PaymentsManagerProxy {
 
     return window.PublicKeyCredential
         .isUserVerifyingPlatformAuthenticatorAvailable();
-  }
-
-  authenticateUserAndFlipMandatoryAuthToggle() {
-    chrome.autofillPrivate.authenticateUserAndFlipMandatoryAuthToggle();
-  }
-
-  getLocalCard(guid: string) {
-    return chrome.autofillPrivate.getLocalCard(guid);
-  }
-
-  // <if expr="is_win or is_macosx">
-  checkIfDeviceAuthAvailable() {
-    return chrome.autofillPrivate.checkIfDeviceAuthAvailable();
-  }
-  // </if>
-
-  bulkDeleteAllCvcs() {
-    chrome.autofillPrivate.bulkDeleteAllCvcs();
   }
 
   static getInstance(): PaymentsManagerProxy {

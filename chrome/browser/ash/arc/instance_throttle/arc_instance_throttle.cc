@@ -13,7 +13,6 @@
 #include "base/no_destructor.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/arc/boot_phase_monitor/arc_boot_phase_monitor_bridge.h"
-#include "chrome/browser/ash/arc/instance_throttle/arc_active_audio_throttle_observer.h"
 #include "chrome/browser/ash/arc/instance_throttle/arc_active_window_throttle_observer.h"
 #include "chrome/browser/ash/arc/instance_throttle/arc_app_launch_throttle_observer.h"
 #include "chrome/browser/ash/arc/instance_throttle/arc_boot_phase_throttle_observer.h"
@@ -91,7 +90,7 @@ UnthrottlingReason GetUnthrottlingReason(
 }
 
 void OnSetArcVmCpuRestriction(
-    std::optional<vm_tools::concierge::SetVmCpuRestrictionResponse> response) {
+    absl::optional<vm_tools::concierge::SetVmCpuRestrictionResponse> response) {
   if (!response) {
     LOG(ERROR) << "Failed to call SetVmCpuRestriction";
     RecordCpuRestrictionVMResult(
@@ -248,7 +247,6 @@ class ArcInstanceThrottleFactory
   ArcInstanceThrottleFactory() {
     DependsOn(ArcBootPhaseMonitorBridgeFactory::GetInstance());
     DependsOn(ArcMetricsServiceFactory::GetInstance());
-    DependsOn(ArcAppLaunchNotifierFactory::GetInstance());
   }
   ~ArcInstanceThrottleFactory() override = default;
 };
@@ -302,9 +300,6 @@ ArcInstanceThrottle::ArcInstanceThrottle(content::BrowserContext* context,
   // This one is controlled by ash::ArcPowerControlHandler.
   AddObserver(std::make_unique<ash::ThrottleObserver>(
       kChromeArcPowerControlPageObserver));
-  if (base::FeatureList::IsEnabled(arc::kUnthrottleOnActiveAudio)) {
-    AddObserver(std::make_unique<ArcActiveAudioThrottleObserver>());
-  }
 
   StartObservers();
   DCHECK(bridge_);
@@ -391,7 +386,7 @@ void ArcInstanceThrottle::ThrottleInstance(bool should_throttle) {
     //   happen.
   }
 
-  const std::optional<bool>& arc_is_booting =
+  const absl::optional<bool>& arc_is_booting =
       GetBootObserver()->arc_is_booting();
   const bool arc_has_booted = (arc_is_booting && !*arc_is_booting);
   const bool is_throttling = (cpu_restriction_state ==

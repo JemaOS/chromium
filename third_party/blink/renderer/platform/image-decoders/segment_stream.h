@@ -33,11 +33,11 @@ class PLATFORM_EXPORT SegmentStream : public SkStream {
   size_t peek(void* buffer, size_t) const override;
   bool isAtEnd() const override;
   bool rewind() override;
-  bool hasPosition() const override;
-  size_t getPosition() const override;
+  bool hasPosition() const override { return true; }
+  size_t getPosition() const override { return position_; }
   bool seek(size_t position) override;
   bool move(long offset) override;
-  bool hasLength() const override;
+  bool hasLength() const override { return true; }
   size_t getLength() const override;
 
  private:

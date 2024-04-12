@@ -75,11 +75,6 @@ void StyleFetchedImage::Prefinalize() {
 }
 
 bool StyleFetchedImage::IsEqual(const StyleImage& other) const {
-  if (other.IsPendingImage()) {
-    // Ignore pending status when comparing; as long as the values are
-    // equal, the same, the images should be considered equal, too.
-    return base::ValuesEquivalent(CssValue(), other.CssValue());
-  }
   if (!other.IsImageResource()) {
     return false;
   }
@@ -113,15 +108,13 @@ ImageResourceContent* StyleFetchedImage::CachedImage() const {
 
 CSSValue* StyleFetchedImage::CssValue() const {
   return MakeGarbageCollected<CSSImageValue>(
-      CSSUrlData(AtomicString(url_.GetString()), url_, Referrer(),
-                 origin_clean_ ? OriginClean::kTrue : OriginClean::kFalse,
-                 is_ad_related_),
+      AtomicString(url_.GetString()), url_, Referrer(),
+      origin_clean_ ? OriginClean::kTrue : OriginClean::kFalse, is_ad_related_,
       const_cast<StyleFetchedImage*>(this));
 }
 
 CSSValue* StyleFetchedImage::ComputedCSSValue(const ComputedStyle&,
-                                              bool allow_visited_style,
-                                              CSSValuePhase value_phase) const {
+                                              bool allow_visited_style) const {
   return CssValue();
 }
 
@@ -150,63 +143,32 @@ bool StyleFetchedImage::IsAccessAllowed(String& failing_url) const {
   return false;
 }
 
-float StyleFetchedImage::ApplyImageResolution(float multiplier) const {
-  const Image& image = *image_->GetImage();
-  if (image.IsBitmapImage() && override_image_resolution_ > 0.0f) {
-    multiplier /= override_image_resolution_;
-  } else if (image_->HasDevicePixelRatioHeaderValue()) {
-    multiplier /= image_->DevicePixelRatioHeaderValue();
-  }
-  return multiplier;
-}
-
 gfx::SizeF StyleFetchedImage::ImageSize(
     float multiplier,
     const gfx::SizeF& default_object_size,
     RespectImageOrientationEnum respect_orientation) const {
-  multiplier = ApplyImageResolution(multiplier);
+  Image* image = image_->GetImage();
 
-  const Image& image = *image_->GetImage();
-  gfx::SizeF size;
-  if (auto* svg_image = DynamicTo<SVGImage>(image)) {
-    const gfx::SizeF unzoomed_default_object_size =
-        gfx::ScaleSize(default_object_size, 1 / multiplier);
-    size = svg_image->ConcreteObjectSize(unzoomed_default_object_size);
-  } else {
-    size = gfx::SizeF(
-        image.Size(ForceOrientationIfNecessary(respect_orientation)));
+  if (image->IsBitmapImage() && override_image_resolution_ > 0.0f) {
+    multiplier /= override_image_resolution_;
+  } else if (image_->HasDevicePixelRatioHeaderValue()) {
+    multiplier /= image_->DevicePixelRatioHeaderValue();
   }
+
+  if (auto* svg_image = DynamicTo<SVGImage>(image)) {
+    return ImageSizeForSVGImage(*svg_image, multiplier, default_object_size);
+  }
+
+  respect_orientation = ForceOrientationIfNecessary(respect_orientation);
+  gfx::SizeF size(image->Size(respect_orientation));
+
   return ApplyZoom(size, multiplier);
-}
-
-IntrinsicSizingInfo StyleFetchedImage::GetNaturalSizingInfo(
-    float multiplier,
-    RespectImageOrientationEnum respect_orientation) const {
-  const Image& image = *image_->GetImage();
-  IntrinsicSizingInfo intrinsic_sizing_info;
-  if (auto* svg_image = DynamicTo<SVGImage>(image)) {
-    svg_image->GetIntrinsicSizingInfo(intrinsic_sizing_info);
-  } else {
-    gfx::SizeF size(
-        image.Size(ForceOrientationIfNecessary(respect_orientation)));
-    intrinsic_sizing_info.size = size;
-    intrinsic_sizing_info.aspect_ratio = size;
-  }
-
-  multiplier = ApplyImageResolution(multiplier);
-  intrinsic_sizing_info.size =
-      ApplyZoom(intrinsic_sizing_info.size, multiplier);
-  return intrinsic_sizing_info;
 }
 
 bool StyleFetchedImage::HasIntrinsicSize() const {
   const Image& image = *image_->GetImage();
   if (auto* svg_image = DynamicTo<SVGImage>(image)) {
-    IntrinsicSizingInfo intrinsic_sizing_info;
-    if (!svg_image->GetIntrinsicSizingInfo(intrinsic_sizing_info)) {
-      return false;
-    }
-    return !intrinsic_sizing_info.IsNone();
+    return HasIntrinsicDimensionsForSVGImage(*svg_image);
   }
   return image.HasIntrinsicSize();
 }

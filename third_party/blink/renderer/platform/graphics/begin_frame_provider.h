@@ -9,6 +9,7 @@
 
 #include "base/notreached.h"
 #include "base/task/single_thread_task_runner.h"
+#include "components/power_scheduler/power_mode_voter.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -63,9 +64,6 @@ class PLATFORM_EXPORT BeginFrameProvider
       uint32_t sequence_id) final {
     NOTIMPLEMENTED();
   }
-  void OnSurfaceEvicted(const viz::LocalSurfaceId& local_surface_id) final {
-    NOTIMPLEMENTED();
-  }
 
   // viz::mojom::blink::EmbeddedFrameSinkClient implementation.
   void BindSurfaceEmbedder(
@@ -98,6 +96,8 @@ class PLATFORM_EXPORT BeginFrameProvider
   viz::FrameSinkId parent_frame_sink_id_;
   HeapMojoRemote<viz::mojom::blink::CompositorFrameSink> compositor_frame_sink_;
   Member<BeginFrameProviderClient> begin_frame_client_;
+
+  std::unique_ptr<power_scheduler::PowerModeVoter> animation_power_mode_voter_;
 };
 
 }  // namespace blink

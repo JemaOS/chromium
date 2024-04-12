@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_CANVAS_COLOR_PARAMS_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_CANVAS_COLOR_PARAMS_H_
 
+#include "components/viz/common/resources/resource_format.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
@@ -15,10 +16,6 @@
 namespace gfx {
 class ColorSpace;
 }
-
-namespace WTF {
-class String;
-}  // namespace WTF
 
 namespace blink {
 
@@ -51,8 +48,8 @@ class PLATFORM_EXPORT CanvasColorParams {
   CanvasPixelFormat PixelFormat() const { return pixel_format_; }
   OpacityMode GetOpacityMode() const { return opacity_mode_; }
 
-  WTF::String GetColorSpaceAsString() const;
-  WTF::String GetPixelFormatAsString() const;
+  String GetColorSpaceAsString() const;
+  String GetPixelFormatAsString() const;
 
   SkColorInfo GetSkColorInfo() const;
 

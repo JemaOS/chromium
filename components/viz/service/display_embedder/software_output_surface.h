@@ -54,7 +54,6 @@ class VIZ_SERVICE_EXPORT SoftwareOutputSurface : public OutputSurface {
 
  private:
   void SwapBuffersCallback(base::TimeTicks swap_time,
-                           int64_t swap_trace_id,
                            const gfx::Size& pixel_size);
   void UpdateVSyncParameters(base::TimeTicks timebase,
                              base::TimeDelta interval);

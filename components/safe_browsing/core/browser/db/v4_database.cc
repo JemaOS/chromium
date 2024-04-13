@@ -18,11 +18,10 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include "components/safe_browsing/core/common/features.h"
 #include "components/safe_browsing/core/common/proto/webui.pb.h"
 
 #if BUILDFLAG(IS_APPLE)
-#include "base/apple/backup_util.h"
+#include "base/mac/backup_util.h"
 #endif
 
 using base::TimeTicks;
@@ -57,23 +56,6 @@ std::vector<ListIdentifier> VerifyChecksums(
     }
   }
   return stores_to_reset;
-}
-
-// Returns hash prefixes matching the collection of stores.
-FullHashToStoreAndHashPrefixesMap CheckStores(
-    const std::vector<FullHashStr>& full_hashes,
-    std::vector<std::pair<ListIdentifier, V4Store*>> stores) {
-  FullHashToStoreAndHashPrefixesMap results;
-  for (const auto& store : stores) {
-    for (const auto& full_hash : full_hashes) {
-      HashPrefixStr hash_prefix =
-          store.second->GetMatchingHashPrefix(full_hash);
-      if (!hash_prefix.empty()) {
-        results[full_hash].emplace_back(store.first, hash_prefix);
-      }
-    }
-  }
-  return results;
 }
 
 }  // namespace
@@ -117,19 +99,14 @@ void V4Database::CreateOnTaskRunner(
   if (!g_store_factory.Get())
     g_store_factory.Get() = std::make_unique<V4StoreFactory>();
 
-  // TODO(crbug/1434333): This is being used temporarily to investigate why this
-  // NOTREACHED is being triggered.
-  base::File::Error error = base::File::FILE_OK;
-  bool success = base::CreateDirectoryAndGetError(base_path, &error);
-  base::UmaHistogramExactLinear(
-      "SafeBrowsing.V4Database.DirectoryCreationResult", -error,
-      -base::File::FILE_ERROR_MAX);
-  if (!success) {
-    return;
-  }
+  SCOPED_CRASH_KEY_STRING256("SafeBrowsing", "database-path",
+                             base_path.AsUTF8Unsafe());
+
+  if (!base::CreateDirectory(base_path))
+    NOTREACHED();
 
 #if BUILDFLAG(IS_APPLE)
-  base::apple::SetBackupExclusion(base_path);
+  base::mac::SetBackupExclusion(base_path);
 #endif
 
   std::unique_ptr<StoreMap> store_map = std::make_unique<StoreMap>();
@@ -140,8 +117,8 @@ void V4Database::CreateOnTaskRunner(
     }
 
     const base::FilePath store_path = base_path.AppendASCII(it.filename());
-    store_map->insert({it.list_id(), g_store_factory.Get()->CreateV4Store(
-                                         db_task_runner, store_path)});
+    (*store_map)[it.list_id()] =
+        g_store_factory.Get()->CreateV4Store(db_task_runner, store_path);
   }
 
   if (!g_db_factory.Get())
@@ -217,7 +194,7 @@ void V4Database::ApplyUpdate(
     ListIdentifier identifier(*response);
     StoreMap::const_iterator iter = store_map_->find(identifier);
     if (iter != store_map_->end()) {
-      const V4StorePtr& old_store = iter->second;
+      const std::unique_ptr<V4Store>& old_store = iter->second;
       if (old_store->state() != response->new_client_state()) {
         // A different state implies there are updates to process.
         pending_store_updates_++;
@@ -244,13 +221,13 @@ void V4Database::ApplyUpdate(
 }
 
 void V4Database::UpdatedStoreReady(ListIdentifier identifier,
-                                   V4StorePtr new_store) {
+                                   std::unique_ptr<V4Store> new_store) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sb_sequence_checker_);
   DCHECK(pending_store_updates_);
   if (new_store) {
-    if (auto it = store_map_->find(identifier); it != store_map_->end()) {
-      it->second.swap(new_store);
-    }
+    (*store_map_)[identifier].swap(new_store);
+    // |new_store| now is the store that needs to be destroyed on task runner.
+    V4Store::Destroy(std::move(new_store));
   }
 
   pending_store_updates_--;
@@ -292,33 +269,21 @@ bool V4Database::AreAllStoresAvailable(
 }
 
 void V4Database::GetStoresMatchingFullHash(
-    const std::vector<FullHashStr>& full_hashes,
+    const FullHashStr& full_hash,
     const StoresToCheck& stores_to_check,
-    base::OnceCallback<void(FullHashToStoreAndHashPrefixesMap)> callback) {
-  FullHashToStoreAndHashPrefixesMap results;
+    StoreAndHashPrefixes* matched_store_and_hash_prefixes) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sb_sequence_checker_);
-
-  std::vector<std::pair<ListIdentifier, V4Store*>> stores;
+  matched_store_and_hash_prefixes->clear();
   for (const ListIdentifier& identifier : stores_to_check) {
-    if (!IsStoreAvailable(identifier)) {
+    if (!IsStoreAvailable(identifier))
       continue;
-    }
     const auto& store_pair = store_map_->find(identifier);
     DCHECK(store_pair != store_map_->end());
-    stores.emplace_back(identifier, store_pair->second.get());
-  }
-
-  auto check_stores =
-      base::BindOnce(CheckStores, full_hashes, std::move(stores));
-
-  if (base::FeatureList::IsEnabled(kMmapSafeBrowsingDatabase) &&
-      kMmapSafeBrowsingDatabaseAsync.Get()) {
-    // The V4Stores ptrs are guaranteed to be valid because their deletion would
-    // be sequenced on the DB thread, after this posted task is serviced.
-    db_task_runner_->PostTaskAndReplyWithResult(
-        FROM_HERE, std::move(check_stores), std::move(callback));
-  } else {
-    std::move(callback).Run(std::move(check_stores).Run());
+    const std::unique_ptr<V4Store>& store = store_pair->second;
+    HashPrefixStr hash_prefix = store->GetMatchingHashPrefix(full_hash);
+    if (!hash_prefix.empty()) {
+      matched_store_and_hash_prefixes->emplace_back(identifier, hash_prefix);
+    }
   }
 }
 
@@ -388,24 +353,6 @@ void V4Database::RecordFileSizeHistograms() {
                              50);
 }
 
-HashPrefixMap::MigrateResult V4Database::GetMigrateResult() {
-  HashPrefixMap::MigrateResult final_result =
-      HashPrefixMap::MigrateResult::kUnknown;
-  for (const auto& store_map_iter : *store_map_) {
-    auto result = store_map_iter.second->migrate_result();
-    if (result == HashPrefixMap::MigrateResult::kFailure) {
-      return result;
-    }
-
-    if (final_result == HashPrefixMap::MigrateResult::kUnknown) {
-      final_result = result;
-    } else if (result != final_result) {
-      return HashPrefixMap::MigrateResult::kUnknown;
-    }
-  }
-  return final_result;
-}
-
 void V4Database::RecordDatabaseUpdateLatency() {
   if (!last_update_.is_null())
     UmaHistogramCustomTimes(kV4DatabaseUpdateLatency,
@@ -437,7 +384,7 @@ ListInfo::ListInfo(const bool fetch_updates,
       list_id_(list_id),
       sb_threat_type_(sb_threat_type) {
   DCHECK(!fetch_updates_ || !filename_.empty());
-  DCHECK_NE(SBThreatType::SB_THREAT_TYPE_SAFE, sb_threat_type_);
+  DCHECK_NE(SB_THREAT_TYPE_SAFE, sb_threat_type_);
 }
 
 ListInfo::~ListInfo() {}

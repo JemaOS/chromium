@@ -200,7 +200,8 @@ void ParallelDownloadJob::BuildParallelRequests() {
     return;
 
   ForkSubRequests(slices_to_download);
-
+  RecordParallelDownloadRequestCount(
+      static_cast<int>(slices_to_download.size()));
   requests_sent_ = true;
 }
 

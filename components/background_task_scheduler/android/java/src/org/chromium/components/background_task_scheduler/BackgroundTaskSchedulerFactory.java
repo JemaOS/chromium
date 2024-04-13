@@ -4,11 +4,14 @@
 
 package org.chromium.components.background_task_scheduler;
 
-import org.chromium.base.ResettersForTesting;
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.components.background_task_scheduler.internal.BackgroundTaskSchedulerFactoryInternal;
 import org.chromium.components.background_task_scheduler.internal.BackgroundTaskSchedulerUma;
 
-/** A factory for {@link BackgroundTaskScheduler}. */
+/**
+ * A factory for {@link BackgroundTaskScheduler}.
+ */
 public final class BackgroundTaskSchedulerFactory {
     private static BackgroundTaskSchedulerExternalUma sExternalUmaForTesting;
 
@@ -20,6 +23,7 @@ public final class BackgroundTaskSchedulerFactory {
         return BackgroundTaskSchedulerFactoryInternal.getScheduler();
     }
 
+    @VisibleForTesting
     public static void setSchedulerForTesting(BackgroundTaskScheduler backgroundTaskScheduler) {
         BackgroundTaskSchedulerFactoryInternal.setSchedulerForTesting(backgroundTaskScheduler);
     }
@@ -32,16 +36,17 @@ public final class BackgroundTaskSchedulerFactory {
         BackgroundTaskSchedulerFactoryInternal.setBackgroundTaskFactory(backgroundTaskFactory);
     }
 
-    /** @return The helper class to report UMA. */
+    /**
+     * @return The helper class to report UMA.
+     */
     public static BackgroundTaskSchedulerExternalUma getUmaReporter() {
-        return sExternalUmaForTesting == null
-                ? BackgroundTaskSchedulerUma.getInstance()
-                : sExternalUmaForTesting;
+        return sExternalUmaForTesting == null ? BackgroundTaskSchedulerUma.getInstance()
+                                              : sExternalUmaForTesting;
     }
 
+    @VisibleForTesting
     public static void setUmaReporterForTesting(BackgroundTaskSchedulerExternalUma externalUma) {
         sExternalUmaForTesting = externalUma;
-        ResettersForTesting.register(() -> sExternalUmaForTesting = null);
     }
 
     // Do not instantiate.

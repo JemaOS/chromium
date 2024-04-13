@@ -21,7 +21,7 @@ struct PageFormAnalyserLogger::LogEntry {
 
 PageFormAnalyserLogger::PageFormAnalyserLogger(blink::WebLocalFrame* frame)
     : frame_(frame) {}
-PageFormAnalyserLogger::~PageFormAnalyserLogger() = default;
+PageFormAnalyserLogger::~PageFormAnalyserLogger() {}
 
 void PageFormAnalyserLogger::Send(std::string message,
                                   ConsoleLevel level,

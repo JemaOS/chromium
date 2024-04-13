@@ -5,7 +5,7 @@
 #ifndef COMPONENTS_AUTOFILL_CONTENT_BROWSER_TEST_AUTOFILL_CLIENT_INJECTOR_H_
 #define COMPONENTS_AUTOFILL_CONTENT_BROWSER_TEST_AUTOFILL_CLIENT_INJECTOR_H_
 
-#include <concepts>
+#include <type_traits>
 
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "content/public/browser/web_contents.h"
@@ -58,9 +58,11 @@ class TestAutofillClientInjectorBase {
 //     TestAutofillClientInjector<TestContentAutofillClient>
 //         autofill_client_injector_;
 //   };
-template <std::derived_from<ContentAutofillClient> T>
+template <typename T>
 class TestAutofillClientInjector : public TestAutofillClientInjectorBase {
  public:
+  static_assert(std::is_base_of_v<ContentAutofillClient, T>);
+
   TestAutofillClientInjector() = default;
   TestAutofillClientInjector(const TestAutofillClientInjector&) = delete;
   TestAutofillClientInjector& operator=(const TestAutofillClientInjector&) =
@@ -90,4 +92,4 @@ class TestAutofillClientInjector : public TestAutofillClientInjectorBase {
 
 }  // namespace autofill
 
-#endif  // COMPONENTS_AUTOFILL_CONTENT_BROWSER_TEST_AUTOFILL_CLIENT_INJECTOR_H_
+#endif  // COMPONENTS_AUTOFILL_CONTENT_BROWSER_TEST_AUTOFILL_MANAGER_INJECTOR_H_

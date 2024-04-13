@@ -7,14 +7,13 @@
 #ifndef COMPONENTS_DOWNLOAD_PUBLIC_COMMON_DOWNLOAD_UKM_HELPER_H_
 #define COMPONENTS_DOWNLOAD_PUBLIC_COMMON_DOWNLOAD_UKM_HELPER_H_
 
-#include <optional>
-
 #include "components/download/public/common/download_content.h"
 #include "components/download/public/common/download_interrupt_reasons.h"
 #include "components/download/public/common/download_source.h"
 #include "components/download/public/common/download_stats.h"
 #include "components/download/public/common/resume_mode.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace download {
 
@@ -42,7 +41,7 @@ class COMPONENTS_DOWNLOAD_EXPORT DownloadUkmHelper {
 
   // Record when the download is interrupted.
   static void RecordDownloadInterrupted(int download_id,
-                                        std::optional<int> change_in_file_size,
+                                        absl::optional<int> change_in_file_size,
                                         DownloadInterruptReason reason,
                                         int resulting_file_size,
                                         const base::TimeDelta& time_since_start,

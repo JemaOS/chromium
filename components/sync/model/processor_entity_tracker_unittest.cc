@@ -79,34 +79,6 @@ UpdateResponseData GenerateUpdate(const std::string& storage_key,
   return update;
 }
 
-EntityData GenerateSharedTabGroupDataEntityData(
-    const std::string& storage_key,
-    const ClientTagHash& client_tag_hash,
-    const std::string& collaboration_id) {
-  CHECK(!collaboration_id.empty());
-  EntityData entity_data;
-  entity_data.client_tag_hash = client_tag_hash;
-  entity_data.creation_time = base::Time::Now();
-  entity_data.modification_time = entity_data.creation_time;
-  entity_data.name = storage_key;
-  entity_data.collaboration_id = collaboration_id;
-  // The tracker requires non-empty specifics with any data type.
-  entity_data.specifics.mutable_shared_tab_group_data();
-  return entity_data;
-}
-
-UpdateResponseData GenerateSharedTabGroupDataUpdate(
-    const std::string& storage_key,
-    const ClientTagHash& client_tag_hash,
-    const std::string& collaboration_id) {
-  auto entity =
-      std::make_unique<EntityData>(GenerateSharedTabGroupDataEntityData(
-          storage_key, client_tag_hash, collaboration_id));
-  UpdateResponseData update;
-  update.entity = std::move(*entity);
-  return update;
-}
-
 class ProcessorEntityTrackerTest : public ::testing::Test {
  public:
   ProcessorEntityTrackerTest()
@@ -353,6 +325,9 @@ TEST_F(ProcessorEntityTrackerTest, ShouldReturnLocalChanges) {
 }
 
 TEST_F(ProcessorEntityTrackerTest, ShouldUpdateSpecificsCacheOnLocalCreation) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kCacheBaseEntitySpecificsInMetadata);
+
   std::unique_ptr<EntityData> entity_data = std::make_unique<EntityData>(
       GenerateEntityData(kStorageKey1, kClientTagHash1));
   sync_pb::EntitySpecifics specifics_for_caching;
@@ -368,6 +343,9 @@ TEST_F(ProcessorEntityTrackerTest, ShouldUpdateSpecificsCacheOnLocalCreation) {
 }
 
 TEST_F(ProcessorEntityTrackerTest, ShouldUpdateSpecificsCacheOnRemoteCreation) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kCacheBaseEntitySpecificsInMetadata);
+
   sync_pb::EntitySpecifics specifics_for_caching;
   specifics_for_caching.mutable_preference()->set_name("name");
   specifics_for_caching.mutable_preference()->set_value("value");
@@ -380,26 +358,6 @@ TEST_F(ProcessorEntityTrackerTest, ShouldUpdateSpecificsCacheOnRemoteCreation) {
   EXPECT_EQ(
       specifics_for_caching.SerializeAsString(),
       entity->metadata().possibly_trimmed_base_specifics().SerializeAsString());
-}
-
-TEST_F(ProcessorEntityTrackerTest, ShouldRemoveInactiveCollaborations) {
-  entity_tracker_.AddRemote(
-      kStorageKey1,
-      GenerateSharedTabGroupDataUpdate(kStorageKey1, kClientTagHash1,
-                                       "active_collaboration"),
-      /*trimmed_specifics=*/{});
-  entity_tracker_.AddRemote(
-      kStorageKey2,
-      GenerateSharedTabGroupDataUpdate(kStorageKey2, kClientTagHash2,
-                                       "inactive_collaboration"),
-      /*trimmed_specifics=*/{});
-  ASSERT_EQ(entity_tracker_.size(), 2U);
-
-  std::vector<std::string> removed_storage_keys =
-      entity_tracker_.RemoveInactiveCollaborations({"active_collaboration"});
-
-  EXPECT_THAT(removed_storage_keys, ElementsAre(kStorageKey2));
-  EXPECT_EQ(entity_tracker_.size(), 1U);
 }
 
 }  // namespace

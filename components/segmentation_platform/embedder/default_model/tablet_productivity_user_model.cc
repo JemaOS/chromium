@@ -7,6 +7,7 @@
 #include <array>
 
 #include "base/feature_list.h"
+#include "base/metrics/field_trial_params.h"
 #include "base/task/sequenced_task_runner.h"
 #include "components/segmentation_platform/internal/metadata/metadata_writer.h"
 #include "components/segmentation_platform/public/config.h"
@@ -91,16 +92,15 @@ std::unique_ptr<Config> TabletProductivityUserModel::GetConfig() {
   config->segmentation_uma_name = kTabletProductivityUserUmaName;
   config->AddSegmentId(kTabletProductivityUserSegmentId,
                        std::make_unique<TabletProductivityUserModel>());
-  config->auto_execute_and_cache = true;
   config->is_boolean_segment = true;
   return config;
 }
 
 TabletProductivityUserModel::TabletProductivityUserModel()
-    : DefaultModelProvider(kTabletProductivityUserSegmentId) {}
+    : ModelProvider(kTabletProductivityUserSegmentId) {}
 
-std::unique_ptr<DefaultModelProvider::ModelConfig>
-TabletProductivityUserModel::GetModelConfig() {
+void TabletProductivityUserModel::InitAndFetchModel(
+    const ModelUpdatedCallback& model_updated_callback) {
   proto::SegmentationModelMetadata tablet_productivity_user_metadata;
   MetadataWriter writer(&tablet_productivity_user_metadata);
   writer.SetDefaultSegmentationMetadataConfig(
@@ -137,9 +137,11 @@ TabletProductivityUserModel::GetModelConfig() {
       /*top_label_to_ttl_list=*/{}, kDefaultTTLInDays,
       /*time_unit=*/proto::TimeUnit::DAY);
 
-  return std::make_unique<ModelConfig>(
-      std::move(tablet_productivity_user_metadata),
-      kTabletProductivityUserModelVersion);
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindRepeating(
+                     model_updated_callback, kTabletProductivityUserSegmentId,
+                     std::move(tablet_productivity_user_metadata),
+                     kTabletProductivityUserModelVersion));
 }
 
 void TabletProductivityUserModel::ExecuteModelWithInput(
@@ -149,7 +151,7 @@ void TabletProductivityUserModel::ExecuteModelWithInput(
   if (inputs.size() !=
       kTabletProductivityUserUMAFeatures.size() + 3 /*custom_inputs*/) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+        FROM_HERE, base::BindOnce(std::move(callback), absl::nullopt));
     return;
   }
 
@@ -202,6 +204,10 @@ void TabletProductivityUserModel::ExecuteModelWithInput(
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(std::move(callback), ModelProvider::Response(1, score)));
+}
+
+bool TabletProductivityUserModel::ModelAvailable() {
+  return true;
 }
 
 }  // namespace segmentation_platform

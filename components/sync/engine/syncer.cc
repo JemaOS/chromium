@@ -10,7 +10,6 @@
 #include "base/auto_reset.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/notreached.h"
 #include "base/trace_event/trace_event.h"
 #include "components/sync/base/features.h"
 #include "components/sync/base/model_type.h"
@@ -22,65 +21,12 @@
 #include "components/sync/engine/cycle/sync_cycle.h"
 #include "components/sync/engine/get_updates_delegate.h"
 #include "components/sync/engine/get_updates_processor.h"
-#include "components/sync/engine/sync_protocol_error.h"
-#include "components/sync/engine/syncer_error.h"
-#include "net/http/http_status_code.h"
+#include "components/sync/engine/net/server_connection_manager.h"
+#include "jemaos/switches/account/account_switches.h"
 
 namespace syncer {
 
 namespace {
-
-SyncerErrorValueForUma GetSyncerErrorValueForUma(
-    SyncProtocolErrorType protocol_error) {
-  switch (protocol_error) {
-    case SYNC_SUCCESS:
-      NOTREACHED();
-      return SyncerErrorValueForUma::kSyncerOk;
-    case NOT_MY_BIRTHDAY:
-      return SyncerErrorValueForUma::kServerReturnNotMyBirthday;
-    case THROTTLED:
-      return SyncerErrorValueForUma::kServerReturnThrottled;
-    case TRANSIENT_ERROR:
-      return SyncerErrorValueForUma::kServerReturnTransientError;
-    case MIGRATION_DONE:
-      return SyncerErrorValueForUma::kServerReturnMigrationDone;
-    case DISABLED_BY_ADMIN:
-      return SyncerErrorValueForUma::kServerReturnDisabledByAdmin;
-    case PARTIAL_FAILURE:
-      NOTREACHED();
-      return SyncerErrorValueForUma::kServerReturnUnknownError;
-    case CLIENT_DATA_OBSOLETE:
-      return SyncerErrorValueForUma::kServerReturnClientDataObsolete;
-    case ENCRYPTION_OBSOLETE:
-      return SyncerErrorValueForUma::kServerReturnClientDataObsolete;
-    case UNKNOWN_ERROR:
-      return SyncerErrorValueForUma::kServerReturnUnknownError;
-    case CONFLICT:
-      return SyncerErrorValueForUma::kServerReturnConflict;
-    case INVALID_MESSAGE:
-      return SyncerErrorValueForUma::kServerReturnUnknownError;
-  }
-  NOTREACHED_NORETURN();
-}
-
-SyncerErrorValueForUma GetSyncerErrorValueForUma(const SyncerError& error) {
-  switch (error.type()) {
-    case SyncerError::Type::kSuccess:
-      return SyncerErrorValueForUma::kSyncerOk;
-    case SyncerError::Type::kNetworkError:
-      return SyncerErrorValueForUma::kNetworkConnectionUnavailable;
-    case SyncerError::Type::kHttpError:
-      if (error.GetHttpErrorOrDie() == net::HTTP_UNAUTHORIZED) {
-        return SyncerErrorValueForUma::kSyncAuthError;
-      }
-      return SyncerErrorValueForUma::kSyncServerError;
-    case SyncerError::Type::kProtocolError:
-      return GetSyncerErrorValueForUma(error.GetProtocolErrorOrDie());
-    case SyncerError::Type::kProtocolViolationError:
-      return SyncerErrorValueForUma::kServerResponseValidationFailed;
-  }
-  NOTREACHED_NORETURN();
-}
 
 // Returns invalidation info after applying updates. This is used to drop
 // optimization flags if DeviceInfo has been just updated (and new subscriptions
@@ -105,7 +51,7 @@ void HandleCycleBegin(SyncCycle* cycle) {
 }  // namespace
 
 Syncer::Syncer(CancelationSignal* cancelation_signal)
-    : cancelation_signal_(cancelation_signal) {}
+    : cancelation_signal_(cancelation_signal), is_syncing_(false) {}
 
 Syncer::~Syncer() = default;
 
@@ -118,7 +64,8 @@ bool Syncer::NormalSyncShare(ModelTypeSet request_types,
                              SyncCycle* cycle) {
   base::AutoReset<bool> is_syncing(&is_syncing_, true);
   HandleCycleBegin(cycle);
-  if (nudge_tracker->IsGetUpdatesRequired(request_types)) {
+  if (nudge_tracker->IsGetUpdatesRequired(request_types) ||
+      jemaos::switches::IsJemaAccountEnabled()) {
     VLOG(1) << "Downloading types " << ModelTypeSetToDebugString(request_types);
     if (!DownloadAndApplyUpdates(&request_types, cycle,
                                  NormalGetUpdatesDelegate(*nudge_tracker))) {
@@ -140,7 +87,7 @@ bool Syncer::ConfigureSyncShare(const ModelTypeSet& request_types,
 
   // It is possible during configuration that datatypes get unregistered from
   // ModelTypeRegistry before scheduled configure sync cycle gets executed.
-  // This happens either because ModelTypeController::LoadModels fail and type
+  // This happens either because DataTypeController::LoadModels fail and type
   // need to be stopped or during shutdown when all datatypes are stopped. When
   // it happens we should adjust set of types to download to only include
   // registered types.
@@ -175,21 +122,19 @@ bool Syncer::DownloadAndApplyUpdates(ModelTypeSet* request_types,
       Difference(*request_types, requested_commit_only_types);
   GetUpdatesProcessor get_updates_processor(
       cycle->context()->model_type_registry()->update_handler_map(), delegate);
-  SyncerError download_result = SyncerError::Success();
+  SyncerError download_result;
   do {
     download_result =
         get_updates_processor.DownloadUpdates(&download_types, cycle);
-  } while (get_updates_processor.HasMoreUpdatesToDownload());
+  } while (download_result.value() == SyncerError::SERVER_MORE_TO_DOWNLOAD);
 
   // It is our responsibility to propagate the removal of types that occurred in
   // GetUpdatesProcessor::DownloadUpdates().
   *request_types = Union(download_types, requested_commit_only_types);
 
   // Exit without applying if we're shutting down or an error was detected.
-  if (download_result.type() != SyncerError::Type::kSuccess ||
-      ExitRequested()) {
+  if (download_result.value() != SyncerError::SYNCER_OK || ExitRequested())
     return false;
-  }
 
   {
     TRACE_EVENT0("sync", "ApplyUpdates");
@@ -220,12 +165,13 @@ SyncerError Syncer::BuildAndPostCommits(const ModelTypeSet& request_types,
   // errors from the ServerConnectionManager if an exist has been requested.
   // However, it doesn't hurt to check it anyway.
   while (!ExitRequested()) {
-    std::unique_ptr<Commit> commit = Commit::Init(
+    std::unique_ptr<Commit> commit(Commit::Init(
         cycle->context()->GetConnectedTypes(),
+        cycle->context()->proxy_tabs_datatype_enabled(),
         cycle->context()->max_commit_batch_size(),
         cycle->context()->account_name(), cycle->context()->cache_guid(),
         cycle->context()->cookie_jar_mismatch(), GetInvalidationInfo(cycle),
-        &commit_processor, cycle->context()->extensions_activity());
+        &commit_processor, cycle->context()->extensions_activity()));
     if (!commit) {
       break;
     }
@@ -233,21 +179,20 @@ SyncerError Syncer::BuildAndPostCommits(const ModelTypeSet& request_types,
     SyncerError error = commit->PostAndProcessResponse(
         nudge_tracker, cycle, cycle->mutable_status_controller(),
         cycle->context()->extensions_activity());
-    base::UmaHistogramEnumeration("Sync.CommitResponse",
-                                  GetSyncerErrorValueForUma(error));
+    base::UmaHistogramEnumeration("Sync.CommitResponse", error.value());
     for (ModelType type : commit->GetContributingDataTypes()) {
       const std::string kPrefix = "Sync.CommitResponse.";
       base::UmaHistogramEnumeration(kPrefix + ModelTypeToHistogramSuffix(type),
-                                    GetSyncerErrorValueForUma(error));
+                                    error.value());
     }
-    if (error.type() != SyncerError::Type::kSuccess) {
+    if (error.value() != SyncerError::SYNCER_OK) {
       return error;
     }
     nudge_tracker->RecordSuccessfulCommitMessage(
         commit->GetContributingDataTypes());
   }
 
-  return SyncerError::Success();
+  return SyncerError(SyncerError::SYNCER_OK);
 }
 
 bool Syncer::ExitRequested() {

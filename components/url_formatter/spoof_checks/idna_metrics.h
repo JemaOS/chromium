@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,4 +16,4 @@ enum class IDNA2008DeviationCharacter {
   kZeroWidthNonJoiner,
 };
 
-#endif  // COMPONENTS_URL_FORMATTER_SPOOF_CHECKS_IDNA_METRICS_H_
+#endif

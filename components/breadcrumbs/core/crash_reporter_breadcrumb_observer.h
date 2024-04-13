@@ -16,7 +16,7 @@
 namespace breadcrumbs {
 
 // Key for breadcrumbs attached to crash reports.
-inline constexpr char kBreadcrumbsProductDataKey[] = "breadcrumbs";
+extern const char kBreadcrumbsProductDataKey[];
 
 // Concatenates breadcrumbs from the BreadcrumbManager and sends the merged
 // string to the embedder's crash reporter (e.g., Crashpad, Breakpad) for

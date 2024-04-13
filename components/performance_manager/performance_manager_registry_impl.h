@@ -9,25 +9,20 @@
 
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
-#include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/sequence_checker.h"
-#include "components/performance_manager/browser_child_process_watcher.h"
 #include "components/performance_manager/embedder/performance_manager_registry.h"
 #include "components/performance_manager/owned_objects.h"
 #include "components/performance_manager/performance_manager_tab_helper.h"
 #include "components/performance_manager/process_node_source.h"
-#include "components/performance_manager/public/browser_child_process_host_id.h"
 #include "components/performance_manager/public/performance_manager_owned.h"
 #include "components/performance_manager/public/performance_manager_registered.h"
 #include "components/performance_manager/registered_objects.h"
 #include "components/performance_manager/render_process_user_data.h"
 #include "components/performance_manager/tab_helper_frame_node_source.h"
 #include "content/public/browser/render_process_host_creation_observer.h"
-#include "third_party/blink/public/common/tokens/tokens.h"
 
 namespace content {
-class BrowserContext;
 class RenderProcessHost;
 class WebContents;
 }  // namespace content
@@ -37,7 +32,6 @@ namespace performance_manager {
 class PerformanceManagerMainThreadMechanism;
 class PerformanceManagerMainThreadObserver;
 class ServiceWorkerContextAdapter;
-class WorkerNodeImpl;
 class WorkerWatcher;
 
 class PerformanceManagerRegistryImpl
@@ -111,19 +105,6 @@ class PerformanceManagerRegistryImpl
   void EnsureProcessNodeForRenderProcessHost(
       content::RenderProcessHost* render_process_host);
 
-  // Gets the ProcessNode for the browser process from the
-  // BrowserChildProcessWatcher.
-  ProcessNodeImpl* GetBrowserProcessNode();
-
-  // Gets the ProcessNode for the non-renderer child process with the given `id`
-  // from the BrowserChildProcessWatcher.
-  ProcessNodeImpl* GetBrowserChildProcessNode(BrowserChildProcessHostId id);
-
-  // Searches all WorkerWatchers for a WorkerNode matching the given `token`.
-  // Exposed so that accessors in performance_manager.h can look up WorkerNodes
-  // on the UI thread.
-  WorkerNodeImpl* FindWorkerNodeForToken(const blink::WorkerToken& token);
-
   size_t GetOwnedCountForTesting() const {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return pm_owned_.size();
@@ -134,30 +115,18 @@ class PerformanceManagerRegistryImpl
     return pm_registered_.size();
   }
 
-  // Returns the WorkerWatcher for `browser_context`, or nullptr if there is
-  // none. Tests can call methods on the WorkerWatcher to simulate workers.
-  WorkerWatcher* GetWorkerWatcherForTesting(
-      content::BrowserContext* browser_context);
-
  private:
-  friend class TestBrowserChildProcess;
-  friend void DeleteBrowserProcessNodeForTesting();
-
-  // Allow unit tests to register simulated child processes with
-  // BrowserChildProcessWatcher.
-  BrowserChildProcessWatcher& GetBrowserChildProcessWatcherForTesting();
+  SEQUENCE_CHECKER(sequence_checker_);
 
   // content::RenderProcessHostCreationObserver:
   void OnRenderProcessHostCreated(content::RenderProcessHost* host) override;
 
-  SEQUENCE_CHECKER(sequence_checker_);
-
   // Tracks WebContents and RenderProcessHost for which we have created user
   // data. Used to destroy all user data when the registry is destroyed.
-  base::flat_set<raw_ptr<content::WebContents, CtnExperimental>> web_contents_
+  base::flat_set<content::WebContents*> web_contents_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  base::flat_set<raw_ptr<content::RenderProcessHost, CtnExperimental>>
-      render_process_hosts_ GUARDED_BY_CONTEXT(sequence_checker_);
+  base::flat_set<content::RenderProcessHost*> render_process_hosts_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Maps each browser context to its ServiceWorkerContextAdapter.
   base::flat_map<content::BrowserContext*,
@@ -167,9 +136,6 @@ class PerformanceManagerRegistryImpl
   // Maps each browser context to its worker watcher.
   base::flat_map<content::BrowserContext*, std::unique_ptr<WorkerWatcher>>
       worker_watchers_ GUARDED_BY_CONTEXT(sequence_checker_);
-
-  BrowserChildProcessWatcher browser_child_process_watcher_
-      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Used by WorkerWatchers to access existing process nodes and frame
   // nodes.

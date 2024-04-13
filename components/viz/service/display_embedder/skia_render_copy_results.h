@@ -102,39 +102,6 @@ class CopyOutputResultSkiaRGBA : public CopyOutputResult {
   mutable bool bitmap_created_ = false;
 };
 
-// Context that is responsible for sending a CopyOutputResult once the GPU work
-// that populates the GpuMemoryBuffer has completed.
-class ReadbackContextRGBA {
- public:
-  ReadbackContextRGBA(base::WeakPtr<SkiaOutputSurfaceImplOnGpu> impl_on_gpu,
-                      std::unique_ptr<CopyOutputRequest> request,
-                      const gfx::Rect& result_rect,
-                      const gpu::Mailbox& mailbox,
-                      const gfx::ColorSpace& color_space);
-
-  // Will be called with `ReadbackContextRGBA*`:
-  static void OnMailboxReady(GrGpuFinishedContext context);
-
-  ~ReadbackContextRGBA();
-
- private:
-  void OnMailboxReadyInternal();
-
-  // Needed to notify `SkiaOutputSurfaceImplOnGpu` that readback has completed.
-  // GPU work is not a readback, but we rely on the same mechanism for nudging
-  // Skia to periodically check for asynchronous event completion.
-  base::WeakPtr<SkiaOutputSurfaceImplOnGpu> impl_on_gpu_;
-  // Request that we will send a response to:
-  std::unique_ptr<CopyOutputRequest> request_;
-
-  // Data needed to create a response to `request_`:
-  gfx::Rect result_rect_;
-  gpu::Mailbox mailbox_;
-  gfx::ColorSpace color_space_;
-
-  THREAD_CHECKER(thread_checker_);
-};
-
 class CopyOutputResultSkiaYUV : public CopyOutputResult {
  public:
   CopyOutputResultSkiaYUV(
@@ -211,9 +178,9 @@ struct NV12PlanePixelReadContext {
 
 // Context that is responsible for sending a CopyOutputResult once the GPU work
 // that populates the GpuMemoryBuffer for the NV12 planes has completed. It will
-// be notified by individual `NV12SingleMailboxReadyContext`s that the mailbox
-// has been populated, and once all mailboxes have been completed, it will send
-// the CopyOutputResult.
+// be notified by multiple `NV12SinglePlaneReadyContext`s that the plane has
+// been populated, and once all planes have been completed, it will send the
+// CopyOutputResult.
 class NV12PlanesReadyContext : public base::RefCounted<NV12PlanesReadyContext> {
  public:
   NV12PlanesReadyContext(
@@ -221,15 +188,14 @@ class NV12PlanesReadyContext : public base::RefCounted<NV12PlanesReadyContext> {
       std::unique_ptr<CopyOutputRequest> request,
       const gfx::Rect& result_rect,
       const std::array<gpu::MailboxHolder, CopyOutputResult::kMaxPlanes>&
-          mailbox_holders,
-      const gfx::ColorSpace& color_space,
-      bool is_multiplane);
+          plane_mailbox_holders,
+      const gfx::ColorSpace& color_space);
 
   NV12PlanesReadyContext(const NV12PlanesReadyContext& other) = delete;
   NV12PlanesReadyContext& operator=(const NV12PlanesReadyContext& other) =
       delete;
 
-  void OnMailboxReady();
+  void OnNV12PlaneReady();
 
  private:
   friend class base::RefCounted<NV12PlanesReadyContext>;
@@ -244,35 +210,33 @@ class NV12PlanesReadyContext : public base::RefCounted<NV12PlanesReadyContext> {
 
   // Data needed to create a response to `request_`:
   gfx::Rect result_rect_;
-  std::array<gpu::MailboxHolder, CopyOutputResult::kMaxPlanes> mailbox_holders_;
+  std::array<gpu::MailboxHolder, CopyOutputResult::kMaxPlanes>
+      plane_mailbox_holders_;
   gfx::ColorSpace color_space_;
 
-  // Number of mailboxes that still need to report completion, initialized
-  // either to 1 for multiplanar or to the number of NV12 planes otherwise.
-  int outstanding_mailboxes_ = 0;
-
-  bool is_multiplane_;
+  // Number of planes that still need to report completion:
+  int outstanding_planes_ = CopyOutputResult::kNV12MaxPlanes;
 
   THREAD_CHECKER(thread_checker_);
 };
 
 // Context that is responsible for notifying `NV12PlanesReadyContext` that GPU
 // side of populating the GpuMemoryBuffer has completed.
-struct NV12SingleMailboxReadyContext {
-  explicit NV12SingleMailboxReadyContext(
+struct NV12SinglePlaneReadyContext {
+  explicit NV12SinglePlaneReadyContext(
       scoped_refptr<NV12PlanesReadyContext> nv12_planes_flushed);
 
-  NV12SingleMailboxReadyContext(const NV12SingleMailboxReadyContext& other) =
+  NV12SinglePlaneReadyContext(const NV12SinglePlaneReadyContext& other) =
       delete;
-  NV12SingleMailboxReadyContext& operator=(
-      const NV12SingleMailboxReadyContext& other) = delete;
+  NV12SinglePlaneReadyContext& operator=(
+      const NV12SinglePlaneReadyContext& other) = delete;
 
-  ~NV12SingleMailboxReadyContext();
+  ~NV12SinglePlaneReadyContext();
 
-  // Will be called with `NV12SingleMailboxReadyContext*`:
-  static void OnMailboxReady(GrGpuFinishedContext context);
+  // Will be called with `NV12PlaneFlushedContext*`:
+  static void OnNV12PlaneReady(GrGpuFinishedContext context);
 
-  // Context to be notified that a mailbox has been populated.
+  // Context to be notified that a plane has been populated.
   scoped_refptr<NV12PlanesReadyContext> nv12_planes_flushed;
 };
 

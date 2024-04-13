@@ -46,14 +46,14 @@ class ForwardingModelTypeChangeProcessor : public ModelTypeChangeProcessor {
   std::string TrackedAccountId() const override;
   std::string TrackedCacheGuid() const override;
   void ReportError(const ModelError& error) override;
-  std::optional<ModelError> GetError() const override;
+  absl::optional<ModelError> GetError() const override;
   base::WeakPtr<ModelTypeControllerDelegate> GetControllerDelegate() override;
   const sync_pb::EntitySpecifics& GetPossiblyTrimmedRemoteSpecifics(
       const std::string& storage_key) const override;
   base::WeakPtr<ModelTypeChangeProcessor> GetWeakPtr() override;
 
  private:
-  const raw_ptr<ModelTypeChangeProcessor> other_;
+  raw_ptr<ModelTypeChangeProcessor> other_;
 };
 
 }  // namespace syncer

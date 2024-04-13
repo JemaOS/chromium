@@ -67,13 +67,23 @@ struct JsObject {
   std::unique_ptr<WebMessageHostFactory> factory;
 };
 
-DocumentStartJavaScript::DocumentStartJavaScript(
-    std::u16string script,
-    OriginMatcher allowed_origin_rules,
-    int32_t script_id)
-    : script_(std::move(script)),
-      allowed_origin_rules_(allowed_origin_rules),
-      script_id_(script_id) {}
+struct DocumentStartJavaScript {
+  DocumentStartJavaScript(std::u16string script,
+                          OriginMatcher allowed_origin_rules,
+                          int32_t script_id)
+      : script_(std::move(script)),
+        allowed_origin_rules_(allowed_origin_rules),
+        script_id_(script_id) {}
+
+  DocumentStartJavaScript(DocumentStartJavaScript&) = delete;
+  DocumentStartJavaScript& operator=(DocumentStartJavaScript&) = delete;
+  DocumentStartJavaScript(DocumentStartJavaScript&&) = default;
+  DocumentStartJavaScript& operator=(DocumentStartJavaScript&&) = default;
+
+  std::u16string script_;
+  OriginMatcher allowed_origin_rules_;
+  int32_t script_id_;
+};
 
 JsCommunicationHost::AddScriptResult::AddScriptResult() = default;
 JsCommunicationHost::AddScriptResult::AddScriptResult(
@@ -127,11 +137,6 @@ bool JsCommunicationHost::RemoveDocumentStartJavaScript(int script_id) {
     }
   }
   return false;
-}
-
-const std::vector<DocumentStartJavaScript>&
-JsCommunicationHost::GetDocumentStartJavascripts() const {
-  return scripts_;
 }
 
 std::u16string JsCommunicationHost::AddWebMessageHostFactory(
@@ -198,6 +203,22 @@ void JsCommunicationHost::RenderFrameCreated(
 void JsCommunicationHost::RenderFrameDeleted(
     content::RenderFrameHost* render_frame_host) {
   js_to_browser_messagings_.erase(render_frame_host->GetGlobalId());
+}
+
+void JsCommunicationHost::RenderFrameHostStateChanged(
+    content::RenderFrameHost* render_frame_host,
+    content::RenderFrameHost::LifecycleState old_state,
+    content::RenderFrameHost::LifecycleState new_state) {
+  auto iter = js_to_browser_messagings_.find(render_frame_host->GetGlobalId());
+  if (iter == js_to_browser_messagings_.end())
+    return;
+
+  using LifecycleState = content::RenderFrameHost::LifecycleState;
+  if (old_state == LifecycleState::kInBackForwardCache ||
+      new_state == LifecycleState::kInBackForwardCache) {
+    for (auto& js_to_browser_messaging_ptr : iter->second)
+      js_to_browser_messaging_ptr->OnBackForwardCacheStateChanged();
+  }
 }
 
 void JsCommunicationHost::NotifyFrameForAllDocumentStartJavaScripts(

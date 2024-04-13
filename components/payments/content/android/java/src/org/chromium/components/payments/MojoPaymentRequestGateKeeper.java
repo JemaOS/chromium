@@ -43,11 +43,8 @@ public class MojoPaymentRequestGateKeeper implements PaymentRequest {
 
     // Implement PaymentRequest:
     @Override
-    public void init(
-            PaymentRequestClient client,
-            PaymentMethodData[] methodData,
-            PaymentDetails details,
-            PaymentOptions options) {
+    public void init(PaymentRequestClient client, PaymentMethodData[] methodData,
+            PaymentDetails details, PaymentOptions options) {
         if (mPaymentRequestService != null) {
             mPaymentRequestService.abortForInvalidDataFromRenderer(
                     ErrorStrings.ATTEMPTED_INITIALIZATION_TWICE);
@@ -67,9 +64,9 @@ public class MojoPaymentRequestGateKeeper implements PaymentRequest {
 
     // Implement PaymentRequest:
     @Override
-    public void show(boolean waitForUpdatedDetails, boolean hadUserActivation) {
+    public void show(boolean waitForUpdatedDetails) {
         if (mPaymentRequestService == null) return;
-        mPaymentRequestService.show(waitForUpdatedDetails, hadUserActivation);
+        mPaymentRequestService.show(waitForUpdatedDetails);
     }
 
     // Implement PaymentRequest:

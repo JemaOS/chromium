@@ -17,7 +17,6 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/task/task_runner.h"
 #include "base/task/thread_pool.h"
-#include "base/types/expected.h"
 #include "components/reporting/encryption/primitives.h"
 #include "components/reporting/util/status.h"
 #include "components/reporting/util/statusor.h"
@@ -29,10 +28,10 @@ Encryptor::Handle::Handle(scoped_refptr<Encryptor> encryptor)
 
 Encryptor::Handle::~Handle() = default;
 
-void Encryptor::Handle::AddToRecord(std::string_view data,
+void Encryptor::Handle::AddToRecord(base::StringPiece data,
                                     base::OnceCallback<void(Status)> cb) {
   // Append new data to the record.
-  record_.append(data);
+  record_.append(data.data(), data.size());
   std::move(cb).Run(Status::StatusOK());
 }
 
@@ -50,18 +49,17 @@ void Encryptor::Handle::ProduceEncryptedRecord(
   const auto self_destruct = base::WrapUnique(this);
 
   // Validate and accept asymmetric peer key.
-  if (!asymmetric_key_result.has_value()) {
-    std::move(cb).Run(
-        base::unexpected(std::move(asymmetric_key_result).error()));
+  if (!asymmetric_key_result.ok()) {
+    std::move(cb).Run(asymmetric_key_result.status());
     return;
   }
-  const auto& asymmetric_key = asymmetric_key_result.value();
+  const auto& asymmetric_key = asymmetric_key_result.ValueOrDie();
   if (asymmetric_key.first.size() != kKeySize) {
-    std::move(cb).Run(base::unexpected(Status(
+    std::move(cb).Run(Status(
         error::INTERNAL,
         base::StrCat({"Asymmetric key size mismatch, expected=",
                       base::NumberToString(kKeySize), " actual=",
-                      base::NumberToString(asymmetric_key.first.size())}))));
+                      base::NumberToString(asymmetric_key.first.size())})));
     return;
   }
 
@@ -78,8 +76,8 @@ void Encryptor::Handle::ProduceEncryptedRecord(
   if (!ComputeSharedSecret(
           reinterpret_cast<const uint8_t*>(asymmetric_key.first.data()),
           out_shared_secret, out_generatet_public_value)) {
-    std::move(cb).Run(base::unexpected(
-        Status(error::DATA_LOSS, "Curve25519 shared secret not derived")));
+    std::move(cb).Run(
+        Status(error::DATA_LOSS, "Curve25519 shared secret not derived"));
     return;
   }
   encrypted_record.mutable_encryption_info()->mutable_encryption_key()->assign(
@@ -88,8 +86,8 @@ void Encryptor::Handle::ProduceEncryptedRecord(
   // Produce symmetric key from shared secret using HKDF.
   uint8_t out_symmetric_key[kKeySize];
   if (!ProduceSymmetricKey(out_shared_secret, out_symmetric_key)) {
-    std::move(cb).Run(base::unexpected(
-        Status(error::INTERNAL, "Symmetric key production failed")));
+    std::move(cb).Run(
+        Status(error::INTERNAL, "Symmetric key production failed"));
     return;
   }
 
@@ -98,8 +96,7 @@ void Encryptor::Handle::ProduceEncryptedRecord(
   if (!PerformSymmetricEncryption(
           out_symmetric_key, record_,
           encrypted_record.mutable_encrypted_wrapped_record())) {
-    std::move(cb).Run(base::unexpected(
-        Status(error::INTERNAL, "Symmetric encryption failed")));
+    std::move(cb).Run(Status(error::INTERNAL, "Symmetric encryption failed"));
     return;
   }
   record_.clear();  // Free unused memory.
@@ -118,7 +115,7 @@ Encryptor::Encryptor()
 Encryptor::~Encryptor() = default;
 
 void Encryptor::UpdateAsymmetricKey(
-    std::string_view new_public_key,
+    base::StringPiece new_public_key,
     PublicKeyId new_public_key_id,
     base::OnceCallback<void(Status)> response_cb) {
   if (new_public_key.empty()) {
@@ -131,7 +128,7 @@ void Encryptor::UpdateAsymmetricKey(
   asymmetric_key_sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
-          [](std::string_view new_public_key, PublicKeyId new_public_key_id,
+          [](base::StringPiece new_public_key, PublicKeyId new_public_key_id,
              scoped_refptr<Encryptor> encryptor) {
             encryptor->asymmetric_key_ =
                 std::make_pair(std::string(new_public_key), new_public_key_id);
@@ -159,6 +156,7 @@ void Encryptor::RetrieveAsymmetricKey(
              scoped_refptr<Encryptor> encryptor) {
             DCHECK_CALLED_ON_VALID_SEQUENCE(
                 encryptor->asymmetric_key_sequence_checker_);
+            StatusOr<std::pair<std::string, PublicKeyId>> response;
             // Schedule response on regular thread pool.
             base::ThreadPool::PostTask(
                 FROM_HERE,
@@ -166,13 +164,12 @@ void Encryptor::RetrieveAsymmetricKey(
                     [](base::OnceCallback<void(
                            StatusOr<std::pair<std::string, PublicKeyId>>)> cb,
                        StatusOr<std::pair<std::string, PublicKeyId>> response) {
-                      std::move(cb).Run(std::move(response));
+                      std::move(cb).Run(response);
                     },
                     std::move(cb),
                     !encryptor->asymmetric_key_.has_value()
-                        ? StatusOr<std::pair<std::string, PublicKeyId>>(
-                              base::unexpected(Status(
-                                  error::NOT_FOUND, "Asymmetric key not set")))
+                        ? StatusOr<std::pair<std::string, PublicKeyId>>(Status(
+                              error::NOT_FOUND, "Asymmetric key not set"))
                         : encryptor->asymmetric_key_.value()));
           },
           std::move(cb), base::WrapRefCounted(this)));

@@ -6,12 +6,8 @@
 #define COMPONENTS_SYNC_ENGINE_NIGORI_CRYPTOGRAPHER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <vector>
 
-#include "base/containers/span.h"
-#include "components/sync/engine/nigori/cross_user_sharing_public_private_key_pair.h"
 #include "components/sync/protocol/encryption.pb.h"
 
 namespace syncer {
@@ -50,22 +46,6 @@ class Cryptographer {
   // notably includes the case where CanDecrypt() would have returned false.
   virtual bool DecryptToString(const sync_pb::EncryptedData& encrypted,
                                std::string* decrypted) const = 0;
-
-  // Encrypts |plaintext| using Auth HPKE using |recipient_public_key|.
-  // Authentication is added with the current sender's authentication key.
-  // Empty optional is returned upon failure.
-  virtual std::optional<std::vector<uint8_t>> AuthEncryptForCrossUserSharing(
-      base::span<const uint8_t> plaintext,
-      base::span<const uint8_t> recipient_public_key) const = 0;
-
-  // Decrypts |encrypted_data| using Auth HPKE using the keys corresponding
-  // to |recipient_key_version| and authenticates that the sender actually used
-  // |sender_public_key| upon auth encryption.
-  // Empty optional is returned upon failure.
-  virtual std::optional<std::vector<uint8_t>> AuthDecryptForCrossUserSharing(
-      base::span<const uint8_t> encrypted_data,
-      base::span<const uint8_t> sender_public_key,
-      const uint32_t recipient_key_version) const = 0;
 
   // Convenience function to deal with protocol buffers. It uses EncryptString()
   // after serialization.

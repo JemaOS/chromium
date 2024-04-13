@@ -63,7 +63,6 @@ ContentTranslateDriver::ContentTranslateDriver(
     translate::TranslateModelService* translate_model_service)
     : content::WebContentsObserver(&web_contents),
       translate_manager_(nullptr),
-      is_otr_context_(web_contents.GetBrowserContext()->IsOffTheRecord()),
       max_reload_check_attempts_(kMaxTranslateLoadCheckAttempts),
       next_page_seq_no_(0),
       language_histogram_(url_language_histogram),
@@ -147,16 +146,16 @@ void ContentTranslateDriver::RevertTranslation(int page_seq_no) {
   it->second->RevertTranslation();
 }
 
-bool ContentTranslateDriver::IsIncognito() const {
-  return is_otr_context_;
+bool ContentTranslateDriver::IsIncognito() {
+  return web_contents()->GetBrowserContext()->IsOffTheRecord();
 }
 
 const std::string& ContentTranslateDriver::GetContentsMimeType() {
   return web_contents()->GetContentsMimeType();
 }
 
-const GURL& ContentTranslateDriver::GetLastCommittedURL() const {
-  return last_committed_url_;
+const GURL& ContentTranslateDriver::GetLastCommittedURL() {
+  return web_contents()->GetLastCommittedURL();
 }
 
 const GURL& ContentTranslateDriver::GetVisibleURL() {
@@ -167,11 +166,14 @@ ukm::SourceId ContentTranslateDriver::GetUkmSourceId() {
   return web_contents()->GetPrimaryMainFrame()->GetPageUkmSourceId();
 }
 
-bool ContentTranslateDriver::HasCurrentPage() const {
-  // TODO(crbug.com/524208): This method previously checked for the existence of
-  // GetLastCommittedEntry(), which always exists now. Check if this is true for
-  // other implementations and consider removing this method.
-  return true;
+bool ContentTranslateDriver::HasCurrentPage() {
+  // TODO(https://crbug.com/524208): This function used to check the existence
+  // of GetLastCommittedEntry(), which will always exist now. Consider removing
+  // this function, making the callers assume HasCurrentPage() is always true.
+  return !web_contents()
+              ->GetController()
+              .GetLastCommittedEntry()
+              ->IsInitialEntry();
 }
 
 void ContentTranslateDriver::OpenUrlInNewTab(const GURL& url) {
@@ -222,9 +224,8 @@ void ContentTranslateDriver::InitiateTranslationIfReload(
   }
 
   if (!translate_manager_->GetLanguageState()
-           ->page_level_translation_criteria_met()) {
+           ->page_level_translation_critiera_met())
     return;
-  }
 
   // Note that we delay it as the ordering of the processing of this callback
   // by WebContentsObservers is undefined and might result in the current
@@ -259,9 +260,6 @@ void ContentTranslateDriver::DidFinishNavigation(
     return;
   }
 
-  // Store the main frame committed URL.
-  last_committed_url_ = web_contents()->GetLastCommittedURL();
-
   InitiateTranslationIfReload(navigation_handle);
 
   if (navigation_handle->IsPrerenderedPageActivation()) {
@@ -279,7 +277,7 @@ void ContentTranslateDriver::DidFinishNavigation(
       navigation_handle->GetReloadType() != content::ReloadType::NONE ||
       navigation_handle->IsSameDocument();
 
-  const std::optional<url::Origin>& initiator_origin =
+  const absl::optional<url::Origin>& initiator_origin =
       navigation_handle->GetInitiatorOrigin();
 
   bool navigation_from_google =
@@ -311,7 +309,7 @@ void ContentTranslateDriver::AddReceiver(
 void ContentTranslateDriver::RegisterPage(
     mojo::PendingRemote<translate::mojom::TranslateAgent> translate_agent,
     const translate::LanguageDetectionDetails& details,
-    const bool page_level_translation_criteria_met) {
+    const bool page_level_translation_critiera_met) {
   base::TimeTicks language_determined_time = base::TimeTicks::Now();
   ReportLanguageDeterminedDuration(finish_navigation_time_,
                                    language_determined_time);
@@ -328,7 +326,7 @@ void ContentTranslateDriver::RegisterPage(
   translate_manager_->set_current_seq_no(next_page_seq_no_);
 
   translate_manager_->GetLanguageState()->LanguageDetermined(
-      details.adopted_language, page_level_translation_criteria_met);
+      details.adopted_language, page_level_translation_critiera_met);
 
   if (web_contents()) {
     translate_manager_->InitiateTranslation(details.adopted_language);

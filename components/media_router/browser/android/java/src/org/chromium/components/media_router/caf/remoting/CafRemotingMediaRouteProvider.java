@@ -5,6 +5,7 @@
 package org.chromium.components.media_router.caf.remoting;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.mediarouter.media.MediaRouter;
 
 import org.chromium.base.Log;
@@ -92,10 +93,12 @@ public class CafRemotingMediaRouteProvider extends CafBaseMediaRouteProvider {
         ((RemotingSessionController) controller).updateMediaSource(source);
     }
 
+    @VisibleForTesting
     protected Map<String, MediaRoute> getActiveRoutesForTesting() {
         return mRoutes;
     }
 
+    @VisibleForTesting
     protected void addRouteForTesting(
             MediaRoute route, String origin, int tabId, int nativeRequestId, boolean wasLaunched) {
         addRoute(route, origin, tabId, nativeRequestId, wasLaunched);

@@ -25,7 +25,7 @@ namespace feedui {
 class StreamUpdate;
 }  // namespace feedui
 namespace feed {
-class SurfaceRenderer;
+class FeedStreamSurface;
 class MetricsReporter;
 
 // Keeps the UI up to date by calling |FeedStreamSurface::StreamUpdate()|.
@@ -54,10 +54,9 @@ class SurfaceUpdater : public StreamModel::Observer,
 
   // StreamSurfaceSet::Observer.
   void SurfaceAdded(
-      SurfaceId surface_id,
-      SurfaceRenderer* renderer,
+      FeedStreamSurface* surface,
       feedwire::DiscoverLaunchResult loading_not_allowed_reason) override;
-  void SurfaceRemoved(SurfaceId surface_id) override;
+  void SurfaceRemoved(FeedStreamSurface* surface) override;
 
   // XsurfaceDatastoreDataReader::Observer.
   void DatastoreEntryUpdated(XsurfaceDatastoreDataReader* source,
@@ -104,8 +103,7 @@ class SurfaceUpdater : public StreamModel::Observer,
   void SendStreamUpdateIfNeeded();
   void SendStreamUpdate(
       const std::vector<std::string>& updated_shared_state_ids);
-  void SendUpdateToSurface(SurfaceId surface_id,
-                           SurfaceRenderer* surface,
+  void SendUpdateToSurface(FeedStreamSurface* surface,
                            const feedui::StreamUpdate& update);
   void InsertDatastoreEntry(const std::string& key, const std::string& value);
   void RemoveDatastoreEntry(const std::string& key);
@@ -132,12 +130,10 @@ class SurfaceUpdater : public StreamModel::Observer,
   base::flat_set<ContentRevision> sent_content_;
 
   // Owned by |FeedStream|. Null when the model is not loaded.
-  raw_ptr<StreamModel, DanglingUntriaged> model_ = nullptr;
+  raw_ptr<StreamModel> model_ = nullptr;
 
   LaunchReliabilityLogger launch_reliability_logger_;
   bool load_stream_started_ = false;
-
-  int current_load_more_indicator_id_ = 0;
 };
 }  // namespace feed
 

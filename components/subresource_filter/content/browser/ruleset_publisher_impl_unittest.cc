@@ -24,7 +24,6 @@
 #include "base/test/test_simple_task_runner.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/subresource_filter/content/browser/ruleset_service.h"
-#include "components/subresource_filter/core/browser/subresource_filter_constants.h"
 #include "components/subresource_filter/core/common/test_ruleset_creator.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/content_browser_client.h"
@@ -187,11 +186,9 @@ TEST_F(SubresourceFilterRulesetPublisherImplTest,
   // Create local state and save the ruleset version to emulate invariant that
   // the version of the last indexed ruleset is stored in the local state.
   TestingPrefServiceSimple prefs;
-  IndexedRulesetVersion::RegisterPrefs(prefs.registry(),
-                                       kSafeBrowsingFilterTag);
+  IndexedRulesetVersion::RegisterPrefs(prefs.registry());
   IndexedRulesetVersion current_version(
-      "1.2.3.4", IndexedRulesetVersion::CurrentFormatVersion(),
-      kSafeBrowsingFilterTag);
+      "1.2.3.4", IndexedRulesetVersion::CurrentFormatVersion());
   current_version.SaveToPrefs(&prefs);
 
   // Create ruleset data on a disk.
@@ -201,7 +198,8 @@ TEST_F(SubresourceFilterRulesetPublisherImplTest,
   ASSERT_EQ(RulesetService::IndexAndWriteRulesetResult::SUCCESS,
             RulesetService::WriteRuleset(version_dir_path,
                                          /* license_path =*/base::FilePath(),
-                                         ruleset.indexed.contents));
+                                         ruleset.indexed.contents.data(),
+                                         ruleset.indexed.contents.size()));
 
   // Create a ruleset service and its harness.
   scoped_refptr<base::TestSimpleTaskRunner> blocking_task_runner =

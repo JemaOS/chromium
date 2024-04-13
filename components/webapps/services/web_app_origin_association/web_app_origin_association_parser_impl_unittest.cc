@@ -8,7 +8,6 @@
 #include <string>
 #include <utility>
 
-#include "base/json/json_reader.h"
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -107,12 +106,7 @@ TEST_F(WebAppOriginAssociationParserImplTest,
   ASSERT_TRUE(!association);
   ASSERT_FALSE(errors.empty());
   ASSERT_EQ(1u, errors.size());
-  if (base::JSONReader::UsingRust()) {
-    EXPECT_EQ(errors[0]->message,
-              "EOF while parsing a list at line 1 column 5");
-  } else {
-    EXPECT_EQ(errors[0]->message, "Line: 1, column: 6, Syntax error.");
-  }
+  EXPECT_NE(std::string::npos, errors[0]->message.find("Line: 1, column: 6,"));
 
   histogram_tester_.ExpectBucketCount(
       kParseResultHistogram,

@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include "base/containers/span.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
@@ -28,6 +27,20 @@ constexpr uint32_t kSmallMaxStorageSize = 70u;
 constexpr uint32_t kLargeMaxStorageSize = 1000u;
 constexpr uint32_t kFullMaxStorageSize = 20000u;
 
+constexpr char kHexCharLookup[0x10] = {
+    '0', '1', '2', '3', '4', '5', '6', '7',
+    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+};
+
+std::string BytesToHexString(base::StringPiece bytes) {
+  std::string result;
+  for (char byte : bytes) {
+    result.push_back(kHexCharLookup[(byte >> 4) & 0xf]);
+    result.push_back(kHexCharLookup[byte & 0xf]);
+  }
+  return result;
+}
+
 class HealthModuleFilesTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -40,8 +53,7 @@ class HealthModuleFilesTest : public ::testing::Test {
         auto call = AddEnqueueRecordCall();
         *initial_health_data_.add_history() = call;
         ASSERT_TRUE(AppendLine(directory_.GetPath().AppendASCII(file_name),
-                               base::HexEncode(base::as_bytes(
-                                   base::make_span(call.SerializeAsString()))))
+                               BytesToHexString(call.SerializeAsString()))
                         .ok());
       }
     }
@@ -108,8 +120,7 @@ TEST_F(HealthModuleFilesTest, TestFullStorage) {
   ASSERT_TRUE(files != nullptr);
   for (int i = 0; i < 1000; i++) {
     auto call = AddEnqueueRecordCall();
-    ASSERT_OK(files->Write(base::HexEncode(
-        base::as_bytes(base::make_span(call.SerializeAsString())))));
+    ASSERT_OK(files->Write(BytesToHexString(call.SerializeAsString())));
     if (i + total_records_stored >= 1000) {
       *history.add_history() = call;
     }
@@ -127,10 +138,9 @@ TEST_F(HealthModuleFilesTest, NotEnoughStorage) {
   files->PopulateHistory(&history);
   ASSERT_THAT(history.history(), IsEmpty());
 
-  ASSERT_FALSE(files
-                   ->Write(base::HexEncode(base::as_bytes(base::make_span(
-                       AddEnqueueRecordCall().SerializeAsString()))))
-                   .ok());
+  ASSERT_FALSE(
+      files->Write(BytesToHexString(AddEnqueueRecordCall().SerializeAsString()))
+          .ok());
   files->PopulateHistory(&history);
   ASSERT_THAT(history.history(), IsEmpty());
 }
@@ -149,10 +159,7 @@ TEST_F(HealthModuleFilesTest, JustEnoughStorage) {
   history.mutable_history()->Clear();
   auto call = AddEnqueueRecordCall();
   *initial_health_data_.mutable_history(0) = call;
-  ASSERT_TRUE(files
-                  ->Write(base::HexEncode(base::as_bytes(
-                      base::make_span(call.SerializeAsString()))))
-                  .ok());
+  ASSERT_TRUE(files->Write(BytesToHexString(call.SerializeAsString())).ok());
   files->PopulateHistory(&history);
   EXPECT_THAT(history.SerializeAsString(),
               StrEq(initial_health_data_.SerializeAsString()));

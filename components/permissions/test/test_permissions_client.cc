@@ -6,7 +6,6 @@
 
 #include "components/content_settings/core/browser/cookie_settings.h"
 #include "components/permissions/permission_actions_history.h"
-#include "components/privacy_sandbox/tracking_protection_settings.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "content/public/browser/web_contents.h"
 
@@ -45,12 +44,6 @@ TestPermissionsClient::GetCookieSettings(
   return nullptr;
 }
 
-privacy_sandbox::TrackingProtectionSettings*
-TestPermissionsClient::GetTrackingProtectionSettings(
-    content::BrowserContext* browser_context) {
-  return nullptr;
-}
-
 bool TestPermissionsClient::IsSubresourceFilterActivated(
     content::BrowserContext* browser_context,
     const GURL& url) {
@@ -81,7 +74,6 @@ ObjectPermissionContextBase* TestPermissionsClient::GetChooserContext(
 }
 
 void TestPermissionsClient::GetUkmSourceId(
-    ContentSettingsType permission_type,
     content::BrowserContext* browser_context,
     content::WebContents* web_contents,
     const GURL& requesting_origin,
@@ -91,27 +83,8 @@ void TestPermissionsClient::GetUkmSourceId(
         web_contents->GetPrimaryMainFrame()->GetPageUkmSourceId();
     std::move(callback).Run(source_id);
   } else {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
   }
-}
-
-bool TestPermissionsClient::HasDevicePermission(
-    ContentSettingsType type) const {
-  return has_device_permission_;
-}
-
-bool TestPermissionsClient::CanRequestDevicePermission(
-    ContentSettingsType type) const {
-  return can_request_device_permission_;
-}
-
-void TestPermissionsClient::SetHasDevicePermission(bool has_device_permission) {
-  has_device_permission_ = has_device_permission;
-}
-
-void TestPermissionsClient::SetCanRequestDevicePermission(
-    bool can_request_device_permission) {
-  can_request_device_permission_ = can_request_device_permission;
 }
 
 }  // namespace permissions

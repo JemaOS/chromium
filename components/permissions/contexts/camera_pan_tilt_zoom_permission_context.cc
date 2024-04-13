@@ -55,23 +55,24 @@ CameraPanTiltZoomPermissionContext::~CameraPanTiltZoomPermissionContext() {
 }
 
 void CameraPanTiltZoomPermissionContext::RequestPermission(
-    PermissionRequestData request_data,
+    const permissions::PermissionRequestID& id,
+    const GURL& requesting_frame_origin,
+    bool user_gesture,
     permissions::BrowserPermissionCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   if (HasAvailableCameraPtzDevices()) {
-    PermissionContextBase::RequestPermission(std::move(request_data),
-                                             std::move(callback));
+    PermissionContextBase::RequestPermission(id, requesting_frame_origin,
+                                             user_gesture, std::move(callback));
     return;
   }
 
   // If there is no camera with PTZ capabilities, let's request a "regular"
   // camera permission instead.
   content::RenderFrameHost* render_frame_host =
-      content::RenderFrameHost::FromID(
-          request_data.id.global_render_frame_host_id());
+      content::RenderFrameHost::FromID(id.global_render_frame_host_id());
 
-  if (request_data.requesting_origin !=
+  if (requesting_frame_origin !=
       render_frame_host->GetLastCommittedOrigin().GetURL()) {
     std::move(callback).Run(CONTENT_SETTING_BLOCK);
     return;
@@ -79,9 +80,7 @@ void CameraPanTiltZoomPermissionContext::RequestPermission(
   render_frame_host->GetBrowserContext()
       ->GetPermissionController()
       ->RequestPermissionFromCurrentDocument(
-          render_frame_host,
-          content::PermissionRequestDescription(
-              blink::PermissionType::VIDEO_CAPTURE, request_data.user_gesture),
+          blink::PermissionType::VIDEO_CAPTURE, render_frame_host, user_gesture,
           base::BindOnce(&CallbackWrapper, std::move(callback)));
 }
 

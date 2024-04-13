@@ -27,13 +27,16 @@ import org.chromium.components.browser_ui.widget.gesture.SwipeGestureListener.Sw
 import java.util.ArrayList;
 import java.util.List;
 
-/** The Unittest of {@link SwipeGestureListener}. */
+/**
+ * The Unittest of {@link SwipeGestureListener}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class SwipeGestureListenerTest {
     private SwipeGestureListener mListener;
 
-    @Mock private SwipeHandler mHandler;
+    @Mock
+    private SwipeHandler mHandler;
 
     @Before
     public void setUp() {
@@ -75,8 +78,8 @@ public class SwipeGestureListenerTest {
             mListener.onTouchEvent(event);
         }
         ArgumentCaptor<MotionEvent> argumentCaptor = ArgumentCaptor.forClass(MotionEvent.class);
-        Mockito.verify(mHandler)
-                .onSwipeStarted(Mockito.eq(expectedDirection), argumentCaptor.capture());
+        Mockito.verify(mHandler).onSwipeStarted(
+                Mockito.eq(expectedDirection), argumentCaptor.capture());
         boolean found = false;
         for (MotionEvent event : eventStream) {
             if (Math.abs(event.getRawX() - argumentCaptor.getValue().getRawX()) < 0.1) {
@@ -92,23 +95,11 @@ public class SwipeGestureListenerTest {
         List<MotionEvent> list = new ArrayList<>();
         list.add(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, startX, startY, 0));
         for (int i = 1; i < count - 1; i++) {
-            list.add(
-                    MotionEvent.obtain(
-                            0,
-                            0,
-                            MotionEvent.ACTION_MOVE,
-                            startX + i * offsetX,
-                            startY + i * offSetY,
-                            0));
+            list.add(MotionEvent.obtain(
+                    0, 0, MotionEvent.ACTION_MOVE, startX + i * offsetX, startY + i * offSetY, 0));
         }
-        list.add(
-                MotionEvent.obtain(
-                        0,
-                        0,
-                        MotionEvent.ACTION_UP,
-                        startX + (count - 1) * offsetX,
-                        startY + (count - 1) * offSetY,
-                        0));
+        list.add(MotionEvent.obtain(0, 0, MotionEvent.ACTION_UP, startX + (count - 1) * offsetX,
+                startY + (count - 1) * offSetY, 0));
         return list;
     }
 }

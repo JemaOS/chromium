@@ -8,7 +8,9 @@ import androidx.annotation.Nullable;
 
 import org.chromium.base.Log;
 
-/** This class represents the supported delegations of a service worker based payment app. */
+/**
+ * This class represents the supported delegations of a service worker based payment app.
+ */
 public class SupportedDelegations {
     private static final String TAG = "SupportedDelegations";
     private final boolean mShippingAddress;
@@ -23,7 +25,6 @@ public class SupportedDelegations {
         mPayerPhone = payerPhone;
         mPayerEmail = payerEmail;
     }
-
     public SupportedDelegations() {
         mShippingAddress = false;
         mPayerName = false;
@@ -70,11 +71,10 @@ public class SupportedDelegations {
         // At most check the first 4 elements since there are only 4 different valid delegation
         // types.
         final int cappedArraySize =
-                Math.min(supportedDelegationsNames.length, /* MAX_DELEGATION_SIZE= */ 4);
+                Math.min(supportedDelegationsNames.length, /*MAX_DELEGATION_SIZE =*/4);
         for (int i = 0; i < cappedArraySize; i++) {
             if (supportedDelegationsNames[i] == null) {
-                Log.e(
-                        TAG,
+                Log.e(TAG,
                         "null is an invalid delegation value. Only [\"shippingAddress\", "
                                 + "\"payerName\", \"payerPhone\", \"payerEmail\"] values "
                                 + "are possible.");
@@ -87,8 +87,7 @@ public class SupportedDelegations {
             } else if (supportedDelegationsNames[i].equals("payerEmail")) {
                 payerEmail = true;
             } else {
-                Log.e(
-                        TAG,
+                Log.e(TAG,
                         "\"%s\" is an invalid delegation value. Only [\"shippingAddress\", "
                                 + "\"payerName\", \"payerPhone\", \"payerEmail\"] values are "
                                 + "possible.",

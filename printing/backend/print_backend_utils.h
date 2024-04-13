@@ -5,9 +5,8 @@
 #ifndef PRINTING_BACKEND_PRINT_BACKEND_UTILS_H_
 #define PRINTING_BACKEND_PRINT_BACKEND_UTILS_H_
 
-#include <string_view>
-
 #include "base/component_export.h"
+#include "base/strings/string_piece.h"
 #include "printing/buildflags/buildflags.h"
 
 #if BUILDFLAG(USE_CUPS)
@@ -31,29 +30,21 @@ enum class Unit {
 // name nor the dimension, or if `value` contains a prefix of
 // media sizes not meant for users' eyes.
 COMPONENT_EXPORT(PRINT_BACKEND)
-gfx::Size ParsePaperSize(std::string_view value);
+gfx::Size ParsePaperSize(base::StringPiece value);
 
 #if BUILDFLAG(USE_CUPS)
-// Calculates a paper's printable area in microns from its size in microns and
-// its four margins in PWG units.
+// Parses the media name expressed by `value` into a Paper. Returns an
+// empty Paper if `value` does not contain the display name nor the dimension,
+// `value` contains a prefix of media sizes not meant for users' eyes, or if the
+// paper size is empty.
+// `margins` is used to calculate the Paper's printable area.
+// We don't handle l10n here. We do populate the display_name member with the
+// prettified vendor ID, but fully expect the caller to clobber this if a better
+// localization exists.
 COMPONENT_EXPORT(PRINT_BACKEND)
-gfx::Rect PrintableAreaFromSizeAndPwgMargins(const gfx::Size& size_um,
-                                             int bottom_pwg,
-                                             int left_pwg,
-                                             int right_pwg,
-                                             int top_pwg);
-
-// Calculates a paper's four margins in PWG units from its size and printable
-// area in microns. Since the size and printable area were converted from PWG
-// units in the first place, the margins in PWG units can be reconstructed
-// losslessly.
-COMPONENT_EXPORT(PRINT_BACKEND)
-void PwgMarginsFromSizeAndPrintableArea(const gfx::Size& size_um,
-                                        const gfx::Rect& printable_area_um,
-                                        int* bottom_pwg,
-                                        int* left_pwg,
-                                        int* right_pwg,
-                                        int* top_pwg);
+PrinterSemanticCapsAndDefaults::Paper ParsePaper(
+    base::StringPiece value,
+    const CupsPrinter::CupsMediaMargins& margins);
 #endif  // BUILDFLAG(USE_CUPS)
 
 }  // namespace printing

@@ -6,7 +6,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/memory/raw_ptr.h"
@@ -23,6 +22,7 @@
 #include "components/viz/test/surface_id_allocator_set.h"
 #include "components/viz/test/test_latest_local_surface_id_lookup_delegate.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace viz {
 namespace {
@@ -1167,7 +1167,7 @@ TEST_F(HitTestAggregatorTest, HitTestDataNotUpdated) {
   // We did not update the hit-test data. Expect the index from Aggregator /
   // Manager to remain unchanged.
   support()->SubmitCompositorFrame(surface_id.local_surface_id(),
-                                   MakeDefaultCompositorFrame(), std::nullopt);
+                                   MakeDefaultCompositorFrame(), absl::nullopt);
   aggregator->Aggregate(surface_id);
   EXPECT_EQ(last_index, aggregator->GetLastSubmitHitTestRegionListIndex());
 

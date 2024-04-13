@@ -150,6 +150,10 @@ const re2::RE2* GetVisitCheckoutPattern(const GURL& url) {
   return checkout_regex_map->at(domain).get();
 }
 
+bool PartialMatch(base::StringPiece str, const re2::RE2& re) {
+  return RE2::PartialMatch(re2::StringPiece(str.data(), str.size()), re);
+}
+
 std::string CanonicalURL(const GURL& url) {
   return base::JoinString({url.scheme_piece(), "://", url.host_piece(),
                            url.path_piece().substr(0, kLengthLimit)},
@@ -162,14 +166,14 @@ bool IsVisitCart(const GURL& url) {
   auto* pattern = GetVisitCartPattern(url);
   if (!pattern)
     return false;
-  return RE2::PartialMatch(CanonicalURL(url).substr(0, kLengthLimit), *pattern);
+  return PartialMatch(CanonicalURL(url).substr(0, kLengthLimit), *pattern);
 }
 
 bool IsVisitCheckout(const GURL& url) {
   auto* pattern = GetVisitCheckoutPattern(url);
   if (!pattern)
     return false;
-  return RE2::PartialMatch(url.spec().substr(0, kLengthLimit), *pattern);
+  return PartialMatch(url.spec().substr(0, kLengthLimit), *pattern);
 }
 
 bool IsAddToCartButtonSpec(int height, int width) {
@@ -184,6 +188,8 @@ bool IsAddToCartButtonSpec(int height, int width) {
 }
 
 bool IsAddToCartButtonTag(const std::string& tag) {
+  static re2::RE2::Options options;
+  options.set_case_sensitive(false);
   static base::NoDestructor<std::set<std::string>> set([] {
     std::vector<std::string> tags =
         base::SplitString(commerce::kAddToCartButtonTagPattern.Get(), ",",
@@ -200,7 +206,7 @@ bool IsAddToCartButtonText(const std::string& text) {
   options.set_case_sensitive(false);
   static base::NoDestructor<re2::RE2> instance(
       commerce::kAddToCartButtonTextPattern.Get(), options);
-  return RE2::PartialMatch(text.substr(0, kLengthLimit), *instance);
+  return PartialMatch(text.substr(0, kLengthLimit), *instance);
 }
 
 bool ShouldUseDOMBasedHeuristics(const GURL& url) {
@@ -211,7 +217,7 @@ bool ShouldUseDOMBasedHeuristics(const GURL& url) {
   options.set_case_sensitive(false);
   static base::NoDestructor<re2::RE2> instance(
       commerce::kSkipHeuristicsDomainPattern.Get(), options);
-  return !RE2::PartialMatch(eTLDPlusOne(url), *instance);
+  return !PartialMatch(eTLDPlusOne(url), *instance);
 }
 
 }  // namespace commerce_heuristics

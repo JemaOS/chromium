@@ -15,7 +15,7 @@ namespace signin {
 struct AccountsInCookieJarInfo {
   // True if the accounts info from cookie is fresh and does not need to be
   // updated.
-  bool accounts_are_fresh = true;
+  bool accounts_are_fresh;
 
   // The current list of signed in accounts from the cookie jar.
   std::vector<gaia::ListedAccount> signed_in_accounts;

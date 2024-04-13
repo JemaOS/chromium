@@ -17,7 +17,8 @@ namespace variations {
 // on-device search suggestions provider, if that provider is in a non-default
 // state. It also removes this header on redirect away from Google domains.
 class COMPONENT_EXPORT(OMNIBOX_HTTP_HEADERS) OmniboxURLLoaderThrottle
-    : public blink::URLLoaderThrottle {
+    : public blink::URLLoaderThrottle,
+      public base::SupportsWeakPtr<OmniboxURLLoaderThrottle> {
  public:
   OmniboxURLLoaderThrottle();
   ~OmniboxURLLoaderThrottle() override;

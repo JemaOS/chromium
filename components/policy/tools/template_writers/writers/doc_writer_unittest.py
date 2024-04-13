@@ -81,6 +81,9 @@ class DocWriterUnittest(writer_unittest_common.WriterUnittestCommon):
         'doc_win_example_value': {
             'text': '_test_example_value_win'
         },
+        'doc_chrome_os_example_value': {
+            'text': '_test_example_value_chrome_os'
+        },
         'doc_feature_dynamic_refresh': {
             'text': '_test_feature_dynamic_refresh'
         },
@@ -131,6 +134,9 @@ class DocWriterUnittest(writer_unittest_common.WriterUnittestCommon):
         },
         'doc_oma_uri': {
             'text': '_test_oma_uri'
+        },
+        'doc_chrome_os_reg_loc': {
+            'text': '_test_chrome_os_reg_loc'
         },
         'doc_bla': {
             'text': '_test_bla'
@@ -375,6 +381,11 @@ See <a href="http://policy-explanation.example.com">http://policy-explanation.ex
         '<dd style="style_.monospace;style_.pre-wrap;">'
         'MockKey\\PolicyName\\1 = &quot;Foo&quot;\n'
         'MockKey\\PolicyName\\2 = &quot;Bar&quot;'
+        '</dd>'
+        '<dt>_test_example_value_chrome_os</dt>'
+        '<dd style="style_.monospace;style_.pre-wrap;">'
+        'MockKeyCrOS\\PolicyName\\1 = &quot;Foo&quot;\n'
+        'MockKeyCrOS\\PolicyName\\2 = &quot;Bar&quot;'
         '</dd>'
         '<dt>Android/Linux:</dt>'
         '<dd style="style_.monospace;style_.pre-wrap;">'
@@ -644,6 +655,8 @@ See <a href="http://policy-explanation.example.com">http://policy-explanation.ex
         '<dd style="style_.monospace;">MockKey\TestPolicyName</dd>'
         '<dt style="style_dt;">_test_oma_uri</dt>'
         '<dd style="style_.monospace;">.\\Device\\Vendor\\MSFT\\Policy\\Config\\Chrome~Policy~chromium\\TestPolicyName</dd>'
+        '<dt style="style_dt;">_test_chrome_os_reg_loc</dt>'
+        '<dd style="style_.monospace;">MockKeyCrOS\TestPolicyName</dd>'
         '<dt style="style_dt;">_test_mac_linux_pref_name</dt>'
         '<dd style="style_.monospace;">TestPolicyName</dd>'
         '<dt style="style_dt;">_test_android_restriction_name</dt>'
@@ -781,6 +794,8 @@ See <a href="http://policy-explanation.example.com">http://policy-explanation.ex
         '<dd style="style_.monospace;">MockKey\TestPolicyName</dd>'
         '<dt style="style_dt;">_test_oma_uri</dt>'
         '<dd style="style_.monospace;">.\\Device\\Vendor\\MSFT\\Policy\\Config\\Chrome~Policy~chromium\\TestPolicyName</dd>'
+        '<dt style="style_dt;">_test_chrome_os_reg_loc</dt>'
+        '<dd style="style_.monospace;">MockKeyCrOS\TestPolicyName</dd>'
         '<dt style="style_dt;">_test_mac_linux_pref_name</dt>'
         '<dd style="style_.monospace;">TestPolicyName</dd>'
         '<dt style="style_dt;">_test_supported_on</dt>'
@@ -812,6 +827,12 @@ See <a href="http://policy-explanation.example.com">http://policy-explanation.ex
         '<dt>_test_example_value_win</dt>'
         '<dd style="style_.monospace;style_.pre-wrap;">'
         'MockKey\TestPolicyName = {\n'
+        '  &quot;foo&quot;: 123\n'
+        '}'
+        '</dd>'
+        '<dt>_test_example_value_chrome_os</dt>'
+        '<dd style="style_.monospace;style_.pre-wrap;">'
+        'MockKeyCrOS\TestPolicyName = {\n'
         '  &quot;foo&quot;: 123\n'
         '}'
         '</dd>'
@@ -1011,6 +1032,8 @@ See <a href="http://policy-explanation.example.com">http://policy-explanation.ex
         '<dd style="style_.monospace;">MockKeyRec\TestPolicyName</dd>'
         '<dt style="style_dt;">_test_oma_uri</dt>'
         '<dd style="style_.monospace;">.\\Device\\Vendor\\MSFT\\Policy\\Config\\Chrome~Policy~chromium\\TestPolicyName</dd>'
+        '<dt style="style_dt;">_test_chrome_os_reg_loc</dt>'
+        '<dd style="style_.monospace;">MockKeyCrOSRec\TestPolicyName</dd>'
         '<dt style="style_dt;">_test_mac_linux_pref_name</dt>'
         '<dd style="style_.monospace;">TestPolicyName</dd>'
         '<dt style="style_dt;">_test_android_restriction_name</dt>'
@@ -1117,6 +1140,8 @@ See <a href="http://policy-explanation.example.com">http://policy-explanation.ex
         '<dd style="style_.monospace;">MockKey\\PolicyName</dd>'
         '<dt style="style_dt;">_test_oma_uri</dt>'
         '<dd style="style_.monospace;">.\\Device\\Vendor\\MSFT\\Policy\\Config\\Chrome~Policy~chromium\\PolicyName</dd>'
+        '<dt style="style_dt;">_test_chrome_os_reg_loc</dt>'
+        '<dd style="style_.monospace;">MockKeyCrOS\\PolicyName</dd>'
         '<dt style="style_dt;">_test_mac_linux_pref_name</dt>'
         '<dd style="style_.monospace;">PolicyName</dd>'
         '<dt style="style_dt;">_test_supported_on</dt>'
@@ -1204,6 +1229,8 @@ See <a href="http://policy-explanation.example.com">http://policy-explanation.ex
         '<dd style="style_.monospace;">MockKey\\PolicyName</dd>'
         '<dt style="style_dt;">_test_oma_uri</dt>'
         '<dd style="style_.monospace;">.\\Device\\Vendor\\MSFT\\Policy\\Config\\Chrome~Policy~chromium\\PolicyName</dd>'
+        '<dt style="style_dt;">_test_chrome_os_reg_loc</dt>'
+        '<dd style="style_.monospace;">MockKeyCrOS\\PolicyName</dd>'
         '<dt style="style_dt;">_test_mac_linux_pref_name</dt>'
         '<dd style="style_.monospace;">PolicyName</dd>'
         '<dt style="style_dt;">_test_supported_on</dt>'
@@ -1703,6 +1730,105 @@ See <a href="http://policy-explanation.example.com">http://policy-explanation.ex
     self.assertEquals(
         self.doc_root.toxml(),
         '<root><p>Paragraph 1</p><p>Paragraph 2</p><p>Paragraph 3</p></root>')
+
+  def testGoogleCloudChromeOsPolicies(self):
+    # Tests whether ChromeOS policies with management type 'google_cloud'
+    # don't print example values etc. since they are managed through Google's
+    # Admin console, not Active Directory GPO.
+    policy = {
+        'name':
+        'PolicyName',
+        'caption':
+        'PolicyCaption',
+        'desc':
+        'PolicyDesc',
+        'type':
+        'int',
+        'features': {},
+        'example_value':
+        42,
+        'supported_on': [{
+            'product': 'chrome_os',
+            'platform': 'chrome_os',
+            'since_version': '8',
+            'until_version': '',
+        }],
+        'supported_chrome_os_management': ['google_cloud']
+    }
+    self.writer._AddPolicySection(self.doc_root, policy)
+    self.assertEquals(
+        self.doc_root.toxml(), '<root>'
+        '<div style="margin-left: 0px">'
+        '<h3><a name="PolicyName"/>PolicyName</h3>'
+        '<span>PolicyCaption</span>'
+        '<dl>'
+        '<dt style="style_dt;">_test_data_type</dt>'
+        '<dd>Integer</dd>'
+        '<dt style="style_dt;">_test_supported_on</dt>'
+        '<dd>'
+        '<ul style="style_ul;">'
+        '<li>ChromeOS (ChromeOS) ..8..</li>'
+        '</ul>'
+        '</dd>'
+        '<dt style="style_dt;">_test_supported_features</dt>'
+        '<dd></dd>'
+        '<dt style="style_dt;">_test_description</dt>'
+        '<dd><p>PolicyDesc</p></dd>'
+        '</dl>'
+        '<a href="#top">_test_back_to_top</a>'
+        '</div>'
+        '</root>')
+
+  def testActiveDirectoryChromeOsPolicies(self):
+    # Tests whether ChromeOS policies with management type 'active_directory'
+    # print example values etc.
+    policy = {
+        'name':
+        'PolicyName',
+        'caption':
+        'PolicyCaption',
+        'desc':
+        'PolicyDesc',
+        'type':
+        'int',
+        'features': {},
+        'example_value':
+        42,
+        'supported_on': [{
+            'product': 'chrome_os',
+            'platform': 'chrome_os',
+            'since_version': '8',
+            'until_version': '',
+        }],
+        'supported_chrome_os_management': ['active_directory']
+    }
+    self.writer._AddPolicySection(self.doc_root, policy)
+    self.assertEquals(
+        self.doc_root.toxml(), '<root>'
+        '<div style="margin-left: 0px">'
+        '<h3><a name="PolicyName"/>PolicyName</h3>'
+        '<span>PolicyCaption</span>'
+        '<dl>'
+        '<dt style="style_dt;">_test_data_type</dt>'
+        '<dd>Integer [Windows:REG_DWORD]</dd>'
+        '<dt style="style_dt;">_test_chrome_os_reg_loc</dt>'
+        '<dd style="style_.monospace;">MockKeyCrOS\\PolicyName</dd>'
+        '<dt style="style_dt;">_test_supported_on</dt>'
+        '<dd>'
+        '<ul style="style_ul;">'
+        '<li>ChromeOS (ChromeOS) ..8..</li>'
+        '</ul>'
+        '</dd>'
+        '<dt style="style_dt;">_test_supported_features</dt>'
+        '<dd></dd>'
+        '<dt style="style_dt;">_test_description</dt>'
+        '<dd><p>PolicyDesc</p></dd>'
+        '<dt style="style_dt;">_test_example_value</dt>'
+        '<dd>0x0000002a (Windows)</dd>'
+        '</dl>'
+        '<a href="#top">_test_back_to_top</a>'
+        '</div>'
+        '</root>')
 
 
 if __name__ == '__main__':

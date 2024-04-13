@@ -5,48 +5,31 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_METRICS_PAYMENTS_CARD_METADATA_METRICS_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_METRICS_PAYMENTS_CARD_METADATA_METRICS_H_
 
-#include "base/containers/flat_set.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 
 namespace autofill::autofill_metrics {
 
-// The below issuer and network names are used for logging purposes. The issuer
-// names must be consistent with the Autofill.CreditCardIssuerId in the
+// The below issuer names are used for logging purposes, and they thus must be
+// consistent with the Autofill.CreditCardIssuerId in the
 // autofill/histograms.xml file.
-constexpr std::string_view kAmericanExpress = "Amex";
-constexpr std::string_view kAnz = "Anz";
-constexpr std::string_view kCapitalOne = "CapitalOne";
-constexpr std::string_view kChase = "Chase";
-constexpr std::string_view kCiti = "Citi";
-constexpr std::string_view kDiscover = "Discover";
-constexpr std::string_view kLloyds = "Lloyds";
-constexpr std::string_view kMarqeta = "Marqeta";
-constexpr std::string_view kNab = "Nab";
-constexpr std::string_view kNatwest = "Natwest";
-constexpr std::string_view kMastercard = "Mastercard";
-constexpr std::string_view kVisa = "Visa";
+constexpr char kAmericanExpress[] = "Amex";
+constexpr char kCapitalOne[] = "CapitalOne";
+constexpr char kChase[] = "Chase";
+constexpr char kMarqeta[] = "Marqeta";
 
-constexpr std::string_view kProductNameAndArtImageBothShownSuffix =
+constexpr char kProductNameAndArtImageBothShownSuffix[] =
     "ProductDescriptionAndArtImageShown";
-constexpr std::string_view kProductNameShownOnlySuffix =
-    "ProductDescriptionShown";
-constexpr std::string_view kArtImageShownOnlySuffix = "ArtImageShown";
-constexpr std::string_view kProductNameAndArtImageNotShownSuffix =
-    "MetadataNotShown";
+constexpr char kProductNameShownOnlySuffix[] = "ProductDescriptionShown";
+constexpr char kArtImageShownOnlySuffix[] = "ArtImageShown";
+constexpr char kProductNameAndArtImageNotShownSuffix[] = "MetadataNotShown";
 
 // Enum for different types of form events. Used for metrics logging.
 enum class CardMetadataLoggingEvent {
-  // Suggestions were shown.
+  // Suggestion was shown.
   kShown = 0,
   // Suggestion was selected.
   kSelected = 1,
-  // Suggestion was filled into the form.
-  kFilled = 2,
-  // Form was about to be submitted, after being filled with a suggestion.
-  kWillSubmit = 3,
-  // Form was submitted, after being filled with a suggestion.
-  kSubmitted = 4,
-  kMaxValue = kSubmitted,
+  kMaxValue = kSelected,
 };
 
 using HasBeenLogged = base::StrongAlias<class HasBeenLoggedTag, bool>;
@@ -59,44 +42,15 @@ struct CardMetadataLoggingContext {
   CardMetadataLoggingContext& operator=(const CardMetadataLoggingContext&);
   ~CardMetadataLoggingContext();
 
-  // Updates `selected_card_has_metadata_available` and
-  // `selected_issuer_or_network_to_metadata_availability` with the
-  // `credit_card` information.
-  void SetSelectedCardInfo(const CreditCard& credit_card);
-
-  // Keeps record of what type of metadata was shown to the user when credit
-  // card suggestions are presented. When set to true, implies at least one
-  // suggestion shown to the user had the listed metadata attribute.
+  bool card_metadata_available = false;
   bool card_product_description_shown = false;
   bool card_art_image_shown = false;
-
-  // Keeps record of which issuers and networks with metadata were not selected.
-  // Only available when logging the selected form event.
-  base::flat_set<std::string> not_selected_issuer_ids_and_networks;
-
-  // Keeps record of whether suggestions from issuers or networks had metadata.
-  // If the value is true for a particular issuer or network, at least 1 card
-  // suggestion from the issuer or network had metadata. If it is false, none of
-  // the card suggestions from the issuer or network had metadata.
-  base::flat_map<std::string, bool> issuer_or_network_to_metadata_availability;
-
-  // Keeps record of which credit cards shown to the user had metadata
-  // available.
-  base::flat_set<int64_t> instruments_with_metadata_available;
-
-  // Keeps record on if the selected card had metadata available.
-  bool selected_card_has_metadata_available = false;
-
-  // Keeps record of the selected card's issuer and network and if the card had
-  // metadata available. If there is no selected card,
-  // `selected_issuer_or_network_to_metadata_availability` has no value.
-  std::optional<base::flat_map<std::string, bool>>
-      selected_issuer_or_network_to_metadata_availability;
+  // Keeps record of whether suggestions from issuers had metadata. If the value
+  // is true for a particular issuer, at least 1 card suggestion from the issuer
+  // had metadata. If it is false, none of the card suggestions from the issuer
+  // had metadata.
+  base::flat_map<std::string, bool> issuer_to_metadata_availability;
 };
-
-// Get histogram suffix based on given card issuer id or network.
-std::string_view GetCardIssuerIdOrNetworkSuffix(
-    const std::string& card_issuer_id_or_network);
 
 // Get the CardMetadataLoggingContext for the given credit cards.
 CardMetadataLoggingContext GetMetadataLoggingContext(

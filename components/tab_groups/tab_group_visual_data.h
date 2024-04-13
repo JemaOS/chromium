@@ -44,8 +44,6 @@ class COMPONENT_EXPORT(TAB_GROUPS) TabGroupVisualData {
     return !(*this == other);
   }
 
-  void SetTitle(const std::u16string& title) { title_ = title; }
-
  private:
   std::u16string title_;
   tab_groups::TabGroupColorId color_;

@@ -11,74 +11,71 @@
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/account_managed_status_finder.h"
 #include "components/sync/base/features.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings.h"
 
 namespace history {
 
 namespace {
 
 std::unique_ptr<syncer::ModelTypeControllerDelegate>
-GetDelegateFromHistoryService(HistoryService* history_service,
-                              bool for_transport_mode) {
+GetDelegateFromHistoryService(syncer::ModelType model_type,
+                              HistoryService* history_service) {
   if (!history_service) {
     return nullptr;
   }
 
-  // Transport-mode support for HISTORY requires
-  // `kReplaceSyncPromosWithSignInPromos`.
-  if (for_transport_mode && !base::FeatureList::IsEnabled(
-                                syncer::kReplaceSyncPromosWithSignInPromos)) {
-    return nullptr;
+  if (model_type == syncer::TYPED_URLS) {
+    return history_service->GetTypedURLSyncControllerDelegate();
   }
-  // The same delegate is used for transport mode and full-sync mode.
+  DCHECK_EQ(model_type, syncer::HISTORY);
   return history_service->GetHistorySyncControllerDelegate();
 }
 
-syncer::ModelTypeController::PreconditionState
+syncer::DataTypeController::PreconditionState
 GetPreconditionStateFromManagedStatus(
     const signin::AccountManagedStatusFinder* finder) {
   // The finder should generally exist, but if it doesn't, "stop and keep data"
   // is a safe default.
   if (!finder) {
-    return syncer::ModelTypeController::PreconditionState::kMustStopAndKeepData;
+    return syncer::DataTypeController::PreconditionState::kMustStopAndKeepData;
   }
 
   switch (finder->GetOutcome()) {
     case signin::AccountManagedStatusFinder::Outcome::kNonEnterprise:
     case signin::AccountManagedStatusFinder::Outcome::kEnterpriseGoogleDotCom:
       // Regular consumer accounts and @google.com accounts are supported.
-      return syncer::ModelTypeController::PreconditionState::kPreconditionsMet;
+      return syncer::DataTypeController::PreconditionState::kPreconditionsMet;
     case signin::AccountManagedStatusFinder::Outcome::kEnterprise:
       // syncer::HISTORY isn't supported for Dasher a.k.a. enterprise
       // accounts (with the exception of @google.com accounts).
-      return syncer::ModelTypeController::PreconditionState::
+      return syncer::DataTypeController::PreconditionState::
           kMustStopAndClearData;
     case signin::AccountManagedStatusFinder::Outcome::kPending:
     case signin::AccountManagedStatusFinder::Outcome::kError:
       // While the enterprise-ness of the account isn't known yet, or if the
       // detection failed, "stop and keep data" is a safe default.
-      return syncer::ModelTypeController::PreconditionState::
+      return syncer::DataTypeController::PreconditionState::
           kMustStopAndKeepData;
   }
 }
 
 // Higher number means more strict.
 int GetPreconditionStateStrictness(
-    syncer::ModelTypeController::PreconditionState state) {
+    syncer::DataTypeController::PreconditionState state) {
   switch (state) {
-    case syncer::ModelTypeController::PreconditionState::kMustStopAndClearData:
+    case syncer::DataTypeController::PreconditionState::kMustStopAndClearData:
       return 2;
-    case syncer::ModelTypeController::PreconditionState::kMustStopAndKeepData:
+    case syncer::DataTypeController::PreconditionState::kMustStopAndKeepData:
       return 1;
-    case syncer::ModelTypeController::PreconditionState::kPreconditionsMet:
+    case syncer::DataTypeController::PreconditionState::kPreconditionsMet:
       return 0;
   }
 }
 
-syncer::ModelTypeController::PreconditionState GetStricterPreconditionState(
-    syncer::ModelTypeController::PreconditionState state1,
-    syncer::ModelTypeController::PreconditionState state2) {
+syncer::DataTypeController::PreconditionState GetStricterPreconditionState(
+    syncer::DataTypeController::PreconditionState state1,
+    syncer::DataTypeController::PreconditionState state2) {
   if (GetPreconditionStateStrictness(state1) >=
       GetPreconditionStateStrictness(state2)) {
     return state1;
@@ -89,37 +86,50 @@ syncer::ModelTypeController::PreconditionState GetStricterPreconditionState(
 }  // namespace
 
 HistoryModelTypeController::HistoryModelTypeController(
+    syncer::ModelType model_type,
     syncer::SyncService* sync_service,
     signin::IdentityManager* identity_manager,
     HistoryService* history_service,
     PrefService* pref_service)
     : ModelTypeController(
-          syncer::HISTORY,
-          /*delegate_for_full_sync_mode=*/
-          GetDelegateFromHistoryService(history_service,
-                                        /*for_transport_mode=*/false),
-          /*delegate_for_transport_mode=*/
-          GetDelegateFromHistoryService(history_service,
-                                        /*for_transport_mode=*/true)),
-      helper_(syncer::HISTORY, sync_service, pref_service),
+          model_type,
+          GetDelegateFromHistoryService(model_type, history_service)),
+      helper_(model_type, sync_service, pref_service),
       identity_manager_(identity_manager),
       history_service_(history_service) {
-  sync_observation_.Observe(helper_.sync_service());
-  CoreAccountInfo account = helper_.sync_service()->GetAccountInfo();
-  // If there's already a signed-in account, figure out its "managed" state.
-  if (!account.IsEmpty()) {
-    managed_status_finder_ =
-        std::make_unique<signin::AccountManagedStatusFinder>(
-            identity_manager_, account,
-            base::BindOnce(&HistoryModelTypeController::AccountTypeDetermined,
-                           base::Unretained(this)));
+  DCHECK(model_type == syncer::TYPED_URLS || model_type == syncer::HISTORY);
+  DCHECK(model_type == syncer::TYPED_URLS ||
+         base::FeatureList::IsEnabled(syncer::kSyncEnableHistoryDataType));
+
+  if (type() == syncer::HISTORY) {
+    sync_observation_.Observe(helper_.sync_service());
+    CoreAccountInfo account = helper_.sync_service()->GetAccountInfo();
+    // If there's already a signed-in account, figure out its "managed" state.
+    if (!account.IsEmpty()) {
+      managed_status_finder_ =
+          std::make_unique<signin::AccountManagedStatusFinder>(
+              identity_manager_, account,
+              base::BindOnce(&HistoryModelTypeController::AccountTypeDetermined,
+                             base::Unretained(this)));
+    }
   }
 }
 
 HistoryModelTypeController::~HistoryModelTypeController() = default;
 
-syncer::ModelTypeController::PreconditionState
+syncer::DataTypeController::PreconditionState
 HistoryModelTypeController::GetPreconditionState() const {
+  if (!base::FeatureList::IsEnabled(syncer::kSyncEnableHistoryDataType)) {
+    DCHECK_EQ(type(), syncer::TYPED_URLS);
+    return helper_.GetPreconditionState();
+  }
+
+  // If the History feature flag is enabled, HISTORY replaces TYPED_URLS.
+  if (type() == syncer::TYPED_URLS) {
+    return PreconditionState::kMustStopAndClearData;
+  }
+  DCHECK_EQ(type(), syncer::HISTORY);
+
   // syncer::HISTORY doesn't support custom passphrase encryption.
   if (helper_.sync_service()->GetUserSettings()->IsEncryptEverythingEnabled()) {
     return PreconditionState::kMustStopAndClearData;
@@ -135,6 +145,7 @@ HistoryModelTypeController::GetPreconditionState() const {
 
 void HistoryModelTypeController::OnStateChanged(syncer::SyncService* sync) {
   DCHECK(CalledOnValidThread());
+  DCHECK_EQ(type(), syncer::HISTORY);
   DCHECK_EQ(helper_.sync_service(), sync);
 
   // If there wasn't an account previously, or the account has changed, recreate

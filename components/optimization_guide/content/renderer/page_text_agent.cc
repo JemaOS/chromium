@@ -17,7 +17,7 @@ namespace {
 
 constexpr size_t kChunkSize = 4096;
 
-std::optional<mojom::TextDumpEvent> LayoutEventAsMojoEvent(
+absl::optional<mojom::TextDumpEvent> LayoutEventAsMojoEvent(
     blink::WebMeaningfulLayout layout_event) {
   switch (layout_event) {
     case blink::WebMeaningfulLayout::kFinishedParsing:
@@ -27,7 +27,7 @@ std::optional<mojom::TextDumpEvent> LayoutEventAsMojoEvent(
     default:
       break;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -58,7 +58,7 @@ PageTextAgent::MaybeRequestTextDumpOnLayoutEvent(
     return base::NullCallback();
   }
 
-  std::optional<mojom::TextDumpEvent> mojo_event =
+  absl::optional<mojom::TextDumpEvent> mojo_event =
       LayoutEventAsMojoEvent(event);
   if (!mojo_event) {
     return base::NullCallback();
@@ -137,7 +137,7 @@ void PageTextAgent::DidFinishLoad() {
 
 void PageTextAgent::DidStartNavigation(
     const GURL& url,
-    std::optional<blink::WebNavigationType> navigation_type) {
+    absl::optional<blink::WebNavigationType> navigation_type) {
   is_amp_page_ = false;
   // Note that |requests_by_event_| should NOT be reset here. Requests and
   // navigations from the browser race with each other, and the text dump

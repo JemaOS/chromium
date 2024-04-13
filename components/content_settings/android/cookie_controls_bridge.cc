@@ -24,90 +24,50 @@ CookieControlsBridge::CookieControlsBridge(
     const base::android::JavaParamRef<jobject>&
         joriginal_browser_context_handle)
     : jobject_(obj) {
-  UpdateWebContents(env, jweb_contents_android,
-                    joriginal_browser_context_handle);
-}
-
-void CookieControlsBridge::UpdateWebContents(
-    JNIEnv* env,
-    const base::android::JavaParamRef<jobject>& jweb_contents_android,
-    const base::android::JavaParamRef<jobject>&
-        joriginal_browser_context_handle) {
   content::WebContents* web_contents =
       content::WebContents::FromJavaWebContents(jweb_contents_android);
-
   content::BrowserContext* original_context =
       content::BrowserContextFromJavaHandle(joriginal_browser_context_handle);
-
-  content::BrowserContext* context = web_contents->GetBrowserContext();
   auto* permissions_client = permissions::PermissionsClient::Get();
-
-  observation_.Reset();
-
   controller_ = std::make_unique<CookieControlsController>(
-      permissions_client->GetCookieSettings(context),
+      permissions_client->GetCookieSettings(web_contents->GetBrowserContext()),
       original_context ? permissions_client->GetCookieSettings(original_context)
-                       : nullptr,
-      permissions_client->GetSettingsMap(context),
-      permissions_client->GetTrackingProtectionSettings(context));
-
+                       : nullptr);
   observation_.Observe(controller_.get());
   controller_->Update(web_contents);
 }
 
 void CookieControlsBridge::OnStatusChanged(
-    bool controls_visible,
-    bool protections_on,
-    CookieControlsEnforcement enforcement,
-    CookieBlocking3pcdStatus blocking_status,
-    base::Time expiration) {
-  // Only invoke the callback when there is a change.
-  if (controls_visible_ == controls_visible &&
-      protections_on_ == protections_on && enforcement_ == enforcement &&
-      expiration_ == expiration) {
-    return;
+    CookieControlsStatus new_status,
+    CookieControlsEnforcement new_enforcement,
+    int allowed_cookies,
+    int blocked_cookies) {
+  if (status_ != new_status || enforcement_ != new_enforcement) {
+    status_ = new_status;
+    enforcement_ = new_enforcement;
+    JNIEnv* env = base::android::AttachCurrentThread();
+    // Only call status callback if status has changed
+    Java_CookieControlsBridge_onCookieBlockingStatusChanged(
+        env, jobject_, static_cast<int>(status_),
+        static_cast<int>(enforcement_));
   }
-  controls_visible_ = controls_visible;
-  protections_on_ = protections_on;
-  enforcement_ = enforcement;
-  expiration_ = expiration;
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_CookieControlsBridge_onStatusChanged(
-      env, jobject_, static_cast<bool>(controls_visible),
-      static_cast<bool>(protections_on), static_cast<int>(enforcement_),
-      static_cast<int>(blocking_status),
-      expiration.InMillisecondsSinceUnixEpoch());
+
+  OnCookiesCountChanged(allowed_cookies, blocked_cookies);
 }
 
-void CookieControlsBridge::OnSitesCountChanged(
-    int allowed_third_party_sites_count,
-    int blocked_third_party_sites_count) {
-  // The site counts change quite frequently, so avoid unnecessary
+void CookieControlsBridge::OnCookiesCountChanged(int allowed_cookies,
+                                                 int blocked_cookies) {
+  // The cookie counts change quite frequently, so avoid unnecessary
   // UI updates if possible.
-  if (allowed_third_party_sites_count_ == allowed_third_party_sites_count &&
-      blocked_third_party_sites_count_ == blocked_third_party_sites_count) {
+  if (allowed_cookies_ == allowed_cookies &&
+      blocked_cookies_ == blocked_cookies)
     return;
-  }
-  allowed_third_party_sites_count_ = allowed_third_party_sites_count;
-  blocked_third_party_sites_count_ = blocked_third_party_sites_count;
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_CookieControlsBridge_onSitesCountChanged(
-      env, jobject_, allowed_third_party_sites_count,
-      blocked_third_party_sites_count);
-}
 
-void CookieControlsBridge::OnCookieControlsIconStatusChanged(
-    bool icon_visible,
-    bool protections_on,
-    CookieBlocking3pcdStatus blocking_status,
-    bool should_highlight) {
-  // This function's main use is for web's User Bypass icon, which
-  // does not observe `OnStatusChanged`. Since the Clank icon does
-  // observe `OnStatusChanged`, the only variable we need to pass
-  // on from this function is `should_highlight`.
+  allowed_cookies_ = allowed_cookies;
+  blocked_cookies_ = blocked_cookies;
   JNIEnv* env = base::android::AttachCurrentThread();
-  Java_CookieControlsBridge_onHighlightCookieControl(
-      env, jobject_, static_cast<bool>(should_highlight));
+  Java_CookieControlsBridge_onCookiesCountChanged(
+      env, jobject_, allowed_cookies, blocked_cookies);
 }
 
 void CookieControlsBridge::SetThirdPartyCookieBlockingEnabledForSite(
@@ -118,10 +78,6 @@ void CookieControlsBridge::SetThirdPartyCookieBlockingEnabledForSite(
 
 void CookieControlsBridge::OnUiClosing(JNIEnv* env) {
   controller_->OnUiClosing();
-}
-
-void CookieControlsBridge::OnEntryPointAnimated(JNIEnv* env) {
-  controller_->OnEntryPointAnimated();
 }
 
 CookieControlsBridge::~CookieControlsBridge() = default;

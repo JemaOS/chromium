@@ -21,8 +21,9 @@
 #include "base/timer/elapsed_timer.h"
 #include "base/types/strong_alias.h"
 #include "build/build_config.h"
+#include "components/password_manager/core/browser/insecure_credentials_table.h"
 #include "components/password_manager/core/browser/leak_detection/bulk_leak_check.h"
-#include "components/password_manager/core/browser/password_store/password_store_interface.h"
+#include "components/password_manager/core/browser/password_store_interface.h"
 #include "components/password_manager/core/browser/ui/credential_utils.h"
 #include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
 #include "url/gurl.h"
@@ -66,9 +67,7 @@ class InsecureCredentialsManager : public SavedPasswordsPresenter::Observer {
 
   // Marks all saved credentials which have same username & password as
   // insecure.
-  void SaveInsecureCredential(
-      const LeakCheckCredential& credential,
-      TriggerBackendNotification should_trigger_notification);
+  void SaveInsecureCredential(const LeakCheckCredential& credential);
 
   // Attempts to mute |credential| from the password store.
   // Returns whether the mute succeeded.
@@ -90,7 +89,6 @@ class InsecureCredentialsManager : public SavedPasswordsPresenter::Observer {
   // were changed.
   void OnWeakCheckDone(base::ElapsedTimer timer_since_weak_check_start,
                        base::flat_set<std::u16string> weak_passwords);
-  void OnPartialWeakCheckDone(base::flat_set<std::u16string> weak_passwords);
 
   // Updates |reused_passwords| set and notifies observers that insecure
   // credentials were changed.
@@ -98,7 +96,8 @@ class InsecureCredentialsManager : public SavedPasswordsPresenter::Observer {
                         base::flat_set<std::u16string> reused_passwords);
 
   // SavedPasswordsPresenter::Observer:
-  void OnSavedPasswordsChanged(const PasswordStoreChangeList& changes) override;
+  void OnEdited(const CredentialUIEntry& credential) override;
+  void OnSavedPasswordsChanged() override;
 
   // Notifies observers when insecure credentials have changed.
   void NotifyInsecureCredentialsChanged();

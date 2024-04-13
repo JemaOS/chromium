@@ -6,19 +6,18 @@
 #define COMPONENTS_VIZ_SERVICE_FRAME_SINKS_ROOT_COMPOSITOR_FRAME_SINK_IMPL_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/functional/callback_helpers.h"
 #include "base/memory/read_only_shared_memory_region.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 #include "components/viz/common/surfaces/frame_sink_id.h"
 #include "components/viz/common/surfaces/local_surface_id.h"
 #include "components/viz/service/display/display_client.h"
 #include "components/viz/service/display/frame_rate_decider.h"
 #include "components/viz/service/frame_sinks/compositor_frame_sink_support.h"
-#include "components/viz/service/frame_sinks/eviction_handler.h"
 #include "components/viz/service/viz_service_export.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
@@ -28,7 +27,7 @@
 #include "services/viz/privileged/mojom/compositing/display_private.mojom.h"
 #include "services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
 #include "services/viz/public/mojom/compositing/compositor_frame_sink.mojom.h"
-#include "ui/base/ozone_buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/ca_layer_params.h"
 
 namespace viz {
@@ -64,8 +63,7 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
 
   ~RootCompositorFrameSinkImpl() override;
 
-  // Returns true iff it is okay to evict the root surface immediately.
-  bool WillEvictSurface(const SurfaceId& surface_id);
+  void DidEvictSurface(const SurfaceId& surface_id);
 
   const SurfaceId& CurrentSurfaceId() const;
 
@@ -101,17 +99,16 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
   void SetStandaloneBeginFrameObserver(
       mojo::PendingRemote<mojom::BeginFrameObserver> observer) override;
   void SetMaxVrrInterval(
-      std::optional<base::TimeDelta> max_vrr_interval) override;
+      absl::optional<base::TimeDelta> max_vrr_interval) override;
 
   // mojom::CompositorFrameSink:
   void SetNeedsBeginFrame(bool needs_begin_frame) override;
   void SetWantsAnimateOnlyBeginFrames() override;
   void SetWantsBeginFrameAcks() override;
-  void SetAutoNeedsBeginFrame() override;
   void SubmitCompositorFrame(
       const LocalSurfaceId& local_surface_id,
       CompositorFrame frame,
-      std::optional<HitTestRegionList> hit_test_region_list,
+      absl::optional<HitTestRegionList> hit_test_region_list,
       uint64_t submit_time) override;
   void DidNotProduceFrame(const BeginFrameAck& begin_frame_ack) override;
   void DidAllocateSharedBitmap(base::ReadOnlySharedMemoryRegion region,
@@ -120,7 +117,7 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
   void SubmitCompositorFrameSync(
       const LocalSurfaceId& local_surface_id,
       CompositorFrame frame,
-      std::optional<HitTestRegionList> hit_test_region_list,
+      absl::optional<HitTestRegionList> hit_test_region_list,
       uint64_t submit_time,
       SubmitCompositorFrameSyncCallback callback) override;
   void InitializeCompositorFrameSinkType(
@@ -131,9 +128,6 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
 #endif
 
   base::ScopedClosureRunner GetCacheBackBufferCb();
-  ExternalBeginFrameSource* external_begin_frame_source() {
-    return external_begin_frame_source_.get();
-  }
 
  private:
   class StandaloneBeginFrameObserver;
@@ -149,7 +143,8 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
       std::unique_ptr<SyntheticBeginFrameSource> synthetic_begin_frame_source,
       std::unique_ptr<ExternalBeginFrameSource> external_begin_frame_source,
       std::unique_ptr<Display> display,
-      bool hw_support_for_multiple_refresh_rates);
+      bool hw_support_for_multiple_refresh_rates,
+      bool apply_simple_frame_rate_throttling);
 
   // DisplayClient:
   void DisplayOutputSurfaceLost() override;
@@ -168,9 +163,6 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
 
   void UpdateVSyncParameters();
   BeginFrameSource* begin_frame_source();
-
-  std::vector<base::TimeDelta> GetSupportedFrameIntervals(
-      base::TimeDelta interval);
 
   mojo::Remote<mojom::CompositorFrameSinkClient> compositor_frame_sink_client_;
   mojo::AssociatedReceiver<mojom::CompositorFrameSink>
@@ -206,12 +198,15 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
   base::TimeDelta preferred_frame_interval_ =
       FrameRateDecider::UnspecifiedFrameInterval();
 
-  // See comments on `EvictionHandler`.
-  EvictionHandler eviction_handler_;
+  // Determines whether to throttle frame rate by half.
+  // TODO(http://crbug.com/1153404): Remove this field when experiment is over.
+  bool apply_simple_frame_rate_throttling_ = false;
 
-#if BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
   gfx::Size last_swap_pixel_size_;
-#endif  // BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+#endif
 
 #if BUILDFLAG(IS_APPLE)
   gfx::CALayerParams last_ca_layer_params_;
@@ -223,7 +218,7 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
 
 #if BUILDFLAG(IS_ANDROID)
   // Let client control whether it wants `DidCompleteSwapWithSize`.
-  bool enable_swap_completion_callback_ = false;
+  bool enable_swap_competion_callback_ = false;
 #endif
 };
 

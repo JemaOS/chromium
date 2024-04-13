@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -19,6 +18,7 @@
 #include "components/leveldb_proto/testing/fake_db.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using testing::_;
 
@@ -71,9 +71,9 @@ class DownloadStoreTest : public testing::Test {
 
  protected:
   std::map<std::string, protodb::Entry> db_entries_;
-  raw_ptr<leveldb_proto::test::FakeDB<protodb::Entry>, DanglingUntriaged> db_;
+  raw_ptr<leveldb_proto::test::FakeDB<protodb::Entry>> db_;
   std::unique_ptr<DownloadStore> store_;
-  std::optional<bool> hard_recover_result_;
+  absl::optional<bool> hard_recover_result_;
 };
 
 TEST_F(DownloadStoreTest, Initialize) {

@@ -6,7 +6,6 @@
 #define COMPONENTS_TRANSLATE_CONTENT_RENDERER_TRANSLATE_AGENT_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/gtest_prod_util.h"
@@ -18,6 +17,7 @@
 #include "content/public/renderer/render_frame_observer.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace blink {
@@ -28,6 +28,9 @@ namespace translate {
 
 // This class deals with page translation.
 // There is one TranslateAgent per RenderView.
+//
+// Note: this class only supports translation of the main frame. See
+// PerFrameTranslateAgent for sub frame translation support.
 class TranslateAgent : public content::RenderFrameObserver,
                        public mojom::TranslateAgent {
  public:
@@ -44,15 +47,19 @@ class TranslateAgent : public content::RenderFrameObserver,
   // Informs us that the page's text has been extracted.
   void PageCaptured(const std::u16string& contents);
 
-  // Updates page registration in translate driver.
-  void RenewPageRegistration();
-
   // Lets the translation system know that we are preparing to navigate to
   // the specified URL. If there is anything that can or should be done before
   // this URL loads, this is the time to prepare for it.
   void PrepareForUrl(const GURL& url);
 
+  // Under kRetryLanguageDetection, this is true if a previous call to
+  // PageCaptured has been made with captured page content and language
+  // detection was run.
+  bool WasPageContentCapturedForUrl() { return page_contents_length_; }
+
   // mojom::TranslateAgent implementation.
+  void GetWebLanguageDetectionDetails(
+      GetWebLanguageDetectionDetailsCallback callback) override;
   void TranslateFrame(const std::string& translate_script,
                       const std::string& source_lang,
                       const std::string& target_lang,
@@ -169,6 +176,10 @@ class TranslateAgent : public content::RenderFrameObserver,
   std::string source_lang_;
   std::string target_lang_;
 
+  // Time when a page language is determined. This is used to know a duration
+  // time from showing infobar to requesting translation.
+  base::TimeTicks language_determined_time_;
+
   // The world ID to use for script execution.
   int world_id_;
 
@@ -189,8 +200,6 @@ class TranslateAgent : public content::RenderFrameObserver,
   // LanguageDetectionTabHelper (which implements the ContentTranslateDriver
   // Mojo interface).
   mojo::Remote<mojom::ContentTranslateDriver> translate_handler_;
-
-  std::optional<LanguageDetectionDetails> last_details_;
 
   mojo::Receiver<mojom::TranslateAgent> receiver_{this};
 

@@ -11,11 +11,11 @@
 #include "components/signin/internal/identity_manager/profile_oauth2_token_service.h"
 #include "components/signin/public/base/device_id_helper.h"
 #include "components/signin/public/base/signin_metrics.h"
-#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/tribool.h"
 #include "google_apis/gaia/core_account_id.h"
 #include "google_apis/gaia/gaia_constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace signin {
 
@@ -43,18 +43,12 @@ CoreAccountId AccountsMutatorImpl::AddOrUpdateAccount(
     const std::string& email,
     const std::string& refresh_token,
     bool is_under_advanced_protection,
-    signin_metrics::AccessPoint access_point,
-    signin_metrics::SourceForRefreshTokenOperation source
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-    ,
-    const std::vector<uint8_t>& wrapped_binding_key
-#endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-) {
+    signin_metrics::SourceForRefreshTokenOperation source) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   NOTREACHED();
 #endif
   CoreAccountId account_id =
-      account_tracker_service_->SeedAccountInfo(gaia_id, email, access_point);
+      account_tracker_service_->SeedAccountInfo(gaia_id, email);
   account_tracker_service_->SetIsAdvancedProtectionAccount(
       account_id, is_under_advanced_protection);
 
@@ -63,12 +57,7 @@ CoreAccountId AccountsMutatorImpl::AddOrUpdateAccount(
   // tracker, which is not intended.
   account_tracker_service_->CommitPendingAccountChanges();
 
-  token_service_->UpdateCredentials(account_id, refresh_token, source
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-                                    ,
-                                    wrapped_binding_key
-#endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-  );
+  token_service_->UpdateCredentials(account_id, refresh_token, source);
 
   return account_id;
 }
@@ -116,24 +105,12 @@ void AccountsMutatorImpl::InvalidateRefreshTokenForPrimaryAccount(
       primary_account_manager_->GetPrimaryAccountInfo(ConsentLevel::kSignin);
   AddOrUpdateAccount(primary_account_info.gaia, primary_account_info.email,
                      GaiaConstants::kInvalidRefreshToken,
-                     primary_account_info.is_under_advanced_protection,
-                     signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN, source);
+                     primary_account_info.is_under_advanced_protection, source);
 }
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 void AccountsMutatorImpl::MoveAccount(AccountsMutator* target,
                                       const CoreAccountId& account_id) {
-  if (switches::IsExplicitBrowserSigninUIOnDesktopEnabled(
-          switches::ExplicitBrowserSigninPhase::kFull) &&
-      primary_account_manager_->GetPrimaryAccountId(
-          signin::ConsentLevel::kSignin) == account_id) {
-    // Remove to avoid the primary account remaining in the original
-    // profile without a refresh token which might lead to a crash. The account
-    // and the refresh token will be removed from the profile after being moved
-    // to the new profile later in this function.
-    primary_account_manager_->RemovePrimaryAccountButKeepTokens(
-        signin_metrics::ProfileSignout::kMovePrimaryAccount);
-  }
   AccountInfo account_info =
       account_tracker_service_->GetAccountInfo(account_id);
   DCHECK(!account_info.account_id.empty());

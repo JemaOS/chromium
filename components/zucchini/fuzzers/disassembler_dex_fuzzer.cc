@@ -13,7 +13,7 @@
 namespace {
 
 struct Environment {
-  Environment() { logging::SetMinLogLevel(logging::LOGGING_FATAL); }
+  Environment() { logging::SetMinLogLevel(logging::LOG_FATAL); }
 };
 
 }  // namespace

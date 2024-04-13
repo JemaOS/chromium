@@ -4,41 +4,39 @@
 
 #include "components/autofill/core/browser/metrics/profile_import_metrics.h"
 
-#include "base/containers/contains.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics_utils.h"
-#include "components/autofill/core/browser/profile_requirement_utils.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 
 namespace autofill::autofill_metrics {
 
 namespace {
 
-const char* GetAddressPromptDecisionMetricsSuffix(
-    AutofillClient::AddressPromptUserDecision decision) {
+const char* GetSaveAndUpdatePromptDecisionMetricsSuffix(
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
   switch (decision) {
-    case AutofillClient::AddressPromptUserDecision::kUndefined:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kUndefined:
       return ".Undefined";
-    case AutofillClient::AddressPromptUserDecision::kUserNotAsked:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kUserNotAsked:
       return ".UserNotAsked";
-    case AutofillClient::AddressPromptUserDecision::kAccepted:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kAccepted:
       return ".Accepted";
-    case AutofillClient::AddressPromptUserDecision::kDeclined:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kDeclined:
       return ".Declined";
-    case AutofillClient::AddressPromptUserDecision::kEditAccepted:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kEditAccepted:
       return ".EditAccepted";
-    case AutofillClient::AddressPromptUserDecision::kEditDeclined:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kEditDeclined:
       return ".EditDeclined";
-    case AutofillClient::AddressPromptUserDecision::kNever:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kNever:
       return ".Never";
-    case AutofillClient::AddressPromptUserDecision::kIgnored:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kIgnored:
       return ".Ignored";
-    case AutofillClient::AddressPromptUserDecision::kMessageTimeout:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kMessageTimeout:
       return ".MessageTimeout";
-    case AutofillClient::AddressPromptUserDecision::kMessageDeclined:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kMessageDeclined:
       return ".MessageDeclined";
-    case AutofillClient::AddressPromptUserDecision::kAutoDeclined:
+    case AutofillClient::SaveAddressProfileOfferUserDecision::kAutoDeclined:
       return ".AutoDeclined";
   }
   NOTREACHED();
@@ -51,7 +49,7 @@ void LogAddressProfileImportUkm(
     ukm::UkmRecorder* ukm_recorder,
     ukm::SourceId source_id,
     AutofillProfileImportType import_type,
-    AutofillClient::AddressPromptUserDecision user_decision,
+    AutofillClient::SaveAddressProfileOfferUserDecision user_decision,
     const ProfileImportMetadata& profile_import_metadata,
     size_t num_edited_fields) {
   ukm::builders::Autofill_AddressProfileImport(source_id)
@@ -72,25 +70,11 @@ void LogAddressFormImportRequirementMetric(
                                 metric);
 }
 
-void LogAddressFormImportRequirementMetric(const AutofillProfile& profile) {
-  std::vector<AddressProfileImportRequirementMetric> requirements =
-      ValidateProfileImportRequirements(profile);
-  for (AddressProfileImportRequirementMetric& requirement : requirements) {
-    LogAddressFormImportRequirementMetric(requirement);
-  }
-
-  bool is_zip_missing = base::Contains(
-      requirements,
-      AddressProfileImportRequirementMetric::kZipRequirementViolated);
-  bool is_state_missing = base::Contains(
-      requirements,
-      AddressProfileImportRequirementMetric::kStateRequirementViolated);
-  bool is_city_missing = base::Contains(
-      requirements,
-      AddressProfileImportRequirementMetric::kCityRequirementViolated);
-  bool is_line1_missing = base::Contains(
-      requirements,
-      AddressProfileImportRequirementMetric::kLine1RequirementViolated);
+void LogAddressFormImportCountrySpecificFieldRequirementsMetric(
+    bool is_zip_missing,
+    bool is_state_missing,
+    bool is_city_missing,
+    bool is_line1_missing) {
   const auto metric =
       static_cast<AddressProfileImportCountrySpecificFieldRequirementsMetric>(
           (is_zip_missing ? 0b1 : 0) | (is_state_missing ? 0b10 : 0) |
@@ -114,15 +98,28 @@ void LogSilentUpdatesProfileImportType(AutofillProfileImportType import_type) {
 }
 
 void LogNewProfileImportDecision(
-    AutofillClient::AddressPromptUserDecision decision) {
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
   base::UmaHistogramEnumeration("Autofill.ProfileImport.NewProfileDecision",
                                 decision);
 }
 
+void LogNewProfileNumberOfAutocompleteUnrecognizedFields(int count) {
+  base::UmaHistogramExactLinear(
+      "Autofill.ProfileImport.NewProfileNumberOfAutocompleteUnrecognizedFields",
+      count, /*exclusive_max=*/20);
+}
+
 void LogProfileUpdateImportDecision(
-    AutofillClient::AddressPromptUserDecision decision) {
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
   base::UmaHistogramEnumeration("Autofill.ProfileImport.UpdateProfileDecision",
                                 decision);
+}
+
+void LogProfileUpdateNumberOfAutocompleteUnrecognizedFields(int count) {
+  base::UmaHistogramExactLinear(
+      "Autofill.ProfileImport."
+      "UpdateProfileNumberOfAutocompleteUnrecognizedFields",
+      count, /*exclusive_max=*/20);
 }
 
 // static
@@ -132,7 +129,7 @@ void LogRemovedSettingInaccessibleFields(bool did_remove) {
 }
 
 // static
-void LogRemovedSettingInaccessibleField(FieldType field) {
+void LogRemovedSettingInaccessibleField(ServerFieldType field) {
   base::UmaHistogramEnumeration(
       "Autofill.ProfileImport.InaccessibleFieldsRemoved.ByFieldType",
       ConvertSettingsVisibleFieldTypeForMetrics(field));
@@ -144,19 +141,25 @@ void LogPhoneNumberImportParsingResult(bool parsed_successfully) {
                             parsed_successfully);
 }
 
-void LogNewProfileEditedType(FieldType edited_type) {
+void LogNewProfileEditedType(ServerFieldType edited_type) {
   base::UmaHistogramEnumeration(
       "Autofill.ProfileImport.NewProfileEditedType",
       ConvertSettingsVisibleFieldTypeForMetrics(edited_type));
 }
 
+void LogNewProfileNumberOfEditedFields(int number_of_edited_fields) {
+  base::UmaHistogramExactLinear(
+      "Autofill.ProfileImport.NewProfileNumberOfEditedFields",
+      number_of_edited_fields, /*exclusive_max=*/15);
+}
+
 void LogProfileUpdateAffectedType(
-    FieldType affected_type,
-    AutofillClient::AddressPromptUserDecision decision) {
+    ServerFieldType affected_type,
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
   // Record the decision-specific metric.
   base::UmaHistogramEnumeration(
       base::StrCat({"Autofill.ProfileImport.UpdateProfileAffectedType",
-                    GetAddressPromptDecisionMetricsSuffix(decision)}),
+                    GetSaveAndUpdatePromptDecisionMetricsSuffix(decision)}),
       ConvertSettingsVisibleFieldTypeForMetrics(affected_type));
 
   // But also collect an histogram for any decision.
@@ -165,20 +168,26 @@ void LogProfileUpdateAffectedType(
       ConvertSettingsVisibleFieldTypeForMetrics(affected_type));
 }
 
-void LogProfileUpdateEditedType(FieldType edited_type) {
+void LogProfileUpdateEditedType(ServerFieldType edited_type) {
   base::UmaHistogramEnumeration(
       "Autofill.ProfileImport.UpdateProfileEditedType",
       ConvertSettingsVisibleFieldTypeForMetrics(edited_type));
 }
 
+void LogUpdateProfileNumberOfEditedFields(int number_of_edited_fields) {
+  base::UmaHistogramExactLinear(
+      "Autofill.ProfileImport.UpdateProfileNumberOfEditedFields",
+      number_of_edited_fields, /*exclusive_max=*/15);
+}
+
 void LogUpdateProfileNumberOfAffectedFields(
     int number_of_edited_fields,
-    AutofillClient::AddressPromptUserDecision decision) {
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
   // Record the decision-specific metric.
   base::UmaHistogramExactLinear(
       base::StrCat(
           {"Autofill.ProfileImport.UpdateProfileNumberOfAffectedFields",
-           GetAddressPromptDecisionMetricsSuffix(decision)}),
+           GetSaveAndUpdatePromptDecisionMetricsSuffix(decision)}),
       number_of_edited_fields, /*exclusive_max=*/15);
 
   // But also collect an histogram for any decision.
@@ -188,15 +197,21 @@ void LogUpdateProfileNumberOfAffectedFields(
 }
 
 void LogProfileMigrationImportDecision(
-    AutofillClient::AddressPromptUserDecision decision) {
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
   base::UmaHistogramEnumeration("Autofill.ProfileImport.MigrateProfileDecision",
                                 decision);
 }
 
-void LogProfileMigrationEditedType(FieldType edited_type) {
+void LogProfileMigrationEditedType(ServerFieldType edited_type) {
   base::UmaHistogramEnumeration(
       "Autofill.ProfileImport.MigrateProfileEditedType",
       ConvertSettingsVisibleFieldTypeForMetrics(edited_type));
+}
+
+void LogProfileMigrationNumberOfEditedFields(int number_of_edited_fields) {
+  base::UmaHistogramExactLinear(
+      "Autofill.ProfileImport.MigrateProfileNumberOfEditedFields",
+      number_of_edited_fields, /*exclusive_max=*/15);
 }
 
 }  // namespace autofill::autofill_metrics

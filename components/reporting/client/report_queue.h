@@ -33,11 +33,10 @@ namespace reporting {
 // void SendMessage(google::protobuf::ImportantMessage important_message,
 //                  reporting::ReportQueue::EnqueueCallback done_cb) {
 //   // Create configuration.
-//   StatusOr<reporting::ReportQueueConfiguration> config_result =
-//      reporting::ReportQueueConfiguration::Create({...}).Set...().Build();
+//   auto config_result = reporting::ReportQueueConfiguration::Create(...);
 //   // Bail out if configuration failed to create.
-//   if (!config_result.has_value()) {
-//     std::move(done_cb).Run(config_result.error());
+//   if (!config_result.ok()) {
+//     std::move(done_cb).Run(config_result.status());
 //     return;
 //   }
 //   // Asynchronously instantiate ReportQueue.
@@ -55,18 +54,18 @@ namespace reporting {
 //                        reporting::StatusOr<std::unique_ptr<
 //                            reporting::ReportQueue>> report_queue_result) {
 //                       // Bail out if queue failed to create.
-//                       if (!report_queue_result.has_value()) {
-//                         std::move(done_cb).Run(report_queue_result.error());
+//                       if (!report_queue_result.ok()) {
+//                         std::move(done_cb).Run(report_queue_result.status());
 //                         return;
 //                       }
 //                       // Queue created successfully, enqueue the message.
-//                       report_queue_result.value()->Enqueue(
+//                       report_queue_result.ValueOrDie()->Enqueue(
 //                           std::move(important_message), std::move(done_cb));
 //                     },
 //                     std::move(important_message), std::move(done_cb)));
 //           },
 //           std::move(important_message), std::move(done_cb),
-//           std::move(config_result.value())));
+//           std::move(config_result.ValueOrDie())));
 // }
 //
 // |SpeculativeReportQueueImpl| is an extension to |ReportQueue| which allows
@@ -82,11 +81,10 @@ namespace reporting {
 // less_important_message,
 //                  reporting::ReportQueue::EnqueueCallback done_cb) {
 //   // Create configuration.
-//   StatusOr<reporting::ReportQueueConfiguration> config_result =
-//      reporting::ReportQueueConfiguration::Create({...}).Set...().Build();
+//   auto config_result = reporting::ReportQueueConfiguration::Create(...);
 //   // Bail out if configuration failed to create.
-//   if (!config_result.has_value()) {
-//     std::move(done_cb).Run(config_result.error());
+//   if (!config_result.ok()) {
+//     std::move(done_cb).Run(config_result.status());
 //     return;
 //   }
 //   // Synchronously instantiate SpeculativeReportQueueImpl, returning it as
@@ -94,13 +92,13 @@ namespace reporting {
 //   auto report_queue_result =
 //       reporting::ReportQueueProvider::CreateSpeculativeQueue(
 //           std::move(config));
-//   if (!report_queue_result.has_value()) {
-//     std::move(done_cb).Run(config_result.error());
+//   if (!report_queue_result.ok()) {
+//     std::move(done_cb).Run(config_result.status());
 //     return;
 //   }
 //   // Enqueue event (store it in memory only until the actual queue is
 //   // created).
-//   report_queue_result.value()->Enqueue(
+//   report_queue_result.ValueOrDie()->Enqueue(
 //       std::move(less_important_message), std::move(done_cb));
 // }
 
@@ -115,22 +113,9 @@ class ReportQueue {
   // A FlushCallback is called on the completion of |Flush| call.
   using FlushCallback = base::OnceCallback<void(Status)>;
 
-  // Speculative report queue config settings used during its instantiation.
-  struct SpeculativeConfigSettings {
-    Destination destination = Destination::UNDEFINED_DESTINATION;
-  };
-
-  // Enqueue metrics name.
+  // Enqueue metrics name
   static constexpr char kEnqueueMetricsName[] =
       "Browser.ERP.EventEnqueueResult";
-
-  // Enqueue failed reporting destination metrics name.
-  static constexpr char kEnqueueFailedDestinationMetricsName[] =
-      "Browser.ERP.EnqueueFailureDestination";
-
-  // Enqueue success reporting destination metrics name.
-  static constexpr char kEnqueueSuccessDestinationMetricsName[] =
-      "Browser.ERP.EnqueueSuccessDestination";
 
   virtual ~ReportQueue();
 
@@ -173,9 +158,6 @@ class ReportQueue {
   [[nodiscard]] virtual base::OnceCallback<
       void(StatusOr<std::unique_ptr<ReportQueue>>)>
   PrepareToAttachActualQueue() const = 0;
-
-  // Returns the reporting destination used to configure the report queue.
-  virtual Destination GetDestination() const = 0;
 
  private:
   // Allow SpeculativeReportQueue access to |AddProducedRecord|.

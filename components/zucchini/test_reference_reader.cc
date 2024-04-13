@@ -11,9 +11,9 @@ TestReferenceReader::TestReferenceReader(const std::vector<Reference>& refs)
 
 TestReferenceReader::~TestReferenceReader() = default;
 
-std::optional<Reference> TestReferenceReader::GetNext() {
+absl::optional<Reference> TestReferenceReader::GetNext() {
   if (index_ == references_.size())
-    return std::nullopt;
+    return absl::nullopt;
   return references_[index_++];
 }
 

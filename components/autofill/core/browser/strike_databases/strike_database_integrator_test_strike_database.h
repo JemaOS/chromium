@@ -21,25 +21,25 @@ class StrikeDatabaseIntegratorTestStrikeDatabase
  public:
   StrikeDatabaseIntegratorTestStrikeDatabase(
       StrikeDatabase* strike_database,
-      std::optional<base::TimeDelta> expiry_time_delta);
+      absl::optional<base::TimeDelta> expiry_time_delta);
   explicit StrikeDatabaseIntegratorTestStrikeDatabase(
       StrikeDatabase* strike_database);
   // This constructor initializes the TestStrikeDatabase with a non-default
   // project prefix.
   StrikeDatabaseIntegratorTestStrikeDatabase(
       StrikeDatabase* strike_database,
-      std::optional<base::TimeDelta> expiry_time_delta,
+      absl::optional<base::TimeDelta> expiry_time_delta,
       std::string& project_prefix);
   ~StrikeDatabaseIntegratorTestStrikeDatabase() override;
 
-  std::optional<size_t> GetMaximumEntries() const override;
-  std::optional<size_t> GetMaximumEntriesAfterCleanup() const override;
+  absl::optional<size_t> GetMaximumEntries() const override;
+  absl::optional<size_t> GetMaximumEntriesAfterCleanup() const override;
 
   std::string GetProjectPrefix() const override;
   int GetMaxStrikesLimit() const override;
-  std::optional<base::TimeDelta> GetExpiryTimeDelta() const override;
+  absl::optional<base::TimeDelta> GetExpiryTimeDelta() const override;
   bool UniqueIdsRequired() const override;
-  std::optional<base::TimeDelta> GetRequiredDelaySinceLastStrike()
+  absl::optional<base::TimeDelta> GetRequiredDelaySinceLastStrike()
       const override;
 
   void SetUniqueIdsRequired(bool unique_ids_required);
@@ -48,13 +48,13 @@ class StrikeDatabaseIntegratorTestStrikeDatabase
 
  private:
   bool unique_ids_required_ = false;
-  std::optional<base::TimeDelta> expiry_time_delta_ = base::Days(365);
+  absl::optional<base::TimeDelta> expiry_time_delta_ = base::Days(365);
 
-  std::optional<size_t> maximum_entries_ = 10;
-  std::optional<size_t> maximum_entries_after_cleanup_ = 5;
+  absl::optional<size_t> maximum_entries_ = 10;
+  absl::optional<size_t> maximum_entries_after_cleanup_ = 5;
   std::string project_prefix_ = "StrikeDatabaseIntegratorTest";
-  std::optional<base::TimeDelta> required_delay_since_last_strike_ =
-      std::nullopt;
+  absl::optional<base::TimeDelta> required_delay_since_last_strike_ =
+      absl::nullopt;
 };
 
 }  // namespace autofill

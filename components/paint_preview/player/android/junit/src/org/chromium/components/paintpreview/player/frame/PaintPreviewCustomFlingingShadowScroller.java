@@ -10,7 +10,9 @@ import android.widget.OverScroller;
 import org.robolectric.annotation.Implementation;
 import org.robolectric.annotation.Implements;
 
-/** A custom shadow of {@link Scroller} that supports fake flinging. */
+/**
+ * A custom shadow of {@link Scroller} that supports fake flinging.
+ */
 @Implements(OverScroller.class)
 public class PaintPreviewCustomFlingingShadowScroller {
     private int mFinalX;
@@ -58,15 +60,8 @@ public class PaintPreviewCustomFlingingShadowScroller {
     }
 
     @Implementation
-    public void fling(
-            int startX,
-            int startY,
-            int velocityX,
-            int velocityY,
-            int minX,
-            int maxX,
-            int minY,
-            int maxY) {
+    public void fling(int startX, int startY, int velocityX, int velocityY, int minX, int maxX,
+            int minY, int maxY) {
         mFinished = false;
         mCurrX = startX;
         mCurrY = startY;

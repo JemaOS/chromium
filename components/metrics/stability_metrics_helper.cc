@@ -9,11 +9,8 @@
 #include <string>
 
 #include "base/check.h"
-#include "base/containers/contains.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
-#include "base/notreached.h"
-#include "base/strings/strcat.h"
 #include "base/system/sys_info.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
@@ -28,12 +25,25 @@
 #include <windows.h>  // Needed for STATUS_* codes
 #endif
 
+#if BUILDFLAG(IS_CHROMEOS)
+#include "components/metrics/system_memory_stats_recorder.h"
+#endif
+
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/application_status_listener.h"
 #endif
 
 namespace metrics {
 namespace {
+
+enum RendererType {
+  RENDERER_TYPE_RENDERER = 1,
+  RENDERER_TYPE_EXTENSION,
+  // NOTE: Add new action types only immediately above this line. Also,
+  // make sure the enum list in tools/metrics/histograms/histograms.xml is
+  // updated with any change in here.
+  RENDERER_TYPE_COUNT
+};
 
 #if !BUILDFLAG(IS_ANDROID)
 // Converts an exit code into something that can be inserted into our
@@ -49,43 +59,12 @@ int MapCrashExitCodeForHistogram(int exit_code) {
 
   return std::abs(exit_code);
 }
+
+void RecordChildKills(RendererType histogram_type) {
+  base::UmaHistogramEnumeration("BrowserRenderProcessHost.ChildKills",
+                                histogram_type, RENDERER_TYPE_COUNT);
+}
 #endif  // !BUILDFLAG(IS_ANDROID)
-
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-const char* HostedContentTypeToString(
-    RendererHostedContentType hosted_content_type) {
-  switch (hosted_content_type) {
-    case metrics::RendererHostedContentType::kExtension:
-      return "Extension";
-    case metrics::RendererHostedContentType::kForegroundMainFrame:
-      return "ForegroundMainFrame";
-    case metrics::RendererHostedContentType::kForegroundSubframe:
-      return "ForegroundSubframe";
-    case metrics::RendererHostedContentType::kBackgroundFrame:
-      return "BackgroundFrame";
-    case metrics::RendererHostedContentType::kInactiveFrame:
-      return "InactiveFrame";
-    case metrics::RendererHostedContentType::kNoFrameOrExtension:
-      return "NoFrameOrExtension";
-  }
-}
-
-void RecordRendererAbnormalTerminationByHostedContentType(
-    RendererHostedContentType hosted_content_type,
-    base::TerminationStatus status) {
-  if (status == base::TERMINATION_STATUS_NORMAL_TERMINATION) {
-    return;
-  }
-
-  base::UmaHistogramEnumeration(
-      "Stability.RendererAbnormalTermination2.HostedContentType",
-      hosted_content_type);
-  base::UmaHistogramEnumeration(
-      base::StrCat({"Stability.RendererAbnormalTermination2.",
-                    HostedContentTypeToString(hosted_content_type)}),
-      status, base::TERMINATION_STATUS_MAX_ENUM);
-}
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 }  // namespace
 
@@ -181,24 +160,12 @@ void StabilityMetricsHelper::LogLoadStarted() {
   RecordStabilityEvent(StabilityEventType::kPageLoad);
 }
 
-#if BUILDFLAG(IS_IOS)
-void StabilityMetricsHelper::LogRendererCrash() {
-  // The actual exit code isn't provided on iOS; use a dummy value.
-  constexpr int kDummyExitCode = 105;
-  LogRendererCrashImpl(CoarseRendererType::kRenderer, kDummyExitCode);
-}
-#elif !BUILDFLAG(IS_ANDROID)
-void StabilityMetricsHelper::LogRendererCrash(
-    RendererHostedContentType hosted_content_type,
-    base::TerminationStatus status,
-    int exit_code) {
-  RecordRendererAbnormalTerminationByHostedContentType(hosted_content_type,
-                                                       status);
-
-  CoarseRendererType coarse_renderer_type =
-      hosted_content_type == RendererHostedContentType::kExtension
-          ? CoarseRendererType::kExtension
-          : CoarseRendererType::kRenderer;
+#if !BUILDFLAG(IS_ANDROID)
+void StabilityMetricsHelper::LogRendererCrash(bool was_extension_process,
+                                              base::TerminationStatus status,
+                                              int exit_code) {
+  RendererType histogram_type =
+      was_extension_process ? RENDERER_TYPE_EXTENSION : RENDERER_TYPE_RENDERER;
 
   switch (status) {
     case base::TERMINATION_STATUS_NORMAL_TERMINATION:
@@ -206,39 +173,55 @@ void StabilityMetricsHelper::LogRendererCrash(
     case base::TERMINATION_STATUS_PROCESS_CRASHED:
     case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
     case base::TERMINATION_STATUS_OOM:
-      LogRendererCrashImpl(coarse_renderer_type, exit_code);
+      if (was_extension_process) {
+#if !BUILDFLAG(ENABLE_EXTENSIONS)
+        NOTREACHED();
+#endif
+        RecordStabilityEvent(StabilityEventType::kExtensionCrash);
+        base::UmaHistogramSparse("CrashExitCodes.Extension",
+                                 MapCrashExitCodeForHistogram(exit_code));
+      } else {
+        IncreaseRendererCrashCount();
+        base::UmaHistogramSparse("CrashExitCodes.Renderer",
+                                 MapCrashExitCodeForHistogram(exit_code));
+      }
+
+      base::UmaHistogramEnumeration("BrowserRenderProcessHost.ChildCrashes",
+                                    histogram_type, RENDERER_TYPE_COUNT);
+      break;
+    case base::TERMINATION_STATUS_PROCESS_WAS_KILLED:
+      RecordChildKills(histogram_type);
       break;
 #if BUILDFLAG(IS_CHROMEOS)
     case base::TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM:
-      base::UmaHistogramEnumeration("BrowserRenderProcessHost.ChildKills.OOM",
-                                    coarse_renderer_type);
-      [[fallthrough]];
-#endif  // BUILDFLAG(IS_CHROMEOS)
-    case base::TERMINATION_STATUS_PROCESS_WAS_KILLED:
-      base::UmaHistogramEnumeration("BrowserRenderProcessHost.ChildKills",
-                                    coarse_renderer_type);
+      RecordChildKills(histogram_type);
+      base::UmaHistogramExactLinear("BrowserRenderProcessHost.ChildKills.OOM",
+                                    was_extension_process ? 2 : 1, 3);
+      RecordMemoryStats(was_extension_process
+                            ? RECORD_MEMORY_STATS_EXTENSIONS_OOM_KILLED
+                            : RECORD_MEMORY_STATS_CONTENTS_OOM_KILLED);
       break;
+#endif
     case base::TERMINATION_STATUS_STILL_RUNNING:
       base::UmaHistogramEnumeration(
-          "BrowserRenderProcessHost.DisconnectedAlive", coarse_renderer_type);
+          "BrowserRenderProcessHost.DisconnectedAlive", histogram_type,
+          RENDERER_TYPE_COUNT);
       break;
     case base::TERMINATION_STATUS_LAUNCH_FAILED:
       // TODO(rkaplow): See if we can remove this histogram as we have
       // Stability.Counts2 which has the same metrics.
       base::UmaHistogramEnumeration(
-          "BrowserRenderProcessHost.ChildLaunchFailures", coarse_renderer_type);
+          "BrowserRenderProcessHost.ChildLaunchFailures", histogram_type,
+          RENDERER_TYPE_COUNT);
       base::UmaHistogramSparse(
           "BrowserRenderProcessHost.ChildLaunchFailureCodes", exit_code);
-      RecordStabilityEvent(
-          hosted_content_type == RendererHostedContentType::kExtension
-              ? StabilityEventType::kExtensionRendererFailedLaunch
-              : StabilityEventType::kRendererFailedLaunch);
+      LogRendererLaunchFailed(was_extension_process);
       break;
 #if BUILDFLAG(IS_WIN)
     case base::TERMINATION_STATUS_INTEGRITY_FAILURE:
       base::UmaHistogramEnumeration(
-          "BrowserRenderProcessHost.ChildCodeIntegrityFailures",
-          coarse_renderer_type);
+          "BrowserRenderProcessHost.ChildCodeIntegrityFailures", histogram_type,
+          RENDERER_TYPE_COUNT);
       break;
 #endif
     case base::TERMINATION_STATUS_MAX_ENUM:
@@ -259,6 +242,14 @@ void StabilityMetricsHelper::LogRendererLaunched(bool was_extension_process) {
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
+void StabilityMetricsHelper::LogRendererLaunchFailed(
+    bool was_extension_process) {
+  auto metric = was_extension_process
+                    ? StabilityEventType::kExtensionRendererFailedLaunch
+                    : StabilityEventType::kRendererFailedLaunch;
+  RecordStabilityEvent(metric);
+}
+
 void StabilityMetricsHelper::IncrementPrefValue(const char* path) {
   int value = local_state_->GetInteger(path);
   local_state_->SetInteger(path, value + 1);
@@ -270,27 +261,5 @@ void StabilityMetricsHelper::RecordStabilityEvent(
   UMA_STABILITY_HISTOGRAM_ENUMERATION("Stability.Counts2",
                                       stability_event_type);
 }
-
-#if !BUILDFLAG(IS_ANDROID)
-void StabilityMetricsHelper::LogRendererCrashImpl(
-    CoarseRendererType renderer_type,
-    int exit_code) {
-  if (renderer_type == CoarseRendererType::kExtension) {
-#if !BUILDFLAG(ENABLE_EXTENSIONS)
-    NOTREACHED();
-#endif
-    RecordStabilityEvent(StabilityEventType::kExtensionCrash);
-    base::UmaHistogramSparse("CrashExitCodes.Extension",
-                             MapCrashExitCodeForHistogram(exit_code));
-  } else {
-    IncreaseRendererCrashCount();
-    base::UmaHistogramSparse("CrashExitCodes.Renderer",
-                             MapCrashExitCodeForHistogram(exit_code));
-  }
-
-  base::UmaHistogramEnumeration("BrowserRenderProcessHost.ChildCrashes",
-                                renderer_type);
-}
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 }  // namespace metrics

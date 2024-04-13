@@ -1,6 +1,3 @@
-monorail: {
+monorail {
   component: "Internals>PageSecurityState"
-}
-buganizer_public: {
-  component_id: 1457050
 }

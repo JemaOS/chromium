@@ -32,12 +32,12 @@ class SyncChangeProcessorWrapperForTest : public SyncChangeProcessor {
   ~SyncChangeProcessorWrapperForTest() override;
 
   // SyncChangeProcessor implementation.
-  std::optional<ModelError> ProcessSyncChanges(
+  absl::optional<ModelError> ProcessSyncChanges(
       const base::Location& from_here,
       const SyncChangeList& change_list) override;
 
  private:
-  const base::RepeatingCallback<std::optional<ModelError>(
+  const base::RepeatingCallback<absl::optional<ModelError>(
       const base::Location& from_here,
       const SyncChangeList& change_list)>
       process_sync_changes_;

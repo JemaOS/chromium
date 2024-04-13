@@ -45,18 +45,18 @@ void NativeWidgetNSWindowFullscreenController::EnterFullscreen(
     return;
   }
 
+  // Early-out for no-ops.
   if (state_ == State::kFullscreen) {
-    // Early-out for no-ops.
     if (target_display_id == display::kInvalidDisplayId ||
         target_display_id == client_->FullscreenControllerGetDisplayId()) {
       return;
     }
-  } else if (state_ == State::kWindowed) {
-    windowed_frame_ = client_->FullscreenControllerGetFrame();
   }
 
   // If we are starting a new transition, then notify `client_`.
   if (!IsInFullscreenTransition()) {
+    if (!windowed_frame_)
+      windowed_frame_ = client_->FullscreenControllerGetFrame();
     client_->FullscreenControllerTransitionStart(true);
   }
 
@@ -102,7 +102,6 @@ void NativeWidgetNSWindowFullscreenController::
   gfx::Rect display_frame =
       client_->FullscreenControllerGetFrameForDisplay(target_display_id);
   if (!display_frame.IsEmpty()) {
-    DCHECK(windowed_frame_);
     restore_windowed_frame_ = true;
     SetStateAndCancelPostedTasks(State::kEnterFullscreenTransition);
     client_->FullscreenControllerSetFrame(
@@ -127,12 +126,13 @@ void NativeWidgetNSWindowFullscreenController::RestoreWindowedFrame() {
 
 void NativeWidgetNSWindowFullscreenController::OnWindowedFrameRestored() {
   restore_windowed_frame_ = false;
+  windowed_frame_.reset();
 
   SetStateAndCancelPostedTasks(State::kWindowed);
   HandlePendingState();
   if (!IsInFullscreenTransition()) {
     client_->FullscreenControllerTransitionComplete(
-        /*is_fullscreen=*/false);
+        /*target_fullscreen_state=*/false);
   }
 }
 
@@ -173,12 +173,10 @@ void NativeWidgetNSWindowFullscreenController::OnWindowWillClose() {
 }
 
 void NativeWidgetNSWindowFullscreenController::OnWindowWillEnterFullscreen() {
-  if (state_ == State::kWindowed) {
-    windowed_frame_ = client_->FullscreenControllerGetFrame();
-  }
-
   // If we are starting a new transition, then notify `client_`.
   if (!IsInFullscreenTransition()) {
+    if (!windowed_frame_)
+      windowed_frame_ = client_->FullscreenControllerGetFrame();
     client_->FullscreenControllerTransitionStart(true);
   }
 
@@ -221,7 +219,7 @@ void NativeWidgetNSWindowFullscreenController::OnWindowDidExitFullscreen() {
   HandlePendingState();
   if (!IsInFullscreenTransition()) {
     client_->FullscreenControllerTransitionComplete(
-        /*is_fullscreen=*/false);
+        /*actual_fullscreen_state=*/false);
   }
 }
 
@@ -264,6 +262,10 @@ void NativeWidgetNSWindowFullscreenController::HandlePendingState() {
             base::BindOnce(
                 &NativeWidgetNSWindowFullscreenController::RestoreWindowedFrame,
                 weak_factory_.GetWeakPtr()));
+      } else {
+        // Handle returning to the kWindowed state without having called
+        // setFrame.
+        windowed_frame_.reset();
       }
       // Always reset `pending_state_` when handling kWindowed state.
       pending_state_.reset();

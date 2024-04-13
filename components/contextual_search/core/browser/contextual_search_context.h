@@ -12,7 +12,8 @@
 
 // Encapsulates key parts of a Contextual Search Context, including surrounding
 // text.
-class ContextualSearchContext {
+struct ContextualSearchContext
+    : public base::SupportsWeakPtr<ContextualSearchContext> {
  public:
   // Languages used for translation.
   struct TranslationLanguages {
@@ -26,7 +27,7 @@ class ContextualSearchContext {
   ContextualSearchContext(const ContextualSearchContext&) = delete;
   ContextualSearchContext& operator=(const ContextualSearchContext&) = delete;
 
-  virtual ~ContextualSearchContext();
+  ~ContextualSearchContext();
 
   // Returns whether this context can be resolved.
   // The context can be resolved only after calling SetResolveProperties.
@@ -147,8 +148,6 @@ class ContextualSearchContext {
     apply_lang_hint_ = apply_lang_hint;
   }
 
-  virtual base::WeakPtr<ContextualSearchContext> AsWeakPtr();
-
  private:
   // Gets the reliable language of the given |contents| using CLD, or an empty
   // string if none can reliably be determined.
@@ -172,8 +171,6 @@ class ContextualSearchContext {
   TranslationLanguages translation_languages_;
   std::string related_searches_stamp_;
   bool apply_lang_hint_ = false;
-
-  base::WeakPtrFactory<ContextualSearchContext> weak_ptr_factory_{this};
 };
 
 #endif  // COMPONENTS_CONTEXTUAL_SEARCH_CORE_BROWSER_CONTEXTUAL_SEARCH_CONTEXT_H_

@@ -8,11 +8,11 @@ namespace arc {
 
 ArcIntentHelperMojoDelegate::IntentInfo::IntentInfo(
     std::string action,
-    std::optional<std::vector<std::string>> categories,
-    std::optional<std::string> data,
-    std::optional<std::string> type,
+    absl::optional<std::vector<std::string>> categories,
+    absl::optional<std::string> data,
+    absl::optional<std::string> type,
     bool ui_bypassed,
-    std::optional<base::flat_map<std::string, std::string>> extras)
+    absl::optional<base::flat_map<std::string, std::string>> extras)
     : action(std::move(action)),
       categories(std::move(categories)),
       data(std::move(data)),
@@ -48,7 +48,7 @@ ArcIntentHelperMojoDelegate::IntentHandlerInfo::IntentHandlerInfo(
     std::string package_name,
     std::string activity_name,
     bool is_preferred,
-    std::optional<std::string> fallback_url)
+    absl::optional<std::string> fallback_url)
     : name(std::move(name)),
       package_name(std::move(package_name)),
       activity_name(std::move(activity_name)),

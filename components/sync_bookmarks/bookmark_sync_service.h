@@ -12,9 +12,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
 #include "components/keyed_service/core/keyed_service.h"
-#include "components/sync/model/wipe_model_upon_sync_disabled_behavior.h"
 #include "components/sync_bookmarks/bookmark_model_type_processor.h"
-#include "components/sync_bookmarks/bookmark_model_view.h"
 
 class BookmarkUndoService;
 
@@ -36,10 +34,8 @@ class BookmarkModelTypeProcessor;
 // This service owns the BookmarkModelTypeProcessor.
 class BookmarkSyncService : public KeyedService {
  public:
-  // `bookmark_undo_service` must not be null and must outlive this object.
-  BookmarkSyncService(BookmarkUndoService* bookmark_undo_service,
-                      syncer::WipeModelUponSyncDisabledBehavior
-                          wipe_model_upon_sync_disabled_behavior);
+  // |bookmark_undo_service| must not be null and must outlive this object.
+  explicit BookmarkSyncService(BookmarkUndoService* bookmark_undo_service);
 
   BookmarkSyncService(const BookmarkSyncService&) = delete;
   BookmarkSyncService& operator=(const BookmarkSyncService&) = delete;
@@ -52,10 +48,10 @@ class BookmarkSyncService : public KeyedService {
   void DecodeBookmarkSyncMetadata(
       const std::string& metadata_str,
       const base::RepeatingClosure& schedule_save_closure,
-      std::unique_ptr<sync_bookmarks::BookmarkModelView> model);
+      bookmarks::BookmarkModel* model);
 
   // Returns the ModelTypeControllerDelegate for syncer::BOOKMARKS.
-  // `favicon_service` is the favicon service used when processing updates in
+  // |favicon_service| is the favicon service used when processing updates in
   // the underlying processor. It could have been a separate a setter in
   // BookmarkSyncService instead of passing it as a parameter to
   // GetBookmarkSyncControllerDelegate(). However, this would incur the risk of
@@ -65,30 +61,13 @@ class BookmarkSyncService : public KeyedService {
   virtual base::WeakPtr<syncer::ModelTypeControllerDelegate>
   GetBookmarkSyncControllerDelegate(favicon::FaviconService* favicon_service);
 
-  // Returns true if sync metadata is being tracked. This means sync is enabled
-  // and the initial download of data is completed, which implies that the
-  // relevant BookmarkModel already reflects remote data. Note however that this
-  // doesn't mean bookmarks are actively sync-ing at the moment, for example
-  // sync could be paused due to an auth error.
-  bool IsTrackingMetadata() const;
-
-  // Returns the BookmarkModelView representing the subset of bookmarks that
-  // this service is dealing with (potentially sync-ing, but not necessarily).
-  // It returns null until bookmarks are loaded, i.e. until
-  // DecodeBookmarkSyncMetadata() is invoked. It must not be invoked after
-  // Shutdown(), i.e. during profile destruction.
-  sync_bookmarks::BookmarkModelView* bookmark_model_view();
-
   // For integration tests.
-  void SetIsTrackingMetadataForTesting();
   void SetBookmarksLimitForTesting(size_t limit);
 
  private:
-  std::unique_ptr<BookmarkModelView> bookmark_model_view_;
   // BookmarkModelTypeProcessor handles communications between sync engine and
   // BookmarkModel/HistoryService.
   BookmarkModelTypeProcessor bookmark_model_type_processor_;
-  bool is_tracking_metadata_for_testing_ = false;
 };
 
 }  // namespace sync_bookmarks

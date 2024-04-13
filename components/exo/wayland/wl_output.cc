@@ -4,6 +4,9 @@
 
 #include "components/exo/wayland/wl_output.h"
 
+#include <wayland-server-core.h>
+#include <wayland-server-protocol-core.h>
+
 #include "components/exo/wayland/server_util.h"
 #include "components/exo/wayland/wayland_display_observer.h"
 #include "components/exo/wayland/wayland_display_output.h"
@@ -13,7 +16,8 @@
 #include "ui/display/manager/managed_display_info.h"
 #include "ui/display/screen.h"
 
-namespace exo::wayland {
+namespace exo {
+namespace wayland {
 
 ////////////////////////////////////////////////////////////////////////////////
 // wl_output_interface:
@@ -42,4 +46,5 @@ void bind_output(wl_client* client,
   GetUserDataAs<WaylandDisplayHandler>(resource)->Initialize();
 }
 
-}  // namespace exo::wayland
+}  // namespace wayland
+}  // namespace exo

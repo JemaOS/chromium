@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <unordered_map>
 #include <utility>
@@ -27,6 +26,7 @@
 #include "components/viz/test/test_context_provider.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/khronos/GLES2/gl2.h"
 #include "third_party/khronos/GLES2/gl2ext.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
@@ -69,7 +69,7 @@ class MockExternalUseClient : public ExternalUseClient {
                                     const gfx::Size&,
                                     SharedImageFormat,
                                     bool,
-                                    const std::optional<gpu::VulkanYCbCrInfo>&,
+                                    const absl::optional<gpu::VulkanYCbCrInfo>&,
                                     sk_sp<SkColorSpace>,
                                     bool));
 };
@@ -127,7 +127,7 @@ class DisplayResourceProviderSkiaTest : public testing::Test {
   std::unique_ptr<DisplayResourceProviderSkia> resource_provider_;
   std::unique_ptr<ClientResourceProvider> child_resource_provider_;
   testing::NiceMock<MockExternalUseClient> client_;
-  std::optional<DisplayResourceProviderSkia::LockSetForExternalUse> lock_set_;
+  absl::optional<DisplayResourceProviderSkia::LockSetForExternalUse> lock_set_;
 };
 
 TEST_F(DisplayResourceProviderSkiaTest, LockForExternalUse) {
@@ -164,7 +164,7 @@ TEST_F(DisplayResourceProviderSkiaTest, LockForExternalUse) {
   auto format = SinglePlaneFormat::kRGBA_8888;
   auto owned_image_context = std::make_unique<ExternalUseClient::ImageContext>(
       gpu::MailboxHolder(mailbox, sync_token1, GL_TEXTURE_2D), size, format,
-      /*ycbcr_info=*/std::nullopt, /*color_space=*/nullptr);
+      /*ycbcr_info=*/absl::nullopt, /*color_space=*/nullptr);
   auto* image_context = owned_image_context.get();
 
   gpu::MailboxHolder holder;
@@ -245,7 +245,7 @@ TEST_F(DisplayResourceProviderSkiaTest, LockForExternalUseWebView) {
   auto format = SinglePlaneFormat::kRGBA_8888;
   auto owned_image_context = std::make_unique<ExternalUseClient::ImageContext>(
       gpu::MailboxHolder(mailbox, sync_token1, GL_TEXTURE_2D), size, format,
-      /*ycbcr_info=*/std::nullopt, /*color_space=*/nullptr);
+      /*ycbcr_info=*/absl::nullopt, /*color_space=*/nullptr);
   auto* image_context = owned_image_context.get();
 
   gpu::MailboxHolder holder;
@@ -349,7 +349,7 @@ class TestReleaseFence : public ResourceFence {
  private:
   ~TestReleaseFence() override = default;
 
-  std::optional<gfx::GpuFenceHandle> release_fence_;
+  absl::optional<gfx::GpuFenceHandle> release_fence_;
   base::WeakPtr<DisplayResourceProvider> resource_provider_;
 };
 
@@ -436,7 +436,7 @@ TEST_F(DisplayResourceProviderSkiaTest,
       gfx::GpuFenceHandle fake_handle;
 #if BUILDFLAG(IS_POSIX)
       const int32_t kFenceFd = dup(1);
-      fake_handle.Adopt(base::ScopedFD(kFenceFd));
+      fake_handle.owned_fd.reset(kFenceFd);
 #endif
       release_fence->SetReleaseFence(std::move(fake_handle));
     }
@@ -545,7 +545,7 @@ TEST_F(DisplayResourceProviderSkiaTest, ResourceFenceDestroyChild) {
       gfx::GpuFenceHandle fake_handle;
 #if BUILDFLAG(IS_POSIX)
       const int32_t kFenceFd = dup(1);
-      fake_handle.Adopt(base::ScopedFD(kFenceFd));
+      fake_handle.owned_fd.reset(kFenceFd);
 #endif
       release_fence->SetReleaseFence(std::move(fake_handle));
     }
@@ -633,7 +633,7 @@ TEST_F(DisplayResourceProviderSkiaTest, ResourceFenceOutlivesResourceProvider) {
     gfx::GpuFenceHandle fake_handle;
 #if BUILDFLAG(IS_POSIX)
     const int32_t kFenceFd = dup(1);
-    fake_handle.Adopt(base::ScopedFD(kFenceFd));
+    fake_handle.owned_fd.reset(kFenceFd);
 #endif
     release_fence->SetReleaseFence(std::move(fake_handle));
   }

@@ -6,7 +6,6 @@
 
 #include "base/files/file.h"
 #include "base/files/file_path.h"
-#include "base/logging.h"
 #include "components/crx_file/crx3.pb.h"
 #include "components/crx_file/crx_file.h"
 #include "crypto/rsa_private_key.h"
@@ -140,10 +139,7 @@ CreatorResult CreateCrxWithVerifiedContentsInHeader(
     crypto::RSAPrivateKey* signing_key,
     const std::string& verified_contents) {
   CrxFileHeader header;
-  base::File file(zip_path, base::File::FLAG_OPEN | base::File::FLAG_READ |
-                                base::File::FLAG_WIN_SHARE_DELETE);
-  PLOG_IF(ERROR, !file.IsValid())
-      << "Failed to open " << zip_path << ": " << file.error_details();
+  base::File file(zip_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   const CreatorResult signing_result =
       SignArchiveAndCreateHeader(output_path, &file, signing_key, &header);
   if (signing_result != CreatorResult::OK)
@@ -159,10 +155,7 @@ CreatorResult Create(const base::FilePath& output_path,
                      const base::FilePath& zip_path,
                      crypto::RSAPrivateKey* signing_key) {
   CrxFileHeader header;
-  base::File file(zip_path, base::File::FLAG_OPEN | base::File::FLAG_READ |
-                                base::File::FLAG_WIN_SHARE_DELETE);
-  PLOG_IF(ERROR, !file.IsValid())
-      << "Failed to open " << zip_path << ": " << file.error_details();
+  base::File file(zip_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   const CreatorResult signing_result =
       SignArchiveAndCreateHeader(output_path, &file, signing_key, &header);
   if (signing_result != CreatorResult::OK)

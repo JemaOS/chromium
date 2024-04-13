@@ -14,7 +14,9 @@ import android.view.contentcapture.ContentCaptureSession;
 
 import androidx.annotation.RequiresApi;
 
-/** The implementation of PlatformAPIWrapper. */
+/**
+ * The implementation of PlatformAPIWrapper.
+ */
 @RequiresApi(Build.VERSION_CODES.Q)
 public class PlatformAPIWrapperImpl extends PlatformAPIWrapper {
     @Override

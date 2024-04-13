@@ -5,7 +5,6 @@
 #include "components/subresource_filter/content/browser/activation_state_computing_navigation_throttle.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -30,6 +29,7 @@
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_renderer_host.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace subresource_filter {
 
@@ -244,12 +244,11 @@ class ActivationStateComputingNavigationThrottleTest
 
   // Owned by the current navigation.
   raw_ptr<ActivationStateComputingNavigationThrottle> test_throttle_;
-  std::optional<mojom::ActivationState> last_activation_state_;
-  std::optional<mojom::ActivationState> parent_activation_state_;
+  absl::optional<mojom::ActivationState> last_activation_state_;
+  absl::optional<mojom::ActivationState> parent_activation_state_;
 
   // Needed for potential cross process navigations which swap hosts.
-  raw_ptr<content::RenderFrameHost, DanglingUntriaged>
-      last_committed_frame_host_ = nullptr;
+  raw_ptr<content::RenderFrameHost> last_committed_frame_host_ = nullptr;
 
   bool dryrun_speculation_;
 };

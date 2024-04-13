@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -20,6 +19,7 @@
 #include "components/download/public/common/download_item.h"
 #include "components/download/public/common/download_source.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -64,6 +64,7 @@ class MockDownloadItem : public DownloadItem {
   MOCK_CONST_METHOD0(IsDone, bool());
   MOCK_CONST_METHOD0(GetBytesWasted, int64_t());
   MOCK_CONST_METHOD0(GetAutoResumeCount, int32_t());
+  MOCK_CONST_METHOD0(IsOffTheRecord, bool());
   MOCK_CONST_METHOD0(GetURL, const GURL&());
   MOCK_CONST_METHOD0(GetUrlChain, const std::vector<GURL>&());
   MOCK_CONST_METHOD0(GetOriginalUrl, const GURL&());
@@ -71,7 +72,7 @@ class MockDownloadItem : public DownloadItem {
   MOCK_CONST_METHOD0(GetSerializedEmbedderDownloadData, const std::string&());
   MOCK_CONST_METHOD0(GetTabUrl, const GURL&());
   MOCK_CONST_METHOD0(GetTabReferrerUrl, const GURL&());
-  MOCK_CONST_METHOD0(GetRequestInitiator, const std::optional<url::Origin>&());
+  MOCK_CONST_METHOD0(GetRequestInitiator, const absl::optional<url::Origin>&());
   MOCK_CONST_METHOD0(GetSuggestedFilename, std::string());
   MOCK_CONST_METHOD0(GetContentDisposition, std::string());
   MOCK_CONST_METHOD0(GetResponseHeaders,
@@ -100,10 +101,6 @@ class MockDownloadItem : public DownloadItem {
   }
   MOCK_METHOD1(DeleteFile_, void(base::OnceCallback<void(bool)>& cb));
   MOCK_METHOD0(GetDownloadFile, DownloadFile*());
-#if BUILDFLAG(IS_ANDROID)
-  MOCK_METHOD0(IsFromExternalApp, bool());
-  MOCK_METHOD0(IsMustDownload, bool());
-#endif  // BUILDFLAG(IS_ANDROID)
   MOCK_CONST_METHOD0(IsDangerous, bool());
   MOCK_CONST_METHOD0(IsInsecure, bool());
   MOCK_CONST_METHOD0(GetDangerType, DownloadDangerType());
@@ -131,7 +128,7 @@ class MockDownloadItem : public DownloadItem {
   MOCK_CONST_METHOD0(IsParallelDownload, bool());
   MOCK_CONST_METHOD0(GetDownloadCreationType, DownloadCreationType());
   MOCK_CONST_METHOD0(GetCredentialsMode, ::network::mojom::CredentialsMode());
-  MOCK_METHOD((const std::optional<net::IsolationInfo>&),
+  MOCK_METHOD((const absl::optional<net::IsolationInfo>&),
               GetIsolationInfo,
               (),
               (const override));
@@ -148,7 +145,7 @@ class MockDownloadItem : public DownloadItem {
   MOCK_METHOD1(OnAsyncScanningCompleted, void(DownloadDangerType));
 
  private:
-  base::ObserverList<Observer> observers_;
+  base::ObserverList<Observer>::Unchecked observers_;
 };
 
 }  // namespace download

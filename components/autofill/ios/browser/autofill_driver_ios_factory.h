@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include "base/memory/raw_ptr.h"
 #include "components/autofill/core/browser/autofill_client.h"
 #include "components/autofill/ios/browser/autofill_driver_ios_bridge.h"
 #include "ios/web/public/web_state_user_data.h"
@@ -43,8 +42,8 @@ class AutofillDriverIOSFactory
                            id<AutofillDriverIOSBridge> bridge,
                            const std::string& app_locale);
 
-  raw_ptr<web::WebState> web_state_ = nullptr;
-  raw_ptr<AutofillClient> client_ = nullptr;
+  web::WebState* web_state_ = nullptr;
+  AutofillClient* client_ = nullptr;
   id<AutofillDriverIOSBridge> bridge_ = nil;
   std::string app_locale_;
   WEB_STATE_USER_DATA_KEY_DECL();

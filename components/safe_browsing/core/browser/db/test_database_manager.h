@@ -31,40 +31,33 @@ class TestSafeBrowsingDatabaseManager : public SafeBrowsingDatabaseManager {
   bool CanCheckRequestDestination(
       network::mojom::RequestDestination request_destination) const override;
   bool CanCheckUrl(const GURL& url) const override;
+  bool ChecksAreAlwaysAsync() const override;
   bool CheckBrowseUrl(
       const GURL& url,
       const SBThreatTypeSet& threat_types,
       Client* client,
-      CheckBrowseUrlType check_type) override;
+      MechanismExperimentHashDatabaseCache experiment_cache_selection) override;
   AsyncMatch CheckCsdAllowlistUrl(const GURL& url, Client* client) override;
   bool CheckDownloadUrl(const std::vector<GURL>& url_chain,
                         Client* client) override;
   bool CheckExtensionIDs(const std::set<std::string>& extension_ids,
                          Client* client) override;
   bool CheckResourceUrl(const GURL& url, Client* client) override;
-  void CheckUrlForHighConfidenceAllowlist(
+  bool CheckUrlForHighConfidenceAllowlist(
       const GURL& url,
-      const std::string& metric_variation,
-      base::OnceCallback<void(bool)> callback) override;
+      const std::string& metric_variation) override;
   bool CheckUrlForSubresourceFilter(const GURL& url, Client* client) override;
-  void MatchDownloadAllowlistUrl(
-      const GURL& url,
-      base::OnceCallback<void(bool)> callback) override;
-  safe_browsing::ThreatSource GetBrowseUrlThreatSource(
-      CheckBrowseUrlType check_type) const override;
-  safe_browsing::ThreatSource GetNonBrowseUrlThreatSource() const override;
+  bool MatchDownloadAllowlistUrl(const GURL& url) override;
+  bool MatchMalwareIP(const std::string& ip_address) override;
+  safe_browsing::ThreatSource GetThreatSource() const override;
   bool IsDownloadProtectionEnabled() const override;
   void StartOnSBThread(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       const V4ProtocolConfig& config) override;
   void StopOnSBThread(bool shutdown) override;
-  bool IsDatabaseReady() const override;
 
  protected:
   ~TestSafeBrowsingDatabaseManager() override = default;
-
- private:
-  bool enabled_;
 };
 
 }  // namespace safe_browsing

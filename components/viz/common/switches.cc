@@ -10,6 +10,8 @@
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
+#include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 #include "components/viz/common/constants.h"
 
 namespace switches {
@@ -29,15 +31,19 @@ const char kDisableFrameRateLimit[] = "disable-frame-rate-limit";
 // Sets the number of max pending frames in the GL buffer queue to 1.
 const char kDoubleBufferCompositing[] = "double-buffer-compositing";
 
-// Sets the maximum number (exclusive) of quads one draw quad can be split into
-// during occlusion culling.
-const char kDrawQuadSplitLimit[] = "draw-quad-split-limit";
-
 // Enable compositing individual elements via hardware overlays when
 // permitted by device.
 // Setting the flag to "single-fullscreen" will try to promote a single
 // fullscreen overlay and use it as main framebuffer where possible.
 const char kEnableHardwareOverlays[] = "enable-hardware-overlays";
+
+#if BUILDFLAG(IS_CHROMEOS)
+// ChromeOS uses one of two VideoDecoder implementations based on SoC/board
+// specific configurations that are signalled via this command line flag.
+// TODO(b/159825227): remove when the "old" video decoder is fully launched.
+const char kPlatformDisallowsChromeOSDirectVideoDecoder[] =
+    "platform-disallows-chromeos-direct-video-decoder";
+#endif
 
 // Effectively disables pipelining of compositor frame production stages by
 // waiting for each stage to finish before completing a frame.
@@ -61,11 +67,11 @@ const char kTintCompositedContentModulate[] =
 // The debug borders are offset from the layer rect by a few pixels for clarity.
 const char kShowDCLayerDebugBorders[] = "show-dc-layer-debug-borders";
 
-std::optional<uint32_t> GetDeadlineToSynchronizeSurfaces() {
+absl::optional<uint32_t> GetDeadlineToSynchronizeSurfaces() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(switches::kRunAllCompositorStagesBeforeDraw)) {
     // In full-pipeline mode, surface deadlines should always be unlimited.
-    return std::nullopt;
+    return absl::nullopt;
   }
   std::string deadline_to_synchronize_surfaces_string =
       command_line->GetSwitchValueASCII(
@@ -76,7 +82,7 @@ std::optional<uint32_t> GetDeadlineToSynchronizeSurfaces() {
   uint32_t activation_deadline_in_frames;
   if (!base::StringToUint(deadline_to_synchronize_surfaces_string,
                           &activation_deadline_in_frames)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return activation_deadline_in_frames;
 }

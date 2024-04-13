@@ -7,24 +7,24 @@
 #include "base/strings/utf_string_conversions.h"
 #include "components/saved_tab_groups/saved_tab_group.h"
 
-namespace tab_groups {
-
 SavedTabGroupTab::SavedTabGroupTab(
     const GURL& url,
     const std::u16string& title,
     const base::Uuid& group_guid,
-    std::optional<size_t> position,
-    std::optional<base::Uuid> saved_tab_guid,
-    std::optional<LocalTabID> local_tab_id,
-    std::optional<base::Time> creation_time_windows_epoch_micros,
-    std::optional<base::Time> update_time_windows_epoch_micros,
-    std::optional<gfx::Image> favicon)
+    SavedTabGroup* group,
+    absl::optional<base::Uuid> saved_tab_guid,
+    absl::optional<base::Token> local_tab_id,
+    absl::optional<int> position,
+    absl::optional<base::Time> creation_time_windows_epoch_micros,
+    absl::optional<base::Time> update_time_windows_epoch_micros,
+    absl::optional<gfx::Image> favicon)
     : saved_tab_guid_(saved_tab_guid.has_value()
                           ? saved_tab_guid.value()
                           : base::Uuid::GenerateRandomV4()),
       saved_group_guid_(group_guid),
       local_tab_id_(local_tab_id),
-      position_(position),
+      position_(position.value_or(kUnsetPosition)),
+      saved_tab_group_(group),
       url_(url),
       title_(title),
       favicon_(favicon),
@@ -54,7 +54,6 @@ std::unique_ptr<sync_pb::SavedTabGroupSpecifics> SavedTabGroupTab::MergeTab(
   if (ShouldMergeTab(sync_specific)) {
     SetURL(GURL(sync_specific.tab().url()));
     SetTitle(base::UTF8ToUTF16(sync_specific.tab().title()));
-    SetPosition(sync_specific.tab().position());
     SetUpdateTimeWindowsEpochMicros(base::Time::FromDeltaSinceWindowsEpoch(
         base::Microseconds(sync_specific.update_time_windows_epoch_micros())));
   }
@@ -69,16 +68,16 @@ SavedTabGroupTab SavedTabGroupTab::FromSpecifics(
       base::Uuid::ParseLowercase(specific.tab().group_guid());
   const GURL& url = GURL(specific.tab().url());
   const std::u16string title = base::UTF8ToUTF16(specific.tab().title());
-  const size_t position = specific.tab().position();
+  int position = specific.tab().position();
 
-  const base::Uuid guid = base::Uuid::ParseLowercase(specific.guid());
-  const base::Time creation_time = base::Time::FromDeltaSinceWindowsEpoch(
+  base::Uuid guid = base::Uuid::ParseLowercase(specific.guid());
+  base::Time creation_time = base::Time::FromDeltaSinceWindowsEpoch(
       base::Microseconds(specific.creation_time_windows_epoch_micros()));
-  const base::Time update_time = base::Time::FromDeltaSinceWindowsEpoch(
+  base::Time update_time = base::Time::FromDeltaSinceWindowsEpoch(
       base::Microseconds(specific.update_time_windows_epoch_micros()));
 
-  return SavedTabGroupTab(url, title, group_guid, position, guid, std::nullopt,
-                          creation_time, update_time);
+  return SavedTabGroupTab(url, title, group_guid, nullptr, guid, absl::nullopt,
+                          position, creation_time, update_time);
 }
 
 std::unique_ptr<sync_pb::SavedTabGroupSpecifics> SavedTabGroupTab::ToSpecifics()
@@ -99,16 +98,7 @@ std::unique_ptr<sync_pb::SavedTabGroupSpecifics> SavedTabGroupTab::ToSpecifics()
   pb_tab->set_url(url().spec());
   pb_tab->set_group_guid(saved_group_guid().AsLowercaseString());
   pb_tab->set_title(base::UTF16ToUTF8(title()));
-  pb_tab->set_position(position().value());
-  // Note: When adding a new syncable field, also update IsSyncEquivalent().
+  pb_tab->set_position(position());
 
   return pb_specific;
 }
-
-bool SavedTabGroupTab::IsSyncEquivalent(const SavedTabGroupTab& other) const {
-  return saved_tab_guid() == other.saved_tab_guid() && url() == other.url() &&
-         saved_group_guid() == other.saved_group_guid() &&
-         title() == other.title() && position() == other.position();
-}
-
-}  // namespace tab_groups

@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -21,6 +20,8 @@
 #include "components/mirroring/service/fake_video_capture_host.h"
 #include "components/mirroring/service/mirror_settings.h"
 #include "components/mirroring/service/mirroring_features.h"
+#include "components/mirroring/service/receiver_response.h"
+#include "components/mirroring/service/value_util.h"
 #include "media/base/media_switches.h"
 #include "media/cast/test/utility/default_config.h"
 #include "media/cast/test/utility/net_utility.h"
@@ -62,6 +63,7 @@ namespace mirroring {
 
 namespace {
 
+constexpr int kDefaultPlayoutDelay = 400;  // ms
 
 const openscreen::cast::Answer kAnswerWithConstraints{
     1234,
@@ -113,7 +115,7 @@ class MockRemotingSource : public media::mojom::RemotingSource {
   base::WeakPtrFactory<MockRemotingSource> weak_factory_{this};
 };
 
-Json::Value ParseAsJsoncppValue(std::string_view document) {
+Json::Value ParseAsJsoncppValue(absl::string_view document) {
   Json::CharReaderBuilder builder;
   Json::CharReaderBuilder::strictMode(&builder.settings_);
   EXPECT_FALSE(document.empty());
@@ -121,8 +123,8 @@ Json::Value ParseAsJsoncppValue(std::string_view document) {
   Json::Value root_node;
   std::string error_msg;
   std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-  EXPECT_TRUE(reader->parse(&*document.begin(), &*document.end(), &root_node,
-                            &error_msg));
+  EXPECT_TRUE(
+      reader->parse(document.begin(), document.end(), &root_node, &error_msg));
 
   return root_node;
 }
@@ -140,14 +142,6 @@ std::string Stringify(const Json::Value& value) {
   return stream.str();
 }
 
-openscreen::cast::SenderStats ConstructDefaultSenderStats() {
-  return openscreen::cast::SenderStats{
-      .audio_statistics = openscreen::cast::SenderStats::StatisticsList(),
-      .audio_histograms = openscreen::cast::SenderStats::HistogramsList(),
-      .video_statistics = openscreen::cast::SenderStats::StatisticsList(),
-      .video_histograms = openscreen::cast::SenderStats::HistogramsList()};
-}
-
 }  // namespace
 
 class OpenscreenSessionHostTest : public mojom::ResourceProvider,
@@ -155,7 +149,8 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
                                   public mojom::CastMessageChannel,
                                   public ::testing::Test {
  public:
-  OpenscreenSessionHostTest() = default;
+  OpenscreenSessionHostTest()
+      : feature_list_(media::kOpenscreenCastStreamingSession) {}
 
   OpenscreenSessionHostTest(const OpenscreenSessionHostTest&) = delete;
   OpenscreenSessionHostTest& operator=(const OpenscreenSessionHostTest&) =
@@ -200,16 +195,12 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
           absl::get<openscreen::cast::Offer>(parsed_message.value().body);
 
       for (const openscreen::cast::AudioStream& stream : offer.audio_streams) {
-        EXPECT_EQ(
-            base::Milliseconds(
-                std::chrono::milliseconds(stream.stream.target_delay).count()),
-            target_playout_delay_);
+        EXPECT_EQ(std::chrono::milliseconds(stream.stream.target_delay).count(),
+                  target_playout_delay_ms_);
       }
       for (const openscreen::cast::VideoStream& stream : offer.video_streams) {
-        EXPECT_EQ(
-            base::Milliseconds(
-                std::chrono::milliseconds(stream.stream.target_delay).count()),
-            target_playout_delay_);
+        EXPECT_EQ(std::chrono::milliseconds(stream.stream.target_delay).count(),
+                  target_playout_delay_ms_);
       }
     } else if (parsed_message.value().type ==
                SenderMessage::Type::kGetCapabilities) {
@@ -227,10 +218,6 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
         std::make_unique<NiceMock<FakeVideoCaptureHost>>(std::move(receiver));
     OnGetVideoCaptureHost();
   }
-
-  void GetVideoEncoderMetricsProvider(
-      mojo::PendingReceiver<media::mojom::VideoEncoderMetricsProvider> receiver)
-      override {}
 
   void GetNetworkContext(
       mojo::PendingReceiver<network::mojom::NetworkContext> receiver) override {
@@ -295,8 +282,7 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
 
   // Create a mirroring session. Expect to send OFFER message.
   void CreateSession(SessionType session_type,
-                     bool is_remote_playback = false,
-                     bool enable_rtcp_reporting = false) {
+                     bool is_remote_playback = false) {
     session_type_ = session_type;
     is_remote_playback_ = is_remote_playback;
     mojom::SessionParametersPtr session_params =
@@ -306,14 +292,12 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
     session_params->receiver_model_name = "Chromecast";
     session_params->source_id = "sender-123";
     session_params->destination_id = "receiver-456";
-    if (target_playout_delay_ != kDefaultPlayoutDelay) {
-      session_params->target_playout_delay = target_playout_delay_;
+    if (target_playout_delay_ms_ != kDefaultPlayoutDelay) {
+      session_params->target_playout_delay =
+          base::Milliseconds(target_playout_delay_ms_);
     }
     if (force_letterboxing_) {
       session_params->force_letterboxing = true;
-    }
-    if (enable_rtcp_reporting) {
-      session_params->enable_rtcp_reporting = true;
     }
     session_params->is_remote_playback = is_remote_playback_;
     cast_mode_ = "mirroring";
@@ -549,7 +533,7 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
   }
 
   void SetTargetPlayoutDelay(int target_playout_delay_ms) {
-    target_playout_delay_ = base::Milliseconds(target_playout_delay_ms);
+    target_playout_delay_ms_ = target_playout_delay_ms;
   }
 
   void ForceLetterboxing() { force_letterboxing_ = true; }
@@ -571,6 +555,7 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
   std::unique_ptr<FakeVideoCaptureHost> video_host_;
 
  private:
+  base::test::ScopedFeatureList feature_list_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   const net::IPEndPoint receiver_endpoint_ =
@@ -584,7 +569,7 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
   mojo::Remote<media::mojom::Remoter> remoter_;
   NiceMock<MockRemotingSource> remoting_source_;
   std::string cast_mode_;
-  base::TimeDelta target_playout_delay_{kDefaultPlayoutDelay};
+  int32_t target_playout_delay_ms_{kDefaultPlayoutDelay};
   bool force_letterboxing_{false};
 
   std::unique_ptr<OpenscreenSessionHost> session_host_;
@@ -592,7 +577,7 @@ class OpenscreenSessionHostTest : public mojom::ResourceProvider,
   std::unique_ptr<openscreen::cast::Answer> answer_;
 
   int next_receiver_ssrc_{35336};
-  std::optional<openscreen::cast::SenderMessage> last_sent_offer_;
+  absl::optional<openscreen::cast::SenderMessage> last_sent_offer_;
 };
 
 TEST_F(OpenscreenSessionHostTest, AudioOnlyMirroring) {
@@ -741,13 +726,13 @@ TEST_F(OpenscreenSessionHostTest, ChangeTargetPlayoutDelay) {
   CreateSession(SessionType::AUDIO_AND_VIDEO);
   StartSession();
 
-  // Currently new delays are ignored due to the playout delay being bounded by
-  // the minimum and maximum both being set to the default value.
+  // Currently new delays are ignored due to the playout delay
+  // being bounded by a min-max of (400, 400).
   session_host().SetTargetPlayoutDelay(base::Milliseconds(300));
   EXPECT_EQ(session_host().audio_stream_->GetTargetPlayoutDelay(),
-            kDefaultPlayoutDelay);
+            base::Milliseconds(400));
   EXPECT_EQ(session_host().audio_stream_->GetTargetPlayoutDelay(),
-            kDefaultPlayoutDelay);
+            base::Milliseconds(400));
 
   StopSession();
 }
@@ -904,18 +889,6 @@ TEST_F(OpenscreenSessionHostTest, ShouldEnableHardwareH264EncodingIfSupported) {
                                    config.use_hardware_encoder;
                           }));
 #endif
-}
-
-TEST_F(OpenscreenSessionHostTest, GetStatsDefault) {
-  CreateSession(SessionType::AUDIO_AND_VIDEO);
-  EXPECT_TRUE(session_host().GetMirroringStats().empty());
-}
-
-TEST_F(OpenscreenSessionHostTest, GetStatsEnabled) {
-  CreateSession(SessionType::AUDIO_AND_VIDEO, /* remote_playback */ false,
-                /* rtcp_reporting */ true);
-  session_host().SetSenderStatsForTest(ConstructDefaultSenderStats());
-  EXPECT_FALSE(session_host().GetMirroringStats().empty());
 }
 
 }  // namespace mirroring

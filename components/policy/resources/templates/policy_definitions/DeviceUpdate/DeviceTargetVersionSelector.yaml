@@ -1,5 +1,4 @@
 caption: Allow devices to select a specific version to update to
-deprecated: true
 desc: |-
   This setting allows devices to select a specific target version of <ph name="PRODUCT_OS_NAME">$2<ex>Google ChromeOS</ex></ph> they will update to.
 
@@ -26,7 +25,7 @@ owners:
 schema:
   type: string
 supported_on:
-- chrome_os:95-116
+- chrome_os:95-
 tags:
 - system-security
 type: string

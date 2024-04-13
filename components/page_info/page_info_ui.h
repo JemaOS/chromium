@@ -13,7 +13,6 @@
 #include "build/build_config.h"
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_types.h"
-#include "components/content_settings/core/common/cookie_blocking_3pcd_status.h"
 #include "components/page_info/page_info.h"
 #include "components/permissions/object_permission_context_base.h"
 #include "components/privacy_sandbox/canonical_topic.h"
@@ -72,6 +71,23 @@ class PageInfoUI {
     SecurityDescriptionType type;
   };
 
+  // |CookieInfo| contains information about the cookies from a specific source.
+  // A source can for example be a specific origin or an entire wildcard domain.
+  // TODO(crbug.com/1346305): Remove after finishing cookies subpage
+  // implementation.
+  struct CookieInfo {
+    CookieInfo();
+
+    // The number of allowed cookies.
+    int allowed;
+    // The number of blocked cookies.
+    int blocked;
+
+    // Whether these cookies are from the current top-level origin as seen by
+    // the user, or from third-party origins.
+    bool is_first_party;
+  };
+
   // |CookiesFpsInfo| contains information about a specific First-Party Set.
   struct CookiesFpsInfo {
     explicit CookiesFpsInfo(const std::u16string& owner_name);
@@ -90,38 +106,21 @@ class PageInfoUI {
   // cookies subpage implementation
   struct CookiesNewInfo {
     CookiesNewInfo();
-    CookiesNewInfo(CookiesNewInfo&&);
     ~CookiesNewInfo();
 
     // The number of third-party sites blocked.
-    int blocked_third_party_sites_count = -1;
-
-    // The number of third-party sites allowed.
-    int allowed_third_party_sites_count = -1;
+    int blocked_sites_count = -1;
 
     // The number of sites allowed to access cookies.
     int allowed_sites_count = -1;
 
-    // Whether protections are enabled for the given site.
-    bool protections_on = true;
-
-    // Whether tracking protection controls should be shown.
-    bool controls_visible = true;
-
-    // The type of third-party cookie blocking in 3PCD.
-    CookieBlocking3pcdStatus blocking_status =
-        CookieBlocking3pcdStatus::kNotIn3pcd;
+    // The status of blocking third-party cookies.
+    CookieControlsStatus status;
 
     // The status of enforcement of blocking third-party cookies.
     CookieControlsEnforcement enforcement;
 
-    std::optional<CookiesFpsInfo> fps_info;
-
-    // The expiration of the active third-party cookie exception.
-    base::Time expiration;
-
-    // Whether the current profile is "off the record".
-    bool is_otr = false;
+    absl::optional<CookiesFpsInfo> fps_info;
   };
 
   // |ChosenObjectInfo| contains information about a single |chooser_object| of
@@ -207,6 +206,7 @@ class PageInfoUI {
     std::vector<privacy_sandbox::CanonicalTopic> accessed_topics;
   };
 
+  using CookieInfoList = std::vector<CookieInfo>;
   using PermissionInfoList = std::vector<PageInfo::PermissionInfo>;
   using ChosenObjectInfoList = std::vector<std::unique_ptr<ChosenObjectInfo>>;
 
@@ -218,11 +218,6 @@ class PageInfoUI {
   // mid-sentence.
   static std::u16string PermissionTypeToUIStringMidSentence(
       ContentSettingsType type);
-  // Returns a tooltip for permission |type|.
-  static std::u16string PermissionTooltipUiString(
-      ContentSettingsType type,
-      const std::optional<url::Origin>& requesting_origin);
-
   static base::span<const PermissionUIInfo>
   GetContentSettingsUIInfoForTesting();
 
@@ -285,6 +280,9 @@ class PageInfoUI {
   CreateSafetyTipSecurityDescription(const security_state::SafetyTipInfo& info);
 
   // Sets cookie information.
+  // TODO(crbug.com/1346305) remove unused function overload after finished
+  // project. Sets cookie information.
+  virtual void SetCookieInfo(const CookieInfoList& cookie_info_list) {}
   virtual void SetCookieInfo(const CookiesNewInfo& cookie_info) {}
 
   // Sets permission information.
@@ -308,6 +306,7 @@ class PageInfoUI {
       const IdentityInfo& identity_info) const;
 };
 
+typedef PageInfoUI::CookieInfoList CookieInfoList;
 typedef PageInfoUI::PermissionInfoList PermissionInfoList;
 typedef PageInfoUI::ChosenObjectInfoList ChosenObjectInfoList;
 

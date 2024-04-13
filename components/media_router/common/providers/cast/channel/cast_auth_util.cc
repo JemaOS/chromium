@@ -17,10 +17,10 @@
 #include "components/media_router/common/providers/cast/channel/cast_channel_metrics.h"
 #include "components/media_router/common/providers/cast/channel/cast_message_util.h"
 #include "crypto/random.h"
+#include "net/cert/pki/signature_algorithm.h"
 #include "net/cert/x509_certificate.h"
 #include "net/cert/x509_util.h"
-#include "third_party/boringssl/src/pki/parse_values.h"
-#include "third_party/boringssl/src/pki/signature_algorithm.h"
+#include "net/der/parse_values.h"
 
 namespace cast_channel {
 
@@ -41,23 +41,6 @@ BASE_FEATURE(kEnforceSHA256Checking,
              "CastSHA256Enforced",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enforce cast fallback CRL revocation when enabled.
-// If disabled, fallback CRL will be ignored. If the feature is enabled,  it
-// overrides kEnforceRevocationChecking.
-BASE_FEATURE(kEnforceFallbackCRLRevocationChecking,
-             "CastFallbackCRLRevocation",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enforce certificate revocation when enabled.
-// If disabled, any revocation failures are ignored.
-//
-// This flags only controls the enforcement. Revocation is checked regardless.
-//
-// This flag tracks the changes necessary to fully enforce revocation.
-BASE_FEATURE(kEnforceRevocationChecking,
-             "CastCertificateRevocation",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 namespace {
 
 const char kParseErrorPrefix[] = "Failed to parse auth message: ";
@@ -70,6 +53,16 @@ const int kNonceSizeInBytes = 16;
 
 // The number of hours after which a nonce is regenerated.
 long kNonceExpirationTimeInHours = 24;
+
+// Enforce certificate revocation when enabled.
+// If disabled, any revocation failures are ignored.
+//
+// This flags only controls the enforcement. Revocation is checked regardless.
+//
+// This flag tracks the changes necessary to fully enforce revocation.
+BASE_FEATURE(kEnforceRevocationChecking,
+             "CastCertificateRevocation",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 namespace cast_crypto = ::cast_certificate;
 
@@ -148,7 +141,7 @@ class CastNonce {
 // Maps CastCertError to AuthResult.
 // If crl_required is set to false, all revocation related errors are ignored.
 AuthResult MapToAuthResult(cast_certificate::CastCertError error,
-                           cast_certificate::CRLPolicy crl_policy) {
+                           bool crl_required) {
   switch (error) {
     case cast_certificate::CastCertError::ERR_CERTS_MISSING:
       RecordCertificateStatus(CastCertificateStatus::kMissingCerts);
@@ -172,8 +165,8 @@ AuthResult MapToAuthResult(cast_certificate::CastCertError error,
                         AuthResult::ERROR_CERT_NOT_SIGNED_BY_TRUSTED_CA);
     case cast_certificate::CastCertError::ERR_CRL_INVALID:
       // Histogram events are recorded during CRL verification.
-      // This error is only encountered if CRL is required.
-      DCHECK_EQ(crl_policy, cast_certificate::CRLPolicy::CRL_REQUIRED);
+      // This error is only encountered if |crl_required| is true.
+      DCHECK(crl_required);
       return AuthResult("Failed to provide a valid CRL.",
                         AuthResult::ERROR_CRL_INVALID,
                         CastChannelFlag::kCRLInvalid);
@@ -182,7 +175,7 @@ AuthResult MapToAuthResult(cast_certificate::CastCertError error,
       // Revocation check is the last step of Cast certificate verification.
       // If this error is encountered, the rest of certificate verification has
       // succeeded.
-      if (crl_policy == cast_certificate::CRLPolicy::CRL_OPTIONAL) {
+      if (!crl_required) {
         AuthResult success;
         success.set_flag(CastChannelFlag::kCertificateRevoked);
         return success;
@@ -194,31 +187,6 @@ AuthResult MapToAuthResult(cast_certificate::CastCertError error,
       RecordCertificateStatus(CastCertificateStatus::kUnexpectedFailed);
       return AuthResult("Failed verifying cast device certificate.",
                         AuthResult::ERROR_CERT_NOT_SIGNED_BY_TRUSTED_CA);
-    case cast_certificate::CastCertError::ERR_CERTS_REVOKED_BY_FALLBACK_CRL:
-      RecordCertificateStatus(
-          CastCertificateStatus::kCertificateRevokedByFallbackCRL);
-      if (crl_policy ==
-          cast_certificate::CRLPolicy::CRL_OPTIONAL_WITH_FALLBACK) {
-        AuthResult success;
-        success.set_flag(CastChannelFlag::kCertificateRevokedByFallbackCRL);
-        return success;
-      }
-      return AuthResult("Failed certificate revocation check by fallback crl.",
-                        AuthResult::ERROR_CERTS_REVOKED_BY_FALLBACK_CRL);
-    case cast_certificate::CastCertError::ERR_FALLBACK_CRL_INVALID:
-      RecordCertificateStatus(CastCertificateStatus::kInvalidFallbackCRL);
-      if (crl_policy ==
-          cast_certificate::CRLPolicy::CRL_OPTIONAL_WITH_FALLBACK) {
-        AuthResult success;
-        success.set_flag(CastChannelFlag::kInvalidFallbackCRL);
-        return success;
-      }
-      return AuthResult("Failed to provide a valid fallback CRL.",
-                        AuthResult::ERROR_FALLBACK_CRL_INVALID);
-    case cast_certificate::CastCertError::OK_FALLBACK_CRL:
-      return AuthResult("Fallback to fallback CRL.",
-                        AuthResult::ERROR_CRL_OK_FALLBACK_CRL,
-                        CastChannelFlag::kCertificateAcceptedByFallbackCRL);
     case cast_certificate::CastCertError::OK:
       return AuthResult();
   }
@@ -408,8 +376,8 @@ AuthResult AuthenticateChallengeReply(const CastMessage& challenge_reply,
 AuthResult VerifyCredentialsImpl(const AuthResponse& response,
                                  const std::string& signature_input,
                                  const cast_crypto::CRLPolicy& crl_policy,
-                                 bssl::TrustStore* cast_trust_store,
-                                 bssl::TrustStore* crl_trust_store,
+                                 net::TrustStore* cast_trust_store,
+                                 net::TrustStore* crl_trust_store,
                                  const base::Time& verification_time) {
   // Verify the certificate
   std::unique_ptr<cast_crypto::CertVerificationContext> verification_context;
@@ -424,26 +392,15 @@ AuthResult VerifyCredentialsImpl(const AuthResponse& response,
   // Parse the CRL.
   AuthResult parse_result;
   std::unique_ptr<cast_crypto::CastCRL> crl;
-  std::unique_ptr<cast_crypto::CastCRL> fallback_crl;
   if (response.crl().empty()) {
     RecordCertificateStatus(CastCertificateStatus::kMissingCRL);
     parse_result.set_flag(CastChannelFlag::kCRLMissing);
   } else {
     crl = cast_crypto::ParseAndVerifyCRLUsingCustomTrustStore(
-        response.crl(), verification_time, crl_trust_store,
-        false /* is_fallback_crl */);
+        response.crl(), verification_time, crl_trust_store);
     if (!crl) {
       RecordCertificateStatus(CastCertificateStatus::kInvalidCRL);
       parse_result.set_flag(CastChannelFlag::kCRLInvalid);
-    }
-  }
-
-  if (crl_policy == cast_crypto::CRLPolicy::CRL_REQUIRED_WITH_FALLBACK ||
-      crl_policy == cast_crypto::CRLPolicy::CRL_OPTIONAL_WITH_FALLBACK) {
-    fallback_crl = cast_crypto::ParseAndVerifyFallbackCRLUsingCustomTrustStore(
-        verification_time, crl_trust_store);
-    if (!fallback_crl) {
-      parse_result.set_flag(CastChannelFlag::kInvalidFallbackCRL);
     }
   }
 
@@ -452,10 +409,11 @@ AuthResult VerifyCredentialsImpl(const AuthResponse& response,
   cast_crypto::CastCertError verify_result =
       cast_crypto::VerifyDeviceCertUsingCustomTrustStore(
           cert_chain, verification_time, &verification_context, &device_policy,
-          crl.get(), fallback_crl.get(), crl_policy, cast_trust_store);
+          crl.get(), crl_policy, cast_trust_store);
 
   // Handle and report errors.
-  AuthResult result = MapToAuthResult(verify_result, crl_policy);
+  AuthResult result = MapToAuthResult(
+      verify_result, crl_policy == cast_crypto::CRLPolicy::CRL_REQUIRED);
   result.CopyFlagsFrom(parse_result);
   if (!result.success())
     return result;
@@ -514,13 +472,6 @@ AuthResult VerifyCredentials(const AuthResponse& response,
   if (!base::FeatureList::IsEnabled(kEnforceRevocationChecking)) {
     policy = cast_crypto::CRLPolicy::CRL_OPTIONAL;
   }
-  if (base::FeatureList::IsEnabled(kEnforceFallbackCRLRevocationChecking)) {
-    if (policy == cast_crypto::CRLPolicy::CRL_REQUIRED) {
-      policy = cast_crypto::CRLPolicy::CRL_REQUIRED_WITH_FALLBACK;
-    } else {
-      policy = cast_crypto::CRLPolicy::CRL_OPTIONAL_WITH_FALLBACK;
-    }
-  }
   return VerifyCredentialsImpl(response, signature_input, policy, nullptr,
                                nullptr, now);
 }
@@ -528,8 +479,8 @@ AuthResult VerifyCredentials(const AuthResponse& response,
 AuthResult VerifyCredentialsForTest(const AuthResponse& response,
                                     const std::string& signature_input,
                                     const cast_crypto::CRLPolicy& crl_policy,
-                                    bssl::TrustStore* cast_trust_store,
-                                    bssl::TrustStore* crl_trust_store,
+                                    net::TrustStore* cast_trust_store,
+                                    net::TrustStore* crl_trust_store,
                                     const base::Time& verification_time) {
   return VerifyCredentialsImpl(response, signature_input, crl_policy,
                                cast_trust_store, crl_trust_store,

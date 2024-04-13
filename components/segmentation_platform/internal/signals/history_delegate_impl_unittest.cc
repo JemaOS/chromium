@@ -61,7 +61,7 @@ class HistoryDelegateImplTest : public testing::Test {
   void SetUp() override {
     signal_handler_ = std::make_unique<UrlSignalHandler>(nullptr);
     history_delegate_ = std::make_unique<HistoryDelegateImpl>(
-        &history_service_, signal_handler_.get(), /*profile_id*/ "test_id");
+        &history_service_, signal_handler_.get());
   }
 
   void TearDown() override {
@@ -83,18 +83,12 @@ TEST_F(HistoryDelegateImplTest, FindInHistory) {
   EXPECT_CALL(history_service(), QueryURL(kUrl1, false, _, _))
       .WillOnce(&RunNotFoundCallback);
   history_delegate().FindUrlInHistory(
-      kUrl1, base::BindOnce([](bool found, const std::string& profile_id) {
-        EXPECT_FALSE(found);
-        EXPECT_EQ(profile_id, "");
-      }));
+      kUrl1, base::BindOnce([](bool found) { EXPECT_FALSE(found); }));
 
   EXPECT_CALL(history_service(), QueryURL(kUrl1, false, _, _))
       .WillOnce(&RunFoundCallback);
   history_delegate().FindUrlInHistory(
-      kUrl1, base::BindOnce([](bool found, const std::string& profile_id) {
-        EXPECT_TRUE(found);
-        EXPECT_EQ(profile_id, "test_id");
-      }));
+      kUrl1, base::BindOnce([](bool found) { EXPECT_TRUE(found); }));
 }
 
 TEST_F(HistoryDelegateImplTest, FastCheck) {

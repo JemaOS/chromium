@@ -183,8 +183,8 @@ class TopSitesImpl : public TopSites, public HistoryServiceObserver {
   void SetTopSitesFromHistory(scoped_refptr<SitesAndQueriesRequest> request);
 
   // history::HistoryServiceObserver:
-  void OnHistoryDeletions(HistoryService* history_service,
-                          const DeletionInfo& deletion_info) override;
+  void OnURLsDeleted(HistoryService* history_service,
+                     const DeletionInfo& deletion_info) override;
 
   // Ensures that non thread-safe methods are called on the correct thread.
   base::ThreadChecker thread_checker_;
@@ -233,6 +233,10 @@ class TopSitesImpl : public TopSites, public HistoryServiceObserver {
 
   // Are we loaded?
   bool loaded_;
+
+  // Have the SetTopSites execution time related histograms been recorded?
+  // The histogram should only be recorded once for each Chrome execution.
+  static bool histogram_recorded_;
 
   base::ScopedObservation<HistoryService, HistoryServiceObserver>
       history_service_observation_{this};

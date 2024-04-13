@@ -12,10 +12,10 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/types/optional_util.h"
 #include "components/viz/common/gpu/context_cache_controller.h"
-#include "components/viz/common/resources/shared_image_format_utils.h"
 #include "components/viz/service/gl/gpu_service_impl.h"
 #include "components/viz/test/test_gpu_service_holder.h"
 #include "gpu/command_buffer/client/gles2_implementation.h"
+#include "gpu/command_buffer/client/raster_implementation_gles.h"
 #include "gpu/command_buffer/client/shared_memory_limits.h"
 #include "gpu/command_buffer/common/context_creation_attribs.h"
 #include "gpu/config/skia_limits.h"
@@ -30,8 +30,8 @@ TestInProcessContextProvider::TestInProcessContextProvider(
     TestContextType type,
     bool support_locking,
     gpu::raster::GrShaderCache* gr_shader_cache,
-    gpu::GpuProcessShmCount* use_shader_cache_shm_count)
-    : type_(type), use_shader_cache_shm_count_(use_shader_cache_shm_count) {
+    gpu::GpuProcessActivityFlags* activity_flags)
+    : type_(type), activity_flags_(activity_flags) {
   CHECK(main_thread_checker_.CalledOnValidThread());
   context_thread_checker_.DetachFromThread();
 
@@ -63,11 +63,21 @@ gpu::ContextResult TestInProcessContextProvider::BindToCurrentSequence() {
   auto* holder = TestGpuServiceHolder::GetInstance();
 
   gpu::ContextCreationAttribs attribs;
+  attribs.alpha_size = 8;
+  attribs.blue_size = 8;
+  attribs.green_size = 8;
+  attribs.red_size = 8;
+  attribs.depth_size = 0;
+  attribs.stencil_size = 8;
+  attribs.samples = 0;
+  attribs.sample_buffers = 0;
   attribs.bind_generates_resource = false;
 
-  if (type_ == TestContextType::kGLES2) {
+  if (type_ == TestContextType::kGLES2 ||
+      type_ == TestContextType::kGLES2WithRaster) {
     attribs.enable_gles2_interface = true;
-    attribs.enable_raster_interface = false;
+    attribs.enable_raster_interface =
+        type_ == TestContextType::kGLES2WithRaster;
     attribs.enable_oop_rasterization = false;
 
     gles2_context_ = std::make_unique<gpu::GLInProcessContext>();
@@ -87,16 +97,26 @@ gpu::ContextResult TestInProcessContextProvider::BindToCurrentSequence() {
     raster_context_ = std::make_unique<gpu::RasterInProcessContext>();
     auto result = raster_context_->Initialize(
         holder->task_executor(), attribs, gpu::SharedMemoryLimits(),
-        holder->gpu_service()->gr_shader_cache(), use_shader_cache_shm_count_);
+        holder->gpu_service()->gr_shader_cache(), activity_flags_);
     CHECK_EQ(result, gpu::ContextResult::kSuccess);
 
     caps_ = raster_context_->GetCapabilities();
-    CHECK_EQ(caps_.gpu_rasterization, is_gpu_raster);
+
+    // We don't have a good way for tests to change what the in process gpu
+    // service will return for this capability. But we want to use gpu
+    // rasterization if and only if the test requests it.
+    caps_.gpu_rasterization = is_gpu_raster;
   }
 
   cache_controller_ = std::make_unique<ContextCacheController>(
       ContextSupport(), base::SingleThreadTaskRunner::GetCurrentDefault());
   cache_controller_->SetLock(GetLock());
+
+  if (type_ == TestContextType::kGLES2WithRaster) {
+    gles2_raster_impl_ =
+        std::make_unique<gpu::raster::RasterImplementationGLES>(
+            ContextGL(), ContextSupport(), ContextCapabilities());
+  }
 
   is_bound_ = true;
   return gpu::ContextResult::kSuccess;
@@ -110,8 +130,9 @@ gpu::gles2::GLES2Interface* TestInProcessContextProvider::ContextGL() {
 
 gpu::raster::RasterInterface* TestInProcessContextProvider::RasterInterface() {
   CheckValidThreadOrLockAcquired();
-  CHECK(raster_context_);
-  return raster_context_->GetImplementation();
+  CHECK_NE(type_, TestContextType::kGLES2);
+  return raster_context_ ? raster_context_->GetImplementation()
+                         : gles2_raster_impl_.get();
 }
 
 gpu::ContextSupport* TestInProcessContextProvider::ContextSupport() {
@@ -197,12 +218,6 @@ void TestInProcessContextProvider::CheckValidThreadOrLockAcquired() const {
     DCHECK(context_thread_checker_.CalledOnValidThread());
   }
 #endif
-}
-
-unsigned int TestInProcessContextProvider::GetGrGLTextureFormat(
-    SharedImageFormat format) const {
-  return SharedImageFormatRestrictedSinglePlaneUtils::ToGLTextureStorageFormat(
-      format, ContextCapabilities().angle_rgbx_internal_format);
 }
 
 }  // namespace viz

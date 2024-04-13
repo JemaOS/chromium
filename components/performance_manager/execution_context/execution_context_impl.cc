@@ -62,7 +62,7 @@ class ExecutionContextImpl : public ExecutionContext,
 
   const GURL& GetUrl() const override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    return node_->GetURL();
+    return node_->url();
   }
 
   const ProcessNode* GetProcessNode() const override {
@@ -74,7 +74,7 @@ class ExecutionContextImpl : public ExecutionContext,
   // the execution context having that particular priority.
   const PriorityAndReason& GetPriorityAndReason() const override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    return node_->GetPriorityAndReason();
+    return node_->priority_and_reason();
   }
 
   const FrameNode* GetFrameNode() const override {
@@ -115,7 +115,7 @@ class FrameExecutionContext
   // ExecutionContextImpl:
   blink::ExecutionContextToken GetToken() const override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    return blink::ExecutionContextToken(node_->GetFrameToken());
+    return blink::ExecutionContextToken(node_->frame_token());
   }
 
   const FrameNode* GetFrameNode() const override {
@@ -143,7 +143,7 @@ class WorkerExecutionContext
   // ExecutionContextImpl:
   blink::ExecutionContextToken GetToken() const override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    return ToExecutionContextToken(node_->GetWorkerToken());
+    return ToExecutionContextToken(node_->worker_token());
   }
 
   const WorkerNode* GetWorkerNode() const override {

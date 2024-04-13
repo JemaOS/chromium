@@ -6,6 +6,8 @@
 
 #import <MediaPlayer/MediaPlayer.h>
 
+#include "base/mac/scoped_nsobject.h"
+
 @interface NowPlayingInfoCenterDelegateCocoa ()
 
 // Initialize the |nowPlayingInfo_| dictionary with values.
@@ -17,12 +19,12 @@
 @end
 
 @implementation NowPlayingInfoCenterDelegateCocoa {
-  NSMutableDictionary* __strong _nowPlayingInfo;
+  base::scoped_nsobject<NSMutableDictionary> _nowPlayingInfo;
 }
 
 - (instancetype)init {
   if (self = [super init]) {
-    _nowPlayingInfo = [[NSMutableDictionary alloc] init];
+    _nowPlayingInfo.reset([[NSMutableDictionary alloc] init]);
     [self resetNowPlayingInfo];
     [self updateNowPlayingInfo];
   }
@@ -71,12 +73,15 @@
 }
 
 - (void)setThumbnail:(NSImage*)image {
-  MPMediaItemArtwork* artwork = [[MPMediaItemArtwork alloc]
-      initWithBoundsSize:image.size
-          requestHandler:^NSImage* _Nonnull(CGSize aSize) {
-            return image;
-          }];
-  [_nowPlayingInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
+  if (@available(macOS 10.13.2, *)) {
+    base::scoped_nsobject<MPMediaItemArtwork> artwork(
+        [[MPMediaItemArtwork alloc]
+            initWithBoundsSize:image.size
+                requestHandler:^NSImage* _Nonnull(CGSize aSize) {
+                  return image;
+                }]);
+    [_nowPlayingInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
+  }
 }
 
 - (void)clearMetadata {
@@ -85,14 +90,18 @@
 }
 
 - (void)initializeNowPlayingInfoValues {
-  [_nowPlayingInfo setObject:@0
+  [_nowPlayingInfo setObject:[NSNumber numberWithDouble:0]
                       forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
-  [_nowPlayingInfo setObject:@0 forKey:MPNowPlayingInfoPropertyPlaybackRate];
-  [_nowPlayingInfo setObject:@0 forKey:MPMediaItemPropertyPlaybackDuration];
+  [_nowPlayingInfo setObject:[NSNumber numberWithDouble:0]
+                      forKey:MPNowPlayingInfoPropertyPlaybackRate];
+  [_nowPlayingInfo setObject:[NSNumber numberWithDouble:0]
+                      forKey:MPMediaItemPropertyPlaybackDuration];
   [_nowPlayingInfo setObject:@"" forKey:MPMediaItemPropertyTitle];
   [_nowPlayingInfo setObject:@"" forKey:MPMediaItemPropertyArtist];
   [_nowPlayingInfo setObject:@"" forKey:MPMediaItemPropertyAlbumTitle];
-  [_nowPlayingInfo removeObjectForKey:MPMediaItemPropertyArtwork];
+  if (@available(macOS 10.13.2, *)) {
+    [_nowPlayingInfo removeObjectForKey:MPMediaItemPropertyArtwork];
+  }
 }
 
 - (void)updateNowPlayingInfo {

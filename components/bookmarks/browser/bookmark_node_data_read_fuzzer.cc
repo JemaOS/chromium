@@ -15,7 +15,7 @@
 class Environment {
  public:
   Environment() {
-    logging::SetMinLogLevel(logging::LOGGING_FATAL);
+    logging::SetMinLogLevel(logging::LOG_FATAL);
     CHECK(base::i18n::InitializeICU());
   }
   base::AtExitManager at_exit_manager;
@@ -24,7 +24,7 @@ class Environment {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
-  base::Pickle pickle = base::Pickle::WithUnownedBuffer(base::span(data, size));
+  base::Pickle pickle(reinterpret_cast<const char*>(data), size);
   bookmarks::BookmarkNodeData bookmark_node_data;
   bookmark_node_data.ReadFromPickle(&pickle);
   return 0;

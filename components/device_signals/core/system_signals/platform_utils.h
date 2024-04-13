@@ -5,9 +5,8 @@
 #ifndef COMPONENTS_DEVICE_SIGNALS_CORE_SYSTEM_SIGNALS_PLATFORM_UTILS_H_
 #define COMPONENTS_DEVICE_SIGNALS_CORE_SYSTEM_SIGNALS_PLATFORM_UTILS_H_
 
-#include <optional>
-
 #include "base/process/process_handle.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class FilePath;
@@ -17,7 +16,7 @@ namespace device_signals {
 
 // Returns the file path pointing to the executable file that spawned
 // the given process `pid`.
-std::optional<base::FilePath> GetProcessExePath(base::ProcessId pid);
+absl::optional<base::FilePath> GetProcessExePath(base::ProcessId pid);
 
 }  // namespace device_signals
 

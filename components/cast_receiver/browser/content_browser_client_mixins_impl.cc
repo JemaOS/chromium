@@ -10,13 +10,13 @@ namespace cast_receiver {
 
 // static
 std::unique_ptr<ContentBrowserClientMixins> ContentBrowserClientMixins::Create(
-    network::NetworkContextGetter network_content_getter) {
+    NetworkContextGetter network_content_getter) {
   return std::make_unique<ContentBrowserClientMixinsImpl>(
       std::move(network_content_getter));
 }
 
 ContentBrowserClientMixinsImpl::ContentBrowserClientMixinsImpl(
-    network::NetworkContextGetter network_context_getter)
+    NetworkContextGetter network_context_getter)
     : application_client_(std::move(network_context_getter)) {}
 
 ContentBrowserClientMixinsImpl::~ContentBrowserClientMixinsImpl() = default;

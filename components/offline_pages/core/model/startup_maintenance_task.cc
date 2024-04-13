@@ -212,10 +212,13 @@ bool StartupMaintenanceSync(
     sql::Database* db) {
   // Clear temporary pages that are in legacy directory, which is also the
   // directory that serves as the 'private' directory.
-  ClearLegacyPagesInPrivateDirSync(db, private_archives_dir);
+  SyncOperationResult result =
+      ClearLegacyPagesInPrivateDirSync(db, private_archives_dir);
 
   // Clear temporary pages in cache directory.
-  CheckTemporaryPageConsistencySync(db, temporary_archives_dir);
+  result = CheckTemporaryPageConsistencySync(db, temporary_archives_dir);
+  UMA_HISTOGRAM_ENUMERATION("OfflinePages.ConsistencyCheck.Temporary.Result",
+                            result);
 
   // Report storage usage UMA, |temporary_namespaces| + |persistent_namespaces|
   // should be all namespaces. This is implicitly checked by the

@@ -24,6 +24,5 @@ supported_on:
 - chrome.*:86-
 - chrome_os:86-
 - android:86-
-- ios:122-
 tags: []
 type: main

@@ -2,19 +2,42 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <set>
 #include <string>
 
 #include "base/strings/string_util.h"
+#include "base/test/values_test_util.h"
+#include "base/values.h"
 #include "components/sync/base/model_type.h"
-#include "components/sync/base/user_selectable_type.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace syncer {
 namespace {
 
-TEST(ModelTypeTest, IsRealDataType) {
+class ModelTypeTest : public testing::Test {};
+
+TEST_F(ModelTypeTest, ModelTypeToValue) {
+  for (int i = 0; i < GetNumModelTypes(); ++i) {
+    ModelType model_type = ModelTypeFromInt(i);
+    base::ExpectStringValue(ModelTypeToDebugString(model_type),
+                            ModelTypeToValue(model_type));
+  }
+}
+
+TEST_F(ModelTypeTest, ModelTypeSetToValue) {
+  const ModelTypeSet model_types(BOOKMARKS, APPS);
+
+  base::Value::List value_list(ModelTypeSetToValue(model_types));
+  ASSERT_EQ(2u, value_list.size());
+  ASSERT_TRUE(value_list[0].is_string());
+  EXPECT_EQ("Bookmarks", value_list[0].GetString());
+  ASSERT_TRUE(value_list[1].is_string());
+  EXPECT_EQ("Apps", value_list[1].GetString());
+}
+
+TEST_F(ModelTypeTest, IsRealDataType) {
   EXPECT_FALSE(IsRealDataType(UNSPECIFIED));
   EXPECT_TRUE(IsRealDataType(FIRST_REAL_MODEL_TYPE));
   EXPECT_TRUE(IsRealDataType(LAST_REAL_MODEL_TYPE));
@@ -28,7 +51,7 @@ TEST(ModelTypeTest, IsRealDataType) {
 
 // Make sure we can convert ModelTypes to and from specifics field
 // numbers.
-TEST(ModelTypeTest, ModelTypeToFromSpecificsFieldNumber) {
+TEST_F(ModelTypeTest, ModelTypeToFromSpecificsFieldNumber) {
   ModelTypeSet protocol_types = ProtocolTypes();
   for (ModelType type : protocol_types) {
     int field_number = GetSpecificsFieldNumberFromModelType(type);
@@ -36,11 +59,11 @@ TEST(ModelTypeTest, ModelTypeToFromSpecificsFieldNumber) {
   }
 }
 
-TEST(ModelTypeTest, ModelTypeOfInvalidSpecificsFieldNumber) {
+TEST_F(ModelTypeTest, ModelTypeOfInvalidSpecificsFieldNumber) {
   EXPECT_EQ(UNSPECIFIED, GetModelTypeFromSpecificsFieldNumber(0));
 }
 
-TEST(ModelTypeTest, ModelTypeHistogramMapping) {
+TEST_F(ModelTypeTest, ModelTypeHistogramMapping) {
   std::set<ModelTypeForHistograms> histogram_values;
   ModelTypeSet all_types = ModelTypeSet::All();
   for (ModelType type : all_types) {
@@ -55,7 +78,7 @@ TEST(ModelTypeTest, ModelTypeHistogramMapping) {
   }
 }
 
-TEST(ModelTypeTest, ModelTypeToStableIdentifier) {
+TEST_F(ModelTypeTest, ModelTypeToStableIdentifier) {
   std::set<int> identifiers;
   ModelTypeSet all_types = ModelTypeSet::All();
   for (ModelType type : all_types) {
@@ -70,10 +93,10 @@ TEST(ModelTypeTest, ModelTypeToStableIdentifier) {
   // identifiers are stable.
   EXPECT_EQ(3, ModelTypeToStableIdentifier(BOOKMARKS));
   EXPECT_EQ(7, ModelTypeToStableIdentifier(AUTOFILL));
-  EXPECT_EQ(52, ModelTypeToStableIdentifier(HISTORY));
+  EXPECT_EQ(9, ModelTypeToStableIdentifier(TYPED_URLS));
 }
 
-TEST(ModelTypeTest, DefaultFieldValues) {
+TEST_F(ModelTypeTest, DefaultFieldValues) {
   ModelTypeSet types = ProtocolTypes();
   for (ModelType type : types) {
     SCOPED_TRACE(ModelTypeToDebugString(type));
@@ -93,7 +116,7 @@ TEST(ModelTypeTest, DefaultFieldValues) {
   }
 }
 
-TEST(ModelTypeTest, ModelTypeToProtocolRootTagValues) {
+TEST_F(ModelTypeTest, ModelTypeToProtocolRootTagValues) {
   for (ModelType model_type : ProtocolTypes()) {
     std::string root_tag = ModelTypeToProtocolRootTag(model_type);
     if (IsRealDataType(model_type)) {
@@ -105,13 +128,31 @@ TEST(ModelTypeTest, ModelTypeToProtocolRootTagValues) {
   }
 }
 
-TEST(ModelTypeTest, ModelTypeDebugStringIsNotEmpty) {
+TEST_F(ModelTypeTest, ModelTypeDebugStringIsNotEmpty) {
   for (ModelType model_type : ModelTypeSet::All()) {
     EXPECT_NE("", ModelTypeToDebugString(model_type));
   }
 }
 
-TEST(ModelTypeTest, ModelTypesSubsetsSanity) {
+TEST_F(ModelTypeTest, ModelTypeNotificationTypeMapping) {
+  ModelTypeSet all_types = ModelTypeSet::All();
+  for (ModelType model_type : all_types) {
+    std::string notification_type;
+    bool ret = RealModelTypeToNotificationType(model_type, &notification_type);
+    if (ret) {
+      auto notified_model_type = ModelType::UNSPECIFIED;
+      ASSERT_NE(model_type, notified_model_type);
+      EXPECT_TRUE(NotificationTypeToRealModelType(notification_type,
+                                                  &notified_model_type));
+      EXPECT_EQ(model_type, notified_model_type);
+    } else {
+      EXPECT_FALSE(ProtocolTypes().Has(model_type));
+      EXPECT_TRUE(notification_type.empty());
+    }
+  }
+}
+
+TEST_F(ModelTypeTest, ModelTypesSubsetsSanity) {
   // UserTypes and ControlTypes shouldn't overlap.
   EXPECT_TRUE(Intersection(UserTypes(), ControlTypes()).Empty());
 
@@ -133,7 +174,7 @@ TEST(ModelTypeTest, ModelTypesSubsetsSanity) {
   EXPECT_TRUE(Intersection(CommitOnlyTypes(), EncryptableUserTypes()).Empty());
 }
 
-TEST(ModelTypeTest, ModelTypeSetFromSpecificsFieldNumberList) {
+TEST_F(ModelTypeTest, ModelTypeSetFromSpecificsFieldNumberList) {
   // Get field numbers corresponding to each model type in ProtocolTypes().
   ::google::protobuf::RepeatedField<int> field_numbers;
   for (auto model_type : ProtocolTypes()) {
@@ -141,18 +182,6 @@ TEST(ModelTypeTest, ModelTypeSetFromSpecificsFieldNumberList) {
   }
   EXPECT_EQ(GetModelTypeSetFromSpecificsFieldNumberList(field_numbers),
             ProtocolTypes());
-}
-
-TEST(ModelTypeTest, TypesRequiringUnsyncedDataCheckOnSignout) {
-  static_assert(
-      52 == GetNumModelTypes(),
-      "Add new types to `TypesRequiringUnsyncedDataCheckOnSignout()` if there "
-      "should be a warning when the user signs out and the types have unsynced "
-      "data. The warning offers the user to either save the data locally or "
-      "abort sign-out, depending on the platform");
-
-  EXPECT_TRUE(
-      TypesRequiringUnsyncedDataCheckOnSignout().Has(syncer::PASSWORDS));
 }
 
 }  // namespace

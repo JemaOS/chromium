@@ -6,7 +6,6 @@
 #define COMPONENTS_VIZ_SERVICE_DISPLAY_DISPLAY_SCHEDULER_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/cancelable_callback.h"
 #include "base/memory/raw_ptr.h"
@@ -19,6 +18,7 @@
 #include "components/viz/service/display/display_scheduler_base.h"
 #include "components/viz/service/display/pending_swap_params.h"
 #include "components/viz/service/viz_service_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace viz {
 
@@ -44,19 +44,17 @@ class VIZ_SERVICE_EXPORT DisplayScheduler
   ~DisplayScheduler() override;
 
   // DisplaySchedulerBase implementation.
-  void SetDamageTracker(DisplayDamageTracker* damage_tracker) override;
   void SetVisible(bool visible) override;
   void ForceImmediateSwapIfPossible() override;
   void SetNeedsOneBeginFrame(bool needs_draw) override;
   void DidSwapBuffers() override;
   void DidReceiveSwapBuffersAck() override;
   void OutputSurfaceLost() override;
-  void ReportFrameTime(base::TimeDelta frame_time,
-                       base::flat_set<base::PlatformThreadId> thread_ids,
-                       base::TimeTicks draw_start,
-                       HintSession::BoostType boost_type) override;
+  void ReportFrameTime(
+      base::TimeDelta frame_time,
+      base::flat_set<base::PlatformThreadId> thread_ids) override;
 
-  // DisplayDamageTracker::Delegate implementation.
+  // DisplayDamageTrackerObserver implementation.
   void OnDisplayDamaged(SurfaceId surface_id) override;
   void OnRootFrameMissing(bool missing) override;
   void OnPendingSurfacesChanged() override;
@@ -154,8 +152,8 @@ class VIZ_SERVICE_EXPORT DisplayScheduler
 
   // If set, we are dynamically adjusting our frame deadline, by the percentile
   // of historic draw times to base the adjustment on.
-  const std::optional<double> dynamic_cc_deadlines_percentile_;
-  const std::optional<double> dynamic_scheduler_deadlines_percentile_;
+  const absl::optional<double> dynamic_cc_deadlines_percentile_;
+  const absl::optional<double> dynamic_scheduler_deadlines_percentile_;
 
   base::WeakPtrFactory<DisplayScheduler> weak_ptr_factory_{this};
 };

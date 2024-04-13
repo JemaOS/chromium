@@ -5,17 +5,18 @@
 #ifndef COMPONENTS_WEB_PACKAGE_SIGNED_WEB_BUNDLES_SIGNED_WEB_BUNDLE_SIGNATURE_VERIFIER_H_
 #define COMPONENTS_WEB_PACKAGE_SIGNED_WEB_BUNDLES_SIGNED_WEB_BUNDLE_SIGNATURE_VERIFIER_H_
 
-#include <optional>
 #include <string>
 
-#include "base/files/file.h"
 #include "base/functional/callback_forward.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
 #include "base/types/expected.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace web_package {
 
+class SharedFile;
 class SignedWebBundleIntegrityBlock;
 
 // This class can be used to verify the signatures contained in a Signed Web
@@ -48,15 +49,15 @@ class SignedWebBundleSignatureVerifier {
   virtual ~SignedWebBundleSignatureVerifier();
 
   using SignatureVerificationCallback =
-      base::OnceCallback<void(std::optional<Error>)>;
+      base::OnceCallback<void(absl::optional<Error>)>;
 
   // Verifies the signatures of the Signed Web Bundle `file` with the integrity
-  // block `integrity_block`. Executes the `callback` with `std::nullopt` on
+  // block `integrity_block`. Executes the `callback` with `absl::nullopt` on
   // success, or an instance of `Error` on error. Only one signature is
   // currently supported.
   //
   // TODO(crbug.com/1366303): Support more than one signature.
-  virtual void VerifySignatures(base::File file,
+  virtual void VerifySignatures(scoped_refptr<SharedFile> file,
                                 SignedWebBundleIntegrityBlock integrity_block,
                                 SignatureVerificationCallback callback);
 
@@ -68,7 +69,7 @@ class SignedWebBundleSignatureVerifier {
   // Calculate the SHA512 hash of the Signed Web Bundle excluding the integrity
   // block, i.e., the unsigned Web Bundle.
   static base::expected<std::array<uint8_t, kSHA512DigestLength>, std::string>
-  CalculateHashOfUnsignedWebBundle(base::File file,
+  CalculateHashOfUnsignedWebBundle(scoped_refptr<SharedFile> file,
                                    int64_t web_bundle_chunk_size,
                                    int64_t integrity_block_size);
 

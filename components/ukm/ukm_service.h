@@ -157,12 +157,8 @@ class UkmService : public UkmRecorderImpl {
                            TestRegisterUkmProvidersWhenUKMFeatureEnabled);
   FRIEND_TEST_ALL_PREFIXES(UkmServiceTest,
                            PurgeExtensionDataFromUnsentLogStore);
-  FRIEND_TEST_ALL_PREFIXES(
-      UkmServiceTest,
-      PurgeExtensionDataFromUnsentLogStoreWithVersionChange);
   FRIEND_TEST_ALL_PREFIXES(UkmServiceTest, PurgeAppDataFromUnsentLogStore);
   FRIEND_TEST_ALL_PREFIXES(UkmServiceTest, PurgeMsbbDataFromUnsentLogStore);
-  FRIEND_TEST_ALL_PREFIXES(UkmServiceTest, PurgeAppDataLogMetadataUpdate);
 
   // Updates the |recorder_client_registry_| about the changes in
   // UkmRecorderParameters. Thread-safe.

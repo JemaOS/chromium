@@ -14,7 +14,7 @@ namespace segmentation_platform {
 struct Config;
 
 // Model to predict if a user switched devices.
-class DeviceSwitcherModel : public DefaultModelProvider {
+class DeviceSwitcherModel : public ModelProvider {
  public:
   // Any updates to these strings need to also update the field trials allowlist
   // in go/segmentation-field-trials-map.
@@ -36,10 +36,11 @@ class DeviceSwitcherModel : public DefaultModelProvider {
   static std::unique_ptr<Config> GetConfig();
 
   // ModelProvider implementation.
-  std::unique_ptr<ModelConfig> GetModelConfig() override;
-
+  void InitAndFetchModel(
+      const ModelUpdatedCallback& model_updated_callback) override;
   void ExecuteModelWithInput(const ModelProvider::Request& inputs,
                              ExecutionCallback callback) override;
+  bool ModelAvailable() override;
 };
 
 }  // namespace segmentation_platform

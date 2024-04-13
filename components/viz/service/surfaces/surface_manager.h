@@ -8,10 +8,8 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 #include "base/check_op.h"
@@ -29,6 +27,7 @@
 #include "components/viz/common/surfaces/surface_id.h"
 #include "components/viz/service/surfaces/surface_observer.h"
 #include "components/viz/service/surfaces/surface_reference.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if DCHECK_IS_ON()
 #include <iosfwd>
@@ -53,7 +52,7 @@ struct BeginFrameId;
 class VIZ_SERVICE_EXPORT SurfaceManager {
  public:
   SurfaceManager(SurfaceManagerDelegate* delegate,
-                 std::optional<uint32_t> activation_deadline_in_frames,
+                 absl::optional<uint32_t> activation_deadline_in_frames,
                  size_t max_uncommitted_frames);
 
   SurfaceManager(const SurfaceManager&) = delete;
@@ -67,12 +66,12 @@ class VIZ_SERVICE_EXPORT SurfaceManager {
 #endif
 
   // Sets an alternative system default frame activation deadline for unit
-  // tests. std::nullopt indicates no deadline (in other words, an unlimited
+  // tests. absl::nullopt indicates no deadline (in other words, an unlimited
   // deadline).
   void SetActivationDeadlineInFramesForTesting(
-      std::optional<uint32_t> deadline);
+      absl::optional<uint32_t> deadline);
 
-  std::optional<uint32_t> activation_deadline_in_frames() const {
+  absl::optional<uint32_t> activation_deadline_in_frames() const {
     return activation_deadline_in_frames_;
   }
 
@@ -109,9 +108,7 @@ class VIZ_SERVICE_EXPORT SurfaceManager {
   // in response to a BeginFrame, or a CopyOutputRequest is issued.
   //
   // |ack.sequence_number| is only valid if called in response to a BeginFrame.
-  bool SurfaceModified(const SurfaceId& surface_id,
-                       const BeginFrameAck& ack,
-                       SurfaceObserver::HandleInteraction handle_interaction);
+  bool SurfaceModified(const SurfaceId& surface_id, const BeginFrameAck& ack);
 
   // Called when a surface has an active frame for the first time.
   void FirstSurfaceActivation(const SurfaceInfo& surface_info);
@@ -173,12 +170,6 @@ class VIZ_SERVICE_EXPORT SurfaceManager {
   base::flat_set<SurfaceId> GetSurfacesThatReferenceChildForTesting(
       const SurfaceId& surface_id) const;
 
-  // Gets the earliest timestamp when the surface with ID `surface_id` gets
-  // embedded through `AddSurfaceReferences()`, if it's already embedded.
-  // Returns an empty base::TimeTicks() if the surface hasn't been embedded yet.
-  base::TimeTicks GetSurfaceReferencedTimestamp(
-      const SurfaceId& surface_id) const;
-
   // Returns the primary surface if it exists. Otherwise, this will return the
   // most recent surface in |surface_range|. If no surface exists, this will
   // return nullptr.
@@ -218,7 +209,7 @@ class VIZ_SERVICE_EXPORT SurfaceManager {
   void AggregatedFrameSinksChanged();
 
   using CommitPredicate =
-      base::FunctionRef<bool(const SurfaceId&, const BeginFrameId&)>;
+      base::RepeatingCallback<bool(const SurfaceId&, const BeginFrameId&)>;
   // Commits all surfaces in range and their referenced surfaces. For each
   // surface processed calls `predicate` for each uncommitted frame from oldest
   // to newest. If predicate returns true, surface is committed. If not the
@@ -299,14 +290,12 @@ class VIZ_SERVICE_EXPORT SurfaceManager {
   // Can be nullptr.
   const raw_ptr<SurfaceManagerDelegate> delegate_;
 
-  std::optional<uint32_t> activation_deadline_in_frames_;
+  absl::optional<uint32_t> activation_deadline_in_frames_;
 
   base::flat_map<base::UnguessableToken,
                  std::unique_ptr<SurfaceAllocationGroup>>
       embed_token_to_allocation_group_;
-  base::flat_map<
-      FrameSinkId,
-      std::vector<raw_ptr<SurfaceAllocationGroup, VectorExperimental>>>
+  base::flat_map<FrameSinkId, std::vector<SurfaceAllocationGroup*>>
       frame_sink_id_to_allocation_groups_;
   base::flat_map<SurfaceId, std::unique_ptr<Surface>> surface_map_;
   base::ObserverList<SurfaceObserver>::Unchecked observer_list_;
@@ -335,13 +324,6 @@ class VIZ_SERVICE_EXPORT SurfaceManager {
   std::unordered_map<SurfaceId, TemporaryReferenceData, SurfaceIdHash>
       temporary_references_;
 
-  // A map of pair(the timestamp of the first time a surface gets referenced,
-  // the number of references that surface has).
-  std::unordered_map<SurfaceId,
-                     std::pair<base::TimeTicks, uint32_t>,
-                     SurfaceIdHash>
-      surface_referenced_timestamps_;
-
   // Range tracking information for temporary references. Each map entry is an
   // is an ordered list of SurfaceIds that have temporary references with the
   // same FrameSinkId. A SurfaceId can be reconstructed with:
@@ -357,7 +339,7 @@ class VIZ_SERVICE_EXPORT SurfaceManager {
   // Timer to remove old temporary references that aren't removed after an
   // interval of time. The timer will started/stopped so it only runs if there
   // are temporary references. Also the timer isn't used with Android WebView.
-  std::optional<base::RepeatingTimer> expire_timer_;
+  absl::optional<base::RepeatingTimer> expire_timer_;
 
   bool allocation_groups_need_garbage_collection_ = false;
 

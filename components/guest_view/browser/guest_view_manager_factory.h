@@ -18,12 +18,12 @@ class GuestViewManagerDelegate;
 
 class GuestViewManagerFactory {
  public:
-  virtual std::unique_ptr<GuestViewManager> CreateGuestViewManager(
+  virtual GuestViewManager* CreateGuestViewManager(
       content::BrowserContext* context,
       std::unique_ptr<GuestViewManagerDelegate> delegate) = 0;
 
  protected:
-  virtual ~GuestViewManagerFactory() = default;
+  virtual ~GuestViewManagerFactory() {}
 };
 
 }  // namespace guest_view

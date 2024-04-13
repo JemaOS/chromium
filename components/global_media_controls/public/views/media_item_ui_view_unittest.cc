@@ -238,10 +238,9 @@ class MediaItemUIViewTest : public views::ViewsTestBase {
   }
 
   std::unique_ptr<views::Widget> widget_;
-  raw_ptr<test::MockMediaItemUIFooter, DanglingUntriaged> footer_ = nullptr;
-  raw_ptr<test::MockMediaItemUIDeviceSelector, DanglingUntriaged>
-      device_selector_ = nullptr;
-  raw_ptr<MediaItemUIView, DanglingUntriaged> item_ui_ = nullptr;
+  raw_ptr<test::MockMediaItemUIFooter> footer_ = nullptr;
+  raw_ptr<test::MockMediaItemUIDeviceSelector> device_selector_ = nullptr;
+  raw_ptr<MediaItemUIView> item_ui_ = nullptr;
   std::unique_ptr<global_media_controls::test::MockMediaItemUIObserver>
       observer_;
   std::unique_ptr<media_message_center::test::MockMediaNotificationItem> item_;
@@ -351,18 +350,13 @@ TEST_F(MediaItemUIViewTest, SendsDestroyedUpdates) {
 
 TEST_F(MediaItemUIViewTest, SendsClicks) {
   // When the container is clicked directly, it should notify its observers.
-  EXPECT_CALL(observer(),
-              OnMediaItemUIClicked(kTestNotificationId,
-                                   /*activate_original_media=*/true));
+  EXPECT_CALL(observer(), OnMediaItemUIClicked(kTestNotificationId));
   SimulateItemUIClicked();
   testing::Mock::VerifyAndClearExpectations(&observer());
 
   // It should also notify its observers when the header is clicked.
-  EXPECT_CALL(observer(),
-              OnMediaItemUIClicked(kTestNotificationId,
-                                   /*activate_original_media=*/true));
+  EXPECT_CALL(observer(), OnMediaItemUIClicked(kTestNotificationId));
   SimulateHeaderClicked();
-  testing::Mock::VerifyAndClearExpectations(&observer());
 }
 
 TEST_F(MediaItemUIViewTest, GestureScrollDisabledWhenSlidingOut) {

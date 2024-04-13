@@ -12,7 +12,6 @@
 #include "base/sequence_checker.h"
 #include "base/task/single_thread_task_runner.h"
 #include "components/media_router/common/providers/cast/channel/cast_socket.h"
-#include "services/network/public/cpp/network_context_getter.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 
 namespace cast_channel {
@@ -41,6 +40,9 @@ class CastSocketService {
 
   virtual CastSocket* GetSocket(const net::IPEndPoint& ip_endpoint) const = 0;
 
+  using NetworkContextGetter =
+      base::RepeatingCallback<network::mojom::NetworkContext*()>;
+
   // Opens cast socket with |open_params| and invokes |open_cb| when opening
   // operation finishes. If cast socket with |ip_endpoint| already exists,
   // invoke |open_cb| directly with the existing socket.
@@ -49,7 +51,7 @@ class CastSocketService {
   // |open_params|: Parameters necessary to open a Cast channel.
   // |open_cb|: OnOpenCallback invoked when cast socket is opened.
   // |network_context_getter| is called on UI thread only.
-  virtual void OpenSocket(network::NetworkContextGetter network_context_getter,
+  virtual void OpenSocket(NetworkContextGetter network_context_getter,
                           const CastSocketOpenParams& open_params,
                           CastSocket::OnOpenCallback open_cb) = 0;
 
@@ -91,6 +93,8 @@ class CastSocketService {
 
 class CastSocketServiceImpl : public CastSocketService {
  public:
+  using CastSocketService::NetworkContextGetter;
+
   CastSocketServiceImpl(const CastSocketServiceImpl&) = delete;
   CastSocketServiceImpl& operator=(const CastSocketServiceImpl&) = delete;
 
@@ -100,7 +104,7 @@ class CastSocketServiceImpl : public CastSocketService {
   std::unique_ptr<CastSocket> RemoveSocket(int channel_id) override;
   CastSocket* GetSocket(int channel_id) const override;
   CastSocket* GetSocket(const net::IPEndPoint& ip_endpoint) const override;
-  void OpenSocket(network::NetworkContextGetter network_context_getter,
+  void OpenSocket(NetworkContextGetter network_context_getter,
                   const CastSocketOpenParams& open_params,
                   CastSocket::OnOpenCallback open_cb) override;
   void AddObserver(CastSocket::Observer* observer) override;
@@ -126,7 +130,7 @@ class CastSocketServiceImpl : public CastSocketService {
   Sockets sockets_;
 
   // List of socket observers.
-  base::ObserverList<CastSocket::Observer> observers_;
+  base::ObserverList<CastSocket::Observer>::Unchecked observers_;
 };
 
 }  // namespace cast_channel

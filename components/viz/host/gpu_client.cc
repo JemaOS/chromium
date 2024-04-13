@@ -13,19 +13,20 @@
 #include "build/chromeos_buildflags.h"
 #include "components/viz/host/gpu_host_impl.h"
 #include "components/viz/host/host_gpu_memory_buffer_manager.h"
-#include "gpu/config/gpu_finch_features.h"
 #include "gpu/ipc/client/gpu_channel_host.h"
 #include "gpu/ipc/common/gpu_memory_buffer_impl.h"
 #include "gpu/ipc/common/gpu_memory_buffer_impl_shared_memory.h"
-#include "gpu/ipc/common/gpu_memory_buffer_support.h"
 #include "services/viz/privileged/mojom/gl/gpu_service.mojom.h"
 
-#if !BUILDFLAG(IS_CHROMEOS)
-#include "base/feature_list.h"
-#include "components/ml/webnn/features.mojom-features.h"
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-
 namespace viz {
+namespace {
+bool IsSizeValid(const gfx::Size& size) {
+  base::CheckedNumeric<int> bytes = size.width();
+  bytes *= size.height();
+  return bytes.IsValid();
+}
+
+}  // namespace
 
 GpuClient::GpuClient(std::unique_ptr<GpuClientDelegate> delegate,
                      int client_id,
@@ -122,21 +123,10 @@ base::WeakPtr<GpuClient> GpuClient::GetWeakPtr() {
   return weak_factory_.GetWeakPtr();
 }
 
-#if !BUILDFLAG(IS_CHROMEOS)
-void GpuClient::BindWebNNContextProvider(
-    mojo::PendingReceiver<webnn::mojom::WebNNContextProvider> receiver) {
-  if (auto* gpu_host = delegate_->EnsureGpuHost()) {
-    gpu_host->gpu_service()->BindWebNNContextProvider(std::move(receiver),
-                                                      client_id_);
-  }
-}
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-
 void GpuClient::OnEstablishGpuChannel(
     mojo::ScopedMessagePipeHandle channel_handle,
     const gpu::GPUInfo& gpu_info,
     const gpu::GpuFeatureInfo& gpu_feature_info,
-    const gpu::SharedImageCapabilities& shared_image_capabilities,
     GpuHostImpl::EstablishChannelStatus status) {
   DCHECK_EQ(channel_handle.is_valid(),
             status == GpuHostImpl::EstablishChannelStatus::kSuccess);
@@ -151,7 +141,7 @@ void GpuClient::OnEstablishGpuChannel(
   if (callback) {
     // A request is waiting.
     std::move(callback).Run(client_id_, std::move(channel_handle), gpu_info,
-                            gpu_feature_info, shared_image_capabilities);
+                            gpu_feature_info);
     return;
   }
   if (status == GpuHostImpl::EstablishChannelStatus::kSuccess) {
@@ -160,7 +150,6 @@ void GpuClient::OnEstablishGpuChannel(
     channel_handle_ = std::move(channel_handle);
     gpu_info_ = gpu_info;
     gpu_feature_info_ = gpu_feature_info;
-    shared_image_capabilities_ = shared_image_capabilities;
   }
 }
 
@@ -178,8 +167,7 @@ void GpuClient::ClearCallback() {
     return;
   EstablishGpuChannelCallback callback = std::move(callback_);
   std::move(callback).Run(client_id_, mojo::ScopedMessagePipeHandle(),
-                          gpu::GPUInfo(), gpu::GpuFeatureInfo(),
-                          gpu::SharedImageCapabilities());
+                          gpu::GPUInfo(), gpu::GpuFeatureInfo());
 }
 
 void GpuClient::EstablishGpuChannel(EstablishGpuChannelCallback callback) {
@@ -194,7 +182,7 @@ void GpuClient::EstablishGpuChannel(EstablishGpuChannelCallback callback) {
     //      more than once, no need to do anything.
     if (callback) {
       std::move(callback).Run(client_id_, std::move(channel_handle_), gpu_info_,
-                              gpu_feature_info_, shared_image_capabilities_);
+                              gpu_feature_info_);
       DCHECK(!channel_handle_.is_valid());
     }
     return;
@@ -204,8 +192,7 @@ void GpuClient::EstablishGpuChannel(EstablishGpuChannelCallback callback) {
   if (!gpu_host) {
     if (callback) {
       std::move(callback).Run(client_id_, mojo::ScopedMessagePipeHandle(),
-                              gpu::GPUInfo(), gpu::GpuFeatureInfo(),
-                              gpu::SharedImageCapabilities());
+                              gpu::GPUInfo(), gpu::GpuFeatureInfo());
     }
     return;
   }
@@ -255,7 +242,7 @@ void GpuClient::CreateGpuMemoryBuffer(
     return;
   }
 
-  if (!gpu::GpuMemoryBufferSupport::IsSizeValid(size)) {
+  if (!IsSizeValid(size)) {
     gpu_memory_buffer_factory_receivers_.ReportBadMessage("Invalid GMB size");
     return;
   }
@@ -297,18 +284,6 @@ void GpuClient::CopyGpuMemoryBuffer(
 void GpuClient::CreateGpuMemoryBufferFactory(
     mojo::PendingReceiver<mojom::GpuMemoryBufferFactory> receiver) {
   gpu_memory_buffer_factory_receivers_.Add(this, std::move(receiver));
-}
-
-void GpuClient::CreateClientGpuMemoryBufferFactory(
-    mojo::PendingReceiver<gpu::mojom::ClientGmbInterface> receiver) {
-  CHECK(base::FeatureList::IsEnabled(features::kUseClientGmbInterface));
-  // Send the PendingReceiver to GpuService via IPC.
-  if (auto* gpu_host = delegate_->EnsureGpuHost()) {
-    gpu_host->gpu_service()->BindClientGmbInterface(std::move(receiver),
-                                                    client_id_);
-  } else {
-    receiver.ResetWithReason(0, "Can not bind the ClientGmbInterface.");
-  }
 }
 
 }  // namespace viz

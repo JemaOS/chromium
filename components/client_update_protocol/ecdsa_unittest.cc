@@ -11,6 +11,7 @@
 
 #include "base/base64.h"
 #include "base/base64url.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "crypto/random.h"
@@ -76,7 +77,7 @@ TEST_F(CupEcdsaTest, SignRequest) {
   EXPECT_EQ(request_parameters.hash_hex, kRequestHash);
 
   // The nonce should be a base64url-encoded, 32-byte (256-bit) string.
-  std::string_view nonce_b64 = query;
+  base::StringPiece nonce_b64 = query;
   nonce_b64.remove_prefix(strlen(kKeyIdWithName));
   nonce_b64.remove_suffix(strlen(kRequestHashWithName));
   std::string nonce;

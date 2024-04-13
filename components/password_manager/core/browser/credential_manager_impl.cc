@@ -9,7 +9,6 @@
 
 #include "base/functional/bind.h"
 #include "base/metrics/user_metrics.h"
-#include "components/affiliations/core/browser/affiliation_utils.h"
 #include "components/password_manager/core/browser/credential_manager_logger.h"
 #include "components/password_manager/core/browser/credential_manager_pending_request_task.h"
 #include "components/password_manager/core/browser/credential_manager_utils.h"
@@ -20,9 +19,6 @@
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 
 namespace password_manager {
-
-using password_manager_util::GetLoginMatchType;
-using password_manager_util::GetMatchType;
 
 namespace {
 
@@ -110,7 +106,7 @@ void CredentialManagerImpl::Get(CredentialMediationRequirement mediation,
     std::move(callback).Run(
         pending_request_ ? CredentialManagerError::PENDING_REQUEST
                          : CredentialManagerError::PASSWORDSTOREUNAVAILABLE,
-        std::nullopt);
+        absl::nullopt);
     LogCredentialManagerGetResult(
         metrics_util::CredentialManagerGetResult::kRejected, mediation);
     return;
@@ -125,7 +121,7 @@ void CredentialManagerImpl::Get(CredentialMediationRequirement mediation,
     return;
   }
   // Return an empty credential for incognito mode.
-  if (client_->IsOffTheRecord()) {
+  if (client_->IsIncognito()) {
     // Callback with empty credential info.
     std::move(callback).Run(CredentialManagerError::SUCCESS, CredentialInfo());
     LogCredentialManagerGetResult(
@@ -141,13 +137,24 @@ void CredentialManagerImpl::Get(CredentialMediationRequirement mediation,
         metrics_util::CredentialManagerGetResult::kNoneZeroClickOff, mediation);
     return;
   }
+  StoresToQuery stores_to_query = GetAccountPasswordStore()
+                                      ? StoresToQuery::kProfileAndAccountStores
+                                      : StoresToQuery::kProfileStore;
   pending_request_ = std::make_unique<CredentialManagerPendingRequestTask>(
       this, base::BindOnce(&RunGetCallback, std::move(callback)), mediation,
-      include_passwords, federations, GetSynthesizedFormForOrigin());
+      include_passwords, federations, stores_to_query);
+  // This will result in a callback to
+  // PendingRequestTask::OnGetPasswordStoreResults().
+  GetProfilePasswordStore()->GetLogins(GetSynthesizedFormForOrigin(),
+                                       pending_request_->GetWeakPtr());
+  if (GetAccountPasswordStore()) {
+    GetAccountPasswordStore()->GetLogins(GetSynthesizedFormForOrigin(),
+                                         pending_request_->GetWeakPtr());
+  }
 }
 
 bool CredentialManagerImpl::IsZeroClickAllowed() const {
-  return client_->IsAutoSignInEnabled() && !client_->IsOffTheRecord();
+  return client_->IsAutoSignInEnabled() && !client_->IsIncognito();
 }
 
 PasswordFormDigest CredentialManagerImpl::GetSynthesizedFormForOrigin() const {
@@ -225,24 +232,19 @@ void CredentialManagerImpl::OnProvisionalSaveComplete() {
   const PasswordForm& form = form_manager_->GetPendingCredentials();
   DCHECK(client_->IsSavingAndFillingEnabled(form.url));
 
-  if (form.match_type.has_value()) {
-    // Having PSL or affiliated web match implies there is no credential with an
-    // exactly matching origin and username. In order to avoid showing a save
+  if (form_manager_->IsPendingCredentialsPublicSuffixMatch()) {
+    // Having a credential with a PSL match implies there is no credential with
+    // an exactly matching origin and username. In order to avoid showing a save
     // bubble to the user Save() is called directly.
-    GetLoginMatchType match_type = GetMatchType(form);
-    if (match_type == GetLoginMatchType::kPSL ||
-        (match_type == GetLoginMatchType::kAffiliated &&
-         !affiliations::IsValidAndroidFacetURI(form.signon_realm))) {
-      form_manager_->Save();
-      return;
-    }
+    form_manager_->Save();
+    return;
   }
+
   if (!form.federation_origin.opaque()) {
     // If this is a federated credential, check it against the federated matches
     // produced by the PasswordFormManager. If a match is found, update it and
     // return.
-    for (const password_manager::PasswordForm* match :
-         form_manager_->GetFormFetcher()->GetFederatedMatches()) {
+    for (auto* match : form_manager_->GetFormFetcher()->GetFederatedMatches()) {
       if (match->username_value == form.username_value &&
           match->federation_origin.IsSameOriginWith(form.federation_origin)) {
         form_manager_->Update(*match);
@@ -251,16 +253,11 @@ void CredentialManagerImpl::OnProvisionalSaveComplete() {
     }
   } else if (!form_manager_->IsNewLogin()) {
     // Otherwise, if this is not a new password credential, update the existing
-    // credential prompting confirmation helium bubble to the user. This will
-    // also update the 'skip_zero_click' state, as we've gotten an explicit
-    // signal that the page understands the credential management API and so can
-    // be trusted to notify us when they sign the user out.
-    bool is_update_confirmation = form_manager_->IsPasswordUpdate();
+    // credential without prompting the user. This will also update the
+    // 'skip_zero_click' state, as we've gotten an explicit signal that the page
+    // understands the credential management API and so can be trusted to notify
+    // us when they sign the user out.
     form_manager_->Update(form_manager_->GetPendingCredentials());
-    if (is_update_confirmation) {
-      client_->AutomaticPasswordSave(std::move(form_manager_),
-                                     /*is_update_confirmation=*/true);
-    }
     return;
   }
 

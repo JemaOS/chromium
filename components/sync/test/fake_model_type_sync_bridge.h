@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -16,6 +15,7 @@
 #include "components/sync/model/model_type_change_processor.h"
 #include "components/sync/model/model_type_sync_bridge.h"
 #include "components/sync/protocol/model_type_state.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace sync_pb {
 class EntityMetadata;
@@ -101,10 +101,10 @@ class FakeModelTypeSyncBridge : public ModelTypeSyncBridge {
 
   // ModelTypeSyncBridge implementation
   std::unique_ptr<MetadataChangeList> CreateMetadataChangeList() override;
-  std::optional<ModelError> MergeFullSyncData(
+  absl::optional<ModelError> MergeFullSyncData(
       std::unique_ptr<MetadataChangeList> metadata_change_list,
       EntityChangeList entity_data) override;
-  std::optional<ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<MetadataChangeList> metadata_change_list,
       EntityChangeList entity_changes) override;
   void GetData(StorageKeyList storage_keys, DataCallback callback) override;
@@ -162,12 +162,6 @@ class FakeModelTypeSyncBridge : public ModelTypeSyncBridge {
   // invalid when IsEntityDataValid() is called.
   void TreatRemoteUpdateAsInvalid(const ClientTagHash& client_tag_hash);
 
-  // Storage keys for the entities with deleted collaboration membership.
-  const std::set<std::string>& deleted_collaboration_membership_storage_keys()
-      const {
-    return deleted_collaboration_membership_storage_keys_;
-  }
-
   const Store& db() const { return *db_; }
   Store* mutable_db() { return db_.get(); }
   size_t trimmed_specifics_change_count() const {
@@ -221,8 +215,6 @@ class FakeModelTypeSyncBridge : public ModelTypeSyncBridge {
   int last_generated_storage_key_ = 0;
 
   mutable size_t trimmed_specifics_change_count_ = 0;
-
-  std::set<std::string> deleted_collaboration_membership_storage_keys_;
 };
 
 }  // namespace syncer

@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include "base/containers/to_vector.h"
 #include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
 #include "base/run_loop.h"
@@ -52,8 +51,8 @@ class WaitForURLsDeletedObserver : public history::HistoryServiceObserver {
 
  private:
   // history::HistoryServiceObserver:
-  void OnHistoryDeletions(history::HistoryService* service,
-                          const history::DeletionInfo& deletion_info) override;
+  void OnURLsDeleted(history::HistoryService* service,
+                     const history::DeletionInfo& deletion_info) override;
 
   // Weak. Owned by our owner.
   raw_ptr<base::RunLoop> runner_;
@@ -64,7 +63,7 @@ WaitForURLsDeletedObserver::WaitForURLsDeletedObserver(base::RunLoop* runner)
 
 WaitForURLsDeletedObserver::~WaitForURLsDeletedObserver() = default;
 
-void WaitForURLsDeletedObserver::OnHistoryDeletions(
+void WaitForURLsDeletedObserver::OnURLsDeleted(
     history::HistoryService* service,
     const history::DeletionInfo& deletion_info) {
   runner_->Quit();
@@ -84,12 +83,8 @@ void WaitForURLsDeletedNotification(history::HistoryService* history_service) {
 // thread's message loop when done.
 class GetURLTask : public history::HistoryDBTask {
  public:
-  GetURLTask(const GURL& url,
-             bool* result_storage,
-             base::OnceClosure quit_closure)
-      : result_storage_(result_storage),
-        url_(url),
-        quit_closure_(std::move(quit_closure)) {}
+  GetURLTask(const GURL& url, bool* result_storage)
+      : result_storage_(result_storage), url_(url) {}
   GetURLTask(const GetURLTask&) = delete;
   GetURLTask& operator=(const GetURLTask&) = delete;
 
@@ -99,14 +94,15 @@ class GetURLTask : public history::HistoryDBTask {
     return true;
   }
 
-  void DoneRunOnMainThread() override { std::move(quit_closure_).Run(); }
+  void DoneRunOnMainThread() override {
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
+  }
 
  private:
   ~GetURLTask() override = default;
 
   raw_ptr<bool> result_storage_;
   const GURL url_;
-  base::OnceClosure quit_closure_;
 };
 
 }  // namespace
@@ -215,8 +211,8 @@ void HistoryQuickProviderTest::SetUp() {
       std::make_unique<TemplateURLService>(nullptr, 0));
 
   client_->set_in_memory_url_index(std::make_unique<InMemoryURLIndex>(
-      client_->GetBookmarkModel(), client_->GetHistoryService(), nullptr,
-      history_dir_.GetPath(), SchemeSet()));
+      client_->GetLocalOrSyncableBookmarkModel(), client_->GetHistoryService(),
+      nullptr, history_dir_.GetPath(), SchemeSet()));
   client_->GetInMemoryURLIndex()->Init();
 
   // Block until History has processed InMemoryURLIndex initialization.
@@ -228,7 +224,6 @@ void HistoryQuickProviderTest::SetUp() {
 }
 
 void HistoryQuickProviderTest::TearDown() {
-  ac_matches_.clear();
   provider_ = nullptr;
   client_.reset();
   task_environment_.RunUntilIdle();
@@ -421,15 +416,13 @@ void HistoryQuickProviderTest::RunTestWithCursor(
 bool HistoryQuickProviderTest::GetURLProxy(const GURL& url) {
   base::CancelableTaskTracker task_tracker;
   bool result = false;
-  base::RunLoop loop;
   client_->GetHistoryService()->ScheduleDBTask(
       FROM_HERE,
-      std::unique_ptr<history::HistoryDBTask>(
-          new GetURLTask(url, &result, loop.QuitWhenIdleClosure())),
+      std::unique_ptr<history::HistoryDBTask>(new GetURLTask(url, &result)),
       &task_tracker);
   // Run the message loop until GetURLTask::DoneRunOnMainThread stops it.  If
   // the test hangs, DoneRunOnMainThread isn't being invoked correctly.
-  loop.Run();
+  base::RunLoop().Run();
   return result;
 }
 
@@ -500,17 +493,17 @@ TEST_F(HistoryQuickProviderTest,
   RunTestWithCursor(u"prefixsuffix", std::string::npos, false, expected_urls,
                     false, u"https://suffix.com/prefixsuffix1",
                     std::u16string());
-  std::vector<int> unbroken_scores =
-      base::ToVector(ac_matches(), &AutocompleteMatch::relevance);
-  EXPECT_EQ(unbroken_scores.size(), 3U);
+  std::vector<int> unbroken_scores(3);
+  base::ranges::transform(ac_matches(), unbroken_scores.begin(),
+                          &AutocompleteMatch::relevance);
 
   // Get scores for 'prefix suffix'
   RunTestWithCursor(u"prefix suffix", std::string::npos, false, expected_urls,
                     false, u"https://suffix.com/prefixsuffix1",
                     std::u16string());
-  std::vector<int> broken_scores =
-      base::ToVector(ac_matches(), &AutocompleteMatch::relevance);
-  EXPECT_EQ(broken_scores.size(), 3U);
+  std::vector<int> broken_scores(3);
+  base::ranges::transform(ac_matches(), broken_scores.begin(),
+                          &AutocompleteMatch::relevance);
   // Ensure the latter scores are higher than the former.
   for (size_t i = 0; i < 3; ++i)
     EXPECT_GT(broken_scores[i], unbroken_scores[i]);
@@ -590,8 +583,8 @@ TEST_F(HistoryQuickProviderTest, ContentsClass) {
   // Verify that contents_class divides the string in the right places.
   // [22, 24) is the "第二".  All the other pairs are the "e3".
   ACMatchClassifications contents_class(ac_matches()[0].contents_class);
-  size_t expected_offsets[] = {0,  22, 24, 31, 33, 40, 42, 49, 51, 58,
-                               60, 67, 69, 76, 78, 85, 86, 94, 95};
+  size_t expected_offsets[] = {0,  22, 24, 31, 33, 40, 42, 49,
+                               51, 58, 60, 67, 69, 76, 78};
   // ScoredHistoryMatch may not highlight all the occurrences of these terms
   // because it only highlights terms at word breaks, and it only stores word
   // breaks up to some specified number of characters (50 at the time of this
@@ -921,6 +914,9 @@ TEST_F(HistoryQuickProviderTest, CorrectAutocompleteWithTrailingSlash) {
 }
 
 TEST_F(HistoryQuickProviderTest, KeywordModeExtractUserInput) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(omnibox::kSiteSearchStarterPack);
+
   // Populate template URL with starter pack entries
   std::vector<std::unique_ptr<TemplateURLData>> turls =
       TemplateURLStarterPackData::GetStarterPackEngines();
@@ -1003,45 +999,6 @@ TEST_F(HistoryQuickProviderTest, MaxMatches) {
 
   matches = provider().matches();
   EXPECT_EQ(matches.size(), provider().provider_max_matches_in_keyword_mode());
-
-  // The provider should not limit the number of suggestions when ML scoring
-  // w/increased candidates is enabled. Any matches beyond the limit should be
-  // marked as culled_by_provider and have a relevance of 0.
-  input.set_keyword_mode_entry_method(
-      metrics::OmniboxEventProto_KeywordModeEntryMethod_INVALID);
-  input.set_prefer_keyword(false);
-
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeaturesAndParameters(
-      /*enabled_features=*/
-      {{omnibox::kUrlScoringModel, {}},
-       {omnibox::kMlUrlScoring,
-        {{"MlUrlScoringUnlimitedNumCandidates", "true"}}}},
-      /*disabled_features=*/{});
-  OmniboxFieldTrial::ScopedMLConfigForTesting scoped_ml_config;
-
-  provider().Start(input, false);
-  matches = provider().matches();
-  EXPECT_EQ(matches.size(), 8u);
-  // Matches below the `max_matches` limit.
-  for (size_t i = 0; i < provider().provider_max_matches(); i++) {
-    EXPECT_FALSE(matches[i].culled_by_provider);
-    EXPECT_GT(matches[i].relevance, 0);
-  }
-  // "Extra" matches above the `max_matches` limit. Should have 0 relevance and
-  // be marked as `culled_by_provider`.
-  for (size_t i = provider().provider_max_matches(); i < matches.size(); i++) {
-    EXPECT_TRUE(matches[i].culled_by_provider);
-    EXPECT_EQ(matches[i].relevance, 0);
-  }
-
-  // Unlimited matches should ignore the provider max matches, even if the
-  // `kMlUrlScoringMaxMatchesByProvider` param is set.
-  scoped_ml_config.GetMLConfig().ml_url_scoring_max_matches_by_provider = "*:6";
-
-  provider().Start(input, false);
-  matches = provider().matches();
-  EXPECT_EQ(matches.size(), 8u);
 }
 
 class HQPDomainSuggestionsTest : public HistoryQuickProviderTest {

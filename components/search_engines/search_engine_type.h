@@ -9,8 +9,6 @@
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 //
-// This should be kept aligned with OmniboxSearchEngineType in enums.xml.
-//
 // A Java counterpart will be generated for this enum.
 // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.chrome.browser.search_engines
 enum SearchEngineType {
@@ -80,16 +78,6 @@ enum SearchEngineType {
   SEARCH_ENGINE_STARTER_PACK_BOOKMARKS = 61,
   SEARCH_ENGINE_STARTER_PACK_HISTORY = 62,
   SEARCH_ENGINE_STARTER_PACK_TABS = 63,
-  SEARCH_ENGINE_MOJEEK = 64,
-  SEARCH_ENGINE_PANDASEARCH = 65,
-  SEARCH_ENGINE_PRESEARCH = 66,
-  SEARCH_ENGINE_YEP = 67,
-  SEARCH_ENGINE_NONA = 68,
-  SEARCH_ENGINE_QUENDU = 69,
-  SEARCH_ENGINE_BRAVE = 70,
-  SEARCH_ENGINE_KARMA = 71,
-  SEARCH_ENGINE_YOU = 72,
-  SEARCH_ENGINE_STARTER_PACK_ASK_GOOGLE = 73,
 
   SEARCH_ENGINE_MAX  // Bounding value needed for UMA histogram macro.
 };
@@ -103,7 +91,6 @@ enum BuiltinEngineType {
   KEYWORD_MODE_STARTER_PACK_BOOKMARKS = 2,
   KEYWORD_MODE_STARTER_PACK_HISTORY = 3,
   KEYWORD_MODE_STARTER_PACK_TABS = 4,
-  KEYWORD_MODE_STARTER_PACK_ASK_GOOGLE = 5,
 
   KEYWORD_MODE_ENGINE_TYPE_MAX  // Bounding value needed for UMA histogram
                                 // macro.

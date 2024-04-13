@@ -153,6 +153,10 @@ TEST_F(StartupMaintenanceTaskTest, MAYBE_TestDeleteFileWithoutDbEntry) {
   EXPECT_EQ(PagePresence::BOTH_DB_AND_FILESYSTEM,
             CheckPagePresence(persistent_page1));
   EXPECT_EQ(PagePresence::NONE, CheckPagePresence(persistent_page2));
+
+  histogram_tester()->ExpectUniqueSample(
+      "OfflinePages.ConsistencyCheck.Temporary.Result",
+      static_cast<int>(SyncOperationResult::SUCCESS), 1);
 }
 
 // This test is affected by https://crbug.com/725685, which only affects windows
@@ -196,6 +200,10 @@ TEST_F(StartupMaintenanceTaskTest, MAYBE_TestDeleteDbEntryWithoutFile) {
   EXPECT_EQ(PagePresence::BOTH_DB_AND_FILESYSTEM,
             CheckPagePresence(persistent_page1));
   EXPECT_EQ(PagePresence::DB_ONLY, CheckPagePresence(persistent_page2));
+
+  histogram_tester()->ExpectUniqueSample(
+      "OfflinePages.ConsistencyCheck.Temporary.Result",
+      static_cast<int>(SyncOperationResult::SUCCESS), 1);
 }
 
 // This test is affected by https://crbug.com/725685, which only affects windows
@@ -249,6 +257,10 @@ TEST_F(StartupMaintenanceTaskTest, MAYBE_CombinedTest) {
   EXPECT_EQ(PagePresence::BOTH_DB_AND_FILESYSTEM,
             CheckPagePresence(persistent_page1));
   EXPECT_EQ(PagePresence::NONE, CheckPagePresence(persistent_page2));
+
+  histogram_tester()->ExpectUniqueSample(
+      "OfflinePages.ConsistencyCheck.Temporary.Result",
+      static_cast<int>(SyncOperationResult::SUCCESS), 1);
 }
 
 TEST_F(StartupMaintenanceTaskTest, TestKeepingNonMhtmlFile) {

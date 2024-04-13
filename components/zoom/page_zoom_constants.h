@@ -10,6 +10,11 @@
 
 namespace zoom {
 
+// Default zoom factors supported by ui_zoom.
+extern const double kPresetZoomFactors[];
+// Size of |kPresetZoomFactors|.
+extern const std::size_t kPresetZoomFactorsSize;
+
 std::string GetPresetZoomFactorsAsJSON();
 
 }  // namespace zoom

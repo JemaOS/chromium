@@ -6,15 +6,14 @@
 #define COMPONENTS_SERVICES_STORAGE_DOM_STORAGE_SESSION_STORAGE_METADATA_H_
 
 #include <stdint.h>
-
 #include <map>
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/memory/ref_counted.h"
 #include "components/services/storage/dom_storage/async_dom_storage_database.h"
 #include "components/services/storage/dom_storage/dom_storage_database.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 
 namespace storage {
@@ -93,7 +92,7 @@ class SessionStorageMetadata {
   std::vector<AsyncDomStorageDatabase::BatchDatabaseTask> SetupNewDatabase();
 
   // This parses the database version from the bytes that were stored on
-  // disk, or if there was no version saved then passes a std::nullopt. This
+  // disk, or if there was no version saved then passes a absl::nullopt. This
   // call is not necessary on new databases. The |upgrade_tasks| are populated
   // with any tasks needed to upgrade the databases versioning metadata. Note
   // this is different than the namespaces metadata, which will be upgraded in
@@ -101,7 +100,7 @@ class SessionStorageMetadata {
   //
   // Returns |true| if the parsing is correct and we support the version read.
   bool ParseDatabaseVersion(
-      std::optional<std::vector<uint8_t>> value,
+      absl::optional<std::vector<uint8_t>> value,
       std::vector<AsyncDomStorageDatabase::BatchDatabaseTask>* upgrade_tasks);
 
   // Parses all namespaces and maps, and stores all metadata locally. This

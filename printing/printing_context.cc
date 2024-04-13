@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include "base/check_op.h"
+#include "base/check.h"
 #include "base/notreached.h"
 #include "build/build_config.h"
 #include "printing/buildflags/buildflags.h"
@@ -29,13 +29,11 @@ PrintingContextFactoryForTest* g_printing_context_factory_for_test = nullptr;
 
 }  // namespace
 
-PrintingContext::PrintingContext(Delegate* delegate,
-                                 ProcessBehavior process_behavior)
+PrintingContext::PrintingContext(Delegate* delegate)
     : settings_(std::make_unique<PrintSettings>()),
       delegate_(delegate),
       in_print_job_(false),
-      abort_printing_(false),
-      process_behavior_(process_behavior) {
+      abort_printing_(false) {
   DCHECK(delegate_);
 }
 
@@ -44,11 +42,11 @@ PrintingContext::~PrintingContext() = default;
 // static
 std::unique_ptr<PrintingContext> PrintingContext::Create(
     Delegate* delegate,
-    ProcessBehavior process_behavior) {
+    bool skip_system_calls) {
   return g_printing_context_factory_for_test
              ? g_printing_context_factory_for_test->CreatePrintingContext(
-                   delegate, process_behavior)
-             : PrintingContext::CreateImpl(delegate, process_behavior);
+                   delegate, skip_system_calls)
+             : PrintingContext::CreateImpl(delegate, skip_system_calls);
 }
 
 // static
@@ -85,15 +83,6 @@ std::unique_ptr<PrintSettings> PrintingContext::TakeAndResetSettings() {
   settings_ = std::make_unique<PrintSettings>();
   return result;
 }
-
-#if BUILDFLAG(ENABLE_OOP_PRINTING)
-void PrintingContext::SetJobId(int job_id) {
-  // Should only use this method to update the browser `PrintingContext` with
-  // the value provided by the PrintBackend service.
-  CHECK_EQ(process_behavior_, ProcessBehavior::kOopEnabledSkipSystemCalls);
-  job_id_ = job_id;
-}
-#endif
 
 mojom::ResultCode PrintingContext::OnError() {
   mojom::ResultCode result = abort_printing_ ? mojom::ResultCode::kCanceled
@@ -159,7 +148,7 @@ mojom::ResultCode PrintingContext::UpdatePrintSettings(
     std::unique_ptr<PrintSettings> settings =
         PrintSettingsFromJobSettings(job_settings);
     if (!settings) {
-      DUMP_WILL_BE_NOTREACHED_NORETURN();
+      NOTREACHED();
       return OnError();
     }
     settings_ = std::move(settings);
@@ -214,6 +203,21 @@ mojom::ResultCode PrintingContext::UpdatePrintSettingsFromPOD(
 
 void PrintingContext::SetPrintSettings(const PrintSettings& settings) {
   *settings_ = settings;
+}
+
+void PrintingContext::ApplyPrintSettings(const PrintSettings& settings) {
+  SetPrintSettings(settings);
+
+#if !BUILDFLAG(ENABLE_OOP_BASIC_PRINT_DIALOG)
+  if (skip_system_calls()) {
+    return;
+  }
+
+  // TODO(crbug.com/1414968):  System print dialog settings from the browser
+  // require platform-specific handling to be applied to device context.
+  NOTIMPLEMENTED()
+      << "Apply system dialog settings to device context not supported yet";
+#endif
 }
 
 }  // namespace printing

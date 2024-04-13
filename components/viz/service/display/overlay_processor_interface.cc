@@ -112,7 +112,10 @@ OverlayProcessorInterface::CreateOverlayProcessor(
   return std::make_unique<OverlayProcessorWin>(
       output_surface, debug_settings,
       std::make_unique<DCLayerOverlayProcessor>(
-          capabilities.allowed_yuv_overlay_count));
+          /*allowed_yuv_overlay_count=*/capabilities
+                  .supports_two_yuv_hardware_overlays
+              ? 2
+              : 1));
 #elif BUILDFLAG(IS_OZONE)
 #if !BUILDFLAG(IS_CASTOS)
   // In tests and Ozone/X11, we do not expect surfaceless surface support.
@@ -135,15 +138,16 @@ OverlayProcessorInterface::CreateOverlayProcessor(
   }
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
-  return std::make_unique<OverlayProcessorDelegated>(
-      std::move(overlay_candidates),
-      std::move(renderer_settings.overlay_strategies), sii);
-#else
+  if (features::IsDelegatedCompositingEnabled()) {
+    return std::make_unique<OverlayProcessorDelegated>(
+        std::move(overlay_candidates),
+        std::move(renderer_settings.overlay_strategies), sii);
+  }
+#endif
+
   return std::make_unique<OverlayProcessorOzone>(
       std::move(overlay_candidates),
       std::move(renderer_settings.overlay_strategies), sii);
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-
 #elif BUILDFLAG(IS_ANDROID)
   DCHECK(display_controller);
 
@@ -213,14 +217,6 @@ void OverlayProcessorInterface::OverlayPresentationComplete() {}
 
 gfx::CALayerResult OverlayProcessorInterface::GetCALayerErrorCode() const {
   return gfx::kCALayerSuccess;
-}
-
-gfx::RectF OverlayProcessorInterface::GetUnassignedDamage() const {
-  return gfx::RectF();
-}
-
-bool OverlayProcessorInterface::SupportsFlipRotateTransform() const {
-  return false;
 }
 
 }  // namespace viz

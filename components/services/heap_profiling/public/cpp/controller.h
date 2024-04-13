@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_SERVICES_HEAP_PROFILING_PUBLIC_CPP_CONTROLLER_H_
 #define COMPONENTS_SERVICES_HEAP_PROFILING_PUBLIC_CPP_CONTROLLER_H_
 
-#include "base/functional/callback_forward.h"
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
 #include "components/services/heap_profiling/public/mojom/heap_profiling_client.mojom.h"
@@ -46,12 +45,10 @@ class Controller {
 
   ~Controller();
 
-  // Starts Heap Profiling for the client. Invokes `started_profiling_closure`
-  // if and when profiling starts successfully.
+  // Starts Heap Profiling for the client.
   void StartProfilingClient(mojo::PendingRemote<mojom::ProfilingClient> client,
                             base::ProcessId pid,
-                            mojom::ProcessType process_type,
-                            base::OnceClosure started_profiling_closure);
+                            mojom::ProcessType);
 
   uint32_t sampling_rate() const { return sampling_rate_; }
 

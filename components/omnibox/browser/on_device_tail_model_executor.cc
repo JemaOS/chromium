@@ -6,14 +6,10 @@
 
 #include <cmath>
 #include <cstdint>
-#include <sstream>
 
-#include "base/files/file_util.h"
-#include "base/hash/hash.h"
 #include "base/logging.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/optimization_guide/core/tflite_op_resolver.h"
@@ -47,9 +43,6 @@ static constexpr char kRnnStepOutputProbsNodeName[] = "probs";
 static constexpr size_t kPreQueryEncodingCacheSize = 10;
 static constexpr size_t kRnnStepOutputCacheSize = 20;
 
-// Maximum badword hash file size that will be loaded in bytes.
-static constexpr size_t kBadwordHashFileSizeLimit = 64 * 1024;
-
 std::ostream& operator<<(std::ostream& os,
                          const OnDeviceTailTokenizer::TokenIds& ids) {
   if (ids.empty()) {
@@ -67,21 +60,6 @@ std::ostream& operator<<(std::ostream& os,
 }
 
 }  // namespace
-
-OnDeviceTailModelExecutor::ModelInput::ModelInput() = default;
-
-OnDeviceTailModelExecutor::ModelInput::ModelInput(std::string prefix,
-                                                  std::string previous_query,
-                                                  size_t max_num_suggestions,
-                                                  size_t max_rnn_steps,
-                                                  float probability_threshold)
-    : prefix(std::move(prefix)),
-      previous_query(std::move(previous_query)),
-      max_num_suggestions(max_num_suggestions),
-      max_rnn_steps(max_rnn_steps),
-      probability_threshold(probability_threshold) {}
-
-OnDeviceTailModelExecutor::ModelInput::~ModelInput() = default;
 
 OnDeviceTailModelExecutor::RnnCellStates::RnnCellStates() = default;
 
@@ -139,59 +117,34 @@ OnDeviceTailModelExecutor::OnDeviceTailModelExecutor()
 
 OnDeviceTailModelExecutor::~OnDeviceTailModelExecutor() = default;
 
-bool OnDeviceTailModelExecutor::Init() {
-  executor_last_called_time_ = base::TimeTicks::Now();
+bool OnDeviceTailModelExecutor::Init(const base::FilePath& model_filepath,
+                                     const base::FilePath& vocab_filepath,
+                                     const ModelMetadata& metadata) {
   Reset();
-  if (model_filepath_.empty() || vocab_filepath_.empty()) {
-    return false;
-  }
-  auto tokenizer = std::make_unique<OnDeviceTailTokenizer>();
-  tokenizer->Init(vocab_filepath_);
-  if (!tokenizer->IsReady()) {
-    DVLOG(1) << "Could not create tokenizer from file "
-             << vocab_filepath_.LossyDisplayName();
-    vocab_filepath_.clear();
-    return false;
-  }
-  tokenizer_ = std::move(tokenizer);
-
-  if (!InitModelInterpreter(model_filepath_)) {
-    Reset();
-    model_filepath_.clear();
-    return false;
-  }
-
-  state_size_ = metadata_.lstm_model_params().state_size();
-  num_layer_ = metadata_.lstm_model_params().num_layer();
-  embedding_dimension_ = metadata_.lstm_model_params().embedding_dimension();
-  vocab_size_ = tokenizer_->vocab_size();
-  LoadBadwordHashSet();
-
-  return true;
-}
-
-bool OnDeviceTailModelExecutor::Init(
-    const base::FilePath& model_filepath,
-    const base::FilePath& vocab_filepath,
-    const base::FilePath& badword_hashes_filepath,
-    const ModelMetadata& metadata) {
   if (model_filepath.empty() || vocab_filepath.empty()) {
     return false;
   }
 
-  model_filepath_ = model_filepath;
-  vocab_filepath_ = vocab_filepath;
-  badword_hashes_filepath_ = badword_hashes_filepath;
-  metadata_ = metadata;
+  auto tokenizer = std::make_unique<OnDeviceTailTokenizer>();
+  tokenizer->Init(vocab_filepath);
+  if (!tokenizer->IsReady()) {
+    DVLOG(1) << "Could not create tokenizer from file "
+             << vocab_filepath.LossyDisplayName();
+    return false;
+  }
+  tokenizer_ = std::move(tokenizer);
 
-  if (Init()) {
-    return true;
+  if (!InitModelInterpreter(model_filepath)) {
+    Reset();
+    return false;
   }
 
-  model_filepath_.clear();
-  vocab_filepath_.clear();
-  badword_hashes_filepath_.clear();
-  return false;
+  state_size_ = metadata.lstm_model_params().state_size();
+  num_layer_ = metadata.lstm_model_params().num_layer();
+  embedding_dimension_ = metadata.lstm_model_params().embedding_dimension();
+  vocab_size_ = tokenizer_->vocab_size();
+
+  return true;
 }
 
 bool OnDeviceTailModelExecutor::InitModelInterpreter(
@@ -310,50 +263,6 @@ bool OnDeviceTailModelExecutor::EncodePreviousQuery(
 void OnDeviceTailModelExecutor::ResetCaches() {
   prev_query_cache_.Clear();
   rnn_step_cache_.Clear();
-}
-
-void OnDeviceTailModelExecutor::LoadBadwordHashSet() {
-  if (badword_hashes_filepath_.empty()) {
-    return;
-  }
-  std::string content;
-  if (!base::ReadFileToStringWithMaxSize(badword_hashes_filepath_, &content,
-                                         kBadwordHashFileSizeLimit)) {
-    DVLOG(1) << "Failed to read the badword hash file "
-             << badword_hashes_filepath_.LossyDisplayName();
-    return;
-  }
-
-  badword_hashes_.clear();
-  std::string hash_string;
-
-  std::stringstream badword_hash_strings(content);
-  while (std::getline(badword_hash_strings, hash_string)) {
-    if (hash_string.empty()) {
-      break;
-    }
-    uint32_t hash_int;
-    if (base::StringToUint(hash_string, &hash_int)) {
-      badword_hashes_.insert(hash_int);
-    }
-  }
-}
-
-bool OnDeviceTailModelExecutor::IsSuggestionBad(const std::string suggestion) {
-  if (badword_hashes_.empty() || suggestion.empty()) {
-    return false;
-  }
-  std::vector<std::string> words =
-      base::SplitString(suggestion, base::kWhitespaceASCII,
-                        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  for (const std::string& word : words) {
-    auto hash_value = base::PersistentHash(word);
-    if (badword_hashes_.find(hash_value) != badword_hashes_.end()) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void OnDeviceTailModelExecutor::Reset() {
@@ -599,36 +508,39 @@ float OnDeviceTailModelExecutor::GetLogProbability(float probability) {
 
 std::vector<OnDeviceTailModelExecutor::Prediction>
 OnDeviceTailModelExecutor::GenerateSuggestionsForPrefix(
-    const ModelInput& input) {
-  executor_last_called_time_ = base::TimeTicks::Now();
+    const std::string& prefix,
+    const std::string& previous_query,
+    size_t max_num_suggestions,
+    size_t max_rnn_steps,
+    float probability_threshold) {
   DCHECK(IsReady());
   std::vector<Prediction> predictions;
 
-  if (input.prefix.empty()) {
+  if (prefix.empty()) {
     return predictions;
   }
 
   OnDeviceTailTokenizer::Tokenization input_tokenization;
-  tokenizer_->CreatePrefixTokenization(input.prefix, &input_tokenization);
+  tokenizer_->CreatePrefixTokenization(prefix, &input_tokenization);
 
   OnDeviceTailTokenizer::TokenIds prev_query_token_ids;
-  tokenizer_->TokenizePrevQuery(input.previous_query, &prev_query_token_ids);
+  tokenizer_->TokenizePrevQuery(previous_query, &prev_query_token_ids);
 
   std::vector<float> prev_query_encoding;
   BeamNode root_beam;
   if (!GetRootBeamNode(input_tokenization, prev_query_token_ids,
                        &prev_query_encoding, &root_beam)) {
-    DVLOG(1) << "Failed to get root beam node for prefix [" << input.prefix
-             << "][" << input.previous_query << "]";
+    DVLOG(1) << "Failed to get root beam node for prefix [" << prefix << "]["
+             << previous_query << "]";
     return predictions;
   }
 
   OnDeviceTailModelExecutor::CandidateQueue partial_candidates,
       completed_candidates;
   partial_candidates.emplace(std::move(root_beam));
-  float log_prob_threshold = GetLogProbability(input.probability_threshold);
+  float log_prob_threshold = GetLogProbability(probability_threshold);
 
-  for (size_t i = 0; i < input.max_rnn_steps; ++i) {
+  for (size_t i = 0; i < max_rnn_steps; ++i) {
     if (partial_candidates.empty()) {
       break;
     }
@@ -643,7 +555,7 @@ OnDeviceTailModelExecutor::GenerateSuggestionsForPrefix(
       RnnStepOutput rnn_step_output;
       if (RunRnnStep(beam.rnn_step_cache_key, beam.token_ids.back(),
                      prev_query_encoding, beam.states, &rnn_step_output)) {
-        CreateNewBeams(rnn_step_output, beam, input.max_num_suggestions,
+        CreateNewBeams(rnn_step_output, beam, max_num_suggestions,
                        log_prob_threshold, &partial_candidates,
                        &completed_candidates);
 
@@ -681,11 +593,7 @@ OnDeviceTailModelExecutor::GenerateSuggestionsForPrefix(
     }
 
     // Remove echo suggestion.
-    if (suggestion == input.prefix) {
-      continue;
-    }
-
-    if (IsSuggestionBad(suggestion)) {
+    if (suggestion == prefix) {
       continue;
     }
 

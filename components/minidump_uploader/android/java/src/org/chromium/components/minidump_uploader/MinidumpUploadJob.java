@@ -4,7 +4,9 @@
 
 package org.chromium.components.minidump_uploader;
 
-/** Interface for uploading minidumps. */
+/**
+ * Interface for uploading minidumps.
+ */
 public interface MinidumpUploadJob {
     /**
      * Try to upload all the minidumps in the crash directory.
@@ -24,7 +26,5 @@ public interface MinidumpUploadJob {
      * Provides an interface for the callback that will be called if all uploads are finished before
      * they are canceled.
      */
-    public interface UploadsFinishedCallback {
-        public void uploadsFinished(boolean reschedule);
-    }
+    public interface UploadsFinishedCallback { public void uploadsFinished(boolean reschedule); }
 }

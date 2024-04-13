@@ -28,7 +28,7 @@ StubPasswordReuseDetectionManagerClient::GetPasswordReuseManager() const {
   return nullptr;
 }
 
-bool StubPasswordReuseDetectionManagerClient::IsHistorySyncAccountEmail(
+bool StubPasswordReuseDetectionManagerClient::IsSyncAccountEmail(
     const std::string& username) {
   return false;
 }

@@ -10,11 +10,9 @@
 #include <string>
 #include <utility>
 
-#include "base/callback_list.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/user_metrics.h"
-#include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/time/time.h"
 #include "components/strings/grit/components_strings.h"
@@ -29,13 +27,9 @@
 #include "ui/base/models/image_model.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/color/color_provider.h"
-#include "ui/events/event.h"
-#include "ui/events/event_constants.h"
-#include "ui/events/types/event_type.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/geometry/insets.h"
-#include "ui/gfx/geometry/point_f.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/paint_vector_icon.h"
@@ -58,8 +52,7 @@
 #include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
-#include "ui/views/controls/menu/menu_config.h"
-#include "ui/views/controls/menu/menu_item_view.h"
+#include "ui/views/event_monitor.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/layout/flex_layout_types.h"
@@ -71,7 +64,6 @@
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_tracker.h"
 #include "ui/views/view_utils.h"
-#include "ui/views/widget/widget.h"
 
 namespace user_education {
 
@@ -115,40 +107,27 @@ views::BubbleBorder::Arrow TranslateArrow(HelpBubbleArrow arrow) {
 }
 
 class MdIPHBubbleButton : public views::MdTextButton {
-  METADATA_HEADER(MdIPHBubbleButton, views::MdTextButton)
-
  public:
+  METADATA_HEADER(MdIPHBubbleButton);
+
   MdIPHBubbleButton(const HelpBubbleDelegate* delegate,
                     PressedCallback callback,
                     const std::u16string& text,
                     bool is_default_button)
-      : MdTextButton(std::move(callback), text),
+      : MdTextButton(callback, text),
         delegate_(delegate),
         is_default_button_(is_default_button) {
+    // Prominent style gives a button hover highlight.
+    SetProminent(true);
     GetViewAccessibility().OverrideIsLeaf(true);
 
-    if (features::IsChromeRefresh2023()) {
-      views::FocusRing::Get(this)->SetColorId(
-          delegate_->GetHelpBubbleForegroundColorId());
-
-      // The default behavior in 2023 refresh is for MD buttons is to have the
-      // alpha baked into the color, but we currently don't have that yet, so
-      // switch back to using the old default alpha blending mode.
-      auto* const ink_drop = views::InkDrop::Get(this);
-      ink_drop->SetBaseColorId(
-          is_default_button_
-              ? delegate_->GetHelpBubbleDefaultButtonForegroundColorId()
-              : delegate_->GetHelpBubbleForegroundColorId());
-      ink_drop->SetHighlightOpacity(std::nullopt);
-    } else {
-      // Prominent style gives a button hover highlight.
-      SetStyle(ui::ButtonStyle::kProminent);
-      // Focus ring rendering varies significantly between pre- and post-refresh
-      // Chrome. The pre-refresh tactic of setting the focus color to background
-      // is actually a hack; the post-refresh approach is more "correct".
-      views::FocusRing::Get(this)->SetColorId(
-          delegate_->GetHelpBubbleBackgroundColorId());
-    }
+    // Focus ring rendering varies significantly between pre- and post-refresh
+    // Chrome. The pre-refresh tactic of setting the focus color to background
+    // is actually a hack; the post-refresh approach is more "correct".
+    views::FocusRing::Get(this)->SetColorId(
+        features::IsChromeRefresh2023()
+            ? delegate_->GetHelpBubbleForegroundColorId()
+            : delegate_->GetHelpBubbleBackgroundColorId());
   }
   MdIPHBubbleButton(const MdIPHBubbleButton&) = delete;
   MdIPHBubbleButton& operator=(const MdIPHBubbleButton&) = delete;
@@ -193,25 +172,24 @@ class MdIPHBubbleButton : public views::MdTextButton {
   }
 
  private:
-  const raw_ptr<const HelpBubbleDelegate> delegate_;
+  const base::raw_ptr<const HelpBubbleDelegate> delegate_;
   bool is_default_button_;
 };
 
-BEGIN_METADATA(MdIPHBubbleButton)
+BEGIN_METADATA(MdIPHBubbleButton, views::MdTextButton)
 END_METADATA
 
 // Displays a simple "X" close button that will close a promo bubble view.
 // The alt-text and button callback can be set based on the needs of the
 // specific bubble.
 class ClosePromoButton : public views::ImageButton {
-  METADATA_HEADER(ClosePromoButton, views::ImageButton)
-
  public:
+  METADATA_HEADER(ClosePromoButton);
   ClosePromoButton(const HelpBubbleDelegate* delegate,
                    const std::u16string accessible_name,
                    PressedCallback callback)
       : delegate_(delegate) {
-    SetCallback(std::move(callback));
+    SetCallback(callback);
     views::ConfigureVectorImageButton(this);
     views::HighlightPathGenerator::Install(
         this,
@@ -240,16 +218,15 @@ class ClosePromoButton : public views::ImageButton {
   }
 
  private:
-  const raw_ptr<const HelpBubbleDelegate> delegate_;
+  const base::raw_ptr<const HelpBubbleDelegate> delegate_;
 };
 
-BEGIN_METADATA(ClosePromoButton)
+BEGIN_METADATA(ClosePromoButton, views::ImageButton)
 END_METADATA
 
 class DotView : public views::View {
-  METADATA_HEADER(DotView, views::View)
-
  public:
+  METADATA_HEADER(DotView);
   DotView(const HelpBubbleDelegate* delegate, gfx::Size size, bool should_fill)
       : delegate_(delegate), size_(size), should_fill_(should_fill) {
     // In order to anti-alias properly, we'll grow by the stroke width and then
@@ -294,174 +271,17 @@ class DotView : public views::View {
  private:
   static constexpr int kStrokeWidth = 1;
 
-  raw_ptr<const HelpBubbleDelegate> delegate_;
+  base::raw_ptr<const HelpBubbleDelegate> delegate_;
   const gfx::Size size_;
   const bool should_fill_;
 };
 
 constexpr int DotView::kStrokeWidth;
 
-BEGIN_METADATA(DotView)
+BEGIN_METADATA(DotView, views::View)
 END_METADATA
 
-views::MenuItemView* GetAnchorAsMenuItem(
-    const views::BubbleDialogDelegate* delegate) {
-  return views::AsViewClass<views::MenuItemView>(delegate->GetAnchorView());
-}
-
 }  // namespace
-
-namespace internal {
-
-// Because menus use event capture, a help bubble anchored to a menu cannot
-// respond to events in the normal way. However, help bubbles are not
-// complicated and only have buttons. When a help bubble is anchored to a menu,
-// this object will monitor events that would be captured by the menu, and
-// ensures that the buttons on the help bubble still behavior predictably.
-class MenuEventMonitor {
- public:
-  MenuEventMonitor(HelpBubbleView* help_bubble, views::MenuItemView* menu_item)
-      : help_bubble_(help_bubble),
-        callback_handle_(menu_item->GetMenuController()->AddAnnotationCallback(
-            base::BindRepeating(&MenuEventMonitor::OnEvent,
-                                base::Unretained(this)))) {}
-
-  ~MenuEventMonitor() = default;
-
- private:
-  bool OnEvent(const ui::LocatedEvent& event) {
-    gfx::Point screen_coords;
-    screen_coords = event.root_location();
-
-    const views::Widget* const widget = help_bubble_->GetWidget();
-    if (!widget || !widget->GetWindowBoundsInScreen().Contains(screen_coords)) {
-      return false;
-    }
-
-    views::Button* const target_button = GetButtonAt(screen_coords);
-    const gfx::Point target_point =
-        target_button
-            ? views::View::ConvertPointFromScreen(target_button, screen_coords)
-            : gfx::Point();
-
-    switch (event.type()) {
-      // Pass mouse events on to the button as normal.
-      case ui::ET_MOUSE_PRESSED:
-        if (target_button) {
-          auto* const mouse_event = event.AsMouseEvent();
-          target_button->OnMousePressed(ui::MouseEvent(
-              ui::ET_MOUSE_PRESSED, gfx::PointF(target_point),
-              gfx::PointF(screen_coords), mouse_event->time_stamp(),
-              mouse_event->flags(), mouse_event->changed_button_flags()));
-        }
-        break;
-      case ui::ET_MOUSE_RELEASED:
-        if (target_button) {
-          auto* const mouse_event = event.AsMouseEvent();
-          target_button->OnMouseReleased(ui::MouseEvent(
-              ui::ET_MOUSE_RELEASED, gfx::PointF(target_point),
-              gfx::PointF(screen_coords), mouse_event->time_stamp(),
-              mouse_event->flags(), mouse_event->changed_button_flags()));
-        }
-        break;
-
-      // Touch events are not processed directly by Views; they are typically
-      // converted to something else. So, convert them to mouse clicks for the
-      // purpose of pressing buttons.
-      case ui::ET_TOUCH_PRESSED:
-        if (target_button) {
-          auto* const touch_event = event.AsTouchEvent();
-          target_button->OnMousePressed(ui::MouseEvent(
-              ui::ET_MOUSE_PRESSED, gfx::PointF(target_point),
-              gfx::PointF(screen_coords), touch_event->time_stamp(),
-              touch_event->flags() | ui::EF_LEFT_MOUSE_BUTTON |
-                  ui::EF_FROM_TOUCH,
-              ui::EF_LEFT_MOUSE_BUTTON));
-        }
-        break;
-      case ui::ET_TOUCH_RELEASED:
-        if (target_button) {
-          auto* const touch_event = event.AsTouchEvent();
-          target_button->OnMouseReleased(ui::MouseEvent(
-              ui::ET_MOUSE_RELEASED, gfx::PointF(target_point),
-              gfx::PointF(screen_coords), touch_event->time_stamp(),
-              touch_event->flags() | ui::EF_LEFT_MOUSE_BUTTON |
-                  ui::EF_FROM_TOUCH,
-              ui::EF_LEFT_MOUSE_BUTTON));
-        }
-        break;
-
-      // If a gesture is received, forward it as-is.
-      case ui::ET_GESTURE_TAP:
-        if (target_button) {
-          auto* const gesture = event.AsGestureEvent();
-          ui::GestureEvent tap(gesture->x(), gesture->y(), gesture->flags(),
-                               gesture->time_stamp(), gesture->details(),
-                               gesture->unique_touch_event_id());
-          target_button->button_controller()->OnGestureEvent(&tap);
-        }
-        break;
-
-      // Mouse moves could be routed through the inkdrop controller but it's
-      // easier to just set hovered state directly.
-      case ui::ET_MOUSE_MOVED:
-        if (target_button != hovered_button_) {
-          if (hovered_button_) {
-            views::InkDrop* const ink_drop =
-                views::InkDrop::Get(hovered_button_)->GetInkDrop();
-            if (ink_drop) {
-              ink_drop->SetHovered(false);
-            }
-          }
-          if (target_button) {
-            views::InkDrop* const ink_drop =
-                views::InkDrop::Get(target_button)->GetInkDrop();
-            if (ink_drop) {
-              ink_drop->SetHovered(true);
-            }
-          }
-          hovered_button_ = target_button;
-        }
-        break;
-      default:
-        return false;
-    }
-
-    return true;
-  }
-
-  // Gets which (if any) of the help bubble buttons are at the given
-  // `screen_coords`.
-  views::Button* GetButtonAt(const gfx::Point& screen_coords) const {
-    if (IsInButton(screen_coords, help_bubble_->close_button_)) {
-      return help_bubble_->close_button_;
-    }
-    if (IsInButton(screen_coords, help_bubble_->default_button_)) {
-      return help_bubble_->default_button_;
-    }
-    for (views::MdTextButton* const button :
-         help_bubble_->non_default_buttons_) {
-      if (IsInButton(screen_coords, button)) {
-        return button;
-      }
-    }
-    return nullptr;
-  }
-
-  // Returns whether `screen_coords` are in `button`, which may be null.
-  static bool IsInButton(const gfx::Point& screen_coords,
-                         const views::Button* button) {
-    return button && button->HitTestPoint(views::View::ConvertPointFromScreen(
-                         button, screen_coords));
-  }
-
-  const raw_ptr<HelpBubbleView> help_bubble_;
-  raw_ptr<views::Button> hovered_button_ = nullptr;
-  // std::unique_ptr<views::EventMonitor> event_monitor_;
-  base::CallbackListSubscription callback_handle_;
-};
-
-}  // namespace internal
 
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(HelpBubbleView,
                                       kHelpBubbleElementIdForTesting);
@@ -469,62 +289,21 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(HelpBubbleView,
                                       kDefaultButtonIdForTesting);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(HelpBubbleView,
                                       kFirstNonDefaultButtonIdForTesting);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(HelpBubbleView, kCloseButtonIdForTesting);
 
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(HelpBubbleView, kBodyTextIdForTesting);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(HelpBubbleView, kTitleTextIdForTesting);
 
-// Watches for the anchor view to be destroyed or removed from its widget.
-// Used in cases where the anchor element is not the same as the anchor view.
-// Prevents the help bubble from lingering after its anchor is invalid, which
-// can cause crashes and other strange behavior.
-class HelpBubbleView::AnchorViewObserver : public views::ViewObserver {
- public:
-  AnchorViewObserver(views::View* anchor_view, HelpBubbleView* help_bubble)
-      : help_bubble_(help_bubble) {
-    observation_.Observe(anchor_view);
-  }
-
- private:
-  // views::ViewObserver:
-  void OnViewRemovedFromWidget(views::View*) override { Detach(); }
-  void OnViewIsDeleting(views::View*) override { Detach(); }
-
-  void Detach() {
-    observation_.Reset();
-    if (help_bubble_->GetWidget() && !help_bubble_->GetWidget()->IsClosed()) {
-      help_bubble_->GetWidget()->Close();
-    }
-  }
-
-  const raw_ptr<HelpBubbleView> help_bubble_;
-  base::ScopedObservation<View, ViewObserver> observation_{this};
-};
-
+// Explicitly don't use the default DIALOG_SHADOW as it will show a black
+// outline in dark mode on Mac. Use our own shadow instead. The shadow type is
+// the same for all other platforms.
 HelpBubbleView::HelpBubbleView(const HelpBubbleDelegate* delegate,
                                const internal::HelpBubbleAnchorParams& anchor,
                                HelpBubbleParams params)
-    : BubbleDialogDelegateView(
-          anchor.view,
-          TranslateArrow(params.arrow),
-#if BUILDFLAG(IS_MAC)
-          // On Mac, the default DIALOG_SHADOW is system-drawn, which is
-          // incompatible with visible bubble arrows. Therefore, always use
-          // STANDARD_SHADOW.
-          views::BubbleBorder::STANDARD_SHADOW
-#else
-          // On other platforms, all shadows are Views-drawn, which means we
-          // can revert back to the (slightly better-looking) default
-          // DIALOG_SHADOW following the 2023 refresh. The old pre-refresh
-          // value is preserved just for consistency.
-          features::IsChromeRefresh2023() ? views::BubbleBorder::DIALOG_SHADOW
-                                          : views::BubbleBorder::STANDARD_SHADOW
-#endif
-          ),
+    : BubbleDialogDelegateView(anchor.view,
+                               TranslateArrow(params.arrow),
+                               views::BubbleBorder::STANDARD_SHADOW),
       delegate_(delegate) {
   if (anchor.rect.has_value()) {
     SetForceAnchorRect(anchor.rect.value());
-    anchor_observer_ = std::make_unique<AnchorViewObserver>(anchor.view, this);
   } else {
     // When hosted within a `views::ScrollView`, the anchor view may be
     // (partially) outside the viewport. Ensure that the anchor view is visible.
@@ -538,7 +317,8 @@ HelpBubbleView::HelpBubbleView(const HelpBubbleDelegate* delegate,
   timeout_ = params.timeout.value_or(params.buttons.empty()
                                          ? kDefaultTimeoutWithoutButtons
                                          : kDefaultTimeoutWithButtons);
-  timeout_callback_ = std::move(params.timeout_callback);
+  if (!timeout_.is_zero())
+    timeout_callback_ = std::move(params.timeout_callback);
   SetCancelCallback(std::move(params.dismiss_callback));
 
   accessible_name_ = params.title_text;
@@ -604,26 +384,21 @@ HelpBubbleView::HelpBubbleView(const HelpBubbleDelegate* delegate,
 
   // Add title (optional) and body label.
   if (!params.title_text.empty()) {
-    views::Label* const title_label =
+    labels_.push_back(
         top_text_container->AddChildView(std::make_unique<views::Label>(
-            params.title_text, delegate->GetTitleTextContext()));
-    title_label->SetProperty(views::kElementIdentifierKey,
-                             kTitleTextIdForTesting);
-    labels_.push_back(title_label);
-    views::Label* const body_label =
+            params.title_text, delegate->GetTitleTextContext())));
+    views::Label* label =
         AddChildViewAt(std::make_unique<views::Label>(
                            params.body_text, delegate->GetBodyTextContext()),
                        GetIndexOf(button_container).value());
-    labels_.push_back(body_label);
-    body_label->SetProperty(views::kElementIdentifierKey,
-                            kBodyTextIdForTesting);
+    labels_.push_back(label);
+    label->SetProperty(views::kElementIdentifierKey, kBodyTextIdForTesting);
   } else {
-    views::Label* const body_label =
+    views::Label* label =
         top_text_container->AddChildView(std::make_unique<views::Label>(
             params.body_text, delegate->GetBodyTextContext()));
-    labels_.push_back(body_label);
-    body_label->SetProperty(views::kElementIdentifierKey,
-                            kBodyTextIdForTesting);
+    labels_.push_back(label);
+    label->SetProperty(views::kElementIdentifierKey, kBodyTextIdForTesting);
   }
 
   // Set common label properties.
@@ -649,8 +424,6 @@ HelpBubbleView::HelpBubbleView(const HelpBubbleDelegate* delegate,
                           delegate, alt_text,
                           base::BindRepeating(&DialogDelegate::CancelDialog,
                                               base::Unretained(this))));
-  close_button_->SetProperty(views::kElementIdentifierKey,
-                             kCloseButtonIdForTesting);
 
   // Add other buttons.
   if (!params.buttons.empty()) {
@@ -673,8 +446,8 @@ HelpBubbleView::HelpBubbleView(const HelpBubbleDelegate* delegate,
     for (HelpBubbleButtonParams& button_params : params.buttons) {
       auto button = std::make_unique<MdIPHBubbleButton>(
           delegate,
-          base::BindOnce(run_callback_and_close, base::Unretained(this),
-                         std::move(button_params.callback)),
+          base::BindRepeating(run_callback_and_close, base::Unretained(this),
+                              base::Passed(std::move(button_params.callback))),
           button_params.text, button_params.is_default);
       button->SetMinSize(gfx::Size(0, 0));
       if (button_params.is_default) {
@@ -755,19 +528,12 @@ HelpBubbleView::HelpBubbleView(const HelpBubbleDelegate* delegate,
             .WithAlignment(views::LayoutAlignment::kEnd));
     close_button_->SetProperty(views::kMarginsKey,
                                gfx::Insets::TLBR(0, default_spacing, 0, 0));
-    close_button_->SetProperty(views::kElementIdentifierKey,
-                               kCloseButtonIdForTesting);
   }
 
   // Icon view should have padding between it and the title or body label.
   if (icon_view_) {
-    // When there is no title, distance from icon and body text to buttons can
-    // appear cramped, so add a small bit of extra margin.
-    const int bottom_margin =
-        !params.buttons.empty() && params.title_text.empty() ? 2 : 0;
-    icon_view_->SetProperty(
-        views::kMarginsKey,
-        gfx::Insets::TLBR(0, 0, bottom_margin, default_spacing));
+    icon_view_->SetProperty(views::kMarginsKey,
+                            gfx::Insets::TLBR(0, 0, 0, default_spacing));
   }
 
   // Set label flex properties. This ensures that if the width of the bubble
@@ -863,47 +629,18 @@ HelpBubbleView::HelpBubbleView(const HelpBubbleDelegate* delegate,
   // have to change it afterwards:
   set_adjust_if_offscreen(true);
   auto* const frame_view = GetBubbleFrameView();
-  if (!features::IsChromeRefresh2023()) {
-    frame_view->SetCornerRadius(
-        views::LayoutProvider::Get()->GetCornerRadiusMetric(
-            views::Emphasis::kHigh));
-  }
+  frame_view->SetCornerRadius(
+      views::LayoutProvider::Get()->GetCornerRadiusMetric(
+          views::Emphasis::kHigh));
   frame_view->SetDisplayVisibleArrow(anchor.show_arrow &&
                                      params.arrow != HelpBubbleArrow::kNone);
-
-  // If the anchor view is not a MenuItemView and the primary window
-  // widget is not the anchor widget, do not use the window anchor bounds.
-  if (!GetAnchorAsMenuItem(this) &&
-      widget->GetPrimaryWindowWidget() != widget) {
-    frame_view->set_use_anchor_window_bounds(false);
-  }
-
-  // Bubbles get a 1-dip border that's either light or dark depending on system
-  // light or dark mode, but this does not match with the help bubble (see
-  // b/303069420).
-  frame_view->bubble_border()->set_draw_border_stroke(false);
-
   SizeToContents();
 
-  // Most help bubbles with buttons take focus when they show.
-  bool show_active =
-      params.focus_on_show_hint.value_or(!params.buttons.empty());
-  if (auto* const anchor_bubble =
-          anchor_widget()->widget_delegate()->AsBubbleDialogDelegate()) {
-    // Make sure that if the help bubble is attaching to a dialog, the dialog
-    // does not immediately dismiss when the help bubble is shown or focused.
+  widget->ShowInactive();
+  auto* const anchor_bubble =
+      anchor.view->GetWidget()->widget_delegate()->AsBubbleDialogDelegate();
+  if (anchor_bubble)
     anchor_pin_ = anchor_bubble->PreventCloseOnDeactivate();
-  } else if (auto* const menu_item = GetAnchorAsMenuItem(this)) {
-    // Should not steal focus when attaching to a menu.
-    show_active = false;
-    menu_event_monitor_ =
-        std::make_unique<internal::MenuEventMonitor>(this, menu_item);
-  }
-  if (show_active) {
-    widget->Show();
-  } else {
-    widget->ShowInactive();
-  }
   MaybeStartAutoCloseTimer();
 }
 
@@ -918,10 +655,14 @@ void HelpBubbleView::MaybeStartAutoCloseTimer() {
 }
 
 void HelpBubbleView::OnTimeout() {
-  if (timeout_callback_) {
-    std::move(timeout_callback_).Run();
-  }
+  std::move(timeout_callback_).Run();
   GetWidget()->Close();
+}
+
+bool HelpBubbleView::OnMousePressed(const ui::MouseEvent& event) {
+  base::RecordAction(
+      base::UserMetricsAction("InProductHelp.Promos.BubbleClicked"));
+  return false;
 }
 
 std::u16string HelpBubbleView::GetAccessibleWindowTitle() const {
@@ -961,7 +702,7 @@ void HelpBubbleView::OnThemeChanged() {
         foreground_color, icon_view_->GetPreferredSize().height() / 2));
   }
 
-  for (views::Label* label : labels_) {
+  for (auto* label : labels_) {
     label->SetBackgroundColor(background_color);
     label->SetEnabledColor(foreground_color);
   }
@@ -1008,28 +749,6 @@ gfx::Rect HelpBubbleView::GetAnchorRect() const {
   return result;
 }
 
-void HelpBubbleView::OnBeforeBubbleWidgetInit(views::Widget::InitParams* params,
-                                              views::Widget* widget) const {
-  BubbleDialogDelegateView::OnBeforeBubbleWidgetInit(params, widget);
-#if BUILDFLAG(IS_LINUX)
-  // Help bubbles anchored to menus may be clipped to their anchors' bounds,
-  // resulting in visual errors, unless they use accelerated rendering. See
-  // crbug.com/1445770 for details.
-  //
-  // In Views, [nearly] all menus have a scroll container as their root view.
-  // Key off of this in order to minimize the number of widgets that are forced
-  // to be accelerated. Accelerated widgets are "desktop native" widgets and
-  // interact with the OS window activation system; this is, in turn, a problem
-  // for Linux because of known technical limitations around window activation.
-  //
-  // See the following bug for more information regarding window activation
-  // issues in Weston, the windowing environment used on chrome's Wayland
-  // testbots:
-  // https://gitlab.freedesktop.org/wayland/weston/-/issues/669
-  params->requires_accelerated_widget = (GetAnchorAsMenuItem(this) != nullptr);
-#endif
-}
-
 // static
 bool HelpBubbleView::IsHelpBubble(views::DialogDelegate* dialog) {
   auto* const contents = dialog->GetContentsView();
@@ -1042,7 +761,7 @@ bool HelpBubbleView::IsFocusInHelpBubble() const {
     return true;
   if (default_button_ && default_button_->HasFocus())
     return true;
-  for (views::MdTextButton* button : non_default_buttons_) {
+  for (auto* button : non_default_buttons_) {
     if (button->HasFocus())
       return true;
   }
@@ -1067,7 +786,7 @@ void HelpBubbleView::SetForceAnchorRect(gfx::Rect force_anchor_rect) {
   local_anchor_bounds_ = force_anchor_rect;
 }
 
-BEGIN_METADATA(HelpBubbleView)
+BEGIN_METADATA(HelpBubbleView, views::BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace user_education

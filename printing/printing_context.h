@@ -64,32 +64,6 @@ class COMPONENT_EXPORT(PRINTING) PrintingContext {
 #endif
   };
 
-  enum class ProcessBehavior {
-    // Out-of-process support is disabled.  All platform printing calls are
-    // performed in the browser process.
-    kOopDisabled,
-#if BUILDFLAG(ENABLE_OOP_PRINTING)
-    // Out-of-process support is enabled.  This is for `PrintingContext`
-    // objects which exist in the PrintBackend service.  These objects make
-    // platform printing calls.
-    kOopEnabledPerformSystemCalls,
-    // Out-of-process support is enabled.  This is for `PrintingContext`
-    // objects which exist in the browser process.  These objects normally skip
-    // doing platform printing calls, deferring to an associated
-    // `PrintingContext` that is running in a PrintBackend service (i.e.,
-    // deferring to a `PrintingContext` with `kOopEnabledPerformSystemCalls`).
-    // An exception to deferring platform calls in this case is for platforms
-    // that cannot display a system print dialog from a PrintBackend service.
-    // On such platforms the relevant calls to invoke a system print dialog
-    // are still made from the browser process.
-    kOopEnabledSkipSystemCalls,
-#endif
-  };
-
-  // Value returned by `job_id()` when there is no active print job or the
-  // platform/test does not expose an underlying job ID for extra management.
-  static constexpr int kNoPrintJobId = 0;
-
   PrintingContext(const PrintingContext&) = delete;
   PrintingContext& operator=(const PrintingContext&) = delete;
   virtual ~PrintingContext();
@@ -138,6 +112,10 @@ class COMPONENT_EXPORT(PRINTING) PrintingContext {
   // Sets the print settings to `settings`.
   void SetPrintSettings(const PrintSettings& settings);
 
+  // Applies the print settings to this context.  Intended to be used only by
+  // the Print Backend service process.
+  void ApplyPrintSettings(const PrintSettings& settings);
+
   // Set the printable area in print settings to be the default printable area.
   // Intended to be used only for virtual printers.
   void SetDefaultPrintableAreaForVirtualPrinters();
@@ -183,19 +161,13 @@ class COMPONENT_EXPORT(PRINTING) PrintingContext {
 #endif
 
   // Creates an instance of this object.
-  static std::unique_ptr<PrintingContext> Create(
-      Delegate* delegate,
-      ProcessBehavior process_behavior);
+  static std::unique_ptr<PrintingContext> Create(Delegate* delegate,
+                                                 bool skip_system_calls);
 
   // Test method for generating printing contexts for testing.  This overrides
   // the platform-specific implementations of CreateImpl().
   static void SetPrintingContextFactoryForTest(
       PrintingContextFactoryForTest* factory);
-
-  // Determine process behavior, which can determine if system calls should be
-  // made and if certain extra code paths should be followed to support
-  // out-of-process printing.
-  ProcessBehavior process_behavior() const { return process_behavior_; }
 
   void set_margin_type(mojom::MarginType type);
   void set_is_modifiable(bool is_modifiable);
@@ -208,24 +180,31 @@ class COMPONENT_EXPORT(PRINTING) PrintingContext {
 
   int job_id() const { return job_id_; }
 
-#if BUILDFLAG(ENABLE_OOP_PRINTING)
-  // Override the job ID for this context.  Can only be called to update the
-  // value for a `PrintingContext` in the browser process with a value that was
-  // determined by a PrintBackend service.
-  void SetJobId(int job_id);
-#endif
-
  protected:
-  PrintingContext(Delegate* delegate, ProcessBehavior process_behavior);
+  explicit PrintingContext(Delegate* delegate);
 
   // Creates an instance of this object. Implementers of this interface should
   // implement this method to create an object of their implementation.
-  static std::unique_ptr<PrintingContext> CreateImpl(
-      Delegate* delegate,
-      ProcessBehavior process_behavior);
+  static std::unique_ptr<PrintingContext> CreateImpl(Delegate* delegate,
+                                                     bool skip_system_calls);
 
   // Reinitializes the settings for object reuse.
   void ResetSettings();
+
+  // Determine if system calls should be skipped by this instance.
+  bool skip_system_calls() const {
+#if BUILDFLAG(ENABLE_OOP_PRINTING)
+    return skip_system_calls_;
+#else
+    return false;
+#endif
+  }
+
+#if BUILDFLAG(ENABLE_OOP_PRINTING)
+  // Make the one-way adjustment to have all system calls skipped by this
+  // `PrintingContext` instance.
+  void set_skip_system_calls() { skip_system_calls_ = true; }
+#endif
 
   // Does bookkeeping when an error occurs.
   virtual mojom::ResultCode OnError();
@@ -242,14 +221,15 @@ class COMPONENT_EXPORT(PRINTING) PrintingContext {
   // Did the user cancel the print job.
   volatile bool abort_printing_;
 
-  // The job id for the current job used by the underlying platform.
-  // The value is `kNoPrintJobId` if no jobs are active or if the platform
-  // or test does not require passing such an ID for extra print job
-  // management.
-  int job_id_ = kNoPrintJobId;
+  // The job id for the current job. The value is 0 if no jobs are active.
+  int job_id_;
 
  private:
-  const ProcessBehavior process_behavior_;
+#if BUILDFLAG(ENABLE_OOP_PRINTING)
+  // If this instance of PrintingContext should skip making any system calls
+  // to the operating system.
+  bool skip_system_calls_ = false;
+#endif
 };
 
 }  // namespace printing

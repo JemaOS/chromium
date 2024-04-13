@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "components/pref_registry/pref_registry_syncable.h"
-#include "components/sync/service/sync_prefs.h"
+#include "components/sync/base/sync_prefs.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_network_connection_tracker.h"
@@ -20,7 +20,7 @@ namespace syncer {
 using testing::Return;
 
 SyncServiceImplBundle::SyncServiceImplBundle()
-    : identity_test_env_(&test_url_loader_factory_, &pref_service_) {
+    : identity_test_env_(&test_url_loader_factory_) {
   SyncPrefs::RegisterProfilePrefs(pref_service_.registry());
   identity_test_env_.SetAutomaticIssueOfAccessTokens(true);
 }
@@ -40,9 +40,11 @@ std::unique_ptr<SyncClientMock> SyncServiceImplBundle::CreateSyncClientMock() {
 }
 
 SyncServiceImpl::InitParams SyncServiceImplBundle::CreateBasicInitParams(
+    SyncServiceImpl::StartBehavior start_behavior,
     std::unique_ptr<SyncClient> sync_client) {
   SyncServiceImpl::InitParams init_params;
 
+  init_params.start_behavior = start_behavior;
   init_params.sync_client = std::move(sync_client);
   init_params.identity_manager = identity_manager();
   init_params.url_loader_factory =

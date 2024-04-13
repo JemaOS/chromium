@@ -53,6 +53,7 @@ class SavePasswordProgressLogger {
     STRING_CONFIRMATION_PASSWORD_ELEMENT_RENDERER_ID,
     STRING_PASSWORD_GENERATED,
     STRING_TIMES_USED,
+    STRING_PSL_MATCH,
     STRING_NAME_OR_ID,
     STRING_MESSAGE,
     STRING_SET_AUTH_METHOD,
@@ -77,12 +78,10 @@ class SavePasswordProgressLogger {
     STRING_BLOCK_PASSWORD_SAME_ORIGIN_INSECURE_SCHEME,
     STRING_ON_PASSWORD_FORMS_RENDERED_METHOD,
     STRING_ON_DYNAMIC_FORM_SUBMISSION,
-    STRING_ON_PASSWORD_FORM_CLEARED,
     STRING_ON_SUBFRAME_FORM_SUBMISSION,
     STRING_ON_ASK_USER_OR_SAVE_PASSWORD,
     STRING_CAN_PROVISIONAL_MANAGER_SAVE_METHOD,
     STRING_NO_PROVISIONAL_SAVE_MANAGER,
-    STRING_ANOTHER_MANAGER_WAS_SUBMITTED,
     STRING_NUMBER_OF_VISIBLE_FORMS,
     STRING_PASSWORD_FORM_REAPPEARED,
     STRING_SAVING_DISABLED,
@@ -104,7 +103,6 @@ class SavePasswordProgressLogger {
     STRING_SHOW_LOGIN_PROMPT_METHOD,
     STRING_NEW_UI_STATE,
     STRING_FORM_SIGNATURE,
-    STRING_ALTERNATIVE_FORM_SIGNATURE,
     STRING_FORM_FETCHER_STATE,
     STRING_UNOWNED_INPUTS_VISIBLE,
     STRING_ON_FILL_PASSWORD_FORM_METHOD,
@@ -120,7 +118,6 @@ class SavePasswordProgressLogger {
     STRING_PASSWORD_FORM_VOTE,
     STRING_REUSE_FOUND,
     STRING_GENERATION_DISABLED_SAVING_DISABLED,
-    STRING_GENERATION_DISABLED_NOT_ABLE_TO_SAVE_PASSWORDS,
     STRING_GENERATION_DISABLED_NO_SYNC,
     STRING_GENERATION_RENDERER_AUTOMATIC_GENERATION_AVAILABLE,
     STRING_GENERATION_RENDERER_SHOW_GENERATION_POPUP,
@@ -158,6 +155,7 @@ class SavePasswordProgressLogger {
     STRING_USERNAME_FIRST_FLOW_VOTE,
     STRING_POSSIBLE_USERNAME_USED,
     STRING_POSSIBLE_USERNAME_NOT_USED,
+    STRING_LOCALLY_SAVED_PREDICTION,
     STRING_INVALID,  // Represents a string returned in a case of an error.
     STRING_MAX = STRING_INVALID
   };
@@ -182,12 +180,16 @@ class SavePasswordProgressLogger {
   void LogNumber(StringID label, size_t unsigned_number);
   void LogMessage(StringID message);
 
-  // Returns a log string representing `field`.
-  static std::string GetFormFieldDataLogString(const FormFieldData& field);
-
-  // Removes privacy sensitive parts of `url` (currently all but host and
+  // Removes privacy sensitive parts of |url| (currently all but host and
   // scheme).
   static std::string ScrubURL(const GURL& url);
+
+ protected:
+  // Sends |log| immediately for display.
+  virtual void SendLog(const std::string& log) = 0;
+
+  // Converts |log| and its |label| to a string and calls SendLog on the result.
+  void LogValue(StringID label, const base::Value& log);
 
   // Replaces all characters satisfying IsUnwantedInElementID with a ' '.
   // This damages some valid HTML element IDs or names, but it is likely that it
@@ -201,13 +203,6 @@ class SavePasswordProgressLogger {
 
   // Translates the StringID values into the corresponding strings.
   static std::string GetStringFromID(SavePasswordProgressLogger::StringID id);
-
- protected:
-  // Sends `log` immediately for display.
-  virtual void SendLog(const std::string& log) = 0;
-
-  // Converts `log` and its `label` to a string and calls SendLog on the result.
-  void LogValue(StringID label, const base::Value& log);
 };
 
 }  // namespace autofill

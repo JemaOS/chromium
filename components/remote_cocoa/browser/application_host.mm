@@ -11,9 +11,7 @@
 namespace remote_cocoa {
 
 ApplicationHost::ApplicationHost(
-    mojo::PendingAssociatedReceiver<mojom::Application>* receiver,
-    const std::string& bundle_id)
-    : bundle_id_(bundle_id) {
+    mojo::PendingAssociatedReceiver<mojom::Application>* receiver) {
   *receiver = application_remote_.BindNewEndpointAndPassReceiver();
 }
 

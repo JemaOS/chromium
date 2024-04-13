@@ -5,11 +5,10 @@
 #ifndef COMPONENTS_SAFE_BROWSING_CONTENT_BROWSER_DOWNLOAD_DOWNLOAD_STATS_H_
 #define COMPONENTS_SAFE_BROWSING_CONTENT_BROWSER_DOWNLOAD_DOWNLOAD_STATS_H_
 
-#include <optional>
-
 #include "components/download/public/common/download_danger_type.h"
 #include "components/download/public/common/download_stats.h"
 #include "components/safe_browsing/content/common/file_type_policies.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class FilePath;
@@ -77,7 +76,7 @@ void RecordDownloadFileTypeAttributes(
     DownloadFileType::DangerLevel danger_level,
     bool has_user_gesture,
     bool visited_referrer_before,
-    std::optional<base::Time> latest_bypass_time);
+    absl::optional<base::Time> latest_bypass_time);
 
 }  // namespace safe_browsing
 

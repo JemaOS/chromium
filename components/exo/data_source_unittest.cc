@@ -10,17 +10,13 @@
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
-#include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "components/exo/data_source_delegate.h"
 #include "components/exo/test/exo_test_base.h"
-#include "components/exo/test/test_data_source_delegate.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace exo {
 namespace {
-
-using test::TestDataSourceDelegate;
 
 constexpr char kTestData[] = "Test Data";
 
@@ -29,6 +25,26 @@ class DataSourceTest : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::MainThreadType::DEFAULT,
       base::test::TaskEnvironment::ThreadPoolExecutionMode::ASYNC};
+};
+
+class TestDataSourceDelegate : public DataSourceDelegate {
+ public:
+  TestDataSourceDelegate() {}
+  ~TestDataSourceDelegate() override {}
+
+  // Overridden from DataSourceDelegate:
+  void OnDataSourceDestroying(DataSource* source) override {}
+  void OnTarget(const absl::optional<std::string>& mime_type) override {}
+  void OnSend(const std::string& mime_type, base::ScopedFD fd) override {
+    ASSERT_TRUE(base::WriteFileDescriptor(fd.get(), kTestData));
+  }
+  void OnCancelled() override {}
+  void OnDndDropPerformed() override {}
+  void OnDndFinished() override {}
+  void OnAction(DndAction dnd_action) override {}
+  bool CanAcceptDataEventsForSurface(Surface* surface) const override {
+    return true;
+  }
 };
 
 void CheckMimeType(const std::string& expected,
@@ -120,7 +136,6 @@ TEST_F(DataSourceTest, ReadData) {
   TestDataSourceDelegate delegate;
   DataSource data_source(&delegate);
   std::string mime_type("text/plain;charset=utf-8");
-  delegate.SetData(mime_type, kTestData);
   data_source.Offer(mime_type.c_str());
 
   data_source.ReadDataForTesting(
@@ -136,7 +151,6 @@ TEST_F(DataSourceTest, ReadDataArbitraryMimeType) {
   TestDataSourceDelegate delegate;
   DataSource data_source(&delegate);
   std::string mime_type("abc/def;key=value");
-  delegate.SetData(mime_type, kTestData);
   data_source.Offer(mime_type.c_str());
 
   data_source.ReadDataForTesting(
@@ -193,19 +207,6 @@ TEST_F(DataSourceTest, ReadData_Cancelled) {
       }));
   data_source.Cancelled();
   task_environment_.RunUntilIdle();
-}
-
-TEST_F(DataSourceTest, ReadData_Deleted) {
-  TestDataSourceDelegate delegate;
-  auto data_source = std::make_unique<DataSource>(&delegate);
-  std::string mime_type("text/plain;charset=utf-8");
-  data_source->Offer(mime_type);
-
-  base::RunLoop run_loop;
-  data_source->ReadDataForTesting(mime_type, base::DoNothing(),
-                                  run_loop.QuitClosure());
-  data_source.reset();
-  run_loop.Run();
 }
 
 TEST_F(DataSourceTest, CheckDteMimeTypeReceived) {

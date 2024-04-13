@@ -7,8 +7,8 @@
 
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
+#include <vector>
 
 #include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
@@ -16,15 +16,15 @@
 #include "base/sequence_checker.h"
 #include "build/chromeos_buildflags.h"
 #include "components/safe_search_api/url_checker.h"
-#include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/supervised_user/core/browser/supervised_user_error_page.h"
-#include "components/supervised_user/core/browser/supervised_user_utils.h"
-#include "components/supervised_user/core/common/supervised_user_constants.h"
-#include "services/network/public/cpp/shared_url_loader_factory.h"
-#include "ui/base/page_transition_types.h"
 
 class GURL;
-class PrefService;
+
+namespace base {
+class TaskRunner;
+}
+
+class KidsChromeManagementClient;
 
 // Callback type for additional url validations.
 typedef base::RepeatingCallback<bool(const GURL&)> ValidateURLSupportCallback;
@@ -40,6 +40,36 @@ namespace supervised_user {
 //     sources.
 class SupervisedUserURLFilter {
  public:
+  // A Java counterpart will be generated for this enum.
+  // Values are stored in prefs under kDefaultSupervisedUserFilteringBehavior.
+  // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.chrome.browser.superviseduser
+  enum FilteringBehavior {
+    ALLOW = 0,
+    // Deprecated, WARN = 1.
+    BLOCK = 2,
+    INVALID = 3,
+  };
+
+  // This enum describes the filter types of Chrome, which is
+  // set by Family Link App or at families.google.com/families. These values
+  // are logged to UMA. Entries should not be renumbered and numeric values
+  // should never be reused. Please keep in sync with "FamilyLinkWebFilterType"
+  // in src/tools/metrics/histograms/enums.xml.
+  enum class WebFilterType {
+    // The web filter is set to "Allow all sites".
+    kAllowAllSites = 0,
+
+    // The web filter is set to "Try to block mature sites".
+    kTryToBlockMatureSites = 1,
+
+    // The web filter is set to "Only allow certain sites".
+    kCertainSites = 2,
+
+    // Used for UMA. Update kMaxValue to the last value. Add future entries
+    // above this comment. Sync with enums.xml.
+    kMaxValue = kCertainSites,
+  };
+
   // This enum describes whether the approved list or blocked list is used on
   // Chrome on Chrome OS, which is set by Family Link App or at
   // families.google.com/families via "manage sites" setting. This is also
@@ -65,24 +95,6 @@ class SupervisedUserURLFilter {
     kMaxValue = kBoth,
   };
 
-  // This enum describes the kind of conflicts between allow and block list
-  // entries that match a given input host and resolve to different filtering
-  // results.
-  // They distinguish between conflicts:
-  // 1) entirely due to trivial subdomain differences,
-  // 2) due to differences other than the trivial subdomain and
-  // 3) due to both kinds of differences.
-  // These values are logged to UMA. Entries should not be renumbered and
-  // numeric values should never be reused. Please keep in sync with
-  // "FamilyLinkFilteringSubdomainConflictType" in
-  // src/tools/metrics/histograms/enums.xml.
-  enum class FilteringSubdomainConflictType {
-    kTrivialSubdomainConflictOnly = 0,
-    kOtherConflictOnly = 1,
-    kTrivialSubdomainConflictAndOtherConflict = 2,
-    kMaxValue = kTrivialSubdomainConflictAndOtherConflict,
-  };
-
   // Provides access to functionality from services on which we don't want
   // to depend directly.
   class Delegate {
@@ -92,7 +104,7 @@ class SupervisedUserURLFilter {
   };
 
   using FilteringBehaviorCallback =
-      base::OnceCallback<void(supervised_user::FilteringBehavior,
+      base::OnceCallback<void(FilteringBehavior,
                               supervised_user::FilteringBehaviorReason,
                               bool /* uncertain */)>;
 
@@ -110,20 +122,24 @@ class SupervisedUserURLFilter {
   };
 
   SupervisedUserURLFilter(
-      PrefService& user_prefs,
-      std::unique_ptr<safe_search_api::URLCheckerClient> url_checker_client,
-      ValidateURLSupportCallback check_webstore_url_callback);
+      ValidateURLSupportCallback check_webstore_url_callback,
+      std::unique_ptr<Delegate> delegate);
 
-  virtual ~SupervisedUserURLFilter();
+  SupervisedUserURLFilter(const SupervisedUserURLFilter&) = delete;
+  SupervisedUserURLFilter& operator=(const SupervisedUserURLFilter&) = delete;
+
+  ~SupervisedUserURLFilter();
 
   static const char* GetWebFilterTypeHistogramNameForTest();
   static const char* GetManagedSiteListHistogramNameForTest();
   static const char* GetApprovedSitesCountHistogramNameForTest();
   static const char* GetBlockedSitesCountHistogramNameForTest();
   static const char* GetManagedSiteListConflictHistogramNameForTest();
-  static const char* GetManagedSiteListConflictTypeHistogramNameForTest();
 
   static FilteringBehavior BehaviorFromInt(int behavior_value);
+
+  static bool ReasonIsAutomatic(
+      supervised_user::FilteringBehaviorReason reason);
 
   // Returns true if the |host| matches the pattern. A pattern is a hostname
   // with one or both of the following modifications:
@@ -145,13 +161,6 @@ class SupervisedUserURLFilter {
   // string included in the user feedback log.
   static std::string WebFilterTypeToDisplayString(
       WebFilterType web_filter_type);
-
-  // Records the metrics on navigation loaded after completing a filtering
-  // event.
-  static void RecordFilterResultEvent(FilteringBehavior behavior,
-                                      FilteringBehaviorReason reason,
-                                      bool is_filtering_behavior_known,
-                                      ui::PageTransition transition_type);
 
   // Returns the filtering behavior for a given URL, based on the default
   // behavior and whether it is on a site list.
@@ -181,18 +190,34 @@ class SupervisedUserURLFilter {
       const GURL& main_frame_url,
       FilteringBehaviorCallback callback);
 
+  // Gets all the allowlists that the url is part of. Returns id->name of each
+  // allowlist.
+  std::map<std::string, std::u16string> GetMatchingAllowlistTitles(
+      const GURL& url) const;
+
   // Sets the filtering behavior for pages not on a list (default is ALLOW).
   void SetDefaultFilteringBehavior(FilteringBehavior behavior);
 
   FilteringBehavior GetDefaultFilteringBehavior() const;
 
+  // Set the list of matched patterns to the passed in list, for testing.
+  void SetFromPatternsForTesting(const std::vector<std::string>& patterns);
+
   // Sets the set of manually allowed or blocked hosts.
   void SetManualHosts(std::map<std::string, bool> host_map);
 
-  bool IsManualHostsEmpty() const;
-
   // Sets the set of manually allowed or blocked URLs.
   void SetManualURLs(std::map<GURL, bool> url_map);
+
+  // Initializes the experimental asynchronous checker.
+  void InitAsyncURLChecker(
+      KidsChromeManagementClient* kids_chrome_management_client);
+
+  // Clears any asynchronous checker.
+  void ClearAsyncURLChecker();
+
+  // Returns whether the asynchronous checker is set up.
+  bool HasAsyncURLChecker() const;
 
   // Removes all filter entries, clears the async checker if present, and resets
   // the default behavior to "allow".
@@ -201,54 +226,32 @@ class SupervisedUserURLFilter {
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 
+  // Sets a different task runner for testing.
+  void SetBlockingTaskRunnerForTesting(
+      const scoped_refptr<base::TaskRunner>& task_runner);
+
   WebFilterType GetWebFilterType() const;
 
-  // Emits URL filter metrics based on the parent web filter configuration
-  // applied to the supervised user. Returns true if one or more metrics were
-  // emitted.
-  bool EmitURLFilterMetrics() const;
-
-  // Reports FamilyUser.WebFilterType metrics based on parent web filter type
-  // configuration.
+  // Reports FamilyUser.WebFilterType metrics when `is_filter_initialized_` is
+  // true.
   void ReportWebFilterTypeMetrics() const;
 
-  // Reports FamilyUser.ManagedSiteList metrics based on parent web filter allow
-  // and blocklist configuration.
+  // Reports FamilyUser.ManagedSiteList metrics when `is_filter_initialized_` is
+  // true.
   void ReportManagedSiteListMetrics() const;
 
   // Set value for `is_filter_initialized_`.
   void SetFilterInitialized(bool is_filter_initialized);
 
-  // Sets safe_search_api::URLCheckerClient for SafeSites classification.
-  void SetURLCheckerClientForTesting(
-      std::unique_ptr<safe_search_api::URLCheckerClient> url_checker_client);
-
  private:
   friend class SupervisedUserURLFilterTest;
-  friend class SupervisedUserURLFilteringWithConflictsTest;
-
-  // Converts FilteringBehavior to the SupervisedUserFilterTopLevelResult
-  // histogram value in tools/metrics/histograms/enums.xml to be used in the
-  // "ManagedUsers.TopLevelFilteringResult" histogram.
-  static SupervisedUserFilterTopLevelResult
-  GetHistogramValueForTopLevelFilteringBehavior(
-      FilteringBehavior behavior,
-      FilteringBehaviorReason reason,
-      bool is_filtering_behavior_known);
-
-  // Converts FilteringBehavior to SupervisedUserSafetyFilterResult histogram
-  // value in tools/metrics/histograms/enums.xml.
-  static int GetHistogramValueForFilteringBehavior(
-      FilteringBehavior behavior,
-      FilteringBehaviorReason reason,
-      bool is_filtering_behavior_known);
 
   bool IsExemptedFromGuardianApproval(const GURL& effective_url);
 
   bool RunAsyncChecker(const GURL& url,
                        FilteringBehaviorCallback callback) const;
 
-  virtual FilteringBehavior GetFilteringBehaviorForURL(
+  FilteringBehavior GetFilteringBehaviorForURL(
       const GURL& url,
       supervised_user::FilteringBehaviorReason* reason);
   FilteringBehavior GetManualFilteringBehaviorForURL(const GURL& url);
@@ -266,15 +269,15 @@ class SupervisedUserURLFilter {
   // (false).
   std::map<GURL, bool> url_map_;
 
-  // Blocked and Allowed host lists.
-  std::set<std::string> blocked_host_list_;
-  std::set<std::string> allowed_host_list_;
-
-  const raw_ref<PrefService> user_prefs_;
+  // Maps from a hostname to whether it is manually allowed (true) or blocked
+  // (false).
+  std::map<std::string, bool> host_map_;
 
   std::unique_ptr<Delegate> service_delegate_;
 
   std::unique_ptr<safe_search_api::URLChecker> async_url_checker_;
+
+  scoped_refptr<base::TaskRunner> blocking_task_runner_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 

@@ -27,8 +27,8 @@ FakeLocalDeviceInfoProvider::FakeLocalDeviceInfoProvider()
                    /*last_updated_timestamp=*/base::Time::Now(),
                    DeviceInfoUtil::GetPulseInterval(),
                    /*send_tab_to_self_receiving_enabled=*/false,
-                   /*sharing_info=*/std::nullopt,
-                   /*paask_info=*/std::nullopt,
+                   /*sharing_info=*/absl::nullopt,
+                   /*paask_info=*/absl::nullopt,
                    /*fcm_registration_token=*/std::string(),
                    /*interested_data_types=*/ModelTypeSet()) {}
 

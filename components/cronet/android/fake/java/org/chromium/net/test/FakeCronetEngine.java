@@ -18,7 +18,6 @@ import org.chromium.net.UrlRequest;
 import org.chromium.net.impl.CronetEngineBase;
 import org.chromium.net.impl.CronetEngineBuilderImpl;
 import org.chromium.net.impl.ImplVersion;
-import org.chromium.net.impl.RefCountDelegate;
 import org.chromium.net.impl.UrlRequestBase;
 import org.chromium.net.impl.VersionSafeCallbacks;
 
@@ -39,9 +38,13 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-/** Fake {@link CronetEngine}. This implements CronetEngine. */
+/**
+ * Fake {@link CronetEngine}. This implements CronetEngine.
+ */
 final class FakeCronetEngine extends CronetEngineBase {
-    /** Builds a {@link FakeCronetEngine}. This implements CronetEngine.Builder. */
+    /**
+     * Builds a {@link FakeCronetEngine}. This implements CronetEngine.Builder.
+     */
     static class Builder extends CronetEngineBuilderImpl {
         private FakeCronetController mController;
 
@@ -72,30 +75,12 @@ final class FakeCronetEngine extends CronetEngineBase {
     @GuardedBy("mLock")
     private boolean mIsShutdown;
 
-    /**
-     * The number of started requests where the terminal callback (i.e.
-     * onSucceeded/onCancelled/onFailed) has not yet been called.
-     */
-    @GuardedBy("mLock")
-    private int mRunningRequestCount;
-
-    /*
-     * The number of started requests where the terminal callbacks (i.e.
-     * onSucceeded/onCancelled/onFailed, request finished listeners) have not
-     * all returned yet.
-     *
-     * By definition this is always greater than or equal to
-     * mRunningRequestCount. The difference between the two is the number of
-     * terminal callbacks that are currently running.
-     */
     @GuardedBy("mLock")
     private int mActiveRequestCount;
-
     @GuardedBy("mLock")
-    private final Map<
-                    RequestFinishedInfo.Listener, VersionSafeCallbacks.RequestFinishedInfoListener>
-            mFinishedListenerMap = new HashMap<>();
-
+    private final Map<RequestFinishedInfo.Listener,
+            VersionSafeCallbacks.RequestFinishedInfoListener> mFinishedListenerMap =
+            new HashMap<>();
     /**
      * Creates a {@link FakeCronetEngine}. Used when {@link FakeCronetEngine} is created with the
      * {@link FakeCronetEngine.Builder}.
@@ -109,25 +94,22 @@ final class FakeCronetEngine extends CronetEngineBase {
         } else {
             mController = new FakeCronetController();
         }
-        mExecutorService =
-                new ThreadPoolExecutor(
-                        /* corePoolSize= */ 1,
-                        /* maximumPoolSize= */ 5,
-                        /* keepAliveTime= */ 50,
-                        TimeUnit.SECONDS,
-                        new LinkedBlockingQueue<Runnable>(),
-                        new ThreadFactory() {
+        mExecutorService = new ThreadPoolExecutor(
+                /* corePoolSize= */ 1,
+                /* maximumPoolSize= */ 5,
+                /* keepAliveTime= */ 50, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
+                new ThreadFactory() {
+                    @Override
+                    public Thread newThread(final Runnable r) {
+                        return Executors.defaultThreadFactory().newThread(new Runnable() {
                             @Override
-                            public Thread newThread(final Runnable r) {
-                                return Executors.defaultThreadFactory()
-                                        .newThread(
-                                                () -> {
-                                                    Thread.currentThread()
-                                                            .setName("FakeCronetEngine");
-                                                    r.run();
-                                                });
+                            public void run() {
+                                Thread.currentThread().setName("FakeCronetEngine");
+                                r.run();
                             }
                         });
+                    }
+                });
         FakeCronetController.addFakeCronetEngine(this);
     }
 
@@ -148,11 +130,11 @@ final class FakeCronetEngine extends CronetEngineBase {
             if (mIsShutdown) {
                 throw new IllegalStateException(
                         "This instance of CronetEngine has been shutdown and can no longer be "
-                                + "used.");
+                        + "used.");
             }
             throw new UnsupportedOperationException(
                     "The bidirectional stream API is not supported by the Fake implementation "
-                            + "of CronetEngine.");
+                    + "of CronetEngine.");
         }
     }
 
@@ -164,8 +146,8 @@ final class FakeCronetEngine extends CronetEngineBase {
     @Override
     public void shutdown() {
         synchronized (mLock) {
-            if (mRunningRequestCount != 0) {
-                throw new IllegalStateException("Cannot shutdown with running requests.");
+            if (mActiveRequestCount != 0) {
+                throw new IllegalStateException("Cannot shutdown with active requests.");
             } else {
                 mIsShutdown = true;
             }
@@ -212,14 +194,12 @@ final class FakeCronetEngine extends CronetEngineBase {
     public void bindToNetwork(long networkHandle) {
         throw new UnsupportedOperationException(
                 "The multi-network API is not supported by the Fake implementation "
-                        + "of Cronet Engine");
+                + "of Cronet Engine");
     }
 
     @Override
-    public void configureNetworkQualityEstimatorForTesting(
-            boolean useLocalHostRequests,
-            boolean useSmallerResponses,
-            boolean disableOfflineCheck) {}
+    public void configureNetworkQualityEstimatorForTesting(boolean useLocalHostRequests,
+            boolean useSmallerResponses, boolean disableOfflineCheck) {}
 
     @Override
     public void addRttListener(NetworkQualityRttListener listener) {}
@@ -260,20 +240,10 @@ final class FakeCronetEngine extends CronetEngineBase {
         }
     }
 
-    void reportRequestFinished(
-            RequestFinishedInfo requestInfo, RefCountDelegate inflightDoneCallbackCount) {
+    void reportRequestFinished(RequestFinishedInfo requestInfo) {
         synchronized (mLock) {
             for (RequestFinishedInfo.Listener listener : mFinishedListenerMap.values()) {
-                inflightDoneCallbackCount.increment();
-                listener.getExecutor()
-                        .execute(
-                                () -> {
-                                    try {
-                                        listener.onRequestFinished(requestInfo);
-                                    } finally {
-                                        inflightDoneCallbackCount.decrement();
-                                    }
-                                });
+                listener.getExecutor().execute(() -> listener.onRequestFinished(requestInfo));
             }
         }
     }
@@ -284,65 +254,45 @@ final class FakeCronetEngine extends CronetEngineBase {
     public URLConnection openConnection(URL url) throws IOException {
         throw new UnsupportedOperationException(
                 "The openConnection API is not supported by the Fake implementation of "
-                        + "CronetEngine.");
+                + "CronetEngine.");
     }
 
     @Override
     public URLConnection openConnection(URL url, Proxy proxy) throws IOException {
         throw new UnsupportedOperationException(
                 "The openConnection API is not supported by the Fake implementation of "
-                        + "CronetEngine.");
+                + "CronetEngine.");
     }
 
     @Override
     public URLStreamHandlerFactory createURLStreamHandlerFactory() {
         throw new UnsupportedOperationException(
                 "The URLStreamHandlerFactory API is not supported by the Fake implementation of "
-                        + "CronetEngine.");
+                + "CronetEngine.");
     }
 
     @Override
-    protected UrlRequestBase createRequest(
-            String url,
-            UrlRequest.Callback callback,
-            Executor userExecutor,
-            int priority,
-            Collection<Object> connectionAnnotations,
-            boolean disableCache,
-            boolean disableConnectionMigration,
-            boolean allowDirectExecutor,
-            boolean trafficStatsTagSet,
-            int trafficStatsTag,
-            boolean trafficStatsUidSet,
-            int trafficStatsUid,
-            RequestFinishedInfo.Listener requestFinishedListener,
-            int idempotency,
-            long networkHandle) {
+    protected UrlRequestBase createRequest(String url, UrlRequest.Callback callback,
+            Executor userExecutor, int priority, Collection<Object> connectionAnnotations,
+            boolean disableCache, boolean disableConnectionMigration, boolean allowDirectExecutor,
+            boolean trafficStatsTagSet, int trafficStatsTag, boolean trafficStatsUidSet,
+            int trafficStatsUid, RequestFinishedInfo.Listener requestFinishedListener,
+            int idempotency, long networkHandle) {
         if (networkHandle != DEFAULT_NETWORK_HANDLE) {
             throw new UnsupportedOperationException(
                     "The multi-network API is not supported by the Fake implementation "
-                            + "of Cronet Engine");
+                    + "of Cronet Engine");
         }
 
         synchronized (mLock) {
             if (mIsShutdown) {
                 throw new IllegalStateException(
                         "This instance of CronetEngine has been shutdown and can no longer be "
-                                + "used.");
+                        + "used.");
             }
-            return new FakeUrlRequest(
-                    callback,
-                    userExecutor,
-                    mExecutorService,
-                    url,
-                    allowDirectExecutor,
-                    trafficStatsTagSet,
-                    trafficStatsTag,
-                    trafficStatsUidSet,
-                    trafficStatsUid,
-                    mController,
-                    this,
-                    connectionAnnotations);
+            return new FakeUrlRequest(callback, userExecutor, mExecutorService, url,
+                    allowDirectExecutor, trafficStatsTagSet, trafficStatsTag, trafficStatsUidSet,
+                    trafficStatsUid, mController, this, connectionAnnotations);
         }
     }
 
@@ -354,34 +304,26 @@ final class FakeCronetEngine extends CronetEngineBase {
     }
 
     @Override
-    protected ExperimentalBidirectionalStream createBidirectionalStream(
-            String url,
-            BidirectionalStream.Callback callback,
-            Executor executor,
-            String httpMethod,
-            List<Map.Entry<String, String>> requestHeaders,
-            @StreamPriority int priority,
-            boolean delayRequestHeadersUntilFirstFlush,
-            Collection<Object> connectionAnnotations,
-            boolean trafficStatsTagSet,
-            int trafficStatsTag,
-            boolean trafficStatsUidSet,
-            int trafficStatsUid,
-            long networkHandle) {
+    protected ExperimentalBidirectionalStream createBidirectionalStream(String url,
+            BidirectionalStream.Callback callback, Executor executor, String httpMethod,
+            List<Map.Entry<String, String>> requestHeaders, @StreamPriority int priority,
+            boolean delayRequestHeadersUntilFirstFlush, Collection<Object> connectionAnnotations,
+            boolean trafficStatsTagSet, int trafficStatsTag, boolean trafficStatsUidSet,
+            int trafficStatsUid, long networkHandle) {
         if (networkHandle != DEFAULT_NETWORK_HANDLE) {
             throw new UnsupportedOperationException(
                     "The multi-network API is not supported by the Fake implementation "
-                            + "of Cronet Engine");
+                    + "of Cronet Engine");
         }
         synchronized (mLock) {
             if (mIsShutdown) {
                 throw new IllegalStateException(
                         "This instance of CronetEngine has been shutdown and can no longer be "
-                                + "used.");
+                        + "used.");
             }
             throw new UnsupportedOperationException(
                     "The BidirectionalStream API is not supported by the Fake implementation of "
-                            + "CronetEngine.");
+                    + "CronetEngine.");
         }
     }
 
@@ -395,7 +337,6 @@ final class FakeCronetEngine extends CronetEngineBase {
         synchronized (mLock) {
             if (!mIsShutdown) {
                 mActiveRequestCount++;
-                mRunningRequestCount++;
                 return true;
             }
             return false;
@@ -403,29 +344,17 @@ final class FakeCronetEngine extends CronetEngineBase {
     }
 
     /**
-     * Mark request as destroyed to allow shutdown when there are no running
-     * requests. Should be called *before* the terminal callback is called, so
-     * that users can call shutdown() from the terminal callback.
+     * Mark request as finished to allow shutdown when there are no active
+     * requests.
      */
     void onRequestDestroyed() {
         synchronized (mLock) {
-            // Verification check. We should not be able to shutdown if there are still running
-            // requests.
+            // Sanity check. We should not be able to shutdown if there are still running requests.
             if (mIsShutdown) {
                 throw new IllegalStateException(
                         "This instance of CronetEngine was shutdown. All requests must have been "
-                                + "complete.");
+                        + "complete.");
             }
-            mRunningRequestCount--;
-        }
-    }
-
-    /**
-     * Mark request as finished for the purposes of getActiveRequestCount().
-     * Should be called *after* the terminal callback returns.
-     */
-    void onRequestFinished() {
-        synchronized (mLock) {
             mActiveRequestCount--;
         }
     }

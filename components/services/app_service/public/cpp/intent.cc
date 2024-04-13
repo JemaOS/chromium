@@ -5,7 +5,6 @@
 #include "components/services/app_service/public/cpp/intent.h"
 
 #include "base/files/safe_base_name.h"
-#include "base/notreached.h"
 #include "base/ranges/algorithm.h"
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/services/app_service/public/cpp/intent_util.h"
@@ -145,62 +144,33 @@ std::unique_ptr<Intent> Intent::Clone() const {
   return intent;
 }
 
-std::optional<std::string> Intent::GetIntentConditionValueByType(
+absl::optional<std::string> Intent::GetIntentConditionValueByType(
     ConditionType condition_type) {
   switch (condition_type) {
     case ConditionType::kAction: {
       return action;
     }
     case ConditionType::kScheme: {
-      return url.has_value() ? std::optional<std::string>(url->scheme())
-                             : std::nullopt;
+      return url.has_value() ? absl::optional<std::string>(url->scheme())
+                             : absl::nullopt;
+    }
+    case ConditionType::kHost: {
+      return url.has_value() ? absl::optional<std::string>(url->host())
+                             : absl::nullopt;
     }
     case ConditionType::kPath: {
-      return url.has_value() ? std::optional<std::string>(url->path())
-                             : std::nullopt;
+      return url.has_value() ? absl::optional<std::string>(url->path())
+                             : absl::nullopt;
     }
     case ConditionType::kMimeType: {
       return mime_type;
     }
-    // Handled in MatchAuthorityCondition.
-    case ConditionType::kAuthority:
-    // Handled in MatchFileCondition.
     case ConditionType::kFile: {
+      // Handled in IntentMatchesFileCondition.
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
     }
   }
-}
-
-bool Intent::MatchAuthorityCondition(const ConditionPtr& condition) {
-  CHECK_EQ(condition->condition_type, ConditionType::kAuthority);
-
-  if (!url.has_value()) {
-    return false;
-  }
-
-  std::optional<std::string> port =
-      apps_util::AuthorityView::PortToString(url.value());
-  return base::ranges::any_of(
-      condition->condition_values,
-      [this, &port](const ConditionValuePtr& condition_value) {
-        apps_util::AuthorityView match_authority =
-            apps_util::AuthorityView::Decode(condition_value->value);
-        if (!apps_util::PatternMatchValue(url->host(),
-                                          condition_value->match_type,
-                                          match_authority.host)) {
-          return false;
-        }
-        // No port filtering.
-        if (!match_authority.port.has_value()) {
-          return true;
-        }
-        // URL has no port but port is expected.
-        if (!port.has_value()) {
-          return false;
-        }
-        return match_authority.port.value() == port.value();
-      });
 }
 
 bool Intent::MatchFileCondition(const ConditionPtr& condition) {
@@ -213,15 +183,11 @@ bool Intent::MatchFileCondition(const ConditionPtr& condition) {
 }
 
 bool Intent::MatchCondition(const ConditionPtr& condition) {
-  if (condition->condition_type == ConditionType::kAuthority) {
-    return MatchAuthorityCondition(condition);
-  }
-
   if (condition->condition_type == ConditionType::kFile) {
     return MatchFileCondition(condition);
   }
 
-  std::optional<std::string> value_to_match =
+  absl::optional<std::string> value_to_match =
       GetIntentConditionValueByType(condition->condition_type);
   return value_to_match.has_value() &&
          base::ranges::any_of(condition->condition_values,

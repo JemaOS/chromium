@@ -8,8 +8,6 @@
 #include <string>
 
 #include "base/functional/callback.h"
-#include "base/memory/weak_ptr.h"
-#include "services/metrics/public/cpp/ukm_source_id.h"
 #include "url/gurl.h"
 
 namespace base {
@@ -21,17 +19,12 @@ namespace commerce {
 // A wrapper class for WebContent on desktop and android or WebState on iOS.
 class WebWrapper {
  public:
-  WebWrapper();
+  WebWrapper() = default;
   WebWrapper(const WebWrapper&) = delete;
-  virtual ~WebWrapper();
+  virtual ~WebWrapper() = default;
 
   // Get the URL that is currently being displayed for the page.
   virtual const GURL& GetLastCommittedURL() = 0;
-
-  // Whether the first load after a navigation has completed. This is useful
-  // for determining if it is safe to run javascript and whether a navigation
-  // was inside of a single-page webapp.
-  virtual bool IsFirstLoadForNavigationFinished() = 0;
 
   // Whether content is off the record or in incognito mode.
   virtual bool IsOffTheRecord() = 0;
@@ -41,15 +34,6 @@ class WebWrapper {
   virtual void RunJavascript(
       const std::u16string& script,
       base::OnceCallback<void(const base::Value)> callback) = 0;
-
-  // Get the source ID for the current page.
-  virtual ukm::SourceId GetPageUkmSourceId() = 0;
-
-  // Gets a weak pointer for use in callbacks.
-  base::WeakPtr<WebWrapper> GetWeakPtr();
-
- private:
-  base::WeakPtrFactory<WebWrapper> weak_ptr_factory_{this};
 };
 
 }  // namespace commerce

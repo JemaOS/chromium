@@ -20,9 +20,7 @@ ArCoreDeviceProvider::ArCoreDeviceProvider(
 
 ArCoreDeviceProvider::~ArCoreDeviceProvider() = default;
 
-void ArCoreDeviceProvider::Initialize(
-    device::VRDeviceProviderClient* client,
-    content::WebContents* initializing_web_contents) {
+void ArCoreDeviceProvider::Initialize(device::VRDeviceProviderClient* client) {
   CHECK(!initialized_);
 
   if (device::IsArCoreSupported()) {

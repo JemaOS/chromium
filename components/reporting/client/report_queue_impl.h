@@ -6,7 +6,6 @@
 #define COMPONENTS_REPORTING_CLIENT_REPORT_QUEUE_IMPL_H_
 
 #include <memory>
-#include <optional>
 #include <queue>
 #include <string>
 #include <utility>
@@ -21,10 +20,9 @@
 #include "components/reporting/proto/synced/record.pb.h"
 #include "components/reporting/proto/synced/record_constants.pb.h"
 #include "components/reporting/storage/storage_module_interface.h"
-#include "components/reporting/util/rate_limiter_interface.h"
 #include "components/reporting/util/status.h"
 #include "components/reporting/util/statusor.h"
-#include "components/reporting/util/wrapped_rate_limiter.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -57,9 +55,6 @@ class ReportQueueImpl : public ReportQueue {
   [[nodiscard]] base::OnceCallback<void(StatusOr<std::unique_ptr<ReportQueue>>)>
   PrepareToAttachActualQueue() const override;
 
-  // ReportQueue:
-  Destination GetDestination() const override;
-
  protected:
   ReportQueueImpl(std::unique_ptr<ReportQueueConfiguration> config,
                   scoped_refptr<StorageModuleInterface> storage);
@@ -77,7 +72,7 @@ class SpeculativeReportQueueImpl : public ReportQueue {
  public:
   // Factory method returns a smart pointer with on-thread deleter.
   static std::unique_ptr<SpeculativeReportQueueImpl, base::OnTaskRunnerDeleter>
-  Create(const SpeculativeConfigSettings& config_settings);
+  Create();
 
   SpeculativeReportQueueImpl(const SpeculativeReportQueueImpl& other) = delete;
   SpeculativeReportQueueImpl& operator=(
@@ -92,9 +87,6 @@ class SpeculativeReportQueueImpl : public ReportQueue {
   // queue.
   [[nodiscard]] base::OnceCallback<void(StatusOr<std::unique_ptr<ReportQueue>>)>
   PrepareToAttachActualQueue() const override;
-
-  // ReportQueue:
-  Destination GetDestination() const override;
 
  private:
   // Moveable, non-copyable struct holding a pending record producer for the
@@ -114,7 +106,6 @@ class SpeculativeReportQueueImpl : public ReportQueue {
 
   // Private constructor, used by the factory method  only.
   explicit SpeculativeReportQueueImpl(
-      const SpeculativeConfigSettings& config_settings,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
   // Forwards |AddProducedRecord| to |ReportQueue|, if already created.
@@ -147,7 +138,7 @@ class SpeculativeReportQueueImpl : public ReportQueue {
   SEQUENCE_CHECKER(sequence_checker_);
 
   // Actual |ReportQueue| once successfully created (immutable after that).
-  std::optional<std::unique_ptr<ReportQueue>> actual_report_queue_
+  absl::optional<std::unique_ptr<ReportQueue>> actual_report_queue_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Queue of the pending record producers, collected before actual queue has
@@ -155,10 +146,6 @@ class SpeculativeReportQueueImpl : public ReportQueue {
   // methods.
   mutable std::queue<PendingRecordProducer> pending_record_producers_
       GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // Report queue configuration settings that are supposed to be identical to
-  // the one configured with the `actual_report_queue_`.
-  const SpeculativeConfigSettings config_settings_;
 
   // Weak pointer factory.
   base::WeakPtrFactory<SpeculativeReportQueueImpl> weak_ptr_factory_{this};

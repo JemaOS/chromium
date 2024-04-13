@@ -17,7 +17,6 @@
 #include "base/metrics/histogram_base.h"
 #include "base/metrics/statistics_recorder.h"
 #include "base/observer_list.h"
-#include "components/segmentation_platform/internal/database/ukm_database.h"
 #include "components/segmentation_platform/public/proto/types.pb.h"
 
 namespace segmentation_platform {
@@ -43,9 +42,7 @@ class HistogramSignalHandler {
     Observer() = default;
   };
 
-  HistogramSignalHandler(const std::string& profie_id,
-                         SignalDatabase* signal_database,
-                         UkmDatabase* ukm_database);
+  explicit HistogramSignalHandler(SignalDatabase* signal_database);
   virtual ~HistogramSignalHandler();
 
   // Disallow copy/assign.
@@ -73,20 +70,16 @@ class HistogramSignalHandler {
                        base::HistogramBase::Sample sample,
                        bool success);
 
-  const std::string profile_id_;
-
   // The database storing relevant histogram samples.
-  const raw_ptr<SignalDatabase> db_;
-  const raw_ptr<UkmDatabase> ukm_db_;
+  raw_ptr<SignalDatabase> db_;
 
   // Whether or not the segmentation platform should record metrics events.
   bool metrics_enabled_;
 
   // Tracks the histogram names we are currently listening to along with their
   // corresponding observers.
-  using HistogramSignal = std::pair<std::string, proto::SignalType>;
   std::map<
-      HistogramSignal,
+      std::string,
       std::unique_ptr<base::StatisticsRecorder::ScopedHistogramSampleObserver>>
       histogram_observers_;
 

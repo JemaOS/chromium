@@ -24,7 +24,7 @@ class FakeKeyStorageLinux : public KeyStorageLinux {
 
  protected:
   bool Init() override { return true; }
-  std::optional<std::string> GetKeyImpl() override {
+  absl::optional<std::string> GetKeyImpl() override {
     return std::string("1234");
   }
 

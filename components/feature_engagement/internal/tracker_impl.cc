@@ -5,10 +5,8 @@
 #include "components/feature_engagement/internal/tracker_impl.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
-#include "base/check_is_test.h"
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
@@ -18,17 +16,13 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/no_destructor.h"
-#include "base/synchronization/lock.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/time/clock.h"
 #include "build/build_config.h"
 #include "components/feature_engagement/internal/availability_model_impl.h"
-#include "components/feature_engagement/internal/blocked_iph_features.h"
 #include "components/feature_engagement/internal/chrome_variations_configuration.h"
 #include "components/feature_engagement/internal/display_lock_controller_impl.h"
 #include "components/feature_engagement/internal/editable_configuration.h"
-#include "components/feature_engagement/internal/event_model.h"
 #include "components/feature_engagement/internal/event_model_impl.h"
 #include "components/feature_engagement/internal/feature_config_condition_validator.h"
 #include "components/feature_engagement/internal/feature_config_event_storage_validator.h"
@@ -42,13 +36,12 @@
 #include "components/feature_engagement/internal/proto/availability.pb.h"
 #include "components/feature_engagement/internal/stats.h"
 #include "components/feature_engagement/internal/system_time_provider.h"
-#include "components/feature_engagement/internal/testing_clock_time_provider.h"
-#include "components/feature_engagement/public/configuration.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/feature_engagement/public/feature_list.h"
 #include "components/feature_engagement/public/group_constants.h"
 #include "components/feature_engagement/public/group_list.h"
 #include "components/leveldb_proto/public/proto_database_provider.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace feature_engagement {
 
@@ -57,28 +50,13 @@ namespace {
 const char kEventDBName[] = "EventDB";
 const char kAvailabilityDBName[] = "AvailabilityDB";
 
-#if !BUILDFLAG(IS_ANDROID)
+// Creates a TrackerImpl that is usable for a demo mode.
+std::unique_ptr<Tracker> CreateDemoModeTracker() {
+  // GetFieldTrialParamValueByFeature returns an empty string if the param is
+  // not set.
+  std::string chosen_feature_name = base::GetFieldTrialParamValueByFeature(
+      kIPHDemoMode, kIPHDemoModeFeatureChoiceParam);
 
-// Reads event data from `config` and - if valid - places it into `result` along
-// with the event count in the appropriate window.
-void MaybeGetEventData(Tracker::EventList& result,
-                       const EventConfig& config,
-                       const EventModel& event_model,
-                       uint32_t current_day) {
-  if (config.name.empty()) {
-    return;
-  }
-  result.emplace_back(std::make_pair(
-      config,
-      event_model.GetEventCount(config.name, current_day, config.window)));
-}
-
-#endif  // !BUILDFLAG(IS_ANDROID)
-
-}  // namespace
-
-std::unique_ptr<Tracker> CreateDemoModeTracker(
-    std::string chosen_feature_name) {
   DVLOG(2) << "Enabling demo mode. Chosen feature: " << chosen_feature_name;
 
   std::unique_ptr<EditableConfiguration> configuration =
@@ -109,8 +87,10 @@ std::unique_ptr<Tracker> CreateDemoModeTracker(
       std::make_unique<NeverAvailabilityModel>(), std::move(configuration),
       std::make_unique<NoopDisplayLockController>(),
       std::make_unique<OnceConditionValidator>(),
-      std::make_unique<SystemTimeProvider>(), nullptr, nullptr);
+      std::make_unique<SystemTimeProvider>(), nullptr);
 }
+
+}  // namespace
 
 // This method is declared in //components/feature_engagement/public/
 //     feature_engagement.h
@@ -120,17 +100,10 @@ Tracker* Tracker::Create(
     const base::FilePath& storage_dir,
     const scoped_refptr<base::SequencedTaskRunner>& background_task_runner,
     leveldb_proto::ProtoDatabaseProvider* db_provider,
-    std::unique_ptr<TrackerEventExporter> event_exporter,
-    const ConfigurationProviderList& configuration_providers,
-    std::unique_ptr<SessionController> session_controller) {
+    base::WeakPtr<TrackerEventExporter> event_exporter) {
   DVLOG(2) << "Creating Tracker";
-  if (base::FeatureList::IsEnabled(kIPHDemoMode)) {
-    // GetFieldTrialParamValueByFeature returns an empty string if the param is
-    // not set.
-    std::string chosen_feature_name = base::GetFieldTrialParamValueByFeature(
-        kIPHDemoMode, kIPHDemoModeFeatureChoiceParam);
-    return CreateDemoModeTracker(chosen_feature_name).release();
-  }
+  if (base::FeatureList::IsEnabled(kIPHDemoMode))
+    return CreateDemoModeTracker().release();
 
   base::FilePath event_storage_dir =
       storage_dir.AppendASCII(std::string(kEventDBName));
@@ -142,13 +115,11 @@ Tracker* Tracker::Create(
       std::make_unique<PersistentEventStore>(std::move(event_db));
 
   auto configuration = std::make_unique<ChromeVariationsConfiguration>();
-  configuration->LoadConfigs(configuration_providers, GetAllFeatures(),
-                             GetAllGroups());
+  configuration->ParseConfigs(GetAllFeatures(), GetAllGroups());
 
   auto event_storage_validator =
       std::make_unique<FeatureConfigEventStorageValidator>();
-  event_storage_validator->InitializeFeatures(GetAllFeatures(), GetAllGroups(),
-                                              *configuration);
+  event_storage_validator->InitializeFeatures(GetAllFeatures(), *configuration);
 
   auto raw_event_model = std::make_unique<EventModelImpl>(
       std::move(event_store), std::move(event_storage_validator));
@@ -174,8 +145,7 @@ Tracker* Tracker::Create(
   return new TrackerImpl(
       std::move(event_model), std::move(availability_model),
       std::move(configuration), std::make_unique<DisplayLockControllerImpl>(),
-      std::move(condition_validator), std::move(time_provider),
-      std::move(event_exporter), std::move(session_controller));
+      std::move(condition_validator), std::move(time_provider), event_exporter);
 }
 
 TrackerImpl::TrackerImpl(
@@ -185,16 +155,14 @@ TrackerImpl::TrackerImpl(
     std::unique_ptr<DisplayLockController> display_lock_controller,
     std::unique_ptr<ConditionValidator> condition_validator,
     std::unique_ptr<TimeProvider> time_provider,
-    std::unique_ptr<TrackerEventExporter> event_exporter,
-    std::unique_ptr<SessionController> session_controller)
+    base::WeakPtr<TrackerEventExporter> event_exporter)
     : event_model_(std::move(event_model)),
       availability_model_(std::move(availability_model)),
       configuration_(std::move(configuration)),
       display_lock_controller_(std::move(display_lock_controller)),
       condition_validator_(std::move(condition_validator)),
       time_provider_(std::move(time_provider)),
-      event_exporter_(std::move(event_exporter)),
-      session_controller_(std::move(session_controller)),
+      event_exporter_(event_exporter),
       event_model_initialization_finished_(false),
       availability_model_initialization_finished_(false) {
   event_model_->Initialize(
@@ -216,66 +184,21 @@ void TrackerImpl::NotifyEvent(const std::string& event) {
                            event_model_->IsReady());
 }
 
-#if !BUILDFLAG(IS_ANDROID)
-void TrackerImpl::NotifyUsedEvent(const base::Feature& feature) {
-  const auto& feature_config = configuration_->GetFeatureConfig(feature);
-  if (!feature_config.used.name.empty()) {
-    NotifyEvent(feature_config.used.name);
-  }
-}
-
-void TrackerImpl::ClearEventData(const base::Feature& feature) {
-  const auto& feature_config = configuration_->GetFeatureConfig(feature);
-  if (!feature_config.trigger.name.empty()) {
-    event_model_->ClearEvent(feature_config.trigger.name);
-  }
-  if (!feature_config.used.name.empty()) {
-    event_model_->ClearEvent(feature_config.used.name);
-  }
-  for (const auto& event_config : feature_config.event_configs) {
-    event_model_->ClearEvent(event_config.name);
-  }
-}
-
-Tracker::EventList TrackerImpl::ListEvents(const base::Feature& feature) const {
-  EventList result;
-  if (!IsInitialized()) {
-    return result;
-  }
-  const auto& feature_config = configuration_->GetFeatureConfig(feature);
-  const auto current_day = time_provider_->GetCurrentDay();
-  MaybeGetEventData(result, feature_config.trigger, *event_model_, current_day);
-  MaybeGetEventData(result, feature_config.used, *event_model_, current_day);
-  for (const auto& event_config : feature_config.event_configs) {
-    MaybeGetEventData(result, event_config, *event_model_, current_day);
-  }
-  return result;
-}
-
-#endif  // !BUILDFLAG(IS_ANDROID)
-
 bool TrackerImpl::ShouldTriggerHelpUI(const base::Feature& feature) {
   return ShouldTriggerHelpUIWithSnooze(feature).ShouldShowIph();
 }
 
 TrackerImpl::TriggerDetails TrackerImpl::ShouldTriggerHelpUIWithSnooze(
     const base::Feature& feature) {
-  if (session_controller_ && session_controller_->ShouldResetSession()) {
-    condition_validator_->ResetSession();
-  }
   if (IsFeatureBlockedByTest(feature)) {
     return TriggerDetails(false, false);
   }
 
   FeatureConfig feature_config = configuration_->GetFeatureConfig(feature);
-  std::vector<GroupConfig> group_configs;
-  for (auto group : feature_config.groups) {
-    group_configs.push_back(configuration_->GetGroupConfigByName(group));
-  }
   ConditionValidator::Result result = condition_validator_->MeetsConditions(
-      feature, feature_config, group_configs, *event_model_,
-      *availability_model_, *display_lock_controller_, configuration_.get(),
-      *time_provider_);
+      feature, feature_config, {}, *event_model_, *availability_model_,
+      *display_lock_controller_, configuration_.get(),
+      time_provider_->GetCurrentDay());
   if (result.NoErrors()) {
     condition_validator_->NotifyIsShowing(
         feature, feature_config, configuration_->GetRegisteredFeatures());
@@ -321,23 +244,15 @@ TrackerImpl::TriggerDetails TrackerImpl::ShouldTriggerHelpUIWithSnooze(
 }
 
 bool TrackerImpl::WouldTriggerHelpUI(const base::Feature& feature) const {
-  if (session_controller_ && session_controller_->ShouldResetSession()) {
-    condition_validator_->ResetSession();
-  }
-
   if (IsFeatureBlockedByTest(feature)) {
     return false;
   }
 
   FeatureConfig feature_config = configuration_->GetFeatureConfig(feature);
-  std::vector<GroupConfig> group_configs;
-  for (auto group : feature_config.groups) {
-    group_configs.push_back(configuration_->GetGroupConfigByName(group));
-  }
   ConditionValidator::Result result = condition_validator_->MeetsConditions(
-      feature, feature_config, group_configs, *event_model_,
-      *availability_model_, *display_lock_controller_, configuration_.get(),
-      *time_provider_);
+      feature, feature_config, {}, *event_model_, *availability_model_,
+      *display_lock_controller_, configuration_.get(),
+      time_provider_->GetCurrentDay());
   DVLOG(2) << "Would trigger result for " << feature.name
            << ": trigger=" << result.NoErrors()
            << " tracking_only=" << feature_config.tracking_only << " "
@@ -368,15 +283,10 @@ Tracker::TriggerState TrackerImpl::GetTriggerState(
     return Tracker::TriggerState::NOT_READY;
   }
 
-  FeatureConfig feature_config = configuration_->GetFeatureConfig(feature);
-  std::vector<GroupConfig> group_configs;
-  for (auto group : feature_config.groups) {
-    group_configs.push_back(configuration_->GetGroupConfigByName(group));
-  }
   ConditionValidator::Result result = condition_validator_->MeetsConditions(
-      feature, configuration_->GetFeatureConfig(feature), group_configs,
-      *event_model_, *availability_model_, *display_lock_controller_,
-      configuration_.get(), *time_provider_);
+      feature, configuration_->GetFeatureConfig(feature), {}, *event_model_,
+      *availability_model_, *display_lock_controller_, configuration_.get(),
+      time_provider_->GetCurrentDay());
 
   if (result.trigger_ok) {
     DVLOG(2) << "TriggerState for " << feature.name << ": "
@@ -400,7 +310,7 @@ void TrackerImpl::Dismissed(const base::Feature& feature) {
 
 void TrackerImpl::DismissedWithSnooze(
     const base::Feature& feature,
-    std::optional<SnoozeAction> snooze_action) {
+    absl::optional<SnoozeAction> snooze_action) {
   DCHECK(!IsFeatureBlockedByTest(feature));
 
   FeatureConfig feature_config = configuration_->GetFeatureConfig(feature);
@@ -411,9 +321,9 @@ void TrackerImpl::DismissedWithSnooze(
   } else if (snooze_action == SnoozeAction::DISMISSED) {
     event_model_->DismissSnooze(feature_config.trigger.name);
   }
-  Dismissed(feature);
   if (snooze_action.has_value())
     stats::RecordUserSnoozeAction(snooze_action.value());
+  RecordShownTime(feature);
 }
 
 std::unique_ptr<DisplayLockHandle> TrackerImpl::AcquireDisplayLock() {
@@ -429,12 +339,12 @@ void TrackerImpl::SetPriorityNotification(const base::Feature& feature) {
   }
 
   // We already have a handler. Serve the request and remove the handler.
-  condition_validator_->SetPriorityNotification(std::nullopt);
+  condition_validator_->SetPriorityNotification(absl::nullopt);
   std::move(iter->second).Run();
   priority_notification_handlers_.erase(feature.name);
 }
 
-std::optional<std::string> TrackerImpl::GetPendingPriorityNotification() {
+absl::optional<std::string> TrackerImpl::GetPendingPriorityNotification() {
   return condition_validator_->GetPendingPriorityNotification();
 }
 
@@ -447,7 +357,7 @@ void TrackerImpl::RegisterPriorityNotificationHandler(
   if (pending_priority_notification.has_value() &&
       pending_priority_notification.value() == feature.name) {
     std::move(callback).Run();
-    condition_validator_->SetPriorityNotification(std::nullopt);
+    condition_validator_->SetPriorityNotification(absl::nullopt);
     return;
   }
 
@@ -458,18 +368,6 @@ void TrackerImpl::RegisterPriorityNotificationHandler(
 void TrackerImpl::UnregisterPriorityNotificationHandler(
     const base::Feature& feature) {
   priority_notification_handlers_.erase(feature.name);
-}
-
-const Configuration* TrackerImpl::GetConfigurationForTesting() const {
-  CHECK_IS_TEST();
-  return configuration_.get();
-}
-
-void TrackerImpl::SetClockForTesting(const base::Clock& clock,
-                                     base::Time initial_now) {
-  CHECK_IS_TEST();
-  time_provider_ =
-      std::make_unique<TestingClockTimeProvider>(clock, initial_now);
 }
 
 bool TrackerImpl::IsInitialized() const {
@@ -553,18 +451,29 @@ void TrackerImpl::OnReceiveExportedEvents(
 }
 
 // static
-void Tracker::PropagateTestStateToChildProcess(
-    base::CommandLine& command_line) {
-  auto* const blocked = BlockedIphFeatures::GetInstance();
-  base::AutoLock lock(blocked->GetLock());
-  blocked->MaybeWriteToCommandLine(command_line);
+bool TrackerImpl::IsFeatureBlockedByTest(const base::Feature& feature) {
+  auto& data = GetAllowedTestFeatureMap();
+  // Refcount for nullptr is the number of active ScopedIphFeatureList.
+  if (!data[nullptr]) {
+    return false;
+  }
+
+  // If the refcount for the feature is nonzero, then it is explicitly allowed.
+  if (data[&feature]) {
+    return false;
+  }
+
+  // At least one ScopedIphFeatureList is active and this feature is not
+  // explicitly allowed.
+  return true;
 }
 
 // static
-bool TrackerImpl::IsFeatureBlockedByTest(const base::Feature& feature) {
-  auto* const blocked = BlockedIphFeatures::GetInstance();
-  base::AutoLock lock(blocked->GetLock());
-  return blocked->IsFeatureBlocked(feature.name);
+std::map<const base::Feature*, size_t>&
+TrackerImpl::GetAllowedTestFeatureMap() {
+  static base::NoDestructor<std::map<const base::Feature*, size_t>> instance{
+      {std::make_pair(nullptr, 0)}};
+  return *instance;
 }
 
 }  // namespace feature_engagement

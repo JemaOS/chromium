@@ -10,6 +10,8 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "components/policy/core/common/policy_switches.h"
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/switches/account/policy_constants.h"
 
 namespace policy {
 
@@ -27,7 +29,7 @@ const char kParamOAuthToken[] = "oauth_token";
 const char kParamPlatform[] = "platform";
 const char kParamRequest[] = "request";
 const char kParamRetry[] = "retry";
-const char kParamProfileID[] = "profileid";
+const char kParamJemaOsLicenseId[] = "jemaos_license_id";
 
 // Policy constants used in authorization header.
 const char kAuthHeader[] = "Authorization";
@@ -35,9 +37,8 @@ const char kServiceTokenAuthHeaderPrefix[] = "GoogleLogin auth=";
 const char kDMTokenAuthHeaderPrefix[] = "GoogleDMToken token=";
 const char kEnrollmentTokenAuthHeaderPrefix[] = "GoogleEnrollmentToken token=";
 const char kOAuthTokenHeaderPrefix[] = "OAuth";
-const char kOidcAuthHeaderPrefix[] = "GoogleDM3PAuth";
-const char kOidcAuthTokenHeaderPrefix[] = " oauth_token=";
-const char kOidcIdTokenHeaderPrefix[] = " id_token=";
+
+const char kJemaEnrollmentTokenAuthHeaderPrefix[] = "JemaEnrollmentToken token=";
 
 // String constants for the device and app type we report to the server.
 const char kValueAppType[] = "Chrome";
@@ -48,7 +49,6 @@ const char kValueRequestPsmHasDeviceState[] = "enterprise_psm_check";
 const char kValueCheckUserAccount[] = "check_user_account";
 const char kValueRequestPolicy[] = "policy";
 const char kValueRequestRegister[] = "register";
-const char kValueRequestRegisterProfile[] = "register_profile";
 const char kValueRequestApiAuthorization[] = "api_authorization";
 const char kValueRequestUnregister[] = "unregister";
 const char kValueRequestUploadCertificate[] = "cert_upload";
@@ -92,24 +92,15 @@ const char kChromePublicAccountPolicyType[] = "google/chromeos/publicaccount";
 const char kChromeExtensionPolicyType[] = "google/chrome/extension";
 const char kChromeSigninExtensionPolicyType[] =
     "google/chromeos/signinextension";
-
 const char kChromeMachineLevelUserCloudPolicyType[] =
-#if BUILDFLAG(IS_ANDROID)
-    "google/chrome/machine-level-user-android";
-#elif BUILDFLAG(IS_IOS)
-    "google/chrome/machine-level-user-ios";
-#else
     "google/chrome/machine-level-user";
-#endif
+const char kChromeMachineLevelUserCloudPolicyAndroidType[] =
+    "google/chrome/machine-level-user-android";
+const char kChromeMachineLevelUserCloudPolicyIOSType[] =
+    "google/chrome/machine-level-user-ios";
 const char kChromeMachineLevelExtensionCloudPolicyType[] =
     "google/chrome/machine-level-extension";
 const char kChromeRemoteCommandPolicyType[] = "google/chromeos/remotecommand";
-
-const char kChromeAshUserRemoteCommandType[] = "google/ash/user/remotecommand";
-const char kChromeDeviceRemoteCommandType[] = "google/ash/device/remotecommand";
-const char kChromeBrowserRemoteCommandType[] =
-    "google/chrome/browser/remotecommand";
-const char kChromeUserRemoteCommandType[] = "google/chrome/user/remotecommand";
 
 const char kChromeMachineLevelUserCloudPolicyTypeBase64[] =
     "Z29vZ2xlL2Nocm9tZS9tYWNoaW5lLWxldmVsLXVzZXI=";
@@ -148,6 +139,13 @@ const char kPolicyVerificationKeyHash[] = "1:356l7w";
 const char kDemoModeDomain[] = "cros-demo-mode.com";
 
 std::string GetPolicyVerificationKey() {
+  //---***JEMAOS BEGIN***---
+  if (jemaos::switches::IsPolicyManagedByJema()) {
+    const char *kKey = reinterpret_cast<const char*>(
+           jemaos::constants::kJemaOSPolicyVerificationKey);
+    return std::string(kKey, jemaos::constants::kJemaOSPolicyVerificationKeyLength);
+  }
+  //---***JEMAOS END***---
   return std::string(reinterpret_cast<const char*>(kPolicyVerificationKey),
                      sizeof(kPolicyVerificationKey));
 }
@@ -158,5 +156,15 @@ std::string GetPolicyVerificationKey() {
 // anything bound to it.
 
 const char kPolicyFCMInvalidationSenderID[] = "1013309121859";
+  
+//---***JEMAOS BEGIN***---  
+std::string GetPolicyFCMInvalidationSenderID() {
+  if (jemaos::switches::IsPolicyManagedByJema()) {
+    return jemaos::constants::kJemaOSPolicyFCMInvalidationSenderID;
+  }
+
+  return kPolicyFCMInvalidationSenderID;
+}
+//---***JEMAOS END***---  
 
 }  // namespace policy

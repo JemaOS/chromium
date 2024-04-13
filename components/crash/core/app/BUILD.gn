@@ -5,27 +5,17 @@
 # TODO(crbug.com/1226159): Complete crash reporting integration on Fuchsia.
 assert(!is_fuchsia)
 
-import("//base/debug/debug.gni")
 import("//components/gwp_asan/buildflags/buildflags.gni")
 
 if (is_android) {
   import("//build/config/android/config.gni")
 }
 
-static_library("url_constants") {
-  sources = [ "url_constants.h" ]
-
-  if (is_chrome_branded && is_official_build) {
-    sources += [ "internal/url_constants.cc" ]
-  } else {
-    sources += [ "url_constants.cc" ]
-  }
-
-  deps = [ "//build:branding_buildflags" ]
-}
-
 source_set("lib") {
-  visibility = [ ":*" ]
+  visibility = [
+    ":*",
+    "//components/crash/content/app:*",
+  ]
 
   sources = [
     "crash_reporter_client.cc",
@@ -33,8 +23,8 @@ source_set("lib") {
   ]
 
   deps = [
-    ":url_constants",
     "//base",
+    "//build:branding_buildflags",
   ]
 }
 
@@ -42,23 +32,12 @@ source_set("crashpad_handler_main") {
   sources = [ "crashpad_handler_main.cc" ]
 
   deps = [
-    "//base:debugging_buildflags",
     "//components/gwp_asan/buildflags",
     "//third_party/crashpad/crashpad/handler:handler",
   ]
 
-  if (is_linux || is_chromeos || is_mac) {
-    deps += [ "//components/stability_report" ]
-  }
-
   if (enable_gwp_asan) {
     deps += [ "//components/gwp_asan/crash_handler" ]
-  }
-
-  if (build_allocation_stack_trace_recorder) {
-    # The allocation stack trace report will be included only if the
-    # recorder was enabled.
-    deps += [ "//components/allocation_recorder/crash_handler" ]
   }
 }
 
@@ -73,7 +52,11 @@ static_library("app") {
     "crashpad.h",
   ]
 
-  if (is_castos) {
+  if (is_linux || is_chromeos) {
+    sources += [ "crashpad_linux.cc" ]
+  }
+
+  if (is_chromeos || is_castos) {
     sources += [
       "breakpad_linux.cc",
       "breakpad_linux.h",
@@ -95,20 +78,18 @@ static_library("app") {
     "//third_party/crashpad/crashpad/util",
   ]
 
-  if (is_linux || is_chromeos) {
-    sources += [ "crashpad_linux.cc" ]
-    data_deps = [ ":chrome_crashpad_handler" ]
-  }
-
   if (is_ios) {
-    deps -= [ "//content/public/common:content_descriptors" ]
+    deps -= [
+      "//components/crash/core/common:crash_key",
+      "//content/public/common:content_descriptors",
+    ]
   }
 
   if (is_android) {
     sources += [ "crashpad_android.cc" ]
     deps += [
       ":crashpad_handler_main",
-      "//components/crash/android:package_paths_jni",
+      "//components/crash/android:jni_headers",
       "//third_party/crashpad/crashpad/handler",
       "//third_party/crashpad/crashpad/snapshot",
     ]
@@ -123,7 +104,7 @@ static_library("app") {
     ]
   }
 
-  if (is_castos) {
+  if (is_chromeos || is_castos) {
     deps += [ "//third_party/breakpad:client" ]
   }
 
@@ -266,12 +247,6 @@ if (is_mac || is_android || is_linux || is_chromeos) {
         "-Wl,-rpath,@loader_path/..",
       ]
     }
-
-    if (build_allocation_stack_trace_recorder) {
-      # The allocation stack trace report will be included only if the
-      # recorder was enabled.
-      deps += [ "//components/allocation_recorder/crash_client" ]
-    }
   }
 }
 
@@ -328,6 +303,8 @@ source_set("unit_tests") {
     ]
   }
   if (is_ios) {
+    configs += [ "//build/config/compiler:enable_arc" ]
+
     sources += [ "crashpad_ios_unittest.mm" ]
     deps += [
       ":app",

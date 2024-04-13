@@ -7,9 +7,3 @@ SAML:
   caption: SAML
   policies:
   - DeviceTransferSAMLCookies
-ProfileSeparation:
-  caption: Profile Separation
-  policies:
-  - ProfileSeparationSettings
-  - ProfileSeparationDataMigrationSettings
-  - ProfileSeparationDomainExceptionList

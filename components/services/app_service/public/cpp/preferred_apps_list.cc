@@ -238,15 +238,15 @@ bool PreferredAppsList::IsPreferredAppForSupportedLinks(
   return false;
 }
 
-std::optional<std::string> PreferredAppsList::FindPreferredAppForUrl(
+absl::optional<std::string> PreferredAppsList::FindPreferredAppForUrl(
     const GURL& url) const {
   return FindPreferredAppForIntent(
       std::make_unique<Intent>(apps_util::kIntentActionView, url));
 }
 
-std::optional<std::string> PreferredAppsList::FindPreferredAppForIntent(
+absl::optional<std::string> PreferredAppsList::FindPreferredAppForIntent(
     const IntentPtr& intent) const {
-  std::optional<std::string> best_match_app_id = std::nullopt;
+  absl::optional<std::string> best_match_app_id = absl::nullopt;
   int best_match_level = static_cast<int>(IntentFilterMatchLevel::kNone);
   DCHECK(intent);
   for (auto& preferred_app : preferred_apps_) {

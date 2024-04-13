@@ -22,9 +22,8 @@
 #include "base/test/test_timeouts.h"
 #include "build/build_config.h"
 #include "components/gwp_asan/client/guarded_page_allocator.h"
-#include "components/gwp_asan/client/lightweight_detector/poison_metadata_recorder.h"
 #include "components/gwp_asan/common/crash_key_name.h"
-#include "components/gwp_asan/common/lightweight_detector_state.h"
+#include "components/gwp_asan/common/lightweight_detector.h"
 #include "components/gwp_asan/crash_handler/crash.pb.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/multiprocess_func_list.h"
@@ -110,21 +109,24 @@ MULTIPROCESS_TEST_MAIN(CrashingProcess) {
     return kSuccess;
   }
 
+  LightweightDetector::State lightweight_detector_state =
+      LightweightDetector::State::kDisabled;
+  size_t num_lightweight_detector_metadata = 0;
+  if (cmd_line->HasSwitch("enable-lightweight-detector")) {
+    lightweight_detector_state = LightweightDetector::State::kEnabled;
+    num_lightweight_detector_metadata = 1;
+  }
+
   base::NoDestructor<GuardedPageAllocator> gpa;
   gpa->Init(AllocatorState::kMaxMetadata, AllocatorState::kMaxMetadata,
-            kTotalPages, base::DoNothing(), allocator == "partitionalloc");
+            kTotalPages, base::DoNothing(), allocator == "partitionalloc",
+            lightweight_detector_state, num_lightweight_detector_metadata);
 
-  static crashpad::StringAnnotation<24> gpa_annotation(annotation_name);
-  gpa_annotation.Set(gpa->GetCrashKey());
-
-  if (cmd_line->HasSwitch("enable-lightweight-detector")) {
-    lud::PoisonMetadataRecorder::Init(LightweightDetectorMode::kBrpQuarantine,
-                                      1);
-    static crashpad::StringAnnotation<24> lightweight_detector_annotation(
-        kLightweightDetectorCrashKey);
-    lightweight_detector_annotation.Set(
-        lud::PoisonMetadataRecorder::Get()->GetCrashKey());
-  }
+  std::string gpa_addr = gpa->GetCrashKey();
+  static crashpad::Annotation gpa_annotation(
+      crashpad::Annotation::Type::kString, annotation_name,
+      const_cast<char*>(gpa_addr.c_str()));
+  gpa_annotation.SetSize(gpa_addr.size());
 
   base::FilePath metrics_dir(FILE_PATH_LITERAL(""));
   std::map<std::string, std::string> annotations;
@@ -135,12 +137,6 @@ MULTIPROCESS_TEST_MAIN(CrashingProcess) {
   static crashpad::SanitizationAllowedMemoryRanges allowed_memory_ranges;
   if (cmd_line->HasSwitch("sanitize")) {
     auto memory_ranges = gpa->GetInternalMemoryRegions();
-    if (cmd_line->HasSwitch("enable-lightweight-detector")) {
-      auto detector_memory_ranges =
-          lud::PoisonMetadataRecorder::Get()->GetInternalMemoryRegions();
-      memory_ranges.insert(memory_ranges.end(), detector_memory_ranges.begin(),
-                           detector_memory_ranges.end());
-    }
     auto* range_array =
         new crashpad::SanitizationAllowedMemoryRanges::Range[memory_ranges
                                                                  .size()];
@@ -251,8 +247,7 @@ MULTIPROCESS_TEST_MAIN(CrashingProcess) {
     *(uint8_t*)(ptrs[0]) = 0;
   } else if (test_name == "LightweightDetectorUseAfterFree") {
     uint8_t fake_alloc[kAllocationSize];
-    lud::PoisonMetadataRecorder::Get()->RecordAndZap(&fake_alloc,
-                                                     sizeof(fake_alloc));
+    gpa->RecordLightweightDeallocation(&fake_alloc, sizeof(fake_alloc));
     **(int**)fake_alloc = 0;
   } else {
     LOG(ERROR) << "Unknown test name " << test_name;
@@ -389,13 +384,9 @@ class BaseCrashHandlerTest : public base::MultiProcessTest,
     }
   }
 
-  void checkProto(Crash_Mode mode,
-                  Crash_ErrorType error_type,
+  void checkProto(Crash_ErrorType error_type,
                   HasAllocation has_allocation,
                   HasDeallocation has_deallocation) {
-    EXPECT_TRUE(proto_.has_mode());
-    EXPECT_EQ(proto_.mode(), mode);
-
     EXPECT_TRUE(proto_.has_error_type());
     EXPECT_EQ(proto_.error_type(), error_type);
 
@@ -467,32 +458,32 @@ class CrashHandlerTest : public BaseCrashHandlerTest {};
 
 TEST_P(CrashHandlerTest, MAYBE_DISABLED(UseAfterFree)) {
   ASSERT_TRUE(gwp_asan_found_);
-  checkProto(Crash_Mode_CLASSIC, Crash_ErrorType_USE_AFTER_FREE,
-             HasAllocation::kYes, HasDeallocation::kYes);
+  checkProto(Crash_ErrorType_USE_AFTER_FREE, HasAllocation::kYes,
+             HasDeallocation::kYes);
 }
 
 TEST_P(CrashHandlerTest, MAYBE_DISABLED(DoubleFree)) {
   ASSERT_TRUE(gwp_asan_found_);
-  checkProto(Crash_Mode_CLASSIC, Crash_ErrorType_DOUBLE_FREE,
-             HasAllocation::kYes, HasDeallocation::kYes);
+  checkProto(Crash_ErrorType_DOUBLE_FREE, HasAllocation::kYes,
+             HasDeallocation::kYes);
 }
 
 TEST_P(CrashHandlerTest, MAYBE_DISABLED(Underflow)) {
   ASSERT_TRUE(gwp_asan_found_);
-  checkProto(Crash_Mode_CLASSIC, Crash_ErrorType_BUFFER_UNDERFLOW,
-             HasAllocation::kYes, HasDeallocation::kNo);
+  checkProto(Crash_ErrorType_BUFFER_UNDERFLOW, HasAllocation::kYes,
+             HasDeallocation::kNo);
 }
 
 TEST_P(CrashHandlerTest, MAYBE_DISABLED(Overflow)) {
   ASSERT_TRUE(gwp_asan_found_);
-  checkProto(Crash_Mode_CLASSIC, Crash_ErrorType_BUFFER_OVERFLOW,
-             HasAllocation::kYes, HasDeallocation::kNo);
+  checkProto(Crash_ErrorType_BUFFER_OVERFLOW, HasAllocation::kYes,
+             HasDeallocation::kNo);
 }
 
 TEST_P(CrashHandlerTest, MAYBE_DISABLED(FreeInvalidAddress)) {
   ASSERT_TRUE(gwp_asan_found_);
-  checkProto(Crash_Mode_CLASSIC, Crash_ErrorType_FREE_INVALID_ADDRESS,
-             HasAllocation::kYes, HasDeallocation::kNo);
+  checkProto(Crash_ErrorType_FREE_INVALID_ADDRESS, HasAllocation::kYes,
+             HasDeallocation::kNo);
   EXPECT_TRUE(proto_.has_free_invalid_address());
 }
 
@@ -540,23 +531,17 @@ class LightweightDetectorCrashHandlerTest : public BaseCrashHandlerTest {};
 TEST_P(LightweightDetectorCrashHandlerTest, LightweightDetectorUseAfterFree) {
   ASSERT_TRUE(gwp_asan_found_);
 
-  checkProto(Crash_Mode_LIGHTWEIGHT_DETECTOR_BRP,
-             Crash_ErrorType_USE_AFTER_FREE, HasAllocation::kNo,
+  checkProto(Crash_ErrorType_LIGHTWEIGHT_USE_AFTER_FREE, HasAllocation::kNo,
              HasDeallocation::kYes);
 }
 
-INSTANTIATE_TEST_SUITE_P(VarySanitization,
-                         LightweightDetectorCrashHandlerTest,
-                         testing::Values(
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
-                             TestParams("partitionalloc",
-                                        ShouldSanitize::kYes,
-                                        EnableLightweightDetector::kYes),
+INSTANTIATE_TEST_SUITE_P(
+    SingleValueSuite,
+    LightweightDetectorCrashHandlerTest,
+    testing::Values(TestParams("partitionalloc",
+                               ShouldSanitize::kNo,
+                               EnableLightweightDetector::kYes)));
 #endif
-                             TestParams("partitionalloc",
-                                        ShouldSanitize::kNo,
-                                        EnableLightweightDetector::kYes)));
-#endif  // !defined(ADDRESS_SANITIZER) && defined(ARCH_CPU_64_BITS)
 
 }  // namespace
 

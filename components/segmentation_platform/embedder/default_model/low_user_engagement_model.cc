@@ -24,7 +24,6 @@ constexpr SegmentId kChromeStartSegmentId =
     SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT;
 constexpr int64_t kChromeStartSignalStorageLength = 28;
 constexpr int64_t kChromeStartMinSignalCollectionLength = 28;
-constexpr int64_t kModelVersion = 2;
 
 // InputFeatures.
 constexpr std::array<MetadataWriter::UMAFeature, 1> kChromeStartUMAFeatures = {
@@ -39,47 +38,48 @@ constexpr std::array<MetadataWriter::UMAFeature, 1> kChromeStartUMAFeatures = {
 }  // namespace
 
 LowUserEngagementModel::LowUserEngagementModel()
-    : DefaultModelProvider(kChromeStartSegmentId) {}
+    : ModelProvider(kChromeStartSegmentId) {}
 
 std::unique_ptr<Config> LowUserEngagementModel::GetConfig() {
-  if (!base::FeatureList::IsEnabled(
-          features::kSegmentationPlatformLowEngagementFeature)) {
-    return nullptr;
-  }
   auto config = std::make_unique<Config>();
   config->segmentation_key = kChromeLowUserEngagementSegmentationKey;
   config->segmentation_uma_name = kChromeLowUserEngagementUmaName;
   config->AddSegmentId(kChromeStartSegmentId,
                        std::make_unique<LowUserEngagementModel>());
-  config->auto_execute_and_cache = true;
+
+  int segment_selection_ttl_days = base::GetFieldTrialParamByFeatureAsInt(
+      features::kSegmentationPlatformLowEngagementFeature,
+      kVariationsParamNameSegmentSelectionTTLDays, 7);
+  int unknown_selection_ttl_days = base::GetFieldTrialParamByFeatureAsInt(
+      features::kSegmentationPlatformLowEngagementFeature,
+      kVariationsParamNameUnknownSelectionTTLDays, 7);
+  config->segment_selection_ttl = base::Days(segment_selection_ttl_days);
+  config->unknown_selection_ttl = base::Days(unknown_selection_ttl_days);
   config->is_boolean_segment = true;
 
   return config;
 }
 
-std::unique_ptr<DefaultModelProvider::ModelConfig>
-LowUserEngagementModel::GetModelConfig() {
+void LowUserEngagementModel::InitAndFetchModel(
+    const ModelUpdatedCallback& model_updated_callback) {
   proto::SegmentationModelMetadata chrome_start_metadata;
   MetadataWriter writer(&chrome_start_metadata);
   writer.SetDefaultSegmentationMetadataConfig(
       kChromeStartMinSignalCollectionLength, kChromeStartSignalStorageLength);
 
+  // Set discrete mapping.
+  writer.AddBooleanSegmentDiscreteMapping(
+      kChromeLowUserEngagementSegmentationKey);
+
   // Set features.
   writer.AddUmaFeatures(kChromeStartUMAFeatures.data(),
                         kChromeStartUMAFeatures.size());
 
-  // Set OutputConfig.
-  writer.AddOutputConfigForBinaryClassifier(
-      /*threshold=*/0.5f,
-      /*positive_label=*/kChromeLowUserEngagementUmaName,
-      /*negative_label=*/kLegacyNegativeLabel);
-
-  writer.AddPredictedResultTTLInOutputConfig(
-      /*top_label_to_ttl_list=*/{}, /*default_ttl=*/7,
-      /*time_unit=*/proto::TimeUnit::DAY);
-
-  return std::make_unique<ModelConfig>(std::move(chrome_start_metadata),
-                                       kModelVersion);
+  constexpr int kModelVersion = 1;
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindRepeating(model_updated_callback, kChromeStartSegmentId,
+                          std::move(chrome_start_metadata), kModelVersion));
 }
 
 void LowUserEngagementModel::ExecuteModelWithInput(
@@ -88,7 +88,7 @@ void LowUserEngagementModel::ExecuteModelWithInput(
   // Invalid inputs.
   if (inputs.size() != 28) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+        FROM_HERE, base::BindOnce(std::move(callback), absl::nullopt));
     return;
   }
 
@@ -104,6 +104,10 @@ void LowUserEngagementModel::ExecuteModelWithInput(
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(std::move(callback), ModelProvider::Response(1, result)));
+}
+
+bool LowUserEngagementModel::ModelAvailable() {
+  return true;
 }
 
 }  // namespace segmentation_platform

@@ -13,18 +13,15 @@
 #include "components/webapps/browser/android/installable/installable_ambient_badge_client.h"
 #include "components/webapps/browser/android/installable/installable_ambient_badge_message_controller.h"
 #include "components/webapps/browser/installable/installable_data.h"
-#include "components/webapps/browser/installable/installable_metrics.h"
 #include "components/webapps/browser/installable/installable_params.h"
 #include "content/public/browser/web_contents.h"
 #include "url/gurl.h"
 
-class PrefService;
-
 namespace webapps {
 
-class InstallableManager;
 struct AddToHomescreenParams;
 struct InstallableData;
+class AppBannerManagerAndroid;
 
 // Coordinates the creation of an install ambient badge, from detecting the
 // eligibility to promote the associated web/native app and creating the ambient
@@ -32,15 +29,11 @@ struct InstallableData;
 // is instantiated when an ambient badge may be shown.
 class AmbientBadgeManager : public InstallableAmbientBadgeClient {
  public:
-  // Returns if the bottom sheet was shown.
-  using MaybeShowPwaBottomSheetCallback =
-      base::OnceCallback<bool(WebappInstallSource)>;
-
   explicit AmbientBadgeManager(
-      content::WebContents& web_contents,
+      content::WebContents* web_contents,
+      base::WeakPtr<AppBannerManagerAndroid> app_banner_manager,
       segmentation_platform::SegmentationPlatformService*
-          segmentation_platform_service,
-      PrefService& prefs);
+          segmentation_platform_service);
 
   AmbientBadgeManager(const AmbientBadgeManager&) = delete;
   AmbientBadgeManager& operator=(const AmbientBadgeManager&) = delete;
@@ -87,10 +80,8 @@ class AmbientBadgeManager : public InstallableAmbientBadgeClient {
 
   void MaybeShow(const GURL& validated_url,
                  const std::u16string& app_name,
-                 const std::string& app_identifier,
                  std::unique_ptr<AddToHomescreenParams> a2hs_params,
-                 base::OnceClosure show_banner_callback,
-                 MaybeShowPwaBottomSheetCallback maybe_show_pwa_bottom_sheet);
+                 base::OnceClosure show_banner_callback);
 
   // InstallableAmbientBadgeClient overrides.
   void AddToHomescreenFromBadge() override;
@@ -107,8 +98,7 @@ class AmbientBadgeManager : public InstallableAmbientBadgeClient {
  protected:
   virtual void UpdateState(State state);
 
-  content::WebContents* web_contents() const { return &web_contents_.get(); }
-  PrefService* pref_service() const { return &pref_service_.get(); }
+  content::WebContents* web_contents() const { return web_contents_.get(); }
 
   // Called to show UI that promotes installation of a PWA. This is normally the
   // mini-infobar ("banner") but clients can override it by providing a
@@ -121,7 +111,7 @@ class AmbientBadgeManager : public InstallableAmbientBadgeClient {
   void MaybeShowAmbientBadgeLegacy();
 
   // Uses the segmentation APIs to decide showing the install ambient badge
-  void MaybeShowAmbientBadgeSmart();
+  void MaybeShowAmbientBadgeSmart(const InstallableData& data);
 
   void OnGotClassificationResult(
       const segmentation_platform::ClassificationResult& result);
@@ -129,7 +119,8 @@ class AmbientBadgeManager : public InstallableAmbientBadgeClient {
   // Returns true if the prompt should be block.
   bool ShouldMessageBeBlockedByGuardrail();
 
-  void PerformWorkerCheckForAmbientBadge(InstallableCallback callback);
+  void PerformWorkerCheckForAmbientBadge(InstallableParams params,
+                                         InstallableCallback callback);
 
   // Returns true if it's the first visit and  the badge should be suprressed.
   bool ShouldSuppressAmbientBadgeOnFirstVisit();
@@ -137,22 +128,17 @@ class AmbientBadgeManager : public InstallableAmbientBadgeClient {
   // Message controller for the ambient badge.
   InstallableAmbientBadgeMessageController message_controller_{this};
 
-  // This class is owned by a class that is a WebContentsUserData, so this is
-  // safe.
-  const raw_ref<content::WebContents> web_contents_;
-  const raw_ptr<segmentation_platform::SegmentationPlatformService>
+  base::WeakPtr<content::WebContents> web_contents_;
+  base::WeakPtr<AppBannerManagerAndroid> app_banner_manager_;
+  raw_ptr<segmentation_platform::SegmentationPlatformService>
       segmentation_platform_service_;
-  raw_ref<PrefService> pref_service_;
 
   GURL validated_url_;
   std::u16string app_name_;
-  std::string app_identifier_;
-
   // Contains app parameters such as its type and the install source used.
   std::unique_ptr<AddToHomescreenParams> a2hs_params_;
 
   base::OnceClosure show_banner_callback_;
-  MaybeShowPwaBottomSheetCallback maybe_show_pwa_bottom_sheet_;
 
   // The current ambient badge status.
   State state_ = State::kInactive;

@@ -12,7 +12,7 @@
 #include "components/policy/core/browser/policy_conversions.h"
 #include "components/policy/core/common/cloud/cloud_policy_client.h"
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
-#include "components/policy/core/common/cloud/cloud_policy_manager.h"
+#include "components/policy/core/common/cloud/machine_level_user_cloud_policy_manager.h"
 #include "components/policy/core/common/policy_types.h"
 #include "components/strings/grit/components_strings.h"
 
@@ -147,16 +147,17 @@ void AppendExtensionPolicyInfoIntoProfileReport(
   }
 }
 
-void AppendCloudPolicyFetchTimestamp(em::ChromeUserProfileInfo* profile_info,
-                                     policy::CloudPolicyManager* manager) {
+void AppendMachineLevelUserCloudPolicyFetchTimestamp(
+    em::ChromeUserProfileInfo* profile_info,
+    policy::MachineLevelUserCloudPolicyManager* manager) {
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
   if (!manager || !manager->IsClientRegistered())
     return;
   auto* timestamp = profile_info->add_policy_fetched_timestamps();
-  timestamp->set_timestamp(manager->core()
-                               ->client()
-                               ->last_policy_timestamp()
-                               .InMillisecondsSinceUnixEpoch());
+  timestamp->set_type(
+      policy::dm_protocol::kChromeMachineLevelExtensionCloudPolicyType);
+  timestamp->set_timestamp(
+      manager->core()->client()->last_policy_timestamp().ToJavaTime());
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 }
 

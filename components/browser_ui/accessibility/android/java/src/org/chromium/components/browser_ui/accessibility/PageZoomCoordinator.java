@@ -10,11 +10,9 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.ResettersForTesting;
 import org.chromium.content_public.browser.BrowserContextHandle;
-import org.chromium.content_public.browser.ContentFeatureList;
-import org.chromium.content_public.browser.ContentFeatureMap;
 import org.chromium.content_public.browser.LoadCommittedDetails;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsObserver;
@@ -79,8 +77,7 @@ public class PageZoomCoordinator {
             mBrowserContextHandle = mDelegate.getBrowserContextHandle();
         }
 
-        mModel.set(
-                PageZoomProperties.DEFAULT_ZOOM_FACTOR,
+        mModel.set(PageZoomProperties.DEFAULT_ZOOM_FACTOR,
                 PageZoomUtils.getDefaultZoomLevelAsZoomFactor(mBrowserContextHandle));
 
         adjustPadding();
@@ -88,44 +85,39 @@ public class PageZoomCoordinator {
         // Consume hover events so screen readers do not select web contents behind slider.
         mView.setOnHoverListener((v, event) -> true);
 
-        mModel.set(
-                PageZoomProperties.RESET_ZOOM_VISIBLE,
-                ContentFeatureMap.isEnabled(
-                        ContentFeatureList.ACCESSIBILITY_PAGE_ZOOM_ENHANCEMENTS));
-
         // Adjust bottom margin for any bottom controls
         setBottomMargin(mBottomControlsOffset);
 
         mMediator.setWebContents(webContents);
-        mWebContentsObserver =
-                new WebContentsObserver(webContents) {
-                    @Override
-                    public void navigationEntryCommitted(LoadCommittedDetails details) {
-                        // When navigation occurs (i.e. navigate to another link, forward/backward
-                        // navigation), hide the dialog Only on navigationEntryCommitted to avoid
-                        // premature dismissal during transient didStartNavigation events
-                        hide();
-                    }
+        mWebContentsObserver = new WebContentsObserver(webContents) {
+            @Override
+            public void navigationEntryCommitted(LoadCommittedDetails details) {
+                // When navigation occurs (i.e. navigate to another link, forward/backward
+                // navigation), hide the dialog
+                // Only on navigationEntryCommitted to avoid premature dismissal during transient
+                // didStartNavigation events
+                hide();
+            }
 
-                    @Override
-                    public void wasHidden() {
-                        // When the web contents are hidden (i.e. navigate to another tab), hide the
-                        // dialog
-                        hide();
-                    }
+            @Override
+            public void wasHidden() {
+                // When the web contents are hidden (i.e. navigate to another tab), hide the dialog
+                hide();
+            }
 
-                    @Override
-                    public void onWebContentsLostFocus() {
-                        // When the web contents loses focus (i.e. omnibox selected), hide the
-                        // dialog
-                        hide();
-                    }
-                };
+            @Override
+            public void onWebContentsLostFocus() {
+                // When the web contents loses focus (i.e. omnibox selected), hide the dialog
+                hide();
+            }
+        };
 
         onViewInteraction(null);
     }
 
-    /** Hide the zoom feature UI from the user. */
+    /**
+     * Hide the zoom feature UI from the user.
+     */
     public void hide() {
         // TODO(mschillaci): Add a FrameLayout wrapper so the view can be removed.
         if (mView != null && mView.getVisibility() == View.VISIBLE) {
@@ -156,7 +148,9 @@ public class PageZoomCoordinator {
         setBottomMargin(mBottomControlsOffset);
     }
 
-    /** Clean-up views and children during destruction. */
+    /**
+     * Clean-up views and children during destruction.
+     */
     public void destroy() {
         if (mWebContentsObserver != null) {
             mWebContentsObserver.destroy();
@@ -171,12 +165,14 @@ public class PageZoomCoordinator {
      * Used for testing only, allows a mocked value for the {@link shouldShowMenuItem} method.
      * @param isEnabled     Should show the menu item or not.
      */
+    @VisibleForTesting
     public static void setShouldShowMenuItemForTesting(@Nullable Boolean isEnabled) {
         sShouldShowMenuItemForTesting = isEnabled;
-        ResettersForTesting.register(() -> sShouldShowMenuItemForTesting = null);
     }
 
-    /** Handle when the user interacts with the view */
+    /**
+     * Handle when the user interacts with the view
+     */
     private void onViewInteraction(Void unused) {
         mView.removeCallbacks(mDismissalCallback);
         mView.postDelayed(mDismissalCallback, PageZoomUtils.LAST_INTERACTION_DISMISSAL);
@@ -197,13 +193,9 @@ public class PageZoomCoordinator {
     private void setBottomMargin(int bottomOffset) {
         if (mView != null) {
             MarginLayoutParams layout = (MarginLayoutParams) mView.getLayoutParams();
-            layout.setMargins(
-                    layout.leftMargin,
-                    layout.topMargin,
-                    layout.rightMargin,
-                    mView.getContext()
-                                    .getResources()
-                                    .getDimensionPixelSize(R.dimen.page_zoom_view_margins)
+            layout.setMargins(layout.leftMargin, layout.topMargin, layout.rightMargin,
+                    mView.getContext().getResources().getDimensionPixelSize(
+                            R.dimen.page_zoom_view_margins)
                             + bottomOffset);
         }
     }
@@ -211,20 +203,14 @@ public class PageZoomCoordinator {
     private void adjustPadding() {
         if (mView != null) {
             int displayWidth = mView.getContext().getResources().getDisplayMetrics().widthPixels;
-            int maxMobileWidth =
-                    mView.getContext()
-                            .getResources()
-                            .getDimensionPixelSize(R.dimen.page_zoom_view_tablet_mode_min_width);
-            int defaultPadding =
-                    mView.getContext()
-                            .getResources()
-                            .getDimensionPixelSize(R.dimen.page_zoom_view_padding);
+            int maxMobileWidth = mView.getContext().getResources().getDimensionPixelSize(
+                    R.dimen.page_zoom_view_tablet_mode_min_width);
+            int defaultPadding = mView.getContext().getResources().getDimensionPixelSize(
+                    R.dimen.page_zoom_view_padding);
 
             if (displayWidth > maxMobileWidth) {
-                int maxWidth =
-                        mView.getContext()
-                                .getResources()
-                                .getDimensionPixelSize(R.dimen.page_zoom_view_max_width);
+                int maxWidth = mView.getContext().getResources().getDimensionPixelSize(
+                        R.dimen.page_zoom_view_max_width);
                 int padding = (displayWidth - maxWidth) / 2;
                 mView.setPadding(padding, defaultPadding, padding, defaultPadding);
             } else {

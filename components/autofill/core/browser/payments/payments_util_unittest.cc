@@ -17,12 +17,12 @@ namespace payments {
 
 class PaymentsUtilTest : public testing::Test {
  public:
-  PaymentsUtilTest() = default;
+  PaymentsUtilTest() {}
 
   PaymentsUtilTest(const PaymentsUtilTest&) = delete;
   PaymentsUtilTest& operator=(const PaymentsUtilTest&) = delete;
 
-  ~PaymentsUtilTest() override = default;
+  ~PaymentsUtilTest() override {}
 
  protected:
   TestPersonalDataManager personal_data_manager_;

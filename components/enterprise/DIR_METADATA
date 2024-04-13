@@ -1,1 +1,3 @@
-mixins: "//components/policy/COMMON_METADATA"
+monorail {
+  component: "Enterprise"
+}

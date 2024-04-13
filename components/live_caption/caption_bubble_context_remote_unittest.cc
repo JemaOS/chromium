@@ -4,8 +4,6 @@
 
 #include "components/live_caption/caption_bubble_context_remote.h"
 
-#include <optional>
-
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
@@ -16,6 +14,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/rect.h"
 
 namespace captions {
@@ -64,8 +63,8 @@ class CaptionBubbleContextRemoteTest : public Test {
 
  protected:
   // Use optionals to delay initialization while keeping objects on the stack.
-  std::optional<CaptionBubbleContextRemote> context_;
-  std::optional<MockSurface> surface_;
+  absl::optional<CaptionBubbleContextRemote> context_;
+  absl::optional<MockSurface> surface_;
 
  private:
   base::test::TaskEnvironment task_environment_;

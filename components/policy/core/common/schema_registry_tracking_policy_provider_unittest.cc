@@ -26,8 +26,6 @@ namespace policy {
 
 namespace {
 
-constexpr auto test_reason = PolicyFetchReason::kTest;
-
 const char kTestSchema[] =
     "{"
     "  \"type\": \"object\","
@@ -104,8 +102,8 @@ TEST_F(SchemaRegistryTrackingPolicyProviderTest, PassOnChromePolicy) {
 }
 
 TEST_F(SchemaRegistryTrackingPolicyProviderTest, RefreshPolicies) {
-  EXPECT_CALL(mock_provider_, RefreshPolicies(test_reason));
-  schema_registry_tracking_provider_.RefreshPolicies(test_reason);
+  EXPECT_CALL(mock_provider_, RefreshPolicies());
+  schema_registry_tracking_provider_.RefreshPolicies();
   Mock::VerifyAndClearExpectations(&mock_provider_);
 }
 
@@ -130,14 +128,13 @@ TEST_F(SchemaRegistryTrackingPolicyProviderTest, SchemaReadyWithComponents) {
   mock_provider_.UpdatePolicy(std::move(bundle));
   Mock::VerifyAndClearExpectations(&observer_);
 
-  EXPECT_CALL(mock_provider_, RefreshPolicies(PolicyFetchReason::kUnspecified))
-      .Times(0);
+  EXPECT_CALL(mock_provider_, RefreshPolicies()).Times(0);
   schema_registry_.RegisterComponent(
       PolicyNamespace(POLICY_DOMAIN_EXTENSIONS, "xyz"), CreateTestSchema());
   schema_registry_.SetExtensionsDomainsReady();
   Mock::VerifyAndClearExpectations(&mock_provider_);
 
-  EXPECT_CALL(mock_provider_, RefreshPolicies(PolicyFetchReason::kUnspecified));
+  EXPECT_CALL(mock_provider_, RefreshPolicies());
   schema_registry_.SetDomainReady(POLICY_DOMAIN_CHROME);
   Mock::VerifyAndClearExpectations(&mock_provider_);
 
@@ -176,7 +173,7 @@ TEST_F(SchemaRegistryTrackingPolicyProviderTest, DelegateUpdates) {
   mock_provider_.UpdateChromePolicy(policy_map);
   Mock::VerifyAndClearExpectations(&observer_);
 
-  EXPECT_CALL(mock_provider_, RefreshPolicies(PolicyFetchReason::kUnspecified));
+  EXPECT_CALL(mock_provider_, RefreshPolicies());
   schema_registry_.SetAllDomainsReady();
   EXPECT_TRUE(schema_registry_.IsReady());
   Mock::VerifyAndClearExpectations(&mock_provider_);
@@ -199,7 +196,7 @@ TEST_F(SchemaRegistryTrackingPolicyProviderTest, DelegateUpdates) {
 }
 
 TEST_F(SchemaRegistryTrackingPolicyProviderTest, RemoveAndAddComponent) {
-  EXPECT_CALL(mock_provider_, RefreshPolicies(PolicyFetchReason::kUnspecified));
+  EXPECT_CALL(mock_provider_, RefreshPolicies());
   const PolicyNamespace ns(POLICY_DOMAIN_EXTENSIONS, "xyz");
   schema_registry_.RegisterComponent(ns, CreateTestSchema());
   schema_registry_.SetAllDomainsReady();
@@ -225,7 +222,7 @@ TEST_F(SchemaRegistryTrackingPolicyProviderTest, RemoveAndAddComponent) {
 
   // Adding it back should serve the current policies again, even though they
   // haven't changed on the platform provider.
-  EXPECT_CALL(mock_provider_, RefreshPolicies(PolicyFetchReason::kUnspecified));
+  EXPECT_CALL(mock_provider_, RefreshPolicies());
   schema_registry_.RegisterComponent(ns, CreateTestSchema());
   Mock::VerifyAndClearExpectations(&mock_provider_);
 

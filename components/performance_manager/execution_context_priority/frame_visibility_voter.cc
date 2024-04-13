@@ -52,13 +52,13 @@ void FrameVisibilityVoter::SetVotingChannel(VotingChannel voting_channel) {
   voting_channel_ = std::move(voting_channel);
 }
 
-void FrameVisibilityVoter::OnFrameNodeInitializing(
-    const FrameNode* frame_node) {
+void FrameVisibilityVoter::OnFrameNodeAdded(const FrameNode* frame_node) {
   const Vote vote = GetVote(frame_node->GetVisibility());
   voting_channel_.SubmitVote(GetExecutionContext(frame_node), vote);
 }
 
-void FrameVisibilityVoter::OnFrameNodeTearingDown(const FrameNode* frame_node) {
+void FrameVisibilityVoter::OnBeforeFrameNodeRemoved(
+    const FrameNode* frame_node) {
   voting_channel_.InvalidateVote(GetExecutionContext(frame_node));
 }
 

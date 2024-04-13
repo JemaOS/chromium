@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,11 +18,12 @@ namespace autofill {
 
 namespace {
 
-bool HaveSeenSimilarType(FieldType type, const FieldTypeSet& seen_types) {
+bool HaveSeenSimilarType(ServerFieldType type,
+                         const ServerFieldTypeSet& seen_types) {
   // Forms sometimes have a different format of inputting names in
   // different sections. If we believe a new name is being entered, assume
   // it is a new section.
-  FieldTypeSet first_last_name = {NAME_FIRST, NAME_LAST};
+  ServerFieldTypeSet first_last_name = {NAME_FIRST, NAME_LAST};
   if ((type == NAME_FULL && seen_types.contains_any(first_last_name)) ||
       (first_last_name.contains(type) && seen_types.contains(NAME_FULL))) {
     return true;
@@ -40,18 +41,12 @@ bool HaveSeenSimilarType(FieldType type, const FieldTypeSet& seen_types) {
 //  * In Japan, forms commonly have separate inputs for phonetic names. In
 //    practice this means consecutive name field types (e.g. first name and last
 //    name).
-bool ConsecutiveSimilarFieldType(FieldType current_type,
-                                 FieldType previous_type) {
+bool ConsecutiveSimilarFieldType(ServerFieldType current_type,
+                                 ServerFieldType previous_type) {
   if (previous_type == current_type)
     return true;
-  if (GroupTypeOfFieldType(current_type) == FieldTypeGroup::kName &&
-      GroupTypeOfFieldType(previous_type) == FieldTypeGroup::kName) {
-    return true;
-  }
-  if (FieldTypeSet({ADDRESS_HOME_ZIP, ADDRESS_HOME_DEPENDENT_LOCALITY,
-                    ADDRESS_HOME_CITY, ADDRESS_HOME_ADMIN_LEVEL2,
-                    ADDRESS_HOME_STATE, ADDRESS_HOME_COUNTRY})
-          .contains_all({previous_type, current_type})) {
+  if (AutofillType(current_type).group() == FieldTypeGroup::kName &&
+      AutofillType(previous_type).group() == FieldTypeGroup::kName) {
     return true;
   }
   return false;
@@ -60,11 +55,9 @@ bool ConsecutiveSimilarFieldType(FieldType current_type,
 // Sectionable fields are all the fields that are in a non-default section.
 // Generally, only focusable fields are assigned a section. As an exception,
 // unfocusable <select> elements get a section, as hidden <select> elements are
-// common in custom select elements. To confine the impact of hidden <select>
-// elements, this exception only applies if their type is actually autofillable.
+// common in custom select elements.
 bool IsSectionable(const AutofillField& field) {
-  return field.IsFocusable() ||
-         (field.IsSelectElement() && field.IsFieldFillable());
+  return field.IsFocusable() || field.form_control_type == "select-one";
 }
 
 // Assign all credit card fields without a valid autocomplete attribute section
@@ -112,7 +105,8 @@ void AssignFieldIdentifierSections(
   }
 }
 
-void ExpandSections(base::span<const std::unique_ptr<AutofillField>> fields) {
+void ExpandSections(base::span<const std::unique_ptr<AutofillField>> fields,
+                    bool overwrite_non_sectionable_fields) {
   auto HasSection = [](auto& field) {
     return IsSectionable(*field) && field->section;
   };
@@ -121,7 +115,7 @@ void ExpandSections(base::span<const std::unique_ptr<AutofillField>> fields) {
     auto end = base::ranges::find_if(it + 1, fields.end(), HasSection);
     if (end != fields.end() && (*it)->section == (*end)->section) {
       for (auto& field : base::make_span(it + 1, end)) {
-        if (IsSectionable(*field)) {
+        if (overwrite_non_sectionable_fields || IsSectionable(*field)) {
           field->section = (*it)->section;
         }
       }
@@ -130,13 +124,13 @@ void ExpandSections(base::span<const std::unique_ptr<AutofillField>> fields) {
   }
 }
 
-bool BelongsToCurrentSection(const FieldTypeSet& seen_types,
+bool BelongsToCurrentSection(const ServerFieldTypeSet& seen_types,
                              const AutofillField& current_field,
                              const AutofillField& previous_field) {
   if (current_field.section)
     return !features::kAutofillSectioningModeCreateGaps.Get();
 
-  const FieldType current_type = current_field.Type().GetStorableType();
+  const ServerFieldType current_type = current_field.Type().GetStorableType();
   if (current_type == UNKNOWN_TYPE)
     return true;
 
@@ -150,9 +144,8 @@ bool BelongsToCurrentSection(const FieldTypeSet& seen_types,
   // There are many phone number field types and their classification is
   // generally a little bit off. Furthermore, forms often ask for multiple phone
   // numbers, e.g. both a daytime and evening phone number.
-  if (GroupTypeOfFieldType(current_type) == FieldTypeGroup::kPhone) {
+  if (AutofillType(current_type).group() == FieldTypeGroup::kPhoneHome)
     return true;
-  }
 
   return !HaveSeenSimilarType(current_type, seen_types);
 }
@@ -181,7 +174,7 @@ base::span<const std::unique_ptr<AutofillField>>::iterator FindEndOfNextSection(
     base::span<const std::unique_ptr<AutofillField>>::iterator begin,
     base::span<const std::unique_ptr<AutofillField>>::iterator end) {
   // Keeps track of the focusable types we've seen in this section.
-  FieldTypeSet seen_types;
+  ServerFieldTypeSet seen_types;
   // The `prev_field` is from the section whose end we are currently searching.
   const AutofillField* prev_field = nullptr;
   for (auto it = begin; it != end; it++) {
@@ -213,7 +206,7 @@ void AssignSections(base::span<const std::unique_ptr<AutofillField>> fields) {
     AssignAutocompleteSections(fields);
   AssignCreditCardSections(fields, frame_token_ids);
   if (features::kAutofillSectioningModeExpand.Get()) {
-    ExpandSections(fields);
+    ExpandSections(fields, /*overwrite_non_sectionable_fields=*/false);
   }
 
   auto begin = fields.begin();
@@ -224,6 +217,10 @@ void AssignSections(base::span<const std::unique_ptr<AutofillField>> fields) {
     AssignFieldIdentifierSections({begin, end}, frame_token_ids);
     begin = end;
   }
+
+  if (features::kAutofillSectioningModeExpandOverUnfocusableFields.Get()) {
+    ExpandSections(fields, /*overwrite_non_sectionable_fields=*/true);
+  }
 }
 
 void LogSectioningMetrics(
@@ -232,12 +229,8 @@ void LogSectioningMetrics(
     AutofillMetrics::FormInteractionsUkmLogger* form_interactions_ukm_logger) {
   // UMA:
   base::flat_map<Section, size_t> fields_per_section;
-  for (auto& field : fields) {
-    if (!IsSectionable(*field) || !field->IsFieldFillable()) {
-      continue;
-    }
+  for (auto& field : fields)
     ++fields_per_section[field->section];
-  }
   AutofillMetrics::LogSectioningMetrics(fields_per_section);
   // UKM:
   if (form_interactions_ukm_logger) {
@@ -253,9 +246,6 @@ uint32_t ComputeSectioningSignature(
   std::stringstream signature;
   base::flat_map<Section, size_t> section_ids;
   for (auto& field : fields) {
-    if (!IsSectionable(*field) || !field->IsFieldFillable()) {
-      continue;
-    }
     size_t section_id =
         section_ids.emplace(field->section, section_ids.size()).first->second;
     signature << section_id;

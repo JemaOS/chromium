@@ -16,7 +16,7 @@
 //
 // and
 //
-//   NaClBrowser::ClearAndDeleteDelegate();
+//   NaClBrowser::ClearAndDeleteDelegateForTest();
 class TestNaClBrowserDelegate : public NaClBrowserDelegate {
  public:
   TestNaClBrowserDelegate();

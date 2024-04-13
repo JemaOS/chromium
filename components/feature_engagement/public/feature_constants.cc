@@ -6,73 +6,49 @@
 
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
-#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 
 namespace feature_engagement {
 
 // Features used by the In-Product Help system.
 BASE_FEATURE(kIPHDemoMode, "IPH_DemoMode", base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kUseClientConfigIPH,
+             "UseClientConfigIPH",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Features used by various clients to show their In-Product Help messages.
 BASE_FEATURE(kIPHDummyFeature, "IPH_Dummy", base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
+BASE_FEATURE(kIPHAutofillFeedbackNewBadgeFeature,
+             "IPH_AutofillFeedbackNewBadge",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHBatterySaverModeFeature,
              "IPH_BatterySaverMode",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHCompanionSidePanelFeature,
-             "IPH_CompanionSidePanel",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHCompanionSidePanelRegionSearchFeature,
-             "IPH_CompanionSidePanelRegionSearch",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHComposeMSBBSettingsFeature,
-             "IPH_ComposeMSBBSettingsFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHComposeNewBadgeFeature,
-             "IPH_ComposeNewBadgeFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHDeepScanPromptRemovalFeature,
-             "IPH_DeepScanPromptRemoval",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDesktopSharedHighlightingFeature,
              "IPH_DesktopSharedHighlighting",
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHDesktopTabGroupsNewGroupFeature,
+             "IPH_DesktopTabGroupsNewGroup",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDesktopCustomizeChromeFeature,
              "IPH_DesktopCustomizeChrome",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHDownloadToolbarButtonFeature,
+             "IPH_DownloadToolbarButton",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHDesktopCustomizeChromeRefreshFeature,
-             "IPH_DesktopCustomizeChromeRefresh",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHDesktopNewTabPageModulesCustomizeFeature,
-             "IPH_DesktopNewTabPageModulesCustomize",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHDownloadEsbPromoFeature,
-             "IPH_DownloadEsbPromo",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHExperimentalAIPromoFeature,
-             "IPH_ExperimentalAIPromo",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#if BUILDFLAG(ENABLE_EXTENSIONS)
 BASE_FEATURE(kIPHExtensionsMenuFeature,
              "IPH_ExtensionsMenu",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHExtensionsRequestAccessButtonFeature,
-             "IPH_ExtensionsRequestAccessButton",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
 BASE_FEATURE(kIPHFocusHelpBubbleScreenReaderPromoFeature,
              "IPH_FocusHelpBubbleScreenReaderPromo",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHGMCCastStartStopFeature,
              "IPH_GMCCastStartStop",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHGMCLocalMediaCastingFeature,
-             "IPH_GMCLocalMediaCasting",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHMemorySaverModeFeature,
+BASE_FEATURE(kIPHHighEfficiencyModeFeature,
              "IPH_HighEfficiencyMode",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHLiveCaptionFeature,
@@ -86,27 +62,21 @@ BASE_FEATURE(kIPHPasswordsAccountStorageFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPasswordsManagementBubbleAfterSaveFeature,
              "IPH_PasswordsManagementBubbleAfterSave",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPasswordsManagementBubbleDuringSigninFeature,
              "IPH_PasswordsManagementBubbleDuringSignin",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPasswordsWebAppProfileSwitchFeature,
              "IPH_PasswordsWebAppProfileSwitch",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHPasswordManagerShortcutFeature,
-             "IPH_PasswordManagerShortcut",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHPasswordSharingFeature,
-             "IPH_PasswordSharingFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHPerformanceNewBadgeFeature,
+             "IPH_PerformanceNewBadge",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPowerBookmarksSidePanelFeature,
              "IPH_PowerBookmarksSidePanel",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHPriceInsightsPageActionIconLabelFeature,
-             "IPH_PriceInsightsPageActionIconLabelFeature",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHPriceTrackingEmailConsentFeature,
-             "IPH_PriceTrackingEmailConsentFeature",
+BASE_FEATURE(kIPHPriceTrackingChipFeature,
+             "IPH_PriceTrackingChipFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPriceTrackingPageActionIconLabelFeature,
              "IPH_PriceTrackingPageActionIconLabelFeature",
@@ -120,17 +90,8 @@ BASE_FEATURE(kIPHReadingListEntryPointFeature,
 BASE_FEATURE(kIPHReadingListInSidePanelFeature,
              "IPH_ReadingListInSidePanel",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHReadingModeSidePanelFeature,
-             "IPH_ReadingModeSidePanel",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHShoppingCollectionFeature,
-             "IPH_ShoppingCollectionFeature",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHSidePanelGenericMenuFeature,
-             "IPH_SidePanelGenericMenuFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHSidePanelGenericPinnableFeature,
-             "IPH_SidePanelGenericPinnableFeature",
+BASE_FEATURE(kIPHReopenTabFeature,
+             "IPH_ReopenTab",
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHSideSearchAutoTriggeringFeature,
              "IPH_SideSearchAutoTriggering",
@@ -141,18 +102,9 @@ BASE_FEATURE(kIPHSideSearchFeature,
 BASE_FEATURE(kIPHSideSearchPageActionLabelFeature,
              "IPH_SideSearchPageActionLabel",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHTabOrganizationSuccessFeature,
-             "IPH_TabOrganizationSuccess",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHTabSearchFeature,
              "IPH_TabSearch",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHTrackingProtectionOffboardingFeature,
-             "IPH_TrackingProtectionOffboarding",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHTrackingProtectionOnboardingFeature,
-             "IPH_TrackingProtectionOnboarding",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHWebUITabStripFeature,
              "IPH_WebUITabStrip",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -161,7 +113,7 @@ BASE_FEATURE(kIPHDesktopSnoozeFeature,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDesktopPwaInstallFeature,
              "IPH_DesktopPwaInstall",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHProfileSwitchFeature,
              "IPH_ProfileSwitch",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -174,6 +126,7 @@ BASE_FEATURE(kIPHPriceTrackingInSidePanelFeature,
 BASE_FEATURE(kIPHBackNavigationMenuFeature,
              "IPH_BackNavigationMenu",
              base::FEATURE_DISABLED_BY_DEFAULT);
+
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
 
@@ -193,9 +146,6 @@ BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationTranslateFeature,
 BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationAddToBookmarksFeature,
              "IPH_AdaptiveButtonInTopToolbarCustomization_AddToBookmarks",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationReadAloudFeature,
-             "IPH_AdaptiveButtonInTopToolbarCustomization_ReadAloud",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAddToHomescreenMessageFeature,
              "IPH_AddToHomescreenMessage",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -207,12 +157,6 @@ BASE_FEATURE(kIPHAutoDarkUserEducationMessageFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAutoDarkUserEducationMessageOptInFeature,
              "IPH_AutoDarkUserEducationMessageOptIn",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHCCTHistory,
-             "IPH_CCTHistory",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHCCTMinimized,
-             "IPH_CCTMinimized",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHContextualPageActionsQuietVariantFeature,
              "IPH_ContextualPageActions_QuietVariant",
@@ -259,9 +203,6 @@ BASE_FEATURE(kIPHDownloadInfoBarDownloadsAreFasterFeature,
 BASE_FEATURE(kIPHQuietNotificationPromptsFeature,
              "IPH_QuietNotificationPrompts",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHReadAloudAppMenuFeature,
-             "IPH_ReadAloudAppMenuFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHReadLaterContextMenuFeature,
              "IPH_ReadLaterContextMenu",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -280,11 +221,14 @@ BASE_FEATURE(kIPHRequestDesktopSiteAppMenuFeature,
 BASE_FEATURE(kIPHRequestDesktopSiteDefaultOnFeature,
              "IPH_RequestDesktopSiteDefaultOn",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHRequestDesktopSiteOptInFeature,
+             "IPH_RequestDesktopSiteOptIn",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHRequestDesktopSiteExceptionsGenericFeature,
              "IPH_RequestDesktopSiteExceptionsGeneric",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHRequestDesktopSiteWindowSettingFeature,
-             "IPH_RequestDesktopSiteWindowSetting",
+BASE_FEATURE(kIPHRequestDesktopSiteExceptionsSpecificFeature,
+             "IPH_RequestDesktopSiteExceptionsSpecific",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHShoppingListSaveFlowFeature,
              "IPH_ShoppingListSaveFlow",
@@ -292,6 +236,43 @@ BASE_FEATURE(kIPHShoppingListSaveFlowFeature,
 BASE_FEATURE(kIPHEphemeralTabFeature,
              "IPH_EphemeralTab",
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideDefaultBrowserNotificationShownFeature,
+             "IPH_FeatureNotificationGuideDefaultBrowserNotificationShown",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideSignInNotificationShownFeature,
+             "IPH_FeatureNotificationGuideSignInNotificationShown",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideIncognitoTabNotificationShownFeature,
+             "IPH_FeatureNotificationGuideIncognitoTabNotificationShown",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(
+    kIPHFeatureNotificationGuideNTPSuggestionCardNotificationShownFeature,
+    "IPH_FeatureNotificationGuideNTPSuggestionCardNotificationShown",
+    base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideVoiceSearchNotificationShownFeature,
+             "IPH_FeatureNotificationGuideVoiceSearchNotificationShown",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideDefaultBrowserPromoFeature,
+             "IPH_FeatureNotificationGuideDefaultBrowserPromo",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideSignInHelpBubbleFeature,
+             "IPH_FeatureNotificationGuideSignInHelpBubble",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideIncognitoTabHelpBubbleFeature,
+             "IPH_FeatureNotificationGuideIncognitoTabHelpBubble",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideNTPSuggestionCardHelpBubbleFeature,
+             "IPH_FeatureNotificationGuideNTPSuggestionCardHelpBubble",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideVoiceSearchHelpBubbleFeature,
+             "IPH_FeatureNotificationGuideVoiceSearchHelpBubble",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideIncognitoTabUsedFeature,
+             "IPH_FeatureNotificationGuideIncognitoTabUsed",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFeatureNotificationGuideVoiceSearchUsedFeature,
+             "IPH_FeatureNotificationGuideVoiceSearchUsed",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHFeedCardMenuFeature,
              "IPH_FeedCardMenu",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -322,6 +303,9 @@ BASE_FEATURE(kIPHKeyboardAccessoryPaymentOfferFeature,
 BASE_FEATURE(kIPHLowUserEngagementDetectorFeature,
              "IPH_LowUserEngagementDetector",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHNewTabPageHomeButtonFeature,
+             "IPH_NewTabPageHomeButton",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHMicToolbarFeature,
              "IPH_MicToolbar",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -415,9 +399,6 @@ BASE_FEATURE(kIPHWebFeedFollowFeature,
 BASE_FEATURE(kIPHWebFeedPostFollowDialogFeature,
              "IPH_WebFeedPostFollowDialog",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHWebFeedPostFollowDialogFeatureWithUIUpdate,
-             "IPH_WebFeedPostFollowDialogWithUIUpdate",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHSharedHighlightingBuilder,
              "IPH_SharedHighlightingBuilder",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -426,9 +407,6 @@ BASE_FEATURE(kIPHSharedHighlightingReceiverFeature,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHSharingHubWebnotesStylizeFeature,
              "IPH_SharingHubWebnotesStylize",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHRestoreTabsOnFREFeature,
-             "IPH_RestoreTabsOnFRE",
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -439,6 +417,9 @@ BASE_FEATURE(kIPHBottomToolbarTipFeature,
 BASE_FEATURE(kIPHLongPressToolbarTipFeature,
              "IPH_LongPressToolbarTip",
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHNewTabTipFeature,
+             "IPH_NewTabTip",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHNewIncognitoTabTipFeature,
              "IPH_NewIncognitoTabTip",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -447,10 +428,7 @@ BASE_FEATURE(kIPHBadgedReadingListFeature,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHWhatsNewFeature,
              "IPH_WhatsNew",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHWhatsNewUpdatedFeature,
-             "IPH_WhatsNewUpdated",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHReadingListMessagesFeature,
              "IPH_ReadingListMessages",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -466,9 +444,12 @@ BASE_FEATURE(kIPHDefaultSiteViewFeature,
 BASE_FEATURE(kIPHFollowWhileBrowsingFeature,
              "IPH_FollowWhileBrowsing",
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHOverflowMenuTipFeature,
+             "IPH_OverflowMenuTip",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPriceNotificationsWhileBrowsingFeature,
              "IPH_PriceNotificationsWhileBrowsing",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHiOSDefaultBrowserBadgeEligibilityFeature,
              "IPH_iOSDefaultBrowserBadgeEligibility",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -478,12 +459,12 @@ BASE_FEATURE(kIPHiOSDefaultBrowserOverflowMenuBadgeFeature,
 BASE_FEATURE(kIPHiOSDefaultBrowserSettingsBadgeFeature,
              "IPH_iOSDefaultBrowserSettingsBadge",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSLensKeyboardFeature,
-             "IPH_iOSLensKeyboard",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHiOSPromoAppStoreFeature,
              "IPH_iOSPromoAppStore",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHTabPinnedFeature,
+             "IPH_TabPinnedFeature",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHiOSPromoWhatsNewFeature,
              "IPH_iOSPromoWhatsNew",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -496,94 +477,6 @@ BASE_FEATURE(kIPHiOSPromoCredentialProviderExtensionFeature,
 BASE_FEATURE(kIPHiOSPromoDefaultBrowserFeature,
              "IPH_iOSPromoDefaultBrowser",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPromoDefaultBrowserReminderFeature,
-             "IPH_iOSPromoDefaultBrowserReminder",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPromoOmniboxPositionFeature,
-             "IPH_iOSPromoOmniboxPosition",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSNewTabToolbarItemFeature,
-             "IPH_iOSNewTabToolbarItemFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSTabGridToolbarItemFeature,
-             "IPH_iOSTabGridToolbarItemFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSHistoryOnOverflowMenuFeature,
-             "IPH_iOSHistoryOnOverflowMenuFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSShareToolbarItemFeature,
-             "IPH_iOSShareToolbarItemFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPromoPostRestoreDefaultBrowserFeature,
-             "IPH_iOSPromoPostRestoreDefaultBrowser",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPromoPasswordManagerWidgetFeature,
-             "IPH_iOSPromoPasswordManagerWidget",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSParcelTrackingFeature,
-             "IPH_iOSParcelTrackingFeature",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPullToRefreshFeature,
-             "IPH_iOSPullToRefreshFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSReplaceSyncPromosWithSignInPromos,
-             "IPH_iOSReplaceSyncPromosWithSignInPromos",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSTabGridSwipeRightForIncognito,
-             "IPH_iOSTabGridSwipeRightForIncognito",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSDockingPromoFeature,
-             "IPH_iOSDockingPromo",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSDockingPromoRemindMeLaterFeature,
-             "IPH_iOSDockingPromoRemindMeLater",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPromoAllTabsFeature,
-             "IPH_iOSPromoAllTabs",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPromoMadeForIOSFeature,
-             "IPH_iOSPromoMadeForIOS",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPromoStaySafeFeature,
-             "IPH_iOSPromoStaySafe",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSSwipeBackForwardFeature,
-             "IPH_iOSSwipeBackForward",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSSwipeToolbarToChangeTabFeature,
-             "IPH_iOSSwipeToolbarToChangeTab",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPostDefaultAbandonmentPromoFeature,
-             "IPH_iOSPostDefaultAbandonmentPromo",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPromoGenericDefaultBrowserFeature,
-             "IPH_iOSPromoGenericDefaultBrowser",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSOverflowMenuCustomizationFeature,
-             "IPH_iOSOverflowMenuCustomization",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSPageInfoRevampFeature,
-             "IPH_iOSPageInfoRevamp",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Non-FET feature.
-BASE_FEATURE(kDefaultBrowserEligibilitySlidingWindow,
-             "DefaultBrowserEligibilitySlidingWindow",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-constexpr base::FeatureParam<int> kDefaultBrowserEligibilitySlidingWindowParam{
-    &kDefaultBrowserEligibilitySlidingWindow,
-    /*name=*/"sliding-window-days",
-    /*default_value=*/365};
-
-const char kGestureInProductHelpMaxOccurrence[] = "gesture-iph-max-occurrence";
-const char kGestureInProductHelpDaysBetweenOccurrences[] =
-    "gesture-iph-days-between-occurrences";
-
-BASE_FEATURE(kDefaultBrowserTriggerCriteriaExperiment,
-             "DefaultBrowserTriggerCriteriaExperiment",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 #endif  // BUILDFLAG(IS_IOS)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
@@ -591,24 +484,12 @@ BASE_FEATURE(kDefaultBrowserTriggerCriteriaExperiment,
 BASE_FEATURE(kIPHAutofillExternalAccountProfileSuggestionFeature,
              "IPH_AutofillExternalAccountProfileSuggestion",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHAutofillManualFallbackFeature,
-             "IPH_AutofillManualFallback",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHAutofillVirtualCardCVCSuggestionFeature,
-             "IPH_AutofillVirtualCardCVCSuggestion",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAutofillVirtualCardSuggestionFeature,
              "IPH_AutofillVirtualCardSuggestion",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHCookieControlsFeature,
-             "IPH_CookieControls",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPH3pcdUserBypassFeature,
-             "IPH_3pcdUserBypass",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) ||
-        // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) ||
-        // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
+        // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) ||
+        // BUILDFLAG(IS_FUCHSIA)
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 BASE_FEATURE(kIPHGoogleOneOfferNotificationFeature,
@@ -616,120 +497,7 @@ BASE_FEATURE(kIPHGoogleOneOfferNotificationFeature,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHLauncherSearchHelpUiFeature,
              "IPH_LauncherSearchHelpUi",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedOneFeature,
-             "IPH_ScalableIphTimerBasedOne",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedTwoFeature,
-             "IPH_ScalableIphTimerBasedTwo",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedThreeFeature,
-             "IPH_ScalableIphTimerBasedThree",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedFourFeature,
-             "IPH_ScalableIphTimerBasedFour",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedFiveFeature,
-             "IPH_ScalableIphTimerBasedFive",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedSixFeature,
-             "IPH_ScalableIphTimerBasedSix",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedSevenFeature,
-             "IPH_ScalableIphTimerBasedSeven",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedEightFeature,
-             "IPH_ScalableIphTimerBasedEight",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedNineFeature,
-             "IPH_ScalableIphTimerBasedNine",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphTimerBasedTenFeature,
-             "IPH_ScalableIphTimerBasedTen",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedOneFeature,
-             "IPH_ScalableIphUnlockedBasedOne",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedTwoFeature,
-             "IPH_ScalableIphUnlockedBasedTwo",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedThreeFeature,
-             "IPH_ScalableIphUnlockedBasedThree",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedFourFeature,
-             "IPH_ScalableIphUnlockedBasedFour",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedFiveFeature,
-             "IPH_ScalableIphUnlockedBasedFive",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedSixFeature,
-             "IPH_ScalableIphUnlockedBasedSix",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedSevenFeature,
-             "IPH_ScalableIphUnlockedBasedSeven",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedEightFeature,
-             "IPH_ScalableIphUnlockedBasedEight",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedNineFeature,
-             "IPH_ScalableIphUnlockedBasedNine",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphUnlockedBasedTenFeature,
-             "IPH_ScalableIphUnlockedBasedTen",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedNudgeFeature,
-             "IPH_ScalableIphHelpAppBasedNudge",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedOneFeature,
-             "IPH_ScalableIphHelpAppBasedOne",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedTwoFeature,
-             "IPH_ScalableIphHelpAppBasedTwo",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedThreeFeature,
-             "IPH_ScalableIphHelpAppBasedThree",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedFourFeature,
-             "IPH_ScalableIphHelpAppBasedFour",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedFiveFeature,
-             "IPH_ScalableIphHelpAppBasedFive",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedSixFeature,
-             "IPH_ScalableIphHelpAppBasedSix",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedSevenFeature,
-             "IPH_ScalableIphHelpAppBasedSeven",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedEightFeature,
-             "IPH_ScalableIphHelpAppBasedEight",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedNineFeature,
-             "IPH_ScalableIphHelpAppBasedNine",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphHelpAppBasedTenFeature,
-             "IPH_ScalableIphHelpAppBasedTen",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHScalableIphGamingFeature,
-             "IPH_ScalableIphGaming",
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-// This can be enabled by default, as the DesktopPWAsLinkCapturing
-// flag is needed for the IPH linked to this feature to work, and
-// use-cases to show the IPH are guarded by that flag.
-BASE_FEATURE(kIPHDesktopPWAsLinkCapturingLaunch,
-             "IPH_DesktopPWAsLinkCapturingLaunch",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) ||
-        // BUILDFLAG(IS_LINUX)
-
-#if !BUILDFLAG(IS_ANDROID) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
-BASE_FEATURE(kIPHiOSPasswordPromoDesktopFeature,
-             "IPH_iOSPasswordPromoDesktop",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // !BUILDFLAG(IS_ANDROID) &&
-        // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 }  // namespace feature_engagement

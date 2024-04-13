@@ -4,10 +4,8 @@
 
 source_set("webui") {
   sources = [
-    "shopping_service_handler.cc",
-    "shopping_service_handler.h",
-    "webui_utils.cc",
-    "webui_utils.h",
+    "shopping_list_handler.cc",
+    "shopping_list_handler.h",
   ]
 
   deps = [
@@ -15,9 +13,7 @@ source_set("webui") {
     "../mojom:mojo_bindings",
     "//base",
     "//components/bookmarks/browser",
-    "//components/commerce/core:commerce_constants",
     "//components/commerce/core:feature_list",
-    "//components/commerce/core:metrics",
     "//components/commerce/core:shopping_service",
     "//components/feature_engagement/public",
     "//components/payments/core",
@@ -25,8 +21,6 @@ source_set("webui") {
     "//components/prefs",
     "//components/url_formatter",
     "//mojo/public/cpp/bindings",
-    "//services/metrics/public/cpp:metrics_cpp",
-    "//ui/webui/resources/cr_components/commerce:mojo_bindings",
     "//url",
   ]
 }
@@ -34,21 +28,19 @@ source_set("webui") {
 source_set("unit_tests") {
   testonly = true
 
-  sources = [ "shopping_service_handler_unittest.cc" ]
+  sources = [ "shopping_list_handler_unittest.cc" ]
 
   deps = [
     ":webui",
+    "../mojom:mojo_bindings",
     "//base/test:test_support",
     "//components/bookmarks/browser",
     "//components/bookmarks/test",
     "//components/commerce/core:feature_list",
     "//components/commerce/core:shopping_service_test_support",
     "//components/feature_engagement/test:test_support",
-    "//components/ukm:test_support",
     "//mojo/public/cpp/bindings",
-    "//services/metrics/public/cpp:ukm_builders",
     "//testing/gtest",
-    "//ui/webui/resources/cr_components/commerce:mojo_bindings",
     "//url:url",
   ]
 }

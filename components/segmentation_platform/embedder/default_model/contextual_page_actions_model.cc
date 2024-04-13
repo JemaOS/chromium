@@ -22,25 +22,26 @@ constexpr SegmentId kSegmentId =
     SegmentId::OPTIMIZATION_TARGET_CONTEXTUAL_PAGE_ACTION_PRICE_TRACKING;
 constexpr int64_t kOneDayInSeconds = 86400;
 // Parameters for share action model.
+constexpr int64_t kShareOutputCollectionDelayInSec = 300;
 constexpr std::array<MetadataWriter::UMAFeature, 6> kShareUMAFeatures = {
     MetadataWriter::UMAFeature::FromUserAction(
         "MobileMenuShare",
-        ContextualPageActionsModel::kShareOutputCollectionDelayInSec),
+        kShareOutputCollectionDelayInSec),
     MetadataWriter::UMAFeature::FromUserAction(
         "Omnibox.EditUrlSuggestion.Share",
-        ContextualPageActionsModel::kShareOutputCollectionDelayInSec),
+        kShareOutputCollectionDelayInSec),
     MetadataWriter::UMAFeature::FromUserAction(
         "MobileActionMode.Share",
-        ContextualPageActionsModel::kShareOutputCollectionDelayInSec),
+        kShareOutputCollectionDelayInSec),
     MetadataWriter::UMAFeature::FromUserAction(
         "MobileMenuDirectShare",
-        ContextualPageActionsModel::kShareOutputCollectionDelayInSec),
+        kShareOutputCollectionDelayInSec),
     MetadataWriter::UMAFeature::FromUserAction(
         "Omnibox.EditUrlSuggestion.Copy",
-        ContextualPageActionsModel::kShareOutputCollectionDelayInSec),
+        kShareOutputCollectionDelayInSec),
     MetadataWriter::UMAFeature::FromUserAction(
         "Tab.Screenshot",
-        ContextualPageActionsModel::kShareOutputCollectionDelayInSec),
+        kShareOutputCollectionDelayInSec),
 };
 
 constexpr std::array<const char*, 2> kContextualPageActionModelLabels = {
@@ -50,10 +51,10 @@ constexpr std::array<const char*, 2> kContextualPageActionModelLabels = {
 }  // namespace
 
 ContextualPageActionsModel::ContextualPageActionsModel()
-    : DefaultModelProvider(kSegmentId) {}
+    : ModelProvider(kSegmentId) {}
 
-std::unique_ptr<DefaultModelProvider::ModelConfig>
-ContextualPageActionsModel::GetModelConfig() {
+void ContextualPageActionsModel::InitAndFetchModel(
+    const ModelUpdatedCallback& model_updated_callback) {
   proto::SegmentationModelMetadata metadata;
   MetadataWriter writer(&metadata);
   writer.SetSegmentationMetadataConfig(
@@ -85,11 +86,8 @@ ContextualPageActionsModel::GetModelConfig() {
     writer.AddUmaFeatures(kShareUMAFeatures.data(), kShareUMAFeatures.size(),
                           false);
 
-    metadata.set_upload_tensors(true);
-
     // Add share output collection with delay.
-    writer.AddDelayTrigger(
-        ContextualPageActionsModel::kShareOutputCollectionDelayInSec);
+    writer.AddDelayTrigger(kShareOutputCollectionDelayInSec);
     writer.AddUmaFeatures(kShareUMAFeatures.data(), kShareUMAFeatures.size(),
                           true);
   }
@@ -100,11 +98,14 @@ ContextualPageActionsModel::GetModelConfig() {
 
   // Set output config, labels, and classifier.
   writer.AddOutputConfigForMultiClassClassifier(
-      kContextualPageActionModelLabels,
+      kContextualPageActionModelLabels.begin(),
+      kContextualPageActionModelLabels.size(),
       /*top_k_outputs=*/1, threshold);
 
   constexpr int kModelVersion = 1;
-  return std::make_unique<ModelConfig>(std::move(metadata), kModelVersion);
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindRepeating(model_updated_callback, kSegmentId,
+                                     std::move(metadata), kModelVersion));
 }
 
 void ContextualPageActionsModel::ExecuteModelWithInput(
@@ -119,7 +120,7 @@ void ContextualPageActionsModel::ExecuteModelWithInput(
   // Invalid inputs.
   if (inputs.size() != expected_input_size) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+        FROM_HERE, base::BindOnce(std::move(callback), absl::nullopt));
     return;
   }
 
@@ -142,6 +143,10 @@ void ContextualPageActionsModel::ExecuteModelWithInput(
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), response));
+}
+
+bool ContextualPageActionsModel::ModelAvailable() {
+  return true;
 }
 
 }  // namespace segmentation_platform

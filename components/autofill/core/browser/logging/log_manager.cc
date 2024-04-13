@@ -114,7 +114,7 @@ class BufferingLogManagerImpl : public BufferingLogManager {
 
  private:
   std::vector<base::Value::Dict> nodes_;
-  std::optional<base::PassKey<LogBufferSubmitter>> pass_key_;
+  absl::optional<base::PassKey<LogBufferSubmitter>> pass_key_;
 };
 
 void BufferingLogManagerImpl::Flush(LogManager& destination) {

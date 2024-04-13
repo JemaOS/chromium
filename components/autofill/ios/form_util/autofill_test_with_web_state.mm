@@ -35,8 +35,7 @@ void AutofillTestWithWebState::SetUpForUniqueIds(web::WebFrame* frame) {
   }));
 }
 
-void AutofillTestWithWebState::TrackFormMutations(web::WebFrame* frame,
-                                                  bool allow_batching) {
+void AutofillTestWithWebState::TrackFormMutations(web::WebFrame* frame) {
   // Override |__gCrWeb.formHandlers.trackFormMutations| to set a boolean
   // trackFormMutationsComplete after the function is called.
   ExecuteJavaScript(
@@ -50,7 +49,7 @@ void AutofillTestWithWebState::TrackFormMutations(web::WebFrame* frame,
       @"};");
 
   autofill::FormHandlersJavaScriptFeature::GetInstance()->TrackFormMutations(
-      frame, kTrackFormMutationsDelayInMs, allow_batching);
+      frame, kTrackFormMutationsDelayInMs);
 
   // Wait for |TrackFormMutations| to add form listeners.
   ASSERT_TRUE(WaitUntilConditionOrTimeout(kWaitForJSCompletionTimeout, ^{

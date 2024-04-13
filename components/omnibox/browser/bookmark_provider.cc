@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "base/containers/cxx20_erase.h"
 #include "base/feature_list.h"
-#include "base/memory/raw_ptr.h"
 #include "base/trace_event/trace_event.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/omnibox/browser/autocomplete_match.h"
@@ -35,16 +35,17 @@ using bookmarks::TitledUrlMatch;
 BookmarkProvider::BookmarkProvider(AutocompleteProviderClient* client)
     : AutocompleteProvider(AutocompleteProvider::TYPE_BOOKMARK),
       client_(client),
-      bookmark_model_(client ? client_->GetBookmarkModel() : nullptr) {}
+      local_or_syncable_bookmark_model_(
+          client ? client_->GetLocalOrSyncableBookmarkModel() : nullptr) {}
 
 void BookmarkProvider::Start(const AutocompleteInput& input,
                              bool minimal_changes) {
   TRACE_EVENT0("omnibox", "BookmarkProvider::Start");
   matches_.clear();
 
-  if (input.IsZeroSuggest() || input.text().empty()) {
+  if (input.focus_type() != metrics::OmniboxFocusType::INTERACTION_DEFAULT ||
+      input.text().empty())
     return;
-  }
 
   DoAutocomplete(input);
 }
@@ -53,7 +54,8 @@ BookmarkProvider::~BookmarkProvider() = default;
 
 void BookmarkProvider::DoAutocomplete(const AutocompleteInput& input) {
   // We may not have a bookmark model for some unit tests.
-  if (!bookmark_model_) {
+  // TODO(https://crbug.com/1424825): Add support for account bookmarks.
+  if (!local_or_syncable_bookmark_model_) {
     return;
   }
 
@@ -67,17 +69,17 @@ void BookmarkProvider::DoAutocomplete(const AutocompleteInput& input) {
       KeywordProvider::AdjustInputForStarterPackEngines(
           input, client_->GetTemplateURLService());
 
-  const query_parser::MatchingAlgorithm matching_algorithm =
-      GetMatchingAlgorithm(adjusted_input);
-
   // GetBookmarksMatching returns bookmarks matching the user's
   // search terms using the following rules:
   //  - The search text is broken up into search terms. Each term is searched
   //    for separately.
   //  - Term matches are always performed against the start of a word. 'def'
   //    will match against 'define' but not against 'indefinite'.
-  //  - Terms perform partial word matches only if the the total search text
-  //    length is at least 3 characters.
+  //  - Terms must be at least three characters in length in order to perform
+  //    partial word matches. Any term of lesser length will only be used as an
+  //    exact match. 'def' will match against 'define' but 'de' will not match.
+  //    (Unless either |IsShortBookmarkSuggestionsEnabled()| or
+  //    |IsShortBookmarkSuggestionsByTotalInputLengthEnabled()| is true.)
   //  - A search containing multiple terms will return results with those words
   //    occurring in any order.
   //  - Terms enclosed in quotes comprises a phrase that must match exactly.
@@ -87,14 +89,18 @@ void BookmarkProvider::DoAutocomplete(const AutocompleteInput& input) {
   // Please refer to the code for TitledUrlIndex::GetResultsMatching for
   // complete details of how searches are performed against the user's
   // bookmarks.
-  std::vector<TitledUrlMatch> matches = bookmark_model_->GetBookmarksMatching(
-      adjusted_input.text(), kMaxBookmarkMatches, matching_algorithm);
-
+  std::vector<TitledUrlMatch> matches =
+      GetMatchesWithBookmarkPaths(adjusted_input, kMaxBookmarkMatches);
   if (matches.empty())
     return;  // There were no matches.
-
   const std::u16string fixed_up_input(FixupUserInput(adjusted_input).second);
   for (auto& bookmark_match : matches) {
+    if (OmniboxFieldTrial::ShouldDisableCGIParamMatching()) {
+      RemoveQueryParamKeyMatches(bookmark_match);
+      if (bookmark_match.title_match_positions.empty() &&
+          bookmark_match.url_match_positions.empty())
+        continue;
+    }
     // Score the TitledUrlMatch. If its score is greater than 0 then the
     // AutocompleteMatch is created and added to matches_.
     auto [relevance, bookmark_count] =
@@ -119,7 +125,7 @@ void BookmarkProvider::DoAutocomplete(const AutocompleteInput& input) {
   // In keyword mode, it's possible we only provide results from one or two
   // autocomplete provider(s), so it's sometimes necessary to show more results
   // than provider_max_matches_.
-  size_t max_matches = adjusted_input.InKeywordMode()
+  size_t max_matches = InKeywordMode(adjusted_input)
                            ? provider_max_matches_in_keyword_mode_
                            : provider_max_matches_;
 
@@ -129,7 +135,16 @@ void BookmarkProvider::DoAutocomplete(const AutocompleteInput& input) {
                     matches_.end(), AutocompleteMatch::MoreRelevant);
   ResizeMatches(
       num_matches,
-      OmniboxFieldTrial::IsMlUrlScoringUnlimitedNumCandidatesEnabled());
+      OmniboxFieldTrial::IsMlUrlScoringIncreaseNumCandidatesEnabled());
+}
+
+std::vector<TitledUrlMatch> BookmarkProvider::GetMatchesWithBookmarkPaths(
+    const AutocompleteInput& input,
+    size_t kMaxBookmarkMatches) {
+  query_parser::MatchingAlgorithm matching_algorithm =
+      GetMatchingAlgorithm(input);
+  return local_or_syncable_bookmark_model_->GetBookmarksMatching(
+      input.text(), kMaxBookmarkMatches, matching_algorithm);
 }
 
 query_parser::MatchingAlgorithm BookmarkProvider::GetMatchingAlgorithm(
@@ -138,12 +153,26 @@ query_parser::MatchingAlgorithm BookmarkProvider::GetMatchingAlgorithm(
   //  specifically, since we might still get bookmarks suggestions in
   //  non-bookmarks keyword mode. This is enough of an edge case it makes sense
   //  to just stick with simplicity for now.
-  if (input.InKeywordMode()) {
+  if (OmniboxFieldTrial::IsShortBookmarkSuggestionsEnabled() ||
+      (OmniboxFieldTrial::IsSiteSearchStarterPackEnabled() &&
+       InKeywordMode(input))) {
     return query_parser::MatchingAlgorithm::ALWAYS_PREFIX_SEARCH;
   }
 
-  if (input.text().length() >= 3)
-    return query_parser::MatchingAlgorithm::ALWAYS_PREFIX_SEARCH;
+  if (OmniboxFieldTrial::
+          IsShortBookmarkSuggestionsByTotalInputLengthEnabled() &&
+      input.text().length() >=
+          OmniboxFieldTrial::
+              ShortBookmarkSuggestionsByTotalInputLengthThreshold()) {
+    client_->GetOmniboxTriggeredFeatureService()->FeatureTriggered(
+        metrics::
+            OmniboxEventProto_Feature_SHORT_BOOKMARK_SUGGESTIONS_BY_TOTAL_INPUT_LENGTH);
+    return OmniboxFieldTrial::
+                   kShortBookmarkSuggestionsByTotalInputLengthCounterfactual
+                       .Get()
+               ? query_parser::MatchingAlgorithm::DEFAULT
+               : query_parser::MatchingAlgorithm::ALWAYS_PREFIX_SEARCH;
+  }
 
   return query_parser::MatchingAlgorithm::DEFAULT;
 }
@@ -228,22 +257,40 @@ std::pair<int, int> BookmarkProvider::CalculateBookmarkMatchRelevance(
   int relevance = static_cast<int>(normalized_sum * kBookmarkScoreRange) +
                   kBaseBookmarkScore;
 
-  // If scoring signal logging and ML scoring is disabled, skip counting
-  // bookmarks if relevance is above max score. Don't waste any time searching
-  // for additional referenced URLs if we already have a perfect title match.
-  // Returns a pair of the relevance score and -1 as a dummy bookmark count.
-  if (!OmniboxFieldTrial::IsPopulatingUrlScoringSignalsEnabled() &&
+  // If scoring signal logging is disabled, skip counting bookmarks if relevance
+  // is above max score. Don't waste any time searching for additional
+  // referenced URLs if we already have a perfect title match. Returns a pair of
+  // the relevance score and -1 as a dummy bookmark count.
+  if (!OmniboxFieldTrial::IsLogUrlScoringSignalsEnabled() &&
       relevance >= kMaxBookmarkScore) {
     return {relevance, /*bookmark_count=*/-1};
   }
 
   // Boost the score if the bookmark's URL is referenced by other bookmarks.
   const int kURLCountBoost[4] = {0, 75, 125, 150};
-
-  const size_t url_node_count = bookmark_model_->GetNodeCountByURL(url);
-  DCHECK_GE(std::min(std::size(kURLCountBoost), url_node_count), 1U);
+  std::vector<const BookmarkNode*> nodes;
+  local_or_syncable_bookmark_model_->GetNodesByURL(url, &nodes);
+  DCHECK_GE(std::min(std::size(kURLCountBoost), nodes.size()), 1U);
   relevance +=
-      kURLCountBoost[std::min(std::size(kURLCountBoost), url_node_count) - 1];
+      kURLCountBoost[std::min(std::size(kURLCountBoost), nodes.size()) - 1];
   relevance = std::min(kMaxBookmarkScore, relevance);
-  return {relevance, url_node_count};
+  return {relevance, nodes.size()};
+}
+
+void BookmarkProvider::RemoveQueryParamKeyMatches(TitledUrlMatch& match) {
+  const GURL& url = match.node->GetTitledUrlNodeUrl();
+  if (!url.has_query())
+    return;
+
+  // Remove any matches that are for query param keys. Since bookmark provider
+  // match positions are always at the beginning of words, we can just look at
+  // the preceding character for a '?' or '&' character.
+  base::EraseIf(match.url_match_positions,
+                [url](TitledUrlMatch::MatchPosition& position) {
+                  size_t query_begin =
+                      url.parsed_for_possibly_invalid_spec().query.begin;
+                  return ((query_begin <= position.first) &&
+                          (url.spec().at(position.first - 1) == '?' ||
+                           url.spec().at(position.first - 1) == '&'));
+                });
 }

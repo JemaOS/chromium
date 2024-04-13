@@ -106,8 +106,6 @@ class AsyncSharedStorageDatabaseImpl : public AsyncSharedStorageDatabase {
                mojo::PendingRemote<blink::mojom::SharedStorageEntriesListener>
                    pending_listener,
                base::OnceCallback<void(OperationResult)> callback) override;
-  void BytesUsed(url::Origin context_origin,
-                 base::OnceCallback<void(int)> callback) override;
   void PurgeMatchingOrigins(StorageKeyPolicyMatcherFunction storage_key_matcher,
                             base::Time begin,
                             base::Time end,
@@ -118,11 +116,11 @@ class AsyncSharedStorageDatabaseImpl : public AsyncSharedStorageDatabase {
       base::OnceCallback<void(std::vector<mojom::StorageUsageInfoPtr>)>
           callback) override;
   void MakeBudgetWithdrawal(
-      net::SchemefulSite context_site,
+      url::Origin context_origin,
       double bits_debit,
       base::OnceCallback<void(OperationResult)> callback) override;
   void GetRemainingBudget(
-      net::SchemefulSite context_site,
+      url::Origin context_origin,
       base::OnceCallback<void(BudgetResult)> callback) override;
   void GetCreationTime(url::Origin context_origin,
                        base::OnceCallback<void(TimeResult)> callback) override;
@@ -165,9 +163,9 @@ class AsyncSharedStorageDatabaseImpl : public AsyncSharedStorageDatabase {
   void OverrideClockForTesting(base::Clock* clock, base::OnceClosure callback);
 
   // Calls `callback` with the number of entries (including stale entries) in
-  // the table `budget_mapping` for `context_site`, or with -1 in case of
+  // the table `budget_mapping` for `context_origin`, or with -1 in case of
   // database initialization failure or SQL error.
-  void GetNumBudgetEntriesForTesting(net::SchemefulSite context_site,
+  void GetNumBudgetEntriesForTesting(url::Origin context_origin,
                                      base::OnceCallback<void(int)> callback);
 
   // Calls `callback` with the total number of entries in the table for all

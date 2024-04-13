@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "base/test/task_environment.h"
 #include "build/build_config.h"
 #include "components/spellcheck/renderer/empty_local_interface_provider.h"
@@ -41,7 +40,7 @@ class FakeTextCheckingCompletion : public blink::WebTextCheckingCompletion {
       const blink::WebVector<blink::WebTextCheckingResult>& results) override;
   void DidCancelCheckingText() override;
 
-  raw_ptr<FakeTextCheckingResult> result_;
+  FakeTextCheckingResult* result_;
 };
 
 // A fake SpellCheck object which can fake the number of (enabled) spell check
@@ -124,10 +123,9 @@ class TestingSpellCheckProvider : public SpellCheckProvider,
     return static_cast<FakeSpellCheck*>(spellcheck_);
   }
 
-  base::WeakPtr<SpellCheckProvider> GetWeakPtr();
-
  private:
   // spellcheck::mojom::SpellCheckHost:
+  void RequestDictionary() override;
   void NotifyChecked(const std::u16string& word, bool misspelled) override;
 
 #if BUILDFLAG(USE_RENDERER_SPELLCHECKER)
@@ -138,9 +136,11 @@ class TestingSpellCheckProvider : public SpellCheckProvider,
 
 #if BUILDFLAG(USE_BROWSER_SPELLCHECKER)
   void RequestTextCheck(const std::u16string&,
+                        int,
                         RequestTextCheckCallback) override;
   using SpellCheckProvider::CheckSpelling;
   void CheckSpelling(const std::u16string&,
+                     int,
                      CheckSpellingCallback) override;
   void FillSuggestionList(const std::u16string&,
                           FillSuggestionListCallback) override;

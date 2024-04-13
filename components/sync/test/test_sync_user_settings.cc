@@ -6,11 +6,11 @@
 
 #include "build/chromeos_buildflags.h"
 #include "components/sync/base/passphrase_enums.h"
+#include "components/sync/base/sync_prefs.h"
 #include "components/sync/base/user_selectable_type.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings_impl.h"
 #include "components/sync/engine/nigori/nigori.h"
-#include "components/sync/service/sync_prefs.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_user_settings_impl.h"
 #include "components/sync/test/test_sync_service.h"
 
 namespace syncer {
@@ -45,16 +45,14 @@ TestSyncUserSettings::TestSyncUserSettings(TestSyncService* service)
 
 TestSyncUserSettings::~TestSyncUserSettings() = default;
 
-bool TestSyncUserSettings::IsInitialSyncFeatureSetupComplete() const {
-  return initial_sync_feature_setup_complete_;
+bool TestSyncUserSettings::IsFirstSetupComplete() const {
+  return first_setup_complete_;
 }
 
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
-void TestSyncUserSettings::SetInitialSyncFeatureSetupComplete(
+void TestSyncUserSettings::SetFirstSetupComplete(
     SyncFirstSetupCompleteSource source) {
-  SetInitialSyncFeatureSetupComplete();
+  SetFirstSetupComplete();
 }
-#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 
 bool TestSyncUserSettings::IsSyncEverythingEnabled() const {
   return sync_everything_enabled_;
@@ -73,51 +71,14 @@ void TestSyncUserSettings::SetSelectedTypes(bool sync_everything,
   }
 }
 
-void TestSyncUserSettings::SetSelectedType(UserSelectableType type,
-                                           bool is_type_on) {
-  if (is_type_on) {
-    selected_types_.Put(type);
-  } else {
-    selected_types_.Remove(type);
-  }
-}
-
-void TestSyncUserSettings::KeepAccountSettingsPrefsOnlyForUsers(
-    const std::vector<signin::GaiaIdHash>& available_gaia_ids) {}
-
-#if BUILDFLAG(IS_IOS)
-void TestSyncUserSettings::SetBookmarksAndReadingListAccountStorageOptIn(
-    bool value) {}
-#endif  // BUILDFLAG(IS_IOS)
-
 UserSelectableTypeSet TestSyncUserSettings::GetSelectedTypes() const {
   return selected_types_;
 }
 
 bool TestSyncUserSettings::IsTypeManagedByPolicy(
     UserSelectableType type) const {
-  return managed_types_.Has(type);
-}
-
-bool TestSyncUserSettings::IsTypeManagedByCustodian(
-    UserSelectableType type) const {
   return false;
 }
-
-SyncUserSettings::UserSelectableTypePrefState
-TestSyncUserSettings::GetTypePrefStateForAccount(
-    UserSelectableType type) const {
-  if (selected_types_.Has(type)) {
-    return SyncUserSettings::UserSelectableTypePrefState::kEnabledOrDefault;
-  }
-  return SyncUserSettings::UserSelectableTypePrefState::kDisabled;
-}
-
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-int TestSyncUserSettings::GetNumberOfAccountsWithPasswordsSelected() const {
-  return selected_types_.Has(UserSelectableType::kPasswords) ? 1 : 0;
-}
-#endif
 
 ModelTypeSet TestSyncUserSettings::GetPreferredDataTypes() const {
   ModelTypeSet types = UserSelectableTypesToModelTypes(GetSelectedTypes());
@@ -136,15 +97,6 @@ UserSelectableTypeSet TestSyncUserSettings::GetRegisteredSelectableTypes()
 }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-bool TestSyncUserSettings::IsSyncFeatureDisabledViaDashboard() const {
-  return sync_feature_disabled_via_dashboard_;
-}
-
-void TestSyncUserSettings::SetSyncFeatureDisabledViaDashboard(
-    bool disabled_via_dashboard) {
-  sync_feature_disabled_via_dashboard_ = disabled_via_dashboard;
-}
-
 bool TestSyncUserSettings::IsSyncAllOsTypesEnabled() const {
   return sync_all_os_types_enabled_;
 }
@@ -155,7 +107,7 @@ UserSelectableOsTypeSet TestSyncUserSettings::GetSelectedOsTypes() const {
 
 bool TestSyncUserSettings::IsOsTypeManagedByPolicy(
     UserSelectableOsType type) const {
-  return managed_os_types_.Has(type);
+  return false;
 }
 
 void TestSyncUserSettings::SetSelectedOsTypes(bool sync_all_os_types,
@@ -210,7 +162,7 @@ bool TestSyncUserSettings::IsEncryptEverythingEnabled() const {
 ModelTypeSet TestSyncUserSettings::GetEncryptedDataTypes() const {
   if (!IsUsingExplicitPassphrase()) {
     // PASSWORDS and WIFI_CONFIGURATIONS are always encrypted.
-    return {PASSWORDS, WIFI_CONFIGURATIONS};
+    return ModelTypeSet(PASSWORDS, WIFI_CONFIGURATIONS);
   }
   // Some types can never be encrypted, e.g. DEVICE_INFO and
   // AUTOFILL_WALLET_DATA, so make sure we don't report them as encrypted.
@@ -254,7 +206,7 @@ base::Time TestSyncUserSettings::GetExplicitPassphraseTime() const {
   return base::Time();
 }
 
-std::optional<PassphraseType> TestSyncUserSettings::GetPassphraseType() const {
+PassphraseType TestSyncUserSettings::GetPassphraseType() const {
   return IsUsingExplicitPassphrase() ? PassphraseType::kCustomPassphrase
                                      : PassphraseType::kImplicitPassphrase;
 }
@@ -267,41 +219,20 @@ bool TestSyncUserSettings::SetDecryptionPassphrase(
   return false;
 }
 
-void TestSyncUserSettings::SetExplicitPassphraseDecryptionNigoriKey(
+void TestSyncUserSettings::SetDecryptionNigoriKey(
     std::unique_ptr<Nigori> nigori) {}
 
-std::unique_ptr<Nigori>
-TestSyncUserSettings::GetExplicitPassphraseDecryptionNigoriKey() const {
+std::unique_ptr<Nigori> TestSyncUserSettings::GetDecryptionNigoriKey() const {
   return nullptr;
 }
 
-void TestSyncUserSettings::SetInitialSyncFeatureSetupComplete() {
-  initial_sync_feature_setup_complete_ = true;
+void TestSyncUserSettings::SetFirstSetupComplete() {
+  first_setup_complete_ = true;
 }
 
-void TestSyncUserSettings::ClearInitialSyncFeatureSetupComplete() {
-  initial_sync_feature_setup_complete_ = false;
+void TestSyncUserSettings::ClearFirstSetupComplete() {
+  first_setup_complete_ = false;
 }
-
-void TestSyncUserSettings::SetTypeIsManaged(UserSelectableType type,
-                                            bool managed) {
-  if (managed) {
-    managed_types_.Put(type);
-  } else {
-    managed_types_.Remove(type);
-  }
-}
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-void TestSyncUserSettings::SetOsTypeIsManaged(UserSelectableOsType type,
-                                              bool managed) {
-  if (managed) {
-    managed_os_types_.Put(type);
-  } else {
-    managed_os_types_.Remove(type);
-  }
-}
-#endif
 
 void TestSyncUserSettings::SetPassphraseRequired(bool required) {
   passphrase_required_ = required;

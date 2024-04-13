@@ -5,11 +5,10 @@
 #ifndef COMPONENTS_POLICY_CORE_COMMON_MANAGEMENT_SCOPED_MANAGEMENT_SERVICE_OVERRIDE_FOR_TESTING_H_
 #define COMPONENTS_POLICY_CORE_COMMON_MANAGEMENT_SCOPED_MANAGEMENT_SERVICE_OVERRIDE_FOR_TESTING_H_
 
-#include <optional>
-
 #include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
 #include "components/policy/core/common/management/management_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 // Sets the management authorities override for |target| on construction, and
@@ -32,7 +31,7 @@ class ScopedManagementServiceOverrideForTesting {
 
  private:
   raw_ptr<ManagementService> service_;
-  std::optional<uint64_t> previous_authorities_;
+  absl::optional<uint64_t> previous_authorities_;
 };
 
 }  // namespace policy

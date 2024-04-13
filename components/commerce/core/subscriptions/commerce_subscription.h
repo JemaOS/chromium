@@ -5,10 +5,9 @@
 #ifndef COMPONENTS_COMMERCE_CORE_SUBSCRIPTIONS_COMMERCE_SUBSCRIPTION_H_
 #define COMPONENTS_COMMERCE_CORE_SUBSCRIPTIONS_COMMERCE_SUBSCRIPTION_H_
 
-#include <stdint.h>
-
-#include <optional>
 #include <string>
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 /**
  * To add a new SubscriptionType / IdentifierType / ManagementType:
@@ -86,7 +85,7 @@ struct CommerceSubscription {
       std::string id,
       ManagementType management_type,
       int64_t timestamp = kUnknownSubscriptionTimestamp,
-      std::optional<UserSeenOffer> user_seen_offer = std::nullopt);
+      absl::optional<UserSeenOffer> user_seen_offer = absl::nullopt);
   CommerceSubscription(const CommerceSubscription&);
   CommerceSubscription& operator=(const CommerceSubscription&);
   ~CommerceSubscription();
@@ -99,7 +98,7 @@ struct CommerceSubscription {
   // successful creation on the server side, the valid timestamp will be passed
   // back to client side and then stored locally.
   int64_t timestamp;
-  std::optional<UserSeenOffer> user_seen_offer;
+  absl::optional<UserSeenOffer> user_seen_offer;
 };
 
 std::string SubscriptionTypeToString(SubscriptionType type);

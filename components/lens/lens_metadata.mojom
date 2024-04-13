@@ -30,5 +30,4 @@ struct LatencyLog {
     gfx.mojom.Size downscaled_size;
     ImageFormat image_format;
     mojo_base.mojom.Time time;
-    uint32 encoded_bytes_size;
 };

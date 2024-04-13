@@ -11,21 +11,17 @@
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/memory/weak_ptr.h"
 #include "base/metrics/field_trial.h"
-#include "base/scoped_multi_source_observation.h"
-#include "base/scoped_observation.h"
 #include "base/sequence_checker.h"
 #include "base/time/time.h"
 #include "components/metrics/enabled_state_provider.h"
 #include "components/metrics/metrics_log_uploader.h"
 #include "components/metrics/metrics_service_client.h"
-#include "components/metrics/persistent_synthetic_trial_observer.h"
 #include "components/variations/synthetic_trial_registry.h"
 #include "components/version_info/android/channel_getter.h"
-#include "content/public/browser/render_process_host_creation_observer.h"
-#include "content/public/browser/render_process_host_observer.h"
-#include "content/public/browser/web_contents.h"
+#include "components/version_info/version_info.h"
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
 
 class PrefRegistrySimple;
 class PrefService;
@@ -96,11 +92,9 @@ extern const char kCrashpadHistogramAllocatorName[];
 //
 // To match chrome on other platforms (including android), the MetricsService is
 // always created.
-class AndroidMetricsServiceClient
-    : public MetricsServiceClient,
-      public EnabledStateProvider,
-      public content::RenderProcessHostCreationObserver,
-      public content::RenderProcessHostObserver {
+class AndroidMetricsServiceClient : public MetricsServiceClient,
+                                    public EnabledStateProvider,
+                                    public content::NotificationObserver {
  public:
   AndroidMetricsServiceClient();
   ~AndroidMetricsServiceClient() override;
@@ -151,7 +145,6 @@ class AndroidMetricsServiceClient
   SystemProfileProto::Channel GetChannel() override;
   bool IsExtendedStableChannel() override;
   std::string GetVersionString() override;
-  void MergeSubprocessHistograms() override;
   void CollectFinalMetricsForLog(
       const base::OnceClosure done_callback) override;
   std::unique_ptr<MetricsLogUploader> CreateUploader(
@@ -168,15 +161,10 @@ class AndroidMetricsServiceClient
   // returns the empty string.
   std::string GetAppPackageNameIfLoggable() override;
 
-  void OnWebContentsCreated(content::WebContents* web_contents);
-
-  // content::RenderProcessHostCreationObserver
-  void OnRenderProcessHostCreated(content::RenderProcessHost* host) override;
-
-  // RenderProcessHostObserver:
-  void RenderProcessExited(
-      content::RenderProcessHost* host,
-      const content::ChildProcessTerminationInfo& info) override;
+  // content::NotificationObserver
+  void Observe(int type,
+               const content::NotificationSource& source,
+               const content::NotificationDetails& details) override;
 
   // Runs |closure| when CollectFinalMetricsForLog() is called, when we begin
   // collecting final metrics.
@@ -275,21 +263,11 @@ class AndroidMetricsServiceClient
   void RegisterMetricsProvidersAndInitState();
   void CreateUkmService();
 
-  void OnApplicationNotIdle();
-  void OnDidStartLoading();
-
   std::unique_ptr<MetricsStateManager> metrics_state_manager_;
   std::unique_ptr<variations::SyntheticTrialRegistry> synthetic_trial_registry_;
-  // Metrics service observer for synthetic trials.
-  metrics::PersistentSyntheticTrialObserver synthetic_trial_observer_;
-  base::ScopedObservation<variations::SyntheticTrialRegistry,
-                          variations::SyntheticTrialObserver>
-      synthetic_trial_observation_{&synthetic_trial_observer_};
   std::unique_ptr<MetricsService> metrics_service_;
   std::unique_ptr<ukm::UkmService> ukm_service_;
-  base::ScopedMultiSourceObservation<content::RenderProcessHost,
-                                     content::RenderProcessHostObserver>
-      host_observation_{this};
+  content::NotificationRegistrar registrar_;
   raw_ptr<PrefService> pref_service_ = nullptr;
   bool init_finished_ = false;
   bool set_consent_finished_ = false;
@@ -314,8 +292,6 @@ class AndroidMetricsServiceClient
   // BrowserThread::UI. Use |sequence_checker_| to enforce that the
   // MetricsServiceClient is used on a single thread.
   SEQUENCE_CHECKER(sequence_checker_);
-
-  base::WeakPtrFactory<AndroidMetricsServiceClient> weak_ptr_factory_{this};
 };
 
 }  // namespace metrics

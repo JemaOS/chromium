@@ -80,6 +80,7 @@ void LaunchDateAndTimeSettings() {
 
 #elif BUILDFLAG(IS_MAC)
   base::mac::OpenSystemSettingsPane(base::mac::SystemSettingsPane::kDateTime);
+
 #elif BUILDFLAG(IS_WIN)
   base::FilePath path;
   base::PathService::Get(base::DIR_SYSTEM, &path);
@@ -93,9 +94,8 @@ void LaunchDateAndTimeSettings() {
   options.wait = false;
   base::LaunchProcess(command, options);
 
-#elif BUILDFLAG(IS_FUCHSIA) || BUILDFLAG(IS_IOS)
+#elif BUILDFLAG(IS_FUCHSIA)
   // TODO(crbug.com/1233494): Send to the platform settings.
-  // The iOS Blink port also need to send the platform settings.
   NOTIMPLEMENTED_LOG_ONCE();
 #else
 #error Unsupported target architecture.

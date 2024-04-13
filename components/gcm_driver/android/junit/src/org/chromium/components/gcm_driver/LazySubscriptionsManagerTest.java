@@ -21,29 +21,30 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 
 import java.util.Set;
 
-/** Unit tests for LazySubscriptionsManager. */
+/**
+ * Unit tests for LazySubscriptionsManager.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class LazySubscriptionsManagerTest {
-    /** Tests the persistence of the "hasPersistedMessages" flag. */
+    /**
+     * Tests the persistence of the "hasPersistedMessages" flag.
+     */
     @Test
     public void testHasPersistedMessages() {
         final String subscriptionId = "subscription_id";
         // By default there is no persisted messages.
-        assertTrue(
-                LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId)
-                        .isEmpty());
+        assertTrue(LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId)
+                           .isEmpty());
 
         LazySubscriptionsManager.storeHasPersistedMessagesForSubscription(subscriptionId, true);
-        assertEquals(
-                1,
+        assertEquals(1,
                 LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId)
                         .size());
 
         LazySubscriptionsManager.storeHasPersistedMessagesForSubscription(subscriptionId, false);
-        assertTrue(
-                LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId)
-                        .isEmpty());
+        assertTrue(LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId)
+                           .isEmpty());
     }
 
     /**
@@ -58,36 +59,32 @@ public class LazySubscriptionsManagerTest {
         LazySubscriptionsManager.storeLazinessInformation(subscriptionId2, true);
 
         SharedPreferences sharedPrefs = ContextUtils.getAppSharedPreferences();
-        sharedPrefs
-                .edit()
+        sharedPrefs.edit()
                 .putBoolean(LazySubscriptionsManager.LEGACY_HAS_PERSISTED_MESSAGES_KEY, false)
                 .apply();
         LazySubscriptionsManager.migrateHasPersistedMessagesPref();
 
-        assertTrue(
-                LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId1)
-                        .isEmpty());
-        assertTrue(
-                LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId2)
-                        .isEmpty());
+        assertTrue(LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId1)
+                           .isEmpty());
+        assertTrue(LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId2)
+                           .isEmpty());
 
-        sharedPrefs
-                .edit()
+        sharedPrefs.edit()
                 .putBoolean(LazySubscriptionsManager.LEGACY_HAS_PERSISTED_MESSAGES_KEY, true)
                 .apply();
         LazySubscriptionsManager.migrateHasPersistedMessagesPref();
 
-        assertEquals(
-                1,
+        assertEquals(1,
                 LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId1)
                         .size());
-        assertEquals(
-                1,
+        assertEquals(1,
                 LazySubscriptionsManager.getSubscriptionIdsWithPersistedMessages(subscriptionId2)
                         .size());
     }
 
-    /** Tests that lazy subscriptions are stored. */
+    /**
+     * Tests that lazy subscriptions are stored.
+     */
     @Test
     public void testMarkSubscriptionAsLazy() {
         final String subscriptionId = "subscription_id";
@@ -95,7 +92,9 @@ public class LazySubscriptionsManagerTest {
         assertTrue(LazySubscriptionsManager.isSubscriptionLazy(subscriptionId));
     }
 
-    /** Tests that unlazy subscriptions are stored. */
+    /**
+     * Tests that unlazy subscriptions are stored.
+     */
     @Test
     public void testMarkSubscriptionAsNotLazy() {
         final String subscriptionId = "subscription_id";
@@ -103,14 +102,18 @@ public class LazySubscriptionsManagerTest {
         assertFalse(LazySubscriptionsManager.isSubscriptionLazy(subscriptionId));
     }
 
-    /** Tests subscriptions are not lazy be default. */
+    /**
+     * Tests subscriptions are not lazy be default.
+     */
     @Test
     public void testDefaultSubscriptionNotLazy() {
         final String subscriptionId = "subscription_id";
         assertFalse(LazySubscriptionsManager.isSubscriptionLazy(subscriptionId));
     }
 
-    /** Tests that switching from lazy to unlazy should leave no queued messages behind. */
+    /**
+     * Tests that switching from lazy to unlazy should leave no queued messages behind.
+     */
     @Test
     public void testSwitchingFromLazyToUnlazy() {
         final String subscriptionId = "subscription_id";
@@ -128,7 +131,9 @@ public class LazySubscriptionsManagerTest {
         assertEquals(0, LazySubscriptionsManager.readMessages(subscriptionId).length);
     }
 
-    /** Tests that switching from lazy to unlazy and back to lazy. */
+    /**
+     * Tests that switching from lazy to unlazy and back to lazy.
+     */
     @Test
     public void testSwitchingFromLazyToUnlazyAndBackToLazy() {
         final String subscriptionId = "subscription_id";
@@ -155,7 +160,9 @@ public class LazySubscriptionsManagerTest {
         assertTrue(lazySubscriptionIds.contains(subscriptionId3));
     }
 
-    /** Tests that GCM messages are persisted and read. */
+    /**
+     * Tests that GCM messages are persisted and read.
+     */
     @Test
     public void testReadingPersistedMessage() {
         final String subscriptionId = "subscriptionId";
@@ -175,7 +182,9 @@ public class LazySubscriptionsManagerTest {
         assertEquals(0, messages.length);
     }
 
-    /** Tests that only MESSAGES_QUEUE_SIZE messages are kept. */
+    /**
+     * Tests that only MESSAGES_QUEUE_SIZE messages are kept.
+     */
     @Test
     public void testPersistingMessageCount() {
         // This tests persists MESSAGES_QUEUE_SIZE+extraMessagesCount messages
@@ -187,8 +196,7 @@ public class LazySubscriptionsManagerTest {
         final int extraMessagesCount = 5;
 
         // Persist |MESSAGES_QUEUE_SIZE| + |extraMessagesCount| messages.
-        for (int i = 0;
-                i < LazySubscriptionsManager.MESSAGES_QUEUE_SIZE + extraMessagesCount;
+        for (int i = 0; i < LazySubscriptionsManager.MESSAGES_QUEUE_SIZE + extraMessagesCount;
                 i++) {
             Bundle extras = new Bundle();
             extras.putString("subtype", "MyAppId");
@@ -205,7 +213,9 @@ public class LazySubscriptionsManagerTest {
         }
     }
 
-    /** Tests that messages with the same collapse key override each other. */
+    /**
+     * Tests that messages with the same collapse key override each other.
+     */
     @Test
     public void testCollapseKeyCollision() {
         final String subscriptionId = "subscriptionId";
@@ -236,7 +246,9 @@ public class LazySubscriptionsManagerTest {
         assertArrayEquals(rawData2, messages[0].getRawData());
     }
 
-    /** Tests that messages with the same collapse key override each other. */
+    /**
+     * Tests that messages with the same collapse key override each other.
+     */
     @Test
     public void testDeletePersistedMessages() {
         final String subscriptionId = "subscriptionId";

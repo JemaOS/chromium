@@ -36,18 +36,13 @@ class VizPixelTest : public cc::PixelTest {
       case RendererType::kSkiaGL:
       case RendererType::kSkiaVk:
         return "skia";
-      case RendererType::kSkiaGraphiteDawn:
-      case RendererType::kSkiaGraphiteMetal:
+      case RendererType::kSkiaGraphite:
         return "graphite";
     }
   }
 
   bool is_software_renderer() const {
     return renderer_type_ == RendererType::kSoftware;
-  }
-  bool is_skia_graphite() const {
-    return renderer_type_ == RendererType::kSkiaGraphiteDawn ||
-           renderer_type_ == RendererType::kSkiaGraphiteMetal;
   }
 
  protected:

@@ -24,19 +24,11 @@
 #include "components/policy/proto/chrome_extension_policy.pb.h"
 #endif
 
-namespace enterprise_management {
-class CloudPolicySettings;
-}  // namespace enterprise_management
-
 namespace policy {
 
 // A helper class for testing that provides a straightforward interface for
 // constructing policy blobs for use in testing. NB: This uses fake data and
 // hard-coded signing keys by default, so should not be used in production code.
-// The signatures are generated based on different key than used in production,
-// so any test using this class needs to add the command line flag
-// switches::kPolicyVerificationKey to change the verification key if they
-// wish the signatures provided by this class to pass validation.
 class PolicyBuilder {
  public:
   // Constants used as dummy data for filling the PolicyData protobuf.
@@ -129,10 +121,6 @@ class PolicyBuilder {
   static std::vector<uint8_t> GetPublicTestKey();
   static std::vector<uint8_t> GetPublicTestOtherKey();
 
-  // Returns the Base64 encoded verification public key.
-  static std::string GetEncodedPolicyVerificationKey();
-  static std::string GetPublicKeyVerificationDataSignature();
-
   // These methods return the public part of the corresponding signing keys as a
   // string, using the same binary format that is used for storing the public
   // keys in the policy protobufs.
@@ -145,9 +133,6 @@ class PolicyBuilder {
 
   // Created using dummy data used for filling the PolicyData protobuf.
   static AccountId GetFakeAccountIdForTesting();
-
-  void SetSignatureType(
-      enterprise_management::PolicyFetchRequest::SignatureType signature_type);
 
  private:
   enterprise_management::PolicyFetchResponse policy_;
@@ -162,9 +147,6 @@ class PolicyBuilder {
   std::vector<uint8_t> raw_signing_key_;
   std::vector<uint8_t> raw_new_signing_key_;
   std::string raw_new_signing_key_signature_;
-
-  enterprise_management::PolicyFetchRequest::SignatureType signature_type_ =
-      enterprise_management::PolicyFetchRequest::NONE;
 };
 
 // Type-parameterized PolicyBuilder extension that allows for building policy

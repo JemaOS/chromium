@@ -55,6 +55,8 @@ class COMPONENT_EXPORT(SODA_INSTALLER) SodaInstaller {
   SodaInstaller(const SodaInstaller&) = delete;
   SodaInstaller& operator=(const SodaInstaller&) = delete;
 
+  // Implemented in the platform-specific subclass to get the SodaInstaller
+  // instance.
   static SodaInstaller* GetInstance();
 
   // Registers user preferences related to the Speech On-Device API (SODA)
@@ -64,7 +66,7 @@ class COMPONENT_EXPORT(SODA_INSTALLER) SodaInstaller {
   // Initialize SODA if any SODA-utilising feature is enabled. Intended to be
   // called during embedder startup. Checks whether SODA is due for
   // uninstallation, and if so, triggers uninstallation.
-  virtual void Init(PrefService* profile_prefs, PrefService* global_prefs);
+  void Init(PrefService* profile_prefs, PrefService* global_prefs);
 
   // Schedules SODA for uninstallation if no SODA client features are
   // currently enabled. Should be called when client features using SODA are
@@ -115,7 +117,7 @@ class COMPONENT_EXPORT(SODA_INSTALLER) SodaInstaller {
 
   // Returns the error encountered while installing soda for the language code
   // or soda binary.
-  std::optional<ErrorCode> GetSodaInstallErrorCode(
+  absl::optional<ErrorCode> GetSodaInstallErrorCode(
       LanguageCode language_code) const;
 
   // TODO(crbug.com/1237462): Consider creating a MockSodaInstaller class that
@@ -136,13 +138,7 @@ class COMPONENT_EXPORT(SODA_INSTALLER) SodaInstaller {
       LanguageCode language_code = LanguageCode::kNone);
   bool IsAnyLanguagePackInstalledForTesting() const;
 
-  const std::set<LanguageCode> InstalledLanguages() const;
-
  protected:
-  // Initializes language and installs the per-language components.
-  virtual void InitLanguages(PrefService* profile_prefs,
-                             PrefService* global_prefs);
-
   // Registers the preference tracking the installed SODA language packs.
   static void RegisterRegisteredLanguagePackPref(PrefRegistrySimple* registry);
 

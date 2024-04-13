@@ -40,10 +40,11 @@ GetFileSystemInfoOptions CreateOptions(const base::FilePath& path,
 }
 
 std::string HexEncodeHash(const std::string& hashed_data) {
-  return base::ToLowerASCII(base::HexEncode(hashed_data));
+  return base::ToLowerASCII(
+      base::HexEncode(std::data(hashed_data), hashed_data.size()));
 }
 
-std::optional<size_t> FindItemIndexByFilePath(
+absl::optional<size_t> FindItemIndexByFilePath(
     const base::FilePath& expected_file_path,
     const std::vector<FileSystemItem>& items) {
   for (size_t i = 0; i < items.size(); i++) {
@@ -51,7 +52,7 @@ std::optional<size_t> FindItemIndexByFilePath(
       return i;
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -74,10 +75,6 @@ class FileSystemServiceTest : public testing::Test {
     ON_CALL(*mock_executable_metadata_service_,
             GetAllExecutableMetadata(FilePathSet()))
         .WillByDefault(Return(FilePathMap<ExecutableMetadata>()));
-  }
-  ~FileSystemServiceTest() override {
-    mock_platform_delegate_ = nullptr;
-    mock_executable_metadata_service_ = nullptr;
   }
 
   void ExpectResolvablePath(const base::FilePath& path,
@@ -258,7 +255,7 @@ TEST_F(FileSystemServiceTest, GetSignals_ExecutableMetadata) {
   EXPECT_EQ(item.executable_metadata.value(), executable_metadata);
 
   // We did not request executable metadata from the second file, so it should
-  // be std::nullopt.
+  // be absl::nullopt.
   index = FindItemIndexByFilePath(second_found_path, file_system_items);
   ASSERT_TRUE(index.has_value());
   item = file_system_items[index.value()];

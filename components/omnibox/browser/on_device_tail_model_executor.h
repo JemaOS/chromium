@@ -15,7 +15,6 @@
 #include "base/files/file_path.h"
 #include "base/files/memory_mapped_file.h"
 #include "base/memory/raw_ptr.h"
-#include "base/time/time.h"
 #include "components/omnibox/browser/on_device_tail_tokenizer.h"
 #include "components/optimization_guide/proto/on_device_tail_suggest_model_metadata.pb.h"
 #include "third_party/tflite/src/tensorflow/lite/interpreter.h"
@@ -36,24 +35,6 @@ class OnDeviceTailModelExecutor {
     float probability;
   };
 
-  // The struct holds the input parameters needed to generate predictions from
-  // the model.
-  struct ModelInput {
-    ModelInput();
-    ModelInput(std::string prefix,
-               std::string previous_query,
-               size_t max_num_suggestions,
-               size_t max_rnn_steps,
-               float probability_threshold);
-    ~ModelInput();
-
-    std::string prefix;
-    std::string previous_query;
-    size_t max_num_suggestions;
-    size_t max_rnn_steps;
-    float probability_threshold;
-  };
-
   using ModelMetadata =
       optimization_guide::proto::OnDeviceTailSuggestModelMetadata;
 
@@ -61,10 +42,8 @@ class OnDeviceTailModelExecutor {
   ~OnDeviceTailModelExecutor();
 
   // Initializes the model executor.
-  bool Init();
   bool Init(const base::FilePath& model_filepath,
             const base::FilePath& vocab_filepath,
-            const base::FilePath& badword_hashes_filepath,
             const ModelMetadata& metadata);
 
   // Returns whether the executor is initialized.
@@ -77,12 +56,12 @@ class OnDeviceTailModelExecutor {
   // with minimum probability `probability_threshold` for the given `prefix` and
   // `previous_query`. The given prefix will only be extended at most
   // `max_rnn_steps` times.
-  std::vector<Prediction> GenerateSuggestionsForPrefix(const ModelInput& input);
-
-  // Returns the time when the executor is last called.
-  base::TimeTicks GetExecutorLastCalledTime() const {
-    return executor_last_called_time_;
-  }
+  std::vector<Prediction> GenerateSuggestionsForPrefix(
+      const std::string& prefix,
+      const std::string& previous_query,
+      size_t max_num_suggestions,
+      size_t max_rnn_steps,
+      float probability_threshold);
 
  private:
   friend class OnDeviceTailModelExecutorPublic;
@@ -211,18 +190,6 @@ class OnDeviceTailModelExecutor {
   // Helper to calculate log probability.
   static float GetLogProbability(float probability);
 
-  // Loads badword hash set from filepath.
-  void LoadBadwordHashSet();
-
-  // Determines if the given suggestion is bad and should be discarded, by
-  // checking if the suggestion contain words specified by `badword_hashes_`.
-  // Note currently this function might not support CJK language properly as it
-  // uses whitespace to split the suggestion.
-  // We use this on device filter since this model is an ML model and we do not
-  // have a good way to force the model to drop a given result in any
-  // circumstance during training.
-  bool IsSuggestionBad(const std::string suggestion);
-
   // The tokenizer and tensorflow lite model & interpreter instances.
   std::unique_ptr<OnDeviceTailTokenizer> tokenizer_;
   std::unique_ptr<base::MemoryMappedFile> model_fb_;
@@ -245,19 +212,6 @@ class OnDeviceTailModelExecutor {
   size_t num_layer_;
   size_t embedding_dimension_;
   size_t vocab_size_;
-
-  // The time when the executor is last called.
-  base::TimeTicks executor_last_called_time_;
-
-  // Files and metadata needed to initialize the model executor;
-  base::FilePath model_filepath_;
-  base::FilePath vocab_filepath_;
-  base::FilePath badword_hashes_filepath_;
-  optimization_guide::proto::OnDeviceTailSuggestModelMetadata metadata_;
-
-  // Hashes (calculated by base::PersistentHash) of badword used to filter bad
-  // suggestions.
-  std::set<uint32_t> badword_hashes_;
 };
 
 #endif  // COMPONENTS_OMNIBOX_BROWSER_ON_DEVICE_TAIL_MODEL_EXECUTOR_H_

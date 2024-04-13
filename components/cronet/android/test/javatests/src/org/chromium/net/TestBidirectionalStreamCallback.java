@@ -4,11 +4,12 @@
 
 package org.chromium.net;
 
-import static com.google.common.truth.Truth.assertThat;
-
-import static org.junit.Assert.fail;
-
 import android.os.ConditionVariable;
+
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ import java.util.concurrent.ThreadFactory;
  * Allows to cancel, block stream or throw an exception from an arbitrary step.
  */
 public class TestBidirectionalStreamCallback extends BidirectionalStream.Callback {
-    private UrlResponseInfo mResponseInfo;
+    public UrlResponseInfo mResponseInfo;
     public CronetException mError;
 
     public ResponseStep mResponseStep = ResponseStep.NOTHING;
@@ -42,10 +43,6 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     // When false, the consumer is responsible for all calls into the stream
     // that advance it.
     private boolean mAutoAdvance = true;
-
-    // The executor thread will block on this after reaching a terminal method.
-    // Terminal methods are (onSucceeded, onFailed or onCancelled)
-    private ConditionVariable mBlockOnTerminalState = new ConditionVariable(true);
 
     // Conditionally fail on certain steps.
     private FailureType mFailureType = FailureType.NONE;
@@ -87,7 +84,6 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     private static class WriteBuffer {
         final ByteBuffer mBuffer;
         final boolean mFlush;
-
         public WriteBuffer(ByteBuffer buffer, boolean flush) {
             mBuffer = buffer;
             mFlush = flush;
@@ -131,20 +127,6 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     public TestBidirectionalStreamCallback(boolean useDirectExecutor) {
         mUseDirectExecutor = useDirectExecutor;
         mDirectExecutor = new DirectExecutor();
-    }
-
-    /**
-     * This blocks the callback executor thread once it has reached a final state callback.
-     * In order to continue execution, this method must be called again and providing {@code false}
-     * to continue execution.
-     * @param blockOnTerminalState the state to set for the executor thread
-     */
-    public void setBlockOnTerminalState(boolean blockOnTerminalState) {
-        if (blockOnTerminalState) {
-            mBlockOnTerminalState.close();
-        } else {
-            mBlockOnTerminalState.open();
-        }
     }
 
     public void setAutoAdvance(boolean autoAdvance) {
@@ -199,9 +181,9 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     @Override
     public void onStreamReady(BidirectionalStream stream) {
         checkOnValidThread();
-        assertThat(stream.isDone()).isFalse();
-        assertThat(mResponseStep).isEqualTo(ResponseStep.NOTHING);
-        assertThat(mError).isNull();
+        assertFalse(stream.isDone());
+        assertEquals(ResponseStep.NOTHING, mResponseStep);
+        assertNull(mError);
         mResponseStep = ResponseStep.ON_STREAM_READY;
         if (maybeThrowCancelOrPause(stream, mWriteStepBlock)) {
             return;
@@ -212,13 +194,11 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     @Override
     public void onResponseHeadersReceived(BidirectionalStream stream, UrlResponseInfo info) {
         checkOnValidThread();
-        assertThat(stream.isDone()).isFalse();
-        assertThat(mResponseStep)
-                .isAnyOf(
-                        ResponseStep.NOTHING,
-                        ResponseStep.ON_STREAM_READY,
-                        ResponseStep.ON_WRITE_COMPLETED);
-        assertThat(mError).isNull();
+        assertFalse(stream.isDone());
+        assertTrue(mResponseStep == ResponseStep.NOTHING
+                || mResponseStep == ResponseStep.ON_STREAM_READY
+                || mResponseStep == ResponseStep.ON_WRITE_COMPLETED);
+        assertNull(mError);
 
         mResponseStep = ResponseStep.ON_RESPONSE_STARTED;
         mResponseInfo = info;
@@ -229,20 +209,15 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     }
 
     @Override
-    public void onReadCompleted(
-            BidirectionalStream stream,
-            UrlResponseInfo info,
-            ByteBuffer byteBuffer,
-            boolean endOfStream) {
+    public void onReadCompleted(BidirectionalStream stream, UrlResponseInfo info,
+            ByteBuffer byteBuffer, boolean endOfStream) {
         checkOnValidThread();
-        assertThat(stream.isDone()).isFalse();
-        assertThat(mResponseStep)
-                .isAnyOf(
-                        ResponseStep.ON_RESPONSE_STARTED,
-                        ResponseStep.ON_READ_COMPLETED,
-                        ResponseStep.ON_WRITE_COMPLETED,
-                        ResponseStep.ON_TRAILERS);
-        assertThat(mError).isNull();
+        assertFalse(stream.isDone());
+        assertTrue(mResponseStep == ResponseStep.ON_RESPONSE_STARTED
+                || mResponseStep == ResponseStep.ON_READ_COMPLETED
+                || mResponseStep == ResponseStep.ON_WRITE_COMPLETED
+                || mResponseStep == ResponseStep.ON_TRAILERS);
+        assertNull(mError);
 
         mResponseStep = ResponseStep.ON_READ_COMPLETED;
         mResponseInfo = info;
@@ -268,18 +243,15 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     }
 
     @Override
-    public void onWriteCompleted(
-            BidirectionalStream stream,
-            UrlResponseInfo info,
-            ByteBuffer buffer,
-            boolean endOfStream) {
+    public void onWriteCompleted(BidirectionalStream stream, UrlResponseInfo info,
+            ByteBuffer buffer, boolean endOfStream) {
         checkOnValidThread();
-        assertThat(stream.isDone()).isFalse();
-        assertThat(mError).isNull();
+        assertFalse(stream.isDone());
+        assertNull(mError);
         mResponseStep = ResponseStep.ON_WRITE_COMPLETED;
         mResponseInfo = info;
         if (!mWriteBuffersToBeAcked.isEmpty()) {
-            assertThat(mWriteBuffersToBeAcked.get(0).mBuffer).isEqualTo(buffer);
+            assertEquals(buffer, mWriteBuffersToBeAcked.get(0).mBuffer);
             mWriteBuffersToBeAcked.remove(0);
         }
         if (maybeThrowCancelOrPause(stream, mWriteStepBlock)) {
@@ -289,13 +261,11 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     }
 
     @Override
-    public void onResponseTrailersReceived(
-            BidirectionalStream stream,
-            UrlResponseInfo info,
+    public void onResponseTrailersReceived(BidirectionalStream stream, UrlResponseInfo info,
             UrlResponseInfo.HeaderBlock trailers) {
         checkOnValidThread();
-        assertThat(stream.isDone()).isFalse();
-        assertThat(mError).isNull();
+        assertFalse(stream.isDone());
+        assertNull(mError);
         mResponseStep = ResponseStep.ON_TRAILERS;
         mResponseInfo = info;
         mTrailers = trailers;
@@ -307,60 +277,55 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
     @Override
     public void onSucceeded(BidirectionalStream stream, UrlResponseInfo info) {
         checkOnValidThread();
-        assertThat(stream.isDone()).isTrue();
-        assertThat(mResponseStep)
-                .isAnyOf(
-                        ResponseStep.ON_RESPONSE_STARTED,
-                        ResponseStep.ON_READ_COMPLETED,
-                        ResponseStep.ON_WRITE_COMPLETED,
-                        ResponseStep.ON_TRAILERS);
-        assertThat(mOnErrorCalled).isFalse();
-        assertThat(mOnCanceledCalled).isFalse();
-        assertThat(mError).isNull();
-        assertThat(mWriteBuffers).isEmpty();
-        assertThat(mWriteBuffersToBeAcked).isEmpty();
+        assertTrue(stream.isDone());
+        assertTrue(mResponseStep == ResponseStep.ON_RESPONSE_STARTED
+                || mResponseStep == ResponseStep.ON_READ_COMPLETED
+                || mResponseStep == ResponseStep.ON_WRITE_COMPLETED
+                || mResponseStep == ResponseStep.ON_TRAILERS);
+        assertFalse(mOnErrorCalled);
+        assertFalse(mOnCanceledCalled);
+        assertNull(mError);
+        assertEquals(0, mWriteBuffers.size());
+        assertEquals(0, mWriteBuffersToBeAcked.size());
 
         mResponseStep = ResponseStep.ON_SUCCEEDED;
         mResponseInfo = info;
         openDone();
-        mBlockOnTerminalState.block();
         maybeThrowCancelOrPause(stream, mReadStepBlock);
     }
 
     @Override
     public void onFailed(BidirectionalStream stream, UrlResponseInfo info, CronetException error) {
         checkOnValidThread();
-        assertThat(stream.isDone()).isTrue();
+        assertTrue(stream.isDone());
         // Shouldn't happen after success.
-        assertThat(mResponseStep).isNotEqualTo(ResponseStep.ON_SUCCEEDED);
+        assertTrue(mResponseStep != ResponseStep.ON_SUCCEEDED);
         // Should happen at most once for a single stream.
-        assertThat(mOnErrorCalled).isFalse();
-        assertThat(mOnCanceledCalled).isFalse();
-        assertThat(mError).isNull();
+        assertFalse(mOnErrorCalled);
+        assertFalse(mOnCanceledCalled);
+        assertNull(mError);
         mResponseStep = ResponseStep.ON_FAILED;
         mResponseInfo = info;
 
         mOnErrorCalled = true;
         mError = error;
         openDone();
-        mBlockOnTerminalState.block();
         maybeThrowCancelOrPause(stream, mReadStepBlock);
     }
 
     @Override
     public void onCanceled(BidirectionalStream stream, UrlResponseInfo info) {
         checkOnValidThread();
-        assertThat(stream.isDone()).isTrue();
+        assertTrue(stream.isDone());
         // Should happen at most once for a single stream.
-        assertThat(mOnCanceledCalled).isFalse();
-        assertThat(mOnErrorCalled).isFalse();
-        assertThat(mError).isNull();
+        assertFalse(mOnCanceledCalled);
+        assertFalse(mOnErrorCalled);
+        assertNull(mError);
         mResponseStep = ResponseStep.ON_CANCELED;
         mResponseInfo = info;
 
         mOnCanceledCalled = true;
         openDone();
-        mBlockOnTerminalState.block();
         maybeThrowCancelOrPause(stream, mReadStepBlock);
     }
 
@@ -395,29 +360,11 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
         return mDone.block(1);
     }
 
-    /** Returns the number of pending Writes. */
+    /**
+     * Returns the number of pending Writes.
+     */
     public int numPendingWrites() {
         return mWriteBuffers.size();
-    }
-
-    /**
-     * Asserts that there is no callback error before trying to access responseInfo. Only use this
-     * when you expect {@code mError} to be null.
-     * @return {@link UrlResponseInfo}
-     */
-    public UrlResponseInfo getResponseInfoWithChecks() {
-        assertThat(mError).isNull();
-        assertThat(mOnErrorCalled).isFalse();
-        assertThat(mResponseInfo).isNotNull();
-        return mResponseInfo;
-    }
-
-    /**
-     * Simply returns {@code mResponseInfo} with no nullability or error checks.
-     * @return {@link UrlResponseInfo}
-     */
-    public UrlResponseInfo getResponseInfo() {
-        return mResponseInfo;
     }
 
     protected void openDone() {
@@ -441,13 +388,12 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
         if (mFailureType == FailureType.THROW_SYNC) {
             throw new IllegalStateException("Callback Exception.");
         }
-        Runnable task =
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        stream.cancel();
-                    }
-                };
+        Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                stream.cancel();
+            }
+        };
         if (mFailureType == FailureType.CANCEL_ASYNC
                 || mFailureType == FailureType.CANCEL_ASYNC_WITHOUT_PAUSE) {
             getExecutor().execute(task);
@@ -457,77 +403,12 @@ public class TestBidirectionalStreamCallback extends BidirectionalStream.Callbac
         return mFailureType != FailureType.CANCEL_ASYNC_WITHOUT_PAUSE;
     }
 
-    /** Checks whether callback methods are invoked on the correct thread. */
+    /**
+     * Checks whether callback methods are invoked on the correct thread.
+     */
     private void checkOnValidThread() {
         if (!mUseDirectExecutor) {
-            assertThat(Thread.currentThread()).isEqualTo(mExecutorThread);
-        }
-    }
-
-    /**
-     * A simple callback for a succeeding stream. Fails when other callbacks that should not be
-     * executed are called.
-     */
-    public static class SimpleSucceedingCallback extends BidirectionalStream.Callback {
-        public final ConditionVariable done = new ConditionVariable();
-        private final ExecutorService mExecutor;
-
-        public SimpleSucceedingCallback() {
-            mExecutor = Executors.newSingleThreadExecutor();
-        }
-
-        @Override
-        public void onStreamReady(BidirectionalStream stream) {}
-
-        @Override
-        public void onResponseHeadersReceived(BidirectionalStream stream, UrlResponseInfo info) {
-            stream.read(ByteBuffer.allocateDirect(32 * 1024));
-        }
-
-        @Override
-        public void onReadCompleted(
-                BidirectionalStream stream,
-                UrlResponseInfo info,
-                ByteBuffer byteBuffer,
-                boolean endOfStream) {
-            byteBuffer.clear(); // we don't care about the data
-            if (!endOfStream) {
-                stream.read(byteBuffer);
-            }
-        }
-
-        @Override
-        public void onWriteCompleted(
-                BidirectionalStream bidirectionalStream,
-                UrlResponseInfo urlResponseInfo,
-                ByteBuffer byteBuffer,
-                boolean endOfStream) {
-            fail();
-        }
-
-        @Override
-        public void onResponseTrailersReceived(
-                BidirectionalStream bidirectionalStream,
-                UrlResponseInfo urlResponseInfo,
-                UrlResponseInfo.HeaderBlock headerBlock) {
-            fail();
-        }
-
-        @Override
-        public void onSucceeded(BidirectionalStream stream, UrlResponseInfo info) {
-            done.open();
-        }
-
-        @Override
-        public void onFailed(
-                BidirectionalStream bidirectionalStream,
-                UrlResponseInfo urlResponseInfo,
-                CronetException e) {
-            fail(e.getMessage());
-        }
-
-        public ExecutorService getExecutor() {
-            return mExecutor;
+            assertEquals(mExecutorThread, Thread.currentThread());
         }
     }
 }

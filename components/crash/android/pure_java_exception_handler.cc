@@ -8,5 +8,5 @@
 
 void UninstallPureJavaExceptionHandler() {
   Java_PureJavaExceptionHandler_uninstallHandler(
-      jni_zero::AttachCurrentThread());
+      base::android::AttachCurrentThread());
 }

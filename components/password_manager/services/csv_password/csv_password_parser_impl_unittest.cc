@@ -10,7 +10,6 @@
 
 #include "base/run_loop.h"
 #include "base/test/bind.h"
-#include "base/test/gmock_expected_support.h"
 #include "base/test/task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -115,16 +114,19 @@ TEST_F(CSVPasswordParserImplTest, ParseFileMissingFields) {
       R"(Display Name,   ,Login,Secret Question,Password,URL,Timestamp
         :)        Bob,ABCD!,blabla,https://example.org,132)";
 
-  ParseCSV(
-      raw_csv,
-      base::BindLambdaForTesting([&](mojom::CSVPasswordSequencePtr sequence) {
-        EXPECT_TRUE(sequence);
-        EXPECT_EQ(1u, sequence->csv_passwords.size());
-        EXPECT_EQ("blabla", sequence->csv_passwords[0].GetUsername());
-        EXPECT_EQ("132", sequence->csv_passwords[0].GetPassword());
-        EXPECT_THAT(sequence->csv_passwords[0].GetURL(),
-                    base::test::ErrorIs(""));
-      }));
+  ParseCSV(raw_csv, base::BindLambdaForTesting(
+                        [&](mojom::CSVPasswordSequencePtr sequence) {
+                          EXPECT_TRUE(sequence);
+                          EXPECT_EQ(1u, sequence->csv_passwords.size());
+                          EXPECT_EQ("blabla",
+                                    sequence->csv_passwords[0].GetUsername());
+                          EXPECT_EQ("132",
+                                    sequence->csv_passwords[0].GetPassword());
+                          ASSERT_FALSE(
+                              sequence->csv_passwords[0].GetURL().has_value());
+                          EXPECT_EQ(
+                              "", sequence->csv_passwords[0].GetURL().error());
+                        }));
 }
 
 }  // namespace password_manager

@@ -8,7 +8,6 @@
 #include <istream>
 #include <ostream>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -29,19 +28,19 @@ namespace subresource_filter {
 
 namespace {
 
-url::Origin ParseOrigin(std::string_view arg) {
+url::Origin ParseOrigin(base::StringPiece arg) {
   GURL origin_url(arg);
   LOG_IF(FATAL, !origin_url.is_valid()) << "Invalid origin";
   return url::Origin::Create(origin_url);
 }
 
-GURL ParseRequestUrl(std::string_view arg) {
+GURL ParseRequestUrl(base::StringPiece arg) {
   GURL request_url(arg);
   LOG_IF(FATAL, !request_url.is_valid());
   return request_url;
 }
 
-url_pattern_index::proto::ElementType ParseType(std::string_view type) {
+url_pattern_index::proto::ElementType ParseType(base::StringPiece type) {
   // If the user provided a resource type, use it. Else if it's the empty string
   // it will default to ELEMENT_TYPE_OTHER.
   if (type == "other")
@@ -124,9 +123,9 @@ void FilterTool::MatchRules(std::istream* request_stream, int min_match_count) {
 
 void FilterTool::PrintResult(bool blocked,
                              const url_pattern_index::flat::UrlRule* rule,
-                             std::string_view document_origin,
-                             std::string_view url,
-                             std::string_view type) {
+                             base::StringPiece document_origin,
+                             base::StringPiece url,
+                             base::StringPiece type) {
   *output_ << (blocked ? "BLOCKED " : "ALLOWED ");
   if (rule) {
     *output_ << url_pattern_index::FlatUrlRuleToFilterlistString(rule) << " ";
@@ -135,9 +134,9 @@ void FilterTool::PrintResult(bool blocked,
 }
 
 const url_pattern_index::flat::UrlRule* FilterTool::MatchImpl(
-    std::string_view document_origin,
-    std::string_view url,
-    std::string_view type,
+    base::StringPiece document_origin,
+    base::StringPiece url,
+    base::StringPiece type,
     bool* blocked) {
   const url_pattern_index::flat::UrlRule* rule =
       FindMatchingUrlRule(ruleset_.get(), ParseOrigin(document_origin),
@@ -162,7 +161,7 @@ void FilterTool::MatchBatchImpl(std::istream* request_stream,
     if (line.empty())
       continue;
 
-    std::optional<base::Value> dictionary = base::JSONReader::Read(line);
+    absl::optional<base::Value> dictionary = base::JSONReader::Read(line);
     CHECK(dictionary);
 
     DCHECK(dictionary->is_dict());

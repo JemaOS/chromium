@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include "base/memory/weak_ptr.h"
 #include "components/sync/model/model_type_store.h"
 
 class GURL;
@@ -54,9 +53,6 @@ class SyncSessionsClient {
   // Returns a LocalSessionEventRouter instance that is customized for the
   // embedder's context.
   virtual LocalSessionEventRouter* GetLocalSessionEventRouter() = 0;
-
-  // Returns a weak pointer to the implementation instance.
-  virtual base::WeakPtr<SyncSessionsClient> AsWeakPtr() = 0;
 };
 
 }  // namespace sync_sessions

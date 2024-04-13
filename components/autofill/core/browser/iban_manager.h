@@ -7,11 +7,11 @@
 
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
+#include "components/autofill/core/browser/autofill_subject.h"
 #include "components/autofill/core/browser/data_model/iban.h"
 #include "components/autofill/core/browser/metrics/payments/iban_metrics.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "components/autofill/core/browser/single_field_form_filler.h"
-#include "components/autofill/core/browser/ui/popup_item_ids.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/webdata/common/web_data_service_consumer.h"
 
@@ -22,36 +22,39 @@ class PersonalDataManager;
 struct SuggestionsContext;
 
 // Per-profile IBAN Manager. This class handles IBAN-related functionality
-// such as retrieving IBAN data from PersonalDataManager, managing IBAN
-// suggestions, filling IBAN fields, and handling form submission data when
-// there is an IBAN field present.
-class IbanManager : public SingleFieldFormFiller, public KeyedService {
+// such as retrieving IBAN data, managing IBAN suggestions, filling IBAN fields,
+// and handling form submission data when there is an IBAN field present.
+class IBANManager : public SingleFieldFormFiller,
+                    public KeyedService,
+                    public AutofillSubject {
  public:
   // Initializes the instance with the given parameters. `personal_data_manager`
   // is a profile-scope data manager used to retrieve IBAN data from the
   // local autofill table.
-  explicit IbanManager(PersonalDataManager* personal_data_manager);
+  explicit IBANManager(PersonalDataManager* personal_data_manager);
 
-  IbanManager(const IbanManager&) = delete;
-  IbanManager& operator=(const IbanManager&) = delete;
+  IBANManager(const IBANManager&) = delete;
+  IBANManager& operator=(const IBANManager&) = delete;
 
-  ~IbanManager() override;
+  ~IBANManager() override;
 
   // SingleFieldFormFiller overrides:
   [[nodiscard]] bool OnGetSingleFieldSuggestions(
+      AutoselectFirstSuggestion autoselect_first_suggestion,
       const FormFieldData& field,
       const AutofillClient& client,
-      OnSuggestionsReturnedCallback on_suggestions_returned,
+      base::WeakPtr<SuggestionsHandler> handler,
       const SuggestionsContext& context) override;
   void OnWillSubmitFormWithFields(const std::vector<FormFieldData>& fields,
                                   bool is_autocomplete_enabled) override {}
-  void CancelPendingQueries() override {}
-  void OnRemoveCurrentSingleFieldSuggestion(
-      const std::u16string& field_name,
-      const std::u16string& value,
-      PopupItemId popup_item_id) override {}
+  void CancelPendingQueries(const SuggestionsHandler* handler) override {}
+  void OnRemoveCurrentSingleFieldSuggestion(const std::u16string& field_name,
+                                            const std::u16string& value,
+                                            int frontend_id) override {}
   void OnSingleFieldSuggestionSelected(const std::u16string& value,
-                                       PopupItemId popup_item_id) override;
+                                       int frontend_id) override;
+
+  base::WeakPtr<IBANManager> GetWeakPtr();
 
  private:
   // Records metrics related to the IBAN suggestions popup.
@@ -69,27 +72,17 @@ class IbanManager : public SingleFieldFormFiller, public KeyedService {
     FieldGlobalId most_recent_suggestion_selected_field_global_id_;
   };
 
-  // Filters the `ibans` based on the `field`'s value and returns the resulting
-  // suggestions via `on_suggestions_returned`.
-  void SendIbanSuggestions(
-      std::vector<const Iban*> ibans,
-      const FormFieldData& field,
-      OnSuggestionsReturnedCallback on_suggestions_returned);
+  // Sends suggestions for |ibans| to the |query_handler|'s handler for display
+  // in the associated Autofill popup.
+  void SendIBANSuggestions(const std::vector<IBAN*>& ibans,
+                           const QueryHandler& query_handler);
 
-  // Filter out IBAN-based suggestions based on the following criteria:
-  // For local IBANs: Filter out the IBAN value which does not starts with the
-  // provided `field_value`.
-  // For server IBANs: Filter out IBAN suggestion if any of the following
-  // conditions are satisfied:
-  // 1. If the IBAN's `prefix` is absent and the length of the `field_value` is
-  // less than `kFieldLengthLimitOnServerIbanSuggestion` characters.
-  // 2. If the IBAN's prefix is present and prefix matches the `field_value`.
-  void FilterIbansToSuggest(const std::u16string& field_value,
-                            std::vector<const Iban*>& ibans);
-
-  const raw_ptr<PersonalDataManager> personal_data_manager_;
+  raw_ptr<PersonalDataManager, DanglingUntriaged> personal_data_manager_ =
+      nullptr;
 
   UmaRecorder uma_recorder_;
+
+  base::WeakPtrFactory<IBANManager> weak_ptr_factory_{this};
 };
 
 }  // namespace autofill

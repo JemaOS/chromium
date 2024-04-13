@@ -5,14 +5,10 @@
 #include "components/autofill/core/browser/metrics/quality_metrics.h"
 
 #include "base/containers/contains.h"
-#include "base/containers/flat_map.h"
-#include "base/metrics/histogram_functions.h"
 #include "components/autofill/core/browser/autofill_data_util.h"
 #include "components/autofill/core/browser/field_type_utils.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics_utils.h"
-#include "components/autofill/core/browser/metrics/field_filling_stats_and_score_metrics.h"
-#include "components/autofill/core/browser/metrics/granular_filling_metrics_utils.h"
-#include "components/autofill/core/browser/metrics/placeholder_metrics.h"
+#include "components/autofill/core/browser/metrics/precedence_over_autocomplete_metrics.h"
 #include "components/autofill/core/browser/metrics/shadow_prediction_metrics.h"
 #include "components/autofill/core/browser/validation.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -25,7 +21,9 @@ void LogQualityMetrics(
     const base::TimeTicks& interaction_time,
     const base::TimeTicks& submission_time,
     AutofillMetrics::FormInteractionsUkmLogger* form_interactions_ukm_logger,
-    bool observed_submission) {
+    bool did_show_suggestions,
+    bool observed_submission,
+    const FormInteractionCounts& form_interaction_counts) {
   // Use the same timestamp on UKM Metrics generated within this method's scope.
   AutofillMetrics::UkmTimestampPin timestamp_pin(form_interactions_ukm_logger);
 
@@ -34,19 +32,29 @@ void LogQualityMetrics(
   bool card_form = base::Contains(form_types, FormType::kCreditCardForm);
   bool address_form = base::Contains(form_types, FormType::kAddressForm);
 
-  FieldTypeSet autofilled_field_types;
+  ServerFieldTypeSet autofilled_field_types;
   size_t num_detected_field_types = 0;
+  size_t num_edited_autofilled_fields = 0;
+  size_t num_of_accepted_autofilled_fields = 0;
+  size_t num_of_corrected_autofilled_fields = 0;
 
-  // Tracks how many fields are filled, unfilled or corrected.
+  // Tracks how many fields are filled, unfilled or corrected for the address
+  // and credit card forms.
   autofill_metrics::FormGroupFillingStats address_field_stats;
   autofill_metrics::FormGroupFillingStats cc_field_stats;
-  autofill_metrics::FormGroupFillingStats ac_unrecognized_address_field_stats;
 
-  // Same as above, but keyed by `FillingMethod`.
-  base::flat_map<FillingMethod, autofill_metrics::FormGroupFillingStats>
-      address_field_stats_by_filling_method;
+  // Count the number of filled (and corrected) fields which used to not get a
+  // type prediction due to autocomplete=unrecognized. Note that credit card
+  // related fields are excluded from this since an unrecognized autocomplete
+  // attribute has no effect for them even if
+  // |kAutofillFillAndImportFromMoreFields| is disabled.
+  size_t num_of_accepted_autofilled_fields_with_autocomplete_unrecognized = 0;
+  size_t num_of_corrected_autofilled_fields_with_autocomplete_unrecognized = 0;
 
+  bool did_autofill_all_possible_fields = true;
   bool did_autofill_some_possible_fields = false;
+  bool is_for_credit_card = form_structure.IsCompleteCreditCardForm();
+  bool has_upi_vpa_field = false;
   bool has_observed_one_time_code_field = false;
   // A perfectly filled form is submitted as it was filled from Autofill without
   // subsequent changes.
@@ -63,22 +71,34 @@ void LogQualityMetrics(
                           : AutofillMetrics::TYPE_NO_SUBMISSION;
 
   for (auto& field : form_structure) {
-    CHECK(field);
+    DCHECK(field);
 
     AutofillType type = field->Type();
     const FieldTypeGroup group = type.group();
 
+    if (IsUPIVirtualPaymentAddress(field->value)) {
+      has_upi_vpa_field = true;
+      AutofillMetrics::LogUserHappinessMetric(
+          AutofillMetrics::USER_DID_ENTER_UPI_VPA, group,
+          security_state::SecurityLevel::SECURITY_LEVEL_COUNT,
+          data_util::DetermineGroups(form_structure));
+    }
+
     form_interactions_ukm_logger->LogFieldFillStatus(form_structure, *field,
                                                      metric_type);
+
     AutofillMetrics::LogHeuristicPredictionQualityMetrics(
         form_interactions_ukm_logger, form_structure, *field, metric_type);
     AutofillMetrics::LogServerPredictionQualityMetrics(
         form_interactions_ukm_logger, form_structure, *field, metric_type);
     AutofillMetrics::LogOverallPredictionQualityMetrics(
         form_interactions_ukm_logger, form_structure, *field, metric_type);
-    AutofillMetrics::LogEmailFieldPredictionMetrics(*field);
-
     autofill_metrics::LogShadowPredictionComparison(*field);
+    // We count fields that were autofilled but later modified, regardless of
+    // whether the data now in the field is recognized.
+    if (field->previously_autofilled()) {
+      num_edited_autofilled_fields++;
+    }
 
     if (type.html_type() == HtmlFieldType::kOneTimeCode) {
       has_observed_one_time_code_field = true;
@@ -90,6 +110,16 @@ void LogQualityMetrics(
       perfect_filling = false;
     }
 
+    // If the field was identified by heuristic or server predictions as a
+    // street name or a house number, log the value of the autocomplete
+    // attribute that was used to represent the field.
+    if (IsStreetNameOrHouseNumberType(field->server_type()) ||
+        IsStreetNameOrHouseNumberType(field->heuristic_type())) {
+      autofill_metrics::
+          LogHtmlTypesForAutofilledFieldWithStreetNameOrHouseNumberPredictions(
+              *field);
+    }
+
     // Field filling statistics that are only emitted if the form was submitted
     // but independent of the existence of a possible type.
     if (observed_submission) {
@@ -98,6 +128,40 @@ void LogQualityMetrics(
       if (field->is_autofilled || field->previously_autofilled()) {
         AutofillMetrics::LogEditedAutofilledFieldAtSubmission(
             form_interactions_ukm_logger, form_structure, *field);
+        // To emit the StreetNameOrHouseNumberPrecedenceCorrectness metric, we
+        // should check if the feature
+        // `kAutofillStreetNameOrHouseNumberPrecedenceOverAutocomplete` had an
+        // effect on the current field. This lambda takes care of that.
+        auto precedence_feature_had_effect = [](const AutofillField& field) {
+          // When server override happens, `ComputedType()` isn't called and
+          // hence the feature's logic doesn't apply.
+          bool no_server_override =
+              !field.server_type_prediction_is_override() ||
+              field.server_type() == NO_SERVER_DATA;
+          // When the autocomplete attribute is unspecified, it is
+          // unconditionally overridden, regardless of the feature.
+          bool specified_autocomplete =
+              field.html_type() != HtmlFieldType::kUnspecified;
+          // We are not interested in cases where the autocomplete attribute
+          // agrees with server or heuristic predictions, since in that case
+          // precedence wouldn't change the behavior of the program.
+          bool autocomplete_disagree_with_type =
+              field.Type().GetStorableType() !=
+              AutofillType(field.html_type(), field.html_mode())
+                  .GetStorableType();
+          // The feature is only active for street name and house number types.
+          bool is_street_name_or_house_number =
+              IsStreetNameOrHouseNumberType(field.Type().GetStorableType());
+
+          return no_server_override && specified_autocomplete &&
+                 autocomplete_disagree_with_type &&
+                 is_street_name_or_house_number;
+        };
+        if (precedence_feature_had_effect(*field)) {
+          autofill_metrics::
+              LogEditedAutofilledFieldWithStreetNameOrHouseNumberPrecedenceAtSubmission(
+                  *field);
+        }
       }
 
       // For any field that belongs to either an address or a credit card form,
@@ -119,33 +183,6 @@ void LogQualityMetrics(
         // counter.
         group_stats.AddFieldFillingStatus(
             autofill_metrics::GetFieldFillingStatus(*field));
-        if (is_address_form_field &&
-            field->ShouldSuppressSuggestionsAndFillingByDefault()) {
-          ac_unrecognized_address_field_stats.AddFieldFillingStatus(
-              autofill_metrics::GetFieldFillingStatus(*field));
-        }
-        // For address forms we want to emit filling stats metrics per
-        // `FillingMethod`. Therefore, the stats generated are added to
-        // a map keyed by `FillingMethod`, so that later, metrics can
-        // emitted for each method used.
-        if (base::FeatureList::IsEnabled(
-                features::kAutofillGranularFillingAvailable) &
-            is_address_form_field) {
-          AddFillingStatsForFillingMethod(
-              *field, address_field_stats_by_filling_method);
-        }
-
-        const std::string_view form_type_name =
-            FormTypeToStringView(form_type_of_field);
-        LogPreFilledFieldStatus(form_type_name, field->initial_value_changed(),
-                                type.GetStorableType());
-        LogPreFilledValueChanged(form_type_name, field->initial_value_changed(),
-                                 field->value, field->field_log_events(),
-                                 field->possible_types(),
-                                 type.GetStorableType(), field->is_autofilled);
-        LogPreFilledFieldClassifications(
-            form_type_name, field->initial_value_changed(),
-            field->may_use_prefilled_placeholder());
       }
     }
 
@@ -154,8 +191,8 @@ void LogQualityMetrics(
     /// field type. This means the field must contain a value that can be found
     /// in one of the stored Autofill profiles.
     ///////////////////////////////////////////////////////////////////////////
-    const FieldTypeSet& field_types = field->possible_types();
-    CHECK(!field_types.empty());
+    const ServerFieldTypeSet& field_types = field->possible_types();
+    DCHECK(!field_types.empty());
 
     // For every field that has a heuristics prediction for a
     // NUMERIC_QUANTITY, log if there was a colliding server
@@ -192,8 +229,27 @@ void LogQualityMetrics(
 
     ++num_detected_field_types;
 
+    // Count the number of autofilled and corrected fields.
+    // TODO(crbug.com/1368096): This metric is defective because it is falsely
+    // conditioned on having a detected field type. The metric is replaced by a
+    // new one and the old one should be removed once the new one is fully
+    // launched.
+    if (field->is_autofilled) {
+      ++num_of_accepted_autofilled_fields;
+      if (field->HasPredictionDespiteUnrecognizedAutocompleteAttribute()) {
+        ++num_of_accepted_autofilled_fields_with_autocomplete_unrecognized;
+      }
+    } else if (field->previously_autofilled()) {
+      ++num_of_corrected_autofilled_fields;
+      if (field->HasPredictionDespiteUnrecognizedAutocompleteAttribute()) {
+        ++num_of_corrected_autofilled_fields_with_autocomplete_unrecognized;
+      }
+    }
+
     if (field->is_autofilled) {
       did_autofill_some_possible_fields = true;
+    } else if (!field->only_fill_when_focused()) {
+      did_autofill_all_possible_fields = false;
     }
 
     if (field->is_autofilled) {
@@ -208,29 +264,65 @@ void LogQualityMetrics(
         frames_of_autofilled_credit_card_fields.insert(field->host_frame);
       }
     }
+
+    // If the form was submitted, record if field types have been filled and
+    // subsequently edited by the user.
     if (observed_submission) {
-      base::UmaHistogramEnumeration(
-          "Autofill.LabelInference.InferredLabelSource.AtSubmission2",
-          field->label_source);
+      if (field->is_autofilled || field->previously_autofilled()) {
+        // TODO(crbug.com/1368096): This metric is defective because it is
+        // conditioned on having a possible field type. Remove after M112.
+        AutofillMetrics::LogEditedAutofilledFieldAtSubmissionDeprecated(
+            form_interactions_ukm_logger, form_structure, *field);
+      }
     }
   }
+
+  AutofillMetrics::LogNumberOfEditedAutofilledFields(
+      num_edited_autofilled_fields, observed_submission);
 
   // We log "submission" and duration metrics if we are here after observing a
   // submission event.
   if (observed_submission) {
-    if (num_detected_field_types >= kMinRequiredFieldsForHeuristics ||
-        num_detected_field_types >= kMinRequiredFieldsForQuery) {
+    AutofillMetrics::AutofillFormSubmittedState state;
+    if (num_detected_field_types < kMinRequiredFieldsForHeuristics &&
+        num_detected_field_types < kMinRequiredFieldsForQuery) {
+      state = AutofillMetrics::NON_FILLABLE_FORM_OR_NEW_DATA;
+    } else {
+      if (did_autofill_all_possible_fields) {
+        state = AutofillMetrics::FILLABLE_FORM_AUTOFILLED_ALL;
+      } else if (did_autofill_some_possible_fields) {
+        state = AutofillMetrics::FILLABLE_FORM_AUTOFILLED_SOME;
+      } else if (!did_show_suggestions) {
+        state = AutofillMetrics::
+            FILLABLE_FORM_AUTOFILLED_NONE_DID_NOT_SHOW_SUGGESTIONS;
+      } else {
+        state =
+            AutofillMetrics::FILLABLE_FORM_AUTOFILLED_NONE_DID_SHOW_SUGGESTIONS;
+      }
+
+      // Log the number of autofilled fields at submission time.
+      AutofillMetrics::LogNumberOfAutofilledFieldsAtSubmission(
+          num_of_accepted_autofilled_fields,
+          num_of_corrected_autofilled_fields);
+
+      // Log the number of autofilled fields with an unrecognized autocomplete
+      // attribute at submission time.
+      // Note that credit card fields are not counted since they generally
+      // ignore an unrecognized autocomplete attribute.
+      AutofillMetrics::
+          LogNumberOfAutofilledFieldsWithAutocompleteUnrecognizedAtSubmission(
+              num_of_accepted_autofilled_fields_with_autocomplete_unrecognized,
+              num_of_corrected_autofilled_fields_with_autocomplete_unrecognized);
+
       // Unlike the other times, the |submission_time| should always be
       // available.
-      CHECK(!submission_time.is_null());
+      DCHECK(!submission_time.is_null());
 
       // The |load_time| might be unset, in the case that the form was
       // dynamically added to the DOM.
-      // Submission should chronologically follow form load, however
-      // this might not be true in case of a timezone change. Therefore make
-      // sure to log the elapsed time between submission time and load time only
-      // if it is positive. Same is applied below.
-      if (!load_time.is_null() && submission_time >= load_time) {
+      if (!load_time.is_null()) {
+        // Submission should always chronologically follow form load.
+        DCHECK_GE(submission_time, load_time);
         base::TimeDelta elapsed = submission_time - load_time;
         if (did_autofill_some_possible_fields) {
           AutofillMetrics::LogFormFillDurationFromLoadWithAutofill(elapsed);
@@ -241,8 +333,9 @@ void LogQualityMetrics(
 
       // The |interaction_time| might be unset, in the case that the user
       // submitted a blank form.
-      if (!interaction_time.is_null() && submission_time >= interaction_time) {
+      if (!interaction_time.is_null()) {
         // Submission should always chronologically follow interaction.
+        DCHECK(submission_time > interaction_time);
         base::TimeDelta elapsed = submission_time - interaction_time;
         AutofillMetrics::LogFormFillDurationFromInteraction(
             form_structure.GetFormTypes(), did_autofill_some_possible_fields,
@@ -251,16 +344,24 @@ void LogQualityMetrics(
     }
 
     if (has_observed_one_time_code_field) {
-      if (!load_time.is_null() && submission_time >= load_time) {
+      if (!load_time.is_null()) {
+        DCHECK_GE(submission_time, load_time);
         base::TimeDelta elapsed = submission_time - load_time;
         AutofillMetrics::LogFormFillDurationFromLoadForOneTimeCode(elapsed);
       }
-      if (!interaction_time.is_null() && submission_time >= interaction_time) {
+      if (!interaction_time.is_null()) {
+        DCHECK(submission_time > interaction_time);
         base::TimeDelta elapsed = submission_time - interaction_time;
         AutofillMetrics::LogFormFillDurationFromInteractionForOneTimeCode(
             elapsed);
       }
     }
+
+    AutofillMetrics::LogAutofillFormSubmittedState(
+        state, is_for_credit_card, has_upi_vpa_field,
+        form_structure.GetFormTypes(), form_structure.form_parsed_timestamp(),
+        form_structure.form_signature(), form_interactions_ukm_logger,
+        form_interaction_counts);
 
     // The perfect filling metric is only recorded if Autofill was used on at
     // least one field. This conditions this metric on Assistance, Readiness and
@@ -282,12 +383,10 @@ void LogQualityMetrics(
     // Log the field filling statistics if autofill was used.
     // The metrics are only emitted if there was at least one field in the
     // corresponding form group that is or was filled by autofill.
-    // TODO(crbug.com/1459990): Remove this metric on cleanup.
-    autofill_metrics::LogFieldFillingStatsAndScore(
-        address_field_stats, cc_field_stats,
-        ac_unrecognized_address_field_stats);
-    LogAddressFieldFillingStatsAndScoreByFillingMethod(
-        address_field_stats_by_filling_method);
+    AutofillMetrics::LogFieldFillingStats(FormType::kAddressForm,
+                                          address_field_stats);
+    AutofillMetrics::LogFieldFillingStats(FormType::kCreditCardForm,
+                                          cc_field_stats);
 
     if (card_form) {
       AutofillMetrics::LogCreditCardSeamlessnessAtSubmissionTime(
@@ -313,21 +412,6 @@ void LogQualityMetricsBasedOnAutocomplete(
           form_interactions_ukm_logger, form_structure, *field, metric_type);
     }
   }
-}
-
-autofill_metrics::FormGroupFillingStats GetAddressFormFillingStats(
-    const FormStructure& form_structure) {
-  autofill_metrics::FormGroupFillingStats address_field_stats;
-
-  for (auto& field : form_structure) {
-    if (FieldTypeGroupToFormType(field->Type().group()) !=
-        FormType::kAddressForm) {
-      continue;
-    }
-    address_field_stats.AddFieldFillingStatus(
-        autofill_metrics::GetFieldFillingStatus(*field));
-  }
-  return address_field_stats;
 }
 
 }  // namespace autofill::autofill_metrics

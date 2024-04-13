@@ -17,7 +17,6 @@
 #include "components/sync/protocol/entity_data.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
 #include "components/sync/protocol/proto_memory_estimations.h"
-#include "components/version_info/version_info.h"
 
 namespace syncer {
 
@@ -25,8 +24,10 @@ namespace {
 
 std::string HashSpecifics(const sync_pb::EntitySpecifics& specifics) {
   DCHECK_GT(specifics.ByteSize(), 0);
-  return base::Base64Encode(
-      base::SHA1HashString(specifics.SerializeAsString()));
+  std::string hash;
+  base::Base64Encode(base::SHA1HashString(specifics.SerializeAsString()),
+                     &hash);
+  return hash;
 }
 
 }  // namespace
@@ -98,15 +99,10 @@ bool ProcessorEntity::HasCommitData() const {
 }
 
 bool ProcessorEntity::MatchesData(const EntityData& data) const {
-  if (data.collaboration_id != metadata_.collaboration().collaboration_id()) {
-    return false;
-  }
-  if (metadata_.is_deleted()) {
+  if (metadata_.is_deleted())
     return data.is_deleted();
-  }
-  if (data.is_deleted()) {
+  if (data.is_deleted())
     return false;
-  }
   return MatchesSpecificsHash(data.specifics);
 }
 
@@ -174,13 +170,11 @@ void ProcessorEntity::RecordAcceptedRemoteUpdate(
   metadata_.set_is_deleted(update.entity.is_deleted());
   metadata_.set_modification_time(
       TimeToProtoTime(update.entity.modification_time));
-  if (!update.entity.collaboration_id.empty()) {
-    metadata_.mutable_collaboration()->set_collaboration_id(
-        update.entity.collaboration_id);
-  }
   UpdateSpecificsHash(update.entity.specifics);
-  *metadata_.mutable_possibly_trimmed_base_specifics() =
-      std::move(trimmed_specifics);
+  if (base::FeatureList::IsEnabled(kCacheBaseEntitySpecificsInMetadata)) {
+    *metadata_.mutable_possibly_trimmed_base_specifics() =
+        std::move(trimmed_specifics);
+  }
 }
 
 void ProcessorEntity::RecordForcedRemoteUpdate(
@@ -208,15 +202,12 @@ void ProcessorEntity::RecordLocalUpdate(
   // it remembers specifics hash before the modifications.
   IncrementSequenceNumber(modification_time);
   UpdateSpecificsHash(data->specifics);
-  *metadata_.mutable_possibly_trimmed_base_specifics() =
-      std::move(trimmed_specifics);
-  if (!data->creation_time.is_null()) {
+  if (base::FeatureList::IsEnabled(kCacheBaseEntitySpecificsInMetadata)) {
+    *metadata_.mutable_possibly_trimmed_base_specifics() =
+        std::move(trimmed_specifics);
+  }
+  if (!data->creation_time.is_null())
     metadata_.set_creation_time(TimeToProtoTime(data->creation_time));
-  }
-  if (!data->collaboration_id.empty()) {
-    metadata_.mutable_collaboration()->set_collaboration_id(
-        data->collaboration_id);
-  }
   metadata_.set_modification_time(TimeToProtoTime(modification_time));
   metadata_.set_is_deleted(false);
 
@@ -230,13 +221,6 @@ bool ProcessorEntity::RecordLocalDeletion() {
   metadata_.set_is_deleted(true);
   metadata_.clear_specifics_hash();
   metadata_.clear_possibly_trimmed_base_specifics();
-
-  if (base::FeatureList::IsEnabled(
-          syncer::kSyncEntityMetadataRecordDeletedByVersionOnLocalDeletion)) {
-    metadata_.set_deleted_by_version(
-        std::string(version_info::GetVersionNumber()));
-  }
-
   // Clear any cached pending commit data.
   commit_data_.reset();
   // Return true if server might know about this entity.

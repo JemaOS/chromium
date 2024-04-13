@@ -83,23 +83,23 @@ std::string LogsToString(const FeedbackCommon::SystemLogsMap& sys_info) {
 }
 
 void RemoveUrlsFromAutofillData(std::string& autofill_metadata) {
-  std::optional<base::Value::Dict> autofill_data = base::JSONReader::ReadDict(
+  absl::optional<base::Value> properties = base::JSONReader::Read(
       autofill_metadata, base::JSON_ALLOW_TRAILING_COMMAS);
 
-  if (!autofill_data) {
+  if (!properties || !properties->is_dict()) {
     LOG(ERROR) << "base::JSONReader::Read failed to translate to JSON";
     return;
   }
 
+  base::Value::Dict& autofill_data = properties->GetDict();
   if (base::Value::List* form_structures =
-          autofill_data->FindList("formStructures")) {
+          autofill_data.FindList("formStructures")) {
     for (base::Value& item : *form_structures) {
-      auto& dict = item.GetDict();
-      dict.Remove("sourceUrl");
-      dict.Remove("mainFrameUrl");
+      item.RemoveKey("sourceUrl");
+      item.RemoveKey("mainFrameUrl");
     }
   }
-  base::JSONWriter::Write(*autofill_data, &autofill_metadata);
+  base::JSONWriter::Write(properties.value(), &autofill_metadata);
   return;
 }
 

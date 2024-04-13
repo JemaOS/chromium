@@ -7,78 +7,16 @@
 #include <string>
 #include <vector>
 
-#include "build/build_config.h"
 #include "components/strings/grit/components_strings.h"
-#include "ui/base/l10n/l10n_util.h"
-
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-#include "base/containers/span.h"
-#include "components/sync/protocol/webauthn_credential_specifics.pb.h"
-#include "components/webauthn/core/browser/passkey_model_utils.h"
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
-#if BUILDFLAG(IS_ANDROID)
-#include "components/webauthn/android/webauthn_cred_man_delegate.h"
-#endif  // BUILDFLAG(IS_ANDROID)
 
 namespace password_manager {
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
-namespace {
-
-std::vector<uint8_t> ProtobufBytesToVector(const std::string& bytes) {
-  return std::vector<uint8_t>(bytes.begin(), bytes.end());
-}
-
-}  // namespace
-
-// static
-std::vector<PasskeyCredential> PasskeyCredential::FromCredentialSpecifics(
-    base::span<const sync_pb::WebauthnCredentialSpecifics> passkeys) {
-  std::vector<sync_pb::WebauthnCredentialSpecifics> filtered =
-      webauthn::passkey_model_utils::FilterShadowedCredentials(passkeys);
-  std::vector<password_manager::PasskeyCredential> ret;
-  ret.reserve(filtered.size());
-  for (const sync_pb::WebauthnCredentialSpecifics& passkey : filtered) {
-    ret.emplace_back(
-        password_manager::PasskeyCredential::Source::kAndroidPhone,
-        RpId(passkey.rp_id()),
-        CredentialId(ProtobufBytesToVector(passkey.credential_id())),
-        UserId(ProtobufBytesToVector(passkey.user_id())),
-        Username(passkey.has_user_name() ? passkey.user_name() : ""),
-        DisplayName(passkey.has_user_display_name()
-                        ? passkey.user_display_name()
-                        : ""));
-  }
-  return ret;
-}
-
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
-namespace {
-
-int GetAuthenticationLabelForPasskeysFromAndroid() {
-#if BUILDFLAG(IS_ANDROID)
-  // CredMan is Android specific and when it is enabled, the label changes.
-  return webauthn::WebAuthnCredManDelegate::CredManMode() ==
-                 webauthn::WebAuthnCredManDelegate::CredManEnabledMode::
-                     kNonGpmPasskeys
-             ? IDS_PASSWORD_MANAGER_PASSKEY
-             : IDS_PASSWORD_MANAGER_USE_SCREEN_LOCK;
-#else
-  return IDS_PASSWORD_MANAGER_USE_SCREEN_LOCK;
-#endif  // BUILDFLAG(IS_ANDROID)
-}
-
-}  // namespace
-
 PasskeyCredential::PasskeyCredential(Source source,
-                                     RpId rp_id,
-                                     CredentialId credential_id,
-                                     UserId user_id,
-                                     Username username,
-                                     DisplayName display_name)
+                                     std::string rp_id,
+                                     std::vector<uint8_t> credential_id,
+                                     std::vector<uint8_t> user_id,
+                                     std::string username,
+                                     std::string display_name)
     : source_(source),
       rp_id_(std::move(rp_id)),
       credential_id_(std::move(credential_id)),
@@ -95,33 +33,17 @@ PasskeyCredential& PasskeyCredential::operator=(const PasskeyCredential&) =
 PasskeyCredential::PasskeyCredential(PasskeyCredential&&) = default;
 PasskeyCredential& PasskeyCredential::operator=(PasskeyCredential&&) = default;
 
-std::u16string PasskeyCredential::GetAuthenticatorLabel() const {
-  if (authenticator_label_) {
-    return *authenticator_label_;
-  }
-  int id;
+int PasskeyCredential::GetAuthenticatorLabel() const {
   switch (source_) {
     case Source::kWindowsHello:
-      id = IDS_PASSWORD_MANAGER_PASSKEY_FROM_WINDOWS_HELLO;
-      break;
+      return IDS_PASSWORD_MANAGER_USE_WINDOWS_HELLO;
     case Source::kTouchId:
-      id = IDS_PASSWORD_MANAGER_PASSKEY_FROM_CHROME_PROFILE;
-      break;
-    case Source::kICloudKeychain:
-      id = IDS_PASSWORD_MANAGER_PASSKEY_FROM_ICLOUD_KEYCHAIN;
-      break;
+      return IDS_PASSWORD_MANAGER_USE_TOUCH_ID;
     case Source::kAndroidPhone:
-      id = GetAuthenticationLabelForPasskeysFromAndroid();
-      break;
-    case Source::kGooglePasswordManager:
-      // TODO(https://crbug.com/1459620): Update this when a proper string is
-      // added.
-      return u"Passkey from Google Password Manager (UNTRANSLATED STRING)";
+      return IDS_PASSWORD_MANAGER_USE_SCREEN_LOCK;
     case Source::kOther:
-      id = IDS_PASSWORD_MANAGER_USE_GENERIC_DEVICE;
-      break;
+      return IDS_PASSWORD_MANAGER_USE_GENERIC_DEVICE;
   }
-  return l10n_util::GetStringUTF16(id);
 }
 
 bool operator==(const PasskeyCredential& lhs,

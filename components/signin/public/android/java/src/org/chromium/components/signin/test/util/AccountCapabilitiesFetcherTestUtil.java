@@ -6,13 +6,14 @@ package org.chromium.components.signin.test.util;
 
 import static org.mockito.Mockito.doReturn;
 
+import android.accounts.Account;
 import android.os.Handler;
 import android.os.Looper;
 
-import org.jni_zero.CalledByNative;
 import org.mockito.Mockito;
 
 import org.chromium.base.Promise;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.test.util.LooperUtils;
 import org.chromium.components.signin.AccountManagerFacade;
 import org.chromium.components.signin.AccountManagerFacadeProvider;
@@ -28,17 +29,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 final class AccountCapabilitiesFetcherTestUtil {
     private AccountManagerFacade mMockFacade;
-    private CoreAccountInfo mExpectedAccount;
+    private Account mExpectedAccount;
     private Promise<AccountCapabilities> mCapabilitiesPromise;
 
-    /** Stubs AccountManagerFacade for native tests. */
+    /**
+     * Stubs AccountManagerFacade for native tests.
+     */
     @CalledByNative
     public AccountCapabilitiesFetcherTestUtil() {
         mMockFacade = Mockito.mock(AccountManagerFacade.class);
         AccountManagerFacadeProvider.setInstanceForTests(mMockFacade);
     }
 
-    /** Restores the global state after the test completes. */
+    /**
+     * Restores the global state after the test completes.
+     */
     @CalledByNative
     public void destroy() {
         AccountManagerFacadeProvider.resetInstanceForTests();
@@ -55,9 +60,9 @@ final class AccountCapabilitiesFetcherTestUtil {
         assert mCapabilitiesPromise == null;
         assert mExpectedAccount == null;
 
-        mExpectedAccount = accountInfo;
+        mExpectedAccount = CoreAccountInfo.getAndroidAccountFrom(accountInfo);
         mCapabilitiesPromise = new Promise<>();
-        doReturn(mCapabilitiesPromise).when(mMockFacade).getAccountCapabilities(accountInfo);
+        doReturn(mCapabilitiesPromise).when(mMockFacade).getAccountCapabilities(mExpectedAccount);
     }
 
     /**
@@ -68,7 +73,7 @@ final class AccountCapabilitiesFetcherTestUtil {
     public void returnCapabilities(CoreAccountInfo accountInfo, AccountCapabilities capabilities) {
         assert mCapabilitiesPromise != null;
         assert mExpectedAccount != null;
-        assert mExpectedAccount.equals(accountInfo);
+        assert mExpectedAccount.equals(CoreAccountInfo.getAndroidAccountFrom(accountInfo));
 
         mCapabilitiesPromise.fulfill(capabilities);
         // `Promise` posts callback tasks on Android Looper which is not integrated with native
@@ -86,18 +91,12 @@ final class AccountCapabilitiesFetcherTestUtil {
      */
     private static void runLooperTasks() {
         AtomicBoolean called = new AtomicBoolean(false);
-        new Handler(Looper.myLooper())
-                .post(
-                        () -> {
-                            called.set(true);
-                        });
+        new Handler(Looper.myLooper()).post(() -> { called.set(true); });
 
         do {
             try {
                 LooperUtils.runSingleNestedLooperTask();
-            } catch (IllegalArgumentException
-                    | IllegalAccessException
-                    | SecurityException
+            } catch (IllegalArgumentException | IllegalAccessException | SecurityException
                     | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }

@@ -4,18 +4,12 @@
 
 package org.chromium.net;
 
-import static com.google.common.truth.Truth.assertThat;
-
-import com.google.common.truth.Correspondence;
-import com.google.common.truth.Correspondence.BinaryPredicate;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -24,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * whether expected reports were actually received.
  */
 class ReportingCollector {
-    private List<JSONObject> mReceivedReports = new ArrayList<JSONObject>();
+    private ArrayList<JSONObject> mReceivedReports = new ArrayList<JSONObject>();
     private Semaphore mReceivedReportsSemaphore = new Semaphore(0);
 
     /**
@@ -52,27 +46,28 @@ class ReportingCollector {
         }
     }
 
-    public void assertContainsReport(String expectedString) {
-        JSONObject expectedJson;
-
+    /**
+     * Checks whether a report with the given payload exists or not.
+     */
+    public boolean containsReport(String expected) {
         try {
-            expectedJson = new JSONObject(expectedString);
+            JSONObject expectedReport = new JSONObject(expected);
+            synchronized (mReceivedReports) {
+                for (JSONObject received : mReceivedReports) {
+                    if (isJSONObjectSubset(expectedReport, received)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         } catch (JSONException e) {
-            throw new IllegalArgumentException(e);
-        }
-        synchronized (mReceivedReports) {
-            assertThat(mReceivedReports)
-                    .comparingElementsUsing(
-                            Correspondence.from(
-                                    (BinaryPredicate<JSONObject, JSONObject>)
-                                            (actual, expected) ->
-                                                    isJSONObjectSubset(expected, actual),
-                                    "is a subset of"))
-                    .contains(expectedJson);
+            return false;
         }
     }
 
-    /** Waits until the requested number of reports have been received, with a 5-second timeout. */
+    /**
+     * Waits until the requested number of reports have been received, with a 5-second timeout.
+     */
     public void waitForReports(int reportCount) {
         final int timeoutSeconds = 5;
         try {
@@ -111,5 +106,4 @@ class ReportingCollector {
         }
         return true;
     }
-}
-;
+};

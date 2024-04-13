@@ -6,7 +6,6 @@
 
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "components/plus_addresses/features.h"
 #include "google_apis/gaia/gaia_constants.h"
 
 namespace signin {
@@ -21,7 +20,7 @@ const char* const kExtensionsIdentityAPIOAuthConsumerName =
 
 const std::set<std::string> GetUnconsentedOAuth2Scopes() {
   // clang-format off
-  std::set<std::string> allowlist = {
+  return {
       // Used to fetch account information.
       GaiaConstants::kGoogleUserInfoEmail,
       GaiaConstants::kGoogleUserInfoProfile,
@@ -51,9 +50,6 @@ const std::set<std::string> GetUnconsentedOAuth2Scopes() {
       // Required by Permission Request Creator.
       GaiaConstants::kClassifyUrlKidPermissionOAuth2Scope,
 
-      // Required for IP protection proxy authentication.
-      GaiaConstants::kIpProtectionAuthScope,
-
       // Required by the feedback uploader.
       GaiaConstants::kSupportContentOAuth2Scope,
 
@@ -76,50 +72,27 @@ const std::set<std::string> GetUnconsentedOAuth2Scopes() {
       // Required by k-Anonymity Server (FLEDGE)
       GaiaConstants::kKAnonymityServiceOAuth2Scope,
 
-      // Required by supervision features that verify parent password.
-      GaiaConstants::kAccountsReauthOAuth2Scope,
-
-      // Used by desktop Chrome to talk to passkey enclaves when using Google
-      // Password Manager.
-      GaiaConstants::kPasskeysEnclaveOAuth2Scope,
-
-      // Required by Optimization Guide.
-      GaiaConstants::kOptimizationGuideServiceGetHintsOAuth2Scope,
-      GaiaConstants::kOptimizationGuideServiceModelExecutionOAuth2Scope,
-
-      // Required by Omnibox / DocumentSuggestionsService.
-      GaiaConstants::kCloudSearchQueryOAuth2Scope,
-
-      // Used by AdvancedProtectionStatusManager, as well as internally by the
-      // identity system.
-      GaiaConstants::kOAuth1LoginScope,
-
     // Required by ChromeOS only.
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+      GaiaConstants::kAccountsReauthOAuth2Scope,
       GaiaConstants::kAssistantOAuth2Scope,
       GaiaConstants::kAuditRecordingOAuth2Scope,
       GaiaConstants::kCalendarReadOnlyOAuth2Scope,
       GaiaConstants::kCastBackdropOAuth2Scope,
       GaiaConstants::kClearCutOAuth2Scope,
+      GaiaConstants::kCloudTranslationOAuth2Scope,
       GaiaConstants::kDriveOAuth2Scope,
       GaiaConstants::kDriveReadOnlyOAuth2Scope,
-      GaiaConstants::kExperimentsAndConfigsOAuth2Scope,
       GaiaConstants::kGCMGroupServerOAuth2Scope,
       GaiaConstants::kCloudPlatformProjectsOAuth2Scope,
       GaiaConstants::kNearbyShareOAuth2Scope,
-      GaiaConstants::kNearbyPresenceOAuth2Scope,
+      GaiaConstants::kOAuth1LoginScope,
       GaiaConstants::kPeopleApiReadOnlyOAuth2Scope,
       GaiaConstants::kPhotosOAuth2Scope,
       GaiaConstants::kTachyonOAuthScope,
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   };
 // clang-format on
-  std::string plus_address_scope =
-      plus_addresses::features::kEnterprisePlusAddressOAuthScope.Get();
-  if (!plus_address_scope.empty()) {
-    allowlist.insert(plus_address_scope);
-  }
-  return allowlist;
 }
 
 const std::set<std::string> GetPrivilegedOAuth2Scopes() {

@@ -6,7 +6,6 @@
 #define COMPONENTS_CAST_RECEIVER_BROWSER_BINDINGS_MESSAGE_PORT_CONNECTOR_H_
 
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
@@ -75,10 +74,10 @@ class BindingsMessagePortConnector
 
  private:
   // Adds a new binding.
-  void AddBeforeLoadJavaScript(uint64_t id, std::string_view script);
+  void AddBeforeLoadJavaScript(uint64_t id, base::StringPiece script);
 
   // Callback for RegisterPortHandler().
-  void OnPortConnected(std::string_view port_name,
+  void OnPortConnected(base::StringPiece port_name,
                        std::unique_ptr<cast_api_bindings::MessagePort> port);
 
   // PageStateObserver implementation:
@@ -92,11 +91,11 @@ class BindingsMessagePortConnector
   void ReadyToCommitNavigation(
       content::NavigationHandle* navigation_handle) override;
 
-  raw_ref<Client> const client_;
+  base::raw_ref<Client> const client_;
 
   on_load_script_injector::OnLoadScriptInjectorHost<uint64_t> script_injector_;
 
-  raw_ptr<content::NavigationHandle> active_navigation_ = nullptr;
+  base::raw_ptr<content::NavigationHandle> active_navigation_ = nullptr;
 
   base::WeakPtrFactory<BindingsMessagePortConnector> weak_factory_;
 };

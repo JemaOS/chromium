@@ -7,19 +7,12 @@
 
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
 #include "components/omnibox/browser/actions/omnibox_action.h"
-#include "components/omnibox/browser/autocomplete_match_type.h"
 #include "components/omnibox/browser/autocomplete_provider_client.h"
 #include "components/omnibox/browser/omnibox.mojom-shared.h"
 #include "components/omnibox/browser/omnibox_navigation_observer.h"
 #include "components/omnibox/common/omnibox_focus_state.h"
-#include "components/security_state/core/security_state.h"
-#include "components/url_formatter/spoof_checks/idna_metrics.h"
-#include "services/metrics/public/cpp/ukm_source_id.h"
 #include "third_party/skia/include/core/SkColor.h"
-#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 
 class AutocompleteResult;
@@ -32,7 +25,7 @@ struct AutocompleteMatch;
 struct OmniboxLog;
 
 namespace bookmarks {
-class CoreBookmarkModel;
+class BookmarkModel;
 }
 
 namespace gfx {
@@ -41,7 +34,6 @@ struct VectorIcon;
 }
 
 class AutocompleteControllerEmitter;
-class PrefService;
 
 using BitmapFetchedCallback =
     base::RepeatingCallback<void(int result_index, const SkBitmap& bitmap)>;
@@ -54,8 +46,7 @@ using FaviconFetchedCallback =
 // objects under the hood).
 class OmniboxClient {
  public:
-  OmniboxClient() = default;
-  virtual ~OmniboxClient() = default;
+  virtual ~OmniboxClient() {}
 
   // Returns an AutocompleteProviderClient specific to the embedder context.
   virtual std::unique_ptr<AutocompleteProviderClient>
@@ -65,9 +56,7 @@ class OmniboxClient {
   // startup or shutdown, the omnibox may exist but have no attached page.
   virtual bool CurrentPageExists() const;
 
-  // Returns the virtual URL currently being displayed in the URL bar, if there
-  // is one. This URL might be a pending navigation that hasn't committed yet,
-  // so it is not guaranteed to match the current page in this WebContents.
+  // Returns the URL of the current page.
   virtual const GURL& GetURL() const;
 
   // Returns the title of the current page.
@@ -75,9 +64,6 @@ class OmniboxClient {
 
   // Returns the favicon of the current page.
   virtual gfx::Image GetFavicon() const;
-
-  // Returns the UKM source id for the top frame of the current page.
-  virtual ukm::SourceId GetUKMSourceId() const;
 
   // Returns whether the current page is loading.
   virtual bool IsLoading() const;
@@ -100,9 +86,8 @@ class OmniboxClient {
       const AutocompleteMatch& match,
       omnibox::mojom::NavigationPredictor navigation_predictor) {}
 
-  virtual PrefService* GetPrefs() = 0;
-  virtual bookmarks::CoreBookmarkModel* GetBookmarkModel();
-  virtual AutocompleteControllerEmitter* GetAutocompleteControllerEmitter() = 0;
+  virtual bookmarks::BookmarkModel* GetBookmarkModel();
+  virtual AutocompleteControllerEmitter* GetAutocompleteControllerEmitter();
   virtual TemplateURLService* GetTemplateURLService();
   virtual const AutocompleteSchemeClassifier& GetSchemeClassifier() const = 0;
   virtual AutocompleteClassifier* GetAutocompleteClassifier();
@@ -131,41 +116,6 @@ class OmniboxClient {
 
   // Returns the given |icon| with the correct size.
   virtual gfx::Image GetSizedIcon(const gfx::Image& icon) const;
-
-  // Returns the formatted full URL for the toolbar. The formatting includes:
-  //   - Some characters may be unescaped.
-  //   - The scheme and/or trailing slash may be dropped.
-  // This method specifically keeps the URL suitable for editing by not
-  // applying any elisions that change the meaning of the URL.
-  virtual std::u16string GetFormattedFullURL() const = 0;
-
-  // Returns a simplified URL for display (but not editing) on the toolbar.
-  // This formatting is generally a superset of GetFormattedFullURL, and may
-  // include some destructive elisions that change the meaning of the URL.
-  // The returned string is not suitable for editing, and is for display only.
-  virtual std::u16string GetURLForDisplay() const = 0;
-
-  // Returns the URL of the current navigation entry.
-  virtual GURL GetNavigationEntryURL() const = 0;
-
-  // Classify the current page being viewed as, for example, the new tab
-  // page or a normal web page.  Used for logging omnibox events for
-  // UMA opted-in users.  Examines the user's profile to determine if the
-  // current page is the user's home page.
-  virtual metrics::OmniboxEventProto::PageClassification GetPageClassification(
-      OmniboxFocusSource focus_source,
-      bool is_prefetch) = 0;
-
-  // Returns the security level that the toolbar should display.
-  virtual security_state::SecurityLevel GetSecurityLevel() const = 0;
-
-  // Returns the cert status of the current navigation entry.
-  virtual net::CertStatus GetCertStatus() const = 0;
-
-  // Returns the id of the icon to show to the left of the address, based on the
-  // current URL.  When search term replacement is active, this returns a search
-  // icon.
-  virtual const gfx::VectorIcon& GetVectorIcon() const = 0;
 
   // Checks whether |template_url| is an extension keyword; if so, asks the
   // ExtensionOmniboxEventRouter to process |match| for it and returns true.
@@ -221,6 +171,9 @@ class OmniboxClient {
                              const AutocompleteResult& result,
                              bool has_focus) {}
 
+  // Called when input has been accepted.
+  virtual void OnInputAccepted(const AutocompleteMatch& match) {}
+
   // Called when the edit model is being reverted back to its unedited state.
   virtual void OnRevert() {}
 
@@ -238,28 +191,6 @@ class OmniboxClient {
 
   // Focuses the `WebContents`, i.e. the web page of the current tab.
   virtual void FocusWebContents() {}
-
-  virtual void OnAutocompleteAccept(
-      const GURL& destination_url,
-      TemplateURLRef::PostContent* post_content,
-      WindowOpenDisposition disposition,
-      ui::PageTransition transition,
-      AutocompleteMatchType::Type match_type,
-      base::TimeTicks match_selection_timestamp,
-      bool destination_url_entered_without_scheme,
-      bool destination_url_entered_with_http_scheme,
-      const std::u16string& text,
-      const AutocompleteMatch& match,
-      const AutocompleteMatch& alternative_nav_match,
-      IDNA2008DeviationCharacter deviation_char_in_hostname) = 0;
-
-  // Called when the view should update itself without restoring any tab state.
-  virtual void OnInputInProgress(bool in_progress) {}
-
-  // Called when the omnibox popup is shown or hidden.
-  virtual void OnPopupVisibilityChanged() {}
-
-  virtual base::WeakPtr<OmniboxClient> AsWeakPtr() = 0;
 };
 
 #endif  // COMPONENTS_OMNIBOX_BROWSER_OMNIBOX_CLIENT_H_

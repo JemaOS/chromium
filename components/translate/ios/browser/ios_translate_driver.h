@@ -8,8 +8,6 @@
 #include <memory>
 #include <string>
 
-#include "base/gtest_prod_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
 #include "components/language/ios/browser/ios_language_detection_tab_helper.h"
@@ -83,12 +81,12 @@ class IOSTranslateDriver
                      const std::string& source_lang,
                      const std::string& target_lang) override;
   void RevertTranslation(int page_seq_no) override;
-  bool IsIncognito() const override;
+  bool IsIncognito() override;
   const std::string& GetContentsMimeType() override;
-  const GURL& GetLastCommittedURL() const override;
+  const GURL& GetLastCommittedURL() override;
   const GURL& GetVisibleURL() override;
   ukm::SourceId GetUkmSourceId() override;
-  bool HasCurrentPage() const override;
+  bool HasCurrentPage() override;
   void OpenUrlInNewTab(const GURL& url) override;
 
  private:
@@ -125,13 +123,12 @@ class IOSTranslateDriver
   void OnTranslationTimeout(int pending_page_seq_no);
 
   // The WebState this instance is observing.
-  raw_ptr<web::WebState> web_state_ = nullptr;
+  web::WebState* web_state_ = nullptr;
 
   base::WeakPtr<TranslateManager> translate_manager_;
   std::unique_ptr<TranslateController> translate_controller_;
 
-  raw_ptr<LanguageDetectionModelService> language_detection_model_service_ =
-      nullptr;
+  LanguageDetectionModelService* language_detection_model_service_ = nullptr;
 
   // An ever-increasing sequence number of the current page, used to match up
   // translation requests with responses.

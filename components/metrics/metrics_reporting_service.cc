@@ -31,8 +31,7 @@ MetricsReportingService::MetricsReportingService(
     MetricsLogsEventManager* logs_event_manager_)
     : ReportingService(client,
                        local_state,
-                       client->GetStorageLimits()
-                           .ongoing_log_queue_limits.max_log_size_bytes,
+                       client->GetStorageLimits().max_ongoing_log_size,
                        logs_event_manager_),
       metrics_log_store_(local_state,
                          client->GetStorageLimits(),

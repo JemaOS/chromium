@@ -6,6 +6,7 @@
 
 #include "ash/frame/non_client_frame_view_ash.h"
 #include "chromeos/ui/base/window_properties.h"
+#include "ui/aura/client/aura_constants.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/geometry/rect.h"
@@ -32,11 +33,14 @@ void XdgShellSurface::OverrideInitParams(views::Widget::InitParams* params) {
   // window property.
   bool auto_maximize_enabled = params->init_properties_container.GetProperty(
       chromeos::kAutoMaximizeXdgShellEnabled);
-  if (auto_maximize_enabled && ShouldAutoMaximize()) {
+  if (auto_maximize_enabled && ShouldAutoMaximize())
     params->show_state = ui::SHOW_STATE_MAXIMIZED;
-  }
-  if (!frame_enabled() && !has_frame_colors()) {
-    params->layer_type = ui::LAYER_NOT_DRAWN;
+
+  // Show state should be overridden when set via window property.
+  if (params->init_properties_container.GetProperty(
+          aura::client::kShowStateKey)) {
+    params->show_state = params->init_properties_container.GetProperty(
+        aura::client::kShowStateKey);
   }
 }
 

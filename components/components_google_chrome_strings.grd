@@ -3,7 +3,7 @@
 <grit latest_public_release="0" current_release="1"
       output_all_resource_defines="false" source_lang_id="en" enc_check="möl">
   <outputs>
-    <output filename="grit/components_branded_strings.h" type="rc_header">
+    <output filename="grit/components_google_chrome_strings.h" type="rc_header">
       <emit emit_type='prepend'></emit>
     </output>
     <output filename="components_google_chrome_strings_af.pak" type="data_package" lang="af" />
@@ -244,12 +244,6 @@
           &gt;
           LAN Settings
           and deselect &quot;Use a proxy server for your LAN&quot;.
-        </message>
-        <message name="IDS_PAYMENTS_AUTOFILL_MANDATORY_REAUTH_PROMPT" desc="Message to be displayed to the user in the device authentication prompt when they click on the mandatory auth toggle on the Payments settings page, irrespective to enable or disable it. When mandatory auth toggle is enabled, we would authenticate the user before autofilling in the payment details.">
-          Google Chrome is trying to modify settings for filling payment methods.
-        </message>
-        <message name="IDS_PAYMENTS_AUTOFILL_EDIT_CARD_MANDATORY_REAUTH_PROMPT" desc="Message to be displayed to the user in the device authentication prompt when they try to edit a local card on the Payments settings page if the mandatory auth toggle is enabled. If the user auth was succesful, we would then show the edit card dialog.">
-          Google Chrome is trying to edit payment methods.
         </message>
       </if>
 

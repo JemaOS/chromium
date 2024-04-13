@@ -5,7 +5,6 @@
 #include "components/search_engines/template_url_data_util.h"
 
 #include <string>
-#include <string_view>
 
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece.h"
@@ -24,10 +23,6 @@ namespace {
 // dereferencing nullptrs.
 base::StringPiece ToStringPiece(const char* str) {
   return str ? base::StringPiece(str) : base::StringPiece();
-}
-
-std::u16string_view ToU16StringView(const char16_t* str) {
-  return str ? std::u16string_view(str) : std::u16string_view();
 }
 
 }  // namespace
@@ -158,7 +153,7 @@ std::unique_ptr<TemplateURLData> TemplateURLDataFromDictionary(
       }
     }
   }
-  std::optional<bool> safe_for_autoreplace =
+  absl::optional<bool> safe_for_autoreplace =
       dict.FindBool(DefaultSearchManager::kSafeForAutoReplace);
   if (safe_for_autoreplace) {
     result->safe_for_autoreplace = *safe_for_autoreplace;
@@ -215,15 +210,12 @@ std::unique_ptr<TemplateURLData> TemplateURLDataFromDictionary(
     }
   }
 
-  result->created_by_policy = static_cast<TemplateURLData::CreatedByPolicy>(
-      dict.FindInt(DefaultSearchManager::kCreatedByPolicy)
-          .value_or(static_cast<int>(result->created_by_policy)));
+  result->created_by_policy =
+      dict.FindBool(DefaultSearchManager::kCreatedByPolicy)
+          .value_or(result->created_by_policy);
   result->created_from_play_api =
       dict.FindBool(DefaultSearchManager::kCreatedFromPlayAPI)
           .value_or(result->created_from_play_api);
-  result->featured_by_policy =
-      dict.FindBool(DefaultSearchManager::kFeaturedByPolicy)
-          .value_or(result->featured_by_policy);
   result->preconnect_to_search_url =
       dict.FindBool(DefaultSearchManager::kPreconnectToSearchUrl)
           .value_or(result->preconnect_to_search_url);
@@ -307,12 +299,9 @@ base::Value::Dict TemplateURLDataToDictionary(const TemplateURLData& data) {
     encodings.Append(input_encoding);
   url_dict.Set(DefaultSearchManager::kInputEncodings, std::move(encodings));
 
-  url_dict.Set(DefaultSearchManager::kCreatedByPolicy,
-               static_cast<int>(data.created_by_policy));
+  url_dict.Set(DefaultSearchManager::kCreatedByPolicy, data.created_by_policy);
   url_dict.Set(DefaultSearchManager::kCreatedFromPlayAPI,
                data.created_from_play_api);
-  url_dict.Set(DefaultSearchManager::kFeaturedByPolicy,
-               data.featured_by_policy);
   url_dict.Set(DefaultSearchManager::kPreconnectToSearchUrl,
                data.preconnect_to_search_url);
   url_dict.Set(DefaultSearchManager::kPrefetchLikelyNavigations,
@@ -340,11 +329,12 @@ std::unique_ptr<TemplateURLData> TemplateURLDataFromPrepopulatedEngine(
   }
 
   std::u16string image_search_branding_label =
-      engine.image_search_branding_label ? engine.image_search_branding_label
-                                         : std::u16string();
+      engine.image_search_branding_label
+          ? base::WideToUTF16(engine.image_search_branding_label)
+          : std::u16string();
 
   return std::make_unique<TemplateURLData>(
-      ToU16StringView(engine.name), ToU16StringView(engine.keyword),
+      base::WideToUTF16(engine.name), base::WideToUTF16(engine.keyword),
       ToStringPiece(engine.search_url), ToStringPiece(engine.suggest_url),
       ToStringPiece(engine.image_url),
       ToStringPiece(engine.image_translate_url),
@@ -396,7 +386,7 @@ std::unique_ptr<TemplateURLData> TemplateURLDataFromOverrideDictionary(
   if (string_value) {
     encoding = *string_value;
   }
-  std::optional<int> id = engine_dict.FindInt("id");
+  absl::optional<int> id = engine_dict.FindInt("id");
 
   // The following fields are required for each search engine configuration.
   if (!name.empty() && !keyword.empty() && !search_url.empty() &&

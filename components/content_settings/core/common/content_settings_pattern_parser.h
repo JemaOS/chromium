@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
 
 class GURL;

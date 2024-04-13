@@ -19,7 +19,8 @@ namespace internal {
 
 // Interfaces with Mac OS's MPNowPlayingInfoCenter and related MediaPlayer API.
 // The combination of those two form the full SystemMediaControls API.
-class SystemMediaControlsMac : public SystemMediaControls {
+class API_AVAILABLE(macos(10.13.1)) SystemMediaControlsMac
+    : public SystemMediaControls {
  public:
   SystemMediaControlsMac();
   SystemMediaControlsMac(const SystemMediaControlsMac&) = delete;
@@ -44,7 +45,6 @@ class SystemMediaControlsMac : public SystemMediaControls {
   void ClearThumbnail() override {}
   void ClearMetadata() override;
   void UpdateDisplay() override {}
-  bool GetVisibilityForTesting() const override;
 
  private:
   // Gives media playback state and metadata to the MPNowPlayingInfoCenter.

@@ -23,10 +23,6 @@ class SurfaceObserver {
   // chance to remove themselves.
   virtual void OnSurfaceDestroying(Surface* surface) = 0;
 
-  virtual void OnScaleFactorChanged(Surface* surface,
-                                    float old_scale_factor,
-                                    float new_scale_factor) {}
-
   // Called when the occlusion of the aura window corresponding to |surface|
   // changes.
   virtual void OnWindowOcclusionChanged(Surface* surface) {}
@@ -37,6 +33,9 @@ class SurfaceObserver {
 
   // Called on each commit.
   virtual void OnCommit(Surface* surface) {}
+
+  // Called when the content size changes.
+  virtual void OnContentSizeChanged(Surface* surface) {}
 
   // Called when desk state of the window changes.
   // |state| is the index of the desk which the window moved to,

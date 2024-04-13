@@ -5,7 +5,6 @@
 #include "components/feed/core/v2/stream_model.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,6 +16,7 @@
 #include "components/feed/core/v2/test/stream_builder.h"
 #include "components/feed/core/v2/types.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace feed {
 namespace {
@@ -42,15 +42,15 @@ class TestObserver : public StreamModel::Observer {
 
   // StreamModel::Observer.
   void OnUiUpdate(const UiUpdate& update) override { update_ = update; }
-  const std::optional<UiUpdate>& GetUiUpdate() const { return update_; }
+  const absl::optional<UiUpdate>& GetUiUpdate() const { return update_; }
   bool ContentListChanged() const {
     return update_ && update_->content_list_changed;
   }
 
-  void Clear() { update_ = std::nullopt; }
+  void Clear() { update_ = absl::nullopt; }
 
  private:
-  std::optional<UiUpdate> update_;
+  absl::optional<UiUpdate> update_;
 };
 
 class TestStoreObserver : public StreamModel::StoreObserver {
@@ -64,12 +64,12 @@ class TestStoreObserver : public StreamModel::StoreObserver {
     update_ = std::move(records);
   }
 
-  const std::optional<StoreUpdate>& GetUpdate() const { return update_; }
+  const absl::optional<StoreUpdate>& GetUpdate() const { return update_; }
 
-  void Clear() { update_ = std::nullopt; }
+  void Clear() { update_ = absl::nullopt; }
 
  private:
-  std::optional<StoreUpdate> update_;
+  absl::optional<StoreUpdate> update_;
 };
 
 TEST(StreamModelTest, ConstructEmptyModel) {

@@ -4,13 +4,13 @@
 
 #include "components/component_updater/component_updater_service.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "base/cxx17_backports.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
@@ -91,9 +91,9 @@ class MockUpdateClient : public UpdateClient {
                      bool(const std::string& id, CrxUpdateItem* update_item));
   MOCK_CONST_METHOD1(IsUpdating, bool(const std::string& id));
   MOCK_METHOD0(Stop, void());
-  MOCK_METHOD3(SendPing,
+  MOCK_METHOD3(SendUninstallPing,
                void(const CrxComponent& crx_component,
-                    PingParams ping_params,
+                    int reason,
                     Callback callback));
   MOCK_METHOD2(SendRegistrationPing,
                void(const CrxComponent& crx_component, Callback callback));
@@ -188,11 +188,12 @@ class ComponentUpdaterTest : public testing::Test {
 
   std::unique_ptr<TestingPrefServiceSimple> pref_ =
       std::make_unique<TestingPrefServiceSimple>();
-  scoped_refptr<TestConfigurator> config_;
+  scoped_refptr<TestConfigurator> config_ =
+      base::MakeRefCounted<TestConfigurator>(pref_.get());
+  raw_ptr<MockUpdateScheduler> scheduler_;
   scoped_refptr<MockUpdateClient> update_client_ =
       base::MakeRefCounted<MockUpdateClient>();
   std::unique_ptr<ComponentUpdateService> component_updater_;
-  raw_ptr<MockUpdateScheduler> scheduler_;
 };
 
 class OnDemandTester {
@@ -223,7 +224,7 @@ void OnDemandTester::OnDemandComplete(update_client::Error error) {
 
 std::unique_ptr<ComponentUpdateService> TestComponentUpdateServiceFactory(
     scoped_refptr<Configurator> config) {
-  EXPECT_TRUE(config);
+  DCHECK(config);
   return std::make_unique<CrxUpdateService>(
       config, std::make_unique<MockUpdateScheduler>(),
       base::MakeRefCounted<MockUpdateClient>(), "");
@@ -235,15 +236,14 @@ ComponentUpdaterTest::ComponentUpdaterTest() {
   scheduler_ = scheduler.get();
   ON_CALL(*scheduler_, Schedule(_, _, _, _))
       .WillByDefault(Invoke(this, &ComponentUpdaterTest::Schedule));
-  RegisterComponentUpdateServicePrefs(pref_->registry());
-  update_client::RegisterPrefs(pref_->registry());
-  config_ = base::MakeRefCounted<TestConfigurator>(pref_.get());
   component_updater_ = std::make_unique<CrxUpdateService>(
       config_, std::move(scheduler), update_client_, "");
+  RegisterComponentUpdateServicePrefs(pref_->registry());
 }
 
 ComponentUpdaterTest::~ComponentUpdaterTest() {
   EXPECT_CALL(update_client(), RemoveObserver(_)).Times(1);
+  component_updater_.reset();
 }
 
 void ComponentUpdaterTest::RunThreads() {
@@ -300,8 +300,8 @@ TEST_F(ComponentUpdaterTest, RegisterComponent) {
       base::MakeRefCounted<MockInstaller>();
   EXPECT_CALL(*installer, Uninstall()).WillOnce(Return(true));
 
-  using update_client::abag_hash;
   using update_client::jebg_hash;
+  using update_client::abag_hash;
 
   const std::string id1 = "abagagagagagagagagagagagagagagag";
   const std::string id2 = "jebgalgnebhfojomionfpkfelancnnkf";
@@ -311,23 +311,12 @@ TEST_F(ComponentUpdaterTest, RegisterComponent) {
 
   std::vector<uint8_t> hash;
   hash.assign(std::begin(abag_hash), std::end(abag_hash));
-  ComponentRegistration component1(
-      id1, /*name=*/{}, hash, base::Version("1.0"), /*fingerprint=*/{}, {},
-      /*action_handler=*/nullptr, installer,
-      /*requires_network_encryption=*/false,
-      /*supports_group_policy_enable_component_updates=*/true,
-      /*allow_cached_copies=*/true,
-      /*allow_updates_on_metered_connection=*/true);
+  ComponentRegistration component1(id1, {}, hash, base::Version("1.0"), {}, {},
+                                   nullptr, installer, false, true);
 
   hash.assign(std::begin(jebg_hash), std::end(jebg_hash));
-  ComponentRegistration component2(
-      id2, /*name=*/{}, hash, base::Version("0.9"),
-      /*fingerprint=*/{}, /*installer_attributes=*/{},
-      /*action_handler=*/nullptr, installer,
-      /*requires_network_encryption=*/false,
-      /*supports_group_policy_enable_component_updates=*/true,
-      /*allow_cached_copies=*/true,
-      /*allow_updates_on_metered_connection=*/true);
+  ComponentRegistration component2(id2, {}, hash, base::Version("0.9"), {}, {},
+                                   nullptr, installer, false, true);
 
   // Quit after two update checks have fired.
   LoopHandler loop_handler(2, quit_closure());
@@ -386,27 +375,16 @@ TEST_F(ComponentUpdaterTest, OnDemandUpdate) {
     std::vector<uint8_t> hash;
     hash.assign(std::begin(jebg_hash), std::end(jebg_hash));
     EXPECT_TRUE(cus.RegisterComponent(ComponentRegistration(
-        "jebgalgnebhfojomionfpkfelancnnkf", /*name=*/{}, hash,
-        base::Version("0.9"), /*fingerprint=*/{}, /*installer_attributes=*/{},
-        /*action_handler=*/nullptr, base::MakeRefCounted<MockInstaller>(),
-        /*requires_network_encryption=*/false,
-        /*supports_group_policy_enable_component_updates=*/true,
-        /*allow_cached_copies=*/true,
-        /*allow_updates_on_metered_connection=*/true)));
+        "jebgalgnebhfojomionfpkfelancnnkf", {}, hash, base::Version("0.9"), {},
+        {}, nullptr, base::MakeRefCounted<MockInstaller>(), false, true)));
   }
   {
     using update_client::abag_hash;
     std::vector<uint8_t> hash;
     hash.assign(std::begin(abag_hash), std::end(abag_hash));
     EXPECT_TRUE(cus.RegisterComponent(ComponentRegistration(
-        "abagagagagagagagagagagagagagagag", /*name=*/{}, hash,
-        base::Version("0.9"), /*fingerprint=*/{},
-        /*installer_attributes=*/{}, /*action_handler=*/nullptr,
-        base::MakeRefCounted<MockInstaller>(),
-        /*requires_network_encryption=*/false,
-        /*supports_group_policy_enable_component_updates=*/true,
-        /*allow_cached_copies=*/true,
-        /*allow_updates_on_metered_connection=*/true)));
+        "abagagagagagagagagagagagagagagag", {}, hash, base::Version("0.9"), {},
+        {}, nullptr, base::MakeRefCounted<MockInstaller>(), false, true)));
   }
 
   OnDemandTester ondemand_tester;
@@ -444,14 +422,8 @@ TEST_F(ComponentUpdaterTest, MaybeThrottle) {
   EXPECT_CALL(scheduler(), Stop()).Times(1);
 
   EXPECT_TRUE(component_updater().RegisterComponent(ComponentRegistration(
-      "jebgalgnebhfojomionfpkfelancnnkf", /*name=*/{}, hash,
-      base::Version("0.9"), {},
-      /*installer_attributes=*/{}, /*action_handler=*/nullptr,
-      base::MakeRefCounted<MockInstaller>(),
-      /*requires_network_encryption=*/false,
-      /*supports_group_policy_enable_component_updates=*/true,
-      /*allow_cached_copies=*/true,
-      /*allow_updates_on_metered_connection=*/true)));
+      "jebgalgnebhfojomionfpkfelancnnkf", {}, hash, base::Version("0.9"), {},
+      {}, nullptr, base::MakeRefCounted<MockInstaller>(), false, true)));
   component_updater().MaybeThrottle("jebgalgnebhfojomionfpkfelancnnkf",
                                     base::DoNothing());
 

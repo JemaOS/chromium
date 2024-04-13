@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 
 #include <stdint.h>
-
 #include <list>
 #include <map>
-#include <memory>
 #include <string>
+
+#include <memory>
 
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
@@ -34,34 +34,47 @@ const bidirectional_stream_header_array kTestHeadersArray = {2, 2,
 
 namespace grpc_support {
 
-class BidirectionalStreamTest : public ::testing::TestWithParam<bool> {
+// BidirectionalStreamTest, specifically GetTestStreamEngine, fails under TSan.
+// The tests are disabled here rather than as a TSan suppression because the
+// stack trace cannot be distinguished from code in //net and losing TSan
+// coverage for everything in //net is undesirable. See https://crbug.com/965714
+#define MAYBE_BidirectionalStreamTest BidirectionalStreamTest
+#if defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#undef MAYBE_BidirectionalStreamTest
+#define MAYBE_BidirectionalStreamTest DISABLED_BidirectionalStreamTest
+#endif
+#endif
+
+class MAYBE_BidirectionalStreamTest : public ::testing::TestWithParam<bool> {
  public:
-  BidirectionalStreamTest(const BidirectionalStreamTest&) = delete;
-  BidirectionalStreamTest& operator=(const BidirectionalStreamTest&) = delete;
+  MAYBE_BidirectionalStreamTest(const MAYBE_BidirectionalStreamTest&) = delete;
+  MAYBE_BidirectionalStreamTest& operator=(
+      const MAYBE_BidirectionalStreamTest&) = delete;
 
  protected:
-  BidirectionalStreamTest() = default;
-
   void SetUp() override {
     net::QuicSimpleTestServer::Start();
-    test_stream_engine_getter_ =
-        TestStreamEngineGetter::Create(net::QuicSimpleTestServer::GetPort());
+    StartTestStreamEngine(net::QuicSimpleTestServer::GetPort());
     quic_server_hello_url_ = net::QuicSimpleTestServer::GetHelloURL().spec();
   }
 
   void TearDown() override {
-    test_stream_engine_getter_.reset();
+    ShutdownTestStreamEngine();
     net::QuicSimpleTestServer::Shutdown();
   }
 
-  stream_engine* engine() { return test_stream_engine_getter_->Get(); }
+  MAYBE_BidirectionalStreamTest() {}
+  ~MAYBE_BidirectionalStreamTest() override {}
+
+  stream_engine* engine() {
+    return GetTestStreamEngine(net::QuicSimpleTestServer::GetPort());
+  }
 
   const char* test_hello_url() const { return quic_server_hello_url_.c_str(); }
 
  private:
   std::string quic_server_hello_url_;
-
-  std::unique_ptr<TestStreamEngineGetter> test_stream_engine_getter_;
 };
 
 class TestBidirectionalStreamCallback {
@@ -92,28 +105,34 @@ class TestBidirectionalStreamCallback {
     ~WriteData();
   };
 
-  raw_ptr<bidirectional_stream, AcrossTasksDanglingUntriaged> stream = nullptr;
+  raw_ptr<bidirectional_stream> stream;
   base::WaitableEvent stream_done_event;
 
   // Test parameters.
   std::map<std::string, std::string> request_headers;
   std::list<std::unique_ptr<WriteData>> write_data;
   std::string expected_negotiated_protocol;
-  ResponseStep cancel_from_step = NOTHING;
-  size_t read_buffer_size = 32768;
+  ResponseStep cancel_from_step;
+  size_t read_buffer_size;
 
   // Test results.
-  ResponseStep response_step = NOTHING;
-  raw_ptr<char, AcrossTasksDanglingUntriaged> read_buffer = nullptr;
+  ResponseStep response_step;
+  raw_ptr<char> read_buffer;
   std::map<std::string, std::string> response_headers;
   std::map<std::string, std::string> response_trailers;
   std::vector<std::string> read_data;
-  int net_error = 0;
+  int net_error;
 
   TestBidirectionalStreamCallback()
-      : stream_done_event(base::WaitableEvent::ResetPolicy::MANUAL,
+      : stream(nullptr),
+        stream_done_event(base::WaitableEvent::ResetPolicy::MANUAL,
                           base::WaitableEvent::InitialState::NOT_SIGNALED),
-        expected_negotiated_protocol("quic/1+spdy/3") {}
+        expected_negotiated_protocol("quic/1+spdy/3"),
+        cancel_from_step(NOTHING),
+        read_buffer_size(32768),
+        response_step(NOTHING),
+        read_buffer(nullptr),
+        net_error(0) {}
 
   ~TestBidirectionalStreamCallback() { delete[] read_buffer; }
 
@@ -163,18 +182,7 @@ class TestBidirectionalStreamCallback {
     }
   }
 
-  const bidirectional_stream_callback* callback() const {
-    static constexpr bidirectional_stream_callback callback = {
-        on_stream_ready_callback,
-        on_response_headers_received_callback,
-        on_read_completed_callback,
-        on_write_completed_callback,
-        on_response_trailers_received_callback,
-        on_succeded_callback,
-        on_failed_callback,
-        on_canceled_callback};
-    return &callback;
-  }
+  bidirectional_stream_callback* callback() const { return &s_callback; }
 
  private:
   // C callbacks.
@@ -269,7 +277,19 @@ class TestBidirectionalStreamCallback {
     test->MaybeCancel(stream, ON_CANCELED);
     test->SignalDone();
   }
+
+  static bidirectional_stream_callback s_callback;
 };
+
+bidirectional_stream_callback TestBidirectionalStreamCallback::s_callback = {
+    on_stream_ready_callback,
+    on_response_headers_received_callback,
+    on_read_completed_callback,
+    on_write_completed_callback,
+    on_response_trailers_received_callback,
+    on_succeded_callback,
+    on_failed_callback,
+    on_canceled_callback};
 
 TestBidirectionalStreamCallback::WriteData::WriteData(const std::string& data,
                                                       bool flush_after)
@@ -279,7 +299,7 @@ TestBidirectionalStreamCallback::WriteData::~WriteData() {}
 
 // Regression test for b/144733928. Test that coalesced headers will be split by
 // cronet by '\0' separator.
-TEST_P(BidirectionalStreamTest, CoalescedHeadersAreSplit) {
+TEST_P(MAYBE_BidirectionalStreamTest, CoalescedHeadersAreSplit) {
   TestBidirectionalStreamCallback test;
   test.AddWriteData("Hello, ");
   test.AddWriteData("world!");
@@ -311,7 +331,7 @@ TEST_P(BidirectionalStreamTest, CoalescedHeadersAreSplit) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, StartExampleBidiStream) {
+TEST_P(MAYBE_BidirectionalStreamTest, StartExampleBidiStream) {
   TestBidirectionalStreamCallback test_callback;
   test_callback.AddWriteData("Hello, ");
   test_callback.AddWriteData("world!");
@@ -348,7 +368,7 @@ TEST_P(BidirectionalStreamTest, StartExampleBidiStream) {
   bidirectional_stream_destroy(test_callback.stream);
 }
 
-TEST_P(BidirectionalStreamTest, SimplePutWithEmptyWriteDataAtTheEnd) {
+TEST_P(MAYBE_BidirectionalStreamTest, SimplePutWithEmptyWriteDataAtTheEnd) {
   TestBidirectionalStreamCallback test;
   test.AddWriteData("Hello, ");
   test.AddWriteData("world!");
@@ -375,7 +395,7 @@ TEST_P(BidirectionalStreamTest, SimplePutWithEmptyWriteDataAtTheEnd) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, SimpleGetWithFlush) {
+TEST_P(MAYBE_BidirectionalStreamTest, SimpleGetWithFlush) {
   TestBidirectionalStreamCallback test;
   test.stream = bidirectional_stream_create(engine(), &test, test.callback());
   DCHECK(test.stream);
@@ -404,7 +424,7 @@ TEST_P(BidirectionalStreamTest, SimpleGetWithFlush) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, SimplePostWithFlush) {
+TEST_P(MAYBE_BidirectionalStreamTest, SimplePostWithFlush) {
   TestBidirectionalStreamCallback test;
   test.AddWriteData("Test String", false);
   test.AddWriteData("1234567890", false);
@@ -436,7 +456,7 @@ TEST_P(BidirectionalStreamTest, SimplePostWithFlush) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, SimplePostWithFlushTwice) {
+TEST_P(MAYBE_BidirectionalStreamTest, SimplePostWithFlushTwice) {
   TestBidirectionalStreamCallback test;
   test.AddWriteData("Test String", false);
   test.AddWriteData("1234567890", false);
@@ -471,7 +491,7 @@ TEST_P(BidirectionalStreamTest, SimplePostWithFlushTwice) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, SimplePostWithFlushAfterOneWrite) {
+TEST_P(MAYBE_BidirectionalStreamTest, SimplePostWithFlushAfterOneWrite) {
   TestBidirectionalStreamCallback test;
   test.AddWriteData("Test String", false);
   test.AddWriteData("1234567890", false);
@@ -503,7 +523,7 @@ TEST_P(BidirectionalStreamTest, SimplePostWithFlushAfterOneWrite) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, TestDelayedFlush) {
+TEST_P(MAYBE_BidirectionalStreamTest, TestDelayedFlush) {
   class CustomTestBidirectionalStreamCallback
       : public TestBidirectionalStreamCallback {
     void MaybeWriteNextData(bidirectional_stream* stream) override {
@@ -551,7 +571,7 @@ TEST_P(BidirectionalStreamTest, TestDelayedFlush) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, CancelOnRead) {
+TEST_P(MAYBE_BidirectionalStreamTest, CancelOnRead) {
   TestBidirectionalStreamCallback test;
   test.stream = bidirectional_stream_create(engine(), &test, test.callback());
   DCHECK(test.stream);
@@ -570,7 +590,7 @@ TEST_P(BidirectionalStreamTest, CancelOnRead) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, CancelOnResponse) {
+TEST_P(MAYBE_BidirectionalStreamTest, CancelOnResponse) {
   TestBidirectionalStreamCallback test;
   test.stream = bidirectional_stream_create(engine(), &test, test.callback());
   DCHECK(test.stream);
@@ -588,7 +608,7 @@ TEST_P(BidirectionalStreamTest, CancelOnResponse) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, CancelOnSucceeded) {
+TEST_P(MAYBE_BidirectionalStreamTest, CancelOnSucceeded) {
   TestBidirectionalStreamCallback test;
   test.stream = bidirectional_stream_create(engine(), &test, test.callback());
   DCHECK(test.stream);
@@ -607,7 +627,7 @@ TEST_P(BidirectionalStreamTest, CancelOnSucceeded) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, ReadFailsBeforeRequestStarted) {
+TEST_P(MAYBE_BidirectionalStreamTest, ReadFailsBeforeRequestStarted) {
   TestBidirectionalStreamCallback test;
   test.stream = bidirectional_stream_create(engine(), &test, test.callback());
   DCHECK(test.stream);
@@ -630,7 +650,7 @@ TEST_P(BidirectionalStreamTest, ReadFailsBeforeRequestStarted) {
 #define MAYBE_StreamFailBeforeReadIsExecutedOnNetworkThread \
   StreamFailBeforeReadIsExecutedOnNetworkThread
 #endif
-TEST_P(BidirectionalStreamTest,
+TEST_P(MAYBE_BidirectionalStreamTest,
        MAYBE_StreamFailBeforeReadIsExecutedOnNetworkThread) {
   class CustomTestBidirectionalStreamCallback
       : public TestBidirectionalStreamCallback {
@@ -660,7 +680,7 @@ TEST_P(BidirectionalStreamTest,
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, WriteFailsBeforeRequestStarted) {
+TEST_P(MAYBE_BidirectionalStreamTest, WriteFailsBeforeRequestStarted) {
   TestBidirectionalStreamCallback test;
   test.stream = bidirectional_stream_create(engine(), &test, test.callback());
   DCHECK(test.stream);
@@ -674,7 +694,7 @@ TEST_P(BidirectionalStreamTest, WriteFailsBeforeRequestStarted) {
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, StreamFailAfterStreamReadyCallback) {
+TEST_P(MAYBE_BidirectionalStreamTest, StreamFailAfterStreamReadyCallback) {
   class CustomTestBidirectionalStreamCallback
       : public TestBidirectionalStreamCallback {
     bool MaybeCancel(bidirectional_stream* stream, ResponseStep step) override {
@@ -704,9 +724,17 @@ TEST_P(BidirectionalStreamTest, StreamFailAfterStreamReadyCallback) {
   bidirectional_stream_destroy(test.stream);
 }
 
-// TODO(crbug.com/1457033): deflake this test.
-TEST_P(BidirectionalStreamTest,
-       DISABLED_StreamFailBeforeWriteIsExecutedOnNetworkThread) {
+// TODO(crbug.com/1246489): Flaky on Win64.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_StreamFailBeforeWriteIsExecutedOnNetworkThread \
+  DISABLED_StreamFailBeforeWriteIsExecutedOnNetworkThread
+#else
+#define MAYBE_StreamFailBeforeWriteIsExecutedOnNetworkThread \
+  StreamFailBeforeWriteIsExecutedOnNetworkThread
+#endif
+
+TEST_P(MAYBE_BidirectionalStreamTest,
+       MAYBE_StreamFailBeforeWriteIsExecutedOnNetworkThread) {
   class CustomTestBidirectionalStreamCallback
       : public TestBidirectionalStreamCallback {
     bool MaybeCancel(bidirectional_stream* stream, ResponseStep step) override {
@@ -735,7 +763,7 @@ TEST_P(BidirectionalStreamTest,
   bidirectional_stream_destroy(test.stream);
 }
 
-TEST_P(BidirectionalStreamTest, FailedResolution) {
+TEST_P(MAYBE_BidirectionalStreamTest, FailedResolution) {
   TestBidirectionalStreamCallback test;
   test.stream = bidirectional_stream_create(engine(), &test, test.callback());
   DCHECK(test.stream);
@@ -752,7 +780,7 @@ TEST_P(BidirectionalStreamTest, FailedResolution) {
 }
 
 INSTANTIATE_TEST_SUITE_P(BidirectionalStreamDelayRequestHeadersUntilFlush,
-                         BidirectionalStreamTest,
+                         MAYBE_BidirectionalStreamTest,
                          ::testing::Values(true, false));
 
 }  // namespace grpc_support

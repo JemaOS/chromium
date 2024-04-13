@@ -43,15 +43,9 @@ const char kDiffLevelPolicy[] = "chrome-diff-level-and-scope";
 const std::string kUrl1 = "example.com";
 const std::string kUrl2 = "gmail.com";
 const std::string kUrl3 = "google.com";
-
-#if !BUILDFLAG(IS_IOS)
 const std::string kUrl4 = "youtube.com";
-#endif
-
-#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_IOS)
 const std::string kAffiliationId1 = "abc";
 const std::string kAffiliationId2 = "def";
-#endif
 
 // Helper to compare the arguments to an EXPECT_CALL of OnPolicyUpdated() with
 // their expected values.
@@ -540,15 +534,13 @@ TEST_F(PolicyServiceTest, PolicyChangeRegistrar) {
 }
 
 TEST_F(PolicyServiceTest, RefreshPolicies) {
-  EXPECT_CALL(provider0_, RefreshPolicies(testing::_)).Times(AnyNumber());
-  EXPECT_CALL(provider1_, RefreshPolicies(testing::_)).Times(AnyNumber());
-  EXPECT_CALL(provider2_, RefreshPolicies(testing::_)).Times(AnyNumber());
+  EXPECT_CALL(provider0_, RefreshPolicies()).Times(AnyNumber());
+  EXPECT_CALL(provider1_, RefreshPolicies()).Times(AnyNumber());
+  EXPECT_CALL(provider2_, RefreshPolicies()).Times(AnyNumber());
 
   EXPECT_CALL(*this, OnPolicyRefresh()).Times(0);
-  policy_service_->RefreshPolicies(
-      base::BindOnce(&PolicyServiceTest::OnPolicyRefresh,
-                     base::Unretained(this)),
-      PolicyFetchReason::kTest);
+  policy_service_->RefreshPolicies(base::BindOnce(
+      &PolicyServiceTest::OnPolicyRefresh, base::Unretained(this)));
   // Let any queued observer tasks run.
   RunUntilIdle();
   Mock::VerifyAndClearExpectations(this);
@@ -579,10 +571,8 @@ TEST_F(PolicyServiceTest, RefreshPolicies) {
   // If another RefreshPolicies() call happens while waiting for a previous
   // one to complete, then all providers must refresh again.
   EXPECT_CALL(*this, OnPolicyRefresh()).Times(0);
-  policy_service_->RefreshPolicies(
-      base::BindOnce(&PolicyServiceTest::OnPolicyRefresh,
-                     base::Unretained(this)),
-      PolicyFetchReason::kTest);
+  policy_service_->RefreshPolicies(base::BindOnce(
+      &PolicyServiceTest::OnPolicyRefresh, base::Unretained(this)));
   RunUntilIdle();
   Mock::VerifyAndClearExpectations(this);
 

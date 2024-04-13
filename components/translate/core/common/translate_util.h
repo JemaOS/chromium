@@ -11,12 +11,38 @@
 
 namespace translate {
 
+// Controls whether translation applies to sub frames as well as the
+// main frame.
+BASE_DECLARE_FEATURE(kTranslateSubFrames);
+
 // Controls whether the TFLite-based language detection is enabled.
 BASE_DECLARE_FEATURE(kTFLiteLanguageDetectionEnabled);
 
 // Controls whether the TFLite-based language detection is computed, but ignored
 // and the CLD3 version is used instead.
 BASE_DECLARE_FEATURE(kTFLiteLanguageDetectionIgnoreEnabled);
+
+// Controls whether force translate is enabled on iOS.
+BASE_DECLARE_FEATURE(kIOSForceTranslateEnabled);
+
+// Controls whether the Partial Translate function is available.
+BASE_DECLARE_FEATURE(kDesktopPartialTranslate);
+// The maximum number of characters allowed for a text selection in Partial
+// Translate. Longer selections will be truncated down to the first valid word
+// break respecting the threshold.
+extern const base::FeatureParam<int>
+    kDesktopPartialTranslateTextSelectionMaxCharacters;
+// The number of milliseconds to wait before showing the Partial Translate
+// bubble, even if no response has been received. In this case, a waiting view
+// is shown.
+extern const base::FeatureParam<int> kDesktopPartialTranslateBubbleShowDelayMs;
+
+// When enabled, language detection is attempted when the page finishes loading
+// if no page content is captured when parsing completes.
+BASE_DECLARE_FEATURE(kRetryLanguageDetection);
+// When enabled, language detection is skipped if no page content was captured
+// and chrome://translate-internals logs are updated to reflect this.
+BASE_DECLARE_FEATURE(kSkipLanguageDetectionOnEmptyContent);
 
 #if !BUILDFLAG(IS_WIN)
 // Controls whether mmap is used to load the language detection model.
@@ -30,8 +56,14 @@ extern const char kSecurityOrigin[];
 // language checks and to obtain the list of available languages.
 GURL GetTranslateSecurityOrigin();
 
+// Return whether sub frame translation is enabled.
+bool IsSubFrameTranslationEnabled();
+
 // Return whether sub frame language detection is enabled.
 bool IsSubFrameLanguageDetectionEnabled();
+
+// Return whether manual force translate is enabled.
+bool IsForceTranslateEnabled();
 
 // Return whether TFLite-based language detection is enabled.
 bool IsTFLiteLanguageDetectionEnabled();

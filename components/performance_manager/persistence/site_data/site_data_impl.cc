@@ -9,7 +9,8 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/strings/strcat.h"
+#include "base/metrics/histogram_macros.h"
+#include "base/strings/stringprintf.h"
 
 namespace performance_manager {
 namespace internal {
@@ -206,15 +207,8 @@ SiteDataImpl::~SiteDataImpl() {
 
     // TODO(sebmarchand): Some data might be lost here if the read operation has
     // not completed, add some metrics to measure if this is really an issue.
-    if (is_dirty_ && fully_initialized_) {
-      // SiteDataImpl is only created from SiteDataCacheImpl, not from the
-      // NonRecordingSiteDataCache that's used for OTR profiles, so this should
-      // always be logged.
-      base::UmaHistogramBoolean(
-          "PerformanceManager.SiteDB.WriteScheduled.WriteSiteDataIntoStore",
-          true);
+    if (is_dirty_ && fully_initialized_)
       data_store_->WriteSiteDataIntoStore(origin_, FlushStateToProto());
-    }
   }
 }
 
@@ -286,8 +280,8 @@ SiteFeatureUsage SiteDataImpl::GetFeatureUsage(
     const SiteDataFeatureProto& feature_proto) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  base::UmaHistogramBoolean(
-      "PerformanceManager.SiteDB.ReadHasCompletedBeforeQuery",
+  UMA_HISTOGRAM_BOOLEAN(
+      "ResourceCoordinator.LocalDB.ReadHasCompletedBeforeQuery",
       fully_initialized_);
 
   // Checks if this feature has already been observed.
@@ -312,9 +306,9 @@ void SiteDataImpl::NotifyFeatureUsage(SiteDataFeatureProto* feature_proto,
   // observed.
   if (feature_proto->observation_duration() != 0) {
     base::UmaHistogramCustomTimes(
-        base::StrCat(
-            {"PerformanceManager.SiteDB.ObservationTimeBeforeFirstUse.",
-             feature_name}),
+        base::StringPrintf(
+            "ResourceCoordinator.LocalDB.ObservationTimeBeforeFirstUse.%s",
+            feature_name),
         InternalRepresentationToTimeDelta(
             feature_proto->observation_duration()),
         base::Seconds(1), base::Days(1), 100);
@@ -326,7 +320,7 @@ void SiteDataImpl::NotifyFeatureUsage(SiteDataFeatureProto* feature_proto,
 }
 
 void SiteDataImpl::OnInitCallback(
-    std::optional<SiteDataProto> db_site_characteristics) {
+    absl::optional<SiteDataProto> db_site_characteristics) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Check if the initialization has succeeded.
   if (db_site_characteristics) {

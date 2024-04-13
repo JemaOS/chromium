@@ -62,6 +62,8 @@ class HeadlessPrintManager
   void CheckForCancel(int32_t preview_ui_id,
                       int32_t request_id,
                       CheckForCancelCallback callback) override;
+#endif
+#if BUILDFLAG(ENABLE_TAGGED_PDF)
   void SetAccessibilityTree(
       int32_t cookie,
       const ui::AXTreeUpdate& accessibility_tree) override;

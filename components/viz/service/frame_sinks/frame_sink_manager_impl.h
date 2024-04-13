@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -25,7 +24,6 @@
 #include "base/threading/thread_checker.h"
 #include "base/time/time.h"
 #include "components/viz/common/constants.h"
-#include "components/viz/common/navigation_id.h"
 #include "components/viz/common/surfaces/frame_sink_bundle_id.h"
 #include "components/viz/common/surfaces/frame_sink_id.h"
 #include "components/viz/service/frame_sinks/compositor_frame_sink_impl.h"
@@ -48,6 +46,7 @@
 #include "services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
 #include "services/viz/privileged/mojom/compositing/frame_sink_video_capture.mojom.h"
 #include "services/viz/public/mojom/compositing/video_detector_observer.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace viz {
 
@@ -80,7 +79,7 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
     InitParams& operator=(InitParams&& other);
 
     raw_ptr<SharedBitmapManager> shared_bitmap_manager = nullptr;
-    std::optional<uint32_t> activation_deadline_in_frames =
+    absl::optional<uint32_t> activation_deadline_in_frames =
         kDefaultActivationDeadlineInFrames;
     raw_ptr<OutputSurfaceProvider> output_surface_provider = nullptr;
     raw_ptr<GmbVideoFramePoolContextProvider> gmb_context_provider = nullptr;
@@ -129,7 +128,7 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
       mojo::PendingRemote<mojom::FrameSinkBundleClient> client) override;
   void CreateCompositorFrameSink(
       const FrameSinkId& frame_sink_id,
-      const std::optional<FrameSinkBundleId>& bundle_id,
+      const absl::optional<FrameSinkBundleId>& bundle_id,
       mojo::PendingReceiver<mojom::CompositorFrameSink> receiver,
       mojo::PendingRemote<mojom::CompositorFrameSinkClient> client) override;
   void DestroyCompositorFrameSink(
@@ -147,8 +146,7 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
       mojo::PendingReceiver<mojom::FrameSinkVideoCapturer> receiver) override;
   void EvictSurfaces(const std::vector<SurfaceId>& surface_ids) override;
   void RequestCopyOfOutput(const SurfaceId& surface_id,
-                           std::unique_ptr<CopyOutputRequest> request,
-                           bool capture_exact_surface_id) override;
+                           std::unique_ptr<CopyOutputRequest> request) override;
   void CacheBackBuffer(uint32_t cache_id,
                        const FrameSinkId& root_frame_sink_id) override;
   void EvictBackBuffer(uint32_t cache_id,
@@ -163,10 +161,6 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
                                  base::TimeDelta bucket_size) override;
   void StopFrameCountingForTest(
       StopFrameCountingForTestCallback callback) override;
-  void ClearUnclaimedViewTransitionResources(
-      const NavigationId& navigation_id) override;
-  void HasUnclaimedViewTransitionResourcesForTest(
-      HasUnclaimedViewTransitionResourcesForTestCallback callback) override;
 
   void DestroyFrameSinkBundle(const FrameSinkBundleId& id);
 
@@ -213,7 +207,7 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
   void SubmitHitTestRegionList(
       const SurfaceId& surface_id,
       uint64_t frame_index,
-      std::optional<HitTestRegionList> hit_test_region_list);
+      absl::optional<HitTestRegionList> hit_test_region_list);
 
   // Instantiates |video_detector_| for tests where we simulate the passage of
   // time.
@@ -263,24 +257,22 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
   // Called when video capture stops on the target frame sink with |id|.
   void OnCaptureStopped(const FrameSinkId& id);
 
-  // Invokes the callback with `true` if thread IDs do belong to neither this
-  // process nor the host (i.e. browser) process. Invokes the callback with
-  // `false` otherwise, or on any unexpected errors. Only implemented on
-  // Android.
-  void VerifySandboxedThreadIds(
-      const base::flat_set<base::PlatformThreadId>& thread_ids,
-      base::OnceCallback<void(bool)> verification_callback);
+  // Returns true if thread IDs do not belong to this process or the host (ie
+  // browser) process. Note this also returns false on any unexpected errors.
+  // Only implemented on Android.
+  bool VerifySandboxedThreadIds(
+      base::flat_set<base::PlatformThreadId> thread_ids);
 
   // Manages transferring ownership of SurfaceAnimationManager for
   // cross-document navigations where a transition could be initiated on one
   // CompositorFrameSink but animations are executed on a different
   // CompositorFrameSink.
   void CacheSurfaceAnimationManager(
-      NavigationId navigation_id,
+      NavigationID navigation_id,
       std::unique_ptr<SurfaceAnimationManager> manager);
   std::unique_ptr<SurfaceAnimationManager> TakeSurfaceAnimationManager(
-      NavigationId navigation_id);
-  void ClearSurfaceAnimationManager(NavigationId navigation_id);
+      NavigationID navigation_id);
+  void ClearSurfaceAnimationManager(NavigationID navigation_id);
 
   FrameCounter* frame_counter() {
     return frame_counter_ ? &frame_counter_.value() : nullptr;
@@ -420,7 +412,7 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
                  base::UniquePtrComparator>
       video_capturers_;
 
-  base::flat_map<NavigationId, std::unique_ptr<SurfaceAnimationManager>>
+  base::flat_map<NavigationID, std::unique_ptr<SurfaceAnimationManager>>
       navigation_to_animation_manager_;
 
   // The ids of the frame sinks that are currently being captured.
@@ -438,7 +430,7 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
 
   // If present, the throttling interval which defines the upper bound of how
   // often BeginFrames are sent for all current and future frame sinks.
-  std::optional<base::TimeDelta> global_throttle_interval_ = std::nullopt;
+  absl::optional<base::TimeDelta> global_throttle_interval_ = absl::nullopt;
 
   base::flat_map<uint32_t, base::ScopedClosureRunner> cached_back_buffers_;
 
@@ -463,13 +455,13 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
   //     remote client and |ui_task_runner_| will be nullptr, and calls to
   //     OnFrameTokenChanged() will be directly called (without PostTask) on
   //     |client_|. Used for some unit tests.
-  raw_ptr<mojom::FrameSinkManagerClient, DanglingUntriaged> client_ = nullptr;
+  raw_ptr<mojom::FrameSinkManagerClient> client_ = nullptr;
   mojo::Receiver<mojom::FrameSinkManager> receiver_{this};
 
   base::ObserverList<FrameSinkObserver>::Unchecked observer_list_;
 
   // Counts frames for test.
-  std::optional<FrameCounter> frame_counter_;
+  absl::optional<FrameCounter> frame_counter_;
 };
 
 }  // namespace viz

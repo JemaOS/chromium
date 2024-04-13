@@ -15,14 +15,8 @@
 #include "components/safe_browsing/core/common/features.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "url/gurl.h"
-namespace safe_browsing {
-SafeBrowsingDatabaseManager::Client::Client() = default;
-SafeBrowsingDatabaseManager::Client::~Client() = default;
 
-base::WeakPtr<SafeBrowsingDatabaseManager::Client>
-SafeBrowsingDatabaseManager::Client::GetWeakPtr() {
-  return weak_factory_.GetWeakPtr();
-}
+namespace safe_browsing {
 
 SafeBrowsingDatabaseManager::SafeBrowsingDatabaseManager(
     scoped_refptr<base::SequencedTaskRunner> ui_task_runner,
@@ -31,7 +25,8 @@ SafeBrowsingDatabaseManager::SafeBrowsingDatabaseManager(
           base::FeatureList::IsEnabled(kSafeBrowsingOnUIThread)
               ? ui_task_runner
               : std::move(io_task_runner)),
-      ui_task_runner_(std::move(ui_task_runner)) {}
+      ui_task_runner_(std::move(ui_task_runner)),
+      enabled_(false) {}
 
 SafeBrowsingDatabaseManager::~SafeBrowsingDatabaseManager() {
   DCHECK(!v4_get_hash_protocol_manager_);
@@ -53,7 +48,7 @@ bool SafeBrowsingDatabaseManager::CheckApiBlocklistUrl(const GURL& url,
   DCHECK(sb_task_runner()->RunsTasksInCurrentSequence());
 
   // Make sure we can check this url and that the service is enabled.
-  if (!IsDatabaseReady() ||
+  if (!enabled_ ||
       !(url.SchemeIs(url::kHttpScheme) || url.SchemeIs(url::kHttpsScheme))) {
     return true;
   }
@@ -155,6 +150,17 @@ SafeBrowsingDatabaseManager::RegisterDatabaseUpdatedCallback(
 void SafeBrowsingDatabaseManager::NotifyDatabaseUpdateFinished() {
   DCHECK(ui_task_runner()->RunsTasksInCurrentSequence());
   update_complete_callback_list_.Notify();
+}
+
+bool SafeBrowsingDatabaseManager::IsDatabaseReady() {
+  DCHECK(sb_task_runner()->RunsTasksInCurrentSequence());
+  return enabled_;
+}
+
+void SafeBrowsingDatabaseManager::SetLookupMechanismExperimentIsEnabled() {
+  if (v4_get_hash_protocol_manager_) {
+    v4_get_hash_protocol_manager_->SetLookupMechanismExperimentIsEnabled();
+  }
 }
 
 SafeBrowsingDatabaseManager::SafeBrowsingApiCheck::SafeBrowsingApiCheck(

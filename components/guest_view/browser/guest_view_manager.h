@@ -71,18 +71,13 @@ class GuestViewManager : public content::BrowserPluginGuestManager,
                            const base::Value::Dict& attach_params);
 
   // Indicates whether the |guest| is owned by an extension or Chrome App.
-  bool IsOwnedByExtension(const GuestViewBase* guest);
-
-  // Indicates whether the |guest| is owned by a Controlled Frame embedder.
-  bool IsOwnedByControlledFrameEmbedder(const GuestViewBase* guest);
+  bool IsOwnedByExtension(GuestViewBase* guest);
 
   int GetNextInstanceID();
 
-  base::WeakPtr<GuestViewManager> AsWeakPtr();
-
   using GuestViewCreateFunction =
       base::RepeatingCallback<std::unique_ptr<GuestViewBase>(
-          content::RenderFrameHost* owner_rfh)>;
+          content::WebContents* owner_web_contents)>;
   using GuestViewCleanUpFunction =
       base::RepeatingCallback<void(content::BrowserContext*,
                                    int embedder_process_id,
@@ -103,12 +98,12 @@ class GuestViewManager : public content::BrowserPluginGuestManager,
       base::OnceCallback<void(std::unique_ptr<GuestViewBase>)>;
   // Creates a guest and has the GuestViewManager assume ownership.
   void CreateGuest(const std::string& view_type,
-                   content::RenderFrameHost* owner_rfh,
+                   content::WebContents* owner_web_contents,
                    const base::Value::Dict& create_params,
                    UnownedGuestCreatedCallback callback);
   // Creates a guest which the caller will own.
   void CreateGuestAndTransferOwnership(const std::string& view_type,
-                                       content::RenderFrameHost* owner_rfh,
+                                       content::WebContents* owner_web_contents,
                                        const base::Value::Dict& create_params,
                                        OwnedGuestCreatedCallback callback);
 
@@ -119,7 +114,7 @@ class GuestViewManager : public content::BrowserPluginGuestManager,
 
   std::unique_ptr<content::WebContents> CreateGuestWithWebContentsParams(
       const std::string& view_type,
-      content::RenderFrameHost* owner_rfh,
+      content::WebContents* owner_web_contents,
       const content::WebContents::CreateParams& create_params);
 
   content::SiteInstance* GetGuestSiteInstance(
@@ -128,9 +123,9 @@ class GuestViewManager : public content::BrowserPluginGuestManager,
   // BrowserPluginGuestManager implementation.
   void ForEachUnattachedGuest(
       content::WebContents* owner_web_contents,
-      base::FunctionRef<void(content::WebContents*)> fn) override;
+      base::RepeatingCallback<void(content::WebContents*)> callback) override;
   bool ForEachGuest(content::WebContents* owner_web_contents,
-                    base::FunctionRef<bool(content::WebContents*)> fn) override;
+                    const GuestCallback& callback) override;
   content::WebContents* GetFullPageGuest(
       content::WebContents* embedder_web_contents) override;
 
@@ -138,7 +133,6 @@ class GuestViewManager : public content::BrowserPluginGuestManager,
   friend class GuestViewBase;
   friend class GuestViewEvent;
   friend class GuestViewMessageHandler;
-  friend class ViewHandle;
 
   class EmbedderRenderProcessHostObserver;
 
@@ -177,7 +171,7 @@ class GuestViewManager : public content::BrowserPluginGuestManager,
 
   // Creates a guest of the provided |view_type|.
   std::unique_ptr<GuestViewBase> CreateGuestInternal(
-      content::RenderFrameHost* owner_rfh,
+      content::WebContents* owner_web_contents,
       const std::string& view_type);
 
   // Adds GuestView types to the GuestView registry.
@@ -211,6 +205,9 @@ class GuestViewManager : public content::BrowserPluginGuestManager,
   // We disallow adding new guest with instance IDs that were previously removed
   // from this manager using RemoveGuest.
   bool CanUseGuestInstanceID(int guest_instance_id);
+
+  static bool GetFullPageGuestHelper(content::WebContents** result,
+                                     content::WebContents* guest_web_contents);
 
   // Contains guests, mapping from their instance ids.
   using GuestInstanceMap = std::map<int, GuestViewBase*>;
@@ -281,6 +278,8 @@ class GuestViewManager : public content::BrowserPluginGuestManager,
   using CallbacksForEachEmbedderID = std::map<int, CallbacksForEachViewID>;
   CallbacksForEachEmbedderID view_destruction_callback_map_;
 
+  // This is used to ensure that an EmbedderRenderProcessHostObserver will not
+  // call into this GuestViewManager after it has been destroyed.
   base::WeakPtrFactory<GuestViewManager> weak_ptr_factory_{this};
 };
 

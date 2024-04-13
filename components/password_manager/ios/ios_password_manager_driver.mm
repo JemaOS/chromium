@@ -11,23 +11,24 @@
 #include "components/password_manager/core/browser/password_generation_frame_helper.h"
 #include "components/password_manager/core/browser/password_manager.h"
 #import "components/password_manager/ios/ios_password_manager_driver_factory.h"
-#import "components/password_manager/ios/password_manager_java_script_feature.h"
+
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
 
 using password_manager::PasswordAutofillManager;
 using password_manager::PasswordManager;
 
 IOSPasswordManagerDriver::IOSPasswordManagerDriver(
-    web::WebState* web_state,
     id<PasswordManagerDriverBridge> bridge,
     password_manager::PasswordManagerInterface* password_manager,
     web::WebFrame* web_frame,
     int driver_id)
-    : web_state_(web_state->GetWeakPtr()),
-      bridge_(bridge),
+    : bridge_(bridge),
       password_manager_(password_manager),
+      web_frame_(web_frame),
       id_(driver_id),
-      cached_frame_id_(base::FastHash(web_frame->GetFrameId())),
-      frame_id_(web_frame->GetFrameId()) {
+      cached_frame_id_(base::FastHash(web_frame->GetFrameId())) {
   password_generation_helper_ =
       std::make_unique<password_manager::PasswordGenerationFrameHelper>(
           password_manager_->GetClient(), this);
@@ -45,15 +46,20 @@ int IOSPasswordManagerDriver::GetId() const {
 
 void IOSPasswordManagerDriver::SetPasswordFillData(
     const autofill::PasswordFormFillData& form_data) {
-  [bridge_ processPasswordFormFillData:form_data
-                            forFrameId:frame_id_
-                           isMainFrame:is_in_main_frame_
-                     forSecurityOrigin:security_origin_];
+  // No need to cache data if the frame is already destroyed.
+  // (crbug.com/1383214): |web_frame_| is not guaranteed to be alive, that's
+  // why cached values for isMainFrame & forSecurityOrigin need to be passed.
+  if (web_frame_) {
+    [bridge_ processPasswordFormFillData:form_data
+                                 inFrame:web_frame_
+                             isMainFrame:is_in_main_frame_
+                       forSecurityOrigin:security_origin_];
+  }
 }
 
 void IOSPasswordManagerDriver::InformNoSavedCredentials(
     bool should_show_popup_without_passwords) {
-  [bridge_ onNoSavedCredentialsWithFrameId:frame_id_];
+  [bridge_ onNoSavedCredentials];
 }
 
 void IOSPasswordManagerDriver::FormEligibleForGenerationFound(
@@ -92,7 +98,7 @@ void IOSPasswordManagerDriver::ClearPreviewedForm() {
 
 void IOSPasswordManagerDriver::SetSuggestionAvailability(
     autofill::FieldRendererId generation_element_id,
-    autofill::mojom::AutofillSuggestionAvailability suggestion_availability) {
+    const autofill::mojom::AutofillState state) {
   NOTIMPLEMENTED();
 }
 
@@ -121,6 +127,10 @@ bool IOSPasswordManagerDriver::CanShowAutofillUi() const {
   return true;
 }
 
+::ui::AXTreeID IOSPasswordManagerDriver::GetAxTreeId() const {
+  return {};
+}
+
 int IOSPasswordManagerDriver::GetFrameId() const {
   return cached_frame_id_;
 }
@@ -129,7 +139,6 @@ const GURL& IOSPasswordManagerDriver::GetLastCommittedURL() const {
   return bridge_.lastCommittedURL;
 }
 
-base::WeakPtr<password_manager::PasswordManagerDriver>
-IOSPasswordManagerDriver::AsWeakPtr() {
-  return weak_factory_.GetWeakPtr();
+void IOSPasswordManagerDriver::ProcessFrameDeletion() {
+  web_frame_ = nullptr;
 }

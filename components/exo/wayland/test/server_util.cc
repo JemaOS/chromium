@@ -13,15 +13,15 @@ namespace exo::wayland::test::server_util {
 
 wl_resource* LookUpResource(Server* server, const ResourceKey& key) {
   struct IteratorData {
-    raw_ptr<wl_resource> result = nullptr;
-    const raw_ref<const ResourceKey> key;
+    raw_ptr<wl_resource, ExperimentalAsh> result = nullptr;
+    const raw_ref<const ResourceKey, ExperimentalAsh> key;
   };
 
-  IteratorData iterator_data{.key = ToRawRef(key)};
+  IteratorData iterator_data{.key = raw_ref(key)};
 
   wl_client* client = nullptr;
   wl_list* all_clients =
-      wl_display_get_client_list(server->GetWaylandDisplay());
+      wl_display_get_client_list(server->GetWaylandDisplayForTesting());
 
   auto find_closure = [](struct wl_resource* resource, void* data) {
     IteratorData* iterator_data = static_cast<IteratorData*>(data);

@@ -6,7 +6,6 @@
 #define COMPONENTS_SESSIONS_CORE_TAB_RESTORE_SERVICE_IMPL_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/compiler_specific.h"
@@ -15,6 +14,7 @@
 #include "components/sessions/core/tab_restore_service.h"
 #include "components/sessions/core/tab_restore_service_client.h"
 #include "components/sessions/core/tab_restore_service_helper.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefService;
 class TabRestoreServiceImplTest;
@@ -37,8 +37,8 @@ class SESSIONS_EXPORT TabRestoreServiceImpl : public TabRestoreService {
   // TabRestoreService:
   void AddObserver(TabRestoreServiceObserver* observer) override;
   void RemoveObserver(TabRestoreServiceObserver* observer) override;
-  std::optional<SessionID> CreateHistoricalTab(LiveTab* live_tab,
-                                               int index) override;
+  absl::optional<SessionID> CreateHistoricalTab(LiveTab* live_tab,
+                                                int index) override;
   void BrowserClosing(LiveTabContext* context) override;
   void BrowserClosed(LiveTabContext* context) override;
   void CreateHistoricalGroup(LiveTabContext* context,
@@ -50,7 +50,7 @@ class SESSIONS_EXPORT TabRestoreServiceImpl : public TabRestoreService {
   const Entries& entries() const override;
   std::vector<LiveTab*> RestoreMostRecentEntry(
       LiveTabContext* context) override;
-  void RemoveEntryById(SessionID id) override;
+  void RemoveTabEntryById(SessionID id) override;
   std::vector<LiveTab*> RestoreEntryById(
       LiveTabContext* context,
       SessionID id,

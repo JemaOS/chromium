@@ -23,7 +23,9 @@ import androidx.core.widget.ImageViewCompat;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.widget.ChromeImageView;
 
-/** View showing an icon, title and subtitle for a page info row. */
+/**
+ * View showing an icon, title and subtitle for a page info row.
+ */
 public class PageInfoRowView extends FrameLayout {
     /**  Parameters to configure the row view. */
     public static class ViewParams {
@@ -55,8 +57,7 @@ public class PageInfoRowView extends FrameLayout {
         setVisibility(params.visible ? VISIBLE : GONE);
         if (!params.visible) return;
 
-        Context context = getContext();
-        DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
+        DisplayMetrics displayMetrics = getContext().getResources().getDisplayMetrics();
         mIcon.setImageResource(params.iconResId);
         if (params.decreaseIconSize) {
             // All icons are 24dp but some are effectively 20dp because fill the side with padding.
@@ -67,12 +68,11 @@ public class PageInfoRowView extends FrameLayout {
             mIcon.setPadding(p, p, p, p);
         }
 
-        ImageViewCompat.setImageTintList(
-                mIcon,
+        ImageViewCompat.setImageTintList(mIcon,
                 params.iconTint != 0
-                        ? ColorStateList.valueOf(context.getColor(params.iconTint))
+                        ? ColorStateList.valueOf(getResources().getColor(params.iconTint))
                         : AppCompatResources.getColorStateList(
-                                context, R.color.default_icon_color_tint_list));
+                                getContext(), R.color.default_icon_color_tint_list));
 
         mTitle.setText(params.title);
         mTitle.setVisibility(params.title != null ? VISIBLE : GONE);
@@ -88,9 +88,8 @@ public class PageInfoRowView extends FrameLayout {
             getChildAt(0).setOnClickListener((v) -> params.clickCallback.run());
         }
         if (params.rowTint != 0) {
-            setBackgroundColor(
-                    AppCompatResources.getColorStateList(context, params.rowTint)
-                            .getDefaultColor());
+            setBackgroundColor(AppCompatResources.getColorStateList(getContext(), params.rowTint)
+                                       .getDefaultColor());
         }
     }
 

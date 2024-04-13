@@ -14,14 +14,15 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
-#include "base/time/time.h"
 #include "components/sync/engine/model_type_processor.h"
-#include "components/sync/model/data_type_activation_request.h"
 #include "components/sync/model/model_type_controller_delegate.h"
-#include "components/sync/model/wipe_model_upon_sync_disabled_behavior.h"
 #include "components/sync_bookmarks/synced_bookmark_tracker.h"
 
 class BookmarkUndoService;
+
+namespace bookmarks {
+class BookmarkModel;
+}
 
 namespace favicon {
 class FaviconService;
@@ -30,15 +31,13 @@ class FaviconService;
 namespace sync_bookmarks {
 
 class BookmarkModelObserverImpl;
-class BookmarkModelView;
 
 class BookmarkModelTypeProcessor : public syncer::ModelTypeProcessor,
                                    public syncer::ModelTypeControllerDelegate {
  public:
-  // `bookmark_undo_service` must not be nullptr and must outlive this object.
-  BookmarkModelTypeProcessor(BookmarkUndoService* bookmark_undo_service,
-                             syncer::WipeModelUponSyncDisabledBehavior
-                                 wipe_model_upon_sync_disabled_behavior);
+  // |bookmark_undo_service| must not be nullptr and must outlive this object.
+  explicit BookmarkModelTypeProcessor(
+      BookmarkUndoService* bookmark_undo_service);
 
   BookmarkModelTypeProcessor(const BookmarkModelTypeProcessor&) = delete;
   BookmarkModelTypeProcessor& operator=(const BookmarkModelTypeProcessor&) =
@@ -55,10 +54,10 @@ class BookmarkModelTypeProcessor : public syncer::ModelTypeProcessor,
       const sync_pb::ModelTypeState& type_state,
       const syncer::CommitResponseDataList& committed_response_list,
       const syncer::FailedCommitResponseDataList& error_response_list) override;
-  void OnUpdateReceived(
-      const sync_pb::ModelTypeState& type_state,
-      syncer::UpdateResponseDataList updates,
-      std::optional<sync_pb::GarbageCollectionDirective> gc_directive) override;
+  void OnUpdateReceived(const sync_pb::ModelTypeState& type_state,
+                        syncer::UpdateResponseDataList updates,
+                        absl::optional<sync_pb::GarbageCollectionDirective>
+                            gc_directive) override;
   void StorePendingInvalidations(
       std::vector<sync_pb::ModelTypeState::Invalidation> invalidations_to_store)
       override;
@@ -72,33 +71,30 @@ class BookmarkModelTypeProcessor : public syncer::ModelTypeProcessor,
       base::OnceCallback<void(const syncer::TypeEntitiesCount&)> callback)
       const override;
   void RecordMemoryUsageAndCountsHistograms() override;
-  void ClearMetadataIfStopped() override;
-  void ReportBridgeErrorForTest() override;
+  void ClearMetadataWhileStopped() override;
 
   // Encodes all sync metadata into a string, representing a state that can be
   // restored via ModelReadyToSync() below.
   std::string EncodeSyncMetadata() const;
 
   // It mainly decodes a BookmarkModelMetadata proto serialized in
-  // `metadata_str`, and uses it to fill in the tracker and the model type state
-  // objects. `model` must not be null and must outlive this object. It is used
+  // |metadata_str|, and uses it to fill in the tracker and the model type state
+  // objects. |model| must not be null and must outlive this object. It is used
   // to the retrieve the local node ids, and is stored in the processor to be
-  // used for further model operations. `schedule_save_closure` is a repeating
+  // used for further model operations. |schedule_save_closure| is a repeating
   // closure used to schedule a save of the bookmark model together with the
   // metadata.
   void ModelReadyToSync(const std::string& metadata_str,
                         const base::RepeatingClosure& schedule_save_closure,
-                        BookmarkModelView* model);
+                        bookmarks::BookmarkModel* model);
 
   // Sets the favicon service used when processing remote updates. It must be
   // called before the processor is ready to receive remote updates, and hence
-  // before OnSyncStarting() is called. `favicon_service` must not be null.
+  // before OnSyncStarting() is called. |favicon_service| must not be null.
   void SetFaviconService(favicon::FaviconService* favicon_service);
 
   // Returns the estimate of dynamically allocated memory in bytes.
   size_t EstimateMemoryUsage() const;
-
-  bool IsTrackingMetadata() const;
 
   const SyncedBookmarkTracker* GetTrackerForTest() const;
   bool IsConnectedForTest() const;
@@ -132,20 +128,17 @@ class BookmarkModelTypeProcessor : public syncer::ModelTypeProcessor,
   // of metadata fields managed by the processor but only those tracked by the
   // bookmark tracker.
   void StartTrackingMetadata();
+  void StopTrackingMetadata();
 
   // Resets bookmark tracker in addition to stopping metadata tracking. Note
   // that unlike StopTrackingMetadata(), this does not disconnect sync and
   // instead the caller must meet this precondition.
   void StopTrackingMetadataAndResetTracker();
 
-  // Honors `wipe_model_upon_sync_disabled_behavior_`, i.e. deletes all
-  // bookmarks in the model depending on the selected behavior.
-  void TriggerWipeModelUponSyncDisabledBehavior();
-
   // Creates a DictionaryValue for local and remote debugging information about
-  // `node` and appends it to `all_nodes`. It does the same for child nodes
-  // recursively. `index` is the index of `node` within its parent. `index`
-  // could computed from `node`, however it's much cheaper to pass from outside
+  // |node| and appends it to |all_nodes|. It does the same for child nodes
+  // recursively. |index| is the index of |node| within its parent. |index|
+  // could computed from |node|, however it's much cheaper to pass from outside
   // since we iterate over child nodes already in the calling sites.
   void AppendNodeAndChildrenForDebugging(const bookmarks::BookmarkNode* node,
                                          int index,
@@ -155,27 +148,20 @@ class BookmarkModelTypeProcessor : public syncer::ModelTypeProcessor,
   // ModelReadyToSync().
   StartCallback start_callback_;
 
-  // The request context passed in as part of OnSyncStarting().
-  syncer::DataTypeActivationRequest activation_request_;
-
   // The bookmark model we are processing local changes from and forwarding
   // remote changes to. It is set during ModelReadyToSync(), which is called
   // during startup, as part of the bookmark-loading process.
-  raw_ptr<BookmarkModelView> bookmark_model_ = nullptr;
+  raw_ptr<bookmarks::BookmarkModel, DanglingUntriaged> bookmark_model_ =
+      nullptr;
 
   // Used to when processing remote updates to apply favicon information. It's
   // not set at start up because it's only avialable after the bookmark model
   // has been loaded.
-  raw_ptr<favicon::FaviconService, AcrossTasksDanglingUntriaged>
-      favicon_service_ = nullptr;
+  raw_ptr<favicon::FaviconService, DanglingUntriaged> favicon_service_ =
+      nullptr;
 
   // Used to suspend bookmark undo when processing remote changes.
   const raw_ptr<BookmarkUndoService, DanglingUntriaged> bookmark_undo_service_;
-
-  // Controls whether bookmarks should be wiped when sync is stopped.
-  syncer::WipeModelUponSyncDisabledBehavior
-      wipe_model_upon_sync_disabled_behavior_ =
-          syncer::WipeModelUponSyncDisabledBehavior::kNever;
 
   // The callback used to schedule the persistence of bookmark model as well as
   // the metadata to a file during which latest metadata should also be pulled
@@ -210,13 +196,15 @@ class BookmarkModelTypeProcessor : public syncer::ModelTypeProcessor,
   // engine.
   std::string cache_uuid_;
 
+  syncer::ModelErrorHandler error_handler_;
+
   std::unique_ptr<BookmarkModelObserverImpl> bookmark_model_observer_;
 
   // This member variable exists only to allow tests to override the limit.
   size_t max_bookmarks_till_sync_enabled_;
 
   // Marks whether metadata should be cleared upon ModelReadyToSync(). True if
-  // ClearMetadataIfStopped() is called before ModelReadyToSync().
+  // ClearMetadataWhileStopped() is called before ModelReadyToSync().
   bool pending_clear_metadata_ = false;
 
   // WeakPtrFactory for this processor for ModelTypeController.

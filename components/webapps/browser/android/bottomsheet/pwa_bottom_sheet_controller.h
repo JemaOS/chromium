@@ -6,7 +6,6 @@
 #define COMPONENTS_WEBAPPS_BROWSER_ANDROID_BOTTOMSHEET_PWA_BOTTOM_SHEET_CONTROLLER_H_
 
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "base/android/scoped_java_ref.h"
@@ -14,7 +13,6 @@
 #include "base/memory/raw_ref.h"
 #include "components/webapps/browser/android/add_to_homescreen_installer.h"
 #include "components/webapps/browser/android/add_to_homescreen_params.h"
-#include "components/webapps/browser/banners/web_app_banner_data.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "url/gurl.h"
 
@@ -23,6 +21,8 @@ class WebContents;
 }
 
 namespace webapps {
+
+struct Screenshot;
 
 // A Controller for the BottomSheet install UI for progressive web apps.
 // If successfully created, the lifetime of this object is tied to the lifetime
@@ -37,15 +37,18 @@ class PwaBottomSheetController {
   // Otherwise does nothing and returns false.
   static bool MaybeShow(
       content::WebContents* web_contents,
-      const WebAppBannerData& web_app_banner_data,
+      const std::u16string& app_name,
+      const SkBitmap& primary_icon,
+      const bool is_primary_icon_maskable,
+      const GURL& start_url,
+      const std::vector<Screenshot>& screenshots,
+      const std::u16string& description,
       bool expand_sheet,
+      std::unique_ptr<AddToHomescreenParams> a2hs_params,
       base::RepeatingCallback<void(AddToHomescreenInstaller::Event,
                                    const AddToHomescreenParams&)>
-          a2hs_event_callback,
-      std::unique_ptr<AddToHomescreenParams> a2hs_params);
+          a2hs_event_callback);
 
-  PwaBottomSheetController(const PwaBottomSheetController&) = delete;
-  PwaBottomSheetController& operator=(const PwaBottomSheetController&) = delete;
   virtual ~PwaBottomSheetController();
 
   // Called from the Java side and destructs this object.
@@ -70,11 +73,18 @@ class PwaBottomSheetController {
 
  private:
   PwaBottomSheetController(
-      const WebAppBannerData& web_app_banner_data,
+      const std::u16string& app_name,
+      const SkBitmap& primary_icon,
+      const bool is_primary_icon_maskable,
+      const GURL& start_url,
+      const std::vector<Screenshot>& screenshots,
+      const std::u16string& description,
       std::unique_ptr<AddToHomescreenParams> a2hs_params,
       base::RepeatingCallback<void(AddToHomescreenInstaller::Event,
                                    const AddToHomescreenParams&)>
           a2hs_event_callback);
+  PwaBottomSheetController(const PwaBottomSheetController&) = delete;
+  PwaBottomSheetController& operator=(const PwaBottomSheetController&) = delete;
 
   // Shows the Bottom Sheet installer UI for a given |web_contents|.
   void ShowBottomSheetInstaller(content::WebContents* web_contents,
@@ -85,7 +95,12 @@ class PwaBottomSheetController {
   void UpdateScreenshot(const SkBitmap& screenshot,
                         content::WebContents* web_contents);
 
-  const WebAppBannerData web_app_banner_data_;
+  const std::u16string app_name_;
+  const SkBitmap primary_icon_;
+  const bool is_primary_icon_maskable_ = false;
+  const raw_ref<const GURL> start_url_;
+  const raw_ref<const std::vector<Screenshot>> screenshots_;
+  const std::u16string description_;
   // Contains app parameters such as its type and the install source used that
   // will be passed to |a2hs_event_callback_| eventually.
   std::unique_ptr<AddToHomescreenParams> a2hs_params_;

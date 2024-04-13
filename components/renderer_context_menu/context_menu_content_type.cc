@@ -63,8 +63,9 @@ bool ContextMenuContentType::SupportsGroup(int group) {
 bool ContextMenuContentType::SupportsGroupInternal(int group) {
   const bool has_link = !params_.unfiltered_link_url.is_empty();
   const bool has_selection = !params_.selection_text.empty();
-  const bool is_password = params_.form_control_type ==
-                           blink::mojom::FormControlType::kInputPassword;
+  const bool is_password =
+      params_.input_field_type ==
+      blink::mojom::ContextMenuDataInputFieldType::kPassword;
   const bool existing_highlight = params_.opened_from_highlight;
 
   switch (group) {
@@ -84,7 +85,7 @@ bool ContextMenuContentType::SupportsGroupInternal(int group) {
 
     case ITEM_GROUP_FRAME: {
       bool page_group_supported = SupportsGroupInternal(ITEM_GROUP_PAGE);
-      return page_group_supported && params_.is_subframe;
+      return page_group_supported && !params_.frame_url.is_empty();
     }
 
     case ITEM_GROUP_LINK:
@@ -155,12 +156,12 @@ bool ContextMenuContentType::SupportsGroupInternal(int group) {
 #endif
 
     case ITEM_GROUP_PASSWORD:
-      return (params_.form_control_type ==
-              blink::mojom::FormControlType::kInputPassword) ||
-             params_.is_password_type_by_heuristics;
+      return params_.input_field_type ==
+             blink::mojom::ContextMenuDataInputFieldType::kPassword;
 
     case ITEM_GROUP_AUTOFILL:
-      return params_.form_control_type.has_value();
+      return params_.input_field_type !=
+             blink::mojom::ContextMenuDataInputFieldType::kNone;
 
     default:
       NOTREACHED();

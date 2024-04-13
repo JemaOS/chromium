@@ -24,6 +24,7 @@ static_library("storage") {
     "//components/sync/model",
     "//components/sync/protocol",
     "//sql",
+    "//third_party/sqlite",
     "//url",
   ]
 }

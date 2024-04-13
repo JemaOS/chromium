@@ -6,7 +6,6 @@
 #define COMPONENTS_POLICY_CORE_COMMON_CLOUD_DMSERVER_JOB_CONFIGURATIONS_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -17,6 +16,7 @@
 #include "components/policy/policy_export.h"
 #include "components/policy/proto/cloud_policy.pb.h"
 #include "components/policy/proto/device_management_backend.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace network {
@@ -53,68 +53,23 @@ class POLICY_EXPORT DMServerJobConfiguration : public JobConfigurationBase {
  public:
   typedef base::OnceCallback<void(DMServerJobResult)> Callback;
 
-  struct POLICY_EXPORT CreateParams {
-   public:
-    static CreateParams WithClient(JobType type, CloudPolicyClient* client);
-    static CreateParams WithoutClient(
-        JobType type,
-        DeviceManagementService* service,
-        const std::string& client_id,
-        scoped_refptr<network::SharedURLLoaderFactory> factory);
-
-    // Used by old `DMServerJobConfiguration` constructor. Please avoid adding
-    // new parameter to it or using it outside DMServerJobConfiguration
-    // constructor.
-    static CreateParams WithParams(
-        DeviceManagementService* service,
-        JobType type,
-        const std::string& client_id,
-        bool critical,
-        DMAuth auth_data,
-        std::optional<std::string> oauth_token,
-        scoped_refptr<network::SharedURLLoaderFactory> factory,
-        Callback callback);
-
-    CreateParams();
-
-    CreateParams(const CreateParams&) = delete;
-    CreateParams& operator=(const CreateParams&) = delete;
-
-    CreateParams(CreateParams&&);
-    CreateParams& operator=(CreateParams&&);
-
-    ~CreateParams();
-
-    raw_ptr<DeviceManagementService> service = nullptr;
-    JobType type = JobType::TYPE_INVALID;
-    std::string client_id;
-    bool critical = false;
-    DMAuth auth_data = DMAuth::NoAuth();
-    std::optional<std::string> profile_id = std::nullopt;
-    std::optional<std::string> oauth_token = std::nullopt;
-    scoped_refptr<network::SharedURLLoaderFactory> factory;
-    DMServerJobConfiguration::Callback callback;
-  };
-
-  explicit DMServerJobConfiguration(CreateParams params);
-
-  // Deprecated. Please use the `CreateParams` instead.
   DMServerJobConfiguration(
       DeviceManagementService* service,
       JobType type,
       const std::string& client_id,
       bool critical,
       DMAuth auth_data,
-      std::optional<std::string>&& oauth_token,
+      absl::optional<std::string> oauth_token,
       scoped_refptr<network::SharedURLLoaderFactory> factory,
       Callback callback);
 
-  // Deprecated. Please use the `CreateParams` instead.
+  // This constructor is a convenience if the caller already hsa a pointer to
+  // a CloudPolicyClient.
   DMServerJobConfiguration(JobType type,
                            CloudPolicyClient* client,
                            bool critical,
                            DMAuth auth_data,
-                           std::optional<std::string>&& oauth_token,
+                           absl::optional<std::string> oauth_token,
                            Callback callback);
 
   DMServerJobConfiguration(const DMServerJobConfiguration&) = delete;
@@ -159,7 +114,11 @@ class POLICY_EXPORT DMServerJobConfiguration : public JobConfigurationBase {
 class POLICY_EXPORT RegistrationJobConfiguration
     : public DMServerJobConfiguration {
  public:
-  explicit RegistrationJobConfiguration(CreateParams params);
+  RegistrationJobConfiguration(JobType type,
+                               CloudPolicyClient* client,
+                               DMAuth auth_data,
+                               absl::optional<std::string> oauth_token,
+                               Callback callback);
   RegistrationJobConfiguration(const RegistrationJobConfiguration&) = delete;
   RegistrationJobConfiguration& operator=(const RegistrationJobConfiguration&) =
       delete;

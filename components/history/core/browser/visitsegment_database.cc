@@ -226,13 +226,8 @@ VisitSegmentDatabase::QuerySegmentUsage(
     }
 
     base::Time timeslot = statement.ColumnTime(1);
-    if (timeslot > segments.back()->GetLastVisitTimeslot()) {
-      segments.back()->SetLastVisitTimeslot(timeslot);
-    }
-
     int visit_count = statement.ColumnInt(2);
-    segments.back()->SetVisitCount(segments.back()->GetVisitCount() +
-                                   visit_count);
+    int days_ago = (now - timeslot).InDays();
 
     // Score for this day in isolation.
     float day_visits_score = visit_count <= 0.0f
@@ -243,7 +238,6 @@ VisitSegmentDatabase::QuerySegmentUsage(
     // This boost is a curve that smoothly goes through these values:
     // Today gets 3x, a week ago 2x, three weeks ago 1.5x, falling off to 1x
     // at the limit of how far we reach into the past.
-    int days_ago = (now - timeslot).InDays();
     float recency_boost = 1.0f + (2.0f * (1.0f / (1.0f + days_ago/7.0f)));
     float score = recency_boost * day_visits_score;
     segments.back()->SetScore(segments.back()->GetScore() + score);
@@ -283,14 +277,6 @@ VisitSegmentDatabase::QuerySegmentUsage(
   }
 
   return results;
-}
-
-bool VisitSegmentDatabase::DeleteSegmentDataOlderThan(base::Time older_than) {
-  sql::Statement statement(GetDB().GetCachedStatement(
-      SQL_FROM_HERE, "DELETE FROM segment_usage WHERE time_slot < ?"));
-  statement.BindTime(0, older_than.LocalMidnight());
-
-  return statement.Run();
 }
 
 bool VisitSegmentDatabase::DeleteSegmentForURL(URLID url_id) {

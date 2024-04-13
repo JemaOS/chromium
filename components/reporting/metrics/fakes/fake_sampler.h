@@ -5,10 +5,9 @@
 #ifndef COMPONENTS_REPORTING_METRICS_FAKES_FAKE_SAMPLER_H_
 #define COMPONENTS_REPORTING_METRICS_FAKES_FAKE_SAMPLER_H_
 
-#include <optional>
-
 #include "components/reporting/metrics/sampler.h"
 #include "components/reporting/proto/synced/metric_data.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting::test {
 
@@ -23,12 +22,12 @@ class FakeSampler : public Sampler {
 
   void MaybeCollect(OptionalMetricCallback cb) override;
 
-  void SetMetricData(std::optional<MetricData> metric_data);
+  void SetMetricData(absl::optional<MetricData> metric_data);
 
   int GetNumCollectCalls() const;
 
  protected:
-  std::optional<MetricData> metric_data_;
+  absl::optional<MetricData> metric_data_;
 
   int num_calls_ = 0;
 };

@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/sequence_checker.h"
 #include "base/task/sequenced_task_runner.h"
@@ -59,7 +58,7 @@ class StreamTimestampOffsetTracker
 
   base::TimeDelta audio_position_ = {};
   base::TimeDelta offset_ = {};
-  raw_ptr<media::DemuxerHost> demuxer_host_ = nullptr;
+  media::DemuxerHost* demuxer_host_ = nullptr;
 };
 
 namespace {
@@ -400,12 +399,11 @@ void FrameInjectingDemuxer::OnStreamInitializationComplete() {
   std::move(initialized_cb_).Run(media::PIPELINE_OK);
 }
 
-std::vector<raw_ptr<media::DemuxerStream, VectorExperimental>>
-FrameInjectingDemuxer::GetAllStreams() {
+std::vector<media::DemuxerStream*> FrameInjectingDemuxer::GetAllStreams() {
   DVLOG(1) << __func__;
   DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
 
-  std::vector<raw_ptr<media::DemuxerStream, VectorExperimental>> streams;
+  std::vector<media::DemuxerStream*> streams;
   if (video_stream_) {
     streams.push_back(video_stream_.get());
   }
@@ -497,10 +495,10 @@ int64_t FrameInjectingDemuxer::GetMemoryUsage() const {
   return 0;
 }
 
-std::optional<media::container_names::MediaContainerName>
+absl::optional<media::container_names::MediaContainerName>
 FrameInjectingDemuxer::GetContainerForMetrics() const {
   // Cast Streaming frames have no container.
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // Not supported.

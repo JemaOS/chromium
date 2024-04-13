@@ -7,7 +7,7 @@
 #include "base/functional/bind.h"
 #include "components/history/core/common/pref_names.h"
 #include "components/prefs/pref_service.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
 
 namespace history {
 
@@ -29,13 +29,12 @@ HistoryModelTypeControllerHelper::HistoryModelTypeControllerHelper(
 
 HistoryModelTypeControllerHelper::~HistoryModelTypeControllerHelper() = default;
 
-syncer::ModelTypeController::PreconditionState
+syncer::DataTypeController::PreconditionState
 HistoryModelTypeControllerHelper::GetPreconditionState() const {
   return pref_service_->GetBoolean(prefs::kSavingBrowserHistoryDisabled)
-             ? syncer::ModelTypeController::PreconditionState::
+             ? syncer::DataTypeController::PreconditionState::
                    kMustStopAndClearData
-             : syncer::ModelTypeController::PreconditionState::
-                   kPreconditionsMet;
+             : syncer::DataTypeController::PreconditionState::kPreconditionsMet;
 }
 
 void HistoryModelTypeControllerHelper::OnSavingBrowserHistoryDisabledChanged() {

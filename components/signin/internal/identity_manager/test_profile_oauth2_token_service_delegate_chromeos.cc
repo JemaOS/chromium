@@ -49,10 +49,9 @@ std::unique_ptr<OAuth2AccessTokenFetcher>
 TestProfileOAuth2TokenServiceDelegateChromeOS::CreateAccessTokenFetcher(
     const CoreAccountId& account_id,
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-    OAuth2AccessTokenConsumer* consumer,
-    const std::string& token_binding_challenge) {
+    OAuth2AccessTokenConsumer* consumer) {
   return delegate_->CreateAccessTokenFetcher(account_id, url_loader_factory,
-                                             consumer, token_binding_challenge);
+                                             consumer);
 }
 
 bool TestProfileOAuth2TokenServiceDelegateChromeOS::RefreshTokenIsAvailable(
@@ -79,7 +78,7 @@ TestProfileOAuth2TokenServiceDelegateChromeOS::GetAccounts() const {
 }
 
 void TestProfileOAuth2TokenServiceDelegateChromeOS::ClearAuthError(
-    const std::optional<CoreAccountId>& account_id) {
+    const absl::optional<CoreAccountId>& account_id) {
   delegate_->ClearAuthError(account_id);
 }
 

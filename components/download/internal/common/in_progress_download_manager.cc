@@ -4,8 +4,6 @@
 
 #include "components/download/public/common/in_progress_download_manager.h"
 
-#include <optional>
-
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/task/single_thread_task_runner.h"
@@ -29,6 +27,7 @@
 #include "services/device/public/mojom/wake_lock_provider.mojom.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/build_info.h"
@@ -51,7 +50,7 @@ std::unique_ptr<DownloadItemImpl> CreateDownloadItemImpl(
   if (entry.download_info->id < 0)
     return nullptr;
 
-  std::optional<InProgressInfo> in_progress_info =
+  absl::optional<InProgressInfo> in_progress_info =
       entry.download_info->in_progress_info;
   if (!in_progress_info)
     return nullptr;
@@ -62,7 +61,7 @@ std::unique_ptr<DownloadItemImpl> CreateDownloadItemImpl(
       in_progress_info->url_chain, in_progress_info->referrer_url,
       in_progress_info->serialized_embedder_download_data,
       in_progress_info->tab_url, in_progress_info->tab_referrer_url,
-      std::nullopt, in_progress_info->mime_type,
+      absl::nullopt, in_progress_info->mime_type,
       in_progress_info->original_mime_type, in_progress_info->start_time,
       in_progress_info->end_time, in_progress_info->etag,
       in_progress_info->last_modified, in_progress_info->received_bytes,
@@ -133,8 +132,7 @@ void CreateDownloadHandlerForNavigation(
         pending_url_loader_factory,
     const URLSecurityPolicy& url_security_policy,
     mojo::PendingRemote<device::mojom::WakeLockProvider> wake_lock_provider,
-    const scoped_refptr<base::SingleThreadTaskRunner>& main_task_runner,
-    bool is_transient) {
+    const scoped_refptr<base::SingleThreadTaskRunner>& main_task_runner) {
   DCHECK(GetIOTaskRunner()->BelongsToCurrentThread());
 
   ResourceDownloader::InterceptNavigationResponse(
@@ -145,8 +143,7 @@ void CreateDownloadHandlerForNavigation(
       std::move(url_loader_client_endpoints),
       network::SharedURLLoaderFactory::Create(
           std::move(pending_url_loader_factory)),
-      url_security_policy, std::move(wake_lock_provider), main_task_runner,
-      is_transient);
+      url_security_policy, std::move(wake_lock_provider), main_task_runner);
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -160,7 +157,7 @@ void OnDownloadDisplayNamesReturned(
 }
 
 void OnPathReserved(
-    DownloadTargetCallback callback,
+    DownloadItemImplDelegate::DownloadTargetCallback callback,
     DownloadDangerType danger_type,
     DownloadItem::InsecureDownloadStatus insecure_download_status,
     const InProgressDownloadManager::IntermediatePathCallback&
@@ -180,16 +177,12 @@ void OnPathReserved(
     }
   }
 
-  DownloadTargetInfo target_info;
-  target_info.target_path = target_path;
-  target_info.intermediate_path = intermediate_path;
-  target_info.danger_type = danger_type;
-  target_info.interrupt_reason = intermediate_path.empty()
-                                     ? DOWNLOAD_INTERRUPT_REASON_FILE_FAILED
-                                     : DOWNLOAD_INTERRUPT_REASON_NONE;
-  target_info.insecure_download_status = insecure_download_status;
-
-  std::move(callback).Run(std::move(target_info));
+  std::move(callback).Run(
+      target_path, DownloadItem::TARGET_DISPOSITION_OVERWRITE, danger_type,
+      insecure_download_status, intermediate_path, base::FilePath(),
+      std::string() /*mime_type*/,
+      intermediate_path.empty() ? DOWNLOAD_INTERRUPT_REASON_FILE_FAILED
+                                : DOWNLOAD_INTERRUPT_REASON_NONE);
 }
 #endif
 
@@ -349,8 +342,7 @@ void InProgressDownloadManager::InterceptDownloadFromNavigation(
     mojo::ScopedDataPipeConsumerHandle response_body,
     network::mojom::URLLoaderClientEndpointsPtr url_loader_client_endpoints,
     std::unique_ptr<network::PendingSharedURLLoaderFactory>
-        pending_url_loader_factory,
-    bool is_transient) {
+        pending_url_loader_factory) {
   mojo::PendingRemote<device::mojom::WakeLockProvider> wake_lock_provider;
   if (wake_lock_provider_binder_) {
     wake_lock_provider_binder_.Run(
@@ -368,7 +360,7 @@ void InProgressDownloadManager::InterceptDownloadFromNavigation(
           std::move(url_loader_client_endpoints),
           std::move(pending_url_loader_factory), url_security_policy_,
           std::move(wake_lock_provider),
-          base::SingleThreadTaskRunner::GetCurrentDefault(), is_transient));
+          base::SingleThreadTaskRunner::GetCurrentDefault()));
 }
 
 void InProgressDownloadManager::Initialize(
@@ -406,29 +398,22 @@ void InProgressDownloadManager::DetermineDownloadTarget(
                                    : download->GetForcedFilePath();
 #if BUILDFLAG(IS_ANDROID)
   if (target_path.empty()) {
-    download::DownloadTargetInfo target_info;
-    target_info.target_path = target_path;
-    target_info.intermediate_path = target_path;
-    target_info.danger_type = download->GetDangerType();
-    target_info.interrupt_reason = DOWNLOAD_INTERRUPT_REASON_FILE_FAILED;
-    target_info.insecure_download_status =
-        download->GetInsecureDownloadStatus();
-
-    std::move(callback).Run(std::move(target_info));
+    std::move(callback).Run(
+        target_path, DownloadItem::TARGET_DISPOSITION_OVERWRITE,
+        download->GetDangerType(), download->GetInsecureDownloadStatus(),
+        target_path, base::FilePath(), std::string() /*mime_type*/,
+        DOWNLOAD_INTERRUPT_REASON_FILE_FAILED);
     return;
   }
 
   // If final target is a content URI, the intermediate path should
   // be identical to it.
   if (target_path.IsContentUri()) {
-    download::DownloadTargetInfo target_info;
-    target_info.target_path = target_path;
-    target_info.intermediate_path = target_path;
-    target_info.danger_type = download->GetDangerType();
-    target_info.insecure_download_status =
-        download->GetInsecureDownloadStatus();
-
-    std::move(callback).Run(std::move(target_info));
+    std::move(callback).Run(
+        target_path, DownloadItem::TARGET_DISPOSITION_OVERWRITE,
+        download->GetDangerType(), download->GetInsecureDownloadStatus(),
+        target_path, base::FilePath(), std::string() /*mime_type*/,
+        DOWNLOAD_INTERRUPT_REASON_NONE);
     return;
   }
 
@@ -443,15 +428,14 @@ void InProgressDownloadManager::DetermineDownloadTarget(
                      download->GetInsecureDownloadStatus(),
                      intermediate_path_cb_, download->GetForcedFilePath()));
 #else
-  // For non-Android, the code below is only used by tests.
-  DownloadTargetInfo target_info;
-  target_info.target_path = target_path;
-  target_info.intermediate_path =
+  // For non-android, the code below is only used by tests.
+  base::FilePath intermediate_path =
       download->GetFullPath().empty() ? target_path : download->GetFullPath();
-  target_info.danger_type = download->GetDangerType();
-  target_info.insecure_download_status = download->GetInsecureDownloadStatus();
-
-  std::move(callback).Run(std::move(target_info));
+  std::move(callback).Run(
+      target_path, DownloadItem::TARGET_DISPOSITION_OVERWRITE,
+      download->GetDangerType(), download->GetInsecureDownloadStatus(),
+      intermediate_path, base::FilePath(), std::string() /*mime_type*/,
+      DOWNLOAD_INTERRUPT_REASON_NONE);
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 

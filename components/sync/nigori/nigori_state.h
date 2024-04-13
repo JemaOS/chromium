@@ -6,16 +6,15 @@
 #define COMPONENTS_SYNC_NIGORI_NIGORI_STATE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/time/time.h"
 #include "components/sync/base/model_type.h"
-#include "components/sync/engine/nigori/cross_user_sharing_public_key.h"
 #include "components/sync/engine/nigori/key_derivation_params.h"
 #include "components/sync/engine/nigori/nigori.h"
 #include "components/sync/protocol/encryption.pb.h"
 #include "components/sync/protocol/nigori_specifics.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace sync_pb {
 class NigoriModel;
@@ -53,7 +52,6 @@ struct NigoriState {
   bool NeedsKeystoreReencryption() const;
 
   ModelTypeSet GetEncryptedTypes() const;
-  bool NeedsGenerateCrossUserSharingKeyPair() const;
 
   // TODO(crbug.com/1109221): Make this const unique_ptr to avoid the object
   // being destroyed after it's been injected to the ModelTypeWorker-s.
@@ -64,7 +62,7 @@ struct NigoriState {
   // keys are present, |*cryptographer| does not have a default encryption key
   // set and instead the should-be default encryption key is determined by the
   // key in |pending_keys_|.
-  std::optional<sync_pb::EncryptedData> pending_keys;
+  absl::optional<sync_pb::EncryptedData> pending_keys;
 
   // TODO(mmoskvitin): Consider adopting the C++ enum PassphraseType here and
   // if so remove function ProtoPassphraseInt32ToProtoEnum() from
@@ -76,7 +74,7 @@ struct NigoriState {
   // The key derivation params we are using for the custom passphrase. Set iff
   // |passphrase_type| is CUSTOM_PASSPHRASE, otherwise key derivation method
   // is always PBKDF2.
-  std::optional<KeyDerivationParams> custom_passphrase_key_derivation_params;
+  absl::optional<KeyDerivationParams> custom_passphrase_key_derivation_params;
   bool encrypt_everything;
 
   // Contains keystore keys. Uses last keystore key as encryption key. Must be
@@ -87,19 +85,14 @@ struct NigoriState {
   // Represents |keystore_decryptor_token| from NigoriSpecifics in case it
   // can't be decrypted right after remote update arrival due to lack of
   // keystore keys. May be set only for keystore Nigori.
-  std::optional<sync_pb::EncryptedData> pending_keystore_decryptor_token;
+  absl::optional<sync_pb::EncryptedData> pending_keystore_decryptor_token;
 
   // The name of the latest available trusted vault key that was used as the
   // default encryption key.
-  std::optional<std::string> last_default_trusted_vault_key_name;
+  absl::optional<std::string> last_default_trusted_vault_key_name;
 
   // Some debug-only fields for passphrase type TRUSTED_VAULT_PASSPHRASE.
   sync_pb::NigoriSpecifics::TrustedVaultDebugInfo trusted_vault_debug_info;
-
-  // Current Public-key.
-  std::optional<CrossUserSharingPublicKey> cross_user_sharing_public_key;
-  // Current Public-key version.
-  std::optional<uint32_t> cross_user_sharing_key_pair_version;
 };
 
 }  // namespace syncer

@@ -25,10 +25,7 @@ class USER_PREFS_EXPORT UserPrefs : public base::SupportsUserData::Data {
 
   ~UserPrefs() override;
 
-  // Returns true if there is a PrefService attached to the given context.
-  static bool IsInitialized(base::SupportsUserData* context);
-
-  // Retrieves the PrefService for a given context.
+  // Retrieves the PrefService for a given context, or null if none is attached.
   static PrefService* Get(base::SupportsUserData* context);
 
   // Hangs the specified |prefs| off of |context|. Should be called
@@ -39,7 +36,7 @@ class USER_PREFS_EXPORT UserPrefs : public base::SupportsUserData::Data {
   explicit UserPrefs(PrefService* prefs);
 
   // Non-owning; owned by embedder.
-  raw_ptr<PrefService, AcrossTasksDanglingUntriaged> prefs_;
+  raw_ptr<PrefService, DanglingUntriaged> prefs_;
 };
 
 }  // namespace user_prefs

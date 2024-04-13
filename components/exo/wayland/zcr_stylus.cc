@@ -4,6 +4,8 @@
 
 #include "components/exo/wayland/zcr_stylus.h"
 
+#include <stylus-unstable-v2-server-protocol.h>
+
 #include "base/memory/raw_ptr.h"
 #include "components/exo/pointer.h"
 #include "components/exo/pointer_stylus_delegate.h"
@@ -11,7 +13,8 @@
 #include "components/exo/touch_stylus_delegate.h"
 #include "components/exo/wayland/server_util.h"
 
-namespace exo::wayland {
+namespace exo {
+namespace wayland {
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,8 +60,8 @@ class WaylandTouchStylusDelegate : public TouchStylusDelegate {
   }
 
  private:
-  raw_ptr<wl_resource> resource_;
-  raw_ptr<Touch> touch_;
+  raw_ptr<wl_resource, ExperimentalAsh> resource_;
+  raw_ptr<Touch, ExperimentalAsh> touch_;
 };
 
 void touch_stylus_destroy(wl_client* client, wl_resource* resource) {
@@ -123,8 +126,8 @@ class WaylandPointerStylusDelegate : public PointerStylusDelegate {
   }
 
  private:
-  raw_ptr<wl_resource> resource_;
-  raw_ptr<Pointer> pointer_;
+  raw_ptr<wl_resource, ExperimentalAsh> resource_;
+  raw_ptr<Pointer, ExperimentalAsh> pointer_;
   bool supports_force_ = false;
   bool supports_tilt_ = false;
 };
@@ -196,4 +199,5 @@ void bind_stylus_v2(wl_client* client,
                                  nullptr);
 }
 
-}  // namespace exo::wayland
+}  // namespace wayland
+}  // namespace exo

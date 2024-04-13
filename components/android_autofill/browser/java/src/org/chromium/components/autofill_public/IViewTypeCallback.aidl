@@ -16,6 +16,7 @@ interface IViewTypeCallback {
     // prediction of the views.
     void onViewTypeAvailable(in List<ViewType> viewTypes);
 
-    // @deprecated - no longer called by WebView. Do not use, will be removed.
+    // Invoked when the query fails, mostly because of the connection or server
+    // error.
     void onQueryFailed();
 }

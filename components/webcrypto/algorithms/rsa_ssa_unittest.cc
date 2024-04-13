@@ -5,10 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <string_view>
-
 #include "base/check_op.h"
 #include "base/containers/span.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/values.h"
 #include "components/webcrypto/algorithm_dispatch.h"
@@ -67,7 +66,7 @@ void SwapDictMembers(base::Value::Dict& d, const char* a, const char* b) {
   d.Set(b, std::move(*va));
 }
 
-std::string FlipHexByte(std::string_view hex, size_t index) {
+std::string FlipHexByte(base::StringPiece hex, size_t index) {
   auto bytes = HexStringToBytes(hex);
   bytes[index] ^= 0xff;
   return base::HexEncode(base::make_span(bytes));
@@ -79,7 +78,7 @@ blink::WebCryptoAlgorithm RS256Algorithm() {
       blink::kWebCryptoAlgorithmIdSha256);
 }
 
-blink::WebCryptoKey ImportJwkRS256OrDie(std::string_view jwk) {
+blink::WebCryptoKey ImportJwkRS256OrDie(base::StringPiece jwk) {
   std::vector<uint8_t> jwk_bytes(jwk.begin(), jwk.end());
   blink::WebCryptoKey key;
   Status status =
@@ -97,7 +96,7 @@ blink::WebCryptoKey ImportJwkRS256OrDie(const base::Value::Dict& jwk) {
   return key;
 }
 
-Status ImportJwkRS256MustFail(std::string_view jwk) {
+Status ImportJwkRS256MustFail(base::StringPiece jwk) {
   std::vector<uint8_t> jwk_bytes(jwk.begin(), jwk.end());
   blink::WebCryptoKey key;
   Status status =
@@ -113,7 +112,7 @@ Status ImportJwkRS256MustFail(const base::Value::Dict& jwk) {
                               blink::kWebCryptoKeyUsageSign, &key);
 }
 
-Status ImportSpkiRS256MustFail(std::string_view spki) {
+Status ImportSpkiRS256MustFail(base::StringPiece spki) {
   auto spki_bytes = HexStringToBytes(spki);
   blink::WebCryptoKey key;
   // Note: SPKI keys can only be used for verification, not signing.
@@ -124,7 +123,7 @@ Status ImportSpkiRS256MustFail(std::string_view spki) {
   return status;
 }
 
-Status ImportPkcs8RS256MustFail(std::string_view pkcs8) {
+Status ImportPkcs8RS256MustFail(base::StringPiece pkcs8) {
   auto pkcs8_bytes = HexStringToBytes(pkcs8);
   blink::WebCryptoKey key;
   Status status =
@@ -278,7 +277,7 @@ TEST_F(WebCryptoRsaSsaTest, ImportRsaPrivateKeyJwkToPkcs8RoundTrip) {
       "ECp9uhuF6RLlP6TGVhLjiL93h5aLjvYqluo2FhBlOshkKz4MrhH8To9JKefTQ\"}";
 
   EXPECT_BYTES_EQ(
-      base::as_bytes(base::make_span(std::string_view(expected_jwk))),
+      base::as_bytes(base::make_span(base::StringPiece(expected_jwk))),
       exported_key_jwk);
 
   ASSERT_EQ(Status::Success(),
@@ -380,12 +379,15 @@ TEST_F(WebCryptoRsaSsaTest, ImportMultipleRsaKeysJwk) {
 // for how that could happen.
 TEST_F(WebCryptoRsaSsaTest, ImportCorruptKeyReusedModulus) {
   blink::WebCryptoKey key = ImportJwkRS256OrDie(kRsa512Jwk_0);
-  EXPECT_EQ(Status::DataError(), ImportJwkRS256MustFail(kRsa512Jwk_0_Damaged));
+  EXPECT_EQ(Status::OperationError(),
+            ImportJwkRS256MustFail(kRsa512Jwk_0_Damaged));
 }
 
 TEST_F(WebCryptoRsaSsaTest, GenerateKeyPairRsa) {
+  // Note: using unrealistic short key lengths here to avoid bogging down tests.
+
   // Successful WebCryptoAlgorithmIdRsaSsaPkcs1v1_5 key generation (sha256)
-  const unsigned int modulus_length = 2048;
+  const unsigned int modulus_length = 256;
   const std::vector<uint8_t> public_exponent = HexStringToBytes("010001");
   blink::WebCryptoAlgorithm algorithm = CreateRsaHashedKeyGenAlgorithm(
       blink::kWebCryptoAlgorithmIdRsaSsaPkcs1v1_5,
@@ -775,7 +777,7 @@ TEST_F(WebCryptoRsaSsaTest, GenerateKeyBadUsages) {
 // key usages which are applicable, and not have the exact same usages as was
 // specified to GenerateKey
 TEST_F(WebCryptoRsaSsaTest, GenerateKeyPairIntersectUsages) {
-  const unsigned int modulus_length = 2048;
+  const unsigned int modulus_length = 256;
   const std::vector<uint8_t> public_exponent = HexStringToBytes("010001");
 
   blink::WebCryptoKey public_key;
@@ -808,7 +810,7 @@ TEST_F(WebCryptoRsaSsaTest, GenerateKeyPairIntersectUsages) {
 }
 
 TEST_F(WebCryptoRsaSsaTest, GenerateKeyPairEmptyUsages) {
-  const unsigned int modulus_length = 2048;
+  const unsigned int modulus_length = 256;
   const std::vector<uint8_t> public_exponent = HexStringToBytes("010001");
 
   blink::WebCryptoKey public_key;
@@ -1003,14 +1005,14 @@ TEST_F(WebCryptoRsaSsaTest, ImportValidJwkPrivateKey) {
 TEST_F(WebCryptoRsaSsaTest, ImportInvalidJwkPrivateKey_SwapPQ) {
   auto key = BuildTestJwkPrivateKey();
   SwapDictMembers(key, "p", "q");
-  EXPECT_EQ(StatusToString(ImportJwkRS256MustFail(key)), "DataError");
+  EXPECT_EQ(StatusToString(ImportJwkRS256MustFail(key)), "OperationError");
 }
 
 TEST_F(WebCryptoRsaSsaTest, ImportInvalidJwkPrivateKey_SwapPQDPDQ) {
   auto key = BuildTestJwkPrivateKey();
   SwapDictMembers(key, "p", "q");
   SwapDictMembers(key, "dp", "dq");
-  EXPECT_EQ(StatusToString(ImportJwkRS256MustFail(key)), "DataError");
+  EXPECT_EQ(StatusToString(ImportJwkRS256MustFail(key)), "OperationError");
 }
 
 TEST_F(WebCryptoRsaSsaTest, ImportInvalidJwkPrivateKey_MissingMostOptionals) {

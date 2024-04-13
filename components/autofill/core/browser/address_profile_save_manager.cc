@@ -38,7 +38,7 @@ void AddMultiStepComplementCandidate(FormDataImporter* form_data_importer,
 
 }  // namespace
 
-using UserDecision = AutofillClient::AddressPromptUserDecision;
+using UserDecision = AutofillClient::SaveAddressProfileOfferUserDecision;
 
 AddressProfileSaveManager::AddressProfileSaveManager(
     AutofillClient* client,
@@ -57,9 +57,23 @@ void AddressProfileSaveManager::ImportProfileFromForm(
   if (!personal_data_manager_)
     return;
 
-  MaybeOfferSavePrompt(std::make_unique<ProfileImportProcess>(
+  // If the explicit save prompts are not enabled, revert back to the legacy
+  // behavior and directly import the observed profile without recording any
+  // additional metrics. However, if only silent updates are allowed, proceed
+  // with the profile import process.
+  if (personal_data_manager_->auto_accept_address_imports_for_testing() &&
+      !allow_only_silent_updates) {
+    personal_data_manager_->SaveImportedProfile(observed_profile);
+    AddMultiStepComplementCandidate(client_->GetFormDataImporter(),
+                                    observed_profile, import_metadata.origin);
+    return;
+  }
+
+  auto process_ptr = std::make_unique<ProfileImportProcess>(
       observed_profile, app_locale, url, personal_data_manager_,
-      allow_only_silent_updates, import_metadata));
+      allow_only_silent_updates, import_metadata);
+
+  MaybeOfferSavePrompt(std::move(process_ptr));
 }
 
 void AddressProfileSaveManager::MaybeOfferSavePrompt(
@@ -87,11 +101,6 @@ void AddressProfileSaveManager::MaybeOfferSavePrompt(
     case AutofillProfileImportType::kConfirmableMergeAndSilentUpdate:
     case AutofillProfileImportType::kProfileMigration:
     case AutofillProfileImportType::kProfileMigrationAndSilentUpdate:
-      if (personal_data_manager_->auto_accept_address_imports_for_testing()) {
-        import_process->AcceptWithoutEdits();
-        FinalizeProfileImport(std::move(import_process));
-        return;
-      }
       OfferSavePrompt(std::move(import_process));
       return;
 
@@ -132,7 +141,7 @@ void AddressProfileSaveManager::OfferSavePrompt(
 void AddressProfileSaveManager::OnUserDecision(
     std::unique_ptr<ProfileImportProcess> import_process,
     UserDecision decision,
-    base::optional_ref<const AutofillProfile> edited_profile) {
+    AutofillProfile edited_profile) {
   DCHECK(import_process->prompt_shown());
 
   import_process->SetUserDecision(decision, edited_profile);
@@ -143,14 +152,20 @@ void AddressProfileSaveManager::FinalizeProfileImport(
     std::unique_ptr<ProfileImportProcess> import_process) {
   DCHECK(personal_data_manager_);
 
-  import_process->ApplyImport();
+  // If the profiles changed at all, reset the full list of AutofillProfiles in
+  // the personal data manager.
+  if (import_process->ProfilesChanged()) {
+    std::vector<AutofillProfile> resulting_profiles =
+        import_process->GetResultingProfiles();
+    personal_data_manager_->SetProfilesForAllSources(&resulting_profiles);
+  }
 
   AdjustNewProfileStrikes(*import_process);
   AdjustUpdateProfileStrikes(*import_process);
   AdjustMigrateProfileStrikes(*import_process);
 
   if (import_process->UserAccepted()) {
-    const std::optional<AutofillProfile>& confirmed_import_candidate =
+    const absl::optional<AutofillProfile>& confirmed_import_candidate =
         import_process->confirmed_import_candidate();
     DCHECK(confirmed_import_candidate);
     AddMultiStepComplementCandidate(client_->GetFormDataImporter(),
@@ -170,11 +185,9 @@ void AddressProfileSaveManager::AdjustNewProfileStrikes(
   }
   const GURL& url = import_process.form_source_url();
   if (import_process.UserDeclined()) {
-    personal_data_manager_->address_data_manager()
-        .AddStrikeToBlockNewProfileImportForDomain(url);
+    personal_data_manager_->AddStrikeToBlockNewProfileImportForDomain(url);
   } else if (import_process.UserAccepted()) {
-    personal_data_manager_->address_data_manager()
-        .RemoveStrikesToBlockNewProfileImportForDomain(url);
+    personal_data_manager_->RemoveStrikesToBlockNewProfileImportForDomain(url);
   }
 }
 
@@ -186,11 +199,9 @@ void AddressProfileSaveManager::AdjustUpdateProfileStrikes(
   CHECK(import_process.merge_candidate().has_value());
   const std::string& candidate_guid = import_process.import_candidate()->guid();
   if (import_process.UserDeclined()) {
-    personal_data_manager_->address_data_manager()
-        .AddStrikeToBlockProfileUpdate(candidate_guid);
+    personal_data_manager_->AddStrikeToBlockProfileUpdate(candidate_guid);
   } else if (import_process.UserAccepted()) {
-    personal_data_manager_->address_data_manager()
-        .RemoveStrikesToBlockProfileUpdate(candidate_guid);
+    personal_data_manager_->RemoveStrikesToBlockProfileUpdate(candidate_guid);
   }
 }
 
@@ -204,15 +215,14 @@ void AddressProfileSaveManager::AdjustMigrateProfileStrikes(
   if (import_process.UserAccepted()) {
     // Even though the profile to migrate changes GUID after a migration, the
     // original GUID should still be freed up from strikes.
-    personal_data_manager_->address_data_manager()
-        .RemoveStrikesToBlockProfileMigration(candidate_guid);
+    personal_data_manager_->RemoveStrikesToBlockProfileMigration(
+        candidate_guid);
   } else if (import_process.UserDeclined()) {
     if (import_process.user_decision() == UserDecision::kNever) {
-      personal_data_manager_->address_data_manager()
-          .AddMaxStrikesToBlockProfileMigration(candidate_guid);
+      personal_data_manager_->AddMaxStrikesToBlockProfileMigration(
+          candidate_guid);
     } else {
-      personal_data_manager_->address_data_manager()
-          .AddStrikeToBlockProfileMigration(candidate_guid);
+      personal_data_manager_->AddStrikeToBlockProfileMigration(candidate_guid);
     }
   }
 }

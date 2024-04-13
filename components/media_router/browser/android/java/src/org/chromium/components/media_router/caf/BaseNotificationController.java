@@ -86,20 +86,13 @@ public abstract class BaseNotificationController
     }
 
     private void updateNotificationMetadata() {
-        // We use a placeholder title here to comply with the requirement for non-empty
-        // notification titles. See crbug.com/1445673 for more details.
-        MediaMetadata notificationMetadata = new MediaMetadata("Chromecast", "", "");
+        MediaMetadata notificationMetadata = new MediaMetadata("", "", "");
         mNotificationBuilder.setMetadata(notificationMetadata);
 
         if (!mSessionController.isConnected()) return;
 
         CastDevice castDevice = mSessionController.getSession().getCastDevice();
-        if (castDevice != null) {
-            String friendlyName = castDevice.getFriendlyName();
-            if (friendlyName != null && !friendlyName.isEmpty()) {
-                notificationMetadata.setTitle(friendlyName);
-            }
-        }
+        if (castDevice != null) notificationMetadata.setTitle(castDevice.getFriendlyName());
 
         RemoteMediaClient remoteMediaClient = mSessionController.getRemoteMediaClient();
 
@@ -110,7 +103,7 @@ public abstract class BaseNotificationController
         if (metadata == null) return;
 
         String title = metadata.getString(com.google.android.gms.cast.MediaMetadata.KEY_TITLE);
-        if (title != null && !title.isEmpty()) notificationMetadata.setTitle(title);
+        if (title != null) notificationMetadata.setTitle(title);
 
         String artist = metadata.getString(com.google.android.gms.cast.MediaMetadata.KEY_ARTIST);
         if (artist == null) {
@@ -154,8 +147,8 @@ public abstract class BaseNotificationController
     public void onMediaSessionSeekTo(long pos) {}
 
     protected Intent createBringTabToFrontIntent() {
-        return MediaRouterClient.getInstance()
-                .createBringTabToFrontIntent(mSessionController.getRouteCreationInfo().tabId);
+        return MediaRouterClient.getInstance().createBringTabToFrontIntent(
+                mSessionController.getRouteCreationInfo().tabId);
     }
 
     // Abstract methods to be implemented by children.

@@ -122,7 +122,7 @@ struct AccessTokenInfo;
 //     // Make the primary account available, which should result in an access
 //     // token fetch being made on behalf of |my_class|.
 //     identity_test_env.
-//         MakePrimaryAccountAvailable("test_email", ConsentLevel::kSignin);
+//         MakePrimaryAccountAvailable("test_email", ConsentLevel::kSync);
 //
 //     identity_test_env.
 //         WaitForAccessTokenRequestIfNecessaryAndRespondWithToken(
@@ -182,12 +182,13 @@ class PrimaryAccountAccessTokenFetcher : public IdentityManager::Observer {
 
   // Instantiates an OAuth2 access token fetcher for the given |scopes|. Once
   // the fetcher is created, the caller initiates its token request using
-  // |Start()|. See ./README.md.
+  // |Start()|. |consent| defaults to |kSync| because historically having an
+  // "authenticated" account was tied to browser sync. See ./README.md.
   PrimaryAccountAccessTokenFetcher(const std::string& oauth_consumer_name,
                                    IdentityManager* identity_manager,
                                    const ScopeSet& scopes,
                                    Mode mode,
-                                   ConsentLevel consent);
+                                   ConsentLevel consent = ConsentLevel::kSync);
 
   // Convenience constructor that immediately issues the access token request.
   PrimaryAccountAccessTokenFetcher(const std::string& oauth_consumer_name,
@@ -195,7 +196,7 @@ class PrimaryAccountAccessTokenFetcher : public IdentityManager::Observer {
                                    const ScopeSet& scopes,
                                    AccessTokenFetcher::TokenCallback callback,
                                    Mode mode,
-                                   ConsentLevel consent);
+                                   ConsentLevel consent = ConsentLevel::kSync);
 
   PrimaryAccountAccessTokenFetcher(const PrimaryAccountAccessTokenFetcher&) =
       delete;
@@ -241,7 +242,7 @@ class PrimaryAccountAccessTokenFetcher : public IdentityManager::Observer {
                                   AccessTokenInfo access_token_info);
 
   std::string oauth_consumer_name_;
-  raw_ptr<IdentityManager, DanglingUntriaged> identity_manager_;
+  raw_ptr<IdentityManager> identity_manager_;
   ScopeSet scopes_;
 
   // Per the contract of this class, it is allowed for clients to delete this

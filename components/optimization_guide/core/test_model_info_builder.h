@@ -6,9 +6,7 @@
 #define COMPONENTS_OPTIMIZATION_GUIDE_CORE_TEST_MODEL_INFO_BUILDER_H_
 
 #include <memory>
-#include <optional>
 
-#include "base/containers/flat_set.h"
 #include "components/optimization_guide/core/model_info.h"
 #include "components/optimization_guide/proto/models.pb.h"
 
@@ -33,7 +31,7 @@ class TestModelInfoBuilder {
   TestModelInfoBuilder& SetVersion(int64_t version);
 
   TestModelInfoBuilder& SetModelMetadata(
-      std::optional<proto::Any> model_metadata);
+      absl::optional<proto::Any> model_metadata);
 
   std::unique_ptr<ModelInfo> Build();
 

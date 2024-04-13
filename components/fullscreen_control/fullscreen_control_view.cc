@@ -33,15 +33,14 @@ const SkColor kButtonBackgroundColor = SkColorSetARGB(0xcc, 0x28, 0x2c, 0x32);
 constexpr int kCloseIconSize = 24;
 
 class CloseFullscreenButton : public views::Button {
-  METADATA_HEADER(CloseFullscreenButton, views::Button)
-
  public:
+  METADATA_HEADER(CloseFullscreenButton);
   explicit CloseFullscreenButton(PressedCallback callback)
       : views::Button(std::move(callback)) {
     std::unique_ptr<views::ImageView> close_image_view =
         std::make_unique<views::ImageView>();
-    close_image_view->SetImage(ui::ImageModel::FromVectorIcon(
-        views::kIcCloseIcon, SK_ColorWHITE, kCloseIconSize));
+    close_image_view->SetImage(gfx::CreateVectorIcon(
+        views::kIcCloseIcon, kCloseIconSize, SK_ColorWHITE));
     // Not focusable by default, only for accessibility.
     SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
     SetAccessibleName(l10n_util::GetStringUTF16(IDS_EXIT_FULLSCREEN_MODE));
@@ -63,7 +62,7 @@ class CloseFullscreenButton : public views::Button {
   }
 };
 
-BEGIN_METADATA(CloseFullscreenButton)
+BEGIN_METADATA(CloseFullscreenButton, views::Button)
 END_METADATA
 
 }  // namespace
@@ -79,5 +78,5 @@ FullscreenControlView::FullscreenControlView(
 
 FullscreenControlView::~FullscreenControlView() = default;
 
-BEGIN_METADATA(FullscreenControlView)
+BEGIN_METADATA(FullscreenControlView, views::View)
 END_METADATA

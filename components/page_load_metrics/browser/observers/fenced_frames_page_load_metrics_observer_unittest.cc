@@ -54,7 +54,7 @@ class FencedFramesPageLoadMetricsObserverTest
     timing.paint_timing->first_image_paint = base::Milliseconds(80);
     timing.paint_timing->first_contentful_paint = base::Milliseconds(100);
 
-    auto largest_contentful_paint = CreateLargestContentfulPaintTiming();
+    auto largest_contentful_paint = mojom::LargestContentfulPaintTiming::New();
     largest_contentful_paint->largest_image_paint = base::Milliseconds(100);
     largest_contentful_paint->largest_image_paint_size = 100;
     timing.paint_timing->largest_contentful_paint =
@@ -75,7 +75,7 @@ class FencedFramesPageLoadMetricsObserverTest
     NavigateAndCommit(GURL(kSetUpUrl));
   }
 
-  raw_ptr<FencedFramesPageLoadMetricsObserver, DanglingUntriaged> observer_;
+  raw_ptr<FencedFramesPageLoadMetricsObserver> observer_;
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 

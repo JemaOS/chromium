@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/base64.h"
-#include "base/containers/span.h"
 #include "base/json/values_util.h"
 #include "base/pickle.h"
 #include "base/strings/strcat.h"
@@ -53,7 +52,7 @@ bool UnpickleNetworkResponseInfo(base::PickleIterator& iterator,
 }
 
 void PickleOptionalNetworkResponseInfo(
-    const std::optional<NetworkResponseInfo>& value,
+    const absl::optional<NetworkResponseInfo>& value,
     base::Pickle& pickle) {
   if (value.has_value()) {
     pickle.WriteBool(true);
@@ -65,7 +64,7 @@ void PickleOptionalNetworkResponseInfo(
 
 bool UnpickleOptionalNetworkResponseInfo(
     base::PickleIterator& iterator,
-    std::optional<NetworkResponseInfo>& value) {
+    absl::optional<NetworkResponseInfo>& value) {
   bool has_network_response_info = false;
   if (!iterator.ReadBool(&has_network_response_info))
     return false;
@@ -122,14 +121,6 @@ NetworkResponseInfo::NetworkResponseInfo(const NetworkResponseInfo&) = default;
 NetworkResponseInfo& NetworkResponseInfo::operator=(
     const NetworkResponseInfo&) = default;
 
-NetworkResponse::NetworkResponse() = default;
-NetworkResponse::NetworkResponse(const std::string& response_bytes,
-                                 int status_code)
-    : response_bytes(response_bytes), status_code(status_code) {}
-NetworkResponse::~NetworkResponse() = default;
-NetworkResponse::NetworkResponse(const NetworkResponse&) = default;
-NetworkResponse& NetworkResponse::operator=(const NetworkResponse&) = default;
-
 std::string ToString(ContentRevision c) {
   // The 'c/' prefix is used to identify slices as content. Don't change this
   // without updating the Java side.
@@ -156,15 +147,15 @@ std::string SerializeDebugStreamData(const DebugStreamData& data) {
       base::span<const uint8_t>(pickle_data_ptr, pickle.size()));
 }
 
-std::optional<DebugStreamData> DeserializeDebugStreamData(
+absl::optional<DebugStreamData> DeserializeDebugStreamData(
     base::StringPiece base64_encoded) {
   std::string binary_data;
   if (!base::Base64Decode(base64_encoded, &binary_data))
-    return std::nullopt;
-  base::Pickle pickle = base::Pickle::WithData(base::as_byte_span(binary_data));
+    return absl::nullopt;
+  base::Pickle pickle(binary_data.data(), binary_data.size());
   DebugStreamData result;
   if (!UnpickleDebugStreamData(base::PickleIterator(pickle), result))
-    return std::nullopt;
+    return absl::nullopt;
   return result;
 }
 
@@ -191,12 +182,12 @@ base::Value::Dict PersistentMetricsDataToDict(
 PersistentMetricsData PersistentMetricsDataFromDict(
     const base::Value::Dict& dict) {
   PersistentMetricsData result;
-  std::optional<base::Time> day_start =
+  absl::optional<base::Time> day_start =
       base::ValueToTime(dict.Find("day_start"));
   if (!day_start)
     return result;
   result.current_day_start = *day_start;
-  std::optional<base::TimeDelta> time_spent_in_feed =
+  absl::optional<base::TimeDelta> time_spent_in_feed =
       base::ValueToTimeDelta(dict.Find("time_spent_in_feed"));
   if (time_spent_in_feed) {
     result.accumulated_time_spent_in_feed = *time_spent_in_feed;

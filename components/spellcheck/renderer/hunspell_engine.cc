@@ -72,7 +72,7 @@ void HunspellEngine::InitializeHunspell() {
 }
 
 bool HunspellEngine::CheckSpelling(const std::u16string& word_to_check,
-                                   spellcheck::mojom::SpellCheckHost& host) {
+                                   int tag) {
   // Assume all words that cannot be checked are valid. Since Chrome can't
   // offer suggestions on them, either, there's no point in flagging them to
   // the user.
@@ -94,7 +94,6 @@ bool HunspellEngine::CheckSpelling(const std::u16string& word_to_check,
 
 void HunspellEngine::FillSuggestionList(
     const std::u16string& wrong_word,
-    spellcheck::mojom::SpellCheckHost& host,
     std::vector<std::u16string>* optional_suggestions) {
   std::string wrong_word_utf8(base::UTF16ToUTF8(wrong_word));
   if (wrong_word_utf8.length() > kMaxSuggestLen)
@@ -118,11 +117,10 @@ void HunspellEngine::FillSuggestionList(
 
 bool HunspellEngine::InitializeIfNeeded() {
   if (!initialized_ && !dictionary_requested_) {
-    mojo::Remote<spellcheck::mojom::SpellCheckInitializationHost>
-        spell_check_init_host;
+    mojo::Remote<spellcheck::mojom::SpellCheckHost> spell_check_host;
     embedder_provider_->GetInterface(
-        spell_check_init_host.BindNewPipeAndPassReceiver());
-    spell_check_init_host->RequestDictionary();
+        spell_check_host.BindNewPipeAndPassReceiver());
+    spell_check_host->RequestDictionary();
     dictionary_requested_ = true;
     return true;
   }

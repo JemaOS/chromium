@@ -153,14 +153,10 @@ bool GetAnnotatedVisitsToCluster::AddUnclusteredVisits(
     history::QueryOptions options) {
   bool limited_by_max_count = false;
 
-  for (const auto& visit : backend->GetAnnotatedVisits(
-           options, /*compute_redirect_chain_start_properties=*/true,
-           /*get_unclustered_visits_only=*/false, &limited_by_max_count)) {
-    // TODO(crbug.com/1519988): Consider changing `get_unclustered_visits_only`
-    // above to true, and getting rid of the `exhausted_unclustered_visits`
-    // parameter setting below.
+  for (const auto& visit :
+       backend->GetAnnotatedVisits(options, &limited_by_max_count)) {
     const bool is_clustered =
-        !recluster_
+        GetConfig().persist_clusters_in_history_db && !recluster_
             ? db->GetClusterIdContainingVisit(visit.visit_row.visit_id) > 0
             : false;
     if (is_clustered && recent_first_)
@@ -325,9 +321,7 @@ void GetAnnotatedVisitsToCluster::AddClusteredVisits(
         static_cast<size_t>(GetConfig().max_visits_to_cluster))
       break;
     cluster_ids_.push_back(cluster_id);
-    base::ranges::move(backend->ToAnnotatedVisitsFromIds(
-                           visit_ids_of_cluster,
-                           /*compute_redirect_chain_start_properties=*/true),
+    base::ranges::move(backend->ToAnnotatedVisits(visit_ids_of_cluster),
                        std::back_inserter(annotated_visits_));
   }
 }

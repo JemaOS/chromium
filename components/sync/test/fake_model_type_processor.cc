@@ -31,7 +31,7 @@ void FakeModelTypeProcessor::OnCommitCompleted(
 void FakeModelTypeProcessor::OnUpdateReceived(
     const sync_pb::ModelTypeState& type_state,
     UpdateResponseDataList updates,
-    std::optional<sync_pb::GarbageCollectionDirective> gc_directive) {}
+    absl::optional<sync_pb::GarbageCollectionDirective> gc_directive) {}
 void FakeModelTypeProcessor::StorePendingInvalidations(
     std::vector<sync_pb::ModelTypeState::Invalidation> invalidations_to_store) {
 }

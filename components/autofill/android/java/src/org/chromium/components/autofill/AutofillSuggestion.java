@@ -16,60 +16,66 @@ import org.chromium.url.GURL;
 
 import java.util.Objects;
 
-/** Autofill suggestion container used to store information needed for each Autofill popup entry. */
+/**
+ * Autofill suggestion container used to store information needed for each Autofill popup entry.
+ */
 public class AutofillSuggestion extends DropdownItemBase {
     private final String mLabel;
-    @Nullable private final String mSecondaryLabel;
+    @Nullable
+    private final String mSecondaryLabel;
     private final String mSublabel;
-    @Nullable private final String mSecondarySublabel;
-    @Nullable private final String mItemTag;
+    @Nullable
+    private final String mSecondarySublabel;
+    @Nullable
+    private final String mItemTag;
     private final int mIconId;
     private final boolean mIsIconAtStart;
-    private final int mPopupItemId;
+    private final int mSuggestionId;
     private final boolean mIsDeletable;
     private final boolean mIsMultilineLabel;
     private final boolean mIsBoldLabel;
-    @Nullable private final String mFeatureForIPH;
-    @Nullable private final GURL mCustomIconUrl;
-    @Nullable private final Drawable mIconDrawable;
+    @Nullable
+    private final String mFeatureForIPH;
+    @Nullable
+    private final GURL mCustomIconUrl;
+    @Nullable
+    private final Drawable mIconDrawable;
 
     /**
-     * Constructs a Autofill suggestion container. Use the {@link AutofillSuggestion.Builder}
-     * instead.
+     * Constructs a Autofill suggestion container.
      *
      * @param label The main label of the Autofill suggestion.
      * @param sublabel The describing sublabel of the Autofill suggestion.
      * @param itemTag The tag for the autofill suggestion. For keyboard accessory, this would be
-     *     displayed as an IPH bubble. For the dropdown, this is shown below the secondary text.For
-     *     example: For credit cards with offers, the item tag is set to indicate that the card has
-     *     some cashback offer associated with it.
-     * @param iconId The resource ID for the icon associated with the suggestion, or {@code
-     *     DropdownItem.NO_ICON} for no icon.
+     *         displayed as an IPH bubble. For the dropdown, this is shown below the secondary
+     *         text.For example: For credit cards with offers, the item tag is set to indicate that
+     *         the card has some cashback offer associated with it.
+     * @param iconId The resource ID for the icon associated with the suggestion, or
+     *               {@code DropdownItem.NO_ICON} for no icon.
      * @param isIconAtStart {@code true} if {@code iconId} is displayed before {@code label}.
-     * @param popupItemId The type of suggestion.
+     * @param suggestionId The type of suggestion.
      * @param isDeletable Whether the item can be deleted by the user.
      * @param isMultilineLabel Whether the label is displayed over multiple lines.
      * @param isBoldLabel Whether the label is displayed in {@code Typeface.BOLD}.
      * @param featureForIPH The IPH feature for the autofill suggestion. If present, it'll be
-     *     attempted to be shown in the keyboard accessory.
-     * @param customIconUrl The {@link GURL} for the custom icon, if any.
-     * @param iconDrawable The {@link Drawable} for an icon, if any.
+     *         attempted to be shown in the keyboard accessory.
+     *
+     * Use the {@link AutofillSuggestion.Builder} instead.
      */
+    @Deprecated
+    public AutofillSuggestion(String label, String sublabel, @Nullable String itemTag, int iconId,
+            boolean isIconAtStart, int suggestionId, boolean isDeletable, boolean isMultilineLabel,
+            boolean isBoldLabel, @Nullable String featureForIPH) {
+        this(label, /* secondaryLabel= */ null, sublabel, /* secondarySublabel= */ null, itemTag,
+                iconId, isIconAtStart, suggestionId, isDeletable, isMultilineLabel, isBoldLabel,
+                featureForIPH, /* customIconUrl= */ null, /* iconDrawable= */ null);
+    }
+
     @VisibleForTesting
-    public AutofillSuggestion(
-            String label,
-            @Nullable String secondaryLabel,
-            String sublabel,
-            @Nullable String secondarySublabel,
-            @Nullable String itemTag,
-            int iconId,
-            boolean isIconAtStart,
-            @PopupItemId int popupItemId,
-            boolean isDeletable,
-            boolean isMultilineLabel,
-            boolean isBoldLabel,
-            @Nullable String featureForIPH,
-            @Nullable GURL customIconUrl,
+    public AutofillSuggestion(String label, @Nullable String secondaryLabel, String sublabel,
+            @Nullable String secondarySublabel, @Nullable String itemTag, int iconId,
+            boolean isIconAtStart, int suggestionId, boolean isDeletable, boolean isMultilineLabel,
+            boolean isBoldLabel, @Nullable String featureForIPH, @Nullable GURL customIconUrl,
             @Nullable Drawable iconDrawable) {
         mLabel = label;
         mSecondaryLabel = secondaryLabel;
@@ -78,7 +84,7 @@ public class AutofillSuggestion extends DropdownItemBase {
         mItemTag = itemTag;
         mIconId = iconId;
         mIsIconAtStart = isIconAtStart;
-        mPopupItemId = popupItemId;
+        mSuggestionId = suggestionId;
         mIsDeletable = isDeletable;
         mIsMultilineLabel = isMultilineLabel;
         mIsBoldLabel = isBoldLabel;
@@ -132,7 +138,7 @@ public class AutofillSuggestion extends DropdownItemBase {
 
     @Override
     public int getLabelFontColorResId() {
-        if (mPopupItemId == PopupItemId.INSECURE_CONTEXT_PAYMENT_DISABLED_MESSAGE) {
+        if (mSuggestionId == PopupItemId.ITEM_ID_INSECURE_CONTEXT_PAYMENT_DISABLED_MESSAGE) {
             return R.color.insecure_context_payment_disabled_message_text;
         }
         return super.getLabelFontColorResId();
@@ -158,8 +164,8 @@ public class AutofillSuggestion extends DropdownItemBase {
         return mIconDrawable;
     }
 
-    public int getPopupItemId() {
-        return mPopupItemId;
+    public int getSuggestionId() {
+        return mSuggestionId;
     }
 
     public boolean isDeletable() {
@@ -167,8 +173,9 @@ public class AutofillSuggestion extends DropdownItemBase {
     }
 
     public boolean isFillable() {
-        return mPopupItemId == PopupItemId.ADDRESS_ENTRY
-                || mPopupItemId == PopupItemId.CREDIT_CARD_ENTRY;
+        // Negative suggestion ID indiciates a tool like "settings" or "scan credit card."
+        // Non-negative suggestion ID indicates suggestions that can be filled into the form.
+        return mSuggestionId >= 0;
     }
 
     @Nullable
@@ -189,10 +196,9 @@ public class AutofillSuggestion extends DropdownItemBase {
                 && Objects.equals(this.mSecondaryLabel, other.mSecondaryLabel)
                 && this.mSublabel.equals(other.mSublabel)
                 && Objects.equals(this.mSecondarySublabel, other.mSecondarySublabel)
-                && Objects.equals(this.mItemTag, other.mItemTag)
-                && this.mIconId == other.mIconId
+                && Objects.equals(this.mItemTag, other.mItemTag) && this.mIconId == other.mIconId
                 && this.mIsIconAtStart == other.mIsIconAtStart
-                && this.mPopupItemId == other.mPopupItemId
+                && this.mSuggestionId == other.mSuggestionId
                 && this.mIsDeletable == other.mIsDeletable
                 && this.mIsMultilineLabel == other.mIsMultilineLabel
                 && this.mIsBoldLabel == other.mIsBoldLabel
@@ -210,7 +216,7 @@ public class AutofillSuggestion extends DropdownItemBase {
                 .setItemTag(mItemTag)
                 .setIconId(mIconId)
                 .setIsIconAtStart(mIsIconAtStart)
-                .setPopupItemId(mPopupItemId)
+                .setSuggestionId(mSuggestionId)
                 .setIsDeletable(mIsDeletable)
                 .setIsMultiLineLabel(mIsMultilineLabel)
                 .setIsBoldLabel(mIsBoldLabel)
@@ -219,7 +225,9 @@ public class AutofillSuggestion extends DropdownItemBase {
                 .setIconDrawable(mIconDrawable);
     }
 
-    /** Builder for the {@link AutofillSuggestion}. */
+    /**
+     * Builder for the {@link AutofillSuggestion}.
+     */
     public static final class Builder {
         private int mIconId;
         private GURL mCustomIconUrl;
@@ -234,7 +242,7 @@ public class AutofillSuggestion extends DropdownItemBase {
         private String mSecondaryLabel;
         private String mSubLabel;
         private String mSecondarySubLabel;
-        private int mPopupItemId;
+        private int mSuggestionId;
 
         public Builder setIconId(int iconId) {
             this.mIconId = iconId;
@@ -301,31 +309,18 @@ public class AutofillSuggestion extends DropdownItemBase {
             return this;
         }
 
-        public Builder setPopupItemId(int popupItemId) {
-            this.mPopupItemId = popupItemId;
+        public Builder setSuggestionId(int suggestionId) {
+            this.mSuggestionId = suggestionId;
             return this;
         }
 
         public AutofillSuggestion build() {
-            assert mPopupItemId == PopupItemId.SEPARATOR || !TextUtils.isEmpty(mLabel)
-                    : "Only separators may have an empty label.";
+            assert !TextUtils.isEmpty(mLabel) : "AutofillSuggestion requires the label to be set.";
             assert (mSubLabel != null)
-                    : "The AutofillSuggestion sublabel can be empty but never null.";
-            return new AutofillSuggestion(
-                    mLabel,
-                    mSecondaryLabel,
-                    mSubLabel,
-                    mSecondarySubLabel,
-                    mItemTag,
-                    mIconId,
-                    mIsIconAtStart,
-                    mPopupItemId,
-                    mIsDeletable,
-                    mIsMultiLineLabel,
-                    mIsBoldLabel,
-                    mFeatureForIPH,
-                    mCustomIconUrl,
-                    mIconDrawable);
+                : "The AutofillSuggestion sublabel can be empty but never null.";
+            return new AutofillSuggestion(mLabel, mSecondaryLabel, mSubLabel, mSecondarySubLabel,
+                    mItemTag, mIconId, mIsIconAtStart, mSuggestionId, mIsDeletable,
+                    mIsMultiLineLabel, mIsBoldLabel, mFeatureForIPH, mCustomIconUrl, mIconDrawable);
         }
     }
 

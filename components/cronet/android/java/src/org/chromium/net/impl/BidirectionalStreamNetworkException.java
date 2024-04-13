@@ -8,7 +8,9 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.net.NetError;
 
-/** Used in {@link CronetBidirectionalStream}. Implements {@link NetworkExceptionImpl}. */
+/**
+ * Used in {@link CronetBidirectionalStream}. Implements {@link NetworkExceptionImpl}.
+ */
 @VisibleForTesting
 public class BidirectionalStreamNetworkException extends NetworkExceptionImpl {
     public BidirectionalStreamNetworkException(

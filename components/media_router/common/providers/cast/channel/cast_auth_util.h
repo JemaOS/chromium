@@ -18,11 +18,8 @@ enum class CRLPolicy;
 
 namespace net {
 class X509Certificate;
-}  // namespace net
-
-namespace bssl {
 class TrustStore;
-}  // namespace bssl
+}  // namespace net
 
 namespace cast_channel {
 
@@ -31,8 +28,6 @@ using ::cast::channel::CastMessage;
 
 BASE_DECLARE_FEATURE(kEnforceNonceChecking);
 BASE_DECLARE_FEATURE(kEnforceSHA256Checking);
-BASE_DECLARE_FEATURE(kEnforceFallbackCRLRevocationChecking);
-BASE_DECLARE_FEATURE(kEnforceRevocationChecking);
 
 struct AuthResult {
  public:
@@ -54,9 +49,6 @@ struct AuthResult {
     ERROR_TLS_CERT_EXPIRED,
     ERROR_CRL_INVALID,
     ERROR_CERT_REVOKED,
-    ERROR_CRL_OK_FALLBACK_CRL,
-    ERROR_FALLBACK_CRL_INVALID,
-    ERROR_CERTS_REVOKED_BY_FALLBACK_CRL,
     ERROR_SENDER_NONCE_MISMATCH,
     ERROR_DIGEST_UNSUPPORTED,
     ERROR_SIGNATURE_EMPTY,
@@ -78,9 +70,7 @@ struct AuthResult {
 
   void set_flag(CastChannelFlag flag) { flags |= static_cast<uint16_t>(flag); }
 
-  bool success() const {
-    return error_type == ERROR_NONE || error_type == ERROR_CRL_OK_FALLBACK_CRL;
-  }
+  bool success() const { return error_type == ERROR_NONE; }
 
   // Copies any flags set in `source` to this object's flags.
   void CopyFlagsFrom(const AuthResult& source);
@@ -140,8 +130,8 @@ AuthResult VerifyCredentialsForTest(
     const AuthResponse& response,
     const std::string& signature_input,
     const cast_certificate::CRLPolicy& crl_policy,
-    bssl::TrustStore* cast_trust_store,
-    bssl::TrustStore* crl_trust_store,
+    net::TrustStore* cast_trust_store,
+    net::TrustStore* crl_trust_store,
     const base::Time& verification_time);
 
 }  // namespace cast_channel

@@ -22,7 +22,7 @@ class DummyModelProvider : public ModelProvider {
 
   void ExecuteModelWithInput(const ModelProvider::Request& inputs,
                              ExecutionCallback callback) override {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
   }
 
   bool ModelAvailable() override { return false; }
@@ -65,8 +65,8 @@ std::unique_ptr<ModelProvider> ModelProviderFactoryImpl::CreateProvider(
 #endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 }
 
-std::unique_ptr<DefaultModelProvider>
-ModelProviderFactoryImpl::CreateDefaultProvider(proto::SegmentId segment_id) {
+std::unique_ptr<ModelProvider> ModelProviderFactoryImpl::CreateDefaultProvider(
+    proto::SegmentId segment_id) {
   auto test_override =
       TestDefaultModelOverride::GetInstance().TakeOwnershipOfModelProvider(
           segment_id);
@@ -91,11 +91,11 @@ TestDefaultModelOverride& TestDefaultModelOverride::GetInstance() {
   return *instance;
 }
 
-std::unique_ptr<DefaultModelProvider>
+std::unique_ptr<ModelProvider>
 TestDefaultModelOverride::TakeOwnershipOfModelProvider(
     proto::SegmentId target) {
-  auto it = default_providers_.find(target);
-  if (it != default_providers_.end()) {
+  auto it = providers_.find(target);
+  if (it != providers_.end()) {
     DCHECK(it->second);
     return std::move(it->second);
   }
@@ -104,8 +104,8 @@ TestDefaultModelOverride::TakeOwnershipOfModelProvider(
 
 void TestDefaultModelOverride::SetModelForTesting(
     proto::SegmentId target,
-    std::unique_ptr<DefaultModelProvider> default_provider) {
-  default_providers_[target] = std::move(default_provider);
+    std::unique_ptr<ModelProvider> provider) {
+  providers_[target] = std::move(provider);
 }
 
 }  // namespace segmentation_platform

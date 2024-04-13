@@ -6,10 +6,14 @@ package org.chromium.components.paintpreview.player.frame;
 
 import android.util.Size;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.base.UnguessableToken;
 import org.chromium.components.paintpreview.player.PlayerCompositorDelegate;
 
-/** Class for managing which bitmap state is shown. */
+/**
+ * Class for managing which bitmap state is shown.
+ */
 public class PlayerFrameBitmapStateController {
     private PlayerFrameBitmapState mLoadingBitmapState;
     private PlayerFrameBitmapState mVisibleBitmapState;
@@ -20,11 +24,8 @@ public class PlayerFrameBitmapStateController {
     private final PlayerCompositorDelegate mCompositorDelegate;
     private final PlayerFrameMediatorDelegate mMediatorDelegate;
 
-    PlayerFrameBitmapStateController(
-            UnguessableToken guid,
-            PlayerFrameViewport viewport,
-            Size contentSize,
-            PlayerCompositorDelegate compositorDelegate,
+    PlayerFrameBitmapStateController(UnguessableToken guid, PlayerFrameViewport viewport,
+            Size contentSize, PlayerCompositorDelegate compositorDelegate,
             PlayerFrameMediatorDelegate mediatorDelegate) {
         mGuid = guid;
         mViewport = viewport;
@@ -51,6 +52,7 @@ public class PlayerFrameBitmapStateController {
         deleteAll();
     }
 
+    @VisibleForTesting
     void swapForTest() {
         swap(mLoadingBitmapState);
     }
@@ -75,14 +77,8 @@ public class PlayerFrameBitmapStateController {
             invalidateLoadingBitmaps();
             Size tileSize = mViewport.getBitmapTileSize();
             mLoadingBitmapState =
-                    new PlayerFrameBitmapState(
-                            mGuid,
-                            tileSize.getWidth(),
-                            tileSize.getHeight(),
-                            mViewport.getScale(),
-                            mContentSize,
-                            mCompositorDelegate,
-                            this);
+                    new PlayerFrameBitmapState(mGuid, tileSize.getWidth(), tileSize.getHeight(),
+                            mViewport.getScale(), mContentSize, mCompositorDelegate, this);
             if (mVisibleBitmapState == null) {
                 mLoadingBitmapState.skipWaitingForVisibleBitmaps();
                 swap(mLoadingBitmapState);
@@ -100,15 +96,13 @@ public class PlayerFrameBitmapStateController {
      */
     void swap(PlayerFrameBitmapState newState) {
         assert mLoadingBitmapState == newState;
-        PlayerFrameBitmapState oldState = mVisibleBitmapState;
+        // Clear the state to stop potential stragling updates.
+        if (mVisibleBitmapState != null) {
+            mVisibleBitmapState.destroy();
+        }
         mVisibleBitmapState = newState;
         mLoadingBitmapState = null;
         mMediatorDelegate.onSwapState();
-        // Clear the state to stop potential stragling updates. Destroy afterwards in case drawing
-        // is happening concurrently somehow.
-        if (oldState != null) {
-            oldState.destroy();
-        }
     }
 
     /**
@@ -126,7 +120,9 @@ public class PlayerFrameBitmapStateController {
         swap(bitmapState);
     }
 
-    /** Whether the bitmap state is visible. */
+    /**
+     * Whether the bitmap state is visible.
+     */
     boolean isVisible(PlayerFrameBitmapState state) {
         return state == mVisibleBitmapState;
     }
@@ -140,7 +136,9 @@ public class PlayerFrameBitmapStateController {
         mVisibleBitmapState.lock();
     }
 
-    /** Invalidates loading bitmaps. */
+    /**
+     * Invalidates loading bitmaps.
+     */
     void invalidateLoadingBitmaps() {
         if (mLoadingBitmapState == null) return;
 

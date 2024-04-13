@@ -10,7 +10,6 @@
 
 #include "base/containers/flat_map.h"
 #include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
@@ -19,7 +18,6 @@
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "components/signin/public/identity_manager/access_token_info.h"
-#include "components/trusted_vault/test/fake_trusted_vault_access_token_fetcher.h"
 #include "components/trusted_vault/trusted_vault_access_token_fetcher.h"
 #include "google_apis/gaia/core_account_id.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
@@ -63,6 +61,28 @@ signin::AccessTokenInfo MakeAccessTokenInfo(const std::string& access_token) {
       /*id_token=*/std::string());
 }
 
+class FakeTrustedVaultAccessTokenFetcher
+    : public TrustedVaultAccessTokenFetcher {
+ public:
+  explicit FakeTrustedVaultAccessTokenFetcher(
+      const AccessTokenInfoOrError& access_token_info_or_error)
+      : access_token_info_or_error_(access_token_info_or_error) {}
+  ~FakeTrustedVaultAccessTokenFetcher() override = default;
+
+  void FetchAccessToken(const CoreAccountId& account_id,
+                        TokenCallback callback) override {
+    std::move(callback).Run(access_token_info_or_error_);
+  }
+
+  std::unique_ptr<TrustedVaultAccessTokenFetcher> Clone() override {
+    NOTIMPLEMENTED();
+    return nullptr;
+  }
+
+ private:
+  const AccessTokenInfoOrError access_token_info_or_error_;
+};
+
 class TrustedVaultRequestTest : public testing::Test {
  public:
   TrustedVaultRequestTest()
@@ -74,7 +94,7 @@ class TrustedVaultRequestTest : public testing::Test {
   StartNewRequestWithAccessTokenAndRetriesDuration(
       const std::string& access_token,
       TrustedVaultRequest::HttpMethod http_method,
-      const std::optional<std::string>& request_body,
+      const absl::optional<std::string>& request_body,
       base::TimeDelta max_retry_duration,
       TrustedVaultRequest::CompletionCallback completion_callback) {
     const CoreAccountId account_id = CoreAccountId::FromGaiaId("user_id");
@@ -86,7 +106,7 @@ class TrustedVaultRequestTest : public testing::Test {
         max_retry_duration, shared_url_loader_factory_,
         std::make_unique<FakeTrustedVaultAccessTokenFetcher>(
             MakeAccessTokenInfo(access_token)),
-        /*record_fetch_status_callback=*/base::DoNothing());
+        TrustedVaultURLFetchReasonForUMA::kUnspecified);
     request->FetchAccessTokenAndSendRequest(std::move(completion_callback));
     return request;
   }
@@ -94,7 +114,7 @@ class TrustedVaultRequestTest : public testing::Test {
   std::unique_ptr<TrustedVaultRequest> StartNewRequestWithAccessToken(
       const std::string& access_token,
       TrustedVaultRequest::HttpMethod http_method,
-      const std::optional<std::string>& request_body,
+      const absl::optional<std::string>& request_body,
       TrustedVaultRequest::CompletionCallback completion_callback) {
     return StartNewRequestWithAccessTokenAndRetriesDuration(
         access_token, http_method, request_body,
@@ -109,18 +129,18 @@ class TrustedVaultRequestTest : public testing::Test {
 
     auto request = std::make_unique<TrustedVaultRequest>(
         account_id, TrustedVaultRequest::HttpMethod::kGet, GURL(kRequestUrl),
-        /*serialized_request_proto=*/std::nullopt,
+        /*serialized_request_proto=*/absl::nullopt,
         /*max_retry_duration=*/base::Seconds(0), shared_url_loader_factory_,
         std::make_unique<FakeTrustedVaultAccessTokenFetcher>(
             base::unexpected{error}),
-        /*record_fetch_status_callback=*/base::DoNothing());
+        TrustedVaultURLFetchReasonForUMA::kUnspecified);
     request->FetchAccessTokenAndSendRequest(std::move(completion_callback));
     return request;
   }
 
   bool RespondToHttpRequest(
       net::Error error,
-      std::optional<net::HttpStatusCode> response_http_code,
+      absl::optional<net::HttpStatusCode> response_http_code,
       const std::string& response_body) {
     network::mojom::URLResponseHeadPtr response_head;
     if (response_http_code.has_value()) {
@@ -158,7 +178,7 @@ TEST_F(TrustedVaultRequestTest, ShouldSendGetRequestAndHandleSuccess) {
   base::HistogramTester histogram_tester;
   std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
       kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-      /*request_body=*/std::nullopt, completion_callback.Get());
+      /*request_body=*/absl::nullopt, completion_callback.Get());
 
   histogram_tester.ExpectUniqueSample(
       /*name=*/"Sync.TrustedVaultAccessTokenFetchSuccess",
@@ -188,7 +208,7 @@ TEST_F(TrustedVaultRequestTest,
       completion_callback;
   std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
       kAccessToken, TrustedVaultRequest::HttpMethod::kPost,
-      /*request_body=*/std::nullopt, completion_callback.Get());
+      /*request_body=*/absl::nullopt, completion_callback.Get());
 
   network::TestURLLoaderFactory::PendingRequest* pending_request =
       GetPendingRequest();
@@ -196,31 +216,6 @@ TEST_F(TrustedVaultRequestTest,
 
   const network::ResourceRequest& resource_request = pending_request->request;
   EXPECT_THAT(resource_request.method, Eq("POST"));
-  EXPECT_THAT(resource_request.url,
-              Eq(GURL(kRequestUrlWithAlternateOutputProto)));
-  EXPECT_THAT(network::GetUploadData(resource_request), IsEmpty());
-
-  // |completion_callback| should be called after receiving response.
-  EXPECT_CALL(
-      completion_callback,
-      Run(TrustedVaultRequest::HttpStatus::kSuccess, Eq(kResponseBody)));
-  EXPECT_TRUE(RespondToHttpRequest(net::OK, net::HTTP_OK, kResponseBody));
-}
-
-TEST_F(TrustedVaultRequestTest,
-       ShouldSendPatchRequestWithoutPayloadAndHandleSuccess) {
-  base::MockCallback<TrustedVaultRequest::CompletionCallback>
-      completion_callback;
-  std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
-      kAccessToken, TrustedVaultRequest::HttpMethod::kPatch,
-      /*request_body=*/std::nullopt, completion_callback.Get());
-
-  network::TestURLLoaderFactory::PendingRequest* pending_request =
-      GetPendingRequest();
-  EXPECT_THAT(pending_request, Pointee(HasValidAccessToken()));
-
-  const network::ResourceRequest& resource_request = pending_request->request;
-  EXPECT_THAT(resource_request.method, Eq("PATCH"));
   EXPECT_THAT(resource_request.url,
               Eq(GURL(kRequestUrlWithAlternateOutputProto)));
   EXPECT_THAT(network::GetUploadData(resource_request), IsEmpty());
@@ -263,12 +258,12 @@ TEST_F(TrustedVaultRequestTest, ShouldHandleNetworkFailures) {
       completion_callback;
   std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
       kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-      /*request_body=*/std::nullopt, completion_callback.Get());
+      /*request_body=*/absl::nullopt, completion_callback.Get());
 
   // |completion_callback| should be called after receiving response.
   EXPECT_CALL(completion_callback,
               Run(TrustedVaultRequest::HttpStatus::kNetworkError, _));
-  EXPECT_TRUE(RespondToHttpRequest(net::ERR_FAILED, std::nullopt,
+  EXPECT_TRUE(RespondToHttpRequest(net::ERR_FAILED, absl::nullopt,
                                    /*response_body=*/std::string()));
 }
 
@@ -277,7 +272,7 @@ TEST_F(TrustedVaultRequestTest, ShouldHandleHttpErrors) {
       completion_callback;
   std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
       kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-      /*request_body=*/std::nullopt, completion_callback.Get());
+      /*request_body=*/absl::nullopt, completion_callback.Get());
 
   // |completion_callback| should be called after receiving response.
   EXPECT_CALL(completion_callback,
@@ -291,7 +286,7 @@ TEST_F(TrustedVaultRequestTest, ShouldHandleBadRequestStatus) {
       completion_callback;
   std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
       kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-      /*request_body=*/std::nullopt, completion_callback.Get());
+      /*request_body=*/absl::nullopt, completion_callback.Get());
 
   // |completion_callback| should be called after receiving response.
   EXPECT_CALL(completion_callback,
@@ -306,7 +301,7 @@ TEST_F(TrustedVaultRequestTest,
       completion_callback;
   std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
       kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-      /*request_body=*/std::nullopt, completion_callback.Get());
+      /*request_body=*/absl::nullopt, completion_callback.Get());
 
   // |completion_callback| should be called after receiving response.
   EXPECT_CALL(completion_callback,
@@ -319,7 +314,7 @@ TEST_F(TrustedVaultRequestTest, ShouldHandleNotFoundStatus) {
       completion_callback;
   std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
       kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-      /*request_body=*/std::nullopt, completion_callback.Get());
+      /*request_body=*/absl::nullopt, completion_callback.Get());
 
   // |completion_callback| should be called after receiving response.
   EXPECT_CALL(completion_callback,
@@ -333,7 +328,7 @@ TEST_F(TrustedVaultRequestTest, ShouldRetryUponNetworkChange) {
       completion_callback;
   std::unique_ptr<TrustedVaultRequest> request = StartNewRequestWithAccessToken(
       kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-      /*request_body=*/std::nullopt, completion_callback.Get());
+      /*request_body=*/absl::nullopt, completion_callback.Get());
 
   // Mimic network change error for the first request.
   EXPECT_CALL(completion_callback, Run).Times(0);
@@ -357,7 +352,7 @@ TEST_F(TrustedVaultRequestTest, ShouldRetryUponTransientErrorAndHandleSuccess) {
   std::unique_ptr<TrustedVaultRequest> request =
       StartNewRequestWithAccessTokenAndRetriesDuration(
           kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-          /*request_body=*/std::nullopt,
+          /*request_body=*/absl::nullopt,
           /*max_retry_duration=*/base::Minutes(1), completion_callback.Get());
 
   // Mimic network error for the first request.
@@ -383,7 +378,7 @@ TEST_F(TrustedVaultRequestTest, ShouldStopRetryingAndReportTransientError) {
   std::unique_ptr<TrustedVaultRequest> request =
       StartNewRequestWithAccessTokenAndRetriesDuration(
           kAccessToken, TrustedVaultRequest::HttpMethod::kGet,
-          /*request_body=*/std::nullopt,
+          /*request_body=*/absl::nullopt,
           /*max_retry_duration=*/base::Minutes(1), completion_callback.Get());
 
   // Mimic network error for the first request with significant delay,

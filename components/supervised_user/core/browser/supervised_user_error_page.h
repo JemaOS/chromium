@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "components/supervised_user/core/browser/supervised_user_utils.h"
+#include "components/supervised_user/core/common/supervised_user_utils.h"
 
 namespace supervised_user {
 
@@ -23,8 +23,7 @@ std::string BuildErrorPageHtml(bool allow_access_requests,
                                FilteringBehaviorReason reason,
                                const std::string& app_locale,
                                bool already_sent_remote_request,
-                               bool is_main_frame,
-                               bool show_banner);
+                               bool is_main_frame);
 
 }  //  namespace supervised_user
 

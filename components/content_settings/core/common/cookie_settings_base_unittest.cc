@@ -7,11 +7,8 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/notreached.h"
-#include "base/strings/strcat.h"
 #include "base/test/scoped_feature_list.h"
-#include "components/content_settings/core/common/content_settings.h"
 #include "net/base/features.h"
-#include "net/cookies/cookie_constants.h"
 #include "net/cookies/cookie_setting_override.h"
 #include "net/cookies/cookie_util.h"
 #include "net/cookies/site_for_cookies.h"
@@ -22,10 +19,12 @@ namespace content_settings {
 namespace {
 
 constexpr char kDomain[] = "foo.com";
+const GURL kURL = GURL(kDomain);
+const url::Origin kOrigin = url::Origin::Create(kURL);
+const net::SiteForCookies kSiteForCookies =
+    net::SiteForCookies::FromOrigin(kOrigin);
 
-using GetSettingCallback =
-    base::RepeatingCallback<ContentSetting(const GURL&,
-                                           content_settings::SettingInfo*)>;
+using GetSettingCallback = base::RepeatingCallback<ContentSetting(const GURL&)>;
 
 ContentSettingPatternSource CreateSetting(ContentSetting setting) {
   return ContentSettingPatternSource(
@@ -46,34 +45,21 @@ class CallbackCookieSettings : public CookieSettingsBase {
   explicit CallbackCookieSettings(GetSettingCallback callback)
       : callback_(std::move(callback)) {}
 
-  ContentSetting GetContentSetting(
-      const GURL& primary_url,
-      const GURL& secondary_url,
-      ContentSettingsType content_type,
-      content_settings::SettingInfo* info) const override {
-    if (info) {
-      info->primary_pattern = ContentSettingsPattern::Wildcard();
-      info->secondary_pattern = ContentSettingsPattern::Wildcard();
-    }
-    return callback_.Run(primary_url, info);
-  }
-
   // CookieSettingsBase:
-  bool ShouldAlwaysAllowCookies(const GURL& url,
-                                const GURL& first_party_url) const override {
-    return false;
+  ContentSetting GetCookieSettingInternal(
+      const GURL& url,
+      const GURL& first_party_url,
+      bool is_third_party_request,
+      net::CookieSettingOverrides overrides,
+      content_settings::SettingSource* source) const override {
+    return callback_.Run(url);
   }
-
-  bool ShouldBlockThirdPartyCookies() const override { return false; }
-  bool MitigationsEnabledFor3pcd() const override { return false; }
-
-  bool IsThirdPartyCookiesAllowedScheme(
-      const std::string& scheme) const override {
-    return false;
+  ContentSetting GetSettingForLegacyCookieAccess(
+      const std::string& cookie_domain) const override {
+    GURL cookie_domain_url =
+        net::cookie_util::CookieOriginToURL(cookie_domain, false);
+    return callback_.Run(cookie_domain_url);
   }
-
-  bool IsStorageAccessApiEnabled() const override { return true; }
-
   bool ShouldIgnoreSameSiteRestrictions(
       const GURL& url,
       const net::SiteForCookies& site_for_cookies) const override {
@@ -85,227 +71,131 @@ class CallbackCookieSettings : public CookieSettingsBase {
   GetSettingCallback callback_;
 };
 
-class CookieSettingsBaseTest : public testing::Test {
- public:
-  CookieSettingsBaseTest()
-      : url_(base::StrCat({"https://", kDomain})),
-        origin_(url::Origin::Create(url_)),
-        site_for_cookies_(net::SiteForCookies::FromOrigin(origin_)) {
-    EXPECT_FALSE(origin_.opaque());
-  }
+TEST(CookieSettingsBaseTest, ShouldDeleteSessionOnly) {
+  CallbackCookieSettings settings(base::BindRepeating(
+      [](const GURL&) { return CONTENT_SETTING_SESSION_ONLY; }));
+  EXPECT_TRUE(settings.ShouldDeleteCookieOnExit({}, kDomain, false));
+}
 
- protected:
-  const GURL url_;
-  const url::Origin origin_;
-  const net::SiteForCookies site_for_cookies_;
-};
-
-TEST_F(CookieSettingsBaseTest, ShouldDeleteSessionOnly) {
+TEST(CookieSettingsBaseTest, ShouldNotDeleteAllowed) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_SESSION_ONLY;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_ALLOW; }));
+  EXPECT_FALSE(settings.ShouldDeleteCookieOnExit({}, kDomain, false));
+}
 
+TEST(CookieSettingsBaseTest, ShouldNotDeleteAllowedHttps) {
+  CallbackCookieSettings settings(base::BindRepeating([](const GURL& url) {
+    return url.SchemeIsCryptographic() ? CONTENT_SETTING_ALLOW
+                                       : CONTENT_SETTING_BLOCK;
+  }));
+  EXPECT_FALSE(settings.ShouldDeleteCookieOnExit({}, kDomain, false));
+  EXPECT_FALSE(settings.ShouldDeleteCookieOnExit({}, kDomain, true));
+}
+
+TEST(CookieSettingsBaseTest, ShouldDeleteDomainSettingSessionOnly) {
+  CallbackCookieSettings settings(
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_TRUE(settings.ShouldDeleteCookieOnExit(
-      {}, kDomain, net::CookieSourceScheme::kNonSecure));
+      {CreateSetting(CONTENT_SETTING_SESSION_ONLY)}, kDomain, false));
 }
 
-TEST_F(CookieSettingsBaseTest, ShouldNotDeleteAllowed) {
+TEST(CookieSettingsBaseTest, ShouldDeleteDomainThirdPartySettingSessionOnly) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_ALLOW;
-      }));
-  EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
-      {}, kDomain, net::CookieSourceScheme::kNonSecure));
-}
-
-TEST_F(CookieSettingsBaseTest, ShouldNotDeleteAllowedHttps) {
-  base::test::ScopedFeatureList features_;
-  features_.InitAndDisableFeature(net::features::kEnableSchemeBoundCookies);
-  CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL& url, content_settings::SettingInfo*) {
-        return url.SchemeIsCryptographic() ? CONTENT_SETTING_ALLOW
-                                           : CONTENT_SETTING_BLOCK;
-      }));
-  EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
-      {}, kDomain, net::CookieSourceScheme::kNonSecure));
-  EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
-      {}, kDomain, net::CookieSourceScheme::kSecure));
-}
-
-TEST_F(CookieSettingsBaseTest,
-       ShouldDeleteIsSchemeAwareWithSchemeBoundCookies) {
-  base::test::ScopedFeatureList features_;
-  features_.InitAndEnableFeature(net::features::kEnableSchemeBoundCookies);
-  CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL& url, content_settings::SettingInfo*) {
-        return url.SchemeIsCryptographic() ? CONTENT_SETTING_ALLOW
-                                           : CONTENT_SETTING_SESSION_ONLY;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_TRUE(settings.ShouldDeleteCookieOnExit(
-      {}, kDomain, net::CookieSourceScheme::kNonSecure));
+      {CreateThirdPartySetting(CONTENT_SETTING_SESSION_ONLY)}, kDomain, false));
+}
+
+TEST(CookieSettingsBaseTest, ShouldNotDeleteDomainSettingAllow) {
+  CallbackCookieSettings settings(
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
-      {}, kDomain, net::CookieSourceScheme::kSecure));
+      {CreateSetting(CONTENT_SETTING_ALLOW)}, kDomain, false));
 }
 
-TEST_F(CookieSettingsBaseTest, ShouldDeleteDomainSettingSessionOnly) {
+TEST(CookieSettingsBaseTest,
+     ShouldNotDeleteDomainSettingAllowAfterSessionOnly) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
-  EXPECT_TRUE(settings.ShouldDeleteCookieOnExit(
-      {CreateSetting(CONTENT_SETTING_SESSION_ONLY)}, kDomain,
-      net::CookieSourceScheme::kNonSecure));
-}
-
-TEST_F(CookieSettingsBaseTest, ShouldDeleteDomainThirdPartySettingSessionOnly) {
-  CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
-  EXPECT_TRUE(settings.ShouldDeleteCookieOnExit(
-      {CreateThirdPartySetting(CONTENT_SETTING_SESSION_ONLY)}, kDomain,
-      net::CookieSourceScheme::kNonSecure));
-}
-
-TEST_F(CookieSettingsBaseTest, ShouldNotDeleteDomainSettingAllow) {
-  CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
-  EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
-      {CreateSetting(CONTENT_SETTING_ALLOW)}, kDomain,
-      net::CookieSourceScheme::kNonSecure));
-}
-
-TEST_F(CookieSettingsBaseTest,
-       ShouldNotDeleteDomainSettingAllowAfterSessionOnly) {
-  CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
       {CreateSetting(CONTENT_SETTING_SESSION_ONLY),
        CreateSetting(CONTENT_SETTING_ALLOW)},
-      kDomain, net::CookieSourceScheme::kNonSecure));
+      kDomain, false));
 }
 
-TEST_F(CookieSettingsBaseTest, ShouldNotDeleteDomainSettingBlock) {
+TEST(CookieSettingsBaseTest, ShouldNotDeleteDomainSettingBlock) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
-      {CreateSetting(CONTENT_SETTING_BLOCK)}, kDomain,
-      net::CookieSourceScheme::kNonSecure));
+      {CreateSetting(CONTENT_SETTING_BLOCK)}, kDomain, false));
 }
 
-TEST_F(CookieSettingsBaseTest, ShouldNotDeleteNoDomainMatch) {
+TEST(CookieSettingsBaseTest, ShouldNotDeleteNoDomainMatch) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
-      {CreateSetting(CONTENT_SETTING_SESSION_ONLY)}, "other.com",
-      net::CookieSourceScheme::kNonSecure));
+      {CreateSetting(CONTENT_SETTING_SESSION_ONLY)}, "other.com", false));
 }
 
-TEST_F(CookieSettingsBaseTest, ShouldNotDeleteNoThirdPartyDomainMatch) {
+TEST(CookieSettingsBaseTest, ShouldNotDeleteNoThirdPartyDomainMatch) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_FALSE(settings.ShouldDeleteCookieOnExit(
       {CreateThirdPartySetting(CONTENT_SETTING_SESSION_ONLY)}, "other.com",
-      net::CookieSourceScheme::kNonSecure));
+      false));
 }
 
-TEST_F(CookieSettingsBaseTest, CookieAccessNotAllowedWithBlockedSetting) {
+TEST(CookieSettingsBaseTest, CookieAccessNotAllowedWithBlockedSetting) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_FALSE(settings.IsFullCookieAccessAllowed(
-      url_, site_for_cookies_, origin_, net::CookieSettingOverrides()));
+      kURL, kSiteForCookies, kOrigin, net::CookieSettingOverrides()));
 }
 
-TEST_F(CookieSettingsBaseTest, CookieAccessAllowedWithAllowSetting) {
+TEST(CookieSettingsBaseTest, CookieAccessAllowedWithAllowSetting) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_ALLOW;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_ALLOW; }));
   EXPECT_TRUE(settings.IsFullCookieAccessAllowed(
-      url_, site_for_cookies_, origin_, net::CookieSettingOverrides()));
+      kURL, kSiteForCookies, kOrigin, net::CookieSettingOverrides()));
 }
 
-TEST_F(CookieSettingsBaseTest, ThirdPartyCookiesOverriden) {
-  GURL thirdPartyURL = GURL("https://3p.com");
-
+TEST(CookieSettingsBaseTest, CookieAccessAllowedWithSessionOnlySetting) {
   CallbackCookieSettings settings(base::BindRepeating(
-      [](const GURL&, content_settings::SettingInfo* setting_info) {
-        return CONTENT_SETTING_ALLOW;
-      }));
-  net::CookieSettingOverrides overrides{};
-  overrides.Put(net::CookieSettingOverride::kForceDisableThirdPartyCookies);
-
-  EXPECT_TRUE(settings.IsFullCookieAccessAllowed(url_, site_for_cookies_,
-                                                 origin_, overrides));
-  EXPECT_FALSE(settings.IsFullCookieAccessAllowed(
-      thirdPartyURL, site_for_cookies_, origin_, overrides));
+      [](const GURL&) { return CONTENT_SETTING_SESSION_ONLY; }));
   EXPECT_TRUE(settings.IsFullCookieAccessAllowed(
-      thirdPartyURL, site_for_cookies_, origin_,
-      net::CookieSettingOverrides()));
+      kURL, kSiteForCookies, kOrigin, net::CookieSettingOverrides()));
 }
 
-TEST_F(CookieSettingsBaseTest, CookieAccessAllowedWithSessionOnlySetting) {
-  CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_SESSION_ONLY;
-      }));
-  EXPECT_TRUE(settings.IsFullCookieAccessAllowed(
-      url_, site_for_cookies_, origin_, net::CookieSettingOverrides()));
-}
-
-TEST_F(CookieSettingsBaseTest, LegacyCookieAccessSemantics) {
+TEST(CookieSettingsBaseTest, LegacyCookieAccessSemantics) {
   CallbackCookieSettings settings1(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_ALLOW;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_ALLOW; }));
   EXPECT_EQ(net::CookieAccessSemantics::LEGACY,
             settings1.GetCookieAccessSemanticsForDomain(std::string()));
   CallbackCookieSettings settings2(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
   EXPECT_EQ(net::CookieAccessSemantics::NONLEGACY,
             settings2.GetCookieAccessSemanticsForDomain(std::string()));
 }
 
-TEST_F(CookieSettingsBaseTest, IsCookieSessionOnlyWithAllowSetting) {
+TEST(CookieSettingsBaseTest, IsCookieSessionOnlyWithAllowSetting) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_ALLOW;
-      }));
-  EXPECT_FALSE(settings.IsCookieSessionOnly(url_));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_ALLOW; }));
+  EXPECT_FALSE(settings.IsCookieSessionOnly(kURL));
 }
 
-TEST_F(CookieSettingsBaseTest, IsCookieSessionOnlyWithBlockSetting) {
+TEST(CookieSettingsBaseTest, IsCookieSessionOnlyWithBlockSetting) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_BLOCK;
-      }));
-  EXPECT_FALSE(settings.IsCookieSessionOnly(url_));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_BLOCK; }));
+  EXPECT_FALSE(settings.IsCookieSessionOnly(kURL));
 }
 
-TEST_F(CookieSettingsBaseTest, IsCookieSessionOnlySessionWithOnlySetting) {
-  CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_SESSION_ONLY;
-      }));
-  EXPECT_TRUE(settings.IsCookieSessionOnly(url_));
+TEST(CookieSettingsBaseTest, IsCookieSessionOnlySessionWithOnlySetting) {
+  CallbackCookieSettings settings(base::BindRepeating(
+      [](const GURL&) { return CONTENT_SETTING_SESSION_ONLY; }));
+  EXPECT_TRUE(settings.IsCookieSessionOnly(kURL));
 }
 
-TEST_F(CookieSettingsBaseTest, IsValidSetting) {
+TEST(CookieSettingsBaseTest, IsValidSetting) {
   EXPECT_FALSE(CookieSettingsBase::IsValidSetting(CONTENT_SETTING_DEFAULT));
   EXPECT_FALSE(CookieSettingsBase::IsValidSetting(CONTENT_SETTING_ASK));
   EXPECT_TRUE(CookieSettingsBase::IsValidSetting(CONTENT_SETTING_ALLOW));
@@ -313,13 +203,13 @@ TEST_F(CookieSettingsBaseTest, IsValidSetting) {
   EXPECT_TRUE(CookieSettingsBase::IsValidSetting(CONTENT_SETTING_SESSION_ONLY));
 }
 
-TEST_F(CookieSettingsBaseTest, IsAllowed) {
+TEST(CookieSettingsBaseTest, IsAllowed) {
   EXPECT_FALSE(CookieSettingsBase::IsAllowed(CONTENT_SETTING_BLOCK));
   EXPECT_TRUE(CookieSettingsBase::IsAllowed(CONTENT_SETTING_ALLOW));
   EXPECT_TRUE(CookieSettingsBase::IsAllowed(CONTENT_SETTING_SESSION_ONLY));
 }
 
-TEST_F(CookieSettingsBaseTest, IsValidLegacyAccessSetting) {
+TEST(CookieSettingsBaseTest, IsValidLegacyAccessSetting) {
   EXPECT_FALSE(CookieSettingsBase::IsValidSettingForLegacyAccess(
       CONTENT_SETTING_DEFAULT));
   EXPECT_FALSE(
@@ -361,9 +251,7 @@ class CookieSettingsBaseStorageAccessAPITest
 TEST_P(CookieSettingsBaseStorageAccessAPITest,
        SettingOverridesForStorageAccessAPIs) {
   CallbackCookieSettings settings(
-      base::BindRepeating([](const GURL&, content_settings::SettingInfo*) {
-        return CONTENT_SETTING_ALLOW;
-      }));
+      base::BindRepeating([](const GURL&) { return CONTENT_SETTING_ALLOW; }));
 
   net::CookieSettingOverrides overrides = settings.SettingOverridesForStorage();
 

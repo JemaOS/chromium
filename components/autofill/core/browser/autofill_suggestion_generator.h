@@ -5,18 +5,14 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_AUTOFILL_SUGGESTION_GENERATOR_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_AUTOFILL_SUGGESTION_GENERATOR_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
-#include "base/check_deref.h"
-#include "base/containers/flat_map.h"
+#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
-#include "components/autofill/core/browser/data_model/autofill_profile.h"
-#include "components/autofill/core/browser/data_model/autofill_wallet_usage_data.h"
-#include "components/autofill/core/browser/field_types.h"
-#include "components/autofill/core/browser/metrics/log_event.h"
+#include "base/types/id_type.h"
 #include "components/autofill/core/browser/ui/suggestion.h"
-#include "components/autofill/core/common/aliases.h"
 
 namespace base {
 class Time;
@@ -29,91 +25,80 @@ struct CardMetadataLoggingContext;
 }
 
 class AutofillClient;
+class AutofillField;
 class AutofillOfferData;
+class AutofillType;
 class CreditCard;
 struct FormFieldData;
-class Iban;
+class FormStructure;
+class IBAN;
 class PersonalDataManager;
 
 // Helper class to generate Autofill suggestions, such as for credit card and
 // address profile Autofill.
 class AutofillSuggestionGenerator {
  public:
-  explicit AutofillSuggestionGenerator(AutofillClient& autofill_client);
+  AutofillSuggestionGenerator(AutofillClient* autofill_client,
+                              PersonalDataManager* personal_data);
   ~AutofillSuggestionGenerator();
   AutofillSuggestionGenerator(const AutofillSuggestionGenerator&) = delete;
   AutofillSuggestionGenerator& operator=(const AutofillSuggestionGenerator&) =
       delete;
 
-  // Generates suggestions for a form containing the given `field_types`. It
-  // considers all available profiles, deduplicates them based on the types and
-  // returns one suggestion per remaining profile.
-  // `last_targeted_fields` is used to know which fields were targeted on a
-  // prior form interaction. In the context of granular filling, this could lead
-  // the user to be in one of the available filling granularities, field by
-  // field filling, group filling or full form (default). `field_types` are the
-  // relevant types for the current suggestions.
+  // Generates suggestions for all available profiles based on the `form`,
+  // the value of `field` and the `autofill_field`. `app_locale` is the
+  // locale used by the application.
   std::vector<Suggestion> GetSuggestionsForProfiles(
-      const FieldTypeSet& field_types,
-      const FormFieldData& trigger_field,
-      FieldType trigger_field_type,
-      std::optional<FieldTypeSet> last_targeted_fields,
-      AutofillSuggestionTriggerSource trigger_source);
+      const FormStructure& form,
+      const FormFieldData& field,
+      const AutofillField& autofill_field,
+      const std::string& app_locale);
 
-  // Generates suggestions for all available credit cards based on the
-  // `trigger_field_type`, `trigger_field` and `trigger_source`.
+  // Generates suggestions for all available credit cards based on the `type`
+  // and the value of `field`. `app_locale` is the locale used by the
+  // application. `should_display_gpay_logo` will be set to true if there are no
+  // credit card suggestions, or all suggestions come from Payments server.
   // `with_offer` is set to true if ANY card has card-linked offers.
-  // `with_cvc` is set to true if ANY card has cvc saved.
   // `metadata_logging_context` contains card metadata related information used
   // for metrics logging.
-  // TODO(crbug.com/1519179): Merging out-parameters into a struct.
   std::vector<Suggestion> GetSuggestionsForCreditCards(
-      const FormFieldData& trigger_field,
-      FieldType trigger_field_type,
-      AutofillSuggestionTriggerSource trigger_source,
-      bool should_show_scan_credit_card,
-      bool should_show_cards_from_account,
+      const FormFieldData& field,
+      const AutofillType& type,
+      const std::string& app_locale,
+      bool& should_display_gpay_logo,
       bool& with_offer,
-      bool& with_cvc,
       autofill_metrics::CardMetadataLoggingContext& metadata_logging_context);
-
-  // Generates suggestions for standalone CVC fields. These only apply to
-  // virtual cards that are saved on file to a merchant. In these cases,
-  // we only display the virtual card option and do not show FPAN option.
-  std::vector<Suggestion> GetSuggestionsForVirtualCardStandaloneCvc(
-      const FormFieldData& trigger_field,
-      autofill_metrics::CardMetadataLoggingContext& metadata_logging_context,
-      base::flat_map<std::string, VirtualCardUsageData::VirtualCardLastFour>&
-          virtual_card_guid_to_last_four_map);
-
-  // Returns the credit cards to be shown in touch to fill suggestions.
-  std::vector<CreditCard> GetTouchToFillCardsToSuggest(
-      const FormFieldData& trigger_field,
-      FieldType trigger_field_type);
 
   // Generates a separator suggestion.
   static Suggestion CreateSeparator();
 
-  // Generates a footer suggestion "Manage addresses..." menu item which will
-  // redirect to Chrome address settings page.
-  static Suggestion CreateManageAddressesEntry();
-
   // Generates a footer suggestion "Manage payment methods..." menu item which
-  // will redirect to Chrome payment settings page. `with_gpay_logo` is used to
-  // conditionally add GPay logo icon to the manage payment methods suggestion.
-  static Suggestion CreateManagePaymentMethodsEntry(bool with_gpay_logo);
+  // will redirect to Chrome payment settings page.
+  static Suggestion CreateManagePaymentMethodsEntry();
 
-  // Generate "Clear form" suggestion.
-  static Suggestion CreateClearFormSuggestion();
+  // Returns the local and server cards ordered by the Autofill ranking. The
+  // cards which are expired and disused aren't included if
+  // |suppress_disused_cards| is true.
+  static std::vector<CreditCard> GetOrderedCardsToSuggest(
+      AutofillClient* autofill_client,
+      bool suppress_disused_cards);
 
   // Generates suggestions for all available IBANs.
-  static std::vector<Suggestion> GetSuggestionsForIbans(
-      const std::vector<const Iban*>& ibans);
+  static std::vector<Suggestion> GetSuggestionsForIBANs(
+      const std::vector<const IBAN*>& ibans);
 
   // Converts the vector of promo code offers that is passed in to a vector of
   // suggestions that can be displayed to the user for a promo code field.
   static std::vector<Suggestion> GetPromoCodeSuggestionsFromPromoCodeOffers(
       const std::vector<const AutofillOfferData*>& promo_code_offers);
+
+  // Remove credit cards that are expired at |comparison_time| and not used
+  // since |min_last_used| from |cards|. The relative ordering of |cards| is
+  // maintained.
+  static void RemoveExpiredCreditCardsNotUsedSinceTimestamp(
+      base::Time comparison_time,
+      base::Time min_last_used,
+      std::vector<CreditCard*>* cards);
 
   // Return a nickname for the |card| to display. This is generally the nickname
   // stored in |card|, unless |card| exists as a local and a server copy. In
@@ -121,115 +106,48 @@ class AutofillSuggestionGenerator {
   // one copy has a nickname, take that.
   std::u16string GetDisplayNicknameForCreditCard(const CreditCard& card) const;
 
- private:
-  friend class AutofillSuggestionGeneratorTestApi;
+  // Methods for packing and unpacking credit card and profile IDs for sending
+  // and receiving to and from the renderer process.
+  int MakeFrontendIdFromBackendId(
+      const Suggestion::BackendId& cc_or_address_backend_id);
+  Suggestion::BackendId GetBackendIdFromFrontendId(int frontend_id);
 
-  // Returns a list of profiles that will be displayed as suggestions to the
-  // user, sorted by their relevance. This involves many steps from fetching the
-  // profiles to matching with `field_contents`, and deduplicating based on
-  // `field_types`, which are the relevant types for the current suggestion.
-  // When `trigger_source` is manual fallback, profiles are not deduplicated nor
-  // filtered out, exception being when there is no profile information to fill
-  // `trigger_field_type`. Furthermore, if `trigger_field_type` is not of type
-  // address, every single profile is displayed (up to a max of
-  // `kMaxDisplayedAddressSuggestions`).
-  std::vector<raw_ptr<const AutofillProfile, VectorExperimental>>
-  GetProfilesToSuggest(FieldType trigger_field_type,
-                       const std::u16string& field_contents,
-                       bool field_is_autofilled,
-                       const FieldTypeSet& field_types,
-                       AutofillSuggestionTriggerSource trigger_source);
+  // Helper function to decide whether to show the virtual card option for
+  // `candidate_card`.
+  bool ShouldShowVirtualCardOption(const CreditCard* candidate_card) const;
 
-  // Returns the local and server cards ordered by the Autofill ranking.
-  // If `suppress_disused_cards`, local expired disused cards are removed.
-  // If `prefix_match`, cards are matched with the contents of `trigger_field`.
-  // If `include_virtual_cards`, virtual cards will be added when possible.
-  std::vector<CreditCard> GetOrderedCardsToSuggest(
-      const FormFieldData& trigger_field,
-      FieldType trigger_field_type,
-      bool suppress_disused_cards,
-      bool prefix_match,
-      bool include_virtual_cards);
+  // Returns a pointer to the server card that has duplicate information of the
+  // `local_card`. It is not guaranteed that a server card is found. If not,
+  // nullptr is returned.
+  const CreditCard* GetServerCardForLocalCard(
+      const CreditCard* local_card) const;
 
-  // Returns a list of Suggestion objects, each representing an element in
-  // `profiles`.
-  // `field_types` holds the type of fields relevant for the current suggestion.
-  // The profiles passed to this function should already have been matched on
-  // `trigger_field_contents_canon` and deduplicated.
-  // `previously_hidden_profiles_guid` stores the guids of the profiles that
-  // were not displayed prior to the effects of the Finch feature
-  // kAutofillUseAddressRewriterInProfileSubsetComparison.
-  std::vector<Suggestion> CreateSuggestionsFromProfiles(
-      const std::vector<raw_ptr<const AutofillProfile, VectorExperimental>>&
-          profiles,
-      const FieldTypeSet& field_types,
-      std::optional<FieldTypeSet> last_targeted_fields,
-      FieldType trigger_field_type,
-      uint64_t trigger_field_max_length);
+  // Used for the testing purposes.
+  std::map<Suggestion::BackendId, int>& backend_to_frontend_map_for_testing() {
+    return backend_to_frontend_map_;
+  }
+  std::map<int, Suggestion::BackendId>& frontend_to_backend_map_for_testing() {
+    return frontend_to_backend_map_;
+  }
 
-  // Creates a suggestion for the given `credit_card`. `virtual_card_option`
-  // suggests whether the suggestion is a virtual card option.
+ protected:
+  // Creates a suggestion for the given `credit_card`. `type` denotes the
+  // AutofillType of the field that is focused when the query is triggered.
+  // `prefix_matched_suggestion` indicates whether the suggestion has content
+  // that prefix-matches the field content. `virtual_card_option` suggests
+  // whether the suggestion is a virtual card option.
   // `card_linked_offer_available` indicates whether a card-linked offer is
   // attached to the `credit_card`.
   Suggestion CreateCreditCardSuggestion(const CreditCard& credit_card,
-                                        FieldType trigger_field_type,
+                                        const AutofillType& type,
+                                        bool prefix_matched_suggestion,
                                         bool virtual_card_option,
+                                        const std::string& app_locale,
                                         bool card_linked_offer_available) const;
 
-  // Dedupes the given profiles based on if one is a subset of the other for
-  // suggestions represented by `field_types`. The function returns at most
-  // `kMaxDeduplicatedProfilesForSuggestion` profiles. `field_types` stores all
-  // of the FieldTypes relevant for the current suggestions, including that of
-  // the field on which the user is currently focused.
-  std::vector<raw_ptr<const AutofillProfile, VectorExperimental>>
-  DeduplicatedProfilesForSuggestions(
-      const std::vector<const AutofillProfile*>& matched_profiles,
-      FieldType trigger_field_type,
-      const FieldTypeSet& field_types,
-      const AutofillProfileComparator& comparator);
-
-  // Matches based on prefix search, and limits number of profiles.
-  // Returns the top matching profiles based on prefix search. At most
-  // `kMaxPrefixMatchedProfilesForSuggestion` are returned.
-  std::vector<const AutofillProfile*> GetPrefixMatchedProfiles(
-      const std::vector<AutofillProfile*>& profiles,
-      FieldType trigger_field_type,
-      const std::u16string& raw_field_contents,
-      const std::u16string& field_contents_canon,
-      bool field_is_autofilled);
-
-  // Removes profiles that haven't been used after `min_last_used` from
-  // |profiles|. The relative ordering of `profiles` is maintained.
-  void RemoveProfilesNotUsedSinceTimestamp(
-      base::Time min_last_used,
-      std::vector<AutofillProfile*>& profiles);
-
-  // Removes expired local credit cards not used since `min_last_used` from
-  // `cards`. The relative ordering of `cards` is maintained.
-  void RemoveExpiredLocalCreditCardsNotUsedSinceTimestamp(
-      base::Time min_last_used,
-      std::vector<CreditCard*>& cards);
-
-  // Creates nested/child suggestions for `suggestion` with the `profile`
-  // information. Uses `trigger_field_type` to define what group filling
-  // suggestion to add (name, address or phone). The existence of child
-  // suggestions defines whether the autofill popup will have submenus.
-  // `last_targeted_fields` specified the last set of fields target by the user.
-  // When not present, we default to full form.
-  void AddAddressGranularFillingChildSuggestions(
-      std::optional<FieldTypeSet> last_targeted_fields,
-      FieldType trigger_field_type,
-      const AutofillProfile& profile,
-      Suggestion& suggestion) const;
-
-  // Creates nested/child suggestions for `suggestion` with the `credit_card`
-  // information. The number of nested suggestions added depends on the
-  // information present in the `credit_card`.
-  void AddPaymentsGranularFillingChildSuggestions(const CreditCard& credit_card,
-                                                  Suggestion& suggestion) const;
-
+ private:
   // Return the texts shown as the first line of the suggestion, based on the
-  // `credit_card` and the `trigger_field_type`. The first index in the pair
+  // `credit_card` and the focused field `type`. The first index in the pair
   // represents the main text, and the second index represents the minor text.
   // The minor text can be empty, in which case the main text should be rendered
   // as the entire first line. If the minor text is not empty, they should be
@@ -237,64 +155,41 @@ class AutofillSuggestionGenerator {
   // of the first line of the suggestion should be truncated.
   std::pair<Suggestion::Text, Suggestion::Text>
   GetSuggestionMainTextAndMinorTextForCard(const CreditCard& credit_card,
-                                           FieldType trigger_field_type) const;
+                                           const AutofillType& type,
+                                           const std::string& app_locale) const;
 
   // Return the labels to be shown in the suggestion. Note this does not account
   // for virtual cards or card-linked offers.
-  std::vector<std::vector<Suggestion::Text>> GetSuggestionLabelsForCard(
+  std::vector<Suggestion::Text> GetSuggestionLabelsForCard(
       const CreditCard& credit_card,
-      FieldType trigger_field_type) const;
+      const AutofillType& type,
+      const std::string& app_locale) const;
 
-  // Returns the benefit text to display in credit card suggestions if it is
-  // available.
-  std::optional<Suggestion::Text> GetCreditCardBenefitSuggestionLabel(
-      const CreditCard& credit_card) const;
-
-  // Adjust the content of `suggestion` if it is a virtual card suggestion.
+  // Adjust the content of |suggestion| if it is a virtual card suggestion.
   void AdjustVirtualCardSuggestionContent(Suggestion& suggestion,
                                           const CreditCard& credit_card,
-                                          FieldType trigger_field_type) const;
+                                          const AutofillType& type) const;
 
   // Set the URL for the card art image to be shown in the `suggestion`.
   void SetCardArtURL(Suggestion& suggestion,
                      const CreditCard& credit_card,
                      bool virtual_card_option) const;
 
-  // Returns non address suggestions which are displayed below address
-  // suggestions in the Autofill popup. `is_autofilled` is used to conditionally
-  // add suggestion for clearing all autofilled fields.
-  std::vector<Suggestion> GetAddressFooterSuggestions(bool is_autofilled) const;
-
-  // Returns non credit card suggestions which are displayed below credit card
-  // suggestions in the Autofill popup. `should_show_scan_credit_card` is used
-  // to conditionally add scan credit card suggestion,
-  // `should_show_cards_from_account` - conditionally add suggestions for
-  // showing cards from account. `is_autofilled` is used to conditionally add
-  // suggestion for clearing all autofilled fields. `with_gpay_logo` is used to
-  // conditionally add GPay logo icon to the manage payment methods suggestion.
-  std::vector<Suggestion> GetCreditCardFooterSuggestions(
-      bool should_show_scan_credit_card,
-      bool should_show_cards_from_account,
-      bool is_autofilled,
-      bool with_gpay_logo) const;
-
-  // Helper function to decide whether to show the virtual card option for
-  // `candidate_card`.
-  // TODO(b/326950201): Pass the argument by reference.
-  bool ShouldShowVirtualCardOption(const CreditCard* candidate_card) const;
-
   // Returns true if we should show a virtual card option for the server card
   // `card`, false otherwise.
-  bool ShouldShowVirtualCardOptionForServerCard(const CreditCard& card) const;
+  bool ShouldShowVirtualCardOptionForServerCard(const CreditCard* card) const;
 
-  const PersonalDataManager& personal_data() const {
-    // The PDM outlives the ASG, hence this is safe.
-    return *autofill_client_->GetPersonalDataManager();
-  }
+  // Suggestion backend ID to frontend ID mapping. We keep two maps to convert
+  // back and forth.
+  std::map<Suggestion::BackendId, int> backend_to_frontend_map_;
+  std::map<int, Suggestion::BackendId> frontend_to_backend_map_;
 
   // autofill_client_ and the generator are both one per tab, and have the same
   // lifecycle.
-  base::raw_ref<AutofillClient> autofill_client_;
+  raw_ptr<AutofillClient> autofill_client_;
+
+  // personal_data_ should outlive the generator.
+  raw_ptr<PersonalDataManager> personal_data_;
 };
 
 }  // namespace autofill

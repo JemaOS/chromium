@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/weak_ptr.h"
 #include "sql/statement.h"
 
 namespace google {
@@ -53,7 +52,7 @@ std::string GetDeleteAllSql(const std::string& table_name);
 // relative to the related classes. Making KeyValueTable<T> stateless instead
 // could be a better way to resolve these lifetime issues in the long run.
 template <typename T>
-class KeyValueTable {
+class KeyValueTable : public base::SupportsWeakPtr<KeyValueTable<T>> {
  public:
   explicit KeyValueTable(const std::string& table_name);
   // Virtual for testing.
@@ -71,13 +70,8 @@ class KeyValueTable {
                           sql::Database* db);
   virtual void DeleteAllData(sql::Database* db);
 
-  base::WeakPtr<KeyValueTable<T>> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
  private:
   const std::string table_name_;
-  base::WeakPtrFactory<KeyValueTable<T>> weak_ptr_factory_{this};
 };
 
 template <typename T>

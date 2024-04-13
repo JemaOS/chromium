@@ -27,9 +27,8 @@ struct PasswordFormDigest {
   PasswordFormDigest(PasswordFormDigest&& other);
   PasswordFormDigest& operator=(const PasswordFormDigest& other);
   PasswordFormDigest& operator=(PasswordFormDigest&& other);
-
-  friend bool operator==(const PasswordFormDigest&,
-                         const PasswordFormDigest&) = default;
+  bool operator==(const PasswordFormDigest& other) const;
+  bool operator!=(const PasswordFormDigest& other) const;
 
   PasswordForm::Scheme scheme;
   std::string signon_realm;

@@ -5,13 +5,12 @@
 #include "components/feature_engagement/public/android/wrapping_test_tracker.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/android/jni_string.h"
-#include "base/notreached.h"
 #include "base/task/single_thread_task_runner.h"
 #include "components/feature_engagement/public/jni_headers/CppWrappedTestTracker_jni.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace feature_engagement {
 
@@ -80,7 +79,7 @@ void WrappingTestTracker::Dismissed(const base::Feature& feature) {
 
 void WrappingTestTracker::DismissedWithSnooze(
     const base::Feature& feature,
-    std::optional<SnoozeAction> snooze_action) {
+    absl::optional<SnoozeAction> snooze_action) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedJavaLocalRef<jstring> jfeature(
       base::android::ConvertUTF8ToJavaString(env, feature.name));
@@ -96,9 +95,9 @@ std::unique_ptr<DisplayLockHandle> WrappingTestTracker::AcquireDisplayLock() {
 void WrappingTestTracker::SetPriorityNotification(
     const base::Feature& feature) {}
 
-std::optional<std::string>
+absl::optional<std::string>
 WrappingTestTracker::GetPendingPriorityNotification() {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void WrappingTestTracker::RegisterPriorityNotificationHandler(
@@ -117,16 +116,6 @@ void WrappingTestTracker::AddOnInitializedCallback(
     OnInitializedCallback callback) {
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), IsInitialized()));
-}
-
-const Configuration* WrappingTestTracker::GetConfigurationForTesting() const {
-  NOTIMPLEMENTED();
-  return nullptr;
-}
-
-void WrappingTestTracker::SetClockForTesting(const base::Clock& clock,
-                                             base::Time initial_time) {
-  NOTIMPLEMENTED();
 }
 
 }  // namespace feature_engagement

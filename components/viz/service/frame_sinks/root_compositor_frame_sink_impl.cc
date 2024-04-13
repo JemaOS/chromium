@@ -23,9 +23,9 @@
 #include "components/viz/service/display_embedder/vsync_parameter_listener.h"
 #include "components/viz/service/frame_sinks/external_begin_frame_source_mojo.h"
 #include "components/viz/service/frame_sinks/frame_sink_manager_impl.h"
+#include "components/viz/service/frame_sinks/gpu_vsync_begin_frame_source.h"
 #include "components/viz/service/hit_test/hit_test_aggregator.h"
 #include "services/viz/public/mojom/compositing/layer_context.mojom.h"
-#include "ui/base/ozone_buildflags.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -34,16 +34,6 @@
 
 #if BUILDFLAG(IS_IOS)
 #include "components/viz/service/frame_sinks/external_begin_frame_source_ios.h"
-#endif
-
-#if BUILDFLAG(IS_MAC)
-#include "base/feature_list.h"
-#include "components/viz/common/features.h"
-#include "components/viz/service/frame_sinks/external_begin_frame_source_mac.h"
-#endif
-
-#if BUILDFLAG(IS_WIN)
-#include "components/viz/service/frame_sinks/external_begin_frame_source_win.h"
 #endif
 
 namespace viz {
@@ -80,7 +70,7 @@ class RootCompositorFrameSinkImpl::StandaloneBeginFrameObserver
   }
 
   mojo::Remote<mojom::BeginFrameObserver> remote_observer_;
-  raw_ptr<BeginFrameSource> begin_frame_source_;
+  base::raw_ptr<BeginFrameSource> begin_frame_source_;
 };
 
 // static
@@ -111,11 +101,13 @@ RootCompositorFrameSinkImpl::Create(
   output_surface->SetNeedsSwapSizeNotifications(
       params->send_swap_size_notifications);
 
-#if BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
   // For X11, we need notify client about swap completion after resizing, so the
   // client can use it for synchronize with X11 WM.
   output_surface->SetNeedsSwapSizeNotifications(true);
-#endif  // BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+#endif
 
   // Create some sort of a BeginFrameSource, depending on the platform and
   // |params|.
@@ -153,35 +145,25 @@ RootCompositorFrameSinkImpl::Create(
           std::make_unique<BackToBackBeginFrameSource>(
               std::make_unique<DelayBasedTimeSource>(
                   base::SingleThreadTaskRunner::GetCurrentDefault().get()));
-    } else {
+    } else if (output_surface->capabilities().supports_gpu_vsync) {
 #if BUILDFLAG(IS_WIN)
-      // ExternalBeginFrameSourceWin also uses the D3D11 device used by dcomp.
-      if (output_surface->capabilities().supports_dc_layers) {
-        hw_support_for_multiple_refresh_rates =
-            params->set_present_duration_allowed;
-        // Vsync updates are required to update the FrameRateDecider with
-        // supported refresh rates.
-        wants_vsync_updates = true;
-        external_begin_frame_source =
-            std::make_unique<ExternalBeginFrameSourceWin>(
-                restart_id, base::SingleThreadTaskRunner::GetCurrentDefault());
-      }
-#elif BUILDFLAG(IS_MAC)
-      if (base::FeatureList::IsEnabled(
-              features::kCVDisplayLinkBeginFrameSource)) {
-        external_begin_frame_source =
-            std::make_unique<ExternalBeginFrameSourceMac>(
-                restart_id, params->renderer_settings.display_id,
-                output_surface.get());
-      }
+      hw_support_for_multiple_refresh_rates =
+          output_surface->capabilities().supports_dc_layers &&
+          params->set_present_duration_allowed;
 #endif
-      if (!external_begin_frame_source) {
-        auto time_source = std::make_unique<DelayBasedTimeSource>(
-            base::SingleThreadTaskRunner::GetCurrentDefault().get());
-        synthetic_begin_frame_source =
-            std::make_unique<DelayBasedBeginFrameSource>(std::move(time_source),
-                                                         restart_id);
-      }
+      // Vsync updates are required to update the FrameRateDecider with
+      // supported refresh rates.
+#if !BUILDFLAG(IS_APPLE)
+      wants_vsync_updates = true;
+#endif
+      external_begin_frame_source = std::make_unique<GpuVSyncBeginFrameSource>(
+          restart_id, output_surface.get());
+    } else {
+      synthetic_begin_frame_source =
+          std::make_unique<DelayBasedBeginFrameSource>(
+              std::make_unique<DelayBasedTimeSource>(
+                  base::SingleThreadTaskRunner::GetCurrentDefault().get()),
+              restart_id);
     }
 #endif  // BUILDFLAG(IS_ANDROID)
   }
@@ -212,9 +194,7 @@ RootCompositorFrameSinkImpl::Create(
       display_controller.get(), sii, params->renderer_settings, debug_settings);
 
   auto display = std::make_unique<Display>(
-      frame_sink_manager->shared_bitmap_manager(),
-      output_surface_provider->GetSharedImageManager(),
-      output_surface_provider->GetSyncPointManager(), params->renderer_settings,
+      frame_sink_manager->shared_bitmap_manager(), params->renderer_settings,
       debug_settings, params->frame_sink_id, std::move(display_controller),
       std::move(output_surface), std::move(overlay_processor),
       std::move(scheduler), std::move(task_runner));
@@ -230,33 +210,18 @@ RootCompositorFrameSinkImpl::Create(
       std::move(params->display_private), std::move(display_client),
       std::move(synthetic_begin_frame_source),
       std::move(external_begin_frame_source), std::move(display),
-      hw_support_for_multiple_refresh_rates));
+      hw_support_for_multiple_refresh_rates,
+      params->renderer_settings.apply_simple_frame_rate_throttling));
 
-  // Set up the callback for updating VSyncParameters.
-  // The new VSyncParameters will be sent to viz FrameRateDecider through viz
-  // display_->SetSupportedFrameIntervals() in SetDisplayVSyncParameters().
-  // |FrameRateDecider| decides the preferred_frame_interval and calls
-  // RootCompositorFrameSinkImpl::SetPreferredFrameInterval().
 #if !BUILDFLAG(IS_APPLE)
-  // On Mac vsync parameter updates does not come from OutputSurface.
+  // On Mac vsync parameter updates come from the browser process. We don't need
+  // to provide a callback to the OutputSurface since it should never use it.
   if (wants_vsync_updates || impl->synthetic_begin_frame_source_) {
     // |impl| owns and outlives display, and display owns the output surface so
     // unretained is safe.
     output_surface_ptr->SetUpdateVSyncParametersCallback(base::BindRepeating(
         &RootCompositorFrameSinkImpl::SetDisplayVSyncParameters,
         base::Unretained(impl.get())));
-  }
-#elif BUILDFLAG(IS_MAC)
-  if (impl->external_begin_frame_source_) {
-    impl->external_begin_frame_source()->SetUpdateVSyncParametersCallback(
-        base::BindRepeating(
-            &RootCompositorFrameSinkImpl::SetDisplayVSyncParameters,
-            base::Unretained(impl.get())));
-  } else if (impl->synthetic_begin_frame_source_) {
-    impl->synthetic_begin_frame_source_->SetUpdateVSyncParametersCallback(
-        base::BindRepeating(
-            &RootCompositorFrameSinkImpl::SetDisplayVSyncParameters,
-            base::Unretained(impl.get())));
   }
 #endif
 
@@ -268,9 +233,16 @@ RootCompositorFrameSinkImpl::~RootCompositorFrameSinkImpl() {
       begin_frame_source());
 }
 
-bool RootCompositorFrameSinkImpl::WillEvictSurface(
-    const SurfaceId& surface_id) {
-  return eviction_handler_.WillEvictSurface(surface_id);
+void RootCompositorFrameSinkImpl::DidEvictSurface(const SurfaceId& surface_id) {
+  const SurfaceId& current_surface_id = display_->CurrentSurfaceId();
+  if (!current_surface_id.is_valid())
+    return;
+  DCHECK_EQ(surface_id.frame_sink_id(), surface_id.frame_sink_id());
+  // This matches CompositorFrameSinkSupport's eviction logic.
+  if (surface_id.local_surface_id().parent_sequence_number() >=
+      current_surface_id.local_surface_id().parent_sequence_number()) {
+    display_->InvalidateCurrentSurfaceId();
+  }
 }
 
 const SurfaceId& RootCompositorFrameSinkImpl::CurrentSurfaceId() const {
@@ -278,11 +250,6 @@ const SurfaceId& RootCompositorFrameSinkImpl::CurrentSurfaceId() const {
 }
 
 void RootCompositorFrameSinkImpl::SetDisplayVisible(bool visible) {
-  if (visible) {
-    // If the display has been explicitly set to visible, no need to push any
-    // eviction content.
-    eviction_handler_.MaybeFinishEvictionProcess();
-  }
   display_->SetVisible(visible);
 }
 
@@ -310,7 +277,9 @@ void RootCompositorFrameSinkImpl::SetDisplayColorSpaces(
 
 #if BUILDFLAG(IS_MAC)
 void RootCompositorFrameSinkImpl::SetVSyncDisplayID(int64_t display_id) {
-  begin_frame_source()->SetVSyncDisplayID(display_id);
+  if (external_begin_frame_source_) {
+    external_begin_frame_source_->SetVSyncDisplayID(display_id);
+  }
 }
 #endif
 
@@ -321,15 +290,14 @@ void RootCompositorFrameSinkImpl::SetOutputIsSecure(bool secure) {
 void RootCompositorFrameSinkImpl::SetDisplayVSyncParameters(
     base::TimeTicks timebase,
     base::TimeDelta interval) {
-  // If |use_preferred_interval_| is true, we should decide whether
+  // If |use_preferred_interval_| is true, we should decide wheter
   // to update the |supported_intervals_| and timebase here.
   // Otherwise, just update the display parameters (timebase & interval)
   if (use_preferred_interval_) {
     // If the incoming display interval changes, we should update the
     // |supported_intervals_| in FrameRateDecider
     if (display_frame_interval_ != interval) {
-      display_->SetSupportedFrameIntervals(
-          GetSupportedFrameIntervals(interval));
+      display_->SetSupportedFrameIntervals({interval, interval * 2});
       display_frame_interval_ = interval;
     }
 
@@ -367,16 +335,6 @@ void RootCompositorFrameSinkImpl::SetDisplayVSyncParameters(
   UpdateVSyncParameters();
 }
 
-std::vector<base::TimeDelta>
-RootCompositorFrameSinkImpl::GetSupportedFrameIntervals(
-    base::TimeDelta interval) {
-  if (external_begin_frame_source_) {
-    return external_begin_frame_source_->GetSupportedFrameIntervals(interval);
-  }
-
-  return {interval, interval * 2};
-}
-
 void RootCompositorFrameSinkImpl::UpdateVSyncParameters() {
   base::TimeTicks timebase = display_frame_timebase_;
 
@@ -388,6 +346,18 @@ void RootCompositorFrameSinkImpl::UpdateVSyncParameters() {
                   FrameRateDecider::UnspecifiedFrameInterval()
           ? preferred_frame_interval_
           : display_frame_interval_;
+
+  // Throttle rendering to 30hz.
+  constexpr base::TimeDelta kThrottledInterval = base::Hertz(30);
+
+  // Only throttle if the frame interval is smaller than |kThrottledInterval|
+  // meaning the refresh rate is higher than the target of 30hz.
+  if (apply_simple_frame_rate_throttling_ &&
+      display_frame_interval_ <= kThrottledInterval) {
+    interval = kThrottledInterval;
+    // timebase remains constant while throttling.
+    timebase = base::TimeTicks();
+  }
 
   if (synthetic_begin_frame_source_) {
     synthetic_begin_frame_source_->OnUpdateVSyncParameters(timebase, interval);
@@ -431,7 +401,7 @@ void RootCompositorFrameSinkImpl::PreserveChildSurfaceControls() {
 
 void RootCompositorFrameSinkImpl::SetSwapCompletionCallbackEnabled(
     bool enable) {
-  enable_swap_completion_callback_ = enable;
+  enable_swap_competion_callback_ = enable;
 }
 
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -466,14 +436,10 @@ void RootCompositorFrameSinkImpl::SetWantsBeginFrameAcks() {
   support_->SetWantsBeginFrameAcks();
 }
 
-void RootCompositorFrameSinkImpl::SetAutoNeedsBeginFrame() {
-  support_->SetAutoNeedsBeginFrame();
-}
-
 void RootCompositorFrameSinkImpl::SubmitCompositorFrame(
     const LocalSurfaceId& local_surface_id,
     CompositorFrame frame,
-    std::optional<HitTestRegionList> hit_test_region_list,
+    absl::optional<HitTestRegionList> hit_test_region_list,
     uint64_t submit_time) {
   if (support_->last_activated_local_surface_id() != local_surface_id &&
       !support_->IsEvicted(local_surface_id)) {
@@ -501,7 +467,7 @@ void RootCompositorFrameSinkImpl::SubmitCompositorFrame(
 void RootCompositorFrameSinkImpl::SubmitCompositorFrameSync(
     const LocalSurfaceId& local_surface_id,
     CompositorFrame frame,
-    std::optional<HitTestRegionList> hit_test_region_list,
+    absl::optional<HitTestRegionList> hit_test_region_list,
     uint64_t submit_time,
     SubmitCompositorFrameSyncCallback callback) {
   NOTIMPLEMENTED();
@@ -556,7 +522,8 @@ RootCompositorFrameSinkImpl::RootCompositorFrameSinkImpl(
     std::unique_ptr<SyntheticBeginFrameSource> synthetic_begin_frame_source,
     std::unique_ptr<ExternalBeginFrameSource> external_begin_frame_source,
     std::unique_ptr<Display> display,
-    bool hw_support_for_multiple_refresh_rates)
+    bool hw_support_for_multiple_refresh_rates,
+    bool apply_simple_frame_rate_throttling)
     : compositor_frame_sink_client_(std::move(frame_sink_client)),
       compositor_frame_sink_receiver_(this, std::move(frame_sink_receiver)),
       display_client_(std::move(display_client)),
@@ -569,7 +536,7 @@ RootCompositorFrameSinkImpl::RootCompositorFrameSinkImpl(
       synthetic_begin_frame_source_(std::move(synthetic_begin_frame_source)),
       external_begin_frame_source_(std::move(external_begin_frame_source)),
       display_(std::move(display)),
-      eviction_handler_(display_.get(), support_.get()) {
+      apply_simple_frame_rate_throttling_(apply_simple_frame_rate_throttling) {
   DCHECK(display_);
   DCHECK(begin_frame_source());
   frame_sink_manager->RegisterBeginFrameSource(begin_frame_source(),
@@ -588,7 +555,7 @@ RootCompositorFrameSinkImpl::RootCompositorFrameSinkImpl(
 #else
   if (!hw_support_for_multiple_refresh_rates) {
     display_->SetSupportedFrameIntervals(
-        GetSupportedFrameIntervals(display_frame_interval_));
+        {display_frame_interval_, display_frame_interval_ * 2});
     use_preferred_interval_ = true;
   }
 #endif
@@ -646,16 +613,16 @@ void RootCompositorFrameSinkImpl::DisplayDidReceiveCALayerParams(
 void RootCompositorFrameSinkImpl::DisplayDidCompleteSwapWithSize(
     const gfx::Size& pixel_size) {
 #if BUILDFLAG(IS_ANDROID)
-  if (display_client_ && enable_swap_completion_callback_) {
+  if (display_client_ && enable_swap_competion_callback_)
     display_client_->DidCompleteSwapWithSize(pixel_size);
-  }
-#elif BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
   if (display_client_ && pixel_size != last_swap_pixel_size_) {
     last_swap_pixel_size_ = pixel_size;
     display_client_->DidCompleteSwapWithNewSize(last_swap_pixel_size_);
   }
-#else  // !BUILDFLAG(IS_ANDROID) && !(BUILDFLAG(IS_LINUX) &&
-       // BUILDFLAG(IS_OZONE_X11))
+#else
   NOTREACHED();
 #endif
 }
@@ -699,22 +666,17 @@ RootCompositorFrameSinkImpl::GetPreferredFrameIntervalForFrameSinkId(
       ->GetPreferredFrameIntervalForFrameSinkId(id, type);
 }
 
-void RootCompositorFrameSinkImpl::DisplayDidDrawAndSwap() {
-  eviction_handler_.DisplayDidDrawAndSwap();
-}
+void RootCompositorFrameSinkImpl::DisplayDidDrawAndSwap() {}
 
 BeginFrameSource* RootCompositorFrameSinkImpl::begin_frame_source() {
-  if (external_begin_frame_source_) {
+  if (external_begin_frame_source_)
     return external_begin_frame_source_.get();
-  }
   return synthetic_begin_frame_source_.get();
 }
 
 void RootCompositorFrameSinkImpl::SetMaxVrrInterval(
-    std::optional<base::TimeDelta> max_vrr_interval) {
-  if (synthetic_begin_frame_source_) {
-    synthetic_begin_frame_source_->SetMaxVrrInterval(max_vrr_interval);
-  }
+    absl::optional<base::TimeDelta> max_vrr_interval) {
+  // TODO(b/221220344): Use VRR parameters in frame scheduling logic.
 }
 
 }  // namespace viz

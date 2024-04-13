@@ -6,7 +6,6 @@
 #define COMPONENTS_AUTOFILL_CORE_COMMON_ALIASES_H_
 
 #include "base/types/strong_alias.h"
-#include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
 
 namespace autofill {
 
@@ -17,8 +16,9 @@ namespace autofill {
 using AutoselectFirstSuggestion =
     base::StrongAlias<struct AutoselectFirstSuggestionTag, bool>;
 
-using AutofillSuggestionTriggerSource =
-    ::autofill::mojom::AutofillSuggestionTriggerSource;
+// Specifies whether a form input element was clicked.
+using FormElementWasClicked =
+    base::StrongAlias<struct FormElementWasClickedTag, bool>;
 
 }  // namespace autofill
 

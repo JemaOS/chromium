@@ -170,8 +170,7 @@ class AccessTokenFetcher : public ProfileOAuth2TokenServiceObserver,
                      PrimaryAccountManager* primary_account_manager,
                      const ScopeSet& scopes,
                      TokenCallback callback,
-                     Mode mode,
-                     bool require_sync_consent_for_scope_verification);
+                     Mode mode);
 
   // Instantiates a fetcher and immediately starts the process of obtaining an
   // OAuth2 access token for |account_id| and |scopes|, allowing clients to pass
@@ -186,8 +185,7 @@ class AccessTokenFetcher : public ProfileOAuth2TokenServiceObserver,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       const ScopeSet& scopes,
       TokenCallback callback,
-      Mode mode,
-      bool require_sync_consent_for_scope_verification);
+      Mode mode);
 
   AccessTokenFetcher(const AccessTokenFetcher&) = delete;
   AccessTokenFetcher& operator=(const AccessTokenFetcher&) = delete;
@@ -223,22 +221,18 @@ class AccessTokenFetcher : public ProfileOAuth2TokenServiceObserver,
                               AccessTokenInfo access_token_info);
 
   const CoreAccountId account_id_;
-  raw_ptr<ProfileOAuth2TokenService, DanglingUntriaged> token_service_;
+  raw_ptr<ProfileOAuth2TokenService> token_service_;
   // Suppress unused typedef warnings in some compiler builds when DCHECK is
   // disabled.
-  [[maybe_unused]] raw_ptr<PrimaryAccountManager, DanglingUntriaged>
-      primary_account_manager_;
+  [[maybe_unused]] raw_ptr<PrimaryAccountManager> primary_account_manager_;
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
   const ScopeSet scopes_;
+  const Mode mode_;
+
   // NOTE: This callback should only be invoked from |RunCallbackAndMaybeDie|,
   // as invoking it has the potential to destroy this object per this class's
   // contract.
   TokenCallback callback_;
-  const Mode mode_;
-
-  // TODO(crbug.com/40067025): Remove this field once
-  // kReplaceSyncPromosWithSignInPromos launches.
-  const bool require_sync_consent_for_scope_verification_;
 
   base::ScopedObservation<ProfileOAuth2TokenService,
                           ProfileOAuth2TokenServiceObserver>

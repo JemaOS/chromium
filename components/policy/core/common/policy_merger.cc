@@ -8,6 +8,7 @@
 #include <map>
 #include <set>
 
+#include "base/feature_list.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "components/policy/core/common/features.h"
@@ -114,8 +115,17 @@ bool PolicyListMerger::CanMerge(const std::string& policy_name,
   if (policy.source == POLICY_SOURCE_MERGED)
     return false;
 
+  // `base::FeatureList` is not initialized when platform policies are first
+  // applied during browser startup. The feature value is eventually used to
+  // apply the correct merging logic before the browser launches since policies
+  // are applied multiple times during startup.
+  const bool can_merge_conflicts =
+      !base::FeatureList::GetInstance() ||
+      !base::FeatureList::IsEnabled(
+          policy::features::kPolicyMergeMultiSource) ||
+      policy.HasConflicts();
   if (policies_to_merge_.find("*") != policies_to_merge_.end()) {
-    return policy.HasConflicts() &&
+    return can_merge_conflicts &&
            policy.value(base::Value::Type::LIST) != nullptr;
   }
 
@@ -128,7 +138,7 @@ bool PolicyListMerger::CanMerge(const std::string& policy_name,
     return false;
   }
 
-  return policy.HasConflicts();
+  return can_merge_conflicts;
 }
 
 bool PolicyListMerger::AllowUserCloudPolicyMerging() const {
@@ -221,8 +231,17 @@ bool PolicyDictionaryMerger::CanMerge(const std::string& policy_name,
   const bool allowed_to_merge =
       allowed_policies_.find(policy_name) != allowed_policies_.end();
 
+  // `base::FeatureList` is not initialized when platform policies are first
+  // applied during browser startup. The feature value is eventually used to
+  // apply the correct merging logic before the browser launches since policies
+  // are applied multiple times during startup.
+  const bool can_merge_conflicts =
+      !base::FeatureList::GetInstance() ||
+      !base::FeatureList::IsEnabled(
+          policy::features::kPolicyMergeMultiSource) ||
+      policy.HasConflicts();
   if (policies_to_merge_.find("*") != policies_to_merge_.end()) {
-    return allowed_to_merge && policy.HasConflicts() &&
+    return allowed_to_merge && can_merge_conflicts &&
            policy.value(base::Value::Type::DICT);
   }
 
@@ -242,7 +261,7 @@ bool PolicyDictionaryMerger::CanMerge(const std::string& policy_name,
     return false;
   }
 
-  return policy.HasConflicts();
+  return can_merge_conflicts;
 }
 
 bool PolicyDictionaryMerger::AllowUserCloudPolicyMerging() const {

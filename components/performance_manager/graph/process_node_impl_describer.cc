@@ -5,7 +5,6 @@
 #include "components/performance_manager/graph/process_node_impl_describer.h"
 
 #include "base/i18n/time_formatting.h"
-#include "base/notreached.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/process/process.h"
 #include "base/process/process_handle.h"
@@ -61,20 +60,6 @@ std::string HostedProcessTypesToString(
   return str;
 }
 
-#if !BUILDFLAG(IS_APPLE)
-const char* GetProcessPriorityString(const base::Process& process) {
-  switch (process.GetPriority()) {
-    case base::Process::Priority::kBestEffort:
-      return "Best effort";
-    case base::Process::Priority::kUserVisible:
-      return "User visible";
-    case base::Process::Priority::kUserBlocking:
-      return "User blocking";
-  }
-  NOTREACHED_NORETURN();
-}
-#endif
-
 base::Value GetProcessValueDict(const base::Process& process) {
   base::Value::Dict ret;
 
@@ -107,9 +92,9 @@ base::Value GetProcessValueDict(const base::Process& process) {
 
   if (process.IsValid()) {
     // These properties can only be accessed for valid processes.
-    ret.Set("os_priority", process.GetOSPriority());
+    ret.Set("os_priority", process.GetPriority());
 #if !BUILDFLAG(IS_APPLE)
-    ret.Set("priority", GetProcessPriorityString(process));
+    ret.Set("is_backgrounded", process.IsProcessBackgrounded());
 #endif
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_WIN)
     ret.Set("creation_time",
@@ -154,55 +139,55 @@ base::Value::Dict ProcessNodeImplDescriber::DescribeProcessNodeData(
 
   base::Value::Dict ret;
 
-  ret.Set("pid", base::NumberToString(impl->GetProcessId()));
+  ret.Set("pid", base::NumberToString(impl->process_id()));
 
-  ret.Set("process", GetProcessValueDict(impl->GetProcess()));
+  ret.Set("process", GetProcessValueDict(impl->process()));
 
   ret.Set("launch_time", base::TimeFormatTimeOfDayWithMilliseconds(
-                             TicksToTime(impl->GetLaunchTime())));
-  ret.Set("resource_context", impl->GetResourceContext().ToString());
+                             TicksToTime(impl->launch_time())));
 
-  if (impl->GetExitStatus()) {
-    ret.Set("exit_status", impl->GetExitStatus().value());
+  if (impl->exit_status()) {
+    ret.Set("exit_status", impl->exit_status().value());
   }
 
-  if (!impl->GetMetricsName().empty()) {
-    ret.Set("metrics_name", impl->GetMetricsName());
+  if (!impl->metrics_name().empty()) {
+    ret.Set("metrics_name", impl->metrics_name());
   }
 
-  ret.Set("priority", base::TaskPriorityToString(impl->GetPriority()));
+  ret.Set("priority", base::TaskPriorityToString(impl->priority()));
 
-  if (impl->GetPrivateFootprintKb()) {
+  if (impl->private_footprint_kb()) {
     ret.Set("private_footprint_kb",
-            base::saturated_cast<int>(impl->GetPrivateFootprintKb()));
+            base::saturated_cast<int>(impl->private_footprint_kb()));
   }
 
-  if (impl->GetResidentSetKb()) {
+  if (impl->resident_set_kb()) {
     ret.Set("resident_set_kb",
-            base::saturated_cast<int>(impl->GetResidentSetKb()));
+            base::saturated_cast<int>(impl->resident_set_kb()));
   }
 
   // The content function returns "Tab" for renderers - whereas "Renderer" is
   // the common vernacular here.
   std::string process_type =
-      content::GetProcessTypeNameInEnglish(impl->GetProcessType());
-  if (impl->GetProcessType() == content::PROCESS_TYPE_RENDERER) {
+      content::GetProcessTypeNameInEnglish(impl->process_type());
+  if (impl->process_type() == content::PROCESS_TYPE_RENDERER) {
     process_type = "Renderer";
   }
   ret.Set("process_type", process_type);
 
-  if (impl->GetProcessType() == content::PROCESS_TYPE_RENDERER) {
+  if (impl->process_type() == content::PROCESS_TYPE_RENDERER) {
     // Renderer-only properties.
-    ret.Set("render_process_id", impl->GetRenderProcessHostId().value());
+    ret.Set("render_process_id", impl->GetRenderProcessId().value());
 
-    ret.Set("main_thread_task_load_is_low", impl->GetMainThreadTaskLoadIsLow());
+    ret.Set("main_thread_task_load_is_low",
+            impl->main_thread_task_load_is_low());
 
     ret.Set("hosted_content_types",
-            HostedProcessTypesToString(impl->GetHostedContentTypes()));
-  } else if (impl->GetProcessType() != content::PROCESS_TYPE_BROWSER) {
+            HostedProcessTypesToString(impl->hosted_content_types()));
+  } else if (impl->process_type() != content::PROCESS_TYPE_BROWSER) {
     // Non-renderer child process properties.
     ret.Set("browser_child_process_host_id",
-            impl->GetBrowserChildProcessHostProxy()
+            impl->browser_child_process_host_proxy()
                 .browser_child_process_host_id()
                 .value());
   }

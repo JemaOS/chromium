@@ -96,33 +96,11 @@ std::string GetStringNameForOptimizationTarget(
       return "SegmentationAdaptiveToolbar";
     case proto::OPTIMIZATION_TARGET_SEGMENTATION_TABLET_PRODUCTIVITY_USER:
       return "SegmentationTabletProductivityUser";
-    case proto::OPTIMIZATION_TARGET_CLIENT_SIDE_PHISHING_IMAGE_EMBEDDER:
-      return "ClientSidePhishingImageEmbedder";
     case proto::
         OPTIMIZATION_TARGET_NEW_TAB_PAGE_HISTORY_CLUSTERS_MODULE_RANKING:
       return "NewTabPageHistoryClustersModuleRanking";
     case proto::OPTIMIZATION_TARGET_WEB_APP_INSTALLATION_PROMO:
       return "WebAppInstallationPromo";
-    case proto::OPTIMIZATION_TARGET_TEXT_EMBEDDER:
-      return "TextEmbedder";
-    case proto::OPTIMIZATION_TARGET_VISUAL_SEARCH_CLASSIFICATION:
-      return "VisualSearchClassification";
-    case proto::OPTIMIZATION_TARGET_SEGMENTATION_BOTTOM_TOOLBAR:
-      return "SegmentationBottomToolbar";
-    case proto::OPTIMIZATION_TARGET_AUTOFILL_FIELD_CLASSIFICATION:
-      return "AutofillFieldTypeClassification";
-    case proto::OPTIMIZATION_TARGET_SEGMENTATION_IOS_MODULE_RANKER:
-      return "SegmentationIosModuleRanker";
-    case proto::OPTIMIZATION_TARGET_SEGMENTATION_DESKTOP_NTP_MODULE:
-      return "SegmentationDesktopNtpModule";
-    case proto::OPTIMIZATION_TARGET_PRELOADING_HEURISTICS:
-      return "PreloadingHeuristics";
-    case proto::OPTIMIZATION_TARGET_TEXT_SAFETY:
-      return "TextSafety";
-    case proto::OPTIMIZATION_TARGET_SEGMENTATION_ANDROID_HOME_MODULE_RANKER:
-      return "SegmentationAndroidHomeModuleRanker";
-    case proto::OPTIMIZATION_TARGET_COMPOSE:
-      return "Compose";
       // Whenever a new value is added, make sure to add it to the OptTarget
       // variant list in
       // //tools/metrics/histograms/metadata/optimization/histograms.xml.
@@ -131,9 +109,9 @@ std::string GetStringNameForOptimizationTarget(
   return std::string();
 }
 
-std::optional<base::FilePath> StringToFilePath(const std::string& str_path) {
+absl::optional<base::FilePath> StringToFilePath(const std::string& str_path) {
   if (str_path.empty())
-    return std::nullopt;
+    return absl::nullopt;
 
 #if BUILDFLAG(IS_WIN)
   return base::FilePath(base::UTF8ToWide(str_path));
@@ -162,13 +140,13 @@ std::string ModelOverrideSeparator() {
   return kModelOverrideSeparator;
 }
 
-std::optional<
-    std::pair<std::string, std::optional<optimization_guide::proto::Any>>>
+absl::optional<
+    std::pair<std::string, absl::optional<optimization_guide::proto::Any>>>
 GetModelOverrideForOptimizationTarget(
     optimization_guide::proto::OptimizationTarget optimization_target) {
   auto model_override_switch_value = switches::GetModelOverride();
   if (!model_override_switch_value)
-    return std::nullopt;
+    return absl::nullopt;
 
   std::vector<std::string> model_overrides =
       base::SplitString(*model_override_switch_value, ",",
@@ -180,7 +158,7 @@ GetModelOverrideForOptimizationTarget(
     if (override_parts.size() != 2 && override_parts.size() != 3) {
       // Input is malformed.
       DLOG(ERROR) << "Invalid string format provided to the Model Override";
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     optimization_guide::proto::OptimizationTarget recv_optimization_target;
@@ -189,7 +167,7 @@ GetModelOverrideForOptimizationTarget(
       // Optimization target is invalid.
       DLOG(ERROR)
           << "Invalid optimization target provided to the Model Override";
-      return std::nullopt;
+      return absl::nullopt;
     }
     if (optimization_target != recv_optimization_target)
       continue;
@@ -198,30 +176,30 @@ GetModelOverrideForOptimizationTarget(
     base::FilePath file_path = *StringToFilePath(file_name);
     if (!file_path.IsAbsolute()) {
       DLOG(ERROR) << "Provided model file path must be absolute " << file_name;
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     if (override_parts.size() == 2) {
-      std::pair<std::string, std::optional<optimization_guide::proto::Any>>
-          file_path_and_metadata = std::make_pair(file_name, std::nullopt);
+      std::pair<std::string, absl::optional<optimization_guide::proto::Any>>
+          file_path_and_metadata = std::make_pair(file_name, absl::nullopt);
       return file_path_and_metadata;
     }
 
     std::string binary_pb;
     if (!base::Base64Decode(override_parts[2], &binary_pb)) {
       DLOG(ERROR) << "Invalid base64 encoding of the Model Override";
-      return std::nullopt;
+      return absl::nullopt;
     }
     optimization_guide::proto::Any model_metadata;
     if (!model_metadata.ParseFromString(binary_pb)) {
       DLOG(ERROR) << "Invalid model metadata provided to the Model Override";
-      return std::nullopt;
+      return absl::nullopt;
     }
-    std::pair<std::string, std::optional<optimization_guide::proto::Any>>
+    std::pair<std::string, absl::optional<optimization_guide::proto::Any>>
         file_path_and_metadata = std::make_pair(file_name, model_metadata);
     return file_path_and_metadata;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool CheckAllPathsExist(
@@ -232,20 +210,6 @@ bool CheckAllPathsExist(
     }
   }
   return true;
-}
-
-base::FilePath ConvertToRelativePath(const base::FilePath& parent,
-                                     const base::FilePath& child) {
-  DCHECK(parent.IsAbsolute());
-  DCHECK(child.IsAbsolute());
-  DCHECK(parent.IsParent(child));
-  const auto parent_components = parent.GetComponents();
-  const auto child_components = child.GetComponents();
-  base::FilePath relative_path;
-  for (size_t i = parent_components.size(); i < child_components.size(); i++) {
-    relative_path = relative_path.Append(child_components[i]);
-  }
-  return relative_path;
 }
 
 std::string GetModelCacheKeyHash(proto::ModelCacheKey model_cache_key) {
@@ -259,29 +223,10 @@ std::string GetModelCacheKeyHash(proto::ModelCacheKey model_cache_key) {
 }
 
 void RecordPredictionModelStoreModelRemovalVersionHistogram(
-    proto::OptimizationTarget optimization_target,
     PredictionModelStoreModelRemovalReason model_removal_reason) {
   base::UmaHistogramEnumeration(
       "OptimizationGuide.PredictionModelStore.ModelRemovalReason",
       model_removal_reason);
-  base::UmaHistogramEnumeration(
-      "OptimizationGuide.PredictionModelStore.ModelRemovalReason." +
-          GetStringNameForOptimizationTarget(optimization_target),
-      model_removal_reason);
-}
-
-bool IsPredictionModelVersionInKillSwitch(
-    const std::map<proto::OptimizationTarget, std::set<int64_t>>&
-        killswitch_model_versions,
-    proto::OptimizationTarget opt_target,
-    int64_t model_version) {
-  auto killswitch_model_versions_it =
-      killswitch_model_versions.find(opt_target);
-  if (killswitch_model_versions_it == killswitch_model_versions.end()) {
-    return false;
-  }
-  return killswitch_model_versions_it->second.find(model_version) !=
-         killswitch_model_versions_it->second.end();
 }
 
 }  // namespace optimization_guide

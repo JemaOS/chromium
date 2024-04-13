@@ -6,9 +6,9 @@
 
 #import <Security/Security.h>
 
-#include "base/apple/osstatus_logging.h"
-#include "base/apple/scoped_cftyperef.h"
 #include "base/base64.h"
+#include "base/mac/mac_logging.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "base/no_destructor.h"
 #include "base/rand_util.h"
 #include "build/branding_buildflags.h"
@@ -43,13 +43,14 @@ std::string AddRandomPasswordToKeychain(const AppleKeychain& keychain,
                                         const std::string& account_name) {
   // Generate a password with 128 bits of randomness.
   const int kBytes = 128 / 8;
-  std::string password = base::Base64Encode(base::RandBytesAsVector(kBytes));
+  std::string password;
+  base::Base64Encode(base::RandBytesAsString(kBytes), &password);
   void* password_data =
       const_cast<void*>(static_cast<const void*>(password.data()));
 
   OSStatus error = keychain.AddGenericPassword(
       service_name.size(), service_name.data(), account_name.size(),
-      account_name.data(), password.size(), password_data, /*item=*/nullptr);
+      account_name.data(), password.size(), password_data, NULL);
 
   if (error != noErr) {
     OSSTATUS_DLOG(ERROR, error) << "Keychain add failed";
@@ -81,21 +82,21 @@ KeychainPassword::~KeychainPassword() = default;
 std::string KeychainPassword::GetPassword() const {
   UInt32 password_length = 0;
   void* password_data = nullptr;
-  OSStatus error = keychain_->FindGenericPassword(
+  OSStatus error = keychain_.FindGenericPassword(
       GetServiceName().size(), GetServiceName().c_str(),
       GetAccountName().size(), GetAccountName().c_str(), &password_length,
-      &password_data, /*item=*/nullptr);
+      &password_data, nullptr);
 
   if (error == noErr) {
     std::string password =
         std::string(static_cast<char*>(password_data), password_length);
-    keychain_->ItemFreeContent(password_data);
+    keychain_.ItemFreeContent(password_data);
     return password;
   }
 
   if (error == errSecItemNotFound) {
     std::string password = AddRandomPasswordToKeychain(
-        *keychain_, GetServiceName(), GetAccountName());
+        keychain_, GetServiceName(), GetAccountName());
     return password;
   }
 

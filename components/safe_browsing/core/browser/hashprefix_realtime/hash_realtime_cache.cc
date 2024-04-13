@@ -8,7 +8,7 @@
 #include "base/notreached.h"
 #include "base/time/time.h"
 #include "components/safe_browsing/core/browser/hashprefix_realtime/hash_realtime_utils.h"
-#include "components/safe_browsing/core/common/proto/safebrowsingv5.pb.h"
+#include "components/safe_browsing/core/common/proto/safebrowsingv5_alpha1.pb.h"
 
 namespace safe_browsing {
 
@@ -16,18 +16,6 @@ namespace {
 
 void LogCacheHitOrMiss(bool is_hit) {
   base::UmaHistogramBoolean("SafeBrowsing.HPRT.CacheHit", is_hit);
-}
-void LogInitialCacheDurationOnSet(base::TimeDelta cache_duration) {
-  // The cache is only expected to last a few minutes, but we allow logging up
-  // to 1 hour to confirm that there aren't unexpected times.
-  base::UmaHistogramLongTimes("SafeBrowsing.HPRT.CacheDuration.InitialOnSet",
-                              cache_duration);
-}
-void LogRemainingCacheDurationOnHit(base::Time expiration_time) {
-  // The cache is only expected to last a few minutes, but we allow logging up
-  // to 1 hour to confirm that there aren't unexpected times.
-  base::UmaHistogramLongTimes("SafeBrowsing.HPRT.CacheDuration.RemainingOnHit",
-                              expiration_time - base::Time::Now());
 }
 
 }  // namespace
@@ -40,18 +28,21 @@ HashRealTimeCache::FullHashesAndDetails::FullHashesAndDetails() = default;
 HashRealTimeCache::FullHashesAndDetails::~FullHashesAndDetails() = default;
 
 std::unordered_map<std::string, std::vector<V5::FullHash>>
-HashRealTimeCache::SearchCache(
-    const std::set<std::string>& hash_prefixes) const {
+HashRealTimeCache::SearchCache(const std::set<std::string>& hash_prefixes,
+                               bool skip_logging) const {
   std::unordered_map<std::string, std::vector<V5::FullHash>> results;
   for (const auto& hash_prefix : hash_prefixes) {
     auto cached_result_it = cache_.find(hash_prefix);
     if (cached_result_it != cache_.end() &&
         cached_result_it->second.expiration_time > base::Time::Now()) {
       results[hash_prefix] = cached_result_it->second.full_hash_and_details;
-      LogRemainingCacheDurationOnHit(cached_result_it->second.expiration_time);
-      LogCacheHitOrMiss(/*is_hit=*/true);
+      if (!skip_logging) {
+        LogCacheHitOrMiss(/*is_hit=*/true);
+      }
     } else {
-      LogCacheHitOrMiss(/*is_hit=*/false);
+      if (!skip_logging) {
+        LogCacheHitOrMiss(/*is_hit=*/false);
+      }
     }
   }
   return results;
@@ -65,12 +56,10 @@ void HashRealTimeCache::CacheSearchHashesResponse(
   // latest expiry.
   for (const auto& hash_prefix : requested_hash_prefixes) {
     FullHashesAndDetails entry;
-    base::TimeDelta cache_duration_time_delta =
-        base::Seconds(cache_duration.seconds()) +
-        base::Nanoseconds(cache_duration.nanos());
-    entry.expiration_time = base::Time::Now() + cache_duration_time_delta;
+    entry.expiration_time = base::Time::Now() +
+                            base::Seconds(cache_duration.seconds()) +
+                            base::Nanoseconds(cache_duration.nanos());
     cache_[hash_prefix] = entry;
-    LogInitialCacheDurationOnSet(cache_duration_time_delta);
   }
   // Then, add all matching and relevant full hashes into the cache. Hash
   // prefixes only sometimes have matching full hashes, so some may remain empty
@@ -81,7 +70,7 @@ void HashRealTimeCache::CacheSearchHashesResponse(
     V5::FullHash full_hash_to_store;
     full_hash_to_store.set_full_hash(fh.full_hash());
     for (const auto& fhd : fh.full_hash_details()) {
-      if (hash_realtime_utils::IsHashDetailRelevant(fhd)) {
+      if (hash_realtime_utils::IsThreatTypeRelevant(fhd.threat_type())) {
         auto* fhd_to_store = full_hash_to_store.add_full_hash_details();
         fhd_to_store->set_threat_type(fhd.threat_type());
         for (auto i = 0; i < fhd.attributes_size(); ++i) {

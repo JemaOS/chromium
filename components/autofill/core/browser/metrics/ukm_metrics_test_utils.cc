@@ -23,6 +23,7 @@ using UkmLogHiddenRepresentationalFieldSkipDecisionType =
     ukm::builders::Autofill_HiddenRepresentationalFieldSkipDecision;
 using UkmLogRepeatedServerTypePredictionRationalized =
     ukm::builders::Autofill_RepeatedServerTypePredictionRationalized;
+using UkmFormSubmittedType = ukm::builders::Autofill_FormSubmitted;
 using UkmFieldTypeValidationType = ukm::builders::Autofill_FieldTypeValidation;
 using UkmFieldFillStatusType = ukm::builders::Autofill_FieldFillStatus;
 using UkmFormEventType = ukm::builders::Autofill_FormEvent;
@@ -41,7 +42,7 @@ FieldSignature Collapse(FieldSignature sig) {
 
 MATCHER(CompareMetricsIgnoringMillisecondsSinceFormParsed, "") {
   const auto& lhs = ::testing::get<0>(arg);
-  const std::pair<std::string, int64_t>& rhs = ::testing::get<1>(arg);
+  const std::pair<const char*, int64_t>& rhs = ::testing::get<1>(arg);
   return lhs.first == base::HashMetricName(rhs.first) &&
          (lhs.second == rhs.second ||
           (lhs.second > 0 &&
@@ -83,7 +84,7 @@ void VerifyDeveloperEngagementUkm(
   auto entries =
       ukm_recorder->GetEntriesByName(UkmDeveloperEngagementType::kEntryName);
   EXPECT_EQ(1u, entries.size());
-  for (const ukm::mojom::UkmEntry* const entry : entries) {
+  for (const auto* const entry : entries) {
     ukm_recorder->ExpectEntrySourceHasUrl(
         entry, GURL(form.main_frame_origin.GetURL()));
     EXPECT_EQ(4u, entry->metrics.size());
@@ -100,6 +101,28 @@ void VerifyDeveloperEngagementUkm(
         entry, UkmDeveloperEngagementType::kFormSignatureName,
         Collapse(CalculateFormSignature(form)).value());
   }
+}
+
+void VerifySubmitFormUkm(const ukm::TestUkmRecorder* ukm_recorder,
+                         const FormData& form,
+                         AutofillMetrics::AutofillFormSubmittedState state,
+                         bool is_for_credit_card,
+                         bool has_upi_vpa_field,
+                         const DenseSet<FormType>& form_types,
+                         const FormInteractionCounts& form_interaction_counts) {
+  VerifyUkm(ukm_recorder, form, UkmFormSubmittedType::kEntryName,
+            {{{UkmFormSubmittedType::kAutofillFormSubmittedStateName, state},
+              {UkmSuggestionFilledType::kMillisecondsSinceFormParsedName, 0},
+              {UkmFormSubmittedType::kIsForCreditCardName, is_for_credit_card},
+              {UkmFormSubmittedType::kHasUpiVpaFieldName, has_upi_vpa_field},
+              {UkmFormSubmittedType::kFormTypesName,
+               AutofillMetrics::FormTypesToBitVector(form_types)},
+              {UkmFormSubmittedType::kFormSignatureName,
+               Collapse(CalculateFormSignature(form)).value()},
+              {UkmFormSubmittedType::kFormElementUserModificationsName,
+               form_interaction_counts.form_element_user_modifications},
+              {UkmFormSubmittedType::kAutofillFillsName,
+               form_interaction_counts.autofill_fills}}});
 }
 
 void AppendFieldFillStatusUkm(
@@ -123,9 +146,9 @@ void AppendFieldFillStatusUkm(
 
 void AppendFieldTypeUkm(
     const FormData& form,
-    const std::vector<FieldType>& heuristic_types,
-    const std::vector<FieldType>& server_types,
-    const std::vector<FieldType>& actual_types,
+    const std::vector<ServerFieldType>& heuristic_types,
+    const std::vector<ServerFieldType>& server_types,
+    const std::vector<ServerFieldType>& actual_types,
     std::vector<std::vector<ExpectedUkmMetricsPair>>* expected_metrics) {
   ASSERT_EQ(heuristic_types.size(), form.fields.size());
   ASSERT_EQ(server_types.size(), form.fields.size());

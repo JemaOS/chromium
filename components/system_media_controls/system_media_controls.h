@@ -8,7 +8,6 @@
 #include <string>
 
 #include "base/component_export.h"
-#include "base/functional/callback.h"
 #include "services/media_session/public/cpp/media_position.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 
@@ -29,10 +28,8 @@ class COMPONENT_EXPORT(SYSTEM_MEDIA_CONTROLS) SystemMediaControls {
     kStopped,
   };
 
-  // |window| used by Windows OS for web app (dPWA) connections.
   static std::unique_ptr<SystemMediaControls> Create(
-      const std::string& product_name,
-      int window = -1);
+      const std::string& product_name);
 
   virtual ~SystemMediaControls() = default;
 
@@ -62,11 +59,6 @@ class COMPONENT_EXPORT(SYSTEM_MEDIA_CONTROLS) SystemMediaControls {
   virtual void ClearThumbnail() = 0;
   virtual void ClearMetadata() = 0;
   virtual void UpdateDisplay() = 0;
-
-  // Helpers for testing only.
-  static void SetVisibilityChangedCallbackForTesting(
-      base::RepeatingCallback<void(bool)>*);
-  virtual bool GetVisibilityForTesting() const = 0;
 };
 
 }  // namespace system_media_controls

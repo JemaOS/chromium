@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 import {Page} from './policy_base.js';
-import type {PolicyPrecedenceRowElement} from './policy_precedence_row.js';
-import type {PolicyRowElement} from './policy_row.js';
-import type {PolicyTableElement} from './policy_table.js';
+import {PolicyPrecedenceRowElement} from './policy_precedence_row.js';
+import {PolicyRowElement} from './policy_row.js';
+import {PolicyTableElement} from './policy_table.js';
 
 // Have the main initialization function be called when the page finishes
 // loading.
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function getPolicyFieldsets() {
   const statusBoxes = document.querySelectorAll('status-box');
   return Array.from(statusBoxes)
-      .map(box => box.shadowRoot!.querySelector('.status-box-fields'));
+      .map(box => box.shadowRoot!.querySelector('fieldset'));
 }
 
 function getAllPolicyTables() {

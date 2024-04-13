@@ -32,38 +32,32 @@ stats::SegmentationSelectionFailureReason GetFailureReason(
     SegmentResultProvider::ResultState result_state) {
   switch (result_state) {
     case SegmentResultProvider::ResultState::kUnknown:
-    case SegmentResultProvider::ResultState::kServerModelDatabaseScoreUsed:
-    case SegmentResultProvider::ResultState::kDefaultModelDatabaseScoreUsed:
-    case SegmentResultProvider::ResultState::kDefaultModelExecutionScoreUsed:
-    case SegmentResultProvider::ResultState::kServerModelExecutionScoreUsed:
+    case SegmentResultProvider::ResultState::kSuccessFromDatabase:
+    case SegmentResultProvider::ResultState::kDefaultModelScoreUsed:
+    case SegmentResultProvider::ResultState::kTfliteModelScoreUsed:
       NOTREACHED();
       return stats::SegmentationSelectionFailureReason::kMaxValue;
-    case SegmentResultProvider::ResultState::kServerModelDatabaseScoreNotReady:
+    case SegmentResultProvider::ResultState::kDatabaseScoreNotReady:
       return stats::SegmentationSelectionFailureReason::
-          kServerModelDatabaseScoreNotReady;
-    case SegmentResultProvider::ResultState::kDefaultModelDatabaseScoreNotReady:
+          kAtLeastOneSegmentNotReady;
+    case SegmentResultProvider::ResultState::kSegmentNotAvailable:
       return stats::SegmentationSelectionFailureReason::
-          kDefaultModelDatabaseScoreNotReady;
-    case SegmentResultProvider::ResultState::
-        kServerModelSegmentInfoNotAvailable:
+          kAtLeastOneSegmentNotAvailable;
+    case SegmentResultProvider::ResultState::kSignalsNotCollected:
       return stats::SegmentationSelectionFailureReason::
-          kServerModelSegmentInfoNotAvailable;
-    case SegmentResultProvider::ResultState::
-        kDefaultModelSegmentInfoNotAvailable:
+          kAtLeastOneSegmentSignalsNotCollected;
+    case SegmentResultProvider::ResultState::kDefaultModelMetadataMissing:
       return stats::SegmentationSelectionFailureReason::
-          kDefaultModelSegmentInfoNotAvailable;
-    case SegmentResultProvider::ResultState::kServerModelSignalsNotCollected:
+          kAtLeastOneSegmentDefaultMissingMetadata;
+    case SegmentResultProvider::ResultState::kDefaultModelSignalNotCollected:
       return stats::SegmentationSelectionFailureReason::
-          kServerModelSignalsNotCollected;
-    case SegmentResultProvider::ResultState::kDefaultModelSignalsNotCollected:
-      return stats::SegmentationSelectionFailureReason::
-          kDefaultModelSignalsNotCollected;
+          kAtLeastOneSegmentDefaultSignalNotCollected;
     case SegmentResultProvider::ResultState::kDefaultModelExecutionFailed:
       return stats::SegmentationSelectionFailureReason::
-          kDefaultModelExecutionFailed;
-    case SegmentResultProvider::ResultState::kServerModelExecutionFailed:
+          kAtLeastOneSegmentDefaultExecFailed;
+    case SegmentResultProvider::ResultState::kTfliteModelExecutionFailed:
       return stats::SegmentationSelectionFailureReason::
-          kServerModelExecutionFailed;
+          kAtLeastOneSegmentTfliteExecFailed;
   }
 }
 
@@ -87,7 +81,8 @@ SegmentSelectorImpl::SegmentSelectorImpl(
     const Config* config,
     FieldTrialRegister* field_trial_register,
     base::Clock* clock,
-    const PlatformOptions& platform_options)
+    const PlatformOptions& platform_options,
+    DefaultModelManager* default_model_manager)
     : SegmentSelectorImpl(
           segment_database,
           signal_storage_config,
@@ -95,7 +90,8 @@ SegmentSelectorImpl::SegmentSelectorImpl(
           config,
           field_trial_register,
           clock,
-          platform_options) {}
+          platform_options,
+          default_model_manager) {}
 
 SegmentSelectorImpl::SegmentSelectorImpl(
     SegmentInfoDatabase* segment_database,
@@ -104,10 +100,12 @@ SegmentSelectorImpl::SegmentSelectorImpl(
     const Config* config,
     FieldTrialRegister* field_trial_register,
     base::Clock* clock,
-    const PlatformOptions& platform_options)
+    const PlatformOptions& platform_options,
+    DefaultModelManager* default_model_manager)
     : result_prefs_(std::move(prefs)),
       segment_database_(segment_database),
       signal_storage_config_(signal_storage_config),
+      default_model_manager_(default_model_manager),
       config_(config),
       field_trial_register_(field_trial_register),
       clock_(clock),
@@ -139,8 +137,8 @@ void SegmentSelectorImpl::OnPlatformInitialized(
     training_data_collector_ = execution_service->training_data_collector();
   }
   segment_result_provider_ = SegmentResultProvider::Create(
-      segment_database_, signal_storage_config_, execution_service, clock_,
-      platform_options_.force_refresh_results);
+      segment_database_, signal_storage_config_, default_model_manager_,
+      execution_service, clock_, platform_options_.force_refresh_results);
   if (IsPreviousSelectionInvalid()) {
     SelectSegmentAndStoreToPrefs();
   }
@@ -169,6 +167,14 @@ void SegmentSelectorImpl::GetSelectedSegment(
 SegmentSelectionResult SegmentSelectorImpl::GetCachedSegmentResult() {
   used_result_in_current_session_ = true;
   return selected_segment_;
+}
+
+void SegmentSelectorImpl::GetSelectedSegmentOnDemand(
+    scoped_refptr<InputContext> input_context,
+    SegmentSelectionCallback callback) {
+  DCHECK(config_->on_demand_execution);
+  GetRankForNextSegment(std::make_unique<SegmentRanks>(), input_context,
+                        std::move(callback));
 }
 
 void SegmentSelectorImpl::OnModelExecutionCompleted(SegmentId segment_id) {
@@ -210,7 +216,7 @@ bool SegmentSelectorImpl::IsPreviousSelectionInvalid() {
 }
 
 void SegmentSelectorImpl::SelectSegmentAndStoreToPrefs() {
-  if (!config_->auto_execute_and_cache) {
+  if (config_->on_demand_execution) {
     return;
   }
   GetRankForNextSegment(std::make_unique<SegmentRanks>(), nullptr,
@@ -227,8 +233,7 @@ void SegmentSelectorImpl::GetRankForNextSegment(
           std::make_unique<SegmentResultProvider::GetResultOptions>();
       options->segment_id = needed_segment.first;
       options->discrete_mapping_key = config_->segmentation_key;
-      options->ignore_db_scores = !config_->auto_execute_and_cache;
-      options->save_results_to_db = true;
+      options->ignore_db_scores = config_->on_demand_execution;
       options->input_context = input_context;
       options->callback = base::BindOnce(
           &SegmentSelectorImpl::OnGetResultForSegmentSelection,
@@ -242,7 +247,7 @@ void SegmentSelectorImpl::GetRankForNextSegment(
 
   // Finished fetching ranks for all segments.
   auto segment_id_and_rank = FindBestSegment(*ranks);
-  if (!config_->auto_execute_and_cache) {
+  if (config_->on_demand_execution) {
     DCHECK(!callback.is_null());
     SegmentSelectionResult result;
     result.is_ready = true;
@@ -251,7 +256,7 @@ void SegmentSelectorImpl::GetRankForNextSegment(
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback), result));
     stats::RecordSegmentSelectionComputed(*config_, segment_id_and_rank.first,
-                                          std::nullopt);
+                                          absl::nullopt);
   } else {
     DCHECK(callback.is_null());
     UpdateSelectedSegment(segment_id_and_rank.first,
@@ -268,7 +273,7 @@ void SegmentSelectorImpl::OnGetResultForSegmentSelection(
   if (!result->rank) {
     stats::RecordSegmentSelectionFailure(*config_,
                                          GetFailureReason(result->state));
-    if (!config_->auto_execute_and_cache && !callback.is_null()) {
+    if (config_->on_demand_execution && !callback.is_null()) {
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE,
           base::BindOnce(std::move(callback), SegmentSelectionResult()));
@@ -277,12 +282,11 @@ void SegmentSelectorImpl::OnGetResultForSegmentSelection(
   }
   ranks->insert(std::make_pair(current_segment_id, *result->rank));
 
-  if (!config_->auto_execute_and_cache && training_data_collector_) {
+  if (config_->on_demand_execution && training_data_collector_) {
     // Collect training data on demand.
     training_data_collector_->OnDecisionTime(
         current_segment_id, input_context,
-        proto::TrainingOutputs::TriggerConfig::ONDEMAND,
-        std::move(result->model_inputs));
+        proto::TrainingOutputs::TriggerConfig::ONDEMAND);
   }
 
   GetRankForNextSegment(std::move(ranks), input_context, std::move(callback));
@@ -335,8 +339,8 @@ void SegmentSelectorImpl::UpdateSelectedSegment(SegmentId new_selection,
   stats::RecordSegmentSelectionComputed(
       *config_, new_selection,
       previous_selection.has_value()
-          ? std::make_optional(previous_selection->segment_id)
-          : std::nullopt);
+          ? absl::make_optional(previous_selection->segment_id)
+          : absl::nullopt);
 
   VLOG(1) << __func__ << " Key=" << config_->segmentation_key
           << " : skip_updating_prefs=" << skip_updating_prefs;
@@ -345,7 +349,7 @@ void SegmentSelectorImpl::UpdateSelectedSegment(SegmentId new_selection,
 
   // Write result to prefs.
   auto updated_selection =
-      std::make_optional<SelectedSegment>(new_selection, rank);
+      absl::make_optional<SelectedSegment>(new_selection, rank);
   updated_selection->selection_time = clock_->Now();
 
   result_prefs_->SaveSegmentationResultToPref(config_->segmentation_key,
@@ -358,14 +362,14 @@ void SegmentSelectorImpl::UpdateSelectedSegment(SegmentId new_selection,
 
   for (const auto& segment : config_->segments) {
     training_data_collector_->OnDecisionTime(
-        segment.first, nullptr, proto::TrainingOutputs::TriggerConfig::PERIODIC,
-        std::nullopt, /*decision_result_update_trigger=*/true);
+        segment.first, nullptr,
+        proto::TrainingOutputs::TriggerConfig::PERIODIC);
   }
 }
 
 void SegmentSelectorImpl::RecordFieldTrials() const {
   // Register can be nullptr in tests.
-  if (!config_->auto_execute_and_cache || !field_trial_register_) {
+  if (config_->on_demand_execution || !field_trial_register_) {
     return;
   }
   const std::string& trial_name = config_->GetSegmentationFilterName();
@@ -376,15 +380,6 @@ void SegmentSelectorImpl::RecordFieldTrials() const {
     group_name = "Unselected";
   }
   field_trial_register_->RegisterFieldTrial(trial_name, group_name);
-}
-
-void SegmentSelectorImpl::CallbackWrapper(
-    base::Time start_time,
-    SegmentSelectionCallback callback,
-    const SegmentSelectionResult& result) {
-  stats::RecordOnDemandSegmentSelectionDuration(*config_, result,
-                                                base::Time::Now() - start_time);
-  std::move(callback).Run(result);
 }
 
 }  // namespace segmentation_platform

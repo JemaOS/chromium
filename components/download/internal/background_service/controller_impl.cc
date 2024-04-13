@@ -5,9 +5,7 @@
 #include "components/download/internal/background_service/controller_impl.h"
 
 #include <inttypes.h>
-
 #include <algorithm>
-#include <optional>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -35,6 +33,7 @@
 #include "components/download/public/background_service/navigation_monitor.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "services/network/public/cpp/resource_request_body.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace download {
 namespace {
@@ -358,18 +357,21 @@ void ControllerImpl::OnStartScheduledTask(DownloadTaskType task_type,
       }
       break;
     case State::UNAVAILABLE:
+      HandleTaskFinished(task_type, false,
+                         stats::ScheduledTaskStatus::ABORTED_ON_FAILED_INIT);
+      break;
     case State::CREATED:       // Intentional fallthrough.
     case State::INITIALIZING:  // Intentional fallthrough.
     case State::RECOVERING:    // Intentional fallthrough.
     default:
-      HandleTaskFinished(task_type,
-                         stats::ScheduledTaskStatus::ABORTED_ON_FAILED_INIT);
+      NOTREACHED();
       break;
   }
 }
 
 bool ControllerImpl::OnStopScheduledTask(DownloadTaskType task_type) {
-  HandleTaskFinished(task_type, stats::ScheduledTaskStatus::CANCELLED_ON_STOP);
+  HandleTaskFinished(task_type, false,
+                     stats::ScheduledTaskStatus::CANCELLED_ON_STOP);
   return false;
 }
 
@@ -378,7 +380,7 @@ Logger* ControllerImpl::GetLogger() {
 }
 
 void ControllerImpl::OnCompleteCleanupTask() {
-  HandleTaskFinished(DownloadTaskType::CLEANUP_TASK,
+  HandleTaskFinished(DownloadTaskType::CLEANUP_TASK, false,
                      stats::ScheduledTaskStatus::COMPLETED_NORMALLY);
 }
 
@@ -421,21 +423,18 @@ void ControllerImpl::RemoveCleanupEligibleDownloads() {
 }
 
 void ControllerImpl::HandleTaskFinished(DownloadTaskType task_type,
+                                        bool needs_reschedule,
                                         stats::ScheduledTaskStatus status) {
   if (task_finished_callbacks_.count(task_type) == 0)
     return;
 
   if (status != stats::ScheduledTaskStatus::CANCELLED_ON_STOP) {
-    std::move(task_finished_callbacks_[task_type]).Run(false);
+    std::move(task_finished_callbacks_[task_type]).Run(needs_reschedule);
   }
   // TODO(dtrainor): It might be useful to log how many downloads we have
   // running when we're asked to stop processing.
   stats::LogScheduledTaskStatus(task_type, status);
   task_finished_callbacks_.erase(task_type);
-
-  if (status == stats::ScheduledTaskStatus::ABORTED_ON_FAILED_INIT) {
-    return;
-  }
 
   switch (task_type) {
     case DownloadTaskType::DOWNLOAD_TASK:
@@ -445,8 +444,6 @@ void ControllerImpl::HandleTaskFinished(DownloadTaskType task_type,
       ScheduleCleanupTask();
       break;
     case DownloadTaskType::DOWNLOAD_AUTO_RESUMPTION_TASK:
-    case DownloadTaskType::DOWNLOAD_AUTO_RESUMPTION_UNMETERED_TASK:
-    case DownloadTaskType::DOWNLOAD_AUTO_RESUMPTION_ANY_NETWORK_TASK:
     case DownloadTaskType::DOWNLOAD_LATER_TASK:
       NOTREACHED();
   }
@@ -657,15 +654,15 @@ LogSource::EntryDetailsList ControllerImpl::GetServiceDownloads() {
   return list;
 }
 
-std::optional<LogSource::EntryDetails> ControllerImpl::GetServiceDownload(
+absl::optional<LogSource::EntryDetails> ControllerImpl::GetServiceDownload(
     const std::string& guid) {
   if (controller_state_ != State::READY)
-    return std::nullopt;
+    return absl::nullopt;
 
   auto* entry = model_->Get(guid);
   auto driver_entry = driver_->Find(guid);
 
-  return std::optional<LogSource::EntryDetails>(
+  return absl::optional<LogSource::EntryDetails>(
       std::make_pair(entry, driver_entry));
 }
 
@@ -805,7 +802,7 @@ void ControllerImpl::CleanupUnknownFiles() {
   auto entries = model_->PeekEntries();
   std::vector<DriverEntry> driver_entries;
   for (auto* entry : entries) {
-    std::optional<DriverEntry> driver_entry = driver_->Find(entry->guid);
+    absl::optional<DriverEntry> driver_entry = driver_->Find(entry->guid);
     if (driver_entry.has_value())
       driver_entries.push_back(driver_entry.value());
   }
@@ -822,7 +819,7 @@ void ControllerImpl::ResolveInitialRequestStates() {
     // Pull the initial Entry::State and DriverEntry::State.
     Entry::State state = entry->state;
     auto driver_entry = driver_->Find(entry->guid);
-    std::optional<DriverEntry::State> driver_state;
+    absl::optional<DriverEntry::State> driver_state;
     if (driver_entry.has_value()) {
       DCHECK_NE(DriverEntry::State::UNKNOWN, driver_entry->state);
       driver_state = driver_entry->state;
@@ -965,7 +962,7 @@ void ControllerImpl::UpdateDriverState(Entry* entry) {
     return;
   }
 
-  std::optional<DriverEntry> driver_entry = driver_->Find(entry->guid);
+  absl::optional<DriverEntry> driver_entry = driver_->Find(entry->guid);
 
   // Check if the DriverEntry is in a finished state already.  If so we need to
   // clean up our Entry and finish the download.
@@ -1351,7 +1348,7 @@ void ControllerImpl::ActivateMoreDownloads() {
     scheduler_->Reschedule(candidates);
 
   if (!has_actionable_downloads) {
-    HandleTaskFinished(DownloadTaskType::DOWNLOAD_TASK,
+    HandleTaskFinished(DownloadTaskType::DOWNLOAD_TASK, false,
                        stats::ScheduledTaskStatus::COMPLETED_NORMALLY);
   }
 }
@@ -1370,7 +1367,7 @@ bool ControllerImpl::ShouldBlockDownloadOnNavigation(Entry* entry) {
   bool pausable_priority =
       entry->scheduling_params.priority <= SchedulingParams::Priority::NORMAL;
 
-  std::optional<DriverEntry> driver_entry = driver_->Find(entry->guid);
+  absl::optional<DriverEntry> driver_entry = driver_->Find(entry->guid);
   bool new_download = !driver_entry.has_value();
   bool resumable_download =
       driver_entry.has_value() && driver_entry->can_resume;

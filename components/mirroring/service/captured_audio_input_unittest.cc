@@ -82,7 +82,7 @@ class CapturedAudioInputTest : public ::testing::Test {
     stream_client_.reset();
     audio_client->StreamCreated(
         std::move(pending_stream), stream_client_.BindNewPipeAndPassReceiver(),
-        {std::in_place, base::ReadOnlySharedMemoryRegion::Create(1024).region,
+        {absl::in_place, base::ReadOnlySharedMemoryRegion::Create(1024).region,
          mojo::PlatformHandle(foreign_socket.Take())});
   }
 
@@ -156,7 +156,7 @@ class CapturedAudioInputTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
   std::unique_ptr<media::AudioInputIPC> audio_input_;
   MockDelegate delegate_;
-  raw_ptr<MockStream, AcrossTasksDanglingUntriaged> stream_ = nullptr;
+  raw_ptr<MockStream> stream_ = nullptr;
   mojo::Remote<media::mojom::AudioInputStreamClient> stream_client_;
   base::CancelableSyncSocket socket_;
 };

@@ -24,9 +24,6 @@ std::string StreamKey(const StreamType& stream_type) {
     return kForYouStreamKey;
   if (stream_type.IsWebFeed())
     return kFollowStreamKey;
-  if (stream_type.IsForSupervisedUser()) {
-    return kSupervisedUserStreamKey;
-  }
   DCHECK(stream_type.IsSingleWebFeed());
   std::string encoding;
   base::Base64UrlEncode(stream_type.GetWebFeedId(),
@@ -44,19 +41,12 @@ std::string StreamKey(const StreamType& stream_type) {
 }
 
 base::StringPiece StreamPrefix(feed::StreamKind stream_kind) {
-  switch (stream_kind) {
-    case feed::StreamKind::kForYou:
-      return kForYouStreamKey;
-    case feed::StreamKind::kFollowing:
-      return kFollowStreamKey;
-    case feed::StreamKind::kSupervisedUser:
-      return kSupervisedUserStreamKey;
-    case feed::StreamKind::kSingleWebFeed:
-      return kSingleWebFeedStreamKeyPrefix;
-    case feed::StreamKind::kUnknown:
-      NOTREACHED();
-      return kSingleWebFeedStreamKeyPrefix;
-  }
+  if (stream_kind == feed::StreamKind::kForYou)
+    return kForYouStreamKey;
+  if (stream_kind == feed::StreamKind::kFollowing)
+    return kFollowStreamKey;
+  DCHECK(stream_kind == feed::StreamKind::kSingleWebFeed);
+  return kSingleWebFeedStreamKeyPrefix;
 }
 
 StreamType DecodeSingleWebFeedKeySuffix(
@@ -81,9 +71,6 @@ StreamType StreamTypeFromKey(base::StringPiece id) {
     return StreamType(feed::StreamKind::kForYou);
   if (id == kFollowStreamKey)
     return StreamType(feed::StreamKind::kFollowing);
-  if (id == kSupervisedUserStreamKey) {
-    return StreamType(feed::StreamKind::kSupervisedUser);
-  }
   if (base::StartsWith(id, kSingleWebFeedStreamKeyPrefix,
                        base::CompareCase::SENSITIVE)) {
     if ((id.size() < (kSingleWebFeedStreamKeyPrefix.size() +
@@ -107,7 +94,7 @@ StreamType StreamTypeFromKey(base::StringPiece id) {
 }
 
 int64_t ToTimestampMillis(base::Time t) {
-  return t.is_null() ? 0L : (t - base::Time::UnixEpoch()).InMilliseconds();
+  return (t - base::Time::UnixEpoch()).InMilliseconds();
 }
 
 base::Time FromTimestampMillis(int64_t millis) {
@@ -115,7 +102,7 @@ base::Time FromTimestampMillis(int64_t millis) {
 }
 
 int64_t ToTimestampNanos(base::Time t) {
-  return t.is_null() ? 0L : (t - base::Time::UnixEpoch()).InNanoseconds();
+  return (t - base::Time::UnixEpoch()).InNanoseconds();
 }
 
 base::Time FromTimestampMicros(int64_t micros) {
@@ -154,7 +141,7 @@ void SetContentLifetime(
 }
 
 void MaybeUpdateSessionId(Metadata& metadata,
-                          std::optional<std::string> token) {
+                          absl::optional<std::string> token) {
   if (token && metadata.session_id().token() != *token) {
     base::Time expiry_time =
         token->empty()
@@ -164,7 +151,7 @@ void MaybeUpdateSessionId(Metadata& metadata,
   }
 }
 
-std::optional<Metadata> MaybeUpdateConsistencyToken(
+absl::optional<Metadata> MaybeUpdateConsistencyToken(
     const feedstore::Metadata& metadata,
     const feedwire::ConsistencyToken& token) {
   if (token.has_token() && metadata.consistency_token() != token.token()) {
@@ -172,7 +159,7 @@ std::optional<Metadata> MaybeUpdateConsistencyToken(
     metadata_copy.set_consistency_token(token.token());
     return metadata_copy;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 LocalActionId GetNextActionId(Metadata& metadata) {
@@ -245,18 +232,11 @@ feedstore::Metadata MakeMetadata(const std::string& gaia) {
   return md;
 }
 
-feedstore::DocView CreateDocView(uint64_t docid, base::Time timestamp) {
-  feedstore::DocView doc_view;
-  doc_view.set_docid(docid);
-  doc_view.set_view_time_millis(feedstore::ToTimestampMillis(timestamp));
-  return doc_view;
-}
-
-std::optional<Metadata> SetStreamViewContentHashes(
+absl::optional<Metadata> SetStreamViewContentHashes(
     const Metadata& metadata,
     const StreamType& stream_type,
     const feed::ContentHashSet& content_hashes) {
-  std::optional<Metadata> result;
+  absl::optional<Metadata> result;
   if (!(GetViewContentIds(metadata, stream_type) == content_hashes)) {
     result = metadata;
     SetStreamViewContentHashes(*result, stream_type, content_hashes);

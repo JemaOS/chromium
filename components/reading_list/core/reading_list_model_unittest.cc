@@ -80,8 +80,7 @@ class ReadingListModelTest : public FakeReadingListModelStorage::Observer,
         storage->AsWeakPtr();
 
     model_ = std::make_unique<ReadingListModelImpl>(
-        std::move(storage), syncer::StorageType::kUnspecified,
-        syncer::WipeModelUponSyncDisabledBehavior::kNever, &clock_);
+        std::move(storage), syncer::StorageType::kUnspecified, &clock_);
     model_->AddObserver(&observer_);
 
     return storage_ptr;
@@ -358,23 +357,6 @@ TEST_F(ReadingListModelTest, GetAccountWhereEntryIsSavedToWhenSyncEnabled) {
           .empty());
 }
 
-TEST_F(ReadingListModelTest,
-       ReadingListModelCompletedBatchUpdatesShouldBeCalledUponSyncEnabled) {
-  ASSERT_TRUE(ResetStorageAndMimicSyncEnabled());
-  EXPECT_CALL(observer_, ReadingListModelCompletedBatchUpdates);
-  model_->GetSyncBridgeForTest()->MergeFullSyncData(
-      model_->GetSyncBridgeForTest()->CreateMetadataChangeList(),
-      /*syncer::EntityChangeList*/ {});
-}
-
-TEST_F(ReadingListModelTest,
-       ReadingListModelCompletedBatchUpdatesShouldBeCalledUponSyncDisabled) {
-  ASSERT_TRUE(ResetStorageAndMimicSyncEnabled());
-  EXPECT_CALL(observer_, ReadingListModelCompletedBatchUpdates);
-  model_->GetSyncBridgeForTest()->ApplyDisableSyncChanges(
-      model_->GetSyncBridgeForTest()->CreateMetadataChangeList());
-}
-
 // Tests adding entry.
 TEST_F(ReadingListModelTest, AddEntry) {
   const GURL url("http://example.com");
@@ -470,7 +452,7 @@ TEST_F(ReadingListModelTest, SyncAddEntry) {
                                                 reading_list::ADDED_VIA_SYNC));
   EXPECT_CALL(observer_, ReadingListDidApplyChanges(model_.get()));
 
-  model_->AddEntry(std::move(entry), reading_list::ADDED_VIA_SYNC);
+  model_->SyncAddEntry(std::move(entry));
 
   EXPECT_EQ(1, storage_saved_);
   EXPECT_EQ(0, storage_removed_);

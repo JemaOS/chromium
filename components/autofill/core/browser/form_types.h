@@ -5,8 +5,7 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_FORM_TYPES_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_FORM_TYPES_H_
 
-#include <string_view>
-
+#include "autofill_field.h"
 #include "components/autofill/core/browser/field_types.h"
 
 namespace autofill {
@@ -27,7 +26,7 @@ bool FormHasAllCreditCardFields(const FormStructure& form_structure);
 
 FormType FieldTypeGroupToFormType(FieldTypeGroup field_type_group);
 
-std::string_view FormTypeToStringView(FormType form_type);
+base::StringPiece FormTypeToStringPiece(FormType form_type);
 
 }  // namespace autofill
 

@@ -6,10 +6,8 @@
 
 #include <vector>
 
-#include "components/viz/common/features.h"
 #include "components/viz/common/quads/draw_quad.h"
 #include "components/viz/common/quads/solid_color_draw_quad.h"
-#include "components/viz/service/debugger/viz_debugger.h"
 #include "components/viz/service/display/overlay_candidate_factory.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/size_conversions.h"
@@ -37,6 +35,7 @@ void OverlayStrategyFullscreen::Propose(
     std::vector<gfx::Rect>* content_bounds) {
   auto* render_pass = render_pass_list->back().get();
   QuadList* quad_list = &render_pass->quad_list;
+
   // First non invisible quad of quad_list is the top most quad.
   auto front = quad_list->begin();
   while (front != quad_list->end()) {
@@ -49,20 +48,14 @@ void OverlayStrategyFullscreen::Propose(
     return;
 
   const DrawQuad* quad = *front;
-  if (quad->ShouldDrawWithBlendingForReasonOtherThanMaskFilter()) {
+  if (quad->ShouldDrawWithBlending())
     return;
-  }
 
   OverlayCandidate candidate;
-  OverlayCandidateFactory::OverlayContext context;
-  context.supports_mask_filter = false;
-  context.supports_flip_rotate_transform =
-      capability_checker_->SupportsFlipRotateTransform();
-
   OverlayCandidateFactory candidate_factory = OverlayCandidateFactory(
       render_pass, resource_provider, surface_damage_rect_list,
       &output_color_matrix, GetPrimaryPlaneDisplayRect(primary_plane),
-      &render_pass_filters, context);
+      &render_pass_filters);
   if (candidate_factory.FromDrawQuad(quad, candidate) !=
       OverlayCandidate::CandidateStatus::kSuccess) {
     return;
@@ -71,38 +64,11 @@ void OverlayStrategyFullscreen::Propose(
   if (!candidate.display_rect.origin().IsOrigin() ||
       gfx::ToRoundedSize(candidate.display_rect.size()) !=
           render_pass->output_rect.size()) {
-    // Candidate Quad does not fully cover display but fullscreen is still
-    // possible if all the other quads do not contribute to primary plane or
-    // their contribution will simply result in the default black of DRM. The
-    // best example here is the black bars for aspect ratio found in fullscreen
-    // video.
-    if (!base::FeatureList::IsEnabled(
-            features::kUseDrmBlackFullscreenOptimization)) {
-      return;
-    }
-
-    auto after_front = front;
-    ++after_front;
-    while (after_front != quad_list->end()) {
-      if (!(*after_front)->visible_rect.IsEmpty() &&
-          !OverlayCandidate::IsInvisibleQuad(*after_front)) {
-        auto* solid_color_quad =
-            (*after_front)->DynamicCast<SolidColorDrawQuad>();
-        if (!solid_color_quad) {
-          return;
-        }
-
-        if (solid_color_quad->color != SkColors::kBlack) {
-          return;
-        }
-      }
-      ++after_front;
-    }
+    return;
   }
-
   candidate.is_opaque = true;
   candidate.plane_z_order = 0;
-  candidates->emplace_back(front, candidate, this);
+  candidates->push_back({front, candidate, this});
 }
 
 bool OverlayStrategyFullscreen::Attempt(

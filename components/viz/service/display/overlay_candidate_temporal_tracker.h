@@ -41,8 +41,7 @@ class VIZ_SERVICE_EXPORT OverlayCandidateTemporalTracker {
   // candidate is promoted to overlay.
   int GetModeledPowerGain(uint64_t curr_frame,
                           const OverlayCandidateTemporalTracker::Config& config,
-                          int display_area,
-                          bool is_fullscreen) const;
+                          int display_area);
 
   // This function returns true when the time since the |resource_id| changed
   // exceeds a specific threshold.

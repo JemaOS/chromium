@@ -8,7 +8,6 @@
 
 #include <cstring>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/memory/raw_ptr.h"
@@ -27,9 +26,7 @@ namespace printing {
 class CupsPrinterImpl : public CupsPrinter {
  public:
   CupsPrinterImpl(http_t* http, ScopedDestination dest)
-      : cups_http_(http),
-        destination_(std::move(dest)),
-        printer_attributes_(WrapIpp(nullptr)) {
+      : cups_http_(http), destination_(std::move(dest)) {
     DCHECK(cups_http_);
     DCHECK(destination_);
 
@@ -67,9 +64,9 @@ class CupsPrinterImpl : public CupsPrinter {
   }
 
   // CupsOptionProvider
-  std::vector<std::string_view> GetSupportedOptionValueStrings(
+  std::vector<base::StringPiece> GetSupportedOptionValueStrings(
       const char* option_name) const override {
-    std::vector<std::string_view> values;
+    std::vector<base::StringPiece> values;
     ipp_attribute_t* attr = GetSupportedOptionValues(option_name);
     if (!attr)
       return values;
@@ -120,27 +117,6 @@ class CupsPrinterImpl : public CupsPrinter {
     return supported == 1;
   }
 
-  // CupsOptionProvider
-  ipp_attribute_t* GetMediaColDatabase() const override {
-    if (!EnsurePrinterAttributes()) {
-      return nullptr;
-    }
-
-    return ippFindAttribute(printer_attributes_.get(), kIppMediaColDatabase,
-                            IPP_TAG_BEGIN_COLLECTION);
-  }
-
-  // CupsOptionProvider
-  const char* GetLocalizedOptionValueName(const char* option_name,
-                                          const char* value) const override {
-    if (!EnsureDestInfo()) {
-      return nullptr;
-    }
-
-    return cupsLocalizeDestValue(cups_http_, destination_.get(),
-                                 dest_info_.get(), option_name, value);
-  }
-
   bool ToPrinterInfo(PrinterBasicInfo* printer_info) const override {
     const cups_dest_t* printer = destination_.get();
 
@@ -154,13 +130,6 @@ class CupsPrinterImpl : public CupsPrinter {
     // On Mac, "printer-info" option specifies the human-readable printer name,
     // while "printer-make-and-model" specifies the printer description.
     printer_info->display_name = info;
-
-    // It is possible to create a printer with a blank display name, so just
-    // use the printer name in such a case.
-    if (printer_info->display_name.empty()) {
-      printer_info->display_name = printer->name;
-    }
-
     printer_info->printer_description = make_and_model;
 #else
     // On other platforms, "printer-info" specifies the printer description.
@@ -306,41 +275,22 @@ class CupsPrinterImpl : public CupsPrinter {
     return status == IPP_STATUS_OK;
   }
 
- private:
-  // Sends the request to populate `printer_attributes_` if it's not already
-  // populated.
-  bool EnsurePrinterAttributes() const {
-    if (printer_attributes_) {
-      return true;
+  CupsMediaMargins GetMediaMarginsByName(
+      const std::string& media_id) const override {
+    cups_size_t cups_media;
+    if (!EnsureDestInfo() ||
+        !cupsGetDestMediaByName(cups_http_, destination_.get(),
+                                dest_info_.get(), media_id.c_str(),
+                                CUPS_MEDIA_FLAGS_DEFAULT, &cups_media)) {
+      return {0, 0, 0, 0};
     }
-
-    ScopedIppPtr request = CreateRequest(IPP_OP_GET_PRINTER_ATTRIBUTES, "");
-    // The requested attributes can be changed to "all","media-col-database" if
-    // we want to directly query printer attributes other than
-    // media-col-database in the future.
-    constexpr const char* kRequestedAttributes[] = {kIppMediaColDatabase};
-    ippAddStrings(request.get(), IPP_TAG_OPERATION, IPP_TAG_KEYWORD,
-                  kIppRequestedAttributes, std::size(kRequestedAttributes),
-                  nullptr, kRequestedAttributes);
-
-    // cupsDoRequest() takes ownership of the request and frees it for us.
-    printer_attributes_.reset(
-        cupsDoRequest(cups_http_, request.release(), resource_path_.c_str()));
-
-    if (ippGetStatusCode(printer_attributes_.get()) != IPP_STATUS_OK) {
-      printer_attributes_.reset();
-      return false;
-    }
-
-    // Go through all of our media-col-database entries and consolidate any that
-    // have custom size ranges.
-    FilterMediaColSizes(printer_attributes_);
-
-    return true;
+    return {cups_media.bottom, cups_media.left, cups_media.right,
+            cups_media.top};
   }
 
+ private:
   // internal helper function to initialize an IPP request
-  ScopedIppPtr CreateRequest(ipp_op_t op, const std::string& username) const {
+  ScopedIppPtr CreateRequest(ipp_op_t op, const std::string& username) {
     const char* c_username = username.empty() ? cupsUser() : username.c_str();
 
     ipp_t* request = ippNewRequest(op);
@@ -353,9 +303,7 @@ class CupsPrinterImpl : public CupsPrinter {
   }
 
   // internal helper function to copy attributes to an IPP request
-  void CopyAttributeGroup(ipp_t* request,
-                          ipp_t* attributes,
-                          ipp_tag_t group) const {
+  void CopyAttributeGroup(ipp_t* request, ipp_t* attributes, ipp_tag_t group) {
     for (ipp_attribute_t* attr = ippFirstAttribute(attributes); attr;
          attr = ippNextAttribute(attributes)) {
       if (ippGetGroupTag(attr) == group) {
@@ -378,9 +326,6 @@ class CupsPrinterImpl : public CupsPrinter {
 
   // resource path used to connect to this printer
   std::string resource_path_;
-
-  // printer attributes that describe the supported options
-  mutable ScopedIppPtr printer_attributes_;
 };
 
 std::unique_ptr<CupsPrinter> CupsPrinter::Create(http_t* http,

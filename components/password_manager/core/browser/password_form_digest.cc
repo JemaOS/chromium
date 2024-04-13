@@ -29,4 +29,13 @@ PasswordFormDigest& PasswordFormDigest::operator=(
 PasswordFormDigest& PasswordFormDigest::operator=(PasswordFormDigest&& other) =
     default;
 
+bool PasswordFormDigest::operator==(const PasswordFormDigest& other) const {
+  return scheme == other.scheme && signon_realm == other.signon_realm &&
+         url == other.url;
+}
+
+bool PasswordFormDigest::operator!=(const PasswordFormDigest& other) const {
+  return !(*this == other);
+}
+
 }  // namespace password_manager

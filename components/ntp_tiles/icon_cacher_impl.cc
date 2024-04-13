@@ -173,8 +173,13 @@ void IconCacherImpl::SaveAndNotifyDefaultIconForSite(
 
 void IconCacherImpl::SaveIconForSite(const PopularSites::Site& site,
                                      const gfx::Image& image) {
+  // Although |SetFaviconColorSpace| affects OSX only, copies of gfx::Images are
+  // just copies of the reference to the image and therefore cheap.
+  gfx::Image img(image);
+  favicon_base::SetFaviconColorSpace(&img);
+
   favicon_service_->SetFavicons({site.url}, IconURL(site), IconType(site),
-                                image);
+                                std::move(img));
 }
 
 std::unique_ptr<IconCacherImpl::CancelableImageCallback>

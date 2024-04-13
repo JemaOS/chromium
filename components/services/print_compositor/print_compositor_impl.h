@@ -65,62 +65,55 @@ class PrintCompositorImpl : public mojom::PrintCompositor {
       uint64_t frame_guid,
       base::ReadOnlySharedMemoryRegion serialized_content,
       const ContentToFrameMap& subframe_content_map) override;
+#if BUILDFLAG(ENABLE_TAGGED_PDF)
   void SetAccessibilityTree(
       const ui::AXTreeUpdate& accessibility_tree) override;
-  void CompositePage(
+#endif
+  void CompositePageToPdf(
       uint64_t frame_guid,
       base::ReadOnlySharedMemoryRegion serialized_content,
       const ContentToFrameMap& subframe_content_map,
-      mojom::PrintCompositor::CompositePageCallback callback) override;
-  void CompositeDocument(
+      mojom::PrintCompositor::CompositePageToPdfCallback callback) override;
+  void CompositeDocumentToPdf(
       uint64_t frame_guid,
       base::ReadOnlySharedMemoryRegion serialized_content,
       const ContentToFrameMap& subframe_content_map,
-      mojom::PrintCompositor::DocumentType document_type,
-      mojom::PrintCompositor::CompositeDocumentCallback callback) override;
-  void PrepareToCompositeDocument(
-      mojom::PrintCompositor::DocumentType document_type,
-      mojom::PrintCompositor::PrepareToCompositeDocumentCallback callback)
+      mojom::PrintCompositor::CompositeDocumentToPdfCallback callback) override;
+  void PrepareForDocumentToPdf(
+      mojom::PrintCompositor::PrepareForDocumentToPdfCallback callback)
       override;
-  void FinishDocumentComposition(
+  void CompleteDocumentToPdf(
       uint32_t page_count,
-      mojom::PrintCompositor::FinishDocumentCompositionCallback callback)
-      override;
+      mojom::PrintCompositor::CompleteDocumentToPdfCallback callback) override;
   void SetWebContentsURL(const GURL& url) override;
   void SetUserAgent(const std::string& user_agent) override;
-  void SetTitle(const std::string& title) override;
 
  protected:
   // This is the uniform underlying type for both
-  // mojom::PrintCompositor::CompositePageCallback and
-  // mojom::PrintCompositor::CompositeDocumentCallback.
-  using CompositePagesCallback =
+  // mojom::PrintCompositor::CompositePageToPdfCallback and
+  // mojom::PrintCompositor::CompositeDocumentToPdfCallback.
+  using CompositeToPdfCallback =
       base::OnceCallback<void(PrintCompositor::Status,
                               base::ReadOnlySharedMemoryRegion)>;
 
-  using PrepareForDocumentCompositionCallback =
+  using PrepareForDocumentToPdfCallback =
       base::OnceCallback<void(PrintCompositor::Status)>;
-  using FinishDocumentCompositionCallback =
+  using CompleteDocumentToPdfCallback =
       base::OnceCallback<void(PrintCompositor::Status,
                               base::ReadOnlySharedMemoryRegion)>;
 
-  // The core function for content composition and conversion to a PDF file,
-  // and possibly also into a full document PDF/XPS file.
+  // The core function for content composition and conversion to a pdf file.
   // Make this function virtual so tests can override it.
-  virtual mojom::PrintCompositor::Status CompositePages(
+  virtual mojom::PrintCompositor::Status CompositeToPdf(
       base::span<const uint8_t> serialized_content,
       const ContentToFrameMap& subframe_content_map,
-      base::ReadOnlySharedMemoryRegion* region,
-      mojom::PrintCompositor::DocumentType document_type);
+      base::ReadOnlySharedMemoryRegion* region);
 
   // Make these functions virtual so tests can override them.
-  virtual void FulfillRequest(
-      base::span<const uint8_t> serialized_content,
-      const ContentToFrameMap& subframe_content_map,
-      mojom::PrintCompositor::DocumentType document_type,
-      CompositePagesCallback callback);
-  virtual void FinishDocumentRequest(
-      FinishDocumentCompositionCallback callback);
+  virtual void FulfillRequest(base::span<const uint8_t> serialized_content,
+                              const ContentToFrameMap& subframe_content_map,
+                              CompositeToPdfCallback callback);
+  virtual void CompleteDocumentRequest(CompleteDocumentToPdfCallback callback);
 
  private:
   FRIEND_TEST_ALL_PREFIXES(PrintCompositorImplTest, IsReadyToComposite);
@@ -175,31 +168,28 @@ class PrintCompositorImpl : public mojom::PrintCompositor {
     RequestInfo(base::span<const uint8_t> content,
                 const ContentToFrameMap& content_info,
                 const base::flat_set<uint64_t>& pending_subframes,
-                mojom::PrintCompositor::DocumentType document_type,
-                CompositePagesCallback callback);
+                CompositeToPdfCallback callback);
     ~RequestInfo();
 
     // All pending frame ids whose content is not available but needed
     // for composition.
     base::flat_set<uint64_t> pending_subframes;
 
-    mojom::PrintCompositor::DocumentType document_type;
-    CompositePagesCallback callback;
+    CompositeToPdfCallback callback;
     bool is_concurrent_doc_composition = false;
   };
 
   // Stores the concurrent document composition information.
   struct DocumentInfo {
-    explicit DocumentInfo(mojom::PrintCompositor::DocumentType document_type);
+    DocumentInfo();
     ~DocumentInfo();
 
     SkDynamicMemoryWStream compositor_stream;
     sk_sp<SkDocument> doc;
-    mojom::PrintCompositor::DocumentType document_type;
     uint32_t pages_provided = 0;
     uint32_t pages_written = 0;
     uint32_t page_count = 0;
-    FinishDocumentCompositionCallback callback;
+    CompleteDocumentToPdfCallback callback;
   };
 
   // Check whether any request is waiting for the specific subframe, if so,
@@ -227,8 +217,7 @@ class PrintCompositorImpl : public mojom::PrintCompositor {
       uint64_t frame_guid,
       base::ReadOnlySharedMemoryRegion serialized_content,
       const ContentToFrameMap& subframe_content_ids,
-      mojom::PrintCompositor::DocumentType document_type,
-      CompositePagesCallback callback);
+      CompositeToPdfCallback callback);
   void HandleDocumentCompletionRequest();
 
   // Composite the content of a subframe.
@@ -260,9 +249,6 @@ class PrintCompositorImpl : public mojom::PrintCompositor {
   // If present, the accessibility tree for the document needed to
   // export a tagged (accessible) PDF.
   ui::AXTreeUpdate accessibility_tree_;
-
-  // The title of the document.
-  std::string title_;
 };
 
 }  // namespace printing

@@ -11,6 +11,7 @@ static_library("renderer") {
   ]
   deps = [
     "//base",
+    "//components/cdm/common",
     "//content/public/renderer",
     "//media",
     "//media:media_buildflags",
@@ -28,6 +29,8 @@ static_library("renderer") {
     sources += [
       "android_key_system_info.cc",
       "android_key_system_info.h",
+      "android_key_systems.cc",
+      "android_key_systems.h",
     ]
   }
 

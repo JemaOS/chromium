@@ -37,8 +37,7 @@ features:
   per_profile: false
 owners:
 - ust@google.com
-- ust@google.com
-- chromeos-commercial-printing@google.com
+- srad@google.com
 schema:
   type: string
 supported_on:

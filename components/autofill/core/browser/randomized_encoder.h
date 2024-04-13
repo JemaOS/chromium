@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "base/memory/raw_ptr.h"
 #include "base/strings/string_piece.h"
@@ -63,12 +62,12 @@ class RandomizedEncoder {
   // |kEncodedChunkLengthInBytes|.
   std::string Encode(FormSignature form_signature,
                      FieldSignature field_signature,
-                     std::string_view data_type,
-                     std::string_view data_value) const;
+                     base::StringPiece data_type,
+                     base::StringPiece data_value) const;
   // Used for testing, converts |data_value| to UTF-8 and calls Encode().
   std::string EncodeForTesting(FormSignature form_signature,
                                FieldSignature field_signature,
-                               std::string_view data_type,
+                               base::StringPiece data_type,
                                base::StringPiece16 data_value) const;
 
   AutofillRandomizedValue_EncodingType encoding_type() const {
@@ -86,20 +85,20 @@ class RandomizedEncoder {
   // is internal, but exposed here to facilitate testing.
   std::string GetCoins(FormSignature form_signature,
                        FieldSignature field_signature,
-                       std::string_view data_type,
+                       base::StringPiece data_type,
                        int encoding_length) const;
 
   // Get the pseudo-random string to use at the noise bit-field. This function
   // is internal, but exposed here to facilitate testing.
   std::string GetNoise(FormSignature form_signature,
                        FieldSignature field_signature,
-                       std::string_view data_type,
+                       base::StringPiece data_type,
                        int encoding_length) const;
 
   // For |data_type==FORM_URL|, returns required chunk count to fit
   // |data_value|, but max |kMaxChunks|. Otherwise, returns 1.
-  int GetChunkCount(std::string_view data_value,
-                    std::string_view data_type) const;
+  int GetChunkCount(base::StringPiece data_value,
+                    base::StringPiece data_type) const;
 
  private:
   const std::string seed_;

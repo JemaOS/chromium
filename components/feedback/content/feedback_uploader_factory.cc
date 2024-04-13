@@ -23,28 +23,6 @@ CreateURLLoaderFactoryForBrowserContext(content::BrowserContext* context) {
       ->GetURLLoaderFactoryForBrowserProcess();
 }
 
-class FeedbackUploaderImpl final : public FeedbackUploader {
- public:
-  FeedbackUploaderImpl(
-      bool is_off_the_record,
-      const base::FilePath& state_path,
-      SharedURLLoaderFactoryGetter shared_url_loader_factory_getter)
-      : FeedbackUploader(is_off_the_record,
-                         state_path,
-                         std::move(shared_url_loader_factory_getter)) {}
-  FeedbackUploaderImpl(const FeedbackUploaderImpl&) = delete;
-  FeedbackUploaderImpl& operator=(const FeedbackUploaderImpl&) = delete;
-
-  ~FeedbackUploaderImpl() override = default;
-
-  base::WeakPtr<FeedbackUploader> AsWeakPtr() override {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
- private:
-  base::WeakPtrFactory<FeedbackUploaderImpl> weak_ptr_factory_{this};
-};
-
 }  // namespace
 
 // static
@@ -71,14 +49,12 @@ FeedbackUploaderFactory::FeedbackUploaderFactory()
 
 FeedbackUploaderFactory::~FeedbackUploaderFactory() {}
 
-std::unique_ptr<KeyedService>
-FeedbackUploaderFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FeedbackUploaderFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  // The returned FeedbackUploaderImpl lifetime is bound to that of
-  // BrowserContext by the KeyedServiceFactory infrastructure. The
-  // FeedbackUploader will be destroyed before the BrowserContext,
-  // thus base::Unretained() usage is safe.
-  return std::make_unique<FeedbackUploaderImpl>(
+  // The returned FeedbackUploader lifetime is bound to that of BrowserContext
+  // by the KeyedServiceFactory infrastructure. The FeedbackUploader will be
+  // destroyed before the BrowserContext, thus base::Unretained() usage is safe.
+  return new FeedbackUploader(
       context->IsOffTheRecord(), context->GetPath(),
       base::BindOnce(&CreateURLLoaderFactoryForBrowserContext,
                      base::Unretained(context)));

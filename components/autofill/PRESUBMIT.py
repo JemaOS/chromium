@@ -8,7 +8,7 @@ See http://dev.chromium.org/developers/how-tos/depottools/presubmit-scripts
 for more details on the presubmit API built into depot_tools.
 """
 
-import re
+USE_PYTHON3 = True
 
 def IsComponentsAutofillFile(f, name_suffix):
   # The exact path can change. Only check the containing folder.
@@ -23,9 +23,9 @@ def IsComponentsAutofillFileAffected(input_api, name_suffix):
       input_api, lambda f: IsComponentsAutofillFile(f, name_suffix))
 
 def _CheckNoBaseTimeCalls(input_api, output_api):
-  """Checks that no files call base::Time::Now()."""
+  """Checks that no files call base::Time::Now() or base::TimeTicks::Now()."""
   pattern = input_api.re.compile(
-      r'(base::Time::Now)\(\)',
+      r'(base::(Time|TimeTicks)::Now)\(\)',
       input_api.re.MULTILINE)
   files = []
   for f in input_api.AffectedSourceFiles(input_api.FilterSourceFile):
@@ -37,18 +37,20 @@ def _CheckNoBaseTimeCalls(input_api, output_api):
 
   if len(files):
     return [ output_api.PresubmitPromptWarning(
-        'Consider to not call base::Time::Now() directly but use ' +
-        'AutofillClock::Now(). This clock can be manipulated through ' +
-        'TestAutofillClock for testing purposes, and using AutofillClock and ' +
+        'Consider to not call base::Time::Now() or base::TimeTicks::Now() ' +
+        'directly but use AutofillClock::Now() and '+
+        'Autofill::TickClock::NowTicks(), respectively. These clocks can be ' +
+        'manipulated through TestAutofillClock and TestAutofillTickClock '+
+        'for testing purposes, and using AutofillClock and AutofillTickClock '+
         'throughout Autofill code makes sure Autofill tests refers to the '+
         'same (potentially manipulated) clock.',
         files) ]
   return []
 
-def _CheckNoFieldTypeCasts(input_api, output_api):
-  """Checks that no files cast (e.g., raw integers to) FieldTypes."""
+def _CheckNoServerFieldTypeCasts(input_api, output_api):
+  """Checks that no files cast (e.g., raw integers to) ServerFieldTypes."""
   pattern = input_api.re.compile(
-      r'_cast<\s*FieldType\b',
+      r'_cast<\s*ServerFieldType\b',
       input_api.re.MULTILINE)
   files = []
   for f in input_api.AffectedSourceFiles(input_api.FilterSourceFile):
@@ -60,9 +62,9 @@ def _CheckNoFieldTypeCasts(input_api, output_api):
 
   if len(files):
     return [ output_api.PresubmitPromptWarning(
-        'Do not cast raw integers to FieldType to prevent values that ' +
+        'Do not cast raw integers to ServerFieldType to prevent values that ' +
         'have no corresponding enum constant or are deprecated. Use '+
-        'ToSafeFieldType() instead.',
+        'ToSafeServerFieldType() instead.',
         files) ]
   return []
 
@@ -144,41 +146,15 @@ def _CheckModificationOfFormAutofillUtil(input_api, output_api):
 
   return []
 
-# Checks that UniqueRendererForm(Control)Id() is not used and suggests to use
-# form_util::Get(Form|Field)RendererId() instead.
-def _CheckNoUsageOfUniqueRendererId(
-        input_api, output_api):
-  autofill_files_pattern = re.compile(
-      r'(autofill|password_manager).*\.(mm|cc|h)')
-  special_file = re.compile(r'form_autofill_util.cc')
-  concerned_files = [(f, input_api.ReadFile(f))
-                     for f in input_api.AffectedFiles(include_deletes=False)
-                     if autofill_files_pattern.search(f.LocalPath())]
-
-  warning_files = []
-  renderer_id_call = re.compile(
-      r'\.UniqueRendererForm(Control)?Id', re.MULTILINE)
-  for autofill_file, file_content in concerned_files:
-    allowed_matches = 2 if special_file.search(autofill_file.LocalPath()) else 0
-    matches = re.finditer(renderer_id_call, file_content)
-    if (len(list(matches)) > allowed_matches):
-      warning_files.append(autofill_file)
-
-  return [output_api.PresubmitError(
-      'Do not use (Form|Field)RendererId(*.UniqueRendererForm(Control)?Id()). '
-      'Consider using form_util::Get(Form|Field)RendererId(*) instead.',
-      warning_files)] if len(warning_files) else []
-
 def _CommonChecks(input_api, output_api):
   """Checks common to both upload and commit."""
   results = []
   results.extend(_CheckNoBaseTimeCalls(input_api, output_api))
-  results.extend(_CheckNoFieldTypeCasts(input_api, output_api))
+  results.extend(_CheckNoServerFieldTypeCasts(input_api, output_api))
   results.extend(_CheckFeatureNames(input_api, output_api))
   results.extend(_CheckWebViewExposedExperiments(input_api, output_api))
   results.extend(_CheckModificationOfLegacyRegexPatterns(input_api, output_api))
   results.extend(_CheckModificationOfFormAutofillUtil(input_api, output_api))
-  results.extend(_CheckNoUsageOfUniqueRendererId(input_api, output_api))
   return results
 
 def CheckChangeOnUpload(input_api, output_api):

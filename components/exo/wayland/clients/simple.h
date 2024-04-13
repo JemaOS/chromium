@@ -26,16 +26,9 @@ class Simple : public wayland::clients::ClientBase {
     // Number of presented frames.
     uint32_t num_frames_presented = 0;
   };
-  struct RunParam {
-    // Whether the client should log vsync.
-    bool log_vsync_timing_updates = false;
-
-    // Whether the client should use single pixel buffer.
-    bool single_pixel_buffer = false;
-  };
 
   void Run(int frames,
-           const RunParam& run_param,
+           const bool log_vsync_timing_updates = false,
            PresentationFeedback* feedback = nullptr);
 };
 

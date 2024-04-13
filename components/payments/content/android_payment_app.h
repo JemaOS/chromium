@@ -6,7 +6,6 @@
 #define COMPONENTS_PAYMENTS_CONTENT_ANDROID_PAYMENT_APP_H_
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 
@@ -16,6 +15,7 @@
 #include "components/payments/content/payment_app.h"
 #include "components/payments/core/android_app_description.h"
 #include "content/public/browser/global_routing_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace payments {
@@ -43,8 +43,7 @@ class AndroidPaymentApp : public PaymentApp {
       const std::string& payment_request_id,
       std::unique_ptr<AndroidAppDescription> description,
       base::WeakPtr<AndroidAppCommunication> communication,
-      content::GlobalRenderFrameHostId frame_routing_id,
-      const std::optional<base::UnguessableToken>& twa_instance_identifier);
+      content::GlobalRenderFrameHostId frame_routing_id);
   ~AndroidPaymentApp() override;
 
   AndroidPaymentApp(const AndroidPaymentApp& other) = delete;
@@ -77,7 +76,7 @@ class AndroidPaymentApp : public PaymentApp {
 
  private:
   void OnPaymentAppResponse(base::WeakPtr<Delegate> delegate,
-                            const std::optional<std::string>& error_message,
+                            const absl::optional<std::string>& error_message,
                             bool is_activity_result_ok,
                             const std::string& payment_method_identifier,
                             const std::string& stringified_details);
@@ -97,11 +96,6 @@ class AndroidPaymentApp : public PaymentApp {
   // True when InvokePaymentApp() has been called but no response has been
   // received yet.
   bool payment_app_open_;
-  // Token used to uniquely identify a particular TWA instance that invoked
-  // the payment request. This is used to map the TWA instance in
-  // Lacros (the Chrome OS browser) and browser window that hosts the TWA
-  // instance in Ash (the Chrome OS system UI).
-  std::optional<base::UnguessableToken> twa_instance_identifier_;
 
   base::WeakPtrFactory<AndroidPaymentApp> weak_ptr_factory_{this};
 };

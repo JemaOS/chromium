@@ -7,22 +7,11 @@
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
 #include "components/feature_engagement/public/configuration.h"
-#include "components/feature_engagement/public/event_constants.h"
 #include "components/feature_engagement/public/feature_constants.h"
 
 #if BUILDFLAG(IS_IOS)
-#include "base/metrics/field_trial_params.h"
 #include "components/feature_engagement/public/ios_promo_feature_configuration.h"
 #endif  // BUILDFLAG(IS_IOS)
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "components/feature_engagement/public/scalable_iph_feature_configurations.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-namespace {
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-const int k10YearsInDays = 365 * 10;
-#endif
-}  // namespace
 
 namespace feature_engagement {
 
@@ -32,9 +21,8 @@ FeatureConfig CreateAlwaysTriggerConfig(const base::Feature* feature) {
   const char* prefix = "IPH_";
   std::string stripped_feature_name = feature->name;
   if (base::StartsWith(stripped_feature_name, prefix,
-                       base::CompareCase::SENSITIVE)) {
+                       base::CompareCase::SENSITIVE))
     stripped_feature_name = stripped_feature_name.substr(strlen(prefix));
-  }
 
   // A config that always meets condition to trigger IPH.
   FeatureConfig config;
@@ -48,74 +36,12 @@ FeatureConfig CreateAlwaysTriggerConfig(const base::Feature* feature) {
   return config;
 }
 
-#if BUILDFLAG(IS_IOS)
-std::optional<FeatureConfig> CreateNewUserGestureInProductHelpConfig(
-    const base::Feature& feature,
-    const char* action_event,
-    const char* trigger_event,
-    const char* used_event) {
-  // Maximum storage days for iOS gesture IPHs in days. Note that they only
-  // triggered for users who installed Chrome on iOS in the last specific number
-  // of days, so this could be used as the maximum storage period of respective
-  // events.
-  const uint32_t kMaxStorageDays = 61;
-  // The IPH only shows once every `kGestureInProductHelpDaysBetweenOccurrences`
-  // days, and has a total maximum occurrence of the param value of
-  // `kGestureInProductHelpMaxOccurrence`.
-  int days_between_occurrences = base::GetFieldTrialParamByFeatureAsInt(
-      feature, kGestureInProductHelpDaysBetweenOccurrences,
-      /*default=*/kMaxStorageDays);
-  int total_max_occurrences = base::GetFieldTrialParamByFeatureAsInt(
-      feature, kGestureInProductHelpMaxOccurrence, /*default=*/1);
-
-  std::optional<FeatureConfig> config = FeatureConfig();
-  config->valid = true;
-  config->availability = Comparator(ANY, 0);
-  config->session_rate = Comparator(EQUAL, 0);
-  // The user hasn't done the action suggested by the IPH.
-  config->used = EventConfig(used_event, Comparator(EQUAL, 0), kMaxStorageDays,
-                             kMaxStorageDays);
-  // The IPH shows at most once per `days_between_occurrences`.
-  config->trigger =
-      EventConfig(trigger_event, Comparator(EQUAL, 0), days_between_occurrences,
-                  days_between_occurrences);
-  config->event_configs.insert(
-      EventConfig(trigger_event, Comparator(LESS_THAN, total_max_occurrences),
-                  kMaxStorageDays, kMaxStorageDays));
-  // The IPH only shows when user performs the action that should trigger the
-  // IPH at least twice since the last time the IPH shows, or since installation
-  // if it hasn't.
-  config->event_configs.insert(
-      EventConfig(action_event, Comparator(GREATER_THAN_OR_EQUAL, 2),
-                  days_between_occurrences, days_between_occurrences));
-  return config;
-}
-#endif
-
-std::optional<FeatureConfig> GetClientSideFeatureConfig(
+absl::optional<FeatureConfig> GetClientSideFeatureConfig(
     const base::Feature* feature) {
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
-
-  // The IPH bubble for link capturing has a trigger set to ANY so that it
-  // always shows up. The per app specific guardrails are independently stored
-  // under the web_app_prefs.
-  if (kIPHDesktopPWAsLinkCapturingLaunch.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->trigger = EventConfig("desktop_pwa_launch_link_capturing",
-                                  Comparator(ANY, 0), 0, 0);
-    config->used = EventConfig("desktop_pwa_launch_link_capturing_used",
-                               Comparator(ANY, 0), 0, 0);
-    return config;
-  }
-
-#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
   if (kIPHPasswordsAccountStorageFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -130,27 +56,27 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   }
 
   if (kIPHPasswordsManagementBubbleAfterSaveFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->trigger =
-        EventConfig("password_saved", Comparator(LESS_THAN, 1), 360, 360);
+        EventConfig("password_saved", Comparator(LESS_THAN, 1), 180, 180);
     config->session_rate = Comparator(ANY, 0);
     config->availability = Comparator(ANY, 0);
     return config;
   }
 
   if (kIPHPasswordsManagementBubbleDuringSigninFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->trigger =
-        EventConfig("signin_flow_detected", Comparator(LESS_THAN, 1), 360, 360);
+        EventConfig("signin_flow_detected", Comparator(LESS_THAN, 1), 180, 180);
     config->session_rate = Comparator(ANY, 0);
     config->availability = Comparator(ANY, 0);
     return config;
   }
 
   if (kIPHProfileSwitchFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -163,7 +89,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   }
 
   if (kIPHReadingListInSidePanelFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -175,49 +101,8 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHReadingModeSidePanelFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    // Show the promo up to 3 times a year.
-    config->trigger = EventConfig("iph_reading_mode_side_panel_trigger",
-                                  Comparator(LESS_THAN, 3), 360, 360);
-    config->used = EventConfig("reading_mode_side_panel_shown",
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
-  if (kIPHSidePanelGenericMenuFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    // Show the promo once a year if the side panel was not opened.
-    config->trigger = EventConfig("side_panel_from_menu_trigger",
-                                  Comparator(EQUAL, 0), 360, 360);
-    config->used = EventConfig("side_panel_from_menu_shown",
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
-  if (kIPHSidePanelGenericPinnableFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    // Show the promo once a year if the side panel was not opened.
-    config->trigger = EventConfig("side_panel_pinnable_trigger",
-                                  Comparator(EQUAL, 0), 360, 360);
-    config->used = EventConfig(feature_engagement::events::kSidePanelPinned,
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
   if (kIPHGMCCastStartStopFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -228,20 +113,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHGMCLocalMediaCastingFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config->trigger = EventConfig("gmc_local_media_cast_iph_trigger",
-                                  Comparator(EQUAL, 0), 180, 180);
-    config->used = EventConfig("media_route_started_from_gmc",
-                               Comparator(EQUAL, 0), 180, 180);
-
-    return config;
-  }
-
   if (kIPHDesktopSharedHighlightingFeature.name == feature->name) {
     // A config that allows the shared highlighting desktop IPH to be shown
     // when a user receives a highlight:
@@ -249,7 +120,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * Up to 5 times but only if unused in the last 7 days.
     // * Used fewer than 2 times
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -263,63 +134,24 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHExperimentalAIPromoFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    // Show the IPH once per year.
-    config->trigger = EventConfig("iph_experimental_ai_promo_trigger",
-                                  Comparator(EQUAL, 0), 360, 360);
-    config->used = EventConfig("iph_experimental_ai_promo_shown",
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
-  if (kIPHTrackingProtectionOffboardingFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->trigger =
-        EventConfig("iph_tracking_protection_offboarding_triggered",
-                    Comparator(GREATER_THAN_OR_EQUAL, 0), 0, 0);
-    config->used = EventConfig("iph_tracking_protection_offboarding_used",
-                               Comparator(ANY, 0), 0, 0);
-    return config;
-  }
-
-  if (kIPHTrackingProtectionOnboardingFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->trigger =
-        EventConfig("iph_tracking_protection_onboarding_triggered",
-                    Comparator(GREATER_THAN_OR_EQUAL, 0), 0, 0);
-    config->used = EventConfig("iph_tracking_protection_onboarding_used",
-                               Comparator(ANY, 0), 0, 0);
-    return config;
-  }
-
   if (kIPHBatterySaverModeFeature.name == feature->name) {
     // Show promo once a year when the battery saver toolbar icon is visible.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
     config->trigger = EventConfig("battery_saver_info_triggered",
-                                  Comparator(LESS_THAN, 1), 360, 360);
+                                  Comparator(LESS_THAN, 3), 360, 360);
     config->used =
         EventConfig("battery_saver_info_shown", Comparator(EQUAL, 0), 7, 360);
     return config;
   }
 
-  if (kIPHMemorySaverModeFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+  if (kIPHHighEfficiencyModeFeature.name == feature->name) {
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
+    config->session_rate = Comparator(EQUAL, 0);
     // Show the promo max 3 times, once per week.
     config->trigger = EventConfig("high_efficiency_prompt_in_trigger",
                                   Comparator(LESS_THAN, 1), 7, 360);
@@ -328,53 +160,60 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
                                Comparator(EQUAL, 0), 360, 360);
     config->event_configs.insert(
         EventConfig("high_efficiency_prompt_in_trigger",
-                    Comparator(LESS_THAN, 1), 360, 360));
+                    Comparator(LESS_THAN, 3), 360, 360));
+    return config;
+  }
+
+  if (kIPHPerformanceNewBadgeFeature.name == feature->name) {
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
+    // Show the new badge max 20 times within a year
+    config->trigger = EventConfig("performance_new_badge_shown",
+                                  Comparator(LESS_THAN, 20), 360, 360);
+
+    // Badge stops showing after the user uses it 3 times
+    config->used = EventConfig("performance_activated",
+                               Comparator(LESS_THAN, 3), 360, 360);
     return config;
   }
 
   if (kIPHPowerBookmarksSidePanelFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
+    config->session_rate = Comparator(ANY, 0);
+    // Show the promo once a year if the price tracking IPH was not triggered.
     config->trigger = EventConfig("iph_power_bookmarks_side_panel_trigger",
-                                  Comparator(LESS_THAN, 3), 360, 360);
+                                  Comparator(EQUAL, 0), 360, 360);
     config->used = EventConfig("power_bookmarks_side_panel_shown",
                                Comparator(EQUAL, 0), 360, 360);
     return config;
   }
 
-  if (kIPHPriceInsightsPageActionIconLabelFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+  if (kIPHPriceTrackingChipFeature.name == feature->name) {
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
-    // Show the label once per day, 3 times max in 28 days.
+    // Show the promo only once.
     config->trigger =
-        EventConfig("price_insights_page_action_icon_label_in_trigger",
-                    Comparator(ANY, 0), 0, 360);
-    config->used = EventConfig("price_insights_page_action_icon_label_used",
-                               Comparator(ANY, 0), 0, 360);
-    config->event_configs.insert(
-        EventConfig("price_insights_page_action_icon_label_in_trigger",
-                    Comparator(ANY, 0), 0, 360));
-    return config;
-  }
-
-  if (kIPHPriceTrackingEmailConsentFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    // Show the IPH up to 3 times per month.
-    config->trigger = EventConfig("price_tracking_email_consent_trigger",
-                                  Comparator(LESS_THAN, 3), 30, 360);
+        EventConfig("price_tracking_chip_iph_trigger", Comparator(EQUAL, 0),
+                    feature_engagement::kMaxStoragePeriod,
+                    feature_engagement::kMaxStoragePeriod);
+    // Set a dummy config for the used event to be consistent with the other
+    // IPH configurations. The used event is never recorded by the feature code
+    // because the trigger event is already reported the first time the chip is
+    // being used, which corresponds to a used event.
+    config->used =
+        EventConfig("price_tracking_chip_shown", Comparator(ANY, 0), 0, 360);
     return config;
   }
 
   if (kIPHPriceTrackingInSidePanelFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -387,7 +226,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   }
 
   if (kIPHPriceTrackingPageActionIconLabelFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -398,84 +237,8 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHShoppingCollectionFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    // Show the IPH 3 times per year.
-    config->trigger = EventConfig("shopping_collection_trigger",
-                                  Comparator(LESS_THAN, 3), 360, 360);
-    return config;
-  }
-
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-  if (kIPHExtensionsMenuFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(LESS_THAN, 1);
-
-    // Show promo up to three times a year or until the extensions menu is
-    // opened while any extension has access to the current site.
-    config->trigger = EventConfig("extensions_menu_trigger",
-                                  Comparator(LESS_THAN, 3), 360, 360);
-    config->used =
-        EventConfig("extensions_menu_opened_while_extension_has_access",
-                    Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
-  if (kIPHExtensionsRequestAccessButtonFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(LESS_THAN, 1);
-
-    // Show promo up to three times a year or until the request access button
-    // is clicked.
-    config->trigger = EventConfig("extensions_request_access_button_trigger",
-                                  Comparator(LESS_THAN, 3), 360, 360);
-    config->used = EventConfig("extensions_request_access_button_clicked",
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-#endif
-
-  if (kIPHCompanionSidePanelFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-
-    // Show the promo up to 3 times a year.
-    config->trigger = EventConfig("iph_companion_side_panel_trigger",
-                                  Comparator(LESS_THAN, 3), 360, 360);
-    config->used =
-        EventConfig("companion_side_panel_accessed_via_toolbar_button",
-                    Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
-  if (kIPHCompanionSidePanelRegionSearchFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    // Show the promo up to 3 times a year.
-    config->trigger =
-        EventConfig("iph_companion_side_panel_region_search_trigger",
-                    Comparator(LESS_THAN, 3), 360, 360);
-    config->used =
-        EventConfig("companion_side_panel_region_search_button_clicked",
-                    Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
   if (kIPHDesktopCustomizeChromeFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -490,40 +253,8 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHDesktopCustomizeChromeRefreshFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    // Show IPH regardless of customize_chrome usage
-    config->used =
-        EventConfig("customize_chrome_opened", Comparator(ANY, 0), 360, 360);
-    // Triggered when IPH has been shown less than twice this year.
-    config->trigger = EventConfig("iph_customize_chrome_refresh_triggered",
-                                  Comparator(LESS_THAN, 2), 360, 360);
-    config->snooze_params.max_limit = 4;
-    return config;
-  }
-
-  if (kIPHDesktopNewTabPageModulesCustomizeFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::ALL;
-    // Show the promo max once every 10 years if the user hasn't interacted with
-    // the modules within the last year.
-    config->trigger = EventConfig("iph_desktop_new_tab_page_modules_triggered",
-                                  Comparator(EQUAL, 0), 3600, 3600);
-    config->used = EventConfig(events::kDesktopNTPModuleUsed,
-                               Comparator(EQUAL, 0), 360, 360);
-    config->snooze_params.max_limit = 5;
-    return config;
-  }
-
   if (kIPHPasswordsWebAppProfileSwitchFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -535,168 +266,33 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHPasswordManagerShortcutFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+  if (kIPHDownloadToolbarButtonFeature.name == feature->name) {
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->trigger = EventConfig("iph_password_manager_shortcut_triggered",
-                                  Comparator(EQUAL, 0), 360, 360);
-    config->used = EventConfig("password_manager_shortcut_created",
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
-  if (kIPHPasswordSharingFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config->trigger = EventConfig("password_sharing_iph_triggered",
-                                  Comparator(EQUAL, 0), 360, 360);
-    config->used = EventConfig("password_share_button_clicked",
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
-  if (kIPHDownloadEsbPromoFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
     // Don't show if user has already seen an IPH this session.
-    // Show the promo max once a year if the user hasn't interacted with
-    // a dangerous download within the last 21 days.
-    config->trigger = EventConfig("download_bubble_esb_iph_trigger",
-                                  Comparator(EQUAL, 0), 360, 360);
-    config->used = EventConfig("enable_enhanced_protection",
-                               Comparator(EQUAL, 0), 21, 360);
-    config->event_configs.insert(
-        EventConfig("download_bubble_dangerous_download_detected",
-                    Comparator(GREATER_THAN_OR_EQUAL, 1), 21, 360));
-    return config;
-  }
-
-  if (kIPHBackNavigationMenuFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
-    config->trigger = EventConfig("back_navigation_menu_iph_is_triggered",
-                                  Comparator(LESS_THAN_OR_EQUAL, 4), 360, 360);
-    config->used = EventConfig("back_navigation_menu_is_opened",
-                               Comparator(EQUAL, 0), 7, 360);
-    config->snooze_params.snooze_interval = 7;
-    config->snooze_params.max_limit = 4;
-    return config;
-  }
-
-  if (kIPHComposeNewBadgeFeature.name == feature->name) {
-    // A config that allows the new badge displayed in the Compose feature nudge
-    // to be shown at most 4 times in a 10-day window and only while the user
-    // has opened the Compose feature less than 3 times.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->trigger = EventConfig("compose_new_badge_triggered",
-                                  Comparator(LESS_THAN, 4), 10, 360);
-    config->used =
-        EventConfig("compose_activated", Comparator(LESS_THAN, 3), 360, 360);
-    return config;
-  }
-
-  if (kIPHComposeMSBBSettingsFeature.name == feature->name) {
-    // A config that allows a toast to be displayed in the Settings page when
-    // opened via the Compose MSBB feature
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config->trigger = EventConfig("compose_msbb_settings_feature_trigger",
-                                  Comparator(ANY, 0), 90, 90);
-    config->used = EventConfig("compose_msbb_settings_feature_used",
-                               Comparator(ANY, 0), 90, 90);
-    return config;
-  }
-
-  if (kIPHTabOrganizationSuccessFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    // Show the IPH once per year.
-    config->trigger = EventConfig("iph_tab_organization_success_trigger",
+    // Show the promo max once a year if the user hasn't interacted with the
+    // download bubble within the last 21 days.
+    config->trigger = EventConfig("download_bubble_iph_trigger",
                                   Comparator(EQUAL, 0), 360, 360);
-    config->used =
-        EventConfig("tab_group_editor_shown", Comparator(EQUAL, 0), 360, 360);
+    config->used = EventConfig("download_bubble_interaction",
+                               Comparator(EQUAL, 0), 21, 360);
+    // Allow snoozing for 7 days, up to 3 times.
+    config->snooze_params.snooze_interval = 7;
+    config->snooze_params.max_limit = 3;
     return config;
   }
 
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
 
-#if !BUILDFLAG(IS_ANDROID) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  if (kIPHiOSPasswordPromoDesktopFeature.name == feature->name) {
-    // A config for allowing other IPH's to explicitly block the iOS password
-    // promo bubble on desktop if needed. By default it is non-blocking and
-    // non-blocked by other IPH due it being highly contextual, but this FET
-    // config and feature exist to allow some FET control over this promo if
-    // needed.
-
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config->blocked_by.type = BlockedBy::Type::ALL;
-    config->blocking.type = Blocking::Type::ALL;
-    config->used =
-        EventConfig("ios_password_promo_bubble_on_desktop_interacted_with",
-                    Comparator(ANY, 0), 0, 0);
-    config->trigger = EventConfig("ios_password_promo_bubble_on_desktop_shown",
-                                  Comparator(ANY, 0), 0, 0);
-    return config;
-  }
-#endif  // !BUILDFLAG(IS_ANDROID) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
-
 #if BUILDFLAG(IS_ANDROID)
 
-  if (kIPHCCTHistory.name == feature->name) {
-    // A config that allows the CCTHistory IPH to be shown once
-    // a week, up to 3 times, unless the button is clicked at least once.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->trigger = EventConfig("cct_history_iph_trigger",
-                                  Comparator(LESS_THAN, 3), 360, 360);
-    config->event_configs.insert(EventConfig("cct_history_iph_trigger",
-                                             Comparator(LESS_THAN, 1), 7, 360));
-    config->used = EventConfig("cct_history_menu_item_clicked",
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-  if (kIPHCCTMinimized.name == feature->name) {
-    // A config that allows the Custom Tab minimize button IPH to be shown once
-    // a day, up to 3 times, unless the button is clicked at least once.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->trigger = EventConfig("cct_minimized_iph_trigger",
-                                  Comparator(LESS_THAN, 3), 360, 360);
-    config->event_configs.insert(EventConfig("cct_minimized_iph_trigger",
-                                             Comparator(LESS_THAN, 1), 1, 360));
-    config->used = EventConfig("cct_minimize_button_clicked",
-                               Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
+  constexpr int k10YearsInDays = 365 * 10;
+
   if (kIPHDataSaverDetailFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -710,7 +306,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
   if (kIPHDataSaverPreviewFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -721,7 +317,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
   if (kIPHPreviewsOmniboxUIFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -734,7 +330,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
   if (kIPHDownloadHomeFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 14);
     config->session_rate = Comparator(EQUAL, 0);
@@ -751,7 +347,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHDownloadIndicatorFeature.name == feature->name) {
     // A config that allows the DownloadIndicator IPH to be shown up to 2 times,
     // but only if download home hasn't been opened in the last 90 days.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -764,7 +360,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHContextualPageActionsQuietVariantFeature.name == feature->name) {
     // A config that allows the contextual page action IPH to be shown:
     // * Once per day. 3 times max in 90 days
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -783,7 +379,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * 3 times per session.
     // * 5 times per day.
     // * 10 times per week.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(LESS_THAN, 3);
@@ -799,7 +395,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // A config that allows the Add to homescreen message IPH to be shown:
     // * Once per 15 days
     // * Up to 2 times but only if unused in the last 15 days.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -812,13 +408,175 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
+  // Feature notification guide help UI promos that are shown in response to a
+  // notification click.
+  if (kIPHFeatureNotificationGuideDefaultBrowserPromoFeature.name ==
+          feature->name ||
+      kIPHFeatureNotificationGuideSignInHelpBubbleFeature.name ==
+          feature->name ||
+      kIPHFeatureNotificationGuideIncognitoTabHelpBubbleFeature.name ==
+          feature->name ||
+      kIPHFeatureNotificationGuideNTPSuggestionCardHelpBubbleFeature.name ==
+          feature->name ||
+      kIPHFeatureNotificationGuideVoiceSearchHelpBubbleFeature.name ==
+          feature->name) {
+    return CreateAlwaysTriggerConfig(feature);
+  }
+
   // A generic feature that always returns true.
   if (kIPHGenericAlwaysTriggerHelpUiFeature.name == feature->name) {
     return CreateAlwaysTriggerConfig(feature);
   }
 
+  if (kIPHFeatureNotificationGuideIncognitoTabUsedFeature.name ==
+      feature->name) {
+    // A config that allows to check whether use has used incognito tabs before.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config->blocked_by.type = BlockedBy::Type::NONE;
+    config->blocking.type = Blocking::Type::NONE;
+    // unused.
+    config->trigger =
+        EventConfig("feature_notification_guide_dummy_feature_trigger",
+                    Comparator(ANY, 0), 90, 90);
+    config->used = EventConfig("feature_notification_guide_dummy_feature_used",
+                               Comparator(ANY, 0), 90, 90);
+    config->event_configs.insert(
+        EventConfig("app_menu_new_incognito_tab_clicked",
+                    Comparator(GREATER_THAN_OR_EQUAL, 1), 90, 90));
+    return config;
+  }
+
+  if (kIPHFeatureNotificationGuideVoiceSearchUsedFeature.name ==
+      feature->name) {
+    // A config that allows to check whether use has used voice search from NTP
+    // before.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config->blocked_by.type = BlockedBy::Type::NONE;
+    config->blocking.type = Blocking::Type::NONE;
+    // unused.
+    config->trigger =
+        EventConfig("feature_notification_guide_dummy_feature_trigger",
+                    Comparator(ANY, 0), 90, 90);
+    config->used = EventConfig("feature_notification_guide_dummy_feature_used",
+                               Comparator(ANY, 0), 90, 90);
+    config->event_configs.insert(
+        EventConfig("ntp_voice_search_button_clicked",
+                    Comparator(GREATER_THAN_OR_EQUAL, 1), 90, 90));
+    return config;
+  }
+
+  if (kIPHFeatureNotificationGuideIncognitoTabNotificationShownFeature.name ==
+      feature->name) {
+    // A config that allows the feature guide incognito tab notification to be
+    // shown.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config->blocked_by.type = BlockedBy::Type::NONE;
+    config->blocking.type = Blocking::Type::NONE;
+    config->trigger = EventConfig(
+        "feature_notification_guide_incognito_tab_notification_trigger",
+        Comparator(LESS_THAN, 1), 90, 90);
+    config->used = EventConfig("app_menu_new_incognito_tab_clicked",
+                               Comparator(EQUAL, 0), 90, 90);
+    return config;
+  }
+
+  if (kIPHFeatureNotificationGuideNTPSuggestionCardNotificationShownFeature
+          .name == feature->name) {
+    // A config that allows the feature guide NTP suggestions cards notification
+    // to be shown.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    SessionRateImpact session_rate_impact;
+    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config->blocked_by.type = BlockedBy::Type::NONE;
+    config->blocking.type = Blocking::Type::NONE;
+    config->trigger = EventConfig(
+        "feature_notification_guide_ntp_suggestion_card_notification_trigger",
+        Comparator(LESS_THAN, 1), 90, 90);
+    config->used = EventConfig(
+        "feature_notification_guide_ntp_suggestion_card_notification_used",
+        Comparator(EQUAL, 0), 90, 90);
+    return config;
+  }
+
+  if (kIPHFeatureNotificationGuideVoiceSearchNotificationShownFeature.name ==
+      feature->name) {
+    // A config that allows the feature guide voice search notification to be
+    // shown.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    SessionRateImpact session_rate_impact;
+    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config->blocked_by.type = BlockedBy::Type::NONE;
+    config->blocking.type = Blocking::Type::NONE;
+    config->trigger = EventConfig(
+        "feature_notification_guide_voice_search_notification_trigger",
+        Comparator(LESS_THAN, 1), 90, 90);
+    config->used = EventConfig("ntp_voice_search_button_clicked",
+                               Comparator(EQUAL, 0), 90, 90);
+    return config;
+  }
+
+  if (kIPHFeatureNotificationGuideDefaultBrowserNotificationShownFeature.name ==
+      feature->name) {
+    // A config that allows the feature guide default browser notification to be
+    // shown.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    SessionRateImpact session_rate_impact;
+    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config->blocked_by.type = BlockedBy::Type::NONE;
+    config->blocking.type = Blocking::Type::NONE;
+    config->trigger = EventConfig(
+        "feature_notification_guide_default_browser_notification_trigger",
+        Comparator(LESS_THAN, 1), 90, 90);
+    config->used = EventConfig(
+        "feature_notification_guide_default_browser_notification_used",
+        Comparator(EQUAL, 0), 90, 90);
+    return config;
+  }
+
+  if (kIPHFeatureNotificationGuideSignInNotificationShownFeature.name ==
+      feature->name) {
+    // A config that allows the feature guide sign-in notification to be
+    // shown.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    SessionRateImpact session_rate_impact;
+    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config->blocked_by.type = BlockedBy::Type::NONE;
+    config->blocking.type = Blocking::Type::NONE;
+    config->trigger =
+        EventConfig("feature_notification_guide_sign_in_notification_trigger",
+                    Comparator(LESS_THAN, 1), 90, 90);
+    config->used =
+        EventConfig("feature_notification_sign_in_search_notification_used",
+                    Comparator(EQUAL, 0), 90, 90);
+    return config;
+  }
+
   if (kIPHLowUserEngagementDetectorFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 14);
     config->session_rate = Comparator(ANY, 0);
@@ -839,7 +597,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // A config that allows the feed header menu IPH to be shown only once when
     // the user starts using a version of the feed that uploads click and view
     // actions.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
 
@@ -866,7 +624,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHWebFeedAwarenessFeature.name == feature->name) {
     // A config that allows the web feed IPH to be shown up to three times
     // total, no more than once per session.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
 
@@ -889,7 +647,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // A config that allows the feed swipe refresh message IPH to be shown:
     // * Once per 15 days
     // * Up to 2 times but only if unused in the last 15 days.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -907,7 +665,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * Up to 3 times per year.
     // * And only as long as the user has never initiated price tracking from
     // the menu.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 1);
@@ -921,7 +679,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
   if (kIPHTabSwitcherButtonFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 14);
     config->session_rate = Comparator(LESS_THAN, 1);
@@ -936,7 +694,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHWebFeedFollowFeature.name == feature->name) {
     // A config that allows the WebFeed follow intro to be shown up to 5x per
     // week.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -950,7 +708,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHWebFeedPostFollowDialogFeature.name == feature->name) {
     // A config that allows one of the WebFeed post follow dialogs to be
     // presented 3 times.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -961,26 +719,10 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHWebFeedPostFollowDialogFeatureWithUIUpdate.name == feature->name) {
-    // A config that allows one of the WebFeed post follow dialogs to be
-    // presented 3 times after the UI update.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->trigger =
-        EventConfig("web_feed_post_follow_dialog_trigger_with_ui_update",
-                    Comparator(LESS_THAN, 3), 360, 360);
-    config->used =
-        EventConfig("web_feed_post_follow_dialog_shown_with_ui_update",
-                    Comparator(ANY, 0), 360, 360);
-    return config;
-  }
-
   if (kIPHVideoTutorialNTPChromeIntroFeature.name == feature->name) {
     // A config that allows the chrome intro video tutorial card to show up
     // until explicitly interacted upon.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1006,7 +748,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHVideoTutorialNTPDownloadFeature.name == feature->name) {
     // A config that allows the download video tutorial card to show up
     // until explicitly interacted upon.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1030,7 +772,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHVideoTutorialNTPSearchFeature.name == feature->name) {
     // A config that allows the search video tutorial card to show up
     // until explicitly interacted upon.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1054,7 +796,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHVideoTutorialNTPVoiceSearchFeature.name == feature->name) {
     // A config that allows the voice search video tutorial card to show up
     // until explicitly interacted upon.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1080,7 +822,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHVideoTutorialNTPSummaryFeature.name == feature->name) {
     // A config that allows the summary video tutorial card to show up
     // until explicitly interacted upon.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1103,7 +845,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // A config that allows the video tutorials Try Now button click to result
     // in an IPH bubble. This IPH is shown always regardless of session rate or
     // any other conditions.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1125,7 +867,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * Up to 5 times but only if unused in the last 7 days.
     // * Used fewer than 2 times
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1142,7 +884,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   if (kIPHSharingHubWebnotesStylizeFeature.name == feature->name) {
     // A config that allows the Webnotes Stylize IPH to be shown up to 6 times,
     // but only if the feature home hasn't been used in the last 360 days.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1162,7 +904,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // TODO(crbug.com/1251737): Update this config from test values; Will
     // likely depend on giving feedback instead of opening settings, since the
     // primary purpose  of the dialog has changed.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1181,7 +923,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * Until the user opens auto dark settings
     // * 2 times per week
     // * Up to 6 times (3 weeks)
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1200,7 +942,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * Until the user opens auto dark settings
     // * 2 times per week
     // * Up to 6 times (3 weeks)
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1220,7 +962,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // only once when the user starts using the multi-instance feature by
     // opening more than one window.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1237,7 +979,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // bookmark this page.
     // This will only occur once every 60 days.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1255,7 +997,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // open the reading list.
     // This will only occur once every 60 days.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1274,7 +1016,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // when the context menu "copy" option is clicked.
     // This will only occur once every 60 days.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1291,7 +1033,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * If the user has used the RDS (tab-level) setting on the app menu at
     // least once.
     // * If the prompt has never been shown before.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1304,24 +1046,42 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
 
   if (kIPHRequestDesktopSiteDefaultOnFeature.name == feature->name) {
     // A config that allows the RDS default-on message to be shown:
+    // * If the message has never been shown before.
     // * If the user has never accepted the message.
-    // * The message can show twice, but only once in a week.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    // * If the user has never explicitly dismissed the message.
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
-    config->availability = Comparator(GREATER_THAN, 1);
-    config->session_rate = Comparator(LESS_THAN, 1);
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
     config->used = EventConfig("desktop_site_settings_page_opened",
                                Comparator(ANY, 0), 360, 360);
     config->trigger = EventConfig("request_desktop_site_default_on_iph_trigger",
-                                  Comparator(LESS_THAN_OR_EQUAL, 1), 360, 360);
-    config->event_configs.insert(
-        EventConfig("request_desktop_site_default_on_iph_trigger",
-                    Comparator(EQUAL, 0), 7, 360));
+                                  Comparator(EQUAL, 0), 360, 360);
     config->event_configs.insert(
         EventConfig("desktop_site_default_on_primary_action",
                     Comparator(EQUAL, 0), 360, 360));
     config->event_configs.insert(EventConfig("desktop_site_default_on_gesture",
-                                             Comparator(ANY, 0), 360, 360));
+                                             Comparator(EQUAL, 0), 360, 360));
+    return config;
+  }
+
+  if (kIPHRequestDesktopSiteOptInFeature.name == feature->name) {
+    // A config that allows the RDS opt-in message to be shown:
+    // * If the message has never been shown before.
+    // * If the user has never accepted the message.
+    // * If the user has never explicitly dismissed the message.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(ANY, 0);
+    config->used = EventConfig("desktop_site_settings_page_opened",
+                               Comparator(ANY, 0), 360, 360);
+    config->trigger = EventConfig("request_desktop_site_opt_in_iph_trigger",
+                                  Comparator(EQUAL, 0), 360, 360);
+    config->event_configs.insert(EventConfig(
+        "desktop_site_opt_in_primary_action", Comparator(EQUAL, 0), 360, 360));
+    config->event_configs.insert(EventConfig("desktop_site_opt_in_gesture",
+                                             Comparator(EQUAL, 0), 360, 360));
     return config;
   }
 
@@ -1330,7 +1090,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // tablet users. This will be triggered a maximum of 2 times (once per
     // 2 weeks), and if the user has not used the app menu to create a desktop
     // site exception in a span of a year.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(GREATER_THAN_OR_EQUAL, 2);
     config->session_rate = Comparator(LESS_THAN, 1);
@@ -1345,8 +1105,28 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
+  if (kIPHRequestDesktopSiteExceptionsSpecificFeature.name == feature->name) {
+    // A config that allows the RDS site-level setting IPH to be shown on sites
+    // that are more functional in desktop mode. This will be triggered a
+    // maximum of 2 times (once per 2 weeks), and if the user has not used the
+    // app menu to create a desktop site exception in a span of a year.
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(GREATER_THAN_OR_EQUAL, 2);
+    config->session_rate = Comparator(LESS_THAN, 1);
+    config->used = EventConfig("app_menu_desktop_site_exception_added",
+                               Comparator(EQUAL, 0), 360, 360);
+    config->trigger =
+        EventConfig("request_desktop_site_exceptions_specific_iph_trigger",
+                    Comparator(LESS_THAN, 2), 720, 720);
+    config->event_configs.insert(
+        EventConfig("request_desktop_site_exceptions_specific_iph_trigger",
+                    Comparator(EQUAL, 0), 14, 14));
+    return config;
+  }
+
   if (kIPHPageZoomFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -1354,39 +1134,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
         EventConfig("page_zoom_iph_trigger", Comparator(EQUAL, 0), 1440, 1440);
     config->used =
         EventConfig("page_zoom_opened", Comparator(EQUAL, 0), 1440, 1440);
-    return config;
-  }
-
-  if (kIPHRestoreTabsOnFREFeature.name == feature->name) {
-    // A config that allows the restore tabs on FRE promo to be shown:
-    // * If the user has gone through the FRE workflow.
-    // * If the promo has never been accepted.
-    // * Once per week if continually dismissed for a max of 2 weeks.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(LESS_THAN_OR_EQUAL, 14);
-    config->session_rate = Comparator(ANY, 0);
-    config->trigger =
-        EventConfig("restore_tabs_promo_trigger", Comparator(EQUAL, 0), 7, 14);
-    config->used =
-        EventConfig("restore_tabs_promo_used", Comparator(EQUAL, 0), 14, 14);
-    config->event_configs.insert(EventConfig(
-        "restore_tabs_on_first_run_show_promo", Comparator(EQUAL, 1), 14, 14));
-    return config;
-  }
-
-  if (kIPHRequestDesktopSiteWindowSettingFeature.name == feature->name) {
-    // A config that allows the RDS window setting IPH to be shown at most once
-    // in 3 years per device.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->used = EventConfig("request_desktop_site_window_setting_iph_shown",
-                               Comparator(EQUAL, 0), 1080, 1080);
-    config->trigger =
-        EventConfig("request_desktop_site_window_setting_iph_trigger",
-                    Comparator(EQUAL, 0), 1080, 1080);
     return config;
   }
 
@@ -1401,7 +1148,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * once for an installation, 10-year window is used as the maximum
     // * if there was no address keyboard accessory IPH in the last 2 weeks
     // * if such a suggestion was not already accepted
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -1423,19 +1170,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHAutofillManualFallbackFeature.name == feature->name) {
-    // Autofill Manual Fallback IPH is shown when it has not been shown before
-    // in the last 90 days.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config->trigger = EventConfig("autofill_manual_fallback_trigger",
-                                  Comparator(LESS_THAN, 1), 90, 360);
-    return config;
-  }
-
   if (kIPHAutofillVirtualCardSuggestionFeature.name == feature->name) {
     // A config that allows the virtual card credit card suggestion IPH to be
     // shown when:
@@ -1443,7 +1177,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // * the virtual card suggestion has been selected less than twice in last
     // 90 days.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(EQUAL, 0);
@@ -1463,73 +1197,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
 
     return config;
   }
-
-  if (kIPHAutofillVirtualCardCVCSuggestionFeature.name == feature->name) {
-    // A config that allows the virtual card CVC suggestion IPH to be
-    // shown when:
-    // * it has been shown less than three times in last 90 days;
-    // * the virtual card CVC suggestion has been selected less than twice in
-    // last 90 days.
-
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::EXPLICIT;
-    config->trigger = EventConfig("autofill_virtual_card_cvc_iph_trigger",
-                                  Comparator(LESS_THAN, 3), 90, 360);
-    config->used = EventConfig("autofill_virtual_card_cvc_suggestion_accepted",
-                               Comparator(LESS_THAN, 2), 90, 360);
-    SessionRateImpact session_rate_impact;
-    session_rate_impact.type = SessionRateImpact::Type::EXPLICIT;
-    std::vector<std::string> affected_features;
-    affected_features.push_back("IPH_AutofillVirtualCardSuggestion");
-
-#if BUILDFLAG(IS_ANDROID)
-    affected_features.push_back("IPH_KeyboardAccessoryBarSwiping");
-#endif  // BUILDFLAG(IS_ANDROID)
-
-    session_rate_impact.affected_features = affected_features;
-    config->session_rate_impact = session_rate_impact;
-    return config;
-  }
-
-  if (kIPHCookieControlsFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    // Show promo up to 3 times per year and only if user hasn't interacted with
-    // the cookie controls bubble in the last week.
-    config->trigger = EventConfig("iph_cookie_controls_triggered",
-                                  Comparator(LESS_THAN, 3), 360, 360);
-#if !BUILDFLAG(IS_ANDROID)
-    config->used =
-        EventConfig(feature_engagement::events::kCookieControlsBubbleShown,
-                    Comparator(EQUAL, 0), 7, 7);
-#endif  // !BUILDFLAG(IS_ANDROID)
-    return config;
-  }
-
-  if (kIPH3pcdUserBypassFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    // Show promo only once and only if user hasn't interacted with
-    // the cookie controls bubble in the last year.
-    config->trigger =
-        EventConfig("iph_3pcd_user_bypass_triggered", Comparator(EQUAL, 0),
-                    feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod);
-#if !BUILDFLAG(IS_ANDROID)
-    config->used =
-        EventConfig(feature_engagement::events::kCookieControlsBubbleShown,
-                    Comparator(ANY, 0), 360, 360);
-#endif  // !BUILDFLAG(IS_ANDROID)
-    return config;
-  }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) ||
         // BUILDFLAG(IS_FUCHSIA)
@@ -1540,7 +1207,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // Default Page Mode feature when the user has requested the Desktop version
     // of a website 3 times in 60 days. It will be shown every other year unless
     // the user interacted with the setting in the past 2 years.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1558,16 +1225,16 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // A config that allows a user education bubble to be shown for the bottom
     // toolbar. After the promo manager dismisses What's New promo, the user
     // education bubble will be shown once. This can only occur once every a
-    // month.
+    // year.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
+    config->session_rate = Comparator(EQUAL, 0);
     config->trigger =
-        EventConfig("whats_new_trigger", Comparator(LESS_THAN, 1), 30, 360);
+        EventConfig("whats_new_trigger", Comparator(EQUAL, 0), 360, 360);
     config->used =
-        EventConfig("whats_new_used", Comparator(LESS_THAN, 1), 30, 360);
+        EventConfig("whats_new_used", Comparator(EQUAL, 0), 360, 360);
     return config;
   }
 
@@ -1577,7 +1244,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // trackable product once per session for up to three sessions or until the
     // user has clicked on the Price Tracking entry point. There will be a
     // window of one week between impressions.
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(LESS_THAN, 1);
@@ -1599,7 +1266,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // feature is non-blocking because it is a passive promo that appears
     // alongside the rest of the UI, and does not interrupt the user's flow.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1609,8 +1276,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config->used = EventConfig("blue_dot_promo_criterion_met",
                                Comparator(GREATER_THAN_OR_EQUAL, 1), 30, 360);
     config->event_configs.insert(EventConfig("default_browser_promo_shown",
-                                             Comparator(EQUAL, 0), 14, 360));
-    config->event_configs.insert(EventConfig("default_browser_fre_shown",
                                              Comparator(EQUAL, 0), 14, 360));
     config->blocked_by.type = BlockedBy::Type::NONE;
     config->blocking.type = Blocking::Type::NONE;
@@ -1625,7 +1290,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // passive promo that appears alongside the rest of the UI, and does not
     // interrupt the user's flow.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1642,8 +1307,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
                     Comparator(GREATER_THAN_OR_EQUAL, 1), 30, 360));
     config->event_configs.insert(EventConfig("default_browser_promo_shown",
                                              Comparator(EQUAL, 0), 14, 360));
-    config->event_configs.insert(EventConfig("default_browser_fre_shown",
-                                             Comparator(EQUAL, 0), 14, 360));
     config->blocked_by.type = BlockedBy::Type::NONE;
     config->blocking.type = Blocking::Type::NONE;
     return config;
@@ -1658,7 +1321,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // that appears alongside the rest of the UI, and does not interrupt the
     // user's flow.
 
-    std::optional<FeatureConfig> config = FeatureConfig();
+    absl::optional<FeatureConfig> config = FeatureConfig();
     config->valid = true;
     config->availability = Comparator(ANY, 0);
     config->session_rate = Comparator(ANY, 0);
@@ -1675,304 +1338,23 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
                     Comparator(GREATER_THAN_OR_EQUAL, 1), 30, 360));
     config->event_configs.insert(EventConfig("default_browser_promo_shown",
                                              Comparator(EQUAL, 0), 14, 360));
-    config->event_configs.insert(EventConfig("default_browser_fre_shown",
-                                             Comparator(EQUAL, 0), 14, 360));
     config->blocked_by.type = BlockedBy::Type::NONE;
     config->blocking.type = Blocking::Type::NONE;
-    return config;
-  }
-
-  if (kIPHiOSNewTabToolbarItemFeature.name == feature->name) {
-    // The IPH of the new tab button on the tool bar (at bottom on iPhone or on
-    // top on iPad).
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    // The user has opened the url from omnibox for >= 2 times in the past week.
-    config->used = EventConfig(feature_engagement::events::kOpenUrlFromOmnibox,
-                               Comparator(GREATER_THAN_OR_EQUAL, 2), 7, 7);
-    // The IPH is shown at most 1 time a week.
-    config->trigger = EventConfig("iph_new_tab_toolbar_item_trigger",
-                                  Comparator(EQUAL, 0), 7, 7);
-    // The user hasn't used the new tab toolbar item.
-    config->event_configs.insert(
-        EventConfig(feature_engagement::events::kNewTabToolbarItemUsed,
-                    Comparator(EQUAL, 0), k10YearsInDays, k10YearsInDays));
-    // The IPH is shown at most 2 times a year.
-    config->event_configs.insert(EventConfig("iph_new_tab_toolbar_item_trigger",
-                                             Comparator(LESS_THAN, 2), 365,
-                                             365));
-    return config;
-  }
-
-  if (kIPHiOSTabGridToolbarItemFeature.name == feature->name) {
-    // The IPH of the tab grid button on the tool bar (at bottom on iPhone or on
-    // top on iPad).
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    // The user hasn't used the tab grid toolbar item.
-    config->used =
-        EventConfig(feature_engagement::events::kTabGridToolbarItemUsed,
-                    Comparator(EQUAL, 0), k10YearsInDays, k10YearsInDays);
-    // The IPH is shown at most 1 time a week.
-    config->trigger = EventConfig("iph_tab_grid_toolbar_item_trigger",
-                                  Comparator(EQUAL, 0), 7, 7);
-    // The IPH is shown at most 2 times a year.
-    config->event_configs.insert(
-        EventConfig("iph_tab_grid_toolbar_item_trigger",
-                    Comparator(LESS_THAN, 2), 365, 365));
-    return config;
-  }
-
-  if (kIPHiOSHistoryOnOverflowMenuFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    // The user hasn't tapped the history on the overflow menu.
-    config->used =
-        EventConfig(feature_engagement::events::kHistoryOnOverflowMenuUsed,
-                    Comparator(EQUAL, 0), k10YearsInDays, k10YearsInDays);
-    // The IPH is shown at most 1 time a week.
-    config->trigger = EventConfig("history_on_overflow_menu_trigger",
-                                  Comparator(EQUAL, 0), 7, 7);
-    // The IPH is shown at most 2 times a year.
-    config->event_configs.insert(EventConfig("history_on_overflow_menu_trigger",
-                                             Comparator(LESS_THAN, 2), 365,
-                                             365));
-    // The user has opened URL from omnibox > 2 times in the past.
-    config->event_configs.insert(EventConfig(
-        feature_engagement::events::kOpenUrlFromOmnibox,
-        Comparator(GREATER_THAN, 2), k10YearsInDays, k10YearsInDays));
-    return config;
-  }
-
-  if (kIPHiOSShareToolbarItemFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    // The user hasn't tapped the share on the toolbar.
-    config->used =
-        EventConfig(feature_engagement::events::kShareToolbarItemUsed,
-                    Comparator(EQUAL, 0), k10YearsInDays, k10YearsInDays);
-    // The IPH is shown at most 1 time a week.
-    config->trigger =
-        EventConfig("share_toolbar_item_trigger", Comparator(EQUAL, 0), 7, 7);
-    // The IPH is shown 2 times a year.
-    config->event_configs.insert(EventConfig(
-        "share_toolbar_item_trigger", Comparator(LESS_THAN, 2), 365, 365));
-    return config;
-  }
-
-  if (kIPHiOSPromoPasswordManagerWidgetFeature.name == feature->name) {
-    // A config to allow a user to be shown the Password Manager widget promo in
-    // the Password Manager. The promo will be shown for a maximum of three
-    // subsequent Password Manager visits to users who have not yet installed
-    // and used the widget. This FET feature is non-blocking because it is a
-    // passive promo that appears alongside the rest of the UI, and does not
-    // interrupt the user's flow.
-
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config->trigger = EventConfig(
-        feature_engagement::events::kPasswordManagerWidgetPromoTriggered,
-        Comparator(LESS_THAN, 2), 360, 360);
-    config->used =
-        EventConfig(feature_engagement::events::kPasswordManagerWidgetPromoUsed,
-                    Comparator(EQUAL, 0), 360, 360);
-    config->event_configs.insert(EventConfig(
-        feature_engagement::events::kPasswordManagerWidgetPromoClosed,
-        Comparator(EQUAL, 0), 360, 360));
-    config->blocked_by.type = BlockedBy::Type::NONE;
-    config->blocking.type = Blocking::Type::NONE;
-    return config;
-  }
-
-  if (kIPHiOSLensKeyboardFeature.name == feature->name) {
-    // A config that allows a user education bubble to be shown for the Lens
-    // button in the omnibox keyboard. Will be shown up to 3 times, but
-    // opening Lens from the keyboard will prevent the bubble from appearing
-    // again.
-
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->trigger =
-        EventConfig("lens_keyboard_feature_trigger", Comparator(LESS_THAN, 3),
-                    feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod);
-    config->used = EventConfig("lens_keyboard_used", Comparator(EQUAL, 0),
-                               feature_engagement::kMaxStoragePeriod,
-                               feature_engagement::kMaxStoragePeriod);
-    return config;
-  }
-
-  if (kIPHiOSParcelTrackingFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    // The IPH is shown at most once.
-    config->trigger =
-        EventConfig(feature_engagement::events::kParcelTrackingTriggered,
-                    Comparator(EQUAL, 0), feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod);
-    config->used =
-        EventConfig("parcel_tracking_feature_used", Comparator(EQUAL, 0),
-                    feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod);
-    // The user has tracked a parcel.
-    config->event_configs.insert(
-        EventConfig(feature_engagement::events::kParcelTracked,
-                    Comparator(GREATER_THAN_OR_EQUAL, 1),
-                    feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod));
-    config->blocked_by.type = BlockedBy::Type::NONE;
-    config->blocking.type = Blocking::Type::NONE;
-    return config;
-  }
-
-  if (kIPHiOSPullToRefreshFeature.name == feature->name) {
-    // The IPH of the pull-to-refresh feature for the current tab.
-    return CreateNewUserGestureInProductHelpConfig(
-        *feature, /*action_event=*/
-        feature_engagement::events::kIOSMultiGestureRefreshUsed,
-        /*trigger_event=*/"iph_pull_to_refresh_trigger", /*used_event=*/
-        feature_engagement::events::kIOSPullToRefreshUsed);
-  }
-
-  if (kIPHiOSReplaceSyncPromosWithSignInPromos.name == feature->name) {
-    // A config to show a user education bubble from the account row in the
-    // settings page. Will be shown only the first time user signs-in from
-    // settings. Subsequent sign-ins will not trigger it.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->trigger =
-        EventConfig("signin_from_settings_trigger", Comparator(LESS_THAN, 1),
-                    feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod);
-    config->used =
-        EventConfig("signin_from_settings_used", Comparator(EQUAL, 0),
-                    feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod);
-    config->blocked_by.type = BlockedBy::Type::NONE;
-    return config;
-  }
-
-  if (kIPHiOSTabGridSwipeRightForIncognito.name == feature->name) {
-    // The IPH of the tab grid swipe feature.
-    return CreateNewUserGestureInProductHelpConfig(
-        *feature, /*action_event=*/
-        feature_engagement::events::kIOSIncognitoPageControlTapped,
-        /*trigger_event=*/"swipe_left_for_incognito_trigger", /*used_event=*/
-        feature_engagement::events::kIOSSwipeRightForIncognitoUsed);
-  }
-
-  if (kIPHiOSSwipeBackForwardFeature.name == feature->name) {
-    // The IPH of the swipe back/forward feature.
-    return CreateNewUserGestureInProductHelpConfig(
-        *feature, /*action_event=*/
-        feature_engagement::events::kIOSBackForwardButtonTapped,
-        /*trigger_event=*/"swipe_back_forward_trigger", /*used_event=*/
-        feature_engagement::events::kIOSSwipeBackForwardUsed);
-  }
-
-  if (kIPHiOSSwipeToolbarToChangeTabFeature.name == feature->name) {
-    // The IPH of the swipe toolbar to go to adjacent tab feature.
-    return CreateNewUserGestureInProductHelpConfig(
-        *feature, /*action_event=*/
-        feature_engagement::events::kIOSTabGridAdjacentTabTapped,
-        /*trigger_event=*/"swipe_toolbar_to_change_tab_trigger", /*used_event=*/
-        feature_engagement::events::kIOSSwipeToolbarToChangeTabUsed);
-  }
-
-  if (kIPHiOSOverflowMenuCustomizationFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(EQUAL, 0);
-    config->used = EventConfig(
-        feature_engagement::events::kIOSOverflowMenuCustomizationUsed,
-        Comparator(EQUAL, 0), feature_engagement::kMaxStoragePeriod,
-        feature_engagement::kMaxStoragePeriod);
-    config->trigger =
-        EventConfig("overflow_menu_customization_trigger", Comparator(EQUAL, 0),
-                    feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod);
-    config->event_configs.insert(EventConfig(
-        feature_engagement::events::kIOSOverflowMenuOffscreenItemUsed,
-        Comparator(GREATER_THAN_OR_EQUAL, 2),
-        feature_engagement::kMaxStoragePeriod,
-        feature_engagement::kMaxStoragePeriod));
-    return config;
-  }
-
-  if (kIPHiOSPageInfoRevampFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->trigger = EventConfig("IPH_iOSPageInfoRevamp_trigger",
-                                  Comparator(LESS_THAN_OR_EQUAL, 3), 365, 365);
-    config->used =
-        EventConfig("IPH_iOSPageInfoRevamp_used", Comparator(ANY, 0), 365, 365);
     return config;
   }
 
   // iOS Promo Configs are split out into a separate file, so check that too.
-  if (std::optional<FeatureConfig> ios_promo_feature_config =
+  if (absl::optional<FeatureConfig> ios_promo_feature_config =
           GetClientSideiOSPromoFeatureConfig(feature)) {
     return ios_promo_feature_config;
   }
 #endif  // BUILDFLAG(IS_IOS)
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (std::optional<FeatureConfig> scalable_iph_feature_config =
-          GetScalableIphFeatureConfig(feature)) {
-    return scalable_iph_feature_config;
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (kIPHLauncherSearchHelpUiFeature.name == feature->name) {
-    // A config that allows the ChromeOS Ash Launcher search IPH to be shown.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    config->session_rate = Comparator(ANY, 0);
-    config->session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config->blocked_by.type = BlockedBy::Type::NONE;
-    config->blocking.type = Blocking::Type::NONE;
-
-    // Can be shown any time until the `assistant_click` event is recorded.
-    config->trigger =
-        EventConfig("IPH_LauncherSearchHelpUi_trigger", Comparator(ANY, 0),
-                    kMaxStoragePeriod, kMaxStoragePeriod);
-    config->used =
-        EventConfig("IPH_LauncherSearchHelpUi_chip_click", Comparator(ANY, 0),
-                    kMaxStoragePeriod, kMaxStoragePeriod);
-    config->event_configs.insert(EventConfig(
-        "IPH_LauncherSearchHelpUi_assistant_click", Comparator(EQUAL, 0),
-        kMaxStoragePeriod, kMaxStoragePeriod));
-    return config;
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
   if (kIPHDummyFeature.name == feature->name) {
     // Only used for tests. Various magic tricks are used below to ensure this
     // config is invalid and unusable.
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
+    absl::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = false;
     config->availability = Comparator(LESS_THAN, 0);
     config->session_rate = Comparator(LESS_THAN, 0);
     config->trigger = EventConfig("dummy_feature_iph_trigger",
@@ -1982,27 +1364,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
-  if (kIPHDeepScanPromptRemovalFeature.name == feature->name) {
-    std::optional<FeatureConfig> config = FeatureConfig();
-    config->valid = true;
-    config->availability = Comparator(ANY, 0);
-    // Don't show if user has already seen an IPH this session.
-    config->session_rate = Comparator(EQUAL, 0);
-    // Only show the IPH if the user hasn't seen it before
-    config->trigger =
-        EventConfig("deep_scan_prompt_removal_iph_trigger",
-                    Comparator(EQUAL, 0), feature_engagement::kMaxStoragePeriod,
-                    feature_engagement::kMaxStoragePeriod);
-    // Only show the IPH if the user has done a download in the last day.
-    config->used =
-        EventConfig("user_downloaded_file", Comparator(GREATER_THAN, 0), 1, 1);
-    return config;
-  }
-#endif
-
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace feature_engagement

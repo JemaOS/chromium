@@ -3,6 +3,8 @@ include_rules = [
   "+ash/components/arc",
   "+ash/public/cpp/external_arc/overlay",
   "+chromeos/components/payments",
+  # TODO(b/129295708): Remove after move is complete.
+  "+components/arc",
   "+components/autofill",
   "+components/keyed_service/content",
   "+components/keyed_service/core",
@@ -40,13 +42,3 @@ include_rules = [
   "+ui/base",
   "+ui/gfx",
 ]
-
-specific_include_rules = {
-  "android_app_communication_lacros.cc": [
-    "+chromeos/lacros/lacros_service.h"
-  ],
-  "android_app_communication_test_support_lacros.cc": [
-    "+chromeos/lacros/lacros_service.h",
-    "+chromeos/lacros/lacros_test_helper.h"
-  ],
-}

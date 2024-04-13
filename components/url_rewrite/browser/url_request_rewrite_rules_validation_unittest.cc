@@ -21,7 +21,7 @@ mojom::UrlRequestActionPtr CreateRewriteAddHeaders(
 }
 
 mojom::UrlRequestActionPtr CreateRewriteRemoveHeader(
-    std::optional<base::StringPiece> query_pattern,
+    absl::optional<base::StringPiece> query_pattern,
     base::StringPiece header_name) {
   auto remove_header = mojom::UrlRequestRewriteRemoveHeader::New();
   if (query_pattern)
@@ -88,11 +88,11 @@ TEST(UrlRequestRewriteRulesValidationTest, ValidateAddHeaders) {
 // Tests RemoveHeader rewrites are properly converted to their Mojo equivalent.
 TEST(UrlRequestRewriteRulesValidationTest, ValidateRemoveHeader) {
   EXPECT_TRUE(ValidateRulesFromAction(
-      CreateRewriteRemoveHeader(std::make_optional("Test"), "Header")));
+      CreateRewriteRemoveHeader(absl::make_optional("Test"), "Header")));
 
   // Create a RemoveHeader action with no pattern.
   EXPECT_TRUE(ValidateRulesFromAction(
-      CreateRewriteRemoveHeader(std::nullopt, "Header")));
+      CreateRewriteRemoveHeader(absl::nullopt, "Header")));
 
   // Invalid RemoveHeader header name.
   EXPECT_FALSE(
@@ -116,23 +116,17 @@ TEST(UrlRequestRewriteRulesValidationTest, ValidateSubstituteQueryPattern) {
 
 // Tests ReplaceUrl rewrites are properly converted to their Mojo equivalent.
 TEST(UrlRequestRewriteRulesValidationTest, ValidateReplaceUrl) {
-  // ReplaceURL with valid new_url.
+  GURL url("http://site.xyz");
   EXPECT_TRUE(ValidateRulesFromAction(
-      CreateRewriteReplaceUrl("/something", "http://site.xyz")));
-  EXPECT_TRUE(ValidateRulesFromAction(
-      CreateRewriteReplaceUrl("some%00thing", "http://site.xyz")));
+      CreateRewriteReplaceUrl("/something", url.spec())));
 
-  // ReplaceURL with valid new_url including "%00" in its path.
-  EXPECT_TRUE(ValidateRulesFromAction(
-      CreateRewriteReplaceUrl("/something", "http://site.xyz/%00")));
-  EXPECT_TRUE(ValidateRulesFromAction(
-      CreateRewriteReplaceUrl("some%00thing", "http://site.xyz/%00")));
+  // Invalid ReplaceUrl url_ends_with.
+  EXPECT_FALSE(ValidateRulesFromAction(
+      CreateRewriteReplaceUrl("some%00thing", GURL("http://site.xyz").spec())));
 
-  // ReplaceURL with invalid new_url.
+  // Invalid ReplaceUrl new_url.
   EXPECT_FALSE(ValidateRulesFromAction(
       CreateRewriteReplaceUrl("/something", "http:site:xyz")));
-  EXPECT_FALSE(ValidateRulesFromAction(
-      CreateRewriteReplaceUrl("some%00thing", "http:site:xyz")));
 
   // Empty ReplaceUrl.
   EXPECT_FALSE(ValidateRulesFromAction(mojom::UrlRequestAction::NewReplaceUrl(

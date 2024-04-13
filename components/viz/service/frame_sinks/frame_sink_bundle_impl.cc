@@ -168,8 +168,6 @@ class FrameSinkBundleImpl::SinkGroup : public BeginFrameObserver {
     }
   }
 
-  void DidFinishFrame() { source_->DidFinishFrame(this); }
-
  private:
   void UpdateBeginFrameObservation() {
     bool should_observe_begin_frame = !frame_sinks_needing_begin_frame_.empty();
@@ -274,15 +272,8 @@ void FrameSinkBundleImpl::SetNeedsBeginFrame(uint32_t sink_id,
   }
 }
 
-void FrameSinkBundleImpl::SetWantsBeginFrameAcks(uint32_t sink_id) {
-  if (auto* sink = GetFrameSink(sink_id)) {
-    sink->SetWantsBeginFrameAcks();
-  }
-}
-
 void FrameSinkBundleImpl::Submit(
     std::vector<mojom::BundledFrameSubmissionPtr> submissions) {
-  std::set<SinkGroup*> groups;
   std::set<SinkGroup*> affected_groups;
   // Count the frame submissions before processing anything. This ensures that
   // any frames submitted here will be acked together in a batch, and not acked
@@ -293,9 +284,8 @@ void FrameSinkBundleImpl::Submit(
   // they have no BeginFrameSource), we count nothing and their acks will pass
   // through to the client without batching.
   for (auto& submission : submissions) {
-    if (auto* group = GetSinkGroup(submission->sink_id)) {
-      groups.insert(group);
-      if (submission->data->is_frame()) {
+    if (submission->data->is_frame()) {
+      if (auto* group = GetSinkGroup(submission->sink_id)) {
         group->WillSubmitFrame(submission->sink_id);
         affected_groups.insert(group);
       }
@@ -325,10 +315,6 @@ void FrameSinkBundleImpl::Submit(
           break;
       }
     }
-  }
-
-  for (auto* group : groups) {
-    group->DidFinishFrame();
   }
 
   for (auto* group : affected_groups) {

@@ -9,7 +9,6 @@
 
 #include "base/base64.h"
 #include "base/i18n/string_search.h"
-#include "base/memory/raw_ptr.h"
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -107,14 +106,13 @@ bool DoBookmarkTagsContainWords(const std::unique_ptr<PowerBookmarkMeta>& meta,
 }
 
 template <class type>
-std::vector<const bookmarks::BookmarkNode*> GetBookmarksMatchingPropertiesImpl(
+void GetBookmarksMatchingPropertiesImpl(
     type& iterator,
     bookmarks::BookmarkModel* model,
     const PowerBookmarkQueryFields& query,
     const std::vector<std::u16string>& query_words,
-    size_t max_count) {
-  std::vector<const bookmarks::BookmarkNode*> nodes;
-
+    size_t max_count,
+    std::vector<const bookmarks::BookmarkNode*>* nodes) {
   while (iterator.has_next()) {
     const bookmarks::BookmarkNode* node = iterator.Next();
 
@@ -184,26 +182,23 @@ std::vector<const bookmarks::BookmarkNode*> GetBookmarksMatchingPropertiesImpl(
         continue;
     }
 
-    nodes.push_back(node);
-    if (nodes.size() == max_count) {
-      break;
-    }
+    nodes->push_back(node);
+    if (nodes->size() == max_count)
+      return;
   }
-
-  return nodes;
 }
 
-std::vector<const bookmarks::BookmarkNode*> GetBookmarksMatchingProperties(
+void GetBookmarksMatchingProperties(
     bookmarks::BookmarkModel* model,
     const PowerBookmarkQueryFields& query,
-    size_t max_count) {
+    size_t max_count,
+    std::vector<const bookmarks::BookmarkNode*>* nodes) {
   // ParseBookmarkQuery and some of the other util methods come from
   // bookmark_utils.
   std::vector<std::u16string> query_words =
       bookmarks::ParseBookmarkQuery(query);
-  if (query.word_phrase_query && query_words.empty() && query.tags.empty()) {
-    return {};
-  }
+  if (query.word_phrase_query && query_words.empty() && query.tags.empty())
+    return;
 
   const bookmarks::BookmarkNode* search_folder = model->root_node();
   if (query.folder && query.folder->is_folder())
@@ -212,26 +207,24 @@ std::vector<const bookmarks::BookmarkNode*> GetBookmarksMatchingProperties(
   if (query.url) {
     // Shortcut into the BookmarkModel if searching for URL.
     GURL url(*query.url);
-    std::vector<raw_ptr<const bookmarks::BookmarkNode, VectorExperimental>>
-        url_matched_nodes;
-    if (url.is_valid()) {
-      url_matched_nodes = model->GetNodesByURL(url);
-    }
+    std::vector<const bookmarks::BookmarkNode*> url_matched_nodes;
+    if (url.is_valid())
+      model->GetNodesByURL(url, &url_matched_nodes);
     bookmarks::VectorIterator iterator(&url_matched_nodes);
-    return GetBookmarksMatchingPropertiesImpl<bookmarks::VectorIterator>(
-        iterator, model, query, query_words, max_count);
+    GetBookmarksMatchingPropertiesImpl<bookmarks::VectorIterator>(
+        iterator, model, query, query_words, max_count, nodes);
+  } else {
+    ui::TreeNodeIterator<const bookmarks::BookmarkNode> iterator(search_folder);
+    GetBookmarksMatchingPropertiesImpl<
+        ui::TreeNodeIterator<const bookmarks::BookmarkNode>>(
+        iterator, model, query, query_words, max_count, nodes);
   }
-
-  ui::TreeNodeIterator<const bookmarks::BookmarkNode> iterator(search_folder);
-  return GetBookmarksMatchingPropertiesImpl<
-      ui::TreeNodeIterator<const bookmarks::BookmarkNode>>(
-      iterator, model, query, query_words, max_count);
 }
 
 void EncodeMetaForStorage(const PowerBookmarkMeta& meta, std::string* out) {
   std::string data;
   meta.SerializeToString(&data);
-  *out = base::Base64Encode(data);
+  base::Base64Encode(data, out);
 }
 
 bool DecodeMetaFromStorage(const std::string& data, PowerBookmarkMeta* out) {

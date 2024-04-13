@@ -6,19 +6,13 @@
 
 #include <stddef.h>
 
-#include <algorithm>
-#include <iterator>
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
-#include "base/ranges/algorithm.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
 #include "components/safe_search_api/fake_url_checker_client.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -54,19 +48,11 @@ ClientClassification ToAPIClassification(Classification classification,
   }
 }
 
-auto Recorded(const std::map<CacheAccessStatus, int>& expected) {
-  std::vector<base::Bucket> buckets_array;
-  base::ranges::transform(
-      expected, std::back_inserter(buckets_array),
-      [](auto& entry) { return base::Bucket(entry.first, entry.second); });
-  return base::BucketsInclude(buckets_array);
-}
-
 }  // namespace
 
 class SafeSearchURLCheckerTest : public testing::Test {
  public:
-  SafeSearchURLCheckerTest() {
+  SafeSearchURLCheckerTest() : next_url_(0) {
     std::unique_ptr<FakeURLCheckerClient> fake_client =
         std::make_unique<FakeURLCheckerClient>();
     fake_client_ = fake_client.get();
@@ -100,42 +86,28 @@ class SafeSearchURLCheckerTest : public testing::Test {
     return result;
   }
 
-  std::vector<base::Bucket> CacheHitMetric() {
-    return histogram_tester_.GetAllSamples("Net.SafeSearch.CacheHit");
-  }
-
-  size_t next_url_{0};
-  raw_ptr<FakeURLCheckerClient, DanglingUntriaged> fake_client_;
+  size_t next_url_;
+  raw_ptr<FakeURLCheckerClient> fake_client_;
   std::unique_ptr<URLChecker> checker_;
   base::test::SingleThreadTaskEnvironment task_environment_;
-
- private:
-  base::HistogramTester histogram_tester_;
 };
 
 TEST_F(SafeSearchURLCheckerTest, Simple) {
   {
     GURL url(GetNewURL());
-    EXPECT_CALL(*this,
-                OnCheckDone(url, Classification::SAFE, /*uncertain=*/false));
-    ASSERT_FALSE(SendResponse(url, Classification::SAFE, /*uncertain=*/false));
+    EXPECT_CALL(*this, OnCheckDone(url, Classification::SAFE, false));
+    ASSERT_FALSE(SendResponse(url, Classification::SAFE, false));
   }
   {
     GURL url(GetNewURL());
-    EXPECT_CALL(*this,
-                OnCheckDone(url, Classification::UNSAFE, /*uncertain=*/false));
-    ASSERT_FALSE(
-        SendResponse(url, Classification::UNSAFE, /*uncertain=*/false));
+    EXPECT_CALL(*this, OnCheckDone(url, Classification::UNSAFE, false));
+    ASSERT_FALSE(SendResponse(url, Classification::UNSAFE, false));
   }
   {
     GURL url(GetNewURL());
-    EXPECT_CALL(*this,
-                OnCheckDone(url, Classification::SAFE, /*uncertain=*/true));
-    ASSERT_FALSE(SendResponse(url, Classification::SAFE, /*uncertain=*/true));
+    EXPECT_CALL(*this, OnCheckDone(url, Classification::SAFE, true));
+    ASSERT_FALSE(SendResponse(url, Classification::SAFE, true));
   }
-
-  EXPECT_THAT(CacheHitMetric(), Recorded({{CacheAccessStatus::kHit, 0},
-                                          {CacheAccessStatus::kNotFound, 3}}));
 }
 
 TEST_F(SafeSearchURLCheckerTest, Cache) {
@@ -146,32 +118,23 @@ TEST_F(SafeSearchURLCheckerTest, Cache) {
   GURL url3(GetNewURL());
 
   // Populate the cache.
-  EXPECT_CALL(*this,
-              OnCheckDone(url1, Classification::SAFE, /*uncertain=*/false));
-  ASSERT_FALSE(SendResponse(url1, Classification::SAFE, /*uncertain=*/false));
-  EXPECT_CALL(*this,
-              OnCheckDone(url2, Classification::SAFE, /*uncertain=*/false));
-  ASSERT_FALSE(SendResponse(url2, Classification::SAFE, /*uncertain=*/false));
+  EXPECT_CALL(*this, OnCheckDone(url1, Classification::SAFE, false));
+  ASSERT_FALSE(SendResponse(url1, Classification::SAFE, false));
+  EXPECT_CALL(*this, OnCheckDone(url2, Classification::SAFE, false));
+  ASSERT_FALSE(SendResponse(url2, Classification::SAFE, false));
 
   // Now we should get results synchronously, without a request to the api.
-  EXPECT_CALL(*this,
-              OnCheckDone(url2, Classification::SAFE, /*uncertain=*/false));
+  EXPECT_CALL(*this, OnCheckDone(url2, Classification::SAFE, false));
   ASSERT_TRUE(CheckURL(url2));
-  EXPECT_CALL(*this,
-              OnCheckDone(url1, Classification::SAFE, /*uncertain=*/false));
+  EXPECT_CALL(*this, OnCheckDone(url1, Classification::SAFE, false));
   ASSERT_TRUE(CheckURL(url1));
 
   // Now |url2| is the LRU and should be evicted on the next check.
-  EXPECT_CALL(*this,
-              OnCheckDone(url3, Classification::SAFE, /*uncertain=*/false));
-  ASSERT_FALSE(SendResponse(url3, Classification::SAFE, /*uncertain=*/false));
+  EXPECT_CALL(*this, OnCheckDone(url3, Classification::SAFE, false));
+  ASSERT_FALSE(SendResponse(url3, Classification::SAFE, false));
 
-  EXPECT_CALL(*this,
-              OnCheckDone(url2, Classification::SAFE, /*uncertain=*/false));
-  ASSERT_FALSE(SendResponse(url2, Classification::SAFE, /*uncertain=*/false));
-
-  EXPECT_THAT(CacheHitMetric(), Recorded({{CacheAccessStatus::kHit, 2},
-                                          {CacheAccessStatus::kNotFound, 4}}));
+  EXPECT_CALL(*this, OnCheckDone(url2, Classification::SAFE, false));
+  ASSERT_FALSE(SendResponse(url2, Classification::SAFE, false));
 }
 
 TEST_F(SafeSearchURLCheckerTest, CoalesceRequestsToSameURL) {
@@ -182,9 +145,6 @@ TEST_F(SafeSearchURLCheckerTest, CoalesceRequestsToSameURL) {
   // A single response should answer both of those checks
   EXPECT_CALL(*this, OnCheckDone(url, Classification::SAFE, false)).Times(2);
   fake_client_->RunCallback(ToAPIClassification(Classification::SAFE, false));
-
-  EXPECT_THAT(CacheHitMetric(), Recorded({{CacheAccessStatus::kHit, 0},
-                                          {CacheAccessStatus::kNotFound, 2}}));
 }
 
 TEST_F(SafeSearchURLCheckerTest, CacheTimeout) {
@@ -192,31 +152,13 @@ TEST_F(SafeSearchURLCheckerTest, CacheTimeout) {
 
   checker_->SetCacheTimeoutForTesting(base::Seconds(0));
 
-  EXPECT_CALL(*this,
-              OnCheckDone(url, Classification::SAFE, /*uncertain=*/false));
-  ASSERT_FALSE(SendResponse(url, Classification::SAFE, /*uncertain=*/false));
+  EXPECT_CALL(*this, OnCheckDone(url, Classification::SAFE, false));
+  ASSERT_FALSE(SendResponse(url, Classification::SAFE, false));
 
   // Since the cache timeout is zero, the cache entry should be invalidated
   // immediately.
-  EXPECT_CALL(*this,
-              OnCheckDone(url, Classification::UNSAFE, /*uncertain=*/false));
-  ASSERT_FALSE(SendResponse(url, Classification::UNSAFE, /*uncertain=*/false));
-
-  EXPECT_THAT(CacheHitMetric(), Recorded({{CacheAccessStatus::kHit, 0},
-                                          {CacheAccessStatus::kNotFound, 1},
-                                          {CacheAccessStatus::kOutdated, 1}}));
-}
-
-TEST_F(SafeSearchURLCheckerTest, DoNotCacheUncertainClassifications) {
-  GURL url(GetNewURL());
-
-  ASSERT_FALSE(SendResponse(
-      url, Classification::SAFE,
-      /*uncertain=*/true));     // First check was asynchronous (uncached).
-  EXPECT_FALSE(CheckURL(url));  // And so was the second one.
-
-  EXPECT_THAT(CacheHitMetric(), Recorded({{CacheAccessStatus::kHit, 0},
-                                          {CacheAccessStatus::kNotFound, 2}}));
+  EXPECT_CALL(*this, OnCheckDone(url, Classification::UNSAFE, false));
+  ASSERT_FALSE(SendResponse(url, Classification::UNSAFE, false));
 }
 
 TEST_F(SafeSearchURLCheckerTest, DestroyURLCheckerBeforeCallback) {
@@ -226,16 +168,13 @@ TEST_F(SafeSearchURLCheckerTest, DestroyURLCheckerBeforeCallback) {
   // Start a URL check.
   ASSERT_FALSE(CheckURL(url));
   fake_client_->RunCallbackAsync(
-      ToAPIClassification(Classification::SAFE, /*uncertain=*/false));
+      ToAPIClassification(Classification::SAFE, false));
 
   // Reset the URLChecker before the callback occurs.
   checker_.reset();
 
   // The callback should now be invalid.
   task_environment_.RunUntilIdle();
-
-  EXPECT_THAT(CacheHitMetric(), Recorded({{CacheAccessStatus::kHit, 0},
-                                          {CacheAccessStatus::kNotFound, 1}}));
 }
 
 }  // namespace safe_search_api

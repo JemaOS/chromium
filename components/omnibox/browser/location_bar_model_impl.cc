@@ -214,8 +214,7 @@ const gfx::VectorIcon& LocationBarModelImpl::GetVectorIcon() const {
 
   return location_bar_model::GetSecurityVectorIcon(
       GetSecurityLevel(),
-      delegate_->ShouldUseUpdatedConnectionSecurityIndicators(),
-      delegate_->GetVisibleSecurityState()->malicious_content_status);
+      delegate_->ShouldUseUpdatedConnectionSecurityIndicators());
 }
 
 std::u16string LocationBarModelImpl::GetSecureDisplayText() const {

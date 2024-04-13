@@ -7,8 +7,6 @@ package org.chromium.net.impl;
 import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
 import static android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE;
 
-import android.content.Context;
-import android.os.Build;
 import android.util.Log;
 
 import org.chromium.net.BidirectionalStream;
@@ -17,6 +15,7 @@ import org.chromium.net.NetworkQualityRttListener;
 import org.chromium.net.NetworkQualityThroughputListener;
 import org.chromium.net.RequestFinishedInfo;
 import org.chromium.net.UrlRequest;
+import org.chromium.net.impl.CronetLogger.CronetEngineBuilderInfo;
 import org.chromium.net.impl.CronetLogger.CronetSource;
 import org.chromium.net.impl.CronetLogger.CronetVersion;
 
@@ -37,7 +36,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * {@link java.net.HttpURLConnection} backed CronetEngine.
  *
@@ -52,13 +50,7 @@ public final class JavaCronetEngine extends CronetEngineBase {
     private final CronetLogger mLogger;
     private final AtomicInteger mActiveRequestCount = new AtomicInteger();
 
-    /** The network handle to be used for requests that do not explicitly specify one. **/
-    private long mNetworkHandle = DEFAULT_NETWORK_HANDLE;
-
-    private final Context mContext;
-
     public JavaCronetEngine(CronetEngineBuilderImpl builder) {
-        mContext = builder.getContext();
         mCronetEngineId = hashCode();
         // On android, all background threads (and all threads that are part
         // of background processes) are put in a cgroup that is allowed to
@@ -71,53 +63,40 @@ public final class JavaCronetEngine extends CronetEngineBase {
         this.mUserAgent = builder.getUserAgent();
         // For unbounded work queues, the effective maximum pool size is
         // equivalent to the core pool size.
-        this.mExecutorService =
-                new ThreadPoolExecutor(
-                        10,
-                        10,
-                        50,
-                        TimeUnit.SECONDS,
-                        new LinkedBlockingQueue<Runnable>(),
-                        new ThreadFactory() {
+        this.mExecutorService = new ThreadPoolExecutor(10, 10, 50, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>(), new ThreadFactory() {
+                    @Override
+                    public Thread newThread(final Runnable r) {
+                        return Executors.defaultThreadFactory().newThread(new Runnable() {
                             @Override
-                            public Thread newThread(final Runnable r) {
-                                return Executors.defaultThreadFactory()
-                                        .newThread(
-                                                new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        Thread.currentThread()
-                                                                .setName("JavaCronetEngine");
-                                                        android.os.Process.setThreadPriority(
-                                                                threadPriority);
-                                                        r.run();
-                                                    }
-                                                });
+                            public void run() {
+                                Thread.currentThread().setName("JavaCronetEngine");
+                                android.os.Process.setThreadPriority(threadPriority);
+                                r.run();
                             }
                         });
-        mLogger = CronetLoggerFactory.createLogger(mContext, CronetSource.CRONET_SOURCE_FALLBACK);
+                    }
+                });
+        mLogger = CronetLoggerFactory.createNoOpLogger();
         try {
-            mLogger.logCronetEngineCreation(
-                    mCronetEngineId,
-                    builder.toLoggerInfo(),
-                    buildCronetVersion(),
-                    CronetSource.CRONET_SOURCE_FALLBACK);
+            mLogger.logCronetEngineCreation(mCronetEngineId, new CronetEngineBuilderInfo(builder),
+                    buildCronetVersion(), CronetSource.CRONET_SOURCE_FALLBACK);
         } catch (RuntimeException e) {
             // Handle any issue gracefully, we should never crash due failures while logging.
             Log.e(TAG, "Error while trying to log JavaCronetEngine creation: ", e);
         }
-        Log.w(
-                TAG,
-                "using the fallback Cronet Engine implementation. Performance will suffer "
-                        + "and many HTTP client features, including caching, will not work.");
     }
 
-    /** Increment the number of active requests. */
+    /**
+     * Increment the number of active requests.
+     */
     void incrementActiveRequestCount() {
         mActiveRequestCount.incrementAndGet();
     }
 
-    /** Decrement the number of active requests. */
+    /**
+     * Decrement the number of active requests.
+     */
     void decrementActiveRequestCount() {
         mActiveRequestCount.decrementAndGet();
     }
@@ -130,60 +109,30 @@ public final class JavaCronetEngine extends CronetEngineBase {
         return mLogger;
     }
 
-    Context getContext() {
-        return mContext;
-    }
-
     @Override
-    public UrlRequestBase createRequest(
-            String url,
-            UrlRequest.Callback callback,
-            Executor executor,
-            int priority,
-            Collection<Object> connectionAnnotations,
-            boolean disableCache,
-            boolean disableConnectionMigration,
-            boolean allowDirectExecutor,
-            boolean trafficStatsTagSet,
-            int trafficStatsTag,
-            boolean trafficStatsUidSet,
-            int trafficStatsUid,
-            RequestFinishedInfo.Listener requestFinishedListener,
-            int idempotency,
-            long networkHandle) {
+    public UrlRequestBase createRequest(String url, UrlRequest.Callback callback, Executor executor,
+            int priority, Collection<Object> connectionAnnotations, boolean disableCache,
+            boolean disableConnectionMigration, boolean allowDirectExecutor,
+            boolean trafficStatsTagSet, int trafficStatsTag, boolean trafficStatsUidSet,
+            int trafficStatsUid, RequestFinishedInfo.Listener requestFinishedListener,
+            int idempotency, long networkHandle) {
         if (networkHandle != DEFAULT_NETWORK_HANDLE) {
-            mNetworkHandle = networkHandle;
+            throw new UnsupportedOperationException(
+                    "The multi-network API is not supported by the Java implementation "
+                    + "of Cronet Engine");
         }
-        return new JavaUrlRequest(
-                this,
-                callback,
-                mExecutorService,
-                executor,
-                url,
-                mUserAgent,
-                allowDirectExecutor,
-                trafficStatsTagSet,
-                trafficStatsTag,
-                trafficStatsUidSet,
-                trafficStatsUid,
-                mNetworkHandle);
+        return new JavaUrlRequest(this, callback, mExecutorService, executor, url, mUserAgent,
+                allowDirectExecutor, trafficStatsTagSet, trafficStatsTag, trafficStatsUidSet,
+                trafficStatsUid);
     }
 
     @Override
-    protected ExperimentalBidirectionalStream createBidirectionalStream(
-            String url,
-            BidirectionalStream.Callback callback,
-            Executor executor,
-            String httpMethod,
-            List<Map.Entry<String, String>> requestHeaders,
-            @StreamPriority int priority,
-            boolean delayRequestHeadersUntilFirstFlush,
-            Collection<Object> connectionAnnotations,
-            boolean trafficStatsTagSet,
-            int trafficStatsTag,
-            boolean trafficStatsUidSet,
-            int trafficStatsUid,
-            long networkHandle) {
+    protected ExperimentalBidirectionalStream createBidirectionalStream(String url,
+            BidirectionalStream.Callback callback, Executor executor, String httpMethod,
+            List<Map.Entry<String, String>> requestHeaders, @StreamPriority int priority,
+            boolean delayRequestHeadersUntilFirstFlush, Collection<Object> connectionAnnotations,
+            boolean trafficStatsTagSet, int trafficStatsTag, boolean trafficStatsUidSet,
+            int trafficStatsUid, long networkHandle) {
         throw new UnsupportedOperationException(
                 "Can't create a bidi stream - httpurlconnection doesn't have those APIs");
     }
@@ -193,7 +142,7 @@ public final class JavaCronetEngine extends CronetEngineBase {
             String url, BidirectionalStream.Callback callback, Executor executor) {
         throw new UnsupportedOperationException(
                 "The bidirectional stream API is not supported by the Java implementation "
-                        + "of Cronet Engine");
+                + "of Cronet Engine");
     }
 
     @Override
@@ -256,19 +205,14 @@ public final class JavaCronetEngine extends CronetEngineBase {
 
     @Override
     public void bindToNetwork(long networkHandle) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            throw new UnsupportedOperationException(
-                    "This multi-network Java implementation is available starting from Android"
-                            + " Pie");
-        }
-        mNetworkHandle = networkHandle;
+        throw new UnsupportedOperationException(
+                "The multi-network API is not supported by the Java implementation "
+                + "of Cronet Engine");
     }
 
     @Override
-    public void configureNetworkQualityEstimatorForTesting(
-            boolean useLocalHostRequests,
-            boolean useSmallerResponses,
-            boolean disableOfflineCheck) {}
+    public void configureNetworkQualityEstimatorForTesting(boolean useLocalHostRequests,
+            boolean useSmallerResponses, boolean disableOfflineCheck) {}
 
     @Override
     public void addRttListener(NetworkQualityRttListener listener) {}

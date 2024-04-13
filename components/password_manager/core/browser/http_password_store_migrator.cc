@@ -6,16 +6,15 @@
 
 #include <string>
 #include <utility>
-#include <vector>
 
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
 #include "components/password_manager/core/browser/password_manager_util.h"
-#include "components/password_manager/core/browser/password_store/password_store_interface.h"
-#include "components/password_manager/core/browser/password_store/smart_bubble_stats_store.h"
+#include "components/password_manager/core/browser/smart_bubble_stats_store.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
@@ -117,10 +116,9 @@ void HttpPasswordStoreMigrator::OnHSTSQueryResult(HSTSResult is_hsts) {
 }
 
 void HttpPasswordStoreMigrator::ProcessPasswordStoreResults() {
-  // Ignore PSL, affiliated and other matches.
-  std::erase_if(results_, [](const std::unique_ptr<PasswordForm>& form) {
-    return password_manager_util::GetMatchType(*form) !=
-           password_manager_util::GetLoginMatchType::kExact;
+  // Android and PSL matches are ignored.
+  base::EraseIf(results_, [](const std::unique_ptr<PasswordForm>& form) {
+    return form->is_affiliation_based_match || form->is_public_suffix_match;
   });
 
   // Add the new credentials to the password store. The HTTP forms are

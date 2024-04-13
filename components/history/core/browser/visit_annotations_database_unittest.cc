@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include "components/history/core/browser/visit_annotations_database.h"
-#include <string>
-#include <vector>
 
 #include "base/test/gtest_util.h"
 #include "base/time/time.h"
@@ -342,14 +340,14 @@ TEST_F(
   visit_2.url_for_deduping = GURL{"url_for_deduping_2"};
   visit_2.normalized_url = GURL{"normalized_url_2"};
   visit_2.url_for_display = u"url_for_display_2";
-  visit_2.interaction_state = ClusterVisit::InteractionState::kHidden;
 
   // `search_match_score` shouldn't matter, it is not persisted.
   clusters.push_back(
       {11, {visit_1, visit_2}, {}, false, u"label", u"raw_label", {}, {}, .6});
 
   // Empty or `nullopt` labels should both be retrieved as `nullopt`.
-  clusters.push_back({11, {visit_2}, {}, false, u"", std::nullopt, {}, {}, .6});
+  clusters.push_back(
+      {11, {visit_2}, {}, false, u"", absl::nullopt, {}, {}, .6});
   AddClusters(clusters);
 
   // Test `GetCluster()`.
@@ -368,8 +366,8 @@ TEST_F(
 
   const auto cluster_2 = GetCluster(2);
   EXPECT_EQ(cluster_2.cluster_id, 2);
-  EXPECT_EQ(cluster_2.label, std::nullopt);
-  EXPECT_EQ(cluster_2.raw_label, std::nullopt);
+  EXPECT_EQ(cluster_2.label, absl::nullopt);
+  EXPECT_EQ(cluster_2.raw_label, absl::nullopt);
   EXPECT_THAT(GetVisitIdsInCluster(2), UnorderedElementsAre(21));
 
   // There should be no other cluster.
@@ -396,8 +394,6 @@ TEST_F(
   EXPECT_EQ(visit_2_retrieved.url_for_deduping, GURL{"url_for_deduping_2"});
   EXPECT_EQ(visit_2_retrieved.normalized_url, GURL{"normalized_url_2"});
   EXPECT_EQ(visit_2_retrieved.url_for_display, u"url_for_display_2");
-  EXPECT_EQ(visit_2_retrieved.interaction_state,
-            ClusterVisit::InteractionState::kHidden);
 
   // Test `GetDuplicateClusterVisitIdsForClusterVisit()`.
 
@@ -672,69 +668,6 @@ TEST_F(VisitAnnotationsDatabaseTest, AddClusters_DeleteClusters) {
   // https://crbug.com/1383274
   EXPECT_THAT(GetDuplicateClusterVisitIdsForClusterVisit(6), ElementsAre());
   EXPECT_TRUE(GetClusterKeywords(4).empty());
-}
-
-TEST_F(VisitAnnotationsDatabaseTest, SerializeDataForCrossDeviceSync) {
-  // Create required data to be serialized.
-  std::vector<VisitContentModelAnnotations::Category> categories = {
-      {/*id=*/"1", /*weight=*/1}, {/*id=*/"2", /*weight=*/1}};
-  std::vector<std::string> related_searches{"related searches",
-                                            "búsquedas relacionadas"};
-  // Serialize data being synced X-Device.
-  const auto serialized_categories =
-      VisitAnnotationsDatabase::ConvertCategoriesToStringColumn(categories);
-  const auto serialized_related_searches =
-      VisitAnnotationsDatabase::SerializeToStringColumn(related_searches);
-  // Expected serialized format.
-  const std::string expected_serialized_categories = "1:1,2:1";
-  using std::string_literals::operator""s;
-  const std::string expected_serialized_related_searches =
-      "related searches\0búsquedas relacionadas"s;
-
-  EXPECT_EQ(serialized_categories, expected_serialized_categories);
-  EXPECT_EQ(serialized_related_searches, expected_serialized_related_searches);
-}
-
-TEST_F(VisitAnnotationsDatabaseTest, DeserializeDataFromCrossDeviceSync) {
-  // Create required data to be deserialized.
-  const std::string serialized_categories = "1:1,2:1";
-  using std::string_literals::operator""s;
-  const std::string serialized_related_searches =
-      "related searches\0búsquedas relacionadas"s;
-
-  // Deserialize data being synced X-Device.
-  const auto deserialized_categories =
-      VisitAnnotationsDatabase::GetCategoriesFromStringColumn(
-          serialized_categories);
-  const auto deserialized_related_searches =
-      VisitAnnotationsDatabase::DeserializeFromStringColumn(
-          serialized_related_searches);
-  // Expected deserialized data.
-  std::vector<VisitContentModelAnnotations::Category>
-      expected_deserialized_categories = {{/*id=*/"1", /*weight=*/1},
-                                          {/*id=*/"2", /*weight=*/1}};
-  std::vector<std::string> expected_deserialized_related_searches{
-      "related searches", "búsquedas relacionadas"};
-
-  EXPECT_EQ(deserialized_categories, expected_deserialized_categories);
-  EXPECT_EQ(deserialized_related_searches,
-            expected_deserialized_related_searches);
-}
-
-TEST_F(VisitAnnotationsDatabaseTest, AddClusters_UpdateVisitsInteractionState) {
-  const std::vector<VisitID>& kSampleVisitIds = {3, 2, 5};
-  auto clusters = CreateClusters({kSampleVisitIds});
-  AddClusters(clusters);
-
-  EXPECT_EQ(GetClusterVisit(kSampleVisitIds.front()).interaction_state,
-            ClusterVisit::InteractionState::kDefault);
-
-  UpdateVisitsInteractionState(kSampleVisitIds,
-                               ClusterVisit::InteractionState::kDone);
-  for (auto visit_id : kSampleVisitIds) {
-    EXPECT_EQ(GetClusterVisit(visit_id).interaction_state,
-              ClusterVisit::InteractionState::kDone);
-  }
 }
 
 }  // namespace history

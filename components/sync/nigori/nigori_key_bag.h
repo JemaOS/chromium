@@ -9,12 +9,10 @@
 #include <memory>
 #include <string>
 
-#include "components/sync/protocol/nigori_specifics.pb.h"
-
 namespace sync_pb {
 class EncryptedData;
 class NigoriKey;
-class LocalNigoriKeyBag;
+class NigoriKeyBag;
 }  // namespace sync_pb
 
 namespace syncer {
@@ -27,16 +25,17 @@ class NigoriKeyBag {
  public:
   static NigoriKeyBag CreateEmpty();
   // Deserialization from proto.
-  static NigoriKeyBag CreateFromProto(
-      const sync_pb::LocalNigoriKeyBag& key_bag);
+  static NigoriKeyBag CreateFromProto(const sync_pb::NigoriKeyBag& key_bag);
 
   NigoriKeyBag(NigoriKeyBag&& other);
   ~NigoriKeyBag();
 
   NigoriKeyBag& operator=(NigoriKeyBag&&) = default;
 
+  void CopyFrom(const NigoriKeyBag& other);
+
   // Serialization to proto.
-  sync_pb::LocalNigoriKeyBag ToProto() const;
+  sync_pb::NigoriKeyBag ToProto() const;
 
   // Makes a deep copy of |*this|.
   NigoriKeyBag Clone() const;

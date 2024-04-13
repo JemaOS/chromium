@@ -20,7 +20,7 @@ enum class DMAuthTokenType {
   kDm = 2,
   kEnrollment = 3,
   kOauth = 4,
-  kOidc = 5,
+  kJema = 5,
 };
 
 // Class that encapsulates different authentication methods to interact with
@@ -39,7 +39,7 @@ class POLICY_EXPORT DMAuth {
   static DMAuth FromDMToken(const std::string& dm_token);
   static DMAuth FromOAuthToken(const std::string& oauth_token);
   static DMAuth FromEnrollmentToken(const std::string& token);
-  static DMAuth FromOidcResponse(const std::string& oidc_id_token);
+  static DMAuth FromJemaToken(const std::string& token);
   static DMAuth NoAuth();
 
   DMAuth();
@@ -73,18 +73,18 @@ class POLICY_EXPORT DMAuth {
     return token_type_ == DMAuthTokenType::kEnrollment;
   }
   std::string oauth_token() const {
-    DCHECK(token_type_ == DMAuthTokenType::kOauth);
+    DCHECK_EQ(DMAuthTokenType::kOauth, token_type_);
     return token_;
   }
   bool has_oauth_token() const {
     return token_type_ == DMAuthTokenType::kOauth;
   }
-  std::string oidc_id_token() const {
-    DCHECK_EQ(DMAuthTokenType::kOidc, token_type_);
+  std::string jema_token() const {
+    DCHECK_EQ(DMAuthTokenType::kJema, token_type_);
     return token_;
   }
-  bool has_oidc_id_token() const {
-    return token_type_ == DMAuthTokenType::kOidc;
+  bool has_jema_token() const {
+    return token_type_ == DMAuthTokenType::kJema;
   }
   DMAuthTokenType token_type() const { return token_type_; }
 

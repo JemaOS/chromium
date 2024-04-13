@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_SERVICES_APP_SERVICE_PUBLIC_CPP_CAPABILITY_ACCESS_UPDATE_H_
 #define COMPONENTS_SERVICES_APP_SERVICE_PUBLIC_CPP_CAPABILITY_ACCESS_UPDATE_H_
 
-#include <optional>
 #include <string>
 
 #include "base/component_export.h"
@@ -13,6 +12,7 @@
 #include "base/memory/raw_ref.h"
 #include "components/account_id/account_id.h"
 #include "components/services/app_service/public/cpp/capability_access.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace apps {
 
@@ -57,17 +57,13 @@ class COMPONENT_EXPORT(APP_UPDATE) CapabilityAccessUpdate {
 
   const std::string& AppId() const;
 
-  std::optional<bool> Camera() const;
+  absl::optional<bool> Camera() const;
   bool CameraChanged() const;
 
-  std::optional<bool> Microphone() const;
+  absl::optional<bool> Microphone() const;
   bool MicrophoneChanged() const;
 
   const ::AccountId& AccountId() const;
-
-  // Returns true if this update is accessing any capability (i.e. Camera() or
-  // Microphone() returns true).
-  bool IsAccessingAnyCapability() const;
 
  private:
   raw_ptr<const CapabilityAccess> state_ = nullptr;
@@ -75,11 +71,6 @@ class COMPONENT_EXPORT(APP_UPDATE) CapabilityAccessUpdate {
 
   const raw_ref<const ::AccountId> account_id_;
 };
-
-// For logging and debug purposes.
-COMPONENT_EXPORT(APP_UPDATE)
-std::ostream& operator<<(std::ostream& out,
-                         const CapabilityAccessUpdate& update);
 
 }  // namespace apps
 

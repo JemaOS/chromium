@@ -16,7 +16,6 @@ import org.chromium.components.embedder_support.util.Origin;
 import org.chromium.content_public.browser.BrowserContextHandle;
 import org.chromium.url.GURL;
 
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -24,7 +23,9 @@ import java.util.Set;
  * embedder-specific logic.
  */
 public interface SiteSettingsDelegate {
-    /** @return The BrowserContextHandle that should be used to read and update settings. */
+    /**
+     * @return The BrowserContextHandle that should be used to read and update settings.
+     */
     BrowserContextHandle getBrowserContextHandle();
 
     /**
@@ -44,23 +45,40 @@ public interface SiteSettingsDelegate {
      */
     void getFaviconImageForURL(GURL faviconUrl, Callback<Drawable> callback);
 
-    /** @return true if the given category type should be shown in the SiteSettings Fragment. */
+    /**
+     * @return true if the given category type should be shown in the SiteSettings Fragment.
+     */
     boolean isCategoryVisible(@SiteSettingsCategory.Type int type);
 
-    /** @return true if Incognito mode is enabled. */
+    /**
+     * @return true if Incognito mode is enabled.
+     */
     boolean isIncognitoModeEnabled();
 
-    /** @return true if the QuietNotificationPrompts Feature is enabled. */
+    /**
+     * @return true if the QuietNotificationPrompts Feature is enabled.
+     */
     boolean isQuietNotificationPromptsFeatureEnabled();
 
-    /** @return true if the PrivacySandboxFirstPartySetsUI Feature is enabled. */
+    /**
+     * @return true if the PrivacySandboxFirstPartySetsUI Feature is enabled.
+     */
     boolean isPrivacySandboxFirstPartySetsUIFeatureEnabled();
 
-    /** @return The id of the notification channel associated with the given origin. */
+    /**
+     * @return true if the PrivacySandboxSettings4 feature is enabled.
+     */
+    boolean isPrivacySandboxSettings4Enabled();
+
+    /**
+     * @return The id of the notification channel associated with the given origin.
+     */
     // TODO(crbug.com/1069895): Remove this once WebLayer supports notifications.
     String getChannelIdForOrigin(String origin);
 
-    /** @return The name of the app the settings are associated with. */
+    /**
+     * @return The name of the app the settings are associated with.
+     */
     String getAppName();
 
     /**
@@ -68,16 +86,18 @@ public interface SiteSettingsDelegate {
      *     origin and content setting type.
      */
     @Nullable
-    String getDelegateAppNameForOrigin(Origin origin, @ContentSettingsType.EnumType int type);
+    String getDelegateAppNameForOrigin(Origin origin, @ContentSettingsType int type);
 
     /**
      * @return The package name of the app that should handle permission delegation for the origin
      *     and content setting type.
      */
     @Nullable
-    String getDelegatePackageNameForOrigin(Origin origin, @ContentSettingsType.EnumType int type);
+    String getDelegatePackageNameForOrigin(Origin origin, @ContentSettingsType int type);
 
-    /** @return true if Help and Feedback links and menu items should be shown to the user. */
+    /**
+     * @return true if Help and Feedback links and menu items should be shown to the user.
+     */
     boolean isHelpAndFeedbackEnabled();
 
     /**
@@ -94,13 +114,14 @@ public interface SiteSettingsDelegate {
      */
     void launchProtectedContentHelpAndFeedbackActivity(Activity currentActivity);
 
-    /** Launches the Storage Access API help center link in a Chrome Custom Tab. */
-    void launchStorageAccessHelpActivity(Activity currentActivity);
-
-    /** @return The set of all origins that have a WebAPK or TWA installed. */
+    /**
+     * @return The set of all origins that have a WebAPK or TWA installed.
+     */
     Set<String> getOriginsWithInstalledApp();
 
-    /** @return The set of all origins whose notification permissions are delegated to another app. */
+    /**
+     * @return The set of all origins whose notification permissions are delegated to another app.
+     */
     Set<String> getAllDelegatedNotificationOrigins();
 
     /**
@@ -109,7 +130,9 @@ public interface SiteSettingsDelegate {
      */
     void maybeDisplayPrivacySandboxSnackbar();
 
-    /** Dismisses the Privacy Sandbox snackbar, if active. */
+    /**
+     * Dismisses the Privacy Sandbox snackbar, if active.
+     */
     void dismissPrivacySandboxSnackbar();
 
     /***
@@ -129,16 +152,6 @@ public interface SiteSettingsDelegate {
     boolean isPartOfManagedFirstPartySet(String origin);
 
     /***
-     * @return true if the Tracking Protection UI should be displayed.
-     */
-    boolean shouldShowTrackingProtectionUI();
-
-    /***
-     * @return true if all third-party cookies are blocked when Tracking Protection is on.
-     */
-    boolean isBlockAll3PCDEnabledInTrackingProtection();
-
-    /***
      * @return Enables/disables First Party Sets data access.
      */
     void setFirstPartySetsDataAccessEnabled(boolean enabled);
@@ -156,20 +169,18 @@ public interface SiteSettingsDelegate {
      */
     boolean canLaunchClearBrowsingDataDialog();
 
-    /** Launches the Clear Browsing Data dialog in Settings, if that is possible. */
+    /**
+     * Launches the Clear Browsing Data dialog in Settings, if that is possible.
+     */
     void launchClearBrowsingDataDialog(Activity currentActivity);
 
-    /** Called when the desktop site settings page is opened. */
+    /**
+     * Called when the desktop site settings page is opened.
+     */
     void notifyRequestDesktopSiteSettingsPageOpened();
 
-    /** Called when the view this delegate is assigned to gets destroyed. */
-    void onDestroyView();
-
     /**
-     * @return whether the Tracking Protection offboarding notice should be shown in the Settings.
+     * Called when the view this delegate is assigned to gets destroyed.
      */
-    boolean shouldShowSettingsOffboardingNotice();
-
-    /** Builds browsing data model from BrowserContext and returns entries in callback */
-    void fetchBrowsingDataInfo(Callback<Map<org.chromium.url.Origin, BrowsingDataInfo>> callback);
+    void onDestroyView();
 }

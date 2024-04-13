@@ -6,6 +6,10 @@
 
 namespace syncer {
 
+ExtensionsActivity::Record::Record() : bookmark_write_count(0U) {}
+
+ExtensionsActivity::Record::~Record() = default;
+
 ExtensionsActivity::ExtensionsActivity() = default;
 
 ExtensionsActivity::~ExtensionsActivity() = default;

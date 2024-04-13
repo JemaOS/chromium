@@ -46,8 +46,7 @@ class BackgroundSyncPermissionContextTest
         web_contents()->GetPrimaryMainFrame()->GetGlobalId(),
         permissions::PermissionRequestID::RequestLocalId());
     permission_context->RequestPermission(
-        permissions::PermissionRequestData(permission_context, id,
-                                           /*user_gesture=*/false, url),
+        id, url, /* user_gesture= */ false,
         base::BindOnce(
             &BackgroundSyncPermissionContextTest::TrackPermissionDecision,
             base::Unretained(this), run_loop.QuitClosure()));

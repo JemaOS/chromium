@@ -35,7 +35,9 @@ public abstract class InMemoryTransformCronetCallback<T> extends ImplicitFlowCon
     private ByteArrayOutputStream mResponseBodyStream;
     private WritableByteChannel mResponseBodyChannel;
 
-    /** The set of listeners observing the associated request. */
+    /**
+     * The set of listeners observing the associated request.
+     */
     private final Set<CronetRequestCompletionListener<? super T>> mListeners =
             new LinkedHashSet<>();
 
@@ -105,7 +107,9 @@ public abstract class InMemoryTransformCronetCallback<T> extends ImplicitFlowCon
         }
     }
 
-    /** Returns the numerical value of the Content-Length header, or -1 if not set or invalid. */
+    /**
+     * Returns the numerical value of the Content-Length header, or -1 if not set or invalid.
+     */
     private static long getBodyLength(UrlResponseInfo info) {
         List<String> contentLengthHeader = info.getAllHeaders().get(CONTENT_LENGTH_HEADER_NAME);
         if (contentLengthHeader == null || contentLengthHeader.size() != 1) {

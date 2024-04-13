@@ -17,10 +17,6 @@
 #include "url/gurl.h"
 #include "url/origin.h"
 
-#if BUILDFLAG(IS_ANDROID)
-#include "base/android/build_info.h"
-#endif
-
 namespace password_manager {
 
 using metrics_util::LeakDialogType;
@@ -72,6 +68,7 @@ std::u16string GetCancelButtonLabel(CredentialLeakType leak_type) {
 }
 
 std::u16string GetDescription(CredentialLeakType leak_type) {
+  if (UsesPasswordManagerUpdatedNaming()) {
     if (!ShouldCheckPasswords(leak_type)) {
       return l10n_util::GetStringUTF16(
           UsesPasswordManagerGoogleBranding()
@@ -88,12 +85,30 @@ std::u16string GetDescription(CredentialLeakType leak_type) {
         UsesPasswordManagerGoogleBranding()
             ? IDS_CREDENTIAL_LEAK_CHANGE_AND_CHECK_PASSWORDS_MESSAGE_GPM_BRANDED
             : IDS_CREDENTIAL_LEAK_CHANGE_AND_CHECK_PASSWORDS_MESSAGE_GPM_NON_BRANDED);
+  } else {
+    if (!ShouldCheckPasswords(leak_type)) {
+      return l10n_util::GetStringUTF16(
+          IDS_CREDENTIAL_LEAK_CHANGE_PASSWORD_MESSAGE);
+    }
+    if (password_manager::IsPasswordSaved(leak_type)) {
+      return l10n_util::GetStringUTF16(
+          IDS_CREDENTIAL_LEAK_CHECK_PASSWORDS_MESSAGE);
+    }
+    return l10n_util::GetStringUTF16(
+        IDS_CREDENTIAL_LEAK_CHANGE_AND_CHECK_PASSWORDS_MESSAGE);
+  }
 }
 
 std::u16string GetTitle(CredentialLeakType leak_type) {
+  if (UsesPasswordManagerUpdatedNaming()) {
     return l10n_util::GetStringUTF16(ShouldCheckPasswords(leak_type)
                                          ? IDS_CREDENTIAL_LEAK_TITLE_CHECK_GPM
                                          : IDS_CREDENTIAL_LEAK_TITLE_CHANGE);
+  } else {
+    return l10n_util::GetStringUTF16(ShouldCheckPasswords(leak_type)
+                                         ? IDS_CREDENTIAL_LEAK_TITLE_CHECK
+                                         : IDS_CREDENTIAL_LEAK_TITLE_CHANGE);
+  }
 }
 
 std::u16string GetLeakDetectionTooltip() {
@@ -101,11 +116,6 @@ std::u16string GetLeakDetectionTooltip() {
 }
 
 bool ShouldCheckPasswords(CredentialLeakType leak_type) {
-#if BUILDFLAG(IS_ANDROID)
-  if (base::android::BuildInfo::GetInstance()->is_automotive()) {
-    return false;
-  }
-#endif
   return password_manager::IsPasswordUsedOnOtherSites(leak_type);
 }
 
@@ -141,6 +151,14 @@ GURL GetPasswordCheckupURL(PasswordCheckupReferrer referrer) {
           : "password_settings";
 
   return net::AppendQueryParameter(url, "utm_campaign", campaign);
+}
+
+bool UsesPasswordManagerUpdatedNaming() {
+#if BUILDFLAG(IS_ANDROID)
+  return password_manager::features::UsesUnifiedPasswordManagerBranding();
+#else
+  return true;
+#endif
 }
 
 std::unique_ptr<LeakDialogTraits> CreateDialogTraits(

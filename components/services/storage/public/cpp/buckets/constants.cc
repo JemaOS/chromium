@@ -6,9 +6,6 @@
 
 namespace storage {
 
-// Leading underscores are disallowed for user-specified buckets. This name is
-// intentionally chosen to be non-overlapping with the set of allowed
-// user-specified bucket names.
-const char kDefaultBucketName[] = "_default";
+const char kDefaultBucketName[] = "default";
 
 }  // namespace storage

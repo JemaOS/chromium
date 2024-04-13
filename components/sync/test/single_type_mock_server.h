@@ -9,7 +9,6 @@
 #include <stdint.h>
 
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -58,14 +57,6 @@ class SingleTypeMockServer {
       const ClientTagHash& tag_hash,
       const sync_pb::EntitySpecifics& specifics);
 
-  // Generates a SyncEntity representing a server-delivered update for a shared
-  // type.
-  sync_pb::SyncEntity UpdateFromServer(
-      int64_t version_offset,
-      const ClientTagHash& tag_hash,
-      const sync_pb::EntitySpecifics& specifics,
-      const std::string& collaboration_id);
-
   // Generates a SyncEntity representing a server-delivered update to delete
   // an item.
   sync_pb::SyncEntity TombstoneFromServer(int64_t version_offset,
@@ -85,7 +76,7 @@ class SingleTypeMockServer {
   // Getters to return the commit messages sent to the server through
   // DoSuccessfulCommit().
   size_t GetNumCommitMessages() const;
-  const sync_pb::ClientToServerMessage& GetNthCommitMessage(size_t n) const;
+  sync_pb::ClientToServerMessage GetNthCommitMessage(size_t n) const;
 
   // Getters to return the most recently committed entities for a given
   // unique_client_tag hash.
@@ -102,11 +93,7 @@ class SingleTypeMockServer {
   void SetProgressMarkerToken(const std::string& token);
 
   // Sets whether to return GC directive as part of GetProgress().
-  void SetReturnGcDirectiveVersionWatermark(bool return_gc_directive);
-
-  // Update active collaborations.
-  void AddCollaboration(const std::string& collaboration_id);
-  void RemoveCollaboration(const std::string& collaboration_id);
+  void SetReturnGcDirective(bool return_gc_directive);
 
  private:
   static std::string GenerateId(const ClientTagHash& tag_hash);
@@ -130,12 +117,8 @@ class SingleTypeMockServer {
   // The token that is used to generate the current progress marker.
   std::string progress_marker_token_;
 
-  // Whether to return version watermark GC directive in GetProgress().
-  bool return_gc_directive_version_watermark_ = false;
-
-  // List of active collaborations for the current type. Used for shared types
-  // only.
-  std::set<std::string> active_collaborations_;
+  // Whether to return GC directive in GetProgress().
+  bool return_gc_directive_ = false;
 };
 
 }  // namespace syncer

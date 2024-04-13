@@ -4,6 +4,9 @@
 
 #include "components/exo/wayland/wl_seat.h"
 
+#include <wayland-server-core.h>
+#include <wayland-server-protocol-core.h>
+
 #include "components/exo/keyboard.h"
 #include "components/exo/pointer.h"
 #include "components/exo/touch.h"
@@ -14,7 +17,8 @@
 #include "components/exo/wayland/wayland_touch_delegate.h"
 #include "ui/base/buildflags.h"
 
-namespace exo::wayland {
+namespace exo {
+namespace wayland {
 
 namespace {
 
@@ -133,4 +137,5 @@ void bind_seat(wl_client* client, void* data, uint32_t version, uint32_t id) {
   wl_seat_send_capabilities(resource, capabilities);
 }
 
-}  // namespace exo::wayland
+}  // namespace wayland
+}  // namespace exo

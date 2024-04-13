@@ -20,7 +20,7 @@ class ModelObserverTracker : public TestOptimizationGuideModelProvider {
  public:
   void AddObserverForOptimizationTargetModel(
       proto::OptimizationTarget target,
-      const std::optional<proto::Any>& model_metadata,
+      const absl::optional<proto::Any>& model_metadata,
       OptimizationTargetModelObserver* observer) override {
     // Make sure we send what is expected based on
     // TestModelHandler ctor.
@@ -28,9 +28,8 @@ class ModelObserverTracker : public TestOptimizationGuideModelProvider {
         proto::OptimizationTarget::OPTIMIZATION_TARGET_PAINFUL_PAGE_LOAD) {
       return;
     }
-    if (model_metadata != std::nullopt) {
+    if (model_metadata != absl::nullopt)
       return;
-    }
 
     add_observer_called_ = true;
   }
@@ -61,7 +60,7 @@ class ModelHandlerTest : public testing::Test {
 
   void SetUp() override {
     base::FilePath source_root_dir;
-    base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &source_root_dir);
+    base::PathService::Get(base::DIR_SOURCE_ROOT, &source_root_dir);
     model_file_path_ = source_root_dir.AppendASCII("components")
                            .AppendASCII("test")
                            .AppendASCII("data")
@@ -89,7 +88,7 @@ class ModelHandlerTest : public testing::Test {
 
   void PushModelFileToModelExecutor(
       proto::OptimizationTarget optimization_target,
-      const std::optional<proto::Any>& model_metadata) {
+      const absl::optional<proto::Any>& model_metadata) {
     DCHECK(model_handler());
     std::unique_ptr<ModelInfo> model_info =
         TestModelInfoBuilder()
@@ -139,7 +138,7 @@ TEST_F(ModelHandlerTest, ModelFileUpdatedWrongTarget) {
 
   PushModelFileToModelExecutor(
       proto::OptimizationTarget::OPTIMIZATION_TARGET_LANGUAGE_DETECTION,
-      /*model_metadata=*/std::nullopt);
+      /*model_metadata=*/absl::nullopt);
 
   EXPECT_FALSE(model_handler()->ModelAvailable());
 
@@ -158,7 +157,7 @@ TEST_F(ModelHandlerTest, ParsedSupportedFeaturesForLoadedModelNoMetadata) {
 
   PushModelFileToModelExecutor(
       proto::OptimizationTarget::OPTIMIZATION_TARGET_PAINFUL_PAGE_LOAD,
-      /*model_metadata=*/std::nullopt);
+      /*model_metadata=*/absl::nullopt);
   EXPECT_TRUE(model_handler()->ModelAvailable());
   EXPECT_TRUE(model_handler()->GetModelInfo());
 
@@ -181,10 +180,10 @@ TEST_F(ModelHandlerTest, MultipleModelUpdatesOnlyRecordsMetricOnce) {
 
   PushModelFileToModelExecutor(
       proto::OptimizationTarget::OPTIMIZATION_TARGET_PAINFUL_PAGE_LOAD,
-      /*model_metadata=*/std::nullopt);
+      /*model_metadata=*/absl::nullopt);
   PushModelFileToModelExecutor(
       proto::OptimizationTarget::OPTIMIZATION_TARGET_PAINFUL_PAGE_LOAD,
-      /*model_metadata=*/std::nullopt);
+      /*model_metadata=*/absl::nullopt);
 
   histogram_tester.ExpectUniqueSample(
       "OptimizationGuide.ModelHandler.HandlerCreated.PainfulPageLoad", true, 1);
@@ -207,7 +206,7 @@ TEST_F(ModelHandlerTest, ParsedSupportedFeaturesForLoadedModelWithMetadata) {
       any_metadata);
   EXPECT_TRUE(model_handler()->ModelAvailable());
 
-  std::optional<proto::Duration> supported_features_for_loaded_model =
+  absl::optional<proto::Duration> supported_features_for_loaded_model =
       model_handler()->ParsedSupportedFeaturesForLoadedModel<proto::Duration>();
   ASSERT_TRUE(supported_features_for_loaded_model.has_value());
   EXPECT_EQ(123, supported_features_for_loaded_model->seconds());
@@ -225,7 +224,7 @@ TEST_F(ModelHandlerTest, Execute) {
   model_handler()->ExecuteModelWithInput(
       base::BindOnce(
           [](base::RunLoop* run_loop,
-             const std::optional<std::vector<float>>& output) {
+             const absl::optional<std::vector<float>>& output) {
             EXPECT_TRUE(output.has_value());
             EXPECT_EQ((size_t)1, output.value().size());
             EXPECT_EQ(1.0f, output.value().at(0));
@@ -257,7 +256,7 @@ TEST_F(ModelHandlerTest, ExecuteWithCancelableTaskTracker) {
       &task_tracker,
       base::BindOnce(
           [](base::RunLoop* run_loop,
-             const std::optional<std::vector<float>>& output) {
+             const absl::optional<std::vector<float>>& output) {
             EXPECT_TRUE(output.has_value());
             EXPECT_EQ((size_t)1, output.value().size());
             EXPECT_EQ(1.0f, output.value().at(0));
@@ -289,7 +288,7 @@ TEST_F(ModelHandlerTest, ExecuteWithCancelableTaskTrackerCanceled) {
       &task_tracker,
       base::BindOnce(
           [](bool* task_completed,
-             const std::optional<std::vector<float>>& output) {
+             const absl::optional<std::vector<float>>& output) {
             *task_completed = true;
           },
           &task_completed),
@@ -302,29 +301,6 @@ TEST_F(ModelHandlerTest, ExecuteWithCancelableTaskTrackerCanceled) {
           optimization_guide::GetStringNameForOptimizationTarget(
               proto::OptimizationTarget::OPTIMIZATION_TARGET_PAINFUL_PAGE_LOAD),
       0);
-}
-
-TEST_F(ModelHandlerTest, BatchExecuteModelWithInputSync) {
-  base::HistogramTester histogram_tester;
-  CreateModelHandler();
-
-  std::vector<float> input;
-  input.push_back(1.0f);
-
-  auto batch_outputs =
-      model_handler()->BatchExecuteModelWithInputSync({input, input});
-  EXPECT_EQ(2u, batch_outputs.size());
-  for (const auto& output : batch_outputs) {
-    ASSERT_TRUE(output.has_value());
-    EXPECT_EQ(1u, output.value().size());
-    EXPECT_EQ(1.0f, output.value().at(0));
-  }
-
-  histogram_tester.ExpectTotalCount(
-      "OptimizationGuide.ModelExecutor.TaskExecutionLatency." +
-          optimization_guide::GetStringNameForOptimizationTarget(
-              proto::OptimizationTarget::OPTIMIZATION_TARGET_PAINFUL_PAGE_LOAD),
-      1);
 }
 
 TEST_F(ModelHandlerTest, AddOnModelUpdatedCallback_RunsImmediately) {

@@ -10,7 +10,6 @@
 #include "base/feature_list.h"
 #include "components/feature_engagement/public/configuration.h"
 #include "components/feature_engagement/public/feature_list.h"
-#include "components/feature_engagement/public/group_constants.h"
 
 namespace feature_engagement {
 
@@ -52,22 +51,13 @@ bool FeatureConfigEventStorageValidator::ShouldKeep(
 }
 
 void FeatureConfigEventStorageValidator::InitializeFeatures(
-    const FeatureVector& features,
-    const GroupVector& groups,
+    FeatureVector features,
     const Configuration& configuration) {
   for (const auto* feature : features) {
     if (!base::FeatureList::IsEnabled(*feature))
       continue;
 
     InitializeFeatureConfig(configuration.GetFeatureConfig(*feature));
-  }
-
-  for (const auto* group : groups) {
-    if (!base::FeatureList::IsEnabled(*group)) {
-      continue;
-    }
-
-    InitializeGroupConfig(configuration.GetGroupConfig(*group));
   }
 }
 
@@ -83,15 +73,6 @@ void FeatureConfigEventStorageValidator::InitializeFeatureConfig(
 
   for (const auto& event_config : feature_config.event_configs)
     InitializeEventConfig(event_config);
-}
-
-void FeatureConfigEventStorageValidator::InitializeGroupConfig(
-    const GroupConfig& group_config) {
-  InitializeEventConfig(group_config.trigger);
-
-  for (const auto& event_config : group_config.event_configs) {
-    InitializeEventConfig(event_config);
-  }
 }
 
 void FeatureConfigEventStorageValidator::InitializeEventConfig(

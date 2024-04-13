@@ -6,11 +6,8 @@
 #define COMPONENTS_SESSIONS_IOS_IOS_RESTORE_LIVE_TAB_H_
 
 #include "components/sessions/ios/ios_live_tab.h"
-#include "ios/web/public/session/proto/navigation.pb.h"
 
-namespace web::proto {
-class NavigationStorage;
-}
+@class CRWSessionStorage;
 
 namespace sessions {
 
@@ -18,7 +15,7 @@ namespace sessions {
 // when restoring tabs from a crashed session.
 class SESSIONS_EXPORT RestoreIOSLiveTab : public IOSLiveTab {
  public:
-  explicit RestoreIOSLiveTab(web::proto::NavigationStorage storage);
+  explicit RestoreIOSLiveTab(CRWSessionStorage* session);
   ~RestoreIOSLiveTab() override;
   RestoreIOSLiveTab(const RestoreIOSLiveTab&) = delete;
   RestoreIOSLiveTab& operator=(const RestoreIOSLiveTab&) = delete;
@@ -34,7 +31,7 @@ class SESSIONS_EXPORT RestoreIOSLiveTab : public IOSLiveTab {
   const web::WebState* GetWebState() const override;
 
  private:
-  const web::proto::NavigationStorage storage_;
+  CRWSessionStorage* session_;
 };
 
 }  // namespace sessions

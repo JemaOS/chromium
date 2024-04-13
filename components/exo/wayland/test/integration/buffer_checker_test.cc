@@ -456,9 +456,9 @@ void PrintReportedFormats(std::vector<uint32_t>& formats) {
     drm_names.push_back(DrmCodeToString(format));
     buffer_names.push_back(DrmCodeToBufferFormatString(format));
   }
-  LOG(INFO) << "zwp_linux_dmabuf_v1 reported supported DRM formats: "
+  LOG(ERROR) << "zwp_linux_dmabuf_v1 reported supported DRM formats: "
              << base::JoinString(drm_names, ", ");
-  LOG(INFO) << "zwp_linux_dmabuf_v1 reported supported gfx::BufferFormats: "
+  LOG(ERROR) << "zwp_linux_dmabuf_v1 reported supported gfx::BufferFormats: "
              << base::JoinString(buffer_names, ", ");
 }
 

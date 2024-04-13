@@ -21,6 +21,8 @@ constexpr char kEventSeparator[] = "\n";
 
 }  // namespace
 
+const char kBreadcrumbsProductDataKey[] = "breadcrumbs";
+
 CrashReporterBreadcrumbObserver::CrashReporterBreadcrumbObserver() = default;
 CrashReporterBreadcrumbObserver::~CrashReporterBreadcrumbObserver() = default;
 

@@ -27,8 +27,6 @@ const char* ResultFormatToShortString(
       return "I420";
     case viz::CopyOutputRequest::ResultFormat::NV12_PLANES:
       return "NV12";
-    case viz::CopyOutputRequest::ResultFormat::NV12_MULTIPLANE:
-      return "NV12_MULTIPLANE";
   }
 }
 
@@ -109,26 +107,21 @@ void CopyOutputRequest::SetUniformScaleRatio(int scale_from, int scale_to) {
 void CopyOutputRequest::set_blit_request(BlitRequest blit_request) {
   DCHECK(!blit_request_);
   DCHECK_EQ(result_destination(), ResultDestination::kNativeTextures);
-  DCHECK(result_format() == ResultFormat::NV12_PLANES ||
-         result_format() == ResultFormat::NV12_MULTIPLANE ||
-         result_format() == ResultFormat::RGBA);
+  DCHECK_EQ(result_format(), ResultFormat::NV12_PLANES);
   DCHECK(has_result_selection());
 
-  if (result_format() == ResultFormat::NV12_PLANES ||
-      result_format() == ResultFormat::NV12_MULTIPLANE) {
-    // Destination region must start at an even offset for NV12 results:
-    DCHECK_EQ(blit_request.destination_region_offset().x() % 2, 0);
-    DCHECK_EQ(blit_request.destination_region_offset().y() % 2, 0);
-  }
+  // Destination region must start at an even offset for NV12 results:
+  DCHECK_EQ(blit_request.destination_region_offset().x() % 2, 0);
+  DCHECK_EQ(blit_request.destination_region_offset().y() % 2, 0);
 
 #if DCHECK_IS_ON()
   {
-    const auto first_zeroed_mailbox_it =
+    const gpu::MailboxHolder* first_zeroed_mailbox_it =
         base::ranges::find_if(blit_request.mailboxes(), &gpu::Mailbox::IsZero,
                               &gpu::MailboxHolder::mailbox);
 
-    size_t num_nonzeroed_mailboxes = static_cast<size_t>(
-        first_zeroed_mailbox_it - blit_request.mailboxes().begin());
+    size_t num_nonzeroed_mailboxes =
+        first_zeroed_mailbox_it - blit_request.mailboxes().begin();
 
     switch (result_format()) {
       case ResultFormat::RGBA:
@@ -136,10 +129,6 @@ void CopyOutputRequest::set_blit_request(BlitRequest blit_request) {
         break;
       case ResultFormat::NV12_PLANES:
         DCHECK_EQ(num_nonzeroed_mailboxes, CopyOutputResult::kNV12MaxPlanes);
-        break;
-      case ResultFormat::NV12_MULTIPLANE:
-        DCHECK_EQ(num_nonzeroed_mailboxes,
-                  CopyOutputResult::kNV12MultiplaneMaxPlanes);
         break;
       case ResultFormat::I420_PLANES:
         DCHECK_EQ(num_nonzeroed_mailboxes, CopyOutputResult::kI420MaxPlanes);

@@ -56,6 +56,13 @@ class InfoBarDelegate {
     PAGE_ACTION_TYPE,
   };
 
+  enum InfoBarAutomationType {
+    CONFIRM_INFOBAR,
+    PASSWORD_INFOBAR,
+    RPH_INFOBAR,
+    UNKNOWN_INFOBAR,
+  };
+
   // Unique identifier for every InfoBarDelegate subclass.  Use suffixes to mark
   // infobars specific to particular OSes/platforms.
   // KEEP IN SYNC WITH THE InfoBarIdentifier ENUM IN enums.xml.
@@ -169,22 +176,15 @@ class InfoBarDelegate {
     // Removed: EXPERIMENTAL_INFOBAR_DELEGATE_LACROS = 102,
     // Removed: ROSETTA_REQUIRED_INFOBAR_DELEGATE = 103,
     // Removed: WEBID_PERMISSION_INFOBAR_DELEGATE = 104,
-    // Removed: AUTOFILL_OFFER_NOTIFICATION_INFOBAR_DELEGATE = 105,
+    AUTOFILL_OFFER_NOTIFICATION_INFOBAR_DELEGATE = 105,
     AUTOFILL_ADDRESS_PROFILE_INFOBAR_DELEGATE_IOS = 106,
     ADD_TO_READING_LIST_IOS = 107,
     IOS_PERMISSIONS_INFOBAR_DELEGATE = 108,
-    // Removed: SUPPORTED_LINKS_INFOBAR_DELEGATE_CHROMEOS = 109,
+    SUPPORTED_LINKS_INFOBAR_DELEGATE_CHROMEOS = 109,
     AUTOFILL_VIRTUAL_CARD_ENROLLMENT_INFOBAR_DELEGATE_MOBILE = 110,
     TAILORED_SECURITY_SERVICE_INFOBAR_DELEGATE = 111,
     CHROME_FOR_TESTING_INFOBAR_DELEGATE = 112,
     EXTENSIONS_WEB_AUTH_FLOW_INFOBAR_DELEGATE = 113,
-    TAB_PICKUP_INFOBAR_DELEGATE = 114,
-    LOCAL_TEST_POLICIES_APPLIED_INFOBAR = 115,
-    BIDDING_AND_AUCTION_CONSENTED_DEBUGGING_DELEGATE = 116,
-    PARCEL_TRACKING_INFOBAR_DELEGATE = 117,
-    TEST_THIRD_PARTY_COOKIE_PHASEOUT_DELEGATE = 118,
-    ENABLE_LINK_CAPTURING_INFOBAR_DELEGATE = 119,
-    DEV_TOOLS_SHARED_PROCESS_DELEGATE = 120,
   };
 
   // Describes navigation events, used to decide whether infobars should be
@@ -216,6 +216,8 @@ class InfoBarDelegate {
   // New implementers must append a new value to the InfoBarIdentifier enum here
   // and in histograms/enums.xml.
   virtual InfoBarIdentifier GetIdentifier() const = 0;
+
+  virtual InfoBarAutomationType GetInfoBarAutomationType() const;
 
   // Returns the resource ID of the icon to be shown for this InfoBar.  If the
   // value is equal to |kNoIconID|, GetIcon() will not show an icon by default.

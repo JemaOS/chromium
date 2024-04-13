@@ -24,14 +24,17 @@ import org.chromium.content_public.browser.BrowserContextHandle;
  * permissions that have been granted to websites, as well as enable or disable permissions
  * browser-wide.
  */
-public class SiteSettings extends BaseSiteSettingsFragment
+public class SiteSettings extends SiteSettingsPreferenceFragment
         implements Preference.OnPreferenceClickListener, CustomDividerFragment {
     // The keys for each category shown on the Site Settings page
     // are defined in the SiteSettingsCategory.
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        SettingsUtils.addPreferencesFromResource(this, R.xml.site_settings_preferences);
+        SettingsUtils.addPreferencesFromResource(this,
+                getSiteSettingsDelegate().isPrivacySandboxSettings4Enabled()
+                        ? R.xml.site_settings_preferences_with_categories
+                        : R.xml.site_settings_preferences);
         getActivity().setTitle(getContext().getString(R.string.prefs_site_settings));
 
         configurePreferences();
@@ -48,14 +51,8 @@ public class SiteSettings extends BaseSiteSettingsFragment
     }
 
     private void configurePreferences() {
-        if (getSiteSettingsDelegate().shouldShowTrackingProtectionUI()) {
-            findPreference(Type.THIRD_PARTY_COOKIES).setVisible(false);
-            findPreference(Type.TRACKING_PROTECTION).setVisible(true);
-        }
-
         // Remove unsupported settings categories.
-        for (@SiteSettingsCategory.Type int type = 0;
-                type < SiteSettingsCategory.Type.NUM_ENTRIES;
+        for (@SiteSettingsCategory.Type int type = 0; type < SiteSettingsCategory.Type.NUM_ENTRIES;
                 type++) {
             if (!getSiteSettingsDelegate().isCategoryVisible(type)) {
                 getPreferenceScreen().removePreference(findPreference(type));
@@ -91,42 +88,36 @@ public class SiteSettings extends BaseSiteSettingsFragment
             } else if (prefCategory == Type.THIRD_PARTY_COOKIES) {
                 checked = cookieControlsMode != CookieControlsMode.BLOCK_THIRD_PARTY;
             } else if (requiresTriStateSetting) {
-                setting =
-                        WebsitePreferenceBridge.getDefaultContentSetting(
-                                browserContextHandle, contentType);
+                setting = WebsitePreferenceBridge.getDefaultContentSetting(
+                        browserContextHandle, contentType);
             } else {
-                checked =
-                        WebsitePreferenceBridge.isCategoryEnabled(
-                                browserContextHandle, contentType);
+                checked = WebsitePreferenceBridge.isCategoryEnabled(
+                        browserContextHandle, contentType);
             }
 
-            p.setTitle(
-                    ContentSettingsResources.getTitleForCategory(
-                            prefCategory, getSiteSettingsDelegate()));
+            p.setTitle(ContentSettingsResources.getTitleForCategory(
+                    prefCategory, getSiteSettingsDelegate()));
 
             p.setOnPreferenceClickListener(this);
 
-            if ((Type.CAMERA == prefCategory
-                            || Type.MICROPHONE == prefCategory
-                            || Type.NOTIFICATIONS == prefCategory
-                            || Type.AUGMENTED_REALITY == prefCategory)
-                    && SiteSettingsCategory.createFromType(
-                                    getSiteSettingsDelegate().getBrowserContextHandle(),
-                                    prefCategory)
-                            .showPermissionBlockedMessage(getContext())) {
+            if ((Type.CAMERA == prefCategory || Type.MICROPHONE == prefCategory
+                        || Type.NOTIFICATIONS == prefCategory
+                        || Type.AUGMENTED_REALITY == prefCategory)
+                    && SiteSettingsCategory
+                               .createFromType(getSiteSettingsDelegate().getBrowserContextHandle(),
+                                       prefCategory)
+                               .showPermissionBlockedMessage(getContext())) {
                 // Show 'disabled' message when permission is not granted in Android.
-                p.setSummary(
-                        ContentSettingsResources.getCategorySummary(
-                                ContentSettingsResources.getDefaultDisabledValue(contentType),
-                                /* isOneTime= */ false));
+                p.setSummary(ContentSettingsResources.getCategorySummary(contentType, false));
+            } else if (Type.COOKIES == prefCategory && checked
+                    && cookieControlsMode == CookieControlsMode.BLOCK_THIRD_PARTY) {
+                p.setSummary(ContentSettingsResources.getCookieAllowedExceptThirdPartySummary());
             } else if (Type.SITE_DATA == prefCategory) {
                 p.setSummary(ContentSettingsResources.getSiteDataListSummary(checked));
             } else if (Type.THIRD_PARTY_COOKIES == prefCategory) {
-                p.setSummary(
-                        ContentSettingsResources.getThirdPartyCookieListSummary(
-                                cookieControlsMode));
-            } else if (Type.DEVICE_LOCATION == prefCategory
-                    && checked
+                p.setSummary(ContentSettingsResources.getThirdPartyCookieListSummary(
+                        cookieControlsMode));
+            } else if (Type.DEVICE_LOCATION == prefCategory && checked
                     && WebsitePreferenceBridge.isLocationAllowedByPolicy(browserContextHandle)) {
                 p.setSummary(ContentSettingsResources.getGeolocationAllowedSummary());
             } else if (Type.CLIPBOARD == prefCategory && !checked) {
@@ -139,51 +130,23 @@ public class SiteSettings extends BaseSiteSettingsFragment
                 p.setSummary(ContentSettingsResources.getDesktopSiteListSummary(checked));
             } else if (Type.AUTO_DARK_WEB_CONTENT == prefCategory) {
                 p.setSummary(ContentSettingsResources.getAutoDarkWebContentListSummary(checked));
-            } else if (Type.ZOOM == prefCategory) {
-                // Don't want to set a summary for Zoom because we don't want any message to display
-                // under the Zoom row on site settings.
             } else if (requiresTriStateSetting) {
-                p.setSummary(
-                        ContentSettingsResources.getCategorySummary(
-                                setting, /* isOneTime= */ false));
+                p.setSummary(ContentSettingsResources.getCategorySummary(setting));
             } else {
-                @ContentSettingValues
-                int defaultForToggle =
-                        checked
-                                ? ContentSettingsResources.getDefaultEnabledValue(contentType)
-                                : ContentSettingsResources.getDefaultDisabledValue(contentType);
-                p.setSummary(
-                        ContentSettingsResources.getCategorySummary(
-                                defaultForToggle, /* isOneTime= */ false));
+                p.setSummary(ContentSettingsResources.getCategorySummary(contentType, checked));
             }
 
             if (prefCategory != Type.THIRD_PARTY_COOKIES) {
-                p.setIcon(
-                        SettingsUtils.getTintedIcon(
-                                getContext(),
-                                ContentSettingsResources.getIcon(
-                                        contentType, getSiteSettingsDelegate())));
+                p.setIcon(SettingsUtils.getTintedIcon(getContext(),
+                        ContentSettingsResources.getIcon(contentType, getSiteSettingsDelegate())));
             }
         }
 
-        // For AllSiteSettings options.
         Preference p = findPreference(Type.ALL_SITES);
         if (p != null) p.setOnPreferenceClickListener(this);
         // TODO(finnur): Re-move this for Storage once it can be moved to the 'Usage' menu.
         p = findPreference(Type.USE_STORAGE);
         if (p != null) p.setOnPreferenceClickListener(this);
-        p = findPreference(Type.ZOOM);
-        if (p != null) p.setOnPreferenceClickListener(this);
-        // Handle Tracking Protection separately.
-        if (getSiteSettingsDelegate().shouldShowTrackingProtectionUI()) {
-            p = findPreference(Type.TRACKING_PROTECTION);
-            if (p != null) {
-                p.setSummary(
-                        ContentSettingsResources.getTrackingProtectionListSummary(
-                                getSiteSettingsDelegate()
-                                        .isBlockAll3PCDEnabledInTrackingProtection()));
-            }
-        }
     }
 
     @Override
@@ -196,12 +159,10 @@ public class SiteSettings extends BaseSiteSettingsFragment
 
     @Override
     public boolean onPreferenceClick(Preference preference) {
-        preference
-                .getExtras()
-                .putString(SingleCategorySettings.EXTRA_CATEGORY, preference.getKey());
-        preference
-                .getExtras()
-                .putString(SingleCategorySettings.EXTRA_TITLE, preference.getTitle().toString());
+        preference.getExtras().putString(
+                SingleCategorySettings.EXTRA_CATEGORY, preference.getKey());
+        preference.getExtras().putString(
+                SingleCategorySettings.EXTRA_TITLE, preference.getTitle().toString());
         return false;
     }
 }

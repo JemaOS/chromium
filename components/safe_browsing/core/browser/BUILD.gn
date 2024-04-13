@@ -6,16 +6,16 @@ import("//build/config/features.gni")
 
 source_set("browser") {
   sources = [
-    "database_manager_mechanism.cc",
-    "database_manager_mechanism.h",
+    "hash_database_mechanism.cc",
+    "hash_database_mechanism.h",
     "hash_realtime_mechanism.cc",
     "hash_realtime_mechanism.h",
     "ping_manager.cc",
     "ping_manager.h",
-    "safe_browsing_hats_delegate.cc",
-    "safe_browsing_hats_delegate.h",
     "safe_browsing_lookup_mechanism.cc",
     "safe_browsing_lookup_mechanism.h",
+    "safe_browsing_lookup_mechanism_experimenter.cc",
+    "safe_browsing_lookup_mechanism_experimenter.h",
     "safe_browsing_lookup_mechanism_runner.cc",
     "safe_browsing_lookup_mechanism_runner.h",
     "safe_browsing_url_checker_impl.cc",
@@ -42,7 +42,6 @@ source_set("browser") {
     "//components/safe_browsing/core/browser/db:util",
     "//components/safe_browsing/core/browser/db:v4_protocol_manager_util",
     "//components/safe_browsing/core/browser/hashprefix_realtime:hash_realtime_service",
-    "//components/safe_browsing/core/browser/hashprefix_realtime:hash_realtime_utils",
     "//components/safe_browsing/core/browser/realtime:policy_engine",
     "//components/safe_browsing/core/browser/realtime:url_lookup_service_base",
     "//components/safe_browsing/core/browser/utils",
@@ -50,7 +49,6 @@ source_set("browser") {
     "//components/safe_browsing/core/common/proto:csd_proto",
     "//components/safe_browsing/core/common/proto:realtimeapi_proto",
     "//components/security_interstitials/core:unsafe_resource",
-    "//components/sessions:session_id",
     "//components/unified_consent",
     "//components/version_info",
     "//net",
@@ -79,7 +77,11 @@ source_set("ping_manager_unittest") {
 
 source_set("safe_browsing_url_checker_unittest") {
   testonly = true
-  sources = [ "safe_browsing_url_checker_impl_unittest.cc" ]
+  sources = [
+    "hash_realtime_mechanism_unittest.cc",
+    "safe_browsing_url_checker_impl_unittest.cc",
+    "url_realtime_mechanism_unittest.cc",
+  ]
   deps = [
     ":browser",
     "//base/test:test_support",
@@ -87,16 +89,27 @@ source_set("safe_browsing_url_checker_unittest") {
     "//components/safe_browsing/core/browser/db:test_database_manager",
     "//components/safe_browsing/core/browser/db:util",
     "//components/safe_browsing/core/browser/hashprefix_realtime:hash_realtime_service",
-    "//components/safe_browsing/core/browser/hashprefix_realtime:hash_realtime_utils",
-    "//components/safe_browsing/core/browser/realtime:test_support",
     "//components/safe_browsing/core/browser/realtime:url_lookup_service",
     "//components/safe_browsing/core/common",
     "//components/safe_browsing/core/common/proto:csd_proto",
     "//components/security_interstitials/core:unsafe_resource",
-    "//components/sessions:session_id",
     "//net/traffic_annotation:test_support",
     "//services/network/public/cpp",
     "//services/network/public/mojom",
+    "//testing/gtest",
+  ]
+}
+
+source_set("safe_browsing_lookup_mechanism_experimenter_unittest") {
+  testonly = true
+  sources = [ "safe_browsing_lookup_mechanism_experimenter_unittest.cc" ]
+
+  deps = [
+    ":browser",
+    "//base/test:test_support",
+    "//components/safe_browsing/core/browser/db:v4_protocol_manager_util",
+    "//components/safe_browsing/core/browser/db:v4_test_util",
+    "//components/safe_browsing/core/common",
     "//testing/gtest",
   ]
 }
@@ -124,11 +137,10 @@ source_set("verdict_cache_manager") {
     "//components/safe_browsing/core/browser:sync_observer",
     "//components/safe_browsing/core/browser/db:v4_protocol_manager_util",
     "//components/safe_browsing/core/browser/hashprefix_realtime:hash_realtime_cache",
-    "//components/safe_browsing/core/browser/hashprefix_realtime:hash_realtime_utils",
     "//components/safe_browsing/core/common",
     "//components/safe_browsing/core/common/proto:csd_proto",
     "//components/safe_browsing/core/common/proto:realtimeapi_proto",
-    "//components/safe_browsing/core/common/proto:safebrowsingv5_proto",
+    "//components/safe_browsing/core/common/proto:safebrowsingv5_alpha1_proto",
     "//url",
   ]
 }
@@ -143,13 +155,10 @@ source_set("verdict_cache_manager_unittest") {
     "//base/test:test_support",
     "//components/content_settings/core/browser",
     "//components/safe_browsing/core/browser:sync_observer",
-    "//components/safe_browsing/core/browser/db:v4_protocol_manager_util",
-    "//components/safe_browsing/core/browser/hashprefix_realtime:hash_realtime_utils",
-    "//components/safe_browsing/core/common",
     "//components/safe_browsing/core/common:safe_browsing_prefs",
     "//components/safe_browsing/core/common/proto:csd_proto",
     "//components/safe_browsing/core/common/proto:realtimeapi_proto",
-    "//components/safe_browsing/core/common/proto:safebrowsingv5_proto",
+    "//components/safe_browsing/core/common/proto:safebrowsingv5_alpha1_proto",
     "//components/sync_preferences:test_support",
     "//testing/gtest",
   ]
@@ -192,9 +201,6 @@ source_set("token_fetcher_unit_tests") {
     "//base/test:test_support",
     "//testing/gtest",
   ]
-  if (is_ios) {
-    deps += [ "//components/test:safe_browsing_test_bundle_data" ]
-  }
 }
 
 source_set("token_fetcher_testing_helper") {
@@ -208,16 +214,6 @@ source_set("token_fetcher_testing_helper") {
     ":token_fetcher",
     "//base",
     "//testing/gmock",
-  ]
-}
-
-source_set("safe_browsing_hats_delegate_unittest") {
-  testonly = true
-  sources = [ "safe_browsing_hats_delegate_unittest.cc" ]
-  deps = [
-    ":browser",
-    "//base/test:test_support",
-    "//testing/gtest",
   ]
 }
 

@@ -11,24 +11,18 @@
 namespace permissions {
 GeolocationPermissionContextSystem::GeolocationPermissionContextSystem(
     content::BrowserContext* browser_context,
-    std::unique_ptr<Delegate> delegate)
+    std::unique_ptr<Delegate> delegate,
+    device::GeolocationManager* geolocation_manager)
     : GeolocationPermissionContext(browser_context, std::move(delegate)) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  auto* geolocation_system_permission_manager =
-      device::GeolocationSystemPermissionManager::GetInstance();
-  DCHECK(geolocation_system_permission_manager);
-  geolocation_system_permission_manager->AddObserver(this);
-  system_permission_ =
-      geolocation_system_permission_manager->GetSystemPermission();
+  DCHECK(geolocation_manager);
+  system_permission_observers_ = geolocation_manager->GetObserverList();
+  system_permission_observers_->AddObserver(this);
+  system_permission_ = geolocation_manager->GetSystemPermission();
 }
 
 GeolocationPermissionContextSystem::~GeolocationPermissionContextSystem() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  auto* geolocation_system_permission_manager =
-      device::GeolocationSystemPermissionManager::GetInstance();
-  if (geolocation_system_permission_manager) {
-    geolocation_system_permission_manager->RemoveObserver(this);
-  }
+  system_permission_observers_->RemoveObserver(this);
 }
 
 ContentSetting GeolocationPermissionContextSystem::GetPermissionStatusInternal(

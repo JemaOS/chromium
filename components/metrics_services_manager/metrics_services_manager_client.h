@@ -20,7 +20,6 @@ class SharedURLLoaderFactory;
 
 namespace variations {
 class VariationsService;
-class SyntheticTrialRegistry;
 }
 
 namespace metrics_services_manager {
@@ -33,11 +32,9 @@ class MetricsServicesManagerClient {
 
   // Methods that create the various services in the context of the embedder.
   virtual std::unique_ptr<variations::VariationsService>
-  CreateVariationsService(
-      variations::SyntheticTrialRegistry* synthetic_trial_registry) = 0;
+  CreateVariationsService() = 0;
   virtual std::unique_ptr<metrics::MetricsServiceClient>
-  CreateMetricsServiceClient(
-      variations::SyntheticTrialRegistry* synthetic_trial_registry) = 0;
+  CreateMetricsServiceClient() = 0;
 
   // Gets the MetricsStateManager, creating it if it has not already been
   // created.
@@ -59,9 +56,6 @@ class MetricsServicesManagerClient {
   // Update the running state of metrics services managed by the embedder, for
   // example, crash reporting.
   virtual void UpdateRunningServices(bool may_record, bool may_upload) {}
-
-  // Called when a document starts loading for the first time.
-  virtual void OnPageLoadStarted() {}
 };
 
 }  // namespace metrics_services_manager

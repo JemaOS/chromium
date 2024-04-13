@@ -10,6 +10,10 @@
 #import "ios/web/public/navigation/navigation_manager.h"
 #import "ios/web/public/test/web_test_with_web_state.h"
 
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
+
 // This test fixture creates an IOSSecurityStateTabHelper, then loads a
 // non-secure HTML document.
 class SecurityStateUtilsTest : public web::WebTestWithWebState {
@@ -27,26 +31,27 @@ class SecurityStateUtilsTest : public web::WebTestWithWebState {
 
 // Verifies GetMaliciousContentStatus() return values.
 TEST_F(SecurityStateUtilsTest, GetMaliciousContentStatus) {
-  using enum safe_browsing::SBThreatType;
-
   SafeBrowsingUrlAllowList* allow_list =
       SafeBrowsingUrlAllowList::FromWebState(web_state());
   std::map<security_state::MaliciousContentStatus,
            std::vector<safe_browsing::SBThreatType>>
       threats_types_for_content_statuses = {
           {security_state::MALICIOUS_CONTENT_STATUS_SOCIAL_ENGINEERING,
-           {SB_THREAT_TYPE_UNUSED, SB_THREAT_TYPE_SAFE,
-            SB_THREAT_TYPE_URL_PHISHING,
-            SB_THREAT_TYPE_URL_CLIENT_SIDE_PHISHING}},
+           {safe_browsing::SB_THREAT_TYPE_UNUSED,
+            safe_browsing::SB_THREAT_TYPE_SAFE,
+            safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
+            safe_browsing::SB_THREAT_TYPE_URL_CLIENT_SIDE_PHISHING}},
           {security_state::MALICIOUS_CONTENT_STATUS_MALWARE,
-           {SB_THREAT_TYPE_URL_MALWARE}},
+           {safe_browsing::SB_THREAT_TYPE_URL_MALWARE,
+            safe_browsing::SB_THREAT_TYPE_URL_CLIENT_SIDE_MALWARE}},
           {security_state::MALICIOUS_CONTENT_STATUS_UNWANTED_SOFTWARE,
-           {SB_THREAT_TYPE_URL_UNWANTED}},
+           {safe_browsing::SB_THREAT_TYPE_URL_UNWANTED}},
           {security_state::MALICIOUS_CONTENT_STATUS_BILLING,
-           {SB_THREAT_TYPE_SAVED_PASSWORD_REUSE,
-            SB_THREAT_TYPE_SIGNED_IN_SYNC_PASSWORD_REUSE,
-            SB_THREAT_TYPE_SIGNED_IN_NON_SYNC_PASSWORD_REUSE,
-            SB_THREAT_TYPE_ENTERPRISE_PASSWORD_REUSE, SB_THREAT_TYPE_BILLING}}};
+           {safe_browsing::SB_THREAT_TYPE_SAVED_PASSWORD_REUSE,
+            safe_browsing::SB_THREAT_TYPE_SIGNED_IN_SYNC_PASSWORD_REUSE,
+            safe_browsing::SB_THREAT_TYPE_SIGNED_IN_NON_SYNC_PASSWORD_REUSE,
+            safe_browsing::SB_THREAT_TYPE_ENTERPRISE_PASSWORD_REUSE,
+            safe_browsing::SB_THREAT_TYPE_BILLING}}};
 
   for (auto& pair : threats_types_for_content_statuses) {
     security_state::MaliciousContentStatus status = pair.first;
@@ -54,8 +59,7 @@ TEST_F(SecurityStateUtilsTest, GetMaliciousContentStatus) {
       allow_list->RemovePendingUnsafeNavigationDecisions(url_);
       allow_list->AddPendingUnsafeNavigationDecision(url_, threat);
       EXPECT_EQ(status, security_state::GetMaliciousContentStatus(web_state()))
-          << "Unexpected MaliciousContentStatus for SBThreatType: "
-          << static_cast<int>(threat);
+          << "Unexpected MaliciousContentStatus for SBThreatType: " << threat;
     }
   }
 }
@@ -69,7 +73,7 @@ TEST_F(SecurityStateUtilsTest, GetSecurityLevelForWebStateMaliciousContent) {
   SafeBrowsingUrlAllowList* allow_list =
       SafeBrowsingUrlAllowList::FromWebState(web_state());
   allow_list->AddPendingUnsafeNavigationDecision(
-      url_, safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_MALWARE);
+      url_, safe_browsing::SB_THREAT_TYPE_URL_MALWARE);
   EXPECT_EQ(security_state::DANGEROUS,
             security_state::GetSecurityLevelForWebState(web_state()));
 }

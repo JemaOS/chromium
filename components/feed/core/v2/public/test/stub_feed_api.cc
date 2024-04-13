@@ -10,10 +10,6 @@ namespace feed {
 
 static_assert(!std::is_abstract_v<StubFeedApi>);
 
-SurfaceId StubFeedApi::CreateSurface(const StreamType& type,
-                                     SingleWebFeedEntryPoint entry_point) {
-  return {};
-}
 WebFeedSubscriptions& StubFeedApi::subscriptions() {
   return web_feed_subscriptions_;
 }
@@ -32,20 +28,20 @@ PersistentKeyValueStore& StubFeedApi::GetPersistentKeyValueStore() {
   return persistent_key_value_store_;
 }
 EphemeralChangeId StubFeedApi::CreateEphemeralChange(
-    SurfaceId surface_id,
+    const StreamType& stream_type,
     std::vector<feedstore::DataOperation> operations) {
   return {};
 }
 EphemeralChangeId StubFeedApi::CreateEphemeralChangeFromPackedData(
-    SurfaceId surface_id,
+    const StreamType& stream_type,
     base::StringPiece data) {
   return {};
 }
-bool StubFeedApi::CommitEphemeralChange(SurfaceId surface_id,
+bool StubFeedApi::CommitEphemeralChange(const StreamType& stream_type,
                                         EphemeralChangeId id) {
   return {};
 }
-bool StubFeedApi::RejectEphemeralChange(SurfaceId surface_id,
+bool StubFeedApi::RejectEphemeralChange(const StreamType& stream_type,
                                         EphemeralChangeId id) {
   return {};
 }
@@ -59,7 +55,7 @@ std::string StubFeedApi::DumpStateForDebugging() {
   return {};
 }
 
-base::Time StubFeedApi::GetLastFetchTime(SurfaceId surface_id) {
+base::Time StubFeedApi::GetLastFetchTime(const StreamType& stream_type) {
   return base::Time();
 }
 

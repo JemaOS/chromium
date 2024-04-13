@@ -14,7 +14,9 @@ import androidx.annotation.LayoutRes;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 
-/** Coordinator for the TileView. */
+/**
+ * Coordinator for the TileView.
+ */
 public class TileViewCoordinator {
     private final TileView mView;
     private final TileViewMediator mMediator;

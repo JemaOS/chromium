@@ -12,30 +12,25 @@ import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
-import org.chromium.components.browser_ui.notifications.BaseNotificationManagerProxy;
+import org.chromium.components.browser_ui.notifications.NotificationManagerProxy;
 
-import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Queue;
 import java.util.Set;
 
-/** Initializes our notification channels. */
+/**
+ * Initializes our notification channels.
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 public class ChannelsInitializer {
-    private final BaseNotificationManagerProxy mNotificationManager;
-    private final ChannelDefinitions mChannelDefinitions;
+    private final NotificationManagerProxy mNotificationManager;
+    private ChannelDefinitions mChannelDefinitions;
     private Resources mResources;
-    private final Queue<Runnable> mPendingTasks = new ArrayDeque<>();
-    private boolean mIsTaskRunning;
 
-    public ChannelsInitializer(
-            BaseNotificationManagerProxy notificationManagerProxy,
-            ChannelDefinitions channelDefinitions,
-            Resources resources) {
+    public ChannelsInitializer(NotificationManagerProxy notificationManagerProxy,
+            ChannelDefinitions channelDefinitions, Resources resources) {
         mChannelDefinitions = channelDefinitions;
         mNotificationManager = notificationManagerProxy;
         mResources = resources;
@@ -58,34 +53,18 @@ public class ChannelsInitializer {
      */
     public void updateLocale(Resources resources) {
         mResources = resources;
-        mPendingTasks.add(() -> runUpdateExistingKnownChannelsTask());
-        processPendingTasks();
-    }
-
-    private void runUpdateExistingKnownChannelsTask() {
-        mNotificationManager.getNotificationChannelGroups(
-                (channelGroups) -> onChannelGroupsRetrieved(channelGroups));
-    }
-
-    private void onChannelGroupsRetrieved(List<NotificationChannelGroup> channelGroups) {
-        mNotificationManager.getNotificationChannels(
-                (channels) -> onNotificationChannelsRetrieved(channelGroups, channels));
-    }
-
-    private void onNotificationChannelsRetrieved(
-            List<NotificationChannelGroup> channelGroups, List<NotificationChannel> channels) {
         Set<String> groupIds = new HashSet<>();
         Set<String> channelIds = new HashSet<>();
-        for (NotificationChannelGroup group : channelGroups) {
+        for (NotificationChannelGroup group : mNotificationManager.getNotificationChannelGroups()) {
             groupIds.add(group.getId());
         }
-        for (NotificationChannel channel : channels) {
+        for (NotificationChannel channel : mNotificationManager.getNotificationChannels()) {
             channelIds.add(channel.getId());
         }
         // only re-initialize known channel ids, as we only want to update known & existing channels
         groupIds.retainAll(mChannelDefinitions.getAllChannelGroupIds());
         channelIds.retainAll(mChannelDefinitions.getAllChannelIds());
-        runEnsureInitializedWithEnabledStateTask(groupIds, channelIds, true);
+        ensureInitialized(groupIds, channelIds);
     }
 
     /**
@@ -93,15 +72,9 @@ public class ChannelsInitializer {
      * It's safe to call this multiple times since deleting an already-deleted channel is a no-op.
      */
     public void deleteLegacyChannels() {
-        mPendingTasks.add(() -> runDeleteLegacyChannelsTask());
-        processPendingTasks();
-    }
-
-    private void runDeleteLegacyChannelsTask() {
         for (String channelId : mChannelDefinitions.getLegacyChannelIds()) {
             mNotificationManager.deleteNotificationChannel(channelId);
         }
-        onCurrentTaskFinished();
     }
 
     /**
@@ -158,13 +131,6 @@ public class ChannelsInitializer {
 
     private void ensureInitializedWithEnabledState(
             Collection<String> groupIds, Collection<String> channelIds, boolean enabled) {
-        mPendingTasks.add(
-                () -> runEnsureInitializedWithEnabledStateTask(groupIds, channelIds, enabled));
-        processPendingTasks();
-    }
-
-    private void runEnsureInitializedWithEnabledStateTask(
-            Collection<String> groupIds, Collection<String> channelIds, boolean enabled) {
         HashMap<String, NotificationChannelGroup> channelGroups = new HashMap<>();
         HashMap<String, NotificationChannel> channels = new HashMap<>();
 
@@ -182,8 +148,7 @@ public class ChannelsInitializer {
                     getPredefinedChannel(channelId);
             if (predefinedChannel == null) continue;
             NotificationChannelGroup channelGroup =
-                    mChannelDefinitions
-                            .getChannelGroupForChannel(predefinedChannel)
+                    mChannelDefinitions.getChannelGroupForChannel(predefinedChannel)
                             .toNotificationChannelGroup(mResources);
             NotificationChannel channel = predefinedChannel.toNotificationChannel(mResources);
             if (!enabled) {
@@ -200,7 +165,6 @@ public class ChannelsInitializer {
         for (var channel : channels.values()) {
             mNotificationManager.createNotificationChannel(channel);
         }
-        onCurrentTaskFinished();
     }
 
     /**
@@ -214,18 +178,5 @@ public class ChannelsInitializer {
             return;
         }
         ensureInitialized(channelId);
-    }
-
-    private void processPendingTasks() {
-        if (mIsTaskRunning || mPendingTasks.isEmpty()) {
-            return;
-        }
-        mIsTaskRunning = true;
-        mPendingTasks.remove().run();
-    }
-
-    private void onCurrentTaskFinished() {
-        mIsTaskRunning = false;
-        processPendingTasks();
     }
 }

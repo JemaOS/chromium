@@ -4,16 +4,18 @@
 
 package org.chromium.components.content_settings;
 
-/** Java counter part of content_settings::ContentSettingsTypeSet. */
+/**
+ * Java counter part of content_settings::ContentSettingsTypeSet.
+ */
 public final class ContentSettingsTypeSet {
-    private final @ContentSettingsType.EnumType int mType;
+    private final @ContentSettingsType int mType;
 
-    public ContentSettingsTypeSet(@ContentSettingsType.EnumType int type) {
+    public ContentSettingsTypeSet(@ContentSettingsType int type) {
         mType = type;
     }
 
     /** Returns whether type is in this set. */
-    public boolean contains(@ContentSettingsType.EnumType int type) {
+    public boolean contains(@ContentSettingsType int type) {
         return containsAllTypes() || mType == type;
     }
 
@@ -23,10 +25,10 @@ public final class ContentSettingsTypeSet {
     }
 
     /**
-     * Get the content settings type held in this set. Called only when {@link #containsAllTypes} is
-     * false.
+     * Get the content settings type held in this set. Called only when {@link #containsAllTypes}
+     * is false.
      */
-    public @ContentSettingsType.EnumType int getType() {
+    public @ContentSettingsType int getType() {
         assert !containsAllTypes();
         return mType;
     }

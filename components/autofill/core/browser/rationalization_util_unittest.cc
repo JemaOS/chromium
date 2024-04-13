@@ -18,7 +18,7 @@ namespace {
 
 struct FieldTemplate {
   // Description of the field passed to the rationalization.
-  autofill::FieldType type;
+  autofill::ServerFieldType type;
 
   // Expectation of field after rationalization.
   bool only_fill_when_focused;

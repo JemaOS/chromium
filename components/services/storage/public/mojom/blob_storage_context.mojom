@@ -85,7 +85,4 @@ interface BlobStorageContext {
                   bool flush_on_write,
                   mojo_base.mojom.Time? last_modified)
       => (WriteBlobToFileResult result);
-
-  // Binds another Mojo connection to this context.
-  Clone(pending_receiver<BlobStorageContext> receiver);
 };

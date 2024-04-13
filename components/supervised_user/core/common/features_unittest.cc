@@ -23,13 +23,17 @@ class FeaturesTest : public testing::Test {
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-// Tests `kLocalWebApproval` feature configuration.
+// Tests `kWebFilterInterstitialRefresh` and `kLocalWebApproval`features
+// configuration.
 using LocalWebApprovalsFeatureTest = FeaturesTest;
 
-TEST_F(LocalWebApprovalsFeatureTest, LocalApprovalsDisabled) {
+TEST_F(LocalWebApprovalsFeatureTest,
+       InterstitialRefreshDisabledAndLocalApprovalsDisabled) {
   scoped_feature_list_.InitWithFeatures(
       /* enabled_features */ {},
-      /* disabled_features */ {kLocalWebApprovals});
+      /* disabled_features */ {kWebFilterInterstitialRefresh,
+                               kLocalWebApprovals});
+  EXPECT_FALSE(IsWebFilterInterstitialRefreshEnabled());
   EXPECT_FALSE(IsLocalWebApprovalsEnabled());
 }
 
@@ -43,11 +47,34 @@ void CheckIsLocalWebApprovalsEnabled() {
   EXPECT_EQ(IsLocalWebApprovalsEnabled(), is_local_web_approvals_enabled);
 }
 
-TEST_F(LocalWebApprovalsFeatureTest, LocalApprovalsEnabled) {
+TEST_F(LocalWebApprovalsFeatureTest,
+       InterstitialRefreshEnabledAndLocalApprovalsEnabled) {
+  scoped_feature_list_.InitWithFeatures(
+      /* enabled_features */ {kWebFilterInterstitialRefresh,
+                              kLocalWebApprovals},
+      /* disabled_features */ {});
+  EXPECT_TRUE(IsWebFilterInterstitialRefreshEnabled());
+  CheckIsLocalWebApprovalsEnabled();
+}
+
+TEST_F(LocalWebApprovalsFeatureTest,
+       InterstitialRefreshEnabledAndLocalApprovalsDisabled) {
+  scoped_feature_list_.InitWithFeatures(
+      /* enabled_features */ {kWebFilterInterstitialRefresh},
+      /* disabled_features */ {kLocalWebApprovals});
+  EXPECT_TRUE(IsWebFilterInterstitialRefreshEnabled());
+  EXPECT_FALSE(IsLocalWebApprovalsEnabled());
+}
+
+// Tests that CHECK is triggered when local web approval feature is enabled
+// without the refreshed web filter interstitial layout feature.
+TEST_F(LocalWebApprovalsFeatureTest,
+       InterstitialRefreshDisableAndLocalApprovalsEnabled) {
   scoped_feature_list_.InitWithFeatures(
       /* enabled_features */ {kLocalWebApprovals},
-      /* disabled_features */ {});
-  CheckIsLocalWebApprovalsEnabled();
+      /* disabled_features */ {kWebFilterInterstitialRefresh});
+  EXPECT_DEATH_IF_SUPPORTED(IsWebFilterInterstitialRefreshEnabled(), "");
+  EXPECT_DEATH_IF_SUPPORTED(IsLocalWebApprovalsEnabled(), "");
 }
 
 }  // namespace supervised_user

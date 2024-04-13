@@ -33,26 +33,38 @@ SubresourceFilterSafeBrowsingClientRequest::
       start_time_(start_time),
       database_manager_(std::move(database_manager)),
       client_(client) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  DCHECK_CURRENTLY_ON(
+      base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)
+          ? content::BrowserThread::UI
+          : content::BrowserThread::IO);
+  if (!base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)) {
+    timer_.SetTaskRunner(std::move(io_task_runner));
+  }
 }
 
 SubresourceFilterSafeBrowsingClientRequest::
     ~SubresourceFilterSafeBrowsingClientRequest() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  DCHECK_CURRENTLY_ON(
+      base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)
+          ? content::BrowserThread::UI
+          : content::BrowserThread::IO);
   if (!request_completed_)
     database_manager_->CancelCheck(this);
   timer_.Stop();
 }
 
 void SubresourceFilterSafeBrowsingClientRequest::Start(const GURL& url) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  DCHECK_CURRENTLY_ON(
+      base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)
+          ? content::BrowserThread::UI
+          : content::BrowserThread::IO);
   // Just return SAFE if the database is not supported.
   bool synchronous_finish =
       database_manager_->CheckUrlForSubresourceFilter(url, this);
   if (synchronous_finish) {
     request_completed_ = true;
     SendCheckResultToClient(false /* served_from_network */,
-                            safe_browsing::SBThreatType::SB_THREAT_TYPE_SAFE,
+                            safe_browsing::SB_THREAT_TYPE_SAFE,
                             safe_browsing::ThreatMetadata());
     return;
   }
@@ -67,16 +79,22 @@ void SubresourceFilterSafeBrowsingClientRequest::OnCheckBrowseUrlResult(
     const GURL& url,
     safe_browsing::SBThreatType threat_type,
     const safe_browsing::ThreatMetadata& metadata) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  DCHECK_CURRENTLY_ON(
+      base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)
+          ? content::BrowserThread::UI
+          : content::BrowserThread::IO);
   request_completed_ = true;
   SendCheckResultToClient(true /* served_from_network */, threat_type,
                           metadata);
 }
 
 void SubresourceFilterSafeBrowsingClientRequest::OnCheckUrlTimeout() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  DCHECK_CURRENTLY_ON(
+      base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)
+          ? content::BrowserThread::UI
+          : content::BrowserThread::IO);
   SendCheckResultToClient(true /* served_from_network */,
-                          safe_browsing::SBThreatType::SB_THREAT_TYPE_SAFE,
+                          safe_browsing::SB_THREAT_TYPE_SAFE,
                           safe_browsing::ThreatMetadata());
 }
 

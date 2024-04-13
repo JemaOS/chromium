@@ -7,14 +7,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <optional>
 #include <set>
 
 #include "base/json/json_reader.h"
 #include "base/logging.h"
-#include "base/types/expected_macros.h"
 #include "components/nacl/common/nacl_types.h"
 #include "components/nacl/renderer/nexe_load_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace nacl {
@@ -358,7 +357,7 @@ void GrabUrlAndPnaclOptions(const base::Value::Dict& url_spec,
   *url = *url_str;
   pnacl_options->translate = PP_TRUE;
   if (url_spec.Find(kOptLevelKey)) {
-    std::optional<int32_t> opt_raw = url_spec.FindInt(kOptLevelKey);
+    absl::optional<int32_t> opt_raw = url_spec.FindInt(kOptLevelKey);
     DCHECK(opt_raw.has_value());
     // Currently only allow 0 or 2, since that is what we test.
     if (opt_raw.value() <= 0)
@@ -383,15 +382,15 @@ bool JsonManifest::Init(const std::string& manifest_json_data,
                         ErrorInfo* error_info) {
   CHECK(error_info);
 
-  ASSIGN_OR_RETURN(
-      base::Value json_data,
-      base::JSONReader::ReadAndReturnValueWithError(manifest_json_data),
-      [&](base::JSONReader::Error error) {
-        error_info->error = PP_NACL_ERROR_MANIFEST_PARSING;
-        error_info->string =
-            "manifest JSON parsing failed: " + std::move(error).message;
-        return false;
-      });
+  auto parsed_json =
+      base::JSONReader::ReadAndReturnValueWithError(manifest_json_data);
+  if (!parsed_json.has_value()) {
+    error_info->error = PP_NACL_ERROR_MANIFEST_PARSING;
+    error_info->string = std::string("manifest JSON parsing failed: ") +
+                         parsed_json.error().message;
+    return false;
+  }
+  base::Value json_data = std::move(*parsed_json);
   // Ensure it's actually a dictionary before capturing as dictionary_.
   if (!json_data.is_dict()) {
     error_info->error = PP_NACL_ERROR_MANIFEST_SCHEMA_VALIDATE;

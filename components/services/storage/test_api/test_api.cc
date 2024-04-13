@@ -24,7 +24,8 @@ namespace {
 
 class TestApiDatabaseEnv : public leveldb_env::ChromiumEnv {
  public:
-  TestApiDatabaseEnv() : ChromiumEnv(CreateFilesystemProxy()) {}
+  TestApiDatabaseEnv()
+      : ChromiumEnv("ChromiumEnv.TestApi", CreateFilesystemProxy()) {}
   TestApiDatabaseEnv(const TestApiDatabaseEnv&) = delete;
   TestApiDatabaseEnv& operator=(const TestApiDatabaseEnv&) = delete;
 };

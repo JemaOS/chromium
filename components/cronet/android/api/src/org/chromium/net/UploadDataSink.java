@@ -24,7 +24,9 @@ public abstract class UploadDataSink {
      */
     public abstract void onReadError(Exception exception);
 
-    /** Called by {@link UploadDataProvider} when a rewind succeeds. */
+    /**
+     * Called by {@link UploadDataProvider} when a rewind succeeds.
+     */
     public abstract void onRewindSucceeded();
 
     /**

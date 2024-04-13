@@ -11,10 +11,7 @@
 
 #include <memory>
 
-#include "base/functional/callback_forward.h"
-#include "base/functional/function_ref.h"
-#include "base/gtest_prod_util.h"
-#include "base/memory/scoped_refptr.h"
+#include "base/memory/ref_counted.h"
 #include "base/sequence_checker.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
@@ -23,32 +20,28 @@
 namespace base {
 class FilePath;
 class SequencedTaskRunner;
-}  // namespace base
+}
 
 namespace update_client {
 
 // Implements a downloader in terms of the BITS service. The public interface
 // of this class and the CrxDownloader overrides are expected to be called
 // from the main sequence. The rest of the class code runs on a sequenced
-// task runner which is initialized by default as an MTA by the thread pool.
+// task runner. The task runner must initialize COM.
 //
 // This class manages a COM client for Windows BITS. The client uses polling,
 // triggered by an one-shot timer, to get state updates from BITS. Since the
-// timer has sequence affinity for the main sequence, the callbacks from the
-// timer are delegated to a sequenced task runner, which handles all client COM
-// interaction with the BITS service.
+// timer has sequence afinity, the callbacks from the timer are delegated to
+// a sequenced task runner, which handles all client COM interaction with
+// the BITS service.
 class BackgroundDownloader : public CrxDownloader {
  public:
   explicit BackgroundDownloader(scoped_refptr<CrxDownloader> successor);
 
  private:
-  friend class BackgroundDownloaderWinTest;
-  FRIEND_TEST_ALL_PREFIXES(BackgroundDownloaderWinTest, CleansStaleDownloads);
-  FRIEND_TEST_ALL_PREFIXES(BackgroundDownloaderWinTest, RetainsRecentDownloads);
-
   // Overrides for CrxDownloader.
   ~BackgroundDownloader() override;
-  base::OnceClosure DoStartDownload(const GURL& url) override;
+  void DoStartDownload(const GURL& url) override;
 
   // Called asynchronously on the |com_task_runner_| at different stages during
   // the download. |OnDownloading| can be called multiple times.
@@ -105,6 +98,16 @@ class BackgroundDownloader : public CrxDownloader {
   // temporary file to its destination and removing it from the BITS queue.
   HRESULT CompleteJob();
 
+  // Revokes the interface pointers from GIT.
+  HRESULT ClearGit();
+
+  // Updates the BITS interface pointers so that the COM functions of these
+  // interfaces can be called in this COM STA apartment.
+  HRESULT UpdateInterfacePointers();
+
+  // Resets the BITS interface pointers.
+  void ResetInterfacePointers();
+
   // Returns the number of jobs in the BITS queue which were created by this
   // downloader.
   HRESULT GetBackgroundDownloaderJobCount(size_t* num_jobs);
@@ -112,17 +115,8 @@ class BackgroundDownloader : public CrxDownloader {
   // Cleans up incompleted jobs that are too old.
   void CleanupStaleJobs();
 
-  // Perform a best-effort cleanup up downloads that are too old.
-  void CleanupStaleDownloads();
-
-  // Enumerate the writable temporary directories matching |matcher|.
-  void EnumerateDownloadDirs(
-      const base::FilePath::StringType& matcher,
-      base::FunctionRef<void(const base::FilePath& dir)> callback);
-
   // This sequence checker is bound to the main sequence.
   SEQUENCE_CHECKER(sequence_checker_);
-  SEQUENCE_CHECKER(com_sequence_checker_);
 
   // Executes blocking COM calls to BITS.
   scoped_refptr<base::SequencedTaskRunner> com_task_runner_;
@@ -131,7 +125,12 @@ class BackgroundDownloader : public CrxDownloader {
   // on the main task runner.
   std::unique_ptr<base::OneShotTimer> timer_;
 
-  // Valid only in the MTA associated with `com_task_runner_`;
+  DWORD git_cookie_bits_manager_;
+  DWORD git_cookie_job_;
+
+  // COM interface pointers are valid for the thread that called
+  // |UpdateInterfacePointers| to get pointers to COM proxies, which are valid
+  // for that thread only.
   Microsoft::WRL::ComPtr<IBackgroundCopyManager> bits_manager_;
   Microsoft::WRL::ComPtr<IBackgroundCopyJob> job_;
 

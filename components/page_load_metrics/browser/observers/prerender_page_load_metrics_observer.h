@@ -5,10 +5,9 @@
 #ifndef COMPONENTS_PAGE_LOAD_METRICS_BROWSER_OBSERVERS_PRERENDER_PAGE_LOAD_METRICS_OBSERVER_H_
 #define COMPONENTS_PAGE_LOAD_METRICS_BROWSER_OBSERVERS_PRERENDER_PAGE_LOAD_METRICS_OBSERVER_H_
 
-#include <optional>
-
 #include "components/page_load_metrics/browser/page_load_metrics_observer.h"
-#include "content/public/browser/preloading_trigger_type.h"
+#include "content/public/browser/prerender_trigger_type.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace internal {
 
@@ -49,6 +48,25 @@ enum class PageLoadPrerenderObserverEvent {
   kRecordLayoutShiftScoreMetrics = 8,
   kRecordNormalizedResponsivenessMetrics = 9,
   kMaxValue = kRecordNormalizedResponsivenessMetrics,
+};
+
+extern const char kPageLoadPrerenderForegroundCheckResult[];
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class PageLoadPrerenderForegroundCheckResult {
+  kActivatedInBackground = 0,
+  kNoEventTime = 1,
+  kBackgroundedBeforeEvent = 2,
+  kPassed = 3,
+  kMaxValue = kPassed
+};
+
+enum class PageLoadPrerenderForegroundCheckEvent {
+  kFirstPaint,
+  kFirstContentfulPaint,
+  kFirstInputDelay,
+  kLargestContentfulPaint
 };
 
 }  // namespace internal
@@ -114,15 +132,15 @@ class PrerenderPageLoadMetricsObserver
   // 'Cache-control: no-store' response header and set to false otherwise. Not
   // set if Chrome did not receive response headers or if the prerendered page
   // load was not activated.
-  std::optional<bool> main_frame_resource_has_no_store_;
+  absl::optional<bool> main_frame_resource_has_no_store_;
 
   // Set when the main resource of the main frame finishes loading.
-  std::optional<net::Error> main_resource_load_status_;
+  absl::optional<net::Error> main_resource_load_status_;
 
   // The type to trigger prerendering.
-  std::optional<content::PreloadingTriggerType> trigger_type_;
+  absl::optional<content::PrerenderTriggerType> trigger_type_;
   // The suffix of a prerender embedder. This value is valid only when
-  // PreloadingTriggerType is kEmbedder. Otherwise, it's an empty string.
+  // PrerenderTriggerType is kEmbedder. Otherwise, it's an empty string.
   std::string embedder_histogram_suffix_;
 };
 

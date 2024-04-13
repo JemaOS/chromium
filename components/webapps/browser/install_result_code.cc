@@ -85,8 +85,6 @@ std::ostream& operator<<(std::ostream& os, InstallResultCode code) {
       return os << "kIconDownloadingFailed";
     case InstallResultCode::kCancelledDueToMainFrameNavigation:
       return os << "kCancelledDueToMainFrameNavigation";
-    case InstallResultCode::kNoValidIconsInManifest:
-      return os << "kNoValidIconsInManifest";
   }
 }
 

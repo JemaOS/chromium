@@ -8,9 +8,10 @@
 #include <memory>
 #include <string>
 
-#include "base/files/file.h"
-#include "base/sequence_checker.h"
-#include "base/thread_annotations.h"
+#include <base/files/file.h>
+#include <base/sequence_checker.h>
+#include <base/thread_annotations.h>
+
 #include "components/reporting/health/health_module_delegate.h"
 #include "components/reporting/health/health_module_files.h"
 #include "components/reporting/proto/synced/record.pb.h"
@@ -28,7 +29,7 @@ class HealthModuleDelegateImpl : public HealthModuleDelegate {
   explicit HealthModuleDelegateImpl(
       const base::FilePath& directory,
       size_t max_history_storage = kNaxHistoryStorage,
-      std::string_view file_base_name = kHistoryFileBasename);
+      base::StringPiece file_base_name = kHistoryFileBasename);
   HealthModuleDelegateImpl(const HealthModuleDelegateImpl& other) = delete;
   HealthModuleDelegateImpl& operator=(const HealthModuleDelegateImpl& other) =
       delete;

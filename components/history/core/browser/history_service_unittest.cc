@@ -38,12 +38,10 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
-#include "base/test/test_future.h"
 #include "components/history/core/browser/features.h"
 #include "components/history/core/browser/history_backend.h"
 #include "components/history/core/browser/history_database_params.h"
 #include "components/history/core/browser/history_db_task.h"
-#include "components/history/core/browser/history_types.h"
 #include "components/history/core/test/database_test_utils.h"
 #include "components/history/core/test/test_history_database.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -703,12 +701,8 @@ class HistoryDBTaskImpl : public HistoryDBTask {
  public:
   static const int kWantInvokeCount;
 
-  HistoryDBTaskImpl(int* invoke_count,
-                    bool* done_invoked,
-                    base::OnceClosure quit_closure)
-      : invoke_count_(invoke_count),
-        done_invoked_(done_invoked),
-        quit_closure_(std::move(quit_closure)) {}
+  HistoryDBTaskImpl(int* invoke_count, bool* done_invoked)
+      : invoke_count_(invoke_count), done_invoked_(done_invoked) {}
 
   HistoryDBTaskImpl(const HistoryDBTaskImpl&) = delete;
   HistoryDBTaskImpl& operator=(const HistoryDBTaskImpl&) = delete;
@@ -719,7 +713,7 @@ class HistoryDBTaskImpl : public HistoryDBTask {
 
   void DoneRunOnMainThread() override {
     *done_invoked_ = true;
-    std::move(quit_closure_).Run();
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
   }
 
   raw_ptr<int> invoke_count_;
@@ -727,7 +721,6 @@ class HistoryDBTaskImpl : public HistoryDBTask {
 
  private:
   ~HistoryDBTaskImpl() override = default;
-  base::OnceClosure quit_closure_;
 };
 
 // static
@@ -740,16 +733,15 @@ TEST_F(HistoryServiceTest, HistoryDBTask) {
   base::CancelableTaskTracker task_tracker;
   int invoke_count = 0;
   bool done_invoked = false;
-  base::RunLoop loop;
   history_service_->ScheduleDBTask(
       FROM_HERE,
-      std::unique_ptr<history::HistoryDBTask>(new HistoryDBTaskImpl(
-          &invoke_count, &done_invoked, loop.QuitWhenIdleClosure())),
+      std::unique_ptr<history::HistoryDBTask>(
+          new HistoryDBTaskImpl(&invoke_count, &done_invoked)),
       &task_tracker);
   // Run the message loop. When HistoryDBTaskImpl::DoneRunOnMainThread runs,
   // it will stop the message loop. If the test hangs here, it means
   // DoneRunOnMainThread isn't being invoked correctly.
-  loop.Run();
+  base::RunLoop().Run();
   CleanupHistoryService();
   // WARNING: history has now been deleted.
   history_service_.reset();
@@ -764,8 +756,8 @@ TEST_F(HistoryServiceTest, HistoryDBTaskCanceled) {
   bool done_invoked = false;
   history_service_->ScheduleDBTask(
       FROM_HERE,
-      std::unique_ptr<history::HistoryDBTask>(new HistoryDBTaskImpl(
-          &invoke_count, &done_invoked, base::DoNothing())),
+      std::unique_ptr<history::HistoryDBTask>(
+          new HistoryDBTaskImpl(&invoke_count, &done_invoked)),
       &task_tracker);
   task_tracker.TryCancelAll();
   CleanupHistoryService();
@@ -788,16 +780,6 @@ void AddPageInThePast(HistoryService* history,
                       int days_back) {
   base::Time time_in_the_past = base::Time::Now() - base::Days(days_back);
   AddPageAtTime(history, url_spec, time_in_the_past);
-}
-
-// Helper to add a synced page at a specified day in the past.
-void AddSyncedPageInThePast(HistoryService* history,
-                            const std::string& url_spec,
-                            int days_back) {
-  base::Time time_in_the_past = base::Time::Now() - base::Days(days_back);
-  history->AddPage(GURL(url_spec), time_in_the_past, 0, 0, GURL(),
-                   history::RedirectList(), ui::PAGE_TRANSITION_LINK,
-                   history::SOURCE_SYNCED, false);
 }
 
 // Helper to add a page with specified days back in the past.
@@ -859,7 +841,7 @@ GetDomainDiversityHelper(HistoryService* history,
 
 // Test one domain visit metric. A negative value indicates that an invalid
 // metric is expected.
-void TestDomainMetric(const std::optional<DomainMetricCountType>& metric,
+void TestDomainMetric(const absl::optional<DomainMetricCountType>& metric,
                       int expected) {
   if (expected >= 0) {
     ASSERT_TRUE(metric.has_value());
@@ -882,6 +864,7 @@ void TestDomainMetricSet(const DomainMetricSet& metric_set,
 
 // Counts hosts visited in the last month.
 TEST_F(HistoryServiceTest, CountMonthlyVisitedHosts) {
+  base::HistogramTester histogram_tester;
   HistoryService* history = history_service_.get();
   ASSERT_TRUE(history);
 
@@ -901,6 +884,8 @@ TEST_F(HistoryServiceTest, CountMonthlyVisitedHosts) {
   AddPageInThePast(history, "https://www.yahoo.com/foo", 29);
   EXPECT_EQ(3, GetMonthlyHostCountHelper(history, &tracker_));
 
+  // The time required to compute host count is reported on each computation.
+  histogram_tester.ExpectTotalCount("History.DatabaseMonthlyHostCountTime", 4);
 }
 
 TEST_F(HistoryServiceTest, GetDomainDiversityShortBasetimeRange) {
@@ -1083,95 +1068,6 @@ TEST_F(HistoryServiceTest, GetDomainDiversityBitmaskTest) {
   TestDomainMetricSet(all_res[5], -1, 1, 2);
 }
 
-// Gets unique local and synced domains visited and the last visited domain
-// within a time range.
-TEST_F(HistoryServiceTest, GetUniqueDomainsVisited) {
-  base::Time base_time = base::Time::Now();
-  HistoryService* history = history_service_.get();
-  ASSERT_TRUE(history);
-
-  // Add local visits to history database at specific days back.
-  AddPageInThePast(history, "http://www.test1.com/", 1);
-  AddPageInThePast(history, "http://www.test2.com/test", 2);
-  AddPageInThePast(history, "http://www.test2.com/", 3);
-  AddPageInThePast(history, "http://www.test3.com/", 4);
-
-  // Add synced visits to history database at specific days back.
-  AddSyncedPageInThePast(history, "http://www.test3.com/", 3);
-  AddSyncedPageInThePast(history, "http://www.test4.com/", 5);
-
-  {
-    // DomainsVisitedResult should be empty when no domains in range.
-    base::test::TestFuture<DomainsVisitedResult> future;
-
-    history->GetUniqueDomainsVisited(
-        /*begin_time=*/base_time - base::Days(10),
-        /*end_time=*/base_time - base::Days(5), future.GetCallback(),
-        &tracker_);
-
-    DomainsVisitedResult result = future.Take();
-
-    EXPECT_EQ(0u, result.locally_visited_domains.size());
-    EXPECT_EQ(0u, result.all_visited_domains.size());
-  }
-
-  {
-    // DomainsVisitedResult should include unique domains in range in
-    // reverse-chronological order.
-    base::test::TestFuture<DomainsVisitedResult> future;
-
-    history->GetUniqueDomainsVisited(
-        /*begin_time=*/base_time - base::Days(2), /*end_time=*/base_time,
-        future.GetCallback(), &tracker_);
-
-    std::vector<std::string> expectedLocalResult({"test1.com", "test2.com"});
-    std::vector<std::string> expectedSyncedResult({"test1.com", "test2.com"});
-
-    DomainsVisitedResult result = future.Take();
-
-    EXPECT_EQ(expectedLocalResult, result.locally_visited_domains);
-    EXPECT_EQ(expectedSyncedResult, result.all_visited_domains);
-  }
-
-  {
-    // DomainsVisitedResult should not include duplicate domains in range.
-    base::test::TestFuture<DomainsVisitedResult> future;
-
-    history->GetUniqueDomainsVisited(
-        /*begin_time=*/base_time - base::Days(4), /*end_time=*/base_time,
-        future.GetCallback(), &tracker_);
-
-    std::vector<std::string> expectedLocalResult(
-        {"test1.com", "test2.com", "test3.com"});
-    std::vector<std::string> expectedSyncedResult(
-        {"test1.com", "test2.com", "test3.com"});
-
-    DomainsVisitedResult result = future.Take();
-
-    EXPECT_EQ(expectedLocalResult, result.locally_visited_domains);
-    EXPECT_EQ(expectedSyncedResult, result.all_visited_domains);
-  }
-
-  {
-    // local domains should not include synced visits in range.
-    base::test::TestFuture<DomainsVisitedResult> future;
-
-    history->GetUniqueDomainsVisited(
-        /*begin_time=*/base_time - base::Days(5), /*end_time=*/base_time,
-        future.GetCallback(), &tracker_);
-
-    std::vector<std::string> expectedLocalResult(
-        {"test1.com", "test2.com", "test3.com"});
-    std::vector<std::string> expectedSyncedResult(
-        {"test1.com", "test2.com", "test3.com", "test4.com"});
-
-    DomainsVisitedResult result = future.Take();
-
-    EXPECT_EQ(expectedLocalResult, result.locally_visited_domains);
-    EXPECT_EQ(expectedSyncedResult, result.all_visited_domains);
-  }
-}
-
 namespace {
 
 class AddSyncedVisitTask : public HistoryDBTask {
@@ -1188,7 +1084,7 @@ class AddSyncedVisitTask : public HistoryDBTask {
 
   bool RunOnDBThread(HistoryBackend* backend, HistoryDatabase* db) override {
     VisitID visit_id = backend->AddSyncedVisit(
-        url_, u"Title", /*hidden=*/false, visit_, std::nullopt, std::nullopt);
+        url_, u"Title", /*hidden=*/false, visit_, absl::nullopt, absl::nullopt);
     EXPECT_NE(visit_id, kInvalidVisitID);
     LOG(ERROR) << "Added visit!";
     return true;

@@ -5,15 +5,14 @@
 #ifndef COMPONENTS_MEDIA_ROUTER_COMMON_MEDIA_ROUTE_PROVIDER_HELPER_H_
 #define COMPONENTS_MEDIA_ROUTER_COMMON_MEDIA_ROUTE_PROVIDER_HELPER_H_
 
-#include <optional>
-
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "components/media_router/common/mojom/media_route_provider_id.mojom-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace media_router {
 
 const char* ProviderIdToString(mojom::MediaRouteProviderId provider_id);
-std::optional<mojom::MediaRouteProviderId> ProviderIdFromString(
+absl::optional<mojom::MediaRouteProviderId> ProviderIdFromString(
     base::StringPiece provider_id);
 
 }  // namespace media_router

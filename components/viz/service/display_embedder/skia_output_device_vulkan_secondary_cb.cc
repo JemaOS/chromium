@@ -7,13 +7,10 @@
 #include <utility>
 
 #include "components/viz/common/gpu/vulkan_context_provider.h"
+#include "third_party/skia/include/core/SkDeferredDisplayList.h"
+#include "third_party/skia/include/core/SkSurfaceCharacterization.h"
 #include "third_party/skia/include/gpu/GrBackendSurface.h"
 #include "third_party/skia/include/gpu/GrDirectContext.h"
-#include "third_party/skia/include/gpu/GrTypes.h"
-#include "third_party/skia/include/gpu/ganesh/vk/GrVkBackendSemaphore.h"
-#include "third_party/skia/include/gpu/ganesh/vk/GrVkBackendSurface.h"
-#include "third_party/skia/include/private/chromium/GrDeferredDisplayList.h"
-#include "third_party/skia/include/private/chromium/GrSurfaceCharacterization.h"
 #include "third_party/skia/include/private/chromium/GrVkSecondaryCBDrawContext.h"
 #include "ui/gfx/presentation_feedback.h"
 
@@ -24,7 +21,6 @@ SkiaOutputDeviceVulkanSecondaryCB::SkiaOutputDeviceVulkanSecondaryCB(
     gpu::MemoryTracker* memory_tracker,
     DidSwapBufferCompleteCallback did_swap_buffer_complete_callback)
     : SkiaOutputDevice(context_provider->GetGrContext(),
-                       /*graphite_context=*/nullptr,
                        memory_tracker,
                        std::move(did_swap_buffer_complete_callback)),
       context_provider_(context_provider) {
@@ -38,11 +34,11 @@ SkiaOutputDeviceVulkanSecondaryCB::SkiaOutputDeviceVulkanSecondaryCB(
 
   GrVkSecondaryCBDrawContext* secondary_cb_draw_context =
       context_provider_->GetGrSecondaryCBDrawContext();
-  GrSurfaceCharacterization characterization;
+  SkSurfaceCharacterization characterization;
   VkFormat vkFormat = VK_FORMAT_UNDEFINED;
   bool result = secondary_cb_draw_context->characterize(&characterization);
   CHECK(result);
-  GrBackendFormats::AsVkFormat(characterization.backendFormat(), &vkFormat);
+  characterization.backendFormat().asVkFormat(&vkFormat);
   auto sk_color_type = vkFormat == VK_FORMAT_R8G8B8A8_UNORM
                            ? kRGBA_8888_SkColorType
                            : kBGRA_8888_SkColorType;
@@ -63,8 +59,7 @@ SkiaOutputDeviceVulkanSecondaryCB::BeginScopedPaint() {
 void SkiaOutputDeviceVulkanSecondaryCB::Submit(bool sync_cpu,
                                                base::OnceClosure callback) {
   // Submit the primary command buffer which may render passes.
-  context_provider_->GetGrContext()->submit(sync_cpu ? GrSyncCpu::kYes
-                                                     : GrSyncCpu::kNo);
+  context_provider_->GetGrContext()->submit(sync_cpu);
   context_provider_->EnqueueSecondaryCBPostSubmitTask(std::move(callback));
 }
 
@@ -80,7 +75,7 @@ bool SkiaOutputDeviceVulkanSecondaryCB::Reshape(
 }
 
 void SkiaOutputDeviceVulkanSecondaryCB::Present(
-    const std::optional<gfx::Rect>& update_rect,
+    const absl::optional<gfx::Rect>& update_rect,
     BufferPresentedCallback feedback,
     OutputSurfaceFrame frame) {
   CHECK(!update_rect);
@@ -111,8 +106,7 @@ GrSemaphoresSubmitted SkiaOutputDeviceVulkanSecondaryCB::Flush(
 
   std::vector<VkSemaphore> vk_end_semaphores;
   for (const GrBackendSemaphore& gr_semaphore : end_semaphores) {
-    vk_end_semaphores.push_back(
-        GrBackendSemaphores::GetVkSemaphore(gr_semaphore));
+    vk_end_semaphores.push_back(gr_semaphore.vkSemaphore());
   }
   vulkan_context_provider->EnqueueSecondaryCBSemaphores(
       std::move(vk_end_semaphores));
@@ -136,7 +130,7 @@ bool SkiaOutputDeviceVulkanSecondaryCB::Wait(
 
 bool SkiaOutputDeviceVulkanSecondaryCB::Draw(
     SkSurface* sk_surface,
-    sk_sp<const GrDeferredDisplayList> ddl) {
+    sk_sp<const SkDeferredDisplayList> ddl) {
   DCHECK(!sk_surface);
   return context_provider_->GetGrSecondaryCBDrawContext()->draw(ddl);
 }

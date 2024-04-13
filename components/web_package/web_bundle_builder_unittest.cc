@@ -4,9 +4,9 @@
 
 #include "components/web_package/web_bundle_builder.h"
 
+#include "base/big_endian.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include "base/numerics/byte_conversions.h"
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/test/task_environment.h"
@@ -20,7 +20,7 @@ std::string kFallbackUrl = "https://test.example.org/";
 
 std::string GetTestFileContents(const base::FilePath& path) {
   base::FilePath test_data_dir;
-  base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &test_data_dir);
+  base::PathService::Get(base::DIR_SOURCE_ROOT, &test_data_dir);
   test_data_dir = test_data_dir.Append(
       base::FilePath(FILE_PATH_LITERAL("components/test/data/web_package")));
 
@@ -48,8 +48,9 @@ TEST_F(WebBundleBuilderTest, CorrectWebBundleSizeIsWritten) {
                       "payload");
   std::vector<uint8_t> bundle = builder.CreateBundle();
   uint8_t written_size[8];
-  base::span(written_size).copy_from(base::span(bundle).last<8u>());
-  uint64_t written_size_int = base::numerics::U64FromBigEndian(written_size);
+  memcpy(written_size, bundle.data() + bundle.size() - 8, 8);
+  uint64_t written_size_int;
+  base::ReadBigEndian(written_size, &written_size_int);
   EXPECT_EQ(bundle.size(), written_size_int);
 }
 

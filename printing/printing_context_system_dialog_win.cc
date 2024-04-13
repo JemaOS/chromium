@@ -15,11 +15,15 @@
 #include "printing/print_settings_initializer_win.h"
 #include "skia/ext/skia_utils_win.h"
 
+#if BUILDFLAG(ENABLE_OOP_PRINTING)
+#include "printing/printing_features.h"
+#endif
+
 namespace printing {
 
 HWND PrintingContextSystemDialogWin::GetWindow() {
 #if BUILDFLAG(ENABLE_OOP_PRINTING)
-  if (process_behavior() == ProcessBehavior::kOopEnabledPerformSystemCalls) {
+  if (features::kEnableOopPrintDriversJobPrint.Get()) {
     // Delving through the view tree to get to root window happens separately
     // in the browser process (i.e., not in `PrintingContextSystemDialogWin`)
     // before sending the identified window owner to the Print Backend service.
@@ -35,9 +39,8 @@ HWND PrintingContextSystemDialogWin::GetWindow() {
 }
 
 PrintingContextSystemDialogWin::PrintingContextSystemDialogWin(
-    Delegate* delegate,
-    ProcessBehavior process_behavior)
-    : PrintingContextWin(delegate, process_behavior) {}
+    Delegate* delegate)
+    : PrintingContextWin(delegate) {}
 
 PrintingContextSystemDialogWin::~PrintingContextSystemDialogWin() {}
 
@@ -122,9 +125,9 @@ bool PrintingContextSystemDialogWin::InitializeSettingsWithRanges(
     int number_ranges,
     bool selection_only) {
   DCHECK(GetDeviceCaps(context(), CLIPCAPS));
+  DCHECK(GetDeviceCaps(context(), RASTERCAPS) & RC_STRETCHDIB);
+  DCHECK(GetDeviceCaps(context(), RASTERCAPS) & RC_BITMAP64);
   // Some printers don't advertise these.
-  // DCHECK(GetDeviceCaps(context(), RASTERCAPS) & RC_STRETCHDIB);
-  // DCHECK(GetDeviceCaps(context(), RASTERCAPS) & RC_BITMAP64);
   // DCHECK(GetDeviceCaps(context(), RASTERCAPS) & RC_SCALING);
   // DCHECK(GetDeviceCaps(context(), SHADEBLENDCAPS) & SB_CONST_ALPHA);
   // DCHECK(GetDeviceCaps(context(), SHADEBLENDCAPS) & SB_PIXEL_ALPHA);
@@ -132,6 +135,7 @@ bool PrintingContextSystemDialogWin::InitializeSettingsWithRanges(
   // StretchDIBits() support is needed for printing.
   if (!(GetDeviceCaps(context(), RASTERCAPS) & RC_STRETCHDIB) ||
       !(GetDeviceCaps(context(), RASTERCAPS) & RC_BITMAP64)) {
+    NOTREACHED();
     ResetSettings();
     return false;
   }

@@ -6,9 +6,10 @@
 #define COMPONENTS_EXO_WAYLAND_COMPATIBILITY_TEST_WAYLAND_CLIENT_EVENT_RECORDER_H_
 
 #include <cstdint>
-#include <optional>
 #include <string>
 #include <unordered_map>
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace exo {
 namespace wayland {
@@ -23,10 +24,10 @@ struct EventRecorder {
     data.emplace(event_name, version);
   }
 
-  std::optional<uint32_t> MaybeGetReceivedAtVersion(
+  absl::optional<uint32_t> MaybeGetReceivedAtVersion(
       const char* event_name) const noexcept {
     auto it = data.find(event_name);
-    return it != data.end() ? std::make_optional(it->second) : std::nullopt;
+    return it != data.end() ? absl::make_optional(it->second) : absl::nullopt;
   }
 
   std::unordered_map<std::string, uint32_t> data;

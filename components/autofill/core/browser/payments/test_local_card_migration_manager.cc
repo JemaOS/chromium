@@ -6,6 +6,7 @@
 
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/browser/payments/payments_util.h"
+#include "components/autofill/core/browser/payments/test_payments_client.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 
 namespace autofill {
@@ -13,13 +14,15 @@ namespace autofill {
 TestLocalCardMigrationManager::TestLocalCardMigrationManager(
     AutofillDriver* driver,
     AutofillClient* client,
+    payments::TestPaymentsClient* payments_client,
     TestPersonalDataManager* personal_data_manager)
     : LocalCardMigrationManager(client,
+                                payments_client,
                                 "en-US",
                                 personal_data_manager),
       personal_data_manager_(personal_data_manager) {}
 
-TestLocalCardMigrationManager::~TestLocalCardMigrationManager() = default;
+TestLocalCardMigrationManager::~TestLocalCardMigrationManager() {}
 
 bool TestLocalCardMigrationManager::IsCreditCardMigrationEnabled() {
   return payments::GetBillingCustomerId(personal_data_manager_) != 0;
@@ -49,8 +52,9 @@ void TestLocalCardMigrationManager::OnUserAcceptedMainMigrationDialog(
   LocalCardMigrationManager::OnUserAcceptedMainMigrationDialog(selected_cards);
 }
 
-void TestLocalCardMigrationManager::EnablePaymentsWalletSyncInTransportMode() {
-  personal_data_manager_->SetIsPaymentsWalletSyncTransportEnabled(true);
+void TestLocalCardMigrationManager::ResetSyncState(
+    AutofillSyncSigninState sync_state) {
+  personal_data_manager_->SetSyncAndSignInState(sync_state);
 }
 
 void TestLocalCardMigrationManager::OnDidGetUploadDetails(

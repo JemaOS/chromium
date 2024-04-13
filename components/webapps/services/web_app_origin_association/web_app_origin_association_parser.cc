@@ -7,7 +7,6 @@
 #include <string>
 
 #include "base/json/json_reader.h"
-#include "base/types/expected_macros.h"
 #include "base/values.h"
 #include "components/webapps/services/web_app_origin_association/web_app_origin_association_uma_util.h"
 #include "url/gurl.h"
@@ -27,28 +26,32 @@ WebAppOriginAssociationParser::~WebAppOriginAssociationParser() = default;
 
 mojom::WebAppOriginAssociationPtr WebAppOriginAssociationParser::Parse(
     const std::string& data) {
-  using Result = webapps::WebAppOriginAssociationMetrics::ParseResult;
-  auto result =
-      [&]() -> base::expected<mojom::WebAppOriginAssociationPtr, Result> {
-    ASSIGN_OR_RETURN(auto parsed_data,
-                     base::JSONReader::ReadAndReturnValueWithError(data),
-                     [&](base::JSONReader::Error error) {
-                       AddErrorInfo(error.message, error.line, error.column);
-                       return Result::kParseFailedInvalidJson;
-                     });
-    if (!parsed_data.is_dict()) {
-      AddErrorInfo("No valid JSON object found.");
-      return base::unexpected(Result::kParseFailedNotADictionary);
-    }
+  auto parsed_data = base::JSONReader::ReadAndReturnValueWithError(data);
 
-    auto association = mojom::WebAppOriginAssociation::New();
-    association->apps = ParseAssociatedWebApps(parsed_data.GetDict());
-    return association;
-  }();
+  if (!parsed_data.has_value()) {
+    AddErrorInfo(parsed_data.error().message, parsed_data.error().line,
+                 parsed_data.error().column);
+    failed_ = true;
+    webapps::WebAppOriginAssociationMetrics::RecordParseResult(
+        webapps::WebAppOriginAssociationMetrics::ParseResult::
+            kParseFailedInvalidJson);
+    return nullptr;
+  }
+  if (!parsed_data->is_dict()) {
+    AddErrorInfo("No valid JSON object found.");
+    failed_ = true;
+    webapps::WebAppOriginAssociationMetrics::RecordParseResult(
+        webapps::WebAppOriginAssociationMetrics::ParseResult::
+            kParseFailedNotADictionary);
+    return nullptr;
+  }
+
+  mojom::WebAppOriginAssociationPtr association =
+      mojom::WebAppOriginAssociation::New();
+  association->apps = ParseAssociatedWebApps(parsed_data->GetDict());
   webapps::WebAppOriginAssociationMetrics::RecordParseResult(
-      result.error_or(Result::kParseSucceeded));
-  failed_ |= !result.has_value();
-  return std::move(result).value_or(nullptr);
+      webapps::WebAppOriginAssociationMetrics::ParseResult::kParseSucceeded);
+  return association;
 }
 
 bool WebAppOriginAssociationParser::failed() const {
@@ -85,7 +88,7 @@ WebAppOriginAssociationParser::ParseAssociatedWebApps(
       continue;
     }
 
-    std::optional<mojom::AssociatedWebAppPtr> app =
+    absl::optional<mojom::AssociatedWebAppPtr> app =
         ParseAssociatedWebApp(app_item.GetDict());
     if (!app)
       continue;
@@ -96,7 +99,7 @@ WebAppOriginAssociationParser::ParseAssociatedWebApps(
   return result;
 }
 
-std::optional<mojom::AssociatedWebAppPtr>
+absl::optional<mojom::AssociatedWebAppPtr>
 WebAppOriginAssociationParser::ParseAssociatedWebApp(
     const base::Value::Dict& app_dict) {
   const std::string* web_app_identity_url_value =
@@ -105,19 +108,19 @@ WebAppOriginAssociationParser::ParseAssociatedWebApp(
     if (app_dict.contains(kWebAppIdentity)) {
       AddErrorInfo("Associated app ignored. Required property '" +
                    std::string(kWebAppIdentity) + "' is not a string.");
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     AddErrorInfo("Associated app ignored. Required property '" +
                  std::string(kWebAppIdentity) + "' does not exist.");
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   GURL web_app_identity(*web_app_identity_url_value);
   if (!web_app_identity.is_valid()) {
     AddErrorInfo("Associated app ignored. Required property '" +
                  std::string(kWebAppIdentity) + "' is not a valid URL.");
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   mojom::AssociatedWebAppPtr app = mojom::AssociatedWebApp::New();

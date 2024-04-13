@@ -2,7 +2,6 @@ include_rules = [
   "+components/policy",
   "+components/prefs",
   "+components/reporting/client",
-  "+components/reporting/proto",
   "+components/safe_browsing/core/common/proto",
   "+components/strings/grit",
   "+components/version_info",
@@ -11,5 +10,5 @@ include_rules = [
   "+net",
   "+services/network/public",
   "+third_party/protobuf",
-  "+third_party/content_analysis_sdk",
+  "+third_party/content_analysis_sdk"
 ]

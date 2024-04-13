@@ -33,7 +33,7 @@ class SyncManagerFactory {
       const std::string& name);
 
  private:
-  const raw_ptr<network::NetworkConnectionTracker> network_connection_tracker_;
+  raw_ptr<network::NetworkConnectionTracker> network_connection_tracker_;
 };
 
 }  // namespace syncer

@@ -56,10 +56,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Robolectric tests for CastSession. */
+/**
+ * Robolectric tests for CastSession.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class CafMessageHandlerTest {
+    private static final String TAG = "MediaRouter";
+
     private static final String SESSION_ID = "SESSION_ID";
     private static final String INVALID_SESSION_ID = "INVALID_SESSION_ID";
     private static final String CLIENT_ID1 = "client-id-1";
@@ -74,8 +78,10 @@ public class CafMessageHandlerTest {
     private static final int REQUEST_ID2 = 2;
     private static final int VOID_SEQUENCE_NUMBER = CafMessageHandler.VOID_SEQUENCE_NUMBER;
     private CafMediaRouteProvider mRouteProvider;
-    @Mock private CastSession mSession;
-    @Mock private CastSessionController mSessionController;
+    @Mock
+    private CastSession mSession;
+    @Mock
+    private CastSessionController mSessionController;
     private ClientRecord mClientRecord1;
     private ClientRecord mClientRecord2;
     private Map<String, ClientRecord> mClientRecordMap;
@@ -150,11 +156,8 @@ public class CafMessageHandlerTest {
 
         assertTrue(mClientRecord1.isConnected);
         verify(mMessageHandler)
-                .sendEnclosedMessageToClient(
-                        mClientRecord1.clientId,
-                        "new_session",
-                        "session_message",
-                        VOID_SEQUENCE_NUMBER);
+                .sendEnclosedMessageToClient(mClientRecord1.clientId, "new_session",
+                        "session_message", VOID_SEQUENCE_NUMBER);
         verify(mRouteProvider).flushPendingMessagesToClient(mClientRecord1);
     }
 
@@ -419,8 +422,7 @@ public class CafMessageHandlerTest {
         JSONObject innerMessage =
                 new JSONObject()
                         .put("type", "SET_VOLUME")
-                        .put(
-                                "volume",
+                        .put("volume",
                                 new JSONObject().put("level", (double) 1).put("muted", false));
         JSONObject message = buildCastV2Message(CLIENT_ID1, innerMessage);
         assertTrue(mMessageHandler.handleMessageFromClient(message.toString()));
@@ -430,8 +432,7 @@ public class CafMessageHandlerTest {
         verify(mMessageHandler)
                 .handleVolumeMessage(
                         argThat(new JSONObjectLike(innerMessage.getJSONObject("volume"))),
-                        eq(CLIENT_ID1),
-                        eq(SEQUENCE_NUMBER1));
+                        eq(CLIENT_ID1), eq(SEQUENCE_NUMBER1));
         assertEquals(mMessageHandler.getVolumeRequestsForTest().size(), 1);
     }
 
@@ -442,8 +443,7 @@ public class CafMessageHandlerTest {
         JSONObject innerMessage =
                 new JSONObject()
                         .put("type", "SET_VOLUME")
-                        .put(
-                                "volume",
+                        .put("volume",
                                 new JSONObject().put("level", (double) 1).put("muted", false));
         JSONObject message = buildCastV2Message(CLIENT_ID1, innerMessage);
         assertTrue(mMessageHandler.handleMessageFromClient(message.toString()));
@@ -453,8 +453,7 @@ public class CafMessageHandlerTest {
         verify(mMessageHandler)
                 .handleVolumeMessage(
                         argThat(new JSONObjectLike(innerMessage.getJSONObject("volume"))),
-                        eq(CLIENT_ID1),
-                        eq(SEQUENCE_NUMBER1));
+                        eq(CLIENT_ID1), eq(SEQUENCE_NUMBER1));
         assertEquals(mMessageHandler.getVolumeRequestsForTest().size(), 0);
     }
 
@@ -469,10 +468,9 @@ public class CafMessageHandlerTest {
 
     @Test
     public void testCastV2MessageofSetVolumeTypeWithWrongTypeVolumeMessage() throws JSONException {
-        JSONObject innerMessage =
-                new JSONObject()
-                        .put("type", "SET_VOLUME")
-                        .put("volume", "wrong type volume message");
+        JSONObject innerMessage = new JSONObject()
+                                          .put("type", "SET_VOLUME")
+                                          .put("volume", "wrong type volume message");
         final JSONObject message = buildCastV2Message(CLIENT_ID1, innerMessage);
         assertFalse(mMessageHandler.handleMessageFromClient(message.toString()));
         verify(mMessageHandler, never())
@@ -494,19 +492,16 @@ public class CafMessageHandlerTest {
             assertTrue(mMessageHandler.handleMessageFromClient(message.toString()));
 
             JSONObject expected = new JSONObject();
-            if (CafMessageHandler.getMediaOverloadedMessageTypesForTest()
-                    .containsKey(messageType)) {
-                expected.put(
-                        "type",
+            if (CafMessageHandler.getMediaOverloadedMessageTypesForTest().containsKey(
+                        messageType)) {
+                expected.put("type",
                         CafMessageHandler.getMediaOverloadedMessageTypesForTest().get(messageType));
             } else {
                 expected.put("type", messageType);
             }
             verify(mMessageHandler)
-                    .sendJsonCastMessage(
-                            argThat(new JSONObjectLike(expected)),
-                            eq(CastSessionUtil.MEDIA_NAMESPACE),
-                            eq(CLIENT_ID1),
+                    .sendJsonCastMessage(argThat(new JSONObjectLike(expected)),
+                            eq(CastSessionUtil.MEDIA_NAMESPACE), eq(CLIENT_ID1),
                             eq(SEQUENCE_NUMBER1));
         }
     }
@@ -540,11 +535,8 @@ public class CafMessageHandlerTest {
         JSONObject message = buildAppMessage(CLIENT_ID1, NAMESPACE1, actualMessage);
         assertTrue(mMessageHandler.handleMessageFromClient(message.toString()));
         verify(mMessageHandler)
-                .sendJsonCastMessage(
-                        argThat(new JSONObjectLike(actualMessage)),
-                        eq(NAMESPACE1),
-                        eq(CLIENT_ID1),
-                        eq(SEQUENCE_NUMBER1));
+                .sendJsonCastMessage(argThat(new JSONObjectLike(actualMessage)), eq(NAMESPACE1),
+                        eq(CLIENT_ID1), eq(SEQUENCE_NUMBER1));
     }
 
     @Test
@@ -567,11 +559,8 @@ public class CafMessageHandlerTest {
         message.remove("sequenceNumber");
         assertTrue(mMessageHandler.handleMessageFromClient(message.toString()));
         verify(mMessageHandler)
-                .sendJsonCastMessage(
-                        argThat(new JSONObjectLike(actualMessage)),
-                        eq(NAMESPACE1),
-                        eq(CLIENT_ID1),
-                        eq(VOID_SEQUENCE_NUMBER));
+                .sendJsonCastMessage(argThat(new JSONObjectLike(actualMessage)), eq(NAMESPACE1),
+                        eq(CLIENT_ID1), eq(VOID_SEQUENCE_NUMBER));
     }
 
     @Test
@@ -689,9 +678,8 @@ public class CafMessageHandlerTest {
     public void testSendJsonCastMessage() throws JSONException {
         assertEquals(mMessageHandler.getRequestsForTest().size(), 0);
         JSONObject message = buildJsonCastMessage("message");
-        assertTrue(
-                mMessageHandler.sendJsonCastMessage(
-                        message, NAMESPACE1, CLIENT_ID1, SEQUENCE_NUMBER1));
+        assertTrue(mMessageHandler.sendJsonCastMessage(
+                message, NAMESPACE1, CLIENT_ID1, SEQUENCE_NUMBER1));
         assertEquals(mMessageHandler.getRequestsForTest().size(), 1);
         verify(mMessageHandler)
                 .sendStringCastMessage(
@@ -703,9 +691,8 @@ public class CafMessageHandlerTest {
         doReturn(false).when(mSessionController).isConnected();
 
         JSONObject message = buildJsonCastMessage("message");
-        assertFalse(
-                mMessageHandler.sendJsonCastMessage(
-                        message, NAMESPACE1, CLIENT_ID1, SEQUENCE_NUMBER1));
+        assertFalse(mMessageHandler.sendJsonCastMessage(
+                message, NAMESPACE1, CLIENT_ID1, SEQUENCE_NUMBER1));
         assertEquals(mMessageHandler.getRequestsForTest().size(), 0);
         verify(mMessageHandler, never())
                 .sendStringCastMessage(anyString(), anyString(), anyString(), anyInt());
@@ -714,9 +701,8 @@ public class CafMessageHandlerTest {
     @Test
     public void testSendJsonCastMessageWithInvalidSequenceNumber() throws JSONException {
         JSONObject message = buildJsonCastMessage("message");
-        assertTrue(
-                mMessageHandler.sendJsonCastMessage(
-                        message, NAMESPACE1, CLIENT_ID1, VOID_SEQUENCE_NUMBER));
+        assertTrue(mMessageHandler.sendJsonCastMessage(
+                message, NAMESPACE1, CLIENT_ID1, VOID_SEQUENCE_NUMBER));
         assertEquals(mMessageHandler.getRequestsForTest().size(), 0);
         verify(mMessageHandler)
                 .sendStringCastMessage(
@@ -728,9 +714,8 @@ public class CafMessageHandlerTest {
         assertEquals(mMessageHandler.getRequestsForTest().size(), 0);
         JSONObject message = buildJsonCastMessage("message");
         message.remove("requestId");
-        assertTrue(
-                mMessageHandler.sendJsonCastMessage(
-                        message, NAMESPACE1, CLIENT_ID1, SEQUENCE_NUMBER1));
+        assertTrue(mMessageHandler.sendJsonCastMessage(
+                message, NAMESPACE1, CLIENT_ID1, SEQUENCE_NUMBER1));
         assertTrue(message.has("requestId"));
         assertEquals(mMessageHandler.getRequestsForTest().size(), 1);
         verify(mMessageHandler)
@@ -803,16 +788,10 @@ public class CafMessageHandlerTest {
         RequestRecord request = new RequestRecord(CLIENT_ID1, SEQUENCE_NUMBER1);
         mMessageHandler.onMediaMessage("anymessage", request);
         verify(mMessageHandler, never())
-                .sendEnclosedMessageToClient(
-                        eq(CLIENT_ID1),
-                        eq("v2_message"),
-                        eq("anymessage"),
+                .sendEnclosedMessageToClient(eq(CLIENT_ID1), eq("v2_message"), eq("anymessage"),
                         eq(VOID_SEQUENCE_NUMBER));
         verify(mMessageHandler)
-                .sendEnclosedMessageToClient(
-                        eq(CLIENT_ID2),
-                        eq("v2_message"),
-                        eq("anymessage"),
+                .sendEnclosedMessageToClient(eq(CLIENT_ID2), eq("v2_message"), eq("anymessage"),
                         eq(VOID_SEQUENCE_NUMBER));
         verify(mMessageHandler)
                 .sendEnclosedMessageToClient(
@@ -827,16 +806,10 @@ public class CafMessageHandlerTest {
         doReturn(true).when(mMessageHandler).isMediaStatusMessage(anyString());
         mMessageHandler.onMediaMessage("anymessage", null);
         verify(mMessageHandler)
-                .sendEnclosedMessageToClient(
-                        eq(CLIENT_ID1),
-                        eq("v2_message"),
-                        eq("anymessage"),
+                .sendEnclosedMessageToClient(eq(CLIENT_ID1), eq("v2_message"), eq("anymessage"),
                         eq(VOID_SEQUENCE_NUMBER));
         verify(mMessageHandler)
-                .sendEnclosedMessageToClient(
-                        eq(CLIENT_ID2),
-                        eq("v2_message"),
-                        eq("anymessage"),
+                .sendEnclosedMessageToClient(eq(CLIENT_ID2), eq("v2_message"), eq("anymessage"),
                         eq(VOID_SEQUENCE_NUMBER));
     }
 
@@ -882,11 +855,8 @@ public class CafMessageHandlerTest {
         expected.put("namespaceName", NAMESPACE1);
         expected.put("message", "anyMessage");
         verify(mMessageHandler)
-                .sendEnclosedMessageToClient(
-                        eq(CLIENT_ID1),
-                        eq("app_message"),
-                        argThat(new JSONStringLike(expected)),
-                        eq(SEQUENCE_NUMBER1));
+                .sendEnclosedMessageToClient(eq(CLIENT_ID1), eq("app_message"),
+                        argThat(new JSONStringLike(expected)), eq(SEQUENCE_NUMBER1));
         verify(mMessageHandler, never()).broadcastClientMessage(anyString(), anyString());
     }
 
@@ -924,10 +894,7 @@ public class CafMessageHandlerTest {
                 .sendEnclosedMessageToClient(
                         eq(CLIENT_ID1), eq("remove_session"), eq(SESSION_ID), eq(SEQUENCE_NUMBER2));
         verify(mMessageHandler)
-                .sendEnclosedMessageToClient(
-                        eq(CLIENT_ID2),
-                        eq("remove_session"),
-                        eq(SESSION_ID),
+                .sendEnclosedMessageToClient(eq(CLIENT_ID2), eq("remove_session"), eq(SESSION_ID),
                         eq(VOID_SEQUENCE_NUMBER));
     }
 
@@ -935,9 +902,8 @@ public class CafMessageHandlerTest {
     public void testOnVolumeChanged() {
         doNothing().when(mMessageHandler).onVolumeChanged(anyString(), anyInt());
         assertEquals(0, mMessageHandler.getVolumeRequestsForTest().size());
-        mMessageHandler
-                .getVolumeRequestsForTest()
-                .add(new RequestRecord(CLIENT_ID1, SEQUENCE_NUMBER1));
+        mMessageHandler.getVolumeRequestsForTest().add(
+                new RequestRecord(CLIENT_ID1, SEQUENCE_NUMBER1));
         assertEquals(1, mMessageHandler.getVolumeRequestsForTest().size());
 
         mMessageHandler.onVolumeChanged();
@@ -994,10 +960,7 @@ public class CafMessageHandlerTest {
         mMessageHandler.broadcastClientMessage("anytype", "anymessage");
         for (String clientId : mRouteProvider.getClientIdToRecords().keySet()) {
             verify(mMessageHandler)
-                    .sendEnclosedMessageToClient(
-                            eq(clientId),
-                            eq("anytype"),
-                            eq("anymessage"),
+                    .sendEnclosedMessageToClient(eq(clientId), eq("anytype"), eq("anymessage"),
                             eq(VOID_SEQUENCE_NUMBER));
         }
     }
@@ -1041,9 +1004,8 @@ public class CafMessageHandlerTest {
 
     @Test
     public void testBuildEnclosedClientMessageWithNullMessage() throws JSONException {
-        String message =
-                mMessageHandler.buildEnclosedClientMessage(
-                        "anytype", null, CLIENT_ID1, SEQUENCE_NUMBER1);
+        String message = mMessageHandler.buildEnclosedClientMessage(
+                "anytype", null, CLIENT_ID1, SEQUENCE_NUMBER1);
         JSONObject expected = new JSONObject();
         expected.put("type", "anytype");
         expected.put("sequenceNumber", SEQUENCE_NUMBER1);
@@ -1051,16 +1013,14 @@ public class CafMessageHandlerTest {
         expected.put("clientId", CLIENT_ID1);
         expected.put("message", null);
 
-        assertTrue(
-                "\nexpected: " + expected.toString() + ",\n  actual: " + message.toString(),
+        assertTrue("\nexpected: " + expected.toString() + ",\n  actual: " + message.toString(),
                 new JSONObjectLike(expected).matches(new JSONObject(message)));
     }
 
     @Test
     public void testBuildEnclosedClientMessageOfRemoveSessionType() throws JSONException {
-        String message =
-                mMessageHandler.buildEnclosedClientMessage(
-                        "remove_session", SESSION_ID, CLIENT_ID1, SEQUENCE_NUMBER1);
+        String message = mMessageHandler.buildEnclosedClientMessage(
+                "remove_session", SESSION_ID, CLIENT_ID1, SEQUENCE_NUMBER1);
         JSONObject expected = new JSONObject();
         expected.put("type", "remove_session");
         expected.put("sequenceNumber", SEQUENCE_NUMBER1);
@@ -1068,16 +1028,14 @@ public class CafMessageHandlerTest {
         expected.put("clientId", CLIENT_ID1);
         expected.put("message", SESSION_ID);
 
-        assertTrue(
-                "\nexpected: " + expected.toString() + ",\n  actual: " + message.toString(),
+        assertTrue("\nexpected: " + expected.toString() + ",\n  actual: " + message.toString(),
                 new JSONObjectLike(expected).matches(new JSONObject(message)));
     }
 
     @Test
     public void testBuildEnclosedClientMessageOfDisconnectSessionType() throws JSONException {
-        String message =
-                mMessageHandler.buildEnclosedClientMessage(
-                        "disconnect_session", SESSION_ID, CLIENT_ID1, SEQUENCE_NUMBER1);
+        String message = mMessageHandler.buildEnclosedClientMessage(
+                "disconnect_session", SESSION_ID, CLIENT_ID1, SEQUENCE_NUMBER1);
         JSONObject expected = new JSONObject();
         expected.put("type", "disconnect_session");
         expected.put("sequenceNumber", SEQUENCE_NUMBER1);
@@ -1085,17 +1043,15 @@ public class CafMessageHandlerTest {
         expected.put("clientId", CLIENT_ID1);
         expected.put("message", SESSION_ID);
 
-        assertTrue(
-                "\nexpected: " + expected.toString() + ",\n  actual: " + message.toString(),
+        assertTrue("\nexpected: " + expected.toString() + ",\n  actual: " + message.toString(),
                 new JSONObjectLike(expected).matches(new JSONObject(message)));
     }
 
     @Test
     public void testBuildEnclosedClientMessageWithInnerMessage() throws JSONException {
         JSONObject innerMessage = buildSessionMessage(SESSION_ID);
-        String message =
-                mMessageHandler.buildEnclosedClientMessage(
-                        "anytype", innerMessage.toString(), CLIENT_ID1, SEQUENCE_NUMBER1);
+        String message = mMessageHandler.buildEnclosedClientMessage(
+                "anytype", innerMessage.toString(), CLIENT_ID1, SEQUENCE_NUMBER1);
         JSONObject expected = new JSONObject();
         expected.put("type", "anytype");
         expected.put("sequenceNumber", SEQUENCE_NUMBER1);
@@ -1103,8 +1059,7 @@ public class CafMessageHandlerTest {
         expected.put("clientId", CLIENT_ID1);
         expected.put("message", innerMessage);
 
-        assertTrue(
-                "\nexpected: " + expected.toString() + ",\n  actual: " + message.toString(),
+        assertTrue("\nexpected: " + expected.toString() + ",\n  actual: " + message.toString(),
                 new JSONObjectLike(expected).matches(new JSONObject(message)));
     }
 
@@ -1249,22 +1204,16 @@ public class CafMessageHandlerTest {
         return jsonMessage;
     }
 
-    private void verifySimpleSessionMessage(
-            JSONObject message, String type, int sequenceNumber, String clientId)
-            throws JSONException {
+    private void verifySimpleSessionMessage(JSONObject message, String type, int sequenceNumber,
+            String clientId) throws JSONException {
         assertEquals(message.getString("type"), type);
         assertEquals(message.getInt("sequenceNumber"), sequenceNumber);
         assertEquals(message.getInt("timeoutMillis"), 0);
         assertEquals(message.getInt("sequenceNumber"), sequenceNumber);
     }
 
-    private void prepareClientRecord(
-            String routeId,
-            String clientId,
-            String appId,
-            String autoJoinPolicy,
-            String origin,
-            int tabId) {
+    private void prepareClientRecord(String routeId, String clientId, String appId,
+            String autoJoinPolicy, String origin, int tabId) {
         ClientRecord clientRecord =
                 new ClientRecord(routeId, clientId, appId, autoJoinPolicy, origin, tabId);
         mClientRecordMap.put(clientId, clientRecord);

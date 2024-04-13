@@ -197,7 +197,7 @@ class FingerprintDataLoader : public content::GpuDataManagerObserver {
   FingerprintDataLoader& operator=(const FingerprintDataLoader&) = delete;
 
  private:
-  ~FingerprintDataLoader() override = default;
+  ~FingerprintDataLoader() override {}
 
   // content::GpuDataManagerObserver:
   void OnGpuInfoUpdate() override;
@@ -312,7 +312,7 @@ FingerprintDataLoader::FingerprintDataLoader(
   content::GetDeviceService().BindGeolocationContext(
       geolocation_context_.BindNewPipeAndPassReceiver());
   geolocation_context_->BindGeolocation(
-      geolocation_.BindNewPipeAndPassReceiver(), GURL());
+      geolocation_.BindNewPipeAndPassReceiver(), GURL::EmptyGURL());
   geolocation_->SetHighAccuracy(false);
   geolocation_->QueryNextPosition(
       base::BindOnce(&FingerprintDataLoader::OnGotGeoposition,
@@ -476,7 +476,7 @@ void GetFingerprint(
   // |screen_info| using display::DisplayUtil::GetDefaultScreenInfo().
   if (web_contents) {
     content_bounds = web_contents->GetContainerBounds();
-    raw_ptr<content::RenderWidgetHostView> host_view =
+    base::raw_ptr<content::RenderWidgetHostView> host_view =
         web_contents->GetRenderWidgetHostView();
     if (host_view)
       screen_info = host_view->GetRenderWidgetHost()->GetScreenInfo();

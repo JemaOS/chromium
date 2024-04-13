@@ -8,6 +8,10 @@
 #import "ios/web/public/ui/crw_web_view_scroll_view_proxy.h"
 #import "ios/web/public/web_state.h"
 
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
+
 namespace {
 const CGFloat kCaretWidth = 4.0;
 }  // namespace
@@ -18,26 +22,26 @@ BOOL IsValidDictValue(const base::Value* value) {
   return value && value->is_dict() && !value->GetDict().empty();
 }
 
-std::optional<CGRect> ParseRect(const base::Value::Dict* dict) {
+absl::optional<CGRect> ParseRect(const base::Value::Dict* dict) {
   if (!dict || dict->empty()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
-  std::optional<double> xValue = dict->FindDouble("x");
-  std::optional<double> yValue = dict->FindDouble("y");
-  std::optional<double> widthValue = dict->FindDouble("width");
-  std::optional<double> heightValue = dict->FindDouble("height");
+  absl::optional<double> xValue = dict->FindDouble("x");
+  absl::optional<double> yValue = dict->FindDouble("y");
+  absl::optional<double> widthValue = dict->FindDouble("width");
+  absl::optional<double> heightValue = dict->FindDouble("height");
 
   if (!xValue || !yValue || !widthValue || !heightValue) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return CGRectMake(*xValue, *yValue, *widthValue, *heightValue);
 }
 
-std::optional<GURL> ParseURL(const std::string* url_value) {
+absl::optional<GURL> ParseURL(const std::string* url_value) {
   if (!url_value) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   GURL url(*url_value);
@@ -45,7 +49,7 @@ std::optional<GURL> ParseURL(const std::string* url_value) {
     return url;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 CGRect ConvertToBrowserRect(CGRect web_view_rect, web::WebState* web_state) {

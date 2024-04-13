@@ -114,12 +114,4 @@ bool FileRStream::isAtEnd() const {
   return bytes_read_ == length_;
 }
 
-bool FileRStream::hasLength() const {
-  return true;
-}
-
-size_t FileRStream::getLength() const {
-  return length_;
-}
-
 }  // namespace paint_preview

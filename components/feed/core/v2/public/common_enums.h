@@ -18,7 +18,7 @@ namespace feed {
 enum class FeedSignInUI : int {
   // Histogram recorded when a sync half sheet is shown from Feed, when sign-in
   // UI is not supported.
-  // kShowSyncHalfSheet = 0, (deprecated)
+  kShowSyncHalfSheet = 0,
   // Histogram recorded when a sign-in only flow is shown from Feed.
   kShowSignInOnlyFlow = 1,
   // Histogram recorded when a service disabled toast is shown from Feed.
@@ -164,11 +164,8 @@ enum class FeedUserActionType {
   // User tapped to go to Following feed using the snackbar 'go to Following'
   // option.
   kTappedGoToFeedOnSnackbar = 52,
-
   // User tapped the Crow button in the context menu.
-  // No longer used after the removal of Crow.
-  // kTappedCrowButton = 53,
-
+  kTappedCrowButton = 53,
   // User action caused a first follow sheet to be shown. User action not
   // reported here. iOS only.
   kFirstFollowSheetShown = 54,
@@ -195,15 +192,11 @@ enum class FeedUserActionType {
   // 'refresh' action.
   kTappedRefreshFollowingFeedOnSnackbar = 63,
   // User tapped on the "Continue" of the sign-in promote UI. iOS only.
-  // Deprecated.
-  // kTappedFeedSignInPromoUIContinue = 64,
+  kTappedFeedSignInPromoUIContinue = 64,
   // User tapped on the "Cancel" of the sign-in promote UI. iOS only.
-  // Deprecated.
-  // kTappedFeedSignInPromoUICancel = 65,
-  // User initiated non-swipe manual refresh of the feed.
-  kNonSwipeManualRefresh = 66,
+  kTappedFeedSignInPromoUICancel = 65,
 
-  kMaxValue = kNonSwipeManualRefresh,
+  kMaxValue = kTappedFeedSignInPromoUICancel,
 };
 
 // For testing and debugging only.

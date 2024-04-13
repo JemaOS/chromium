@@ -9,7 +9,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/i18n/break_iterator.h"
@@ -367,16 +366,16 @@ bool SpellcheckWordIterator::IsInitialized() const {
   return !!iterator_;
 }
 
-bool SpellcheckWordIterator::SetText(std::u16string_view text) {
+bool SpellcheckWordIterator::SetText(const char16_t* text, size_t length) {
   DCHECK(!!iterator_);
 
   // Set the text to be split by this iterator.
-  if (!iterator_->SetText(text)) {
+  if (!iterator_->SetText(text, length)) {
     LOG(ERROR) << "failed to set text";
     return false;
   }
 
-  text_ = text.data();
+  text_ = text;
   return true;
 }
 

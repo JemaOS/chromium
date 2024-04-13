@@ -23,16 +23,13 @@ public final class InvalidPaymentRequest implements PaymentRequest {
     private PaymentRequestClient mClient;
 
     @Override
-    public void init(
-            PaymentRequestClient client,
-            PaymentMethodData[] unusedMethodData,
-            PaymentDetails unusedDetails,
-            PaymentOptions unusedOptions) {
+    public void init(PaymentRequestClient client, PaymentMethodData[] unusedMethodData,
+            PaymentDetails unusedDetails, PaymentOptions unusedOptions) {
         mClient = client;
     }
 
     @Override
-    public void show(boolean unusedWaitForUpdatedDetails, boolean unusedHadUserActivation) {
+    public void show(boolean unusedWaitForUpdatedDetails) {
         if (mClient != null) {
             mClient.onError(PaymentErrorReason.USER_CANCEL, ErrorStrings.WEB_PAYMENT_API_DISABLED);
             mClient.close();

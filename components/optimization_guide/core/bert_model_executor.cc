@@ -5,7 +5,6 @@
 #include "components/optimization_guide/core/bert_model_executor.h"
 
 #include "base/trace_event/trace_event.h"
-#include "base/types/expected.h"
 #include "components/optimization_guide/core/model_util.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/core/tflite_op_resolver.h"
@@ -20,13 +19,13 @@ BertModelExecutor::BertModelExecutor(
                        .value_or(-1)) {}
 BertModelExecutor::~BertModelExecutor() = default;
 
-std::optional<std::vector<tflite::task::core::Category>>
+absl::optional<std::vector<tflite::task::core::Category>>
 BertModelExecutor::Execute(ModelExecutionTask* execution_task,
                            ExecutionStatus* out_status,
                            const std::string& input) {
   if (input.empty()) {
     *out_status = ExecutionStatus::kErrorEmptyOrInvalidInput;
-    return std::nullopt;
+    return absl::nullopt;
   }
   TRACE_EVENT2("browser", "BertModelExecutor::Execute", "optimization_target",
                GetStringNameForOptimizationTarget(optimization_target_),
@@ -37,19 +36,19 @@ BertModelExecutor::Execute(ModelExecutionTask* execution_task,
           ->ClassifyText(input);
   if (absl::IsCancelled(status_or_result.status())) {
     *out_status = ExecutionStatus::kErrorCancelled;
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (!status_or_result.ok()) {
     *out_status = ExecutionStatus::kErrorUnknown;
-    return std::nullopt;
+    return absl::nullopt;
   }
   *out_status = ExecutionStatus::kSuccess;
   return *status_or_result;
 }
 
-base::expected<std::unique_ptr<BertModelExecutor::ModelExecutionTask>,
-               ExecutionStatus>
-BertModelExecutor::BuildModelExecutionTask(base::MemoryMappedFile* model_file) {
+std::unique_ptr<BertModelExecutor::ModelExecutionTask>
+BertModelExecutor::BuildModelExecutionTask(base::MemoryMappedFile* model_file,
+                                           ExecutionStatus* out_status) {
   tflite::task::text::BertNLClassifierOptions options;
   *options.mutable_base_options()
        ->mutable_model_file()
@@ -65,9 +64,10 @@ BertModelExecutor::BuildModelExecutionTask(base::MemoryMappedFile* model_file) {
           std::move(options), std::make_unique<TFLiteOpResolver>());
   if (maybe_nl_classifier.ok())
     return std::move(maybe_nl_classifier.value());
+  *out_status = ExecutionStatus::kErrorModelFileNotValid;
   DLOG(ERROR) << "Unable to load BERT model: "
               << maybe_nl_classifier.status().ToString();
-  return base::unexpected(ExecutionStatus::kErrorModelFileNotValid);
+  return nullptr;
 }
 
 }  // namespace optimization_guide

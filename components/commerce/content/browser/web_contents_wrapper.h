@@ -18,10 +18,6 @@ namespace base {
 class Value;
 }  // namespace base
 
-namespace content {
-class RenderFrameHost;
-}  // namespace content
-
 namespace commerce {
 
 // A WebWrapper backed by content::WebContents.
@@ -31,13 +27,9 @@ class WebContentsWrapper : public WebWrapper {
                               int32_t js_world_id);
   WebContentsWrapper(const WebContentsWrapper&) = delete;
   WebContentsWrapper operator=(const WebContentsWrapper&) = delete;
-  ~WebContentsWrapper() override;
+  ~WebContentsWrapper() override = default;
 
   const GURL& GetLastCommittedURL() override;
-
-  bool IsFirstLoadForNavigationFinished() override;
-
-  void SetIsFirstLoadForNavigationFinished(bool finished);
 
   bool IsOffTheRecord() override;
 
@@ -45,22 +37,13 @@ class WebContentsWrapper : public WebWrapper {
       const std::u16string& script,
       base::OnceCallback<void(const base::Value)> callback) override;
 
-  ukm::SourceId GetPageUkmSourceId() override;
-
   void ClearWebContentsPointer();
 
-  content::RenderFrameHost* GetPrimaryMainFrame();
-
  private:
-  raw_ptr<content::WebContents> web_contents_;
+  base::raw_ptr<content::WebContents> web_contents_;
 
   // The ID of the isolated world to run javascript in.
   int32_t js_world_id_;
-
-  // Whether the first load after a navigation has completed. This is useful
-  // when dealing with single-page apps that may not fire subsequent load
-  // events.
-  bool is_first_load_for_nav_finished_{false};
 };
 
 }  // namespace commerce

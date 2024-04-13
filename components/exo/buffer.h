@@ -15,9 +15,7 @@
 #include "base/time/time.h"
 #include "components/exo/protected_native_pixmap_query_delegate.h"
 #include "components/viz/common/resources/transferable_resource.h"
-#include "gpu/ipc/common/surface_handle.h"
 #include "media/media_buildflags.h"
-#include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/color_space.h"
 #include "ui/gfx/geometry/size.h"
@@ -31,40 +29,22 @@ class FrameSinkResourceManager;
 // This class provides the content for a Surface. The mechanism by which a
 // client provides and updates the contents is the responsibility of the client
 // and not defined as part of this class.
-class Buffer {
+class Buffer : public base::SupportsWeakPtr<Buffer> {
  public:
   explicit Buffer(std::unique_ptr<gfx::GpuMemoryBuffer> gpu_memory_buffer);
   Buffer(std::unique_ptr<gfx::GpuMemoryBuffer> gpu_memory_buffer,
+         unsigned texture_target,
          unsigned query_type,
          bool use_zero_copy,
          bool is_overlay_candidate,
          bool y_invert);
-
   Buffer(const Buffer&) = delete;
   Buffer& operator=(const Buffer&) = delete;
   virtual ~Buffer();
 
-  // Clients can use this method to create Buffer using GMBHandles. This is
-  // required to move away clients from using GMB directly as a part of
-  // MappableSI work.
-  static std::unique_ptr<Buffer> CreateBufferFromGMBHandle(
-      gfx::GpuMemoryBufferHandle gpu_memory_buffer_handle,
-      const gfx::Size& buffer_size,
-      gfx::BufferFormat buffer_format,
-      gfx::BufferUsage buffer_usage,
-      unsigned query_type,
-      bool use_zero_copy,
-      bool is_overlay_candidate,
-      bool y_invert);
-
-  static std::unique_ptr<Buffer> CreateBuffer(
-      gfx::Size buffer_size,
-      gfx::BufferFormat buffer_format,
-      gfx::BufferUsage buffer_usage,
-      base::StringPiece debug_label,
-      gpu::SurfaceHandle surface_handle,
-      base::WaitableEvent* shutdown_event,
-      bool is_overlay_candidate = false);
+  const gfx::GpuMemoryBuffer* gfx_buffer() const {
+    return gpu_memory_buffer_.get();
+  }
 
   // Set the callback to run when the buffer is no longer used by the
   // compositor. The client is free to re-use or destroy this buffer and
@@ -105,15 +85,8 @@ class Buffer {
   // Returns the format of the buffer.
   gfx::BufferFormat GetFormat() const;
 
-  // Returns the |gpu_memory_buffer_| pointer to be used as id. It can also be
-  // used as a bool to identify if |gpu_memory_buffer_| is null or not.
-  const void* GetBufferId() const;
-
   // The default color to be used should transferable resource production fail.
   virtual SkColor4f GetColor() const;
-
-  // Creates a SkBitmap object from |gpu_memory_buffer_|.
-  SkBitmap CreateBitmap();
 
 #if BUILDFLAG(USE_ARC_PROTECTED_MEDIA)
   // Returns true if the underlying buffer is hardware protected. This should
@@ -127,8 +100,6 @@ class Buffer {
       base::TimeDelta wait_for_release_delay) {
     wait_for_release_delay_ = wait_for_release_delay;
   }
-
-  virtual base::WeakPtr<Buffer> AsWeakPtr();
 
  private:
   class Texture;
@@ -194,6 +165,9 @@ class Buffer {
   // The GPU memory buffer that contains the contents of this buffer.
   std::unique_ptr<gfx::GpuMemoryBuffer> gpu_memory_buffer_;
 
+  // Texture target that must be used when creating a texture for buffer.
+  const unsigned texture_target_;
+
   // Query type that must be used when releasing buffer from a texture.
   const unsigned query_type_;
 
@@ -246,8 +220,6 @@ class Buffer {
 #if BUILDFLAG(USE_ARC_PROTECTED_MEDIA)
   ProtectedBufferState protected_buffer_state_ = ProtectedBufferState::UNKNOWN;
 #endif  // BUILDFLAG(USE_ARC_PROTECTED_MEDIA)
-
-  base::WeakPtrFactory<Buffer> weak_ptr_factory_{this};
 };
 
 class SolidColorBuffer : public Buffer {
@@ -269,13 +241,9 @@ class SolidColorBuffer : public Buffer {
       PerCommitExplicitReleaseCallback per_commit_explicit_release_callback)
       override;
 
-  base::WeakPtr<Buffer> AsWeakPtr() override;
-
  private:
   SkColor4f color_;
   gfx::Size size_;
-
-  base::WeakPtrFactory<SolidColorBuffer> weak_ptr_factory_{this};
 };
 
 }  // namespace exo

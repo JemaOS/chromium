@@ -18,8 +18,6 @@ namespace autofill {
 namespace {
 
 constexpr char16_t kTestEmail[] = u"test@email.com";
-using ::testing::Property;
-using profile_ref = base::optional_ref<const AutofillProfile>;
 
 }  // namespace
 
@@ -31,23 +29,23 @@ class AutofillSaveUpdateAddressProfileDelegateIOSTest : public testing::Test {
   std::unique_ptr<AutofillSaveUpdateAddressProfileDelegateIOS>
   CreateAutofillSaveUpdateAddressProfileDelegate(
       AutofillProfile* original_profile = nullptr,
-      std::optional<std::u16string> email = std::nullopt,
+      absl::optional<std::u16string> email = absl::nullopt,
       bool is_migration_to_account = false,
       bool is_account_profile = false) {
-    profile_ = std::make_unique<AutofillProfile>(test::GetFullProfile());
+    profile_ = test::GetFullProfile();
     if (is_account_profile) {
-      profile_->set_source_for_testing(
+      profile_.set_source_for_testing(
           autofill::AutofillProfile::Source::kAccount);
     }
     return std::make_unique<AutofillSaveUpdateAddressProfileDelegateIOS>(
-        *profile_, original_profile, email,
+        profile_, original_profile, email,
         /*locale=*/"en-US",
         AutofillClient::SaveAddressProfilePromptOptions{
             .is_migration_to_account = is_migration_to_account},
         callback_.Get());
   }
 
-  std::unique_ptr<AutofillProfile> profile_;
+  AutofillProfile profile_;
   base::MockCallback<AutofillClient::AddressProfileSavePromptCallback>
       callback_;
 };
@@ -57,9 +55,10 @@ TEST_F(AutofillSaveUpdateAddressProfileDelegateIOSTest,
        HandleUserAction_Accepted) {
   std::unique_ptr<AutofillSaveUpdateAddressProfileDelegateIOS> delegate =
       CreateAutofillSaveUpdateAddressProfileDelegate();
-  EXPECT_CALL(callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kAccepted,
-                  Property(&profile_ref::has_value, false)));
+  EXPECT_CALL(
+      callback_,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kAccepted,
+          profile_));
   delegate->Accept();
 }
 
@@ -70,9 +69,10 @@ TEST_F(AutofillSaveUpdateAddressProfileDelegateIOSTest,
       CreateAutofillSaveUpdateAddressProfileDelegate();
 
   delegate->Cancel();
-  EXPECT_CALL(callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kDeclined,
-                  Property(&profile_ref::has_value, false)));
+  EXPECT_CALL(
+      callback_,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kDeclined,
+          testing::_));
   // The callback should run in the destructor.
   delegate.reset();
 }
@@ -81,9 +81,10 @@ TEST_F(AutofillSaveUpdateAddressProfileDelegateIOSTest,
 TEST_F(AutofillSaveUpdateAddressProfileDelegateIOSTest, TestCallbackOnSave) {
   std::unique_ptr<AutofillSaveUpdateAddressProfileDelegateIOS> delegate =
       CreateAutofillSaveUpdateAddressProfileDelegate();
-  EXPECT_CALL(callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kAccepted,
-                  Property(&profile_ref::has_value, false)));
+  EXPECT_CALL(
+      callback_,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kAccepted,
+          testing::_));
   delegate->Accept();
 }
 
@@ -92,9 +93,10 @@ TEST_F(AutofillSaveUpdateAddressProfileDelegateIOSTest,
        TestCallbackOnEditAccepted) {
   std::unique_ptr<AutofillSaveUpdateAddressProfileDelegateIOS> delegate =
       CreateAutofillSaveUpdateAddressProfileDelegate();
-  EXPECT_CALL(callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kEditAccepted,
-                  testing::_));
+  EXPECT_CALL(
+      callback_,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kEditAccepted,
+          testing::_));
   delegate->EditAccepted();
 }
 
@@ -103,8 +105,9 @@ TEST_F(AutofillSaveUpdateAddressProfileDelegateIOSTest,
        HandleUserAction_NoThanks) {
   std::unique_ptr<AutofillSaveUpdateAddressProfileDelegateIOS> delegate =
       CreateAutofillSaveUpdateAddressProfileDelegate();
-  EXPECT_CALL(callback_, Run(AutofillClient::AddressPromptUserDecision::kNever,
-                             Property(&profile_ref::has_value, false)));
+  EXPECT_CALL(callback_,
+              Run(AutofillClient::SaveAddressProfileOfferUserDecision::kNever,
+                  profile_));
   delegate->Never();
 }
 

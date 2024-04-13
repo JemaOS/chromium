@@ -31,10 +31,6 @@
 #include "gpu/vulkan/vulkan_implementation.h"
 #endif
 
-#if BUILDFLAG(SKIA_USE_DAWN)
-#include "gpu/command_buffer/service/dawn_context_provider.h"
-#endif
-
 namespace viz {
 
 // static
@@ -132,9 +128,12 @@ CompositorGpuThread::GetSharedContextState() {
   const bool use_passthrough_decoder =
       gpu::gles2::PassthroughCommandDecoderSupported() &&
       gpu_preferences.use_passthrough_cmd_decoder;
-  gl::GLContextAttribs attribs =
-      gpu::gles2::GenerateGLContextAttribsForCompositor(
-          use_passthrough_decoder);
+  gpu::ContextCreationAttribs attribs_helper;
+  attribs_helper.context_type = features::UseGles2ForOopR()
+                                    ? gpu::CONTEXT_TYPE_OPENGLES2
+                                    : gpu::CONTEXT_TYPE_OPENGLES3;
+  gl::GLContextAttribs attribs = gpu::gles2::GenerateGLContextAttribs(
+      attribs_helper, use_passthrough_decoder);
   attribs.angle_context_virtualization_group_number =
       gl::AngleContextVirtualizationGroup::kDrDc;
 
@@ -178,20 +177,6 @@ CompositorGpuThread::GetSharedContextState() {
     return nullptr;
   }
 
-  const auto& workarounds = gpu_channel_manager_->gpu_driver_bug_workarounds();
-
-#if BUILDFLAG(SKIA_USE_DAWN)
-  if (gpu_preferences.gr_context_type == gpu::GrContextType::kGraphiteDawn) {
-    // TODO(1504543): Determine if we need to set up a
-    // DawnCachingInterfaceFactory and/or a cache blob callback.
-    dawn_context_provider_ =
-        gpu::DawnContextProvider::Create(gpu_preferences, workarounds);
-    if (!dawn_context_provider_) {
-      DLOG(ERROR) << "Failed to create Dawn context provider for Graphite.";
-    }
-  }
-#endif
-
   // Create a SharedContextState.
   auto shared_context_state = base::MakeRefCounted<gpu::SharedContextState>(
       std::move(share_group), std::move(surface), std::move(context),
@@ -204,14 +189,11 @@ CompositorGpuThread::GetSharedContextState() {
       /*vulkan_context_provider=*/nullptr,
 #endif
       /*metal_context_provider=*/nullptr,
-#if BUILDFLAG(SKIA_USE_DAWN)
-      dawn_context_provider_.get(),
-#else
       /*dawn_context_provider=*/nullptr,
-#endif
       /*peak_memory_monitor=*/weak_ptr_factory_.GetWeakPtr(),
       /*created_on_compositor_gpu_thread=*/true);
 
+  const auto& workarounds = gpu_channel_manager_->gpu_driver_bug_workarounds();
   auto gles2_feature_info = base::MakeRefCounted<gpu::gles2::FeatureInfo>(
       workarounds, gpu_feature_info);
 
@@ -225,8 +207,7 @@ CompositorGpuThread::GetSharedContextState() {
   // Initialize Skia.
   if (!shared_context_state->InitializeSkia(
           gpu_preferences, workarounds, gpu_channel_manager_->gr_shader_cache(),
-          gpu_channel_manager_->use_shader_cache_shm_count(),
-          /*progress_reporter=*/nullptr)) {
+          /*activity_flags=*/nullptr, /*progress_reporter=*/nullptr)) {
     LOG(ERROR) << "Failed to Initialize Skia for DrDC SharedContextState";
   }
   shared_context_state_ = std::move(shared_context_state);

@@ -42,13 +42,10 @@ class GuestViewManagerDelegate {
 
   // Indicates whether the |guest| can be used within the context of where it
   // was created.
-  virtual bool IsGuestAvailableToContext(const GuestViewBase* guest) const;
+  virtual bool IsGuestAvailableToContext(GuestViewBase* guest);
 
   // Indicates whether the |guest| is owned by an extension or Chrome App.
-  virtual bool IsOwnedByExtension(const GuestViewBase* guest);
-
-  // Indicates whether the |guest| is owned by a Controlled Frame embedder.
-  virtual bool IsOwnedByControlledFrameEmbedder(const GuestViewBase* guest);
+  virtual bool IsOwnedByExtension(GuestViewBase* guest);
 
   // Registers additional GuestView types the delegator (GuestViewManger) can
   // create.

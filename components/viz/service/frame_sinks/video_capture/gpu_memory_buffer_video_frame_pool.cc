@@ -12,13 +12,8 @@ namespace viz {
 
 GpuMemoryBufferVideoFramePool::GpuMemoryBufferVideoFramePool(
     int capacity,
-    media::VideoPixelFormat format,
-    const gfx::ColorSpace& color_space,
     GmbVideoFramePoolContextProvider* context_provider)
-    : VideoFramePool(capacity),
-      format_(format),
-      color_space_(color_space),
-      context_provider_(context_provider) {
+    : VideoFramePool(capacity), context_provider_(context_provider) {
   RecreateVideoFramePool();
 }
 
@@ -30,8 +25,7 @@ scoped_refptr<media::VideoFrame>
 GpuMemoryBufferVideoFramePool::ReserveVideoFrame(media::VideoPixelFormat format,
                                                  const gfx::Size& size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK_EQ(format, format_) << "Reserving a format that is different from the "
-                                "one specified in the constructor.";
+  DCHECK_EQ(format, media::VideoPixelFormat::PIXEL_FORMAT_NV12);
   DCHECK_LE(num_reserved_frames_, capacity());
 
   if (num_reserved_frames_ == capacity()) {
@@ -39,7 +33,8 @@ GpuMemoryBufferVideoFramePool::ReserveVideoFrame(media::VideoPixelFormat format,
   }
 
   scoped_refptr<media::VideoFrame> result =
-      video_frame_pool_->MaybeCreateVideoFrame(size, color_space_);
+      video_frame_pool_->MaybeCreateVideoFrame(size,
+                                               gfx::ColorSpace::CreateREC709());
 
   if (result) {
     num_reserved_frames_++;
@@ -76,7 +71,7 @@ void GpuMemoryBufferVideoFramePool::RecreateVideoFramePool() {
       base::BindOnce(&GpuMemoryBufferVideoFramePool::RecreateVideoFramePool,
                      weak_factory_.GetWeakPtr()));
   video_frame_pool_ = media::RenderableGpuMemoryBufferVideoFramePool::Create(
-      std::move(pool_context), format_);
+      std::move(pool_context));
 
   video_frame_pool_generation_++;
   num_reserved_frames_ = 0;

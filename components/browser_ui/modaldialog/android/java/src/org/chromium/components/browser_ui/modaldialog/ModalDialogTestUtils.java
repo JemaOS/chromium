@@ -4,7 +4,11 @@
 
 package org.chromium.components.browser_ui.modaldialog;
 
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
+
+import static org.chromium.ui.test.util.ViewUtils.waitForView;
 
 import android.app.Activity;
 import android.content.res.Resources;
@@ -21,13 +25,16 @@ import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogType;
 import org.chromium.ui.modaldialog.ModalDialogProperties;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
-import org.chromium.ui.test.util.ViewUtils;
 
 import java.util.List;
 
-/** Utility methods and classes for testing modal dialogs. */
+/**
+ * Utility methods and classes for testing modal dialogs.
+ */
 public class ModalDialogTestUtils {
-    /** Test observer that notifies dialog dismissal. */
+    /**
+     * Test observer that notifies dialog dismissal.
+     */
     public interface TestDialogDismissedObserver {
         /**
          * Called when dialog is dismissed.
@@ -36,17 +43,12 @@ public class ModalDialogTestUtils {
         void onDialogDismissed(@DialogDismissalCause int dismissalCause);
     }
 
-    /** @return A {@link PropertyModel} of a modal dialog that is used for testing. */
-    public static PropertyModel createDialog(
-            Activity activity,
-            ModalDialogManager manager,
-            String title,
-            @Nullable TestDialogDismissedObserver observer) {
-        return createDialog(
-                activity,
-                manager,
-                title,
-                observer,
+    /**
+     * @return A {@link PropertyModel} of a modal dialog that is used for testing.
+     */
+    public static PropertyModel createDialog(Activity activity, ModalDialogManager manager,
+            String title, @Nullable TestDialogDismissedObserver observer) {
+        return createDialog(activity, manager, title, observer,
                 ModalDialogProperties.ButtonStyles.PRIMARY_OUTLINE_NEGATIVE_OUTLINE);
     }
 
@@ -54,93 +56,38 @@ public class ModalDialogTestUtils {
      * @return A {@link PropertyModel} of a modal dialog that is used for testing with
      *         primary or negative button filled.
      */
-    public static PropertyModel createDialog(
-            Activity activity,
-            ModalDialogManager manager,
-            String title,
-            @Nullable TestDialogDismissedObserver observer,
+    public static PropertyModel createDialog(Activity activity, ModalDialogManager manager,
+            String title, @Nullable TestDialogDismissedObserver observer,
             @ModalDialogProperties.ButtonStyles int buttonStyles) {
-        return createDialog(
-                activity,
-                manager,
-                title,
-                observer,
-                buttonStyles,
-                ModalDialogProperties.DialogStyles.NORMAL);
-    }
+        return TestThreadUtils.runOnUiThreadBlockingNoException(() -> {
+            ModalDialogProperties.Controller controller = new ModalDialogProperties.Controller() {
+                @Override
+                public void onDismiss(
+                        PropertyModel model, @DialogDismissalCause int dismissalCause) {
+                    if (observer != null) observer.onDialogDismissed(dismissalCause);
+                }
 
-    /**
-     * @return A {@link PropertyModel} of a modal dialog that is used for testing with
-     *         dialog style
-     */
-    public static PropertyModel createDialogWithDialogStyle(
-            Activity activity,
-            ModalDialogManager manager,
-            String title,
-            @Nullable TestDialogDismissedObserver observer,
-            @ModalDialogProperties.DialogStyles int dialogStyles) {
-        return createDialog(
-                activity,
-                manager,
-                title,
-                observer,
-                ModalDialogProperties.ButtonStyles.PRIMARY_FILLED_NEGATIVE_OUTLINE,
-                dialogStyles);
-    }
-
-    /**
-     * @return A {@link PropertyModel} of a modal dialog that is used for testing with
-     *         primary or negative button filled and dialog style.
-     */
-    public static PropertyModel createDialog(
-            Activity activity,
-            ModalDialogManager manager,
-            String title,
-            @Nullable TestDialogDismissedObserver observer,
-            @ModalDialogProperties.ButtonStyles int buttonStyles,
-            @ModalDialogProperties.DialogStyles int dialogStyles) {
-        return TestThreadUtils.runOnUiThreadBlockingNoException(
-                () -> {
-                    ModalDialogProperties.Controller controller =
-                            new ModalDialogProperties.Controller() {
-                                @Override
-                                public void onDismiss(
-                                        PropertyModel model,
-                                        @DialogDismissalCause int dismissalCause) {
-                                    if (observer != null) {
-                                        observer.onDialogDismissed(dismissalCause);
-                                    }
-                                }
-
-                                @Override
-                                public void onClick(PropertyModel model, int buttonType) {
-                                    switch (buttonType) {
-                                        case ModalDialogProperties.ButtonType.POSITIVE:
-                                        case ModalDialogProperties.ButtonType.NEGATIVE:
-                                            manager.dismissDialog(
-                                                    model, DialogDismissalCause.UNKNOWN);
-                                            break;
-                                        default:
-                                            Assert.fail("Unknown button type: " + buttonType);
-                                    }
-                                }
-                            };
-                    Resources resources = activity.getResources();
-                    return new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS)
-                            .with(ModalDialogProperties.CONTROLLER, controller)
-                            .with(ModalDialogProperties.TITLE, title)
-                            .with(
-                                    ModalDialogProperties.POSITIVE_BUTTON_TEXT,
-                                    resources,
-                                    R.string.ok)
-                            .with(
-                                    ModalDialogProperties.NEGATIVE_BUTTON_TEXT,
-                                    resources,
-                                    R.string.cancel)
-                            .with(ModalDialogProperties.BUTTON_STYLES, buttonStyles)
-                            .with(ModalDialogProperties.DIALOG_STYLES, dialogStyles)
-                            .build();
-                });
+                @Override
+                public void onClick(PropertyModel model, int buttonType) {
+                    switch (buttonType) {
+                        case ModalDialogProperties.ButtonType.POSITIVE:
+                        case ModalDialogProperties.ButtonType.NEGATIVE:
+                            manager.dismissDialog(model, DialogDismissalCause.UNKNOWN);
+                            break;
+                        default:
+                            Assert.fail("Unknown button type: " + buttonType);
+                    }
+                }
+            };
+            Resources resources = activity.getResources();
+            return new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS)
+                    .with(ModalDialogProperties.CONTROLLER, controller)
+                    .with(ModalDialogProperties.TITLE, title)
+                    .with(ModalDialogProperties.POSITIVE_BUTTON_TEXT, resources, R.string.ok)
+                    .with(ModalDialogProperties.NEGATIVE_BUTTON_TEXT, resources, R.string.cancel)
+                    .with(ModalDialogProperties.BUTTON_STYLES, buttonStyles)
+                    .build();
+        });
     }
 
     /**
@@ -163,40 +110,23 @@ public class ModalDialogTestUtils {
      * @param waitForShow Whether to wait for the dialog to be shown. Use false if the enqueued
      *                    dialog is not expected to show immediately.
      */
-    public static void showDialog(
-            ModalDialogManager manager,
-            PropertyModel model,
-            @ModalDialogType int dialogType,
-            boolean waitForShow) {
+    public static void showDialog(ModalDialogManager manager, PropertyModel model,
+            @ModalDialogType int dialogType, boolean waitForShow) {
         TestThreadUtils.runOnUiThreadBlocking(() -> manager.showDialog(model, dialogType));
         if (waitForShow) {
-            ViewUtils.waitForVisibleView(withId(R.id.modal_dialog_view));
+            onView(isRoot()).check(waitForView(withId(R.id.modal_dialog_view)));
         }
     }
 
     /**
-     * Shows a dialog that's in the root view in the specified {@link ModalDialogManager} on the UI
-     * thread.
-     *
-     * @param manager The {@link ModalDialogManager} used to show the dialog.
-     * @param model The {@link PropertyModel} for the dialog to show.
-     * @param dialogType The {@link ModalDialogType} of the dialog to show.
+     * Checks whether the number of pending dialogs of a specified type is as expected.
      */
-    public static void showDialogInRoot(
-            ModalDialogManager manager, PropertyModel model, @ModalDialogType int dialogType) {
-        TestThreadUtils.runOnUiThreadBlocking(() -> manager.showDialog(model, dialogType));
-        ViewUtils.waitForDialogViewCheckingState(
-                withId(R.id.modal_dialog_view), ViewUtils.VIEW_VISIBLE);
-    }
-
-    /** Checks whether the number of pending dialogs of a specified type is as expected. */
     public static void checkPendingSize(
             ModalDialogManager manager, @ModalDialogType int dialogType, int expected) {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    List list = manager.getPendingDialogsForTest(dialogType);
-                    Assert.assertEquals(expected, list != null ? list.size() : 0);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            List list = manager.getPendingDialogsForTest(dialogType);
+            Assert.assertEquals(expected, list != null ? list.size() : 0);
+        });
     }
 
     /**
@@ -205,18 +135,16 @@ public class ModalDialogTestUtils {
      */
     public static void checkCurrentPresenter(
             ModalDialogManager manager, @Nullable Integer dialogType) {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    if (dialogType == null) {
-                        Assert.assertFalse(manager.isShowing());
-                        Assert.assertNull(manager.getCurrentPresenterForTest());
-                    } else {
-                        Assert.assertTrue(manager.isShowing());
-                        Assert.assertEquals(
-                                manager.getPresenterForTest(dialogType),
-                                manager.getCurrentPresenterForTest());
-                    }
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            if (dialogType == null) {
+                Assert.assertFalse(manager.isShowing());
+                Assert.assertNull(manager.getCurrentPresenterForTest());
+            } else {
+                Assert.assertTrue(manager.isShowing());
+                Assert.assertEquals(manager.getPresenterForTest(dialogType),
+                        manager.getCurrentPresenterForTest());
+            }
+        });
     }
 
     /**
@@ -236,12 +164,11 @@ public class ModalDialogTestUtils {
      */
     public static PropertyModel createModel(
             PropertyModel.Builder modelBuilder, ModalDialogView view) {
-        return TestThreadUtils.runOnUiThreadBlockingNoException(
-                () -> {
-                    PropertyModel model = modelBuilder.build();
-                    PropertyModelChangeProcessor.create(model, view, new ModalDialogViewBinder());
-                    return model;
-                });
+        return TestThreadUtils.runOnUiThreadBlockingNoException(() -> {
+            PropertyModel model = modelBuilder.build();
+            PropertyModelChangeProcessor.create(model, view, new ModalDialogViewBinder());
+            return model;
+        });
     }
 
     /**

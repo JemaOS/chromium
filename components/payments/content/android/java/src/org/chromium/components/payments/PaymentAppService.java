@@ -5,6 +5,7 @@
 package org.chromium.components.payments;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +40,7 @@ public class PaymentAppService implements PaymentAppFactoryInterface {
     }
 
     /** Resets the instance, used by //clank tests. */
+    @VisibleForTesting
     public void resetForTest() {
         sInstance = null;
     }
@@ -48,7 +50,7 @@ public class PaymentAppService implements PaymentAppFactoryInterface {
     public void create(PaymentAppFactoryDelegate delegate) {
         Collector collector = new Collector(new HashSet<>(mFactories.values()), delegate);
         for (PaymentAppFactoryInterface factory : mFactories.values()) {
-            factory.create(/* delegate= */ collector);
+            factory.create(/*delegate=*/collector);
         }
     }
 

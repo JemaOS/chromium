@@ -27,7 +27,7 @@
 #include "components/wifi/wifi_service.h"
 
 #if BUILDFLAG(IS_APPLE)
-#include "base/apple/scoped_nsautorelease_pool.h"
+#include "base/mac/scoped_nsautorelease_pool.h"
 #endif
 
 namespace wifi {
@@ -54,7 +54,7 @@ class WiFiTest {
     DCHECK_NE(RESULT_PENDING, result);
     result_ = result;
     if (base::CurrentThread::Get())
-      loop_.QuitWhenIdle();
+      base::RunLoop::QuitCurrentWhenIdleDeprecated();
   }
 
   void OnNetworksChanged(
@@ -71,13 +71,17 @@ class WiFiTest {
     VLOG(0) << "Network List Changed: " << network_guid_list.size();
   }
 
+#if BUILDFLAG(IS_APPLE)
+  // Without this there will be a mem leak on osx.
+  base::mac::ScopedNSAutoreleasePool scoped_pool_;
+#endif
+
   std::unique_ptr<WiFiService> wifi_service_;
 
   // Need AtExitManager to support AsWeakPtr (in NetLog).
   base::AtExitManager exit_manager_;
 
   Result result_;
-  base::RunLoop loop_;
 };
 
 WiFiTest::Result WiFiTest::Main(int argc, const char* argv[]) {
@@ -202,7 +206,7 @@ bool WiFiTest::ParseCommandLine(int argc, const char* argv[]) {
       wifi_service_->StartConnect(network_guid, &error);
       VLOG(0) << error;
       if (error.empty())
-        loop_.Run();
+        base::RunLoop().Run();
       return true;
     }
   }
@@ -234,7 +238,7 @@ bool WiFiTest::ParseCommandLine(int argc, const char* argv[]) {
         base::BindRepeating(&WiFiTest::OnNetworkListChanged,
                             base::Unretained(this)));
     wifi_service_->RequestNetworkScan();
-    loop_.Run();
+    base::RunLoop().Run();
     return true;
   }
 
@@ -260,11 +264,6 @@ int main(int argc, const char* argv[]) {
   settings.logging_dest =
       logging::LOG_TO_SYSTEM_DEBUG_LOG | logging::LOG_TO_STDERR;
   logging::InitLogging(settings);
-
-#if BUILDFLAG(IS_APPLE)
-  // Without this there will be a memory leak on the Mac.
-  base::apple::ScopedNSAutoreleasePool pool;
-#endif
 
   wifi::WiFiTest wifi_test;
   return wifi_test.Main(argc, argv);

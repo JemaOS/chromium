@@ -94,25 +94,6 @@ int WebappsIconUtils::GetIdealShortcutIconSizeInPx() {
   return g_ideal_shortcut_icon_size;
 }
 
-int WebappsIconUtils::GetIdealIconSizeForIconType(
-    webapk::Image::Usage usage,
-    webapk::Image::Purpose purpose) {
-  switch (usage) {
-    case webapk::Image::PRIMARY_ICON:
-      if (purpose == webapk::Image::MASKABLE) {
-        return GetIdealAdaptiveLauncherIconSizeInPx();
-      } else {
-        return GetIdealHomescreenIconSizeInPx();
-      }
-    case webapk::Image::SPLASH_ICON:
-      return GetIdealSplashImageSizeInPx();
-    case webapk::Image::SHORTCUT_ICON:
-      return GetIdealShortcutIconSizeInPx();
-    default:
-      return 0;
-  }
-}
-
 bool WebappsIconUtils::DoesAndroidSupportMaskableIcons() {
   return base::android::BuildInfo::GetInstance()->sdk_int() >=
          base::android::SDK_VERSION_OREO;
@@ -120,34 +101,38 @@ bool WebappsIconUtils::DoesAndroidSupportMaskableIcons() {
 
 SkBitmap WebappsIconUtils::FinalizeLauncherIconInBackground(
     const SkBitmap& bitmap,
+    bool is_icon_maskable,
     const GURL& url,
     bool* is_generated) {
   base::AssertLongCPUWorkAllowed();
 
   JNIEnv* env = base::android::AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> result;
   *is_generated = false;
 
   if (!bitmap.isNull()) {
     if (Java_WebappsIconUtils_isIconLargeEnoughForLauncher(env, bitmap.width(),
                                                            bitmap.height())) {
-      return bitmap;
+      ScopedJavaLocalRef<jobject> java_bitmap =
+          gfx::ConvertToJavaBitmap(bitmap);
+      result = Java_WebappsIconUtils_createHomeScreenIconFromWebIcon(
+          base::android::AttachCurrentThread(), java_bitmap, is_icon_maskable);
     }
   }
 
-  ScopedJavaLocalRef<jobject> java_url =
-      url::GURLAndroid::FromNativeGURL(env, url);
-  SkColor mean_color = SkColorSetRGB(0x91, 0x91, 0x91);
+  if (result.is_null()) {
+    ScopedJavaLocalRef<jobject> java_url =
+        url::GURLAndroid::FromNativeGURL(env, url);
+    SkColor mean_color = SkColorSetRGB(0x91, 0x91, 0x91);
 
-  if (!bitmap.isNull()) {
-    mean_color = color_utils::CalculateKMeanColorOfBitmap(bitmap);
+    if (!bitmap.isNull())
+      mean_color = color_utils::CalculateKMeanColorOfBitmap(bitmap);
+
+    *is_generated = true;
+    result = Java_WebappsIconUtils_generateHomeScreenIcon(
+        env, java_url, SkColorGetR(mean_color), SkColorGetG(mean_color),
+        SkColorGetB(mean_color));
   }
-
-  *is_generated = true;
-
-  ScopedJavaLocalRef<jobject> result =
-      Java_WebappsIconUtils_generateHomeScreenIcon(
-          env, java_url, SkColorGetR(mean_color), SkColorGetG(mean_color),
-          SkColorGetB(mean_color));
 
   return result.obj()
              ? gfx::CreateSkBitmapFromJavaBitmap(gfx::JavaBitmap(result))
@@ -175,17 +160,6 @@ int WebappsIconUtils::GetIdealIconCornerRadiusPxForPromptUI() {
 
 void WebappsIconUtils::SetIdealShortcutSizeForTesting(int size) {
   g_ideal_shortcut_icon_size = size;
-}
-
-void WebappsIconUtils::SetIconSizesForTesting(std::vector<int> sizes) {
-  // This ordering must be kept up to date with the |GetIconSizes()| above.
-  g_ideal_homescreen_icon_size = sizes[0];
-  g_minimum_homescreen_icon_size = sizes[1];
-  g_ideal_splash_image_size = sizes[2];
-  g_minimum_splash_image_size = sizes[3];
-  g_ideal_monochrome_icon_size = sizes[4];
-  g_ideal_adaptive_launcher_icon_size = sizes[5];
-  g_ideal_shortcut_icon_size = sizes[6];
 }
 
 }  // namespace webapps

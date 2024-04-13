@@ -7,7 +7,6 @@
 #include <iterator>
 
 #include "base/check_op.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/metrics_hashes.h"
 #include "base/ranges/algorithm.h"
 #include "services/metrics/public/cpp/delegating_ukm_recorder.h"
@@ -66,7 +65,7 @@ const UkmSource* TestUkmRecorder::GetSourceForSourceId(
 const ukm::mojom::UkmEntry* TestUkmRecorder::GetDocumentCreatedEntryForSourceId(
     ukm::SourceId source_id) const {
   auto entries = GetEntriesByName(ukm::builders::DocumentCreated::kEntryName);
-  for (const ukm::mojom::UkmEntry* entry : entries) {
+  for (auto* entry : entries) {
     if (entry->source_id == source_id)
       return entry;
   }
@@ -80,10 +79,10 @@ void TestUkmRecorder::SetOnAddEntryCallback(
   entry_hash_to_wait_for_ = base::HashMetricName(entry_name);
 }
 
-std::vector<raw_ptr<const mojom::UkmEntry, VectorExperimental>>
-TestUkmRecorder::GetEntriesByName(base::StringPiece entry_name) const {
+std::vector<const mojom::UkmEntry*> TestUkmRecorder::GetEntriesByName(
+    base::StringPiece entry_name) const {
   uint64_t hash = base::HashMetricName(entry_name);
-  std::vector<raw_ptr<const mojom::UkmEntry, VectorExperimental>> result;
+  std::vector<const mojom::UkmEntry*> result;
   for (const auto& it : entries()) {
     if (it->event_hash == hash)
       result.push_back(it.get());
@@ -212,15 +211,6 @@ TestUkmRecorder::HumanReadableUkmEntry::~HumanReadableUkmEntry() = default;
 bool TestUkmRecorder::HumanReadableUkmEntry::operator==(
     const HumanReadableUkmEntry& other) const {
   return source_id == other.source_id && metrics == other.metrics;
-}
-
-void PrintTo(const TestUkmRecorder::HumanReadableUkmEntry& entry,
-             std::ostream* os) {
-  (*os) << "Entry{source=" << entry.source_id << " ";
-  for (const auto& name_value : entry.metrics) {
-    (*os) << name_value.first << "=" << name_value.second << ' ';
-  }
-  (*os) << "}";
 }
 
 }  // namespace ukm

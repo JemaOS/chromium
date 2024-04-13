@@ -8,7 +8,6 @@
 #include <iterator>
 #include <set>
 #include <string>
-#include <vector>
 
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
@@ -21,10 +20,13 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
 #include "build/build_config.h"
+#include "components/password_manager/core/browser/insecure_credentials_table.h"
 #include "components/password_manager/core/browser/password_form.h"
+#include "components/password_manager/core/browser/password_list_sorter.h"
 #include "components/password_manager/core/browser/ui/credential_ui_entry.h"
 #include "components/password_manager/core/browser/ui/credential_utils.h"
 #include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
+#include "components/password_manager/core/common/password_manager_features.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "components/password_manager/core/browser/ui/reuse_check_utility.h"
@@ -50,19 +52,23 @@ base::flat_set<std::u16string> ExtractPasswords(
                                            &CredentialUIEntry::password);
 }
 
-bool ChangesRequireRerunningReuseCheck(const PasswordStoreChangeList& changes) {
-  return base::ranges::any_of(changes, [](const auto& change) {
-    return change.type() == PasswordStoreChange::ADD ||
-           change.type() == PasswordStoreChange::REMOVE ||
-           (change.type() == PasswordStoreChange::UPDATE &&
-            change.password_changed());
-  });
+bool IsCheckForReusedPasswordsEnabled() {
+#if BUILDFLAG(IS_IOS)
+  // Weak and reused checks are controlled by the Password Checkup feature.
+  return password_manager::features::IsPasswordCheckupEnabled();
+#else
+  return base::FeatureList::IsEnabled(
+      password_manager::features::kPasswordManagerRedesign);
+#endif
 }
 
-bool ChangeRequiresRerunningWeakCheck(const PasswordStoreChange& change) {
-  return change.type() == PasswordStoreChange::ADD ||
-         (change.type() == PasswordStoreChange::UPDATE &&
-          change.password_changed());
+bool IsCheckForWeakPasswordsEnabled() {
+#if BUILDFLAG(IS_IOS)
+  // Weak and reused checks are controlled by the Password Checkup feature.
+  return password_manager::features::IsPasswordCheckupEnabled();
+#else
+  return true;
+#endif
 }
 
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -105,8 +111,7 @@ void InsecureCredentialsManager::StartWeakCheck(
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 void InsecureCredentialsManager::SaveInsecureCredential(
-    const LeakCheckCredential& leak,
-    TriggerBackendNotification should_trigger_notification) {
+    const LeakCheckCredential& leak) {
   // Iterate over all currently saved credentials and mark those as insecure
   // that have the same canonicalized username and password.
   const std::u16string canonicalized_username =
@@ -119,7 +124,7 @@ void InsecureCredentialsManager::SaveInsecureCredential(
       credential_to_update.password_issues.insert_or_assign(
           InsecureType::kLeaked,
           InsecurityMetadata(base::Time::Now(), IsMuted(false),
-                             should_trigger_notification));
+                             TriggerBackendNotification(false)));
       presenter_->EditSavedCredentials(credential, credential_to_update);
     }
   }
@@ -159,7 +164,7 @@ InsecureCredentialsManager::GetInsecureCredentialEntries() const {
 
 #if BUILDFLAG(IS_ANDROID)
   // Otherwise erase entries which aren't leaked and phished.
-  std::erase_if(credentials, [](const auto& credential) {
+  base::EraseIf(credentials, [](const auto& credential) {
     return !IsCompromised(credential);
   });
   return credentials;
@@ -181,7 +186,7 @@ InsecureCredentialsManager::GetInsecureCredentialEntries() const {
     }
   }
 
-  std::erase_if(credentials, [](const auto& credential) {
+  base::EraseIf(credentials, [](const auto& credential) {
     return credential.password_issues.empty();
   });
   return credentials;
@@ -214,48 +219,33 @@ void InsecureCredentialsManager::OnWeakCheckDone(
   NotifyInsecureCredentialsChanged();
 }
 
-void InsecureCredentialsManager::OnPartialWeakCheckDone(
-    base::flat_set<std::u16string> weak_passwords) {
-  if (weak_passwords.empty()) {
-    return;
+void InsecureCredentialsManager::OnEdited(const CredentialUIEntry& credential) {
+  // The WeakCheck feature is not available on Android yet. Disable on Android
+  // to avoid pulling in a big dependency on zxcvbn.
+#if !BUILDFLAG(IS_ANDROID)
+  if (IsCheckForReusedPasswordsEnabled()) {
+    // Re-run reused check since user might have changed reused password.
+    StartReuseCheck();
   }
 
-  weak_passwords_.insert(weak_passwords.begin(), weak_passwords.end());
-  NotifyInsecureCredentialsChanged();
+  if (IsCheckForWeakPasswordsEnabled()) {
+    const std::u16string& password = credential.password;
+    if (weak_passwords_.contains(password) || !IsWeak(password)) {
+      // Either the password is already known to be weak, or it is not weak at
+      // all. In both cases there is nothing to do.
+      return;
+    }
+
+    weak_passwords_.insert(password);
+    NotifyInsecureCredentialsChanged();
+  }
+#endif
 }
 
 // Re-computes the list of insecure credentials with passwords after obtaining a
 // new list of saved passwords.
-void InsecureCredentialsManager::OnSavedPasswordsChanged(
-    const PasswordStoreChangeList& changes) {
-  // Disable on Android  to avoid pulling in a big dependency on zxcvbn.
-#if !BUILDFLAG(IS_ANDROID)
-  base::flat_set<std::u16string> passwords_to_recheck;
-  for (const auto& change : changes) {
-    if (ChangeRequiresRerunningWeakCheck(change)) {
-      passwords_to_recheck.insert(change.form().password_value);
-    }
-  }
-  if (!passwords_to_recheck.empty()) {
-    base::ThreadPool::PostTaskAndReplyWithResult(
-        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-        base::BindOnce(&BulkWeakCheck, std::move(passwords_to_recheck)),
-        base::BindOnce(&InsecureCredentialsManager::OnPartialWeakCheckDone,
-                       weak_ptr_factory_.GetWeakPtr()));
-  }
-
-  if (ChangesRequireRerunningReuseCheck(changes)) {
-    // Re-run reused check since user might have changed reused password. Don't
-    // notify observers yet, as they'll be notified on OnReuseCheckDone()
-    // anyway.
-    StartReuseCheck();
-  } else {
-    // Notify about changes immediately.
-    NotifyInsecureCredentialsChanged();
-  }
-#else
+void InsecureCredentialsManager::OnSavedPasswordsChanged() {
   NotifyInsecureCredentialsChanged();
-#endif
 }
 
 void InsecureCredentialsManager::NotifyInsecureCredentialsChanged() {

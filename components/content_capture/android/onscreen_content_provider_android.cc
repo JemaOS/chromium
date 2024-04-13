@@ -75,9 +75,11 @@ ScopedJavaLocalRef<jobjectArray> ToJavaArrayOfContentCaptureFrame(
     JNIEnv* env,
     const ContentCaptureSession& session,
     int offset_y) {
+  ScopedJavaLocalRef<jclass> object_clazz =
+      base::android::GetClass(env, "java/lang/Object");
   jobjectArray joa =
-      env->NewObjectArray(session.size(), jni_zero::g_object_class, nullptr);
-  base::android::CheckException(env);
+      env->NewObjectArray(session.size(), object_clazz.obj(), nullptr);
+  jni_generator::CheckException(env);
 
   for (size_t i = 0; i < session.size(); ++i) {
     ScopedJavaLocalRef<jobject> item =

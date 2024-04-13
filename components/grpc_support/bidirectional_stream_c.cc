@@ -90,7 +90,7 @@ class BidirectionalStreamAdapter
  public:
   BidirectionalStreamAdapter(stream_engine* engine,
                              void* annotation,
-                             const bidirectional_stream_callback* callback);
+                             bidirectional_stream_callback* callback);
 
   virtual ~BidirectionalStreamAdapter();
 
@@ -124,17 +124,16 @@ class BidirectionalStreamAdapter
 
   // None of these objects are owned by |this|.
   raw_ptr<net::URLRequestContextGetter> request_context_getter_;
-  raw_ptr<grpc_support::BidirectionalStream, AcrossTasksDanglingUntriaged>
-      bidirectional_stream_;
+  raw_ptr<grpc_support::BidirectionalStream> bidirectional_stream_;
   // C side
   std::unique_ptr<bidirectional_stream> c_stream_;
-  raw_ptr<const bidirectional_stream_callback> c_callback_;
+  raw_ptr<bidirectional_stream_callback> c_callback_;
 };
 
 BidirectionalStreamAdapter::BidirectionalStreamAdapter(
     stream_engine* engine,
     void* annotation,
-    const bidirectional_stream_callback* callback)
+    bidirectional_stream_callback* callback)
     : request_context_getter_(
           reinterpret_cast<net::URLRequestContextGetter*>(engine->obj)),
       c_stream_(std::make_unique<bidirectional_stream>()),
@@ -231,7 +230,7 @@ void BidirectionalStreamAdapter::DestroyOnNetworkThread() {
 bidirectional_stream* bidirectional_stream_create(
     stream_engine* engine,
     void* annotation,
-    const bidirectional_stream_callback* callback) {
+    bidirectional_stream_callback* callback) {
   // Allocate new C++ adapter that will invoke |callback|.
   BidirectionalStreamAdapter* stream_adapter =
       new BidirectionalStreamAdapter(engine, annotation, callback);

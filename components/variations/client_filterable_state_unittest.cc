@@ -5,15 +5,11 @@
 #include "components/variations/client_filterable_state.h"
 
 #include "base/functional/bind.h"
-#include "base/time/time.h"
-#include "components/prefs/testing_pref_service.h"
-#include "components/variations/pref_names.h"
-#include "components/variations/variations_seed_store.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace variations {
 
-TEST(ClientFilterableStateTest, IsEnterprise) {
+TEST(VariationsClientFilterableStateTest, IsEnterprise) {
   // Test, for non enterprise clients, is_enterprise_function_ is called once.
   ClientFilterableState client_non_enterprise(
       base::BindOnce([] { return false; }),
@@ -29,7 +25,7 @@ TEST(ClientFilterableStateTest, IsEnterprise) {
   EXPECT_TRUE(client_enterprise.IsEnterprise());
 }
 
-TEST(ClientFilterableStateTest, GoogleGroups) {
+TEST(VariationsClientFilterableStateTest, GoogleGroups) {
   // Test that google_groups_function_ is called once.
   base::flat_set<uint64_t> expected_google_groups =
       base::flat_set<uint64_t>(1234, 5678);

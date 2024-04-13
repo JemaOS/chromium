@@ -22,13 +22,13 @@ StubModelTypeSyncBridge::CreateMetadataChangeList() {
   return nullptr;
 }
 
-std::optional<ModelError> StubModelTypeSyncBridge::MergeFullSyncData(
+absl::optional<ModelError> StubModelTypeSyncBridge::MergeFullSyncData(
     std::unique_ptr<MetadataChangeList> metadata_change_list,
     EntityChangeList entity_data) {
   return {};
 }
 
-std::optional<ModelError> StubModelTypeSyncBridge::ApplyIncrementalSyncChanges(
+absl::optional<ModelError> StubModelTypeSyncBridge::ApplyIncrementalSyncChanges(
     std::unique_ptr<MetadataChangeList> metadata_change_list,
     EntityChangeList entity_changes) {
   return {};

@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/values.h"
 
 namespace cloud_devices {
@@ -37,10 +37,10 @@ class CloudDeviceDescription {
   const base::Value::Dict* GetDictItem(base::StringPiece path) const;
   const base::Value::List* GetListItem(base::StringPiece path) const;
 
-  // Sets item with given type for capability/option. Returns false if an
-  // intermediate Value in the path is not a dictionary.
-  bool SetDictItem(base::StringPiece path, base::Value::Dict dict);
-  bool SetListItem(base::StringPiece path, base::Value::List list);
+  // Creates item with given type for capability/option.
+  // Returns nullptr if an intermediate Value in the path is not a dictionary.
+  base::Value::Dict* CreateDictItem(base::StringPiece path);
+  base::Value::List* CreateListItem(base::StringPiece path);
 
  private:
   base::Value::Dict root_;

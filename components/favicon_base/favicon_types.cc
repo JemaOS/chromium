@@ -37,8 +37,6 @@ LargeIconResult::LargeIconResult(FallbackIconStyle* fallback_icon_style_in)
 
 LargeIconResult::~LargeIconResult() {}
 
-LargeIconResult::LargeIconResult(LargeIconResult&& result) = default;
-
 // --------------------------------------------------------
 // LargeIconImageResult
 

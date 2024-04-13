@@ -95,16 +95,19 @@ class BaseSearchProvider : public AutocompleteProvider {
       int accepted_suggestion,
       bool is_tail_suggestion);
 
-  static scoped_refptr<OmniboxAction> CreateActionInSuggest(
-      omnibox::ActionInfo action_info,
-      const TemplateURLRef& search_url,
-      const TemplateURLRef::SearchTermsArgs& original_search_terms,
-      const SearchTermsData& search_terms_data);
+  // Appends specific suggest client based on page |page_classification| to
+  // the additional query params of |search_terms_args| only for Google template
+  // URLs.
+  static void AppendSuggestClientToAdditionalQueryParams(
+      const TemplateURL* template_url,
+      const SearchTermsData& search_terms_data,
+      metrics::OmniboxEventProto::PageClassification page_classification,
+      TemplateURLRef::SearchTermsArgs* search_terms_args);
 
   // Returns whether the URL of the current page is eligible to be sent in any
   // suggest request. Only valid URLs with an HTTP or HTTPS scheme are eligible.
-  static bool PageURLIsEligibleForSuggestRequest(const GURL& page_url);
-  // Returns whether a suggest request can be made without the current page URL.
+  static bool CanSendPageURLInRequest(const GURL& page_url);
+  // Returns whether a suggest request can be made for zero-prefix suggestions.
   // It requires that all the following to hold:
   // * The suggest request is sent over HTTPS. This avoids leaking the current
   //   page URL or personal data in unencrypted network traffic.
@@ -113,19 +116,20 @@ class BaseSearchProvider : public AutocompleteProvider {
   // * The user's suggest provider is Google. We might want to allow other
   //   providers to see this data someday, but for now this has only been
   //   implemented for Google.
-  static bool CanSendSuggestRequestWithoutPageURL(
+  static bool CanSendZeroSuggestRequest(
       const TemplateURL* template_url,
       const SearchTermsData& search_terms_data,
       const AutocompleteProviderClient* client);
   // Returns whether a suggest request can be made with the current page URL.
   // It requires that all the following hold:
-  // * CanSendSuggestRequestWithoutPageURL() returns true.
+  // * CanSendZeroSuggestRequest() returns true. Checks whether the default
+  //   provider is Google among other things.
   // * Either one of:
   //   * The user consented to sending URLs of current page to Google and have
   //     them associated with their Google account.
   //   * The current page URL is the Search Results Page. The suggest endpoint
   //     could have logged the page URL when the user accessed it.
-  static bool CanSendSuggestRequestWithPageURL(
+  static bool CanSendSuggestRequestWithURL(
       const GURL& current_page_url,
       const TemplateURL* template_url,
       const SearchTermsData& search_terms_data,
@@ -221,7 +225,7 @@ class BaseSearchProvider : public AutocompleteProvider {
   // server to handle the results of the deletion. It will be called after the
   // deletion request completes.
   void OnDeletionComplete(const network::SimpleURLLoader* source,
-                          const int response_code,
+                          const bool response_received,
                           std::unique_ptr<std::string> response_body);
 
   raw_ptr<AutocompleteProviderClient> client_;

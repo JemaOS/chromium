@@ -68,8 +68,8 @@ class DnsLookupRequest : public network::ResolveHostClientBase {
     if (!render_frame_host) {
       OnComplete(net::ERR_NAME_NOT_RESOLVED,
                  net::ResolveErrorInfo(net::ERR_FAILED),
-                 /*resolved_addresses=*/std::nullopt,
-                 /*endpoint_results_with_metadata=*/std::nullopt);
+                 /*resolved_addresses=*/absl::nullopt,
+                 /*endpoint_results_with_metadata=*/absl::nullopt);
       return;
     }
 
@@ -95,16 +95,16 @@ class DnsLookupRequest : public network::ResolveHostClientBase {
     receiver_.set_disconnect_handler(base::BindOnce(
         &DnsLookupRequest::OnComplete, base::Unretained(this),
         net::ERR_NAME_NOT_RESOLVED, net::ResolveErrorInfo(net::ERR_FAILED),
-        /*resolved_addresses=*/std::nullopt,
-        /*endpoint_results_with_metadata=*/std::nullopt));
+        /*resolved_addresses=*/absl::nullopt,
+        /*endpoint_results_with_metadata=*/absl::nullopt));
   }
 
  private:
   // network::mojom::ResolveHostClient:
   void OnComplete(int result,
                   const net::ResolveErrorInfo& resolve_error_info,
-                  const std::optional<net::AddressList>& resolved_addresses,
-                  const std::optional<net::HostResolverEndpointResults>&
+                  const absl::optional<net::AddressList>& resolved_addresses,
+                  const absl::optional<net::HostResolverEndpointResults>&
                       endpoint_results_with_metadata) override {
     VLOG(2) << __FUNCTION__ << ": " << url_.Serialize()
             << ", result=" << resolve_error_info.error;
@@ -168,10 +168,7 @@ void SimpleNetworkHintsHandlerImpl::Preconnect(const url::SchemeHostPort& url,
 
   render_frame_host->GetStoragePartition()
       ->GetNetworkContext()
-      ->PreconnectSockets(/*num_streams=*/1, url.GetURL(),
-                          allow_credentials
-                              ? network::mojom::CredentialsMode::kInclude
-                              : network::mojom::CredentialsMode::kOmit,
+      ->PreconnectSockets(/*num_streams=*/1, url.GetURL(), allow_credentials,
                           network_anonymization_key);
 }
 

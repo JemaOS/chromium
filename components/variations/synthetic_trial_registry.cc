@@ -5,6 +5,7 @@
 #include "components/variations/synthetic_trial_registry.h"
 
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/observer_list.h"
 #include "base/strings/string_number_conversions.h"
@@ -21,25 +22,28 @@ BASE_FEATURE(kExternalExperimentAllowlist,
 
 }  // namespace internal
 
-namespace {
+SyntheticTrialRegistry::SyntheticTrialRegistry(
+    bool enable_external_experiment_allowlist)
+    : enable_external_experiment_allowlist_(
+          enable_external_experiment_allowlist &&
+          base::FeatureList::IsEnabled(
+              internal::kExternalExperimentAllowlist)) {}
 
-bool IsExternalExperimentAllowlistEnabled() {
-  return base::FeatureList::IsEnabled(internal::kExternalExperimentAllowlist);
-}
-
-}  // namespace
-
-SyntheticTrialRegistry::SyntheticTrialRegistry() = default;
+SyntheticTrialRegistry::SyntheticTrialRegistry()
+    : enable_external_experiment_allowlist_(base::FeatureList::IsEnabled(
+          internal::kExternalExperimentAllowlist)) {}
 SyntheticTrialRegistry::~SyntheticTrialRegistry() = default;
 
-void SyntheticTrialRegistry::AddObserver(SyntheticTrialObserver* observer) {
+void SyntheticTrialRegistry::AddSyntheticTrialObserver(
+    SyntheticTrialObserver* observer) {
   synthetic_trial_observer_list_.AddObserver(observer);
   if (!synthetic_trial_groups_.empty())
     observer->OnSyntheticTrialsChanged(synthetic_trial_groups_, {},
                                        synthetic_trial_groups_);
 }
 
-void SyntheticTrialRegistry::RemoveObserver(SyntheticTrialObserver* observer) {
+void SyntheticTrialRegistry::RemoveSyntheticTrialObserver(
+    SyntheticTrialObserver* observer) {
   synthetic_trial_observer_list_.RemoveObserver(observer);
 }
 
@@ -50,7 +54,7 @@ void SyntheticTrialRegistry::RegisterExternalExperiments(
   DCHECK(!fallback_study_name.empty());
 
   base::FieldTrialParams params;
-  if (IsExternalExperimentAllowlistEnabled() &&
+  if (enable_external_experiment_allowlist_ &&
       !GetFieldTrialParamsByFeature(internal::kExternalExperimentAllowlist,
                                     &params)) {
     return;
@@ -144,9 +148,8 @@ base::StringPiece SyntheticTrialRegistry::GetStudyNameForExpId(
     const std::string& fallback_study_name,
     const base::FieldTrialParams& params,
     const std::string& experiment_id) {
-  if (!IsExternalExperimentAllowlistEnabled()) {
+  if (!enable_external_experiment_allowlist_)
     return fallback_study_name;
-  }
 
   const auto it = params.find(experiment_id);
   if (it == params.end())

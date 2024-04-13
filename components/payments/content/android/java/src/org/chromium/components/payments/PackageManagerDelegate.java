@@ -89,9 +89,8 @@ public class PackageManagerDelegate {
     public List<ResolveInfo> getServicesThatCanRespondToIntent(Intent intent) {
         ThreadPolicy oldPolicy = StrictMode.allowThreadDiskReads();
         try {
-            return ContextUtils.getApplicationContext()
-                    .getPackageManager()
-                    .queryIntentServices(intent, 0);
+            return ContextUtils.getApplicationContext().getPackageManager().queryIntentServices(
+                    intent, 0);
         } finally {
             StrictMode.setThreadPolicy(oldPolicy);
         }
@@ -127,10 +126,9 @@ public class PackageManagerDelegate {
             ApplicationInfo applicationInfo, int resourceId) {
         Resources resources;
         try {
-            resources =
-                    ContextUtils.getApplicationContext()
-                            .getPackageManager()
-                            .getResourcesForApplication(applicationInfo);
+            resources = ContextUtils.getApplicationContext()
+                                .getPackageManager()
+                                .getResourcesForApplication(applicationInfo);
         } catch (NameNotFoundException e) {
             return null;
         }
@@ -150,8 +148,7 @@ public class PackageManagerDelegate {
     @Nullable
     public String getInstallerPackage(String packageName) {
         assert packageName != null;
-        return ContextUtils.getApplicationContext()
-                .getPackageManager()
-                .getInstallerPackageName(packageName);
+        return ContextUtils.getApplicationContext().getPackageManager().getInstallerPackageName(
+                packageName);
     }
 }

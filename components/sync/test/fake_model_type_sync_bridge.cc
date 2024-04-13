@@ -7,6 +7,7 @@
 #include <set>
 #include <utility>
 
+#include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
@@ -60,7 +61,7 @@ class TestMetadataChangeList : public MetadataChangeList {
   }
 
  private:
-  const raw_ptr<FakeModelTypeSyncBridge::Store> db_;
+  raw_ptr<FakeModelTypeSyncBridge::Store> db_;
 };
 
 }  // namespace
@@ -184,7 +185,7 @@ FakeModelTypeSyncBridge::CreateMetadataChangeList() {
   return std::make_unique<InMemoryMetadataChangeList>();
 }
 
-std::optional<ModelError> FakeModelTypeSyncBridge::MergeFullSyncData(
+absl::optional<ModelError> FakeModelTypeSyncBridge::MergeFullSyncData(
     std::unique_ptr<MetadataChangeList> metadata_change_list,
     EntityChangeList entity_data) {
   if (error_next_) {
@@ -201,8 +202,8 @@ std::optional<ModelError> FakeModelTypeSyncBridge::MergeFullSyncData(
     EXPECT_NE(SupportsGetStorageKey(), storage_key.empty());
     if (storage_key.empty()) {
       if (type_ == PREFERENCES &&
-          values_to_ignore_.contains(
-              change->data().specifics.preference().value())) {
+          base::Contains(values_to_ignore_,
+                         change->data().specifics.preference().value())) {
         change_processor()->UntrackEntityForClientTagHash(
             change->data().client_tag_hash);
         continue;
@@ -229,7 +230,7 @@ std::optional<ModelError> FakeModelTypeSyncBridge::MergeFullSyncData(
   return {};
 }
 
-std::optional<ModelError> FakeModelTypeSyncBridge::ApplyIncrementalSyncChanges(
+absl::optional<ModelError> FakeModelTypeSyncBridge::ApplyIncrementalSyncChanges(
     std::unique_ptr<MetadataChangeList> metadata_changes,
     EntityChangeList entity_changes) {
   if (error_next_) {
@@ -260,10 +261,6 @@ std::optional<ModelError> FakeModelTypeSyncBridge::ApplyIncrementalSyncChanges(
       case EntityChange::ACTION_DELETE:
         EXPECT_TRUE(db_->HasData(change->storage_key()));
         db_->RemoveData(change->storage_key());
-        if (change->is_deleted_collaboration_membership()) {
-          deleted_collaboration_membership_storage_keys_.insert(
-              change->storage_key());
-        }
         break;
     }
   }
@@ -333,8 +330,6 @@ std::string FakeModelTypeSyncBridge::GetStorageKeyInternal(
     case USER_EVENTS:
       return base::NumberToString(
           entity_data.specifics.user_event().event_time_usec());
-    case SHARED_TAB_GROUP_DATA:
-      return entity_data.specifics.shared_tab_group_data().guid();
     default:
       // If you need support for more types, add them here.
       NOTREACHED();

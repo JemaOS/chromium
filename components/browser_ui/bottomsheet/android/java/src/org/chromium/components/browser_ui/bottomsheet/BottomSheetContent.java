@@ -29,13 +29,11 @@ public interface BottomSheetContent {
          * exception that uses the feature's toolbar height.
          */
         int DEFAULT = 0;
-
         /**
          * The sheet will set its height so the content is completely visible. This mode cannot
          * be used for the peek state.
          */
         int WRAP_CONTENT = -1;
-
         /**
          * The state this mode is used for will be disabled. For example, disabling the peek state
          * would cause the sheet to automatically expand when triggered.
@@ -73,7 +71,9 @@ public interface BottomSheetContent {
     @Nullable
     View getToolbarView();
 
-    /** @return The vertical scroll offset of the content view. */
+    /**
+     * @return The vertical scroll offset of the content view.
+     */
     int getVerticalScrollOffset();
 
     /**
@@ -85,18 +85,23 @@ public interface BottomSheetContent {
      */
     void destroy();
 
-    /** @return The priority of this content. */
+    /**
+     * @return The priority of this content.
+     */
     @ContentPriority
     int getPriority();
 
-    /** @return Whether swiping the sheet down hard enough will cause the sheet to be dismissed. */
+    /**
+     * @return Whether swiping the sheet down hard enough will cause the sheet to be dismissed.
+     */
     boolean swipeToDismissEnabled();
 
-    /** @return Whether the sheet will always skip the half state once it was fully extended. */
+    /**
+     * @return Whether the sheet will always skip the half state once it was fully extended.
+     */
     default boolean skipHalfStateOnScrollingDown() {
         return true;
-    }
-    ;
+    };
 
     /**
      * @return Whether this content owns its lifecycle. If false, the content will be dismissed
@@ -159,7 +164,7 @@ public interface BottomSheetContent {
     }
 
     /**
-     * @return Whether the sheet should be hidden when it is in the PEEK/HALF state and the user
+     * @return Whether the sheet should be hidden when it is in the PEEK state and the user
      *         scrolls down the page.
      */
     default boolean hideOnScroll() {
@@ -217,13 +222,4 @@ public interface BottomSheetContent {
      *         typically the name of your feature followed by 'closed'.
      */
     int getSheetClosedAccessibilityStringId();
-
-    /**
-     * @return True if this content should hide when higher-priority content is requested to be
-     *     shown, even if the sheet is expanded. Otherwise the new content will only be shown after
-     *     the sheet is dismissed. If returning true here, this content's priority should be LOW.
-     */
-    default boolean canSuppressInAnyState() {
-        return false;
-    }
 }

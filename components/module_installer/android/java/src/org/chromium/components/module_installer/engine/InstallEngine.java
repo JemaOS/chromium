@@ -6,7 +6,9 @@ package org.chromium.components.module_installer.engine;
 
 import android.app.Activity;
 
-/** Engine definition for installing dynamic feature modules. */
+/**
+ * Engine definition for installing dynamic feature modules.
+ */
 public interface InstallEngine {
     /**
      * Initializes an Activity so that dynamic feature modules are available to be used.

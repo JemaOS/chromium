@@ -21,10 +21,6 @@
 
 using ProviderAccount = DeviceAccountsProvider::AccountInfo;
 
-namespace {
-constexpr char kNoBindingChallenge[] = "";
-}
-
 class ProfileOAuth2TokenServiceIOSDelegateTest
     : public PlatformTest,
       public OAuth2AccessTokenConsumer,
@@ -259,8 +255,8 @@ TEST_F(ProfileOAuth2TokenServiceIOSDelegateTest, StartRequestSuccess) {
   scopes.push_back("scope");
   std::unique_ptr<OAuth2AccessTokenFetcher> fetcher1(
       oauth2_delegate_->CreateAccessTokenFetcher(
-          GetAccountId(account1), oauth2_delegate_->GetURLLoaderFactory(), this,
-          kNoBindingChallenge));
+          GetAccountId(account1), oauth2_delegate_->GetURLLoaderFactory(),
+          this));
   fetcher1->Start("foo", "bar", scopes);
   EXPECT_EQ(0, access_token_success_);
   EXPECT_EQ(0, access_token_failure_);
@@ -284,8 +280,8 @@ TEST_F(ProfileOAuth2TokenServiceIOSDelegateTest, StartRequestFailure) {
   scopes.push_back("scope");
   std::unique_ptr<OAuth2AccessTokenFetcher> fetcher1(
       oauth2_delegate_->CreateAccessTokenFetcher(
-          GetAccountId(account1), oauth2_delegate_->GetURLLoaderFactory(), this,
-          kNoBindingChallenge));
+          GetAccountId(account1), oauth2_delegate_->GetURLLoaderFactory(),
+          this));
   fetcher1->Start("foo", "bar", scopes);
   EXPECT_EQ(0, access_token_success_);
   EXPECT_EQ(0, access_token_failure_);

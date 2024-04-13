@@ -10,9 +10,10 @@
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/timer/elapsed_timer.h"
+#include "components/password_manager/core/browser/password_account_storage_settings_watcher.h"
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_service_observer.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_service_observer.h"
 
 namespace syncer {
 class SyncService;
@@ -50,6 +51,8 @@ class PasswordSessionDurationsMetricsRecorder
   const raw_ptr<PrefService> pref_service_;
   const raw_ptr<syncer::SyncService> sync_service_;
 
+  PasswordAccountStorageSettingsWatcher settings_watcher_;
+
   base::ScopedObservation<syncer::SyncService, syncer::SyncServiceObserver>
       sync_observation_{this};
 
@@ -59,7 +62,7 @@ class PasswordSessionDurationsMetricsRecorder
 
   // The current state of the user. Whenever this changes, duration metrics are
   // recorded.
-  features_util::PasswordAccountStorageUserState user_state_;
+  metrics_util::PasswordAccountStorageUserState user_state_;
 
   // Tracks the elapsed active session time in the current state. The timer is
   // null if there's no active session.

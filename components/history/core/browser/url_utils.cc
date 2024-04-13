@@ -72,13 +72,12 @@ bool IsPathPrefix(const std::string& p1, const std::string& p2) {
 
 GURL ToggleHTTPAndHTTPS(const GURL& url) {
   std::string new_scheme;
-  if (url.SchemeIs("http")) {
+  if (url.SchemeIs("http"))
     new_scheme = "https";
-  } else if (url.SchemeIs("https")) {
+  else if (url.SchemeIs("https"))
     new_scheme = "http";
-  } else {
-    return GURL();
-  }
+  else
+    return GURL::EmptyGURL();
   GURL::Replacements replacement;
   replacement.SetSchemeStr(new_scheme);
   return url.ReplaceComponents(replacement);

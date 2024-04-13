@@ -8,8 +8,8 @@
 #include <stddef.h>
 #include <ostream>
 #include <string>
-#include <string_view>
 
+#include "base/strings/string_piece.h"
 #include "components/subresource_filter/tools/rule_parser/rule.h"
 
 namespace subresource_filter {
@@ -73,7 +73,7 @@ class RuleParser {
   // RULE_TYPE_UNSPECIFIED on error. Notes:
   //  - When parsing a URL rule, URL syntax is not verified.
   //  - When parsing a CSS rule, the CSS selector syntax is not verified.
-  RuleType Parse(std::string_view line);
+  RuleType Parse(base::StringPiece line);
 
   // Returns error diagnostics on the latest parsed line.
   const ParseError& parse_error() const { return parse_error_; }
@@ -96,24 +96,24 @@ class RuleParser {
   // member. |origin| is used for a proper error reporting. Returns
   // RULE_TYPE_URL ff the |part| is a well-formed URL rule. Otherwise returns
   // RULE_TYPE_UNSPECIFIED and sets |parse_error_|.
-  RuleType ParseUrlRule(std::string_view origin, std::string_view part);
+  RuleType ParseUrlRule(base::StringPiece origin, base::StringPiece part);
 
   // Parses the |options| segment of a URL filtering rule and saves the parsed
   // options to the |url_rule_| member. Returns true if the options were parsed
   // correctly. Otherwise sets an error in |parse_error_| and returns false.
-  bool ParseUrlRuleOptions(std::string_view origin, std::string_view options);
+  bool ParseUrlRuleOptions(base::StringPiece origin, base::StringPiece options);
 
   // Parses the |part| and saves parsed CSS rule to the |css_rule_| member.
   // |css_section_start| denotes a position of '#' in the |part|, used to
   // separate a CSS selector. Returns true iff the line is a well-formed CSS
   // rule. Sets |parse_error_| on error.
-  RuleType ParseCssRule(std::string_view origin,
-                        std::string_view part,
+  RuleType ParseCssRule(base::StringPiece origin,
+                        base::StringPiece part,
                         size_t css_section_start);
 
   // Sets |parse_error_| to contain specific error, starting at |error_begin|.
   void SetParseError(ParseError::ErrorCode code,
-                     std::string_view origin,
+                     base::StringPiece origin,
                      const char* error_begin);
 
   ParseError parse_error_;

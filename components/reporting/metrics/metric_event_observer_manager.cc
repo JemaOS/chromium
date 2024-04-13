@@ -10,7 +10,6 @@
 
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
@@ -47,7 +46,7 @@ MetricEventObserverManager::MetricEventObserverManager(
   reporting_controller_ = std::make_unique<MetricReportingController>(
       reporting_settings, enable_setting_path, setting_enabled_default_value);
 
-  CHECK(!init_delay.is_negative());
+  DCHECK(!init_delay.is_negative());
   if (init_delay.is_zero()) {
     SetReportingControllerCb();
     return;
@@ -86,17 +85,13 @@ void MetricEventObserverManager::OnEventObserved(MetricData metric_data) {
     return;
   }
   MetricEventType event_type = metric_data.event_data().type();
-  metric_data.set_timestamp_ms(
-      base::Time::Now().InMillisecondsSinceUnixEpoch());
+  metric_data.set_timestamp_ms(base::Time::Now().ToJavaTime());
   metric_report_queue_->Enqueue(std::move(metric_data));
-  base::UmaHistogramEnumeration(kEventMetricEnqueuedMetricsName, event_type,
-                                MetricEventType_MAX);
 
   if (collector_pool_) {
-    std::vector<raw_ptr<CollectorBase, VectorExperimental>>
-        telemetry_collectors =
-            collector_pool_->GetTelemetryCollectors(event_type);
-    for (CollectorBase* telemetry_collector : telemetry_collectors) {
+    std::vector<CollectorBase*> telemetry_collectors =
+        collector_pool_->GetTelemetryCollectors(event_type);
+    for (auto* telemetry_collector : telemetry_collectors) {
       telemetry_collector->Collect(/*is_event_driven=*/true);
     }
   }

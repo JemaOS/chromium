@@ -46,7 +46,7 @@ std::string ShortURLForReporting(const GURL& url) {
     if (comma_pos != std::string::npos && comma_pos != spec.size() - 1) {
       std::string hash_value = crypto::SHA256HashString(spec);
       spec.erase(comma_pos + 1);
-      spec += base::HexEncode(hash_value);
+      spec += base::HexEncode(hash_value.data(), hash_value.size());
     }
   }
   return spec;
@@ -101,8 +101,8 @@ bool CanGetReputationOfUrl(const GURL& url) {
     return false;
   }
   const std::string hostname = url.host();
-  // There is no reason to send URLs with very short or single-label hosts.
-  // The Safe Browsing server does not check them.
+  // A valid hostname should be longer than 3 characters and have at least 1
+  // dot.
   if (hostname.size() < 4 || base::ranges::count(hostname, '.') < 1) {
     return false;
   }

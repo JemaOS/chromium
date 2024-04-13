@@ -27,12 +27,6 @@ ResourceRequestAllowedNotifier::~ResourceRequestAllowedNotifier() {
 }
 
 void ResourceRequestAllowedNotifier::Init(Observer* observer, bool leaky) {
-  Init(observer, leaky, /*wait_for_eula=*/true);
-}
-
-void ResourceRequestAllowedNotifier::Init(Observer* observer,
-                                          bool leaky,
-                                          bool wait_for_eula) {
   DCHECK(!observer_);
   DCHECK(observer);
   observer_ = observer;
@@ -52,12 +46,10 @@ void ResourceRequestAllowedNotifier::Init(Observer* observer,
     connection_initialized_ = true;
   }
 
-  if (wait_for_eula) {
-    eula_notifier_.reset(CreateEulaNotifier());
-    if (eula_notifier_) {
-      eula_notifier_->Init(this);
-      waiting_for_user_to_accept_eula_ = !eula_notifier_->IsEulaAccepted();
-    }
+  eula_notifier_.reset(CreateEulaNotifier());
+  if (eula_notifier_) {
+    eula_notifier_->Init(this);
+    waiting_for_user_to_accept_eula_ = !eula_notifier_->IsEulaAccepted();
   }
 }
 

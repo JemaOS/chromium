@@ -4,8 +4,6 @@
 
 #include "components/safe_browsing/core/browser/password_protection/password_reuse_detection_manager.h"
 
-#include <optional>
-
 #include "base/time/default_clock.h"
 #include "build/build_config.h"
 #include "components/autofill/core/browser/logging/log_manager.h"
@@ -108,7 +106,7 @@ void PasswordReuseDetectionManager::OnPaste(std::u16string text) {
 void PasswordReuseDetectionManager::OnReuseCheckDone(
     bool is_reuse_found,
     size_t password_length,
-    std::optional<password_manager::PasswordHashData>
+    absl::optional<password_manager::PasswordHashData>
         reused_protected_password_hash,
     const std::vector<password_manager::MatchingReusedCredential>&
         matching_reused_credentials,
@@ -178,18 +176,13 @@ void PasswordReuseDetectionManager::OnReuseCheckDone(
       password_field_detected, reused_password_hash, domain);
 }
 
-base::WeakPtr<password_manager::PasswordReuseDetectorConsumer>
-PasswordReuseDetectionManager::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 void PasswordReuseDetectionManager::SetClockForTesting(base::Clock* clock) {
   clock_ = clock;
 }
 
 password_manager::metrics_util::PasswordType
 PasswordReuseDetectionManager::GetReusedPasswordType(
-    std::optional<password_manager::PasswordHashData>
+    absl::optional<password_manager::PasswordHashData>
         reused_protected_password_hash,
     size_t matching_domain_count) {
   if (!reused_protected_password_hash.has_value()) {
@@ -201,7 +194,7 @@ PasswordReuseDetectionManager::GetReusedPasswordType(
   if (!reused_protected_password_hash->is_gaia_password) {
     reused_password_type =
         password_manager::metrics_util::PasswordType::ENTERPRISE_PASSWORD;
-  } else if (client_->IsHistorySyncAccountEmail(
+  } else if (client_->IsSyncAccountEmail(
                  reused_protected_password_hash->username)) {
     reused_password_type =
         password_manager::metrics_util::PasswordType::PRIMARY_ACCOUNT_PASSWORD;

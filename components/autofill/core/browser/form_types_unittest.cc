@@ -13,11 +13,11 @@
 
 namespace autofill {
 
-using autofill::FieldType;
+using autofill::ServerFieldType;
 using std::string;
 
 struct FormTypesTestCase {
-  std::vector<FieldType> field_types;
+  std::vector<ServerFieldType> field_types;
   std::vector<std::u16string> field_values;
   bool expected_result;
 };
@@ -41,7 +41,7 @@ TEST_P(FormTypesTest, FormHasFillableCreditCardFields) {
     form.fields.emplace_back(CreateFieldWithValue(value));
   }
   FormStructure form_structure(form);
-  test_api(form_structure).SetFieldTypes(test_case.field_types);
+  FormStructureTestApi(&form_structure).SetFieldTypes(test_case.field_types);
 
   EXPECT_THAT(FormHasAllCreditCardFields(form_structure),
               testing::Eq(test_case.expected_result));

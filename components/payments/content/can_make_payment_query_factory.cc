@@ -34,10 +34,9 @@ content::BrowserContext* CanMakePaymentQueryFactory::GetBrowserContextToUse(
   return context;
 }
 
-std::unique_ptr<KeyedService>
-CanMakePaymentQueryFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CanMakePaymentQueryFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<CanMakePaymentQuery>();
+  return new CanMakePaymentQuery;
 }
 
 }  // namespace payments

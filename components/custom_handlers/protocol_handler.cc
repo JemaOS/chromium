@@ -11,7 +11,6 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/common/content_client.h"
 #include "content/public/common/origin_util.h"
-#include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "third_party/blink/public/common/custom_handlers/protocol_handler_utils.h"
 #include "third_party/blink/public/common/scheme_registry.h"
@@ -21,14 +20,6 @@
 using content::BrowserThread;
 
 namespace custom_handlers {
-
-namespace features {
-
-// https://html.spec.whatwg.org/multipage/system-state.html#security-and-privacy
-BASE_FEATURE(kStripCredentialsForExternalProtocolHandler,
-             "StripCredentialsForExternalProtocolHandler",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-}  // namespace features
 
 ProtocolHandler::ProtocolHandler(
     const std::string& protocol,
@@ -119,12 +110,12 @@ ProtocolHandler ProtocolHandler::CreateProtocolHandler(
     protocol = *protocol_in;
   if (const std::string* url_in = value.FindString("url"))
     url = *url_in;
-  std::optional<base::Time> time_value =
+  absl::optional<base::Time> time_value =
       base::ValueToTime(value.Find("last_modified"));
   // Treat invalid times as the default value.
   if (time_value)
     time = *time_value;
-  std::optional<int> security_level_value = value.FindInt("security_level");
+  absl::optional<int> security_level_value = value.FindInt("security_level");
   if (security_level_value) {
     security_level =
         blink::ProtocolHandlerSecurityLevelFrom(*security_level_value);
@@ -142,25 +133,10 @@ ProtocolHandler ProtocolHandler::CreateProtocolHandler(
 
 GURL ProtocolHandler::TranslateUrl(const GURL& url) const {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  std::string clean_url;
-  base::StringPiece url_spec(url.spec());
-
-  // Remove credentials from the url if present, in order to mitigate the risk
-  // of credential leakage
-  if ((url.has_username() || url.has_password()) &&
-      base::FeatureList::IsEnabled(
-          features::kStripCredentialsForExternalProtocolHandler)) {
-    GURL::Replacements replacements;
-    replacements.ClearUsername();
-    replacements.ClearPassword();
-    clean_url = url.ReplaceComponents(replacements).spec();
-    url_spec = clean_url;
-  }
-
   std::string translatedUrlSpec(url_.spec());
   base::ReplaceFirstSubstringAfterOffset(
       &translatedUrlSpec, 0, "%s",
-      base::EscapeQueryParamValue(url_spec, false));
+      base::EscapeQueryParamValue(url.spec(), false));
   return GURL(translatedUrlSpec);
 }
 

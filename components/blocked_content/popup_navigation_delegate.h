@@ -5,9 +5,8 @@
 #ifndef COMPONENTS_BLOCKED_CONTENT_POPUP_NAVIGATION_DELEGATE_H_
 #define COMPONENTS_BLOCKED_CONTENT_POPUP_NAVIGATION_DELEGATE_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/window_features/window_features.mojom-forward.h"
 #include "ui/base/window_open_disposition.h"
 
@@ -43,7 +42,7 @@ class PopupNavigationDelegate {
   };
   virtual NavigateResult NavigateWithGesture(
       const blink::mojom::WindowFeatures& window_features,
-      std::optional<WindowOpenDisposition> updated_disposition) = 0;
+      absl::optional<WindowOpenDisposition> updated_disposition) = 0;
 
   // Called when the navigation represented by this class was blocked.
   virtual void OnPopupBlocked(content::WebContents* web_contents,

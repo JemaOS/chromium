@@ -46,13 +46,7 @@
 #include "components/feed/feed_feature_list.h"
 #include "components/leveldb_proto/public/proto_database_provider.h"
 #include "components/signin/public/base/signin_pref_names.h"
-#include "components/supervised_user/core/browser/proto/get_discover_feed_response.pb.h"
-#include "components/supervised_user/core/common/buildflags.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
-#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
-#include "components/supervised_user/core/browser/proto/get_discover_feed_request.pb.h"
-#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
 namespace feed {
 namespace test {
@@ -175,49 +169,26 @@ void TestUnreadContentObserver::HasUnreadContentChanged(
 TestSurfaceBase::TestSurfaceBase(const StreamType& stream_type,
                                  FeedStream* stream,
                                  SingleWebFeedEntryPoint entry_point)
-    : stream_type_(stream_type), entry_point_(entry_point) {
-  if (stream) {
+    : FeedStreamSurface(stream_type, entry_point) {
+  if (stream)
     Attach(stream);
-  }
 }
 
 TestSurfaceBase::~TestSurfaceBase() {
-  if (bound_stream_) {
+  if (stream_)
     Detach();
-  }
-
-  if (stream_) {
-    CHECK(!surface_id_.is_null());
-    stream_->DestroySurface(surface_id_);
-  }
-}
-
-SurfaceId TestSurfaceBase::GetSurfaceId() const {
-  CHECK(!surface_id_.is_null())
-      << "The surface wasn't yet created, so doesn't have an ID.";
-  return surface_id_;
-}
-
-void TestSurfaceBase::CreateWithoutAttach(FeedStream* stream) {
-  CHECK(surface_id_.is_null());
-
-  stream_ = stream->GetWeakPtr();
-  surface_id_ = stream->CreateSurface(stream_type_, entry_point_);
 }
 
 void TestSurfaceBase::Attach(FeedStream* stream) {
-  EXPECT_FALSE(bound_stream_);
-  if (surface_id_.is_null()) {
-    CreateWithoutAttach(stream);
-  }
-  bound_stream_ = stream->GetWeakPtr();
-  bound_stream_->AttachSurface(surface_id_, this);
+  EXPECT_FALSE(stream_);
+  stream_ = stream->GetWeakPtr();
+  stream_->AttachSurface(this);
 }
 
 void TestSurfaceBase::Detach() {
-  EXPECT_TRUE(bound_stream_);
-  bound_stream_->DetachSurface(surface_id_);
-  bound_stream_ = nullptr;
+  EXPECT_TRUE(stream_);
+  stream_->DetachSurface(this);
+  stream_ = nullptr;
 }
 
 void TestSurfaceBase::StreamUpdate(const feedui::StreamUpdate& stream_update) {
@@ -229,7 +200,6 @@ void TestSurfaceBase::StreamUpdate(const feedui::StreamUpdate& stream_update) {
     initial_state = stream_update;
   }
   update = stream_update;
-  all_updates.push_back(stream_update);
 
   described_updates_.push_back(CurrentState());
 }
@@ -249,8 +219,8 @@ ReliabilityLoggingBridge& TestSurfaceBase::GetReliabilityLoggingBridge() {
 }
 
 void TestSurfaceBase::Clear() {
-  initial_state = std::nullopt;
-  update = std::nullopt;
+  initial_state = absl::nullopt;
+  update = absl::nullopt;
   described_updates_.clear();
   described_datastore_updates_.clear();
 }
@@ -374,8 +344,6 @@ TestSingleWebFeedSurface::TestSingleWebFeedSurface(
           StreamType(StreamKind::kSingleWebFeed, web_feed_id, entry_point),
           stream,
           entry_point) {}
-TestSupervisedFeedSurface::TestSupervisedFeedSurface(FeedStream* stream)
-    : TestSurfaceBase(StreamType(StreamKind::kSupervisedUser), stream) {}
 
 TestReliabilityLoggingBridge::TestReliabilityLoggingBridge() = default;
 TestReliabilityLoggingBridge::~TestReliabilityLoggingBridge() = default;
@@ -385,10 +353,6 @@ std::string TestReliabilityLoggingBridge::GetEventsString() const {
   for (const auto& event : events_)
     oss << event << '\n';
   return oss.str();
-}
-
-void TestReliabilityLoggingBridge::ClearEventsString() {
-  events_.clear();
 }
 
 void TestReliabilityLoggingBridge::LogFeedLaunchOtherStart(
@@ -449,9 +413,7 @@ void TestReliabilityLoggingBridge::LogResponseReceived(
     int64_t server_send_timestamp_ns,
     base::TimeTicks client_receive_timestamp) {
   events_.push_back(base::StrCat(
-      {"LogResponseReceived id=", base::NumberToString(id.GetUnsafeValue()),
-       " receive_timestamp=", base::NumberToString(server_receive_timestamp_ns),
-       " send_timestamp=", base::NumberToString(server_send_timestamp_ns)}));
+      {"LogResponseReceived id=", base::NumberToString(id.GetUnsafeValue())}));
 }
 
 void TestReliabilityLoggingBridge::LogRequestFinished(
@@ -482,38 +444,6 @@ void TestReliabilityLoggingBridge::LogLaunchFinishedAfterStreamUpdate(
   events_.push_back(
       base::StrCat({"LogLaunchFinishedAfterStreamUpdate result=",
                     feedwire::DiscoverLaunchResult_Name(result)}));
-}
-
-void TestReliabilityLoggingBridge::LogLoadMoreStarted() {
-  events_.push_back("LogLoadMoreStarted");
-}
-
-void TestReliabilityLoggingBridge::LogLoadMoreActionUploadRequestStarted() {
-  events_.push_back("LogLoadMoreActionUploadRequestStarted");
-}
-
-void TestReliabilityLoggingBridge::LogLoadMoreRequestSent() {
-  events_.push_back("LogLoadMoreRequestSent");
-}
-
-void TestReliabilityLoggingBridge::LogLoadMoreResponseReceived(
-    int64_t server_receive_timestamp_ns,
-    int64_t server_send_timestamp_ns) {
-  events_.push_back(base::StrCat(
-      {"LogLoadMoreResponseReceived receive_timestamp=",
-       base::NumberToString(server_receive_timestamp_ns),
-       " send_timestamp=", base::NumberToString(server_send_timestamp_ns)}));
-}
-
-void TestReliabilityLoggingBridge::LogLoadMoreRequestFinished(
-    int canonical_status) {
-  events_.push_back(base::StrCat({"LogLoadMoreRequestFinished result=",
-                                  base::NumberToString(canonical_status)}));
-}
-
-void TestReliabilityLoggingBridge::LogLoadMoreEnded(bool success) {
-  events_.push_back(
-      base::StrCat({"LogLoadMoreEnded success=", success ? "true" : "false"}));
 }
 
 TestImageFetcher::TestImageFetcher(
@@ -563,36 +493,6 @@ void TestFeedNetwork::SendQueryRequest(
   Reply(base::BindOnce(std::move(callback), std::move(result)));
 }
 
-#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
-void TestFeedNetwork::SendKidFriendlyApiRequest(
-    const supervised_user::GetDiscoverFeedRequest& request,
-    const AccountInfo& account_info,
-    base::OnceCallback<void(KidFriendlyQueryRequestResult)> callback) {
-  sent_request_types_.push_back(NetworkRequestType::kSupervisedFeed);
-  last_account_info = account_info;
-  ++send_query_call_count;
-  // Emulate a successful response.
-  // The response body is currently an empty message, because most of the
-  // time we want to inject a translated response for ease of test-writing.
-  query_request_sent = feedwire::Request();
-  KidFriendlyQueryRequestResult result;
-
-  if (error != net::Error::OK) {
-    result.response_info.status_code = error;
-  } else {
-    result.response_info.status_code = http_status_code;
-  }
-
-  result.response_info.response_body_bytes = 100;
-  result.response_info.fetch_duration = base::Milliseconds(42);
-  result.response_info.account_info = account_info;
-  result.response_body =
-      std::make_unique<supervised_user::GetDiscoverFeedResponse>();
-
-  Reply(base::BindOnce(std::move(callback), std::move(result)));
-}
-#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
-
 template <typename API>
 void DebugLogApiResponse(std::string request_bytes,
                          const FeedNetwork::RawResponse& raw_response) {
@@ -629,7 +529,7 @@ void TestFeedNetwork::SendDiscoverApiRequest(
     base::StringPiece method,
     std::string request_bytes,
     const AccountInfo& account_info,
-    std::optional<RequestMetadata> request_metadata,
+    absl::optional<RequestMetadata> request_metadata,
     base::OnceCallback<void(RawResponse)> callback) {
   sent_request_types_.push_back(request_type);
   last_account_info = account_info;
@@ -727,28 +627,13 @@ void TestFeedNetwork::SendDiscoverApiRequest(
                      << api_path;
 }
 
-void TestFeedNetwork::SendAsyncDataRequest(
-    const GURL& url,
-    base::StringPiece request_method,
-    net::HttpRequestHeaders request_headers,
-    std::string request_body,
-    const AccountInfo& account_info,
-    base::OnceCallback<void(RawResponse)> callback) {
-  if (injected_raw_response_) {
-    Reply(base::BindOnce(std::move(callback),
-                         std::move(injected_raw_response_.value())));
-    return;
-  }
-  ASSERT_TRUE(false) << "No raw response injected";
-}
-
 void TestFeedNetwork::CancelRequests() {
   NOTIMPLEMENTED();
 }
 
 void TestFeedNetwork::InjectRealFeedQueryResponse() {
-  base::FilePath response_file_path =
-      base::PathService::CheckedGet(base::DIR_SRC_TEST_DATA_ROOT);
+  base::FilePath response_file_path;
+  CHECK(base::PathService::Get(base::DIR_SOURCE_ROOT, &response_file_path));
   response_file_path = response_file_path.AppendASCII(
       "components/test/data/feed/response.binarypb");
   std::string response_data;
@@ -761,8 +646,8 @@ void TestFeedNetwork::InjectRealFeedQueryResponse() {
 }
 
 void TestFeedNetwork::InjectRealFeedQueryResponseWithNoContent() {
-  base::FilePath response_file_path =
-      base::PathService::CheckedGet(base::DIR_SRC_TEST_DATA_ROOT);
+  base::FilePath response_file_path;
+  CHECK(base::PathService::Get(base::DIR_SOURCE_ROOT, &response_file_path));
   response_file_path = response_file_path.AppendASCII(
       "components/test/data/feed/response.binarypb");
   std::string response_data;
@@ -783,7 +668,7 @@ void TestFeedNetwork::InjectEmptyActionRequestResult() {
   InjectApiRawResponse<UploadActionsDiscoverApi>({});
 }
 
-std::optional<feedwire::UploadActionsRequest>
+absl::optional<feedwire::UploadActionsRequest>
 TestFeedNetwork::GetActionRequestSent() {
   return GetApiRequestSent<UploadActionsDiscoverApi>();
 }
@@ -797,7 +682,6 @@ void TestFeedNetwork::ClearTestData() {
   api_requests_sent_.clear();
   api_request_count_.clear();
   injected_response_.reset();
-  injected_raw_response_.reset();
 }
 
 void TestFeedNetwork::SendResponse() {
@@ -844,30 +728,6 @@ RefreshResponseData TestWireResponseTranslator::TranslateWireResponse(
     StreamModelUpdateRequest::Source source,
     const AccountInfo& account_info,
     base::Time current_time) const {
-  std::optional<RefreshResponseData> result =
-      TranslateStreamSource(source, account_info, current_time);
-  return result ? std::move(result.value())
-                : WireResponseTranslator::TranslateWireResponse(
-                      std::move(response), source, account_info, current_time);
-}
-
-RefreshResponseData TestWireResponseTranslator::TranslateWireResponse(
-    supervised_user::GetDiscoverFeedResponse response,
-    StreamModelUpdateRequest::Source source,
-    const AccountInfo& account_info,
-    base::Time current_time) const {
-  std::optional<RefreshResponseData> result =
-      TranslateStreamSource(source, account_info, current_time);
-  return result ? std::move(result.value())
-                : WireResponseTranslator::TranslateWireResponse(
-                      std::move(response), source, account_info, current_time);
-}
-
-std::optional<RefreshResponseData>
-TestWireResponseTranslator::TranslateStreamSource(
-    StreamModelUpdateRequest::Source source,
-    const AccountInfo& account_info,
-    base::Time current_time) const {
   if (!injected_responses_.empty()) {
     if (injected_responses_[0].model_update_request)
       injected_responses_[0].model_update_request->source = source;
@@ -887,11 +747,12 @@ TestWireResponseTranslator::TranslateStreamSource(
     }
     return result;
   }
-  return std::nullopt;
+  return WireResponseTranslator::TranslateWireResponse(
+      std::move(response), source, account_info, current_time);
 }
 void TestWireResponseTranslator::InjectResponse(
     std::unique_ptr<StreamModelUpdateRequest> response,
-    std::optional<std::string> session_id) {
+    absl::optional<std::string> session_id) {
   DCHECK(!response->stream_data.signed_in() || !session_id);
   RefreshResponseData data;
   data.model_update_request = std::move(response);
@@ -985,7 +846,9 @@ void TestMetricsReporter::OnUploadActions(UploadActionsStatus status) {
   MetricsReporter::OnUploadActions(status);
 }
 
-FeedApiTest::FeedApiTest() = default;
+FeedApiTest::FeedApiTest() {
+  scoped_feature_list_.InitAndEnableFeature(kWebFeed);
+}
 FeedApiTest::~FeedApiTest() = default;
 void FeedApiTest::SetUp() {
   kTestTimeEpoch = base::Time::Now();
@@ -1010,10 +873,6 @@ void FeedApiTest::SetUp() {
           &test_factory_);
   image_fetcher_ =
       std::make_unique<TestImageFetcher>(shared_url_loader_factory_);
-
-  // Test initialization of TemplateURLService that defaults to Google as
-  // the default search engine.
-  template_url_service_ = std::make_unique<TemplateURLService>(nullptr, 0);
 
   CreateStream();
 }
@@ -1040,14 +899,14 @@ bool FeedApiTest::IsEulaAccepted() {
 bool FeedApiTest::IsOffline() {
   return is_offline_;
 }
-std::string FeedApiTest::GetCountry() {
-  return country_;
-}
 AccountInfo FeedApiTest::GetAccountInfo() {
   return account_info_;
 }
 bool FeedApiTest::IsSigninAllowed() {
   return is_signin_allowed_;
+}
+bool FeedApiTest::IsSyncOn() {
+  return is_sync_on_;
 }
 void FeedApiTest::RegisterFollowingFeedFollowCountFieldTrial(
     size_t follow_count) {
@@ -1068,6 +927,9 @@ DisplayMetrics FeedApiTest::GetDisplayMetrics() {
 std::string FeedApiTest::GetLanguageTag() {
   return "en-US";
 }
+bool FeedApiTest::IsAutoplayEnabled() {
+  return false;
+}
 TabGroupEnabledState FeedApiTest::GetTabGroupEnabledState() {
   return TabGroupEnabledState::kNone;
 }
@@ -1075,29 +937,21 @@ void FeedApiTest::ClearAll() {
   if (on_clear_all_)
     on_clear_all_.Run();
 }
-void FeedApiTest::SetCountry(const std::string& country) {
-  country_ = country;
-}
 void FeedApiTest::PrefetchImage(const GURL& url) {
   prefetched_images_.push_back(url);
   prefetch_image_call_count_++;
 }
 
-void FeedApiTest::CreateStream(
-    bool wait_for_initialization,
-    bool start_surface,
-    bool is_new_tab_search_engine_url_android_enabled) {
+void FeedApiTest::CreateStream(bool wait_for_initialization,
+                               bool start_surface) {
   ChromeInfo chrome_info;
   chrome_info.channel = version_info::Channel::STABLE;
   chrome_info.version = base::Version({99, 1, 9911, 2});
   chrome_info.start_surface = start_surface;
-  chrome_info.is_new_tab_search_engine_url_android_enabled =
-      is_new_tab_search_engine_url_android_enabled;
   stream_ = std::make_unique<FeedStream>(
       &refresh_scheduler_, metrics_reporter_.get(), this, &profile_prefs_,
       &network_, image_fetcher_.get(), store_.get(),
-      persistent_key_value_store_.get(), template_url_service_.get(),
-      chrome_info);
+      persistent_key_value_store_.get(), chrome_info);
   stream_->SetWireResponseTranslatorForTesting(&response_translator_);
 
   if (wait_for_initialization)

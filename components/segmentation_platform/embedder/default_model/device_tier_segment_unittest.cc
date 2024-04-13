@@ -26,6 +26,7 @@ TEST_F(DeviceTierSegmentTest, ExecuteModelWithInput) {
 
   EXPECT_FALSE(ExecuteWithInput(/*input=*/{}));
 
+  ModelProvider::Request input = {};
   // High-end devices
   ExpectClassifierResults(/*input=*/{/*8GB=*/8192, 10, 371},
                           {kDeviceTierSegmentLabelHigh});

@@ -11,8 +11,6 @@
 #include "components/content_settings/core/test/content_settings_mock_provider.h"
 #include "components/content_settings/core/test/content_settings_test_utils.h"
 #include "components/privacy_sandbox/mock_privacy_sandbox_settings.h"
-#include "components/privacy_sandbox/privacy_sandbox_attestations/privacy_sandbox_attestations.h"
-#include "components/privacy_sandbox/privacy_sandbox_attestations/scoped_privacy_sandbox_attestations.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -50,9 +48,7 @@ class PrivacySandboxTestUtilTest : public testing::Test {
  public:
   PrivacySandboxTestUtilTest()
       : browser_task_environment_(
-            base::test::TaskEnvironment::TimeSource::MOCK_TIME),
-        scoped_attestations_(
-            privacy_sandbox::PrivacySandboxAttestations::CreateForTesting()) {
+            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {
     content_settings::CookieSettings::RegisterProfilePrefs(prefs()->registry());
     HostContentSettingsMap::RegisterProfilePrefs(prefs()->registry());
     privacy_sandbox::RegisterProfilePrefs(prefs()->registry());
@@ -60,8 +56,7 @@ class PrivacySandboxTestUtilTest : public testing::Test {
         &prefs_, false /* is_off_the_record */, false /* store_last_modified */,
         false /* restore_session */, false /* should_record_metrics */);
     cookie_settings_ = new content_settings::CookieSettings(
-        host_content_settings_map_.get(), &prefs_,
-        /*tracking_protection_settings=*/nullptr, false, "chrome-extension");
+        host_content_settings_map_.get(), &prefs_, false, "chrome-extension");
   }
 
   ~PrivacySandboxTestUtilTest() override {
@@ -87,8 +82,7 @@ class PrivacySandboxTestUtilTest : public testing::Test {
     privacy_sandbox_test_util::ApplyTestState(
         key, value, task_environment(), prefs(), host_content_settings_map(),
         mock_delegate(), mock_privacy_sandbox_service(),
-        mock_browsing_topics_service(), mock_privacy_sandbox_settings(),
-        user_provider_, managed_provider_);
+        mock_browsing_topics_service(), user_provider_, managed_provider_);
   }
 
   void ProvideInput(InputKey key, TestCaseItemValue value) {
@@ -142,7 +136,6 @@ class PrivacySandboxTestUtilTest : public testing::Test {
   MockPrivacySandboxSettings mock_privacy_sandbox_settings_;
   raw_ptr<content_settings::MockProvider> user_provider_;
   raw_ptr<content_settings::MockProvider> managed_provider_;
-  privacy_sandbox::ScopedPrivacySandboxAttestations scoped_attestations_;
 };
 
 TEST_F(PrivacySandboxTestUtilTest, StateKey_M1TopicsEnabledUserPrefValue) {
@@ -178,23 +171,21 @@ TEST_F(PrivacySandboxTestUtilTest, StateKey_SiteDataUserDefault) {
     ApplyTestState(StateKey::kSiteDataUserDefault, state);
 
     // The state should have ended up in the user provider we gave to the util.
-    auto user_rule_iterator = user_provider()->GetRuleIterator(
-        ContentSettingsType::COOKIES,
-        /*incognito=*/false,
-        content_settings::PartitionKey::GetDefaultForTesting());
+    auto user_rule_iterator =
+        user_provider()->GetRuleIterator(ContentSettingsType::COOKIES,
+                                         /*incognito=*/false);
 
     EXPECT_TRUE(user_rule_iterator->HasNext());
     auto rule = user_rule_iterator->Next();
-    EXPECT_EQ(ContentSettingsPattern::Wildcard(), rule->primary_pattern);
-    EXPECT_EQ(ContentSettingsPattern::Wildcard(), rule->secondary_pattern);
-    EXPECT_EQ(base::Value(state), rule->value);
+    EXPECT_EQ(ContentSettingsPattern::Wildcard(), rule.primary_pattern);
+    EXPECT_EQ(ContentSettingsPattern::Wildcard(), rule.secondary_pattern);
+    EXPECT_EQ(base::Value(state), rule.value);
 
     // Nothing should have ended up in the managed provider, which will present
     // as a null iterator.
-    auto managed_rule_iterator = managed_provider()->GetRuleIterator(
-        ContentSettingsType::COOKIES,
-        /*incognito=*/false,
-        content_settings::PartitionKey::GetDefaultForTesting());
+    auto managed_rule_iterator =
+        managed_provider()->GetRuleIterator(ContentSettingsType::COOKIES,
+                                            /*incognito=*/false);
     EXPECT_EQ(nullptr, managed_rule_iterator);
   }
 }
@@ -205,23 +196,21 @@ TEST_F(PrivacySandboxTestUtilTest, StateKey_SiteDataUserExceptions) {
                  SiteDataExceptions{{kException, CONTENT_SETTING_BLOCK}});
 
   // The state should have ended up in the user provider we gave to the util.
-  auto user_rule_iterator = user_provider()->GetRuleIterator(
-      ContentSettingsType::COOKIES,
-      /*incognito=*/false,
-      content_settings::PartitionKey::GetDefaultForTesting());
+  auto user_rule_iterator =
+      user_provider()->GetRuleIterator(ContentSettingsType::COOKIES,
+                                       /*incognito=*/false);
 
   EXPECT_TRUE(user_rule_iterator->HasNext());
   auto rule = user_rule_iterator->Next();
-  EXPECT_EQ(kException, rule->primary_pattern.ToString());
-  EXPECT_EQ(ContentSettingsPattern::Wildcard(), rule->secondary_pattern);
-  EXPECT_EQ(base::Value(CONTENT_SETTING_BLOCK), rule->value);
+  EXPECT_EQ(kException, rule.primary_pattern.ToString());
+  EXPECT_EQ(ContentSettingsPattern::Wildcard(), rule.secondary_pattern);
+  EXPECT_EQ(base::Value(CONTENT_SETTING_BLOCK), rule.value);
 
   // Nothing should have ended up in the managed provider, which will present
   // as a null iterator.
-  auto managed_rule_iterator = managed_provider()->GetRuleIterator(
-      ContentSettingsType::COOKIES,
-      /*incognito=*/false,
-      content_settings::PartitionKey::GetDefaultForTesting());
+  auto managed_rule_iterator =
+      managed_provider()->GetRuleIterator(ContentSettingsType::COOKIES,
+                                          /*incognito=*/false);
   EXPECT_EQ(nullptr, managed_rule_iterator);
 }
 
@@ -321,7 +310,7 @@ TEST_F(PrivacySandboxTestUtilTest, OutputKey_IsTopicsAllowedForContext) {
   url::Origin kTopFrameOrigin =
       url::Origin::Create(GURL("https://top-frame.com"));
   EXPECT_CALL(*mock_privacy_sandbox_settings(),
-              IsTopicsAllowedForContext(kTopFrameOrigin, kTopicsURL, nullptr))
+              IsTopicsAllowedForContext(kTopFrameOrigin, kTopicsURL))
       .WillOnce(testing::Return(true));
 
   CheckOutput({{InputKey::kTopicsURL, kTopicsURL},
@@ -340,15 +329,13 @@ TEST_F(PrivacySandboxTestUtilTest, OutputKey_IsFledgeAllowed) {
       url::Origin::Create(GURL("https://fledge.com"));
   url::Origin kTopFrameOrigin =
       url::Origin::Create(GURL("https://top-frame.com"));
-  EXPECT_CALL(
-      *mock_privacy_sandbox_settings(),
-      IsFledgeAllowed(kTopFrameOrigin, kFledgeAuctionPartyOrigin,
-                      content::InterestGroupApiOperation::kJoin, nullptr))
+  EXPECT_CALL(*mock_privacy_sandbox_settings(),
+              IsFledgeAllowed(kTopFrameOrigin, kFledgeAuctionPartyOrigin))
       .WillOnce(testing::Return(true));
 
   CheckOutput({{InputKey::kFledgeAuctionPartyOrigin, kFledgeAuctionPartyOrigin},
                {InputKey::kTopFrameOrigin, kTopFrameOrigin}},
-              {OutputKey::kIsFledgeJoinAllowed, true});
+              {OutputKey::kIsFledgeAllowed, true});
 }
 
 TEST_F(PrivacySandboxTestUtilTest, OutputKey_IsAttributionReportingAllowed) {
@@ -357,8 +344,8 @@ TEST_F(PrivacySandboxTestUtilTest, OutputKey_IsAttributionReportingAllowed) {
   url::Origin kTopFrameOrigin =
       url::Origin::Create(GURL("https://top-frame.com"));
   EXPECT_CALL(*mock_privacy_sandbox_settings(),
-              IsAttributionReportingAllowed(
-                  kTopFrameOrigin, kAdMeasurementReportingOrigin, nullptr))
+              IsAttributionReportingAllowed(kTopFrameOrigin,
+                                            kAdMeasurementReportingOrigin))
       .WillOnce(testing::Return(true));
 
   CheckOutput(
@@ -377,7 +364,7 @@ TEST_F(PrivacySandboxTestUtilTest, OutputKey_MaySendAttributionReport) {
   EXPECT_CALL(*mock_privacy_sandbox_settings(),
               MaySendAttributionReport(kAdMeasurementSourceOrigin,
                                        kAdMeasurementDestinationOrigin,
-                                       kAdMeasurementReportingOrigin, nullptr))
+                                       kAdMeasurementReportingOrigin))
       .WillOnce(testing::Return(true));
 
   CheckOutput(
@@ -395,9 +382,7 @@ TEST_F(PrivacySandboxTestUtilTest, OutputKey_IsSharedStorageAllowed) {
   url::Origin kTopFrameOrigin =
       url::Origin::Create(GURL("https://top-frame.com"));
   EXPECT_CALL(*mock_privacy_sandbox_settings(),
-              IsSharedStorageAllowed(kTopFrameOrigin, kAccessingOrigin,
-                                     /*out_debug_message=*/nullptr,
-                                     /*console_frame=*/nullptr))
+              IsSharedStorageAllowed(kTopFrameOrigin, kAccessingOrigin))
       .WillOnce(testing::Return(true));
 
   CheckOutput({{InputKey::kAccessingOrigin, kAccessingOrigin},
@@ -410,9 +395,9 @@ TEST_F(PrivacySandboxTestUtilTest, OutputKey_IsSharedStorageSelectURLAllowed) {
       url::Origin::Create(GURL("https://storage.com"));
   url::Origin kTopFrameOrigin =
       url::Origin::Create(GURL("https://top-frame.com"));
-  EXPECT_CALL(*mock_privacy_sandbox_settings(),
-              IsSharedStorageSelectURLAllowed(kTopFrameOrigin, kAccessingOrigin,
-                                              /*out_debug_message=*/nullptr))
+  EXPECT_CALL(
+      *mock_privacy_sandbox_settings(),
+      IsSharedStorageSelectURLAllowed(kTopFrameOrigin, kAccessingOrigin))
       .WillOnce(testing::Return(true));
 
   CheckOutput({{InputKey::kAccessingOrigin, kAccessingOrigin},
@@ -465,55 +450,6 @@ TEST_F(PrivacySandboxTestUtilTest, OutputKey_TopicsConsentStringIdentifiers) {
 
   CheckOutput({}, {OutputKey::kTopicsConsentStringIdentifiers,
                    std::vector<int>{identifier}});
-}
-
-TEST_F(PrivacySandboxTestUtilTest,
-       OutputKey_IsSharedStorageAllowedDebugMessage) {
-  url::Origin kAccessingOrigin =
-      url::Origin::Create(GURL("https://storage.com"));
-  url::Origin kTopFrameOrigin =
-      url::Origin::Create(GURL("https://top-frame.com"));
-  std::string actual_out_debug_message;
-  EXPECT_CALL(
-      *mock_privacy_sandbox_settings(),
-      IsSharedStorageAllowed(kTopFrameOrigin, kAccessingOrigin,
-                             /*out_debug_message=*/&actual_out_debug_message,
-                             /*console_frame=*/nullptr))
-      .WillOnce(testing::Return(true));
-
-  // The expected debug message is a non-null empty string here because we using
-  // a mock method.
-  std::string expected_out_debug_message;
-  CheckOutput(
-      {{InputKey::kAccessingOrigin, kAccessingOrigin},
-       {InputKey::kTopFrameOrigin, kTopFrameOrigin},
-       {InputKey::kOutSharedStorageDebugMessage, &actual_out_debug_message}},
-      {OutputKey::kIsSharedStorageAllowedDebugMessage,
-       &expected_out_debug_message});
-}
-
-TEST_F(PrivacySandboxTestUtilTest,
-       OutputKey_IsSharedStorageSelectURLAllowedDebugMessage) {
-  url::Origin kAccessingOrigin =
-      url::Origin::Create(GURL("https://storage.com"));
-  url::Origin kTopFrameOrigin =
-      url::Origin::Create(GURL("https://top-frame.com"));
-  std::string actual_out_debug_message;
-  EXPECT_CALL(*mock_privacy_sandbox_settings(),
-              IsSharedStorageSelectURLAllowed(
-                  kTopFrameOrigin, kAccessingOrigin,
-                  /*out_debug_message=*/&actual_out_debug_message))
-      .WillOnce(testing::Return(true));
-
-  // The expected debug message is a non-null empty string here because we using
-  // a mock method.
-  std::string expected_out_debug_message;
-  CheckOutput({{InputKey::kAccessingOrigin, kAccessingOrigin},
-               {InputKey::kTopFrameOrigin, kTopFrameOrigin},
-               {InputKey::kOutSharedStorageSelectURLDebugMessage,
-                &actual_out_debug_message}},
-              {OutputKey::kIsSharedStorageSelectURLAllowedDebugMessage,
-               &expected_out_debug_message});
 }
 
 }  // namespace privacy_sandbox_test_util

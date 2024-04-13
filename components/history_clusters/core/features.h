@@ -12,10 +12,6 @@ namespace history_clusters {
 
 // Features
 
-// In the past, we put all features in the Config class for performance, and
-// so all these are listed as "internal" and not to be checked directly.
-// Since crbug.com/1341292 has been fixed we no longer need to do this, and can
-// put features outside of this internal namespace. See bottom of this file.
 namespace internal {
 
 // Enables Journeys in the Chrome History WebUI. This flag shouldn't be checked
@@ -30,6 +26,9 @@ BASE_DECLARE_FEATURE(kJourneysImages);
 
 // Enables images to cover the full container for Journeys in UI.
 extern const base::FeatureParam<bool> kJourneysImagesCover;
+
+// Enables persisting and using persisted clusters.
+BASE_DECLARE_FEATURE(kPersistedClusters);
 
 // Enables the Journeys Omnibox Action chip. `kJourneys` must also be enabled
 // for this to take effect.
@@ -76,9 +75,13 @@ BASE_DECLARE_FEATURE(kJourneysPersistCachesToPrefs);
 // batches.
 BASE_DECLARE_FEATURE(kHistoryClustersNavigationContextClustering);
 
-// Enables Journeys creating new tab groups that have names derived from the
-// cluster title. If disabled, new tab groups are anonymous.
-BASE_DECLARE_FEATURE(kJourneysNamedNewTabGroups);
+// Enables either the hide visits thumbs-down or menu item on individual visits
+// of persisted clusters.
+BASE_DECLARE_FEATURE(kHideVisits);
+
+// Enables use of cache to store the URL for display to avoid calls to url
+// formatter.
+BASE_DECLARE_FEATURE(kUseUrlForDisplayCache);
 
 // Enables filtering of the zero-state Journeys WebUI.
 BASE_DECLARE_FEATURE(kJourneysZeroStateFiltering);
@@ -88,17 +91,14 @@ BASE_DECLARE_FEATURE(kJourneysZeroStateFiltering);
 }  // namespace internal
 
 // The below features are NOT internal and NOT encapsulated in the Config class.
-// At one point, we put everything in the Config class for performance, but
-// since crbug.com/1341292 has been fixed, we no longer need to.
+// These are different because the base::Feature instance needs to be directly
+// referred to outside of Journeys code. Moreover, they are not used inside an
+// inner loop, so they don't need to be high performance.
 
 // Enables Side Panel Journeys.
 BASE_DECLARE_FEATURE(kSidePanelJourneys);
 extern const base::FeatureParam<bool> kSidePanelJourneysOpensFromOmnibox;
 BASE_DECLARE_FEATURE(kSidePanelJourneysQueryless);
-
-// Enables Side Panel Grouped History and WebUI Grouped History to find
-// ungrouped visits as well when the user has typed a search query.
-BASE_DECLARE_FEATURE(kSearchesFindUngroupedVisits);
 
 }  // namespace history_clusters
 

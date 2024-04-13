@@ -42,7 +42,7 @@ void StreamingControllerMirroring::ProcessConfig(
   // Ensure remoting is disabled for this streaming session.
   DLOG_IF(WARNING, config.remoting)
       << "Remoting configuration removed from received ReceiverConfig";
-  config.remoting = std::nullopt;
+  config.remoting = absl::nullopt;
 }
 
 }  // namespace cast_receiver

@@ -9,11 +9,13 @@
 #include <utility>
 #include <vector>
 
+#include "base/strings/utf_string_conversions.h"
+#include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_node.h"
 #include "components/sync/base/time.h"
-#include "components/sync/base/unique_position.h"
-#include "components/sync_bookmarks/bookmark_model_view.h"
+#include "components/sync/protocol/bookmark_model_metadata.pb.h"
 #include "components/sync_bookmarks/bookmark_specifics_conversions.h"
+#include "components/sync_bookmarks/switches.h"
 #include "components/sync_bookmarks/synced_bookmark_tracker.h"
 #include "components/sync_bookmarks/synced_bookmark_tracker_entity.h"
 
@@ -21,7 +23,7 @@ namespace sync_bookmarks {
 
 BookmarkLocalChangesBuilder::BookmarkLocalChangesBuilder(
     SyncedBookmarkTracker* const bookmark_tracker,
-    BookmarkModelView* bookmark_model)
+    bookmarks::BookmarkModel* bookmark_model)
     : bookmark_tracker_(bookmark_tracker), bookmark_model_(bookmark_model) {
   DCHECK(bookmark_tracker);
   DCHECK(bookmark_model);
@@ -103,14 +105,6 @@ syncer::CommitRequestDataList BookmarkLocalChangesBuilder::BuildCommitRequests(
     // Specifics hash has been computed in the tracker when this entity has been
     // added/updated.
     request->specifics_hash = metadata.specifics_hash();
-
-    if (!metadata.is_deleted()) {
-      const bookmarks::BookmarkNode* node = entity->bookmark_node();
-      CHECK(node);
-      request->deprecated_bookmark_folder = node->is_folder();
-      request->deprecated_bookmark_unique_position =
-          syncer::UniquePosition::FromProto(metadata.unique_position());
-    }
 
     bookmark_tracker_->MarkCommitMayHaveStarted(entity);
 

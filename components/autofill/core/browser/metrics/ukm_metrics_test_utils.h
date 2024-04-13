@@ -16,11 +16,11 @@
 
 namespace autofill::autofill_metrics {
 
-struct ExpectedUkmMetricsPair : public std::pair<std::string, int64_t> {
-  using std::pair<std::string, int64_t>::pair;
-  ExpectedUkmMetricsPair(std::string str, HtmlFieldMode mode)
+struct ExpectedUkmMetricsPair : public std::pair<const char*, int64_t> {
+  using std::pair<const char*, int64_t>::pair;
+  ExpectedUkmMetricsPair(const char* str, HtmlFieldMode mode)
       : ExpectedUkmMetricsPair(str, static_cast<int64_t>(mode)) {}
-  ExpectedUkmMetricsPair(std::string str, HtmlFieldType type)
+  ExpectedUkmMetricsPair(const char* str, HtmlFieldType type)
       : ExpectedUkmMetricsPair(str, static_cast<int64_t>(type)) {}
 };
 
@@ -37,15 +37,24 @@ void VerifyDeveloperEngagementUkm(
     const DenseSet<FormType>& form_types,
     const std::vector<int64_t>& expected_metric_values);
 
+void VerifySubmitFormUkm(
+    const ukm::TestUkmRecorder* ukm_recorder,
+    const FormData& form,
+    AutofillMetrics::AutofillFormSubmittedState state,
+    bool is_for_credit_card,
+    bool has_upi_vpa_field,
+    const DenseSet<FormType>& form_types,
+    const FormInteractionCounts& form_interaction_counts = {});
+
 void AppendFieldFillStatusUkm(
     const FormData& form,
     std::vector<std::vector<ExpectedUkmMetricsPair>>* expected_metrics);
 
 void AppendFieldTypeUkm(
     const FormData& form,
-    const std::vector<FieldType>& heuristic_types,
-    const std::vector<FieldType>& server_types,
-    const std::vector<FieldType>& actual_types,
+    const std::vector<ServerFieldType>& heuristic_types,
+    const std::vector<ServerFieldType>& server_types,
+    const std::vector<ServerFieldType>& actual_types,
     std::vector<std::vector<ExpectedUkmMetricsPair>>* expected_metrics);
 
 }  // namespace autofill::autofill_metrics

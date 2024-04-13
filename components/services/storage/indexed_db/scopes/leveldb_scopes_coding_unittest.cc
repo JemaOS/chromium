@@ -4,7 +4,6 @@
 
 #include "components/services/storage/indexed_db/scopes/leveldb_scopes_coding.h"
 
-#include <iomanip>
 #include <ostream>
 
 #include "testing/gtest/include/gtest/gtest.h"

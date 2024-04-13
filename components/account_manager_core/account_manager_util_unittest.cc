@@ -5,23 +5,23 @@
 #include "components/account_manager_core/account_manager_util.h"
 
 #include "base/test/gtest_util.h"
-#include "components/account_manager_core/account_upsertion_result.h"
+#include "components/account_manager_core/account_addition_result.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace account_manager {
 
 TEST(AccountManagerUtilDeathTest,
-     ToMojoAccountUpsertionResultDiesForRemoteDisconnectedStatus) {
+     ToMojoAccountAdditionResultDiesForRemoteDisconnectedStatus) {
   EXPECT_DCHECK_DEATH(
-      ToMojoAccountUpsertionResult(AccountUpsertionResult::FromStatus(
-          AccountUpsertionResult::Status::kMojoRemoteDisconnected)));
+      ToMojoAccountAdditionResult(AccountAdditionResult::FromStatus(
+          AccountAdditionResult::Status::kMojoRemoteDisconnected)));
 }
 
 TEST(AccountManagerUtilDeathTest,
-     ToMojoAccountUpsertionResultDiesForIncompatibleMojoVersionsStatus) {
+     ToMojoAccountAdditionResultDiesForIncompatibleMojoVersionsStatus) {
   EXPECT_DCHECK_DEATH(
-      ToMojoAccountUpsertionResult(AccountUpsertionResult::FromStatus(
-          AccountUpsertionResult::Status::kIncompatibleMojoVersions)));
+      ToMojoAccountAdditionResult(AccountAdditionResult::FromStatus(
+          AccountAdditionResult::Status::kIncompatibleMojoVersions)));
 }
 
 }  // namespace account_manager

@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 
 #include "ash/public/cpp/presentation_time_recorder.h"
 #include "base/containers/circular_deque.h"
@@ -18,6 +17,7 @@
 #include "base/time/time.h"
 #include "components/exo/shell_surface.h"
 #include "components/exo/shell_surface_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace gfx {
 struct PresentationFeedback;
@@ -44,7 +44,7 @@ class ShellSurfacePresentationTimeRecorder
   // Factory to create histogram reporter.
   static std::unique_ptr<Reporter> CreateHistogramReporter(
       const char* latency_histogram_name,
-      std::optional<const char*> max_latency_histogram_name = std::nullopt);
+      absl::optional<const char*> max_latency_histogram_name = absl::nullopt);
 
   ShellSurfacePresentationTimeRecorder(ShellSurface* shell_surface,
                                        std::unique_ptr<Reporter> reporter);
@@ -70,7 +70,7 @@ class ShellSurfacePresentationTimeRecorder
     // Time when RequestNext is called.
     base::TimeTicks request_time;
     // Serial of the first Configure after RequestNext.
-    std::optional<uint32_t> serial = std::nullopt;
+    absl::optional<uint32_t> serial = absl::nullopt;
   };
 
   // Invoked to notify a frame is presented to calculate time delta between
@@ -80,13 +80,13 @@ class ShellSurfacePresentationTimeRecorder
                                 const gfx::PresentationFeedback& feedback);
 
  private:
-  raw_ptr<ShellSurface, DanglingUntriaged> shell_surface_ = nullptr;
+  raw_ptr<ShellSurface, ExperimentalAsh> shell_surface_ = nullptr;
   std::unique_ptr<Reporter> reporter_;
 
   uint64_t next_request_id_ = 0u;
 
   // Request waiting for configure. There would be only one such request.
-  std::optional<Request> pending_request_;
+  absl::optional<Request> pending_request_;
 
   // Requests that have received "configure" and wait for "ack".
   base::circular_deque<Request> requests_;

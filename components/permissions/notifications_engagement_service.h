@@ -42,7 +42,7 @@ class NotificationsEngagementService : public KeyedService {
   void RecordNotificationInteraction(const GURL& url);
 
   static std::string GetBucketLabel(base::Time time);
-  static std::optional<base::Time> ParsePeriodBeginFromBucketLabel(
+  static absl::optional<base::Time> ParsePeriodBeginFromBucketLabel(
       const std::string& label);
 
  private:

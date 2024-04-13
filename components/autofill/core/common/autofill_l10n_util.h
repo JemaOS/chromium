@@ -6,12 +6,13 @@
 #define COMPONENTS_AUTOFILL_CORE_COMMON_AUTOFILL_L10N_UTIL_H_
 
 #include <memory>
-#include <string_view>
+#include <string>
 
 #include "third_party/icu/source/common/unicode/locid.h"
 #include "third_party/icu/source/i18n/unicode/coll.h"
 
-namespace autofill::l10n {
+namespace autofill {
+namespace l10n {
 
 // Obtains the ICU Collator for this locale. If unsuccessful, attempts to return
 // the ICU collator for the English locale. If unsuccessful, returns null.
@@ -33,12 +34,13 @@ class CaseInsensitiveCompare {
 
   ~CaseInsensitiveCompare();
 
-  bool StringsEqual(std::u16string_view lhs, std::u16string_view rhs) const;
+  bool StringsEqual(const std::u16string& lhs, const std::u16string& rhs) const;
 
  private:
   std::unique_ptr<icu::Collator> collator_;
 };
 
-}  // namespace autofill::l10n
+}  // namespace l10n
+}  // namespace autofill
 
 #endif  // COMPONENTS_AUTOFILL_CORE_COMMON_AUTOFILL_L10N_UTIL_H_

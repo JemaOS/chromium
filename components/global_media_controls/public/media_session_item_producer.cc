@@ -20,6 +20,15 @@ constexpr int kAutoDismissTimerInMinutesDefault = 60;  // minutes
 
 constexpr const char kAutoDismissTimerInMinutesParamName[] = "timer_in_minutes";
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class MediaNotificationClickSource {
+  kMedia = 0,
+  kPresentation,
+  kMediaFling,
+  kMaxValue = kMediaFling
+};
+
 // Returns the time value to be used for the auto-dismissing of the
 // notifications after they are inactive.
 // If the feature (auto-dismiss) is disabled, the returned value will be
@@ -59,6 +68,13 @@ MediaSessionItemProducer::Session::~Session() {
 
 void MediaSessionItemProducer::Session::MediaSessionInfoChanged(
     media_session::mojom::MediaSessionInfoPtr session_info) {
+  if (session_info && session_info->has_presentation) {
+    // The presentation gets its own item, so this item has become redundant.
+    // |this| gets deleted here.
+    owner_->RemoveItem(id_);
+    return;
+  }
+
   is_playing_ =
       session_info && session_info->playback_state ==
                           media_session::mojom::MediaPlaybackState::kPlaying;
@@ -97,7 +113,7 @@ void MediaSessionItemProducer::Session::MediaSessionActionsChanged(
 }
 
 void MediaSessionItemProducer::Session::MediaSessionPositionChanged(
-    const std::optional<media_session::MediaPosition>& position) {
+    const absl::optional<media_session::MediaPosition>& position) {
   OnSessionInteractedWith();
 }
 
@@ -205,7 +221,7 @@ MediaSessionItemProducer::MediaSessionItemProducer(
     mojo::Remote<media_session::mojom::MediaControllerManager>
         controller_manager_remote,
     MediaItemManager* item_manager,
-    std::optional<base::UnguessableToken> source_id)
+    absl::optional<base::UnguessableToken> source_id)
     : audio_focus_remote_(std::move(audio_focus_remote)),
       controller_manager_remote_(std::move(controller_manager_remote)),
       item_manager_(item_manager),
@@ -317,19 +333,17 @@ void MediaSessionItemProducer::OnRequestIdReleased(
   RemoveItem(id);
 }
 
-void MediaSessionItemProducer::OnMediaItemUIClicked(
-    const std::string& id,
-    bool activate_original_media) {
+void MediaSessionItemProducer::OnMediaItemUIClicked(const std::string& id) {
   auto it = sessions_.find(id);
-  if (it == sessions_.end()) {
+  if (it == sessions_.end())
     return;
-  }
 
   it->second.OnSessionInteractedWith();
 
-  if (activate_original_media) {
-    it->second.item()->Raise();
-  }
+  base::UmaHistogramEnumeration("Media.Notification.Click",
+                                MediaNotificationClickSource::kMedia);
+
+  it->second.item()->Raise();
 }
 
 void MediaSessionItemProducer::OnMediaItemUIDismissed(const std::string& id) {
@@ -475,6 +489,10 @@ void MediaSessionItemProducer::OnSessionBecameInactive(const std::string& id) {
 
   // Let the service know that the item is hidden.
   item_manager_->HideItem(id);
+}
+
+void MediaSessionItemProducer::HideMediaDialog() {
+  item_manager_->HideDialog();
 }
 
 void MediaSessionItemProducer::OnReceivedAudioFocusRequests(

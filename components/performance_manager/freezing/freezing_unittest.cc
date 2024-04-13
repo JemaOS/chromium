@@ -4,8 +4,6 @@
 
 #include "components/performance_manager/public/freezing/freezing.h"
 
-#include <optional>
-
 #include "components/performance_manager/public/graph/page_node.h"
 #include "components/performance_manager/public/performance_manager.h"
 #include "components/performance_manager/test_support/performance_manager_test_harness.h"
@@ -13,6 +11,7 @@
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace performance_manager {
 namespace freezing {
@@ -23,15 +22,15 @@ constexpr char kCanFreeze[] = "Can freeze";
 constexpr char kCannotFreeze[] = "Cannot freeze";
 
 // Get the aggregated freezing vote associated with |contents|.
-std::optional<FreezingVote> GetFreezingVote(content::WebContents* contents) {
+absl::optional<FreezingVote> GetFreezingVote(content::WebContents* contents) {
   base::RunLoop run_loop;
-  std::optional<FreezingVote> ret;
+  absl::optional<FreezingVote> ret;
   auto quit_closure = run_loop.QuitClosure();
   PerformanceManager::CallOnGraph(
       FROM_HERE,
       base::BindOnce(
           [](base::WeakPtr<PageNode> page_node, base::OnceClosure quit_closure,
-             std::optional<FreezingVote>* expected_vote) {
+             absl::optional<FreezingVote>* expected_vote) {
             EXPECT_TRUE(page_node);
             auto vote = page_node->GetFreezingVote();
             *expected_vote = vote;
@@ -108,7 +107,7 @@ TEST_F(FreezingTest, FreezingToken) {
               FreezingVote(FreezingVoteValue::kCanFreeze, kCanFreeze));
   }
   // Once the freezing vote token is destroyed the vote should be invalidated.
-  EXPECT_EQ(GetFreezingVote(web_contents()), std::nullopt);
+  EXPECT_EQ(GetFreezingVote(web_contents()), absl::nullopt);
   EXPECT_EQ(0U, GetVoteCount(web_contents()));
   EXPECT_EQ(0U, GetTotalVoteCount());
 
@@ -121,7 +120,7 @@ TEST_F(FreezingTest, FreezingToken) {
     EXPECT_EQ(GetFreezingVote(web_contents()),
               FreezingVote(FreezingVoteValue::kCannotFreeze, kCannotFreeze));
   }
-  EXPECT_EQ(GetFreezingVote(web_contents()), std::nullopt);
+  EXPECT_EQ(GetFreezingVote(web_contents()), absl::nullopt);
   EXPECT_EQ(0U, GetTotalVoteCount());
 
   // Emit multiple positive token for the same page.
@@ -153,7 +152,7 @@ TEST_F(FreezingTest, FreezingToken) {
     token1.reset();
     EXPECT_EQ(0U, GetVoteCount(web_contents()));
     EXPECT_EQ(0U, GetTotalVoteCount());
-    EXPECT_EQ(GetFreezingVote(web_contents()), std::nullopt);
+    EXPECT_EQ(GetFreezingVote(web_contents()), absl::nullopt);
   }
 }
 
@@ -178,8 +177,8 @@ TEST_F(FreezingTest, FreezingTokenMultiplePages) {
       web_contents(), FreezingVoteValue::kCanFreeze, kCanFreeze);
   EXPECT_EQ(GetFreezingVote(web_contents()),
             FreezingVote(FreezingVoteValue::kCanFreeze, kCanFreeze));
-  EXPECT_EQ(GetFreezingVote(contents2.get()), std::nullopt);
-  EXPECT_EQ(GetFreezingVote(contents3.get()), std::nullopt);
+  EXPECT_EQ(GetFreezingVote(contents2.get()), absl::nullopt);
+  EXPECT_EQ(GetFreezingVote(contents3.get()), absl::nullopt);
   EXPECT_EQ(1U, GetVoteCount(web_contents()));
   EXPECT_EQ(0U, GetVoteCount(contents2.get()));
   EXPECT_EQ(0U, GetVoteCount(contents3.get()));
@@ -189,8 +188,8 @@ TEST_F(FreezingTest, FreezingTokenMultiplePages) {
       web_contents(), FreezingVoteValue::kCanFreeze, kCanFreeze);
   EXPECT_EQ(GetFreezingVote(web_contents()),
             FreezingVote(FreezingVoteValue::kCanFreeze, kCanFreeze));
-  EXPECT_EQ(GetFreezingVote(contents2.get()), std::nullopt);
-  EXPECT_EQ(GetFreezingVote(contents3.get()), std::nullopt);
+  EXPECT_EQ(GetFreezingVote(contents2.get()), absl::nullopt);
+  EXPECT_EQ(GetFreezingVote(contents3.get()), absl::nullopt);
   EXPECT_EQ(2U, GetVoteCount(web_contents()));
   EXPECT_EQ(0U, GetVoteCount(contents2.get()));
   EXPECT_EQ(0U, GetVoteCount(contents3.get()));
@@ -202,7 +201,7 @@ TEST_F(FreezingTest, FreezingTokenMultiplePages) {
             FreezingVote(FreezingVoteValue::kCanFreeze, kCanFreeze));
   EXPECT_EQ(GetFreezingVote(contents2.get()),
             FreezingVote(FreezingVoteValue::kCanFreeze, kCanFreeze));
-  EXPECT_EQ(GetFreezingVote(contents3.get()), std::nullopt);
+  EXPECT_EQ(GetFreezingVote(contents3.get()), absl::nullopt);
   EXPECT_EQ(2U, GetVoteCount(web_contents()));
   EXPECT_EQ(1U, GetVoteCount(contents2.get()));
   EXPECT_EQ(0U, GetVoteCount(contents3.get()));
@@ -234,7 +233,7 @@ TEST_F(FreezingTest, FreezingTokenMultiplePages) {
   EXPECT_EQ(3U, GetTotalVoteCount());
 
   contents1_token2.reset();
-  EXPECT_EQ(GetFreezingVote(web_contents()), std::nullopt);
+  EXPECT_EQ(GetFreezingVote(web_contents()), absl::nullopt);
   EXPECT_EQ(GetFreezingVote(contents2.get()),
             FreezingVote(FreezingVoteValue::kCanFreeze, kCanFreeze));
   EXPECT_EQ(GetFreezingVote(contents3.get()),
@@ -245,8 +244,8 @@ TEST_F(FreezingTest, FreezingTokenMultiplePages) {
   EXPECT_EQ(2U, GetTotalVoteCount());
 
   contents2_token.reset();
-  EXPECT_EQ(GetFreezingVote(web_contents()), std::nullopt);
-  EXPECT_EQ(GetFreezingVote(contents2.get()), std::nullopt);
+  EXPECT_EQ(GetFreezingVote(web_contents()), absl::nullopt);
+  EXPECT_EQ(GetFreezingVote(contents2.get()), absl::nullopt);
   EXPECT_EQ(GetFreezingVote(contents3.get()),
             FreezingVote(FreezingVoteValue::kCanFreeze, kCanFreeze));
   EXPECT_EQ(0U, GetVoteCount(web_contents()));
@@ -255,9 +254,9 @@ TEST_F(FreezingTest, FreezingTokenMultiplePages) {
   EXPECT_EQ(1U, GetTotalVoteCount());
 
   contents3_token.reset();
-  EXPECT_EQ(GetFreezingVote(web_contents()), std::nullopt);
-  EXPECT_EQ(GetFreezingVote(contents2.get()), std::nullopt);
-  EXPECT_EQ(GetFreezingVote(contents3.get()), std::nullopt);
+  EXPECT_EQ(GetFreezingVote(web_contents()), absl::nullopt);
+  EXPECT_EQ(GetFreezingVote(contents2.get()), absl::nullopt);
+  EXPECT_EQ(GetFreezingVote(contents3.get()), absl::nullopt);
   EXPECT_EQ(0U, GetVoteCount(web_contents()));
   EXPECT_EQ(0U, GetVoteCount(contents2.get()));
   EXPECT_EQ(0U, GetVoteCount(contents3.get()));

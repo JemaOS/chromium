@@ -4,8 +4,7 @@
 
 {
   "type_name": "FieldTrialTestingConfig",
-  "system-headers": [ "optional" ] ,
-  "headers": [ "components/variations/proto/study.pb.h" ],
+  "headers": ["third_party/abseil-cpp/absl/types/optional.h", "components/variations/proto/study.pb.h"],
   "schema": [{
     "field": "studies",
     "type": "array",
@@ -25,20 +24,18 @@
               {
                 "field": "platforms",
                 "type": "array",
-                "contents": {"type": "enum", "ctype": "Study::Platform", "javatype":  "String"}
+                "contents": {"type": "enum", "ctype": "Study::Platform"}
               },
               {
                 "field": "form_factors",
                 "type": "array",
-                "contents": {"type": "enum", "ctype": "Study::FormFactor", "javatype":  "String"}
+                "contents": {"type": "enum", "ctype": "Study::FormFactor"}
               },
               {
                 "field": "is_low_end_device",
                 "type": "class",
-                "ctype": "std::optional<bool>",
-                "javatype": "Boolean",
-                "default": "std::nullopt",
-                "java_default": "null",
+                "ctype": "absl::optional<bool>",
+                "default": "absl::nullopt",
                 "optional": "True"
               },
               {
@@ -82,16 +79,6 @@
                     {"field": "value", "type": "string"}
                   ]
                 }
-              },
-              {
-                "field": "hardware_classes",
-                "type": "array",
-                "contents": { "type": "string"}
-              },
-              {
-                "field": "exclude_hardware_classes",
-                "type": "array",
-                "contents": { "type": "string"}
               }
             ]
           }

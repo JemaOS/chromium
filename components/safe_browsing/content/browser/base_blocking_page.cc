@@ -11,13 +11,12 @@
 #include "base/lazy_instance.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/time/time.h"
-#include "components/safe_browsing/content/browser/async_check_tracker.h"
 #include "components/safe_browsing/content/browser/safe_browsing_controller_client.h"
-#include "components/safe_browsing/content/browser/unsafe_resource_util.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/security_interstitials/content/security_interstitial_controller_client.h"
 #include "components/security_interstitials/content/settings_page_helper.h"
+#include "components/security_interstitials/content/unsafe_resource_util.h"
 #include "components/security_interstitials/core/metrics_helper.h"
 #include "components/security_interstitials/core/safe_browsing_loud_error_ui.h"
 #include "components/security_interstitials/core/unsafe_resource.h"
@@ -69,7 +68,7 @@ BaseBlockingPage::BaseBlockingPage(
           base::Time::NowFromSystemTime(),
           controller(),
           /* created_prior_to_navigation */
-          IsMainPageLoadPending(unsafe_resources))) {}
+          IsMainPageLoadBlocked(unsafe_resources))) {}
 
 BaseBlockingPage::~BaseBlockingPage() {}
 
@@ -78,7 +77,7 @@ const security_interstitials::BaseSafeBrowsingErrorUI::SBErrorDisplayOptions
 BaseBlockingPage::CreateDefaultDisplayOptions(
     const UnsafeResourceList& unsafe_resources) {
   return BaseSafeBrowsingErrorUI::SBErrorDisplayOptions(
-      IsMainPageLoadPending(unsafe_resources), IsSubresource(unsafe_resources),
+      IsMainPageLoadBlocked(unsafe_resources),
       false,                 // kSafeBrowsingExtendedReportingOptInAllowed
       false,                 // is_off_the_record
       false,                 // is_extended_reporting
@@ -93,25 +92,12 @@ BaseBlockingPage::CreateDefaultDisplayOptions(
 }
 
 // static
-bool BaseBlockingPage::IsMainPageLoadPending(
+bool BaseBlockingPage::IsMainPageLoadBlocked(
     const UnsafeResourceList& unsafe_resources) {
   // If there is more than one unsafe resource, the main page load must not be
-  // pending. Otherwise, check if the one resource is.
+  // blocked. Otherwise, check if the one resource is.
   return unsafe_resources.size() == 1 &&
-         AsyncCheckTracker::IsMainPageLoadPending(unsafe_resources[0]);
-}
-
-// static
-bool BaseBlockingPage::IsSubresource(
-    const UnsafeResourceList& unsafe_resources) {
-  // As long as there is one resource that is from subresource, the page is
-  // considered unsafe due to a subresource.
-  for (auto unsafe_resource : unsafe_resources) {
-    if (unsafe_resource.is_subresource) {
-      return true;
-    }
-  }
-  return false;
+         unsafe_resources[0].IsMainPageLoadBlocked();
 }
 
 void BaseBlockingPage::SetThreatDetailsProceedDelayForTesting(int64_t delay) {
@@ -188,14 +174,8 @@ std::string BaseBlockingPage::GetExtraMetricsSuffix(
       return "from_device_v4";
     case safe_browsing::ThreatSource::CLIENT_SIDE_DETECTION:
       return "from_client_side_detection";
-    case safe_browsing::ThreatSource::URL_REAL_TIME_CHECK:
+    case safe_browsing::ThreatSource::REAL_TIME_CHECK:
       return "from_real_time_check";
-    case safe_browsing::ThreatSource::NATIVE_PVER5_REAL_TIME:
-      return "from_hash_prefix_real_time_check_v5";
-    case safe_browsing::ThreatSource::ANDROID_SAFEBROWSING_REAL_TIME:
-      return "from_android_safebrowsing_real_time";
-    case safe_browsing::ThreatSource::ANDROID_SAFEBROWSING:
-      return "from_android_safebrowsing";
     case safe_browsing::ThreatSource::UNKNOWN:
       break;
   }
@@ -207,8 +187,6 @@ std::string BaseBlockingPage::GetExtraMetricsSuffix(
 security_interstitials::BaseSafeBrowsingErrorUI::SBInterstitialReason
 BaseBlockingPage::GetInterstitialReason(
     const UnsafeResourceList& unsafe_resources) {
-  using enum SBThreatType;
-
   bool harmful = false;
   for (auto iter = unsafe_resources.begin(); iter != unsafe_resources.end();
        ++iter) {
@@ -217,7 +195,8 @@ BaseBlockingPage::GetInterstitialReason(
     if (threat_type == SB_THREAT_TYPE_BILLING)
       return BaseSafeBrowsingErrorUI::SB_REASON_BILLING;
 
-    if (threat_type == SB_THREAT_TYPE_URL_MALWARE) {
+    if (threat_type == SB_THREAT_TYPE_URL_MALWARE ||
+        threat_type == SB_THREAT_TYPE_URL_CLIENT_SIDE_MALWARE) {
       return BaseSafeBrowsingErrorUI::SB_REASON_MALWARE;
     }
 
@@ -265,9 +244,7 @@ void BaseBlockingPage::set_proceeded(bool proceeded) {
 
 // static
 security_interstitials::MetricsHelper::ReportDetails
-BaseBlockingPage::GetReportingInfo(
-    const UnsafeResourceList& unsafe_resources,
-    std::optional<base::TimeTicks> blocked_page_shown_timestamp) {
+BaseBlockingPage::GetReportingInfo(const UnsafeResourceList& unsafe_resources) {
   BaseSafeBrowsingErrorUI::SBInterstitialReason interstitial_reason =
       GetInterstitialReason(unsafe_resources);
 
@@ -275,7 +252,6 @@ BaseBlockingPage::GetReportingInfo(
   reporting_info.metric_prefix =
       GetMetricPrefix(unsafe_resources, interstitial_reason);
   reporting_info.extra_suffix = GetExtraMetricsSuffix(unsafe_resources);
-  reporting_info.blocked_page_shown_timestamp = blocked_page_shown_timestamp;
   return reporting_info;
 }
 
@@ -287,15 +263,13 @@ BaseBlockingPage::CreateControllerClient(
     BaseUIManager* ui_manager,
     PrefService* pref_service,
     std::unique_ptr<security_interstitials::SettingsPageHelper>
-        settings_page_helper,
-    std::optional<base::TimeTicks> blocked_page_shown_timestamp) {
+        settings_page_helper) {
   history::HistoryService* history_service =
       ui_manager->history_service(web_contents);
 
   std::unique_ptr<security_interstitials::MetricsHelper> metrics_helper =
       std::make_unique<security_interstitials::MetricsHelper>(
-          unsafe_resources[0].url,
-          GetReportingInfo(unsafe_resources, blocked_page_shown_timestamp),
+          unsafe_resources[0].url, GetReportingInfo(unsafe_resources),
           history_service);
 
   return std::make_unique<SafeBrowsingControllerClient>(
@@ -351,8 +325,8 @@ void BaseBlockingPage::OnDontProceedDone() {
 
 // static
 bool BaseBlockingPage::ShouldReportThreatDetails(SBThreatType threat_type) {
-  using enum SBThreatType;
   return threat_type == SB_THREAT_TYPE_BILLING ||
+         threat_type == SB_THREAT_TYPE_URL_CLIENT_SIDE_MALWARE ||
          threat_type == SB_THREAT_TYPE_URL_CLIENT_SIDE_PHISHING ||
          threat_type == SB_THREAT_TYPE_URL_MALWARE ||
          threat_type == SB_THREAT_TYPE_URL_PHISHING ||

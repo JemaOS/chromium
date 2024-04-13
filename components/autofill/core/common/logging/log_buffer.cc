@@ -5,7 +5,6 @@
 #include "components/autofill/core/common/logging/log_buffer.h"
 
 #include <string>
-#include <string_view>
 
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
@@ -59,7 +58,7 @@ void AppendChildToLastNode(std::vector<base::Value::Dict>* buffer,
 // If the last child of the element in buffer is a text node, append |text| to
 // it and return true (successful coalescing). Otherwise return false.
 bool TryCoalesceString(std::vector<base::Value::Dict>* buffer,
-                       std::string_view text) {
+                       base::StringPiece text) {
   if (buffer->empty())
     return false;
   base::Value::Dict& parent = buffer->back();
@@ -71,7 +70,7 @@ bool TryCoalesceString(std::vector<base::Value::Dict>* buffer,
   if (!IsTextNode(last_child))
     return false;
   std::string* old_text = last_child.FindString("value");
-  old_text->append(text);
+  old_text->append(text.data(), text.size());
   return true;
 }
 
@@ -92,7 +91,7 @@ LogBuffer::LogBuffer(LogBuffer&& other) noexcept = default;
 LogBuffer& LogBuffer::operator=(LogBuffer&& other) = default;
 LogBuffer::~LogBuffer() = default;
 
-std::optional<base::Value::Dict> LogBuffer::RetrieveResult() {
+absl::optional<base::Value::Dict> LogBuffer::RetrieveResult() {
   // The buffer should always start with a fragment.
   DCHECK(buffer_.size() >= 1);
 
@@ -102,12 +101,12 @@ std::optional<base::Value::Dict> LogBuffer::RetrieveResult() {
 
   auto* children = buffer_[0].FindList("children");
   if (!children || children->empty())
-    return std::nullopt;
+    return absl::nullopt;
 
   // If the fragment has a single child, remove it from |children| and return
   // that directly.
   if (children->size() == 1) {
-    return std::optional<base::Value::Dict>(
+    return absl::optional<base::Value::Dict>(
         std::move((*children).back().GetDict()));
   }
 
@@ -163,7 +162,7 @@ LogBuffer& operator<<(LogBuffer& buf, Br&& tag) {
   return buf << Tag{"br"} << CTag{};
 }
 
-LogBuffer& operator<<(LogBuffer& buf, std::string_view text) {
+LogBuffer& operator<<(LogBuffer& buf, base::StringPiece text) {
   if (!buf.active())
     return buf;
 
@@ -190,7 +189,7 @@ LogBuffer& operator<<(LogBuffer& buf, LogBuffer&& buffer) {
   if (!buf.active())
     return buf;
 
-  std::optional<base::Value::Dict> node_to_add = buffer.RetrieveResult();
+  absl::optional<base::Value::Dict> node_to_add = buffer.RetrieveResult();
   if (!node_to_add)
     return buf;
 
@@ -244,7 +243,7 @@ namespace {
 // Highlights the first |needle| in |haystack| by wrapping it in <b> tags.
 template <typename T, typename CharT = typename T::value_type>
 LogBuffer HighlightValueInternal(T haystack, T needle) {
-  using StringPieceT = std::basic_string_view<CharT>;
+  using StringPieceT = base::BasicStringPiece<CharT>;
   LogBuffer buffer(LogBuffer::IsActive(true));
   size_t pos = haystack.find(needle);
   if (pos == StringPieceT::npos || needle.empty()) {
@@ -258,7 +257,7 @@ LogBuffer HighlightValueInternal(T haystack, T needle) {
 }
 }  // namespace
 
-LogBuffer HighlightValue(std::string_view haystack, std::string_view needle) {
+LogBuffer HighlightValue(base::StringPiece haystack, base::StringPiece needle) {
   return HighlightValueInternal(haystack, needle);
 }
 

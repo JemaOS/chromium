@@ -7,12 +7,9 @@
 #include <utility>
 
 #include "base/files/file_path.h"
-#include "base/json/json_reader.h"
 #include "base/memory/ptr_util.h"
 #include "base/ranges/algorithm.h"
-#include "base/values.h"
 #include "build/chromeos_buildflags.h"
-#include "components/feedback/feedback_constants.h"
 #include "components/feedback/feedback_report.h"
 #include "components/feedback/feedback_util.h"
 #include "components/feedback/proto/common.pb.h"
@@ -21,11 +18,13 @@
 #include "components/feedback/proto/math.pb.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "ash/constants/ash_features.h"
-#endif
-
 namespace {
+
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+constexpr int kChromeOSProductId = 208;
+#else
+constexpr int kChromeBrowserProductId = 237;
+#endif
 
 // The below thresholds were chosen arbitrarily to conveniently show small data
 // as part of the report itself without having to look into the system_logs.zip
@@ -41,19 +40,6 @@ constexpr char kZipExt[] = ".zip";
 
 constexpr char kPngMimeType[] = "image/png";
 constexpr char kArbitraryMimeType[] = "application/octet-stream";
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-// Keep in sync with
-// google3/java/com/google/wireless/android/tools/betterbug/protos/uploadfeedbackreport.proto.
-constexpr char kIsCrossDeviceIssueKey[] = "is_cross_device_issue";
-constexpr char kIsCrossDeviceIssueTrueValue[] = "true";
-constexpr char kTargetDeviceIdKey[] = "target_device_id";
-constexpr char kTargetDeviceIdTypeKey[] = "target_device_id_type";
-// Enum value for MAC_ADDRESS type.
-constexpr char kTargetDeviceIdTypeMacAddressValue[] = "1";
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-constexpr char kIsOffensiveOrUnsafeKey[] = "is_offensive_or_unsafe";
 
 // Determine if the given feedback value is small enough to not need to
 // be compressed.
@@ -143,7 +129,7 @@ void FeedbackCommon::PrepareReport(
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   const userfeedback::ChromeData_ChromePlatform chrome_platform =
       userfeedback::ChromeData_ChromePlatform_CHROME_OS;
-  const int default_product_id = feedback::kChromeOSProductId;
+  const int default_product_id = kChromeOSProductId;
   userfeedback::ChromeOsData chrome_os_data;
   chrome_os_data.set_category(
       userfeedback::ChromeOsData_ChromeOsCategory_OTHER);
@@ -151,33 +137,28 @@ void FeedbackCommon::PrepareReport(
 #else
   const userfeedback::ChromeData_ChromePlatform chrome_platform =
       userfeedback::ChromeData_ChromePlatform_CHROME_BROWSER;
-  const int default_product_id = feedback::kChromeBrowserProductId;
+  const int default_product_id = kChromeBrowserProductId;
   userfeedback::ChromeBrowserData chrome_browser_data;
   chrome_browser_data.set_category(
       userfeedback::ChromeBrowserData_ChromeBrowserCategory_OTHER);
   *(chrome_data.mutable_chrome_browser_data()) = chrome_browser_data;
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   chrome_data.set_chrome_platform(chrome_platform);
-  // TODO(b/301518187): Investigate if this line is needed in order for custom
-  // product IDs to work. Remove `include_chrome_platform_` if it's not needed.
-  if (include_chrome_platform_) {
-    *(feedback_data->mutable_chrome_data()) = chrome_data;
-  }
+  *(feedback_data->mutable_chrome_data()) = chrome_data;
 
   feedback_data->set_product_id(HasProductId() ? product_id_
                                                : default_product_id);
 
   userfeedback::CommonData* common_data = feedback_data->mutable_common_data();
   // We're not using gaia ids, we're using the e-mail field instead.
-  common_data->set_gaia_id(0);
+  common_data->set_gaia_id(gaia_id());
   common_data->set_user_email(user_email());
   common_data->set_description(description());
   common_data->set_source_description_language(locale());
+  common_data->set_unique_report_identifier(unique_id());
 
   userfeedback::WebData* web_data = feedback_data->mutable_web_data();
-  if (!page_url().empty()) {
-    web_data->set_url(page_url());
-  }
+  web_data->set_url(page_url());
   web_data->mutable_navigator()->set_user_agent(user_agent());
 
   AddFilesAndLogsToReport(feedback_data);
@@ -200,31 +181,6 @@ void FeedbackCommon::PrepareReport(
 
   if (category_tag().size())
     feedback_data->set_bucket(category_tag());
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (ash::features::IsLinkCrossDeviceDogfoodFeedbackEnabled() &&
-      gaia::IsGoogleInternalAccountEmail(user_email()) &&
-      mac_address_.has_value()) {
-    AddFeedbackData(feedback_data, kIsCrossDeviceIssueKey,
-                    kIsCrossDeviceIssueTrueValue);
-    AddFeedbackData(feedback_data, kTargetDeviceIdKey, mac_address_.value());
-    AddFeedbackData(feedback_data, kTargetDeviceIdTypeKey,
-                    kTargetDeviceIdTypeMacAddressValue);
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-  if (is_offensive_or_unsafe_.has_value()) {
-    AddFeedbackData(feedback_data, kIsOffensiveOrUnsafeKey,
-                    is_offensive_or_unsafe_.value() ? "true" : "false");
-  }
-  if (!ai_metadata_.empty()) {
-    // Add feedback data for each key/value pair.
-    std::optional<base::Value::Dict> dict =
-        base::JSONReader::ReadDict(ai_metadata_);
-    CHECK(dict);
-    for (auto pair : dict.value()) {
-      AddFeedbackData(feedback_data, pair.first, pair.second.GetString());
-    }
-  }
 }
 
 void FeedbackCommon::RedactDescription(redaction::RedactionTool& redactor) {
@@ -237,23 +193,6 @@ bool FeedbackCommon::IncludeInSystemLogs(const std::string& key,
   return is_google_email ||
          key != feedback::FeedbackReport::kAllCrashReportIdsKey;
 }
-
-// static
-int FeedbackCommon::GetChromeBrowserProductId() {
-  return feedback::kChromeBrowserProductId;
-}
-
-// static
-int FeedbackCommon::GetMahiProductId() {
-  return feedback::kMahiFeedbackProductId;
-}
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-// static
-int FeedbackCommon::GetChromeOSProductId() {
-  return feedback::kChromeOSProductId;
-}
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 FeedbackCommon::~FeedbackCommon() = default;
 

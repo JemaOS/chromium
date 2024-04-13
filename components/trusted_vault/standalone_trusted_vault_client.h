@@ -17,9 +17,8 @@
 #include "base/sequence_checker.h"
 #include "base/task/sequenced_task_runner.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
-#include "components/trusted_vault/recovery_key_store_controller.h"
+#include "components/sync/driver/trusted_vault_client.h"
 #include "components/trusted_vault/trusted_vault_access_token_fetcher_frontend.h"
-#include "components/trusted_vault/trusted_vault_client.h"
 
 struct CoreAccountInfo;
 
@@ -29,7 +28,6 @@ class SharedURLLoaderFactory;
 
 namespace trusted_vault {
 
-enum class SecurityDomainId;
 class StandaloneTrustedVaultBackend;
 
 // Standalone, file-based implementation of TrustedVaultClient that stores the
@@ -37,36 +35,13 @@ class StandaloneTrustedVaultBackend;
 // platform-dependent crypto mechanisms (OSCrypt).
 //
 // Reading of the file is done lazily.
-class StandaloneTrustedVaultClient : public TrustedVaultClient {
+class StandaloneTrustedVaultClient : public syncer::TrustedVaultClient {
  public:
-  // Allows to observe backend state changes for testing. Production code should
-  // use TrustedVaultClient::Observer.
-  class DebugObserver : public base::CheckedObserver {
-   public:
-    DebugObserver() = default;
-    DebugObserver(const DebugObserver&) = delete;
-    DebugObserver& operator=(const DebugObserver&) = delete;
-    ~DebugObserver() override = default;
-
-    virtual void OnBackendStateChanged() = 0;
-  };
-
-  // |base_dir| is the directory in which to create snapshot
-  // files. |identity_manager| must not be null and must outlive this object.
+  // |identity_manager| must not be null and must outlive this object.
   // |url_loader_factory| must not be null.
-  // |recovery_key_provider| may be null, in which case
-  // |SetRecoveryKeyStoreUploadEnabled()| must not be called.
   StandaloneTrustedVaultClient(
-      SecurityDomainId security_domain,
-      const base::FilePath& base_dir,
-      signin::IdentityManager* identity_manager,
-      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      std::unique_ptr<RecoveryKeyStoreController::RecoveryKeyProvider>
-          recovery_key_provider);
-
-  StandaloneTrustedVaultClient(
-      SecurityDomainId security_domain,
-      const base::FilePath& base_dir,
+      const base::FilePath& file_path,
+      const base::FilePath& deprecated_file_path,
       signin::IdentityManager* identity_manager,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory);
 
@@ -99,32 +74,22 @@ class StandaloneTrustedVaultClient : public TrustedVaultClient {
   // Runs |cb| when all requests have completed.
   void WaitForFlushForTesting(base::OnceClosure cb) const;
   void FetchBackendPrimaryAccountForTesting(
-      base::OnceCallback<void(const std::optional<CoreAccountInfo>&)> callback)
+      base::OnceCallback<void(const absl::optional<CoreAccountInfo>&)> callback)
       const;
-  void FetchIsDeviceRegisteredForTesting(
-      const std::string& gaia_id,
-      base::OnceCallback<void(bool)> callback);
-  void AddDebugObserverForTesting(DebugObserver* debug_observer);
-  void RemoveDebugObserverForTesting(DebugObserver* debug_observer);
   // TODO(crbug.com/1201659): This this API and rely exclusively on
   // FakeSecurityDomainsServer.
   void GetLastAddedRecoveryMethodPublicKeyForTesting(
       base::OnceCallback<void(const std::vector<uint8_t>&)> callback);
-  void GetLastKeyVersionForTesting(
-      const std::string& gaia_id,
-      base::OnceCallback<void(int last_key_version)> callback);
 
  private:
   void NotifyTrustedVaultKeysChanged();
   void NotifyRecoverabilityDegradedChanged();
-  void NotifyBackendStateChanged();
 
   const scoped_refptr<base::SequencedTaskRunner> backend_task_runner_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 
   base::ObserverList<Observer> observer_list_;
-  base::ObserverList<DebugObserver> debug_observer_list_;
 
   // Allows access token fetching for primary account on the ui thread. Passed
   // as WeakPtr to TrustedVaultAccessTokenFetcherImpl.

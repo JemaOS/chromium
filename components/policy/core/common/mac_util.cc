@@ -8,11 +8,11 @@
 #include <string>
 #include <utility>
 
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/values.h"
 
-using base::apple::CFCast;
+using base::mac::CFCast;
 
 namespace policy {
 

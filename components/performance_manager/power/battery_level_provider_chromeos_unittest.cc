@@ -20,13 +20,13 @@ class TestBatteryStateSamplerObserver
  public:
   // base::BatteryStateSampler::Observer:
   void OnBatteryStateSampled(
-      const std::optional<base::BatteryLevelProvider::BatteryState>&
+      const absl::optional<base::BatteryLevelProvider::BatteryState>&
           battery_state) override {
     last_sampled_state_ = battery_state;
   }
 
-  std::optional<base::BatteryLevelProvider::BatteryState> last_sampled_state_ =
-      std::nullopt;
+  absl::optional<base::BatteryLevelProvider::BatteryState> last_sampled_state_ =
+      absl::nullopt;
 };
 
 }  // namespace
@@ -38,11 +38,11 @@ class BatteryLevelProviderChromeOSTest : public ::testing::Test {
         std::make_unique<BatteryLevelProviderChromeOS>(power_manager_client);
   }
 
-  std::optional<base::BatteryLevelProvider::BatteryState> GetBatteryState() {
-    std::optional<base::BatteryLevelProvider::BatteryState> state;
+  absl::optional<base::BatteryLevelProvider::BatteryState> GetBatteryState() {
+    absl::optional<base::BatteryLevelProvider::BatteryState> state;
     battery_level_provider_->GetBatteryState(base::BindOnce(
-        [](std::optional<base::BatteryLevelProvider::BatteryState>* out,
-           const std::optional<base::BatteryLevelProvider::BatteryState>&
+        [](absl::optional<base::BatteryLevelProvider::BatteryState>* out,
+           const absl::optional<base::BatteryLevelProvider::BatteryState>&
                state) { *out = state; },
         &state));
 
@@ -58,7 +58,7 @@ TEST_F(BatteryLevelProviderChromeOSTest, NoPowerManager) {
 }
 
 TEST_F(BatteryLevelProviderChromeOSTest, NoLastStatus) {
-  fake_power_manager_client_.UpdatePowerProperties(std::nullopt);
+  fake_power_manager_client_.UpdatePowerProperties(absl::nullopt);
   InitProvider(&fake_power_manager_client_);
 
   EXPECT_FALSE(GetBatteryState());
@@ -71,7 +71,7 @@ TEST_F(BatteryLevelProviderChromeOSTest, NoBattery) {
   fake_power_manager_client_.UpdatePowerProperties(props);
   InitProvider(&fake_power_manager_client_);
 
-  std::optional<base::BatteryLevelProvider::BatteryState> state =
+  absl::optional<base::BatteryLevelProvider::BatteryState> state =
       GetBatteryState();
   EXPECT_TRUE(state);
   EXPECT_EQ(0, state->battery_count);
@@ -88,7 +88,7 @@ TEST_F(BatteryLevelProviderChromeOSTest, BatteryReportsMAh) {
   fake_power_manager_client_.UpdatePowerProperties(props);
   InitProvider(&fake_power_manager_client_);
 
-  std::optional<base::BatteryLevelProvider::BatteryState> state =
+  absl::optional<base::BatteryLevelProvider::BatteryState> state =
       GetBatteryState();
   EXPECT_TRUE(state);
   EXPECT_EQ(1, state->battery_count);
@@ -110,7 +110,7 @@ TEST_F(BatteryLevelProviderChromeOSTest, BatteryReportsMWh) {
   fake_power_manager_client_.UpdatePowerProperties(props);
   InitProvider(&fake_power_manager_client_);
 
-  std::optional<base::BatteryLevelProvider::BatteryState> state =
+  absl::optional<base::BatteryLevelProvider::BatteryState> state =
       GetBatteryState();
   EXPECT_TRUE(state);
   EXPECT_EQ(1, state->battery_count);
@@ -131,7 +131,7 @@ TEST_F(BatteryLevelProviderChromeOSTest, BatteryReportsRelative) {
   fake_power_manager_client_.UpdatePowerProperties(props);
   InitProvider(&fake_power_manager_client_);
 
-  std::optional<base::BatteryLevelProvider::BatteryState> state =
+  absl::optional<base::BatteryLevelProvider::BatteryState> state =
       GetBatteryState();
   EXPECT_TRUE(state);
   EXPECT_EQ(1, state->battery_count);

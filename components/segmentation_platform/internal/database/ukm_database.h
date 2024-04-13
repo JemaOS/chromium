@@ -47,16 +47,14 @@ class UkmDatabase {
   // index metrics with the same |source_id| with the URL.
   virtual void UpdateUrlForUkmSource(ukm::SourceId source_id,
                                      const GURL& url,
-                                     bool is_validated,
-                                     const std::string& profile_id) = 0;
+                                     bool is_validated) = 0;
 
   // Called to validate an URL, see also UpdateUrlForUkmSource(). Safe to call
   // with unneeded URLs, since the database will only persist the URLs already
   // pending for known |source_id|s. Note that this call will not automatically
   // validate future URLs given by UpdateUrlForUkmSource(). They need to have
   // |is_validated| set to be persisted.
-  virtual void OnUrlValidated(const GURL& url,
-                              const std::string& profile_id) = 0;
+  virtual void OnUrlValidated(const GURL& url) = 0;
 
   // Removes all the URLs from URL table and all the associated metrics in
   // metrics table, on best effort. Any new metrics added with the URL will
@@ -64,10 +62,6 @@ class UkmDatabase {
   // then clears all the URLs without using `urls` list. It is an optimization
   // to clear all the URLs quickly.
   virtual void RemoveUrls(const std::vector<GURL>& urls, bool all_urls) = 0;
-
-  // Called once when a new UMA metric is to be recorded in the database.
-  virtual void AddUmaMetric(const std::string& profile_id,
-                            const UmaMetricEntry& row) = 0;
 
   // Struct responsible for storing a sql query and its bind values.
   struct CustomSqlQuery {
@@ -92,14 +86,12 @@ class UkmDatabase {
 
   // Called to query data from the ukm database. The result is returned in the
   // |callback| as a mapping of indexed vectors of processing::ProcessedValue.
-  virtual void RunReadOnlyQueries(QueryList&& queries,
+  virtual void RunReadonlyQueries(QueryList&& queries,
                                   QueryCallback callback) = 0;
 
   // Removes metrics older than or equal to the given `time` from the database.
   // URLs are removed when there are no references to the metrics.
   virtual void DeleteEntriesOlderThan(base::Time time) = 0;
-
-  virtual void CommitTransactionForTesting() = 0;
 };
 
 }  // namespace segmentation_platform

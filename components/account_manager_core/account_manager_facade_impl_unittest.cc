@@ -22,10 +22,10 @@
 #include "chromeos/crosapi/mojom/account_manager.mojom.h"
 #include "components/account_manager_core/account.h"
 #include "components/account_manager_core/account_addition_options.h"
+#include "components/account_manager_core/account_addition_result.h"
 #include "components/account_manager_core/account_manager_facade.h"
 #include "components/account_manager_core/account_manager_test_util.h"
 #include "components/account_manager_core/account_manager_util.h"
-#include "components/account_manager_core/account_upsertion_result.h"
 #include "components/account_manager_core/mock_account_manager_facade.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "google_apis/gaia/oauth2_access_token_consumer.h"
@@ -159,7 +159,7 @@ class FakeAccountManager : public crosapi::mojom::AccountManager {
   void GetPersistentErrorForAccount(
       crosapi::mojom::AccountKeyPtr mojo_account_key,
       GetPersistentErrorForAccountCallback callback) override {
-    std::optional<AccountKey> account_key =
+    absl::optional<AccountKey> account_key =
         FromMojoAccountKey(mojo_account_key);
     DCHECK(account_key.has_value());
     auto it = persistent_errors_.find(account_key.value());
@@ -176,15 +176,13 @@ class FakeAccountManager : public crosapi::mojom::AccountManager {
     show_add_account_dialog_calls_++;
     show_add_account_dialog_options_ = FromMojoAccountAdditionOptions(options);
     std::move(callback).Run(
-        account_manager::ToMojoAccountUpsertionResult(*upsertion_result_));
+        account_manager::ToMojoAccountAdditionResult(*add_account_result_));
   }
 
-  void ShowReauthAccountDialog(
-      const std::string& email,
-      ShowReauthAccountDialogCallback callback) override {
+  void ShowReauthAccountDialog(const std::string& email,
+                               base::OnceClosure closure) override {
     show_reauth_account_dialog_calls_++;
-    std::move(callback).Run(
-        account_manager::ToMojoAccountUpsertionResult(*upsertion_result_));
+    std::move(closure).Run();
   }
 
   void ShowManageAccountsSettings() override {
@@ -243,9 +241,9 @@ class FakeAccountManager : public crosapi::mojom::AccountManager {
     persistent_errors_.emplace(account, error);
   }
 
-  void SetAccountUpsertionResult(
-      const account_manager::AccountUpsertionResult& result) {
-    upsertion_result_ = std::make_unique<AccountUpsertionResult>(result);
+  void SetAccountAdditionResult(
+      const account_manager::AccountAdditionResult& result) {
+    add_account_result_ = std::make_unique<AccountAdditionResult>(result);
   }
 
   void ClearReceivers() { receivers_.Clear(); }
@@ -256,7 +254,7 @@ class FakeAccountManager : public crosapi::mojom::AccountManager {
     return show_add_account_dialog_calls_;
   }
 
-  std::optional<account_manager::AccountAdditionOptions>
+  absl::optional<account_manager::AccountAdditionOptions>
   show_add_account_dialog_options() const {
     return show_add_account_dialog_options_;
   }
@@ -271,14 +269,14 @@ class FakeAccountManager : public crosapi::mojom::AccountManager {
 
  private:
   int show_add_account_dialog_calls_ = 0;
-  std::optional<account_manager::AccountAdditionOptions>
+  absl::optional<account_manager::AccountAdditionOptions>
       show_add_account_dialog_options_;
   int show_reauth_account_dialog_calls_ = 0;
   int show_manage_accounts_settings_calls_ = 0;
   bool is_initialized_ = false;
   std::vector<Account> accounts_;
   std::map<AccountKey, GoogleServiceAuthError> persistent_errors_;
-  std::unique_ptr<AccountUpsertionResult> upsertion_result_;
+  std::unique_ptr<AccountAdditionResult> add_account_result_;
   std::unique_ptr<MockAccessTokenFetcher> access_token_fetcher_;
   mojo::ReceiverSet<crosapi::mojom::AccountManager> receivers_;
   mojo::RemoteSet<crosapi::mojom::AccountManagerObserver> observers_;
@@ -468,10 +466,9 @@ TEST_F(AccountManagerFacadeImplTest,
 TEST_F(AccountManagerFacadeImplTest, ShowAddAccountDialogCallsMojo) {
   std::unique_ptr<AccountManagerFacadeImpl> account_manager_facade =
       CreateFacade();
-  account_manager().SetAccountUpsertionResult(
-      account_manager::AccountUpsertionResult::FromStatus(
-          account_manager::AccountUpsertionResult::Status::
-              kUnexpectedResponse));
+  account_manager().SetAccountAdditionResult(
+      account_manager::AccountAdditionResult::FromStatus(
+          account_manager::AccountAdditionResult::Status::kUnexpectedResponse));
   EXPECT_EQ(0, account_manager().show_add_account_dialog_calls());
   account_manager_facade->ShowAddAccountDialog(
       account_manager::AccountManagerFacade::AccountAdditionSource::
@@ -484,10 +481,9 @@ TEST_F(AccountManagerFacadeImplTest,
        ShowAddAccountDialogSetsCorrectOptionsForAdditionFromAsh) {
   std::unique_ptr<AccountManagerFacadeImpl> account_manager_facade =
       CreateFacade();
-  account_manager().SetAccountUpsertionResult(
-      account_manager::AccountUpsertionResult::FromStatus(
-          account_manager::AccountUpsertionResult::Status::
-              kUnexpectedResponse));
+  account_manager().SetAccountAdditionResult(
+      account_manager::AccountAdditionResult::FromStatus(
+          account_manager::AccountAdditionResult::Status::kUnexpectedResponse));
   EXPECT_EQ(0, account_manager().show_add_account_dialog_calls());
   account_manager_facade->ShowAddAccountDialog(
       account_manager::AccountManagerFacade::AccountAdditionSource::
@@ -506,10 +502,9 @@ TEST_F(AccountManagerFacadeImplTest,
        ShowAddAccountDialogSetsCorrectOptionsForAdditionFromLacros) {
   std::unique_ptr<AccountManagerFacadeImpl> account_manager_facade =
       CreateFacade();
-  account_manager().SetAccountUpsertionResult(
-      account_manager::AccountUpsertionResult::FromStatus(
-          account_manager::AccountUpsertionResult::Status::
-              kUnexpectedResponse));
+  account_manager().SetAccountAdditionResult(
+      account_manager::AccountAdditionResult::FromStatus(
+          account_manager::AccountAdditionResult::Status::kUnexpectedResponse));
   EXPECT_EQ(0, account_manager().show_add_account_dialog_calls());
   account_manager_facade->ShowAddAccountDialog(
       account_manager::AccountManagerFacade::AccountAdditionSource::
@@ -528,10 +523,9 @@ TEST_F(AccountManagerFacadeImplTest,
        ShowAddAccountDialogSetsCorrectOptionsForAdditionFromArc) {
   std::unique_ptr<AccountManagerFacadeImpl> account_manager_facade =
       CreateFacade();
-  account_manager().SetAccountUpsertionResult(
-      account_manager::AccountUpsertionResult::FromStatus(
-          account_manager::AccountUpsertionResult::Status::
-              kUnexpectedResponse));
+  account_manager().SetAccountAdditionResult(
+      account_manager::AccountAdditionResult::FromStatus(
+          account_manager::AccountAdditionResult::Status::kUnexpectedResponse));
   EXPECT_EQ(0, account_manager().show_add_account_dialog_calls());
   account_manager_facade->ShowAddAccountDialog(
       account_manager::AccountManagerFacade::AccountAdditionSource::kArc);
@@ -549,9 +543,9 @@ TEST_F(AccountManagerFacadeImplTest, ShowAddAccountDialogUMA) {
   base::HistogramTester tester;
   std::unique_ptr<AccountManagerFacadeImpl> account_manager_facade =
       CreateFacade();
-  auto result = account_manager::AccountUpsertionResult::FromStatus(
-      account_manager::AccountUpsertionResult::Status::kAlreadyInProgress);
-  account_manager().SetAccountUpsertionResult(result);
+  auto result = account_manager::AccountAdditionResult::FromStatus(
+      account_manager::AccountAdditionResult::Status::kAlreadyInProgress);
+  account_manager().SetAccountAdditionResult(result);
   auto source = account_manager::AccountManagerFacade::AccountAdditionSource::
       kSettingsAddAccountButton;
 
@@ -564,7 +558,7 @@ TEST_F(AccountManagerFacadeImplTest, ShowAddAccountDialogUMA) {
       /*sample=*/source, /*expected_count=*/1);
   tester.ExpectUniqueSample(
       AccountManagerFacadeImpl::
-          GetAccountUpsertionResultStatusHistogramNameForTesting(),
+          GetAccountAdditionResultStatusHistogramNameForTesting(),
       /*sample=*/result.status(), /*expected_count=*/1);
 }
 
@@ -575,14 +569,14 @@ TEST_F(AccountManagerFacadeImplTest,
       /*remote_version=*/std::numeric_limits<uint32_t>::max(),
       /*account_manager_for_tests=*/nullptr);
 
-  base::test::TestFuture<const account_manager::AccountUpsertionResult&> future;
+  base::test::TestFuture<const account_manager::AccountAdditionResult&> future;
   account_manager_facade->ShowAddAccountDialog(
       account_manager::AccountManagerFacade::AccountAdditionSource::
           kSettingsAddAccountButton,
       future.GetCallback());
-  account_manager::AccountUpsertionResult result = future.Get();
+  account_manager::AccountAdditionResult result = future.Get();
   EXPECT_EQ(
-      account_manager::AccountUpsertionResult::Status::kMojoRemoteDisconnected,
+      account_manager::AccountAdditionResult::Status::kMojoRemoteDisconnected,
       result.status());
 }
 
@@ -593,30 +587,25 @@ TEST_F(AccountManagerFacadeImplTest,
       /*remote_version=*/1,
       /*account_manager_for_tests=*/nullptr);
 
-  base::test::TestFuture<const account_manager::AccountUpsertionResult&> future;
+  base::test::TestFuture<const account_manager::AccountAdditionResult&> future;
   account_manager_facade->ShowAddAccountDialog(
       account_manager::AccountManagerFacade::AccountAdditionSource::
           kSettingsAddAccountButton,
       future.GetCallback());
-  account_manager::AccountUpsertionResult result = future.Get();
-  EXPECT_EQ(account_manager::AccountUpsertionResult::Status::
-                kIncompatibleMojoVersions,
-            result.status());
+  account_manager::AccountAdditionResult result = future.Get();
+  EXPECT_EQ(
+      account_manager::AccountAdditionResult::Status::kIncompatibleMojoVersions,
+      result.status());
 }
 
 TEST_F(AccountManagerFacadeImplTest, ShowReauthAccountDialogCallsMojo) {
   std::unique_ptr<AccountManagerFacadeImpl> account_manager_facade =
       CreateFacade();
-
-  account_manager().SetAccountUpsertionResult(
-      account_manager::AccountUpsertionResult::FromStatus(
-          account_manager::AccountUpsertionResult::Status::
-              kUnexpectedResponse));
   EXPECT_EQ(0, account_manager().show_reauth_account_dialog_calls());
   account_manager_facade->ShowReauthAccountDialog(
       account_manager::AccountManagerFacade::AccountAdditionSource::
-          kContentAreaReauth,
-      kTestAccountEmail, base::DoNothing());
+          kSettingsAddAccountButton,
+      kTestAccountEmail, base::OnceClosure());
   account_manager_facade->FlushMojoForTesting();
   EXPECT_EQ(1, account_manager().show_reauth_account_dialog_calls());
 }
@@ -625,14 +614,10 @@ TEST_F(AccountManagerFacadeImplTest, ShowReauthAccountDialogUMA) {
   base::HistogramTester tester;
   std::unique_ptr<AccountManagerFacadeImpl> account_manager_facade =
       CreateFacade();
-
-  auto result = account_manager::AccountUpsertionResult::FromStatus(
-      account_manager::AccountUpsertionResult::Status::kAlreadyInProgress);
-  account_manager().SetAccountUpsertionResult(result);
   auto source = AccountManagerFacade::AccountAdditionSource::kContentAreaReauth;
 
   account_manager_facade->ShowReauthAccountDialog(source, kTestAccountEmail,
-                                                  base::DoNothing());
+                                                  base::OnceClosure());
   account_manager_facade->FlushMojoForTesting();
 
   // Check that UMA stats were sent.

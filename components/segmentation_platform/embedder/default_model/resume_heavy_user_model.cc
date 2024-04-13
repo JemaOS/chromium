@@ -22,7 +22,8 @@ using proto::SegmentId;
 
 // Default parameters for the model.
 constexpr SegmentId kSegmentId = SegmentId::RESUME_HEAVY_USER_SEGMENT;
-constexpr int64_t kModelVersion = 2;
+constexpr int kResumeHeavyUserSegmentSelectionTTLDays = 14;
+constexpr int kResumeHeavyUserSegmentUnknownSelectionTTLDays = 14;
 
 // InputFeatures.
 constexpr std::array<MetadataWriter::UMAFeature, 5> kUMAFeatures = {
@@ -48,36 +49,40 @@ std::unique_ptr<Config> ResumeHeavyUserModel::GetConfig() {
   config->segmentation_uma_name = kResumeHeavyUserUmaName;
   config->AddSegmentId(SegmentId::RESUME_HEAVY_USER_SEGMENT,
                        std::make_unique<ResumeHeavyUserModel>());
-  config->auto_execute_and_cache = true;
+  config->segment_selection_ttl =
+      base::Days(base::GetFieldTrialParamByFeatureAsInt(
+          features::kResumeHeavyUserSegmentFeature,
+          kVariationsParamNameSegmentSelectionTTLDays,
+          kResumeHeavyUserSegmentSelectionTTLDays));
+  config->unknown_selection_ttl =
+      base::Days(base::GetFieldTrialParamByFeatureAsInt(
+          features::kResumeHeavyUserSegmentFeature,
+          kVariationsParamNameUnknownSelectionTTLDays,
+          kResumeHeavyUserSegmentUnknownSelectionTTLDays));
   config->is_boolean_segment = true;
 
   return config;
 }
 
-ResumeHeavyUserModel::ResumeHeavyUserModel()
-    : DefaultModelProvider(kSegmentId) {}
+ResumeHeavyUserModel::ResumeHeavyUserModel() : ModelProvider(kSegmentId) {}
 
-std::unique_ptr<DefaultModelProvider::ModelConfig>
-ResumeHeavyUserModel::GetModelConfig() {
+void ResumeHeavyUserModel::InitAndFetchModel(
+    const ModelUpdatedCallback& model_updated_callback) {
   proto::SegmentationModelMetadata metadata;
   MetadataWriter writer(&metadata);
   writer.SetDefaultSegmentationMetadataConfig(
       /*min_signal_collection_length_days=*/7,
       /*signal_storage_length_days=*/14);
 
-  // Set OutputConfig.
-  writer.AddOutputConfigForBinaryClassifier(
-      /*threshold=*/0.5f,
-      /*positive_label=*/SegmentIdToHistogramVariant(kSegmentId),
-      /*negative_label=*/kLegacyNegativeLabel);
-
-  writer.AddPredictedResultTTLInOutputConfig(
-      /*top_label_to_ttl_list=*/{}, /*default_ttl=*/14,
-      /*time_unit=*/proto::TimeUnit::DAY);
+  // Set discrete mapping.
+  writer.AddBooleanSegmentDiscreteMapping(kResumeHeavyUserKey);
 
   // Set features.
   writer.AddUmaFeatures(kUMAFeatures.data(), kUMAFeatures.size());
-  return std::make_unique<ModelConfig>(std::move(metadata), kModelVersion);
+
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindRepeating(model_updated_callback, kSegmentId,
+                                     std::move(metadata), /*model_version=*/1));
 }
 
 void ResumeHeavyUserModel::ExecuteModelWithInput(
@@ -86,7 +91,7 @@ void ResumeHeavyUserModel::ExecuteModelWithInput(
   // Invalid inputs.
   if (inputs.size() != kUMAFeatures.size()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+        FROM_HERE, base::BindOnce(std::move(callback), absl::nullopt));
     return;
   }
 
@@ -107,6 +112,10 @@ void ResumeHeavyUserModel::ExecuteModelWithInput(
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(std::move(callback), ModelProvider::Response(1, result)));
+}
+
+bool ResumeHeavyUserModel::ModelAvailable() {
+  return true;
 }
 
 }  // namespace segmentation_platform

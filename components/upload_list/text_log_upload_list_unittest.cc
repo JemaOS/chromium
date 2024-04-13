@@ -19,15 +19,12 @@
 
 namespace {
 
-constexpr char kTestUploadTime[] = "1234567890";
-constexpr char kTestUploadId[] = "0123456789abcdef";
-constexpr char kTestLocalID[] = "fedcba9876543210";
-constexpr char kTestCaptureTime[] = "2345678901";
-constexpr char kTestSource[] = "test_source";
-constexpr char kTestPathHash[] = "1a2b3c4d5e6f";
-// Explicitly partly taken from `base::kWhitespaceASCII` so our test doesn't
-// depend on the change of the behavior of the base library.
-constexpr char kTestWhitespaces[] = {' ', '\f', '\r', '\t'};
+const char kTestUploadTime[] = "1234567890";
+const char kTestUploadId[] = "0123456789abcdef";
+const char kTestLocalID[] = "fedcba9876543210";
+const char kTestCaptureTime[] = "2345678901";
+const char kTestSource[] = "test_source";
+const char kTestPathHash[] = "1a2b3c4d5e6f";
 
 class TextLogUploadListTest : public testing::Test {
  public:
@@ -79,11 +76,11 @@ TEST_F(TextLogUploadListTest, ParseUploadTimeUploadId) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
   EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
   EXPECT_STREQ("", uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ("0", base::NumberToString(time_double).c_str());
 }
 
@@ -106,11 +103,11 @@ TEST_F(TextLogUploadListTest, ParseUploadTimeUploadId_JSON) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
   EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
   EXPECT_STREQ("", uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ("0", base::NumberToString(time_double).c_str());
 }
 
@@ -135,11 +132,11 @@ TEST_F(TextLogUploadListTest, ParseUploadTimeUploadIdLocalId) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
   EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
   EXPECT_STREQ(kTestLocalID, uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ("0", base::NumberToString(time_double).c_str());
 }
 
@@ -163,11 +160,11 @@ TEST_F(TextLogUploadListTest, ParseUploadTimeUploadIdLocalId_JSON) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
   EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
   EXPECT_STREQ(kTestLocalID, uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ("0", base::NumberToString(time_double).c_str());
 }
 
@@ -193,11 +190,11 @@ TEST_F(TextLogUploadListTest, ParseUploadTimeUploadIdCaptureTime) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
   EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
   EXPECT_STREQ("", uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
 }
 
@@ -221,11 +218,11 @@ TEST_F(TextLogUploadListTest, ParseUploadTimeUploadIdCaptureTime_JSON) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
   EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
   EXPECT_STREQ("", uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
 }
 
@@ -250,11 +247,11 @@ TEST_F(TextLogUploadListTest, ParseLocalIdCaptureTime) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ("0", base::NumberToString(time_double).c_str());
   EXPECT_STREQ("", uploads[0]->upload_id.c_str());
   EXPECT_STREQ(kTestLocalID, uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
 }
 
@@ -277,11 +274,11 @@ TEST_F(TextLogUploadListTest, ParseLocalIdCaptureTime_JSON) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ("0", base::NumberToString(time_double).c_str());
   EXPECT_STREQ("", uploads[0]->upload_id.c_str());
   EXPECT_STREQ(kTestLocalID, uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
 }
 
@@ -310,11 +307,11 @@ TEST_F(TextLogUploadListTest, ParseUploadTimeUploadIdLocalIdCaptureTime) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
   EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
   EXPECT_STREQ(kTestLocalID, uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
 }
 
@@ -339,11 +336,11 @@ TEST_F(TextLogUploadListTest, ParseUploadTimeUploadIdLocalIdCaptureTime_JSON) {
       upload_list->GetUploads(999);
 
   EXPECT_EQ(1u, uploads.size());
-  double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+  double time_double = uploads[0]->upload_time.ToDoubleT();
   EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
   EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
   EXPECT_STREQ(kTestLocalID, uploads[0]->local_id.c_str());
-  time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+  time_double = uploads[0]->capture_time.ToDoubleT();
   EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
 }
 
@@ -374,11 +371,11 @@ TEST_F(TextLogUploadListTest, ParseMultipleEntries) {
   EXPECT_EQ(4u, uploads.size());
   // The entries order should be reversed during the parsing.
   for (size_t i = 0; i < uploads.size(); ++i) {
-    double time_double = uploads[i]->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = uploads[i]->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, uploads[i]->upload_id.c_str());
     EXPECT_EQ(base::NumberToString(uploads.size() - i), uploads[i]->local_id);
-    time_double = uploads[i]->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = uploads[i]->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
   }
 }
@@ -408,75 +405,11 @@ TEST_F(TextLogUploadListTest, ParseMultipleEntries_JSON) {
   EXPECT_EQ(4u, uploads.size());
   // The entries order should be reversed during the parsing.
   for (size_t i = 0; i < uploads.size(); ++i) {
-    double time_double = uploads[i]->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = uploads[i]->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, uploads[i]->upload_id.c_str());
     EXPECT_EQ(base::NumberToString(uploads.size() - i), uploads[i]->local_id);
-    time_double = uploads[i]->capture_time.InSecondsFSinceUnixEpoch();
-    EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
-  }
-}
-
-TEST_F(TextLogUploadListTest, ParseWithMultipleDelimiters) {
-  std::ostringstream stream;
-  for (const auto delimiter : kTestWhitespaces) {
-    stream << kTestUploadTime << ',';
-    stream << kTestUploadId << ',';
-    stream << kTestLocalID << ',';
-    stream << kTestCaptureTime << delimiter;
-  }
-  WriteUploadLog(stream.str());
-
-  scoped_refptr<TextLogUploadList> upload_list =
-      new TextLogUploadList(log_path());
-
-  base::RunLoop run_loop;
-  upload_list->Load(run_loop.QuitClosure());
-  run_loop.Run();
-
-  const std::vector<const UploadList::UploadInfo*> uploads =
-      upload_list->GetUploads(999);
-
-  EXPECT_EQ(std::size(kTestWhitespaces), uploads.size());
-  for (const auto* upload : uploads) {
-    double time_double = upload->upload_time.InSecondsFSinceUnixEpoch();
-    EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
-    EXPECT_STREQ(kTestUploadId, upload->upload_id.c_str());
-    EXPECT_STREQ(kTestLocalID, upload->local_id.c_str());
-    time_double = upload->capture_time.InSecondsFSinceUnixEpoch();
-    EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
-  }
-}
-
-TEST_F(TextLogUploadListTest, ParseWithMultipleDelimiters_JSON) {
-  std::ostringstream stream;
-  for (const auto delimiter : kTestWhitespaces) {
-    stream << "{";
-    stream << "\"upload_time\":\"" << kTestUploadTime << "\",";
-    stream << "\"upload_id\":\"" << kTestUploadId << "\",";
-    stream << "\"local_id\":\"" << kTestLocalID << "\",";
-    stream << "\"capture_time\":\"" << kTestCaptureTime << "\"";
-    stream << "}" << delimiter;
-  }
-  WriteUploadLog(stream.str());
-
-  scoped_refptr<TextLogUploadList> upload_list =
-      new TextLogUploadList(log_path());
-
-  base::RunLoop run_loop;
-  upload_list->Load(run_loop.QuitClosure());
-  run_loop.Run();
-
-  const std::vector<const UploadList::UploadInfo*> uploads =
-      upload_list->GetUploads(999);
-
-  EXPECT_EQ(std::size(kTestWhitespaces), uploads.size());
-  for (const UploadList::UploadInfo* upload : uploads) {
-    double time_double = upload->upload_time.InSecondsFSinceUnixEpoch();
-    EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
-    EXPECT_STREQ(kTestUploadId, upload->upload_id.c_str());
-    EXPECT_STREQ(kTestLocalID, upload->local_id.c_str());
-    time_double = upload->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = uploads[i]->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
   }
 }
@@ -510,11 +443,11 @@ TEST_F(TextLogUploadListTest, ParseWithState) {
 
   EXPECT_EQ(4u, uploads.size());
   for (const auto* upload : uploads) {
-    double time_double = upload->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = upload->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, upload->upload_id.c_str());
     EXPECT_STREQ(kTestLocalID, upload->local_id.c_str());
-    time_double = upload->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = upload->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
     EXPECT_EQ(UploadList::UploadInfo::State::Uploaded, upload->state);
   }
@@ -546,11 +479,11 @@ TEST_F(TextLogUploadListTest, ParseWithState_JSON) {
 
   EXPECT_EQ(4u, uploads.size());
   for (const UploadList::UploadInfo* upload : uploads) {
-    double time_double = upload->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = upload->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, upload->upload_id.c_str());
     EXPECT_STREQ(kTestLocalID, upload->local_id.c_str());
-    time_double = upload->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = upload->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
     EXPECT_EQ(UploadList::UploadInfo::State::Uploaded, upload->state);
   }
@@ -583,11 +516,11 @@ TEST_F(TextLogUploadListTest, ParseWithSource_JSON) {
 
   EXPECT_EQ(4u, uploads.size());
   for (const UploadList::UploadInfo* upload : uploads) {
-    double time_double = upload->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = upload->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, upload->upload_id.c_str());
     EXPECT_STREQ(kTestLocalID, upload->local_id.c_str());
-    time_double = upload->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = upload->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
     EXPECT_EQ(UploadList::UploadInfo::State::Uploaded, upload->state);
     EXPECT_STREQ(kTestSource, upload->source.c_str());
@@ -622,11 +555,11 @@ TEST_F(TextLogUploadListTest, ParseWithPathHash_JSON) {
 
   EXPECT_EQ(4u, uploads.size());
   for (const UploadList::UploadInfo* upload : uploads) {
-    double time_double = upload->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = upload->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, upload->upload_id.c_str());
     EXPECT_STREQ(kTestLocalID, upload->local_id.c_str());
-    time_double = upload->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = upload->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
     EXPECT_EQ(UploadList::UploadInfo::State::Uploaded, upload->state);
     EXPECT_STREQ(kTestSource, upload->source.c_str());
@@ -666,11 +599,11 @@ TEST_F(TextLogUploadListTest, ParseHybridFormat) {
 
   EXPECT_EQ(8u, uploads.size());
   for (const UploadList::UploadInfo* upload : uploads) {
-    double time_double = upload->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = upload->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, upload->upload_id.c_str());
     EXPECT_STREQ(kTestLocalID, upload->local_id.c_str());
-    time_double = upload->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = upload->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
   }
 }
@@ -913,11 +846,11 @@ TEST_F(TextLogUploadListTest, SimultaneousAccess) {
         upload_list->GetUploads(999);
 
     EXPECT_EQ(1u, uploads.size());
-    double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = uploads[0]->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
     EXPECT_STREQ(kTestLocalID, uploads[0]->local_id.c_str());
-    time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = uploads[0]->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
   }
 
@@ -953,11 +886,11 @@ TEST_F(TextLogUploadListTest, SimultaneousAccess_JSON) {
         upload_list->GetUploads(999);
 
     EXPECT_EQ(1u, uploads.size());
-    double time_double = uploads[0]->upload_time.InSecondsFSinceUnixEpoch();
+    double time_double = uploads[0]->upload_time.ToDoubleT();
     EXPECT_STREQ(kTestUploadTime, base::NumberToString(time_double).c_str());
     EXPECT_STREQ(kTestUploadId, uploads[0]->upload_id.c_str());
     EXPECT_STREQ(kTestLocalID, uploads[0]->local_id.c_str());
-    time_double = uploads[0]->capture_time.InSecondsFSinceUnixEpoch();
+    time_double = uploads[0]->capture_time.ToDoubleT();
     EXPECT_STREQ(kTestCaptureTime, base::NumberToString(time_double).c_str());
   }
 

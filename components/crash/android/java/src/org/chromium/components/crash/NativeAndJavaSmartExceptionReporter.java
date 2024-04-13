@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,8 +24,7 @@ public class NativeAndJavaSmartExceptionReporter {
             pureJavaReport.onResult(exception);
         } else {
             // The native exception reporter requires to be called on the UI thread.
-            PostTask.postTask(
-                    TaskTraits.UI_BEST_EFFORT,
+            PostTask.postTask(TaskTraits.UI_BEST_EFFORT,
                     () -> JavaExceptionReporter.reportException(exception));
         }
     }

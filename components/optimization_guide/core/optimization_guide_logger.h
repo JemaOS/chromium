@@ -17,10 +17,6 @@
 #include "components/optimization_guide/proto/common_types.pb.h"
 #include "url/gurl.h"
 
-namespace optimization_guide {
-class ModelExecutionInternalsPageBrowserTest;
-}
-
 #define OPTIMIZATION_GUIDE_LOGGER(log_source, optimization_guide_logger)     \
   OptimizationGuideLogger::LogMessageBuilder(log_source, __FILE__, __LINE__, \
                                              optimization_guide_logger)
@@ -88,8 +84,6 @@ class OptimizationGuideLogger {
   };
 
  private:
-  friend class optimization_guide::ModelExecutionInternalsPageBrowserTest;
-
   struct LogMessage {
     LogMessage(base::Time event_time,
                optimization_guide_common::mojom::LogSource log_source,
@@ -109,8 +103,6 @@ class OptimizationGuideLogger {
   base::circular_deque<LogMessage> recent_log_messages_;
 
   base::ObserverList<OptimizationGuideLogger::Observer> observers_;
-
-  bool command_line_flag_enabled_ = false;
 };
 
 #endif  // COMPONENTS_OPTIMIZATION_GUIDE_CORE_OPTIMIZATION_GUIDE_LOGGER_H_

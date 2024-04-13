@@ -10,7 +10,6 @@
 #include "components/webdata_services/web_data_service_wrapper_factory.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
-#include "content/public/browser/secure_payment_confirmation_utils.h"
 #include "content/public/browser/web_contents.h"
 
 namespace payments {
@@ -18,10 +17,9 @@ namespace payments {
 void CreatePaymentCredential(
     content::RenderFrameHost* render_frame_host,
     mojo::PendingReceiver<mojom::PaymentCredential> receiver) {
-  if (!content::IsFrameAllowedToUseSecurePaymentConfirmation(
-          render_frame_host)) {
+  if (!PaymentCredential::IsFrameAllowedToUseSecurePaymentConfirmation(
+          render_frame_host))
     return;
-  }
 
   content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(render_frame_host);

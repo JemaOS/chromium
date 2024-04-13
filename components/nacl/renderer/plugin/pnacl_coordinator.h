@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "base/files/file.h"
-#include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "components/nacl/renderer/plugin/nacl_subprocess.h"
 #include "components/nacl/renderer/plugin/plugin_error.h"
@@ -130,7 +129,7 @@ class PnaclCoordinator {
   int32_t translate_finish_error_;
 
   // The plugin owning the nexe for which we are doing translation.
-  raw_ptr<Plugin> plugin_;
+  Plugin* plugin_;
 
   pp::CompletionCallback translate_notify_callback_;
   // Set to true when the translation (if applicable) is finished and the nexe

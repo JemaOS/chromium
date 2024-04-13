@@ -24,8 +24,10 @@ class PromoCardView extends MaterialCardViewNoShadow {
     TextView mTitle;
     ButtonCompat mPrimaryButton;
 
-    @Nullable TextView mDescription;
-    @Nullable ButtonCompat mSecondaryButton;
+    @Nullable
+    TextView mDescription;
+    @Nullable
+    ButtonCompat mSecondaryButton;
 
     public PromoCardView(Context context) {
         this(context, null);

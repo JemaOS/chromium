@@ -91,15 +91,22 @@ void CreateSchema(sql::Database* db) {
 }
 
 void DatabaseErrorCallback(sql::Database* db,
+                           const base::FilePath& db_path,
                            int extended_error,
                            sql::Statement* stmt) {
-  // Attempt to recover a corrupt database, if it is eligible to be recovered.
-  if (sql::Recovery::RecoverIfPossible(
-          db, extended_error, sql::Recovery::Strategy::kRecoverOrRaze)) {
-    // Recovery was attempted. The database handle has been poisoned and the
-    // error callback has been reset.
+  if (sql::Recovery::ShouldRecover(extended_error)) {
+    // Prevent reentrant calls.
+    db->reset_error_callback();
 
-    // Signal the test-expectation framework that the error was handled.
+    // After this call, the |db| handle is poisoned so that future calls will
+    // return errors until the handle is re-opened.
+    sql::Recovery::RecoverDatabase(db, db_path);
+
+    // The DLOG(WARNING) below is intended to draw immediate attention to errors
+    // in newly-written code.  Database corruption is generally a result of OS
+    // or hardware issues, not coding errors at the client level, so displaying
+    // the error would probably lead to confusion.  The ignored call signals the
+    // test-expectation framework that the error was handled.
     std::ignore = sql::Database::IsExpectedSqliteError(extended_error);
     return;
   }
@@ -110,11 +117,7 @@ void InitDatabase(sql::Database* db, base::FilePath path) {
   // code that may depend on this tag.
   db->set_histogram_tag("OptOutBlacklist");
 
-  if (!db->has_error_callback()) {
-    // The error callback may be reset if recovery was attempted, so ensure the
-    // callback is re-set when the database is re-opened.
-    db->set_error_callback(base::BindRepeating(&DatabaseErrorCallback, db));
-  }
+  db->set_error_callback(base::BindRepeating(&DatabaseErrorCallback, db, path));
 
   base::File::Error err;
   if (!base::CreateDirectoryAndGetError(path.DirName(), &err)) {
@@ -382,6 +385,7 @@ void OptOutStoreSQL::LoadBlockList(
   DCHECK(io_task_runner_->BelongsToCurrentThread());
   if (!db_) {
     db_ = std::make_unique<sql::Database>(sql::DatabaseOptions{
+        .exclusive_locking = true,
         // The entry size should be between 11 and 10 + x bytes, where x is the
         // the length of the host name string in bytes.
         // The total number of entries per host is bounded at 32, and the total

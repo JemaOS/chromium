@@ -55,7 +55,7 @@ class ApplicationControlsImpl : public ApplicationClient::ApplicationControls,
   }
 
  private:
-  const raw_ref<content::WebContents> web_contents_;
+  const base::raw_ref<content::WebContents> web_contents_;
   media_control::MediaBlocker media_blocker_;
   url_rewrite::UrlRequestRewriteRulesManager url_request_rewrite_rules_manager_;
 };
@@ -65,7 +65,7 @@ class ApplicationControlsImpl : public ApplicationClient::ApplicationControls,
 ApplicationClient::ApplicationControls::~ApplicationControls() = default;
 
 ApplicationClient::ApplicationClient(
-    network::NetworkContextGetter network_context_getter)
+    NetworkContextGetter network_context_getter)
     : network_context_getter_(std::move(network_context_getter)),
       weak_factory_(this) {}
 

@@ -7,6 +7,7 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
+#include "base/notreached.h"
 
 namespace {
 
@@ -35,8 +36,10 @@ SelectedLinuxBackend SelectBackend(const std::string& type,
     return SelectedLinuxBackend::KWALLET;
   if (type == "kwallet5")
     return SelectedLinuxBackend::KWALLET5;
-  if (type == "kwallet6")
-    return SelectedLinuxBackend::KWALLET6;
+  if (type == "gnome")
+    return SelectedLinuxBackend::GNOME_ANY;
+  if (type == "gnome-keyring")
+    return SelectedLinuxBackend::GNOME_KEYRING;
   if (type == "gnome-libsecret")
     return SelectedLinuxBackend::GNOME_LIBSECRET;
   if (type == "basic")
@@ -64,13 +67,16 @@ SelectedLinuxBackend SelectBackend(const std::string& type,
     case base::nix::DESKTOP_ENVIRONMENT_UKUI:
     case base::nix::DESKTOP_ENVIRONMENT_UNITY:
     case base::nix::DESKTOP_ENVIRONMENT_XFCE:
-      return SelectedLinuxBackend::GNOME_LIBSECRET;
+      return SelectedLinuxBackend::GNOME_ANY;
     // KDE3 didn't use DBus, which our KWallet store uses.
     case base::nix::DESKTOP_ENVIRONMENT_KDE3:
     case base::nix::DESKTOP_ENVIRONMENT_LXQT:
     case base::nix::DESKTOP_ENVIRONMENT_OTHER:
       return SelectedLinuxBackend::BASIC_TEXT;
   }
+
+  NOTREACHED();
+  return SelectedLinuxBackend::BASIC_TEXT;
 }
 
 bool WriteBackendUse(const base::FilePath& user_data_dir, bool use) {

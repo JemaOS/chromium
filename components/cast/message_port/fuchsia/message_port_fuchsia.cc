@@ -291,7 +291,7 @@ MessagePortFuchsia::MessagePortFuchsia(PortType port_type)
     : receiver_(nullptr), port_type_(port_type) {}
 MessagePortFuchsia::~MessagePortFuchsia() = default;
 
-std::optional<fuchsia::web::FrameError>
+absl::optional<fuchsia::web::FrameError>
 MessagePortFuchsia::ExtractAndHandleMessageFromFidl(
     fuchsia::web::WebMessage message) {
   CHECK(receiver_);
@@ -299,7 +299,7 @@ MessagePortFuchsia::ExtractAndHandleMessageFromFidl(
     return fuchsia::web::FrameError::NO_DATA_IN_MESSAGE;
   }
 
-  std::optional<std::string> data = base::StringFromMemBuffer(message.data());
+  absl::optional<std::string> data = base::StringFromMemBuffer(message.data());
   if (!data) {
     return fuchsia::web::FrameError::BUFFER_NOT_UTF8;
   }
@@ -323,7 +323,7 @@ MessagePortFuchsia::ExtractAndHandleMessageFromFidl(
     return fuchsia::web::FrameError::INTERNAL_ERROR;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void MessagePortFuchsia::OnZxError(zx_status_t status) {

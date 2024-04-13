@@ -11,8 +11,8 @@ features:
 future_on:
 - fuchsia
 owners:
-- chrome-desktop-search@google.com
-- jdonnelly@google.com
+- file://components/policy/OWNERS
+- rsorokin@chromium.org
 schema:
   type: string
 supported_on:

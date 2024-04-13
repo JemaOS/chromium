@@ -10,7 +10,6 @@ class PrefRegistrySimple;
 namespace device_signals {
 namespace prefs {
 extern const char kUnmanagedDeviceSignalsConsentFlowEnabled[];
-extern const char kDeviceSignalsConsentReceived[];
 }  // namespace prefs
 
 // Registers user preferences related to Device Signal Sharing.

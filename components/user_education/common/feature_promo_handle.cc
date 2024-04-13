@@ -17,12 +17,15 @@ FeaturePromoHandle::FeaturePromoHandle(
   DCHECK(feature_);
 }
 
-FeaturePromoHandle::FeaturePromoHandle(FeaturePromoHandle&& other) noexcept
+FeaturePromoHandle::FeaturePromoHandle(FeaturePromoHandle&& other)
     : controller_(std::move(other.controller_)),
       feature_(std::exchange(other.feature_, nullptr)) {}
 
-FeaturePromoHandle& FeaturePromoHandle::operator=(
-    FeaturePromoHandle&& other) noexcept {
+FeaturePromoHandle::~FeaturePromoHandle() {
+  Release();
+}
+
+FeaturePromoHandle& FeaturePromoHandle::operator=(FeaturePromoHandle&& other) {
   if (this != &other) {
     Release();
     controller_ = std::move(other.controller_);
@@ -30,10 +33,6 @@ FeaturePromoHandle& FeaturePromoHandle::operator=(
   }
 
   return *this;
-}
-
-FeaturePromoHandle::~FeaturePromoHandle() {
-  Release();
 }
 
 void FeaturePromoHandle::Release() {

@@ -8,13 +8,10 @@
 #include "components/bookmarks/test/test_bookmark_client.h"
 #include "components/power_bookmarks/core/power_bookmark_utils.h"
 #include "components/power_bookmarks/core/proto/power_bookmark_meta.pb.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace power_bookmarks {
 namespace {
-
-using testing::UnorderedElementsAre;
 
 const std::string kLeadImageUrl = "image.png";
 
@@ -32,6 +29,16 @@ class PowerBookmarkUtilsTest : public testing::Test {
  private:
   std::unique_ptr<bookmarks::BookmarkModel> model_;
 };
+
+// Ensure the list |nodes| contains |node|.
+bool ListContainsNode(const std::vector<const bookmarks::BookmarkNode*>& nodes,
+                      const bookmarks::BookmarkNode* node) {
+  for (auto* cur_node : nodes) {
+    if (cur_node == node)
+      return true;
+  }
+  return false;
+}
 
 TEST_F(PowerBookmarkUtilsTest, TestAddAndAccess) {
   const bookmarks::BookmarkNode* node = model()->AddURL(
@@ -82,48 +89,63 @@ TEST_F(PowerBookmarkUtilsTest, GetBookmarksMatchingPropertiesFilterTags) {
   meta2->add_tags()->set_display_name("news");
   SetNodePowerBookmarkMeta(model(), node2, std::move(meta2));
 
+  std::vector<const bookmarks::BookmarkNode*> nodes;
   PowerBookmarkQueryFields query;
   query.word_phrase_query = std::make_unique<std::u16string>();
 
   // Test that the correct bookmark is returned for the "search" tag.
   query.tags.push_back(u"search");
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node1 == nodes[0]);
+  nodes.clear();
   query.tags.clear();
 
   // Test that the correct bookmark is returned for the "news" tag.
   query.tags.push_back(u"news");
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node2));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node2 == nodes[0]);
+  nodes.clear();
   query.tags.clear();
 
   // Test that there are no results when valid but mutually exclusive tags are
   // specified.
   query.tags.push_back(u"news");
   query.tags.push_back(u"search");
-  EXPECT_TRUE(GetBookmarksMatchingProperties(model(), query, 100).empty());
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(0U, nodes.size());
+  nodes.clear();
   query.tags.clear();
 
   // Test that no bookmarks are returned for unknown tag.
   query.tags.push_back(u"foo");
-  EXPECT_TRUE(GetBookmarksMatchingProperties(model(), query, 100).empty());
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  EXPECT_TRUE(nodes.empty());
+  nodes.clear();
   query.tags.clear();
 
   // Test that no bookmarks are returned for a totally empty query.
-  EXPECT_TRUE(GetBookmarksMatchingProperties(model(), query, 100).empty());
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_TRUE(nodes.empty());
+  nodes.clear();
   query.tags.clear();
 
   // Test that a query plus tag returns the correct bookmark.
   query.tags.push_back(u"news");
   *query.word_phrase_query = u"baz";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node2));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node2 == nodes[0]);
+  nodes.clear();
   query.tags.clear();
 
   // Test that a mismatched query and tag returns nothing.
   query.tags.push_back(u"search");
   *query.word_phrase_query = u"baz";
-  EXPECT_TRUE(GetBookmarksMatchingProperties(model(), query, 100).empty());
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  EXPECT_TRUE(nodes.empty());
+  nodes.clear();
   query.tags.clear();
 }
 
@@ -142,6 +164,7 @@ TEST_F(PowerBookmarkUtilsTest, GetBookmarksMatchingPropertiesSearchTags) {
   meta2->add_tags()->set_display_name("news");
   SetNodePowerBookmarkMeta(model(), node2, std::move(meta2));
 
+  std::vector<const bookmarks::BookmarkNode*> nodes;
   PowerBookmarkQueryFields query;
   query.word_phrase_query = std::make_unique<std::u16string>();
 
@@ -149,20 +172,26 @@ TEST_F(PowerBookmarkUtilsTest, GetBookmarksMatchingPropertiesSearchTags) {
   // finds the correct node.
   query.tags.push_back(u"news");
   *query.word_phrase_query = u"ews";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node2));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node2 == nodes[0]);
+  nodes.clear();
   query.tags.clear();
 
   // Test that a query for a substring in a tag finds the correct node.
   *query.word_phrase_query = u"ews";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node2));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node2 == nodes[0]);
+  nodes.clear();
   query.tags.clear();
 
   // Test that a query for the start of a tag finds the correct node.
   *query.word_phrase_query = u"sea";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node1 == nodes[0]);
+  nodes.clear();
   query.tags.clear();
 }
 
@@ -183,20 +212,24 @@ TEST_F(PowerBookmarkUtilsTest,
   meta2->add_tags()->set_display_name("news");
   SetNodePowerBookmarkMeta(model(), node2, std::move(meta2));
 
+  std::vector<const bookmarks::BookmarkNode*> nodes;
   PowerBookmarkQueryFields query;
   query.word_phrase_query = std::make_unique<std::u16string>();
 
   // Test that a query that contains multiple tags finds results that have all
   // of those tags.
   *query.word_phrase_query = u"news search";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node1 == nodes[0]);
+  nodes.clear();
   query.tags.clear();
 
   // Make sure searching for one tag finds both bookmarks.
   *query.word_phrase_query = u"news";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1, node2));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(2U, nodes.size());
+  nodes.clear();
   query.tags.clear();
 }
 
@@ -207,38 +240,52 @@ TEST_F(PowerBookmarkUtilsTest, GetBookmarksMatchingPropertiesStringSearch) {
   const bookmarks::BookmarkNode* node2 = model()->AddURL(
       model()->other_node(), 0, u"baz buz", GURL("http://www.cnn.com"));
 
+  std::vector<const bookmarks::BookmarkNode*> nodes;
   PowerBookmarkQueryFields query;
   query.word_phrase_query = std::make_unique<std::u16string>();
 
   *query.word_phrase_query = u"bar";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node1 == nodes[0]);
+  nodes.clear();
 
   *query.word_phrase_query = u"baz";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node2));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node2 == nodes[0]);
+  nodes.clear();
 
   // A string search for "ba" should find both nodes.
   *query.word_phrase_query = u"ba";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1, node2));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(2U, nodes.size());
+  nodes.clear();
 
   // Ensure a search checks the URL.
   *query.word_phrase_query = u"goog";
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node1 == nodes[0]);
+  nodes.clear();
 
   // Ensure a string that doesn't exist in the bookmarks returns nothing.
   *query.word_phrase_query = u"zzz";
-  EXPECT_TRUE(GetBookmarksMatchingProperties(model(), query, 100).empty());
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(0U, nodes.size());
+  nodes.clear();
 
   // Check that two strings from different bookmarks returns nothing.
   *query.word_phrase_query = u"foo buz";
-  EXPECT_TRUE(GetBookmarksMatchingProperties(model(), query, 100).empty());
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(0U, nodes.size());
+  nodes.clear();
 
   // Ensure an empty string returns no bookmarks.
   *query.word_phrase_query = u"";
-  EXPECT_TRUE(GetBookmarksMatchingProperties(model(), query, 100).empty());
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(0U, nodes.size());
+  nodes.clear();
 }
 
 TEST_F(PowerBookmarkUtilsTest, GetBookmarksMatchingPropertiesFolderSearch) {
@@ -254,17 +301,22 @@ TEST_F(PowerBookmarkUtilsTest, GetBookmarksMatchingPropertiesFolderSearch) {
   const bookmarks::BookmarkNode* node = model()->AddURL(
       folder, 0, u"buz example", GURL("http://www.example.com"));
 
+  std::vector<const bookmarks::BookmarkNode*> nodes;
   PowerBookmarkQueryFields query;
   query.word_phrase_query = std::make_unique<std::u16string>();
 
   *query.word_phrase_query = u"example";
   query.folder = nullptr;
-  EXPECT_EQ(3U, GetBookmarksMatchingProperties(model(), query, 100).size());
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(3U, nodes.size());
+  nodes.clear();
 
   *query.word_phrase_query = u"example";
   query.folder = folder;
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(1U, nodes.size());
+  EXPECT_TRUE(node == nodes[0]);
+  nodes.clear();
 }
 
 TEST_F(PowerBookmarkUtilsTest, GetBookmarksMatchingPropertiesTypeSearch) {
@@ -292,16 +344,21 @@ TEST_F(PowerBookmarkUtilsTest, GetBookmarksMatchingPropertiesTypeSearch) {
       model()->AddURL(model()->other_node(), 0, u"example page",
                       GURL("http://www.example.com"));
 
+  std::vector<const bookmarks::BookmarkNode*> nodes;
   PowerBookmarkQueryFields query;
 
   // Test that a query with no type returns all results.
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1, node2, node3, normal_node));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(4U, nodes.size());
+  nodes.clear();
 
   // Test that a query for the SHOPPING type returns the correct results.
   query.type = PowerBookmarkType::SHOPPING;
-  EXPECT_THAT(GetBookmarksMatchingProperties(model(), query, 100),
-              UnorderedElementsAre(node1, node2));
+  GetBookmarksMatchingProperties(model(), query, 100, &nodes);
+  ASSERT_EQ(2U, nodes.size());
+  EXPECT_FALSE(ListContainsNode(nodes, normal_node));
+  EXPECT_FALSE(ListContainsNode(nodes, node3));
+  nodes.clear();
 }
 
 TEST_F(PowerBookmarkUtilsTest, EncodeAndDecodeForPersistence) {

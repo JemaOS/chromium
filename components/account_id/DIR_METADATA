@@ -1,1 +1,3 @@
-mixins: "//ash/login/LOGIN_LOCK_METADATA"
+monorail {
+  component: "Services>SignIn"
+}

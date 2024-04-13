@@ -4,8 +4,6 @@
 
 #include "components/openscreen_platform/network_context.h"
 
-using network::NetworkContextGetter;
-
 namespace openscreen_platform {
 namespace {
 

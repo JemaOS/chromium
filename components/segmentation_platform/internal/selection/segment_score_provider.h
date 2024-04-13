@@ -5,12 +5,11 @@
 #ifndef COMPONENTS_SEGMENTATION_PLATFORM_INTERNAL_SELECTION_SEGMENT_SCORE_PROVIDER_H_
 #define COMPONENTS_SEGMENTATION_PLATFORM_INTERNAL_SELECTION_SEGMENT_SCORE_PROVIDER_H_
 
-#include <optional>
-
 #include "base/containers/flat_set.h"
 #include "base/functional/callback.h"
 #include "components/segmentation_platform/public/model_provider.h"
 #include "components/segmentation_platform/public/proto/segmentation_platform.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace segmentation_platform {
 
@@ -22,7 +21,7 @@ class SegmentInfoDatabase;
 // TODO(shaktisahu, ssid): Modify the result fields as the API evolves.
 struct SegmentScore {
   // Raw scores from the model.
-  std::optional<ModelProvider::Response> scores;
+  absl::optional<ModelProvider::Response> scores;
 
   // Constructors.
   SegmentScore();

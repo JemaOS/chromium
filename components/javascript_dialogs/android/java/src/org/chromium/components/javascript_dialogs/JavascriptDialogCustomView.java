@@ -13,12 +13,16 @@ import android.widget.LinearLayout;
 
 import androidx.annotation.Nullable;
 
-/** The JavaScript dialog that is either app modal or tab modal. */
+/**
+ * The JavaScript dialog that is either app modal or tab modal.
+ */
 public class JavascriptDialogCustomView extends LinearLayout {
     private EditText mPromptEditText;
     private CheckBox mSuppressCheckBox;
 
-    /** Constructor for inflating from XMLs. */
+    /**
+     * Constructor for inflating from XMLs.
+     */
     public JavascriptDialogCustomView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
     }
@@ -31,7 +35,9 @@ public class JavascriptDialogCustomView extends LinearLayout {
         mSuppressCheckBox = findViewById(R.id.suppress_js_modal_dialogs);
     }
 
-    /** @param promptText Prompt text for prompt dialog. If null, prompt text is not visible. */
+    /**
+     * @param promptText Prompt text for prompt dialog. If null, prompt text is not visible.
+     */
     public void setPromptText(String promptText) {
         if (promptText == null) return;
         mPromptEditText.setVisibility(View.VISIBLE);
@@ -42,7 +48,9 @@ public class JavascriptDialogCustomView extends LinearLayout {
         }
     }
 
-    /** @return The prompt text edited by user. */
+    /**
+     * @return The prompt text edited by user.
+     */
     public String getPromptText() {
         return mPromptEditText.getText().toString();
     }
@@ -55,7 +63,9 @@ public class JavascriptDialogCustomView extends LinearLayout {
         mSuppressCheckBox.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
-    /** @return Whether the suppress check box is checked by user. */
+    /**
+     * @return Whether the suppress check box is checked by user.
+     */
     public boolean isSuppressCheckBoxChecked() {
         return mSuppressCheckBox.isChecked();
     }

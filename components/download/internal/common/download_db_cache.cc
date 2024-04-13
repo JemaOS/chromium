@@ -28,12 +28,12 @@ enum class ShouldUpdateDownloadDBResult {
 };
 
 ShouldUpdateDownloadDBResult ShouldUpdateDownloadDB(
-    std::optional<DownloadDBEntry> previous,
+    absl::optional<DownloadDBEntry> previous,
     const DownloadDBEntry& current) {
   if (!previous)
     return ShouldUpdateDownloadDBResult::UPDATE_IMMEDIATELY;
 
-  std::optional<InProgressInfo> previous_info;
+  absl::optional<InProgressInfo> previous_info;
   if (previous->download_info)
     previous_info = previous->download_info->in_progress_info;
   base::FilePath previous_path =
@@ -41,7 +41,7 @@ ShouldUpdateDownloadDBResult ShouldUpdateDownloadDB(
 
   bool previous_paused = previous_info ? previous_info->paused : false;
 
-  std::optional<InProgressInfo> current_info;
+  absl::optional<InProgressInfo> current_info;
   if (current.download_info)
     current_info = current.download_info->in_progress_info;
 
@@ -79,7 +79,7 @@ void CleanUpInProgressEntry(DownloadDBEntry* entry) {
   if (!entry->download_info)
     return;
 
-  std::optional<InProgressInfo>& in_progress_info =
+  absl::optional<InProgressInfo>& in_progress_info =
       entry->download_info->in_progress_info;
   if (!in_progress_info)
     return;
@@ -101,7 +101,7 @@ void OnDownloadDBUpdated(bool success) {
 }
 
 // Check if a DownloadDBEntry represents an in progress download.
-bool IsInProgressEntry(std::optional<DownloadDBEntry> entry) {
+bool IsInProgressEntry(absl::optional<DownloadDBEntry> entry) {
   if (!entry || !entry->download_info ||
       !entry->download_info->in_progress_info)
     return false;
@@ -126,12 +126,12 @@ void DownloadDBCache::Initialize(InitializeCallback callback) {
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-std::optional<DownloadDBEntry> DownloadDBCache::RetrieveEntry(
+absl::optional<DownloadDBEntry> DownloadDBCache::RetrieveEntry(
     const std::string& guid) {
   auto iter = cached_entries_.find(guid);
   if (iter != cached_entries_.end())
     return iter->second;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void DownloadDBCache::AddOrReplaceEntry(const DownloadDBEntry& entry) {
@@ -169,7 +169,7 @@ void DownloadDBCache::UpdateDownloadDB() {
 
   std::vector<DownloadDBEntry> entries;
   for (const auto& guid : updated_guids_) {
-    std::optional<DownloadDBEntry> entry = RetrieveEntry(guid);
+    absl::optional<DownloadDBEntry> entry = RetrieveEntry(guid);
     DCHECK(entry);
     entries.emplace_back(entry.value());
     // If the entry is no longer in-progress, remove it from the cache as it may
@@ -198,10 +198,12 @@ void DownloadDBCache::OnDownloadDBInitialized(
     InitializeCallback callback,
     bool success) {
   if (success) {
+    RecordInProgressDBCount(kInitializationSucceededCount);
     download_db_->LoadEntries(
         base::BindOnce(&DownloadDBCache::OnDownloadDBEntriesLoaded,
                        weak_factory_.GetWeakPtr(), std::move(callback)));
   } else {
+    RecordInProgressDBCount(kInitializationFailedCount);
     std::move(callback).Run(false,
                             std::make_unique<std::vector<DownloadDBEntry>>());
   }
@@ -212,6 +214,7 @@ void DownloadDBCache::OnDownloadDBEntriesLoaded(
     bool success,
     std::unique_ptr<std::vector<DownloadDBEntry>> entries) {
   initialized_ = success;
+  RecordInProgressDBCount(success ? kLoadSucceededCount : kLoadFailedCount);
   for (auto& entry : *entries) {
     // If the entry is from the metadata cache migration, just remove it from
     // DB as the data is not being cleaned up properly.

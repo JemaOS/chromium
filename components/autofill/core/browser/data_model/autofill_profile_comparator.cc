@@ -10,6 +10,7 @@
 #include "base/i18n/char_iterator.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversion_utils.h"
 #include "base/strings/utf_string_conversions.h"
 #include "components/autofill/core/browser/autofill_data_util.h"
@@ -19,6 +20,7 @@
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/common/autofill_clock.h"
 #include "components/autofill/core/common/autofill_l10n_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/libphonenumber/phonenumber_api.h"
 
 using base::UTF16ToUTF8;
@@ -178,29 +180,46 @@ int32_t NormalizingIterator::GetNextChar() {
   return iter_.get();
 }
 
+// Sorts |profiles| by ranking score.
+void SortProfilesByRankingScore(std::vector<AutofillProfile*>* profiles) {
+  // TODO(crbug.com/1411114): Remove code duplication for sorting profiles.
+  base::Time comparison_time = AutofillClock::Now();
+  if (profiles->size() > 1) {
+    std::sort(
+        profiles->begin(), profiles->end(),
+        [comparison_time](const AutofillProfile* a, const AutofillProfile* b) {
+          return a->HasGreaterRankingThan(b, comparison_time);
+        });
+  }
+}
+
 }  // namespace
 
 // The values corresponding to those types are visible in the settings.
-// TODO(crbug.com/1441904): Landmark, between-street and admin-level2 are in
-// progress to be included in the settings.
-FieldTypeSet GetUserVisibleTypes() {
-  static const FieldTypeSet user_visible_type = {
+ServerFieldTypeSet GetUserVisibleTypes() {
+  static const ServerFieldTypeSet user_visibe_type = {
       NAME_FULL,
+      NAME_HONORIFIC_PREFIX,
       ADDRESS_HOME_STREET_ADDRESS,
       ADDRESS_HOME_CITY,
       ADDRESS_HOME_DEPENDENT_LOCALITY,
       ADDRESS_HOME_STATE,
       ADDRESS_HOME_ZIP,
       ADDRESS_HOME_COUNTRY,
-      ADDRESS_HOME_ADMIN_LEVEL2,
       EMAIL_ADDRESS,
       PHONE_HOME_WHOLE_NUMBER,
       COMPANY_NAME};
-  return user_visible_type;
+  return user_visibe_type;
+}
+
+bool ProfileValueDifference::operator==(
+    const ProfileValueDifference& right) const {
+  return (type == right.type) && (first_value == right.first_value) &&
+         (second_value == right.second_value);
 }
 
 AutofillProfileComparator::AutofillProfileComparator(
-    const std::string_view& app_locale)
+    const base::StringPiece& app_locale)
     : app_locale_(app_locale.data(), app_locale.size()) {}
 
 AutofillProfileComparator::~AutofillProfileComparator() = default;
@@ -209,7 +228,7 @@ std::vector<ProfileValueDifference>
 AutofillProfileComparator::GetProfileDifference(
     const AutofillProfile& first_profile,
     const AutofillProfile& second_profile,
-    FieldTypeSet types,
+    ServerFieldTypeSet types,
     const std::string& app_locale) {
   std::vector<ProfileValueDifference> difference;
   difference.reserve(types.size());
@@ -226,13 +245,14 @@ AutofillProfileComparator::GetProfileDifference(
   return difference;
 }
 
-base::flat_map<FieldType, std::pair<std::u16string, std::u16string>>
+base::flat_map<ServerFieldType, std::pair<std::u16string, std::u16string>>
 AutofillProfileComparator::GetProfileDifferenceMap(
     const AutofillProfile& first_profile,
     const AutofillProfile& second_profile,
-    FieldTypeSet types,
+    ServerFieldTypeSet types,
     const std::string& app_locale) {
-  std::vector<std::pair<FieldType, std::pair<std::u16string, std::u16string>>>
+  std::vector<
+      std::pair<ServerFieldType, std::pair<std::u16string, std::u16string>>>
       result;
   result.reserve(types.size());
 
@@ -242,7 +262,8 @@ AutofillProfileComparator::GetProfileDifferenceMap(
         {diff.type,
          {std::move(diff.first_value), std::move(diff.second_value)}});
   }
-  return base::flat_map<FieldType, std::pair<std::u16string, std::u16string>>(
+  return base::flat_map<ServerFieldType,
+                        std::pair<std::u16string, std::u16string>>(
       std::move(result));
 }
 
@@ -255,7 +276,7 @@ AutofillProfileComparator::GetSettingsVisibleProfileDifference(
                               GetUserVisibleTypes(), app_locale);
 }
 
-base::flat_map<FieldType, std::pair<std::u16string, std::u16string>>
+base::flat_map<ServerFieldType, std::pair<std::u16string, std::u16string>>
 AutofillProfileComparator::GetSettingsVisibleProfileDifferenceMap(
     const AutofillProfile& first_profile,
     const AutofillProfile& second_profile,
@@ -271,18 +292,19 @@ bool AutofillProfileComparator::Compare(base::StringPiece16 text1,
     return true;
   }
 
-  // We transliterate the entire text as it's non-trivial to go character
-  // by character (eg. a "ß" is transliterated to "ss").
-  std::u16string normalized_text1 =
-      RemoveDiacriticsAndConvertToLowerCase(text1);
-  std::u16string normalized_text2 =
-      RemoveDiacriticsAndConvertToLowerCase(text2);
+  NormalizingIterator normalizing_iter1{text1, whitespace_spec};
+  NormalizingIterator normalizing_iter2{text2, whitespace_spec};
 
-  NormalizingIterator normalizing_iter1{normalized_text1, whitespace_spec};
-  NormalizingIterator normalizing_iter2{normalized_text2, whitespace_spec};
-
+  BorrowedTransliterator transliterator;
   while (!normalizing_iter1.End() && !normalizing_iter2.End()) {
-    if (normalizing_iter1.GetNextChar() != normalizing_iter2.GetNextChar()) {
+    icu::UnicodeString char1 =
+        icu::UnicodeString(normalizing_iter1.GetNextChar());
+    icu::UnicodeString char2 =
+        icu::UnicodeString(normalizing_iter2.GetNextChar());
+
+    transliterator.Transliterate(&char1);
+    transliterator.Transliterate(&char2);
+    if (char1 != char2) {
       return false;
     }
     normalizing_iter1.Advance();
@@ -308,7 +330,6 @@ bool AutofillProfileComparator::HasOnlySkippableCharacters(
       .End();
 }
 
-// static
 std::u16string AutofillProfileComparator::NormalizeForComparison(
     base::StringPiece16 text,
     AutofillProfileComparator::WhitespaceSpec whitespace_spec) {
@@ -595,7 +616,7 @@ bool AutofillProfileComparator::MergePhoneNumbers(
     const AutofillProfile& p1,
     const AutofillProfile& p2,
     PhoneNumber& phone_number) const {
-  const FieldType kWholePhoneNumber = PHONE_HOME_WHOLE_NUMBER;
+  const ServerFieldType kWholePhoneNumber = PHONE_HOME_WHOLE_NUMBER;
   const std::u16string& s1 = p1.GetRawInfo(kWholePhoneNumber);
   const std::u16string& s2 = p2.GetRawInfo(kWholePhoneNumber);
 
@@ -619,8 +640,9 @@ bool AutofillProfileComparator::MergePhoneNumbers(
   // Figure out a country code hint.
   // TODO(crbug.com/1313862) |GetNonEmptyOf()| prefers |p1| in case both are
   // non empty.
-  std::string region = UTF16ToUTF8(
-      GetNonEmptyOf(p1, p2, AutofillType(HtmlFieldType::kCountryCode)));
+  const AutofillType kCountryCode(HtmlFieldType::kCountryCode,
+                                  HtmlFieldMode::kNone);
+  std::string region = UTF16ToUTF8(GetNonEmptyOf(p1, p2, kCountryCode));
   if (region.empty())
     region = AutofillCountry::CountryCodeForLocale(app_locale_);
 
@@ -692,7 +714,7 @@ bool AutofillProfileComparator::MergePhoneNumbers(
   // include the country code prefix.
   if (merged_number.country_code() == 1 &&
       merged_number.national_number() <= 9999999 &&
-      new_number.starts_with("+1")) {
+      base::StartsWith(new_number, "+1", base::CompareCase::SENSITIVE)) {
     size_t offset = 2;  // The char just after "+1".
     while (offset < new_number.size() &&
            base::IsAsciiWhitespace(new_number[offset])) {
@@ -714,6 +736,21 @@ bool AutofillProfileComparator::MergeAddresses(const AutofillProfile& p1,
   address = p2.GetAddress();
   return address.MergeStructuredAddress(p1.GetAddress(),
                                         p2.use_date() < p1.use_date());
+}
+
+bool AutofillProfileComparator::MergeBirthdates(const AutofillProfile& p1,
+                                                const AutofillProfile& p2,
+                                                Birthdate& birthdate) const {
+  DCHECK(HaveMergeableBirthdates(p1, p2));
+
+  for (ServerFieldType component : Birthdate::GetRawComponents()) {
+    const std::u16string& component1 = p1.GetInfo(component, app_locale_);
+    const std::u16string& component2 = p2.GetInfo(component, app_locale_);
+    birthdate.SetInfo(component, component1.empty() ? component2 : component1,
+                      app_locale_);
+  }
+
+  return true;
 }
 
 bool AutofillProfileComparator::ProfilesHaveDifferentSettingsVisibleValues(
@@ -748,6 +785,110 @@ bool AutofillProfileComparator::IsMergeCandidate(
   // different, |existing_profile| is a merge candidate.
   return ProfilesHaveDifferentSettingsVisibleValues(
       merged_profile, existing_profile, app_locale);
+}
+
+// static
+absl::optional<AutofillProfile>
+AutofillProfileComparator::GetAutofillProfileMergeCandidate(
+    const AutofillProfile& new_profile,
+    const std::vector<AutofillProfile*>& existing_profiles,
+    const std::string& app_locale) {
+  // Make a copy of the existing profiles for this function to have no side
+  // effects.
+  std::vector<AutofillProfile*> existing_profiles_copies = existing_profiles;
+
+  // Sort the profiles by ranking score.
+  SortProfilesByRankingScore(&existing_profiles_copies);
+
+  // Find and return the first profile that classifies as a merge candidate. If
+  // not profile classifies, return |absl::nullopt|.
+  AutofillProfileComparator comparator(app_locale);
+  auto merge_candidate = base::ranges::find_if(
+      existing_profiles_copies, [&](const AutofillProfile* existing_profile) {
+        return comparator.IsMergeCandidate(*existing_profile, new_profile,
+                                           app_locale);
+      });
+
+  return merge_candidate != existing_profiles_copies.end()
+             ? absl::make_optional(**merge_candidate)
+             : absl::nullopt;
+}
+
+// static
+std::string AutofillProfileComparator::MergeProfile(
+    const AutofillProfile& new_profile,
+    const std::vector<std::unique_ptr<AutofillProfile>>& existing_profiles,
+    const std::string& app_locale,
+    std::vector<AutofillProfile>* merged_profiles) {
+  merged_profiles->clear();
+
+  // Create copies of |existing_profiles| that can be modified
+  std::vector<AutofillProfile> existing_profile_copies;
+  existing_profile_copies.reserve(existing_profiles.size());
+  for (const auto& profile : existing_profiles)
+    existing_profile_copies.push_back(*profile.get());
+
+  // Sort the existing profiles in decreasing order of ranking score, so the
+  // "best" profiles are checked first. Put the verified profiles last so the
+  // non verified profiles get deduped among themselves before reaching the
+  // verified profiles.
+  // TODO(crbug.com/620521): Remove the check for verified from the sort.
+  // TODO(crbug.com/1411114): Remove code duplication for sorting profiles.
+  base::Time comparison_time = AutofillClock::Now();
+  if (existing_profile_copies.size() > 1) {
+    std::sort(
+        existing_profile_copies.begin(), existing_profile_copies.end(),
+        [comparison_time](const AutofillProfile& a, const AutofillProfile& b) {
+          if (a.IsVerified() != b.IsVerified()) {
+            return !a.IsVerified();
+          }
+          return a.HasGreaterRankingThan(&b, comparison_time);
+        });
+  }
+  // Set to true if |existing_profile_copies| already contains an equivalent
+  // profile.
+  bool matching_profile_found = false;
+  std::string guid = new_profile.guid();
+
+  // If we have already saved this address, merge in any missing values.
+  // Only merge with the first match. Merging the new profile into the existing
+  // one preserves the validity of credit card's billing address reference.
+  AutofillProfileComparator comparator(app_locale);
+  for (auto& existing_profile : existing_profile_copies) {
+    // Since duplicates across sources can exist, we need to make sure that we
+    // don't merge `new_profile` into a profile of a different source.
+    if (!matching_profile_found &&
+        new_profile.source() == existing_profile.source() &&
+        comparator.AreMergeable(new_profile, existing_profile) &&
+        existing_profile.SaveAdditionalInfo(new_profile, app_locale)) {
+      // Unverified profiles should always be updated with the newer data,
+      // whereas verified profiles should only ever be overwritten by verified
+      // data.  If an automatically aggregated profile would overwrite a
+      // verified profile, just drop it.
+      matching_profile_found = true;
+      guid = existing_profile.guid();
+
+      // We set the modification date so that immediate requests for profiles
+      // will properly reflect the fact that this profile has been modified
+      // recently. After writing to the database and refreshing the local copies
+      // the profile will have a very slightly newer time reflecting what's
+      // actually stored in the database.
+      existing_profile.set_modification_date(AutofillClock::Now());
+    }
+    merged_profiles->push_back(existing_profile);
+  }
+
+  // If the new profile was not merged with an existing one, add it to the list.
+  if (!matching_profile_found) {
+    merged_profiles->push_back(new_profile);
+    // Similar to updating merged profiles above, set the modification date on
+    // new profiles.
+    merged_profiles->back().set_modification_date(AutofillClock::Now());
+    AutofillMetrics::LogProfileActionOnFormSubmitted(
+        AutofillMetrics::NEW_PROFILE_CREATED);
+  }
+
+  return guid;
 }
 
 // static
@@ -924,6 +1065,18 @@ bool AutofillProfileComparator::HaveMergeableAddresses(
     const AutofillProfile& p2) const {
   // Note that p1 is the newer address. Using p2 as the base.
   return p2.GetAddress().IsStructuredAddressMergeable(p1.GetAddress());
+}
+
+bool AutofillProfileComparator::HaveMergeableBirthdates(
+    const AutofillProfile& p1,
+    const AutofillProfile& p2) const {
+  return base::ranges::all_of(
+      Birthdate::GetRawComponents(), [&](ServerFieldType component) {
+        const std::u16string& component1 = p1.GetInfo(component, app_locale_);
+        const std::u16string& component2 = p2.GetInfo(component, app_locale_);
+        return component1.empty() || component2.empty() ||
+               component1 == component2;
+      });
 }
 
 }  // namespace autofill

@@ -5,14 +5,14 @@
 #import <Foundation/Foundation.h>
 #include <objc/runtime.h>
 
-#import "base/apple/scoped_nsobject.h"
+#import "base/mac/scoped_nsobject.h"
 #import "components/crash/core/common/objc_zombie.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/platform_test.h"
 
 @interface ZombieCxxDestructTest : NSObject
 {
-  base::apple::scoped_nsobject<id> _aRef;
+  base::scoped_nsobject<id> _aRef;
 }
 - (instancetype)initWith:(id)anObject;
 @end
@@ -53,46 +53,45 @@ namespace {
 // NOTE(shess): To test the negative, comment out the |g_objectDestruct()|
 // call in |ZombieDealloc()|.
 TEST(ObjcZombieTest, CxxDestructors) {
-  base::apple::scoped_nsobject<id> anObject([[NSObject alloc] init]);
-  EXPECT_EQ(1u, [anObject.get() retainCount]);
+  base::scoped_nsobject<id> anObject([[NSObject alloc] init]);
+  EXPECT_EQ(1u, [anObject retainCount]);
 
   ASSERT_TRUE(ObjcEvilDoers::ZombieEnable(YES, 100));
 
-  base::apple::scoped_nsobject<ZombieCxxDestructTest> soonInfected(
-      [[ZombieCxxDestructTest alloc] initWith:anObject.get()]);
-  EXPECT_EQ(2u, [anObject.get() retainCount]);
+  base::scoped_nsobject<ZombieCxxDestructTest> soonInfected(
+      [[ZombieCxxDestructTest alloc] initWith:anObject]);
+  EXPECT_EQ(2u, [anObject retainCount]);
 
   // When |soonInfected| becomes a zombie, the C++ destructors should
   // run and release a reference to |anObject|.
   soonInfected.reset();
-  EXPECT_EQ(1u, [anObject.get() retainCount]);
+  EXPECT_EQ(1u, [anObject retainCount]);
 
   // The local reference should remain (C++ destructors aren't re-run).
   ObjcEvilDoers::ZombieDisable();
-  EXPECT_EQ(1u, [anObject.get() retainCount]);
+  EXPECT_EQ(1u, [anObject retainCount]);
 }
 
 // Verify that the associated objects are released when the object is
 // released.
 TEST(ObjcZombieTest, AssociatedObjectsReleased) {
-  base::apple::scoped_nsobject<id> anObject([[NSObject alloc] init]);
-  EXPECT_EQ(1u, [anObject.get() retainCount]);
+  base::scoped_nsobject<id> anObject([[NSObject alloc] init]);
+  EXPECT_EQ(1u, [anObject retainCount]);
 
   ASSERT_TRUE(ObjcEvilDoers::ZombieEnable(YES, 100));
 
-  base::apple::scoped_nsobject<ZombieAssociatedObjectTest> soonInfected(
-      [[ZombieAssociatedObjectTest alloc]
-          initWithAssociatedObject:anObject.get()]);
-  EXPECT_EQ(2u, [anObject.get() retainCount]);
+  base::scoped_nsobject<ZombieAssociatedObjectTest> soonInfected(
+      [[ZombieAssociatedObjectTest alloc] initWithAssociatedObject:anObject]);
+  EXPECT_EQ(2u, [anObject retainCount]);
 
   // When |soonInfected| becomes a zombie, the associated object
   // should be released.
   soonInfected.reset();
-  EXPECT_EQ(1u, [anObject.get() retainCount]);
+  EXPECT_EQ(1u, [anObject retainCount]);
 
   // The local reference should remain (associated objects not re-released).
   ObjcEvilDoers::ZombieDisable();
-  EXPECT_EQ(1u, [anObject.get() retainCount]);
+  EXPECT_EQ(1u, [anObject retainCount]);
 }
 
 }  // namespace

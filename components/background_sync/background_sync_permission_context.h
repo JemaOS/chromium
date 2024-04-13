@@ -29,7 +29,10 @@ class BackgroundSyncPermissionContext
  private:
   // PermissionContextBase:
   void DecidePermission(
-      permissions::PermissionRequestData request_Data,
+      const permissions::PermissionRequestID& id,
+      const GURL& requesting_origin,
+      const GURL& embedding_origin,
+      bool user_gesture,
       permissions::BrowserPermissionCallback callback) override;
 };
 

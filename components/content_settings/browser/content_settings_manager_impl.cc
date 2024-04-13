@@ -4,12 +4,10 @@
 
 #include "components/content_settings/browser/content_settings_manager_impl.h"
 
-#include "base/feature_list.h"
 #include "base/memory/ptr_util.h"
 #include "base/task/thread_pool.h"
 #include "components/content_settings/browser/page_specific_content_settings.h"
 #include "components/content_settings/core/browser/cookie_settings.h"
-#include "components/content_settings/core/common/cookie_settings_base.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/page_load_metrics/browser/page_load_metrics_observer.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -18,10 +16,7 @@
 #include "content/public/browser/render_process_host.h"
 #include "content/public/common/content_features.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
-#include "net/base/features.h"
-#include "net/cookies/cookie_util.h"
 #include "net/cookies/site_for_cookies.h"
-#include "third_party/blink/public/common/storage_key/storage_key.h"
 
 using content_settings::PageSpecificContentSettings;
 
@@ -29,13 +24,14 @@ namespace content_settings {
 namespace {
 using StorageType = mojom::ContentSettingsManager::StorageType;
 
-void OnStorageAccessed(const content::GlobalRenderFrameHostToken& frame_token,
+void OnStorageAccessed(int process_id,
+                       int frame_id,
                        const GURL& origin_url,
                        const GURL& top_origin_url,
                        bool blocked_by_policy,
                        page_load_metrics::StorageType storage_type) {
   content::RenderFrameHost* render_frame_host =
-      content::RenderFrameHost::FromFrameToken(frame_token);
+      content::RenderFrameHost::FromID(process_id, frame_id);
   content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(render_frame_host);
   if (!web_contents)
@@ -51,8 +47,10 @@ void OnStorageAccessed(const content::GlobalRenderFrameHostToken& frame_token,
   }
 }
 
-void NotifyStorageAccess(const content::GlobalRenderFrameHostToken& frame_token,
+void NotifyStorageAccess(int render_process_id,
+                         int32_t render_frame_id,
                          StorageType storage_type,
+                         const GURL& url,
                          const url::Origin& top_frame_origin,
                          bool allowed) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -71,14 +69,8 @@ void NotifyStorageAccess(const content::GlobalRenderFrameHostToken& frame_token,
     }
   })();
 
-  auto* rfh = content::RenderFrameHost::FromFrameToken(frame_token);
-
-  if (!rfh) {
-    return;
-  }
-
   auto metrics_type =
-      ([storage_type]() -> std::optional<page_load_metrics::StorageType> {
+      ([storage_type]() -> absl::optional<page_load_metrics::StorageType> {
         switch (storage_type) {
           case StorageType::LOCAL_STORAGE:
             return page_load_metrics::StorageType::kLocalStorage;
@@ -92,27 +84,28 @@ void NotifyStorageAccess(const content::GlobalRenderFrameHostToken& frame_token,
             return page_load_metrics::StorageType::kCacheStorage;
           case StorageType::DATABASE:
           case StorageType::WEB_LOCKS:
-            return std::nullopt;
+            return absl::nullopt;
         }
       })();
 
   if (should_notify_pscs) {
     PageSpecificContentSettings::StorageAccessed(
-        storage_type, frame_token, rfh->GetStorageKey(), !allowed);
+        storage_type, render_process_id, render_frame_id, url, !allowed);
   }
 
   if (metrics_type) {
-    OnStorageAccessed(frame_token, rfh->GetLastCommittedURL(),
+    OnStorageAccessed(render_process_id, render_frame_id, url,
                       top_frame_origin.GetURL(), !allowed,
                       metrics_type.value());
   }
 }
 
-void OnContentBlockedOnUI(
-    const content::GlobalRenderFrameHostToken& frame_token,
-    ContentSettingsType type) {
+void OnContentBlockedOnUI(int render_process_id,
+                          int32_t render_frame_id,
+                          ContentSettingsType type) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  PageSpecificContentSettings::ContentBlocked(frame_token, type);
+  PageSpecificContentSettings::ContentBlocked(render_process_id,
+                                              render_frame_id, type);
 }
 
 }  // namespace
@@ -147,7 +140,7 @@ void ContentSettingsManagerImpl::Clone(
 }
 
 void ContentSettingsManagerImpl::AllowStorageAccess(
-    const blink::LocalFrameToken& frame_token,
+    int32_t render_frame_id,
     StorageType storage_type,
     const url::Origin& origin,
     const net::SiteForCookies& site_for_cookies,
@@ -158,57 +151,29 @@ void ContentSettingsManagerImpl::AllowStorageAccess(
 
   // TODO(crbug.com/1386190): Consider whether the following check should
   // get CookieSettingOverrides from the frame rather than default to none.
-
-  CookieSettingsBase::CookieSettingWithMetadata cookie_settings;
-
   bool allowed = cookie_settings_->IsFullCookieAccessAllowed(
       url, site_for_cookies, top_frame_origin,
-      cookie_settings_->SettingOverridesForStorage(), &cookie_settings);
-
-  //  If storage partitioning is active, third-party partitioned storage is
-  //  allowed by default, and access is only blocked due to general third-party
-  //  cookie blocking (and not due to a user specified pattern) then we'll allow
-  //  storage access.
-  if (base::FeatureList::IsEnabled(
-          net::features::kThirdPartyStoragePartitioning) &&
-      base::FeatureList::IsEnabled(
-          net::features::kThirdPartyPartitionedStorageAllowedByDefault) &&
-      !allowed && cookie_settings.BlockedByThirdPartyCookieBlocking()) {
-    allowed = true;
-  }
-
-  // Allow storage when --test-third-party-cookie-phaseout is used, but ensure
-  // that only partitioned storage is available. This developer flag is meant to
-  // simulate Chrome's behavior when 3P cookies are turned down to help
-  // developers test their site.
-  if (!allowed && net::cookie_util::IsForceThirdPartyCookieBlockingEnabled()) {
-    allowed = true;
-  }
-  if (delegate_->AllowStorageAccess(
-          content::GlobalRenderFrameHostToken(render_process_id_, frame_token),
-          storage_type, url, allowed, &callback)) {
+      cookie_settings_->SettingOverridesForStorage());
+  if (delegate_->AllowStorageAccess(render_process_id_, render_frame_id,
+                                    storage_type, url, allowed, &callback)) {
     DCHECK(!callback);
     return;
   }
 
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE, base::BindOnce(&NotifyStorageAccess,
-                                content::GlobalRenderFrameHostToken(
-                                    render_process_id_, frame_token),
-                                storage_type, top_frame_origin, allowed));
+      FROM_HERE,
+      base::BindOnce(&NotifyStorageAccess, render_process_id_, render_frame_id,
+                     storage_type, url, top_frame_origin, allowed));
 
   std::move(callback).Run(allowed);
 }
 
-void ContentSettingsManagerImpl::OnContentBlocked(
-    const blink::LocalFrameToken& frame_token,
-    ContentSettingsType type) {
+void ContentSettingsManagerImpl::OnContentBlocked(int32_t render_frame_id,
+                                                  ContentSettingsType type) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE, base::BindOnce(&OnContentBlockedOnUI,
-                                content::GlobalRenderFrameHostToken(
-                                    render_process_id_, frame_token),
-                                type));
+      FROM_HERE, base::BindOnce(&OnContentBlockedOnUI, render_process_id_,
+                                render_frame_id, type));
 }
 
 ContentSettingsManagerImpl::ContentSettingsManagerImpl(

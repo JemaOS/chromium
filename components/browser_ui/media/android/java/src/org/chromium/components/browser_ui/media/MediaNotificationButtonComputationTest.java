@@ -16,7 +16,9 @@ import org.chromium.media_session.mojom.MediaSessionAction;
 
 import java.util.ArrayList;
 
-/** Robolectric tests for compact view button computation in {@link MediaNotificationController}. */
+/**
+ * Robolectric tests for compact view button computation in {@link MediaNotificationController}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class MediaNotificationButtonComputationTest {

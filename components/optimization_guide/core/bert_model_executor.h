@@ -23,12 +23,13 @@ class BertModelExecutor
                                       const std::string&>;
 
   // ModelExecutor:
-  std::optional<std::vector<tflite::task::core::Category>> Execute(
+  absl::optional<std::vector<tflite::task::core::Category>> Execute(
       ModelExecutionTask* execution_task,
       ExecutionStatus* out_status,
       const std::string& input) override;
-  base::expected<std::unique_ptr<ModelExecutionTask>, ExecutionStatus>
-  BuildModelExecutionTask(base::MemoryMappedFile* model_file) override;
+  std::unique_ptr<ModelExecutionTask> BuildModelExecutionTask(
+      base::MemoryMappedFile* model_file,
+      ExecutionStatus* out_status) override;
 
  private:
   const proto::OptimizationTarget optimization_target_;

@@ -35,17 +35,17 @@ class CommerceHeuristicsData {
                                  const std::string& product_id_json_data,
                                  const std::string& cart_extraction_script);
   // Try to get merchant name for `domain`.
-  std::optional<std::string> GetMerchantName(const std::string& domain);
+  absl::optional<std::string> GetMerchantName(const std::string& domain);
 
   // Try to get merchant cart URL for `domain`.
-  std::optional<std::string> GetMerchantCartURL(const std::string& domain);
+  absl::optional<std::string> GetMerchantCartURL(const std::string& domain);
 
   // Try to get hint heuristics JSON data for `domain`.
-  std::optional<std::string> GetHintHeuristicsJSONForDomain(
+  absl::optional<std::string> GetHintHeuristicsJSONForDomain(
       const std::string& domain);
 
   // Try to get global heuristics JSON data.
-  std::optional<std::string> GetGlobalHeuristicsJSON();
+  absl::optional<std::string> GetGlobalHeuristicsJSON();
 
   // Try to get the product skip pattern.
   const re2::RE2* GetProductSkipPattern();
@@ -99,16 +99,16 @@ class CommerceHeuristicsData {
   std::string GetCartProductExtractionScript();
 
   // Get the time delay between discount fetches.
-  std::optional<base::TimeDelta> GetDiscountFetchDelay();
+  absl::optional<base::TimeDelta> GetDiscountFetchDelay();
 
  private:
   friend class CommerceHeuristicsDataTest;
 
-  std::optional<std::string> GetCommerceHintHeuristics(
+  absl::optional<std::string> GetCommerceHintHeuristics(
       const std::string& type,
       const std::string& domain);
 
-  std::optional<std::string> GetCommerceGlobalHeuristics(
+  absl::optional<std::string> GetCommerceGlobalHeuristics(
       const std::string& type);
 
   const re2::RE2* GetCommerceHintHeuristicsRegex(

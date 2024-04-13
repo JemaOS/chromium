@@ -13,9 +13,11 @@
 #include "components/permissions/prediction_service/prediction_service_messages.pb.h"
 
 namespace permissions {
-class PredictionModelHandler : public optimization_guide::ModelHandler<
-                                   GeneratePredictionsResponse,
-                                   const PredictionModelExecutorInput&> {
+class PredictionModelHandler
+    : public optimization_guide::ModelHandler<
+          GeneratePredictionsResponse,
+          const GeneratePredictionsRequest&,
+          const absl::optional<WebPermissionPredictionsModelMetadata>&> {
  public:
   explicit PredictionModelHandler(
       optimization_guide::OptimizationGuideModelProvider* model_provider,
@@ -28,8 +30,7 @@ class PredictionModelHandler : public optimization_guide::ModelHandler<
   // optimization_guide::ModelHandler overrides.
   void OnModelUpdated(
       optimization_guide::proto::OptimizationTarget optimization_target,
-      base::optional_ref<const optimization_guide::ModelInfo> model_info)
-      override;
+      const optimization_guide::ModelInfo& model_info) override;
 
   void WaitForModelLoadForTesting();
 
@@ -40,7 +41,7 @@ class PredictionModelHandler : public optimization_guide::ModelHandler<
  private:
   base::RunLoop model_load_run_loop_;
 
-  std::optional<WebPermissionPredictionsModelMetadata> GetModelMetaData();
+  absl::optional<WebPermissionPredictionsModelMetadata> GetModelMetaData();
 };
 
 }  // namespace permissions

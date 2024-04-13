@@ -26,12 +26,6 @@ FakeAutocompleteProviderClient::FakeAutocompleteProviderClient() {
   pref_service_ = std::make_unique<TestingPrefServiceSimple>();
   local_state_ = std::make_unique<TestingPrefServiceSimple>();
   tile_service_ = std::make_unique<query_tiles::FakeTileService>();
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
-  on_device_tail_model_service_ =
-      std::make_unique<FakeOnDeviceTailModelService>();
-  scoring_model_service_ =
-      std::make_unique<FakeAutocompleteScoringModelService>();
-#endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 }
 
 FakeAutocompleteProviderClient::~FakeAutocompleteProviderClient() {
@@ -65,7 +59,8 @@ FakeAutocompleteProviderClient::GetHistoryClustersService() {
   return history_clusters_service_;
 }
 
-bookmarks::BookmarkModel* FakeAutocompleteProviderClient::GetBookmarkModel() {
+bookmarks::BookmarkModel*
+FakeAutocompleteProviderClient::GetLocalOrSyncableBookmarkModel() {
   return bookmark_model_.get();
 }
 
@@ -95,15 +90,3 @@ const TabMatcher& FakeAutocompleteProviderClient::GetTabMatcher() const {
 scoped_refptr<history::TopSites> FakeAutocompleteProviderClient::GetTopSites() {
   return top_sites_;
 }
-
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
-OnDeviceTailModelService*
-FakeAutocompleteProviderClient::GetOnDeviceTailModelService() const {
-  return on_device_tail_model_service_.get();
-}
-
-FakeAutocompleteScoringModelService*
-FakeAutocompleteProviderClient::GetAutocompleteScoringModelService() const {
-  return scoring_model_service_.get();
-}
-#endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)

@@ -5,10 +5,9 @@
 #ifndef COMPONENTS_SERVICES_STORAGE_PUBLIC_CPP_BUCKETS_BUCKET_INIT_PARAMS_H_
 #define COMPONENTS_SERVICES_STORAGE_PUBLIC_CPP_BUCKETS_BUCKET_INIT_PARAMS_H_
 
-#include <optional>
-
 #include "base/time/time.h"
 #include "components/services/storage/public/cpp/buckets/bucket_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/buckets/bucket_manager_host.mojom.h"
 
@@ -42,8 +41,8 @@ struct COMPONENT_EXPORT(STORAGE_SERVICE_BUCKETS_SUPPORT) BucketInitParams {
   int64_t quota = 0;
 
   // nullopt when not specified.
-  std::optional<bool> persistent;
-  std::optional<blink::mojom::BucketDurability> durability;
+  absl::optional<bool> persistent;
+  absl::optional<blink::mojom::BucketDurability> durability;
 };
 
 }  // namespace storage

@@ -16,8 +16,6 @@ group("browser") {
 source_set("internal") {
   visibility = [ "//components/policy/*" ]
   sources = [
-    "boolean_disabling_policy_handler.cc",
-    "boolean_disabling_policy_handler.h",
     "browser_policy_connector.cc",
     "browser_policy_connector.h",
     "browser_policy_connector_base.cc",
@@ -36,10 +34,6 @@ source_set("internal") {
     "policy_conversions_client.h",
     "policy_error_map.cc",
     "policy_error_map.h",
-    "remote_commands/user_remote_commands_service_base.cc",
-    "remote_commands/user_remote_commands_service_base.h",
-    "signin/profile_separation_policies.cc",
-    "signin/profile_separation_policies.h",
     "signin/user_cloud_signin_restriction_policy_fetcher.cc",
     "signin/user_cloud_signin_restriction_policy_fetcher.h",
     "url_allowlist_policy_handler.cc",
@@ -60,8 +54,6 @@ source_set("internal") {
     "webui/policy_status_provider.h",
     "webui/policy_webui_constants.cc",
     "webui/policy_webui_constants.h",
-    "webui/statistics_collector.cc",
-    "webui/statistics_collector.h",
   ]
 
   if (!is_chromeos_ash) {
@@ -81,7 +73,6 @@ source_set("internal") {
     "//build:branding_buildflags",
     "//build:chromeos_buildflags",
     "//components/google/core/common",
-    "//components/invalidation/impl",
     "//components/keyed_service/core",
     "//components/pref_registry",
     "//components/prefs",
@@ -120,6 +111,8 @@ static_library("test_support") {
   sources = [
     "configuration_policy_pref_store_test.cc",
     "configuration_policy_pref_store_test.h",
+    "policy_pref_mapping_test.cc",
+    "policy_pref_mapping_test.h",
   ]
 
   public_deps = [
@@ -132,43 +125,24 @@ static_library("test_support") {
     "//components/policy:generated",
     "//components/policy/core/common:test_support",
   ]
-  deps = [ "//testing/gtest" ]
-}
-
-# This is separate from the test_support target, so that only the test binaries
-# that actually run pref_mapping tests can pull these, but other test binaries
-# won't have these unnecessary dependencies.
-source_set("pref_mapping_test_support") {
-  testonly = true
-  sources = [
-    "policy_pref_mapping_test.cc",
-    "policy_pref_mapping_test.h",
-  ]
-
-  public_deps = [ ":test_support" ]
-
   deps = [
-    "//base",
     "//build:branding_buildflags",
-    "//components/policy:generated",
-    "//components/policy/core/common:test_support",
+    "//build:chromeos_buildflags",
     "//components/prefs",
     "//printing/buildflags",
     "//testing/gtest",
-    "//third_party/abseil-cpp:absl",
     "//url",
   ]
 
-  # The test data is under components/policy/test/data instead of
-  # chrome/test/data/ because components/policy/PRESUBMIT.py depends on it.
-  # This makes presubmit run when files are modified in that directory.
-  data = [ "//components/policy/test/data/pref_mapping/" ]
+  # The test data lives inside components/policy/test/data (and not inside
+  # chrome/test/data/) because components/policy/PRESUBMIT.py depends on it. And
+  # we want the presubmit check run automatically when the files is modified.
+  data = [ "//components/policy/test/data/" ]
 }
 
 source_set("unit_tests") {
   testonly = true
   sources = [
-    "boolean_disabling_policy_handler_unittest.cc",
     "configuration_policy_handler_list_unittest.cc",
     "configuration_policy_handler_unittest.cc",
     "configuration_policy_pref_store_unittest.cc",

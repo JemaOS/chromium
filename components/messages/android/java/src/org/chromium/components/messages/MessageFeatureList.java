@@ -1,31 +1,38 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.components.messages;
 
+import org.chromium.base.FeatureList;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
+import org.chromium.build.annotations.MainDex;
+
 /**
- * Lists base::Features that can be accessed through {@link MessageFeatureMap}.
- *
- * Should be kept in sync with |kFeaturesExposedToJava| in
- * //components/messages/android/messages_feature.cc
+ * Provides an API for querying the status of Message features.
  */
-public abstract class MessageFeatureList {
+@JNINamespace("messages")
+@MainDex
+public class MessageFeatureList {
     public static final String MESSAGES_FOR_ANDROID_STACKING_ANIMATION =
             "MessagesForAndroidStackingAnimation";
-    public static final String MESSAGES_FOR_ANDROID_FULLY_VISIBLE_CALLBACK =
-            "MessagesForAndroidFullyVisibleCallback";
-    public static final String MESSAGES_ANDROID_EXTRA_HISTOGRAMS = "MessagesAndroidExtraHistograms";
+
+    private MessageFeatureList() {}
+
+    public static boolean isEnabled(String featureName) {
+        Boolean testValue = FeatureList.getTestValueForFeature(featureName);
+        if (testValue != null) return testValue;
+        assert FeatureList.isNativeInitialized();
+        return MessageFeatureListJni.get().isEnabled(featureName);
+    }
 
     public static boolean isStackAnimationEnabled() {
-        return MessageFeatureMap.isEnabled(MESSAGES_FOR_ANDROID_STACKING_ANIMATION);
+        return isEnabled(MESSAGES_FOR_ANDROID_STACKING_ANIMATION);
     }
 
-    public static boolean isFullyVisibleCallbackEnabled() {
-        return MessageFeatureMap.isEnabled(MESSAGES_FOR_ANDROID_FULLY_VISIBLE_CALLBACK);
-    }
-
-    public static boolean areExtraHistogramsEnabled() {
-        return MessageFeatureMap.isEnabled(MESSAGES_ANDROID_EXTRA_HISTOGRAMS);
+    @NativeMethods
+    interface Natives {
+        boolean isEnabled(String featureName);
     }
 }

@@ -5,13 +5,14 @@
 #ifndef COMPONENTS_POLICY_CORE_COMMON_POLICY_LOGGER_H_
 #define COMPONENTS_POLICY_CORE_COMMON_POLICY_LOGGER_H_
 
-#include <deque>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/weak_ptr.h"
+#include "base/sequence_checker.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "components/policy/policy_export.h"
@@ -20,6 +21,7 @@
 // messages logged with DLOG are still important to be seen on the
 // chrome://policy/logs page in release mode. The DLOG call in StreamLog() will
 // do the check as usual for command line logging.
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 #define LOG_POLICY(log_severity, log_source)                                  \
   LOG_POLICY_##log_severity(::policy::PolicyLogger::LogHelper::LogType::kLog, \
                             log_source)
@@ -48,14 +50,18 @@
   ::policy::PolicyLogger::LogHelper(                           \
       log_type, ::policy::PolicyLogger::Log::Severity::kError, \
       ::policy::PolicyLogger::LogHelper::kNoVerboseLog, log_source, FROM_HERE)
+#else
+#define LOG_POLICY(log_severity, log_source) LOG(log_severity)
+#define DLOG_POLICY(log_severity, log_source) DLOG(log_severity)
+#define VLOG_POLICY(log_verbosity, log_source) VLOG(log_verbosity)
+#define DVLOG_POLICY(log_verbosity, log_source) DVLOG(log_verbosity)
+#endif  // BUILDFLAG(IS_ANDROID)
 
 #define POLICY_AUTH ::policy::PolicyLogger::Log::Source::kAuthentication
 #define POLICY_PROCESSING ::policy::PolicyLogger::Log::Source::kPolicyProcessing
 #define CBCM_ENROLLMENT ::policy::PolicyLogger::Log::Source::kCBCMEnrollment
 #define POLICY_FETCHING ::policy::PolicyLogger::Log::Source::kPolicyFetching
 #define PLATFORM_POLICY ::policy::PolicyLogger::Log::Source::kPlatformPolicy
-#define REMOTE_COMMANDS ::policy::PolicyLogger::Log::Source::kRemoteCommands
-#define DEVICE_TRUST ::policy::PolicyLogger::Log::Source::kDeviceTrust
 
 namespace policy {
 
@@ -70,9 +76,7 @@ class POLICY_EXPORT PolicyLogger {
       kCBCMEnrollment,
       kPolicyFetching,
       kPlatformPolicy,
-      kAuthentication,
-      kRemoteCommands,
-      kDeviceTrust,
+      kAuthentication
     };
     enum class Severity { kInfo, kWarning, kError, kVerbose };
 
@@ -104,7 +108,7 @@ class POLICY_EXPORT PolicyLogger {
 
   // Helper class to temporarily hold log information before adding it as a Log
   // object to the logs list when it is destroyed.
-  class POLICY_EXPORT LogHelper {
+  class LogHelper {
    public:
     // Value indicating that the log is not from VLOG, DVLOG, and other verbose
     // log macros.
@@ -143,7 +147,6 @@ class POLICY_EXPORT PolicyLogger {
   };
 
   static constexpr base::TimeDelta kTimeToLive = base::Minutes(30);
-  static constexpr size_t kMaxLogsSize = 200;
 
   static PolicyLogger* GetInstance();
 
@@ -153,7 +156,7 @@ class POLICY_EXPORT PolicyLogger {
   ~PolicyLogger();
 
   // Returns the logs list as base::Value::List to send to UI.
-  base::Value::List GetAsList();
+  base::Value::List GetAsList() const;
 
   // Checks if browser is running on Android.
   bool IsPolicyLoggingEnabled() const;
@@ -162,11 +165,11 @@ class POLICY_EXPORT PolicyLogger {
   void EnableLogDeletion();
 
   // Returns the logs size for testing purposes.
-  size_t GetPolicyLogsSizeForTesting();
+  size_t GetPolicyLogsSizeForTesting() const;
 
   // Clears `logs_` and sets `is_log_deletion_scheduled_` as cleanup after every
   // test.
-  void ResetLoggerForTesting();
+  void ResetLoggerAfterTest();
 
  private:
   // Adds a new log to the logs_ list and calls `ScheduleOldLogsDeletion` if
@@ -190,9 +193,9 @@ class POLICY_EXPORT PolicyLogger {
 
   bool is_log_deletion_scheduled_{false};
 
-  base::Lock lock_;
+  std::vector<Log> logs_ GUARDED_BY_CONTEXT(logs_list_sequence_checker_);
 
-  std::deque<Log> logs_ GUARDED_BY(lock_);
+  SEQUENCE_CHECKER(logs_list_sequence_checker_);
 
   base::WeakPtrFactory<PolicyLogger> weak_factory_{this};
 };

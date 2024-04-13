@@ -6,7 +6,6 @@
 #define COMPONENTS_JS_INJECTION_BROWSER_JS_COMMUNICATION_HOST_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,6 +13,7 @@
 #include "components/js_injection/common/interfaces.mojom.h"
 #include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/web_contents_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace content {
 class RenderFrameHost;
@@ -22,24 +22,10 @@ class RenderFrameHost;
 namespace js_injection {
 
 class OriginMatcher;
+struct DocumentStartJavaScript;
 struct JsObject;
 class JsToBrowserMessaging;
 class WebMessageHostFactory;
-
-struct DocumentStartJavaScript {
-  DocumentStartJavaScript(std::u16string script,
-                          OriginMatcher allowed_origin_rules,
-                          int32_t script_id);
-
-  DocumentStartJavaScript(DocumentStartJavaScript&) = delete;
-  DocumentStartJavaScript& operator=(DocumentStartJavaScript&) = delete;
-  DocumentStartJavaScript(DocumentStartJavaScript&&) = default;
-  DocumentStartJavaScript& operator=(DocumentStartJavaScript&&) = default;
-
-  std::u16string script_;
-  OriginMatcher allowed_origin_rules_;
-  int32_t script_id_;
-};
 
 // This class is 1:1 with WebContents, when AddWebMessageListener() is called,
 // it stores the information in this class and send them to renderer side
@@ -64,8 +50,8 @@ class JsCommunicationHost : public content::WebContentsObserver {
     AddScriptResult& operator=(const AddScriptResult&);
     ~AddScriptResult();
 
-    std::optional<std::string> error_message;
-    std::optional<int> script_id;
+    absl::optional<std::string> error_message;
+    absl::optional<int> script_id;
   };
 
   // Native side AddDocumentStartJavaScript, returns an error message if the
@@ -75,9 +61,6 @@ class JsCommunicationHost : public content::WebContentsObserver {
       const std::vector<std::string>& allowed_origin_rules);
 
   bool RemoveDocumentStartJavaScript(int script_id);
-
-  const std::vector<DocumentStartJavaScript>& GetDocumentStartJavascripts()
-      const;
 
   // Adds a new WebMessageHostFactory. For any urls that match
   // |allowed_origin_rules|, |js_object_name| is registered as a JS object that
@@ -104,6 +87,10 @@ class JsCommunicationHost : public content::WebContentsObserver {
   // content::WebContentsObserver implementations
   void RenderFrameCreated(content::RenderFrameHost* render_frame_host) override;
   void RenderFrameDeleted(content::RenderFrameHost* render_frame_host) override;
+  void RenderFrameHostStateChanged(
+      content::RenderFrameHost* render_frame_host,
+      content::RenderFrameHost::LifecycleState old_state,
+      content::RenderFrameHost::LifecycleState new_state) override;
 
  private:
   void NotifyFrameForWebMessageListener(

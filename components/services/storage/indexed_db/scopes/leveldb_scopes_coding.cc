@@ -5,11 +5,9 @@
 #include "components/services/storage/indexed_db/scopes/leveldb_scopes_coding.h"
 
 #include <sstream>
-#include <string_view>
 #include <utility>
 
-#include "base/containers/span.h"
-#include "base/numerics/byte_conversions.h"
+#include "base/big_endian.h"
 #include "components/services/storage/indexed_db/scopes/varint_coding.h"
 
 namespace content {
@@ -19,14 +17,12 @@ void EncodeBigEndianFixed64(uint64_t number, std::string* output) {
   DCHECK(output);
   size_t start_index = output->size();
   output->resize(output->size() + sizeof(uint64_t));
-  base::as_writable_byte_span(*output)
-      .subspan(start_index)
-      .copy_from(base::numerics::U64ToBigEndian(number));
+  base::WriteBigEndian(&(*output)[start_index], number);
 }
 
-std::string_view MakeStringView(base::span<const uint8_t> bytes) {
-  return std::string_view(reinterpret_cast<const char*>(bytes.data()),
-                          bytes.size());
+base::StringPiece MakeStringPiece(base::span<const uint8_t> bytes) {
+  return base::StringPiece(reinterpret_cast<const char*>(bytes.data()),
+                           bytes.size());
 }
 
 }  // namespace
@@ -53,7 +49,7 @@ std::tuple<bool, int64_t> ParseScopeMetadataId(
     return std::make_tuple(false, 0);
 
   int64_t scope_id = 0;
-  std::string_view part(key.data() + prefix_size, key.size() - prefix_size);
+  base::StringPiece part(key.data() + prefix_size, key.size() - prefix_size);
   bool decode_success = DecodeVarInt(&part, &scope_id);
   DCHECK_GE(scope_id, 0);
   return std::make_tuple(decode_success, scope_id);
@@ -67,8 +63,8 @@ std::string KeyToDebugString(base::span<const uint8_t> key_without_prefix) {
     return result.str();
   }
   char type_byte = key_without_prefix[0];
-  std::string_view key_after_type =
-      MakeStringView(key_without_prefix.subspan(1));
+  base::StringPiece key_after_type =
+      MakeStringPiece(key_without_prefix.subspan(1));
   switch (type_byte) {
     case kGlobalMetadataByte:
       result << "GlobalMetadata";
@@ -104,8 +100,8 @@ std::string KeyToDebugString(base::span<const uint8_t> key_without_prefix) {
         result << "<Invalid Seq Num>";
         break;
       }
-      seq_num = base::numerics::U64FromBigEndian(
-          base::as_byte_span(key_after_type).first<8u>());
+      base::ReadBigEndian(
+          reinterpret_cast<const uint8_t*>(key_after_type.data()), &seq_num);
       result << seq_num;
       break;
     }

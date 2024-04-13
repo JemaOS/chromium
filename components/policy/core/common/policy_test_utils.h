@@ -17,8 +17,6 @@
 
 #if BUILDFLAG(IS_APPLE)
 #include <CoreFoundation/CoreFoundation.h>
-
-#include "base/apple/scoped_cftyperef.h"
 #endif
 
 namespace policy {
@@ -56,8 +54,8 @@ bool PolicyServiceIsEmpty(const PolicyService* service);
 #if BUILDFLAG(IS_APPLE)
 
 // Converts a base::Value to the equivalent CFPropertyListRef.
-base::apple::ScopedCFTypeRef<CFPropertyListRef> ValueToProperty(
-    const base::Value& value);
+// The returned value is owned by the caller.
+CFPropertyListRef ValueToProperty(const base::Value& value);
 
 #endif
 

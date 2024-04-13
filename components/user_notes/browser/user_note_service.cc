@@ -133,11 +133,10 @@ void UserNoteService::OnNoteInstanceRemovedFromPage(
 
 void UserNoteService::OnAddNoteRequested(content::RenderFrameHost* frame,
                                          bool has_selected_text) {
-  CHECK(IsUserNotesEnabled());
-  CHECK(frame);
-  CHECK(!frame->GetParentOrOuterDocument());
+  DCHECK(IsUserNotesEnabled());
+  DCHECK(frame);
   UserNoteManager* manager = UserNoteManager::GetForPage(frame->GetPage());
-  CHECK(manager);
+  DCHECK(manager);
 
   // TODO(crbug.com/1313967): `has_selected_text` is used to determine whether
   // or not to create a page-level note. This will need to be reassessed when
@@ -363,7 +362,8 @@ void UserNoteService::InitializeNewNoteForCreation(
         // UX for this note. The UI layer will eventually call either
         // `OnNoteCreationDone` or `OnNoteCreationCancelled`, in which the
         // partial note will be finalized or deleted, respectively.
-        if (service->delegate_->GetUICoordinatorForFrame(frame)) {
+        if (UserNotesUI* ui =
+                service->delegate_->GetUICoordinatorForFrame(frame)) {
           // TODO(crbug.com/1408767): Remove this during notes backend cleanup.
         }
       },

@@ -7,7 +7,6 @@
 
 #include "build/build_config.h"
 #include "components/policy/core/common/policy_service.h"
-#include "components/policy/core/common/policy_types.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
 namespace policy {
@@ -48,8 +47,7 @@ class MockPolicyService : public PolicyService {
   MOCK_CONST_METHOD1(GetPolicies, const PolicyMap&(const PolicyNamespace&));
   MOCK_CONST_METHOD1(IsInitializationComplete, bool(PolicyDomain domain));
   MOCK_CONST_METHOD1(IsFirstPolicyLoadComplete, bool(PolicyDomain domain));
-  MOCK_METHOD2(RefreshPolicies, void(base::OnceClosure, PolicyFetchReason));
-  MOCK_METHOD1(UseLocalTestPolicyProvider, void(ConfigurationPolicyProvider*));
+  MOCK_METHOD1(RefreshPolicies, void(base::OnceClosure));
 
 #if BUILDFLAG(IS_ANDROID)
   MOCK_METHOD0(GetPolicyServiceAndroid, android::PolicyServiceAndroid*());

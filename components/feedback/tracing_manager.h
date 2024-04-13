@@ -25,7 +25,7 @@ using TraceDataCallback =
 // of the performance data.  That data can then be requested via GetTraceData().
 // When the data is no longer needed, it should be discarded via
 // DiscardTraceData().
-class TracingManager {
+class TracingManager : public base::SupportsWeakPtr<TracingManager> {
  public:
   virtual ~TracingManager();
 
@@ -43,12 +43,9 @@ class TracingManager {
   // Discard the data for trace |id|.
   virtual void DiscardTraceData(int id) = 0;
 
-  // Derived classes must implement this and return pointers from
-  // a `base::WeakPtrFactory` data member.
-  virtual base::WeakPtr<TracingManager> AsWeakPtr() = 0;
-
  protected:
   TracingManager();
 };
 
 #endif  // COMPONENTS_FEEDBACK_TRACING_MANAGER_H_
+

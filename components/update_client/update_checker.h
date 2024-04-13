@@ -6,7 +6,6 @@
 #define COMPONENTS_UPDATE_CLIENT_UPDATE_CHECKER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +14,7 @@
 #include "base/memory/ref_counted.h"
 #include "components/update_client/component.h"
 #include "components/update_client/protocol_parser.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace update_client {
@@ -26,14 +26,14 @@ struct UpdateContext;
 class UpdateChecker {
  public:
   using UpdateCheckCallback = base::OnceCallback<void(
-      const std::optional<ProtocolParser::Results>& results,
+      const absl::optional<ProtocolParser::Results>& results,
       ErrorCategory error_category,
       int error,
       int retry_after_sec)>;
 
-  using Factory = base::RepeatingCallback<std::unique_ptr<UpdateChecker>(
-      scoped_refptr<Configurator> config,
-      PersistedData* persistent)>;
+  using Factory =
+      std::unique_ptr<UpdateChecker> (*)(scoped_refptr<Configurator> config,
+                                         PersistedData* persistent);
 
   UpdateChecker(const UpdateChecker&) = delete;
   UpdateChecker& operator=(const UpdateChecker&) = delete;

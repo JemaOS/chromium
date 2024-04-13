@@ -29,8 +29,12 @@ std::string ReasonIdToString(DisabledReasonId reason_id) {
       return "PermissionRequestManager";
     case DisabledReasonId::kModalDialog:
       return "ModalDialog";
+    case DisabledReasonId::kExtensions:
+      return "Extensions";
     case DisabledReasonId::kExtensionMessaging:
       return "ExtensionMessaging";
+    case DisabledReasonId::kExtensionMessagingForOpenPort:
+      return "ExtensionMessagingForOpenPort";
     case DisabledReasonId::kExtensionSentMessageToCachedFrame:
       return "ExtensionSentMessageToCachedFrame";
     case DisabledReasonId::kOomInterventionTabHelper:
@@ -39,18 +43,16 @@ std::string ReasonIdToString(DisabledReasonId reason_id) {
 }
 
 // Report string used for NotRestoredReasons API. This will be brief and will
-// mask all the non-actionable reasons.
+// mask extension related reasons as "Extensions".
 std::string ReasonIdToReportString(DisabledReasonId reason_id) {
   switch (reason_id) {
+    case DisabledReasonId::kExtensions:
     case DisabledReasonId::kExtensionMessaging:
+    case DisabledReasonId::kExtensionMessagingForOpenPort:
     case DisabledReasonId::kExtensionSentMessageToCachedFrame:
-      return "extension-messaging";
-    case DisabledReasonId::kModalDialog:
-      return "modal-dialog";
-    case DisabledReasonId::kPermissionRequestManager:
-      return "permission-request-manager";
+      return "Extensions";
     default:
-      return "masked";
+      return ReasonIdToString(reason_id);
   }
 }
 

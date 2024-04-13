@@ -8,9 +8,7 @@
 namespace segmentation_platform {
 
 struct PlatformOptions {
-  explicit PlatformOptions(bool force_refresh_results,
-                           bool disable_model_execution_delay = false);
-
+  explicit PlatformOptions(bool force_refresh_results);
   ~PlatformOptions() = default;
 
   PlatformOptions(const PlatformOptions& other) = default;
@@ -21,10 +19,6 @@ struct PlatformOptions {
   // model executions, and re-run all the models and recompute segment
   // selections. Used for testing the model execution locally.
   bool force_refresh_results{false};
-
-  // Models executing at startup will be executed after a delay. This flag is to
-  // disable the delay and immediately run the model at startup with the delay.
-  bool disable_model_execution_delay{false};
 };
 
 }  // namespace segmentation_platform

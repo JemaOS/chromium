@@ -15,7 +15,7 @@ namespace autofill::test {
 // Defines the |value| and |verification_status| for a specific Autofill
 // |field_type|
 struct ProfileTestData {
-  FieldType field_type;
+  ServerFieldType field_type;
   std::string value;
   VerificationStatus verification_status = VerificationStatus::kNoStatus;
 };

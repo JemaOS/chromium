@@ -6,8 +6,6 @@ syntax = "proto2";
 
 package feedwire;
 
-import "components/feed/core/proto/v2/wire/view_demotion_profile_extension.proto";
-
 option optimize_for = LITE_RUNTIME;
 
 message ClientUserProfiles {
@@ -41,6 +39,4 @@ message DiscoverUserActionsProfile {
   repeated ContentMediaXEntityActionCounts content_media_x_entity = 2;
   repeated CardCategoryXEntityActionCounts card_category_x_entity = 3;
 }
-message ViewDemotionProfile {
-  optional ViewDemotionProfileExtension view_demotion_profile = 1000;
-}
+message ViewDemotionProfile {}

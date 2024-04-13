@@ -139,21 +139,12 @@ class PaymentManifestDownloader {
   // Information about an ongoing download request.
   struct Download {
     enum class Type {
-      LINK_HEADER_WITH_FALLBACK_TO_RESPONSE_BODY,
-      FALLBACK_TO_RESPONSE_BODY,
+      RESPONSE_BODY_OR_LINK_HEADER,
       RESPONSE_BODY,
     };
 
     Download();
     ~Download();
-
-    // Returns true if this download is an HTTP HEAD request for a payment
-    // manifest.
-    bool IsLinkHeaderDownload() const;
-
-    // Returns true if this download is an HTTP GET request either for payment
-    // method manifest or for a web app manifest file.
-    bool IsResponseBodyDownload() const;
 
     int allowed_number_of_redirects = 0;
     Type type = Type::RESPONSE_BODY;
@@ -183,10 +174,6 @@ class PaymentManifestDownloader {
       const std::string& response_body,
       scoped_refptr<net::HttpResponseHeaders> headers,
       int net_error);
-
-  void TryFallbackToDownloadingResponseBody(
-      const GURL& url_to_download,
-      std::unique_ptr<Download> download_info);
 
   // Called by unittests to get the one in-progress loader.
   network::SimpleURLLoader* GetLoaderForTesting();

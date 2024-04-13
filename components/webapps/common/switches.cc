@@ -13,9 +13,5 @@ namespace switches {
 const char kBypassAppBannerEngagementChecks[] =
     "bypass-app-banner-engagement-checks";
 
-// This flag allow bypassing installable message throttle for testing purpose.
-const char kBypassInstallThrottleForTesting[] =
-    "bypass-installable-message-throttle-for-testing";
-
 }  // namespace switches
 }  // namespace webapps

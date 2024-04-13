@@ -12,21 +12,15 @@ namespace autofill {
 
 // Credit card issuer ids. These are server-generated values that must be
 // consistent between server and client.
-inline constexpr std::string_view kAmexCardIssuerId = "amex";
-inline constexpr std::string_view kAnzCardIssuerId = "anz";
-inline constexpr std::string_view kCapitalOneCardIssuerId = "capitalone";
-inline constexpr std::string_view kChaseCardIssuerId = "chase";
-inline constexpr std::string_view kCitiCardIssuerId = "citi";
-inline constexpr std::string_view kDiscoverCardIssuerId = "discover";
-inline constexpr std::string_view kLloydsCardIssuerId = "lloyds";
-inline constexpr std::string_view kMarqetaCardIssuerId = "marqeta";
-inline constexpr std::string_view kNabCardIssuerId = "nab";
-inline constexpr std::string_view kNatwestCardIssuerId = "natwest";
+constexpr char kAmexCardIssuerId[] = "amex";
+constexpr char kCapitalOneCardIssuerId[] = "capitalone";
+constexpr char kChaseCardIssuerId[] = "chase";
+constexpr char kMarqetaCardIssuerId[] = "marqeta";
 
 // The urls to the static card art images used by Capital One cards.
-inline constexpr std::string_view kCapitalOneCardArtUrl =
+constexpr char kCapitalOneCardArtUrl[] =
     "https://www.gstatic.com/autofill/virtualcard/icon/capitalone.png";
-inline constexpr std::string_view kCapitalOneLargeCardArtUrl =
+constexpr char kCapitalOneLargeCardArtUrl[] =
     "https://www.gstatic.com/autofill/virtualcard/icon/capitalone_40_24.png";
 
 }  // namespace autofill

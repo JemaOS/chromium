@@ -28,6 +28,6 @@ owners:
 schema:
   type: boolean
 supported_on:
-- android:123-
+- android:86-
 tags: []
 type: main

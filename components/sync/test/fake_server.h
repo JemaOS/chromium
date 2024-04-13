@@ -9,11 +9,11 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "base/files/scoped_temp_dir.h"
 #include "base/location.h"
 #include "base/observer_list.h"
 #include "base/threading/thread_checker.h"
@@ -28,6 +28,7 @@
 #include "components/sync/protocol/sync.pb.h"
 #include "net/http/http_status_code.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace switches {
 
@@ -73,18 +74,17 @@ class FakeServer : public syncer::LoopbackServer::ObserverForTests {
 
     // Called after FakeServer has processed a successful commit. The types
     // updated as part of the commit are passed in |committed_model_types|.
-    virtual void OnCommit(syncer::ModelTypeSet committed_model_types) {}
+    virtual void OnCommit(const std::string& committer_invalidator_client_id,
+                          syncer::ModelTypeSet committed_model_types) {}
 
     // Called after FakeServer has processed a successful get updates request.
     virtual void OnSuccessfulGetUpdates() {}
   };
 
-  // Persists the server state to `loopback_server_dir` (useful for PRE_ tests).
-  explicit FakeServer(const base::FilePath& loopback_server_dir);
-
-  // Convenience version of the above which uses a new temporary directory.
   FakeServer();
-
+  // A directory will be created under |user_data_dir| to persist sync server
+  // state. It's necessary for supporting PRE_ tests.
+  explicit FakeServer(const base::FilePath& user_data_dir);
   ~FakeServer() override;
 
   // Handles a /command POST (with the given |request|) to the server.
@@ -246,19 +246,14 @@ class FakeServer : public syncer::LoopbackServer::ObserverForTests {
 
   void TriggerMigrationDoneError(syncer::ModelTypeSet types);
 
-  // Add the user to the collaboration for the shared data types.
-  void AddCollaboration(const std::string& collaboration_id);
-
-  // Removes the user from the collaboration. Does not clean up related entities
-  // from the server.
-  void RemoveCollaboration(const std::string& collaboration_id);
-
   // Implement LoopbackServer::ObserverForTests:
-  void OnCommit(syncer::ModelTypeSet committed_model_types) override;
+  void OnCommit(const std::string& committer_invalidator_client_id,
+                syncer::ModelTypeSet committed_model_types) override;
   void OnHistoryCommit(const std::string& url) override;
 
-  // Returns all URLs that were committed to server-side history through the
-  // HISTORY data type.
+  // Returns all URLs that were committed to server-side history, which happens
+  // either through SESSIONS (if the "History" toggle is enabled) or through
+  // HISTORY.
   const std::set<std::string>& GetCommittedHistoryURLs() const;
 
   std::string GetStoreBirthday() const;
@@ -274,11 +269,6 @@ class FakeServer : public syncer::LoopbackServer::ObserverForTests {
   // exponential backoff, which can cause tests to be slow or time out.
   void OverrideResponseType(
       syncer::LoopbackServer::ResponseTypeProvider response_type_override);
-
-  // Performs any pending disk write immediately. This is useful on platforms
-  // where shutdown isn't graceful, and this object may not be destructed
-  // properly (otherwise, the destructor takes care of this automatically).
-  void FlushToDisk();
 
  private:
   // Analogous to HandleCommand() but deals with parsed protos.
@@ -307,17 +297,18 @@ class FakeServer : public syncer::LoopbackServer::ObserverForTests {
   std::vector<std::unique_ptr<testing::ScopedTrace>> gtest_scoped_traces_;
 
   // If set, the server will return HTTP errors.
-  std::optional<net::HttpStatusCode> http_error_status_code_;
+  absl::optional<net::HttpStatusCode> http_error_status_code_;
 
-  // All URLs received via HISTORY sync.
+  // All URLs received via history sync (powered either by SESSIONS or by
+  // HISTORY).
   std::set<std::string> committed_history_urls_;
 
   // Used as the error_code field of ClientToServerResponse on all commit
   // requests.
-  sync_pb::SyncEnums_ErrorType commit_error_type_ = sync_pb::SyncEnums::SUCCESS;
+  sync_pb::SyncEnums_ErrorType commit_error_type_;
 
   // Used as the error_code field of ClientToServerResponse on all responses.
-  sync_pb::SyncEnums_ErrorType error_type_ = sync_pb::SyncEnums::SUCCESS;
+  sync_pb::SyncEnums_ErrorType error_type_;
 
   // Used as the error field of ClientToServerResponse when its pointer is not
   // null.
@@ -331,12 +322,12 @@ class FakeServer : public syncer::LoopbackServer::ObserverForTests {
   // requests. Note that |request_counter_| can be reset and is not necessarily
   // indicative of the total number of requests handled during the object's
   // lifetime.
-  bool alternate_triggered_errors_ = false;
-  int request_counter_ = 0;
+  bool alternate_triggered_errors_;
+  int request_counter_;
 
   // If set to true all |this| will clear |encryption_keys| in all
   // GetUpdateResponse's.
-  bool disallow_sending_encryption_keys_ = false;
+  bool disallow_sending_encryption_keys_;
 
   // Client command to be included in every response.
   sync_pb::ClientCommand client_command_;
@@ -352,6 +343,7 @@ class FakeServer : public syncer::LoopbackServer::ObserverForTests {
   base::ThreadChecker thread_checker_;
 
   std::unique_ptr<syncer::LoopbackServer> loopback_server_;
+  std::unique_ptr<base::ScopedTempDir> loopback_server_storage_;
 
   // The LoopbackServer does not know how to handle Wallet data properly, so
   // the FakeServer handles those itself.
@@ -360,9 +352,6 @@ class FakeServer : public syncer::LoopbackServer::ObserverForTests {
   // The LoopbackServer does not know how to handle offer data properly, so
   // the FakeServer handles those itself.
   std::vector<sync_pb::SyncEntity> offer_entities_;
-
-  // List of collaborations the user is a member of, used for all shared types.
-  std::vector<std::string> collaborations_;
 
   // Creates WeakPtr versions of the current FakeServer. This must be the last
   // data member!

@@ -4,24 +4,30 @@
 
 package org.chromium.net.urlconnection;
 
-import static com.google.common.truth.Truth.assertThat;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import static org.junit.Assert.assertThrows;
+import static org.chromium.net.CronetTestRule.getContext;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
+import org.hamcrest.Description;
+import org.hamcrest.TypeSafeMatcher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
-import org.chromium.base.test.util.Batch;
 import org.chromium.net.CronetEngine;
 import org.chromium.net.CronetTestRule;
-import org.chromium.net.CronetTestRule.CronetImplementation;
-import org.chromium.net.CronetTestRule.IgnoreFor;
+import org.chromium.net.CronetTestRule.CompareDefaultWithCronet;
+import org.chromium.net.CronetTestRule.OnlyRunCronetHttpURLConnection;
 import org.chromium.net.NativeTestServer;
 import org.chromium.net.NetworkException;
 import org.chromium.net.impl.CallbackExceptionImpl;
@@ -32,266 +38,306 @@ import java.net.HttpRetryException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-/** Tests {@code getOutputStream} when {@code setFixedLengthStreamingMode} is enabled. */
-@Batch(Batch.UNIT_TESTS)
-@IgnoreFor(
-        implementations = {CronetImplementation.FALLBACK},
-        reason = "See crrev.com/c/4590329")
+/**
+ * Tests {@code getOutputStream} when {@code setFixedLengthStreamingMode} is
+ * enabled.
+ * Tests annotated with {@code CompareDefaultWithCronet} will run once with the
+ * default HttpURLConnection implementation and then with Cronet's
+ * HttpURLConnection implementation. Tests annotated with
+ * {@code OnlyRunCronetHttpURLConnection} only run Cronet's implementation.
+ * See {@link CronetTestBase#runTest()} for details.
+ */
 @RunWith(AndroidJUnit4.class)
 public class CronetFixedModeOutputStreamTest {
-    @Rule public final CronetTestRule mTestRule = CronetTestRule.withManualEngineStartup();
+    @Rule
+    public final CronetTestRule mTestRule = new CronetTestRule();
 
-    private HttpURLConnection mConnection;
-
-    private CronetEngine mCronetEngine;
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() throws Exception {
-        mTestRule
-                .getTestFramework()
-                .applyEngineBuilderPatch(
-                        (builder) -> mTestRule.getTestFramework().enableDiskCache(builder));
-        mCronetEngine = mTestRule.getTestFramework().startEngine();
-        assertThat(
-                        NativeTestServer.startNativeTestServer(
-                                mTestRule.getTestFramework().getContext()))
-                .isTrue();
+        mTestRule.setStreamHandlerFactory(new CronetEngine.Builder(getContext()).build());
+        assertTrue(NativeTestServer.startNativeTestServer(getContext()));
     }
 
     @After
     public void tearDown() throws Exception {
-        if (mConnection != null) {
-            mConnection.disconnect();
-        }
         NativeTestServer.shutdownNativeTestServer();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testConnectBeforeWrite() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
-        mConnection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length);
-        OutputStream out = mConnection.getOutputStream();
-        mConnection.connect();
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
+        connection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length);
+        OutputStream out = connection.getOutputStream();
+        connection.connect();
         out.write(TestUtil.UPLOAD_DATA);
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
-        assertThat(TestUtil.getResponseAsString(mConnection))
-                .isEqualTo(TestUtil.UPLOAD_DATA_STRING);
+        assertEquals(200, connection.getResponseCode());
+        assertEquals("OK", connection.getResponseMessage());
+        assertEquals(TestUtil.UPLOAD_DATA_STRING, TestUtil.getResponseAsString(connection));
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     // Regression test for crbug.com/687600.
     public void testZeroLengthWriteWithNoResponseBody() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
-        mConnection.setFixedLengthStreamingMode(0);
-        OutputStream out = mConnection.getOutputStream();
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
+        connection.setFixedLengthStreamingMode(0);
+        OutputStream out = connection.getOutputStream();
         out.write(new byte[] {});
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
+        assertEquals(200, connection.getResponseCode());
+        assertEquals("OK", connection.getResponseMessage());
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testWriteAfterRequestFailed() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
         byte[] largeData = TestUtil.getLargeData();
-        mConnection.setFixedLengthStreamingMode(largeData.length);
-        OutputStream out = mConnection.getOutputStream();
+        connection.setFixedLengthStreamingMode(largeData.length);
+        OutputStream out = connection.getOutputStream();
         out.write(largeData, 0, 10);
         NativeTestServer.shutdownNativeTestServer();
-        IOException e =
-                assertThrows(
-                        IOException.class, () -> out.write(largeData, 10, largeData.length - 10));
-        // TODO(crbug.com/1495774): Consider whether we should be checking this in the first place.
-        if (mTestRule.implementationUnderTest().equals(CronetImplementation.STATICALLY_LINKED)) {
-            assertThat(e).isInstanceOf(NetworkException.class);
-            NetworkException networkException = (NetworkException) e;
-            assertThat(networkException.getErrorCode())
-                    .isEqualTo(NetworkException.ERROR_CONNECTION_REFUSED);
+        try {
+            out.write(largeData, 10, largeData.length - 10);
+            connection.getResponseCode();
+            fail();
+        } catch (IOException e) {
+            // Expected.
+            if (!mTestRule.testingSystemHttpURLConnection()) {
+                NetworkException requestException = (NetworkException) e;
+                assertEquals(
+                        NetworkException.ERROR_CONNECTION_REFUSED, requestException.getErrorCode());
+            }
         }
+        connection.disconnect();
+        // Restarting server to run the test for a second time.
+        assertTrue(NativeTestServer.startNativeTestServer(getContext()));
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testGetResponseAfterWriteFailed() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
         NativeTestServer.shutdownNativeTestServer();
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
         // Set content-length as 1 byte, so Cronet will upload once that 1 byte
         // is passed to it.
-        mConnection.setFixedLengthStreamingMode(1);
-        OutputStream out = mConnection.getOutputStream();
-        // Forces OutputStream implementation to flush. crbug.com/653072
-        IOException e = assertThrows(IOException.class, () -> out.write(1));
-        // TODO(crbug.com/1495774): Consider whether we should be checking this in the first place.
-        if (mTestRule.implementationUnderTest().equals(CronetImplementation.STATICALLY_LINKED)) {
-            assertThat(e).isInstanceOf(NetworkException.class);
-            NetworkException networkException = (NetworkException) e;
-            assertThat(networkException.getErrorCode())
-                    .isEqualTo(NetworkException.ERROR_CONNECTION_REFUSED);
+        connection.setFixedLengthStreamingMode(1);
+        try {
+            OutputStream out = connection.getOutputStream();
+            out.write(1);
+            // Forces OutputStream implementation to flush. crbug.com/653072
+            out.flush();
+            // System's implementation is flaky see crbug.com/653072.
+            if (!mTestRule.testingSystemHttpURLConnection()) {
+                fail();
+            }
+        } catch (IOException e) {
+            if (!mTestRule.testingSystemHttpURLConnection()) {
+                NetworkException requestException = (NetworkException) e;
+                assertEquals(
+                        NetworkException.ERROR_CONNECTION_REFUSED, requestException.getErrorCode());
+            }
         }
-        // Make sure NetworkException is reported again when trying to read response
-        // from the mConnection.
-        e = assertThrows(IOException.class, mConnection::getResponseCode);
-        // TODO(crbug.com/1495774): Consider whether we should be checking this in the first place.
-        if (mTestRule.implementationUnderTest().equals(CronetImplementation.STATICALLY_LINKED)) {
-            assertThat(e).isInstanceOf(NetworkException.class);
-            NetworkException networkException = (NetworkException) e;
-            assertThat(networkException.getErrorCode())
-                    .isEqualTo(NetworkException.ERROR_CONNECTION_REFUSED);
+        // Make sure IOException is reported again when trying to read response
+        // from the connection.
+        try {
+            connection.getResponseCode();
+            fail();
+        } catch (IOException e) {
+            // Expected.
+            if (!mTestRule.testingSystemHttpURLConnection()) {
+                NetworkException requestException = (NetworkException) e;
+                assertEquals(
+                        NetworkException.ERROR_CONNECTION_REFUSED, requestException.getErrorCode());
+            }
         }
         // Restarting server to run the test for a second time.
-        assertThat(
-                        NativeTestServer.startNativeTestServer(
-                                mTestRule.getTestFramework().getContext()))
-                .isTrue();
+        assertTrue(NativeTestServer.startNativeTestServer(getContext()));
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testFixedLengthStreamingModeZeroContentLength() throws Exception {
         // Check content length is set.
         URL echoLength = new URL(NativeTestServer.getEchoHeaderURL("Content-Length"));
-        mConnection = (HttpURLConnection) echoLength.openConnection();
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
-        mConnection.setFixedLengthStreamingMode(0);
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
-        assertThat(TestUtil.getResponseAsString(mConnection)).isEqualTo("0");
-        mConnection.disconnect();
+        HttpURLConnection connection1 =
+                (HttpURLConnection) echoLength.openConnection();
+        connection1.setDoOutput(true);
+        connection1.setRequestMethod("POST");
+        connection1.setFixedLengthStreamingMode(0);
+        assertEquals(200, connection1.getResponseCode());
+        assertEquals("OK", connection1.getResponseMessage());
+        assertEquals("0", TestUtil.getResponseAsString(connection1));
+        connection1.disconnect();
 
         // Check body is empty.
         URL echoBody = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) echoBody.openConnection();
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
-        mConnection.setFixedLengthStreamingMode(0);
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
-        assertThat(TestUtil.getResponseAsString(mConnection)).isEmpty();
+        HttpURLConnection connection2 =
+                (HttpURLConnection) echoBody.openConnection();
+        connection2.setDoOutput(true);
+        connection2.setRequestMethod("POST");
+        connection2.setFixedLengthStreamingMode(0);
+        assertEquals(200, connection2.getResponseCode());
+        assertEquals("OK", connection2.getResponseMessage());
+        assertEquals("", TestUtil.getResponseAsString(connection2));
+        connection2.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testWriteLessThanContentLength() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
         // Set a content length that's 1 byte more.
-        mConnection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length + 1);
-        OutputStream out = mConnection.getOutputStream();
+        connection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length + 1);
+        OutputStream out = connection.getOutputStream();
         out.write(TestUtil.UPLOAD_DATA);
-        assertThrows(IOException.class, mConnection::getResponseCode);
+        try {
+            connection.getResponseCode();
+            fail();
+        } catch (IOException e) {
+            // Expected.
+        }
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testWriteMoreThanContentLength() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
         // Set a content length that's 1 byte short.
-        mConnection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length - 1);
-        OutputStream out = mConnection.getOutputStream();
-        IOException e = assertThrows(IOException.class, () -> out.write(TestUtil.UPLOAD_DATA));
-        assertThat(e)
-                .hasMessageThat()
-                .isEqualTo(
-                        "expected "
-                                + (TestUtil.UPLOAD_DATA.length - 1)
-                                + " bytes but received "
-                                + TestUtil.UPLOAD_DATA.length);
+        connection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length - 1);
+        OutputStream out = connection.getOutputStream();
+        try {
+            out.write(TestUtil.UPLOAD_DATA);
+            // On Lollipop, default implementation only triggers the error when reading response.
+            connection.getInputStream();
+            fail();
+        } catch (IOException e) {
+            // Expected.
+            assertEquals("expected " + (TestUtil.UPLOAD_DATA.length - 1) + " bytes but received "
+                            + TestUtil.UPLOAD_DATA.length,
+                    e.getMessage());
+        }
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testWriteMoreThanContentLengthWriteOneByte() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
         // Set a content length that's 1 byte short.
-        mConnection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length - 1);
-        OutputStream out = mConnection.getOutputStream();
+        connection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length - 1);
+        OutputStream out = connection.getOutputStream();
         for (int i = 0; i < TestUtil.UPLOAD_DATA.length - 1; i++) {
             out.write(TestUtil.UPLOAD_DATA[i]);
         }
-        // Try upload an extra byte.
-        IOException e =
-                assertThrows(
-                        IOException.class,
-                        () -> out.write(TestUtil.UPLOAD_DATA[TestUtil.UPLOAD_DATA.length - 1]));
-        String expectedVariant = "expected 0 bytes but received 1";
-        String expectedVariantOnLollipop =
-                "expected "
-                        + (TestUtil.UPLOAD_DATA.length - 1)
-                        + " bytes but received "
-                        + TestUtil.UPLOAD_DATA.length;
-        assertThat(e).hasMessageThat().isAnyOf(expectedVariant, expectedVariantOnLollipop);
+        try {
+            // Try upload an extra byte.
+            out.write(TestUtil.UPLOAD_DATA[TestUtil.UPLOAD_DATA.length - 1]);
+            // On Lollipop, default implementation only triggers the error when reading response.
+            connection.getInputStream();
+            fail();
+        } catch (IOException e) {
+            // Expected.
+            String expectedVariant = "expected 0 bytes but received 1";
+            String expectedVariantOnLollipop = "expected " + (TestUtil.UPLOAD_DATA.length - 1)
+                    + " bytes but received " + TestUtil.UPLOAD_DATA.length;
+            assertTrue(expectedVariant.equals(e.getMessage())
+                    || expectedVariantOnLollipop.equals(e.getMessage()));
+        }
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testFixedLengthStreamingMode() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
-        mConnection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length);
-        OutputStream out = mConnection.getOutputStream();
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
+        connection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length);
+        OutputStream out = connection.getOutputStream();
         out.write(TestUtil.UPLOAD_DATA);
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
-        assertThat(TestUtil.getResponseAsString(mConnection))
-                .isEqualTo(TestUtil.UPLOAD_DATA_STRING);
+        assertEquals(200, connection.getResponseCode());
+        assertEquals("OK", connection.getResponseMessage());
+        assertEquals(TestUtil.UPLOAD_DATA_STRING, TestUtil.getResponseAsString(connection));
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testFixedLengthStreamingModeWriteOneByte() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
-        mConnection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length);
-        OutputStream out = mConnection.getOutputStream();
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
+        connection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length);
+        OutputStream out = connection.getOutputStream();
         for (int i = 0; i < TestUtil.UPLOAD_DATA.length; i++) {
             // Write one byte at a time.
             out.write(TestUtil.UPLOAD_DATA[i]);
         }
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
-        assertThat(TestUtil.getResponseAsString(mConnection))
-                .isEqualTo(TestUtil.UPLOAD_DATA_STRING);
+        assertEquals(200, connection.getResponseCode());
+        assertEquals("OK", connection.getResponseMessage());
+        assertEquals(TestUtil.UPLOAD_DATA_STRING, TestUtil.getResponseAsString(connection));
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testFixedLengthStreamingModeLargeData() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
         // largeData is 1.8 MB.
         byte[] largeData = TestUtil.getLargeData();
-        mConnection.setFixedLengthStreamingMode(largeData.length);
-        OutputStream out = mConnection.getOutputStream();
+        connection.setFixedLengthStreamingMode(largeData.length);
+        OutputStream out = connection.getOutputStream();
         int totalBytesWritten = 0;
         // Number of bytes to write each time. It is doubled each time
         // to make sure that the implementation can handle large writes.
@@ -306,32 +352,37 @@ public class CronetFixedModeOutputStreamTest {
             // About 5th iteration of this loop, bytesToWrite will be bigger than 16384.
             bytesToWrite *= 2;
         }
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
-        TestUtil.checkLargeData(TestUtil.getResponseAsString(mConnection));
+        assertEquals(200, connection.getResponseCode());
+        assertEquals("OK", connection.getResponseMessage());
+        TestUtil.checkLargeData(TestUtil.getResponseAsString(connection));
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testFixedLengthStreamingModeLargeDataWriteOneByte() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
         byte[] largeData = TestUtil.getLargeData();
-        mConnection.setFixedLengthStreamingMode(largeData.length);
-        OutputStream out = mConnection.getOutputStream();
+        connection.setFixedLengthStreamingMode(largeData.length);
+        OutputStream out = connection.getOutputStream();
         for (int i = 0; i < largeData.length; i++) {
             // Write one byte at a time.
             out.write(largeData[i]);
         }
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
-        TestUtil.checkLargeData(TestUtil.getResponseAsString(mConnection));
+        assertEquals(200, connection.getResponseCode());
+        assertEquals("OK", connection.getResponseMessage());
+        TestUtil.checkLargeData(TestUtil.getResponseAsString(connection));
+        connection.disconnect();
     }
 
     @Test
     @SmallTest
+    @OnlyRunCronetHttpURLConnection
     public void testJavaBufferSizeLargerThanNativeBufferSize() throws Exception {
         // Set an internal buffer of size larger than the buffer size used
         // in network stack internally.
@@ -352,42 +403,62 @@ public class CronetFixedModeOutputStreamTest {
 
     @Test
     @SmallTest
+    @CompareDefaultWithCronet
     public void testOneMassiveWrite() throws Exception {
         URL url = new URL(NativeTestServer.getEchoBodyURL());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
         byte[] largeData = TestUtil.getLargeData();
-        mConnection.setFixedLengthStreamingMode(largeData.length);
-        OutputStream out = mConnection.getOutputStream();
+        connection.setFixedLengthStreamingMode(largeData.length);
+        OutputStream out = connection.getOutputStream();
         // Write everything at one go, so the data is larger than the buffer
         // used in CronetFixedModeOutputStream.
         out.write(largeData);
-        assertThat(mConnection.getResponseCode()).isEqualTo(200);
-        assertThat(mConnection.getResponseMessage()).isEqualTo("OK");
-        TestUtil.checkLargeData(TestUtil.getResponseAsString(mConnection));
+        assertEquals(200, connection.getResponseCode());
+        assertEquals("OK", connection.getResponseMessage());
+        TestUtil.checkLargeData(TestUtil.getResponseAsString(connection));
+        connection.disconnect();
+    }
+
+    private static class CauseMatcher extends TypeSafeMatcher<Throwable> {
+        private final Class<? extends Throwable> mType;
+        private final String mExpectedMessage;
+
+        public CauseMatcher(Class<? extends Throwable> type, String expectedMessage) {
+            this.mType = type;
+            this.mExpectedMessage = expectedMessage;
+        }
+
+        @Override
+        protected boolean matchesSafely(Throwable item) {
+            return item.getClass().isAssignableFrom(mType)
+                    && item.getMessage().equals(mExpectedMessage);
+        }
+        @Override
+        public void describeTo(Description description) {}
     }
 
     @Test
     @SmallTest
+    @OnlyRunCronetHttpURLConnection
     public void testRewindWithCronet() throws Exception {
+        assertFalse(mTestRule.testingSystemHttpURLConnection());
         // Post preserving redirect should fail.
         URL url = new URL(NativeTestServer.getRedirectToEchoBody());
-        mConnection = (HttpURLConnection) mCronetEngine.openConnection(url);
-        mConnection.setDoOutput(true);
-        mConnection.setRequestMethod("POST");
-        mConnection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length);
-
-        OutputStream out = mConnection.getOutputStream();
+        HttpURLConnection connection =
+                (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("POST");
+        connection.setFixedLengthStreamingMode(TestUtil.UPLOAD_DATA.length);
+        thrown.expect(instanceOf(CallbackExceptionImpl.class));
+        thrown.expectMessage("Exception received from UploadDataProvider");
+        thrown.expectCause(
+                new CauseMatcher(HttpRetryException.class, "Cannot retry streamed Http body"));
+        OutputStream out = connection.getOutputStream();
         out.write(TestUtil.UPLOAD_DATA);
-        IOException e = assertThrows(IOException.class, mConnection::getResponseCode);
-        // TODO(crbug.com/1495774): Consider whether we should be checking this in the first place.
-        if (mTestRule.implementationUnderTest().equals(CronetImplementation.STATICALLY_LINKED)) {
-            assertThat(e).isInstanceOf(CallbackExceptionImpl.class);
-        }
-
-        assertThat(e).hasMessageThat().isEqualTo("Exception received from UploadDataProvider");
-        assertThat(e).hasCauseThat().isInstanceOf(HttpRetryException.class);
-        assertThat(e).hasCauseThat().hasMessageThat().isEqualTo("Cannot retry streamed Http body");
+        connection.getResponseCode();
+        connection.disconnect();
     }
 }

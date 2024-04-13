@@ -10,7 +10,6 @@
 #include "base/notreached.h"
 #include "base/numerics/clamped_math.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/strings/stringprintf.h"
 #include "components/cbor/constants.h"
 #include "components/cbor/values.h"
 
@@ -23,26 +22,17 @@ static bool AppendHex(const std::vector<uint8_t> bytes,
                       char type_char,
                       size_t rough_max_output_bytes,
                       std::string* s) {
-  if (s->size() > rough_max_output_bytes) {
+  s->push_back(type_char);
+  s->push_back('\'');
+
+  if (ClampAdd(s->size(), ClampMul(2u, bytes.size())) >
+      rough_max_output_bytes) {
     return false;
   }
+  s->append(base::HexEncode(bytes.data(), bytes.size()));
 
-  const size_t hex_size = ClampMul(2u, bytes.size());
-  // If the hex string would be longer than 87.5% of the total output space, or
-  // if it would cause the current string to be too long, replace it with an
-  // indication of its length. (87.5% was chosen because it's easy to
-  // calculate and is reasonable.)
-  if (hex_size > rough_max_output_bytes - (rough_max_output_bytes >> 3) ||
-      ClampAdd(s->size(), hex_size) >= rough_max_output_bytes) {
-    s->append(base::StringPrintf("(%zu bytes)", bytes.size()));
-  } else {
-    s->push_back(type_char);
-    s->push_back('\'');
-    s->append(base::HexEncode(bytes));
-    s->push_back('\'');
-  }
-
-  return s->size() < rough_max_output_bytes;
+  s->push_back('\'');
+  return true;
 }
 
 static bool Serialize(const Value& node,
@@ -144,9 +134,7 @@ static bool Serialize(const Value& node,
           break;
       }
       break;
-    case Value::Type::FLOAT_VALUE:
-      s->append(base::NumberToString(node.GetDouble()));
-      break;
+
     case Value::Type::NONE:
       s->append("none");
       break;

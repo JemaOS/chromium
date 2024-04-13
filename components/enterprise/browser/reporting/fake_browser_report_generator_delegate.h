@@ -11,7 +11,6 @@
 #include "base/files/file_path.h"
 #include "base/strings/string_piece.h"
 #include "components/enterprise/browser/reporting/browser_report_generator.h"
-#include "components/enterprise/browser/reporting/real_time_report_controller.h"
 #include "components/enterprise/browser/reporting/report_util.h"
 #include "components/enterprise/browser/reporting/reporting_delegate_factory.h"
 #include "components/version_info/channel.h"
@@ -23,7 +22,7 @@ class BrowserReport;
 
 namespace policy {
 class PolicyConversionsClient;
-class CloudPolicyManager;
+class MachineLevelUserCloudPolicyManager;
 }  // namespace policy
 
 namespace enterprise_reporting::test {
@@ -44,11 +43,10 @@ class FakeProfileReportGeneratorDelegate
   void GetExtensionRequest(
       enterprise_management::ChromeUserProfileInfo* report) override;
 
-  std::unique_ptr<policy::PolicyConversionsClient> MakePolicyConversionsClient(
-      bool is_machine_scope) override;
+  std::unique_ptr<policy::PolicyConversionsClient> MakePolicyConversionsClient()
+      override;
 
-  policy::CloudPolicyManager* GetCloudPolicyManager(
-      bool is_machine_scope) override;
+  policy::MachineLevelUserCloudPolicyManager* GetCloudPolicyManager() override;
 };
 
 class FakeBrowserReportGeneratorDelegate
@@ -81,22 +79,19 @@ class FakeReportingDelegateFactory : public ReportingDelegateFactory {
   ~FakeReportingDelegateFactory() override;
 
   std::unique_ptr<BrowserReportGenerator::Delegate>
-  GetBrowserReportGeneratorDelegate() const override;
+  GetBrowserReportGeneratorDelegate() override;
 
   std::unique_ptr<ProfileReportGenerator::Delegate>
-  GetProfileReportGeneratorDelegate() const override;
+  GetProfileReportGeneratorDelegate() override;
 
   std::unique_ptr<ReportGenerator::Delegate> GetReportGeneratorDelegate()
-      const override;
+      override;
 
   std::unique_ptr<ReportScheduler::Delegate> GetReportSchedulerDelegate()
-      const override;
+      override;
 
   std::unique_ptr<RealTimeReportGenerator::Delegate>
-  GetRealTimeReportGeneratorDelegate() const override;
-
-  std::unique_ptr<RealTimeReportController::Delegate>
-  GetRealTimeReportControllerDelegate() const override;
+  GetRealTimeReportGeneratorDelegate() override;
 
  private:
   const std::string executable_path_;

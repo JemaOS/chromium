@@ -5,14 +5,13 @@
 #ifndef COMPONENTS_CAST_STREAMING_TEST_CAST_STREAMING_TEST_SENDER_H_
 #define COMPONENTS_CAST_STREAMING_TEST_CAST_STREAMING_TEST_SENDER_H_
 
-#include <optional>
-
 #include "components/cast/message_port/message_port.h"
 #include "components/openscreen_platform/task_runner.h"
 #include "media/base/audio_decoder_config.h"
 #include "media/base/decoder_buffer.h"
 #include "media/base/video_decoder_config.h"
 #include "net/base/ip_address.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/openscreen/src/cast/streaming/sender_session.h"
 
 namespace cast_streaming {
@@ -56,8 +55,8 @@ class CastStreamingTestSender final
   // be set.
   void Start(std::unique_ptr<cast_api_bindings::MessagePort> message_port,
              net::IPAddress receiver_address,
-             std::optional<media::AudioDecoderConfig> audio_config,
-             std::optional<media::VideoDecoderConfig> video_config);
+             absl::optional<media::AudioDecoderConfig> audio_config,
+             absl::optional<media::VideoDecoderConfig> video_config);
 
   // Ends the Cast Streaming Session.
   void Stop();
@@ -77,10 +76,12 @@ class CastStreamingTestSender final
   // Runs until |has_startup_completed_| is false.
   void RunUntilStopped();
 
-  const std::optional<media::AudioDecoderConfig>& audio_decoder_config() const {
+  const absl::optional<media::AudioDecoderConfig>& audio_decoder_config()
+      const {
     return audio_decoder_config_;
   }
-  const std::optional<media::VideoDecoderConfig>& video_decoder_config() const {
+  const absl::optional<media::VideoDecoderConfig>& video_decoder_config()
+      const {
     return video_decoder_config_;
   }
 
@@ -108,8 +109,8 @@ class CastStreamingTestSender final
   std::unique_ptr<openscreen::cast::SenderSession> sender_session_;
 
   bool has_startup_completed_ = false;
-  std::optional<media::AudioDecoderConfig> audio_decoder_config_;
-  std::optional<media::VideoDecoderConfig> video_decoder_config_;
+  absl::optional<media::AudioDecoderConfig> audio_decoder_config_;
+  absl::optional<media::VideoDecoderConfig> video_decoder_config_;
 
   // Used to implement RunUntilStarted() and RunUntilStopped().
   base::OnceClosure sender_started_closure_;

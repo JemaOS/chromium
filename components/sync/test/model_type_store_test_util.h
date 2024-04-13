@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include "components/sync/base/storage_type.h"
 #include "components/sync/model/model_type_store.h"
 
 namespace syncer {
@@ -18,8 +17,7 @@ class ModelTypeStoreTestUtil {
  public:
   // Creates an in memory store synchronously.
   static std::unique_ptr<ModelTypeStore> CreateInMemoryStoreForTest(
-      ModelType type = PREFERENCES,
-      StorageType storage_type = StorageType::kUnspecified);
+      ModelType type = UNSPECIFIED);
 
   // Creates a factory callback to synchronously return in memory stores.
   static RepeatingModelTypeStoreFactory FactoryForInMemoryStoreForTest();

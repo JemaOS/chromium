@@ -183,11 +183,11 @@ RenderPassBuilder& RenderPassBuilder::AddRenderPassQuad(
     const RenderPassQuadParams& params) {
   auto* sqs = AppendDefaultSharedQuadState(rect, visible_rect);
   auto* quad = pass_->CreateAndAppendDrawQuad<CompositorRenderPassDrawQuad>();
-  quad->SetAll(
-      sqs, rect, visible_rect, params.needs_blending, id, kInvalidResourceId,
-      gfx::RectF(), gfx::Size(), gfx::Vector2dF(1.0f, 1.0f), gfx::PointF(),
-      gfx::RectF(), params.force_anti_aliasing_off,
-      /*backdrop_filter_quality=*/1.0f, params.intersects_damage_under);
+  quad->SetAll(sqs, rect, visible_rect, params.needs_blending, id,
+               kInvalidResourceId, gfx::RectF(), gfx::Size(), gfx::Vector2dF(),
+               gfx::PointF(), gfx::RectF(), params.force_anti_aliasing_off,
+               /*backdrop_filter_quality=*/1.0f,
+               params.intersects_damage_under);
 
   return *this;
 }
@@ -208,10 +208,9 @@ RenderPassBuilder& RenderPassBuilder::AddTextureQuad(
   auto* quad = pass_->CreateAndAppendDrawQuad<TextureDrawQuad>();
   quad->SetAll(sqs, rect, visible_rect, params.needs_blending, resource_id,
                rect.size(), params.premultiplied_alpha, gfx::PointF(0.0f, 0.0f),
-               gfx::PointF(1.0f, 1.0f), params.background_color, params.flipped,
-               params.nearest_neighbor, params.secure_output_only,
-               params.protected_video_type);
-  quad->set_vertex_opacity(params.vertex_opacity);
+               gfx::PointF(1.0f, 1.0f), params.background_color,
+               params.vertex_opacity, params.flipped, params.nearest_neighbor,
+               params.secure_output_only, gfx::ProtectedVideoType::kClear);
 
   return *this;
 }
@@ -238,7 +237,7 @@ RenderPassBuilder& RenderPassBuilder::SetQuadOpacity(float opacity) {
 }
 
 RenderPassBuilder& RenderPassBuilder::SetQuadClipRect(
-    std::optional<gfx::Rect> clip_rect) {
+    absl::optional<gfx::Rect> clip_rect) {
   CHECK(!clip_rect || pass_->output_rect.Contains(*clip_rect));
   GetLastQuadSharedQuadState()->clip_rect = clip_rect;
   return *this;
@@ -288,9 +287,8 @@ SharedQuadState* RenderPassBuilder::AppendDefaultSharedQuadState(
     const gfx::Rect visible_rect) {
   SharedQuadState* sqs = pass_->CreateAndAppendSharedQuadState();
   sqs->SetAll(gfx::Transform(), rect, visible_rect, gfx::MaskFilterInfo(),
-              /*clip=*/std::nullopt, /*contents_opaque=*/false,
-              /*opacity_f=*/1.0f, SkBlendMode::kSrcOver, /*sorting_context=*/0,
-              /*layer_id=*/0u, /*fast_rounded_corner=*/false);
+              /*clip=*/absl::nullopt, /*contents_opaque=*/false,
+              /*opacity_f=*/1.0f, SkBlendMode::kSrcOver, 0);
   return sqs;
 }
 
@@ -520,7 +518,7 @@ void PopulateTransferableResources(CompositorFrame& frame) {
         // Adds a TransferableResource the first time seeing a ResourceId.
         if (resources_added.insert(resource_id).second) {
           frame.resource_list.push_back(TransferableResource::MakeSoftware(
-              SharedBitmap::GenerateId(), gpu::SyncToken(), quad->rect.size(),
+              SharedBitmap::GenerateId(), quad->rect.size(),
               SinglePlaneFormat::kRGBA_8888));
           frame.resource_list.back().id = resource_id;
         }

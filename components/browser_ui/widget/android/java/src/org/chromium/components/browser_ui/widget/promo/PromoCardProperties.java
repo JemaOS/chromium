@@ -15,7 +15,9 @@ import org.chromium.ui.modelutil.PropertyModel.ReadableObjectPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableBooleanPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
 
-/** Properties for PromoCardView. */
+/**
+ * Properties for PromoCardView.
+ */
 public class PromoCardProperties {
     // Visible related properties
     public static final WritableBooleanPropertyKey HAS_SECONDARY_BUTTON =
@@ -64,19 +66,11 @@ public class PromoCardProperties {
     public static final ReadableObjectPropertyKey<Runnable> IMPRESSION_SEEN_CALLBACK =
             new ReadableObjectPropertyKey<>();
 
-    /** All the property keys needed to create the model for {@link PromoCardView}. */
-    public static final PropertyKey[] ALL_KEYS =
-            new PropertyKey[] {
-                HAS_SECONDARY_BUTTON,
-                IMAGE,
-                ICON_TINT,
-                TITLE,
-                DESCRIPTION,
-                PRIMARY_BUTTON_TEXT,
-                SECONDARY_BUTTON_TEXT,
-                PRIMARY_BUTTON_CALLBACK,
-                SECONDARY_BUTTON_CALLBACK,
-                IS_IMPRESSION_ON_PRIMARY_BUTTON,
-                IMPRESSION_SEEN_CALLBACK
-            };
+    /**
+     * All the property keys needed to create the model for {@link PromoCardView}.
+     */
+    public static final PropertyKey[] ALL_KEYS = new PropertyKey[] {HAS_SECONDARY_BUTTON, IMAGE,
+            ICON_TINT, TITLE, DESCRIPTION, PRIMARY_BUTTON_TEXT, SECONDARY_BUTTON_TEXT,
+            PRIMARY_BUTTON_CALLBACK, SECONDARY_BUTTON_CALLBACK, IS_IMPRESSION_ON_PRIMARY_BUTTON,
+            IMPRESSION_SEEN_CALLBACK};
 }

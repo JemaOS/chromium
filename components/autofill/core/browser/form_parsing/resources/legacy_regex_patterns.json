@@ -10,18 +10,7 @@
         "positive_score": 0.0,
         "negative_pattern": null,
         "match_field_attributes": [],
-        "form_control_types": []
-      }
-    ]
-  },
-  "ADDRESS_HOME_STREET_LOCATION": {
-    "es": [
-      {
-        "positive_pattern": "calle y número",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": []
       }
     ]
   },
@@ -32,7 +21,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "de" : [
@@ -41,7 +30,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "es" : [
@@ -50,7 +39,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "ru" : [
@@ -59,16 +48,16 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "pt" : [
       {
-        "positive_pattern": "rua|avenida|endere[çc]o|logradouro|dirección",
+        "positive_pattern": "rua|avenida|((?<!do |de )endereço)",
         "positive_score": 1.1,
-        "negative_pattern": "(do |de )endere[çc]o",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ]
   },
@@ -79,16 +68,16 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
 	],
     "es": [
       {
-        "positive_pattern": "interior|número.*apartamento|departamento",
+        "positive_pattern": "interior|número.*apartamento",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
 	],
     "de": [
@@ -97,7 +86,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
 	],
     "ru": [
@@ -106,7 +95,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
 	],
     "it": [
@@ -115,7 +104,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
 	],
     "fr": [
@@ -124,7 +113,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
 	]
   },
@@ -135,7 +124,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "de": [
@@ -144,7 +133,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "pt": [
@@ -153,25 +142,25 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "es": [
       {
-        "positive_pattern": "exterior",
+        "positive_pattern": "n(u|ú)mero.*apartamento|exterior",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
-    ],
+	],
     "ru": [
       {
         "positive_pattern": "дом|номер.?дома",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -182,7 +171,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -193,7 +182,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -202,7 +191,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "pt": [
@@ -211,54 +200,45 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
   "ADDRESS_NAME_IGNORED": {
     "en": [
       {
-        "positive_pattern": "(?:address|location).*(?:nickname|label|type)",
+        "positive_pattern": "address.*nickname|address.*label",
         "positive_score": 1.1,
-        "negative_pattern": "e.?mail|re.?type|typed",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
-      }
-    ],
-    "es": [
-      {
-        "positive_pattern": "(?:alias|identificador|nombre).*dirección",
-        "positive_score": 1.1,
-        "negative_pattern": "e.?mail|correo|apellido|nombres",
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "tr": [
       {
-        "positive_pattern": "adres (?:[İi]sim|başlığı|adı)",
+        "positive_pattern": "adres ([İi]sim|başlığı|adı)",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "pt": [
       {
-        "positive_pattern": "(?:tipo|nome|apelido|identificação|título).*(?:endereço|local da entrega)",
+        "positive_pattern": "identificação do endereço",
         "positive_score": 1.1,
-        "negative_pattern": "e.?mail|eletrónico|usuário|nomes",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "id": [
       {
-        "positive_pattern": "(?:label|judul|nama) alamat",
+        "positive_pattern": "(label|judul|nama) alamat",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -269,16 +249,16 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "de": [
       {
-        "positive_pattern": "firma|firmenname",
+        "positive_pattern": "(?<!con)firma|firmenname",
         "positive_score": 1.1,
-        "negative_pattern": "confirma",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -287,7 +267,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
@@ -296,7 +276,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "it": [
@@ -305,7 +285,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -314,7 +294,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ru": [
@@ -323,7 +303,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "zh-CN": [
@@ -332,7 +312,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fa": [
@@ -341,7 +321,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ko": [
@@ -350,7 +330,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "id": [
@@ -359,7 +339,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -370,14 +350,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       },
       {
         "positive_pattern": "(^\\W*address)|(address\\W*$)|(?:shipping|billing|mailing|pick.?up|drop.?off|delivery|sender|postal|recipient|home|work|office|school|business|mail)[\\s\\-]+address|address\\s+(of|for|to|from)|street.*(house|building|apartment|floor)|(house|building|apartment|floor).*street",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "de": [
@@ -386,7 +366,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "es": [
@@ -395,7 +375,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "fr": [
@@ -404,14 +384,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       },
       {
         "positive_pattern": "adresse",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "it": [
@@ -420,14 +400,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       },
       {
         "positive_pattern": "indirizzo",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "ja": [
@@ -436,23 +416,23 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       },
       {
         "positive_pattern": "住所",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "pt": [
       {
-        "positive_pattern": "morada|endereço",
+        "positive_pattern": "morada|((?<!do |de )endereço)",
         "positive_score": 1.1,
-        "negative_pattern": "(do |de )endereço",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "ru": [
@@ -461,14 +441,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       },
       {
         "positive_pattern": "улиц.*(дом|корпус|квартир|этаж)|(дом|корпус|квартир|этаж).*улиц",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "zh-CN": [
@@ -477,23 +457,23 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "tr": [
       {
-        "positive_pattern": "(\\b|_)adres(\\b|_)",
+        "positive_pattern": "(\\b|_)adres(?! tarifi)(\\b|_)",
         "positive_score": 1.1,
-        "negative_pattern": "(\\b|_)adres tarifi(\\b|_)",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       },
       {
-        "positive_pattern": "(\\b|_)adres(\\b|_)|(sokak|cadde).*(apartman|bina|daire|mahalle)|(apartman|bina|daire|mahalle).*(sokak|cadde)",
+        "positive_pattern": "(\\b|_)adres(?! tarifi)(\\b|_)|(sokak|cadde).*(apartman|bina|daire|mahalle)|(apartman|bina|daire|mahalle).*(sokak|cadde)",
         "positive_score": 1.1,
-        "negative_pattern": "(\\b|_)adres tarifi(\\b|_)",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "ko": [
@@ -502,7 +482,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ,
       {
@@ -510,7 +490,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ],
     "id": [
@@ -519,7 +499,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ,
       {
@@ -527,7 +507,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SEARCH"]
       }
     ]
   },
@@ -538,14 +518,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       },
       {
         "positive_pattern": "address|line",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "de": [
@@ -554,16 +534,16 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
       {
-        "positive_pattern": "direccion2|adicional",
+        "positive_pattern": "direccion2|colonia|adicional",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
@@ -572,14 +552,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       },
       {
         "positive_pattern": "adresse",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "it": [
@@ -588,14 +568,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       },
       {
         "positive_pattern": "indirizzo",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -604,7 +584,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "pt": [
@@ -613,7 +593,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ru": [
@@ -622,7 +602,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "zh-CN": [
@@ -631,14 +611,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       },
       {
         "positive_pattern": "地址",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ko": [
@@ -647,14 +627,14 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       },
       {
         "positive_pattern": "주소",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -665,7 +645,16 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
+      }
+    ],
+    "es": [
+      {
+        "positive_pattern": "municipio",
+        "positive_score": 1.1,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
@@ -674,7 +663,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "it": [
@@ -683,7 +672,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -694,7 +683,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -705,7 +694,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "es": [
@@ -714,25 +703,25 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "de": [
       {
-        "positive_pattern": "(\\b|_)land(\\b|_)",
+        "positive_pattern": "(\\b|_)land(\\b|_)(?!.*(mark.*))",
         "positive_score": 1.1,
-        "negative_pattern": "(\\b|_)land(\\b|_).*mark.*",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ja": [
       {
-        "positive_pattern": "国",
+        "positive_pattern": "(?<!(入|出))国",
         "positive_score": 1.1,
-        "negative_pattern": "(入|出)国",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "zh-CN": [
@@ -741,7 +730,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ko": [
@@ -750,7 +739,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "tr": [
@@ -759,7 +748,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "fa": [
@@ -768,7 +757,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "id": [
@@ -777,7 +766,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ]
   },
@@ -788,18 +777,27 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["SELECT", "SEARCH"]
       }
     ]
   },
   "ZIP_CODE": {
     "en": [
       {
-        "positive_pattern": "(?<!\\.)zip|postal|post.*code|pcode|pin.?code",
+        "positive_pattern": "zip|postal|post.*code|pcode|pin.?code",
+        "positive_score": 1.1,
+        "negative_pattern": "\\.zip\\b",
+        "negative_patterns_explainer": ".zip refers to a file extension. However, there are field billingAddress.zip",
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
+      },
+      {
+        "positive_pattern": "address\\.zip",
         "positive_score": 1.1,
         "negative_pattern": null,
+        "negative_patterns_explainer": "",
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "de": [
@@ -808,7 +806,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "es": [
@@ -817,7 +815,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "fr": [
@@ -826,7 +824,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "it": [
@@ -835,7 +833,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ja": [
@@ -844,16 +842,16 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "pt": [
       {
         "positive_pattern": "codigo|codpos|\\bcep\\b",
         "positive_score": 1.1,
-        "negative_pattern": "codigo.*segur",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ru": [
@@ -862,7 +860,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "hi": [
@@ -871,7 +869,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ml": [
@@ -880,7 +878,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "zh-CN": [
@@ -889,7 +887,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "zh-TW": [
@@ -898,7 +896,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "tr": [
@@ -907,7 +905,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ko": [
@@ -916,7 +914,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "id": [
@@ -925,7 +923,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -937,7 +935,7 @@
         "negative_pattern": "\\.zip",
         "negative_patterns_explainer": ".zip refers to a file extension",
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "pt": [
@@ -946,7 +944,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -957,7 +955,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH", "TEXT_AREA"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "pt": [
@@ -966,7 +964,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH", "TEXT_AREA"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "tr": [
@@ -975,7 +973,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH", "TEXT_AREA"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "id": [
@@ -984,16 +982,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH", "TEXT_AREA"]
-      }
-    ],
-    "es": [
-      {
-        "positive_pattern": "colonia",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH", "TEXT_AREA"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ]
   },
@@ -1004,7 +993,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "de": [
@@ -1013,16 +1002,16 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "es": [
       {
-        "positive_pattern": "ciudad|localidad|poblacion",
+        "positive_pattern": "ciudad|provincia|localidad|poblacion",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "fr": [
@@ -1031,7 +1020,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "it": [
@@ -1040,7 +1029,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ja": [
@@ -1049,16 +1038,16 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "pt": [
       {
-        "positive_pattern": "cidade",
+        "positive_pattern": "cidade|município",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ru": [
@@ -1067,7 +1056,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "zh-TW": [
@@ -1076,7 +1065,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "fa": [
@@ -1085,7 +1074,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "hi": [
@@ -1094,7 +1083,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ml": [
@@ -1103,7 +1092,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "tr": [
@@ -1112,7 +1101,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ko": [
@@ -1121,7 +1110,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "id": [
@@ -1130,18 +1119,18 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ]
   },
   "STATE": {
     "en": [
       {
-        "positive_pattern": "(?<!(united|hist|history).?)state|region|province|county|principality",
+        "positive_pattern": "(?<!(united|hist|history).?)state|county|region|province|county|principality",
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ja": [
@@ -1150,7 +1139,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "pt": [
@@ -1159,7 +1148,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ru": [
@@ -1168,7 +1157,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "zh-TW": [
@@ -1177,7 +1166,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ml": [
@@ -1186,7 +1175,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "fa": [
@@ -1195,7 +1184,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "hi": [
@@ -1204,7 +1193,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "tr": [
@@ -1213,7 +1202,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "ko": [
@@ -1222,7 +1211,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "id": [
@@ -1231,159 +1220,7 @@
         "positive_score": 1.1,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "OVERFLOW_AND_LANDMARK": {
-    "en": [
-      {
-        "positive_pattern": "complement and reference",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ],
-    "pt": [
-      {
-        "__comment__": "e.g. 'complemento e referência' or 'complemento e ponto de referência'",
-        "positive_pattern": "complemento e.*referência|complement and reference",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "OVERFLOW": {
-    "de": [
-      {
-        "positive_pattern": "adresszusatz",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ],
-    "pt": [
-      {
-        "positive_pattern": "complemento|informações adicionais",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "LANDMARK": {
-    "en": [
-      {
-        "positive_pattern": "landmark",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ],
-    "pt": [
-      {
-        "positive_pattern": "ref[êe]r[êe]ncia",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ],
-    "es": [
-      {
-        "positive_pattern": "ref[êe]r[êe]ncia",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "BETWEEN_STREETS_OR_LANDMARK": {
-    "en": [
-      {
-        "positive_pattern": "(cross|between).*street.*landmark|landmark.*(cross|between).*street",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ],
-    "es": [
-      {
-        "positive_pattern": "entre.*calle.*referencia|referencia.*entre.*calle",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "BETWEEN_STREETS": {
-    "en": [
-      {
-        "positive_pattern": "(cross|between).*street",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ],
-    "es": [
-      {
-        "positive_pattern": "entre.*calles",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "BETWEEN_STREETS_LINE_1": {
-    "es": [ // es-MX
-      {
-        "positive_pattern": "entre.*calle(.*1)?",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "BETWEEN_STREETS_LINE_2": {
-    "es": [ // es-MX
-      {
-        "positive_pattern": "entre.*calle(.*2)?|y.*calle",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "ADMIN_LEVEL_2": {
-    "pt": [
-      {
-        "positive_pattern": "município",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH", "SELECT_ONE", "SELECT_LIST"]
-      }
-    ],
-    "es": [
-      {
-        "positive_pattern": "municipio|delegaci[oó]n",
-        "positive_score": 1.1,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH", "SELECT_ONE", "SELECT_LIST"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ]
   },
@@ -1394,7 +1231,7 @@
         "positive_score": 0.8,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TEXT_AREA", "SEARCH"]
       }
     ],
     "de": [
@@ -1403,7 +1240,7 @@
         "positive_score": 0.8,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TEXT_AREA", "SEARCH"]
       }
     ],
     "zh-CN": [
@@ -1412,7 +1249,7 @@
         "positive_score": 0.8,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TEXT_AREA", "SEARCH"]
       }
     ],
     "ja": [
@@ -1421,7 +1258,7 @@
         "positive_score": 0.8,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TEXT_AREA", "SEARCH"]
       }
     ],
     "fr": [
@@ -1430,7 +1267,7 @@
         "positive_score": 0.8,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TEXT_AREA", "SEARCH"]
       }
     ],
     "pt": [
@@ -1439,7 +1276,7 @@
         "positive_score": 0.8,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TEXT_AREA", "SEARCH"]
       }
     ],
     "fa": [
@@ -1448,7 +1285,7 @@
         "positive_score": 0.8,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TEXT_AREA", "SEARCH"]
       }
     ],
     "ru": [
@@ -1457,18 +1294,19 @@
         "positive_score": 0.8,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TEXT_AREA", "SEARCH"]
       }
     ]
   },
   "NUMERIC_QUANTITY": {
     "en": [
       {
+        "pattern_identifier": "en_numeric_quantity_preserving",
         "positive_pattern": "size|height|quantity|length|amount",
         "positive_score": 0.95,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "TEXT_AREA", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "TEXT_AREA", "NUMBER", "SEARCH"]
       }
     ]
    },
@@ -1479,7 +1317,7 @@
         "positive_score": 0.95,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "TEXT_AREA", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "TEXT_AREA", "NUMBER", "SEARCH"]
       }
     ],
     "ar": [
@@ -1488,7 +1326,7 @@
         "positive_score": 0.95,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "TEXT_AREA", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "TEXT_AREA", "NUMBER", "SEARCH"]
       }
     ],
     "fa": [
@@ -1497,7 +1335,7 @@
         "positive_score": 0.95,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "TEXT_AREA", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "TEXT_AREA", "NUMBER", "SEARCH"]
       }
     ],
     "fr": [
@@ -1506,18 +1344,18 @@
         "positive_score": 0.95,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "TEXT_AREA", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "SELECT", "TEXT_AREA", "NUMBER", "SEARCH"]
       }
     ]
   },
   "NAME_ON_CARD": {
     "en": [
       {
-        "positive_pattern": "card.?(?:holder|owner)|name.*on.*card|(?:card|cc).?name|cc.?full.?name",
+        "positive_pattern": "card.?(?:holder|owner)|name.*(\\b)?on(\\b)?.*card|(?:card|cc).?name|cc.?full.?name",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "de": [
@@ -1526,16 +1364,16 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
       {
-        "positive_pattern": "nombre.*tarjeta|nombre.*titular|titular.*tarjeta",
+        "positive_pattern": "nombre.*tarjeta",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
@@ -1544,7 +1382,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "it": [
@@ -1553,7 +1391,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -1562,17 +1400,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
-      }
-    ],
-    "pt": [
-      {
-        "__comment__": "'do titular do cartão' is a negative pattern because we observed eg. 'CPF do Titular do Cartão'.",
-        "positive_pattern": "nome do titular|nome impresso no cartão|titular do cartão",
-        "positive_score": 1.0,
-        "negative_pattern": "do titular do cartão",
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ru": [
@@ -1581,7 +1409,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "zh-CN": [
@@ -1590,7 +1418,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "id": [
@@ -1599,7 +1427,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -1610,27 +1438,27 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
   "CREDIT_CARD_NUMBER": {
     "en": [
       {
-        "positive_pattern": "(?:card|cc|acct).?(?:number|#|no|num|field(?!s)|pan)|0000 ?0000 ?0000 ?0000|1234 ?1234 ?1234 ?1234|^xxxx ?xxxx ?xxxx ?xxxx$",
+        "positive_pattern": "(add)?(?:card|cc|acct).?(?:number|#|no|num|field|pan)",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "de": [
       {
-        "positive_pattern": "nummer",
+        "positive_pattern": "(?<!telefon|haus|person|fødsels|kunden)nummer",
         "positive_score": 1.0,
-        "negative_pattern": "(telefon|haus|person|fødsels|kunden)nummer",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "ja": [
@@ -1639,7 +1467,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "ru": [
@@ -1648,7 +1476,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "zh-CN": [
@@ -1657,7 +1485,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "zh-TW": [
@@ -1666,7 +1494,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "ko": [
@@ -1675,34 +1503,34 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "es": [
       {
-        "positive_pattern": "(numero|número|numéro)",
+        "positive_pattern": "(numero|número|numéro)(?!.*(document|fono|phone|réservation))",
         "positive_score": 1.0,
-        "negative_pattern": "(numero|número|numéro).*(document|fono|phone|réservation)",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "pt": [
       {
-        "positive_pattern": "(numero|número|numéro)",
+        "positive_pattern": "(numero|número|numéro)(?!.*(document|fono|phone|réservation))",
         "positive_score": 1.0,
-        "negative_pattern": "(numero|número|numéro).*(document|fono|phone|réservation)",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "fr": [
       {
-        "positive_pattern": "(numero|número|numéro)",
+        "positive_pattern": "(numero|número|numéro)(?!.*(document|fono|phone|réservation))",
         "positive_score": 1.0,
-        "negative_pattern": "(numero|número|numéro).*(document|fono|phone|réservation)",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ],
     "id": [
@@ -1711,47 +1539,29 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ]
   },
   "CREDIT_CARD_VERIFICATION_CODE": {
     "en": [
       {
-        "positive_pattern": "verification|card.?identification|security.?code|card.?code|security.?value|security.?number|card.?pin|c-v-v|(?:cvn|cvv|cvc|csc|cvd|ccv)|\\bcid\\b|cccid",
+        "positive_pattern": "verification|card.?identification|security.?code|card.?code|security.?value|security.?number|card.?pin|c-v-v|(cvn|cvv|cvc|csc|cvd|cid|ccv)(field)?|\\bcid\\b",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
-      }
-    ],
-    "br": [
-      {
-        "positive_pattern": "código de segurança",
-        "positive_score": 1.0,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
-      }
-    ],
-    "es": [
-      {
-        "positive_pattern": "código de seguridad",
-        "positive_score": 1.0,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_PASSWORD", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "PASSWORD", "NUMBER"]
       }
     ]
   },
   "CREDIT_CARD_EXP_MONTH": {
     "en": [
       {
-        "positive_pattern": "expir|exp.*mo|exp.*date|cc.?month|cardmonth|addmonth",
+        "positive_pattern": "expir|exp.*mo|exp.*date|ccmonth|cardmonth|addmonth",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "de": [
@@ -1760,7 +1570,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "es": [
@@ -1769,7 +1579,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "fr": [
@@ -1778,7 +1588,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "it": [
@@ -1787,7 +1597,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "ja": [
@@ -1796,16 +1606,16 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "pt": [
       {
-        "positive_pattern": "validade|\\bmês\\b",
+        "positive_pattern": "validade",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "ru": [
@@ -1814,7 +1624,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "zh-CN": [
@@ -1823,7 +1633,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "id": [
@@ -1832,18 +1642,18 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ]
   },
   "CREDIT_CARD_EXP_YEAR": {
     "en": [
       {
-        "positive_pattern": "exp|^/|year",
+        "positive_pattern": "exp|^/|(add)?year",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "de": [
@@ -1852,16 +1662,16 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "es": [
       {
-        "positive_pattern": "fecha|año",
+        "positive_pattern": "fecha",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "it": [
@@ -1870,7 +1680,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "ja": [
@@ -1879,16 +1689,16 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "pt": [
       {
-        "positive_pattern": "validade|\\bano\\b",
+        "positive_pattern": "validade",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "ru": [
@@ -1897,7 +1707,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "zh-CN": [
@@ -1906,7 +1716,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "id": [
@@ -1915,29 +1725,29 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ]
   },
   "CREDIT_CARD_EXP_DATE_2_DIGIT_YEAR": {
     "en": [
       {
-        "positive_pattern": "(?:exp.*date[^y\\n\\r]*|mm\\s*[-/]?\\s*)(?:yy(?!y)|aa(?!a)|jj(?!j))",
+        "positive_pattern": "(?:exp.*date[^y\\n\\r]*|mm\\s*[-/]?\\s*)yy(?:[^y]|$)",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ]
   },
   "CREDIT_CARD_EXP_DATE_4_DIGIT_YEAR": {
     "en": [
       {
-        "positive_pattern": "(?:exp.*date[^y\\n\\r]*|mm\\s*[-/]?\\s*)(?:yyyy(?!y)|aaaa(?!a)|jjjj(?!j))",
+        "positive_pattern": "(?:exp.*date[^y\\n\\r]*|mm\\s*[-/]?\\s*)yyyy(?:[^y]|$)",
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ]
   },
@@ -1948,7 +1758,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "de": [
@@ -1957,7 +1767,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "es": [
@@ -1966,7 +1776,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "fr": [
@@ -1975,7 +1785,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "it": [
@@ -1984,7 +1794,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "ja": [
@@ -1993,7 +1803,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "pt": [
@@ -2002,7 +1812,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ],
     "ru": [
@@ -2011,7 +1821,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ]
   },
@@ -2022,7 +1832,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ]
   },
@@ -2033,18 +1843,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "CREDIT_CARD_EXP_YEAR_AFTER_MONTH_EXPERIMENTAL": {
-    "en": [
-      {
-        "positive_pattern": "^(yy|yyyy|aa|aaaa|jj|jjjj)$",
-        "positive_score": 1.0,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER", "SEARCH"]
       }
     ]
   },
@@ -2055,7 +1854,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER", "SEARCH"]
       }
     ]
   },
@@ -2066,7 +1865,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER", "SEARCH"]
       }
     ]
   },
@@ -2077,7 +1876,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER", "INPUT_SEARCH"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER", "SEARCH"]
       }
     ]
   },
@@ -2088,7 +1887,7 @@
         "positive_score": 1.0,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST"]
+        "match_field_input_types": ["TEXT", "SELECT"]
       }
     ]
   },
@@ -2099,7 +1898,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "fr": [
@@ -2108,7 +1907,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "es": [
@@ -2117,7 +1916,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "ja": [
@@ -2126,7 +1925,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "ru": [
@@ -2135,7 +1934,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "zh-CN": [
@@ -2144,7 +1943,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "zh-TW": [
@@ -2153,7 +1952,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "ml": [
@@ -2162,7 +1961,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "fa": [
@@ -2171,7 +1970,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "hi": [
@@ -2180,7 +1979,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "tr": [
@@ -2189,7 +1988,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ],
     "ko": [
@@ -2198,7 +1997,7 @@
         "positive_score": 1.4,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_EMAIL"]
+        "match_field_input_types": ["TEXT", "EMAIL"]
       }
     ]
   },
@@ -2209,36 +2008,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
-      }
-    ],
-    "zh-CN": [
-      {
-        "positive_pattern": "用户名",
-        "positive_score": 0.9,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
-      }
-    ],
-    "ko": [
-      {
-        "positive_pattern": "(?:사용자.?)?아이디|사용자.?ID",
-        "positive_score": 0.9,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "SELECT_ONE", "SELECT_LIST", "INPUT_SEARCH"]
-      }
-    ]
-  },
-  "FULL_NAME": {
-    "en": [
-      {
-        "positive_pattern": "^name|full.?name|your.?name|customer.?name|bill.?name|ship.?name|name.*first.*last|firstandlastname|contact.?(name|person)|receiver",
-        "positive_score": 0.9,
-        "negative_pattern": null,
-        "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
       }
     ],
     "de": [
@@ -2247,7 +2017,36 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
+      }
+    ],
+    "zh-CN": [
+      {
+        "positive_pattern": "用户名",
+        "positive_score": 0.9,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
+      }
+    ],
+    "ko": [
+      {
+        "positive_pattern": "(?:사용자.?)?아이디|사용자.?ID",
+        "positive_score": 0.9,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT", "SELECT", "SEARCH"]
+      }
+    ]
+  },
+  "FULL_NAME": {
+    "en": [
+      {
+        "positive_pattern": "^name|full.?name|your.?name|customer.?name|bill.?name|ship.?name|name.*first.*last|firstandlastname|contact.?(name|person)",
+        "positive_score": 0.9,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -2256,16 +2055,16 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
       {
-        "positive_pattern": "^nom",
+        "positive_pattern": "^nom(?![a-zA-Z])",
         "positive_score": 0.9,
-        "negative_pattern": "^nom[a-zA-Z]",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -2274,7 +2073,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "pt": [
@@ -2283,7 +2082,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fa": [
@@ -2292,7 +2091,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "zh-CN": [
@@ -2301,7 +2100,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ru": [
@@ -2310,7 +2109,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "tr": [
@@ -2319,7 +2118,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ko": [
@@ -2328,7 +2127,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "id": [
@@ -2337,7 +2136,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -2348,7 +2147,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
@@ -2357,7 +2156,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "pt": [
@@ -2366,7 +2165,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -2377,7 +2176,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "de": [
@@ -2386,7 +2185,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -2395,7 +2194,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
@@ -2404,7 +2203,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -2413,7 +2212,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "pt": [
@@ -2422,7 +2221,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ru": [
@@ -2431,7 +2230,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fa": [
@@ -2440,7 +2239,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ko": [
@@ -2449,7 +2248,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ml": [
@@ -2458,7 +2257,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "tr": [
@@ -2467,7 +2266,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "hi": [
@@ -2476,7 +2275,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "id": [
@@ -2485,7 +2284,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -2496,7 +2295,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -2507,18 +2306,18 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
   "LAST_NAME": {
     "en": [
       {
-        "positive_pattern": "last.*name|lname|surname|last$|secondname|family.*name",
+        "positive_pattern": "last.*name|lname|surname(?!\\d)|last$|secondname|family.*name",
         "positive_score": 0.9,
-        "negative_pattern": "surname\\d",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "de": [
@@ -2527,7 +2326,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -2536,16 +2335,16 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
       {
-        "positive_pattern": "famille|^nom",
+        "positive_pattern": "famille|^nom(?![a-zA-Z])",
         "positive_score": 0.9,
-        "negative_pattern": "^nom[a-zA-Z]",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "it": [
@@ -2554,7 +2353,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -2563,7 +2362,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "pt": [
@@ -2572,7 +2371,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ru": [
@@ -2581,7 +2380,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fa": [
@@ -2590,7 +2389,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "hi": [
@@ -2599,7 +2398,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ml": [
@@ -2608,7 +2407,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "tr": [
@@ -2617,7 +2416,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ko": [
@@ -2626,7 +2425,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "id": [
@@ -2635,7 +2434,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -2646,7 +2445,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -2657,18 +2456,18 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
   "HONORIFIC_PREFIX": {
     "en": [
       {
-        "positive_pattern": "^title:?$|salutation",
+        "positive_pattern": "^title:?$|(salutation(?! and given name))",
         "positive_score": 0.9,
-        "negative_pattern": "salutation and given name",
+        "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "de": [
@@ -2677,7 +2476,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -2686,7 +2485,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "it": [
@@ -2695,7 +2494,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
@@ -2704,7 +2503,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ru": [
@@ -2713,7 +2512,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "el": [
@@ -2722,7 +2521,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "tr": [
@@ -2731,7 +2530,7 @@
         "positive_score": 0.9,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -2742,7 +2541,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "de": [
@@ -2751,7 +2550,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "es": [
@@ -2760,7 +2559,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "fr": [
@@ -2769,7 +2568,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ja": [
@@ -2778,7 +2577,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "pt": [
@@ -2787,7 +2586,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ru": [
@@ -2796,7 +2595,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "hi": [
@@ -2805,7 +2604,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "tr": [
@@ -2814,7 +2613,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "zh-CN": [
@@ -2823,7 +2622,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ml": [
@@ -2832,7 +2631,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ko": [
@@ -2841,7 +2640,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "id": [
@@ -2850,7 +2649,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -2861,7 +2660,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -2872,7 +2671,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "SELECT_ONE", "SELECT_LIST", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "SELECT", "NUMBER"]
       }
     ]
   },
@@ -2883,18 +2682,18 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
   "PHONE_AREA_CODE": {
     "en": [
       {
-        "positive_pattern": "area.*code|acode|area|^\\($",
+        "positive_pattern": "area.*code|acode|area",
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "ko": [
@@ -2903,7 +2702,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -2914,7 +2713,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -2925,7 +2724,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -2936,7 +2735,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "fr": [
@@ -2945,7 +2744,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "pt": [
@@ -2954,7 +2753,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -2965,7 +2764,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -2976,7 +2775,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ],
     "pt": [
@@ -2985,7 +2784,7 @@
         "positive_score": 1.3,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "INPUT_TELEPHONE", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT", "TELEPHONE", "NUMBER"]
       }
     ]
   },
@@ -2996,7 +2795,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "fr": [
@@ -3005,7 +2804,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -3014,7 +2813,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -3023,7 +2822,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -3034,7 +2833,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -3043,7 +2842,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -3052,7 +2851,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -3063,7 +2862,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -3072,7 +2871,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -3081,7 +2880,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -3092,7 +2891,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "es": [
@@ -3101,7 +2900,7 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ],
     "ja": [
@@ -3110,7 +2909,91 @@
         "positive_score": 1.2,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
+      }
+    ]
+  },
+  "UPI_VIRTUAL_PAYMENT_ADDRESS": {
+    "en": [
+      {
+        "positive_pattern": "^[\\w.+-_]+@(\\w+\\.ifsc\\.npci|aadhaar\\.npci|mobile\\.npci|rupay\\.npci)$",
+        "positive_score": 0,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
+      },
+      {
+        "positive_pattern": "^[\\w.+-_]+@(airtel|airtelpaymentsbank|albk|allahabadbank|allbank|andb|apb|apl|axis|axisbank|axisgo|bandhan|barodampay|birla|boi|cbin|cboi|centralbank|cmsidfc|cnrb|csbcash|csbpay|cub|dbs|dcb|dcbbank|denabank|dlb|eazypay|equitas|ezeepay|fbl|federal|finobank|hdfcbank|hsbc|icici|idbi|idbibank|idfc|idfcbank|idfcnetc|ikwik|imobile|indbank|indianbank|indianbk|indus|iob|jkb|jsb|jsbp|karb|karurvysyabank|kaypay|kbl|kbl052|kmb|kmbl|kotak|kvb|kvbank|lime|lvb|lvbank|mahb|obc|okaxis|okbizaxis|okhdfcbank|okicici|oksbi|paytm|payzapp|pingpay|pnb|pockets|psb|purz|rajgovhdfcbank|rbl|sbi|sc|scb|scbl|scmobile|sib|srcb|synd|syndbank|syndicate|tjsb|tjsp|ubi|uboi|uco|unionbank|unionbankofindia|united|upi|utbi|vijayabank|vijb|vjb|ybl|yesbank|yesbankltd)$",
+        "positive_score": 0,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
+      }
+    ]
+  },
+  "INTERNATIONAL_BANK_ACCOUNT_NUMBER": {
+    "en": [
+      {
+        "positive_pattern": "^[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?){0,16}$",
+        "positive_score": 0,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
+      }
+    ]
+  },
+  "VALIDATION_CREDIT_CARD_VERIFICATION_CODE": {
+    "en": [
+      {
+        "positive_pattern": "^\\d{3,4}$",
+        "positive_score": 0,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
+      }
+    ]
+  },
+  "VALIDATION_CREDIT_CARD_EXP_YEAR": {
+    "en": [
+      {
+        "positive_pattern": "^[2][0][1-9][0-9]$",
+        "positive_score": 0,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
+      }
+    ]
+  },
+  "URL_SEARCH_ACTION": {
+    "en": [
+      {
+        "positive_pattern": "/search(/|((\\w*\\.\\w+)?$))",
+        "positive_score": 0,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
+      }
+    ]
+  },
+  "SOCIAL_SECURITY": {
+    "en": [
+      {
+        "positive_pattern": "ssn|social.?security.?(num(ber)?|#)*",
+        "positive_score": 0,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
+      }
+    ]
+  },
+  "ONE_TIME_PASSWORD": {
+    "en": [
+      {
+        "positive_pattern": "one.?time|sms.?(code|token|password|pwd|pass)",
+        "positive_score": 0,
+        "negative_pattern": null,
+        "match_field_attributes": ["LABEL", "NAME"],
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
@@ -3121,18 +3004,18 @@
         "positive_score": 0.85,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   },
-  "IBAN_VALUE": {
+    "IBAN_VALUE": {
     "en": [
       {
         "positive_pattern": "(\\biban(\\b|_)|international bank account number)",
         "positive_score": 0.975,
         "negative_pattern": null,
         "match_field_attributes": ["LABEL", "NAME"],
-        "form_control_types": ["INPUT_TEXT", "TEXT_AREA", "INPUT_NUMBER"]
+        "match_field_input_types": ["TEXT"]
       }
     ]
   }

@@ -38,7 +38,7 @@ TEST(PrintSettingsTest, IsColorModelSelected) {
 }
 
 TEST(PrintSettingsDeathTest, IsColorModelSelectedEdges) {
-  GTEST_FLAG_SET(death_test_style, "threadsafe");
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   EXPECT_DCHECK_DEATH(
       IsColorModelSelected(mojom::ColorModel::kUnknownColorModel));
 }
@@ -56,9 +56,8 @@ TEST(PrintSettingsTest, GetColorModelForModel) {
     color_value.clear();
   }
 }
-#endif  // BUILDFLAG(USE_CUPS)
 
-#if BUILDFLAG(USE_CUPS_IPP)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS_ASH)
 TEST(PrintSettingsTest, GetIppColorModelForModel) {
   for (int model = static_cast<int>(mojom::ColorModel::kUnknownColorModel);
        model <= static_cast<int>(mojom::ColorModel::kMaxValue); ++model) {
@@ -66,6 +65,7 @@ TEST(PrintSettingsTest, GetIppColorModelForModel) {
                      .empty());
   }
 }
-#endif  // BUILDFLAG(USE_CUPS_IPP)
+#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // BUILDFLAG(USE_CUPS)
 
 }  // namespace printing

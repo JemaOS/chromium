@@ -16,7 +16,7 @@ void HistoryDeleteObserver::ObserveServiceForDeletions(
     history_observations_.AddObservation(history_service);
 }
 
-void HistoryDeleteObserver::OnHistoryDeletions(
+void HistoryDeleteObserver::OnURLsDeleted(
     history::HistoryService* history_service,
     const history::DeletionInfo& deletion_info) {
   if (!deletion_info.is_from_expiration())

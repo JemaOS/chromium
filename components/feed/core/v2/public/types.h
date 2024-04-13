@@ -6,7 +6,6 @@
 #define COMPONENTS_FEED_CORE_V2_PUBLIC_TYPES_H_
 
 #include <iosfwd>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,6 +15,7 @@
 #include "base/version.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/version_info/channel.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace feed {
@@ -59,7 +59,6 @@ struct ChromeInfo {
   version_info::Channel channel{};
   base::Version version;
   bool start_surface = false;
-  bool is_new_tab_search_engine_url_android_enabled = false;
 };
 // Device display metrics.
 struct DisplayMetrics {
@@ -94,25 +93,15 @@ struct NetworkResponseInfo {
       AccountTokenFetchStatus::kUnspecified;
   base::TimeTicks fetch_time_ticks;
   base::TimeTicks loader_start_time_ticks;
-  // List of HTTP response header names and values.
-  std::vector<std::string> response_header_names_and_values;
 };
 
 std::ostream& operator<<(std::ostream& os, const NetworkResponseInfo& o);
 
 struct NetworkResponse {
-  NetworkResponse();
-  NetworkResponse(const std::string& response_bytes, int status_code);
-  ~NetworkResponse();
-  NetworkResponse(const NetworkResponse&);
-  NetworkResponse& operator=(const NetworkResponse&);
-
   // HTTP response body.
   std::string response_bytes;
   // HTTP status code if available, or net::Error otherwise.
   int status_code;
-  // List of HTTP response header names and values.
-  std::vector<std::string> response_header_names_and_values;
 };
 
 // For the snippets-internals page.
@@ -124,13 +113,13 @@ struct DebugStreamData {
   DebugStreamData(const DebugStreamData&);
   DebugStreamData& operator=(const DebugStreamData&);
 
-  std::optional<NetworkResponseInfo> fetch_info;
-  std::optional<NetworkResponseInfo> upload_info;
+  absl::optional<NetworkResponseInfo> fetch_info;
+  absl::optional<NetworkResponseInfo> upload_info;
   std::string load_stream_status;
 };
 
 std::string SerializeDebugStreamData(const DebugStreamData& data);
-std::optional<DebugStreamData> DeserializeDebugStreamData(
+absl::optional<DebugStreamData> DeserializeDebugStreamData(
     base::StringPiece base64_encoded);
 
 // Information about a web page which may be used to determine an associated
@@ -271,10 +260,8 @@ enum class StreamKind : int {
   kFollowing = 2,
   // Single Web Feed (Cormorant) stream.
   kSingleWebFeed = 3,
-  // Kid-friendly content stream.
-  kSupervisedUser = 4,
 
-  kMaxValue = kSupervisedUser,
+  kMaxValue = kSingleWebFeed,
 };
 
 // Singe Web entry points

@@ -23,10 +23,11 @@ items:
   value: false
 owners:
 - mpetrisor@google.com
+- eariassoto@google.com
 - imprivata-eng@google.com
 schema:
   type: boolean
-supported_on:
-- chrome_os:116-
+future_on:
+- chrome_os
 tags: []
 type: main

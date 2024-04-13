@@ -9,19 +9,15 @@
 #include "base/functional/bind.h"
 #include "base/message_loop/message_pump.h"
 #include "base/message_loop/message_pump_type.h"
-#include "base/synchronization/waitable_event.h"
 #include "base/task/sequence_manager/sequence_manager.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/test/bind.h"
 #include "components/cronet/android/cronet_context_adapter.h"
-#include "components/cronet/android/cronet_test_apk_jni/CronetTestUtil_jni.h"
+#include "components/cronet/android/cronet_tests_jni_headers/CronetTestUtil_jni.h"
 #include "components/cronet/android/cronet_url_request_adapter.h"
 #include "components/cronet/cronet_context.h"
 #include "components/cronet/cronet_url_request.h"
-#include "net/http/http_server_properties.h"
 #include "net/socket/socket_test_util.h"
 #include "net/url_request/url_request.h"
-#include "net/url_request/url_request_context.h"
 
 namespace cronet {
 namespace {
@@ -121,8 +117,9 @@ static void PrepareNetworkThreadOnNetworkThread(jlong jcontext_adapter) {
 // the corresponding static tables in libcronet_test.so.  Fix this by
 // initializing a MessageLoop and SingleThreadTaskRunner in libcronet_test.so
 // for these threads.  Called from Java CronetTestUtil class.
-void JNI_CronetTestUtil_PrepareNetworkThread(JNIEnv* env,
-                                             jlong jcontext_adapter) {
+void JNI_CronetTestUtil_PrepareNetworkThread(
+    JNIEnv* env,
+    jlong jcontext_adapter) {
   TestUtil::GetTaskRunner(jcontext_adapter)
       ->PostTask(FROM_HERE, base::BindOnce(&PrepareNetworkThreadOnNetworkThread,
                                            jcontext_adapter));
@@ -135,8 +132,9 @@ static void CleanupNetworkThreadOnNetworkThread() {
 }
 
 // Called from Java CronetTestUtil class.
-void JNI_CronetTestUtil_CleanupNetworkThread(JNIEnv* env,
-                                             jlong jcontext_adapter) {
+void JNI_CronetTestUtil_CleanupNetworkThread(
+    JNIEnv* env,
+    jlong jcontext_adapter) {
   TestUtil::RunAfterContextInit(
       jcontext_adapter, base::BindOnce(&CleanupNetworkThreadOnNetworkThread));
 }
@@ -145,7 +143,8 @@ jboolean JNI_CronetTestUtil_CanGetTaggedBytes(JNIEnv* env) {
   return net::CanGetTaggedBytes();
 }
 
-jlong JNI_CronetTestUtil_GetTaggedBytes(JNIEnv* env, jint jexpected_tag) {
+jlong JNI_CronetTestUtil_GetTaggedBytes(JNIEnv* env,
+                                        jint jexpected_tag) {
   return net::GetTaggedBytes(jexpected_tag);
 }
 

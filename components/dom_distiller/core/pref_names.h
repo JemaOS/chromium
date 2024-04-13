@@ -5,18 +5,16 @@
 #ifndef COMPONENTS_DOM_DISTILLER_CORE_PREF_NAMES_H_
 #define COMPONENTS_DOM_DISTILLER_CORE_PREF_NAMES_H_
 
-namespace dom_distiller::prefs {
+namespace dom_distiller {
+namespace prefs {
 
-// Path to the integer corresponding to user's preference theme.
-inline constexpr char kFont[] = "dom_distiller.font_family";
-// Path to the integer corresponding to user's preference font family.
-inline constexpr char kTheme[] = "dom_distiller.theme";
-// Path to the float corresponding to user's preference font scaling.
-inline constexpr char kFontScale[] = "dom_distiller.font_scale";
-// Path to the boolean whether Reader Mode for Accessibility option is enabled.
-inline constexpr char kReaderForAccessibility[] =
-    "dom_distiller.reader_for_accessibility";
+extern const char kFont[];
+extern const char kTheme[];
+extern const char kFontScale[];
+extern const char kReaderForAccessibility[];
+extern const char kOfferReaderMode[];
 
-}  // namespace dom_distiller::prefs
+}  // namespace prefs
+}  // namespace dom_distiller
 
 #endif  // COMPONENTS_DOM_DISTILLER_CORE_PREF_NAMES_H_

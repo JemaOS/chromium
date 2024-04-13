@@ -23,7 +23,6 @@ int GetMaxChannelCount(media::ChannelLayout channel_layout) {
       return 1;
     case media::CHANNEL_LAYOUT_STEREO:
     case media::CHANNEL_LAYOUT_STEREO_DOWNMIX:
-    case media::CHANNEL_LAYOUT_1_1:
       return 2;
     case media::CHANNEL_LAYOUT_2_1:
     case media::CHANNEL_LAYOUT_SURROUND:
@@ -34,7 +33,6 @@ int GetMaxChannelCount(media::ChannelLayout channel_layout) {
     case media::CHANNEL_LAYOUT_2_2:
     case media::CHANNEL_LAYOUT_QUAD:
     case media::CHANNEL_LAYOUT_3_1:
-    case media::CHANNEL_LAYOUT_3_1_BACK:
       return 4;
     case media::CHANNEL_LAYOUT_5_0:
     case media::CHANNEL_LAYOUT_5_0_BACK:
@@ -139,14 +137,9 @@ openscreen::cast::Display ToOpenscreenDisplayType(
 openscreen::cast::RemotingConstraints ToOpenscreenRemotingConstraintsType(
     const ReceiverConfig::RemotingConstraints& constraints) {
   openscreen::cast::RemotingConstraints osp_constraints;
-  osp_constraints.supports_4k = constraints.supports_4k;
   osp_constraints.supports_chrome_audio_codecs =
-      constraints.supports_mp3 || constraints.supports_ogg_vorbis ||
-      constraints.supports_flac || constraints.supports_mpegh ||
-      constraints.supports_pcm || constraints.supports_amr ||
-      constraints.supports_gsm || constraints.supports_eac3 ||
-      constraints.supports_alac || constraints.supports_ac3 ||
-      constraints.supports_dts;
+      constraints.supports_chrome_audio_codecs;
+  osp_constraints.supports_4k = constraints.supports_4k;
   return osp_constraints;
 }
 

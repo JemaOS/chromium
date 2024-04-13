@@ -9,7 +9,6 @@
 
 #include "base/auto_reset.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/raw_ptr_exclusion.h"
 #include "base/run_loop.h"
 #include "base/time/time.h"
 #include "components/exo/test/exo_test_base.h"
@@ -74,9 +73,7 @@ class TestRecorder : public ShellSurfacePresentationTimeRecorder {
 
  private:
   gfx::PresentationFeedback fake_feedback_;
-  // This field is not a raw_ptr<> because it was filtered by the rewriter
-  // for: #addr-of
-  RAW_PTR_EXCLUSION base::RunLoop* run_loop_ = nullptr;
+  base::RunLoop* run_loop_ = nullptr;
   std::vector<uint32_t> presented_serials_;
 };
 
@@ -114,9 +111,7 @@ class ShellSurfacePresentationTimeRecorderTest : public test::ExoTestBase {
         /*flags=*/0);
     recorder_->set_fake_feedback(feedback);
 
-    // Fake damage so that the committed frame will generate a presentation
-    // feedback when the next DrawAndSwap happens. Without damage the
-    // presentation feedback could be delayed till the next frame submission.
+    // Fake damage to ensure that Commit() generates a compositor frame.
     root_surface()->Damage(gfx::Rect(0, 0, 32, 32));
     root_surface()->Commit();
     recorder_->WaitForFramePresented();
@@ -127,7 +122,7 @@ class ShellSurfacePresentationTimeRecorderTest : public test::ExoTestBase {
  protected:
   std::unique_ptr<ShellSurface> shell_surface_;
   std::unique_ptr<TestRecorder> recorder_;
-  raw_ptr<TestReporter, DanglingUntriaged> reporter_ = nullptr;
+  raw_ptr<TestReporter, ExperimentalAsh> reporter_ = nullptr;
 };
 
 TEST_F(ShellSurfacePresentationTimeRecorderTest, Request) {
@@ -185,7 +180,6 @@ TEST_F(ShellSurfacePresentationTimeRecorderTest,
 
   // Fake frame submission. No FakeFrameSubmitAndPresent() because it depends
   // on `recorder_`.
-  root_surface()->Damage(gfx::Rect(0, 0, 32, 32));
   root_surface()->Commit();
   test::WaitForLastFramePresentation(shell_surface_.get());
 }

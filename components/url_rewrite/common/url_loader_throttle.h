@@ -34,6 +34,7 @@ class URLLoaderThrottle : public blink::URLLoaderThrottle {
   void DetachFromCurrentSequence() override;
   void WillStartRequest(network::ResourceRequest* request,
                         bool* defer) override;
+  bool makes_unsafe_redirect() override;
 
  private:
   // Applies transformations specified by |rule| to |request|, conditional on

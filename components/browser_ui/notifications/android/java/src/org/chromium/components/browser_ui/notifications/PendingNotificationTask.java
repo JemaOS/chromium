@@ -37,8 +37,7 @@ public class PendingNotificationTask {
     }
 
     public static int compare(PendingNotificationTask p1, PendingNotificationTask p2) {
-        return p1.priority == p2.priority
-                ? (int) (p1.timestamp - p2.timestamp)
-                : p1.priority - p2.priority;
+        return p1.priority == p2.priority ? (int) (p1.timestamp - p2.timestamp)
+                                          : p1.priority - p2.priority;
     }
 }

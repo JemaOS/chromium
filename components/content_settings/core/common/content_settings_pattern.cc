@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -20,6 +19,7 @@
 #include "components/content_settings/core/common/content_settings_pattern_parser.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "net/base/url_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
@@ -73,23 +73,23 @@ bool IsSubDomainOrEqual(base::StringPiece sub_domain,
 
 // Splits a |domain| name on the last dot. The returned tuple will consist of:
 //  (1) A prefix of the |domain| name such that the right-most domain label and
-//      its separating dot is removed; or std::nullopt if |domain| consisted
+//      its separating dot is removed; or absl::nullopt if |domain| consisted
 //      only of a single domain label.
 //  (2) The right-most domain label, which is defined as the empty string if
 //      |domain| is empty or ends in a dot.
-std::tuple<std::optional<base::StringPiece>, base::StringPiece>
+std::tuple<absl::optional<base::StringPiece>, base::StringPiece>
 SplitDomainOnLastDot(const base::StringPiece domain) {
   size_t index_of_last_dot = domain.rfind('.');
   if (index_of_last_dot == base::StringPiece::npos)
-    return std::make_tuple(std::nullopt, domain);
+    return std::make_tuple(absl::nullopt, domain);
   return std::make_tuple(domain.substr(0, index_of_last_dot),
                          domain.substr(index_of_last_dot + 1));
 }
 
 // Compares two domain names.
 int CompareDomainNames(base::StringPiece domain_a, base::StringPiece domain_b) {
-  std::optional<base::StringPiece> rest_of_a(domain_a);
-  std::optional<base::StringPiece> rest_of_b(domain_b);
+  absl::optional<base::StringPiece> rest_of_a(domain_a);
+  absl::optional<base::StringPiece> rest_of_b(domain_b);
 
   while (rest_of_a && rest_of_b) {
     base::StringPiece rightmost_label_a;
@@ -160,7 +160,7 @@ class ContentSettingsPattern::Builder
 
 ContentSettingsPattern::Builder::Builder() : is_valid_(true) {}
 
-ContentSettingsPattern::Builder::~Builder() = default;
+ContentSettingsPattern::Builder::~Builder() {}
 
 BuilderInterface* ContentSettingsPattern::Builder::WithPort(
     const std::string& port) {
@@ -354,16 +354,13 @@ ContentSettingsPattern::PatternParts::PatternParts(const PatternParts& other) =
 ContentSettingsPattern::PatternParts::PatternParts(PatternParts&& other) =
     default;
 
-ContentSettingsPattern::PatternParts::~PatternParts() = default;
+ContentSettingsPattern::PatternParts::~PatternParts() {}
 
 ContentSettingsPattern::PatternParts&
 ContentSettingsPattern::PatternParts::operator=(const PatternParts& other) =
     default;
 ContentSettingsPattern::PatternParts&
 ContentSettingsPattern::PatternParts::operator=(PatternParts&& other) = default;
-
-bool ContentSettingsPattern::PatternParts::operator==(
-    const ContentSettingsPattern::PatternParts& other) const = default;
 
 // ////////////////////////////////////////////////////////////////////////////
 // ContentSettingsPattern
@@ -456,27 +453,6 @@ ContentSettingsPattern ContentSettingsPattern::FromURLNoWildcard(
 }
 
 // static
-ContentSettingsPattern ContentSettingsPattern::FromURLToSchemefulSitePattern(
-    const GURL& url) {
-  std::string registrable_domain = GetDomainAndRegistry(
-      url, net::registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES);
-
-  auto builder = ContentSettingsPattern::CreateBuilder();
-
-  if (registrable_domain.empty()) {
-    registrable_domain = url.host();
-  } else {
-    builder->WithDomainWildcard();
-  }
-
-  return builder->WithScheme(url.scheme())
-      ->WithHost(registrable_domain)
-      ->WithPathWildcard()
-      ->WithPortWildcard()
-      ->Build();
-}
-
-// static
 ContentSettingsPattern ContentSettingsPattern::FromString(
     base::StringPiece pattern_spec) {
   ContentSettingsPattern::Builder builder;
@@ -550,22 +526,6 @@ ContentSettingsPattern ContentSettingsPattern::ToHostOnlyPattern(
   return builder->Build();
 }
 
-bool ContentSettingsPattern::CompareDomains::operator()(
-    const std::string_view& domain_a,
-    const std::string_view& domain_b) const {
-  if (domain_a == domain_b) {
-    return false;
-  }
-
-  if (net::IsSubdomainOf(domain_a, domain_b)) {
-    return true;
-  }
-  if (net::IsSubdomainOf(domain_b, domain_a)) {
-    return false;
-  }
-  return CompareDomainNames(domain_a, domain_b) < 0;
-}
-
 ContentSettingsPattern::ContentSettingsPattern() : is_valid_(false) {}
 
 ContentSettingsPattern::ContentSettingsPattern(PatternParts parts, bool valid)
@@ -597,14 +557,8 @@ bool ContentSettingsPattern::Matches(const GURL& url) const {
       local_url->scheme_piece() == url::kFileScheme)
     return parts_.is_path_wildcard || parts_.path == local_url->path_piece();
 
-  // Match the host part. Code is the same as url::TrimEndingDot but that method
-  // unnecessarily creates a new std::string.
-  std::string_view trimmed_host = local_url->host_piece();
-  size_t len = trimmed_host.length();
-  if (len > 1 && trimmed_host[len - 1] == '.') {
-    trimmed_host.remove_suffix(1);
-  }
-
+  // Match the host part.
+  const std::string trimmed_host = net::TrimEndingDot(local_url->host_piece());
   if (!parts_.has_domain_wildcard) {
     if (parts_.host != trimmed_host)
       return false;

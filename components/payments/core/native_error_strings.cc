@@ -97,12 +97,6 @@ const char kPaymentManifestCrossSiteRedirectNotAllowed[] =
 const char kPaymentManifestDownloadFailed[] =
     "Unable to download payment manifest \"$1\".";
 
-const char kPaymentManifestDownloadFailedWithNetworkError[] =
-    "Unable to download payment manifest \"$1\". $2 ($3)";
-
-const char kPaymentManifestDownloadFailedWithHttpStatusCode[] =
-    "Unable to download payment manifest \"$1\". HTTP $2 $3.";
-
 const char kPaymentManifestCSPDenied[] =
     "Content Security Policy denied the download of payment manifest \"$1\".";
 
@@ -191,9 +185,6 @@ const char kCanMakePaymentEventNoExplicitlyVerifiedMethods[] =
 
 const char kGenericPaymentMethodNotSupportedMessage[] =
     "Payment method not supported.";
-
-const char kNoLinkHeader[] =
-    "No \"Link: rel=payment-method-manifest\" HTTP header found at \"$1\".";
 
 const char kNoContentAndNoLinkHeader[] =
     "No content and no \"Link: rel=payment-method-manifest\" HTTP header found "

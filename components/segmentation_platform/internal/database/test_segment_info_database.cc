@@ -4,12 +4,15 @@
 
 #include "components/segmentation_platform/internal/database/test_segment_info_database.h"
 
-#include <optional>
-
 #include "base/containers/contains.h"
+#include "base/metrics/metrics_hashes.h"
+#include "base/ranges/algorithm.h"
+#include "components/segmentation_platform/internal/constants.h"
 #include "components/segmentation_platform/internal/metadata/metadata_writer.h"
 #include "components/segmentation_platform/internal/proto/model_prediction.pb.h"
+#include "components/segmentation_platform/public/proto/segmentation_platform.pb.h"
 #include "components/segmentation_platform/public/proto/types.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace segmentation_platform::test {
 
@@ -27,54 +30,36 @@ void TestSegmentInfoDatabase::GetSegmentInfoForSegments(
     MultipleSegmentInfoCallback callback) {
   auto result = std::make_unique<SegmentInfoDatabase::SegmentInfoList>();
   for (const auto& pair : segment_infos_) {
-    if (pair.second.model_source() != ModelSource::DEFAULT_MODEL_SOURCE &&
-        base::Contains(segment_ids, pair.first)) {
-      result->emplace_back(pair.first, &pair.second);
-    }
+    if (base::Contains(segment_ids, pair.first))
+      result->emplace_back(pair);
   }
   std::move(callback).Run(std::move(result));
 }
 
-std::unique_ptr<SegmentInfoDatabase::SegmentInfoList>
-TestSegmentInfoDatabase::GetSegmentInfoForBothModels(
-    const base::flat_set<SegmentId>& segment_ids) {
-  auto result = std::make_unique<SegmentInfoDatabase::SegmentInfoList>();
-  for (const auto& pair : segment_infos_) {
-    if (base::Contains(segment_ids, pair.first)) {
-      result->emplace_back(pair.first, &pair.second);
-    }
-  }
-  return result;
-}
+void TestSegmentInfoDatabase::GetSegmentInfo(SegmentId segment_id,
+                                             SegmentInfoCallback callback) {
+  auto result =
+      base::ranges::find(segment_infos_, segment_id,
+                         &std::pair<SegmentId, proto::SegmentInfo>::first);
 
-const SegmentInfo* TestSegmentInfoDatabase::GetCachedSegmentInfo(
-    SegmentId segment_id,
-    ModelSource model_source) {
-  for (const auto& pair : segment_infos_) {
-    if (segment_id == pair.first &&
-        model_source == pair.second.model_source()) {
-      return &pair.second;
-    }
-  }
-  return nullptr;
+  std::move(callback).Run(result == segment_infos_.end()
+                              ? absl::nullopt
+                              : absl::make_optional(result->second));
 }
 
 void TestSegmentInfoDatabase::UpdateSegment(
     SegmentId segment_id,
-    ModelSource model_source,
-    std::optional<proto::SegmentInfo> segment_info,
+    absl::optional<proto::SegmentInfo> segment_info,
     SuccessCallback callback) {
   if (segment_info.has_value()) {
-    proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+    proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
     info->CopyFrom(segment_info.value());
   } else {
     // Delete the segment.
     auto new_end = std::remove_if(
         segment_infos_.begin(), segment_infos_.end(),
-        [segment_id,
-         model_source](const std::pair<SegmentId, proto::SegmentInfo>& pair) {
-          return (pair.first == segment_id &&
-                  pair.second.model_source() == model_source);
+        [segment_id](const std::pair<SegmentId, proto::SegmentInfo>& pair) {
+          return pair.first == segment_id;
         });
     segment_infos_.erase(new_end, segment_infos_.end());
   }
@@ -83,10 +68,9 @@ void TestSegmentInfoDatabase::UpdateSegment(
 
 void TestSegmentInfoDatabase::SaveSegmentResult(
     SegmentId segment_id,
-    ModelSource model_source,
-    std::optional<proto::PredictionResult> result,
+    absl::optional<proto::PredictionResult> result,
     SuccessCallback callback) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   if (!result.has_value()) {
     info->clear_prediction_result();
   } else {
@@ -96,42 +80,32 @@ void TestSegmentInfoDatabase::SaveSegmentResult(
 }
 
 void TestSegmentInfoDatabase::SaveTrainingData(SegmentId segment_id,
-                                               ModelSource model_source,
                                                const proto::TrainingData& data,
                                                SuccessCallback callback) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   info->add_training_data()->CopyFrom(data);
   std::move(callback).Run(true);
 }
 
 void TestSegmentInfoDatabase::GetTrainingData(SegmentId segment_id,
-                                              ModelSource model_source,
                                               TrainingRequestId request_id,
                                               bool delete_from_db,
                                               TrainingDataCallback callback) {
-  // TODO(ritikagup) : Try replacing it with GetCachedSegmentInfo.
-  proto::SegmentInfo* segment_info = nullptr;
-  for (auto& pair : segment_infos_) {
-    if (pair.first == segment_id &&
-        pair.second.model_source() == model_source) {
-      segment_info = &pair.second;
-      break;
-    }
-  }
+  auto segment_info =
+      base::ranges::find(segment_infos_, segment_id,
+                         &std::pair<SegmentId, proto::SegmentInfo>::first);
 
-  std::optional<proto::TrainingData> result;
-  if (segment_info == nullptr) {
-    std::move(callback).Run(result);
-    return;
-  }
-  for (int i = 0; i < segment_info->training_data_size(); i++) {
-    if (segment_info->training_data(i).request_id() ==
-        request_id.GetUnsafeValue()) {
-      result = segment_info->training_data(i);
-      if (delete_from_db) {
-        segment_info->mutable_training_data()->DeleteSubrange(i, 1);
+  absl::optional<proto::TrainingData> result;
+  if (segment_info != segment_infos_.end()) {
+    for (int i = 0; i < segment_info->second.training_data_size(); i++) {
+      if (segment_info->second.training_data(i).request_id() ==
+          request_id.GetUnsafeValue()) {
+        result = segment_info->second.training_data(i);
+        if (delete_from_db) {
+          segment_info->second.mutable_training_data()->DeleteSubrange(i, 1);
+        }
+        break;
       }
-      break;
     }
   }
   std::move(callback).Run(result);
@@ -142,9 +116,8 @@ void TestSegmentInfoDatabase::AddUserActionFeature(
     const std::string& name,
     uint64_t bucket_count,
     uint64_t tensor_length,
-    proto::Aggregation aggregation,
-    ModelSource model_source) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+    proto::Aggregation aggregation) {
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   MetadataWriter writer(info->mutable_model_metadata());
   MetadataWriter::UMAFeature feature{
       .signal_type = proto::SignalType::USER_ACTION,
@@ -162,9 +135,8 @@ void TestSegmentInfoDatabase::AddHistogramValueFeature(
     const std::string& name,
     uint64_t bucket_count,
     uint64_t tensor_length,
-    proto::Aggregation aggregation,
-    ModelSource model_source) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+    proto::Aggregation aggregation) {
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   MetadataWriter writer(info->mutable_model_metadata());
   MetadataWriter::UMAFeature feature{
       .signal_type = proto::SignalType::HISTOGRAM_VALUE,
@@ -183,9 +155,8 @@ void TestSegmentInfoDatabase::AddHistogramEnumFeature(
     uint64_t bucket_count,
     uint64_t tensor_length,
     proto::Aggregation aggregation,
-    const std::vector<int32_t>& accepted_enum_ids,
-    ModelSource model_source) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+    const std::vector<int32_t>& accepted_enum_ids) {
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   MetadataWriter writer(info->mutable_model_metadata());
   MetadataWriter::UMAFeature feature{
       .signal_type = proto::SignalType::HISTOGRAM_ENUM,
@@ -201,18 +172,17 @@ void TestSegmentInfoDatabase::AddHistogramEnumFeature(
 
 void TestSegmentInfoDatabase::AddSqlFeature(
     SegmentId segment_id,
-    const MetadataWriter::SqlFeature& feature,
-    ModelSource model_source) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+    const MetadataWriter::SqlFeature& feature) {
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   MetadataWriter writer(info->mutable_model_metadata());
-  writer.AddSqlFeature(feature);
+  MetadataWriter::SqlFeature features[] = {feature};
+  writer.AddSqlFeatures(features, 1);
 }
 
 void TestSegmentInfoDatabase::AddPredictionResult(SegmentId segment_id,
                                                   float score,
-                                                  base::Time timestamp,
-                                                  ModelSource model_source) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+                                                  base::Time timestamp) {
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   proto::PredictionResult* result = info->mutable_prediction_result();
   result->clear_result();
   result->add_result(score);
@@ -224,9 +194,8 @@ void TestSegmentInfoDatabase::AddDiscreteMapping(
     SegmentId segment_id,
     const float mappings[][2],
     int num_pairs,
-    const std::string& discrete_mapping_key,
-    ModelSource model_source) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+    const std::string& discrete_mapping_key) {
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   auto* discrete_mappings_map =
       info->mutable_model_metadata()->mutable_discrete_mappings();
   auto& discrete_mappings = (*discrete_mappings_map)[discrete_mapping_key];
@@ -240,21 +209,17 @@ void TestSegmentInfoDatabase::AddDiscreteMapping(
 
 void TestSegmentInfoDatabase::SetBucketDuration(SegmentId segment_id,
                                                 uint64_t bucket_duration,
-                                                proto::TimeUnit time_unit,
-                                                ModelSource model_source) {
-  proto::SegmentInfo* info = FindOrCreateSegment(segment_id, model_source);
+                                                proto::TimeUnit time_unit) {
+  proto::SegmentInfo* info = FindOrCreateSegment(segment_id);
   info->mutable_model_metadata()->set_bucket_duration(bucket_duration);
   info->mutable_model_metadata()->set_time_unit(time_unit);
 }
 
 proto::SegmentInfo* TestSegmentInfoDatabase::FindOrCreateSegment(
-    SegmentId segment_id,
-    ModelSource model_source) {
-  // TODO(ritikagup) : Try replacing it with GetCachedSegmentInfo.
+    SegmentId segment_id) {
   proto::SegmentInfo* info = nullptr;
   for (auto& pair : segment_infos_) {
-    if (pair.first == segment_id &&
-        pair.second.model_source() == model_source) {
+    if (pair.first == segment_id) {
       info = &pair.second;
       break;
     }
@@ -264,7 +229,6 @@ proto::SegmentInfo* TestSegmentInfoDatabase::FindOrCreateSegment(
     segment_infos_.emplace_back(segment_id, proto::SegmentInfo());
     info = &segment_infos_.back().second;
     info->set_segment_id(segment_id);
-    info->set_model_source(model_source);
   }
 
   return info;

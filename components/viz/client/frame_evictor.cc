@@ -46,7 +46,14 @@ std::vector<SurfaceId> FrameEvictor::CollectSurfaceIdsForEviction() const {
   DCHECK(surface_ids.empty() || !current.is_valid() ||
          base::Contains(surface_ids, current));
 
-  if (surface_ids.empty() && current.is_valid()) {
+  // TODO(crbug.com/1416884): Once we've confirmed the memory impact, remove
+  // this feature and always add the current SurfaceId. Android was always only
+  // adding the current one before the feature was added.
+  bool add_current = base::FeatureList::IsEnabled(features::kEvictSubtree);
+#if BUILDFLAG(IS_ANDROID)
+  add_current = true;
+#endif
+  if (surface_ids.empty() && add_current && current.is_valid()) {
     surface_ids.push_back(current);
   }
 
@@ -54,8 +61,6 @@ std::vector<SurfaceId> FrameEvictor::CollectSurfaceIdsForEviction() const {
   if (pre_nav_surface_id.is_valid()) {
     surface_ids.push_back(pre_nav_surface_id);
   }
-
-  base::ranges::sort(surface_ids.begin(), surface_ids.end());
 
   return surface_ids;
 }

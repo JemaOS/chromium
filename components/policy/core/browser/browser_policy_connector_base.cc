@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "base/check.h"
-#include "base/memory/raw_ptr.h"
 #include "components/policy/core/common/chrome_schema.h"
 #include "components/policy/core/common/configuration_policy_provider.h"
 #include "components/policy/core/common/policy_namespace.h"
@@ -94,9 +93,8 @@ PolicyService* BrowserPolicyConnectorBase::GetPolicyService() {
     provider->Init(GetSchemaRegistry());
 
   g_created_policy_service = true;
-  policy_service_ = std::make_unique<PolicyServiceImpl>(
-      GetProvidersForPolicyService(),
-      std::vector<std::unique_ptr<PolicyMigrator>>());
+  policy_service_ =
+      std::make_unique<PolicyServiceImpl>(GetProvidersForPolicyService());
   return policy_service_.get();
 }
 
@@ -145,10 +143,9 @@ BrowserPolicyConnectorBase::GetPolicyProviderForTesting() {
   return g_testing_provider;
 }
 
-std::vector<raw_ptr<ConfigurationPolicyProvider, VectorExperimental>>
+std::vector<ConfigurationPolicyProvider*>
 BrowserPolicyConnectorBase::GetProvidersForPolicyService() {
-  std::vector<raw_ptr<ConfigurationPolicyProvider, VectorExperimental>>
-      providers;
+  std::vector<ConfigurationPolicyProvider*> providers;
   if (g_testing_provider) {
     providers.push_back(g_testing_provider);
     return providers;

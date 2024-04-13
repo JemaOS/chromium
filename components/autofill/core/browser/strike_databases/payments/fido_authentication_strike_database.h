@@ -5,36 +5,33 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_STRIKE_DATABASES_PAYMENTS_FIDO_AUTHENTICATION_STRIKE_DATABASE_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_STRIKE_DATABASES_PAYMENTS_FIDO_AUTHENTICATION_STRIKE_DATABASE_H_
 
-#include "components/autofill/core/browser/strike_databases/simple_autofill_strike_database.h"
+#include <stdint.h>
+#include <string>
+
 #include "components/autofill/core/browser/strike_databases/strike_database.h"
+#include "components/autofill/core/browser/strike_databases/strike_database_integrator_base.h"
 
 namespace autofill {
 
-struct FidoAuthenticationStrikeDatabaseTraits {
-  static constexpr std::string_view kName = "FidoAuthentication";
-  static constexpr std::optional<size_t> kMaxStrikeEntities = std::nullopt;
-  static constexpr std::optional<size_t> kMaxStrikeEntitiesAfterCleanup =
-      std::nullopt;
-  static constexpr size_t kMaxStrikeLimit = 3;
-  static constexpr base::TimeDelta kExpiryTimeDelta = base::Days(183);
-  static constexpr bool kUniqueIdRequired = false;
-};
-
-// Strike database for offering FIDO authentication for card unmasking.
-class FidoAuthenticationStrikeDatabase
-    : public SimpleAutofillStrikeDatabase<
-          FidoAuthenticationStrikeDatabaseTraits> {
+// Implementation of StrikeDatabaseIntegratorBase for offering FIDO
+// authentication for card unmasking.
+class FidoAuthenticationStrikeDatabase : public StrikeDatabaseIntegratorBase {
  public:
-  using SimpleAutofillStrikeDatabase<
-      FidoAuthenticationStrikeDatabaseTraits>::SimpleAutofillStrikeDatabase;
+  explicit FidoAuthenticationStrikeDatabase(StrikeDatabase* strike_database);
+  ~FidoAuthenticationStrikeDatabase() override;
 
   // Strikes to add when user declines opt-in offer.
-  static constexpr int kStrikesToAddWhenOptInOfferDeclined = 1;
+  static const int kStrikesToAddWhenOptInOfferDeclined;
   // Strikes to add when user fails to complete user-verification for an opt-in
   // attempt.
-  static constexpr int kStrikesToAddWhenUserVerificationFailsOnOptInAttempt = 2;
+  static const int kStrikesToAddWhenUserVerificationFailsOnOptInAttempt;
   // Strikes to add when user opts-out from settings page.
-  static constexpr int kStrikesToAddWhenUserOptsOut = 3;
+  static const int kStrikesToAddWhenUserOptsOut;
+
+  std::string GetProjectPrefix() const override;
+  int GetMaxStrikesLimit() const override;
+  absl::optional<base::TimeDelta> GetExpiryTimeDelta() const override;
+  bool UniqueIdsRequired() const override;
 };
 
 }  // namespace autofill

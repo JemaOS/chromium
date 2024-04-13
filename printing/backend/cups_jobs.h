@@ -10,7 +10,6 @@
 #include <cups/cups.h>
 
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -102,7 +101,7 @@ enum JobCompletionState {
 };
 
 // Converts a JobStateReason to the exact string returned by CUPS.
-const std::string_view COMPONENT_EXPORT(PRINT_BACKEND)
+const base::StringPiece COMPONENT_EXPORT(PRINT_BACKEND)
     ToJobStateReasonString(CupsJob::JobStateReason stateReason);
 
 // Returns the uri for printer with `id` as served by CUPS. Assumes that `id` is

@@ -4,8 +4,7 @@
 
 #include "components/ui_devtools/views/dom_agent_aura.h"
 
-#include <vector>
-
+#include "base/containers/cxx20_erase.h"
 #include "base/ranges/algorithm.h"
 #include "components/ui_devtools/views/widget_element.h"
 #include "components/ui_devtools/views/window_element.h"
@@ -26,10 +25,8 @@ DOMAgentAura::DOMAgentAura() {
   DCHECK(!dom_agent_aura_);
   dom_agent_aura_ = this;
   aura::Env::GetInstance()->AddObserver(this);
-  for (aura::WindowTreeHost* window_tree_host :
-       aura::Env::GetInstance()->window_tree_hosts()) {
+  for (auto* window_tree_host : aura::Env::GetInstance()->window_tree_hosts())
     OnHostInitialized(window_tree_host);
-  }
 }
 
 DOMAgentAura::~DOMAgentAura() {
@@ -52,7 +49,7 @@ void DOMAgentAura::OnHostInitialized(aura::WindowTreeHost* host) {
 }
 
 void DOMAgentAura::OnWindowDestroying(aura::Window* window) {
-  std::erase(roots_, window);
+  base::Erase(roots_, window);
 
   if (element_root() && !element_root()->is_updating()) {
     const auto& children = element_root()->children();

@@ -7,22 +7,21 @@
 
 #include <atomic>
 #include <cstdint>
-
+#include <unordered_map>
 #include "components/viz/service/viz_service_export.h"
 
 namespace rwlock {
 // Read-Write lock.
 class VIZ_SERVICE_EXPORT RWLock {
  public:
-  RWLock();
-
+  RWLock() : state_(0) {}
   void ReadLock();
   void ReadUnlock();
   void WriteLock();
   void WriteUnLock();
 
  private:
-  std::atomic<int32_t> state_ = 0;
+  std::atomic<int32_t> state_;
 };
 
 }  // namespace rwlock

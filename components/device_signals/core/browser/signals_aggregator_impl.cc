@@ -34,8 +34,6 @@ SignalCollectionError PermissionToError(const UserPermission permission) {
       return SignalCollectionError::kInvalidUser;
     case UserPermission::kGranted:
       NOTREACHED();
-      ABSL_FALLTHROUGH_INTENDED;
-    case UserPermission::kUnsupported:
       return SignalCollectionError::kUnsupported;
   }
 }
@@ -65,7 +63,6 @@ SignalsAggregatorImpl::SignalsAggregatorImpl(
 
 SignalsAggregatorImpl::~SignalsAggregatorImpl() = default;
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 void SignalsAggregatorImpl::GetSignalsForUser(
     const UserContext& user_context,
     const SignalsAggregationRequest& request,
@@ -79,11 +76,12 @@ void SignalsAggregatorImpl::GetSignalsForUser(
 
   LogSignalCollectionRequested(*request.signal_names.begin());
 
-  const auto permission =
-      permission_service_->CanUserCollectSignals(user_context);
-  GetSignalsWithPermission(permission, std::move(request), std::move(callback));
+  permission_service_->CanUserCollectSignals(
+      user_context,
+      base::BindOnce(&SignalsAggregatorImpl::OnUserPermissionChecked,
+                     weak_factory_.GetWeakPtr(), std::move(request),
+                     std::move(callback)));
 }
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 void SignalsAggregatorImpl::GetSignals(const SignalsAggregationRequest& request,
                                        GetSignalsCallback callback) {
@@ -96,14 +94,15 @@ void SignalsAggregatorImpl::GetSignals(const SignalsAggregationRequest& request,
 
   LogSignalCollectionRequested(*request.signal_names.begin());
 
-  const auto permission = permission_service_->CanCollectSignals();
-  GetSignalsWithPermission(permission, std::move(request), std::move(callback));
+  permission_service_->CanCollectSignals(base::BindOnce(
+      &SignalsAggregatorImpl::OnUserPermissionChecked,
+      weak_factory_.GetWeakPtr(), std::move(request), std::move(callback)));
 }
 
-void SignalsAggregatorImpl::GetSignalsWithPermission(
-    const UserPermission user_permission,
+void SignalsAggregatorImpl::OnUserPermissionChecked(
     const SignalsAggregationRequest& request,
-    GetSignalsCallback callback) {
+    GetSignalsCallback callback,
+    const UserPermission user_permission) {
   LogUserPermissionChecked(user_permission);
   if (user_permission != UserPermission::kGranted) {
     RespondWithError(PermissionToError(user_permission), std::move(callback));

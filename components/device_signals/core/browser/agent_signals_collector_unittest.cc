@@ -30,8 +30,8 @@ class MockCrowdStrikeClient : public CrowdStrikeClient {
 
   MOCK_METHOD(void,
               GetIdentifiers,
-              (base::OnceCallback<void(std::optional<CrowdStrikeSignals>,
-                                       std::optional<SignalCollectionError>)>),
+              (base::OnceCallback<void(absl::optional<CrowdStrikeSignals>,
+                                       absl::optional<SignalCollectionError>)>),
               (override));
 };
 
@@ -52,13 +52,13 @@ class AgentSignalsCollectorTest : public testing::Test {
   }
 
   void RunTest(
-      std::optional<CrowdStrikeSignals> returned_signals,
-      std::optional<SignalCollectionError> returned_error = std::nullopt) {
+      absl::optional<CrowdStrikeSignals> returned_signals,
+      absl::optional<SignalCollectionError> returned_error = absl::nullopt) {
     EXPECT_CALL(*mocked_crowdstrike_client_, GetIdentifiers(_))
         .WillOnce(Invoke(
             [&returned_signals, &returned_error](
-                base::OnceCallback<void(std::optional<CrowdStrikeSignals>,
-                                        std::optional<SignalCollectionError>)>
+                base::OnceCallback<void(absl::optional<CrowdStrikeSignals>,
+                                        absl::optional<SignalCollectionError>)>
                     callback) {
               std::move(callback).Run(returned_signals, returned_error);
             }));
@@ -113,8 +113,7 @@ class AgentSignalsCollectorTest : public testing::Test {
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  raw_ptr<StrictMock<MockCrowdStrikeClient>, DanglingUntriaged>
-      mocked_crowdstrike_client_;
+  raw_ptr<StrictMock<MockCrowdStrikeClient>> mocked_crowdstrike_client_;
   std::unique_ptr<AgentSignalsCollector> collector_;
   base::HistogramTester histogram_tester_;
 };
@@ -157,11 +156,11 @@ TEST_F(AgentSignalsCollectorTest, GetSignal_Success) {
 }
 
 TEST_F(AgentSignalsCollectorTest, GetSignal_NoSignalNoError) {
-  RunTest(std::nullopt);
+  RunTest(absl::nullopt);
 }
 
 TEST_F(AgentSignalsCollectorTest, GetSignal_NoSignalWithError) {
-  RunTest(std::nullopt, SignalCollectionError::kParsingFailed);
+  RunTest(absl::nullopt, SignalCollectionError::kParsingFailed);
 }
 
 }  // namespace device_signals

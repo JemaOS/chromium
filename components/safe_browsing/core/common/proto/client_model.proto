@@ -10,7 +10,7 @@
 // sync with the server-side copy.  Otherwise, the client may not be able to
 // parse the server generated model anymore.  If you want to change this
 // protocol definition or you have questions regarding its format please contact
-// safebrowsing@chromium.org.
+// chrome-anti-phishing@googlegroups.com.
 
 syntax = "proto2";
 
@@ -109,9 +109,7 @@ message ClientSideModel {
 
   optional TfLiteModelMetadata tflite_metadata = 17;
 
-  optional TfLiteModelMetadata img_embedding_metadata = 19;
-
-  // next available tag number: 20
+  // next available tag number: 19
 }
 
 message TfLiteModelMetadata {

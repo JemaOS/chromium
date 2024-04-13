@@ -6,12 +6,9 @@
 #define COMPONENTS_SYNC_INVALIDATIONS_SYNC_INVALIDATIONS_SERVICE_IMPL_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
-#include "base/memory/raw_ptr.h"
-#include "base/sequence_checker.h"
-#include "components/sync/base/model_type.h"
+#include "components/sync/invalidations/interested_data_types_manager.h"
 #include "components/sync/invalidations/sync_invalidations_service.h"
 
 namespace gcm {
@@ -24,7 +21,6 @@ class InstanceIDDriver;
 
 namespace syncer {
 class FCMHandler;
-class InterestedDataTypesHandler;
 class InvalidationsListener;
 
 // The non-test implementation of SyncInvalidationsService.
@@ -37,17 +33,16 @@ class SyncInvalidationsServiceImpl : public SyncInvalidationsService {
 
   // SyncInvalidationsService implementation.
   void AddListener(InvalidationsListener* listener) override;
-  bool HasListener(InvalidationsListener* listener) override;
   void RemoveListener(InvalidationsListener* listener) override;
   void StartListening() override;
   void StopListening() override;
   void StopListeningPermanently() override;
   void AddTokenObserver(FCMRegistrationTokenObserver* observer) override;
   void RemoveTokenObserver(FCMRegistrationTokenObserver* observer) override;
-  std::optional<std::string> GetFCMRegistrationToken() const override;
+  absl::optional<std::string> GetFCMRegistrationToken() const override;
   void SetInterestedDataTypesHandler(
       InterestedDataTypesHandler* handler) override;
-  std::optional<ModelTypeSet> GetInterestedDataTypes() const override;
+  absl::optional<ModelTypeSet> GetInterestedDataTypes() const override;
   void SetInterestedDataTypes(const ModelTypeSet& data_types) override;
   void SetCommittedAdditionalInterestedDataTypesCallback(
       InterestedDataTypesAppliedCallback callback) override;
@@ -59,11 +54,8 @@ class SyncInvalidationsServiceImpl : public SyncInvalidationsService {
   FCMHandler* GetFCMHandlerForTesting();
 
  private:
-  SEQUENCE_CHECKER(sequence_checker_);
-
   std::unique_ptr<FCMHandler> fcm_handler_;
-  raw_ptr<InterestedDataTypesHandler> interested_data_types_handler_ = nullptr;
-  std::optional<ModelTypeSet> interested_data_types_;
+  InterestedDataTypesManager data_types_manager_;
 };
 
 }  // namespace syncer

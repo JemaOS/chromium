@@ -17,8 +17,7 @@ items:
   name: long-edge
   value: long-edge
 owners:
-- ust@google.com
-- chromeos-commercial-printing@google.com
+- srad@google.com
 - pawliczek@chromium.org
 schema:
   enum:

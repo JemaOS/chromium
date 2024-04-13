@@ -22,6 +22,7 @@
 #include "components/cronet/native/upload_data_sink.h"
 #include "net/base/io_buffer.h"
 #include "net/base/load_states.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -303,8 +304,7 @@ class Cronet_UrlRequestImpl::NetworkTasks : public CronetURLRequest::Callback {
       LOCKS_EXCLUDED(url_request_->lock_) override;
 
   // The UrlRequest which owns context that owns the callback.
-  const raw_ptr<Cronet_UrlRequestImpl, AcrossTasksDanglingUntriaged>
-      url_request_ = nullptr;
+  const raw_ptr<Cronet_UrlRequestImpl> url_request_ = nullptr;
 
   // URL chain contains the URL currently being requested, and
   // all URLs previously requested. New URLs are added before
@@ -512,13 +512,9 @@ void Cronet_UrlRequestImpl::GetStatus(
     base::AutoLock lock(lock_);
     if (started_ && request_) {
       status_listeners_.insert(listener);
-      // UnsafeDanglingUntriaged triggered by test:
-      // UrlRequestTest.GetStatus
-      // TODO(https://crbug.com/1380714): Remove `UnsafeDanglingUntriaged`
       request_->GetStatus(
           base::BindOnce(&Cronet_UrlRequestImpl::NetworkTasks::OnStatus,
-                         base::Unretained(network_tasks_),
-                         base::UnsafeDanglingUntriaged(listener)));
+                         base::Unretained(network_tasks_), listener));
       return;
     }
   }

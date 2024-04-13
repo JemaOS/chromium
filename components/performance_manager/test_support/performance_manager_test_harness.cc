@@ -4,12 +4,7 @@
 
 #include "components/performance_manager/test_support/performance_manager_test_harness.h"
 
-#include <memory>
-
-#include "base/check.h"
 #include "base/functional/bind.h"
-#include "base/test/bind.h"
-#include "content/public/browser/browser_context.h"
 #include "content/public/browser/web_contents.h"
 
 namespace performance_manager {
@@ -28,13 +23,11 @@ void PerformanceManagerTestHarness::SetUp() {
   helper_->SetGraphImplCallback(base::BindOnce(
       &PerformanceManagerTestHarness::OnGraphCreated, base::Unretained(this)));
   helper_->SetUp();
-  helper_->OnBrowserContextAdded(GetBrowserContext());
 }
 
 void PerformanceManagerTestHarness::TearDown() {
-  if (helper_) {
+  if (helper_)
     TearDownNow();
-  }
   Super::TearDown();
 }
 
@@ -48,7 +41,6 @@ PerformanceManagerTestHarness::CreateTestWebContents() {
 }
 
 void PerformanceManagerTestHarness::TearDownNow() {
-  helper_->OnBrowserContextRemoved(GetBrowserContext());
   helper_->TearDown();
   helper_.reset();
 }

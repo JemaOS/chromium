@@ -28,8 +28,7 @@ class UpdateVirtualCardEnrollmentRequestTest
   ~UpdateVirtualCardEnrollmentRequestTest() override = default;
 
   void SetUp() override {
-    PaymentsNetworkInterface::UpdateVirtualCardEnrollmentRequestDetails
-        request_details;
+    PaymentsClient::UpdateVirtualCardEnrollmentRequestDetails request_details;
     request_details.virtual_card_enrollment_request_type =
         std::get<0>(GetParam());
     request_details.virtual_card_enrollment_source = std::get<1>(GetParam());
@@ -47,7 +46,7 @@ class UpdateVirtualCardEnrollmentRequestTest
     return request_.get();
   }
 
-  const std::optional<std::string>& GetParsedResponse() const {
+  const absl::optional<std::string>& GetParsedResponse() const {
     return request_->enroll_result_;
   }
 
@@ -81,12 +80,12 @@ TEST_P(UpdateVirtualCardEnrollmentRequestTest, GetRequestContent) {
       case VirtualCardEnrollmentSource::kDownstream:
       case VirtualCardEnrollmentSource::kSettingsPage:
         billable_service_number =
-            base::NumberToString(kUnmaskPaymentMethodBillableServiceNumber);
+            base::NumberToString(kUnmaskCardBillableServiceNumber);
         channel_type = "CHROME_DOWNSTREAM";
         break;
       case VirtualCardEnrollmentSource::kUpstream:
         billable_service_number =
-            base::NumberToString(kUploadPaymentMethodBillableServiceNumber);
+            base::NumberToString(kUploadCardBillableServiceNumber);
         channel_type = "CHROME_UPSTREAM";
         break;
       default:
@@ -115,14 +114,13 @@ TEST_P(UpdateVirtualCardEnrollmentRequestTest, GetRequestContent) {
     EXPECT_TRUE(GetRequest()->GetRequestContent().find("instrument_id") !=
                 std::string::npos);
     EXPECT_TRUE(GetRequest()->GetRequestContent().find(base::NumberToString(
-                    kUnmaskPaymentMethodBillableServiceNumber)) !=
-                std::string::npos);
+                    kUnmaskCardBillableServiceNumber)) != std::string::npos);
   }
 }
 
 TEST_P(UpdateVirtualCardEnrollmentRequestTest, ParseResponse) {
   if (std::get<0>(GetParam()) == VirtualCardEnrollmentRequestType::kEnroll) {
-    std::optional<base::Value> response =
+    absl::optional<base::Value> response =
         base::JSONReader::Read("{ \"enroll_result\": \"ENROLL_SUCCESS\" }");
     ASSERT_TRUE(response.has_value());
     GetRequest()->ParseResponse(response->GetDict());
@@ -135,7 +133,7 @@ TEST_P(UpdateVirtualCardEnrollmentRequestTest, ParseResponse) {
             VirtualCardEnrollmentRequestType::kUnenroll);
   // Unenroll is only available from the settings page.
   if (std::get<1>(GetParam()) == VirtualCardEnrollmentSource::kSettingsPage) {
-    std::optional<base::Value> response = base::JSONReader::Read("{}");
+    absl::optional<base::Value> response = base::JSONReader::Read("{}");
     ASSERT_TRUE(response.has_value());
     GetRequest()->ParseResponse(response->GetDict());
 

@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/containers/contains.h"
-#include "base/memory/raw_ptr.h"
 #include "base/unguessable_token.h"
 #include "components/services/app_service/public/cpp/instance.h"
 #include "components/services/app_service/public/cpp/instance_update.h"
@@ -20,8 +19,30 @@ InstanceParams::InstanceParams(const std::string& app_id, aura::Window* window)
 
 InstanceParams::~InstanceParams() = default;
 
+InstanceRegistry::Observer::Observer(InstanceRegistry* instance_registry) {
+  Observe(instance_registry);
+}
+
+InstanceRegistry::Observer::Observer() = default;
 InstanceRegistry::Observer::~Observer() {
-  CHECK(!IsInObserverList());
+  if (instance_registry_) {
+    instance_registry_->RemoveObserver(this);
+  }
+}
+
+void InstanceRegistry::Observer::Observe(InstanceRegistry* instance_registry) {
+  if (instance_registry == instance_registry_) {
+    return;
+  }
+
+  if (instance_registry_) {
+    instance_registry_->RemoveObserver(this);
+  }
+
+  instance_registry_ = instance_registry;
+  if (instance_registry_) {
+    instance_registry_->AddObserver(this);
+  }
 }
 
 InstanceRegistry::InstanceRegistry() = default;
@@ -105,11 +126,11 @@ void InstanceRegistry::OnInstance(InstancePtr delta) {
   }
 }
 
-std::set<raw_ptr<const Instance, SetExperimental>>
-InstanceRegistry::GetInstances(const std::string& app_id) {
+std::set<const Instance*> InstanceRegistry::GetInstances(
+    const std::string& app_id) {
   auto it = app_id_to_instances_.find(app_id);
   if (it == app_id_to_instances_.end()) {
-    return std::set<raw_ptr<const Instance, SetExperimental>>();
+    return std::set<const Instance*>();
   }
   return it->second;
 }

@@ -6,7 +6,6 @@
 
 #include <memory>
 
-#include "base/memory/scoped_refptr.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece.h"
@@ -133,7 +132,6 @@ TEST_F(TitledUrlMatchUtilsTest, TitledUrlMatchToAutocompleteMatch) {
 }
 
 AutocompleteMatch BuildTestAutocompleteMatch(
-    scoped_refptr<FakeAutocompleteProvider> provider,
     const std::string& input_text_s,
     const GURL& match_url,
     const bookmarks::TitledUrlMatch::MatchPositions& match_positions) {
@@ -150,6 +148,8 @@ AutocompleteMatch BuildTestAutocompleteMatch(
   // Don't capture the scheme, so that it doesn't match.
   titled_url_match.url_match_positions = match_positions;
 
+  scoped_refptr<FakeAutocompleteProvider> provider =
+      new FakeAutocompleteProvider(AutocompleteProvider::Type::TYPE_BOOKMARK);
   TestSchemeClassifier classifier;
   AutocompleteInput input(input_text, metrics::OmniboxEventProto::NTP,
                           classifier);
@@ -161,12 +161,9 @@ AutocompleteMatch BuildTestAutocompleteMatch(
 }
 
 TEST_F(TitledUrlMatchUtilsTest, DoTrimHttpScheme) {
-  scoped_refptr<FakeAutocompleteProvider> provider =
-      base::MakeRefCounted<FakeAutocompleteProvider>(
-          AutocompleteProvider::Type::TYPE_BOOKMARK);
   GURL match_url("http://www.facebook.com/");
   AutocompleteMatch autocomplete_match =
-      BuildTestAutocompleteMatch(provider, "face", match_url, {{11, 15}});
+      BuildTestAutocompleteMatch("face", match_url, {{11, 15}});
 
   ACMatchClassifications expected_contents_class = {
       {0, ACMatchClassification::URL | ACMatchClassification::MATCH},
@@ -189,12 +186,9 @@ TEST_F(TitledUrlMatchUtilsTest, DontTrimHttpSchemeIfInputHasScheme) {
   feature_list.InitAndDisableFeature({omnibox::kRichAutocompletion});
   RichAutocompletionParams::ClearParamsForTesting();
 
-  scoped_refptr<FakeAutocompleteProvider> provider =
-      base::MakeRefCounted<FakeAutocompleteProvider>(
-          AutocompleteProvider::Type::TYPE_BOOKMARK);
   GURL match_url("http://www.facebook.com/");
-  AutocompleteMatch autocomplete_match = BuildTestAutocompleteMatch(
-      provider, "http://face", match_url, {{11, 15}});
+  AutocompleteMatch autocomplete_match =
+      BuildTestAutocompleteMatch("http://face", match_url, {{11, 15}});
 
   ACMatchClassifications expected_contents_class = {
       {0, ACMatchClassification::URL | ACMatchClassification::MATCH},
@@ -213,12 +207,9 @@ TEST_F(TitledUrlMatchUtilsTest, DontTrimHttpSchemeIfInputHasScheme) {
 }
 
 TEST_F(TitledUrlMatchUtilsTest, DoTrimHttpsScheme) {
-  scoped_refptr<FakeAutocompleteProvider> provider =
-      base::MakeRefCounted<FakeAutocompleteProvider>(
-          AutocompleteProvider::Type::TYPE_BOOKMARK);
   GURL match_url("https://www.facebook.com/");
   AutocompleteMatch autocomplete_match =
-      BuildTestAutocompleteMatch(provider, "face", match_url, {{12, 16}});
+      BuildTestAutocompleteMatch("face", match_url, {{12, 16}});
 
   ACMatchClassifications expected_contents_class = {
       {0, ACMatchClassification::URL | ACMatchClassification::MATCH},
@@ -241,12 +232,9 @@ TEST_F(TitledUrlMatchUtilsTest, DontTrimHttpsSchemeIfInputHasScheme) {
   feature_list.InitAndDisableFeature({omnibox::kRichAutocompletion});
   RichAutocompletionParams::ClearParamsForTesting();
 
-  scoped_refptr<FakeAutocompleteProvider> provider =
-      base::MakeRefCounted<FakeAutocompleteProvider>(
-          AutocompleteProvider::Type::TYPE_BOOKMARK);
   GURL match_url("https://www.facebook.com/");
-  AutocompleteMatch autocomplete_match = BuildTestAutocompleteMatch(
-      provider, "https://face", match_url, {{12, 16}});
+  AutocompleteMatch autocomplete_match =
+      BuildTestAutocompleteMatch("https://face", match_url, {{12, 16}});
 
   ACMatchClassifications expected_contents_class = {
       {0, ACMatchClassification::URL | ACMatchClassification::MATCH},

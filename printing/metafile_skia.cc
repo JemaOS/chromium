@@ -186,7 +186,7 @@ bool MetafileSkia::FinishPage() {
     canvas->drawPicture(std::move(pic));
     pic = recorder.finishRecordingAsPicture();
   }
-  AppendPage(data_->size, std::move(pic));
+  data_->pages.emplace_back(data_->size, std::move(pic));
   return true;
 }
 
@@ -200,19 +200,11 @@ bool MetafileSkia::FinishDocument() {
 
   SkDynamicMemoryWStream stream;
   sk_sp<SkDocument> doc;
-  cc::PlaybackCallbacks::CustomDataRasterCallback custom_callback;
+  cc::PlaybackParams::CustomDataRasterCallback custom_callback;
   switch (data_->type) {
     case mojom::SkiaDocumentType::kPDF:
-      doc = MakePdfDocument(printing::GetAgent(), title_, accessibility_tree_,
-                            generate_document_outline_, &stream);
+      doc = MakePdfDocument(printing::GetAgent(), accessibility_tree_, &stream);
       break;
-#if BUILDFLAG(IS_WIN)
-    case mojom::SkiaDocumentType::kXPS:
-      // TODO(crbug.com/1008222) Update to use MakeXpsDocument() once it is
-      // available.
-      NOTIMPLEMENTED();
-      break;
-#endif
     case mojom::SkiaDocumentType::kMSKP:
       SkSerialProcs procs = SerializationProcs(&data_->subframe_content_info,
                                                data_->typeface_content_info);
@@ -245,11 +237,11 @@ void MetafileSkia::FinishFrameContent() {
   DCHECK_EQ(data_->type, mojom::SkiaDocumentType::kMSKP);
   DCHECK(!data_->data_stream);
 
-  cc::PlaybackCallbacks callbacks;
-  callbacks.custom_callback = base::BindRepeating(
-      &MetafileSkia::CustomDataToSkPictureCallback, base::Unretained(this));
+  cc::PlaybackParams::CustomDataRasterCallback custom_callback =
+      base::BindRepeating(&MetafileSkia::CustomDataToSkPictureCallback,
+                          base::Unretained(this));
   sk_sp<SkPicture> pic = data_->pages[0].content.ToSkPicture(
-      SkRect::MakeSize(data_->pages[0].size), nullptr, callbacks);
+      SkRect::MakeSize(data_->pages[0].size), nullptr, custom_callback);
   SkSerialProcs procs = SerializationProcs(&data_->subframe_content_info,
                                            data_->typeface_content_info);
   SkDynamicMemoryWStream stream;
@@ -280,8 +272,8 @@ mojom::MetafileDataType MetafileSkia::GetDataType() const {
 }
 
 gfx::Rect MetafileSkia::GetPageBounds(unsigned int page_number) const {
-  if (page_number > 0 && page_number - 1 < data_->pages.size()) {
-    SkSize size = data_->pages[page_number - 1].size;
+  if (page_number < data_->pages.size()) {
+    SkSize size = data_->pages[page_number].size;
     return gfx::Rect(base::ClampRound(size.width()),
                      base::ClampRound(size.height()));
   }
@@ -348,18 +340,13 @@ bool MetafileSkia::SaveToFileDescriptor(int fd) const {
   std::vector<uint8_t> buffer(std::min(kMaximumBufferSize, asset->getLength()));
   do {
     size_t read_size = asset->read(&buffer[0], buffer.size());
-    bool is_at_end = read_size < buffer.size();
-    if (read_size == 0u) {
+    if (read_size == 0u)
       break;
-    }
     DCHECK_GE(buffer.size(), read_size);
     buffer.resize(read_size);
-    if (!base::WriteFileDescriptor(fd, buffer)) {
+    if (!base::WriteFileDescriptor(fd, buffer))
       return false;
-    } else if (is_at_end) {
-      break;
-    }
-  } while (true);
+  } while (!asset->isAtEnd());
 
   return true;
 }
@@ -375,18 +362,14 @@ bool MetafileSkia::SaveTo(base::File* file) const {
   std::vector<uint8_t> buffer(std::min(kMaximumBufferSize, asset->getLength()));
   do {
     size_t read_size = asset->read(&buffer[0], buffer.size());
-    bool is_at_end = read_size < buffer.size();
-    if (read_size == 0) {
+    if (read_size == 0)
       break;
-    }
     DCHECK_GE(buffer.size(), read_size);
     if (!file->WriteAtCurrentPosAndCheck(
             base::make_span(&buffer[0], read_size))) {
       return false;
-    } else if (is_at_end) {
-      break;
     }
-  } while (true);
+  } while (!asset->isAtEnd());
 
   return true;
 }
@@ -421,11 +404,13 @@ uint32_t MetafileSkia::CreateContentForRemoteFrame(
   sk_sp<SkPicture> pic = SkPicture::MakePlaceholder(
       SkRect::MakeXYWH(rect.x(), rect.y(), rect.width(), rect.height()));
 
-  // Store the map between content id and the proxy id and store the picture
-  // content.
-  const uint32_t content_id = pic->uniqueID();
+  // Store the map between content id and the proxy id.
+  uint32_t content_id = pic->uniqueID();
   DCHECK(!base::Contains(data_->subframe_content_info, content_id));
-  AppendSubframeInfo(content_id, render_proxy_token, std::move(pic));
+  data_->subframe_content_info[content_id] = render_proxy_token;
+
+  // Store the picture content.
+  data_->subframe_pics[content_id] = pic;
   return content_id;
 }
 

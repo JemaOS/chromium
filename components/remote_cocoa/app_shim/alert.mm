@@ -4,10 +4,9 @@
 
 #include "components/remote_cocoa/app_shim/alert.h"
 
-#import "base/apple/foundation_util.h"
 #include "base/functional/bind.h"
 #include "base/i18n/rtl.h"
-#include "base/memory/raw_ptr_exclusion.h"
+#import "base/mac/foundation_util.h"
 #include "base/strings/sys_string_conversions.h"
 #include "ui/accelerated_widget_mac/window_resize_helper_mac.h"
 #include "ui/base/l10n/l10n_util_mac.h"
@@ -29,10 +28,9 @@ const int kMessageTextMaxSlots = 2000;
 // going away. Is responsible for cleaning itself up.
 @interface AlertBridgeHelper : NSObject <NSAlertDelegate> {
  @private
-  NSAlert* __strong _alert;
-  // This field is not a raw_ptr<> because it requires @property rewrite.
-  RAW_PTR_EXCLUSION remote_cocoa::AlertBridge* _alertBridge;  // Weak.
-  NSTextField* __strong _textField;
+  base::scoped_nsobject<NSAlert> _alert;
+  remote_cocoa::AlertBridge* _alertBridge;  // Weak.
+  base::scoped_nsobject<NSTextField> _textField;
 }
 @property(assign, nonatomic) remote_cocoa::AlertBridge* alertBridge;
 
@@ -53,8 +51,8 @@ const int kMessageTextMaxSlots = 2000;
 @synthesize alertBridge = _alertBridge;
 
 - (void)initAlert:(AlertBridgeInitParams*)params {
-  _alert = [[NSAlert alloc] init];
-  _alert.delegate = self;
+  _alert.reset([[NSAlert alloc] init]);
+  [_alert setDelegate:self];
 
   if (params->hide_application_icon)
     [self setBlankIcon];
@@ -81,9 +79,9 @@ const int kMessageTextMaxSlots = 2000;
     }
   }
 
-  _alert.informativeText = informative_text;
+  [_alert setInformativeText:informative_text];
   NSString* message_text = l10n_util::FixUpWindowsStyleLabel(params->title);
-  _alert.messageText = message_text;
+  [_alert setMessageText:message_text];
   [_alert addButtonWithTitle:l10n_util::FixUpWindowsStyleLabel(
                                  params->primary_button_text)];
 
@@ -91,18 +89,18 @@ const int kMessageTextMaxSlots = 2000;
     NSButton* other =
         [_alert addButtonWithTitle:l10n_util::FixUpWindowsStyleLabel(
                                        *params->secondary_button_text)];
-    other.keyEquivalent = @"\e";
+    [other setKeyEquivalent:@"\e"];
   }
   if (params->check_box_text) {
-    _alert.showsSuppressionButton = YES;
+    [_alert setShowsSuppressionButton:YES];
     NSString* suppression_title =
         l10n_util::FixUpWindowsStyleLabel(*params->check_box_text);
-    [_alert.suppressionButton setTitle:suppression_title];
+    [[_alert suppressionButton] setTitle:suppression_title];
   }
 
   // Fix RTL dialogs.
   //
-  // macOS will always display NSAlert strings as LTR. A workaround is to
+  // Mac OS X will always display NSAlert strings as LTR. A workaround is to
   // manually set the text as attributed strings in the implementing
   // NSTextFields. This is a basic correctness issue.
   //
@@ -131,13 +129,12 @@ const int kMessageTextMaxSlots = 2000;
     // actually available as the ivars |_messageField| and |_informationField|
     // of the NSAlert, but it is safer (and more forward-compatible) to search
     // for them in the subviews.
-    for (NSView* view in _alert.window.contentView.subviews) {
-      NSTextField* text_field = base::apple::ObjCCast<NSTextField>(view);
-      if ([text_field.stringValue isEqualTo:message_text]) {
+    for (NSView* view in [[[_alert window] contentView] subviews]) {
+      NSTextField* text_field = base::mac::ObjCCast<NSTextField>(view);
+      if ([[text_field stringValue] isEqualTo:message_text])
         message_text_field = text_field;
-      } else if ([text_field.stringValue isEqualTo:informative_text]) {
+      else if ([[text_field stringValue] isEqualTo:informative_text])
         informative_text_field = text_field;
-      }
     }
 
     // This may fail in future OS releases, but it will still work for shipped
@@ -147,43 +144,44 @@ const int kMessageTextMaxSlots = 2000;
   }
 
   if (message_has_rtl && message_text_field) {
-    NSMutableParagraphStyle* alignment =
-        [NSParagraphStyle.defaultParagraphStyle mutableCopy];
-    alignment.alignment = NSTextAlignmentRight;
+    base::scoped_nsobject<NSMutableParagraphStyle> alignment(
+        [[NSParagraphStyle defaultParagraphStyle] mutableCopy]);
+    [alignment setAlignment:NSTextAlignmentRight];
 
     NSDictionary* alignment_attributes =
         @{NSParagraphStyleAttributeName : alignment};
-    NSAttributedString* attr_string =
+    base::scoped_nsobject<NSAttributedString> attr_string(
         [[NSAttributedString alloc] initWithString:message_text
-                                        attributes:alignment_attributes];
+                                        attributes:alignment_attributes]);
 
-    message_text_field.attributedStringValue = attr_string;
-    message_text_field.selectable = NO;
+    [message_text_field setAttributedStringValue:attr_string];
+    [message_text_field setSelectable:NO];
   }
 
   if (informative_has_rtl && informative_text_field) {
     base::i18n::TextDirection direction =
         base::i18n::GetFirstStrongCharacterDirection(params->message_text);
-    NSMutableParagraphStyle* alignment =
-        [NSParagraphStyle.defaultParagraphStyle mutableCopy];
-    alignment.alignment = direction == base::i18n::RIGHT_TO_LEFT
-                              ? NSTextAlignmentRight
-                              : NSTextAlignmentLeft;
+    base::scoped_nsobject<NSMutableParagraphStyle> alignment(
+        [[NSParagraphStyle defaultParagraphStyle] mutableCopy]);
+    [alignment setAlignment:(direction == base::i18n::RIGHT_TO_LEFT)
+                                ? NSTextAlignmentRight
+                                : NSTextAlignmentLeft];
 
     NSDictionary* alignment_attributes =
         @{NSParagraphStyleAttributeName : alignment};
-    NSAttributedString* attr_string =
+    base::scoped_nsobject<NSAttributedString> attr_string(
         [[NSAttributedString alloc] initWithString:informative_text
-                                        attributes:alignment_attributes];
+                                        attributes:alignment_attributes]);
 
-    informative_text_field.attributedStringValue = attr_string;
-    informative_text_field.selectable = NO;
+    [informative_text_field setAttributedStringValue:attr_string];
+    [informative_text_field setSelectable:NO];
   }
 }
 
 - (void)setBlankIcon {
-  NSImage* image = [[NSImage alloc] initWithSize:NSMakeSize(1, 1)];
-  _alert.icon = image;
+  NSImage* image =
+      [[[NSImage alloc] initWithSize:NSMakeSize(1, 1)] autorelease];
+  [_alert setIcon:image];
 }
 
 - (NSAlert*)alert {
@@ -192,10 +190,11 @@ const int kMessageTextMaxSlots = 2000;
 
 - (void)addTextFieldWithPrompt:(NSString*)prompt {
   DCHECK(!_textField);
-  _textField = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 300, 22)];
-  _textField.cell.lineBreakMode = NSLineBreakByTruncatingTail;
-  self.alert.accessoryView = _textField;
-  _alert.window.initialFirstResponder = _textField;
+  _textField.reset(
+      [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 300, 22)]);
+  [[_textField cell] setLineBreakMode:NSLineBreakByTruncatingTail];
+  [[self alert] setAccessoryView:_textField];
+  [[_alert window] setInitialFirstResponder:_textField];
 
   [_textField setStringValue:prompt];
 }
@@ -224,7 +223,7 @@ const int kMessageTextMaxSlots = 2000;
   _alertBridge->SetAlertHasShown();
   NSAlert* alert = [self alert];
   [alert layout];
-  [alert.window recalculateKeyViewLoop];
+  [[alert window] recalculateKeyViewLoop];
   // TODO(crbug.com/841631): Migrate to `[NSWindow
   // beginSheetModalForWindow:completionHandler:]` instead.
 #pragma clang diagnostic push
@@ -232,18 +231,18 @@ const int kMessageTextMaxSlots = 2000;
   [alert beginSheetModalForWindow:nil  // nil here makes it app-modal
                     modalDelegate:self
                    didEndSelector:@selector(alertDidEnd:returnCode:contextInfo:)
-                      contextInfo:nullptr];
+                      contextInfo:NULL];
 #pragma clang diagnostic pop
 }
 
 - (void)closeWindow {
   DCHECK(_alertBridge);
-  [NSApp endSheet:self.alert.window];
+  [NSApp endSheet:[[self alert] window]];
 }
 
 - (std::u16string)input {
   if (_textField)
-    return base::SysNSStringToUTF16(_textField.stringValue);
+    return base::SysNSStringToUTF16([_textField stringValue]);
   return std::u16string();
 }
 
@@ -272,8 +271,8 @@ AlertBridge::AlertBridge(
 }
 
 AlertBridge::~AlertBridge() {
-  helper_.alertBridge = nil;
-  [NSObject cancelPreviousPerformRequestsWithTarget:helper_];
+  [helper_ setAlertBridge:nil];
+  [NSObject cancelPreviousPerformRequestsWithTarget:helper_.get()];
 }
 
 void AlertBridge::OnMojoDisconnect() {
@@ -307,16 +306,19 @@ void AlertBridge::Show(mojom::AlertBridgeInitParamsPtr params,
                        ShowCallback callback) {
   callback_ = std::move(callback);
 
-  // Create a helper which will receive the sheet ended selector.
-  helper_ = [[AlertBridgeHelper alloc] init];
-  helper_.alertBridge = this;
+  // Create a helper which will receive the sheet ended selector. It will
+  // delete itself when done.
+  helper_.reset([[AlertBridgeHelper alloc] init]);
+  [helper_ setAlertBridge:this];
   [helper_ initAlert:params.get()];
 
   // Dispatch the method to show the alert back to the top of the CFRunLoop.
   // This fixes an interaction bug with NSSavePanel. http://crbug.com/375785
   // When this object is destroyed, outstanding performSelector: requests
   // should be cancelled.
-  [helper_ performSelector:@selector(showAlert) withObject:nil afterDelay:0];
+  [helper_.get() performSelector:@selector(showAlert)
+                      withObject:nil
+                      afterDelay:0];
 }
 
 void AlertBridge::Dismiss() {

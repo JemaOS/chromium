@@ -9,7 +9,6 @@
 #include <string>
 
 #include "base/strings/string_piece.h"
-#include "components/metrics/metrics_log.h"
 #include "components/metrics/metrics_log_uploader.h"
 #include "third_party/metrics_proto/reporting_info.pb.h"
 #include "url/gurl.h"
@@ -54,7 +53,6 @@ class NetMetricsLogUploader : public MetricsLogUploader {
   // MetricsLogUploader:
   // Uploads a log to the server_url specified in the constructor.
   void UploadLog(const std::string& compressed_log_data,
-                 const LogMetadata& log_metadata,
                  const std::string& log_hash,
                  const std::string& log_signature,
                  const ReportingInfo& reporting_info) override;
@@ -62,7 +60,6 @@ class NetMetricsLogUploader : public MetricsLogUploader {
  private:
   // Uploads a log to a URL passed as a parameter.
   void UploadLogToURL(const std::string& compressed_log_data,
-                      const LogMetadata& log_metadata,
                       const std::string& log_hash,
                       const std::string& log_signature,
                       const ReportingInfo& reporting_info,

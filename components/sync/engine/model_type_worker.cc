@@ -6,10 +6,11 @@
 
 #include <stdint.h>
 
-#include <map>
 #include <set>
 #include <utility>
 
+#include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/containers/span.h"
 #include "base/feature_list.h"
 #include "base/format_macros.h"
@@ -42,7 +43,6 @@
 #include "components/sync/protocol/data_type_progress_marker.pb.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
 #include "components/sync/protocol/model_type_state_helper.h"
-#include "components/sync/protocol/password_specifics.pb.h"
 #include "components/sync/protocol/proto_memory_estimations.h"
 #include "components/sync/protocol/sync_entity.pb.h"
 
@@ -58,42 +58,13 @@ const char kBlockedByUndecryptableUpdateHistogramName[] =
     "Sync.ModelTypeBlockedDueToUndecryptableUpdate";
 const char kPasswordNotesStateHistogramName[] =
     "Sync.PasswordNotesStateInUpdate";
-constexpr char kEntityEncryptionResultHistogramName[] =
-    "Sync.EntityEncryptionSucceeded";
 
-// Sync ignores updates encrypted with keys that have been missing for too long
-// from this client and will proceed normally as if those updates didn't exist.
-// The notion of "too long" is measured in number of GetUpdates and is
-// determined by this constant. The counter is in-memory only.
-constexpr int kMinGuResponsesToIgnoreKey = 3;
-
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class CrossUserSharingDecryptionResult {
-  kSuccess = 0,
-  kInvitationMissingFields = 1,
-  kFailedToDecryptInvitation = 2,
-  kFailedToParseDecryptedInvitation = 3,
-
-  kMaxValue = kFailedToParseDecryptedInvitation,
-};
+BASE_FEATURE(kSyncKeepGcDirectiveDuringSyncCycle,
+             "SyncKeepGcDirectiveDuringSyncCycle",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 void LogPasswordNotesState(PasswordNotesStateForUMA state) {
   base::UmaHistogramEnumeration(kPasswordNotesStateHistogramName, state);
-}
-
-void LogEncryptionResult(ModelType type, bool success) {
-  base::UmaHistogramBoolean(kEntityEncryptionResultHistogramName, success);
-  base::UmaHistogramBoolean(
-      base::StrCat({kEntityEncryptionResultHistogramName, ".",
-                    ModelTypeToHistogramSuffix(type)}),
-      success);
-}
-
-void LogCrossUserSharingDecryptionResult(
-    CrossUserSharingDecryptionResult result) {
-  base::UmaHistogramEnumeration("Sync.CrossUserSharingDecryptionResult",
-                                result);
 }
 
 // A proxy which can be called from any sequence and delegates the work to the
@@ -150,16 +121,14 @@ void AdaptWebAuthnClientTagHash(syncer::EntityData* data) {
   // Valid ClientTagHash values are Base64(SHA1(protobuf_prefix + client_tag))
   // and therefore always 28 bytes.
   const std::string& client_tag_hash = data->client_tag_hash.value();
-  std::string sync_id;
   if (client_tag_hash.size() == 32 &&
-      base::HexStringToString(client_tag_hash, &sync_id) &&
-      // Deletions don't include the specifics, only the client_tag_hash.
-      (!data->specifics.has_webauthn_credential() ||
-       // Otherwise, check that the client_tag_hash really is the hex encoded
-       // sync_id.
-       sync_id == data->specifics.webauthn_credential().sync_id())) {
-    data->client_tag_hash =
-        ClientTagHash::FromUnhashed(ModelType::WEBAUTHN_CREDENTIAL, sync_id);
+      // base::HexEncode() returns upper case, `client_tag_hash` is lower case.
+      base::ToUpperASCII(client_tag_hash) ==
+          base::HexEncode(base::as_bytes(base::make_span(
+              data->specifics.webauthn_credential().sync_id())))) {
+    data->client_tag_hash = ClientTagHash::FromUnhashed(
+        ModelType::WEBAUTHN_CREDENTIAL,
+        data->specifics.webauthn_credential().sync_id());
   }
 }
 
@@ -195,11 +164,7 @@ std::string GetEncryptionKeyName(const sync_pb::SyncEntity& entity) {
 bool DecryptSpecifics(const Cryptographer& cryptographer,
                       const sync_pb::EntitySpecifics& in,
                       sync_pb::EntitySpecifics* out) {
-  // Passwords and password sharing invitations have their own encryption
-  // schemes and they are handled in different helpers.
-  CHECK(!in.has_incoming_password_sharing_invitation());
   DCHECK(!in.has_password());
-
   DCHECK(in.has_encrypted());
   DCHECK(cryptographer.CanDecrypt(in.encrypted()));
 
@@ -212,7 +177,7 @@ bool DecryptSpecifics(const Cryptographer& cryptographer,
 
 // Attempts to decrypt the given password specifics and return them in the
 // |out| parameter. The cryptographer must know the decryption key, i.e.
-// cryptographer.CanDecrypt(in.encrypted()) must return true.
+// cryptographer.CanDecrypt(in.password().encrypted()) must return true.
 //
 // Returns false if the decryption failed. There are no guarantees about the
 // contents of |out| when that happens.
@@ -221,30 +186,38 @@ bool DecryptSpecifics(const Cryptographer& cryptographer,
 // cause this to fail, and no clients are known to create such entries. The
 // failure case is an attempt to be defensive against bad input.
 bool DecryptPasswordSpecifics(const Cryptographer& cryptographer,
-                              const sync_pb::PasswordSpecifics& in,
-                              sync_pb::PasswordSpecificsData* out) {
-  CHECK(in.has_encrypted());
-  CHECK(cryptographer.CanDecrypt(in.encrypted()));
+                              const sync_pb::EntitySpecifics& in,
+                              sync_pb::EntitySpecifics* out) {
+  DCHECK(in.has_password());
+  DCHECK(in.password().has_encrypted());
+  DCHECK(cryptographer.CanDecrypt(in.password().encrypted()));
 
-  if (!cryptographer.Decrypt(in.encrypted(), out)) {
+  if (!cryptographer.Decrypt(
+          in.password().encrypted(),
+          out->mutable_password()->mutable_client_only_encrypted_data())) {
     DLOG(ERROR) << "Failed to decrypt a decryptable password";
     return false;
   }
   // The `notes` field in the PasswordSpecificsData is the authoritative value.
   // When set, it disregards whatever `encrypted_notes_backup` contains.
-  if (out->has_notes()) {
+  if (out->password().client_only_encrypted_data().has_notes()) {
     LogPasswordNotesState(PasswordNotesStateForUMA::kSetInSpecificsData);
     return true;
   }
-  if (!in.has_encrypted_notes_backup()) {
+  if (!in.password().has_encrypted_notes_backup()) {
     LogPasswordNotesState(PasswordNotesStateForUMA::kUnset);
+    return true;
+  }
+  if (!base::FeatureList::IsEnabled(syncer::kPasswordNotesWithBackup)) {
     return true;
   }
   // It is guaranteed that if `encrypted()` is decryptable, then
   // `encrypted_notes_backup()` must be decryptable too. Failure to decrypt
   // `encrypted_notes_backup()` indicates a data corruption.
-  if (!cryptographer.Decrypt(in.encrypted_notes_backup(),
-                             out->mutable_notes())) {
+  if (!cryptographer.Decrypt(in.password().encrypted_notes_backup(),
+                             out->mutable_password()
+                                 ->mutable_client_only_encrypted_data()
+                                 ->mutable_notes())) {
     LogPasswordNotesState(
         PasswordNotesStateForUMA::kSetOnlyInBackupButCorrupted);
     return false;
@@ -254,46 +227,6 @@ bool DecryptPasswordSpecifics(const Cryptographer& cryptographer,
   // decryptable but with different keys. Ideally the password should be
   // re-uploaded potentially by setting needs_reupload boolean in
   // UpdateResponseData or EntityData.
-  return true;
-}
-
-bool DecryptIncomingPasswordSharingInvitationSpecifics(
-    const Cryptographer& cryptographer,
-    const sync_pb::IncomingPasswordSharingInvitationSpecifics& invitation,
-    sync_pb::PasswordSharingInvitationData* unencrypted_invitation_data) {
-  if (!invitation.has_encrypted_password_sharing_invitation_data() ||
-      !invitation.sender_info().has_cross_user_sharing_public_key()) {
-    LogCrossUserSharingDecryptionResult(
-        CrossUserSharingDecryptionResult::kInvitationMissingFields);
-    DLOG(ERROR) << "The invitation is missing required fields";
-    return false;
-  }
-
-  std::optional<std::vector<uint8_t>> decrypted =
-      cryptographer.AuthDecryptForCrossUserSharing(
-          base::as_bytes(base::make_span(
-              invitation.encrypted_password_sharing_invitation_data())),
-          base::as_bytes(base::make_span(invitation.sender_info()
-                                             .cross_user_sharing_public_key()
-                                             .x25519_public_key())),
-          invitation.recipient_key_version());
-  if (!decrypted) {
-    LogCrossUserSharingDecryptionResult(
-        CrossUserSharingDecryptionResult::kFailedToDecryptInvitation);
-    DLOG(ERROR) << "Failed to decrypt the invitation";
-    return false;
-  }
-
-  if (!unencrypted_invitation_data->ParseFromArray(decrypted->data(),
-                                                   decrypted->size())) {
-    LogCrossUserSharingDecryptionResult(
-        CrossUserSharingDecryptionResult::kFailedToParseDecryptedInvitation);
-    DLOG(ERROR) << "Failed to parse the decrypted invitation";
-    return false;
-  }
-
-  LogCrossUserSharingDecryptionResult(
-      CrossUserSharingDecryptionResult::kSuccess);
   return true;
 }
 
@@ -312,7 +245,8 @@ ModelTypeWorker::ModelTypeWorker(ModelType type,
       cancelation_signal_(cancelation_signal),
       model_type_state_(initial_state),
       encryption_enabled_(encryption_enabled),
-      passphrase_type_(passphrase_type) {
+      passphrase_type_(passphrase_type),
+      min_get_updates_to_ignore_key_(kMinGuResponsesToIgnoreKey.Get()) {
   DCHECK(cryptographer_);
   DCHECK(!AlwaysEncryptedUserTypes().Has(type_) || encryption_enabled_);
 
@@ -338,9 +272,9 @@ ModelTypeWorker::ModelTypeWorker(ModelType type,
             std::make_unique<SyncInvalidationAdapter>(
                 model_type_state_.invalidations(i).hint(),
                 model_type_state_.invalidations(i).has_version()
-                    ? std::optional<int64_t>(
+                    ? absl::optional<int64_t>(
                           model_type_state_.invalidations(i).version())
-                    : std::nullopt),
+                    : absl::nullopt),
             false);
       }
 
@@ -501,35 +435,12 @@ void ModelTypeWorker::ProcessGetUpdatesResponse(
   // TODO(rlarocque): Handle data type context conflicts.
   *model_type_state_.mutable_type_context() = mutated_context;
 
-  if (progress_marker.has_gc_directive()) {
-    if (progress_marker.gc_directive().has_version_watermark()) {
-      // Clean up all the pending updates because a new GC directive has been
-      // received which means that all existing data should be cleaned up.
-      pending_updates_.clear();
-      entries_pending_decryption_.clear();
-    }
-
-    // Ignore collaboration GC for non-shared types.
-    if (progress_marker.gc_directive().has_collaboration_gc() &&
-        SharedTypes().Has(type_)) {
-      // Clean up all the pending updates related to inactive collaborations for
-      // the shared types.
-      auto active_collaborations =
-          base::MakeFlatSet<std::string>(progress_marker.gc_directive()
-                                             .collaboration_gc()
-                                             .active_collaboration_ids());
-      std::erase_if(pending_updates_, [&active_collaborations](
-                                          const UpdateResponseData& update) {
-        return !active_collaborations.contains(update.entity.collaboration_id);
-      });
-      std::erase_if(entries_pending_decryption_,
-                    [&active_collaborations](const auto& pending_decryption) {
-                      const sync_pb::SyncEntity& entity =
-                          pending_decryption.second;
-                      return !active_collaborations.contains(
-                          entity.collaboration().collaboration_id());
-                    });
-    }
+  if (progress_marker.has_gc_directive() &&
+      base::FeatureList::IsEnabled(kSyncKeepGcDirectiveDuringSyncCycle)) {
+    // Clean up all the pending updates because a new GC directive has been
+    // received which means that all existing data should be cleaned up.
+    pending_updates_.clear();
+    entries_pending_decryption_.clear();
   }
 
   *model_type_state_.mutable_progress_marker() = progress_marker;
@@ -573,7 +484,7 @@ void ModelTypeWorker::ProcessGetUpdatesResponse(
           // |server_id|, don't clear it: outdated data is better than nothing.
           // Such entry should be encrypted with another key, since |key_name|'s
           // queued updates would've have been dropped by now.
-          DCHECK(!entries_pending_decryption_.contains(server_id) ||
+          DCHECK(!base::Contains(entries_pending_decryption_, server_id) ||
                  GetEncryptionKeyName(entries_pending_decryption_[server_id]) !=
                      key_name);
           SyncRecordModelTypeUpdateDropReason(
@@ -643,31 +554,10 @@ ModelTypeWorker::DecryptionStatus ModelTypeWorker::PopulateUpdateResponseData(
     if (!cryptographer.CanDecrypt(specifics.password().encrypted())) {
       return DECRYPTION_PENDING;
     }
-    if (!DecryptPasswordSpecifics(cryptographer, specifics.password(),
-                                  data.specifics.mutable_password()
-                                      ->mutable_client_only_encrypted_data())) {
+    if (!DecryptPasswordSpecifics(cryptographer, specifics, &data.specifics)) {
       return FAILED_TO_DECRYPT;
     }
     specifics_were_encrypted = true;
-  } else if (specifics.has_incoming_password_sharing_invitation()) {
-    // IncomingPasswordSharingInvitationSpecifics contains a mix of encrypted
-    // and unencrypted fields. We start by copying over everything to make sure
-    // all unecrypted fields are carried over to the UpdateResponseData, and
-    // then decrypt the encrypted part.
-    *data.specifics.mutable_incoming_password_sharing_invitation() =
-        specifics.incoming_password_sharing_invitation();
-    // Password sharing invitations use their own encryption scheme.
-    // DECRYPTION_PENDING is not used for sharing invitations since the password
-    // should be encrypted using recipient's public key (i.e. it's committed to
-    // the server), and hence it's expected to be present.
-    if (!DecryptIncomingPasswordSharingInvitationSpecifics(
-            cryptographer, specifics.incoming_password_sharing_invitation(),
-            data.specifics.mutable_incoming_password_sharing_invitation()
-                ->mutable_client_only_unencrypted_data())) {
-      return FAILED_TO_DECRYPT;
-    }
-    data.specifics.mutable_incoming_password_sharing_invitation()
-        ->clear_encrypted_password_sharing_invitation_data();
   } else if (specifics.has_encrypted()) {
     DCHECK(!update_entity.deleted()) << "Tombstones shouldn't be encrypted";
     if (!cryptographer.CanDecrypt(specifics.encrypted())) {
@@ -692,11 +582,6 @@ ModelTypeWorker::DecryptionStatus ModelTypeWorker::PopulateUpdateResponseData(
   data.name = update_entity.name();
   data.legacy_parent_id = update_entity.parent_id_string();
   data.server_defined_unique_tag = update_entity.server_defined_unique_tag();
-
-  // Populate shared type fields.
-  if (SharedTypes().Has(model_type)) {
-    data.collaboration_id = update_entity.collaboration().collaboration_id();
-  }
 
   // Populate |originator_cache_guid| and |originator_client_item_id|. This is
   // currently relevant only for bookmarks.
@@ -734,16 +619,14 @@ void ModelTypeWorker::ApplyUpdates(StatusController* status, bool cycle_done) {
   // other types wait for the cycle to complete before applying any updates.
   // Note that the initial sync technically isn't started/done yet but by the
   // time this value is persisted to disk on the model thread it will be.
+  model_type_state_.set_initial_sync_done_deprecated(true);
   if (cycle_done) {
     model_type_state_.set_initial_sync_state(
         sync_pb::ModelTypeState_InitialSyncState_INITIAL_SYNC_DONE);
   } else {
     DCHECK(ApplyUpdatesImmediatelyTypes().Has(type_));
-    if (model_type_state_.initial_sync_state() !=
-        sync_pb::ModelTypeState_InitialSyncState_INITIAL_SYNC_DONE) {
-      model_type_state_.set_initial_sync_state(
-          sync_pb::ModelTypeState_InitialSyncState_INITIAL_SYNC_PARTIALLY_DONE);
-    }
+    model_type_state_.set_initial_sync_state(
+        sync_pb::ModelTypeState_InitialSyncState_INITIAL_SYNC_PARTIALLY_DONE);
   }
 
   if (!entries_pending_decryption_.empty() &&
@@ -868,13 +751,13 @@ std::unique_ptr<CommitContribution> ModelTypeWorker::GetContribution(
   // |has_local_changes_state_|), in case the processor decided a local change
   // was not worth a nudge.
   scoped_refptr<GetLocalChangesRequest> request =
-      base::MakeRefCounted<GetLocalChangesRequest>();
+      base::MakeRefCounted<GetLocalChangesRequest>(cancelation_signal_);
   model_type_processor_->GetLocalChanges(
       max_entries,
       base::BindOnce(&GetLocalChangesRequest::SetResponse, request));
-  request->WaitForResponseOrCancelation(cancelation_signal_);
+  request->WaitForResponseOrCancelation();
   CommitRequestDataList response;
-  if (!cancelation_signal_->IsSignalled()) {
+  if (!request->WasCancelled()) {
     response = request->ExtractResponse();
   }
   if (response.empty()) {
@@ -894,31 +777,21 @@ std::unique_ptr<CommitContribution> ModelTypeWorker::GetContribution(
     has_local_changes_state_ = kAllNudgedLocalChangesInFlight;
   }
 
-  if (type_ == OUTGOING_PASSWORD_SHARING_INVITATION) {
-    // Password sharing invitation types have different encryption scheme and
-    // are handled separately.
-    EncryptOutgoingPasswordSharingInvitations(&response);
-  } else if (type_ == PASSWORDS) {
-    EncryptPasswordSpecificsData(&response);
-  } else if (encryption_enabled_) {
-    EncryptSpecifics(&response);
-  }
-
   DCHECK(!AlwaysEncryptedUserTypes().Has(type_) || encryption_enabled_);
   DCHECK(!encryption_enabled_ ||
          (model_type_state_.encryption_key_name() ==
           cryptographer_->GetDefaultEncryptionKeyName()));
-
   return std::make_unique<CommitContributionImpl>(
       type_, model_type_state_.type_context(), std::move(response),
       base::BindOnce(&ModelTypeWorker::OnCommitResponse,
                      weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&ModelTypeWorker::OnFullCommitFailure,
                      weak_ptr_factory_.GetWeakPtr()),
-      passphrase_type_);
+      encryption_enabled_ ? cryptographer_.get() : nullptr, passphrase_type_,
+      CommitOnlyTypes().Has(type_));
 }
 
-bool ModelTypeWorker::HasLocalChanges() const {
+bool ModelTypeWorker::HasLocalChangesForTest() const {
   return has_local_changes_state_ != kNoNudgedLocalChanges;
 }
 
@@ -1149,10 +1022,15 @@ void ModelTypeWorker::DeduplicatePendingUpdatesBasedOnOriginatorClientItemId() {
 
 bool ModelTypeWorker::ShouldIgnoreUpdatesEncryptedWith(
     const std::string& key_name) {
-  return unknown_encryption_keys_by_name_.contains(key_name) &&
-         unknown_encryption_keys_by_name_.at(key_name)
-                 .get_updates_while_should_have_been_known >=
-             kMinGuResponsesToIgnoreKey;
+  if (!base::Contains(unknown_encryption_keys_by_name_, key_name)) {
+    return false;
+  }
+  if (unknown_encryption_keys_by_name_.at(key_name)
+          .get_updates_while_should_have_been_known <
+      min_get_updates_to_ignore_key_) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(kIgnoreSyncEncryptionKeysLongMissing);
 }
 
 void ModelTypeWorker::MaybeDropPendingUpdatesEncryptedWith(
@@ -1162,7 +1040,7 @@ void ModelTypeWorker::MaybeDropPendingUpdatesEncryptedWith(
   }
 
   size_t updates_before_dropping = entries_pending_decryption_.size();
-  std::erase_if(entries_pending_decryption_, [&](const auto& id_and_update) {
+  base::EraseIf(entries_pending_decryption_, [&](const auto& id_and_update) {
     return key_name == GetEncryptionKeyName(id_and_update.second);
   });
 
@@ -1189,15 +1067,15 @@ ModelTypeWorker::RemoveKeysNoLongerUnknown() {
   }
 
   std::vector<ModelTypeWorker::UnknownEncryptionKeyInfo> removed_keys;
-  for (const auto& [key_name, info] : unknown_encryption_keys_by_name_) {
-    if (!keys_blocking_updates.contains(key_name)) {
-      removed_keys.push_back(info);
-    }
-  }
-  std::erase_if(unknown_encryption_keys_by_name_,
-                [&](const auto& key_and_info) {
-                  return !keys_blocking_updates.contains(key_and_info.first);
-                });
+  base::EraseIf(
+      unknown_encryption_keys_by_name_, [&](const auto& key_and_info) {
+        if (base::Contains(keys_blocking_updates, key_and_info.first)) {
+          return false;
+        }
+        removed_keys.push_back(key_and_info.second);
+        return true;
+      });
+
   return removed_keys;
 }
 
@@ -1237,13 +1115,16 @@ void ModelTypeWorker::ExtractGcDirective() {
 
   if (model_type_state_.progress_marker().has_gc_directive()) {
     // Keep a new GC directive if received.
-    // TODO(b/325917757): cover the case when a collaboration was removed and
-    // then added in the next GetUpdates request again. All the previous
-    // entities should be removed from the tracker (it's expected that the
-    // server returns all the entities anyway and some entities could be removed
-    // in the meantime).
     pending_gc_directive_ = model_type_state_.progress_marker().gc_directive();
     model_type_state_.mutable_progress_marker()->clear_gc_directive();
+    return;
+  }
+
+  if (pending_gc_directive_.has_value() &&
+      !base::FeatureList::IsEnabled(kSyncKeepGcDirectiveDuringSyncCycle)) {
+    // Remove the GC directive if not present in the response, to mimic the
+    // previous behavior.
+    pending_gc_directive_.reset();
     return;
   }
 
@@ -1349,10 +1230,6 @@ bool ModelTypeWorker::HasPendingInvalidations() const {
 
 void ModelTypeWorker::SendPendingInvalidationsToProcessor() {
   DCHECK(base::FeatureList::IsEnabled(kSyncPersistInvalidations));
-
-  CHECK(model_type_processor_);
-  DVLOG(1) << "Storing pending invalidations for "
-           << ModelTypeToDebugString(type_);
   UpdateModelTypeStateInvalidations();
   model_type_processor_->StorePendingInvalidations(
       std::vector<sync_pb::ModelTypeState::Invalidation>(
@@ -1374,116 +1251,10 @@ void ModelTypeWorker::UpdateModelTypeStateInvalidations() {
   }
 }
 
-void ModelTypeWorker::EncryptPasswordSpecificsData(
-    CommitRequestDataList* request_data_list) {
-  CHECK(cryptographer_);
-  CHECK(encryption_enabled_);
-  CHECK_EQ(type_, PASSWORDS);
-
-  for (std::unique_ptr<CommitRequestData>& request_data : *request_data_list) {
-    EntityData* entity_data = request_data->entity.get();
-    if (entity_data->is_deleted()) {
-      continue;
-    }
-
-    const sync_pb::PasswordSpecifics& password_specifics =
-        entity_data->specifics.password();
-    const sync_pb::PasswordSpecificsData& password_data =
-        password_specifics.client_only_encrypted_data();
-    sync_pb::EntitySpecifics encrypted_password;
-
-    // Keep the unencrypted metadata for non-custom passphrase users.
-    if (!IsExplicitPassphrase(passphrase_type_)) {
-      *encrypted_password.mutable_password()->mutable_unencrypted_metadata() =
-          password_specifics.unencrypted_metadata();
-    }
-
-    bool result = cryptographer_->Encrypt(
-        password_data,
-        encrypted_password.mutable_password()->mutable_encrypted());
-    LogEncryptionResult(type_, result);
-
-    // `encrypted_notes_backup` field needs to be populated regardless of
-    // whether or not there are any notes.
-    result = cryptographer_->Encrypt(password_data.notes(),
-                                     encrypted_password.mutable_password()
-                                         ->mutable_encrypted_notes_backup());
-    CHECK(result);
-
-    // When encrypting both blobs succeeds, both encrypted blobs must use the
-    // key name.
-    CHECK_EQ(encrypted_password.password().encrypted().key_name(),
-             encrypted_password.password().encrypted_notes_backup().key_name());
-
-    // Replace the entire specifics, among other things to ensure that any
-    // client-only fields are cleared.
-    entity_data->specifics = std::move(encrypted_password);
-    entity_data->name = "encrypted";
-  }
-}
-
-void ModelTypeWorker::EncryptOutgoingPasswordSharingInvitations(
-    CommitRequestDataList* request_data_list) {
-  CHECK(cryptographer_);
-  CHECK_EQ(type_, OUTGOING_PASSWORD_SHARING_INVITATION);
-
-  for (std::unique_ptr<CommitRequestData>& request_data : *request_data_list) {
-    EntityData* entity_data = request_data->entity.get();
-    sync_pb::OutgoingPasswordSharingInvitationSpecifics* specifics =
-        entity_data->specifics.mutable_outgoing_password_sharing_invitation();
-
-    CHECK(specifics->has_client_only_unencrypted_data());
-    std::string serialized_password_data;
-    bool success = specifics->client_only_unencrypted_data().SerializeToString(
-        &serialized_password_data);
-    specifics->clear_client_only_unencrypted_data();
-    CHECK(success);
-
-    std::optional<std::vector<uint8_t>> encrypted_data =
-        cryptographer_->AuthEncryptForCrossUserSharing(
-            base::as_bytes(base::make_span(serialized_password_data)),
-            base::as_bytes(base::make_span(
-                entity_data->recipient_public_key.x25519_public_key())));
-    // There should not be encryption failure but DCHECK is not used because
-    // it's not guaranteed. In the worst case, the entity will be committed with
-    // empty specifics (no unencrypted data will be committed to the server).
-    LogEncryptionResult(type_, encrypted_data.has_value());
-    if (encrypted_data) {
-      specifics->set_encrypted_password_sharing_invitation_data(
-          encrypted_data->data(), encrypted_data->size());
-      specifics->set_recipient_key_version(
-          entity_data->recipient_public_key.version());
-    } else {
-      DLOG(ERROR) << "Failed to encrypt outgoing password sharing invitation";
-    }
-  }
-}
-
-void ModelTypeWorker::EncryptSpecifics(
-    CommitRequestDataList* request_data_list) {
-  CHECK(cryptographer_);
-  CHECK(encryption_enabled_);
-  CHECK_NE(type_, PASSWORDS);
-  CHECK_NE(type_, OUTGOING_PASSWORD_SHARING_INVITATION);
-
-  for (std::unique_ptr<CommitRequestData>& request_data : *request_data_list) {
-    EntityData* entity_data = request_data->entity.get();
-    entity_data->name = "encrypted";
-    if (entity_data->is_deleted()) {
-      // EntityData::is_deleted() means that the specifics is empty, so nothing
-      // to encrypt.
-      continue;
-    }
-    sync_pb::EntitySpecifics encrypted_specifics;
-    bool success = cryptographer_->Encrypt(
-        entity_data->specifics, encrypted_specifics.mutable_encrypted());
-    LogEncryptionResult(type_, success);
-    entity_data->specifics.CopyFrom(encrypted_specifics);
-  }
-}
-
-GetLocalChangesRequest::GetLocalChangesRequest()
-    : response_accepted_(base::WaitableEvent::ResetPolicy::MANUAL,
+GetLocalChangesRequest::GetLocalChangesRequest(
+    CancelationSignal* cancelation_signal)
+    : cancelation_signal_(cancelation_signal),
+      response_accepted_(base::WaitableEvent::ResetPolicy::MANUAL,
                          base::WaitableEvent::InitialState::NOT_SIGNALED) {}
 
 GetLocalChangesRequest::~GetLocalChangesRequest() = default;
@@ -1492,9 +1263,8 @@ void GetLocalChangesRequest::OnCancelationSignalReceived() {
   response_accepted_.Signal();
 }
 
-void GetLocalChangesRequest::WaitForResponseOrCancelation(
-    CancelationSignal* cancelation_signal) {
-  if (!cancelation_signal->TryRegisterHandler(this)) {
+void GetLocalChangesRequest::WaitForResponseOrCancelation() {
+  if (!cancelation_signal_->TryRegisterHandler(this)) {
     return;
   }
 
@@ -1503,13 +1273,17 @@ void GetLocalChangesRequest::WaitForResponseOrCancelation(
     response_accepted_.Wait();
   }
 
-  cancelation_signal->UnregisterHandler(this);
+  cancelation_signal_->UnregisterHandler(this);
 }
 
 void GetLocalChangesRequest::SetResponse(
     CommitRequestDataList&& local_changes) {
   response_ = std::move(local_changes);
   response_accepted_.Signal();
+}
+
+bool GetLocalChangesRequest::WasCancelled() {
+  return cancelation_signal_->IsSignalled();
 }
 
 CommitRequestDataList&& GetLocalChangesRequest::ExtractResponse() {

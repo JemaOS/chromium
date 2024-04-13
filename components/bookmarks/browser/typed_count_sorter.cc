@@ -7,7 +7,6 @@
 #include "base/memory/raw_ref.h"
 #include "base/ranges/algorithm.h"
 #include "components/bookmarks/browser/bookmark_client.h"
-#include "components/bookmarks/browser/titled_url_node.h"
 
 namespace bookmarks {
 
@@ -58,7 +57,7 @@ void TypedCountSorter::SortMatches(const TitledUrlNodeSet& matches,
   if (client_->SupportsTypedCountForUrls()) {
     UrlNodeMap url_node_map;
     UrlTypedCountMap url_typed_count_map;
-    for (const TitledUrlNode* node : matches) {
+    for (auto* node : matches) {
       const GURL& url = node->GetTitledUrlNodeUrl();
       url_node_map.insert(std::make_pair(&url, node));
       url_typed_count_map.insert(std::make_pair(&url, 0));

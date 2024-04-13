@@ -5,6 +5,8 @@
 #ifndef COMPONENTS_WEBRTC_NET_ADDRESS_UTILS_H_
 #define COMPONENTS_WEBRTC_NET_ADDRESS_UTILS_H_
 
+#include <string>
+
 #include "third_party/webrtc/rtc_base/ip_address.h"
 
 namespace net {
@@ -15,6 +17,10 @@ class IPEndPoint;
 namespace rtc {
 class SocketAddress;
 }  // namespace rtc
+
+namespace cricket {
+class Candidate;
+}  // namespace cricket
 
 namespace webrtc {
 
@@ -29,6 +35,11 @@ bool SocketAddressToIPEndPoint(const rtc::SocketAddress& address,
 rtc::IPAddress NetIPAddressToRtcIPAddress(const net::IPAddress& ip_address);
 
 net::IPAddress RtcIPAddressToNetIPAddress(const rtc::IPAddress& ip_address);
+
+// Helper functions to serialize and deserialize P2P candidates.
+std::string SerializeP2PCandidate(const cricket::Candidate& candidate);
+bool DeserializeP2PCandidate(const std::string& address,
+                             cricket::Candidate* candidate);
 
 }  // namespace webrtc
 

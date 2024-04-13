@@ -7,34 +7,32 @@
 #include <stdint.h>
 
 #include <limits>
-#include <optional>
 #include <string>
 
-#include "base/test/gmock_expected_support.h"
 #include "base/test/values_test_util.h"
-#include "base/types/expected.h"
 #include "base/values.h"
 #include "components/attribution_reporting/constants.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/abseil-cpp/absl/numeric/int128.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace attribution_reporting {
 namespace {
 
-TEST(AttributionReportingParsingUtilsTest, ParseAggregationKeyPiece) {
+TEST(AttributionReportingParsingUtilsTest, StringToAggregationKeyPiece) {
   const struct {
-    base::Value value;
-    base::expected<absl::uint128, ParseError> expected;
+    const char* string;
+    absl::optional<absl::uint128> expected;
   } kTestCases[] = {
-      {base::Value(), base::unexpected(ParseError())},
-      {base::Value("123"), base::unexpected(ParseError())},
-      {base::Value("0x123"), 291},
-      {base::Value("0X123"), 291},
-      {base::Value("0xG"), base::unexpected(ParseError())},
+      {"123", absl::nullopt},
+      {"0x123", 291},
+      {"0X123", 291},
+      {"0xG", absl::nullopt},
   };
 
   for (const auto& test_case : kTestCases) {
-    EXPECT_EQ(ParseAggregationKeyPiece(test_case.value), test_case.expected);
+    EXPECT_EQ(StringToAggregationKeyPiece(test_case.string),
+              test_case.expected);
   }
 }
 
@@ -49,27 +47,22 @@ TEST(AttributionReportingParsingUtilsTest, ParseUint64) {
   const struct {
     const char* description;
     const char* json;
-    base::expected<std::optional<uint64_t>, ParseError> expected;
+    absl::optional<uint64_t> expected;
   } kTestCases[] = {
       {
           "missing_key",
           R"json({})json",
-          std::nullopt,
+          absl::nullopt,
       },
       {
           "not_string",
           R"json({"key":123})json",
-          base::unexpected(ParseError()),
-      },
-      {
-          "invalid_format",
-          R"json({"key":"0x123"})json",
-          base::unexpected(ParseError()),
+          absl::nullopt,
       },
       {
           "negative",
           R"json({"key":"-1"})json",
-          base::unexpected(ParseError()),
+          absl::nullopt,
       },
       {
           "zero",
@@ -84,14 +77,14 @@ TEST(AttributionReportingParsingUtilsTest, ParseUint64) {
       {
           "out_of_range",
           R"json({"key":"18446744073709551616"})json",
-          base::unexpected(ParseError()),
+          absl::nullopt,
       },
   };
 
   for (const auto& test_case : kTestCases) {
-    SCOPED_TRACE(test_case.description);
-    const base::Value::Dict dict = base::test::ParseJsonDict(test_case.json);
-    EXPECT_EQ(ParseUint64(dict, "key"), test_case.expected);
+    base::Value value = base::test::ParseJson(test_case.json);
+    EXPECT_EQ(ParseUint64(value.GetDict(), "key"), test_case.expected)
+        << test_case.description;
   }
 }
 
@@ -99,22 +92,17 @@ TEST(AttributionReportingParsingUtilsTest, ParseInt64) {
   const struct {
     const char* description;
     const char* json;
-    base::expected<std::optional<int64_t>, ParseError> expected;
+    absl::optional<int64_t> expected;
   } kTestCases[] = {
       {
           "missing_key",
           R"json({})json",
-          std::nullopt,
+          absl::nullopt,
       },
       {
           "not_string",
           R"json({"key":123})json",
-          base::unexpected(ParseError()),
-      },
-      {
-          "invalid_format",
-          R"json({"key":"0x123"})json",
-          base::unexpected(ParseError()),
+          absl::nullopt,
       },
       {
           "zero",
@@ -134,14 +122,14 @@ TEST(AttributionReportingParsingUtilsTest, ParseInt64) {
       {
           "out_of_range",
           R"json({"key":"9223372036854775808"})json",
-          base::unexpected(ParseError()),
+          absl::nullopt,
       },
   };
 
   for (const auto& test_case : kTestCases) {
-    SCOPED_TRACE(test_case.description);
-    const base::Value::Dict dict = base::test::ParseJsonDict(test_case.json);
-    EXPECT_EQ(ParseInt64(dict, "key"), test_case.expected);
+    base::Value value = base::test::ParseJson(test_case.json);
+    EXPECT_EQ(ParseInt64(value.GetDict(), "key"), test_case.expected)
+        << test_case.description;
   }
 }
 

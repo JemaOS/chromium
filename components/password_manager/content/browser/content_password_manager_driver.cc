@@ -6,8 +6,8 @@
 
 #include <utility>
 
+#include "base/functional/callback.h"
 #include "base/metrics/histogram_macros.h"
-#include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/content/browser/content_autofill_driver.h"
 #include "components/autofill/core/browser/logging/log_manager.h"
 #include "components/autofill/core/common/form_data.h"
@@ -15,23 +15,23 @@
 #include "components/password_manager/content/browser/bad_message.h"
 #include "components/password_manager/content/browser/content_password_manager_driver_factory.h"
 #include "components/password_manager/content/browser/form_meta_data.h"
-#include "components/password_manager/core/browser/browser_save_password_progress_logger.h"
 #include "components/password_manager/core/browser/password_manager.h"
 #include "components/password_manager/core/browser/password_manager_client.h"
 #include "components/password_manager/core/browser/password_manager_metrics_recorder.h"
-#include "components/password_manager/core/browser/password_suggestion_generator.h"
-#include "components/password_manager/core/common/password_manager_features.h"
 #include "components/safe_browsing/buildflags.h"
 #include "content/public/browser/back_forward_cache.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/page.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_widget_host_view.h"
+#include "content/public/browser/ssl_status.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/url_constants.h"
-#include "mojo/public/cpp/bindings/message.h"
+#include "net/cert/cert_status_flags.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+#include "ui/base/page_transition_types.h"
 
 using autofill::mojom::FocusedFieldType;
 
@@ -69,73 +69,31 @@ bool HasValidURL(content::RenderFrameHost* render_frame_host) {
       password_manager::BadMessageReason::CPMD_BAD_ORIGIN_FORM_SUBMITTED);
 }
 
-bool IsRenderFrameHostSupported(content::RenderFrameHost* rfh) {
-  // Explanation of current PasswordManagerDriver limitations:
-  // * Currently, PasswordManagerDriver binding has RenderFrameHost lifetime,
-  //   not document lifetime. This can lead to premature binding in rare race
-  //   conditions (see https://crbug.com/329989911).
-  // * Due to this, we can't reliably determine if the document will be
-  //   credentialless at this stage. Returning 'false' speculatively would be
-  //   destructive.
-  // * Workaround: Temporarily return 'true'; the function will be re-evaluated
-  //   on commit via `DidNavigate`.
-  //
-  // TODO(https://crbug.com/40615943): After RenderDocument is enabled, consider
-  // simplifying by binding PasswordManagerDriver via `PopulateFrameBinders`
-  // instead of `RegisterAssociatedInterfaceBindersForRenderFrameHost`.
-  if (rfh->GetLifecycleState() ==
-      content::RenderFrameHost::LifecycleState::kPendingCommit) {
-    return true;
-  }
-
-  if (rfh->GetLifecycleState() ==
-      content::RenderFrameHost::LifecycleState::kPrerendering) {
-    return false;
-  }
-
-  // [spec] https://wicg.github.io/anonymous-iframe/#spec-autofill
-  // > Browsers that implement autofill or password manager functionalities
-  //   should make them unavailable in credentialless iframes.
-  if (rfh->IsCredentialless()) {
-    return false;
-  }
-
-  return true;
-}
-
 }  // namespace
 
 ContentPasswordManagerDriver::ContentPasswordManagerDriver(
     content::RenderFrameHost* render_frame_host,
-    PasswordManagerClient* client)
+    PasswordManagerClient* client,
+    autofill::AutofillClient* autofill_client)
     : render_frame_host_(render_frame_host),
       client_(client),
       password_generation_helper_(client, this),
-      password_autofill_manager_(
-          this,
-          autofill::ContentAutofillClient::FromWebContents(
-              content::WebContents::FromRenderFrameHost(render_frame_host)),
-          client) {
+      password_autofill_manager_(this, autofill_client, client),
+      password_manager_receiver_(this) {
   static unsigned next_free_id = 0;
   id_ = next_free_id++;
-
-  render_frame_host_->GetRemoteAssociatedInterfaces()->GetInterface(
-      &password_autofill_agent_);
-
-  // For some frames `this` may be instantiated before log manager creation, so
+  // For some frames |this| may be instantiated before log manager creation, so
   // here we can not send logging state to renderer process for them. For such
   // cases, after the log manager got ready later,
   // ContentPasswordManagerDriverFactory::RequestSendLoggingAvailability() will
-  // call ContentPasswordManagerDriver::SendLoggingAvailability() on `this` to
+  // call ContentPasswordManagerDriver::SendLoggingAvailability() on |this| to
   // do it actually.
-  if (autofill::LogManager* log_manager = client_->GetLogManager()) {
-    // RenderFrameHost might be a speculative one: it hasn't committed its
-    // document. We don't know if its is safe to use the whole
-    // PasswordAutofillAgent interface. For this reason, we use directly
-    // `password_autofill_agent_`, as opposed to `GetPasswordAutofillAgent()`.
-    // We know the `SetLoggingState()` is safe to be called no matter the state
-    // of the RenderFrameHost.
-    password_autofill_agent_->SetLoggingState(log_manager->IsLoggingActive());
+  if (client_->GetLogManager()) {
+    if (const auto& agent = GetPasswordAutofillAgent()) {
+      // Do not call the virtual method SendLoggingAvailability from a
+      // constructor here, inline its steps instead.
+      agent->SetLoggingState(client_->GetLogManager()->IsLoggingActive());
+    }
   }
 }
 
@@ -154,15 +112,13 @@ ContentPasswordManagerDriver::GetForRenderFrameHost(
 void ContentPasswordManagerDriver::BindPendingReceiver(
     mojo::PendingAssociatedReceiver<autofill::mojom::PasswordManagerDriver>
         pending_receiver) {
-  if (IsRenderFrameHostSupported(render_frame_host_)) {
-    password_manager_receiver_.Bind(std::move(pending_receiver));
-  }
+  if (render_frame_host_->IsCredentialless())
+    return;
+  password_manager_receiver_.Bind(std::move(pending_receiver));
 }
 
-void ContentPasswordManagerDriver::DidNavigate() {
-  if (!IsRenderFrameHostSupported(render_frame_host_)) {
-    password_manager_receiver_.reset();
-  }
+void ContentPasswordManagerDriver::UnbindReceiver() {
+  password_manager_receiver_.reset();
 }
 
 int ContentPasswordManagerDriver::GetId() const {
@@ -200,9 +156,6 @@ void ContentPasswordManagerDriver::FormEligibleForGenerationFound(
 
 void ContentPasswordManagerDriver::GeneratedPasswordAccepted(
     const std::u16string& password) {
-  // Same check as in PasswordGenerationAgent::GeneratedPasswordAccepted. The
-  // generated password can't be too short.
-  CHECK_LE(4u, password.size());
   GetPasswordGenerationAgent()->GeneratedPasswordAccepted(password);
 }
 
@@ -222,21 +175,10 @@ void ContentPasswordManagerDriver::GeneratedPasswordAccepted(
       generation_element_id, password);
 }
 
-void ContentPasswordManagerDriver::FocusNextFieldAfterPasswords() {
-  GetPasswordGenerationAgent()->FocusNextFieldAfterPasswords();
-}
-
-void ContentPasswordManagerDriver::FillField(autofill::FieldRendererId field_id,
-                                             const std::u16string& value) {
-  if (const auto& agent = GetPasswordAutofillAgent()) {
-    agent->FillField(field_id, value);
-  }
-}
-
 void ContentPasswordManagerDriver::FillSuggestion(
     const std::u16string& username,
     const std::u16string& password) {
-  GetPasswordAutofillAgent()->FillPasswordSuggestion(username, password);
+  GetAutofillAgent()->FillPasswordSuggestion(username, password);
 }
 
 void ContentPasswordManagerDriver::FillIntoFocusedField(
@@ -248,24 +190,15 @@ void ContentPasswordManagerDriver::FillIntoFocusedField(
 }
 
 #if BUILDFLAG(IS_ANDROID)
-void ContentPasswordManagerDriver::KeyboardReplacingSurfaceClosed(
-    ToShowVirtualKeyboard show_virtual_keyboard) {
-  GetPasswordAutofillAgent()->KeyboardReplacingSurfaceClosed(
-      show_virtual_keyboard.value());
+void ContentPasswordManagerDriver::TouchToFillClosed(
+    ShowVirtualKeyboard show_virtual_keyboard) {
+  GetPasswordAutofillAgent()->TouchToFillClosed(show_virtual_keyboard.value());
 }
 
 void ContentPasswordManagerDriver::TriggerFormSubmission() {
   GetPasswordAutofillAgent()->TriggerFormSubmission();
 }
 #endif
-
-void ContentPasswordManagerDriver::PreviewField(
-    autofill::FieldRendererId field_id,
-    const std::u16string& value) {
-  if (const auto& agent = GetPasswordAutofillAgent()) {
-    agent->PreviewField(field_id, value);
-  }
-}
 
 void ContentPasswordManagerDriver::PreviewSuggestion(
     const std::u16string& username,
@@ -283,10 +216,9 @@ void ContentPasswordManagerDriver::ClearPreviewedForm() {
 }
 
 void ContentPasswordManagerDriver::SetSuggestionAvailability(
-    autofill::FieldRendererId element_id,
-    autofill::mojom::AutofillSuggestionAvailability suggestion_availability) {
-  GetAutofillAgent()->SetSuggestionAvailability(element_id,
-                                                suggestion_availability);
+    autofill::FieldRendererId generation_element_id,
+    const autofill::mojom::AutofillState state) {
+  GetAutofillAgent()->SetSuggestionAvailability(generation_element_id, state);
 }
 
 PasswordGenerationFrameHelper*
@@ -318,6 +250,10 @@ bool ContentPasswordManagerDriver::CanShowAutofillUi() const {
   return render_frame_host_->IsActive();
 }
 
+::ui::AXTreeID ContentPasswordManagerDriver::GetAxTreeId() const {
+  return render_frame_host_->GetAXTreeID();
+}
+
 const GURL& ContentPasswordManagerDriver::GetLastCommittedURL() const {
   return render_frame_host_->GetLastCommittedURL();
 }
@@ -327,11 +263,6 @@ void ContentPasswordManagerDriver::AnnotateFieldsWithParsingResult(
   if (const auto& agent = GetPasswordAutofillAgent()) {
     agent->AnnotateFieldsWithParsingResult(parsing_result);
   }
-}
-
-base::WeakPtr<password_manager::PasswordManagerDriver>
-ContentPasswordManagerDriver::AsWeakPtr() {
-  return weak_factory_.GetWeakPtr();
 }
 
 void ContentPasswordManagerDriver::GeneratePassword(
@@ -351,16 +282,9 @@ void ContentPasswordManagerDriver::PasswordFormsParsed(
   if (!HasValidURL(render_frame_host_))
     return;
 
-  auto logger =
-      std::make_unique<password_manager::BrowserSavePasswordProgressLogger>(
-          client_->GetLogManager());
   std::vector<autofill::FormData> forms = raw_forms;
-  for (auto& form : forms) {
+  for (auto& form : forms)
     SetFrameAndFormMetaData(render_frame_host_, form);
-    logger->LogFormData(password_manager::BrowserSavePasswordProgressLogger::
-                            STRING_FORM_IS_PASSWORD,
-                        form);
-  }
 
   GetPasswordManager()->OnPasswordFormsParsed(this, forms);
 }
@@ -485,70 +409,40 @@ void ContentPasswordManagerDriver::UserModifiedPasswordField() {
 
 void ContentPasswordManagerDriver::UserModifiedNonPasswordField(
     autofill::FieldRendererId renderer_id,
+    const std::u16string& field_name,
     const std::u16string& value,
-    bool autocomplete_attribute_has_username,
-    bool is_likely_otp) {
+    bool autocomplete_attribute_has_username) {
   if (!password_manager::bad_message::CheckFrameNotPrerendering(
           render_frame_host_))
     return;
   GetPasswordManager()->OnUserModifiedNonPasswordField(
-      this, renderer_id, value, autocomplete_attribute_has_username,
-      is_likely_otp);
+      this, renderer_id, field_name, value,
+      autocomplete_attribute_has_username);
   // A user has modified an input field, it wouldn't be a submission "after
   // Touch To Fill".
   client_->ResetSubmissionTrackingAfterTouchToFill();
 }
 
 void ContentPasswordManagerDriver::ShowPasswordSuggestions(
-    const autofill::PasswordSuggestionRequest& request) {
+    base::i18n::TextDirection text_direction,
+    const std::u16string& typed_username,
+    int options,
+    const gfx::RectF& bounds) {
   if (!password_manager::bad_message::CheckFrameNotPrerendering(
           render_frame_host_))
     return;
-
-  if ((request.username_field_index > request.form_data.fields.size()) ||
-      (request.password_field_index > request.form_data.fields.size())) {
-    mojo::ReportBadMessage(
-        "username_field_index or password_field_index cannot be greater than "
-        "form.fields.size()!");
-  }
-
-#if BUILDFLAG(IS_ANDROID)
-  if (base::FeatureList::IsEnabled(
-          features::kPasswordSuggestionBottomSheetV2)) {
-    // TODO(crbug.com/1448579): Remove the parameter
-    // autofill::mojom::SubmissionReadinessState::kNoInformation when the
-    // feature is launched.
-    if (client_->ShowKeyboardReplacingSurface(
-            this,
-            SubmissionReadinessParams(
-                request.form_data, request.username_field_index,
-                request.password_field_index,
-                autofill::mojom::SubmissionReadinessState::kNoInformation),
-            request.show_webauthn_credentials)) {
-      return;
-    }
-  }
-#endif  // BUILDFLAG(IS_ANDROID)
-
   GetPasswordAutofillManager()->OnShowPasswordSuggestions(
-      request.element_id, request.trigger_source, request.text_direction,
-      request.typed_username,
-      ShowWebAuthnCredentials(request.show_webauthn_credentials),
-      TransformToRootCoordinates(render_frame_host_, request.bounds));
+      text_direction, typed_username, options,
+      TransformToRootCoordinates(render_frame_host_, bounds));
 }
 
 #if BUILDFLAG(IS_ANDROID)
-void ContentPasswordManagerDriver::ShowKeyboardReplacingSurface(
-    autofill::mojom::SubmissionReadinessState submission_readiness,
-    bool is_webauthn_form) {
+void ContentPasswordManagerDriver::ShowTouchToFill(
+    autofill::mojom::SubmissionReadinessState submission_readiness) {
   if (!password_manager::bad_message::CheckFrameNotPrerendering(
-          render_frame_host_)) {
+          render_frame_host_))
     return;
-  }
-  autofill::FormData form;
-  client_->ShowKeyboardReplacingSurface(
-      this, SubmissionReadinessParams(form, 0, 0, submission_readiness),
-      is_webauthn_form);
+  client_->ShowTouchToFill(this, submission_readiness);
 }
 #endif
 
@@ -581,6 +475,26 @@ void ContentPasswordManagerDriver::LogFirstFillingResult(
   GetPasswordManager()->LogFirstFillingResult(this, form_renderer_id, result);
 }
 
+void ContentPasswordManagerDriver::SetKeyPressHandler(
+    const content::RenderWidgetHost::KeyPressEventCallback& handler) {
+  UnsetKeyPressHandler();
+  content::RenderWidgetHostView* view = render_frame_host_->GetView();
+  if (!view)
+    return;
+  view->GetRenderWidgetHost()->AddKeyPressEventCallback(handler);
+  key_press_handler_ = handler;
+}
+
+void ContentPasswordManagerDriver::UnsetKeyPressHandler() {
+  if (key_press_handler_.is_null())
+    return;
+  content::RenderWidgetHostView* view = render_frame_host_->GetView();
+  if (!view)
+    return;
+  view->GetRenderWidgetHost()->RemoveKeyPressEventCallback(key_press_handler_);
+  key_press_handler_.Reset();
+}
+
 const mojo::AssociatedRemote<autofill::mojom::AutofillAgent>&
 ContentPasswordManagerDriver::GetAutofillAgent() {
   autofill::ContentAutofillDriver* autofill_driver =
@@ -592,14 +506,22 @@ ContentPasswordManagerDriver::GetAutofillAgent() {
 
 const mojo::AssociatedRemote<autofill::mojom::PasswordAutofillAgent>&
 ContentPasswordManagerDriver::GetPasswordAutofillAgent() {
-  // Autofill is not expected to interact with a RenderFrameHost that hasn't yet
-  // committed its document.
-  CHECK_NE(render_frame_host_->GetLifecycleState(),
-           content::RenderFrameHost::LifecycleState::kPendingCommit);
+  if (render_frame_host_->IsCredentialless() ||
+      render_frame_host_->GetLifecycleState() ==
+          content::RenderFrameHost::LifecycleState::kPrerendering) {
+    password_autofill_agent_.reset();
+    return password_autofill_agent_;  // Unbound remote.
+  }
 
-  return IsRenderFrameHostSupported(render_frame_host_)
-             ? password_autofill_agent_
-             : password_autofill_agent_unbound_;
+  if (!password_autofill_agent_) {
+    // Some test environments may have no remote interface support.
+    if (render_frame_host_->GetRemoteAssociatedInterfaces()) {
+      render_frame_host_->GetRemoteAssociatedInterfaces()->GetInterface(
+          &password_autofill_agent_);
+    }
+  }
+
+  return password_autofill_agent_;
 }
 
 const mojo::AssociatedRemote<autofill::mojom::PasswordGenerationAgent>&

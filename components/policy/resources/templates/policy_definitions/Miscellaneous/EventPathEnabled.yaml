@@ -1,6 +1,5 @@
 caption: Re-enable the Event.path API until M115.
 default: null
-deprecated: true
 desc: |2-
    Starting in M109, the non-standard API Event.path will be removed to improve web compatibility. This policy re-enables the API until M115.
 
@@ -15,6 +14,8 @@ example_value: true
 features:
   dynamic_refresh: false
   per_profile: true
+future_on:
+- fuchsia
 items:
 - caption: Event.path API will be available.
   value: true

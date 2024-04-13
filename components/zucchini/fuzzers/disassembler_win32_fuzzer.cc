@@ -19,8 +19,7 @@ namespace {
 
 struct Environment {
   Environment() {
-    // Disable console spamming.
-    logging::SetMinLogLevel(logging::LOGGING_FATAL);
+    logging::SetMinLogLevel(logging::LOG_FATAL);  // Disable console spamming.
   }
 };
 

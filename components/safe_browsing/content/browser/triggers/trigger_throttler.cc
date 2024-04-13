@@ -166,7 +166,7 @@ void TriggerThrottler::LoadTriggerEventsFromPref() {
     for (const auto& timestamp : trigger_pair.second.GetList()) {
       if (timestamp.is_double())
         trigger_events_[trigger_type].push_back(
-            base::Time::FromSecondsSinceUnixEpoch(timestamp.GetDouble()));
+            base::Time::FromDoubleT(timestamp.GetDouble()));
     }
   }
 }
@@ -179,7 +179,7 @@ void TriggerThrottler::WriteTriggerEventsToPref() {
   for (const auto& trigger_item : trigger_events_) {
     base::Value::List timestamps;
     for (const base::Time timestamp : trigger_item.second) {
-      timestamps.Append(timestamp.InSecondsFSinceUnixEpoch());
+      timestamps.Append(timestamp.ToDoubleT());
     }
 
     trigger_dict.Set(base::NumberToString(static_cast<int>(trigger_item.first)),
@@ -197,7 +197,6 @@ size_t TriggerThrottler::GetDailyQuotaForTrigger(
     case TriggerType::SECURITY_INTERSTITIAL:
     case TriggerType::GAIA_PASSWORD_REUSE:
     case TriggerType::APK_DOWNLOAD:
-    case TriggerType::PHISHY_SITE_INTERACTION:
       return kUnlimitedTriggerQuota;
 
     case TriggerType::DEPRECATED_AD_POPUP:

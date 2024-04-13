@@ -25,7 +25,7 @@ OutputSurface::Capabilities::Capabilities(const Capabilities& capabilities) =
 OutputSurface::Capabilities& OutputSurface::Capabilities::operator=(
     const Capabilities& capabilities) = default;
 
-OutputSurface::OutputSurface() : type_(Type::kSkia) {}
+OutputSurface::OutputSurface(Type type) : type_(type) {}
 
 OutputSurface::OutputSurface(
     std::unique_ptr<SoftwareOutputDevice> software_device)
@@ -74,6 +74,14 @@ void OutputSurface::SetNeedsSwapSizeNotifications(
 
 base::ScopedClosureRunner OutputSurface::GetCacheBackBufferCb() {
   return base::ScopedClosureRunner();
+}
+
+void OutputSurface::SetGpuVSyncCallback(GpuVSyncCallback callback) {
+  NOTREACHED();
+}
+
+void OutputSurface::SetGpuVSyncEnabled(bool enabled) {
+  NOTREACHED();
 }
 
 gpu::Mailbox OutputSurface::GetOverlayMailbox() const {

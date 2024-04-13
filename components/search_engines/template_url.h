@@ -28,6 +28,7 @@
 
 class TemplateURL;
 
+
 // TemplateURLRef -------------------------------------------------------------
 
 // A TemplateURLRef represents a single URL within the larger TemplateURL class
@@ -198,6 +199,14 @@ class TemplateURLRef {
     metrics::OmniboxFocusType focus_type =
         metrics::OmniboxFocusType::INTERACTION_DEFAULT;
 
+    // The optional assisted query stats, aka AQS, used for logging purposes.
+    // This string contains impressions of all autocomplete matches shown
+    // at the query submission time.  For privacy reasons, we require the
+    // search provider to support HTTPS protocol in order to receive the AQS
+    // param.
+    // For more details, see go/chrome-suggest-logging.
+    std::string assisted_query_stats;
+
     // The optional searchbox stats, reported as gs_lcrp for logging purposes.
     // This proto message contains information such as impressions of all
     // autocomplete matches shown at the query submission time.
@@ -260,10 +269,9 @@ class TemplateURLRef {
     // Source of the search or suggest request.
     RequestSource request_source = RequestSource::SEARCHBOX;
 
-    // When the query is being fetched as a prefetch request, this is the value
-    // corresponding to the GOOGLE_PREFETCH_SOURCE ("pf") query param. Prefetch
-    // query params are not added if this is an empty string.
-    std::string prefetch_param;
+    // Whether the query is being fetched as a prefetch request before the user
+    // actually searches for the search terms.
+    bool is_prefetch = false;
 
     ContextualSearchParams contextual_search_params;
 
@@ -304,32 +312,20 @@ class TemplateURLRef {
   //
   // If this TemplateURLRef does not support replacement (SupportsReplacement
   // returns false), an empty string is returned.
-  // If this TemplateURLRef uses POST, and `post_content` is not NULL, the
-  // `post_params_` will be replaced, encoded in "multipart/form-data" format
-  // and stored into `post_content`.
-  //
-  // If `url_override` is set to a valid url, that url will be used and the url
-  // in the TemplateURL will be disregarded.  This is currently used to allow
-  // setting the URL of the @gemini scope for pre-prod testing without modifying
-  // any in-memory or database entries.
-  // TODO(crbug.com/41494524): Remove the `url_override` when the
-  //  `StarterPackExpansion` feature launches/gets cleaned up.
+  // If this TemplateURLRef uses POST, and |post_content| is not NULL, the
+  // |post_params_| will be replaced, encoded in "multipart/form-data" format
+  // and stored into |post_content|.
   std::string ReplaceSearchTerms(const SearchTermsArgs& search_terms_args,
                                  const SearchTermsData& search_terms_data,
-                                 PostContent* post_content,
-                                 std::string url_override = "") const;
+                                 PostContent* post_content) const;
 
   // TODO(jnd): remove the following ReplaceSearchTerms definition which does
-  // not have `post_content` parameter once all reference callers pass
-  // `post_content` parameter.
-  //
-  // TODO(crbug.com/41494524): Remove the `url_override` when the
-  //  `StarterPackExpansion` feature launches/gets cleaned up.
-  std::string ReplaceSearchTerms(const SearchTermsArgs& search_terms_args,
-                                 const SearchTermsData& search_terms_data,
-                                 std::string url_override = "") const {
-    return ReplaceSearchTerms(search_terms_args, search_terms_data, nullptr,
-                              url_override);
+  // not have |post_content| parameter once all reference callers pass
+  // |post_content| parameter.
+  std::string ReplaceSearchTerms(
+      const SearchTermsArgs& search_terms_args,
+      const SearchTermsData& search_terms_data) const {
+    return ReplaceSearchTerms(search_terms_args, search_terms_data, NULL);
   }
 
   // Returns true if the TemplateURLRef is valid. An invalid TemplateURLRef is
@@ -447,7 +443,6 @@ class TemplateURLRef {
     GOOGLE_RLZ,
     GOOGLE_SEARCH_CLIENT,
     GOOGLE_SEARCH_FIELDTRIAL_GROUP,
-    GOOGLE_SEARCH_SOURCE_ID,
     GOOGLE_SEARCH_VERSION,
     GOOGLE_SESSION_TOKEN,
     GOOGLE_SUGGEST_CLIENT,
@@ -522,11 +517,7 @@ class TemplateURLRef {
   // If the url has not yet been parsed, ParseURL is invoked.
   // NOTE: While this is const, it modifies parsed_, valid_, parsed_url_ and
   // search_offset_.
-  //
-  // TODO(crbug.com/41494524): Remove the `url_override` when the
-  //  `StarterPackExpansion` feature launches/gets cleaned up.
-  void ParseIfNecessary(const SearchTermsData& search_terms_data,
-                        std::string url_override = "") const;
+  void ParseIfNecessary(const SearchTermsData& search_terms_data) const;
 
   // Parses a wildcard out of |path|, putting the parsed path in |path_prefix_|
   // and |path_suffix_| and setting |path_wildcard_present_| to true.
@@ -563,9 +554,10 @@ class TemplateURLRef {
   // Replaces all replacements in |parsed_url_| with their actual values and
   // returns the result.  This is the main functionality of
   // ReplaceSearchTerms().
-  std::string HandleReplacements(const SearchTermsArgs& search_terms_args,
-                                 const SearchTermsData& search_terms_data,
-                                 PostContent* post_content) const;
+  std::string HandleReplacements(
+      const SearchTermsArgs& search_terms_args,
+      const SearchTermsData& search_terms_data,
+      PostContent* post_content) const;
 
   // The TemplateURL that contains us.  This should outlive us.
   raw_ptr<const TemplateURL> owner_;
@@ -615,6 +607,7 @@ class TemplateURLRef {
   bool prepopulated_ = false;
 };
 
+
 // TemplateURL ----------------------------------------------------------------
 
 // A TemplateURL represents a single "search engine", defined primarily as a
@@ -629,8 +622,7 @@ class TemplateURLRef {
 // is made a friend so that it can be the exception to this pattern.
 class TemplateURL {
  public:
-  using TemplateURLVector =
-      std::vector<raw_ptr<TemplateURL, VectorExperimental>>;
+  using TemplateURLVector = std::vector<TemplateURL*>;
   using OwnedTemplateURLVector = std::vector<std::unique_ptr<TemplateURL>>;
 
   // These values are not persisted and can be freely changed.
@@ -686,8 +678,8 @@ class TemplateURL {
 
   ~TemplateURL();
 
-  // For two engines, |this| and |other|, returns true if |this| is strictly
-  // better than |other|.
+  // For two engines with the same keyword, |this| and |other|,
+  // returns true if |this| is strictly better than |other|.
   //
   // While normal engines must all have distinct keywords, policy-created,
   // extension-controlled and omnibox API engines may have the same keywords as
@@ -703,7 +695,7 @@ class TemplateURL {
   // today, because the sync GUIDs are not actually globally unique, so there
   // can be a genuine tie, which is not good, because then two different clients
   // could choose to resolve the conflict in two different ways.
-  bool IsBetterThanConflictingEngine(const TemplateURL* other) const;
+  bool IsBetterThanEngineWithConflictingKeyword(const TemplateURL* other) const;
 
   // Generates a suitable keyword for the specified url, which must be valid.
   // This is guaranteed not to return an empty string, since TemplateURLs should
@@ -790,12 +782,9 @@ class TemplateURL {
   base::Time last_modified() const { return data_.last_modified; }
   base::Time last_visited() const { return data_.last_visited; }
 
-  TemplateURLData::CreatedByPolicy created_by_policy() const {
-    return data_.created_by_policy;
-  }
+  bool created_by_policy() const { return data_.created_by_policy; }
   bool enforced_by_policy() const { return data_.enforced_by_policy; }
   bool created_from_play_api() const { return data_.created_from_play_api; }
-  bool featured_by_policy() const { return data_.featured_by_policy; }
 
   int usage_count() const { return data_.usage_count; }
 

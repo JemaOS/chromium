@@ -5,12 +5,10 @@
 #include "components/sync/nigori/nigori_key_bag.h"
 
 #include <utility>
-#include <vector>
 
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "components/sync/engine/nigori/nigori.h"
-#include "components/sync/protocol/nigori_local_data.pb.h"
 #include "components/sync/protocol/nigori_specifics.pb.h"
 
 namespace syncer {
@@ -49,8 +47,7 @@ NigoriKeyBag NigoriKeyBag::CreateEmpty() {
 }
 
 // static
-NigoriKeyBag NigoriKeyBag::CreateFromProto(
-    const sync_pb::LocalNigoriKeyBag& proto) {
+NigoriKeyBag NigoriKeyBag::CreateFromProto(const sync_pb::NigoriKeyBag& proto) {
   NigoriKeyBag output;
   for (const sync_pb::NigoriKey& key : proto.key()) {
     if (output.AddKeyFromProto(key).empty()) {
@@ -66,12 +63,16 @@ NigoriKeyBag::NigoriKeyBag(NigoriKeyBag&& other) = default;
 
 NigoriKeyBag::~NigoriKeyBag() = default;
 
-sync_pb::LocalNigoriKeyBag NigoriKeyBag::ToProto() const {
-  sync_pb::LocalNigoriKeyBag output;
+void NigoriKeyBag::CopyFrom(const NigoriKeyBag& other) {
+  nigori_map_.clear();
+  AddAllUnknownKeysFrom(other);
+}
+
+sync_pb::NigoriKeyBag NigoriKeyBag::ToProto() const {
+  sync_pb::NigoriKeyBag output;
   for (const auto& [key_name, nigori] : nigori_map_) {
     *output.add_key() = NigoriToProto(*nigori, key_name);
   }
-
   return output;
 }
 

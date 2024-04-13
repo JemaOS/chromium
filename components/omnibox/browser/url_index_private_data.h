@@ -14,7 +14,6 @@
 #include "base/containers/stack.h"
 #include "base/files/file_path.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/raw_ref.h"
 #include "base/memory/ref_counted.h"
 #include "base/time/time.h"
 #include "components/history/core/browser/history_service.h"
@@ -26,11 +25,12 @@ class OmniboxTriggeredFeatureService;
 class TemplateURLService;
 
 namespace bookmarks {
-class CoreBookmarkModel;
+class BookmarkModel;
 }
 
 namespace history {
 class HistoryDatabase;
+class InMemoryURLIndex;
 }  // namespace history
 
 // A structure private to InMemoryURLIndex describing its internal data and
@@ -72,7 +72,7 @@ class URLIndexPrivateData
       size_t cursor_position,
       const std::string& host_filter,
       size_t max_matches,
-      bookmarks::CoreBookmarkModel* bookmark_model,
+      bookmarks::BookmarkModel* bookmark_model,
       TemplateURLService* template_url_service,
       OmniboxTriggeredFeatureService* triggered_feature_service);
 
@@ -206,7 +206,7 @@ class URLIndexPrivateData
     bool operator()(const HistoryID h1, const HistoryID h2);
 
    private:
-    const raw_ref<const HistoryInfoMap> history_info_map_;
+    const HistoryInfoMap& history_info_map_;
   };
 
   // Information about a URL host aggregated from all URLs of that host. Used to
@@ -254,7 +254,7 @@ class URLIndexPrivateData
       const std::u16string& lower_raw_string,
       const std::string& host_filter,
       const TemplateURLService* template_url_service,
-      bookmarks::CoreBookmarkModel* bookmark_model,
+      bookmarks::BookmarkModel* bookmark_model,
       ScoredHistoryMatches* scored_items,
       OmniboxTriggeredFeatureService* triggered_feature_service) const;
 

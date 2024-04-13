@@ -96,6 +96,11 @@ class MediaRoute {
   }
   RouteControllerType controller_type() const { return controller_type_; }
 
+  void set_off_the_record(bool is_off_the_record) {
+    is_off_the_record_ = is_off_the_record;
+  }
+  bool is_off_the_record() const { return is_off_the_record_; }
+
   void set_local_presentation(bool is_local_presentation) {
     is_local_presentation_ = is_local_presentation;
   }
@@ -137,6 +142,9 @@ class MediaRoute {
 
   // The type of MediaRouteController supported by this route.
   RouteControllerType controller_type_ = RouteControllerType::kNone;
+
+  // |true| if the route was created by an OffTheRecord profile.
+  bool is_off_the_record_ = false;
 
   // |true| if the presentation associated with this route is a local
   // presentation.

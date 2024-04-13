@@ -4,9 +4,9 @@
 
 #import <Foundation/Foundation.h>
 
-#include "base/apple/bridging.h"
-#include "base/apple/foundation_util.h"
 #include "base/feature_list.h"
+#include "base/mac/foundation_util.h"
+#include "base/mac/scoped_nsobject.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/values.h"
 #include "components/policy/core/common/features.h"
@@ -32,20 +32,19 @@
 
 namespace {
 
-_CFXPreferences* CreateCFXPrefs() {
+base::scoped_nsobject<_CFXPreferences> CreateCFXPrefs() {
   Class prefs_class = NSClassFromString(@"_CFXPreferences");
   if (!prefs_class) {
-    return nil;
+    return base::scoped_nsobject<_CFXPreferences>{};
   }
 
-  return [[prefs_class alloc] init];
+  return base::scoped_nsobject<_CFXPreferences>([[prefs_class alloc] init]);
 }
 
-CFPrefsManagedSource* CreateCFPrefsManagedSourceForMachine(
-    CFStringRef application_id,
-    _CFXPreferences* cfx_prefs) {
+base::scoped_nsobject<CFPrefsManagedSource>
+CreateCFPrefsManagedSourceForMachine(CFStringRef application_id, id cfx_prefs) {
   if (!cfx_prefs) {
-    return nil;
+    return base::scoped_nsobject<CFPrefsManagedSource>{};
   }
 
   Class source_class = NSClassFromString(@"CFPrefsManagedSource");
@@ -54,15 +53,15 @@ CFPrefsManagedSource* CreateCFPrefsManagedSourceForMachine(
           instancesRespondToSelector:@selector
           (initWithDomain:user:byHost:containerPath:containingPreferences:)] ||
       ![source_class instancesRespondToSelector:@selector(copyValueForKey:)]) {
-    return nil;
+    return base::scoped_nsobject<CFPrefsManagedSource>{};
   }
 
-  return [[source_class alloc]
-             initWithDomain:base::apple::CFToNSPtrCast(application_id)
-                       user:base::apple::CFToNSPtrCast(kCFPreferencesAnyUser)
+  return base::scoped_nsobject<CFPrefsManagedSource>([[source_class alloc]
+             initWithDomain:base::mac::CFToNSCast(application_id)
+                       user:base::mac::CFToNSCast(kCFPreferencesAnyUser)
                      byHost:YES
               containerPath:nil
-      containingPreferences:cfx_prefs];
+      containingPreferences:cfx_prefs]);
 }
 
 }  // namespace
@@ -82,13 +81,13 @@ class MacPreferences::PolicyScope {
       return YES;
     }
 
-    return
-        [machine_scope_ copyValueForKey:base::apple::CFToNSPtrCast(key)] != nil;
+    return base::scoped_nsobject<id>([machine_scope_
+               copyValueForKey:base::mac::CFToNSCast(key)]) != nil;
   }
 
  private:
-  _CFXPreferences* __strong cfx_prefs_;
-  CFPrefsManagedSource* __strong machine_scope_;
+  base::scoped_nsobject<_CFXPreferences> cfx_prefs_;
+  base::scoped_nsobject<CFPrefsManagedSource> machine_scope_;
 };
 
 MacPreferences::MacPreferences()

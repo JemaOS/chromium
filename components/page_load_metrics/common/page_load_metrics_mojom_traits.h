@@ -23,7 +23,18 @@ class StructTraits<page_load_metrics::mojom::SubresourceLoadMetricsDataView,
       const blink::SubresourceLoadMetrics& d) {
     return d.number_of_subresource_loads_handled_by_service_worker;
   }
-  static std::optional<blink::ServiceWorkerSubresourceLoadMetrics>
+  static bool pervasive_payload_requested(
+      const blink::SubresourceLoadMetrics& d) {
+    return d.pervasive_payload_requested;
+  }
+  static int64_t pervasive_bytes_fetched(
+      const blink::SubresourceLoadMetrics& d) {
+    return d.pervasive_bytes_fetched;
+  }
+  static int64_t total_bytes_fetched(const blink::SubresourceLoadMetrics& d) {
+    return d.total_bytes_fetched;
+  }
+  static absl::optional<blink::ServiceWorkerSubresourceLoadMetrics>
   service_worker_subresource_load_metrics(
       const blink::SubresourceLoadMetrics& d) {
     return d.service_worker_subresource_load_metrics;
@@ -145,15 +156,6 @@ class StructTraits<
   static bool mock_fallback(
       const blink::ServiceWorkerSubresourceLoadMetrics& d) {
     return d.mock_fallback;
-  }
-
-  static bool dictionary_handled(
-      const blink::ServiceWorkerSubresourceLoadMetrics& d) {
-    return d.dictionary_handled;
-  }
-  static bool dictionary_fallback(
-      const blink::ServiceWorkerSubresourceLoadMetrics& d) {
-    return d.dictionary_fallback;
   }
 
   static bool Read(

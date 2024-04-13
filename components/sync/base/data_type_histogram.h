@@ -42,22 +42,6 @@ void SyncRecordModelTypeCountHistogram(ModelType model_type, size_t count);
 // distribution of entity sizes.
 void SyncRecordModelTypeEntitySizeHistogram(ModelType model_type, size_t bytes);
 
-// Records when the model (including both data and metadata) was cleared for a
-// given `model_type` due to
-// `WipeModelUponSyncDisabledBehavior::kOnceIfTrackingMetadata`.
-void SyncRecordModelClearedOnceHistogram(ModelType model_type);
-
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class ReadingListMigrationStep {
-  kMigrationRequested = 0,
-  kMigrationStarted = 1,
-  kMigrationFailed = 2,
-  kMigrationFinishedAndPrefCleared = 3,
-  kMaxValue = kMigrationFinishedAndPrefCleared
-};
-void RecordSyncToSigninMigrationReadingListStep(ReadingListMigrationStep step);
-
 }  // namespace syncer
 
 #endif  // COMPONENTS_SYNC_BASE_DATA_TYPE_HISTOGRAM_H_

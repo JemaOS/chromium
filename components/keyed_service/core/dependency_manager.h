@@ -9,7 +9,6 @@
 #include <string>
 
 #include "base/dcheck_is_on.h"
-#include "base/memory/raw_ptr.h"
 #include "components/keyed_service/core/dependency_graph.h"
 #include "components/keyed_service/core/keyed_service_export.h"
 
@@ -51,7 +50,7 @@ class KEYED_SERVICE_EXPORT DependencyManager {
   // appropriate `EnsureBrowserContextKeyedServiceFactoriesBuilt()` function.
   // `registration_function_name` param is used to display the right
   // registration method in the error message.
-  void DisallowKeyedServiceFactoryRegistration(
+  void DoNotAllowKeyedServiceFactoryRegistration(
       const std::string& registration_function_name_error_message);
 
  protected:
@@ -118,14 +117,11 @@ class KEYED_SERVICE_EXPORT DependencyManager {
   virtual void DumpContextDependencies(void* context) const = 0;
 #endif  // NDEBUG
 
-  std::vector<raw_ptr<DependencyNode, VectorExperimental>>
-  GetDestructionOrder();
-  static void ShutdownFactoriesInOrder(
-      void* context,
-      std::vector<raw_ptr<DependencyNode, VectorExperimental>>& order);
-  static void DestroyFactoriesInOrder(
-      void* context,
-      std::vector<raw_ptr<DependencyNode, VectorExperimental>>& order);
+  std::vector<DependencyNode*> GetDestructionOrder();
+  static void ShutdownFactoriesInOrder(void* context,
+                                       std::vector<DependencyNode*>& order);
+  static void DestroyFactoriesInOrder(void* context,
+                                      std::vector<DependencyNode*>& order);
 
   DependencyGraph dependency_graph_;
 
@@ -133,12 +129,12 @@ class KEYED_SERVICE_EXPORT DependencyManager {
   // These pointers are most likely invalid, but we keep track of their
   // locations in memory so we can nicely assert if we're asked to do anything
   // with them.
-  std::set<raw_ptr<void, SetExperimental>> dead_context_pointers_;
+  std::set<void*> dead_context_pointers_;
 
 #if DCHECK_IS_ON()
   bool context_services_created_ = false;
 #endif
-  bool disallow_factory_registration_ = false;
+  bool do_not_allow_factory_registration_ = false;
   std::string registration_function_name_error_message_;
 };
 

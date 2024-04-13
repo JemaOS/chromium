@@ -25,7 +25,7 @@
 // version of the performance data.  That data can then be requested via
 // GetTraceData().  When the data is no longer needed, it should be discarded
 // via DiscardTraceData().
-class ContentTracingManager final : public TracingManager {
+class ContentTracingManager : public TracingManager {
  public:
   ~ContentTracingManager() override;
 
@@ -45,8 +45,6 @@ class ContentTracingManager final : public TracingManager {
 
   // Discard the data for trace |id|.
   void DiscardTraceData(int id) override;
-
-  base::WeakPtr<TracingManager> AsWeakPtr() override;
 
  private:
   ContentTracingManager();

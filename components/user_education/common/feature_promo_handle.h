@@ -27,9 +27,10 @@ class [[nodiscard]] FeaturePromoHandle {
   FeaturePromoHandle();
   FeaturePromoHandle(base::WeakPtr<FeaturePromoController> controller,
                      const base::Feature* feature);
-  FeaturePromoHandle(FeaturePromoHandle&&) noexcept;
-  FeaturePromoHandle& operator=(FeaturePromoHandle&&) noexcept;
+  FeaturePromoHandle(FeaturePromoHandle&&);
   ~FeaturePromoHandle();
+
+  FeaturePromoHandle& operator=(FeaturePromoHandle&&);
 
   explicit operator bool() const { return is_valid(); }
   bool operator!() const { return !is_valid(); }

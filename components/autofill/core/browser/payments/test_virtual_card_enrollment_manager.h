@@ -16,13 +16,19 @@ class TestVirtualCardEnrollmentManager : public VirtualCardEnrollmentManager {
  public:
   TestVirtualCardEnrollmentManager(
       TestPersonalDataManager* personal_data_manager,
-      payments::TestPaymentsNetworkInterface* payments_network_interface,
+      payments::TestPaymentsClient* payments_client,
       TestAutofillClient* autofill_client);
   TestVirtualCardEnrollmentManager(const TestVirtualCardEnrollmentManager&) =
       delete;
   TestVirtualCardEnrollmentManager& operator=(
       const TestVirtualCardEnrollmentManager&) = delete;
   ~TestVirtualCardEnrollmentManager() override;
+
+  bool GetAvatarAnimationComplete() const { return avatar_animation_complete_; }
+
+  void SetAvatarAnimationComplete(bool avatar_animation_complete) {
+    avatar_animation_complete_ = avatar_animation_complete;
+  }
 
   bool GetEnrollResponseDetailsReceived() const {
     return enroll_response_details_received_;
@@ -50,10 +56,6 @@ class TestVirtualCardEnrollmentManager : public VirtualCardEnrollmentManager {
     return &state_;
   }
 
-  void ResetVirtualCardEnrollmentProcessState() {
-    state_ = VirtualCardEnrollmentProcessState();
-  }
-
   void SetAutofillClient(AutofillClient* autofill_client) {
     autofill_client_ = autofill_client;
   }
@@ -76,8 +78,6 @@ class TestVirtualCardEnrollmentManager : public VirtualCardEnrollmentManager {
       AutofillClient::PaymentsRpcResult result) override;
   void Reset() override;
   void ShowVirtualCardEnrollBubble() override;
-
-  void OnVirtualCardEnrollmentBubbleCancelled();
 
  private:
   AutofillClient::PaymentsRpcResult result_;

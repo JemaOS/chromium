@@ -10,7 +10,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/json/json_reader.h"
-#include "base/test/gmock_expected_support.h"
 #include "base/values.h"
 #include "components/policy/core/browser/configuration_policy_handler_parameters.h"
 #include "components/policy/core/browser/policy_error_map.h"
@@ -118,9 +117,9 @@ class StringListPolicyHandler : public ListPolicyHandler {
       : ListPolicyHandler(policy_name, base::Value::Type::STRING) {}
 
  protected:
-  void ApplyList(base::Value::List filtered_list,
-                 PrefValueMap* prefs) override {
-    prefs->SetValue(kTestPref, base::Value(std::move(filtered_list)));
+  void ApplyList(base::Value filtered_list, PrefValueMap* prefs) override {
+    DCHECK(filtered_list.is_list());
+    prefs->SetValue(kTestPref, std::move(filtered_list));
   }
 };
 
@@ -701,9 +700,12 @@ TEST(SchemaValidatingPolicyHandlerTest, CheckAndGetValueInvalid) {
       "    \"Colors\": \"White\""
       "  }"
       "}";
-  ASSERT_OK_AND_ASSIGN(base::Value parsed_json,
-                       base::JSONReader::ReadAndReturnValueWithError(
-                           kPolicyMapJson, base::JSON_ALLOW_TRAILING_COMMAS));
+  auto parsed_json_or_error = base::JSONReader::ReadAndReturnValueWithError(
+      kPolicyMapJson, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(parsed_json_or_error.has_value())
+      << parsed_json_or_error.error().message;
+
+  base::Value& parsed_json = *parsed_json_or_error;
   ASSERT_TRUE(parsed_json.is_dict());
 
   PolicyMap policy_map;
@@ -743,13 +745,13 @@ TEST(SchemaValidatingPolicyHandlerTest, CheckAndGetValueUnknown) {
       "    \"Apples\": \"Red\""
       "  }"
       "}";
-  ASSERT_OK_AND_ASSIGN(auto parsed_json,
-                       base::JSONReader::ReadAndReturnValueWithError(
-                           kPolicyMapJson, base::JSON_ALLOW_TRAILING_COMMAS));
-  ASSERT_TRUE(parsed_json.is_dict());
+  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(
+      kPolicyMapJson, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(parsed_json.has_value()) << parsed_json.error().message;
+  ASSERT_TRUE(parsed_json->is_dict());
 
   PolicyMap policy_map;
-  policy_map.LoadFrom(parsed_json.GetDict(), POLICY_LEVEL_RECOMMENDED,
+  policy_map.LoadFrom(parsed_json->GetDict(), POLICY_LEVEL_RECOMMENDED,
                       POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD);
 
   TestSchemaValidatingPolicyHandler handler(schema, SCHEMA_ALLOW_UNKNOWN);
@@ -776,7 +778,7 @@ TEST(SchemaValidatingPolicyHandlerTest, CheckAndGetValueUnknown) {
                   testing::_, PolicyMap::MessageType::kWarning)));
 
   // Test that CheckAndGetValue() actually dropped unknown properties.
-  const std::optional<int> one_two_three = output.FindInt("OneToThree");
+  const absl::optional<int> one_two_three = output.FindInt("OneToThree");
   ASSERT_TRUE(one_two_three);
   int int_value = one_two_three.value();
   EXPECT_EQ(2, int_value);
@@ -815,18 +817,18 @@ TEST(SimpleSchemaValidatingPolicyHandlerTest, CheckAndGetValue) {
       "    \"Colors\": \"Green\""
       "  }"
       "}";
-  ASSERT_OK_AND_ASSIGN(auto parsed_json,
-                       base::JSONReader::ReadAndReturnValueWithError(
-                           kPolicyMapJson, base::JSON_ALLOW_TRAILING_COMMAS));
-  ASSERT_TRUE(parsed_json.is_dict());
+  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(
+      kPolicyMapJson, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(parsed_json.has_value()) << parsed_json.error().message;
+  ASSERT_TRUE(parsed_json->is_dict());
 
   PolicyMap policy_map_recommended;
-  policy_map_recommended.LoadFrom(parsed_json.GetDict(),
+  policy_map_recommended.LoadFrom(parsed_json->GetDict(),
                                   POLICY_LEVEL_RECOMMENDED, POLICY_SCOPE_USER,
                                   POLICY_SOURCE_CLOUD);
 
   PolicyMap policy_map_mandatory;
-  policy_map_mandatory.LoadFrom(parsed_json.GetDict(), POLICY_LEVEL_MANDATORY,
+  policy_map_mandatory.LoadFrom(parsed_json->GetDict(), POLICY_LEVEL_MANDATORY,
                                 POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD);
 
   SimpleSchemaValidatingPolicyHandler handler_all(
@@ -850,7 +852,7 @@ TEST(SimpleSchemaValidatingPolicyHandlerTest, CheckAndGetValue) {
       SimpleSchemaValidatingPolicyHandler::MANDATORY_PROHIBITED);
 
   const base::Value* value_expected_in_pref =
-      parsed_json.GetDict().Find(kPolicyName);
+      parsed_json->GetDict().Find(kPolicyName);
 
   PolicyErrorMap errors;
   PrefValueMap prefs;
@@ -906,18 +908,17 @@ TEST(SimpleSchemaValidatingPolicyHandlerTest, CheckAndGetValue) {
 }
 
 TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, ValidEmbeddedJson) {
-  ASSERT_OK_AND_ASSIGN(
-      auto parsed_json,
-      base::JSONReader::ReadAndReturnValueWithError(
-          kPolicyMapJsonValid, base::JSON_ALLOW_TRAILING_COMMAS));
-  ASSERT_TRUE(parsed_json.is_dict());
+  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(
+      kPolicyMapJsonValid, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(parsed_json.has_value()) << parsed_json.error().message;
+  ASSERT_TRUE(parsed_json->is_dict());
 
   PolicyMap policy_map;
-  policy_map.LoadFrom(parsed_json.GetDict(), POLICY_LEVEL_MANDATORY,
+  policy_map.LoadFrom(parsed_json->GetDict(), POLICY_LEVEL_MANDATORY,
                       POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD);
 
   const base::Value* value_expected_in_pref =
-      parsed_json.GetDict().Find(kPolicyName);
+      parsed_json->GetDict().Find(kPolicyName);
 
   PolicyErrorMap errors;
   PrefValueMap prefs;
@@ -934,18 +935,17 @@ TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, ValidEmbeddedJson) {
 }
 
 TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, InvalidEmbeddedJson) {
-  ASSERT_OK_AND_ASSIGN(
-      auto parsed_json,
-      base::JSONReader::ReadAndReturnValueWithError(
-          kPolicyMapJsonInvalid, base::JSON_ALLOW_TRAILING_COMMAS));
-  ASSERT_TRUE(parsed_json.is_dict());
+  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(
+      kPolicyMapJsonInvalid, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(parsed_json.has_value()) << parsed_json.error().message;
+  ASSERT_TRUE(parsed_json->is_dict());
 
   PolicyMap policy_map;
-  policy_map.LoadFrom(parsed_json.GetDict(), POLICY_LEVEL_MANDATORY,
+  policy_map.LoadFrom(parsed_json->GetDict(), POLICY_LEVEL_MANDATORY,
                       POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD);
 
   const base::Value* value_expected_in_pref =
-      parsed_json.GetDict().Find(kPolicyName);
+      parsed_json->GetDict().Find(kPolicyName);
 
   PolicyErrorMap errors;
   PrefValueMap prefs;
@@ -962,18 +962,17 @@ TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, InvalidEmbeddedJson) {
 }
 
 TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, UnparsableJson) {
-  ASSERT_OK_AND_ASSIGN(
-      auto parsed_json,
-      base::JSONReader::ReadAndReturnValueWithError(
-          kPolicyMapJsonUnparsable, base::JSON_ALLOW_TRAILING_COMMAS));
-  ASSERT_TRUE(parsed_json.is_dict());
+  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(
+      kPolicyMapJsonUnparsable, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(parsed_json.has_value()) << parsed_json.error().message;
+  ASSERT_TRUE(parsed_json->is_dict());
 
   PolicyMap policy_map;
-  policy_map.LoadFrom(parsed_json.GetDict(), POLICY_LEVEL_MANDATORY,
+  policy_map.LoadFrom(parsed_json->GetDict(), POLICY_LEVEL_MANDATORY,
                       POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD);
 
   const base::Value* value_expected_in_pref =
-      parsed_json.GetDict().Find(kPolicyName);
+      parsed_json->GetDict().Find(kPolicyName);
 
   PolicyErrorMap errors;
   PrefValueMap prefs;
@@ -990,18 +989,17 @@ TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, UnparsableJson) {
 }
 
 TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, WrongType) {
-  ASSERT_OK_AND_ASSIGN(
-      auto parsed_json,
-      base::JSONReader::ReadAndReturnValueWithError(
-          kPolicyMapJsonWrongTypes, base::JSON_ALLOW_TRAILING_COMMAS));
-  ASSERT_TRUE(parsed_json.is_dict());
+  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(
+      kPolicyMapJsonWrongTypes, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(parsed_json.has_value()) << parsed_json.error().message;
+  ASSERT_TRUE(parsed_json->is_dict());
 
   PolicyMap policy_map;
-  policy_map.LoadFrom(parsed_json.GetDict(), POLICY_LEVEL_MANDATORY,
+  policy_map.LoadFrom(parsed_json->GetDict(), POLICY_LEVEL_MANDATORY,
                       POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD);
 
   const base::Value* value_expected_in_pref =
-      parsed_json.GetDict().Find(kPolicyName);
+      parsed_json->GetDict().Find(kPolicyName);
 
   PolicyErrorMap errors;
   PrefValueMap prefs;
@@ -1018,14 +1016,13 @@ TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, WrongType) {
 }
 
 TEST(SimpleJsonStringSchemaValidatingPolicyHandlerTest, WrongRootType) {
-  ASSERT_OK_AND_ASSIGN(
-      auto parsed_json,
-      base::JSONReader::ReadAndReturnValueWithError(
-          kPolicyMapJsonWrongRootType, base::JSON_ALLOW_TRAILING_COMMAS));
-  ASSERT_TRUE(parsed_json.is_dict());
+  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(
+      kPolicyMapJsonWrongRootType, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(parsed_json.has_value()) << parsed_json.error().message;
+  ASSERT_TRUE(parsed_json->is_dict());
 
   PolicyMap policy_map;
-  policy_map.LoadFrom(parsed_json.GetDict(), POLICY_LEVEL_MANDATORY,
+  policy_map.LoadFrom(parsed_json->GetDict(), POLICY_LEVEL_MANDATORY,
                       POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD);
 
   PolicyErrorMap errors;
@@ -1092,37 +1089,6 @@ TEST(SimpleDeprecatingPolicyHandlerTest, CheckDeprecatedUsedWhenNoNewValue) {
   prefs.Clear();
   handler.ApplyPolicySettingsWithParameters(policy_map, params, &prefs);
   expected = std::make_unique<base::Value>(1337);
-  EXPECT_TRUE(prefs.GetValue(kTestPref, &value));
-  EXPECT_EQ(*expected, *value);
-}
-
-TEST(URLPolicyHandler, CheckOnlyValidURLApplied) {
-  PolicyMap policy_map;
-  PrefValueMap prefs;
-  std::unique_ptr<base::Value> expected;
-  const base::Value* value;
-  PolicyErrorMap errors;
-  PolicyHandlerParameters params;
-
-  URLPolicyHandler handler(kTestPolicy, kTestPref);
-
-  // Check that invalid url returns error.
-  policy_map.Set(kTestPolicy, POLICY_LEVEL_MANDATORY, POLICY_SCOPE_USER,
-                 POLICY_SOURCE_CLOUD, base::Value("not_a_url"), nullptr);
-  EXPECT_FALSE(handler.CheckPolicySettings(policy_map, &errors));
-  EXPECT_FALSE(errors.empty());
-  errors.Clear();
-  prefs.Clear();
-
-  // Check that valid url returns no error.
-  policy_map.Set(kTestPolicy, POLICY_LEVEL_MANDATORY, POLICY_SCOPE_USER,
-                 POLICY_SOURCE_CLOUD, base::Value("https://www.example.com/"),
-                 nullptr);
-  EXPECT_TRUE(handler.CheckPolicySettings(policy_map, &errors));
-  EXPECT_TRUE(errors.empty());
-
-  handler.ApplyPolicySettingsWithParameters(policy_map, params, &prefs);
-  expected = std::make_unique<base::Value>("https://www.example.com/");
   EXPECT_TRUE(prefs.GetValue(kTestPref, &value));
   EXPECT_EQ(*expected, *value);
 }

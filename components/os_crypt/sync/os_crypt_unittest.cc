@@ -8,8 +8,8 @@
 #include <vector>
 
 #include "base/compiler_specific.h"
-#include "base/containers/span.h"
 #include "base/functional/bind.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/thread.h"
@@ -219,10 +219,11 @@ class OSCryptTestWin : public testing::Test {
 // If this test ever breaks do not ignore it as it might result in data loss for
 // users.
 TEST_F(OSCryptTestWin, DPAPIHeader) {
-  OSCryptMocker::SetLegacyEncryption(true);
-  std::string plaintext(10, '\0');
-  crypto::RandBytes(base::as_writable_byte_span(plaintext));
+  std::string plaintext;
   std::string ciphertext;
+
+  OSCryptMocker::SetLegacyEncryption(true);
+  crypto::RandBytes(base::WriteInto(&plaintext, 11), 10);
   ASSERT_TRUE(OSCrypt::EncryptString(plaintext, &ciphertext));
 
   using std::string_literals::operator""s;
@@ -304,53 +305,6 @@ TEST_F(OSCryptTestWin, PrefsKeyTest) {
   // Verify decryption works with key from first prefs.
   ASSERT_TRUE(OSCrypt::DecryptString(ciphertext, &decrypted));
   EXPECT_EQ(plaintext, decrypted);
-}
-
-// This test verifies that an existing key is re-encrypted if the pref
-// `os_crypt.audit_enabled` is not set, enabling the audit flag and setting the
-// data description `szDataDescr` on the data.
-TEST_F(OSCryptTestWin, AuditMigrationTest) {
-  // Taken from os_crypt_win.cc.
-  constexpr char kOsCryptEncryptedKeyPrefName[] = "os_crypt.encrypted_key";
-  constexpr char kOsCryptAuditEnabledPrefName[] = "os_crypt.audit_enabled";
-
-  TestingPrefServiceSimple prefs;
-  OSCrypt::RegisterLocalPrefs(prefs.registry());
-
-  // Verify new random key can be generated.
-  ASSERT_TRUE(OSCrypt::Init(&prefs));
-  EXPECT_TRUE(prefs.GetBoolean(kOsCryptAuditEnabledPrefName));
-
-  auto encrypted_key = prefs.GetString(kOsCryptEncryptedKeyPrefName);
-  EXPECT_TRUE(!encrypted_key.empty());
-
-  // Clear state, and fake that the key does not have audit enabled for testing
-  // by clearing the pref.
-  OSCrypt::ResetStateForTesting();
-  prefs.ClearPref(kOsCryptAuditEnabledPrefName);
-
-  // Init again with same pref store, this should cause the raw key to be
-  // re-encrypted with audit enabled.
-  ASSERT_TRUE(OSCrypt::Init(&prefs));
-  EXPECT_TRUE(prefs.GetBoolean(kOsCryptAuditEnabledPrefName));
-  auto encrypted_key2 = prefs.GetString(kOsCryptEncryptedKeyPrefName);
-  EXPECT_TRUE(!encrypted_key2.empty());
-
-  // DPAPI guarantees that two identical data will encrypt to different values
-  // since it uses a random 16-byte salt internally, so this check is used to
-  // show that the re-encryption has occurred.
-  EXPECT_NE(encrypted_key, encrypted_key2);
-
-  // Clear state again, this time to test that the data only gets re-encrypted
-  // once.
-  OSCrypt::ResetStateForTesting();
-  ASSERT_TRUE(OSCrypt::Init(&prefs));
-  auto encrypted_key3 = prefs.GetString(kOsCryptEncryptedKeyPrefName);
-
-  // This time, since the key has already been re-encrypted and re-encryption
-  // only happens once, it will be left alone and the encrypted key data should
-  // be identical.
-  EXPECT_EQ(encrypted_key2, encrypted_key3);
 }
 
 #endif  // BUILDFLAG(IS_WIN)

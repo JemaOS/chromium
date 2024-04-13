@@ -31,14 +31,18 @@ ContentSetting NfcPermissionContext::GetPermissionStatusInternal(
 #endif
 
 void NfcPermissionContext::DecidePermission(
-    PermissionRequestData request_data,
+    const PermissionRequestID& id,
+    const GURL& requesting_origin,
+    const GURL& embedding_origin,
+    bool user_gesture,
     BrowserPermissionCallback callback) {
-  if (!request_data.user_gesture) {
+  if (!user_gesture) {
     std::move(callback).Run(CONTENT_SETTING_BLOCK);
     return;
   }
-  permissions::PermissionContextBase::DecidePermission(std::move(request_data),
-                                                       std::move(callback));
+  permissions::PermissionContextBase::DecidePermission(
+      id, requesting_origin, embedding_origin, user_gesture,
+      std::move(callback));
 }
 
 void NfcPermissionContext::UpdateTabContext(const PermissionRequestID& id,

@@ -51,17 +51,15 @@ class SessionSyncBridge : public syncer::ModelTypeSyncBridge,
   SessionsGlobalIdMapper* GetGlobalIdMapper();
   OpenTabsUIDelegate* GetOpenTabsUIDelegate();
 
-  bool IsLocalDataOutOfSyncForTest() const;
-
   // ModelTypeSyncBridge implementation.
   void OnSyncStarting(
       const syncer::DataTypeActivationRequest& request) override;
   std::unique_ptr<syncer::MetadataChangeList> CreateMetadataChangeList()
       override;
-  std::optional<syncer::ModelError> MergeFullSyncData(
+  absl::optional<syncer::ModelError> MergeFullSyncData(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_data) override;
-  std::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_changes) override;
   void GetData(StorageKeyList storage_keys, DataCallback callback) override;
@@ -81,7 +79,7 @@ class SessionSyncBridge : public syncer::ModelTypeSyncBridge,
 
  private:
   void OnStoreInitialized(
-      const std::optional<syncer::ModelError>& error,
+      const absl::optional<syncer::ModelError>& error,
       std::unique_ptr<SessionStore> store,
       std::unique_ptr<syncer::MetadataBatch> metadata_batch);
   void StartLocalSessionEventHandler();
@@ -107,10 +105,19 @@ class SessionSyncBridge : public syncer::ModelTypeSyncBridge,
 
     std::unique_ptr<OpenTabsUIDelegateImpl> open_tabs_ui_delegate;
     std::unique_ptr<LocalSessionEventHandlerImpl> local_session_event_handler;
+
+    // Tracks whether our local representation of which sync nodes map to what
+    // tabs (belonging to the current local session) is inconsistent.  This can
+    // happen if a foreign client deems our session as "stale" and decides to
+    // delete it. Rather than respond by bullishly re-creating our nodes
+    // immediately, which could lead to ping-pong sequences, we give the benefit
+    // of the doubt and hold off until another local navigation occurs, which
+    // proves that we are still relevant.
+    bool local_data_out_of_sync = false;
   };
 
   // TODO(mastiz): We should rather rename this to |syncing_state_|.
-  std::optional<SyncingState> syncing_;
+  absl::optional<SyncingState> syncing_;
 
   base::WeakPtrFactory<SessionSyncBridge> weak_ptr_factory_{this};
 };

@@ -7,8 +7,6 @@
 #include <vector>
 
 #include "base/containers/contains.h"
-#include "base/memory/raw_ptr.h"
-#include "base/scoped_observation.h"
 #include "components/services/app_service/public/cpp/instance.h"
 #include "components/services/app_service/public/cpp/instance_registry.h"
 #include "components/services/app_service/public/cpp/instance_update.h"
@@ -76,8 +74,7 @@ class InstanceRegistryTest : public testing::Test,
 
   int num_running_apps_ = 0;
   std::set<std::string> updated_ids_;
-  std::set<raw_ptr<const aura::Window, SetExperimental>>
-      updated_enclosing_windows_;
+  std::set<const aura::Window*> updated_enclosing_windows_;
 
   apps::InstanceRegistry instance_registry_;
 };
@@ -90,9 +87,7 @@ class InstanceRegistryTest : public testing::Test,
 class InstanceRecursiveObserver : public apps::InstanceRegistry::Observer {
  public:
   explicit InstanceRecursiveObserver(apps::InstanceRegistry* instance_registry)
-      : instance_registry_(instance_registry) {
-    instance_registry_observation_.Observe(instance_registry);
-  }
+      : apps::InstanceRegistry::Observer(instance_registry) {}
 
   ~InstanceRecursiveObserver() override = default;
 
@@ -127,7 +122,7 @@ class InstanceRecursiveObserver : public apps::InstanceRegistry::Observer {
   // apps::InstanceRegistry::Observer overrides.
   void OnInstanceUpdate(const apps::InstanceUpdate& outer) override {
     int num_instance = 0;
-    instance_registry_->ForEachInstance(
+    instance_registry()->ForEachInstance(
         [&outer, &num_instance](const apps::InstanceUpdate& inner) {
           if (outer.InstanceId() == inner.InstanceId()) {
             ExpectEq(outer, inner);
@@ -135,12 +130,12 @@ class InstanceRecursiveObserver : public apps::InstanceRegistry::Observer {
           num_instance++;
         });
 
-    EXPECT_TRUE(instance_registry_->ForOneInstance(
+    EXPECT_TRUE(instance_registry()->ForOneInstance(
         outer.InstanceId(), [&outer](const apps::InstanceUpdate& inner) {
           ExpectEq(outer, inner);
         }));
 
-    EXPECT_TRUE(instance_registry_->ForInstancesWithWindow(
+    EXPECT_TRUE(instance_registry()->ForInstancesWithWindow(
         outer.Window(), [&outer](const apps::InstanceUpdate& inner) {
           if (outer.InstanceId() == inner.InstanceId()) {
             ExpectEq(outer, inner);
@@ -159,7 +154,7 @@ class InstanceRecursiveObserver : public apps::InstanceRegistry::Observer {
         super_recursive_instance_params_.pop_back();
         break;
       }
-      instance_registry_->CreateOrUpdateInstance(std::move(*params));
+      instance_registry()->CreateOrUpdateInstance(std::move(*params));
       super_recursive_instance_params_.pop_back();
     }
 
@@ -171,7 +166,7 @@ class InstanceRecursiveObserver : public apps::InstanceRegistry::Observer {
         super_recursive_instances_.pop_back();
         break;
       }
-      instance_registry_->OnInstance(std::move(instance));
+      instance_registry()->OnInstance(std::move(instance));
       super_recursive_instances_.pop_back();
     }
 
@@ -180,7 +175,7 @@ class InstanceRecursiveObserver : public apps::InstanceRegistry::Observer {
 
   void OnInstanceRegistryWillBeDestroyed(
       apps::InstanceRegistry* instance_registry) override {
-    instance_registry_observation_.Reset();
+    Observe(nullptr);
   }
 
   static void ExpectEq(const apps::InstanceUpdate& outer,
@@ -193,8 +188,6 @@ class InstanceRecursiveObserver : public apps::InstanceRegistry::Observer {
     EXPECT_EQ(outer.LastUpdatedTime(), inner.LastUpdatedTime());
     EXPECT_EQ(outer.BrowserContext(), inner.BrowserContext());
   }
-
-  raw_ptr<apps::InstanceRegistry> instance_registry_;
 
   int expected_num_instances_ = -1;
   int num_instances_seen_on_instance_update_ = 0;
@@ -209,10 +202,6 @@ class InstanceRecursiveObserver : public apps::InstanceRegistry::Observer {
   std::vector<std::unique_ptr<apps::InstanceParams>>
       super_recursive_instance_params_;
   std::vector<std::unique_ptr<apps::Instance>> super_recursive_instances_;
-
-  base::ScopedObservation<apps::InstanceRegistry,
-                          apps::InstanceRegistry::Observer>
-      instance_registry_observation_{this};
 };
 
 TEST_F(InstanceRegistryTest, ForEachInstance) {
@@ -639,7 +628,7 @@ TEST_F(InstanceRegistryTest, GetInstances) {
   EXPECT_EQ(2U, instances.size());
 
   std::set<aura::Window*> windows;
-  for (const apps::Instance* instance : instances) {
+  for (const auto* instance : instances) {
     EXPECT_EQ("a", instance->AppId());
     windows.insert(instance->Window());
   }

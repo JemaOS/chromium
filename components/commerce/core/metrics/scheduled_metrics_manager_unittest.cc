@@ -12,7 +12,6 @@
 #include "components/commerce/core/metrics/scheduled_metrics_manager.h"
 #include "components/commerce/core/mock_shopping_service.h"
 #include "components/commerce/core/pref_names.h"
-#include "components/commerce/core/price_tracking_utils.h"
 #include "components/commerce/core/test_utils.h"
 #include "components/power_bookmarks/core/power_bookmark_utils.h"
 #include "components/power_bookmarks/core/proto/power_bookmark_meta.pb.h"
@@ -57,8 +56,8 @@ TEST_F(ScheduledMetricsManagerTest, TrackedProductCountRecorded) {
 
   // Add two tracked products.
   shopping_service_->SetGetAllSubscriptionsCallbackValue(
-      {BuildUserSubscriptionForClusterId(123L),
-       BuildUserSubscriptionForClusterId(456L)});
+      {CreateUserTrackedSubscription(123L),
+       CreateUserTrackedSubscription(456L)});
 
   CreateUpdateManagerAndWait();
 
@@ -72,7 +71,7 @@ TEST_F(ScheduledMetricsManagerTest, TrackedProductCountNotRecordedEarly) {
   base::HistogramTester histogram_tester;
 
   shopping_service_->SetGetAllSubscriptionsCallbackValue(
-      {BuildUserSubscriptionForClusterId(123L)});
+      {CreateUserTrackedSubscription(123L)});
 
   CreateUpdateManagerAndWait();
 
@@ -88,8 +87,6 @@ TEST_F(ScheduledMetricsManagerTest, EmailNotification_NoTrackedProducts) {
   // Assume the user has enabled notifications but has no tracked products.
   pref_service_->SetBoolean(kPriceEmailNotificationsEnabled, true);
 
-  shopping_service_->SetGetAllSubscriptionsCallbackValue(
-      std::vector<CommerceSubscription>());
   CreateUpdateManagerAndWait();
 
   histogram_tester.ExpectUniqueSample(
@@ -109,7 +106,7 @@ TEST_F(ScheduledMetricsManagerTest, EmailNotification_TrackedProducts) {
 
   // Have at least one tracked product.
   shopping_service_->SetGetAllSubscriptionsCallbackValue(
-      {BuildUserSubscriptionForClusterId(123L)});
+      {CreateUserTrackedSubscription(123L)});
 
   CreateUpdateManagerAndWait();
 
@@ -130,7 +127,7 @@ TEST_F(ScheduledMetricsManagerTest,
 
   // Have at least one tracked product.
   shopping_service_->SetGetAllSubscriptionsCallbackValue(
-      {BuildUserSubscriptionForClusterId(123L)});
+      {CreateUserTrackedSubscription(123L)});
 
   CreateUpdateManagerAndWait();
 

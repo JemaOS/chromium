@@ -50,15 +50,11 @@ public class RemotingSessionController extends BaseSessionController {
         super.attachToCastSession(session);
 
         try {
-            getSession()
-                    .setMessageReceivedCallbacks(
-                            CastSessionUtil.MEDIA_NAMESPACE, this::onMessageReceived);
+            getSession().setMessageReceivedCallbacks(
+                    CastSessionUtil.MEDIA_NAMESPACE, this::onMessageReceived);
         } catch (Exception e) {
-            Log.e(
-                    TAG,
-                    "Failed to register namespace listener for %s",
-                    CastSessionUtil.MEDIA_NAMESPACE,
-                    e);
+            Log.e(TAG, "Failed to register namespace listener for %s",
+                    CastSessionUtil.MEDIA_NAMESPACE, e);
         }
     }
 
@@ -66,11 +62,7 @@ public class RemotingSessionController extends BaseSessionController {
     public void onSessionStarted() {
         super.onSessionStarted();
         RemotingMediaSource source = (RemotingMediaSource) getSource();
-        if (source != null) {
-            mFlingingControllerAdapter = new FlingingControllerAdapter(this, source.getMediaUrl());
-        } else {
-            throw new AssertionError("Remoting Session started with an invalid source.");
-        }
+        mFlingingControllerAdapter = new FlingingControllerAdapter(this, source.getMediaUrl());
     }
 
     @Override

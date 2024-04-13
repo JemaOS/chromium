@@ -21,7 +21,7 @@ namespace webapps {
 // NO_ERROR_DETECTED) in its result. Clients may also add their own error codes,
 // and utilise LogToConsole to write a message to the devtools console. This
 // enum backs an UMA histogram, so it must be treated as append-only.
-enum class InstallableStatusCode {
+enum InstallableStatusCode {
   NO_ERROR_DETECTED = 0,
   RENDERER_EXITING = 1,
   RENDERER_CANCELLED = 2,
@@ -29,11 +29,7 @@ enum class InstallableStatusCode {
   // NOT_IN_MAIN_FRAME = 4 (DEPRECATED),
   NOT_FROM_SECURE_ORIGIN = 5,
   NO_MANIFEST = 6,
-  // The manifest failed to parse, the network failed, or the document is an
-  // opaque origin.
-  // Note: This was renamed from MANIFEST_EMPTY now that the document can return
-  // a default manifest.
-  MANIFEST_PARSING_OR_NETWORK_ERROR = 7,
+  MANIFEST_EMPTY = 7,
   START_URL_NOT_VALID = 8,
   MANIFEST_MISSING_NAME_OR_SHORT_NAME = 9,
   MANIFEST_DISPLAY_NOT_SUPPORTED = 10,
@@ -66,14 +62,13 @@ enum class InstallableStatusCode {
   PREFER_RELATED_APPLICATIONS_SUPPORTED_ONLY_BETA_STABLE = 37,
   MANIFEST_URL_CHANGED = 38,
   MANIFEST_DISPLAY_OVERRIDE_NOT_SUPPORTED = 39,
-  // WARN_NOT_OFFLINE_CAPABLE = 40 (DEPRECATED),
+  WARN_NOT_OFFLINE_CAPABLE = 40,
   PIPELINE_RESTARTED = 41,
   DATA_TIMED_OUT = 42,
   WEBAPK_INSTALL_FAILED = 43,
   // MANIFEST_URL_SCHEME_NOT_SUPPORTED_FOR_WEBAPK = 44 (DEPRECATED),
   // SERVICE_WORKER_NOT_REQUIRED = 45 (DEPRECATED),
-  MAX_ERROR_CODE = WEBAPK_INSTALL_FAILED,
-  kMaxValue = MAX_ERROR_CODE,
+  MAX_ERROR_CODE,
 };
 
 // Returns a user-readable description for |code|, or an empty string if |code|

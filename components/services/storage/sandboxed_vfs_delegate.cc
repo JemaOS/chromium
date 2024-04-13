@@ -5,13 +5,13 @@
 #include "components/services/storage/sandboxed_vfs_delegate.h"
 
 #include <cstdint>
-#include <optional>
 #include <utility>
 
 #include "base/files/file.h"
 #include "base/files/file_error_or.h"
 #include "base/files/file_path.h"
 #include "components/services/storage/public/cpp/filesystem/filesystem_proxy.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace storage {
 
@@ -23,23 +23,27 @@ SandboxedVfsDelegate::~SandboxedVfsDelegate() = default;
 
 base::File SandboxedVfsDelegate::OpenFile(const base::FilePath& file_path,
                                           int sqlite_requested_flags) {
-  return filesystem_
-      ->OpenFile(file_path, base::File::FLAG_OPEN_ALWAYS |
-                                base::File::FLAG_READ | base::File::FLAG_WRITE)
-      .value_or(base::File());
+  base::FileErrorOr<base::File> result = filesystem_->OpenFile(
+      file_path, base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ |
+                     base::File::FLAG_WRITE);
+  if (!result.has_value())
+    return base::File();
+  return std::move(result.value());
 }
 
 int SandboxedVfsDelegate::DeleteFile(const base::FilePath& file_path,
                                      bool sync_dir) {
-  return filesystem_->DeleteFile(file_path) ? SQLITE_OK : SQLITE_IOERR_DELETE;
+  if (!filesystem_->DeleteFile(file_path))
+    return SQLITE_IOERR_DELETE;
+  return SQLITE_OK;
 }
 
-std::optional<sql::SandboxedVfs::PathAccessInfo>
+absl::optional<sql::SandboxedVfs::PathAccessInfo>
 SandboxedVfsDelegate::GetPathAccess(const base::FilePath& file_path) {
-  std::optional<FilesystemProxy::PathAccessInfo> info =
+  absl::optional<FilesystemProxy::PathAccessInfo> info =
       filesystem_->GetPathAccess(file_path);
   if (!info)
-    return std::nullopt;
+    return absl::nullopt;
 
   sql::SandboxedVfs::PathAccessInfo access;
   access.can_read = info->can_read;

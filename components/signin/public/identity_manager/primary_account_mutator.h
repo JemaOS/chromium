@@ -5,13 +5,13 @@
 #ifndef COMPONENTS_SIGNIN_PUBLIC_IDENTITY_MANAGER_PRIMARY_ACCOUNT_MUTATOR_H_
 #define COMPONENTS_SIGNIN_PUBLIC_IDENTITY_MANAGER_PRIMARY_ACCOUNT_MUTATOR_H_
 
-#include "base/functional/callback_helpers.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "components/signin/public/base/signin_metrics.h"
 
 namespace signin_metrics {
 enum class ProfileSignout;
+enum class SignoutDelete;
 }  // namespace signin_metrics
 
 struct CoreAccountId;
@@ -77,20 +77,13 @@ class PrimaryAccountMutator {
   //
   // The account state changes will be recorded in UMA, attributed to the
   // provided `access_point`.
-  // `prefs_committed_callback` is called once the primary account preferences
-  // are written to the persistent storage.
   // TODO(crbug.com/1261772): Don't set a default `access_point`. All callsites
-  //     should provide a valid value.
-  // TODO(crbug.com/40067025): ConsentLevel::kSync is being migrated away from,
-  //     please see ConsentLevel::kSync documentation before adding new calls
-  //     with ConsentLevel::kSync. Also, update this documentation when the
-  //     deprecation process advances.
+  // should provide a valid value.
   virtual PrimaryAccountError SetPrimaryAccount(
       const CoreAccountId& account_id,
       ConsentLevel consent_level,
       signin_metrics::AccessPoint access_point =
-          signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN,
-      base::OnceClosure prefs_committed_callback = base::NullCallback()) = 0;
+          signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN) = 0;
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
   // Revokes sync consent from the primary account. We distinguish the following
@@ -105,19 +98,15 @@ class PrimaryAccountMutator {
   //
   // Note: This method expects that the user already consented for sync.
   virtual void RevokeSyncConsent(
-      signin_metrics::ProfileSignout source_metric) = 0;
+      signin_metrics::ProfileSignout source_metric,
+      signin_metrics::SignoutDelete delete_metric) = 0;
 
   // Clears the primary account, removes all accounts and revokes the sync
   // consent. Returns true if the action was successful and false if there
   // was no primary account set.
   virtual bool ClearPrimaryAccount(
-      signin_metrics::ProfileSignout source_metric) = 0;
-
-  // Removes the primary account and revokes the sync consent, but keep the
-  // accounts signed in to the web and the tokens. Returns true if the action
-  // was successful and false if there was no primary account set.
-  virtual bool RemovePrimaryAccountButKeepTokens(
-      signin_metrics::ProfileSignout source_metric) = 0;
+      signin_metrics::ProfileSignout source_metric,
+      signin_metrics::SignoutDelete delete_metric) = 0;
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 };
 

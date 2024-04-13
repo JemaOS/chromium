@@ -10,9 +10,9 @@
 #include "build/build_config.h"
 #include "components/media_router/common/discovery/media_sink_service_base.h"
 
-namespace media_router {
-
 class MediaSink;
+
+namespace media_router {
 
 MediaSink CreateCastSink(const std::string& id, const std::string& name);
 MediaSink CreateDialSink(const std::string& id, const std::string& name);

@@ -5,7 +5,6 @@
 #include "components/query_tiles/internal/init_aware_tile_service.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
@@ -13,6 +12,7 @@
 #include "components/query_tiles/internal/tile_service_impl.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using testing::_;
 using testing::InSequence;
@@ -50,12 +50,12 @@ class MockInitializableTileService : public InitializableTileService {
   MOCK_METHOD(void, OnTileClicked, (const std::string&), (override));
   MOCK_METHOD(void,
               OnQuerySelected,
-              (const std::optional<std::string>&, const std::u16string&),
+              (const absl::optional<std::string>&, const std::u16string&),
               (override));
 
   // Callback stubs.
   MOCK_METHOD(void, GetTilesCallbackStub, (TileList), ());
-  MOCK_METHOD(void, TileCallbackStub, (std::optional<Tile>), ());
+  MOCK_METHOD(void, TileCallbackStub, (absl::optional<Tile>), ());
   MOCK_METHOD(void, BackgroundTaskFinishedCallbackStub, (bool), ());
 
  private:
@@ -131,7 +131,7 @@ class InitAwareTileServiceTest : public testing::Test {
 
  private:
   base::test::TaskEnvironment task_environment_;
-  raw_ptr<MockInitializableTileService, DanglingUntriaged> mock_service_;
+  raw_ptr<MockInitializableTileService> mock_service_;
   std::unique_ptr<InitAwareTileService> init_aware_service_;
 };
 
@@ -146,7 +146,7 @@ TEST_F(InitAwareTileServiceTest, AfterInitSuccessPassThrough) {
   }
 
   EXPECT_CALL(*mock_service(), GetTilesCallbackStub(TileList({Tile()})));
-  EXPECT_CALL(*mock_service(), TileCallbackStub(std::make_optional<Tile>()));
+  EXPECT_CALL(*mock_service(), TileCallbackStub(absl::make_optional<Tile>()));
   EXPECT_CALL(*mock_service(), BackgroundTaskFinishedCallbackStub(true));
 
   GetQueryTiles();
@@ -166,7 +166,7 @@ TEST_F(InitAwareTileServiceTest, AfterInitFailureNotPassThrough) {
   }
 
   EXPECT_CALL(*mock_service(), GetTilesCallbackStub(TileList()));
-  EXPECT_CALL(*mock_service(), TileCallbackStub(std::optional<Tile>()));
+  EXPECT_CALL(*mock_service(), TileCallbackStub(absl::optional<Tile>()));
   EXPECT_CALL(*mock_service(), BackgroundTaskFinishedCallbackStub(false));
 
   GetQueryTiles();
@@ -185,7 +185,7 @@ TEST_F(InitAwareTileServiceTest, BeforeInitSuccessFlushedThrough) {
   }
 
   EXPECT_CALL(*mock_service(), GetTilesCallbackStub(TileList({Tile()})));
-  EXPECT_CALL(*mock_service(), TileCallbackStub(std::make_optional<Tile>()));
+  EXPECT_CALL(*mock_service(), TileCallbackStub(absl::make_optional<Tile>()));
   EXPECT_CALL(*mock_service(), BackgroundTaskFinishedCallbackStub(true));
 
   GetQueryTiles();
@@ -205,7 +205,7 @@ TEST_F(InitAwareTileServiceTest, BeforeInitFailureNotFlushedThrough) {
   }
 
   EXPECT_CALL(*mock_service(), GetTilesCallbackStub(TileList()));
-  EXPECT_CALL(*mock_service(), TileCallbackStub(std::optional<Tile>()));
+  EXPECT_CALL(*mock_service(), TileCallbackStub(absl::optional<Tile>()));
   EXPECT_CALL(*mock_service(), BackgroundTaskFinishedCallbackStub(false));
 
   GetQueryTiles();

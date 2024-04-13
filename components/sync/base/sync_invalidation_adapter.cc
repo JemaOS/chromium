@@ -7,8 +7,9 @@
 
 namespace syncer {
 
-SyncInvalidationAdapter::SyncInvalidationAdapter(const std::string& payload,
-                                                 std::optional<int64_t> version)
+SyncInvalidationAdapter::SyncInvalidationAdapter(
+    const std::string& payload,
+    absl::optional<int64_t> version)
     : payload_(payload), version_(version) {}
 
 SyncInvalidationAdapter::~SyncInvalidationAdapter() = default;

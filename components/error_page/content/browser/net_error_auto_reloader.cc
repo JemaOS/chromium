@@ -54,11 +54,7 @@ bool ShouldAutoReload(content::NavigationHandle* handle) {
          !handle->GetResolveErrorInfo().is_secure_network_error &&
          // Don't auto reload if the error is caused by the server returning a
          // non-2xx HTTP response code.
-         net_error != net::ERR_HTTP_RESPONSE_CODE_FAILURE &&
-         // Do not auto-reload if the error is caused by private network access
-         // preflight failures because user reloads have different initiator
-         // policies.
-         net_error != net::ERR_BLOCKED_BY_PRIVATE_NETWORK_ACCESS_CHECKS;
+         net_error != net::ERR_HTTP_RESPONSE_CODE_FAILURE;
 }
 
 base::TimeDelta GetNextReloadDelay(size_t reload_count) {

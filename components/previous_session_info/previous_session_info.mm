@@ -8,15 +8,17 @@
 
 #import <UIKit/UIKit.h>
 
-#import "base/ios/ios_util.h"
-#import "base/metrics/field_trial.h"
-#import "base/strings/sys_string_conversions.h"
-#import "base/system/sys_info.h"
-#import "base/time/time.h"
-#import "base/timer/timer.h"
+#include "base/ios/ios_util.h"
+#include "base/strings/sys_string_conversions.h"
+#include "base/system/sys_info.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
 #import "components/previous_session_info/previous_session_info_private.h"
-#import "components/variations/variations_crash_keys.h"
-#import "components/version_info/version_info.h"
+#include "components/version_info/version_info.h"
+
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
 
 using previous_session_info_constants::DeviceBatteryState;
 using previous_session_info_constants::DeviceThermalState;
@@ -99,37 +101,6 @@ NSString* ReportParamKey(NSString* key) {
   return [NSString
       stringWithFormat:@"%@%@", kPreviousSessionInfoParamsPrefix, key];
 }
-
-// Objective-C bridge to observe changes in the FieldTrialList.
-class FieldTrialListObserverBridge : public base::FieldTrialList::Observer {
- public:
-  explicit FieldTrialListObserverBridge() {}
-
- private:
-  FieldTrialListObserverBridge(const PreviousSessionInfo&) = delete;
-  FieldTrialListObserverBridge& operator=(const FieldTrialListObserverBridge&) =
-      delete;
-
-  // base::FieldTrialList::Observer:
-  void OnFieldTrialGroupFinalized(const base::FieldTrial& trial,
-                                  const std::string& group_name) override {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      variations::ExperimentListInfo info = variations::GetExperimentListInfo();
-
-      // Normally this call would go through -setReportParameterValue, which
-      // calls -setObject and -synchronize on NSUserDefaults. However, since
-      // this call is really noisy, just call setObject and skip synchronize.
-      [NSUserDefaults.standardUserDefaults
-          setObject:base::SysUTF8ToNSString(
-                        base::NumberToString(info.num_experiments))
-             forKey:ReportParamKey(@"num-experiments")];
-      [NSUserDefaults.standardUserDefaults
-          setObject:base::SysUTF8ToNSString(info.experiment_list)
-             forKey:ReportParamKey(@"variations")];
-    });
-  }
-};
-
 }  // namespace
 
 namespace previous_session_info_constants {
@@ -147,18 +118,11 @@ NSString* const kPreviousSessionInfoParamsPrefix =
 NSString* const kPreviousSessionInfoMemoryFootprint =
     @"PreviousSessionInfoMemoryFootprint";
 NSString* const kPreviousSessionInfoTabCount = @"PreviousSessionInfoTabCount";
-NSString* const kPreviousSessionInfoInactiveTabCount =
-    @"PreviousSessionInfoInactiveTabCount";
 NSString* const kPreviousSessionInfoOTRTabCount =
     @"PreviousSessionInfoOTRTabCount";
-NSString* const kPreviousSessionInfoWarmStartCount =
-    @"PreviousSessionInfoWarmStartCount";
 }  // namespace previous_session_info_constants
 
-@interface PreviousSessionInfo () {
-  // Observe updates to field trial list.
-  std::unique_ptr<FieldTrialListObserverBridge> _fieldTrialListObserver;
-}
+@interface PreviousSessionInfo ()
 
 // Whether beginRecordingCurrentSession was called.
 @property(nonatomic, assign) BOOL didBeginRecordingCurrentSession;
@@ -184,14 +148,11 @@ NSString* const kPreviousSessionInfoWarmStartCount =
 @property(nonatomic, strong) NSDate* sessionEndTime;
 @property(nonatomic, assign) BOOL terminatedDuringSessionRestoration;
 @property(nonatomic, strong) NSMutableSet<NSString*>* connectedSceneSessionsIDs;
-@property(atomic, copy) NSDictionary<NSString*, NSString*>* reportParameters;
+@property(nonatomic, copy) NSDictionary<NSString*, NSString*>* reportParameters;
 @property(nonatomic, assign) NSInteger memoryFootprint;
 @property(nonatomic, assign) BOOL applicationWillTerminateWasReceived;
 @property(nonatomic, assign) NSInteger tabCount;
-@property(nonatomic, assign) NSInteger inactiveTabCount;
 @property(nonatomic, assign) NSInteger OTRTabCount;
-@property(atomic, strong) NSString* breadcrumbs;
-@property(nonatomic, assign) NSInteger warmStartCount;
 
 @end
 
@@ -283,6 +244,9 @@ static PreviousSessionInfo* gSharedInstance = nil;
       }
     }
     gSharedInstance.reportParameters = reportParameters;
+    // TODO(crbug.com/1360033) Remove old deprecated params key, remove this
+    // after a few milestones.
+    [defaults removeObjectForKey:@"PreviousSessionInfoParams"];
 
     gSharedInstance.memoryFootprint =
         [defaults integerForKey:previous_session_info_constants::
@@ -293,15 +257,9 @@ static PreviousSessionInfo* gSharedInstance = nil;
     gSharedInstance.tabCount =
         [defaults integerForKey:previous_session_info_constants::
                                     kPreviousSessionInfoTabCount];
-    gSharedInstance.inactiveTabCount =
-        [defaults integerForKey:previous_session_info_constants::
-                                    kPreviousSessionInfoInactiveTabCount];
     gSharedInstance.OTRTabCount =
         [defaults integerForKey:previous_session_info_constants::
                                     kPreviousSessionInfoOTRTabCount];
-    gSharedInstance.warmStartCount =
-        [defaults integerForKey:previous_session_info_constants::
-                                    kPreviousSessionInfoWarmStartCount];
   }
   return gSharedInstance;
 }
@@ -341,8 +299,6 @@ static PreviousSessionInfo* gSharedInstance = nil;
 
   [[NSUserDefaults standardUserDefaults]
       removeObjectForKey:kPreviousSessionInfoAppWillTerminate];
-  [[NSUserDefaults standardUserDefaults]
-      removeObjectForKey:kPreviousSessionInfoAvailableDeviceStorage];
 
   [defaults setObject:[NSDate date] forKey:kPreviousSessionInfoStartTime];
 
@@ -406,13 +362,6 @@ static PreviousSessionInfo* gSharedInstance = nil;
   [self resumeRecordingCurrentSession];
 }
 
-- (void)beginRecordingFieldTrials {
-  _fieldTrialListObserver = std::make_unique<FieldTrialListObserverBridge>();
-  bool success =
-      base::FieldTrialList::AddObserver(_fieldTrialListObserver.get());
-  DCHECK(success);
-}
-
 - (void)startRecordingMemoryFootprintWithInterval:(base::TimeDelta)interval {
   _memoryFootprintUpdateTimer.Start(FROM_HERE, interval, base::BindRepeating(^{
                                       [self updateMemoryFootprint];
@@ -448,6 +397,17 @@ static PreviousSessionInfo* gSharedInstance = nil;
 
 - (UIApplicationState*)applicationState {
   return _applicationState.get();
+}
+
+- (void)updateAvailableDeviceStorage:(NSInteger)availableStorage {
+  if (!self.recordingCurrentSession)
+    return;
+
+  [[NSUserDefaults standardUserDefaults]
+      setInteger:availableStorage
+          forKey:kPreviousSessionInfoAvailableDeviceStorage];
+
+  [self updateSessionEndTime];
 }
 
 - (void)updateSessionEndTime {
@@ -585,25 +545,6 @@ static PreviousSessionInfo* gSharedInstance = nil;
   [self synchronizeSceneSessionIDs];
 }
 
-- (void)incrementWarmStartCount {
-  NSUserDefaults* defaults = NSUserDefaults.standardUserDefaults;
-  NSInteger warmStartCount =
-      [defaults integerForKey:previous_session_info_constants::
-                                  kPreviousSessionInfoWarmStartCount];
-  [defaults setInteger:warmStartCount + 1
-                forKey:previous_session_info_constants::
-                           kPreviousSessionInfoWarmStartCount];
-  [defaults synchronize];
-}
-
-- (void)resetWarmStartCount {
-  [NSUserDefaults.standardUserDefaults
-      setInteger:0
-          forKey:previous_session_info_constants::
-                     kPreviousSessionInfoWarmStartCount];
-  [NSUserDefaults.standardUserDefaults synchronize];
-}
-
 - (base::ScopedClosureRunner)startSessionRestoration {
   if (self.numberOfSessionsBeingRestored == 0) {
     [NSUserDefaults.standardUserDefaults
@@ -639,24 +580,12 @@ static PreviousSessionInfo* gSharedInstance = nil;
   [NSUserDefaults.standardUserDefaults synchronize];
 }
 
-- (void)updateCurrentSessionInactiveTabCount:(NSInteger)count {
-  [NSUserDefaults.standardUserDefaults
-      setInteger:count
-          forKey:previous_session_info_constants::
-                     kPreviousSessionInfoInactiveTabCount];
-  [NSUserDefaults.standardUserDefaults synchronize];
-}
-
 - (void)updateCurrentSessionOTRTabCount:(NSInteger)count {
   [NSUserDefaults.standardUserDefaults
       setInteger:count
           forKey:previous_session_info_constants::
                      kPreviousSessionInfoOTRTabCount];
   [NSUserDefaults.standardUserDefaults synchronize];
-}
-
-- (void)setBreadcrumbsLog:(NSString*)breadcrumbs {
-  gSharedInstance.breadcrumbs = breadcrumbs;
 }
 
 - (void)setReportParameterValue:(NSString*)value forKey:(NSString*)key {

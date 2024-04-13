@@ -10,20 +10,20 @@
 
 namespace download {
 
-std::optional<net::HttpByteRange> ParseRangeHeader(
+absl::optional<net::HttpByteRange> ParseRangeHeader(
     const net::HttpRequestHeaders& request_headers) {
   std::vector<net::HttpByteRange> byte_ranges;
   std::string range_header;
   bool success =
       request_headers.GetHeader(net::HttpRequestHeaders::kRange, &range_header);
   if (!success)
-    return std::nullopt;
+    return absl::nullopt;
 
   success = net::HttpUtil::ParseRangeHeader(range_header, &byte_ranges);
 
   // Multiple ranges are not supported.
   if (!success || byte_ranges.empty() || byte_ranges.size() > 1)
-    return std::nullopt;
+    return absl::nullopt;
 
   return byte_ranges.front();
 }

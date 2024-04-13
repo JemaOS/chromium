@@ -5,12 +5,12 @@
 #include "components/sync/model/string_ordinal.h"
 
 #include <algorithm>
+#include <cctype>
 #include <vector>
 
 #include "base/rand_util.h"
 #include "base/ranges/algorithm.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/abseil-cpp/absl/strings/ascii.h"
 
 namespace syncer {
 
@@ -128,9 +128,8 @@ bool IsNonEmptyPrintableString(const std::string& str) {
   if (str.empty())
     return false;
   for (char c : str) {
-    if (!absl::ascii_isprint(static_cast<unsigned char>(c))) {
+    if (!isprint(c))
       return false;
-    }
   }
   return true;
 }

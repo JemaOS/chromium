@@ -31,9 +31,6 @@
 #include "base/logging.h"
 #include "base/message_loop/message_pump_type.h"
 #include "base/metrics/field_trial.h"
-#include "base/metrics/histogram_shared_memory.h"
-#include "base/numerics/safe_conversions.h"
-#include "base/pickle.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/posix/global_descriptors.h"
 #include "base/posix/unix_domain_socket.h"
@@ -138,8 +135,9 @@ void BecomeNaClLoader(base::ScopedFD browser_fd,
   // necessary to get e.g. any field trial handle and feature overrides from
   // whomever initiated the this fork request.
   base::CommandLine& command_line = *base::CommandLine::ForCurrentProcess();
-  command_line.AppendArguments(base::CommandLine::FromArgvWithoutProgram(args),
-                               /*include_program=*/false);
+  base::CommandLine passed_command_line(base::CommandLine::NO_PROGRAM);
+  passed_command_line.InitFromArgv(args);
+  command_line.AppendArguments(passed_command_line, /*include_program=*/false);
   if (command_line.HasSwitch(switches::kVerboseLoggingInNacl)) {
     base::Environment::Create()->SetVar(
         "NACLVERBOSITY",
@@ -151,12 +149,12 @@ void BecomeNaClLoader(base::ScopedFD browser_fd,
   // We do this before seccomp-bpf is initialized.
   PCHECK(signal(SIGPIPE, SIG_IGN) != SIG_ERR);
 
-  base::HistogramSharedMemory::InitFromLaunchParameters(command_line);
-
   base::FieldTrialList field_trial_list;
-  base::FieldTrialList::CreateTrialsInChildProcess(command_line);
+  base::FieldTrialList::CreateTrialsFromCommandLine(command_line,
+                                                    kFieldTrialDescriptor);
   auto feature_list = std::make_unique<base::FeatureList>();
-  base::FieldTrialList::ApplyFeatureOverridesInChildProcess(feature_list.get());
+  base::FieldTrialList::CreateFeaturesFromCommandLine(command_line,
+                                                      feature_list.get());
   base::FeatureList::SetInstance(std::move(feature_list));
 
   // Finish layer-1 sandbox initialization and initialize the layer-2 sandbox.
@@ -201,17 +199,6 @@ void ChildNaClLoaderInit(std::vector<base::ScopedFD> child_fds,
       kFieldTrialDescriptor,
       child_fds[content::ZygoteForkDelegate::kFieldTrialFDIndex].release());
 
-  // Stash the histogram descriptor in GlobalDescriptors so the histogram
-  // allocator can be initialized later. See BecomeNaClLoader().
-  // TODO(crbug.com/1028263): Always update mapping once metrics shared memory
-  // region is always passed on startup.
-  if (child_fds.size() > content::ZygoteForkDelegate::kHistogramFDIndex &&
-      child_fds[content::ZygoteForkDelegate::kHistogramFDIndex].is_valid()) {
-    base::GlobalDescriptors::GetInstance()->Set(
-        kHistogramSharedMemoryDescriptor,
-        child_fds[content::ZygoteForkDelegate::kHistogramFDIndex].release());
-  }
-
   // Save the browser socket and close the rest.
   base::ScopedFD browser_fd(
       std::move(child_fds[content::ZygoteForkDelegate::kBrowserFDIndex]));
@@ -250,13 +237,7 @@ bool HandleForkRequest(std::vector<base::ScopedFD> child_fds,
     }
   }
 
-  // |child_fds| should contain either kNumPassedFDs or kNumPassedFDs-1 file
-  // descriptors.. The actual size of |child_fds| depends on whether or not the
-  // metrics shared memory region is being passed on startup.
-  // TODO(crbug.com/1028263): Expect a fixed size once passing the metrics
-  // shared memory region on startup has been launched.
-  if (child_fds.size() != content::ZygoteForkDelegate::kNumPassedFDs &&
-      child_fds.size() != content::ZygoteForkDelegate::kNumPassedFDs - 1) {
+  if (content::ZygoteForkDelegate::kNumPassedFDs != child_fds.size()) {
     LOG(ERROR) << "nacl_helper: unexpected number of fds, got "
         << child_fds.size();
     return false;
@@ -365,7 +346,7 @@ bool HandleZygoteRequest(int zygote_ipc_fd,
                          const NaClLoaderSystemInfo& system_info,
                          nacl::NaClSandbox* nacl_sandbox) {
   std::vector<base::ScopedFD> fds;
-  uint8_t buf[kNaClMaxIPCMessageLength];
+  char buf[kNaClMaxIPCMessageLength];
   const ssize_t msglen = base::UnixDomainSocket::RecvMsg(zygote_ipc_fd,
       &buf, sizeof(buf), &fds);
   // If the Zygote has started handling requests, we should be sandboxed via
@@ -384,8 +365,7 @@ bool HandleZygoteRequest(int zygote_ipc_fd,
     return false;
   }
 
-  base::Pickle read_pickle = base::Pickle::WithData(
-      base::span(buf, base::checked_cast<size_t>(msglen)));
+  base::Pickle read_pickle(buf, msglen);
   base::PickleIterator read_iter(read_pickle);
   int command_type;
   if (!read_iter.ReadInt(&command_type)) {

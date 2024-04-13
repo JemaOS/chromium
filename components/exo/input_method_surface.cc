@@ -83,7 +83,7 @@ void InputMethodSurface::OnSurfaceCommit() {
     input_method_bounds_ = int_bounds_in_dips;
     manager_->OnTouchableBoundsChanged(this);
 
-    GetViewAccessibility().SetBounds(gfx::RectF(input_method_bounds_));
+    GetViewAccessibility().OverrideBounds(gfx::RectF(input_method_bounds_));
   }
 }
 
@@ -93,7 +93,7 @@ void InputMethodSurface::SetWidgetBounds(const gfx::Rect& bounds,
     return;
 
   widget_->SetBounds(bounds);
-  UpdateHostWindowOrigin();
+  UpdateSurfaceBounds();
 
   // Bounds change requests will be ignored in client side.
 }

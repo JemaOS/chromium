@@ -4,7 +4,7 @@
 
 import("//build/config/ui.gni")
 
-if (!is_android && !is_ios) {
+if (!is_android) {
   static_library("live_caption") {
     sources = [
       "caption_bubble_context.h",
@@ -46,7 +46,6 @@ if (!is_android && !is_ios) {
         "//third_party/re2",
         "//ui/accessibility",
         "//ui/base",
-        "//ui/compositor",
         "//ui/gfx",
         "//ui/strings:ui_strings_grit",
         "//ui/views",
@@ -70,8 +69,6 @@ if (!is_android && !is_ios) {
 
   static_library("live_translate") {
     sources = [
-      "greedy_text_stabilizer.cc",
-      "greedy_text_stabilizer.h",
       "live_translate_controller.cc",
       "live_translate_controller.h",
     ]
@@ -101,15 +98,10 @@ if (!is_android && !is_ios) {
   source_set("unit_tests") {
     testonly = true
 
-    sources = [ "greedy_text_stabilizer_unittest.cc" ]
-
-    if (is_chromeos_ash) {
-      sources += [ "caption_bubble_context_remote_unittest.cc" ]
-    }
+    sources = [ "caption_bubble_context_remote_unittest.cc" ]
 
     deps = [
       ":live_caption",
-      ":live_translate",
       "//base",
       "//base/test:test_support",
       "//media/mojo/mojom:speech_recognition",
@@ -153,7 +145,11 @@ source_set("utils") {
     "//ui/native_theme",
   ]
 
-  if (!is_android) {
-    deps += [ "//components/soda:utils" ]
+  if (is_chromeos_ash) {
+    deps += [ "//ash/constants" ]
+  }
+
+  if (is_chromeos_lacros) {
+    deps += [ "//chromeos/startup" ]
   }
 }

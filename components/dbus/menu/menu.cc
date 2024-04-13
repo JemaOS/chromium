@@ -291,9 +291,9 @@ void DbusMenu::OnAboutToShowGroup(ScopedMethodResponse* response) {
   }
 
   // IDs of updates needed (none).
-  response->Writer().AppendArrayOfInt32s({});
+  response->Writer().AppendArrayOfInt32s(nullptr, 0);
   // Invalid IDs.
-  response->Writer().AppendArrayOfInt32s(id_errors);
+  response->Writer().AppendArrayOfInt32s(id_errors.data(), id_errors.size());
 }
 
 void DbusMenu::OnEvent(ScopedMethodResponse* response) {
@@ -320,7 +320,7 @@ void DbusMenu::OnEventGroup(ScopedMethodResponse* response) {
     }
   }
 
-  response->Writer().AppendArrayOfInt32s(id_errors);
+  response->Writer().AppendArrayOfInt32s(id_errors.data(), id_errors.size());
 }
 
 void DbusMenu::OnGetGroupProperties(ScopedMethodResponse* response) {

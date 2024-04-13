@@ -6,9 +6,10 @@
 
 #include "base/logging.h"
 #include "components/account_id/account_id.h"
-#include "components/user_manager/user_names.h"
 
 namespace user_manager {
+
+const char kRegularUsersPref[] = "LoggedInUsers";
 
 UserManager* UserManager::instance = nullptr;
 
@@ -16,19 +17,11 @@ UserManager::Observer::~Observer() = default;
 
 void UserManager::Observer::LocalStateChanged(UserManager* user_manager) {}
 
-void UserManager::Observer::OnUserListLoaded() {}
-
-void UserManager::Observer::OnDeviceLocalUserListUpdated() {}
-
-void UserManager::Observer::OnUserLoggedIn(const User& user) {}
-
 void UserManager::Observer::OnUserImageChanged(const User& user) {}
 
 void UserManager::Observer::OnUserImageIsEnterpriseManagedChanged(
     const User& user,
     bool is_enterprise_managed) {}
-
-void UserManager::Observer::OnUserProfileCreated(const User& user) {}
 
 void UserManager::Observer::OnUserProfileImageUpdateFailed(const User& user) {}
 
@@ -45,17 +38,11 @@ void UserManager::Observer::OnUserRemoved(const AccountId& account_id,
 
 void UserManager::Observer::OnUserToBeRemoved(const AccountId& account_id) {}
 
-void UserManager::Observer::OnUserNotAllowed(const std::string& user_email) {}
-
 void UserManager::UserSessionStateObserver::ActiveUserChanged(
     User* active_user) {}
 
 void UserManager::UserSessionStateObserver::UserAddedToSession(
     const User* active_user) {}
-
-void UserManager::UserSessionStateObserver::OnLoginStateUpdated(
-    const User* active_user,
-    bool is_current_user_owner) {}
 
 UserManager::UserSessionStateObserver::~UserSessionStateObserver() {}
 
@@ -112,34 +99,44 @@ UserType UserManager::CalculateUserType(const AccountId& account_id,
                                         const User* user,
                                         const bool browser_restart,
                                         const bool is_child) const {
-  if (account_id == GuestAccountId()) {
-    return UserType::kGuest;
-  }
+  if (IsGuestAccountId(account_id))
+    return USER_TYPE_GUEST;
 
   // This may happen after browser crash after device account was marked for
   // removal, but before clean exit.
   if (browser_restart && IsDeviceLocalAccountMarkedForRemoval(account_id))
-    return UserType::kPublicAccount;
+    return USER_TYPE_PUBLIC_ACCOUNT;
 
   // If user already exists
   if (user) {
     // This branch works for any other user type, including PUBLIC_ACCOUNT.
     const UserType user_type = user->GetType();
-    if (user_type == UserType::kChild || user_type == UserType::kRegular) {
+    if (user_type == USER_TYPE_CHILD || user_type == USER_TYPE_REGULAR) {
       const UserType new_user_type =
-          is_child ? UserType::kChild : UserType::kRegular;
+          is_child ? USER_TYPE_CHILD : USER_TYPE_REGULAR;
       if (new_user_type != user_type) {
         LOG(WARNING) << "Child user type has changed: " << user_type << " => "
                      << new_user_type;
       }
       return new_user_type;
+    // ---***JEMAOS BEGIN***---
+    } else if (user_type == USER_TYPE_JEMA_CHILD || user_type == USER_TYPE_JEMA_ACCOUNT) {
+      const UserType new_user_type =
+          is_child ? USER_TYPE_JEMA_CHILD : USER_TYPE_JEMA_ACCOUNT;
+      if (new_user_type != user_type) {
+        LOG(WARNING) << "JemaOS child user type has changed: " << user_type << " => "
+                     << new_user_type;
+      }
+      return new_user_type;
+    // ---***JEMAOS END***---
     } else if (is_child) {
       LOG(FATAL) << "Incorrect child user type " << user_type;
     }
 
     // TODO(rsorokin): Check for reverse: account_id AD type should imply
     // AD user type.
-    if (account_id.GetAccountType() == AccountType::ACTIVE_DIRECTORY) {
+    if (user_type == USER_TYPE_ACTIVE_DIRECTORY &&
+        account_id.GetAccountType() != AccountType::ACTIVE_DIRECTORY) {
       LOG(FATAL) << "Incorrect AD user type " << user_type;
     }
 
@@ -148,11 +145,22 @@ UserType UserManager::CalculateUserType(const AccountId& account_id,
 
   // User is new
   if (is_child)
-    return UserType::kChild;
+    // ---***JEMAOS BEGIN***---
+    return account_id.GetAccountType() == AccountType::JEMA_ACCOUNT ? USER_TYPE_JEMA_CHILD : USER_TYPE_CHILD;
+    // ---***JEMAOS END***---
 
-  CHECK(account_id.GetAccountType() != AccountType::ACTIVE_DIRECTORY);
+  if (account_id.GetAccountType() == AccountType::ACTIVE_DIRECTORY)
+    return USER_TYPE_ACTIVE_DIRECTORY;
 
-  return UserType::kRegular;
+  // ---***JEMAOS BEGIN***---
+  if (account_id.GetAccountType() == AccountType::FLINT_ACCOUNT)
+    return USER_TYPE_FLINT_ACCOUNT;
+
+  if (account_id.GetAccountType() == AccountType::JEMA_ACCOUNT)
+    return USER_TYPE_JEMA_ACCOUNT;
+  // ---***JEMAOS END***---
+
+  return USER_TYPE_REGULAR;
 }
 
 }  // namespace user_manager

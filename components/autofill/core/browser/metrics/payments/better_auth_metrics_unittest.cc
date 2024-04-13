@@ -4,7 +4,6 @@
 
 #include "base/test/metrics/histogram_tester.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics_test_base.h"
-#include "components/autofill/core/browser/payments/credit_card_access_manager_test_api.h"
 #include "components/autofill/core/browser/payments/test_credit_card_fido_authenticator.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -34,13 +33,11 @@ class BetterAuthMetricsTest : public AutofillMetricsBaseTest,
   void TearDown() override { TearDownHelper(); }
 
   FormData SetUpCreditCardUnmaskingPreflightCallTest() {
-    CreditCardAccessManager& access_manager =
-        autofill_manager().GetCreditCardAccessManager();
-    test_api(access_manager)
-        .set_unmask_details_request_in_progress(
-            IsUnmaskDetailsRequestInProgress());
+    auto* access_manager = autofill_manager().GetCreditCardAccessManager();
+    access_manager->SetUnmaskDetailsRequestInProgressForTesting(
+        IsUnmaskDetailsRequestInProgress());
     static_cast<TestCreditCardFidoAuthenticator*>(
-        access_manager.GetOrCreateFidoAuthenticator())
+        access_manager->GetOrCreateFidoAuthenticator())
         ->set_is_user_opted_in(IsUserOptedInToFido());
 
     RecreateCreditCards(
@@ -48,9 +45,9 @@ class BetterAuthMetricsTest : public AutofillMetricsBaseTest,
         /*include_masked_server_credit_card=*/std::get<1>(GetParam()),
         /*include_full_server_credit_card=*/std::get<2>(GetParam()),
         /*masked_card_is_enrolled_for_virtual_card=*/false);
-    FormData form = CreateForm({test::CreateTestFormField(
-        "Credit card", "cardnum", "", FormControlType::kInputText)});
-    std::vector<FieldType> field_types = {CREDIT_CARD_NUMBER};
+    FormData form =
+        CreateForm({CreateField("Credit card", "cardnum", "", "text")});
+    std::vector<ServerFieldType> field_types = {CREDIT_CARD_NUMBER};
     autofill_manager().AddSeenForm(form, field_types);
     return form;
   }
@@ -82,10 +79,10 @@ TEST_P(BetterAuthMetricsTest, CreditCardUnmaskingPreflightCall_FidoEligible) {
 
   // Check that the correct metrics are logged even if suggestions are shown
   // multiple times in a row.
-  DidShowAutofillSuggestions(form, /*field_index=*/0,
-                             PopupItemId::kCreditCardEntry);
-  DidShowAutofillSuggestions(form, /*field_index=*/0,
-                             PopupItemId::kCreditCardEntry);
+  autofill_manager().DidShowSuggestions(/*has_autofill_suggestions=*/true, form,
+                                        form.fields[0]);
+  autofill_manager().DidShowSuggestions(/*has_autofill_suggestions=*/true, form,
+                                        form.fields[0]);
 
   // If a server card is available, and a previous request was not made, then a
   // preflight flow is initiated and a preflight call is made.
@@ -115,8 +112,8 @@ TEST_P(BetterAuthMetricsTest,
        CreditCardUnmaskingPreflightCall_NotFidoEligible) {
   base::HistogramTester histogram_tester;
   const FormData& form = SetUpCreditCardUnmaskingPreflightCallTest();
-  DidShowAutofillSuggestions(form, /*field_index=*/0,
-                             PopupItemId::kCreditCardEntry);
+  autofill_manager().DidShowSuggestions(/*has_autofill_suggestions=*/true, form,
+                                        form.fields[0]);
 
   // If the preflight flow is initiated, we will always log it.
   if (HasServerCard() && !IsUnmaskDetailsRequestInProgress()) {

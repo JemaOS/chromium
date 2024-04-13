@@ -20,7 +20,6 @@
 #include "components/reporting/proto/synced/record_constants.pb.h"
 #include "components/reporting/storage/storage_module_interface.h"
 #include "components/reporting/util/status.h"
-#include "components/reporting/util/status_macros.h"
 #include "components/reporting/util/statusor.h"
 
 namespace reporting {
@@ -34,20 +33,19 @@ BASE_DECLARE_FEATURE(kEncryptedReportingPipeline);
 // In order to utilize the ReportQueueProvider the EncryptedReportingPipeline
 // feature must be turned on using --enable-features=EncryptedReportingPipeline.
 //
-// `ReportQueueProvider` must be created for a specific configuration - Chrome
-// (for ChromeOS and for other OSes), other ChromeOS executables. It is then
-// registered and can be accessed through static method
-// `ReportQueueProvider::GetInstance()`.
+// ReportQueueProvider is a singleton which can be accessed through
+// |ReportQueueProvider::GetInstance|. This static method must be implemented
+// for a specific configuration - Chrome (for ChromeOS and for other OSes),
+// other ChromeOS executables.
 //
 // Example Usage:
 // void SendMessage(google::protobuf::ImportantMessage important_message,
 //                  reporting::ReportQueue::EnqueueCallback done_cb) {
 //   // Create configuration.
-//   StatusOr<reporting::ReportQueueConfiguration> config_result =
-//      reporting::ReportQueueConfiguration::Create({...}).Set...().Build();
+//   auto config_result = reporting::ReportQueueConfiguration::Create(...);
 //   // Bail out if configuration failed to create.
-//   if (!config_result.has_value()) {
-//     std::move(done_cb).Run(config_result.error());
+//   if (!config_result.ok()) {
+//     std::move(done_cb).Run(config_result.status());
 //     return;
 //   }
 //   // Asynchronously create ReportingQueue.
@@ -61,33 +59,27 @@ BASE_DECLARE_FEATURE(kEncryptedReportingPipeline);
 //             reporting::ReportQueueProvider::CreateQueue(
 //                 std::move(config),
 //                 base::BindOnce(
-//                     [](std::string_view data,
+//                     [](base::StringPiece data,
 //                        reporting::ReportQueue::EnqueueCallback
 //                        done_cb, reporting::StatusOr<std::unique_ptr<
 //                            reporting::ReportQueue>>
 //                            report_queue_result) {
 //                       // Bail out if queue failed to create.
-//                       if (!report_queue_result.has_value()) {
-//                         std::move(done_cb).Run(report_queue_result.error());
+//                       if (!report_queue_result.ok()) {
+//                         std::move(done_cb).Run(report_queue_result.status());
 //                         return;
 //                       }
 //                       // Queue created successfully, enqueue the message.
-//                       report_queue_result.value()->Enqueue(
+//                       report_queue_result.ValueOrDie()->Enqueue(
 //                           important_message, std::move(done_cb));
 //                     },
 //                     important_message, std::move(done_cb)));
 //           },
 //           important_message, std::move(done_cb),
-//           std::move(config_result.value())))
+//           std::move(config_result.ValueOrDie())))
 // }
 class ReportQueueProvider {
  public:
-  // `ReportQueueProvider` and its descendants need to be destructed on
-  // sequenced task runners; to facilitate that the following flavor of smart
-  // pointer is declared.
-  template <typename T>
-  using SmartPtr = std::unique_ptr<T, base::OnTaskRunnerDeleter>;
-
   using CreateReportQueueResponse = StatusOr<std::unique_ptr<ReportQueue>>;
 
   // The response will come back utilizing the ReportQueueProvider's thread. It
@@ -116,9 +108,9 @@ class ReportQueueProvider {
   virtual ~ReportQueueProvider();
 
   // Asynchronously creates a queue based on the configuration. In the process
-  // `ReportQueueProvider` is expected to exist and could still be initializing
-  // (if initialization fails, `CreateQueue` will return with error, but next
-  // attempt may succeed).
+  // singleton ReportQueueProvider is potentially created and retrieved
+  // internally, and then started to initialize (if initialization fails,
+  // |CreateQueue| will return with error, but next attempt may succeed).
   // Returns with the callback handing ownership to the caller (unless there is
   // an error, and then it gets the error status).
   static void CreateQueue(std::unique_ptr<ReportQueueConfiguration> config,
@@ -130,8 +122,9 @@ class ReportQueueProvider {
   static StatusOr<std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>>
   CreateSpeculativeQueue(std::unique_ptr<ReportQueueConfiguration> config);
 
-  // Retrieves current `ReportQueueProvider` instance (created before and
-  // referring to `StorageModuleInterface` and optional `Uploader`).
+  // Instantiates ReportQueueProvider singleton based on the overall process
+  // state and will refer to StorageModuleInterface and optional Uploader
+  // accordingly.
   static ReportQueueProvider* GetInstance();
 
   static bool IsEncryptedReportingPipelineEnabled();
@@ -161,8 +154,7 @@ class ReportQueueProvider {
   virtual void CreateNewQueue(std::unique_ptr<ReportQueueConfiguration> config,
                               CreateReportQueueCallback cb);
   virtual StatusOr<std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>>
-  CreateNewSpeculativeQueue(
-      const ReportQueue::SpeculativeConfigSettings& config_settings);
+  CreateNewSpeculativeQueue();
 
   // Configures a given report queue config with appropriate DM tokens after its
   // retrieval so it can be used for downstream processing while building a

@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "base/containers/flat_set.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "components/safe_browsing/core/browser/db/database_manager.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
@@ -27,6 +26,19 @@ struct V4ProtocolConfig;
 // Does not manage a local database.
 class RemoteSafeBrowsingDatabaseManager : public SafeBrowsingDatabaseManager {
  public:
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class HighConfidenceUrlAllowlistCheckResult {
+    kUnknown = 0,
+    kHandlerAndComponentUpdaterBothNoMatch = 1,
+    kHandlerAndComponentUpdaterBothMatch = 2,
+    kHandlerMatchAndComponentUpdaterNoMatch = 3,
+    kHandlerNoMatchAndComponentUpdaterMatch = 4,
+    kHandlerUninitializedAndComponentUpdaterMatch = 5,
+    kHandlerUninitializedAndComponentUpdaterNoMatch = 6,
+    kMaxValue = kHandlerUninitializedAndComponentUpdaterNoMatch,
+  };
+
   // Construct RemoteSafeBrowsingDatabaseManager.
   // Must be initialized by calling StartOnSBThread() before using.
   RemoteSafeBrowsingDatabaseManager();
@@ -44,55 +56,49 @@ class RemoteSafeBrowsingDatabaseManager : public SafeBrowsingDatabaseManager {
   bool CanCheckRequestDestination(
       network::mojom::RequestDestination request_destination) const override;
   bool CanCheckUrl(const GURL& url) const override;
+  bool ChecksAreAlwaysAsync() const override;
   bool CheckBrowseUrl(
       const GURL& url,
       const SBThreatTypeSet& threat_types,
       Client* client,
-      CheckBrowseUrlType check_type) override;
+      MechanismExperimentHashDatabaseCache experiment_cache_selection) override;
   bool CheckDownloadUrl(const std::vector<GURL>& url_chain,
                         Client* client) override;
   bool CheckExtensionIDs(const std::set<std::string>& extension_ids,
                          Client* client) override;
   AsyncMatch CheckCsdAllowlistUrl(const GURL& url, Client* client) override;
   bool CheckResourceUrl(const GURL& url, Client* client) override;
-  void CheckUrlForHighConfidenceAllowlist(
+  void LogCheckUrlForHighConfidenceAllowlistResults(
+      absl::optional<bool> sb_api_result,
+      bool component_updater_result);
+  bool CheckUrlForHighConfidenceAllowlist(
       const GURL& url,
-      const std::string& metric_variation,
-      base::OnceCallback<void(bool)> callback) override;
+      const std::string& metric_variation) override;
   bool CheckUrlForSubresourceFilter(const GURL& url, Client* client) override;
-  void MatchDownloadAllowlistUrl(
-      const GURL& url,
-      base::OnceCallback<void(bool)> callback) override;
-  safe_browsing::ThreatSource GetBrowseUrlThreatSource(
-      CheckBrowseUrlType check_type) const override;
-  safe_browsing::ThreatSource GetNonBrowseUrlThreatSource() const override;
+  bool MatchDownloadAllowlistUrl(const GURL& url) override;
+  bool MatchMalwareIP(const std::string& ip_address) override;
+  safe_browsing::ThreatSource GetThreatSource() const override;
   bool IsDownloadProtectionEnabled() const override;
   void StartOnSBThread(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       const V4ProtocolConfig& config) override;
   void StopOnSBThread(bool shutdown) override;
-  bool IsDatabaseReady() const override;
 
   //
   // RemoteSafeBrowsingDatabaseManager implementation
   //
 
  private:
-  class ClientRequest;  // Per-request tracker.
-  friend class base::RefCountedThreadSafe<RemoteSafeBrowsingDatabaseManager>;
-
   ~RemoteSafeBrowsingDatabaseManager() override;
+  class ClientRequest;  // Per-request tracker.
 
   // Requests currently outstanding.  This owns the ptrs.
-  std::vector<raw_ptr<ClientRequest, VectorExperimental>> current_requests_;
+  std::vector<ClientRequest*> current_requests_;
 
   base::flat_set<network::mojom::RequestDestination>
       request_destinations_to_check_;
 
-  // Whether the service is running. 'enabled_' is used by the
-  // RemoteSafeBrowsingDatabaseManager on the IO thread during normal
-  // operations.
-  bool enabled_;
+  friend class base::RefCountedThreadSafe<RemoteSafeBrowsingDatabaseManager>;
 };  // class RemoteSafeBrowsingDatabaseManager
 
 }  // namespace safe_browsing

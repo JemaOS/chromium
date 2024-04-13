@@ -42,13 +42,13 @@ NotificationSurface::~NotificationSurface() {
 
 gfx::Size NotificationSurface::GetContentSize() const {
   float int_part;
-  DCHECK(std::modf(root_surface()->visual_rect().width(), &int_part) == 0.0f &&
-         std::modf(root_surface()->visual_rect().height(), &int_part) == 0.0f);
-  return gfx::ToRoundedSize(root_surface()->visual_rect().size());
+  DCHECK(std::modf(root_surface()->content_size().width(), &int_part) == 0.0f &&
+         std::modf(root_surface()->content_size().height(), &int_part) == 0.0f);
+  return gfx::ToRoundedSize(root_surface()->content_size());
 }
 
 void NotificationSurface::SetApplicationId(const char* application_id) {
-  SetShellApplicationId(host_window(), std::make_optional(application_id));
+  SetShellApplicationId(host_window(), absl::make_optional(application_id));
 }
 
 void NotificationSurface::OnSurfaceCommit() {
@@ -116,20 +116,19 @@ void NotificationSurface::OnWindowRemovingFromRootWindow(
     aura::Env::GetInstance()
         ->context_factory()
         ->GetHostFrameSinkManager()
-        ->EvictSurfaces({GetSurfaceId()});
+        ->EvictSurfaces({host_window()->GetSurfaceId()});
 
-    // Allocate a new local surface id, with a new parent portion for the next
-    // compositor frame.
+    // Allocate a new local surface id for the next compositor frame.
     host_window()->AllocateLocalSurfaceId();
-    UpdateLocalSurfaceIdFromParent(host_window()->GetLocalSurfaceId());
 
     is_embedded_ = false;
 
-    // Upon closing the message center, there is layer cloning which ends up
-    // setting the deadline to 0 frames. Set the deadline to default so Viz
-    // waits a while for the notification compositor frame to arrive before
-    // showing the message center.
-    MaybeActivateSurface();
+    // Set the deadline to default so Viz waits a while for the notification
+    // compositor frame to arrive before showing the message center.
+    host_window()->layer()->SetShowSurface(
+        host_window()->GetSurfaceId(), host_window()->bounds().size(),
+        SK_ColorWHITE, cc::DeadlinePolicy::UseDefaultDeadline(),
+        /*stretch_content_to_fill_bounds=*/false);
   }
 }
 

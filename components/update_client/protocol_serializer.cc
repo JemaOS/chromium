@@ -5,7 +5,6 @@
 #include "components/update_client/protocol_serializer.h"
 
 #include <cmath>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,9 +23,9 @@
 #include "build/build_config.h"
 #include "components/update_client/activity_data_service.h"
 #include "components/update_client/persisted_data.h"
-#include "components/update_client/protocol_definition.h"
 #include "components/update_client/update_query_params.h"
 #include "components/update_client/utils.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "base/win/windows_version.h"
@@ -69,9 +68,8 @@ base::flat_map<std::string, std::string> FilterInstallerAttributes(
     const InstallerAttributes& installer_attributes) {
   base::flat_map<std::string, std::string> sanitized_attrs;
   for (const auto& attr : installer_attributes) {
-    if (IsValidInstallerAttribute(attr)) {
+    if (IsValidInstallerAttribute(attr))
       sanitized_attrs.insert(attr);
-    }
   }
   return sanitized_attrs;
 }
@@ -105,12 +103,12 @@ protocol_request::Request MakeProtocolRequest(
     const std::string& channel,
     const std::string& os_long_name,
     const std::string& download_preference,
-    std::optional<bool> domain_joined,
+    absl::optional<bool> domain_joined,
     const base::flat_map<std::string, std::string>& additional_attributes,
     const base::flat_map<std::string, std::string>& updater_state_attributes,
     std::vector<protocol_request::App> apps) {
   protocol_request::Request request;
-  request.protocol_version = protocol_request::kProtocolVersion;
+  request.protocol_version = kProtocolVersion;
   request.is_machine = is_machine;
 
   // Session id and request id.
@@ -134,9 +132,8 @@ protocol_request::Request MakeProtocolRequest(
   request.additional_attributes = additional_attributes;
 
 #if BUILDFLAG(IS_WIN)
-  if (base::win::OSInfo::GetInstance()->IsWowX86OnAMD64()) {
+  if (base::win::OSInfo::GetInstance()->IsWowX86OnAMD64())
     request.is_wow64 = true;
-  }
 #endif
 
   // HW platform information.
@@ -157,15 +154,13 @@ protocol_request::Request MakeProtocolRequest(
   request.os.arch = GetArchitecture();
 
   if (!updater_state_attributes.empty()) {
-    request.updater = std::make_optional<protocol_request::Updater>();
+    request.updater = absl::make_optional<protocol_request::Updater>();
     auto it = updater_state_attributes.find("name");
-    if (it != updater_state_attributes.end()) {
+    if (it != updater_state_attributes.end())
       request.updater->name = it->second;
-    }
     it = updater_state_attributes.find("version");
-    if (it != updater_state_attributes.end()) {
+    if (it != updater_state_attributes.end())
       request.updater->version = it->second;
-    }
     it = updater_state_attributes.find("ismachine");
     if (it != updater_state_attributes.end()) {
       CHECK(it->second == "0" || it->second == "1");
@@ -179,23 +174,20 @@ protocol_request::Request MakeProtocolRequest(
     it = updater_state_attributes.find("laststarted");
     if (it != updater_state_attributes.end()) {
       int last_started = 0;
-      if (base::StringToInt(it->second, &last_started)) {
+      if (base::StringToInt(it->second, &last_started))
         request.updater->last_started = last_started;
-      }
     }
     it = updater_state_attributes.find("lastchecked");
     if (it != updater_state_attributes.end()) {
       int last_checked = 0;
-      if (base::StringToInt(it->second, &last_checked)) {
+      if (base::StringToInt(it->second, &last_checked))
         request.updater->last_checked = last_checked;
-      }
     }
     it = updater_state_attributes.find("updatepolicy");
     if (it != updater_state_attributes.end()) {
       int update_policy = 0;
-      if (base::StringToInt(it->second, &update_policy)) {
+      if (base::StringToInt(it->second, &update_policy))
         request.updater->update_policy = update_policy;
-      }
     }
   }
 
@@ -219,10 +211,10 @@ protocol_request::App MakeProtocolApp(
     const std::string& cohort_name,
     const std::string& release_channel,
     const std::vector<int>& disabled_reasons,
-    std::optional<protocol_request::UpdateCheck> update_check,
+    absl::optional<protocol_request::UpdateCheck> update_check,
     const std::vector<protocol_request::Data>& data,
-    std::optional<protocol_request::Ping> ping,
-    std::optional<std::vector<base::Value::Dict>> events) {
+    absl::optional<protocol_request::Ping> ping,
+    absl::optional<std::vector<base::Value::Dict>> events) {
   protocol_request::App app;
   app.app_id = app_id;
   app.version = version.GetString();

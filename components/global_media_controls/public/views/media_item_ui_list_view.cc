@@ -5,7 +5,6 @@
 #include "components/global_media_controls/public/views/media_item_ui_list_view.h"
 
 #include "base/containers/contains.h"
-#include "components/global_media_controls/public/views/media_item_ui_updated_view.h"
 #include "components/global_media_controls/public/views/media_item_ui_view.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
@@ -37,23 +36,23 @@ MediaItemUIListView::SeparatorStyle::SeparatorStyle(SkColor separator_color,
       separator_thickness(separator_thickness) {}
 
 MediaItemUIListView::MediaItemUIListView()
-    : MediaItemUIListView(std::nullopt, /*should_clip_height=*/true) {}
+    : MediaItemUIListView(absl::nullopt, /*should_clip_height=*/true) {}
 
 MediaItemUIListView::MediaItemUIListView(
-    const std::optional<SeparatorStyle>& separator_style,
+    const absl::optional<SeparatorStyle>& separator_style,
     bool should_clip_height)
     : separator_style_(separator_style) {
-  SetBackgroundColor(std::nullopt);
+  SetBackgroundColor(absl::nullopt);
   SetContents(std::make_unique<views::View>());
   contents()->SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical));
   ClipHeightTo(0, should_clip_height ? kMediaListMaxHeight
                                      : std::numeric_limits<int>::max());
 
-  SetVerticalScrollBar(std::make_unique<views::OverlayScrollBar>(
-      views::ScrollBar::Orientation::kVertical));
-  SetHorizontalScrollBar(std::make_unique<views::OverlayScrollBar>(
-      views::ScrollBar::Orientation::kHorizontal));
+  SetVerticalScrollBar(
+      std::make_unique<views::OverlayScrollBar>(/*horizontal=*/false));
+  SetHorizontalScrollBar(
+      std::make_unique<views::OverlayScrollBar>(/*horizontal=*/true));
 }
 
 MediaItemUIListView::~MediaItemUIListView() = default;
@@ -64,16 +63,15 @@ void MediaItemUIListView::ShowItem(const std::string& id,
   DCHECK_NE(nullptr, item.get());
 
 #if BUILDFLAG(IS_CHROMEOS)
-  bool use_updated_ui =
+  bool use_cros_updated_ui =
       base::FeatureList::IsEnabled(media::kGlobalMediaControlsCrOSUpdatedUI);
 #else
-  bool use_updated_ui =
-      base::FeatureList::IsEnabled(media::kGlobalMediaControlsUpdatedUI);
+  bool use_cros_updated_ui = false;
 #endif
 
   // If this isn't the first item, then create a top-sided separator border.
   // No separator border should be drawn for the Chrome OS updated UI.
-  if (!items_.empty() && !use_updated_ui) {
+  if (!items_.empty() && !use_cros_updated_ui) {
     if (separator_style_.has_value()) {
       item->SetBorder(CreateMediaListSeparatorBorder(
           separator_style_->separator_color,
@@ -103,51 +101,21 @@ void MediaItemUIListView::HideItem(const std::string& id) {
     contents()->children().at(1)->SetBorder(nullptr);
   }
 
-  contents()->RemoveChildViewT(items_[id]);
+  // Remove the item. Note that since |RemoveChildView()| does not delete the
+  // item, we now have ownership.
+  contents()->RemoveChildView(items_[id]);
+  delete items_[id];
   items_.erase(id);
 
   contents()->InvalidateLayout();
   PreferredSizeChanged();
 }
 
-MediaItemUIView* MediaItemUIListView::GetItem(const std::string& id) {
-  return items_[id];
-}
-
-void MediaItemUIListView::ShowUpdatedItem(
-    const std::string& id,
-    std::unique_ptr<MediaItemUIUpdatedView> item) {
-  CHECK(!base::Contains(updated_items_, id));
-  CHECK(item.get());
-
-  updated_items_[id] = contents()->AddChildView(std::move(item));
-
-  contents()->InvalidateLayout();
-  PreferredSizeChanged();
-}
-
-void MediaItemUIListView::HideUpdatedItem(const std::string& id) {
-  if (!base::Contains(updated_items_, id)) {
-    return;
-  }
-
-  contents()->RemoveChildViewT(updated_items_[id]);
-  updated_items_.erase(id);
-
-  contents()->InvalidateLayout();
-  PreferredSizeChanged();
-}
-
-MediaItemUIUpdatedView* MediaItemUIListView::GetUpdatedItem(
-    const std::string& id) {
-  return updated_items_[id];
-}
-
 base::WeakPtr<MediaItemUIListView> MediaItemUIListView::GetWeakPtr() {
   return weak_factory_.GetWeakPtr();
 }
 
-BEGIN_METADATA(MediaItemUIListView)
+BEGIN_METADATA(MediaItemUIListView, views::ScrollView)
 END_METADATA
 
 }  // namespace global_media_controls

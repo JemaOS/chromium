@@ -4,7 +4,9 @@
 
 package org.chromium.components.browser_ui.share;
 
-/** Constants used for {@link ClipboardImageFileProvider}. */
+/**
+ * Constants used for {@link ClipboardImageFileProvider}.
+ */
 public final class ClipboardConstants {
     /**
      * The preference keys for the last URI shared via the Android system clibpoard and the
@@ -15,7 +17,6 @@ public final class ClipboardConstants {
      * plan when updating these in future.
      */
     public static final String CLIPBOARD_SHARED_URI = "Chrome.Clipboard.SharedUri";
-
     public static final String CLIPBOARD_SHARED_URI_TIMESTAMP =
             "Chrome.Clipboard.SharedUriTimestamp";
 }

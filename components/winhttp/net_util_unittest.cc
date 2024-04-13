@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "components/winhttp/net_util.h"
-
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace winhttp {

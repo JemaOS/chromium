@@ -31,15 +31,15 @@ TEST(AlternativeStateNameMapTest, StateCanonicalString) {
     SCOPED_TRACE(valid_match);
     EXPECT_NE(AlternativeStateNameMap::GetCanonicalStateName(
                   "DE", base::ASCIIToUTF16(valid_match)),
-              std::nullopt);
+              absl::nullopt);
   }
 
   EXPECT_EQ(AlternativeStateNameMap::GetCanonicalStateName("US", u"Bavaria"),
-            std::nullopt);
+            absl::nullopt);
   EXPECT_EQ(AlternativeStateNameMap::GetCanonicalStateName("DE", u""),
-            std::nullopt);
+            absl::nullopt);
   EXPECT_EQ(AlternativeStateNameMap::GetCanonicalStateName("", u""),
-            std::nullopt);
+            absl::nullopt);
 }
 
 // Tests that the separate entries are created in the map for the different
@@ -49,9 +49,9 @@ TEST(AlternativeStateNameMapTest, SeparateEntryForDifferentCounties) {
   test::PopulateAlternativeStateNameMapForTesting("DE");
   test::PopulateAlternativeStateNameMapForTesting("US");
   EXPECT_NE(AlternativeStateNameMap::GetCanonicalStateName("DE", u"Bavaria"),
-            std::nullopt);
+            absl::nullopt);
   EXPECT_NE(AlternativeStateNameMap::GetCanonicalStateName("US", u"Bavaria"),
-            std::nullopt);
+            absl::nullopt);
 }
 
 // Tests that |AlternativeStateNameMap::NormalizeStateName()| removes "-", " "
@@ -84,11 +84,11 @@ TEST(AlternativeStateNameMapTest, GetEntry) {
   EXPECT_EQ(alternative_state_name_map->GetEntry(
                 AlternativeStateNameMap::CountryCode("DE"),
                 AlternativeStateNameMap::StateName(u"Random")),
-            std::nullopt);
+            absl::nullopt);
   auto entry = alternative_state_name_map->GetEntry(
       AlternativeStateNameMap::CountryCode("DE"),
       AlternativeStateNameMap::StateName(u"Bavaria"));
-  EXPECT_NE(entry, std::nullopt);
+  EXPECT_NE(entry, absl::nullopt);
   ASSERT_TRUE(entry->has_canonical_name());
   EXPECT_EQ(entry->canonical_name(), "Bavaria");
   EXPECT_THAT(entry->abbreviations(),

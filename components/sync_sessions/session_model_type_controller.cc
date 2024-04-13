@@ -11,18 +11,13 @@ namespace sync_sessions {
 SessionModelTypeController::SessionModelTypeController(
     syncer::SyncService* sync_service,
     PrefService* pref_service,
-    std::unique_ptr<syncer::ModelTypeControllerDelegate>
-        delegate_for_full_sync_mode,
-    std::unique_ptr<syncer::ModelTypeControllerDelegate>
-        delegate_for_transport_mode)
-    : ModelTypeController(syncer::SESSIONS,
-                          std::move(delegate_for_full_sync_mode),
-                          std::move(delegate_for_transport_mode)),
+    std::unique_ptr<syncer::ModelTypeControllerDelegate> delegate)
+    : ModelTypeController(syncer::SESSIONS, std::move(delegate)),
       helper_(syncer::SESSIONS, sync_service, pref_service) {}
 
 SessionModelTypeController::~SessionModelTypeController() = default;
 
-syncer::ModelTypeController::PreconditionState
+syncer::DataTypeController::PreconditionState
 SessionModelTypeController::GetPreconditionState() const {
   DCHECK(CalledOnValidThread());
   return helper_.GetPreconditionState();

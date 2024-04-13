@@ -6,13 +6,14 @@
 #define COMPONENTS_OPENSCREEN_PLATFORM_NETWORK_CONTEXT_H_
 
 #include "base/functional/bind.h"
-#include "services/network/public/cpp/network_context_getter.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 
 namespace openscreen_platform {
 
-void SetNetworkContextGetter(
-    network::NetworkContextGetter network_context_getter);
+using NetworkContextGetter =
+    base::RepeatingCallback<network::mojom::NetworkContext*()>;
+
+void SetNetworkContextGetter(NetworkContextGetter network_context_getter);
 void ClearNetworkContextGetter();
 bool HasNetworkContextGetter();
 

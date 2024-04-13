@@ -5,8 +5,6 @@
 #ifndef COMPONENTS_SECURITY_INTERSTITIALS_CONTENT_SETTINGS_PAGE_HELPER_H_
 #define COMPONENTS_SECURITY_INTERSTITIALS_CONTENT_SETTINGS_PAGE_HELPER_H_
 
-#include "components/safe_browsing/core/common/safebrowsing_referral_methods.h"
-
 namespace content {
 class WebContents;
 }
@@ -29,9 +27,7 @@ class SettingsPageHelper {
   // triggering of an in-product-help bubble over the Enhanced Safe
   // Browsing radio button.
   virtual void OpenEnhancedProtectionSettingsWithIph(
-      content::WebContents* web_contents,
-      safe_browsing::SafeBrowsingSettingReferralMethod referral_method)
-      const = 0;
+      content::WebContents* web_contents) const = 0;
 };
 
 }  // namespace security_interstitials

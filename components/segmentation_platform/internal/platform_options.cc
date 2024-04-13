@@ -9,18 +9,13 @@
 
 namespace segmentation_platform {
 
-PlatformOptions::PlatformOptions(bool force_refresh_results,
-                                 bool disable_model_execution_delay)
-    : force_refresh_results(force_refresh_results),
-      disable_model_execution_delay(disable_model_execution_delay) {}
+PlatformOptions::PlatformOptions(bool force_refresh_results)
+    : force_refresh_results(force_refresh_results) {}
 
 // static
 PlatformOptions PlatformOptions::CreateDefault() {
-  return PlatformOptions(
-      base::CommandLine::ForCurrentProcess()->HasSwitch(
-          kSegmentationPlatformRefreshResultsSwitch),
-      base::CommandLine::ForCurrentProcess()->HasSwitch(
-          kSegmentationPlatformDisableModelExecutionDelaySwitch));
+  return PlatformOptions(base::CommandLine::ForCurrentProcess()->HasSwitch(
+      kSegmentationPlatformRefreshResultsSwitch));
 }
 
 }  // namespace segmentation_platform

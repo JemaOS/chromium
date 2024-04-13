@@ -40,7 +40,7 @@ PeriodicEventCollector::~PeriodicEventCollector() = default;
 
 void PeriodicEventCollector::SetOnEventObservedCallback(
     MetricRepeatingCallback cb) {
-  CHECK(!on_event_observed_cb_);
+  DCHECK(!on_event_observed_cb_);
   on_event_observed_cb_ = std::move(cb);
 }
 
@@ -56,14 +56,13 @@ void PeriodicEventCollector::SetReportingEnabled(bool is_enabled) {
 
 void PeriodicEventCollector::OnMetricDataCollected(
     bool is_event_driven,
-    std::optional<MetricData> metric_data) {
+    absl::optional<MetricData> metric_data) {
   if (!metric_data.has_value()) {
     return;
   }
 
-  metric_data->set_timestamp_ms(
-      base::Time::Now().InMillisecondsSinceUnixEpoch());
-  std::optional<MetricEventType> event =
+  metric_data->set_timestamp_ms(base::Time::Now().ToJavaTime());
+  absl::optional<MetricEventType> event =
       event_detector_->DetectEvent(last_collected_data_, metric_data.value());
   last_collected_data_ = std::move(metric_data.value());
 

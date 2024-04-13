@@ -81,7 +81,7 @@ class ServiceWorkerStorageControlImpl
       const blink::StorageKey& key,
       FindRegistrationForScopeCallback callback) override;
   void FindRegistrationForId(int64_t registration_id,
-                             const std::optional<blink::StorageKey>& key,
+                             const absl::optional<blink::StorageKey>& key,
                              FindRegistrationForIdCallback callback) override;
   void GetRegistrationsForStorageKey(
       const blink::StorageKey& key,
@@ -199,7 +199,7 @@ class ServiceWorkerStorageControlImpl
       FindRegistrationForClientUrlCallback callback,
       mojom::ServiceWorkerRegistrationDataPtr data,
       std::unique_ptr<ResourceList> resources,
-      const std::optional<std::vector<GURL>>& scopes,
+      const absl::optional<std::vector<GURL>>& scopes,
       mojom::ServiceWorkerDatabaseStatus status);
   void DidFindRegistration(
       base::OnceCallback<void(mojom::ServiceWorkerDatabaseStatus status,

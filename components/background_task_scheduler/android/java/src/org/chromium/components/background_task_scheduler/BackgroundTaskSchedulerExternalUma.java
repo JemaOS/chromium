@@ -40,11 +40,8 @@ public abstract class BackgroundTaskSchedulerExternalUma {
     public static final int BACKGROUND_TASK_OFFLINE_MEASUREMENTS = 26;
     public static final int BACKGROUND_TASK_WEBVIEW_COMPONENT_UPDATE = 27;
     public static final int BACKGROUND_TASK_ATTRIBUTION_PROVIDER_FLUSH = 28;
-    public static final int BACKGROUND_TASK_DOWNLOAD_AUTO_RESUMPTION_UNMETERED = 29;
-    public static final int BACKGROUND_TASK_DOWNLOAD_AUTO_RESUMPTION_ANY_NETWORK = 30;
-    public static final int BACKGROUND_TASK_NOTIFICATION_PRE_UNSUBSCRIBE = 31;
     // Keep this one at the end and increment appropriately when adding new tasks.
-    public static final int BACKGROUND_TASK_COUNT = 32;
+    public static final int BACKGROUND_TASK_COUNT = 29;
 
     protected BackgroundTaskSchedulerExternalUma() {}
 
@@ -54,7 +51,26 @@ public abstract class BackgroundTaskSchedulerExternalUma {
      * @param minimalBrowserMode Whether the task will start native in Minimal Browser Mode
      *                              (Reduced Mode) instead of Full Browser Mode.
      */
-    public abstract void reportTaskStartedNative(int taskId);
+    public abstract void reportTaskStartedNative(int taskId, boolean minimalBrowserMode);
+
+    /**
+     * Report metrics for starting a NativeBackgroundTask. This does not consider tasks that are
+     * short-circuited before any work is done.
+     * @param taskId An id from {@link TaskIds}.
+     * @param minimalBrowserMode Whether the task will run in Minimal Browser Mode (Reduced
+     *                               Mode) instead of Full Browser Mode.
+     */
+    public abstract void reportNativeTaskStarted(int taskId, boolean minimalBrowserMode);
+
+    /**
+     * Reports metrics that a NativeBackgroundTask has been finished cleanly (i.e., no unexpected
+     * exits because of chrome crash or OOM). This includes tasks that have been stopped due to
+     * timeout.
+     * @param taskId An id from {@link TaskIds}.
+     * @param minimalBrowserMode Whether the task will run in Minimal Browser Mode (Reduced
+     *                               Mode) instead of Full Browser Mode.
+     */
+    public abstract void reportNativeTaskFinished(int taskId, boolean minimalBrowserMode);
 
     /**
      * Reports metrics of how Chrome is launched, either in minimal browser mode or as full
@@ -113,12 +129,6 @@ public abstract class BackgroundTaskSchedulerExternalUma {
                 return BACKGROUND_TASK_FEEDV2_REFRESH;
             case TaskIds.WEBVIEW_COMPONENT_UPDATE_JOB_ID:
                 return BACKGROUND_TASK_WEBVIEW_COMPONENT_UPDATE;
-            case TaskIds.DOWNLOAD_AUTO_RESUMPTION_UNMETERED_JOB_ID:
-                return BACKGROUND_TASK_DOWNLOAD_AUTO_RESUMPTION_UNMETERED;
-            case TaskIds.DOWNLOAD_AUTO_RESUMPTION_ANY_NETWORK_JOB_ID:
-                return BACKGROUND_TASK_DOWNLOAD_AUTO_RESUMPTION_ANY_NETWORK;
-            case TaskIds.NOTIFICATION_SERVICE_PRE_UNSUBSCRIBE_JOB_ID:
-                return BACKGROUND_TASK_NOTIFICATION_PRE_UNSUBSCRIBE;
         }
         // Returning a value that is not expected to ever be reported.
         return BACKGROUND_TASK_NOT_FOUND;
@@ -178,12 +188,6 @@ public abstract class BackgroundTaskSchedulerExternalUma {
                 return "FeedV2Refresh";
             case TaskIds.WEBVIEW_COMPONENT_UPDATE_JOB_ID:
                 return "WebviewComponentUpdate";
-            case TaskIds.DOWNLOAD_AUTO_RESUMPTION_UNMETERED_JOB_ID:
-                return "DownloadAutoResumptionUnmetered";
-            case TaskIds.DOWNLOAD_AUTO_RESUMPTION_ANY_NETWORK_JOB_ID:
-                return "DownloadAutoResumptionAnyNetwork";
-            case TaskIds.NOTIFICATION_SERVICE_PRE_UNSUBSCRIBE_JOB_ID:
-                return "NotificationServicePreUnsubscribe";
         }
         assert false;
         return null;

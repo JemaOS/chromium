@@ -7,10 +7,10 @@
 
 #include <stdint.h>
 
-#include <optional>
-
-#include "base/feature_list.h"
+#include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 #include "components/viz/common/viz_common_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace switches {
 
@@ -19,8 +19,13 @@ VIZ_COMMON_EXPORT extern const char kDeadlineToSynchronizeSurfaces[];
 VIZ_COMMON_EXPORT extern const char kDisableAdpf[];
 VIZ_COMMON_EXPORT extern const char kDisableFrameRateLimit[];
 VIZ_COMMON_EXPORT extern const char kDoubleBufferCompositing[];
-VIZ_COMMON_EXPORT extern const char kDrawQuadSplitLimit[];
 VIZ_COMMON_EXPORT extern const char kEnableHardwareOverlays[];
+
+#if BUILDFLAG(IS_CHROMEOS)
+VIZ_COMMON_EXPORT extern const char
+    kPlatformDisallowsChromeOSDirectVideoDecoder[];
+#endif
+
 VIZ_COMMON_EXPORT extern const char kRunAllCompositorStagesBeforeDraw[];
 VIZ_COMMON_EXPORT extern const char kShowAggregatedDamage[];
 VIZ_COMMON_EXPORT extern const char kTintCompositedContentModulate[];
@@ -32,7 +37,7 @@ VIZ_COMMON_EXPORT extern const char kTintCompositedContentModulate[];
 // incorrect damage rect borders after using overlays.
 VIZ_COMMON_EXPORT extern const char kShowDCLayerDebugBorders[];
 
-VIZ_COMMON_EXPORT std::optional<uint32_t> GetDeadlineToSynchronizeSurfaces();
+VIZ_COMMON_EXPORT absl::optional<uint32_t> GetDeadlineToSynchronizeSurfaces();
 
 }  // namespace switches
 

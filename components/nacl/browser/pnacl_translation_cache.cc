@@ -12,10 +12,9 @@
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/i18n/time_formatting.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
-#include "base/strings/stringprintf.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/threading/thread_checker.h"
 #include "components/nacl/common/pnacl_types.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -23,13 +22,18 @@
 #include "net/base/io_buffer.h"
 #include "net/base/net_errors.h"
 #include "net/disk_cache/disk_cache.h"
-#include "third_party/icu/source/i18n/unicode/timezone.h"
+
+using base::NumberToString;
+namespace {
+
+void CloseDiskCacheEntry(disk_cache::Entry* entry) { entry->Close(); }
+
+}  // namespace
 
 namespace pnacl {
-
-// This is in pnacl namespace instead of static so it can be used by the unit
-// test.
-constexpr int kMaxMemCacheSize = 100 * 1024 * 1024;
+// This is in pnacl namespace instead of static so they can be used
+// by the unit test.
+const int kMaxMemCacheSize = 100 * 1024 * 1024;
 
 //////////////////////////////////////////////////////////////////////
 // Handle Reading/Writing to Cache.
@@ -214,8 +218,7 @@ void PnaclTranslationCacheEntry::CloseEntry(int rv) {
     entry_->Doom();
   }
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&disk_cache::Entry::Close, base::Unretained(entry_)));
+      FROM_HERE, base::BindOnce(&CloseDiskCacheEntry, entry_));
   Finish(rv);
 }
 
@@ -252,7 +255,7 @@ void PnaclTranslationCacheEntry::DispatchNext(int rv) {
         if (is_read_) {
           int bytes_to_transfer = entry_->GetDataSize(1);
           io_buf_ = base::MakeRefCounted<net::DrainableIOBuffer>(
-              base::MakeRefCounted<net::IOBufferWithSize>(bytes_to_transfer),
+              base::MakeRefCounted<net::IOBuffer>(bytes_to_transfer),
               bytes_to_transfer);
           ReadEntry(0, bytes_to_transfer);
         } else {
@@ -296,11 +299,9 @@ void PnaclTranslationCacheEntry::DispatchNext(int rv) {
       } else if (rv > 0) {
         io_buf_->DidConsume(rv);
         if (io_buf_->BytesRemaining() > 0) {
-          if (is_read_) {
-            ReadEntry(io_buf_->BytesConsumed(), io_buf_->BytesRemaining());
-          } else {
-            WriteEntry(io_buf_->BytesConsumed(), io_buf_->BytesRemaining());
-          }
+          is_read_
+              ? ReadEntry(io_buf_->BytesConsumed(), io_buf_->BytesRemaining())
+              : WriteEntry(io_buf_->BytesConsumed(), io_buf_->BytesRemaining());
           break;
         }
       }
@@ -345,7 +346,7 @@ int PnaclTranslationCache::Init(net::CacheType cache_type,
       cache_dir, cache_size, disk_cache::ResetHandling::kResetOnError,
       nullptr, /* dummy net log */
       base::BindOnce(&PnaclTranslationCache::OnCreateBackendComplete,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     AsWeakPtr()));
   if (result.net_error == net::OK) {
     disk_cache_ = std::move(result.backend);
   } else if (result.net_error == net::ERR_IO_PENDING) {
@@ -375,7 +376,7 @@ void PnaclTranslationCache::StoreNexe(const std::string& key,
                                       net::DrainableIOBuffer* nexe_data,
                                       CompletionOnceCallback callback) {
   PnaclTranslationCacheEntry* entry = PnaclTranslationCacheEntry::GetWriteEntry(
-      weak_ptr_factory_.GetWeakPtr(), key, nexe_data, std::move(callback));
+      AsWeakPtr(), key, nexe_data, std::move(callback));
   open_entries_[entry] = entry;
   entry->Start();
 }
@@ -383,7 +384,7 @@ void PnaclTranslationCache::StoreNexe(const std::string& key,
 void PnaclTranslationCache::GetNexe(const std::string& key,
                                     GetNexeCallback callback) {
   PnaclTranslationCacheEntry* entry = PnaclTranslationCacheEntry::GetReadEntry(
-      weak_ptr_factory_.GetWeakPtr(), key, std::move(callback));
+      AsWeakPtr(), key, std::move(callback));
   open_entries_[entry] = entry;
   entry->Start();
 }
@@ -402,7 +403,9 @@ int PnaclTranslationCache::InitInMemory(CompletionOnceCallback callback) {
 }
 
 int PnaclTranslationCache::Size() {
-  return disk_cache_ ? disk_cache_->GetEntryCount() : -1;
+  if (!disk_cache_)
+    return -1;
+  return disk_cache_->GetEntryCount();
 }
 
 // Beware that any changes to this function or to PnaclCacheInfo will
@@ -411,25 +414,38 @@ int PnaclTranslationCache::Size() {
 // static
 std::string PnaclTranslationCache::GetKey(const nacl::PnaclCacheInfo& info) {
   if (!info.pexe_url.is_valid() || info.abi_version < 0 || info.opt_level < 0 ||
-      info.extra_flags.size() > 512) {
+      info.extra_flags.size() > 512)
     return std::string();
-  }
-
-  // Filter the username, password, and ref components from the URL.
+  std::string retval("ABI:");
+  retval += NumberToString(info.abi_version) + ";" +
+            "opt:" + NumberToString(info.opt_level) +
+            (info.use_subzero ? "subzero;" : ";") + "URL:";
+  // Filter the username, password, and ref components from the URL
   GURL::Replacements replacements;
   replacements.ClearUsername();
   replacements.ClearPassword();
   replacements.ClearRef();
-  const GURL key_url = info.pexe_url.ReplaceComponents(replacements);
-
-  const std::string timestamp = base::UnlocalizedTimeFormatWithPattern(
-      info.last_modified, "y:M:d:H:m:s:S:'UTC'", icu::TimeZone::getGMT());
-
-  return base::StringPrintf(
-      "ABI:%d;opt:%d%s;URL:%s;modified:%s;etag:%s;sandbox:%s;extra_flags:%s;",
-      info.abi_version, info.opt_level, info.use_subzero ? "subzero" : "",
-      key_url.spec().c_str(), timestamp.c_str(), info.etag.c_str(),
-      info.sandbox_isa.c_str(), info.extra_flags.c_str());
+  GURL key_url(info.pexe_url.ReplaceComponents(replacements));
+  retval += key_url.spec() + ";";
+  // You would think that there is already code to format base::Time values
+  // somewhere, but I haven't found it yet. In any case, doing it ourselves
+  // here means we can keep the format stable.
+  base::Time::Exploded exploded;
+  info.last_modified.UTCExplode(&exploded);
+  if (info.last_modified.is_null() || !exploded.HasValidValues()) {
+    memset(&exploded, 0, sizeof(exploded));
+  }
+  retval += "modified:" + NumberToString(exploded.year) + ":" +
+            NumberToString(exploded.month) + ":" +
+            NumberToString(exploded.day_of_month) + ":" +
+            NumberToString(exploded.hour) + ":" +
+            NumberToString(exploded.minute) + ":" +
+            NumberToString(exploded.second) + ":" +
+            NumberToString(exploded.millisecond) + ":UTC;";
+  retval += "etag:" + info.etag + ";";
+  retval += "sandbox:" + info.sandbox_isa + ";";
+  retval += "extra_flags:" + info.extra_flags + ";";
+  return retval;
 }
 
 int PnaclTranslationCache::DoomEntriesBetween(base::Time initial,

@@ -6,15 +6,12 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "base/rand_util.h"
 #include "base/test/gtest_util.h"
 #include "base/token.h"
 #include "base/uuid.h"
-#include "build/build_config.h"
 #include "components/saved_tab_groups/saved_tab_group.h"
 #include "components/saved_tab_groups/saved_tab_group_model_observer.h"
 #include "components/saved_tab_groups/saved_tab_group_tab.h"
@@ -22,28 +19,12 @@
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/image/image.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
-namespace tab_groups {
 namespace {
-
-LocalTabGroupID GenerateRandomTabGroupID() {
-#if BUILDFLAG(IS_ANDROID)
-  return base::RandInt(0, 1000);
-#else
-  return tab_groups::TabGroupId::GenerateNew();
-#endif
-}
-
-LocalTabID GenerateRandomTabID() {
-#if BUILDFLAG(IS_ANDROID)
-  return base::RandInt(0, 1000);
-#else
-  return base::Token::CreateRandom();
-#endif
-}
 
 void CompareSavedTabGroupTabs(const std::vector<SavedTabGroupTab>& v1,
                               const std::vector<SavedTabGroupTab>& v2) {
@@ -74,11 +55,20 @@ bool CompareSavedTabGroups(const SavedTabGroup& g1, const SavedTabGroup& g2) {
   return true;
 }
 
+SavedTabGroup CreateSavedTabGroup(
+    const std::u16string& group_title,
+    const tab_groups::TabGroupColorId& color,
+    const std::vector<SavedTabGroupTab>& group_tabs,
+    const base::Uuid& id) {
+  return SavedTabGroup(group_title, color, group_tabs, id);
+}
+
 SavedTabGroupTab CreateSavedTabGroupTab(const std::string& url,
                                         const std::u16string& title,
                                         const base::Uuid& group_guid,
-                                        std::optional<int> position) {
-  SavedTabGroupTab tab(GURL(url), title, group_guid, position);
+                                        absl::optional<int> position) {
+  SavedTabGroupTab tab(GURL(url), title, group_guid, nullptr, absl::nullopt,
+                       absl::nullopt, position);
   tab.SetFavicon(gfx::Image());
   return tab;
 }
@@ -89,16 +79,16 @@ SavedTabGroup CreateTestSavedTabGroup() {
   const tab_groups::TabGroupColorId& color = tab_groups::TabGroupColorId::kBlue;
 
   SavedTabGroupTab tab1 =
-      CreateSavedTabGroupTab("www.google.com", u"Google", id, /*position=*/0);
+      CreateSavedTabGroupTab("www.google.com", u"Google", id, absl::nullopt);
   SavedTabGroupTab tab2 =
-      CreateSavedTabGroupTab("chrome://newtab", u"new tab", id, /*position=*/1);
+      CreateSavedTabGroupTab("chrome://newtab", u"new tab", id, absl::nullopt);
 
   tab1.SetFavicon(gfx::Image());
   tab2.SetFavicon(gfx::Image());
 
   std::vector<SavedTabGroupTab> tabs = {tab1, tab2};
 
-  SavedTabGroup group(title, color, tabs, std::nullopt, id);
+  SavedTabGroup group(title, color, tabs, id);
   return group;
 }
 
@@ -130,7 +120,7 @@ class SavedTabGroupModelObserverTest : public ::testing::Test,
 
   void SavedTabGroupUpdatedLocally(
       const base::Uuid& group_guid,
-      const std::optional<base::Uuid>& tab_guid = std::nullopt) override {
+      const absl::optional<base::Uuid>& tab_guid = absl::nullopt) override {
     retrieved_group_.emplace_back(*saved_tab_group_model_->Get(group_guid));
     retrieved_index_ =
         saved_tab_group_model_->GetIndexOf(group_guid).value_or(-1);
@@ -148,17 +138,13 @@ class SavedTabGroupModelObserverTest : public ::testing::Test,
 
   void SavedTabGroupUpdatedFromSync(
       const base::Uuid& group_guid,
-      const std::optional<base::Uuid>& tab_guid = std::nullopt) override {
+      const absl::optional<base::Uuid>& tab_guid = absl::nullopt) override {
     retrieved_group_.emplace_back(*saved_tab_group_model_->Get(group_guid));
     retrieved_index_ =
         saved_tab_group_model_->GetIndexOf(group_guid).value_or(-1);
   }
 
   void SavedTabGroupReorderedLocally() override { reordered_called_ = true; }
-  void SavedTabGroupTabsReorderedLocally(
-      const base::Uuid& group_guid) override {
-    tabs_reodered_called_ = true;
-  }
 
   void ClearSignals() {
     retrieved_group_.clear();
@@ -166,7 +152,6 @@ class SavedTabGroupModelObserverTest : public ::testing::Test,
     retrieved_old_index_ = -1;
     retrieved_new_index_ = -1;
     reordered_called_ = false;
-    tabs_reodered_called_ = false;
     retrieved_guid_ = base::Uuid::GenerateRandomV4();
   }
 
@@ -176,8 +161,6 @@ class SavedTabGroupModelObserverTest : public ::testing::Test,
   int retrieved_old_index_ = -1;
   int retrieved_new_index_ = -1;
   bool reordered_called_ = false;
-  bool tabs_reodered_called_ = false;
-
   base::Uuid retrieved_guid_ = base::Uuid::GenerateRandomV4();
   std::string base_path_ = "file:///c:/tmp/";
 };
@@ -215,23 +198,21 @@ class SavedTabGroupModelTest : public ::testing::Test {
         tab_groups::TabGroupColorId::kGreen;
 
     std::vector<SavedTabGroupTab> group_1_tabs = {
-        CreateSavedTabGroupTab("A_Link", u"Only Tab", id_1_, /*position=*/0)};
+        CreateSavedTabGroupTab("A_Link", u"Only Tab", id_1_, 0)};
     std::vector<SavedTabGroupTab> group_2_tabs = {
-        CreateSavedTabGroupTab("One_Link", u"One Of Two", id_2_,
-                               /*position=*/0),
-        CreateSavedTabGroupTab("Two_Link", u"Second", id_2_, /*position=*/1)};
+        CreateSavedTabGroupTab("One_Link", u"One Of Two", id_2_, 0),
+        CreateSavedTabGroupTab("Two_Link", u"Second", id_2_, 1)};
     std::vector<SavedTabGroupTab> group_3_tabs = {
-        CreateSavedTabGroupTab("Athos", u"All For One", id_3_, /*position=*/0),
-        CreateSavedTabGroupTab("Porthos", u"And", id_3_, /*position=*/1),
-        CreateSavedTabGroupTab("Aramis", u"One For All", id_3_,
-                               /*position=*/2)};
+        CreateSavedTabGroupTab("Athos", u"All For One", id_3_, 0),
+        CreateSavedTabGroupTab("Porthos", u"And", id_3_, 1),
+        CreateSavedTabGroupTab("Aramis", u"One For All", id_3_, 2)};
 
     saved_tab_group_model_->Add(
-        SavedTabGroup(title_1, color_1, group_1_tabs, std::nullopt, id_1_));
+        CreateSavedTabGroup(title_1, color_1, group_1_tabs, id_1_));
     saved_tab_group_model_->Add(
-        SavedTabGroup(title_2, color_2, group_2_tabs, std::nullopt, id_2_));
+        CreateSavedTabGroup(title_2, color_2, group_2_tabs, id_2_));
     saved_tab_group_model_->Add(
-        SavedTabGroup(title_3, color_3, group_3_tabs, std::nullopt, id_3_));
+        CreateSavedTabGroup(title_3, color_3, group_3_tabs, id_3_));
   }
 
   void RemoveTestData() {
@@ -311,13 +292,13 @@ TEST_F(SavedTabGroupModelTest, AddNewElement) {
   const tab_groups::TabGroupColorId& color_4 =
       tab_groups::TabGroupColorId::kBlue;
 
-  SavedTabGroupTab tab1 = CreateSavedTabGroupTab(
-      "4th group", u"First Tab 4th Group", id_4, /*position=*/0);
-  SavedTabGroupTab tab2 = CreateSavedTabGroupTab(
-      "2nd link", u"Second Tab 4th Group", id_4, /*position=*/1);
+  SavedTabGroupTab tab1 =
+      CreateSavedTabGroupTab("4th group", u"First Tab 4th Group", id_4, 0);
+  SavedTabGroupTab tab2 =
+      CreateSavedTabGroupTab("2nd link", u"Second Tab 4th Group", id_4, 1);
 
   std::vector<SavedTabGroupTab> group_4_tabs = {tab1, tab2};
-  SavedTabGroup group_4(title_4, color_4, group_4_tabs, std::nullopt, id_4);
+  SavedTabGroup group_4(title_4, color_4, group_4_tabs, id_4);
   saved_tab_group_model_->Add(group_4);
 
   EXPECT_TRUE(saved_tab_group_model_->Contains(id_4));
@@ -378,22 +359,24 @@ TEST_F(SavedTabGroupModelTest, UpdateElement) {
 
 // Tests that the correct tabs are added to the correct position in group 1.
 TEST_F(SavedTabGroupModelTest, AddTabToGroup) {
-  SavedTabGroupTab tab1 = CreateSavedTabGroupTab(
-      "4th group", u"First Tab 4th Group", id_1_, /*position=*/0);
-  SavedTabGroupTab tab2 = CreateSavedTabGroupTab(
-      "2nd link", u"Second Tab 4th Group", id_1_, /*position=*/2);
+  SavedTabGroupTab tab1 =
+      CreateSavedTabGroupTab("4th group", u"First Tab 4th Group", id_1_, 0);
+  SavedTabGroupTab tab2 =
+      CreateSavedTabGroupTab("2nd link", u"Second Tab 4th Group", id_1_, 2);
 
   const SavedTabGroup* group = saved_tab_group_model_->Get(id_1_);
   ASSERT_EQ(group->saved_tabs().size(), size_t(1));
 
-  saved_tab_group_model_->AddTabToGroupLocally(group->saved_guid(), tab1);
+  saved_tab_group_model_->AddTabToGroup(group->saved_guid(), tab1,
+                                        /*update_tab_positions=*/true);
   EXPECT_EQ(group->saved_tabs().size(), size_t(2));
   EXPECT_EQ(0, group->GetIndexOfTab(tab1.saved_tab_guid()));
   EXPECT_TRUE(group->ContainsTab(tab1.saved_tab_guid()));
   ASSERT_TRUE(group->GetTab(tab1.saved_tab_guid()));
   CompareSavedTabGroupTabs({*group->GetTab(tab1.saved_tab_guid())}, {tab1});
 
-  saved_tab_group_model_->AddTabToGroupLocally(group->saved_guid(), tab2);
+  saved_tab_group_model_->AddTabToGroup(group->saved_guid(), tab2,
+                                        /*update_tab_positions=*/true);
   EXPECT_EQ(group->saved_tabs().size(), size_t(3));
   EXPECT_EQ(2, group->GetIndexOfTab(tab2.saved_tab_guid()));
   EXPECT_TRUE(group->ContainsTab(tab2.saved_tab_guid()));
@@ -405,25 +388,29 @@ TEST_F(SavedTabGroupModelTest, AddTabToGroup) {
 
 // Tests that the correct tabs are removed from the correct position in group 1.
 TEST_F(SavedTabGroupModelTest, RemoveTabFromGroup) {
-  SavedTabGroupTab tab1 = CreateSavedTabGroupTab(
-      "4th group", u"First Tab 4th Group", id_1_, /*position=*/0);
-  SavedTabGroupTab tab2 = CreateSavedTabGroupTab(
-      "2nd link", u"Second Tab 4th Group", id_1_, /*position=*/2);
+  SavedTabGroupTab tab1 =
+      CreateSavedTabGroupTab("4th group", u"First Tab 4th Group", id_1_, 0);
+  SavedTabGroupTab tab2 =
+      CreateSavedTabGroupTab("2nd link", u"Second Tab 4th Group", id_1_, 2);
 
   const SavedTabGroup* group = saved_tab_group_model_->Get(id_1_);
   ASSERT_EQ(group->saved_tabs().size(), size_t(1));
 
-  saved_tab_group_model_->AddTabToGroupLocally(group->saved_guid(), tab1);
-  saved_tab_group_model_->AddTabToGroupLocally(group->saved_guid(), tab2);
+  saved_tab_group_model_->AddTabToGroup(group->saved_guid(), tab1,
+                                        /*update_tab_positions=*/true);
+  saved_tab_group_model_->AddTabToGroup(group->saved_guid(), tab2,
+                                        /*update_tab_positions=*/true);
   EXPECT_EQ(group->saved_tabs().size(), size_t(3));
 
-  saved_tab_group_model_->RemoveTabFromGroupLocally(group->saved_guid(),
-                                                    tab1.saved_tab_guid());
+  saved_tab_group_model_->RemoveTabFromGroup(group->saved_guid(),
+                                             tab1.saved_tab_guid(),
+                                             /*update_tab_positions=*/true);
   EXPECT_EQ(group->saved_tabs().size(), size_t(2));
   CompareSavedTabGroupTabs(group->saved_tabs(), {group->saved_tabs()[0], tab2});
 
-  saved_tab_group_model_->RemoveTabFromGroupLocally(group->saved_guid(),
-                                                    tab2.saved_tab_guid());
+  saved_tab_group_model_->RemoveTabFromGroup(group->saved_guid(),
+                                             tab2.saved_tab_guid(),
+                                             /*update_tab_positions=*/true);
   EXPECT_EQ(group->saved_tabs().size(), size_t(1));
   CompareSavedTabGroupTabs(group->saved_tabs(), {group->saved_tabs()[0]});
 }
@@ -434,38 +421,60 @@ TEST_F(SavedTabGroupModelTest, RemoveLastTabFromGroup) {
   const SavedTabGroup* group = saved_tab_group_model_->Get(id_1_);
   ASSERT_EQ(group->saved_tabs().size(), size_t(1));
 
-  saved_tab_group_model_->RemoveTabFromGroupLocally(
-      group->saved_guid(), group->saved_tabs()[0].saved_tab_guid());
+  saved_tab_group_model_->RemoveTabFromGroup(
+      group->saved_guid(), group->saved_tabs()[0].saved_tab_guid(),
+      /*update_tab_positions=*/true);
 
   EXPECT_FALSE(saved_tab_group_model_->Contains(id_1_));
 }
 
-// Tests updating a tab in a saved group.
-TEST_F(SavedTabGroupModelTest, UpdateTabInGroup) {
+// Tests that the correct tabs are replaced in group 1.
+TEST_F(SavedTabGroupModelTest, ReplaceTabInGroup) {
+  SavedTabGroupTab tab1 =
+      CreateSavedTabGroupTab("first", u"First Tab", id_1_, 0);
+  SavedTabGroupTab tab2 =
+      CreateSavedTabGroupTab("second", u"Second Tab", id_1_, 2);
+  SavedTabGroupTab tab3 =
+      CreateSavedTabGroupTab("third", u"Third Tab", id_1_, absl::nullopt);
+
   const SavedTabGroup* group = saved_tab_group_model_->Get(id_1_);
   ASSERT_EQ(group->saved_tabs().size(), size_t(1));
 
-  // Update the tab by changing the title.
-  SavedTabGroupTab tab1 = group->saved_tabs()[0];
-  tab1.SetTitle(u"Updated Title");
-  saved_tab_group_model_->UpdateTabInGroup(id_1_, tab1);
+  saved_tab_group_model_->AddTabToGroup(group->saved_guid(), tab1,
+                                        /*update_tab_positions=*/true);
+  saved_tab_group_model_->AddTabToGroup(group->saved_guid(), tab2,
+                                        /*update_tab_positions=*/true);
+  EXPECT_EQ(group->saved_tabs().size(), size_t(3));
 
-  // The group should contain the updated tab.
-  CompareSavedTabGroupTabs(group->saved_tabs(), {tab1});
+  saved_tab_group_model_->ReplaceTabInGroupAt(group->saved_guid(),
+                                              tab1.saved_tab_guid(), tab3);
+  CompareSavedTabGroupTabs(group->saved_tabs(),
+                           {tab3, group->saved_tabs()[1], tab2});
+
+  saved_tab_group_model_->ReplaceTabInGroupAt(group->saved_guid(),
+                                              tab2.saved_tab_guid(), tab1);
+  CompareSavedTabGroupTabs(group->saved_tabs(),
+                           {tab3, group->saved_tabs()[1], tab1});
+
+  saved_tab_group_model_->ReplaceTabInGroupAt(
+      group->saved_guid(), group->saved_tabs()[1].saved_tab_guid(), tab2);
+  CompareSavedTabGroupTabs(group->saved_tabs(), {tab3, tab2, tab1});
 }
 
 // Tests that the correct tabs are moved in group 1.
 TEST_F(SavedTabGroupModelTest, MoveTabInGroup) {
-  SavedTabGroupTab tab1 = CreateSavedTabGroupTab(
-      "4th group", u"First Tab 4th Group", id_1_, /*position=*/0);
-  SavedTabGroupTab tab2 = CreateSavedTabGroupTab(
-      "2nd link", u"Second Tab 4th Group", id_1_, /*position=*/2);
+  SavedTabGroupTab tab1 =
+      CreateSavedTabGroupTab("4th group", u"First Tab 4th Group", id_1_, 0);
+  SavedTabGroupTab tab2 =
+      CreateSavedTabGroupTab("2nd link", u"Second Tab 4th Group", id_1_, 2);
 
   const SavedTabGroup* group = saved_tab_group_model_->Get(id_1_);
   ASSERT_EQ(group->saved_tabs().size(), size_t(1));
 
-  saved_tab_group_model_->AddTabToGroupLocally(group->saved_guid(), tab1);
-  saved_tab_group_model_->AddTabToGroupLocally(group->saved_guid(), tab2);
+  saved_tab_group_model_->AddTabToGroup(group->saved_guid(), tab1,
+                                        /*update_tab_positions=*/true);
+  saved_tab_group_model_->AddTabToGroup(group->saved_guid(), tab2,
+                                        /*update_tab_positions=*/true);
   EXPECT_EQ(group->saved_tabs().size(), size_t(3));
 
   saved_tab_group_model_->MoveTabInGroupTo(group->saved_guid(),
@@ -483,15 +492,15 @@ TEST_F(SavedTabGroupModelTest, MoveElement) {
   ASSERT_EQ(0, saved_tab_group_model_->GetIndexOf(id_1_));
   ASSERT_EQ(1, saved_tab_group_model_->GetIndexOf(id_2_));
   ASSERT_EQ(2, saved_tab_group_model_->GetIndexOf(id_3_));
-  saved_tab_group_model_->ReorderGroupLocally(id_2_, 2);
+  saved_tab_group_model_->Reorder(id_2_, 2);
   EXPECT_EQ(0, saved_tab_group_model_->GetIndexOf(id_1_));
   EXPECT_EQ(1, saved_tab_group_model_->GetIndexOf(id_3_));
   EXPECT_EQ(2, saved_tab_group_model_->GetIndexOf(id_2_));
-  saved_tab_group_model_->ReorderGroupLocally(id_2_, 0);
+  saved_tab_group_model_->Reorder(id_2_, 0);
   EXPECT_EQ(0, saved_tab_group_model_->GetIndexOf(id_2_));
   EXPECT_EQ(1, saved_tab_group_model_->GetIndexOf(id_1_));
   EXPECT_EQ(2, saved_tab_group_model_->GetIndexOf(id_3_));
-  saved_tab_group_model_->ReorderGroupLocally(id_2_, 1);
+  saved_tab_group_model_->Reorder(id_2_, 1);
   EXPECT_EQ(0, saved_tab_group_model_->GetIndexOf(id_1_));
   EXPECT_EQ(1, saved_tab_group_model_->GetIndexOf(id_2_));
   EXPECT_EQ(2, saved_tab_group_model_->GetIndexOf(id_3_));
@@ -570,17 +579,21 @@ TEST_F(SavedTabGroupModelTest, MergeTabsFromModel) {
 TEST_F(SavedTabGroupModelTest, GroupsSortedWithInOrderPositions) {
   RemoveTestData();
 
-  // Create an arbitrary number of groups, with the positions the groups should
-  // sit in the bookmarks bar.
-  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {}, 0);
-  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {},
-                        1);
-  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {},
-                        2);
-  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {}, 3);
-  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {}, 4);
-  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {},
-                        5);
+  // Create an arbitrary number of groups.
+  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {});
+  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {});
+  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {});
+  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {});
+  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {});
+  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {});
+
+  // Set the positions the groups should sit in the bookmarks bar.
+  group_1.SetPosition(0);
+  group_2.SetPosition(1);
+  group_3.SetPosition(2);
+  group_4.SetPosition(3);
+  group_5.SetPosition(4);
+  group_6.SetPosition(5);
 
   // This is the order we expect the groups in the model to be.
   std::vector<SavedTabGroup> groups = {group_1, group_2, group_3,
@@ -606,17 +619,21 @@ TEST_F(SavedTabGroupModelTest, GroupsSortedWithInOrderPositions) {
 TEST_F(SavedTabGroupModelTest, GroupsSortedWithOutOfOrderPositions) {
   RemoveTestData();
 
-  // Create an arbitrary number of groups, with the positions the groups should
-  // sit in the bookmarks bar.
-  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {}, 0);
-  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {},
-                        1);
-  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {},
-                        2);
-  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {}, 3);
-  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {}, 4);
-  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {},
-                        5);
+  // Create an arbitrary number of groups.
+  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {});
+  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {});
+  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {});
+  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {});
+  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {});
+  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {});
+
+  // Set the positions the groups should sit in the bookmarks bar.
+  group_1.SetPosition(0);
+  group_2.SetPosition(1);
+  group_3.SetPosition(2);
+  group_4.SetPosition(3);
+  group_5.SetPosition(4);
+  group_6.SetPosition(5);
 
   // This is the order we expect the groups in the model to be.
   std::vector<SavedTabGroup> groups = {group_1, group_2, group_3,
@@ -642,18 +659,21 @@ TEST_F(SavedTabGroupModelTest, GroupsSortedWithOutOfOrderPositions) {
 TEST_F(SavedTabGroupModelTest, GroupsSortedWithGapsInPositions) {
   RemoveTestData();
 
-  // Create an arbitrary number of groups, with the positions the groups should
-  // sit in the bookmarks bar.
-  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {}, 0);
-  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {},
-                        3);
-  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {},
-                        8);
-  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {},
-                        19);
-  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {}, 21);
-  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {},
-                        34);
+  // Create an arbitrary number of groups.
+  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {});
+  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {});
+  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {});
+  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {});
+  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {});
+  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {});
+
+  // Set the positions the groups should sit in the bookmarks bar.
+  group_1.SetPosition(0);
+  group_2.SetPosition(3);
+  group_3.SetPosition(8);
+  group_4.SetPosition(19);
+  group_5.SetPosition(21);
+  group_6.SetPosition(34);
 
   // This is the order we expect the groups in the model to be.
   std::vector<SavedTabGroup> groups = {group_1, group_2, group_3,
@@ -679,18 +699,21 @@ TEST_F(SavedTabGroupModelTest, GroupsSortedWithGapsInPositions) {
 TEST_F(SavedTabGroupModelTest, GroupsSortedWithDecreasingPositions) {
   RemoveTestData();
 
-  // Create an arbitrary number of groups, with the positions the groups should
-  // sit in the bookmarks bar.
-  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {}, 0);
-  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {},
-                        3);
-  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {},
-                        8);
-  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {},
-                        19);
-  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {}, 21);
-  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {},
-                        34);
+  // Create an arbitrary number of groups.
+  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {});
+  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {});
+  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {});
+  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {});
+  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {});
+  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {});
+
+  // Set the positions the groups should sit in the bookmarks bar.
+  group_1.SetPosition(0);
+  group_2.SetPosition(3);
+  group_3.SetPosition(8);
+  group_4.SetPosition(19);
+  group_5.SetPosition(21);
+  group_6.SetPosition(34);
 
   // This is the order we expect the groups in the model to be.
   std::vector<SavedTabGroup> groups = {group_1, group_2, group_3,
@@ -716,11 +739,13 @@ TEST_F(SavedTabGroupModelTest, GroupsSortedWithDecreasingPositions) {
 TEST_F(SavedTabGroupModelTest, GroupWithSamePositionSortedByUpdateTime) {
   RemoveTestData();
 
-  // Create an arbitrary number of groups, with the positions the groups should
-  // sit in the bookmarks bar.
-  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {}, 0);
-  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {},
-                        0);
+  // Create an arbitrary number of groups.
+  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {});
+  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {});
+
+  // Set the positions the groups should sit in the bookmarks bar.
+  group_1.SetPosition(0);
+  group_2.SetPosition(0);
 
   // This is the order we expect the groups in the model to be.
   std::vector<SavedTabGroup> groups = {group_2, group_1};
@@ -742,17 +767,20 @@ TEST_F(SavedTabGroupModelTest, GroupWithSamePositionSortedByUpdateTime) {
 TEST_F(SavedTabGroupModelTest, GroupsWithNoPositionInsertedAtEnd) {
   RemoveTestData();
 
-  // Create an arbitrary number of groups, with the positions the groups should
-  // sit in the bookmarks bar.
-  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {}, 0);
-  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {},
-                        1);
-  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {},
-                        2);
-  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {}, 3);
-  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {}, 4);
-  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {},
-                        std::nullopt);
+  // Create an arbitrary number of groups.
+  SavedTabGroup group_1(u"Group 1", tab_groups::TabGroupColorId::kRed, {});
+  SavedTabGroup group_2(u"Group 2", tab_groups::TabGroupColorId::kOrange, {});
+  SavedTabGroup group_3(u"Group 3", tab_groups::TabGroupColorId::kYellow, {});
+  SavedTabGroup group_4(u"Group 4", tab_groups::TabGroupColorId::kGreen, {});
+  SavedTabGroup group_5(u"Group 5", tab_groups::TabGroupColorId::kBlue, {});
+  SavedTabGroup group_6(u"Group 6", tab_groups::TabGroupColorId::kPurple, {});
+
+  // Set the positions the groups should sit in the bookmarks bar.
+  group_1.SetPosition(0);
+  group_2.SetPosition(1);
+  group_3.SetPosition(2);
+  group_4.SetPosition(3);
+  group_5.SetPosition(4);
 
   // This is the order we expect the groups in the model to be.
   std::vector<SavedTabGroup> groups = {group_1, group_2, group_3,
@@ -814,7 +842,7 @@ TEST_F(SavedTabGroupModelObserverTest, RemovedElement) {
   // The model will have already removed and sent the index our element was at
   // before it was removed from the model. As such, we should get -1 when
   // checking the model and 0 for the retrieved index.
-  EXPECT_EQ(saved_tab_group_model_->GetIndexOf(retrieved_guid_), std::nullopt);
+  EXPECT_EQ(saved_tab_group_model_->GetIndexOf(retrieved_guid_), absl::nullopt);
 }
 
 // Tests that SavedTabGroupModelObserver::Updated passes the correct
@@ -848,7 +876,6 @@ TEST_F(SavedTabGroupModelObserverTest, UpdatedElement) {
 // element from the model.
 TEST_F(SavedTabGroupModelObserverTest, AddElementFromSync) {
   SavedTabGroup group_4(CreateTestSavedTabGroup());
-  group_4.SetPosition(0);
   saved_tab_group_model_->AddedFromSync(group_4);
 
   const int index = retrieved_group_.size() - 1;
@@ -876,7 +903,7 @@ TEST_F(SavedTabGroupModelObserverTest, RemovedElementFromSync) {
   // The model will have already removed and sent the index our element was at
   // before it was removed from the model. As such, we should get -1 when
   // checking the model and 0 for the retrieved index.
-  EXPECT_EQ(saved_tab_group_model_->GetIndexOf(retrieved_guid_), std::nullopt);
+  EXPECT_EQ(saved_tab_group_model_->GetIndexOf(retrieved_guid_), absl::nullopt);
 }
 
 // Tests that SavedTabGroupModelObserver::UpdatedFromSync passes the correct
@@ -910,7 +937,7 @@ TEST_F(SavedTabGroupModelObserverTest, UpdatedElementFromSync) {
 // index.
 TEST_F(SavedTabGroupModelObserverTest, OnGroupClosedInTabStrip) {
   SavedTabGroup group_4 = CreateTestSavedTabGroup();
-  LocalTabGroupID tab_group_id = GenerateRandomTabGroupID();
+  tab_groups::TabGroupId tab_group_id = tab_groups::TabGroupId::GenerateNew();
   group_4.SetLocalGroupId(tab_group_id);
   saved_tab_group_model_->Add(group_4);
   const int index =
@@ -927,7 +954,7 @@ TEST_F(SavedTabGroupModelObserverTest, OnGroupClosedInTabStrip) {
   // a valid index when searched by tab group id, but does return the right
   // index when searched by saved guid.
   saved_tab_group_model_->OnGroupClosedInTabStrip(tab_group_id);
-  EXPECT_EQ(saved_tab_group_model_->GetIndexOf(tab_group_id), std::nullopt);
+  EXPECT_EQ(saved_tab_group_model_->GetIndexOf(tab_group_id), absl::nullopt);
   EXPECT_EQ(saved_tab_group_model_->GetIndexOf(group_4.saved_guid()), index);
 }
 
@@ -935,40 +962,23 @@ TEST_F(SavedTabGroupModelObserverTest, OnGroupClosedInTabStrip) {
 // element from the model.
 TEST_F(SavedTabGroupModelObserverTest, MoveElement) {
   SavedTabGroup stg_1(std::u16string(u"stg_1"),
-                      tab_groups::TabGroupColorId::kGrey, {}, std::nullopt,
+                      tab_groups::TabGroupColorId::kGrey, {},
                       base::Uuid::GenerateRandomV4());
   SavedTabGroup stg_2(std::u16string(u"stg_2"),
-                      tab_groups::TabGroupColorId::kGrey, {}, std::nullopt,
+                      tab_groups::TabGroupColorId::kGrey, {},
                       base::Uuid::GenerateRandomV4());
   SavedTabGroup stg_3(std::u16string(u"stg_3"),
-                      tab_groups::TabGroupColorId::kGrey, {}, std::nullopt,
+                      tab_groups::TabGroupColorId::kGrey, {},
                       base::Uuid::GenerateRandomV4());
 
   saved_tab_group_model_->Add(stg_1);
   saved_tab_group_model_->Add(stg_2);
   saved_tab_group_model_->Add(stg_3);
 
-  saved_tab_group_model_->ReorderGroupLocally(stg_2.saved_guid(), 2);
+  saved_tab_group_model_->Reorder(stg_2.saved_guid(), 2);
 
   EXPECT_TRUE(reordered_called_);
-  EXPECT_EQ(0, saved_tab_group_model_->GetIndexOf(stg_1.saved_guid()));
-  EXPECT_EQ(1, saved_tab_group_model_->GetIndexOf(stg_3.saved_guid()));
   EXPECT_EQ(2, saved_tab_group_model_->GetIndexOf(stg_2.saved_guid()));
-}
-
-TEST_F(SavedTabGroupModelObserverTest, ReordedTabsUpdatePositions) {
-  SavedTabGroup group = CreateTestSavedTabGroup();
-  base::Uuid group_id = group.saved_guid();
-  base::Uuid tab1_id = group.saved_tabs()[0].saved_tab_guid();
-  base::Uuid tab2_id = group.saved_tabs()[1].saved_tab_guid();
-  saved_tab_group_model_->Add(group);
-
-  // Move the first tab to the second position.
-  saved_tab_group_model_->MoveTabInGroupTo(group_id, tab1_id, 1);
-
-  EXPECT_TRUE(tabs_reodered_called_);
-  EXPECT_EQ(0, saved_tab_group_model_->Get(group_id)->GetIndexOfTab(tab2_id));
-  EXPECT_EQ(1, saved_tab_group_model_->Get(group_id)->GetIndexOfTab(tab1_id));
 }
 
 TEST_F(SavedTabGroupModelObserverTest, GetGroupContainingTab) {
@@ -980,12 +990,12 @@ TEST_F(SavedTabGroupModelObserverTest, GetGroupContainingTab) {
   base::Uuid matching_group_guid = matching_group.saved_guid();
 
   base::Uuid matching_tab_guid = base::Uuid::GenerateRandomV4();
-  LocalTabID matching_local_tab_id = GenerateRandomTabID();
+  base::Token matching_local_tab_id = base::Token::CreateRandom();
 
   SavedTabGroupTab tab(GURL(url::kAboutBlankURL), std::u16string(u"title"),
-                       matching_group.saved_guid(), /*position=*/std::nullopt,
+                       matching_group.saved_guid(), &matching_group,
                        matching_tab_guid, matching_local_tab_id);
-  matching_group.AddTabLocally(std::move(tab));
+  matching_group.AddTab(std::move(tab));
   saved_tab_group_model_->Add(std::move(matching_group));
 
   // Add another non matching SavedTabGroup.
@@ -1003,7 +1013,5 @@ TEST_F(SavedTabGroupModelObserverTest, GetGroupContainingTab) {
   EXPECT_EQ(nullptr, saved_tab_group_model_->GetGroupContainingTab(
                          base::Uuid::GenerateRandomV4()));
   EXPECT_EQ(nullptr,
-            saved_tab_group_model_->GetGroupContainingTab(LocalTabID()));
+            saved_tab_group_model_->GetGroupContainingTab(base::Token()));
 }
-
-}  // namespace tab_groups

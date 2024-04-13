@@ -4,9 +4,8 @@
 
 package org.chromium.components.signin;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.components.signin.base.AccountCapabilities;
 import org.chromium.components.signin.base.CoreAccountInfo;
 
@@ -33,23 +32,19 @@ public class AccountCapabilitiesFetcher {
         assert nativeCallback != INVALID_NATIVE_CALLBACK;
         mCoreAccountInfo = coreAccountInfo;
         mNativeCallback = nativeCallback;
-    }
-    ;
+    };
 
     @CalledByNative
     public void startFetchingAccountCapabilities() {
         AccountManagerFacadeProvider.getInstance()
-                .getAccountCapabilities(mCoreAccountInfo)
-                .then(
-                        accountCapabilities -> {
-                            onCapabilitiesFetchComplete(accountCapabilities);
-                        });
+                .getAccountCapabilities(CoreAccountInfo.getAndroidAccountFrom(mCoreAccountInfo))
+                .then(accountCapabilities -> { onCapabilitiesFetchComplete(accountCapabilities); });
     }
 
     private void onCapabilitiesFetchComplete(AccountCapabilities accountCapabilities) {
         assert mNativeCallback != INVALID_NATIVE_CALLBACK;
-        AccountCapabilitiesFetcherJni.get()
-                .onCapabilitiesFetchComplete(accountCapabilities, mNativeCallback);
+        AccountCapabilitiesFetcherJni.get().onCapabilitiesFetchComplete(
+                accountCapabilities, mNativeCallback);
         mNativeCallback = INVALID_NATIVE_CALLBACK;
     }
 

@@ -4,7 +4,6 @@
 
 #include "components/web_package/signed_web_bundles/signed_web_bundle_signature_verifier.h"
 
-#include <utility>
 #include <vector>
 
 #include "base/containers/span.h"
@@ -15,7 +14,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
-#include "base/types/expected_macros.h"
+#include "components/web_package/shared_file.h"
 #include "components/web_package/signed_web_bundles/integrity_block_parser.h"
 #include "components/web_package/signed_web_bundles/signed_web_bundle_integrity_block.h"
 #include "components/web_package/signed_web_bundles/signed_web_bundle_signature_stack_entry.h"
@@ -55,7 +54,7 @@ SignedWebBundleSignatureVerifier::~SignedWebBundleSignatureVerifier() {
 }
 
 void SignedWebBundleSignatureVerifier::VerifySignatures(
-    base::File file,
+    scoped_refptr<SharedFile> file,
     SignedWebBundleIntegrityBlock integrity_block,
     SignatureVerificationCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -67,7 +66,7 @@ void SignedWebBundleSignatureVerifier::VerifySignatures(
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(
           &SignedWebBundleSignatureVerifier::CalculateHashOfUnsignedWebBundle,
-          std::move(file), base::checked_cast<int64_t>(web_bundle_chunk_size_),
+          file, base::checked_cast<int64_t>(web_bundle_chunk_size_),
           integrity_block_size),
       base::BindOnce(&SignedWebBundleSignatureVerifier::
                          OnHashOfUnsignedWebBundleCalculated,
@@ -80,15 +79,16 @@ base::expected<
     std::array<uint8_t, SignedWebBundleSignatureVerifier::kSHA512DigestLength>,
     std::string>
 SignedWebBundleSignatureVerifier::CalculateHashOfUnsignedWebBundle(
-    base::File file,
+    scoped_refptr<SharedFile> file,
     int64_t web_bundle_chunk_size,
     int64_t integrity_block_size) {
   // No `DCHECK_CALLED_ON_VALID_SEQUENCE` annotation here since this runs on a
   // different sequence where blocking is allowed.
 
-  int64_t file_length = file.GetLength();
+  int64_t file_length = (*file)->GetLength();
   if (file_length < 0) {
-    return base::unexpected(base::File::ErrorToString(file.GetLastFileError()));
+    return base::unexpected(
+        base::File::ErrorToString((*file)->GetLastFileError()));
   }
 
   auto secure_hash = crypto::SecureHash::Create(crypto::SecureHash::SHA512);
@@ -102,10 +102,10 @@ SignedWebBundleSignatureVerifier::CalculateHashOfUnsignedWebBundle(
         // than `web_bundle_chunk_size`. Make sure to only reserve as much
         // memory as is really needed.
         std::min(web_bundle_chunk_size, file_length - offset));
-    int bytes_read = file.Read(offset, data.data(), data.size());
+    int bytes_read = (*file)->Read(offset, data.data(), data.size());
     if (bytes_read < 0) {
       return base::unexpected(
-          base::File::ErrorToString(file.GetLastFileError()));
+          base::File::ErrorToString((*file)->GetLastFileError()));
     }
     data.resize(bytes_read);
     secure_hash->Update(data.data(), data.size());
@@ -130,9 +130,11 @@ void SignedWebBundleSignatureVerifier::OnHashOfUnsignedWebBundleCalculated(
         unsigned_web_bundle_hash) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  RETURN_IF_ERROR(unsigned_web_bundle_hash, [&](std::string error) {
-    std::move(callback).Run(Error::ForInternalError(std::move(error)));
-  });
+  if (!unsigned_web_bundle_hash.has_value()) {
+    std::move(callback).Run(
+        Error::ForInternalError(unsigned_web_bundle_hash.error()));
+    return;
+  }
 
   if (integrity_block.signature_stack().size() != 1) {
     std::move(callback).Run(Error::ForInvalidSignature(base::StringPrintf(
@@ -175,7 +177,7 @@ void SignedWebBundleSignatureVerifier::OnHashOfUnsignedWebBundleCalculated(
     return;
   }
 
-  std::move(callback).Run(std::nullopt);
+  std::move(callback).Run(absl::nullopt);
 }
 
 }  // namespace web_package

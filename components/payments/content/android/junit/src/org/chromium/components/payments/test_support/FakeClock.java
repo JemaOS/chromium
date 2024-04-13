@@ -6,7 +6,9 @@ package org.chromium.components.payments.test_support;
 
 import org.chromium.components.payments.InputProtector;
 
-/** An InputProtector.Clock implementation used by tests to simulate advancing the time. */
+/**
+ * An InputProtector.Clock implementation used by tests to simulate advancing the time.
+ */
 public class FakeClock implements InputProtector.Clock {
     private long mCurrentTimeMillis;
 

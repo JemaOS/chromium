@@ -11,15 +11,9 @@ static_library("device_reauth") {
   sources = [
     "device_authenticator.cc",
     "device_authenticator.h",
-    "device_authenticator_common.cc",
-    "device_authenticator_common.h",
-    "device_reauth_metrics_util.h",
   ]
 
-  deps = [
-    "//base",
-    "//components/keyed_service/core",
-  ]
+  deps = [ "//base" ]
 }
 
 static_library("test_support") {
@@ -44,19 +38,6 @@ if (is_android) {
   }
 
   java_cpp_enum("device_reauth_java_enums_srcjar") {
-    sources = [ "device_reauth_metrics_util.h" ]
+    sources = [ "device_authenticator.h" ]
   }
-}
-
-source_set("unit_tests") {
-  testonly = true
-  sources = [ "device_authenticator_common_unittest.cc" ]
-
-  deps = [
-    ":device_reauth",
-    "//base",
-    "//base/test:test_support",
-    "//testing/gmock",
-    "//testing/gtest",
-  ]
 }

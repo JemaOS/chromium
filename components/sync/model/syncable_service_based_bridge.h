@@ -52,10 +52,10 @@ class SyncableServiceBasedBridge : public ModelTypeSyncBridge {
 
   // ModelTypeSyncBridge implementation.
   std::unique_ptr<MetadataChangeList> CreateMetadataChangeList() override;
-  std::optional<ModelError> MergeFullSyncData(
+  absl::optional<ModelError> MergeFullSyncData(
       std::unique_ptr<MetadataChangeList> metadata_change_list,
       EntityChangeList entity_change_list) override;
-  std::optional<ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<MetadataChangeList> metadata_change_list,
       EntityChangeList entity_change_list) override;
   void GetData(StorageKeyList storage_keys, DataCallback callback) override;
@@ -79,33 +79,33 @@ class SyncableServiceBasedBridge : public ModelTypeSyncBridge {
                                        ModelTypeChangeProcessor* other);
 
  private:
-  void OnStoreCreated(const std::optional<ModelError>& error,
+  void OnStoreCreated(const absl::optional<ModelError>& error,
                       std::unique_ptr<ModelTypeStore> store);
   void OnReadAllDataForInit(std::unique_ptr<InMemoryStore> in_memory_store,
-                            const std::optional<ModelError>& error);
-  void OnReadAllMetadataForInit(const std::optional<ModelError>& error,
+                            const absl::optional<ModelError>& error);
+  void OnReadAllMetadataForInit(const absl::optional<ModelError>& error,
                                 std::unique_ptr<MetadataBatch> metadata_batch);
   void OnSyncableServiceReady(std::unique_ptr<MetadataBatch> metadata_batch);
-  [[nodiscard]] std::optional<ModelError> StartSyncableService();
+  [[nodiscard]] absl::optional<ModelError> StartSyncableService();
   SyncChangeList StoreAndConvertRemoteChanges(
       std::unique_ptr<MetadataChangeList> metadata_change_list,
       EntityChangeList input_entity_change_list);
   void OnReadDataForProcessor(
       DataCallback callback,
-      const std::optional<ModelError>& error,
+      const absl::optional<ModelError>& error,
       std::unique_ptr<ModelTypeStore::RecordList> record_list,
       std::unique_ptr<ModelTypeStore::IdList> missing_id_list);
   void OnReadAllDataForProcessor(
       DataCallback callback,
-      const std::optional<ModelError>& error,
+      const absl::optional<ModelError>& error,
       std::unique_ptr<ModelTypeStore::RecordList> record_list);
-  void ReportErrorIfSet(const std::optional<ModelError>& error);
+  void ReportErrorIfSet(const absl::optional<ModelError>& error);
 
   const ModelType type_;
   const raw_ptr<SyncableService> syncable_service_;
 
   std::unique_ptr<ModelTypeStore> store_;
-  bool syncable_service_started_ = false;
+  bool syncable_service_started_;
 
   // In-memory copy of |store_|, needed for remote deletions, because we need to
   // provide specifics of the deleted entity to the SyncableService.

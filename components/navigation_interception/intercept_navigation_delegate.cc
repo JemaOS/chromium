@@ -18,7 +18,6 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/common/page_visibility_state.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "net/http/http_status_code.h"
 #include "net/http/http_util.h"
@@ -89,7 +88,7 @@ class RedirectURLLoader : public network::mojom::URLLoader {
         net::RedirectInfo::ComputeRedirectInfo(
             request_.method, request_.url, request_.site_for_cookies,
             first_party_url_policy, request_.referrer_policy,
-            request_.referrer.spec(), response_code, *url, std::nullopt,
+            request_.referrer.spec(), response_code, *url, absl::nullopt,
             /*insecure_scheme_was_upgraded=*/false,
             /*copy_fragment=*/false),
         std::move(response_head));
@@ -110,7 +109,7 @@ class RedirectURLLoader : public network::mojom::URLLoader {
       const std::vector<std::string>& removed_headers,
       const net::HttpRequestHeaders& modified_headers,
       const net::HttpRequestHeaders& modified_cors_exempt_headers,
-      const std::optional<GURL>& new_url) override {
+      const absl::optional<GURL>& new_url) override {
     NOTREACHED();
   }
   void SetPriority(net::RequestPriority priority,
@@ -189,36 +188,23 @@ bool InterceptNavigationDelegate::ShouldIgnoreNavigation(
   if (jdelegate.is_null())
     return false;
 
-  bool hidden_cross_frame = false;
   // Only main frame navigations use this path, so we only need to check if the
   // navigation is cross-frame to the main frame.
-  if (navigation_handle->GetInitiatorFrameToken() &&
-      navigation_handle->GetInitiatorFrameToken() !=
-          navigation_handle->GetWebContents()
-              ->GetPrimaryMainFrame()
-              ->GetFrameToken()) {
-    content::RenderFrameHost* initiator_frame_host =
-        content::RenderFrameHost::FromFrameToken(
-            content::GlobalRenderFrameHostToken(
-                navigation_handle->GetInitiatorProcessId(),
-                navigation_handle->GetInitiatorFrameToken().value()));
-    // If the initiator is gone treat it as not visible.
-    hidden_cross_frame =
-        !initiator_frame_host || initiator_frame_host->GetVisibilityState() !=
-                                     content::PageVisibilityState::kVisible;
-  }
+  bool cross_frame = navigation_handle->GetInitiatorFrameToken() &&
+                     navigation_handle->GetInitiatorFrameToken() !=
+                         navigation_handle->GetWebContents()
+                             ->GetPrimaryMainFrame()
+                             ->GetFrameToken();
 
   // We don't care which sandbox flags are present, only that any sandbox flags
   // are present, as we don't support persisting sandbox flags through fallback
   // URL navigation.
   bool is_sandboxed = navigation_handle->SandboxFlagsInherited() !=
-                          network::mojom::WebSandboxFlags::kNone ||
-                      navigation_handle->SandboxFlagsInitiator() !=
-                          network::mojom::WebSandboxFlags::kNone;
+                      network::mojom::WebSandboxFlags::kNone;
 
   return Java_InterceptNavigationDelegate_shouldIgnoreNavigation(
       env, jdelegate, navigation_handle->GetJavaNavigationHandle(),
-      url::GURLAndroid::FromNativeGURL(env, escaped_url), hidden_cross_frame,
+      url::GURLAndroid::FromNativeGURL(env, escaped_url), cross_frame,
       is_sandboxed);
 }
 
@@ -226,7 +212,7 @@ void InterceptNavigationDelegate::HandleSubframeExternalProtocol(
     const GURL& url,
     ui::PageTransition page_transition,
     bool has_user_gesture,
-    const std::optional<url::Origin>& initiating_origin,
+    const absl::optional<url::Origin>& initiating_origin,
     mojo::PendingRemote<network::mojom::URLLoaderFactory>* out_factory) {
   // If there's a pending async subframe action, don't consider external
   // navigation for the current navigation.
@@ -249,7 +235,7 @@ void InterceptNavigationDelegate::HandleSubframeExternalProtocol(
       Java_InterceptNavigationDelegate_handleSubframeExternalProtocol(
           env, jdelegate, url::GURLAndroid::FromNativeGURL(env, escaped_url),
           page_transition, has_user_gesture,
-          initiating_origin ? initiating_origin->ToJavaObject() : nullptr);
+          initiating_origin ? initiating_origin->CreateJavaObject() : nullptr);
   if (j_gurl.is_null())
     return;
   subframe_redirect_url_ = url::GURLAndroid::ToNativeGURL(env, j_gurl);

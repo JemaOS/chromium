@@ -23,7 +23,6 @@
 #include "components/feed/core/v2/feed_stream.h"
 #include "components/feed/core/v2/feedstore_util.h"
 #include "components/feed/core/v2/ios_shared_prefs.h"
-#include "components/feed/core/v2/launch_reliability_logger.h"
 #include "components/feed/core/v2/metrics_reporter.h"
 #include "components/feed/core/v2/proto_util.h"
 #include "components/feed/core/v2/protocol_translator.h"
@@ -31,10 +30,9 @@
 #include "components/feed/core/v2/stream_model.h"
 #include "components/feed/core/v2/tasks/upload_actions_task.h"
 #include "components/feed/core/v2/types.h"
-#include "components/feed/core/v2/view_demotion.h"
 #include "components/feed/feed_feature_list.h"
-#include "components/supervised_user/core/browser/proto/get_discover_feed_request.pb.h"
 #include "net/base/net_errors.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace feed {
 namespace {
@@ -117,7 +115,9 @@ LoadStreamTask::LoadStreamTask(const Options& options,
                                base::OnceCallback<void(Result)> done_callback)
     : options_(options),
       stream_(*stream),
-      done_callback_(std::move(done_callback)) {
+      done_callback_(std::move(done_callback)),
+      launch_reliability_logger_(
+          stream_->GetLaunchReliabilityLogger(options.stream_type)) {
   DCHECK(options.stream_type.IsValid()) << "A stream type must be chosen";
   DCHECK(options.load_type != LoadType::kLoadMore);
   latencies_ = std::make_unique<LoadLatencyTimes>();
@@ -195,12 +195,12 @@ void LoadStreamTask::ResumeAtStart() {
 
 void LoadStreamTask::PassedPreconditions() {
   if (options_.load_type != LoadType::kBackgroundRefresh)
-    GetLaunchReliabilityLogger().LogCacheReadStart();
+    launch_reliability_logger_->LogCacheReadStart();
 
   if (options_.load_type == LoadType::kManualRefresh) {
     std::vector<feedstore::StoredAction> empty_pending_actions;
-    LoadFromNetwork1(std::move(empty_pending_actions),
-                     /*need_to_read_pending_actions=*/true);
+    LoadFromNetwork(std::move(empty_pending_actions),
+                    /*need_to_read_pending_actions=*/true);
     return;
   }
 
@@ -226,7 +226,7 @@ void LoadStreamTask::LoadFromStoreComplete(
   content_ids_ = result.content_ids;
 
   if (options_.load_type != LoadType::kBackgroundRefresh)
-    GetLaunchReliabilityLogger().LogCacheReadEnd(result.reliability_result);
+    launch_reliability_logger_->LogCacheReadEnd(result.reliability_result);
 
   // Phase 2. Process the result of `LoadStreamFromStoreTask`.
 
@@ -248,70 +248,53 @@ void LoadStreamTask::LoadFromStoreComplete(
     stale_store_state_ = std::move(result.update_request);
   }
 
-  LoadFromNetwork1(std::move(result.pending_actions),
-                   /*need_to_read_pending_actions=*/false);
+  LoadFromNetwork(std::move(result.pending_actions),
+                  /*need_to_read_pending_actions=*/false);
 }
 
-void LoadStreamTask::LoadFromNetwork1(
+void LoadStreamTask::LoadFromNetwork(
     std::vector<feedstore::StoredAction> pending_actions_from_store,
     bool need_to_read_pending_actions) {
   // Don't consume quota if refreshed by user.
   LaunchResult should_make_request = stream_->ShouldMakeFeedQueryRequest(
-      options_.stream_type, options_.load_type);
-  if (should_make_request.load_stream_status != LoadStreamStatus::kNoStatus) {
+      options_.stream_type, options_.load_type,
+      /*consume_quota=*/options_.load_type != LoadType::kManualRefresh);
+  if (should_make_request.load_stream_status != LoadStreamStatus::kNoStatus)
     return Done(should_make_request);
-  }
 
-  ReadDocViewDigestIfEnabled(
-      *stream_, base::BindOnce(&LoadStreamTask::LoadFromNetwork2, GetWeakPtr(),
-                               std::move(pending_actions_from_store),
-                               need_to_read_pending_actions));
-}
-
-void LoadStreamTask::LoadFromNetwork2(
-    std::vector<feedstore::StoredAction> pending_actions_from_store,
-    bool need_to_read_pending_actions,
-    DocViewDigest doc_view_digest) {
-  stream_->GetStore().RemoveDocViews(doc_view_digest.old_doc_views);
-  doc_view_counts_ = std::move(doc_view_digest.doc_view_counts);
-
-  // If no pending action exists in the store, go directly to send query
-  // request.
-  if (!need_to_read_pending_actions && pending_actions_from_store.empty()) {
-    SendFeedQueryRequest();
-  } else {
-    UploadActions(std::move(pending_actions_from_store));
-  }
-}
-
-void LoadStreamTask::UploadActions(
-    std::vector<feedstore::StoredAction> pending_actions_from_store) {
   // If making a request, first try to upload pending actions.
-  upload_actions_task_ = std::make_unique<UploadActionsTask>(
-      std::move(pending_actions_from_store),
-      /*from_load_more=*/false, options_.stream_type, &*stream_,
-      base::BindOnce(&LoadStreamTask::UploadActionsComplete, GetWeakPtr()));
+  if (!need_to_read_pending_actions) {
+    // If pending actions are read from the store, pass them for uploading.
+    upload_actions_task_ = std::make_unique<UploadActionsTask>(
+        std::move(pending_actions_from_store), &*stream_,
+        &*launch_reliability_logger_,
+        base::BindOnce(&LoadStreamTask::UploadActionsComplete, GetWeakPtr()));
+  } else {
+    // Otherwise, no pending action can't be passed. We will read them from
+    // the store and upload them.
+    upload_actions_task_ = std::make_unique<UploadActionsTask>(
+        &*stream_, &*launch_reliability_logger_,
+        base::BindOnce(&LoadStreamTask::UploadActionsComplete, GetWeakPtr()));
+  }
   upload_actions_task_->Execute(base::DoNothing());
 }
 
 void LoadStreamTask::UploadActionsComplete(UploadActionsTask::Result result) {
+  bool force_signed_out_request =
+      stream_->ShouldForceSignedOutFeedQueryRequest(options_.stream_type);
   upload_actions_result_ =
       std::make_unique<UploadActionsTask::Result>(std::move(result));
   latencies_->StepComplete(LoadLatencyTimes::kUploadActions);
 
-  SendFeedQueryRequest();
-}
-
-void LoadStreamTask::SendFeedQueryRequest() {
   if (options_.load_type != LoadType::kBackgroundRefresh) {
     if (options_.stream_type.IsForYou())
-      network_request_id_ = GetLaunchReliabilityLogger().LogFeedRequestStart();
+      network_request_id_ = launch_reliability_logger_->LogFeedRequestStart();
     else if (options_.stream_type.IsWebFeed())
       network_request_id_ =
-          GetLaunchReliabilityLogger().LogWebFeedRequestStart();
+          launch_reliability_logger_->LogWebFeedRequestStart();
     else if (options_.stream_type.IsSingleWebFeed())
       network_request_id_ =
-          GetLaunchReliabilityLogger().LogSingleWebFeedRequestStart();
+          launch_reliability_logger_->LogSingleWebFeedRequestStart();
   }
   RequestMetadata request_metadata =
       stream_->GetRequestMetadata(options_.stream_type,
@@ -321,22 +304,16 @@ void LoadStreamTask::SendFeedQueryRequest() {
       options_.stream_type,
       GetRequestReason(options_.stream_type, options_.load_type),
       request_metadata, stream_->GetMetadata().consistency_token(),
-      options_.single_feed_entry_point, doc_view_counts_);
+      options_.single_feed_entry_point);
 
-  const AccountInfo account_info = stream_->GetAccountInfo();
+  const AccountInfo account_info =
+      force_signed_out_request ? AccountInfo{} : stream_->GetAccountInfo();
   stream_->GetMetricsReporter().NetworkRefreshRequestStarted(
       options_.stream_type, request_metadata.content_order);
 
   FeedNetwork& network = stream_->GetNetwork();
   const bool force_feed_query = GetFeedConfig().use_feed_query_requests;
-  if (options_.stream_type.IsForSupervisedUser()) {
-    // TODO(b/295472540): Update parameters required for request.
-    supervised_user::GetDiscoverFeedRequest kid_friendly_request;
-    network.SendKidFriendlyApiRequest(
-        kid_friendly_request, account_info,
-        base::BindOnce(&LoadStreamTask::KidFriendlyRequestComplete,
-                       GetWeakPtr()));
-  } else if (!force_feed_query && options_.stream_type.IsWebFeed()) {
+  if (!force_feed_query && options_.stream_type.IsWebFeed()) {
     // Special case: web feed that is not using Feed Query requests go to
     // WebFeedListContentsDiscoverApi.
     network.SendApiRequest<WebFeedListContentsDiscoverApi>(
@@ -380,32 +357,25 @@ void LoadStreamTask::SendFeedQueryRequest() {
   }
 }
 
-void LoadStreamTask::KidFriendlyRequestComplete(
-    FeedNetwork::KidFriendlyQueryRequestResult result) {
-  ProcessNetworkResponse<supervised_user::GetDiscoverFeedResponse>(
-      std::move(result.response_body), std::move(result.response_info));
-}
-
 void LoadStreamTask::QueryRequestComplete(
     FeedNetwork::QueryRequestResult result) {
-  ProcessNetworkResponse<feedwire::Response>(std::move(result.response_body),
-                                             std::move(result.response_info));
+  ProcessNetworkResponse(std::move(result.response_body),
+                         std::move(result.response_info));
 }
 
 void LoadStreamTask::QueryApiRequestComplete(
     FeedNetwork::ApiResult<feedwire::Response> result) {
-  ProcessNetworkResponse<feedwire::Response>(std::move(result.response_body),
-                                             std::move(result.response_info));
+  ProcessNetworkResponse(std::move(result.response_body),
+                         std::move(result.response_info));
 }
 
-template <typename Response>
 void LoadStreamTask::ProcessNetworkResponse(
-    std::unique_ptr<Response> response_body,
+    std::unique_ptr<feedwire::Response> response_body,
     NetworkResponseInfo response_info) {
   latencies_->StepComplete(LoadLatencyTimes::kQueryRequest);
 
   if (options_.load_type != LoadType::kBackgroundRefresh) {
-    GetLaunchReliabilityLogger().LogRequestSent(
+    launch_reliability_logger_->LogRequestSent(
         network_request_id_, response_info.loader_start_time_ticks);
   }
 
@@ -422,7 +392,7 @@ void LoadStreamTask::ProcessNetworkResponse(
           response_info.account_info, base::Time::Now());
   server_send_timestamp_ns_ =
       feedstore::ToTimestampNanos(response_data.server_response_sent_timestamp);
-  server_receive_timestamp_ns_ = feedstore::ToTimestampNanos(
+  server_receive_timestamp_ns_ = feedstore::ToTimestampMillis(
       response_data.server_request_received_timestamp);
 
   if (!response_data.model_update_request) {
@@ -478,11 +448,11 @@ void LoadStreamTask::ProcessNetworkResponse(
 void LoadStreamTask::RequestFinished(LaunchResult result) {
   if (options_.load_type != LoadType::kBackgroundRefresh) {
     if (network_response_info_->status_code > 0) {
-      GetLaunchReliabilityLogger().LogResponseReceived(
+      launch_reliability_logger_->LogResponseReceived(
           network_request_id_, server_receive_timestamp_ns_,
           server_send_timestamp_ns_, network_response_info_->fetch_time_ticks);
     }
-    GetLaunchReliabilityLogger().LogRequestFinished(
+    launch_reliability_logger_->LogRequestFinished(
         network_request_id_, network_response_info_->status_code);
   }
   Done(result);
@@ -516,10 +486,6 @@ void LoadStreamTask::Done(LaunchResult launch_result) {
   result.single_feed_entry_point = options_.single_feed_entry_point;
   std::move(done_callback_).Run(std::move(result));
   TaskComplete();
-}
-
-LaunchReliabilityLogger& LoadStreamTask::GetLaunchReliabilityLogger() const {
-  return stream_->GetLaunchReliabilityLogger(options_.stream_type);
 }
 
 std::ostream& operator<<(std::ostream& os,

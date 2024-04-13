@@ -9,20 +9,14 @@ namespace page_image_service {
 // Enabled by default because we are only using this as a killswitch.
 BASE_FEATURE(kImageService, "ImageService", base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enabled the capability by default, can be used as a killswitch.
+// Disabled by default because the usage of this is still not approved.
 BASE_FEATURE(kImageServiceSuggestPoweredImages,
              "ImageServiceSuggestPoweredImages",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enabled the capability by default, can be used as a killswitch.
 BASE_FEATURE(kImageServiceOptimizationGuideSalientImages,
              "ImageServiceOptimizationGuideSalientImages",
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables observing sync service for download status to determine whether
-// images for already synced sync entities can be fetched.
-BASE_FEATURE(kImageServiceObserveSyncDownloadStatus,
-             "ImageServiceObserveSyncDownloadStatus",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace page_image_service

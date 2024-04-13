@@ -8,7 +8,6 @@
 #include <time.h>
 
 #include <map>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,7 +16,7 @@
 #include "build/chromeos_buildflags.h"
 
 #if BUILDFLAG(IS_APPLE)
-#include "base/apple/scoped_mach_port.h"
+#include "base/mac/scoped_mach_port.h"
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -42,6 +41,10 @@ class CrashReportDatabase;
 }  // namespace crashpad
 
 namespace crash_reporter {
+
+#if BUILDFLAG(IS_CHROMEOS)
+bool IsCrashpadEnabled();
+#endif
 
 // Initializes Crashpad in a way that is appropriate for initial_client and
 // process_type.
@@ -163,10 +166,7 @@ bool ProcessExternalDump(
     const std::string& source_name,
     base::span<const uint8_t> dump_data,
     const std::map<std::string, std::string>& override_annotations = {});
-
-// "platform", used to determine device_model, can be overridden.
-void OverridePlatformValue(const std::string& platform_value);
-#endif  // BUILDFLAG(IS_IOS)
+#endif
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
 // Logs message and immediately crashes the current process without triggering a
@@ -175,11 +175,8 @@ void CrashWithoutDumping(const std::string& message);
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) ||
         // BUILDFLAG(IS_ANDROID)
 
-// Returns the Crashpad database path, only valid in the browser. This will
-// return std::nullopt if crashpad has not yet been initialized. On Windows,
-// this will also return std::nullopt if running as part of browser_tests, as
-// there is no crash reporting in that configuration.
-std::optional<base::FilePath> GetCrashpadDatabasePath();
+// Returns the Crashpad database path, only valid in the browser.
+base::FilePath GetCrashpadDatabasePath();
 
 // Deletes any reports that were recorded or uploaded within the time range.
 void ClearReportsBetween(const base::Time& begin, const base::Time& end);
@@ -195,21 +192,6 @@ base::FilePath::StringType::const_pointer GetCrashpadDatabasePathImpl();
 
 // The implementation function for ClearReportsBetween.
 void ClearReportsBetweenImpl(time_t begin, time_t end);
-
-#if BUILDFLAG(IS_CHROMEOS_DEVICE)
-// Called late in shutdown to remove the file that tells ChromeOS's
-// crash_reporter "This browser process has crashpad initialized; you don't
-// need to handle the crash reports coming from the kernel".
-//
-// Since crash_reporter will do a lot of unnecessary work if there is a
-// crash after this file is removed, this function should be called as late
-// as possible in the shutdown process, ideally after any code that might crash
-// has executed.
-//
-// Only needed in the browser process; calls in other processes will be
-// ignored. Multiple calls will be ignored as well.
-void DeleteCrashpadIsReadyFile();
-#endif
 
 #if BUILDFLAG(IS_MAC)
 // Captures a minidump for the process named by its |task_port| and stores it

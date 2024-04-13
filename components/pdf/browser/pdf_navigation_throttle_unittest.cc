@@ -53,11 +53,11 @@ class PdfNavigationThrottleTest : public content::RenderViewHostTestHarness {
   }
 
   std::unique_ptr<PdfNavigationThrottle> CreateNavigationThrottle(
-      const GURL& url,
-      content::RenderFrameHost* frame) {
-    InitializeNavigationHandle(url, frame);
+      const GURL& url) {
+    content::RenderFrameHost* child_frame = CreateChildFrame();
+    InitializeNavigationHandle(url, child_frame);
     ON_CALL(*navigation_handle_, GetFrameTreeNodeId())
-        .WillByDefault(Return(frame->GetFrameTreeNodeId()));
+        .WillByDefault(Return(child_frame->GetFrameTreeNodeId()));
     return std::make_unique<PdfNavigationThrottle>(navigation_handle_.get(),
                                                    std::move(stream_delegate_));
   }
@@ -78,9 +78,20 @@ class PdfNavigationThrottleTest : public content::RenderViewHostTestHarness {
 
 }  // namespace
 
+TEST_F(PdfNavigationThrottleTest, MaybeCreateThrottleFor) {
+  InitializeNavigationHandle(stream_url(), CreateChildFrame());
+  EXPECT_TRUE(PdfNavigationThrottle::MaybeCreateThrottleFor(
+      navigation_handle_.get(), std::move(stream_delegate_)));
+}
+
+TEST_F(PdfNavigationThrottleTest, MaybeCreateThrottleForMainFrame) {
+  InitializeNavigationHandle(stream_url(), main_rfh());
+  EXPECT_FALSE(PdfNavigationThrottle::MaybeCreateThrottleFor(
+      navigation_handle_.get(), std::move(stream_delegate_)));
+}
+
 TEST_F(PdfNavigationThrottleTest, WillStartRequest) {
-  auto navigation_throttle =
-      CreateNavigationThrottle(stream_url(), CreateChildFrame());
+  auto navigation_throttle = CreateNavigationThrottle(stream_url());
   NiceMock<content::MockWebContentsObserver> web_contents_observer(
       web_contents());
 
@@ -103,15 +114,8 @@ TEST_F(PdfNavigationThrottleTest, WillStartRequest) {
   navigation_simulator->Commit();
 }
 
-TEST_F(PdfNavigationThrottleTest, WillStartRequestForMainFrame) {
-  auto navigation_throttle = CreateNavigationThrottle(stream_url(), main_rfh());
-  EXPECT_EQ(content::NavigationThrottle::PROCEED,
-            navigation_throttle->WillStartRequest().action());
-}
-
 TEST_F(PdfNavigationThrottleTest, WillStartRequestDeleteContents) {
-  auto navigation_throttle =
-      CreateNavigationThrottle(stream_url(), CreateChildFrame());
+  auto navigation_throttle = CreateNavigationThrottle(stream_url());
   NiceMock<content::MockWebContentsObserver> web_contents_observer(
       web_contents());
 
@@ -128,25 +132,14 @@ TEST_F(PdfNavigationThrottleTest, WillStartRequestDeleteContents) {
 
 TEST_F(PdfNavigationThrottleTest, WillStartRequestNoStreamInfo) {
   stream_delegate_->clear_stream_info();
-  auto navigation_throttle =
-      CreateNavigationThrottle(stream_url(), CreateChildFrame());
+  auto navigation_throttle = CreateNavigationThrottle(stream_url());
   EXPECT_EQ(content::NavigationThrottle::PROCEED,
             navigation_throttle->WillStartRequest().action());
 }
 
-TEST_F(PdfNavigationThrottleTest,
-       WillStartRequestShouldAllowPdfFrameNavigationFalse) {
-  stream_delegate_->clear_stream_info();
-  stream_delegate_->set_should_allow_pdf_frame_navigation(false);
-  auto navigation_throttle =
-      CreateNavigationThrottle(stream_url(), CreateChildFrame());
-  EXPECT_EQ(content::NavigationThrottle::BLOCK_REQUEST,
-            navigation_throttle->WillStartRequest().action());
-}
-
 TEST_F(PdfNavigationThrottleTest, WillStartRequestOtherUrl) {
-  auto navigation_throttle = CreateNavigationThrottle(
-      GURL("https://example.test"), CreateChildFrame());
+  auto navigation_throttle =
+      CreateNavigationThrottle(GURL("https://example.test"));
   EXPECT_EQ(content::NavigationThrottle::PROCEED,
             navigation_throttle->WillStartRequest().action());
 }

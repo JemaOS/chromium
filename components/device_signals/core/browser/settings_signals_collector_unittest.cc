@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -36,13 +36,13 @@ SignalsAggregationRequest CreateRequest(SignalName signal_name,
     options1.path = "test_path1";
     options1.key = "test_setting1";
     options1.get_value = true;
-    options1.hive = std::nullopt;
+    options1.hive = absl::nullopt;
 
     GetSettingsOptions options2;
     options2.path = "test_path2";
     options2.key = "test_setting2";
     options2.get_value = false;
-    options2.hive = std::nullopt;
+    options2.hive = absl::nullopt;
 
     request.settings_signal_parameters.push_back(options1);
     request.settings_signal_parameters.push_back(options2);
@@ -57,16 +57,17 @@ using GetSettingsSignalsCallback =
 
 class SettingsSignalsCollectorTest : public testing::Test {
  protected:
-  SettingsSignalsCollectorTest() {
-    auto settings_client = std::make_unique<StrictMock<MockSettingsClient>>();
-    settings_client_ = settings_client.get();
-    signal_collector_ =
-        std::make_unique<SettingsSignalsCollector>(std::move(settings_client));
-  }
+  SettingsSignalsCollectorTest()
+      : signal_collector_(std::move(settings_client)) {}
 
   base::test::TaskEnvironment task_environment_;
-  std::unique_ptr<SettingsSignalsCollector> signal_collector_;
-  raw_ptr<StrictMock<MockSettingsClient>> settings_client_;
+
+  std::unique_ptr<StrictMock<MockSettingsClient>> settings_client =
+      std::make_unique<StrictMock<MockSettingsClient>>();
+  raw_ptr<StrictMock<MockSettingsClient>> settings_client_ =
+      settings_client.get();
+
+  SettingsSignalsCollector signal_collector_;
 };
 
 // Test that runs a sanity check on the set of signals supported by this
@@ -75,7 +76,7 @@ TEST_F(SettingsSignalsCollectorTest, SupportedSettingsSignalNames) {
   const std::array<SignalName, 1> supported_signals{
       {SignalName::kSystemSettings}};
 
-  const auto names_set = signal_collector_->GetSupportedSignalNames();
+  const auto names_set = signal_collector_.GetSupportedSignalNames();
 
   EXPECT_EQ(names_set.size(), supported_signals.size());
   for (const auto& signal_name : supported_signals) {
@@ -88,8 +89,8 @@ TEST_F(SettingsSignalsCollectorTest, GetSettingsSignal_Unsupported) {
   SignalName signal_name = SignalName::kAntiVirus;
   SignalsAggregationResponse response;
   base::RunLoop run_loop;
-  signal_collector_->GetSignal(signal_name, CreateRequest(signal_name),
-                               response, run_loop.QuitClosure());
+  signal_collector_.GetSignal(signal_name, CreateRequest(signal_name), response,
+                              run_loop.QuitClosure());
 
   run_loop.Run();
 
@@ -104,7 +105,7 @@ TEST_F(SettingsSignalsCollectorTest, GetSignal_Settings_MissingParameters) {
   SignalName signal_name = SignalName::kSystemSettings;
   SignalsAggregationResponse response;
   base::RunLoop run_loop;
-  signal_collector_->GetSignal(
+  signal_collector_.GetSignal(
       signal_name,
       CreateRequest(signal_name, /*with_settings_parameter=*/false), response,
       run_loop.QuitClosure());
@@ -125,8 +126,8 @@ TEST_F(SettingsSignalsCollectorTest, GetSignal_SettingsInfo) {
   retrieved_item.path = "test_path";
   retrieved_item.key = "test_key";
   retrieved_item.presence = PresenceValue::kFound;
-  retrieved_item.hive = std::nullopt;
-  retrieved_item.setting_json_value = std::nullopt;
+  retrieved_item.hive = absl::nullopt;
+  retrieved_item.setting_json_value = absl::nullopt;
 
   std::vector<SettingsItem> settings_items;
   settings_items.push_back(retrieved_item);
@@ -145,8 +146,8 @@ TEST_F(SettingsSignalsCollectorTest, GetSignal_SettingsInfo) {
 
   SignalsAggregationResponse response;
   base::RunLoop run_loop;
-  signal_collector_->GetSignal(signal_name, request, response,
-                               run_loop.QuitClosure());
+  signal_collector_.GetSignal(signal_name, request, response,
+                              run_loop.QuitClosure());
 
   run_loop.Run();
 

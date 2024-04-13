@@ -8,7 +8,6 @@
 #include <string>
 
 #include "base/functional/callback_forward.h"
-#include "base/memory/scoped_refptr.h"
 
 namespace network {
 class SharedURLLoaderFactory;
@@ -62,18 +61,15 @@ class RLZTrackerDelegate {
   // Clears the referral code. Deprecated.
   virtual bool ClearReferral() = 0;
 
-  // Registers |callback| to be invoked the next time the user performs a search
+  // Registers |callback| to be invoked the next time the user perform a search
   // using Google search engine via the omnibox. Callback will invoked at most
   // once.
   virtual void SetOmniboxSearchCallback(base::OnceClosure callback) = 0;
 
-  // Registers |callback| to be invoked the next time the user performs a search
+  // Registers |callback| to be invoked the next time the user perform a search
   // using Google search engine via the homepage. Callback will invoked at most
   // once.
   virtual void SetHomepageSearchCallback(base::OnceClosure callback) = 0;
-
-  // Invokes the homepage search callback if it is set.
-  virtual void RunHomepageSearchCallback() = 0;
 
   // Returns true if the existing access point RLZ strings in the data file
   // should be updated.

@@ -35,9 +35,10 @@ enum class RegEx {
   kMatchMiddleNameInitialsCharacteristics,
   kParseStreetNameHouseNumber,
   kParseStreetNameHouseNumberSuffixedFloor,
-  kParseStreetNameHouseNumberSuffixedFloorAndApartmentRe,
+  kParseStreetNameHouseNumberSuffixedFloorAndAppartmentRe,
   kParseHouseNumberStreetName,
-  kLastRegEx = kParseHouseNumberStreetName,
+  kParsePrefixedName,
+  kLastRegEx = kParseLastNameIntoSecondLastName,
 };
 
 // This singleton class builds and caches the regular expressions for value
@@ -55,13 +56,11 @@ class StructuredAddressesRegExProvider {
   // Returns a singleton instance of this class.
   static StructuredAddressesRegExProvider* Instance();
 
-  // Returns the regular expression corresponding to |expression_identifier|.
-  // If a |country_code| is provided, the country specific instance of
-  // |expression_identifier| is fetched. In case the expression is not cached
-  // yet, it is built by calling |BuildRegEx(expression_identifier,
-  // country_code)|. If the expression can't be built, nullptr is returned.
-  const RE2* GetRegEx(RegEx expression_identifier,
-                      const std::string& country_code = "");
+  // Returns the regular expression corresponding to
+  // |expression_identifier|. If the expression is not cached yet, it is build
+  // by calling |BuildRegEx(expression_identifier)|. If the expression
+  // can't be build, nullptr is returned.
+  const RE2* GetRegEx(RegEx expression_identifier);
 
 #if UNIT_TEST
   bool IsCachedForTesting(RegEx expression_identifier) {
@@ -76,11 +75,10 @@ class StructuredAddressesRegExProvider {
   // be allowed to construct the cache.
   friend class base::NoDestructor<StructuredAddressesRegExProvider>;
 
-  // Fetches a pattern identified by |expression_identifier| and |country_code|.
+  // Fetches a pattern identified by |expression_identifier|.
   // This method is virtual and is meant to be overridden by future
   // implementations that utilize multiple sources for retrieving patterns.
-  virtual std::string GetPattern(RegEx expression_identifier,
-                                 const std::string& country_code);
+  virtual std::string GetPattern(RegEx expression_identifier);
 
   // A map to store already compiled enumerated expressions keyed by
   // |RegEx|.

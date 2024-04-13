@@ -4,24 +4,24 @@
 
 package org.chromium.net.urlconnection;
 
-import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+
+import static org.chromium.net.CronetTestRule.getContext;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
 import org.json.JSONObject;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import org.chromium.base.test.util.Batch;
 import org.chromium.net.CronetEngine;
 import org.chromium.net.CronetTestRule;
-import org.chromium.net.CronetTestRule.CronetImplementation;
-import org.chromium.net.CronetTestRule.IgnoreFor;
+import org.chromium.net.CronetTestRule.OnlyRunNativeCronet;
 import org.chromium.net.CronetTestUtil;
+import org.chromium.net.ExperimentalCronetEngine;
 import org.chromium.net.QuicTestServer;
 
 import java.io.OutputStream;
@@ -29,53 +29,43 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
 
-/** Tests HttpURLConnection upload using QUIC. */
-@Batch(Batch.UNIT_TESTS)
+/**
+ * Tests HttpURLConnection upload using QUIC.
+ */
 @RunWith(AndroidJUnit4.class)
-@IgnoreFor(
-        implementations = {CronetImplementation.FALLBACK, CronetImplementation.AOSP_PLATFORM},
-        reason =
-                "The fallback implementation doesn't support QUIC. "
-                        + "crbug.com/1494870: Enable for AOSP_PLATFORM once fixed")
 public class QuicUploadTest {
-    @Rule public final CronetTestRule mTestRule = CronetTestRule.withManualEngineStartup();
+    @Rule
+    public final CronetTestRule mTestRule = new CronetTestRule();
 
     private CronetEngine mCronetEngine;
 
     @Before
     public void setUp() throws Exception {
-        QuicTestServer.startQuicTestServer(mTestRule.getTestFramework().getContext());
+        // Load library first to create MockCertVerifier.
+        System.loadLibrary("cronet_tests");
+        ExperimentalCronetEngine.Builder builder =
+                new ExperimentalCronetEngine.Builder(getContext());
 
-        mTestRule
-                .getTestFramework()
-                .applyEngineBuilderPatch(
-                        (builder) -> {
-                            builder.enableQuic(true);
-                            JSONObject hostResolverParams =
-                                    CronetTestUtil.generateHostResolverRules();
-                            JSONObject experimentalOptions =
-                                    new JSONObject().put("HostResolverRules", hostResolverParams);
-                            builder.setExperimentalOptions(experimentalOptions.toString());
+        QuicTestServer.startQuicTestServer(getContext());
 
-                            builder.addQuicHint(
-                                    QuicTestServer.getServerHost(),
-                                    QuicTestServer.getServerPort(),
-                                    QuicTestServer.getServerPort());
+        builder.enableQuic(true);
+        JSONObject hostResolverParams = CronetTestUtil.generateHostResolverRules();
+        JSONObject experimentalOptions = new JSONObject()
+                                                 .put("HostResolverRules", hostResolverParams);
+        builder.setExperimentalOptions(experimentalOptions.toString());
 
-                            CronetTestUtil.setMockCertVerifierForTesting(
-                                    builder, QuicTestServer.createMockCertVerifier());
-                        });
+        builder.addQuicHint(QuicTestServer.getServerHost(), QuicTestServer.getServerPort(),
+                QuicTestServer.getServerPort());
 
-        mCronetEngine = mTestRule.getTestFramework().startEngine();
-    }
+        CronetTestUtil.setMockCertVerifierForTesting(
+                builder, QuicTestServer.createMockCertVerifier());
 
-    @After
-    public void tearDown() throws Exception {
-        QuicTestServer.shutdownQuicTestServer();
+        mCronetEngine = builder.build();
     }
 
     @Test
     @SmallTest
+    @OnlyRunNativeCronet
     // Regression testing for crbug.com/618872.
     public void testOneMassiveWrite() throws Exception {
         String path = "/simple.txt";
@@ -92,7 +82,7 @@ public class QuicUploadTest {
         // Write everything at one go, so the data is larger than the buffer
         // used in CronetFixedModeOutputStream.
         out.write(largeData);
-        assertThat(connection.getResponseCode()).isEqualTo(200);
+        assertEquals(200, connection.getResponseCode());
         connection.disconnect();
     }
 }

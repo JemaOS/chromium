@@ -17,7 +17,9 @@ import org.chromium.base.Log;
 
 import java.util.List;
 
-/** An implementation of {@link PrintManagerDelegate} using the Android framework print manager. */
+/**
+ * An implementation of {@link PrintManagerDelegate} using the Android framework print manager.
+ */
 public class PrintManagerDelegateImpl implements PrintManagerDelegate {
     private static final String TAG = "printing";
     private final PrintManager mPrintManager;
@@ -27,8 +29,8 @@ public class PrintManagerDelegateImpl implements PrintManagerDelegate {
     }
 
     @Override
-    public void print(
-            String printJobName, PrintDocumentAdapter documentAdapter, PrintAttributes attributes) {
+    public void print(String printJobName, PrintDocumentAdapter documentAdapter,
+            PrintAttributes attributes) {
         dumpJobStatesForDebug();
         mPrintManager.print(printJobName, documentAdapter, attributes);
     }

@@ -7,6 +7,7 @@
 #include <stddef.h>
 
 #include "base/strings/strcat.h"
+#include "base/strings/string_piece.h"
 #include "components/webcrypto/algorithms/secret_key_util.h"
 #include "components/webcrypto/algorithms/util.h"
 #include "components/webcrypto/blink_key_handle.h"
@@ -21,7 +22,7 @@ namespace {
 
 // Creates an AES algorithm name for the given key size (in bytes). For
 // instance "A128CBC" is the result of suffix="CBC", keylen_bytes=16.
-std::string MakeJwkAesAlgorithmName(std::string_view suffix,
+std::string MakeJwkAesAlgorithmName(base::StringPiece suffix,
                                     size_t keylen_bytes) {
   if (keylen_bytes == 16)
     return base::StrCat({"A128", suffix});
@@ -43,10 +44,10 @@ blink::WebCryptoAlgorithm SynthesizeImportAlgorithmForClone(
 }  // namespace
 
 AesAlgorithm::AesAlgorithm(blink::WebCryptoKeyUsageMask all_key_usages,
-                           std::string_view jwk_suffix)
+                           base::StringPiece jwk_suffix)
     : all_key_usages_(all_key_usages), jwk_suffix_(jwk_suffix) {}
 
-AesAlgorithm::AesAlgorithm(std::string_view jwk_suffix)
+AesAlgorithm::AesAlgorithm(base::StringPiece jwk_suffix)
     : all_key_usages_(blink::kWebCryptoKeyUsageEncrypt |
                       blink::kWebCryptoKeyUsageDecrypt |
                       blink::kWebCryptoKeyUsageWrapKey |
@@ -205,7 +206,7 @@ Status AesAlgorithm::DeserializeKeyForClone(
 
 Status AesAlgorithm::GetKeyLength(
     const blink::WebCryptoAlgorithm& key_length_algorithm,
-    std::optional<unsigned int>* length_bits) const {
+    absl::optional<unsigned int>* length_bits) const {
   *length_bits = key_length_algorithm.AesDerivedKeyParams()->LengthBits();
 
   if (length_bits->value() == 128 || length_bits->value() == 256) {

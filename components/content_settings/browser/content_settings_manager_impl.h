@@ -7,8 +7,6 @@
 
 #include "base/memory/ref_counted.h"
 #include "components/content_settings/common/content_settings_manager.mojom.h"
-#include "components/content_settings/core/common/content_settings_types.h"
-#include "content/public/browser/global_routing_id.h"
 
 namespace content {
 class BrowserContext;
@@ -40,7 +38,8 @@ class ContentSettingsManagerImpl
     // true here, the default logic will be bypassed. Can be called on any
     // thread.
     virtual bool AllowStorageAccess(
-        const content::GlobalRenderFrameHostToken& frame_token,
+        int render_process_id,
+        int render_frame_id,
         StorageType storage_type,
         const GURL& url,
         bool allowed,
@@ -62,13 +61,13 @@ class ContentSettingsManagerImpl
   void Clone(
       mojo::PendingReceiver<content_settings::mojom::ContentSettingsManager>
           receiver) override;
-  void AllowStorageAccess(const blink::LocalFrameToken& frame_token,
+  void AllowStorageAccess(int32_t render_frame_id,
                           StorageType storage_type,
                           const url::Origin& origin,
                           const net::SiteForCookies& site_for_cookies,
                           const url::Origin& top_frame_origin,
                           base::OnceCallback<void(bool)> callback) override;
-  void OnContentBlocked(const blink::LocalFrameToken& frame_token,
+  void OnContentBlocked(int32_t render_frame_id,
                         ContentSettingsType type) override;
 
  private:

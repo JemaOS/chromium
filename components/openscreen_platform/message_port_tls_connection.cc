@@ -11,9 +11,11 @@ namespace openscreen_platform {
 
 MessagePortTlsConnection::MessagePortTlsConnection(
     std::unique_ptr<cast_api_bindings::MessagePort> message_port,
-    openscreen::TaskRunner& task_runner)
+    openscreen::TaskRunner* task_runner)
     : message_port_(std::move(message_port)), task_runner_(task_runner) {
   DCHECK(message_port_);
+  DCHECK(task_runner_);
+
   message_port_->SetReceiver(this);
 }
 
@@ -41,8 +43,7 @@ bool MessagePortTlsConnection::OnMessage(
 
   if (client_) {
     if (!task_runner_->IsRunningOnTaskRunner()) {
-      task_runner_->PostTask([ptr = weak_ptr_factory_.GetWeakPtr(),
-                              m = std::move(message)]() {
+      task_runner_->PostTask([ptr = AsWeakPtr(), m = std::move(message)]() {
         if (ptr) {
           ptr->OnMessage(
               std::move(m),
@@ -62,7 +63,7 @@ bool MessagePortTlsConnection::OnMessage(
 void MessagePortTlsConnection::OnPipeError() {
   if (client_) {
     if (!task_runner_->IsRunningOnTaskRunner()) {
-      task_runner_->PostTask([ptr = weak_ptr_factory_.GetWeakPtr()]() {
+      task_runner_->PostTask([ptr = AsWeakPtr()]() {
         if (ptr) {
           ptr->OnPipeError();
         }

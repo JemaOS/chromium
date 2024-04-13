@@ -15,6 +15,8 @@ example_value:
 features:
   dynamic_refresh: true
   per_profile: false
+future_on:
+- chrome_os
 owners:
 - mattme@google.com
 - file://chromeos/printing/OWNERS
@@ -22,7 +24,5 @@ schema:
   items:
     type: string
   type: array
-supported_on:
-- chrome_os:87-
 tags: []
 type: list

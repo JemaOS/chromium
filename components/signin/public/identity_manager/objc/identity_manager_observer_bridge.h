@@ -7,8 +7,6 @@
 
 #import <Foundation/Foundation.h>
 
-#include "base/memory/raw_ptr.h"
-#include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 
 // Implement this protocol and pass your implementation into an
@@ -31,8 +29,6 @@
             (const signin::AccountsInCookieJarInfo&)accountsInCookieJarInfo
                             error:(const GoogleServiceAuthError&)error;
 - (void)onEndBatchOfRefreshTokenStateChanges;
-- (void)onExtendedAccountInfoUpdated:(const AccountInfo&)info;
-- (void)onIdentityManagerShutdown:(signin::IdentityManager*)identityManager;
 
 @end
 
@@ -64,12 +60,10 @@ class IdentityManagerObserverBridge : public IdentityManager::Observer {
       const AccountsInCookieJarInfo& accounts_in_cookie_jar_info,
       const GoogleServiceAuthError& error) override;
   void OnEndBatchOfRefreshTokenStateChanges() override;
-  void OnExtendedAccountInfoUpdated(const AccountInfo& info) override;
-  void OnIdentityManagerShutdown(IdentityManager* identity_manager) override;
 
  private:
   // Identity manager to observe.
-  raw_ptr<IdentityManager> identity_manager_;
+  IdentityManager* identity_manager_;
   // Delegate to call.
   __weak id<IdentityManagerObserverBridgeDelegate> delegate_;
 };

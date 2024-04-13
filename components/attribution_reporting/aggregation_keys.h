@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_ATTRIBUTION_REPORTING_AGGREGATION_KEYS_H_
 #define COMPONENTS_ATTRIBUTION_REPORTING_AGGREGATION_KEYS_H_
 
-#include <optional>
 #include <string>
 
 #include "base/component_export.h"
@@ -14,6 +13,7 @@
 #include "base/values.h"
 #include "components/attribution_reporting/source_registration_error.mojom-forward.h"
 #include "third_party/abseil-cpp/absl/numeric/int128.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace attribution_reporting {
 
@@ -21,8 +21,8 @@ class COMPONENT_EXPORT(ATTRIBUTION_REPORTING) AggregationKeys {
  public:
   using Keys = base::flat_map<std::string, absl::uint128>;
 
-  // Returns `std::nullopt` if `keys` is invalid.
-  static std::optional<AggregationKeys> FromKeys(Keys keys);
+  // Returns `absl::nullopt` if `keys` is invalid.
+  static absl::optional<AggregationKeys> FromKeys(Keys keys);
 
   static base::expected<AggregationKeys, mojom::SourceRegistrationError>
   FromJSON(const base::Value*);
@@ -39,9 +39,6 @@ class COMPONENT_EXPORT(ATTRIBUTION_REPORTING) AggregationKeys {
   const Keys& keys() const { return keys_; }
 
   base::Value::Dict ToJson() const;
-
-  friend bool operator==(const AggregationKeys&,
-                         const AggregationKeys&) = default;
 
  private:
   explicit AggregationKeys(Keys keys);

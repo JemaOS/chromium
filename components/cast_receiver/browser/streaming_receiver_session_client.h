@@ -14,7 +14,6 @@
 #include "components/cast_receiver/browser/public/streaming_config_manager.h"
 #include "components/cast_streaming/browser/public/network_context_getter.h"
 #include "components/cast_streaming/browser/public/receiver_session.h"
-#include "services/network/public/mojom/network_context.mojom.h"
 
 namespace base {
 class SequencedTaskRunner;
@@ -74,7 +73,7 @@ class StreamingReceiverSessionClient
   // lifetime of this instance.
   StreamingReceiverSessionClient(
       scoped_refptr<base::SequencedTaskRunner> task_runner,
-      network::NetworkContextGetter network_context_getter,
+      cast_streaming::NetworkContextGetter network_context_getter,
       std::unique_ptr<cast_api_bindings::MessagePort> message_port,
       content::WebContents* web_contents,
       Handler* handler,
@@ -141,7 +140,7 @@ class StreamingReceiverSessionClient
   // This second ctor is required for Unit Testing.
   StreamingReceiverSessionClient(
       scoped_refptr<base::SequencedTaskRunner> task_runner,
-      network::NetworkContextGetter network_context_getter,
+      cast_streaming::NetworkContextGetter network_context_getter,
       std::unique_ptr<StreamingController> streaming_controller,
       Handler* handler,
       cast_receiver::StreamingConfigManager* config_manager,

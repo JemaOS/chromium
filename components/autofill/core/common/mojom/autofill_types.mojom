@@ -11,27 +11,6 @@ import "mojo/public/mojom/base/unguessable_token.mojom";
 import "ui/gfx/geometry/mojom/geometry.mojom";
 import "url/mojom/url.mojom";
 
-// The form control types supported by Autofill: a subset of
-// blink::mojom::FormControlType plus kContentEditable.
-// Do not modify the integer values because they are used UKM metrics.
-enum FormControlType {
-  kContentEditable = 0,
-  kInputCheckbox = 1,
-  kInputEmail = 2,
-  kInputMonth = 3,
-  kInputNumber = 4,
-  kInputPassword = 5,
-  kInputRadio = 6,
-  kInputSearch = 7,
-  kInputTelephone = 8,
-  kInputText = 9,
-  kInputUrl = 10,
-  kSelectOne = 11,
-  kSelectMultiple = 12,
-  kSelectList = 13,
-  kTextArea = 14,
-};
-
 // The list of all HTML autocomplete field mode hints supported by Chrome.
 // See [ http://is.gd/whatwg_autocomplete ] for the full list of specced hints.
 enum HtmlFieldMode {
@@ -67,7 +46,7 @@ enum HtmlFieldType {
   kCountryCode = 14,     // The ISO 3166-1-alpha-2 country code.
   kCountryName = 15,     // The localized country name.
   kPostalCode = 16,
-  // kFullAddress = 17 is deprecated.
+  kFullAddress = 17,     // The complete address, formatted for display.
 
   // Credit card types.
   kCreditCardNameFull = 18,
@@ -137,38 +116,35 @@ enum SubmissionIndicatorEvent {
   XHR_SUCCEEDED = 3,
   FRAME_DETACHED = 4,
   // DEPRECATED_MANUAL_SAVE,
-  // DEPRECATED_DOM_MUTATION_AFTER_XHR = 6,
-  // DEPRECATED_PROVISIONALLY_SAVED_FORM_ON_START_PROVISIONAL_LOAD,
+  DOM_MUTATION_AFTER_XHR = 6,
+  PROVISIONALLY_SAVED_FORM_ON_START_PROVISIONAL_LOAD = 7,
   // DEPRECATED_FILLED_FORM_ON_START_PROVISIONAL_LOAD,
   // DEPRECATED_FILLED_INPUT_ELEMENTS_ON_START_PROVISIONAL_LOAD,
   PROBABLE_FORM_SUBMISSION = 10,
   CHANGE_PASSWORD_FORM_CLEARED = 11,
-  DOM_MUTATION_AFTER_AUTOFILL = 12,
 };
 
-// These values are persisted to UMA logs. Entries should not be renumbered
-// and numeric values should never be reused. This indicates the source of
-// a submission firing event.
 enum SubmissionSource {
   // No submission signal was detected.
-  NONE = 0,
+  NONE,
   // After a same document navigation finished, the last interacted form became
   // inaccessible or was removed.
-  SAME_DOCUMENT_NAVIGATION = 1,
+  SAME_DOCUMENT_NAVIGATION,
   // Immediately after a successful XHR, the last interacted form became
   // inaccessible or was removed.
-  XHR_SUCCEEDED = 2,
+  XHR_SUCCEEDED,
   // The subframe or non-primary main frame containing the form was detached.
-  FRAME_DETACHED = 3,
+  FRAME_DETACHED,
+  // After a successful XHR, the last interacted form became inaccessible or was
+  // removed (this is an asynchronous sibling of XHR_SUCCEEDED).
+  DOM_MUTATION_AFTER_XHR,
   // A mainframe navigation was started which was initiated in the content area
   // (i.e. not clicking on a bookmark or typing a URL in the omnibar), not by
   // a link click. Only observed after the user interacted with a form.
-  PROBABLY_FORM_SUBMITTED = 4,
+  PROBABLY_FORM_SUBMITTED,
   // Normal form submission (i.e. user presses the submit button and no
   // JavaScript is involved). Observed via RenderFrameObserver::WillSubmitForm.
-  FORM_SUBMISSION = 5,
-  // The form or field was hidden or removed after autofilling it.
-  DOM_MUTATION_AFTER_AUTOFILL = 6,
+  FORM_SUBMISSION,
 };
 
 enum FocusedFieldType {
@@ -177,7 +153,6 @@ enum FocusedFieldType {
   kFillableTextArea,
   kFillableSearchField,
   kFillableNonSearchField,
-  kFillableWebauthnTaggedField,
   kFillableUsernameField,
   kFillablePasswordField,
 };
@@ -325,26 +300,19 @@ struct FormFieldData {
 
   // From which source the label is inferred.
   enum LabelSource {
-    kUnknown,           // No label.
-    kLabelTag,          // <label> sibling/ancestor.
-    kPTag,              // <p> sibling.
-    kDivTable,          // <div> ancestor.
-    kTdTag,             // <td> sibling.
-    kDdTag,             // <dd> sibling.
-    kLiTag,             // <li> ancestor.
-    kPlaceHolder,       // placeholder attribute.
-    kAriaLabel,         // aria-label attribute.
-    kCombined,          // Text node sibling (includes <b>, etc).
-    kValue,             // value attribute.
-    kForId,             // <label> for-attribute that links to an control
-                        // via it's id attribute.
-    kForName,           // <label> for-attribute that links to an control
-                        // viait's name attribute.
-    kForShadowHostId,   // <label> for-attribute that links to an control
-                        // (inside a shadow DOM) via it's id attribute.
-    kForShadowHostName, // <label> for-attribute that links to an control
-                        // (inside a shadow DOM) via it's name attribute.
-    kOverlayingLabel,   // Succeeding DOM node overlaying the input.
+    kUnknown,          // No label.
+    kLabelTag,         // <label> sibling/ancestor.
+    kPTag,             // <p> sibling.
+    kDivTable,         // <div> ancestor.
+    kTdTag,            // <td> sibling.
+    kDdTag,            // <dd> sibling.
+    kLiTag,            // <li> ancestor.
+    kPlaceHolder,      // placeholder attribute.
+    kAriaLabel,        // aria-label attribute.
+    kCombined,         // Text node sibling (includes <b>, etc).
+    kValue,            // value attribute.
+    kFor,              // <label> for-attribute
+    kOverlayingLabel,  // Succeeding DOM node overlaying the input.
   };
 
   mojo_base.mojom.String16 label;
@@ -352,21 +320,19 @@ struct FormFieldData {
   mojo_base.mojom.String16 id_attribute;
   mojo_base.mojom.String16 name_attribute;
   mojo_base.mojom.String16 value;
-  mojo_base.mojom.String16 selected_text;
-  FormControlType form_control_type;
+  string form_control_type;
   string autocomplete_attribute;
   AutocompleteParsingResult? parsed_autocomplete;
   mojo_base.mojom.String16 placeholder;
   mojo_base.mojom.String16 css_classes;
   mojo_base.mojom.String16 aria_label;
   mojo_base.mojom.String16 aria_description;
-  FieldRendererId renderer_id;
+  FieldRendererId unique_renderer_id;
   FormRendererId host_form_id;
   uint32 properties_mask;
   int32 form_control_ax_id;
 
   uint64 max_length;
-  bool is_user_edited;
   bool is_autofilled;
   Section section;
   CheckStatus check_status;
@@ -385,19 +351,9 @@ struct FormFieldData {
 
   gfx.mojom.RectF bounds;
 
-  array<SelectOption> datalist_options;
+  array<mojo_base.mojom.String16> datalist_values;
+  array<mojo_base.mojom.String16> datalist_labels;
 
-  bool force_override;
-};
-
-// autofill::FormFieldData::FillData
-// (components/autofill/core/common/form_field_filling_data.h)
-struct FormFieldData_FillData {
-  mojo_base.mojom.String16 value;
-  FieldRendererId renderer_id;
-  FormRendererId host_form_id;
-  bool is_autofilled;
-  Section section;
   bool force_override;
 };
 
@@ -415,7 +371,8 @@ struct FormData {
   array<ButtonTitleInfo> button_titles;
   url.mojom.Url action;
   bool is_action_empty;
-  FormRendererId renderer_id;
+  bool is_form_tag;
+  FormRendererId unique_renderer_id;
   array<FrameTokenWithPredecessor> child_frames;
   SubmissionIndicatorEvent submission_event;
   array<FormFieldData> fields;
@@ -429,9 +386,7 @@ struct FormFieldDataPredictions {
   string host_form_signature;
   string signature;
   string heuristic_type;
-  // Empty if server predictions have not arrived, yet.
-  string? server_type;
-  string html_type;
+  string server_type;
   string overall_type;
   string parseable_name;
   string section;
@@ -447,7 +402,6 @@ struct FormFieldDataPredictions {
 struct FormDataPredictions {
   FormData data;
   string signature;
-  string alternative_signature;
   array<FormFieldDataPredictions> fields;
 };
 
@@ -489,22 +443,8 @@ struct PasswordGenerationUIData {
   FieldRendererId generation_element_id;
   bool is_generation_element_password_type;
   mojo_base.mojom.TextDirection text_direction;
+  mojo_base.mojom.String16 user_typed_password;
   FormData form_data;
-  bool input_field_empty;
-};
-
-// autofill::PasswordSuggestionRequest
-// (components/autofill/core/common/password_form_fill_data.h)
-struct PasswordSuggestionRequest {
-  FieldRendererId element_id;
-  FormData form_data;
-  AutofillSuggestionTriggerSource trigger_source;
-  uint64 username_field_index;
-  uint64 password_field_index;
-  mojo_base.mojom.TextDirection text_direction;
-  mojo_base.mojom.String16 typed_username;
-  bool show_webauthn_credentials;
-  gfx.mojom.RectF bounds;
 };
 
 // autofill::ParsingResult
@@ -516,8 +456,8 @@ struct ParsingResult {
   FieldRendererId confirm_password_renderer_id;
 };
 
-// Represents whether suggestions are available for Autofill/Autocomplete.
-enum AutofillSuggestionAvailability {
+// Represents the autofill state.
+enum AutofillState {
   // There are no available suggestions, neither autofill nor autocomplete, for
   // the input.
   kNoSuggestions,
@@ -529,95 +469,19 @@ enum AutofillSuggestionAvailability {
   kAutocompleteAvailable,
 };
 
-// Represents whether an autofill action, which is an operation that changes a
-// form, will persist (kFill) or will be cleared later (kPreview).
-enum ActionPersistence {
-  kFill,     // The action is filled.
-  kPreview,  // The action is previewed and will be cleared afterwards.
+// The possible actions that the renderer can take on receiving form data.
+enum RendererFormDataAction {
+  kFill,     // The renderer should fill the form data.
+  kPreview,  // The renderer should preview the form data.
 };
 
-// The possible actions that Autofill can perform on forms.
-enum FormActionType {
-  kFill,  // Autofill should fill the form.
-  kUndo,  // Autofill should undo some previous fill operation on the form.
+// autofill::AutoselectFirstSuggestion
+// (components/autofill/core/common/aliases.h)
+struct AutoselectFirstSuggestion {
+  bool autoselect_first_suggestion;
 };
 
-// The possible actions that Autofill can perform on fields.
-enum FieldActionType {
-  kReplaceAll,        // Replace the field's current value.
-  kReplaceSelection,  // Replace only the currently selected text.
-  kSelectAll,         // Selects all the text within this field.
-};
-
-// Describes which action triggered Autofill suggestions. This has implications
-// how the suggestions behave, as described below.
-// Some further properties of suggestions are implied by the source. See
-// components/autofill/content/renderer/suggestion_properties.h.
-// Suggestions are primarily triggered through Blink events in the renderer.
-// This then invokes `AutofillManager::OnAskForValuesToFill()` in the browser
-// process. In some cases, suggestions get updated. This happens solely in the
-// browser process.
-enum AutofillSuggestionTriggerSource {
-  // Used as a default value and cannot be used to trigger suggestions.
-  kUnspecified,
-  // Suggestions triggered by either:
-  // - Clicking or tapping a text input (TAB key doesn't count).
-  // - Focusing a text input using a screen reader.
-  // Suggestion of this type can trigger FastCheckout or TouchToFill.
-  kFormControlElementClicked,
-  // Suggestions triggered by focusing a textarea without click or tab
-  // interaction. Currently, this only generates suggestions from Compose.
-  kTextareaFocusedWithoutClick,
-  // Suggestions triggered as above except that the target is a
-  // contenteditable element rather than a form control element.
-  kContentEditableClicked,
-  // Suggestions triggered by modifying the content of a text input.
-  kTextFieldDidChange,
-  // Suggestions triggered by pressing the down key on a text input. This auto
-  // selects the first suggestion.
-  kTextFieldDidReceiveKeyDown,
-  // Suggestions triggered by the clicking onto the "triangle" on an
-  // <input list=...> to show <datalist> suggestions. While this also counts
-  // as a kFormControlElementClicked event, it is triggered slightly later.
-  // As of crrev.com/c/107353005, prefix matching for such suggestions is
-  // skipped, to make them behave more like a <select>.
-  // TODO(crbug.com/1007974): It's unclear if this is still necessary.
-  kOpenTextDataListChooser,
-  // Credit card suggestions offer users with Sync transport eligiblity an
-  // option to display cards from their account. This causes the suggestions to
-  // update. The updated suggested are considered to have this trigger source.
-  kShowCardsFromAccount,
-  // The suggestion triggering logic through Blink events (e.g.
-  // `kFormControlElementClicked`) is shared with the password manager. However,
-  // the trigger source is not propagated to the password manager specific
-  // code (password_autofill_agent.cc and onwards to the browser process).
-  // On the browser process side, all password suggestions are treated as
-  // `kPasswordManager`. On the renderer side, `kPasswordManager` is unused.
-  kPasswordManager,
-  // Since iOS has no renderer, it has separate suggestion triggering logic.
-  // This code currently doesn't distinguish between different suggestion
-  // trigger sources. They are all treated as `kiOS`. See crbug.com/1448447.
-  kiOS,
-  // Suggestions triggered by selecting the Autofill address manual fallback
-  // entry from the Chrome context menu. This trigger source is also used to
-  // reopen the Autofill popup after the user closed a dialog opened from the
-  // popup.
-  kManualFallbackAddress,
-  // Suggestions triggered by selecting the Autofill payment methods manual
-  // fallback entry from the Chrome context menu.
-  kManualFallbackPayments,
-  // Suggestions triggered by selecting the Autofill password manager manual
-  // fallback entry from the Chrome context menu.
-  kManualFallbackPasswords,
-  // Suggestions triggered by selecting the Plus Address manual fallback entry
-  // from the Chrome context menu.
-  kManualFallbackPlusAddresses,
-  // Suggestions are triggered after the user the user closed a dialog. For
-  // example, this can be profile edit or delete dialog. This trigger source
-  // is used only if the suggestions were triggered manually via the Chrome
-  // context menu.
-  kShowPromptAfterDialogClosedNonManualFallback,
-  // The compose saved state notification is triggered when the compose dialog
-  // loses focus and is closed.
-  kComposeDialogLostFocus,
+// autofill::FormElementWasClicked (components/autofill/core/common/aliases.h)
+struct FormElementWasClicked {
+  bool form_element_was_clicked;
 };

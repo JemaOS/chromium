@@ -51,7 +51,11 @@ class WebApiHandshakeChecker {
   // must live on the SB thread.
   class CheckerOnSB;
 
-  void OnCompleteCheck(bool proceed);
+  void OnCompleteCheck(bool slow_check,
+                       bool proceed,
+                       bool showed_interstitial,
+                       bool did_perform_real_time_check,
+                       bool did_check_allowlist);
 
   std::unique_ptr<CheckerOnSB> sb_checker_;
   CheckCallback check_callback_;

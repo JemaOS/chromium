@@ -22,11 +22,10 @@ void AccountCapabilitiesTestMutator::set_can_have_email_address_displayed(
       ->capabilities_map_[kCanHaveEmailAddressDisplayedCapabilityName] = value;
 }
 
-void AccountCapabilitiesTestMutator::
-    set_can_show_history_sync_opt_ins_without_minor_mode_restrictions(
-        bool value) {
-  capabilities_->capabilities_map_
-      [kCanShowHistorySyncOptInsWithoutMinorModeRestrictionsCapabilityName] =
+void AccountCapabilitiesTestMutator::set_can_offer_extended_chrome_sync_promos(
+    bool value) {
+  capabilities_
+      ->capabilities_map_[kCanOfferExtendedChromeSyncPromosCapabilityName] =
       value;
 }
 
@@ -37,10 +36,21 @@ void AccountCapabilitiesTestMutator::set_can_run_chrome_privacy_sandbox_trials(
       value;
 }
 
-void AccountCapabilitiesTestMutator::set_is_opted_in_to_parental_supervision(
-    bool value) {
+void AccountCapabilitiesTestMutator::
+    set_is_subject_to_chrome_privacy_sandbox_restricted_measurement_notice(
+        bool value) {
+  // TODO(crbug.com/1430845): once the actual server-defined value is used,
+  // remove this override.
   capabilities_
-      ->capabilities_map_[kIsOptedInToParentalSupervisionCapabilityName] =
+      ->capabilities_map_[kCanRunChromePrivacySandboxTrialsCapabilityName] =
+      !value;
+  capabilities_->capabilities_map_[kIsSubjectToParentalControlsCapabilityName] =
+      !value;
+}
+
+void AccountCapabilitiesTestMutator::set_can_stop_parental_supervision(
+    bool value) {
+  capabilities_->capabilities_map_[kCanStopParentalSupervisionCapabilityName] =
       value;
 }
 
@@ -48,42 +58,10 @@ void AccountCapabilitiesTestMutator::set_can_toggle_auto_updates(bool value) {
   capabilities_->capabilities_map_[kCanToggleAutoUpdatesName] = value;
 }
 
-void AccountCapabilitiesTestMutator::set_can_use_chrome_ip_protection(
-    bool value) {
-  capabilities_->capabilities_map_[kCanUseChromeIpProtectionName] = value;
-}
-
-void AccountCapabilitiesTestMutator::
-    set_can_use_devtools_generative_ai_features(bool value) {
-  capabilities_
-      ->capabilities_map_[kCanUseDevToolsGenerativeAiFeaturesCapabilityName] =
-      value;
-}
-
-void AccountCapabilitiesTestMutator::set_can_use_edu_features(bool value) {
-  capabilities_->capabilities_map_[kCanUseEduFeaturesCapabilityName] = value;
-}
-
-void AccountCapabilitiesTestMutator::set_can_use_manta_service(bool value) {
-  capabilities_->capabilities_map_[kCanUseMantaServiceName] = value;
-}
-
-void AccountCapabilitiesTestMutator::set_can_use_model_execution_features(
-    bool value) {
-  capabilities_->capabilities_map_[kCanUseModelExecutionFeaturesName] = value;
-}
-
 void AccountCapabilitiesTestMutator::set_is_allowed_for_machine_learning(
     bool value) {
   capabilities_->capabilities_map_[kIsAllowedForMachineLearningCapabilityName] =
       value;
-}
-
-void AccountCapabilitiesTestMutator::
-    set_is_subject_to_chrome_privacy_sandbox_restricted_measurement_notice(
-        bool value) {
-  capabilities_->capabilities_map_
-      [kIsSubjectToChromePrivacySandboxRestrictedMeasurementNotice] = value;
 }
 
 void AccountCapabilitiesTestMutator::set_is_subject_to_enterprise_policies(

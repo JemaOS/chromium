@@ -174,7 +174,7 @@ std::vector<uint8_t> SecureBoxAesGcmEncrypt(
 }
 
 // Decrypts using AES-GCM.
-std::optional<std::vector<uint8_t>> SecureBoxAesGcmDecrypt(
+absl::optional<std::vector<uint8_t>> SecureBoxAesGcmDecrypt(
     base::span<const uint8_t> secret_key,
     base::span<const uint8_t> nonce,
     base::span<const uint8_t> ciphertext,
@@ -195,7 +195,7 @@ std::optional<std::vector<uint8_t>> SecureBoxAesGcmDecrypt(
                          ciphertext.data(), ciphertext.size(),
                          associated_data.data(), associated_data.size())) {
     // |ciphertext| can't be decrypted with given parameters.
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   DCHECK_LE(output_length, max_output_length);
@@ -251,7 +251,9 @@ std::vector<uint8_t> SecureBoxEncryptImpl(
   std::vector<uint8_t> secret = SecureBoxComputeSecret(
       our_key_pair, their_public_key, shared_secret, err_tracer);
 
-  std::vector<uint8_t> nonce = crypto::RandBytesAsVector(kNonceLength);
+  std::vector<uint8_t> nonce(kNonceLength);
+  crypto::RandBytes(nonce.data(), kNonceLength);
+
   std::vector<uint8_t> ciphertext =
       SecureBoxAesGcmEncrypt(secret, nonce, payload, header, err_tracer);
 
@@ -266,7 +268,7 @@ std::vector<uint8_t> SecureBoxEncryptImpl(
 
 // |our_private_key| may be null. |shared_secret|, |header| and |payload| may be
 // empty. Returns nullopt if decryption failed.
-std::optional<std::vector<uint8_t>> SecureBoxDecryptImpl(
+absl::optional<std::vector<uint8_t>> SecureBoxDecryptImpl(
     const EC_KEY* our_private_key,
     base::span<const uint8_t> shared_secret,
     base::span<const uint8_t> header,
@@ -281,7 +283,7 @@ std::optional<std::vector<uint8_t>> SecureBoxDecryptImpl(
   if (encrypted_payload.size() < min_payload_size ||
       encrypted_payload[0] != kSecureBoxVersion[0] ||
       encrypted_payload[1] != kSecureBoxVersion[1]) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   size_t offset = kVersionLength;
@@ -291,7 +293,7 @@ std::optional<std::vector<uint8_t>> SecureBoxDecryptImpl(
     their_ec_public_key = ECPublicKeyFromBytes(
         encrypted_payload.subspan(offset, kECPointLength), err_tracer);
     if (!their_ec_public_key) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     their_ec_public_key_point =
         EC_KEY_get0_public_key(their_ec_public_key.get());
@@ -323,7 +325,7 @@ std::vector<uint8_t> SecureBoxSymmetricEncrypt(
                               header, payload, err_tracer);
 }
 
-std::optional<std::vector<uint8_t>> SecureBoxSymmetricDecrypt(
+absl::optional<std::vector<uint8_t>> SecureBoxSymmetricDecrypt(
     base::span<const uint8_t> shared_secret,
     base::span<const uint8_t> header,
     base::span<const uint8_t> encrypted_payload) {
@@ -422,7 +424,7 @@ std::vector<uint8_t> SecureBoxPrivateKey::ExportToBytes() const {
   return result;
 }
 
-std::optional<std::vector<uint8_t>> SecureBoxPrivateKey::Decrypt(
+absl::optional<std::vector<uint8_t>> SecureBoxPrivateKey::Decrypt(
     base::span<const uint8_t> shared_secret,
     base::span<const uint8_t> header,
     base::span<const uint8_t> encrypted_payload) const {

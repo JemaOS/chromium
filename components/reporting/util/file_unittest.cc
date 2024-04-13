@@ -9,7 +9,6 @@
 #include "base/files/file.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/test/test_file_util.h"
-#include "components/reporting/util/status_macros.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -30,11 +29,11 @@ void RemoveAndTruncateTest(const base::FilePath& file_path,
                            uint32_t pos,
                            int expected_lines_removed) {
   const auto remove_status = RemoveAndTruncateLine(file_path, 0);
-  ASSERT_TRUE(remove_status.has_value()) << remove_status.error();
+  ASSERT_OK(remove_status) << remove_status.status();
   const auto read_status = MaybeReadFile(file_path, 0);
-  ASSERT_TRUE(read_status.has_value()) << read_status.error();
+  ASSERT_OK(read_status) << read_status.status();
   ASSERT_THAT(
-      read_status.value(),
+      read_status.ValueOrDie(),
       StrEq(
           &kMultiLineData[expected_lines_removed * kMultiLineDataLineLength]));
 }
@@ -143,21 +142,21 @@ TEST(FileTest, ReadWriteFile) {
   ASSERT_OK(write_status) << write_status;
 
   auto read_status = MaybeReadFile(file_path, /*offset=*/0);
-  ASSERT_TRUE(read_status.has_value()) << read_status.error();
-  EXPECT_EQ(read_status.value(), kWriteDataOne);
+  ASSERT_OK(read_status) << read_status.status();
+  EXPECT_EQ(read_status.ValueOrDie(), kWriteDataOne);
 
   // Overwrite file.
   write_status = MaybeWriteFile(file_path, kWriteDataTwo);
   ASSERT_OK(write_status) << write_status;
 
   read_status = MaybeReadFile(file_path, /*offset=*/0);
-  ASSERT_TRUE(read_status.has_value()) << read_status.error();
-  EXPECT_EQ(read_status.value(), kWriteDataTwo);
+  ASSERT_OK(read_status) << read_status.status();
+  EXPECT_EQ(read_status.ValueOrDie(), kWriteDataTwo);
 
   // Read file at an out of bounds index
   read_status = MaybeReadFile(file_path, kOverFlowPos);
-  ASSERT_FALSE(read_status.has_value());
-  EXPECT_EQ(read_status.error().error_code(), error::DATA_LOSS);
+  ASSERT_FALSE(read_status.ok());
+  EXPECT_EQ(read_status.status().error_code(), error::DATA_LOSS);
 }
 
 TEST(FileTest, AppendLine) {
@@ -175,13 +174,13 @@ TEST(FileTest, AppendLine) {
 
   status = AppendLine(file_path, kWriteDataOne);
   auto read_status = MaybeReadFile(file_path, /*offset=*/0);
-  ASSERT_TRUE(read_status.has_value()) << read_status.error();
-  ASSERT_EQ(read_status.value(), base::StrCat({kWriteDataOne, "\n"}));
+  ASSERT_OK(read_status) << read_status.status();
+  ASSERT_EQ(read_status.ValueOrDie(), base::StrCat({kWriteDataOne, "\n"}));
 
   status = AppendLine(file_path, kWriteDataTwo);
   read_status = MaybeReadFile(file_path, /*offset=*/0);
-  ASSERT_TRUE(read_status.has_value()) << read_status.error();
-  ASSERT_EQ(read_status.value(),
+  ASSERT_OK(read_status) << read_status.status();
+  ASSERT_EQ(read_status.ValueOrDie(),
             base::StrCat({kWriteDataOne, "\n", kWriteDataTwo, "\n"}));
 }
 

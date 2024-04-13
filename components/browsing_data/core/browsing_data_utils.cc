@@ -4,7 +4,6 @@
 
 #include "components/browsing_data/core/browsing_data_utils.h"
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +18,7 @@
 #include "components/browsing_data/core/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace browsing_data {
@@ -147,8 +147,8 @@ void RecordTimePeriodChange(TimePeriod period) {
   }
 }
 
-void RecordDeleteBrowsingDataAction(DeleteBrowsingDataAction cbd_action) {
-  UMA_HISTOGRAM_ENUMERATION("Privacy.DeleteBrowsingData.Action", cbd_action);
+void RecordClearBrowsingDataAction(ClearBrowsingDataAction cbd_action) {
+  UMA_HISTOGRAM_ENUMERATION("Privacy.ClearBrowsingData.Action", cbd_action);
 }
 
 std::u16string GetCounterTextFromResult(
@@ -326,16 +326,20 @@ bool GetDeletionPreferenceFromDataType(
       case BrowsingDataType::CACHE:
         *out_pref = prefs::kDeleteCacheBasic;
         return true;
-      case BrowsingDataType::SITE_DATA:
+      case BrowsingDataType::COOKIES:
         *out_pref = prefs::kDeleteCookiesBasic;
         return true;
       case BrowsingDataType::PASSWORDS:
       case BrowsingDataType::FORM_DATA:
+      case BrowsingDataType::BOOKMARKS:
       case BrowsingDataType::SITE_SETTINGS:
       case BrowsingDataType::DOWNLOADS:
       case BrowsingDataType::HOSTED_APPS_DATA:
-      case BrowsingDataType::TABS:
         return false;  // No corresponding preference on basic tab.
+      case BrowsingDataType::NUM_TYPES:
+        // This is not an actual type.
+        NOTREACHED();
+        return false;
     }
   }
   switch (data_type) {
@@ -345,7 +349,7 @@ bool GetDeletionPreferenceFromDataType(
     case BrowsingDataType::CACHE:
       *out_pref = prefs::kDeleteCache;
       return true;
-    case BrowsingDataType::SITE_DATA:
+    case BrowsingDataType::COOKIES:
       *out_pref = prefs::kDeleteCookies;
       return true;
     case BrowsingDataType::PASSWORDS:
@@ -354,6 +358,10 @@ bool GetDeletionPreferenceFromDataType(
     case BrowsingDataType::FORM_DATA:
       *out_pref = prefs::kDeleteFormData;
       return true;
+    case BrowsingDataType::BOOKMARKS:
+      // Bookmarks are deleted on the Android side. No corresponding deletion
+      // preference. Not implemented on Desktop.
+      return false;
     case BrowsingDataType::SITE_SETTINGS:
       *out_pref = prefs::kDeleteSiteSettings;
       return true;
@@ -363,15 +371,15 @@ bool GetDeletionPreferenceFromDataType(
     case BrowsingDataType::HOSTED_APPS_DATA:
       *out_pref = prefs::kDeleteHostedAppsData;
       return true;
-    case BrowsingDataType::TABS:
-      *out_pref = prefs::kCloseTabs;
-      return true;
+    case BrowsingDataType::NUM_TYPES:
+      NOTREACHED();  // This is not an actual type.
+      return false;
   }
   NOTREACHED();
   return false;
 }
 
-std::optional<BrowsingDataType> GetDataTypeFromDeletionPreference(
+absl::optional<BrowsingDataType> GetDataTypeFromDeletionPreference(
     const std::string& pref_name) {
   using DataTypeMap = base::flat_map<std::string, BrowsingDataType>;
   static base::NoDestructor<DataTypeMap> preference_to_datatype(
@@ -380,8 +388,8 @@ std::optional<BrowsingDataType> GetDataTypeFromDeletionPreference(
           {prefs::kDeleteBrowsingHistoryBasic, BrowsingDataType::HISTORY},
           {prefs::kDeleteCache, BrowsingDataType::CACHE},
           {prefs::kDeleteCacheBasic, BrowsingDataType::CACHE},
-          {prefs::kDeleteCookies, BrowsingDataType::SITE_DATA},
-          {prefs::kDeleteCookiesBasic, BrowsingDataType::SITE_DATA},
+          {prefs::kDeleteCookies, BrowsingDataType::COOKIES},
+          {prefs::kDeleteCookiesBasic, BrowsingDataType::COOKIES},
           {prefs::kDeletePasswords, BrowsingDataType::PASSWORDS},
           {prefs::kDeleteFormData, BrowsingDataType::FORM_DATA},
           {prefs::kDeleteSiteSettings, BrowsingDataType::SITE_SETTINGS},
@@ -393,7 +401,7 @@ std::optional<BrowsingDataType> GetDataTypeFromDeletionPreference(
   if (iter != preference_to_datatype->end()) {
     return iter->second;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool IsHttpsCookieSourceScheme(net::CookieSourceScheme cookie_source_scheme) {

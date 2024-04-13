@@ -29,7 +29,7 @@ class InputDelegate {
   // in the Tensor should be equal to `input.tensor_length()`.
   using ProcessedCallback = base::OnceCallback<void(/*error=*/bool, Tensor)>;
   virtual void Process(const proto::CustomInput& input,
-                       FeatureProcessorState& feature_processor_state,
+                       const FeatureProcessorState& feature_processor_state,
                        ProcessedCallback callback) = 0;
 };
 

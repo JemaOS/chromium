@@ -8,14 +8,18 @@
 #include <memory>
 #include <vector>
 
+#include "base/containers/flat_map.h"
+#include "build/build_config.h"
 #include "components/viz/common/display/overlay_strategy.h"
 #include "components/viz/common/quads/aggregated_render_pass.h"
 #include "components/viz/service/display/output_surface.h"
 #include "components/viz/service/display/overlay_candidate.h"
-#include "components/viz/service/display/overlay_processor_delegated_support.h"
+#include "components/viz/service/display/overlay_candidate_temporal_tracker.h"
 #include "components/viz/service/display/overlay_processor_ozone.h"
 #include "components/viz/service/viz_service_export.h"
+#include "gpu/ipc/common/surface_handle.h"
 
+#include "ui/gfx/native_widget_types.h"
 #include "ui/ozone/public/overlay_candidates_ozone.h"
 
 namespace viz {
@@ -52,18 +56,35 @@ class VIZ_SERVICE_EXPORT OverlayProcessorDelegated
       gfx::Rect* damage_rect,
       std::vector<gfx::Rect>* content_bounds) final;
 
-  // This function takes a pointer to the std::optional instance so the
+  // This function takes a pointer to the absl::optional instance so the
   // instance can be reset. When the overlay strategy covers the entire output
   // surface, we no longer need the output surface as a separate overlay. This
   // is also used by SurfaceControl to adjust rotation.
   // TODO(weiliangc): Internalize the |output_surface_plane| inside the overlay
   // processor.
   void AdjustOutputSurfaceOverlay(
-      std::optional<OutputSurfaceOverlayPlane>* output_surface_plane) override;
-
-  gfx::RectF GetUnassignedDamage() const override;
+      absl::optional<OutputSurfaceOverlayPlane>* output_surface_plane) override;
 
  private:
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused. For some cases in
+  // |OverlayCandidate::CandidateStatus| feed into this enum but neither is a
+  // perfect subset of the other.
+  enum class DelegationStatus {
+    kFullDelegation = 0,
+    kCompositedOther = 1,
+    kCompositedNotAxisAligned = 2,
+    kCompositedCheckOverlayFail = 3,
+    kCompositedNotOverlay = 4,
+    kCompositedTooManyQuads = 5,
+    kCompositedBackdropFilter = 6,
+    kCompositedCopyRequest = 7,
+    kCompositedHas3dTransform = 8,
+    kCompositedHas2dShear = 9,
+    kCompositedHas2dRotation = 10,
+    kMaxValue = kCompositedHas2dRotation
+  };
+
   gfx::RectF GetPrimaryPlaneDisplayRect(
       const OverlayProcessorInterface::OutputSurfaceOverlayPlane*
           primary_plane);
@@ -86,24 +107,9 @@ class VIZ_SERVICE_EXPORT OverlayProcessorDelegated
       OverlayCandidateList* candidates,
       std::vector<gfx::Rect>* content_bounds);
 
-  // Should delegation be blocked because we have recently had copy output
-  // requests on any render passes. The root render pass must not be delegated
-  // if there is a copy request in order to draw correctly. For non-root passes,
-  // this is done to prevent execessive power usage that can occur if copy
-  // output requests happen approximately every other frame, causing a lot of
-  // delegation overhead.
-  bool BlockForCopyRequests(const AggregatedRenderPassList* render_pass_list);
-
   DelegationStatus delegated_status_ = DelegationStatus::kCompositedOther;
   bool supports_clip_rect_ = false;
-  bool supports_out_of_window_clip_rect_ = false;
   bool needs_background_image_ = false;
-  bool supports_affine_transform_ = false;
-  bool has_transformation_fix_ = false;
-  gfx::RectF unassigned_damage_;
-  // Used to count the number of frames we should wait until allowing delegation
-  // again.
-  int copy_request_counter_ = 0;
 };
 }  // namespace viz
 

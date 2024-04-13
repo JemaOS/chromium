@@ -13,6 +13,7 @@
 #include <climits>
 
 #include "base/check_op.h"
+#include "base/containers/stack_container.h"
 #include "base/notreached.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/strcat.h"
@@ -23,7 +24,6 @@
 #include "base/values.h"
 #include "components/feedback/redaction_tool/url_canon_ip.h"
 #include "components/feedback/redaction_tool/url_canon_stdstring.h"
-#include "third_party/abseil-cpp/absl/container/inlined_vector.h"
 
 namespace redaction_internal {
 namespace {
@@ -249,21 +249,21 @@ IPAddress ConvertIPv4ToIPv4MappedIPv6(const IPAddress& address) {
   DCHECK(address.IsIPv4());
   // IPv4-mapped addresses are formed by:
   // <80 bits of zeros>  + <16 bits of ones> + <32-bit IPv4 address>.
-  absl::InlinedVector<uint8_t, 16> bytes;
-  bytes.insert(bytes.end(), std::begin(kIPv4MappedPrefix),
-               std::end(kIPv4MappedPrefix));
-  bytes.insert(bytes.end(), address.bytes().begin(), address.bytes().end());
-  return IPAddress(bytes.data(), bytes.size());
+  base::StackVector<uint8_t, 16> bytes;
+  bytes->insert(bytes->end(), std::begin(kIPv4MappedPrefix),
+                std::end(kIPv4MappedPrefix));
+  bytes->insert(bytes->end(), address.bytes().begin(), address.bytes().end());
+  return IPAddress(bytes->data(), bytes->size());
 }
 
 IPAddress ConvertIPv4MappedIPv6ToIPv4(const IPAddress& address) {
   DCHECK(address.IsIPv4MappedIPv6());
 
-  absl::InlinedVector<uint8_t, 16> bytes;
-  bytes.insert(bytes.end(),
-               address.bytes().begin() + std::size(kIPv4MappedPrefix),
-               address.bytes().end());
-  return IPAddress(bytes.data(), bytes.size());
+  base::StackVector<uint8_t, 16> bytes;
+  bytes->insert(bytes->end(),
+                address.bytes().begin() + std::size(kIPv4MappedPrefix),
+                address.bytes().end());
+  return IPAddress(bytes->data(), bytes->size());
 }
 
 bool IPAddressMatchesPrefix(const IPAddress& ip_address,

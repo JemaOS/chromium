@@ -57,49 +57,35 @@ public class TestBottomSheetContent implements BottomSheetContent {
     private ObservableSupplierImpl<Boolean> mBackPressStateChangedSupplier;
 
     /**
-     * Whether this content can be immediately replaced by higher-priority content even while the
-     * sheet is open.
-     */
-    private boolean mCanSuppressInAnyState;
-
-    /**
      * @param context A context to inflate views with.
      * @param priority The content's priority.
      * @param hasCustomLifecycle Whether the content is browser specific.
      * @param contentView The view filling the sheet.
      */
-    public TestBottomSheetContent(
-            Context context,
-            @ContentPriority int priority,
-            boolean hasCustomLifecycle,
-            View contentView) {
+    public TestBottomSheetContent(Context context, @ContentPriority int priority,
+            boolean hasCustomLifecycle, View contentView) {
         mPeekHeight = BottomSheetContent.HeightMode.DEFAULT;
         mHalfHeight = BottomSheetContent.HeightMode.DEFAULT;
         mFullHeight = BottomSheetContent.HeightMode.DEFAULT;
         mPriority = priority;
         mHasCustomLifecycle = hasCustomLifecycle;
-        mCanSuppressInAnyState = false;
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mToolbarView = new View(context);
-                    ViewGroup.LayoutParams params =
-                            new ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT, TOOLBAR_HEIGHT);
-                    mToolbarView.setLayoutParams(params);
-                    mToolbarView.setBackground(new ColorDrawable(Color.WHITE));
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mToolbarView = new View(context);
+            ViewGroup.LayoutParams params =
+                    new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, TOOLBAR_HEIGHT);
+            mToolbarView.setLayoutParams(params);
+            mToolbarView.setBackground(new ColorDrawable(Color.WHITE));
 
-                    if (contentView == null) {
-                        mContentView = new View(context);
-                        params =
-                                new ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT);
-                        mContentView.setLayoutParams(params);
-                    } else {
-                        mContentView = contentView;
-                    }
-                    mToolbarView.setBackground(new ColorDrawable(Color.WHITE));
-                });
+            if (contentView == null) {
+                mContentView = new View(context);
+                params = new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                mContentView.setLayoutParams(params);
+            } else {
+                mContentView = contentView;
+            }
+            mToolbarView.setBackground(new ColorDrawable(Color.WHITE));
+        });
     }
 
     /**
@@ -112,7 +98,9 @@ public class TestBottomSheetContent implements BottomSheetContent {
         this(context, priority, hasCustomLifecycle, null);
     }
 
-    /** @param context A context to inflate views with. */
+    /**
+     * @param context A context to inflate views with.
+     */
     public TestBottomSheetContent(Context context) {
         this(/*TestBottomSheetContent(*/ context, ContentPriority.LOW, false);
     }
@@ -240,14 +228,5 @@ public class TestBottomSheetContent implements BottomSheetContent {
     @Override
     public int getSheetClosedAccessibilityStringId() {
         return android.R.string.copy;
-    }
-
-    @Override
-    public boolean canSuppressInAnyState() {
-        return mCanSuppressInAnyState;
-    }
-
-    public void setCanSuppressInAnyState(boolean value) {
-        mCanSuppressInAnyState = value;
     }
 }

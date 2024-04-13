@@ -18,6 +18,7 @@
 #include "components/translate/core/common/translate_metrics.h"
 #include "components/translate/core/common/translate_util.h"
 #include "components/translate/core/language_detection/language_detection_model.h"
+#import "components/translate/ios/browser/js_translate_web_frame_manager_factory.h"
 #include "components/translate/ios/browser/language_detection_model_service.h"
 #import "components/translate/ios/browser/translate_controller.h"
 #include "components/ukm/ios/ukm_url_recorder.h"
@@ -33,6 +34,10 @@
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
+
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
 
 namespace translate {
 
@@ -76,7 +81,8 @@ void IOSTranslateDriver::Initialize(
   language::IOSLanguageDetectionTabHelper::FromWebState(web_state_)
       ->AddObserver(this);
 
-  TranslateController::CreateForWebState(web_state_);
+  TranslateController::CreateForWebState(
+      web_state_, JSTranslateWebFrameManagerFactory::GetInstance());
   TranslateController::FromWebState(web_state_)->set_observer(this);
 }
 
@@ -213,7 +219,7 @@ void IOSTranslateDriver::RevertTranslation(int page_seq_no) {
   TranslateController::FromWebState(web_state_)->RevertTranslation();
 }
 
-bool IOSTranslateDriver::IsIncognito() const {
+bool IOSTranslateDriver::IsIncognito() {
   return web_state_->GetBrowserState()->IsOffTheRecord();
 }
 
@@ -221,7 +227,7 @@ const std::string& IOSTranslateDriver::GetContentsMimeType() {
   return web_state_->GetContentsMimeType();
 }
 
-const GURL& IOSTranslateDriver::GetLastCommittedURL() const {
+const GURL& IOSTranslateDriver::GetLastCommittedURL() {
   return web_state_->GetLastCommittedURL();
 }
 
@@ -233,7 +239,7 @@ ukm::SourceId IOSTranslateDriver::GetUkmSourceId() {
   return ukm::GetSourceIdForWebStateDocument(web_state_);
 }
 
-bool IOSTranslateDriver::HasCurrentPage() const {
+bool IOSTranslateDriver::HasCurrentPage() {
   DCHECK(web_state_->IsRealized());
   return (web_state_->GetNavigationManager()->GetVisibleItem() != nullptr);
 }

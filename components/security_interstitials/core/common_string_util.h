@@ -10,9 +10,11 @@
 #include "net/ssl/ssl_info.h"
 #include "url/gurl.h"
 
+namespace security_interstitials {
+
 // This namespace contains shared functionality for manipulating the strings
 // and string resources in security error pages.
-namespace security_interstitials::common_string_util {
+namespace common_string_util {
 
 // Returns the |gurl| as a URL appropriate for display in an error page.
 std::u16string GetFormattedHostName(const GURL& gurl);
@@ -26,6 +28,13 @@ void PopulateSSLDebuggingStrings(const net::SSLInfo ssl_info,
                                  const base::Time time_triggered,
                                  base::Value::Dict& load_time_data);
 
-}  // namespace security_interstitials::common_string_util
+// Fills in the details for a legacy TLS error. Abstracts the strings for
+// access from ios/.
+void PopulateLegacyTLSStrings(base::Value* load_time_data,
+                              const std::u16string& hostname);
+
+}  // common_string_util
+
+}  // namespace security_interstitials
 
 #endif  // COMPONENTS_SECURITY_INTERSTITIALS_CORE_COMMON_STRING_UTIL_H_

@@ -10,6 +10,7 @@ import androidx.annotation.IntDef;
 
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.ViewAndroidDelegate.StylusWritingCursorHandler;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -46,8 +47,9 @@ public interface StylusApiOption {
     default void onWindowFocusChanged(Context context, boolean hasFocus) {}
 
     /**
-     * @return the type of pointer icon that should be shown when hovering over editable elements
-     * with a stylus.
+     * @return Handler that implements showing hover cursor during stylus writing.
      */
-    int getStylusPointerIcon();
+    default StylusWritingCursorHandler getStylusWritingCursorHandler() {
+        return null;
+    }
 }

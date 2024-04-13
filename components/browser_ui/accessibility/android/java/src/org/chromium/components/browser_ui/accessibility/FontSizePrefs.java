@@ -8,16 +8,14 @@ import android.annotation.SuppressLint;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.ContextUtils;
 import org.chromium.base.MathUtils;
 import org.chromium.base.ObserverList;
-import org.chromium.base.ResettersForTesting;
 import org.chromium.base.StrictModeContext;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.content_public.browser.BrowserContextHandle;
 
@@ -44,7 +42,6 @@ public class FontSizePrefs {
     @VisibleForTesting
     public static final String FONT_SIZE_CHANGE_HISTOGRAM =
             "Accessibility.Android.UserFontSizePref.Change";
-
     private static final String FONT_SIZE_STARTUP_HISTOGRAM =
             "Accessibility.Android.UserFontSizePref.OnStartup";
 
@@ -58,10 +55,11 @@ public class FontSizePrefs {
 
     private Float mSystemFontScaleForTests;
 
-    /** Interface for observing changes in font size-related preferences. */
+    /**
+     * Interface for observing changes in font size-related preferences.
+     */
     public interface FontSizePrefsObserver {
         void onFontScaleFactorChanged(float fontScaleFactor, float userFontScaleFactor);
-
         void onForceEnableZoomChanged(boolean enabled);
     }
 
@@ -71,7 +69,9 @@ public class FontSizePrefs {
         mObserverList = new ObserverList<FontSizePrefsObserver>();
     }
 
-    /** Returns the singleton FontSizePrefs, constructing it if it doesn't already exist. */
+    /**
+     * Returns the singleton FontSizePrefs, constructing it if it doesn't already exist.
+     */
     public static FontSizePrefs getInstance(BrowserContextHandle browserContextHandle) {
         ThreadUtils.assertOnUiThread();
         if (sFontSizePrefs == null) {
@@ -90,7 +90,9 @@ public class FontSizePrefs {
         sFontSizePrefs = null;
     }
 
-    /** Adds an observer to listen for changes to font scale-related preferences. */
+    /**
+     * Adds an observer to listen for changes to font scale-related preferences.
+     */
     public void addObserver(FontSizePrefsObserver observer) {
         mObserverList.addObserver(observer);
     }
@@ -115,7 +117,9 @@ public class FontSizePrefs {
         }
     }
 
-    /** Sets the userFontScaleFactor. This should be a value between .5 and 2. */
+    /**
+     * Sets the userFontScaleFactor. This should be a value between .5 and 2.
+     */
     public void setUserFontScaleFactor(float userFontScaleFactor) {
         ContextUtils.getAppSharedPreferences()
                 .edit()
@@ -124,13 +128,14 @@ public class FontSizePrefs {
         setFontScaleFactor(userFontScaleFactor * getSystemFontScale());
     }
 
-    /** Returns the userFontScaleFactor. This is the value that should be displayed to the user. */
+    /**
+     * Returns the userFontScaleFactor. This is the value that should be displayed to the user.
+     */
     public float getUserFontScaleFactor() {
         float userFontScaleFactor;
         try (StrictModeContext ignored = StrictModeContext.allowDiskReads()) {
-            userFontScaleFactor =
-                    ContextUtils.getAppSharedPreferences()
-                            .getFloat(AccessibilityConstants.FONT_USER_FONT_SCALE_FACTOR, 0f);
+            userFontScaleFactor = ContextUtils.getAppSharedPreferences().getFloat(
+                    AccessibilityConstants.FONT_USER_FONT_SCALE_FACTOR, 0f);
         }
         if (userFontScaleFactor == 0f) {
             float fontScaleFactor = getFontScaleFactor();
@@ -159,8 +164,8 @@ public class FontSizePrefs {
      * font scale, and is the amount by which webpage text will be scaled during font boosting.
      */
     public float getFontScaleFactor() {
-        return FontSizePrefsJni.get()
-                .getFontScaleFactor(mFontSizePrefsAndroidPtr, FontSizePrefs.this);
+        return FontSizePrefsJni.get().getFontScaleFactor(
+                mFontSizePrefsAndroidPtr, FontSizePrefs.this);
     }
 
     /**
@@ -171,34 +176,42 @@ public class FontSizePrefs {
         setForceEnableZoom(enabled, true);
     }
 
-    /** Returns whether forceEnableZoom is enabled. */
+    /**
+     * Returns whether forceEnableZoom is enabled.
+     */
     public boolean getForceEnableZoom() {
-        return FontSizePrefsJni.get()
-                .getForceEnableZoom(mFontSizePrefsAndroidPtr, FontSizePrefs.this);
+        return FontSizePrefsJni.get().getForceEnableZoom(
+                mFontSizePrefsAndroidPtr, FontSizePrefs.this);
     }
 
-    /** Record the user font setting. Intended to be logged on activity startup. */
+    /**
+     * Record the user font setting. Intended to be logged on activity startup.
+     */
     public void recordUserFontPrefOnStartup() {
         recordUserFontPrefHistogram(FONT_SIZE_STARTUP_HISTOGRAM);
     }
 
-    /** Record the user font setting when the setting is changed by the user. */
+    /**
+     * Record the user font setting when the setting is changed by the user.
+     */
     public void recordUserFontPrefChange() {
         recordUserFontPrefHistogram(FONT_SIZE_CHANGE_HISTOGRAM);
     }
 
     private void recordUserFontPrefHistogram(String histogramName) {
         // User font size prefs range from 0.5 to 2.0 (50% to 200%) and can be updated in increments
-        // of 5% (see org.chromium.chrome.browser.accessibility.settings.TextScalePreference).
+        // of 5% (see org.chromium.components.browser_ui.accessibility.TextScalePreference).
         int sample = (int) (getUserFontScaleFactor() * 100);
         assert sample >= 50 && sample <= 200 : "Unexpected font size pref";
         RecordHistogram.recordSparseHistogram(histogramName, sample);
     }
 
-    /** Sets a mock value for the system-wide font scale. Use only in tests. */
+    /**
+     * Sets a mock value for the system-wide font scale. Use only in tests.
+     */
+    @VisibleForTesting
     public void setSystemFontScaleForTest(float fontScale) {
         mSystemFontScaleForTests = fontScale;
-        ResettersForTesting.register(() -> mSystemFontScaleForTests = null);
     }
 
     private float getSystemFontScale() {
@@ -211,21 +224,21 @@ public class FontSizePrefs {
                 .edit()
                 .putBoolean(AccessibilityConstants.FONT_USER_SET_FORCE_ENABLE_ZOOM, fromUser)
                 .apply();
-        FontSizePrefsJni.get()
-                .setForceEnableZoom(mFontSizePrefsAndroidPtr, FontSizePrefs.this, enabled);
+        FontSizePrefsJni.get().setForceEnableZoom(
+                mFontSizePrefsAndroidPtr, FontSizePrefs.this, enabled);
     }
 
     private boolean getUserSetForceEnableZoom() {
         try (StrictModeContext ignored = StrictModeContext.allowDiskReads()) {
-            return ContextUtils.getAppSharedPreferences()
-                    .getBoolean(AccessibilityConstants.FONT_USER_SET_FORCE_ENABLE_ZOOM, false);
+            return ContextUtils.getAppSharedPreferences().getBoolean(
+                    AccessibilityConstants.FONT_USER_SET_FORCE_ENABLE_ZOOM, false);
         }
     }
 
     private void setFontScaleFactor(float fontScaleFactor) {
         float previousFontScaleFactor = getFontScaleFactor();
-        FontSizePrefsJni.get()
-                .setFontScaleFactor(mFontSizePrefsAndroidPtr, FontSizePrefs.this, fontScaleFactor);
+        FontSizePrefsJni.get().setFontScaleFactor(
+                mFontSizePrefsAndroidPtr, FontSizePrefs.this, fontScaleFactor);
 
         if (previousFontScaleFactor < FORCE_ENABLE_ZOOM_THRESHOLD_MULTIPLIER
                 && fontScaleFactor >= FORCE_ENABLE_ZOOM_THRESHOLD_MULTIPLIER
@@ -260,16 +273,11 @@ public class FontSizePrefs {
     @NativeMethods
     interface Natives {
         long init(FontSizePrefs caller, BrowserContextHandle browserContextHandle);
-
         void destroy(long nativeFontSizePrefsAndroid);
-
         void setFontScaleFactor(
                 long nativeFontSizePrefsAndroid, FontSizePrefs caller, float fontScaleFactor);
-
         float getFontScaleFactor(long nativeFontSizePrefsAndroid, FontSizePrefs caller);
-
         boolean getForceEnableZoom(long nativeFontSizePrefsAndroid, FontSizePrefs caller);
-
         void setForceEnableZoom(
                 long nativeFontSizePrefsAndroid, FontSizePrefs caller, boolean enabled);
     }

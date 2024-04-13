@@ -4,6 +4,7 @@
 
 #include "components/reporting/util/status.h"
 
+#include <stdio.h>
 #include <utility>
 
 #include "base/logging.h"
@@ -33,6 +34,13 @@ TEST(Status, OkConstructorIgnoresMessage) {
   Status status(error::OK, "msg");
   EXPECT_TRUE(status.ok());
   EXPECT_EQ("OK", status.ToString());
+}
+
+TEST(Status, CheckOK) {
+  Status status;
+  CHECK_OK(status);
+  CHECK_OK(status) << "Failed";
+  DCHECK_OK(status) << "Failed";
 }
 
 TEST(Status, ErrorMessage) {

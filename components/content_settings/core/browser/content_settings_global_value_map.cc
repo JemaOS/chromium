@@ -17,19 +17,18 @@ namespace {
 
 class RuleIteratorSimple : public RuleIterator {
  public:
-  explicit RuleIteratorSimple(ContentSetting setting) : setting_(setting) {}
+  RuleIteratorSimple(ContentSetting setting) : setting_(setting) {}
 
   RuleIteratorSimple(const RuleIteratorSimple&) = delete;
   RuleIteratorSimple& operator=(const RuleIteratorSimple&) = delete;
 
   bool HasNext() const override { return !is_done_; }
 
-  std::unique_ptr<Rule> Next() override {
+  Rule Next() override {
     DCHECK(HasNext());
     is_done_ = true;
-    return std::make_unique<Rule>(ContentSettingsPattern::Wildcard(),
-                                  ContentSettingsPattern::Wildcard(),
-                                  base::Value(setting_), RuleMetaData{});
+    return Rule(ContentSettingsPattern::Wildcard(),
+                ContentSettingsPattern::Wildcard(), base::Value(setting_), {});
   }
 
  private:

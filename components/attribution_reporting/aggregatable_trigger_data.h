@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_ATTRIBUTION_REPORTING_AGGREGATABLE_TRIGGER_DATA_H_
 #define COMPONENTS_ATTRIBUTION_REPORTING_AGGREGATABLE_TRIGGER_DATA_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +14,7 @@
 #include "components/attribution_reporting/filters.h"
 #include "components/attribution_reporting/trigger_registration_error.mojom-forward.h"
 #include "third_party/abseil-cpp/absl/numeric/int128.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace attribution_reporting {
 
@@ -22,9 +22,9 @@ class COMPONENT_EXPORT(ATTRIBUTION_REPORTING) AggregatableTriggerData {
  public:
   using Keys = std::vector<std::string>;
 
-  static std::optional<AggregatableTriggerData> Create(absl::uint128 key_piece,
-                                                       Keys source_keys,
-                                                       FilterPair);
+  static absl::optional<AggregatableTriggerData> Create(absl::uint128 key_piece,
+                                                        Keys source_keys,
+                                                        FilterPair);
 
   static base::expected<AggregatableTriggerData,
                         mojom::TriggerRegistrationError>
@@ -47,9 +47,6 @@ class COMPONENT_EXPORT(ATTRIBUTION_REPORTING) AggregatableTriggerData {
   const FilterPair& filters() const { return filters_; }
 
   base::Value::Dict ToJson() const;
-
-  friend bool operator==(const AggregatableTriggerData&,
-                         const AggregatableTriggerData&) = default;
 
  private:
   AggregatableTriggerData(absl::uint128 key_piece,

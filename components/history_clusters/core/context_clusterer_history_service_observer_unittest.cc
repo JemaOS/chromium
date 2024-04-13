@@ -10,7 +10,7 @@
 #include "base/test/task_environment.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history_clusters/core/config.h"
-#include "components/optimization_guide/core/test_optimization_guide_decider.h"
+#include "components/optimization_guide/core/new_optimization_guide_decider.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/site_engagement/core/site_engagement_score_provider.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -36,7 +36,7 @@ history::URLRows CreateURLRows(const std::vector<GURL>& urls) {
 }
 
 class TestOptimizationGuideDecider
-    : public optimization_guide::TestOptimizationGuideDecider {
+    : public optimization_guide::NewOptimizationGuideDecider {
  public:
   TestOptimizationGuideDecider() = default;
   ~TestOptimizationGuideDecider() override = default;
@@ -49,6 +49,13 @@ class TestOptimizationGuideDecider
               optimization_types[0]);
   }
 
+  void CanApplyOptimization(
+      const GURL& url,
+      optimization_guide::proto::OptimizationType optimization_type,
+      optimization_guide::OptimizationGuideDecisionCallback callback) override {
+    NOTREACHED();
+  }
+
   optimization_guide::OptimizationGuideDecision CanApplyOptimization(
       const GURL& url,
       optimization_guide::proto::OptimizationType optimization_type,
@@ -59,6 +66,14 @@ class TestOptimizationGuideDecider
                ? optimization_guide::OptimizationGuideDecision::kFalse
                : optimization_guide::OptimizationGuideDecision::kTrue;
   }
+
+  void CanApplyOptimizationOnDemand(
+      const std::vector<GURL>& urls,
+      const base::flat_set<optimization_guide::proto::OptimizationType>&
+          optimization_types,
+      optimization_guide::proto::RequestContext request_context,
+      optimization_guide::OnDemandOptimizationGuideDecisionRepeatingCallback
+          callback) override {}
 };
 
 const TemplateURLService::Initializer kTemplateURLData[] = {
@@ -188,6 +203,7 @@ class ContextClustererHistoryServiceObserverTest : public testing::Test {
     // TODO(b/276488340): Update this test when non context clusterer code gets
     //   cleaned up.
     Config config;
+    config.persist_clusters_in_history_db = false;
     config.use_navigation_context_clusters = false;
     SetConfigForTesting(config);
   }
@@ -202,6 +218,7 @@ class ContextClustererHistoryServiceObserverTest : public testing::Test {
   // code path.
   void SetPersistenceExpectedConfig() {
     Config config;
+    config.persist_clusters_in_history_db = true;
     config.use_navigation_context_clusters = true;
     SetConfigForTesting(config);
   }
@@ -235,7 +252,7 @@ class ContextClustererHistoryServiceObserverTest : public testing::Test {
         urls.empty() ? history::DeletionInfo::ForAllHistory()
                      : history::DeletionInfo::ForUrls(CreateURLRows(urls),
                                                       /*favicon_urls=*/{});
-    observer_->OnHistoryDeletions(history_service_.get(), deletion_info);
+    observer_->OnURLsDeleted(history_service_.get(), deletion_info);
   }
 
   // Move clock forward by `time_delta`.

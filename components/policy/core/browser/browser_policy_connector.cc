@@ -9,14 +9,12 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/check_is_test.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
-#include "base/strings/strcat.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/trace_event.h"
 #include "components/policy/core/common/cloud/cloud_policy_refresh_scheduler.h"
@@ -28,6 +26,8 @@
 #include "components/policy/policy_constants.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/signin/public/identity_manager/account_managed_status_finder.h"
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/switches/account/account_constants.h"
 
 namespace policy {
 
@@ -43,10 +43,6 @@ const char kDefaultEncryptedReportingServerUrl[] =
 // The URL for the realtime reporting server.
 const char kDefaultRealtimeReportingServerUrl[] =
     "https://chromereporting-pa.googleapis.com/v1/events";
-
-// The URL suffix for the File Storage Server endpoint in DMServer. File Storage
-// Server receives the requests on this URL.
-const char kFileStorageServerUploadUrlSuffixForDMServer[] = "/upload";
 
 }  // namespace
 
@@ -73,8 +69,21 @@ void BrowserPolicyConnector::InitInternal(
 void BrowserPolicyConnector::Shutdown() {
   BrowserPolicyConnectorBase::Shutdown();
   device_management_service_.reset();
-  policy_statistics_collector_.reset();
 }
+
+// ---***JEMAOS BEGIN***---
+void BrowserPolicyConnector::ResetDeviceManagementServiceConfiguration(std::unique_ptr<DeviceManagementService::Configuration> configuration) {
+  if (!device_management_service_) return;
+
+  const DeviceManagementService::Configuration* current_config = device_management_service_->configuration();
+  if (configuration->GetDMServerUrl() == current_config->GetDMServerUrl()) {
+    return;
+  }
+
+  VLOG(2) << "replace device management service configuration";
+  device_management_service_->ResetConfiguration(std::move(configuration));
+}
+// ---***JEMAOS END***---
 
 void BrowserPolicyConnector::ScheduleServiceInitialization(
     int64_t delay_milliseconds) {
@@ -98,32 +107,35 @@ bool BrowserPolicyConnector::ProviderHasPolicies(
 }
 
 std::string BrowserPolicyConnector::GetDeviceManagementUrl() const {
+  if (jemaos::switches::IsPolicyManagedByJema()) {
+    return GetUrlOverride(jemaos::switches::kJemaOSDeviceManagementUrl,
+                          jemaos::constants::kDefaultJemaOSDeviceManagementServerUrl);
+  }
   return GetUrlOverride(switches::kDeviceManagementUrl,
                         kDefaultDeviceManagementServerUrl);
 }
 
 std::string BrowserPolicyConnector::GetRealtimeReportingUrl() const {
+  if (jemaos::switches::IsPolicyManagedByJema()) {
+    return GetUrlOverride(jemaos::switches::kJemaOSRealtimeReportingUrl,
+                          jemaos::constants::kDefaultJemaOSRealtimeReportingServerUrl);
+  }
   return GetUrlOverride(switches::kRealtimeReportingUrl,
                         kDefaultRealtimeReportingServerUrl);
 }
 
 std::string BrowserPolicyConnector::GetEncryptedReportingUrl() const {
+  if (jemaos::switches::IsPolicyManagedByJema()) {
+    return GetUrlOverride(jemaos::switches::kJemaOSEncryptedReportingUrl,
+                          jemaos::constants::kDefaultJemaOSEncryptedReportingServerUrl);
+  }
   return GetUrlOverride(switches::kEncryptedReportingUrl,
                         kDefaultEncryptedReportingServerUrl);
 }
 
-std::string BrowserPolicyConnector::GetFileStorageServerUploadUrl() const {
-  return GetUrlOverride(
-      switches::kFileStorageServerUploadUrl,
-      // The default URL for File Storage Server upload endpoint is
-      // extension of the DMServer URL.
-      base::StrCat({GetDeviceManagementUrl(),
-                    kFileStorageServerUploadUrlSuffixForDMServer}));
-}
-
 std::string BrowserPolicyConnector::GetUrlOverride(
     const char* flag,
-    std::string_view default_value) const {
+    const char* default_value) const {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(flag)) {
     if (IsCommandLineSwitchSupported())
@@ -131,7 +143,7 @@ std::string BrowserPolicyConnector::GetUrlOverride(
     else
       LOG(WARNING) << flag << " not supported on this channel";
   }
-  return std::string(default_value);
+  return default_value;
 }
 
 // static

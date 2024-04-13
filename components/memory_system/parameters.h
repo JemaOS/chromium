@@ -8,7 +8,7 @@
 #include <string>
 
 #include "base/strings/string_piece.h"
-#include "components/metrics/call_stacks/call_stack_profile_params.h"
+#include "components/metrics/call_stack_profile_params.h"
 #include "components/version_info/channel.h"
 
 namespace memory_system {
@@ -69,12 +69,10 @@ struct DispatcherParameters {
 
   explicit DispatcherParameters(
       PoissonAllocationSamplerInclusion poisson_allocation_sampler_inclusion,
-      AllocationTraceRecorderInclusion allocation_trace_recorder_inclusion,
-      base::StringPiece process_type);
+      AllocationTraceRecorderInclusion allocation_trace_recorder_inclusion);
 
   PoissonAllocationSamplerInclusion poisson_allocation_sampler_inclusion;
   AllocationTraceRecorderInclusion allocation_trace_recorder_inclusion;
-  std::string process_type;
 };
 
 }  // namespace memory_system

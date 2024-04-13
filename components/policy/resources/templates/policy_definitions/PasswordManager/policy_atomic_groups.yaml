@@ -3,4 +3,3 @@ PasswordManager:
   policies:
   - PasswordManagerEnabled
   - PasswordManagerAllowShowPasswords
-  - PasswordSharingEnabled

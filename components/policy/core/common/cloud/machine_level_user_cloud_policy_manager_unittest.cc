@@ -23,7 +23,7 @@ class MockMachineLevelUserCloudPolicyStore
  public:
   MockMachineLevelUserCloudPolicyStore()
       : MachineLevelUserCloudPolicyStore(
-            DMToken::CreateEmptyToken(),
+            DMToken::CreateEmptyTokenForTesting(),
             std::string(),
             base::FilePath(),
             base::FilePath(),
@@ -53,8 +53,7 @@ class MachineLevelUserCloudPolicyManagerTest : public ::testing::Test {
   }
 
   SchemaRegistry schema_registry_;
-  raw_ptr<MockMachineLevelUserCloudPolicyStore, DanglingUntriaged> store_ =
-      nullptr;
+  raw_ptr<MockMachineLevelUserCloudPolicyStore> store_ = nullptr;
   std::unique_ptr<MachineLevelUserCloudPolicyManager> manager_;
 };
 

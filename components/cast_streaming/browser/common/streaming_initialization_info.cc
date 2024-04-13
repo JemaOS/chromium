@@ -12,8 +12,8 @@ StreamingInitializationInfo::StreamingInitializationInfo() = default;
 
 StreamingInitializationInfo::StreamingInitializationInfo(
     const openscreen::cast::ReceiverSession* receiver_session,
-    std::optional<AudioStreamInfo> audio_info,
-    std::optional<VideoStreamInfo> video_info,
+    absl::optional<AudioStreamInfo> audio_info,
+    absl::optional<VideoStreamInfo> video_info,
     bool is_remoting_stream)
     : session(receiver_session),
       audio_stream_info(std::move(audio_info)),

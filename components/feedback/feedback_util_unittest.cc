@@ -161,9 +161,8 @@ TEST_F(FeedbackUtilTest, RemoveUrlsFromAutofillData) {
   base::Value::List* form_structures = autofill_data.FindList("formStructures");
   ASSERT_TRUE(form_structures);
   for (base::Value& item : *form_structures) {
-    auto& dict = item.GetDict();
-    dict.Remove("sourceUrl");
-    dict.Remove("mainFrameUrl");
+    item.RemoveKey("sourceUrl");
+    item.RemoveKey("mainFrameUrl");
   }
 
   std::string expected_autofill_data_str;

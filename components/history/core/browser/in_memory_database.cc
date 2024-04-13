@@ -9,11 +9,14 @@
 #include "base/files/file_path.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
+#include "base/strings/utf_string_conversions.h"
+#include "base/time/time.h"
+#include "build/build_config.h"
 
 namespace history {
 
 InMemoryDatabase::InMemoryDatabase()
-    : db_({.page_size = 4096, .cache_size = 500}) {}
+    : db_({.exclusive_locking = true, .page_size = 4096, .cache_size = 500}) {}
 
 InMemoryDatabase::~InMemoryDatabase() = default;
 
@@ -57,10 +60,16 @@ bool InMemoryDatabase::InitFromDisk(const base::FilePath& history_name) {
   if (!InitDB())
     return false;
 
-  // Attach to the history database on disk.
-  if (!db_.AttachDatabase(history_name, "history")) {
+  // Attach to the history database on disk.  (We can't ATTACH in the middle of
+  // a transaction.)
+  sql::Statement attach(GetDB().GetUniqueStatement("ATTACH ? AS history"));
+#if BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
+  attach.BindString(0, history_name.value());
+#else
+  attach.BindString(0, base::WideToUTF8(history_name.value()));
+#endif
+  if (!attach.Run())
     return false;
-  }
 
   // Copy URL data to memory.
 
@@ -104,7 +113,7 @@ bool InMemoryDatabase::InitFromDisk(const base::FilePath& history_name) {
   }
 
   // Detach from the history database on disk.
-  if (!db_.DetachDatabase("history")) {
+  if (!db_.Execute("DETACH history")) {
     NOTREACHED() << "Unable to detach from history database.";
     return false;
   }
@@ -112,9 +121,6 @@ bool InMemoryDatabase::InitFromDisk(const base::FilePath& history_name) {
   // Index the table, this is faster than creating the index first and then
   // inserting into it.
   CreateMainURLIndex();
-
-  // After this point, the database may be accessed from another sequence.
-  db_.DetachFromSequence();
 
   return true;
 }

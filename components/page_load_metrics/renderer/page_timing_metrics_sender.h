@@ -9,8 +9,6 @@
 
 #include "base/containers/flat_set.h"
 #include "base/containers/small_map.h"
-#include "base/memory/raw_ptr.h"
-#include "components/page_load_metrics/common/page_load_metrics.mojom-forward.h"
 #include "components/page_load_metrics/common/page_load_timing.h"
 #include "components/page_load_metrics/renderer/page_resource_data_use.h"
 #include "components/page_load_metrics/renderer/page_timing_metadata_recorder.h"
@@ -27,17 +25,9 @@ namespace base {
 class OneShotTimer;
 }  // namespace base
 
-namespace blink {
-struct JavaScriptFrameworkDetectionResult;
-}  // namespace blink
-
 namespace network {
 struct URLLoaderCompletionStatus;
 }  // namespace network
-
-namespace blink {
-struct SoftNavigationMetrics;
-}  // namespace blink
 
 namespace page_load_metrics {
 
@@ -53,8 +43,7 @@ class PageTimingMetricsSender {
                           mojom::PageLoadTimingPtr initial_timing,
                           const PageTimingMetadataRecorder::MonotonicTiming&
                               initial_monotonic_timing,
-                          std::unique_ptr<PageResourceDataUse> initial_request,
-                          bool is_main_frame);
+                          std::unique_ptr<PageResourceDataUse> initial_request);
 
   PageTimingMetricsSender(const PageTimingMetricsSender&) = delete;
   PageTimingMetricsSender& operator=(const PageTimingMetricsSender&) = delete;
@@ -62,19 +51,16 @@ class PageTimingMetricsSender {
   ~PageTimingMetricsSender();
 
   void DidObserveLoadingBehavior(blink::LoadingBehaviorFlag behavior);
-  void DidObserveJavaScriptFrameworks(
-      const blink::JavaScriptFrameworkDetectionResult&);
   void DidObserveSubresourceLoad(
       const blink::SubresourceLoadMetrics& subresource_load_metrics);
   void DidObserveNewFeatureUsage(const blink::UseCounterFeature& feature);
-  void DidObserveSoftNavigation(blink::SoftNavigationMetrics metrics);
+  void DidObserveSoftNavigation(uint32_t count);
   void DidObserveLayoutShift(double score, bool after_input_or_scroll);
 
   void DidStartResponse(const url::SchemeHostPort& final_response_url,
                         int resource_id,
                         const network::mojom::URLResponseHead& response_head,
-                        network::mojom::RequestDestination request_destination,
-                        bool is_ad_resource);
+                        network::mojom::RequestDestination request_destination);
   void DidReceiveTransferSizeUpdate(int resource_id, int received_data_length);
   void DidCompleteResponse(int resource_id,
                            const network::URLLoaderCompletionStatus& status);
@@ -90,12 +76,9 @@ class PageTimingMetricsSender {
   void OnMainFrameImageAdRectangleChanged(int element_id,
                                           const gfx::Rect& image_ad_rect);
 
-  void DidObserveUserInteraction(base::TimeTicks max_event_start,
-                                 base::TimeTicks max_event_queued_main_thread,
-                                 base::TimeTicks max_event_commit_finish,
-                                 base::TimeTicks max_event_end,
-                                 blink::UserInteractionType interaction_type,
-                                 uint64_t interaction_offset);
+  void DidObserveInputDelay(base::TimeDelta input_delay);
+  void DidObserveUserInteraction(base::TimeDelta max_event_duration,
+                                 blink::UserInteractionType interaction_type);
   // Updates the timing information. Buffers |timing| to be sent over mojo
   // sometime 'soon'.
   void Update(
@@ -108,15 +91,12 @@ class PageTimingMetricsSender {
   // Updates the PageLoadMetrics::CpuTiming data and starts the send timer.
   void UpdateCpuTiming(base::TimeDelta task_time);
 
-  void UpdateResourceMetadata(int resource_id, bool is_main_frame_resource);
+  void UpdateResourceMetadata(int resource_id,
+                              bool is_ad_resource,
+                              bool is_main_frame_resource,
+                              bool completed_before_fcp);
   void SetUpSmoothnessReporting(base::ReadOnlySharedMemoryRegion shared_memory);
   void InitiateUserInteractionTiming();
-  mojom::SoftNavigationMetricsPtr GetSoftNavigationMetrics() {
-    return soft_navigation_metrics_->Clone();
-  }
-
-  void UpdateSoftNavigationMetrics(
-      mojom::SoftNavigationMetricsPtr soft_navigation_metrics);
 
  protected:
   base::OneShotTimer* timer() const { return timer_.get(); }
@@ -124,18 +104,14 @@ class PageTimingMetricsSender {
  private:
   void EnsureSendTimer(bool urgent = false);
   void SendNow();
-
-  // Inserts a `PageResourceDataUse` with `resource_id` in
-  // `page_resource_data_use_` if none exists. Returns a pointer to the inserted
-  // entry or to the existing one.
-  PageResourceDataUse* FindOrInsertPageResourceDataUse(int resource_id);
+  void InsertPageResourceDataUse(std::unique_ptr<PageResourceDataUse> data);
 
   std::unique_ptr<PageTimingSender> sender_;
   std::unique_ptr<base::OneShotTimer> timer_;
   mojom::PageLoadTimingPtr last_timing_;
   mojom::CpuTimingPtr last_cpu_timing_;
   mojom::InputTimingPtr input_timing_delta_;
-  std::optional<blink::SubresourceLoadMetrics> subresource_load_metrics_;
+  absl::optional<blink::SubresourceLoadMetrics> subresource_load_metrics_;
 
   // The the sender keep track of metadata as it comes in, because the sender is
   // scoped to a single committed load.
@@ -147,7 +123,7 @@ class PageTimingMetricsSender {
 
   blink::UseCounterFeatureTracker feature_tracker_;
 
-  mojom::SoftNavigationMetricsPtr soft_navigation_metrics_;
+  uint32_t soft_navigation_count_ = 0;
 
   bool have_sent_ipc_ = false;
 
@@ -158,8 +134,7 @@ class PageTimingMetricsSender {
 
   // Set of all resources that have completed or received a transfer
   // size update since the last timimg update.
-  base::flat_set<raw_ptr<PageResourceDataUse, CtnExperimental>>
-      modified_resources_;
+  base::flat_set<PageResourceDataUse*> modified_resources_;
 
   // Field trial for alternating page timing metrics sender buffer timer delay.
   // https://crbug.com/847269.

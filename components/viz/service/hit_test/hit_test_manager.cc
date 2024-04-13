@@ -35,6 +35,11 @@ HitTestManager::HitTestManager(SurfaceManager* surface_manager)
 
 HitTestManager::~HitTestManager() = default;
 
+bool HitTestManager::OnSurfaceDamaged(const SurfaceId& surface_id,
+                                      const BeginFrameAck& ack) {
+  return false;
+}
+
 void HitTestManager::OnSurfaceDestroyed(const SurfaceId& surface_id) {
   hit_test_region_lists_.erase(surface_id);
 }
@@ -62,7 +67,7 @@ void HitTestManager::OnSurfaceActivated(const SurfaceId& surface_id) {
 void HitTestManager::SubmitHitTestRegionList(
     const SurfaceId& surface_id,
     const uint64_t frame_index,
-    std::optional<HitTestRegionList> hit_test_region_list) {
+    absl::optional<HitTestRegionList> hit_test_region_list) {
   if (!hit_test_region_list) {
     auto& frame_index_map = hit_test_region_lists_[surface_id];
     if (!frame_index_map.empty()) {

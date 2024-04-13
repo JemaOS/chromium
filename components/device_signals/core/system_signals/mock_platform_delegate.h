@@ -27,11 +27,11 @@ class MockPlatformDelegate : public PlatformDelegate {
               AreExecutablesRunning,
               (const FilePathSet&),
               (override));
-  MOCK_METHOD(std::optional<ProductMetadata>,
+  MOCK_METHOD(absl::optional<ProductMetadata>,
               GetProductMetadata,
               (const base::FilePath&),
               (override));
-  MOCK_METHOD(std::optional<SigningCertificatesPublicKeys>,
+  MOCK_METHOD(absl::optional<SigningCertificatesPublicKeys>,
               GetSigningCertificatesPublicKeys,
               (const base::FilePath&),
               (override));

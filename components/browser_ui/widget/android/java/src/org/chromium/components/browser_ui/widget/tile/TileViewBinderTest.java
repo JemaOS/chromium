@@ -31,7 +31,9 @@ import org.chromium.components.browser_ui.widget.R;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 
-/** Tests for {@link TileViewBinder}. */
+/**
+ * Tests for {@link TileViewBinder}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 @Batch(Batch.PER_CLASS)
@@ -67,9 +69,8 @@ public class TileViewBinderTest {
 
         mLargeIconEdgeSize = mResources.getDimensionPixelSize(R.dimen.tile_view_icon_size);
         mSmallIconEdgeSize = mResources.getDimensionPixelSize(R.dimen.tile_view_icon_size_modern);
-        mLargeIconTopMarginSize =
-                mResources.getDimensionPixelSize(
-                        R.dimen.tile_view_icon_background_margin_top_modern);
+        mLargeIconTopMarginSize = mResources.getDimensionPixelSize(
+                R.dimen.tile_view_icon_background_margin_top_modern);
         mSmallIconTopMarginSize =
                 mResources.getDimensionPixelSize(R.dimen.tile_view_icon_margin_top_modern);
 

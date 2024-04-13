@@ -20,7 +20,7 @@ class PrintDialogLinuxInterface;
 // PrintingContext with optional native UI for print dialog and pdf_paper_size.
 class COMPONENT_EXPORT(PRINTING) PrintingContextLinux : public PrintingContext {
  public:
-  PrintingContextLinux(Delegate* delegate, ProcessBehavior process_behavior);
+  explicit PrintingContextLinux(Delegate* delegate);
   PrintingContextLinux(const PrintingContextLinux&) = delete;
   PrintingContextLinux& operator=(const PrintingContextLinux&) = delete;
   ~PrintingContextLinux() override;

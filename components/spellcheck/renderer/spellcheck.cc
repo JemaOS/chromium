@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <string_view>
 #include <utility>
 
 #include "base/check_op.h"
@@ -44,6 +43,8 @@ using blink::WebTextCheckingResult;
 using blink::WebTextDecorationType;
 
 namespace {
+const int kNoOffset = 0;
+const int kNoTag = 0;
 
 class UpdateSpellcheckEnabled : public content::RenderFrameVisitor {
  public:
@@ -123,12 +124,10 @@ class SpellCheck::SpellcheckRequest {
  public:
   SpellcheckRequest(
       const std::u16string& text,
-      std::unique_ptr<blink::WebTextCheckingCompletion> completion,
-      base::WeakPtr<SpellCheckProvider> provider)
+      std::unique_ptr<blink::WebTextCheckingCompletion> completion)
       : text_(text),
         completion_(std::move(completion)),
-        start_ticks_(base::TimeTicks::Now()),
-        provider_(provider) {
+        start_ticks_(base::TimeTicks::Now()) {
     DCHECK(completion_);
   }
 
@@ -141,8 +140,6 @@ class SpellCheck::SpellcheckRequest {
   blink::WebTextCheckingCompletion* completion() { return completion_.get(); }
   base::TimeTicks start_ticks() { return start_ticks_; }
 
-  SpellCheckProvider* provider() { return provider_.get(); }
-
  private:
   std::u16string text_;  // Text to be checked in this task.
 
@@ -151,8 +148,6 @@ class SpellCheck::SpellcheckRequest {
 
   // The time ticks at which this request was created
   base::TimeTicks start_ticks_;
-
-  base::WeakPtr<SpellCheckProvider> provider_;
 };
 
 
@@ -223,30 +218,36 @@ void SpellCheck::AddSpellcheckLanguage(base::File file,
   languages_.back()->Init(std::move(file), language);
 }
 
-bool SpellCheck::SpellCheckWord(std::u16string_view text,
-                                spellcheck::mojom::SpellCheckHost& host,
+bool SpellCheck::SpellCheckWord(const char16_t* text_begin,
+                                size_t position_in_text,
+                                size_t text_length,
+                                int tag,
                                 size_t* misspelling_start,
                                 size_t* misspelling_len,
                                 std::nullptr_t null_suggestions_ptr) {
   return SpellCheckWord(
-      text, host, misspelling_start, misspelling_len,
+      text_begin, position_in_text, text_length, tag, misspelling_start,
+      misspelling_len,
       static_cast<spellcheck::PerLanguageSuggestions*>(nullptr));
 }
 
 bool SpellCheck::SpellCheckWord(
-    std::u16string_view text,
-    spellcheck::mojom::SpellCheckHost& host,
+    const char16_t* text_begin,
+    size_t position_in_text,
+    size_t text_length,
+    int tag,
     size_t* misspelling_start,
     size_t* misspelling_len,
     std::vector<std::u16string>* optional_suggestions) {
   if (!optional_suggestions) {
-    return SpellCheckWord(text, host, misspelling_start, misspelling_len,
-                          nullptr);
+    return SpellCheckWord(text_begin, position_in_text, text_length, tag,
+                          misspelling_start, misspelling_len, nullptr);
   }
 
   bool result;
   spellcheck::PerLanguageSuggestions per_language_suggestions;
-  result = SpellCheckWord(text, host, misspelling_start, misspelling_len,
+  result = SpellCheckWord(text_begin, position_in_text, text_length, tag,
+                          misspelling_start, misspelling_len,
                           &per_language_suggestions);
   spellcheck::FillSuggestions(per_language_suggestions, optional_suggestions);
 
@@ -254,11 +255,14 @@ bool SpellCheck::SpellCheckWord(
 }
 
 bool SpellCheck::SpellCheckWord(
-    std::u16string_view text,
-    spellcheck::mojom::SpellCheckHost& host,
+    const char16_t* text_begin,
+    size_t position_in_text,
+    size_t text_length,
+    int tag,
     size_t* misspelling_start,
     size_t* misspelling_len,
     spellcheck::PerLanguageSuggestions* optional_per_language_suggestions) {
+  DCHECK(text_length >= position_in_text);
   DCHECK(misspelling_start && misspelling_len) << "Out vars must be given.";
 
   // Do nothing if we need to delay initialization. (Rather than blocking,
@@ -286,9 +290,6 @@ bool SpellCheck::SpellCheckWord(
   // calls.
   std::vector<std::u16string> language_suggestions;
 
-  const size_t text_length = text.size();
-  size_t position_in_text = 0;
-
   // This loop only advances if all languages agree that a sequence of text is
   // skippable.
   for (; position_in_text <= text_length;
@@ -312,23 +313,13 @@ bool SpellCheck::SpellCheckWord(
       }
 #endif  // BUILDFLAG(IS_WIN) && BUILDFLAG(USE_BROWSER_SPELLCHECKER)
 
-      size_t possible_misspelling_start_relative_to_substring = 0;
       language_suggestions.clear();
       SpellcheckLanguage::SpellcheckWordResult result =
           (*language)->SpellCheckWord(
-              text.substr(position_in_text), host,
-              &possible_misspelling_start_relative_to_substring,
-              &possible_misspelling_len,
+              text_begin, position_in_text, text_length, tag,
+              &possible_misspelling_start, &possible_misspelling_len,
               optional_per_language_suggestions ? &language_suggestions
                                                 : nullptr);
-      // SpellCheckWord informs us of a misspelling index relative to the
-      // substring of text which was passed in, so add `position_in_text` to
-      // this value to get the offset relative to `text`.
-      possible_misspelling_start =
-          possible_misspelling_len > 0
-              ? position_in_text +
-                    possible_misspelling_start_relative_to_substring
-              : 0;
 
       switch (result) {
         case SpellcheckLanguage::SpellcheckWordResult::IS_CORRECT:
@@ -398,11 +389,10 @@ bool SpellCheck::SpellCheckWord(
 #if BUILDFLAG(USE_RENDERER_SPELLCHECKER)
 bool SpellCheck::SpellCheckParagraph(
     const std::u16string& text,
-    spellcheck::mojom::SpellCheckHost& host,
     WebVector<WebTextCheckingResult>* results) {
   DCHECK(results);
   std::vector<WebTextCheckingResult> textcheck_results;
-  const size_t text_length = text.length();
+  size_t length = text.length();
   size_t position_in_text = 0;
 
   // Spellcheck::SpellCheckWord() automatically breaks text into words and
@@ -412,19 +402,9 @@ bool SpellCheck::SpellCheckParagraph(
   // function until it returns true to check the whole text.
   size_t misspelling_start = 0;
   size_t misspelling_length = 0;
-  while (position_in_text <= text_length) {
-    size_t misspelling_start_relative_to_substring = 0;
-    bool spelled_correctly = SpellCheckWord(
-        text.substr(position_in_text), host,
-        &misspelling_start_relative_to_substring, &misspelling_length, nullptr);
-    // SpellCheckWord informs us of a misspelling index relative to the
-    // substring of text which was passed in, so add `position_in_text` to this
-    // value to get the offset relative to `text`.
-    misspelling_start =
-        misspelling_length > 0
-            ? position_in_text + misspelling_start_relative_to_substring
-            : 0;
-    if (spelled_correctly) {
+  while (position_in_text <= length) {
+    if (SpellCheckWord(text.c_str(), position_in_text, length, kNoTag,
+                       &misspelling_start, &misspelling_length, nullptr)) {
       results->Assign(textcheck_results);
       return true;
     }
@@ -444,14 +424,13 @@ bool SpellCheck::SpellCheckParagraph(
 
 void SpellCheck::RequestTextChecking(
     const std::u16string& text,
-    std::unique_ptr<blink::WebTextCheckingCompletion> completion,
-    base::WeakPtr<SpellCheckProvider> provider) {
+    std::unique_ptr<blink::WebTextCheckingCompletion> completion) {
   // Clean up the previous request before starting a new request.
   if (pending_request_param_)
     pending_request_param_->completion()->DidCancelCheckingText();
 
-  pending_request_param_ = std::make_unique<SpellcheckRequest>(
-      text, std::move(completion), std::move(provider));
+  pending_request_param_ =
+      std::make_unique<SpellcheckRequest>(text, std::move(completion));
   // We will check this text after we finish loading the hunspell dictionary.
   if (InitializeIfNeeded())
     return;
@@ -477,9 +456,8 @@ void SpellCheck::PostDelayedSpellCheckTask(SpellcheckRequest* request) {
     return;
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&SpellCheck::PerformSpellCheck, weak_factory_.GetWeakPtr(),
-                     base::Owned(request)));
+      FROM_HERE, base::BindOnce(&SpellCheck::PerformSpellCheck, AsWeakPtr(),
+                                base::Owned(request)));
 }
 #endif
 
@@ -487,20 +465,12 @@ void SpellCheck::PostDelayedSpellCheckTask(SpellcheckRequest* request) {
 void SpellCheck::PerformSpellCheck(SpellcheckRequest* param) {
   DCHECK(param);
 
-  spellcheck::mojom::SpellCheckHost* host = nullptr;
-  if (SpellCheckProvider* provider = param->provider()) {
-    // It is safe to provide this as a pointer here because
-    // it will only be used synchronously in the SpellCheckParagraph
-    // method.
-    host = &provider->GetSpellCheckHost();
-  }
-
-  if (!host || languages_.empty() ||
+  if (languages_.empty() ||
       !base::ranges::all_of(languages_, &SpellcheckLanguage::IsEnabled)) {
     param->completion()->DidCancelCheckingText();
   } else {
     WebVector<blink::WebTextCheckingResult> results;
-    SpellCheckParagraph(param->text(), *host, &results);
+    SpellCheckParagraph(param->text(), &results);
     param->completion()->DidFinishCheckingText(results);
 #if BUILDFLAG(IS_WIN) && BUILDFLAG(USE_BROWSER_SPELLCHECKER)
     spellcheck_renderer_metrics::RecordSpellcheckDuration(
@@ -513,7 +483,6 @@ void SpellCheck::PerformSpellCheck(SpellcheckRequest* param) {
 
 void SpellCheck::CreateTextCheckingResults(
     ResultFilter filter,
-    spellcheck::mojom::SpellCheckHost& host,
     int line_offset,
     const std::u16string& line_text,
     const std::vector<SpellCheckResult>& spellcheck_results,
@@ -565,8 +534,10 @@ void SpellCheck::CreateTextCheckingResults(
       size_t unused_misspelling_start = 0;
       size_t unused_misspelling_length = 0;
       if (decoration == SpellCheckResult::SPELLING &&
-          SpellCheckWord(misspelled_word, host, &unused_misspelling_start,
-                         &unused_misspelling_length, nullptr)) {
+          SpellCheckWord(misspelled_word.c_str(), kNoOffset,
+                         misspelled_word.length(), kNoTag,
+                         &unused_misspelling_start, &unused_misspelling_length,
+                         nullptr)) {
         decoration = SpellCheckResult::GRAMMAR;
       }
     }
@@ -586,8 +557,10 @@ void SpellCheck::CreateTextCheckingResults(
       size_t unused_misspelling_start = 0;
       size_t unused_misspelling_length = 0;
 
-      if (SpellCheckWord(misspelled_word, host, &unused_misspelling_start,
-                         &unused_misspelling_length, nullptr)) {
+      if (SpellCheckWord(misspelled_word.c_str(), kNoOffset,
+                         misspelled_word.length(), kNoTag,
+                         &unused_misspelling_start, &unused_misspelling_length,
+                         nullptr)) {
         // Correctly spelled in a Hunspell locale. If enhanced spell check was
         // used, turn the spelling mistake into a grammar mistake (local and
         // remote checks disagree, so the word is probably only contextually

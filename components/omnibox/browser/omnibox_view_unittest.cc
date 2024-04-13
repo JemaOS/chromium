@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "base/functional/callback_helpers.h"
-#include "base/memory/raw_ptr.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
@@ -19,44 +18,34 @@
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/test/test_bookmark_client.h"
 #include "components/omnibox/browser/autocomplete_match.h"
-#include "components/omnibox/browser/omnibox_controller.h"
 #include "components/omnibox/browser/test_omnibox_client.h"
 #include "components/omnibox/browser/test_omnibox_edit_model.h"
+#include "components/omnibox/browser/test_omnibox_edit_model_delegate.h"
 #include "components/omnibox/browser/test_omnibox_view.h"
 #include "components/omnibox/common/omnibox_features.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/favicon_size.h"
 #include "ui/gfx/paint_vector_icon.h"
-
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 #include "components/omnibox/browser/vector_icons.h"  // nogncheck
 #include "components/vector_icons/vector_icons.h"     // nogncheck
 #endif
 
 using base::ASCIIToUTF16;
-using testing::_;
-using testing::DoAll;
-using testing::Return;
-using testing::SaveArg;
 
 namespace {
 
 class OmniboxViewTest : public testing::Test {
  public:
-  OmniboxViewTest()
-      : bookmark_model_(bookmarks::TestBookmarkClient::CreateModel()) {
-    auto omnibox_client = std::make_unique<TestOmniboxClient>();
-    omnibox_client_ = omnibox_client.get();
-    EXPECT_CALL(*client(), GetBookmarkModel())
-        .WillRepeatedly(Return(bookmark_model_.get()));
+  OmniboxViewTest() {
+    edit_model_delegate_ = std::make_unique<TestOmniboxEditModelDelegate>();
+    view_ = std::make_unique<TestOmniboxView>(edit_model_delegate_.get());
+    view_->SetModel(std::make_unique<TestOmniboxEditModel>(
+        view_.get(), edit_model_delegate_.get(), nullptr));
 
-    view_ = std::make_unique<TestOmniboxView>(std::move(omnibox_client));
-    view_->controller()->SetEditModelForTesting(
-        std::make_unique<TestOmniboxEditModel>(view_->controller(), view_.get(),
-                                               /*pref_service=*/nullptr));
+    bookmark_model_ = bookmarks::TestBookmarkClient::CreateModel();
+    client()->SetBookmarkModel(bookmark_model_.get());
   }
 
   TestOmniboxView* view() { return view_.get(); }
@@ -65,19 +54,21 @@ class OmniboxViewTest : public testing::Test {
     return static_cast<TestOmniboxEditModel*>(view_->model());
   }
 
-  TestOmniboxClient* client() { return omnibox_client_; }
+  TestOmniboxClient* client() {
+    return static_cast<TestOmniboxClient*>(model()->client());
+  }
 
   bookmarks::BookmarkModel* bookmark_model() { return bookmark_model_.get(); }
 
  private:
   base::test::TaskEnvironment task_environment_;
-  raw_ptr<TestOmniboxClient, DanglingUntriaged> omnibox_client_;
+  std::unique_ptr<TestOmniboxEditModelDelegate> edit_model_delegate_;
   std::unique_ptr<TestOmniboxView> view_;
   std::unique_ptr<bookmarks::BookmarkModel> bookmark_model_;
 };
 
 TEST_F(OmniboxViewTest, TestStripSchemasUnsafeForPaste) {
-  constexpr const char* urls[] = {
+  const char* urls[] = {
       " \x01 ",                                       // Safe query.
       "http://www.google.com?q=javascript:alert(0)",  // Safe URL.
       "JavaScript",                                   // Safe query.
@@ -93,7 +84,7 @@ TEST_F(OmniboxViewTest, TestStripSchemasUnsafeForPaste) {
                                                         // characters unsafe.
   };
 
-  constexpr const char* expecteds[] = {
+  const char* expecteds[] = {
       " \x01 ",                                       // Safe query.
       "http://www.google.com?q=javascript:alert(0)",  // Safe URL.
       "JavaScript",                                   // Safe query.
@@ -175,20 +166,19 @@ TEST_F(OmniboxViewTest, SanitizeTextForPaste) {
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 // Tests GetIcon returns the default search icon when the match is a search
 // query.
-TEST_F(OmniboxViewTest, DISABLED_GetIcon_Default) {
-  ui::ImageModel expected_icon =
-      ui::ImageModel::FromVectorIcon(vector_icons::kSearchChromeRefreshIcon,
-                                     gfx::kPlaceholderColor, gfx::kFaviconSize);
+TEST_F(OmniboxViewTest, GetIcon_Default) {
+  ui::ImageModel expected_icon = ui::ImageModel::FromVectorIcon(
+      vector_icons::kSearchIcon, gfx::kPlaceholderColor, gfx::kFaviconSize);
 
   ui::ImageModel icon = view()->GetIcon(
       gfx::kFaviconSize, gfx::kPlaceholderColor, gfx::kPlaceholderColor,
-      gfx::kPlaceholderColor, gfx::kPlaceholderColor, base::DoNothing(), false);
+      gfx::kPlaceholderColor, base::DoNothing(), false);
 
   EXPECT_EQ(expected_icon, icon);
 }
 
 // Tests GetIcon returns the bookmark icon when the match is bookmarked.
-TEST_F(OmniboxViewTest, DISABLED_GetIcon_BookmarkIcon) {
+TEST_F(OmniboxViewTest, GetIcon_BookmarkIcon) {
   const GURL kUrl("https://bookmarks.com");
 
   AutocompleteMatch match;
@@ -198,13 +188,12 @@ TEST_F(OmniboxViewTest, DISABLED_GetIcon_BookmarkIcon) {
   bookmark_model()->AddURL(bookmark_model()->bookmark_bar_node(), 0,
                            u"a bookmark", kUrl);
 
-  ui::ImageModel expected_icon =
-      ui::ImageModel::FromVectorIcon(omnibox::kBookmarkChromeRefreshIcon,
-                                     gfx::kPlaceholderColor, gfx::kFaviconSize);
+  ui::ImageModel expected_icon = ui::ImageModel::FromVectorIcon(
+      omnibox::kBookmarkIcon, gfx::kPlaceholderColor, gfx::kFaviconSize);
 
   ui::ImageModel icon = view()->GetIcon(
       gfx::kFaviconSize, gfx::kPlaceholderColor, gfx::kPlaceholderColor,
-      gfx::kPlaceholderColor, gfx::kPlaceholderColor, base::DoNothing(), false);
+      gfx::kPlaceholderColor, base::DoNothing(), false);
 
   EXPECT_EQ(expected_icon, icon);
 }
@@ -213,10 +202,6 @@ TEST_F(OmniboxViewTest, DISABLED_GetIcon_BookmarkIcon) {
 TEST_F(OmniboxViewTest, GetIcon_Favicon) {
   const GURL kUrl("https://woahDude.com");
 
-  GURL page_url;
-  EXPECT_CALL(*client(), GetFaviconForPageUrl(_, _))
-      .WillOnce(DoAll(SaveArg<0>(&page_url), Return(gfx::Image())));
-
   AutocompleteMatch match;
   match.type = AutocompleteMatchType::URL_WHAT_YOU_TYPED;
   match.destination_url = kUrl;
@@ -224,11 +209,11 @@ TEST_F(OmniboxViewTest, GetIcon_Favicon) {
 
   view()->GetIcon(gfx::kFaviconSize, gfx::kPlaceholderColor,
                   gfx::kPlaceholderColor, gfx::kPlaceholderColor,
-                  gfx::kPlaceholderColor, base::DoNothing(), false);
+                  base::DoNothing(), false);
 
-  EXPECT_EQ(page_url, kUrl);
+  EXPECT_EQ(client()->GetPageUrlForLastFaviconRequest(), kUrl);
 }
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+#endif  // !BUILDFLAG(IS_IOS)
 
 // Tests GetStateChanges correctly determines if text was deleted.
 TEST_F(OmniboxViewTest, GetStateChanges_DeletedText) {

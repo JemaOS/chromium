@@ -9,9 +9,9 @@
 
 #include <algorithm>
 #include <memory>
-#include <string_view>
 #include <utility>
 
+#include "base/containers/stack_container.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
 #include "base/functional/bind.h"
@@ -29,7 +29,6 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
-#include "third_party/abseil-cpp/absl/container/inlined_vector.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -215,7 +214,7 @@ class VisitedLinkWriter::TableBuilder
   void OnCompleteMainThread();
 
   // Owner of this object. MAY ONLY BE ACCESSED ON THE MAIN THREAD!
-  raw_ptr<VisitedLinkWriter, FlakyDanglingUntriaged> writer_;
+  raw_ptr<VisitedLinkWriter, DanglingUntriaged> writer_;
 
   // Indicates whether the operation has failed or not.
   bool success_;
@@ -329,7 +328,8 @@ VisitedLinkWriter::Hash VisitedLinkWriter::TryToAddURL(const GURL& url) {
   if (!url.is_valid())
     return null_hash_;  // Don't add invalid URLs.
 
-  Fingerprint fingerprint = ComputeURLFingerprint(url.spec(), salt_);
+  Fingerprint fingerprint =
+      ComputeURLFingerprint(url.spec().data(), url.spec().size(), salt_);
   // If the table isn't loaded the table will be rebuilt and after
   // that accumulated fingerprints will be applied to the table.
   if (table_builder_.get() || table_is_loading_from_file_) {
@@ -424,7 +424,8 @@ void VisitedLinkWriter::DeleteURLs(URLIterator* urls) {
       if (!url.is_valid())
         continue;
 
-      Fingerprint fingerprint = ComputeURLFingerprint(url.spec(), salt_);
+      Fingerprint fingerprint =
+          ComputeURLFingerprint(url.spec().data(), url.spec().size(), salt_);
       deleted_since_rebuild_.insert(fingerprint);
 
       // If the URL was just added and now we're deleting it, it may be in the
@@ -449,7 +450,8 @@ void VisitedLinkWriter::DeleteURLs(URLIterator* urls) {
     const GURL& url(urls->NextURL());
     if (!url.is_valid())
       continue;
-    deleted_fingerprints.insert(ComputeURLFingerprint(url.spec(), salt_));
+    deleted_fingerprints.insert(
+        ComputeURLFingerprint(url.spec().data(), url.spec().size(), salt_));
   }
   DeleteFingerprintsFromCurrentTable(deleted_fingerprints);
 }
@@ -552,12 +554,12 @@ bool VisitedLinkWriter::DeleteFingerprint(Fingerprint fingerprint,
   // instead we just remove them all and re-add them (minus our deleted one).
   // This will mean there's a small window of time where the affected links
   // won't be marked visited.
-  absl::InlinedVector<Fingerprint, 32> shuffled_fingerprints;
+  base::StackVector<Fingerprint, 32> shuffled_fingerprints;
   Hash stop_loop = IncrementHash(end_range);  // The end range is inclusive.
   for (Hash i = deleted_hash; i != stop_loop; i = IncrementHash(i)) {
     if (hash_table_[i] != fingerprint) {
       // Don't save the one we're deleting!
-      shuffled_fingerprints.push_back(hash_table_[i]);
+      shuffled_fingerprints->push_back(hash_table_[i]);
 
       // This will balance the increment of this value in AddFingerprint below
       // so there is no net change.
@@ -566,11 +568,10 @@ bool VisitedLinkWriter::DeleteFingerprint(Fingerprint fingerprint,
     hash_table_[i] = null_fingerprint_;
   }
 
-  if (!shuffled_fingerprints.empty()) {
+  if (!shuffled_fingerprints->empty()) {
     // Need to add the new items back.
-    for (size_t i = 0; i < shuffled_fingerprints.size(); i++) {
+    for (size_t i = 0; i < shuffled_fingerprints->size(); i++)
       AddFingerprint(shuffled_fingerprints[i], false);
-    }
   }
 
   // Write the affected range to disk [deleted_hash, end_range].
@@ -758,14 +759,16 @@ void VisitedLinkWriter::OnTableLoadComplete(
     // Also add anything that was added while we were asynchronously
     // loading the table.
     for (const GURL& url : added_since_load_) {
-      Fingerprint fingerprint = ComputeURLFingerprint(url.spec(), salt_);
+      Fingerprint fingerprint =
+          ComputeURLFingerprint(url.spec().data(), url.spec().size(), salt_);
       AddFingerprint(fingerprint, false);
     }
     added_since_load_.clear();
 
     // Now handle deletions.
     for (const GURL& url : deleted_since_load_) {
-      Fingerprint fingerprint = ComputeURLFingerprint(url.spec(), salt_);
+      Fingerprint fingerprint =
+          ComputeURLFingerprint(url.spec().data(), url.spec().size(), salt_);
       DeleteFingerprint(fingerprint, false);
     }
     deleted_since_load_.clear();
@@ -1156,8 +1159,8 @@ void VisitedLinkWriter::TableBuilder::DisownWriter() {
 
 void VisitedLinkWriter::TableBuilder::OnURL(const GURL& url) {
   if (!url.is_empty()) {
-    fingerprints_.push_back(
-        VisitedLinkWriter::ComputeURLFingerprint(url.spec(), salt_));
+    fingerprints_.push_back(VisitedLinkWriter::ComputeURLFingerprint(
+        url.spec().data(), url.spec().length(), salt_));
   }
 }
 

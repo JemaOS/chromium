@@ -76,7 +76,7 @@ void OnModelOverrideUnzipped(proto::OptimizationTarget optimization_target,
                              OnPredictionModelBuiltCallback callback,
                              bool success) {
   if (!success) {
-    LOG(ERROR) << FilePathToString(base_model_dir) << " failed to unzip";
+    LOG(ERROR) << FilePathToString(base_model_dir) << "failed to unzip";
     std::move(callback).Run(nullptr);
     return;
   }
@@ -111,16 +111,16 @@ void OnModelOverrideVerified(proto::OptimizationTarget optimization_target,
 
 }  // namespace
 
-bool BuildPredictionModelFromCommandLineForOptimizationTarget(
+void BuildPredictionModelFromCommandLineForOptimizationTarget(
     proto::OptimizationTarget optimization_target,
     const base::FilePath& base_model_dir,
     OnPredictionModelBuiltCallback callback) {
-  std::optional<std::pair<std::string, std::optional<proto::Any>>>
+  absl::optional<std::pair<std::string, absl::optional<proto::Any>>>
       model_file_path_and_metadata =
           GetModelOverrideForOptimizationTarget(optimization_target);
   if (!model_file_path_and_metadata) {
     std::move(callback).Run(nullptr);
-    return false;
+    return;
   }
 
   if (base::EndsWith(model_file_path_and_metadata->first, ".crx3")) {
@@ -142,7 +142,7 @@ bool BuildPredictionModelFromCommandLineForOptimizationTarget(
         base::BindOnce(&OnModelOverrideVerified, optimization_target,
                        *StringToFilePath(model_file_path_and_metadata->first),
                        base_model_dir, std::move(callback)));
-    return true;
+    return;
   }
 
   std::unique_ptr<proto::PredictionModel> prediction_model =
@@ -157,7 +157,6 @@ bool BuildPredictionModelFromCommandLineForOptimizationTarget(
   prediction_model->mutable_model()->set_download_url(
       model_file_path_and_metadata->first);
   std::move(callback).Run(std::move(prediction_model));
-  return true;
 }
 
 }  // namespace optimization_guide

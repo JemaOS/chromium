@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 
@@ -15,7 +16,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/sequence_checker.h"
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/time/default_tick_clock.h"
 #include "base/timer/timer.h"
 #include "components/drive/drive_notification_observer.h"
@@ -52,7 +53,7 @@ class DriveNotificationManager : public KeyedService,
   // invalidation::InvalidationHandler implementation.
   void OnInvalidatorStateChange(invalidation::InvalidatorState state) override;
   void OnIncomingInvalidation(
-      const invalidation::Invalidation& invalidation) override;
+      const invalidation::TopicInvalidationMap& invalidation_map) override;
   std::string GetOwnerName() const override;
   bool IsPublicTopic(const invalidation::Topic& topic) const override;
 
@@ -67,8 +68,15 @@ class DriveNotificationManager : public KeyedService,
   // Unsubscribe from invalidations from all team drives.
   void ClearTeamDriveIds();
 
-  // True when FCM notification is currently enabled.
-  bool push_notification_enabled() const { return AreInvalidationsEnabled(); }
+  // True when XMPP notification is currently enabled.
+  bool push_notification_enabled() const {
+    return push_notification_enabled_;
+  }
+
+  // True when XMPP notification has been registered.
+  bool push_notification_registered() const {
+    return push_notification_registered_;
+  }
 
   const std::set<std::string>& team_drive_ids_for_test() const {
     return team_drive_ids_;
@@ -80,12 +88,6 @@ class DriveNotificationManager : public KeyedService,
   }
 
  private:
-  // Returns true if `this` is observing `invalidation_service_`.
-  bool IsRegistered() const;
-
-  // Returns true if `IsRegistered()` and `invalidation_service_` is enabled.
-  bool AreInvalidationsEnabled() const;
-
   enum NotificationSource {
     NOTIFICATION_XMPP,
     NOTIFICATION_POLLING,
@@ -123,6 +125,10 @@ class DriveNotificationManager : public KeyedService,
   raw_ptr<invalidation::InvalidationService> invalidation_service_;
   base::ObserverList<DriveNotificationObserver>::Unchecked observers_;
 
+  // True when Drive File Sync Service is registered for Drive notifications.
+  bool push_notification_registered_;
+  // True if the XMPP-based push notification is currently enabled.
+  bool push_notification_enabled_;
   // True once observers are notified for the first time.
   bool observers_notified_;
 

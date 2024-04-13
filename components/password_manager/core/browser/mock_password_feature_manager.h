@@ -30,7 +30,7 @@ class MockPasswordFeatureManager : public PasswordFeatureManager {
               (override, const));
   MOCK_METHOD(bool, IsDefaultPasswordStoreSet, (), (override, const));
 
-  MOCK_METHOD(features_util::PasswordAccountStorageUsageLevel,
+  MOCK_METHOD(metrics_util::PasswordAccountStorageUsageLevel,
               ComputePasswordAccountStorageUsageLevel,
               (),
               (override, const));
@@ -41,7 +41,6 @@ class MockPasswordFeatureManager : public PasswordFeatureManager {
 
 #if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
   MOCK_METHOD(void, OptInToAccountStorage, (), (override));
-  MOCK_METHOD(void, OptOutOfAccountStorage, (), (override));
   MOCK_METHOD(void, OptOutOfAccountStorageAndClearSettings, (), (override));
   MOCK_METHOD(bool,
               ShouldOfferOptInAndMoveToAccountStoreAfterSavingLocally,
@@ -51,12 +50,9 @@ class MockPasswordFeatureManager : public PasswordFeatureManager {
               SetDefaultPasswordStore,
               (const PasswordForm::Store& store),
               (override));
-  MOCK_METHOD(bool, ShouldChangeDefaultPasswordStore, (), (override, const));
+  MOCK_METHOD(void, RecordMoveOfferedToNonOptedInUser, (), (override));
+  MOCK_METHOD(int, GetMoveOfferedToNonOptedInUserCount, (), (override, const));
 #endif  // !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_ANDROID)
-  MOCK_METHOD(bool, ShouldUpdateGmsCore, (), (override));
-#endif  // BUILDFLAG(IS_ANDROID)
 };
 
 }  // namespace password_manager

@@ -6,35 +6,31 @@
 
 #include "base/feature_list.h"
 #include "build/build_config.h"
-#include "components/password_manager/core/browser/features/password_features.h"
-#include "components/password_manager/core/browser/features/password_manager_features_util.h"
-#include "components/password_manager/core/browser/password_manager_client.h"
-#include "components/password_manager/core/browser/password_store/split_stores_and_local_upm.h"
-#include "components/password_manager/core/browser/password_sync_util.h"
+#include "components/password_manager/core/browser/password_manager_features_util.h"
+#include "components/password_manager/core/browser/password_manager_util.h"
+#include "components/password_manager/core/common/password_manager_features.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/prefs/pref_service.h"
-#include "components/sync/service/sync_service.h"
-
-#if BUILDFLAG(IS_ANDROID)
-#include "base/android/build_info.h"
-#endif
+#include "components/sync/driver/sync_service.h"
 
 namespace password_manager {
 
 PasswordFeatureManagerImpl::PasswordFeatureManagerImpl(
     PrefService* pref_service,
     PrefService* local_state,
-    syncer::SyncService* sync_service)
+    const syncer::SyncService* sync_service)
     : pref_service_(pref_service),
       local_state_(local_state),
       sync_service_(sync_service) {}
 
 bool PasswordFeatureManagerImpl::IsGenerationEnabled() const {
-  switch (password_manager::sync_util::GetPasswordSyncState(sync_service_)) {
-    case sync_util::SyncState::kNotActive:
+  switch (password_manager_util::GetPasswordSyncState(sync_service_)) {
+    case SyncState::kNotSyncing:
       return ShouldShowAccountStorageOptIn();
-    case sync_util::SyncState::kActiveWithNormalEncryption:
-    case sync_util::SyncState::kActiveWithCustomPassphrase:
+    case SyncState::kSyncingWithCustomPassphrase:
+    case SyncState::kSyncingNormalEncryption:
+    case SyncState::kAccountPasswordsActiveNormalEncryption:
+    case SyncState::kAccountPasswordsActiveWithCustomPassphrase:
       return true;
   }
 }
@@ -52,6 +48,8 @@ bool PasswordFeatureManagerImpl::IsBiometricAuthenticationBeforeFillingEnabled()
   return local_state_ &&
          local_state_->GetBoolean(
              password_manager::prefs::kHadBiometricsAvailable) &&
+         base::FeatureList::IsEnabled(
+             password_manager::features::kBiometricAuthenticationForFilling) &&
          pref_service_ &&
          pref_service_->GetBoolean(
              password_manager::prefs::kBiometricAuthenticationBeforeFilling);
@@ -91,7 +89,7 @@ bool PasswordFeatureManagerImpl::IsDefaultPasswordStoreSet() const {
   return features_util::IsDefaultPasswordStoreSet(pref_service_, sync_service_);
 }
 
-features_util::PasswordAccountStorageUsageLevel
+metrics_util::PasswordAccountStorageUsageLevel
 PasswordFeatureManagerImpl::ComputePasswordAccountStorageUsageLevel() const {
   return features_util::ComputePasswordAccountStorageUsageLevel(pref_service_,
                                                                 sync_service_);
@@ -100,10 +98,6 @@ PasswordFeatureManagerImpl::ComputePasswordAccountStorageUsageLevel() const {
 #if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
 void PasswordFeatureManagerImpl::OptInToAccountStorage() {
   features_util::OptInToAccountStorage(pref_service_, sync_service_);
-}
-
-void PasswordFeatureManagerImpl::OptOutOfAccountStorage() {
-  features_util::OptOutOfAccountStorage(pref_service_, sync_service_);
 }
 
 void PasswordFeatureManagerImpl::OptOutOfAccountStorageAndClearSettings() {
@@ -121,23 +115,15 @@ bool PasswordFeatureManagerImpl::
   return ShouldShowAccountStorageOptIn() && !IsDefaultPasswordStoreSet();
 }
 
-bool PasswordFeatureManagerImpl::ShouldChangeDefaultPasswordStore() const {
-  return IsOptedInForAccountStorage() && IsDefaultPasswordStoreSet() &&
-         GetDefaultPasswordStore() == PasswordForm::Store::kProfileStore &&
-         base::FeatureList::IsEnabled(
-             password_manager::features::kButterOnDesktopFollowup);
+void PasswordFeatureManagerImpl::RecordMoveOfferedToNonOptedInUser() {
+  features_util::RecordMoveOfferedToNonOptedInUser(pref_service_,
+                                                   sync_service_);
+}
+
+int PasswordFeatureManagerImpl::GetMoveOfferedToNonOptedInUserCount() const {
+  return features_util::GetMoveOfferedToNonOptedInUserCount(pref_service_,
+                                                            sync_service_);
 }
 #endif  // !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_ANDROID)
-bool PasswordFeatureManagerImpl::ShouldUpdateGmsCore() {
-  bool is_pwd_sync_enabled =
-      sync_util::IsSyncFeatureEnabledIncludingPasswords(sync_service_);
-  std::string gms_version_str =
-      base::android::BuildInfo::GetInstance()->gms_version_code();
-  return IsGmsCoreUpdateRequired(pref_service_, is_pwd_sync_enabled,
-                                 gms_version_str);
-}
-#endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace password_manager

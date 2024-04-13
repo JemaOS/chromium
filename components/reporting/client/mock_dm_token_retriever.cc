@@ -25,8 +25,7 @@ void MockDMTokenRetriever::ExpectRetrieveDMTokenAndReturnResult(
     const StatusOr<std::string> dm_token_result) {
   EXPECT_CALL(*this, RetrieveDMToken(_))
       .Times(times)
-      .WillRepeatedly(
-          base::test::RunOnceCallbackRepeatedly<0>(std::move(dm_token_result)))
+      .WillRepeatedly(RunOnceCallback<0>(std::move(dm_token_result)))
       .RetiresOnSaturation();
 }
 

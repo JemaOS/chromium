@@ -7,17 +7,15 @@
 
 #include "base/android/scoped_java_ref.h"
 
-namespace webauthn {
-
-class WebauthnBrowserBridge {
+class WebAuthnBrowserBridge {
  public:
-  WebauthnBrowserBridge(JNIEnv* env,
+  WebAuthnBrowserBridge(JNIEnv* env,
                         const base::android::JavaParamRef<jobject>& jbridge);
 
-  WebauthnBrowserBridge(const WebauthnBrowserBridge&) = delete;
-  WebauthnBrowserBridge& operator=(const WebauthnBrowserBridge&) = delete;
+  WebAuthnBrowserBridge(const WebAuthnBrowserBridge&) = delete;
+  WebAuthnBrowserBridge& operator=(const WebAuthnBrowserBridge&) = delete;
 
-  ~WebauthnBrowserBridge();
+  ~WebAuthnBrowserBridge();
 
   void OnCredentialsDetailsListReceived(
       JNIEnv* env,
@@ -25,14 +23,9 @@ class WebauthnBrowserBridge {
       const base::android::JavaParamRef<jobjectArray>& credentials,
       const base::android::JavaParamRef<jobject>& jframe_host,
       jboolean is_conditional_request,
-      const base::android::JavaParamRef<jobject>& jgetAssertionCallback,
-      const base::android::JavaParamRef<jobject>& jhybridCallback) const;
+      const base::android::JavaParamRef<jobject>& jcallback) const;
 
-  void CleanupRequest(
-      JNIEnv* env,
-      const base::android::JavaParamRef<jobject>& jframe_host) const;
-
-  void CleanupCredManRequest(
+  void CancelRequest(
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& jframe_host) const;
 
@@ -42,24 +35,9 @@ class WebauthnBrowserBridge {
       jboolean jhas_results,
       const base::android::JavaParamRef<jobject>& jfull_request_runnable);
 
-  void OnCredManUiClosed(
-      JNIEnv* env,
-      const base::android::JavaParamRef<jobject>& jframe_host,
-      jboolean jsuccess);
-
-  void OnPasswordCredentialReceived(
-      JNIEnv* env,
-      const base::android::JavaParamRef<jobject>& jframe_host,
-      const base::android::JavaParamRef<jstring>& jusername,
-      const base::android::JavaParamRef<jstring>& jpassword);
-
-  void Destroy(JNIEnv* env);
-
  private:
-  // Java object that owns this WebauthnBrowserBridge.
+  // Java object that owns this WebAuthnBrowserBridge.
   base::android::ScopedJavaGlobalRef<jobject> owner_;
 };
-
-}  // namespace webauthn
 
 #endif  // COMPONENTS_WEBAUTHN_ANDROID_WEBAUTHN_BROWSER_BRIDGE_H_

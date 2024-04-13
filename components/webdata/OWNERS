@@ -2,4 +2,5 @@ caitkp@chromium.org
 pkasting@chromium.org
 
 # For sqlite stuff:
-file://sql/OWNERS
+asully@chromium.org
+ayui@chromium.org

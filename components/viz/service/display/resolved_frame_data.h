@@ -25,7 +25,7 @@ class Surface;
 
 // Returns |damage_rect| field from the DrawQuad if it exists otherwise returns
 // an empty optional.
-const std::optional<gfx::Rect>& GetOptionalDamageRectFromQuad(
+const absl::optional<gfx::Rect>& GetOptionalDamageRectFromQuad(
     const DrawQuad* quad);
 
 // Data associated with a DrawQuad in a resolved frame.
@@ -43,25 +43,17 @@ struct VIZ_SERVICE_EXPORT FixedPassData {
   FixedPassData& operator=(FixedPassData&& other);
   ~FixedPassData();
 
-  // Only valid during aggregation: set at the beginning a new round of
-  // aggregation and reset to null at the end of each aggregation.
-  //
-  // This shouldn't be dangling anymore because CompositorFrames are never
-  // destroyed during aggregation so the pointer will remain valid for the
-  // duration of aggregation (until it's set to null).
-  raw_ptr<CompositorRenderPass> render_pass = nullptr;
-
+  raw_ptr<CompositorRenderPass, DanglingUntriaged> render_pass = nullptr;
   // DrawQuads in |render_pass| that can contribute additional damage (eg.
   // surface and render passes) that need to be visited during the prewalk phase
   // of aggregation. Stored in front-to-back order like in |render_pass|.
-  std::vector<raw_ptr<const DrawQuad, VectorExperimental>> prewalk_quads;
+  std::vector<const DrawQuad*> prewalk_quads;
 
   // How many times this render pass is embedded by another render pass in the
   // same frame.
   int embed_count = 0;
 
   AggregatedRenderPassId remapped_id;
-  CompositorRenderPassId render_pass_id;
   bool is_root = false;
   std::vector<ResolvedQuadData> draw_quads;
 };
@@ -81,7 +73,7 @@ struct VIZ_SERVICE_EXPORT AggregationPassData {
   void Reset();
 
   // Embedded render passes that contribute pixels to this render pass.
-  base::flat_set<raw_ptr<ResolvedPassData, CtnExperimental>> embedded_passes;
+  base::flat_set<ResolvedPassData*> embedded_passes;
 
   // True if the render pass is drawn to fulfil part of a copy request. This
   // property is transitive from parent pass to embedded passes.
@@ -115,33 +107,6 @@ struct VIZ_SERVICE_EXPORT AggregationPassData {
   // is false for may still be drawn but they won't contribute pixels to
   // framebuffer.
   bool will_draw = false;
-
-  // The damage added from its descandant surfaces during aggregation. This is
-  // not part of the original render_pass->damage_rect from CC.
-  gfx::Rect added_damage;
-};
-
-// Render pass data that must be recomputed each aggregation and needs to be
-// persisted to next aggregation.
-struct PersistentPassData {
-  PersistentPassData();
-  PersistentPassData(PersistentPassData&& other);
-  PersistentPassData& operator=(PersistentPassData& other);
-  PersistentPassData& operator=(const PersistentPassData& other);
-  PersistentPassData& operator=(PersistentPassData&& other);
-  ~PersistentPassData();
-
-  enum MergeState { kInitState, kNotMerged, kAlwaysMerged, kSomeTimesMerged };
-
-  // The intersection of all render pass output rects, RenderPassDrawQuad rect,
-  // SurfaceDrawQuad rect, and clip rects from its ancestor render passes and
-  // surface. This is the max size this render pass can be rendered into the
-  // root surface. |parent_clip_rect| is in the dest root target space.
-  gfx::Rect parent_clip_rect;
-
-  // Whether the render passes is merged with its parent render pass. The render
-  // mighe be embedded multiple times and has different status each time.
-  MergeState merge_state = kInitState;
 };
 
 // Data associated with a CompositorRenderPass in a resolved frame. Has fixed
@@ -153,17 +118,15 @@ class VIZ_SERVICE_EXPORT ResolvedPassData {
   ResolvedPassData(ResolvedPassData&& other);
   ResolvedPassData& operator=(ResolvedPassData&& other);
 
-  const CompositorRenderPass& render_pass() const;
-  AggregatedRenderPassId remapped_id() const { return fixed_.remapped_id; }
-  CompositorRenderPassId render_pass_id() const {
-    return fixed_.render_pass_id;
+  const CompositorRenderPass& render_pass() const {
+    return *fixed_.render_pass;
   }
+  AggregatedRenderPassId remapped_id() const { return fixed_.remapped_id; }
   bool is_root() const { return fixed_.is_root; }
   const std::vector<ResolvedQuadData>& draw_quads() const {
     return fixed_.draw_quads;
   }
-  const std::vector<raw_ptr<const DrawQuad, VectorExperimental>>&
-  prewalk_quads() const {
+  const std::vector<const DrawQuad*>& prewalk_quads() const {
     return fixed_.prewalk_quads;
   }
 
@@ -176,28 +139,6 @@ class VIZ_SERVICE_EXPORT ResolvedPassData {
   AggregationPassData& aggregation() { return aggregation_; }
   const AggregationPassData& aggregation() const { return aggregation_; }
 
-  PersistentPassData& current_persistent_data() {
-    return current_persistent_data_;
-  }
-
-  PersistentPassData& previous_persistent_data() {
-    return previous_persistent_data_;
-  }
-
-  const PersistentPassData& previous_persistent_data() const {
-    return previous_persistent_data_;
-  }
-
-  void CopyAndResetPersistentPassData();
-
-  // Set `fixed_.render_pass` to `pass`. Should be called at the beginning of an
-  // aggregation.
-  void SetCompositorRenderPass(CompositorRenderPass* pass);
-
-  // Set `fixed_.render_pass` back to null, to avoid the dangling pointer
-  // after aggregation. Should be called at the end of an aggregation.
-  void ResetCompositorRenderPass();
-
  private:
   friend class ResolvedFrameData;
 
@@ -206,9 +147,6 @@ class VIZ_SERVICE_EXPORT ResolvedPassData {
 
   // Data that will change each aggregation.
   AggregationPassData aggregation_;
-
-  PersistentPassData current_persistent_data_;
-  PersistentPassData previous_persistent_data_;
 };
 
 enum FrameDamageType {
@@ -230,8 +168,7 @@ class VIZ_SERVICE_EXPORT ResolvedFrameData {
  public:
   ResolvedFrameData(DisplayResourceProvider* resource_provider,
                     Surface* surface,
-                    uint64_t prev_frame_index,
-                    AggregatedRenderPassId prev_root_pass_id);
+                    uint64_t prev_frame_index);
   ~ResolvedFrameData();
   ResolvedFrameData(ResolvedFrameData&& other) = delete;
   ResolvedFrameData& operator=(ResolvedFrameData&& other) = delete;
@@ -312,14 +249,8 @@ class VIZ_SERVICE_EXPORT ResolvedFrameData {
   // Returns the root render pass output_rect.
   const gfx::Rect& GetOutputRect() const;
 
-  // Set `CompositorRenderPass` for all `resolved_passes_`. Each
-  // `ResolvedPassData` must have been aggregated before.
-  void SetRenderPassPointers();
-
  private:
   void RegisterWithResourceProvider();
-  void MovePersistentPassDataFromPreviousFrame(
-      const std::vector<ResolvedPassData>& previoius_resolved_passes);
 
   const raw_ptr<DisplayResourceProvider> resource_provider_;
   const SurfaceId surface_id_;
@@ -337,8 +268,6 @@ class VIZ_SERVICE_EXPORT ResolvedFrameData {
       aggregated_id_map_;
 
   uint64_t previous_frame_index_ = kInvalidFrameIndex;
-
-  const AggregatedRenderPassId prev_root_pass_id_;
 
   // Track if the this resolved frame was used this aggregation.
   bool used_in_aggregation_ = false;

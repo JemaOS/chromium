@@ -11,17 +11,15 @@
 #include <utility>
 #include <vector>
 
-#include "base/containers/span.h"
 #include "base/debug/stack_trace.h"
 #include "base/functional/callback_helpers.h"
 #include "base/test/gtest_util.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "build/build_config.h"
 #include "components/gwp_asan/client/guarded_page_allocator.h"
-#include "components/gwp_asan/client/lightweight_detector/poison_metadata_recorder.h"
 #include "components/gwp_asan/common/allocator_state.h"
 #include "components/gwp_asan/common/crash_key_name.h"
-#include "components/gwp_asan/common/lightweight_detector_state.h"
+#include "components/gwp_asan/common/lightweight_detector.h"
 #include "components/gwp_asan/crash_handler/crash.pb.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -90,40 +88,34 @@ constexpr const char* kMallocHistogramName =
     "Security.GwpAsan.CrashAnalysisResult.Malloc";
 constexpr const char* kPartitionAllocHistogramName =
     "Security.GwpAsan.CrashAnalysisResult.PartitionAlloc";
+
 }  // namespace
 
 class BaseCrashAnalyzerTest : public testing::Test {
  protected:
-  BaseCrashAnalyzerTest(bool is_partition_alloc,
-                        LightweightDetectorMode lightweight_detector_mode)
-      : is_partition_alloc_(is_partition_alloc),
-        lightweight_detector_enabled_(lightweight_detector_mode !=
-                                      LightweightDetectorMode::kOff) {
-    gpa_.Init(1, 1, 1, base::DoNothing(), is_partition_alloc);
-    if (lightweight_detector_enabled_) {
-      lud::PoisonMetadataRecorder::ResetForTesting();
-      lud::PoisonMetadataRecorder::Init(lightweight_detector_mode, 1);
-    }
+  using testing::Test::SetUp;
+
+  void SetUp(bool is_partition_alloc,
+             LightweightDetector::State lightweight_detector_state,
+             size_t num_lightweight_detector_metadata) {
+    is_partition_alloc_ = is_partition_alloc;
+    gpa_.Init(1, 1, 1, base::DoNothing(), is_partition_alloc,
+              lightweight_detector_state, num_lightweight_detector_metadata);
   }
 
   // Initializes the ProcessSnapshot so that it appears the given allocator was
   // used for backing either malloc or PartitionAlloc, depending on
   // `is_partition_alloc_`.
   void InitializeSnapshot(crashpad::VMAddress exception_address) {
+    std::string crash_key_value = gpa_.GetCrashKey();
+    std::vector<uint8_t> crash_key_vector(crash_key_value.begin(),
+                                          crash_key_value.end());
+
     std::vector<crashpad::AnnotationSnapshot> annotations;
-    auto append_annotation = [&](const char* key, const std::string& value) {
-      std::vector<uint8_t> buffer(value.begin(), value.end());
-      annotations.emplace_back(
-          key, static_cast<uint16_t>(crashpad::Annotation::Type::kString),
-          buffer);
-    };
-    append_annotation(
+    annotations.emplace_back(
         is_partition_alloc_ ? kPartitionAllocCrashKey : kMallocCrashKey,
-        gpa_.GetCrashKey());
-    if (lightweight_detector_enabled_) {
-      append_annotation(kLightweightDetectorCrashKey,
-                        lud::PoisonMetadataRecorder::Get()->GetCrashKey());
-    }
+        static_cast<uint16_t>(crashpad::Annotation::Type::kString),
+        crash_key_vector);
 
     auto module = std::make_unique<crashpad::test::TestModuleSnapshot>();
     module->SetAnnotationObjects(annotations);
@@ -159,15 +151,13 @@ class BaseCrashAnalyzerTest : public testing::Test {
   crashpad::test::FakePtraceConnection connection_;
 #endif
 
-  bool is_partition_alloc_;
-  bool lightweight_detector_enabled_;
+  bool is_partition_alloc_ = false;
 };
 
 class CrashAnalyzerTest : public BaseCrashAnalyzerTest {
- protected:
-  CrashAnalyzerTest()
-      : BaseCrashAnalyzerTest(/* is_partition_alloc = */ false,
-                              LightweightDetectorMode::kOff) {
+  void SetUp() final {
+    BaseCrashAnalyzerTest::SetUp(/* is_partition_alloc = */ false,
+                                 LightweightDetector::State::kDisabled, 0);
     InitializeSnapshot(0);
   }
 };
@@ -199,34 +189,34 @@ TEST_F(CrashAnalyzerTest, StackTraceCollection) {
   ASSERT_TRUE(proto.has_deallocation());
 
   base::debug::StackTrace st;
-  base::span<const void* const> trace = st.addresses();
-  ASSERT_FALSE(trace.empty());
+  size_t trace_len;
+  const void* const* trace = st.Addresses(&trace_len);
+  ASSERT_NE(trace, nullptr);
+  ASSERT_GT(trace_len, 0U);
 
   // Adjust the stack trace to point to the entry above the current frame.
-  while (!trace.empty()) {
+  while (trace_len > 0) {
     if (trace[0] == __builtin_return_address(0))
       break;
 
-    trace = trace.subspan(1);
+    trace++;
+    trace_len--;
   }
 
-  ASSERT_GT(proto.allocation().stack_trace_size(),
-            static_cast<int>(trace.size()));
-  ASSERT_GT(proto.deallocation().stack_trace_size(),
-            static_cast<int>(trace.size()));
+  ASSERT_GT(proto.allocation().stack_trace_size(), (int)trace_len);
+  ASSERT_GT(proto.deallocation().stack_trace_size(), (int)trace_len);
 
   // Ensure that the allocation and deallocation stack traces match the stack
   // frames that we collected above the current frame.
-  for (size_t i = 1; i <= trace.size(); i++) {
+  for (size_t i = 1; i <= trace_len; i++) {
     SCOPED_TRACE(i);
     ASSERT_EQ(proto.allocation().stack_trace(
                   proto.allocation().stack_trace_size() - i),
-              reinterpret_cast<uintptr_t>(trace[trace.size() - i]));
+              reinterpret_cast<uintptr_t>(trace[trace_len - i]));
     ASSERT_EQ(proto.deallocation().stack_trace(
                   proto.deallocation().stack_trace_size() - i),
-              reinterpret_cast<uintptr_t>(trace[trace.size() - i]));
+              reinterpret_cast<uintptr_t>(trace[trace_len - i]));
   }
-  EXPECT_EQ(proto.mode(), Crash_Mode_CLASSIC);
 }
 #endif
 
@@ -253,28 +243,21 @@ TEST_F(CrashAnalyzerTest, InternalError) {
   EXPECT_TRUE(proto.has_internal_error());
   ASSERT_TRUE(proto.has_missing_metadata());
   EXPECT_TRUE(proto.missing_metadata());
-  EXPECT_EQ(proto.mode(), Crash_Mode_CLASSIC);
 }
 
 // The detector is not used on 32-bit systems because pointers there aren't big
 // enough to safely store metadata IDs.
 #if defined(ARCH_CPU_64_BITS)
-
-class LightweightDetectorAnalyzerTest
-    : public BaseCrashAnalyzerTest,
-      public testing::WithParamInterface<LightweightDetectorMode> {
- protected:
-  LightweightDetectorAnalyzerTest()
-      : BaseCrashAnalyzerTest(/* is_partition_alloc = */ true, GetParam()) {}
+class LightweightDetectorAnalyzerTest : public BaseCrashAnalyzerTest {
+  void SetUp() final {
+    BaseCrashAnalyzerTest::SetUp(/* is_partition_alloc = */ true,
+                                 LightweightDetector::State::kEnabled, 1);
+  }
 };
 
-extern Crash_Mode LightweightDetectorModeToGwpAsanMode(
-    LightweightDetectorMode mode);
-
-TEST_P(LightweightDetectorAnalyzerTest, UseAfterFree) {
+TEST_F(LightweightDetectorAnalyzerTest, UseAfterFree) {
   uint64_t alloc;
-  ASSERT_TRUE(lud::PoisonMetadataRecorder::Get());
-  lud::PoisonMetadataRecorder::Get()->RecordAndZap(&alloc, sizeof(alloc));
+  gpa_.RecordLightweightDeallocation(&alloc, sizeof(alloc));
   InitializeSnapshot(alloc);
 
   base::HistogramTester histogram_tester;
@@ -294,17 +277,15 @@ TEST_P(LightweightDetectorAnalyzerTest, UseAfterFree) {
   EXPECT_FALSE(proto.has_internal_error());
   ASSERT_TRUE(proto.has_missing_metadata());
   EXPECT_FALSE(proto.missing_metadata());
-  EXPECT_EQ(proto.mode(),
-            CrashAnalyzer::LightweightDetectorModeToGwpAsanMode(GetParam()));
 }
 
-TEST_P(LightweightDetectorAnalyzerTest, InternalError) {
+TEST_F(LightweightDetectorAnalyzerTest, InternalError) {
   uint64_t alloc;
-  lud::PoisonMetadataRecorder::Get()->RecordAndZap(&alloc, sizeof(alloc));
+  gpa_.RecordLightweightDeallocation(&alloc, sizeof(alloc));
   InitializeSnapshot(alloc);
 
   // Corrupt the metadata ID.
-  ++lud::PoisonMetadataRecorder::Get()->metadata_[0].id;
+  ++gpa_.lightweight_detector_metadata_[0].lightweight_id;
 
   base::HistogramTester histogram_tester;
   gwp_asan::Crash proto;
@@ -324,15 +305,7 @@ TEST_P(LightweightDetectorAnalyzerTest, InternalError) {
   EXPECT_TRUE(proto.has_internal_error());
   ASSERT_TRUE(proto.has_missing_metadata());
   EXPECT_TRUE(proto.missing_metadata());
-  EXPECT_EQ(proto.mode(),
-            CrashAnalyzer::LightweightDetectorModeToGwpAsanMode(GetParam()));
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    VaryLightweightDetectorMode,
-    LightweightDetectorAnalyzerTest,
-    testing::Values(LightweightDetectorMode::kBrpQuarantine,
-                    LightweightDetectorMode::kRandom));
 #endif  // defined(ARCH_CPU_64_BITS)
 
 }  // namespace internal

@@ -9,7 +9,6 @@
 #include "components/autofill/content/browser/content_autofill_driver.h"
 #include "components/autofill/content/browser/content_autofill_driver_factory.h"
 #include "components/autofill/content/browser/content_autofill_driver_factory_test_api.h"
-#include "components/autofill/content/browser/content_autofill_driver_test_api.h"
 #include "components/autofill/content/browser/test_autofill_driver_injector.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -56,8 +55,9 @@ class TestAutofillManagerInjectorBase {
 //    public:
 //     class MockAutofillManager : BrowserAutofillManager {
 //      public:
-//       explicit MockAutofillManager(ContentAutofillDriver* driver)
-//           : BrowserAutofillManager(driver, "en-US") {}
+//       MockAutofillManager(ContentAutofillDriver* driver,
+//                           AutofillClient* client)
+//           : BrowserAutofillManager(driver, client, "en-US") {}
 //       MOCK_METHOD(...);
 //       ...
 //     };
@@ -91,8 +91,8 @@ class TestAutofillManagerInjector : public TestAutofillManagerInjectorBase {
   }
 
  private:
-  // Creates an AutofillManager using `T(ContentAutofillDriver*)` for every
-  // navigated frame in a given `WebContents`.
+  // Creates an AutofillManager using `T(ContentAutofillDriver*,
+  // AutofillClient*)` for every navigated frame in a given `WebContents`.
   //
   // One challenge is that the ContentAutofillClient may not exist yet at the
   // time the Injector is created. (Because TabHelpers::AttachTabHelpers() is
@@ -129,7 +129,7 @@ class TestAutofillManagerInjector : public TestAutofillManagerInjectorBase {
       // observers affect the injected objects.
       // The AutofillManager injector should come right after the
       // ContentAutofillDriver injector, if one exists.
-      test_api(*factory_).AddObserverAtIndex(
+      ContentAutofillDriverFactoryTestApi(factory_).AddObserverAtIndex(
           this,
           TestAutofillDriverInjectorBase::some_instance_is_alive() ? 1 : 0);
     }
@@ -146,9 +146,9 @@ class TestAutofillManagerInjector : public TestAutofillManagerInjectorBase {
     void OnContentAutofillDriverCreated(
         ContentAutofillDriverFactory& factory,
         ContentAutofillDriver& driver) override {
-      auto new_manager = std::make_unique<T>(&driver);
+      std::unique_ptr<T> new_manager = CreateManager(&driver);
       owner_->managers_[driver.render_frame_host()] = new_manager.get();
-      test_api(driver).set_autofill_manager(std::move(new_manager));
+      driver.set_autofill_manager(std::move(new_manager));
     }
 
     void OnContentAutofillDriverWillBeDeleted(
@@ -158,6 +158,12 @@ class TestAutofillManagerInjector : public TestAutofillManagerInjectorBase {
     }
 
    private:
+    std::unique_ptr<T> CreateManager(ContentAutofillDriver* driver) {
+      auto* client = ContentAutofillClient::FromWebContents(web_contents());
+      DCHECK(client);
+      return std::make_unique<T>(driver, client);
+    }
+
     raw_ptr<TestAutofillManagerInjector> owner_;
 
     // Observed source. We can't use a ScopedObservation because we use

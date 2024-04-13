@@ -4,6 +4,8 @@
 
 #include "components/exo/wayland/wl_data_device_manager.h"
 
+#include <wayland-server-protocol-core.h>
+
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -19,29 +21,11 @@
 #include "components/exo/display.h"
 #include "components/exo/wayland/serial_tracker.h"
 #include "components/exo/wayland/server_util.h"
-#include "ui/aura/env.h"
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom-shared.h"
-#include "ui/events/event_utils.h"
 
-namespace exo::wayland {
+namespace exo {
+namespace wayland {
 namespace {
-
-int ToMousePressedFlag(wayland::SerialTracker::EventType event_type) {
-  switch (event_type) {
-    case wayland::SerialTracker::POINTER_LEFT_BUTTON_DOWN:
-      return ui::EF_LEFT_MOUSE_BUTTON;
-    case wayland::SerialTracker::POINTER_MIDDLE_BUTTON_DOWN:
-      return ui::EF_MIDDLE_MOUSE_BUTTON;
-    case wayland::SerialTracker::POINTER_RIGHT_BUTTON_DOWN:
-      return ui::EF_RIGHT_MOUSE_BUTTON;
-    case wayland::SerialTracker::POINTER_FORWARD_BUTTON_DOWN:
-      return ui::EF_FORWARD_MOUSE_BUTTON;
-    case wayland::SerialTracker::POINTER_BACK_BUTTON_DOWN:
-      return ui::EF_BACK_MOUSE_BUTTON;
-    default:
-      return 0;
-  }
-}
 
 uint32_t WaylandDataDeviceManagerDndAction(DndAction action) {
   switch (action) {
@@ -112,7 +96,7 @@ class WaylandDataSourceDelegate : public DataSourceDelegate {
     return surface &&
            wl_resource_get_client(GetSurfaceResource(surface)) == client_;
   }
-  void OnTarget(const std::optional<std::string>& mime_type) override {
+  void OnTarget(const absl::optional<std::string>& mime_type) override {
     wl_data_source_send_target(data_source_resource_,
                                mime_type ? mime_type->c_str() : nullptr);
     wl_client_flush(wl_resource_get_client(data_source_resource_));
@@ -148,13 +132,10 @@ class WaylandDataSourceDelegate : public DataSourceDelegate {
       wl_client_flush(wl_resource_get_client(data_source_resource_));
     }
   }
-  SecurityDelegate* GetSecurityDelegate() const override {
-    return ::exo::wayland::GetSecurityDelegate(client_);
-  }
 
  private:
-  const raw_ptr<wl_client> client_;
-  const raw_ptr<wl_resource> data_source_resource_;
+  const raw_ptr<wl_client, ExperimentalAsh> client_;
+  const raw_ptr<wl_resource, ExperimentalAsh> data_source_resource_;
 };
 
 void data_source_offer(wl_client* client,
@@ -182,8 +163,8 @@ const struct wl_data_source_interface data_source_implementation = {
 
 class WaylandDataOfferDelegate : public DataOfferDelegate {
  public:
-  explicit WaylandDataOfferDelegate(wl_client* client, wl_resource* offer)
-      : client_(client), data_offer_resource_(offer) {}
+  explicit WaylandDataOfferDelegate(wl_resource* offer)
+      : data_offer_resource_(offer) {}
 
   WaylandDataOfferDelegate(const WaylandDataOfferDelegate&) = delete;
   WaylandDataOfferDelegate& operator=(const WaylandDataOfferDelegate&) = delete;
@@ -212,13 +193,9 @@ class WaylandDataOfferDelegate : public DataOfferDelegate {
       wl_client_flush(wl_resource_get_client(data_offer_resource_));
     }
   }
-  SecurityDelegate* GetSecurityDelegate() const override {
-    return ::exo::wayland::GetSecurityDelegate(client_);
-  }
 
  private:
-  const raw_ptr<wl_client> client_;
-  const raw_ptr<wl_resource> data_offer_resource_;
+  const raw_ptr<wl_resource, ExperimentalAsh> data_offer_resource_;
 };
 
 void data_offer_accept(wl_client* client,
@@ -288,7 +265,7 @@ class WaylandDataDeviceDelegate : public DataDeviceDelegate {
         wl_resource_create(client_, &wl_data_offer_interface,
                            wl_resource_get_version(data_device_resource_), 0);
     std::unique_ptr<DataOffer> data_offer = std::make_unique<DataOffer>(
-        new WaylandDataOfferDelegate(client_, data_offer_resource));
+        new WaylandDataOfferDelegate(data_offer_resource));
     SetDataOfferResource(data_offer.get(), data_offer_resource);
     SetImplementation(data_offer_resource, &data_offer_implementation,
                       std::move(data_offer));
@@ -334,68 +311,34 @@ class WaylandDataDeviceDelegate : public DataDeviceDelegate {
                  Surface* origin,
                  Surface* icon,
                  uint32_t serial) {
-    std::optional<wayland::SerialTracker::EventType> event_type =
+    absl::optional<wayland::SerialTracker::EventType> event_type =
         serial_tracker_->GetEventType(serial);
-    if (event_type == std::nullopt) {
+    if (event_type == absl::nullopt) {
       LOG(ERROR) << "The serial passed to StartDrag does not exist.";
-      source->Cancelled();
       return;
     }
-    const int button_mask = ToMousePressedFlag(event_type.value());
-    LOG(ERROR) << "Start Drag Button Mask=" << button_mask
-               << ", event type=" << SerialTracker::ToString(*event_type);
-
-    if (button_mask) {
-      if ((aura::Env::GetInstance()->mouse_button_flags() & button_mask) == 0) {
-        LOG(ERROR) << "The mouse button used to StartDrag has already been "
-                      "relesed. tracker_id="
-                   << serial << ", " << serial_tracker_->ToString()
-                   << ", stored button event="
-                   << (event_type == wayland::SerialTracker::EventType::
-                                         POINTER_LEFT_BUTTON_DOWN
-                           ? "left"
-                           : "other")
-                   << ", currently pressed buttons="
-                   << base::JoinString(
-                          ui::MouseEventFlagsNames(
-                              aura::Env::GetInstance()->mouse_button_flags()),
-                          ",");
-        source->Cancelled();
-        return;
-      }
+    if (event_type == wayland::SerialTracker::EventType::POINTER_BUTTON_DOWN &&
+        serial_tracker_->GetPointerDownSerial() == serial) {
       DCHECK(data_device);
       data_device->StartDrag(source, origin, icon,
                              ui::mojom::DragEventSource::kMouse);
-    } else if (event_type == wayland::SerialTracker::EventType::TOUCH_DOWN) {
-      if (!aura::Env::GetInstance()->is_touch_down()) {
-        LOG(ERROR) << "The touch used to StartDrag has already been relesed. "
-                      "tracker_id="
-                   << serial << ", " << serial_tracker_->ToString();
-        source->Cancelled();
-        return;
-      }
+    } else if (event_type == wayland::SerialTracker::EventType::TOUCH_DOWN &&
+               serial_tracker_->GetTouchDownSerial() == serial) {
       DCHECK(data_device);
       data_device->StartDrag(source, origin, icon,
                              ui::mojom::DragEventSource::kTouch);
     } else {
-      LOG(ERROR) << "Invalid event type for StartDrag:"
-                 << SerialTracker::ToString(*event_type)
-                 << ", tracker_id=" << serial << ", "
-                 << serial_tracker_->ToString();
-      source->Cancelled();
-      return;
+      LOG(ERROR) << "The serial passed to StartDrag does not match its "
+                    "expected types.";
     }
-    // TODO(crbug/1371493): Remove this when bug is fixed.
-    LOG(ERROR) << "DataDrag Started=" << serial
-               << ", event_type=" << SerialTracker::ToString(*event_type);
   }
 
   void SetSelection(DataDevice* data_device,
                     DataSource* source,
                     uint32_t serial) {
-    std::optional<wayland::SerialTracker::EventType> event_type =
+    absl::optional<wayland::SerialTracker::EventType> event_type =
         serial_tracker_->GetEventType(serial);
-    if (event_type == std::nullopt) {
+    if (event_type == absl::nullopt) {
       LOG(ERROR) << "The serial passed to SetSelection does not exist.";
       return;
     }
@@ -404,11 +347,11 @@ class WaylandDataDeviceDelegate : public DataDeviceDelegate {
   }
 
  private:
-  const raw_ptr<wl_client> client_;
-  const raw_ptr<wl_resource> data_device_resource_;
+  const raw_ptr<wl_client, ExperimentalAsh> client_;
+  const raw_ptr<wl_resource, ExperimentalAsh> data_device_resource_;
 
   // Owned by Server, which always outlives this delegate.
-  const raw_ptr<SerialTracker> serial_tracker_;
+  const raw_ptr<SerialTracker, ExperimentalAsh> serial_tracker_;
 };
 
 void data_device_start_drag(wl_client* client,
@@ -492,4 +435,5 @@ void bind_data_device_manager(wl_client* client,
                                  data, nullptr);
 }
 
-}  // namespace exo::wayland
+}  // namespace wayland
+}  // namespace exo

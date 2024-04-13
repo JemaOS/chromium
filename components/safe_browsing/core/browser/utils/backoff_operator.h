@@ -34,9 +34,8 @@ class BackoffOperator {
   bool IsInBackoffMode() const;
 
   // Should be called by the consumer when a request fails. May initiate or
-  // extend backoff. Returns whether backoff mode becomes enabled as a result of
-  // the call into this function.
-  bool ReportError();
+  // extend backoff.
+  void ReportError();
 
   // Should be called by the consumer when the request succeeds. Resets error
   // count and ends backoff.

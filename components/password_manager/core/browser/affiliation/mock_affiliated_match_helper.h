@@ -29,8 +29,7 @@ class MockAffiliatedMatchHelper : public AffiliatedMatchHelper {
   };
 
   MockAffiliatedMatchHelper();
-  explicit MockAffiliatedMatchHelper(
-      affiliations::AffiliationService* affiliation_service);
+  explicit MockAffiliatedMatchHelper(AffiliationService* affiliation_service);
 
   MockAffiliatedMatchHelper(const MockAffiliatedMatchHelper&) = delete;
   MockAffiliatedMatchHelper& operator=(const MockAffiliatedMatchHelper&) =
@@ -41,10 +40,9 @@ class MockAffiliatedMatchHelper : public AffiliatedMatchHelper {
   // Expects GetAffiliatedAndroidAndWebRealms() to be called with the
   // |expected_observed_form|, and will cause the result callback supplied to
   // GetAffiliatedAndroidAndWebRealms() to be invoked with |results_to_return|.
-  void ExpectCallToGetAffiliatedAndGrouped(
+  void ExpectCallToGetAffiliatedAndroidRealms(
       const PasswordFormDigest& expected_observed_form,
-      std::vector<std::string> affiliated_realms,
-      std::vector<std::string> grouped_realms = {});
+      const std::vector<std::string>& results_to_return);
 
   // Expects GetGroup() to be called with the
   // |expected_observed_form|, and will cause the result callback supplied to
@@ -69,13 +67,16 @@ class MockAffiliatedMatchHelper : public AffiliatedMatchHelper {
               OnInjectAffiliationAndBrandingInformationCalled,
               ());
 
-  void GetAffiliatedAndGroupedRealms(
+  void GetAffiliatedAndroidAndWebRealms(
       const PasswordFormDigest& observed_form,
       AffiliatedRealmsCallback result_callback) override;
 
+  void GetGroup(const PasswordFormDigest& observed_form,
+                AffiliatedRealmsCallback result_callback) override;
+
   void InjectAffiliationAndBrandingInformation(
-      LoginsResult forms,
-      base::OnceCallback<void(LoginsResultOrError)> result_callback) override;
+      std::vector<std::unique_ptr<PasswordForm>> forms,
+      PasswordFormsOrErrorCallback result_callback) override;
 };
 
 }  // namespace password_manager

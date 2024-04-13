@@ -11,9 +11,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/time/clock.h"
-#include "base/trace_event/trace_event.h"
 #include "components/reading_list/core/reading_list_model_impl.h"
-#include "components/sync/base/data_type_histogram.h"
 #include "components/sync/model/entity_change.h"
 #include "components/sync/model/in_memory_metadata_change_list.h"
 #include "components/sync/model/metadata_batch.h"
@@ -21,19 +19,14 @@
 #include "components/sync/model/model_type_store.h"
 #include "components/sync/model/mutable_data_batch.h"
 #include "components/sync/protocol/model_type_state.pb.h"
-#include "components/sync/protocol/model_type_state_helper.h"
 
 ReadingListSyncBridge::ReadingListSyncBridge(
     syncer::StorageType storage_type,
-    syncer::WipeModelUponSyncDisabledBehavior
-        wipe_model_upon_sync_disabled_behavior,
     base::Clock* clock,
     std::unique_ptr<syncer::ModelTypeChangeProcessor> change_processor)
     : ModelTypeSyncBridge(std::move(change_processor)),
-      storage_type_for_uma_(storage_type),
-      clock_(clock),
-      wipe_model_upon_sync_disabled_behavior_(
-          wipe_model_upon_sync_disabled_behavior) {}
+      storage_type_(storage_type),
+      clock_(clock) {}
 
 ReadingListSyncBridge::~ReadingListSyncBridge() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -42,29 +35,11 @@ ReadingListSyncBridge::~ReadingListSyncBridge() {
 void ReadingListSyncBridge::ModelReadyToSync(
     ReadingListModelImpl* model,
     std::unique_ptr<syncer::MetadataBatch> sync_metadata_batch) {
-  TRACE_EVENT0("ui", "ReadingListSyncBridge::ModelReadyToSync");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(model);
   DCHECK(!model_);
 
   model_ = model;
-
-  if (wipe_model_upon_sync_disabled_behavior_ ==
-          syncer::WipeModelUponSyncDisabledBehavior::kOnceIfTrackingMetadata &&
-      !syncer::IsInitialSyncDone(
-          sync_metadata_batch->GetModelTypeState().initial_sync_state())) {
-    // Since the model isn't initially tracking metadata, move away from
-    // kOnceIfTrackingMetadata so the behavior doesn't kick in, in case sync is
-    // turned on later and back to off.
-    //
-    // Note that implementing this using IsInitialSyncDone(), instead of
-    // invoking IsTrackingMetadata() later, is more reliable, because the
-    // function cannot be trusted in ApplyDisableSyncChanges(), as it can
-    // return false negatives.
-    wipe_model_upon_sync_disabled_behavior_ =
-        syncer::WipeModelUponSyncDisabledBehavior::kNever;
-  }
-
   change_processor()->ModelReadyToSync(std::move(sync_metadata_batch));
 }
 
@@ -105,20 +80,6 @@ void ReadingListSyncBridge::DidRemoveEntry(
   change_processor()->Delete(entry.URL().spec(), metadata_change_list);
 }
 
-// IsTrackingMetadata() continues to be true while ApplyDisableSyncChanges() is
-// running, but transitions to false immediately afterwards.
-// ongoing_apply_disable_sync_changes_ is used to cause IsTrackingMetadata()
-// return false slightly earlier, and before related observer notifications are
-// triggered.
-bool ReadingListSyncBridge::IsTrackingMetadata() const {
-  return !ongoing_apply_disable_sync_changes_ &&
-         change_processor()->IsTrackingMetadata();
-}
-
-syncer::StorageType ReadingListSyncBridge::GetStorageTypeForUma() const {
-  return storage_type_for_uma_;
-}
-
 std::unique_ptr<syncer::MetadataChangeList>
 ReadingListSyncBridge::CreateMetadataChangeList() {
   return std::make_unique<syncer::InMemoryMetadataChangeList>();
@@ -136,7 +97,7 @@ ReadingListSyncBridge::CreateMetadataChangeList() {
 // Durable storage writes, if not able to combine all change atomically, should
 // save the metadata after the data changes, so that this merge will be re-
 // driven by sync if is not completely saved during the current run.
-std::optional<syncer::ModelError> ReadingListSyncBridge::MergeFullSyncData(
+absl::optional<syncer::ModelError> ReadingListSyncBridge::MergeFullSyncData(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_changes) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -164,7 +125,7 @@ std::optional<syncer::ModelError> ReadingListSyncBridge::MergeFullSyncData(
         model_->GetEntryByURL(entry->URL());
 
     if (!existing_entry) {
-      model_->AddEntry(std::move(entry), reading_list::ADDED_VIA_SYNC);
+      model_->SyncAddEntry(std::move(entry));
     } else {
       ReadingListEntry* merged_entry = model_->SyncMergeEntry(std::move(entry));
 
@@ -218,7 +179,7 @@ std::optional<syncer::ModelError> ReadingListSyncBridge::MergeFullSyncData(
 // |metadata_change_list| in case when some of the data changes are filtered
 // out, or even be empty in case when a commit confirmation is processed and
 // only the metadata needs to persisted.
-std::optional<syncer::ModelError>
+absl::optional<syncer::ModelError>
 ReadingListSyncBridge::ApplyIncrementalSyncChanges(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_changes) {
@@ -238,7 +199,6 @@ ReadingListSyncBridge::ApplyIncrementalSyncChanges(
 
       // The specifics validity is guaranteed by IsEntityDataValid().
       CHECK(ReadingListEntry::IsSpecificsValid(specifics));
-
       scoped_refptr<ReadingListEntry> entry(
           ReadingListEntry::FromReadingListValidSpecifics(specifics,
                                                           clock_->Now()));
@@ -247,7 +207,7 @@ ReadingListSyncBridge::ApplyIncrementalSyncChanges(
           model_->GetEntryByURL(entry->URL());
 
       if (!existing_entry) {
-        model_->AddEntry(std::move(entry), reading_list::ADDED_VIA_SYNC);
+        model_->SyncAddEntry(std::move(entry));
       } else {
         // Merge the local data and the sync data and store the result.
         model_->SyncMergeEntry(std::move(entry));
@@ -322,31 +282,17 @@ std::string ReadingListSyncBridge::GetStorageKey(
 
 void ReadingListSyncBridge::ApplyDisableSyncChanges(
     std::unique_ptr<syncer::MetadataChangeList> delete_metadata_change_list) {
-  base::AutoReset<bool> auto_reset_is_sync_stopping(
-      &ongoing_apply_disable_sync_changes_, true);
-  switch (wipe_model_upon_sync_disabled_behavior_) {
-    case syncer::WipeModelUponSyncDisabledBehavior::kNever:
-      CHECK_EQ(storage_type_for_uma_, syncer::StorageType::kUnspecified);
-      // Fall back to the default behavior (delete metadata only).
+  switch (storage_type_) {
+    case syncer::StorageType::kUnspecified:
+      // Fall back to the default behavior.
       ModelTypeSyncBridge::ApplyDisableSyncChanges(
           std::move(delete_metadata_change_list));
       break;
-    case syncer::WipeModelUponSyncDisabledBehavior::kAlways:
-      CHECK_EQ(storage_type_for_uma_, syncer::StorageType::kAccount);
+    case syncer::StorageType::kAccount:
       // For account storage, in addition to sync metadata deletion (which
       // |delete_metadata_change_list| represents), the actual reading list
       // entries need to be deleted. This function does both and is even
       // robust against orphan or unexpected data in storage.
-      model_->SyncDeleteAllEntriesAndSyncMetadata();
-      break;
-    case syncer::WipeModelUponSyncDisabledBehavior::kOnceIfTrackingMetadata:
-      CHECK_EQ(storage_type_for_uma_, syncer::StorageType::kUnspecified);
-      syncer::SyncRecordModelClearedOnceHistogram(syncer::READING_LIST);
-      wipe_model_upon_sync_disabled_behavior_ =
-          syncer::WipeModelUponSyncDisabledBehavior::kNever;
-      // `wipe_model_upon_sync_disabled_behavior_` being set to
-      // `kOnceIfTrackingMetadata` implies metadata was being tracked when it
-      // was loaded from storage, see logic in ModelReadyToSync().
       model_->SyncDeleteAllEntriesAndSyncMetadata();
       break;
   }

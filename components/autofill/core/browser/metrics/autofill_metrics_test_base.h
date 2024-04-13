@@ -11,12 +11,11 @@
 #include "components/autofill/core/browser/autofill_form_test_utils.h"
 #include "components/autofill/core/browser/autofill_suggestion_generator.h"
 #include "components/autofill/core/browser/autofill_test_utils.h"
-#include "components/autofill/core/browser/browser_autofill_manager_test_api.h"
 #include "components/autofill/core/browser/payments/test_credit_card_save_manager.h"
+#include "components/autofill/core/browser/payments/test_payments_client.h"
 #include "components/autofill/core/browser/test_autofill_client.h"
 #include "components/autofill/core/browser/test_autofill_driver.h"
 #include "components/autofill/core/browser/test_browser_autofill_manager.h"
-#include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
 #include "components/sync/test/test_sync_service.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -24,21 +23,16 @@
 namespace autofill::autofill_metrics {
 
 constexpr char kTestProfileId[] = "00000000-0000-0000-0000-000000000001";
-constexpr char kTestProfile2Id[] = "00000000-0000-0000-0000-000000000002";
 constexpr char kTestLocalCardId[] = "10000000-0000-0000-0000-000000000001";
 constexpr char kTestMaskedCardId[] = "10000000-0000-0000-0000-000000000002";
 constexpr char kTestFullServerCardId[] = "10000000-0000-0000-0000-000000000003";
-// These variables store the GUIDs of a Local and a masked Server card which
-// have the same card attributes, i.e., are duplicates of each other.
-constexpr char kTestDuplicateLocalCardId[] =
-    "10000000-0000-0000-0000-000000000004";
-constexpr char kTestDuplicateMaskedCardId[] =
-    "10000000-0000-0000-0000-000000000005";
 
 class MockAutofillClient : public TestAutofillClient {
  public:
   MockAutofillClient();
   ~MockAutofillClient() override;
+  MOCK_METHOD(void, ExecuteCommand, (int), (override));
+  MOCK_METHOD(bool, IsTouchToFillCreditCardSupported, (), (override));
   MOCK_METHOD(bool,
               ShowTouchToFillCreditCard,
               (base::WeakPtr<TouchToFillDelegate>,
@@ -59,10 +53,11 @@ class AutofillMetricsBaseTest {
   void CreateAmbiguousProfiles();
 
   // Removes all existing profiles and creates one profile.
-  void RecreateProfile();
+  // |is_server| allows creation of |SERVER_PROFILE|.
+  void RecreateProfile(bool is_server);
 
-  // Removes all existing credit cards and then invokes CreateCreditCards to
-  // create the cards.
+  // Removes all existing credit cards and creates a local, masked server,
+  // full server, and/or virtual credit card, according to the parameters.
   // TODO(crbug/1216615): Migrate this to a params builder pattern or
   // something.
   void RecreateCreditCards(bool include_local_credit_card,
@@ -70,16 +65,15 @@ class AutofillMetricsBaseTest {
                            bool include_full_server_credit_card,
                            bool masked_card_is_enrolled_for_virtual_card);
 
-  // Creates a local, masked server, full server, and/or virtual credit card,
-  // according to the parameters.
-  void CreateCreditCards(bool include_local_credit_card,
-                         bool include_masked_server_credit_card,
-                         bool include_full_server_credit_card,
-                         bool masked_card_is_enrolled_for_virtual_card);
+  // Creates a local card to existing card deck or clear them all and then add a
+  // new local card.
+  // The GUID for the card created is returned as a string.
+  std::string CreateLocalMasterCard(bool clear_existing_cards = false);
 
   // Creates a local card and then a duplicate server card with the same
   // credentials/info.
-  void CreateLocalAndDuplicateServerCreditCard();
+  // The GUIDs for the cards crated are returned as a vector of strings.
+  std::vector<std::string> CreateLocalAndDuplicateServerCreditCard();
 
   void AddMaskedServerCreditCardWithOffer(std::string guid,
                                           std::string offer_reward_amount,
@@ -171,36 +165,22 @@ class AutofillMetricsBaseTest {
     return form;
   }
 
-  void DidShowAutofillSuggestions(
-      const FormData& form,
-      size_t field_index = 0,
-      PopupItemId suggestion_type = PopupItemId::kAddressEntry) {
-    autofill_manager().DidShowSuggestions(
-        std::vector<PopupItemId>({suggestion_type}), form,
-        form.fields[field_index]);
-  }
-
   void FillTestProfile(const FormData& form) {
-    FillProfileByGUID(form, kTestProfileId);
+    autofill_manager().FillOrPreviewForm(
+        mojom::RendererFormDataAction::kFill, form, form.fields.front(),
+        MakeFrontendId({.profile_id = kTestProfileId}),
+        AutofillTriggerSource::kPopup);
   }
 
-  void FillProfileByGUID(const FormData& form,
-                         const std::string& profile_guid) {
-    autofill_manager().FillOrPreviewProfileForm(
-        mojom::ActionPersistence::kFill, form, form.fields.front(),
-        *personal_data().GetProfileByGUID(profile_guid),
-        {.trigger_source = AutofillTriggerSource::kPopup});
-  }
-
-  void UndoAutofill(const FormData& form) {
-    autofill_manager().UndoAutofill(mojom::ActionPersistence::kFill, form,
-                                    form.fields.front());
+  int MakeFrontendId(
+      const TestBrowserAutofillManager::MakeFrontendIdParams& params) {
+    return autofill_manager().MakeFrontendId(params);
   }
 
   [[nodiscard]] FormData CreateEmptyForm() {
     FormData form;
     form.host_frame = test::MakeLocalFrameToken();
-    form.renderer_id = test::MakeFormRendererId();
+    form.unique_renderer_id = test::MakeFormRendererId();
     form.name = u"TestForm";
     form.url = GURL("https://example.com/form.html");
     form.action = GURL("https://example.com/submit.html");
@@ -215,35 +195,39 @@ class AutofillMetricsBaseTest {
     return form;
   }
 
-  TestBrowserAutofillManager& autofill_manager() {
-    return static_cast<TestBrowserAutofillManager&>(
-        autofill_driver_->GetAutofillManager());
+  // Forwards to test::CreateTestFormField(). This is a hack meant as an
+  // intermediate step towards removing the out-parameters from
+  // autofill_form_util.h.
+  template <typename... Args>
+  [[nodiscard]] FormFieldData CreateField(Args... args) {
+    FormFieldData field;
+    test::CreateTestFormField(args..., &field);
+    return field;
   }
 
-  AutofillExternalDelegate& external_delegate() {
-    return *test_api(autofill_manager()).external_delegate();
+  TestBrowserAutofillManager& autofill_manager() {
+    return static_cast<TestBrowserAutofillManager&>(
+        *autofill_driver_->autofill_manager());
   }
 
   TestPersonalDataManager& personal_data() {
     return *autofill_client_->GetPersonalDataManager();
   }
 
-  ukm::TestUkmRecorder& test_ukm_recorder() {
-    return *autofill_client_->GetTestUkmRecorder();
-  }
-
   const bool is_in_any_main_frame_ = true;
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  base::test::TaskEnvironment task_environment_;
   test::AutofillUnitTestEnvironment autofill_test_environment_;
   std::unique_ptr<MockAutofillClient> autofill_client_;
+  raw_ptr<ukm::TestUkmRecorder> test_ukm_recorder_;
   syncer::TestSyncService sync_service_;
   std::unique_ptr<TestAutofillDriver> autofill_driver_;
+  raw_ptr<AutofillExternalDelegate> external_delegate_;
 
  private:
   void CreateTestAutofillProfiles();
 
-  CreditCard credit_card_ = test::WithCvc(test::GetMaskedServerCard());
+  base::test::ScopedFeatureList scoped_feature_list_async_parse_form_;
+  CreditCard credit_card_ = test::GetMaskedServerCard();
 };
 
 }  // namespace autofill::autofill_metrics

@@ -4,7 +4,9 @@
 
 package org.chromium.components.media_router;
 
-/** Interface to subscribe to MediaStatus updates. */
+/**
+ * Interface to subscribe to MediaStatus updates.
+ */
 public interface MediaStatusObserver {
     /**
      * Called when there is a MediaStatus update.

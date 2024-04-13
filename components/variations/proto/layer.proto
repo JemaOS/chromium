@@ -78,9 +78,6 @@ message Layer {
 
     // Use the low entropy source.
     LOW = 1;
-
-    // Use the limited entropy source.
-    LIMITED = 2;
   }
 
   // Which of the above entropy modes should be used to select a slot.

@@ -4,14 +4,14 @@
 
 #include "components/cookie_config/cookie_store_util.h"
 
-#include "base/functional/callback.h"
+#include "base/lazy_instance.h"
 #include "build/build_config.h"
 #include "components/os_crypt/sync/os_crypt.h"
 #include "net/extras/sqlite/cookie_crypto_delegate.h"
 
 namespace cookie_config {
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
 namespace {
 
@@ -20,15 +20,28 @@ namespace {
 // because ChromeOS and Android already protect the entire profile contents.
 class CookieOSCryptoDelegate : public net::CookieCryptoDelegate {
  public:
-  void Init(base::OnceClosure callback) override;
+  bool ShouldEncrypt() override;
   bool EncryptString(const std::string& plaintext,
                      std::string* ciphertext) override;
   bool DecryptString(const std::string& ciphertext,
                      std::string* plaintext) override;
 };
 
-void CookieOSCryptoDelegate::Init(base::OnceClosure callback) {
-  std::move(callback).Run();
+bool CookieOSCryptoDelegate::ShouldEncrypt() {
+#if BUILDFLAG(IS_IOS)
+  // Cookie encryption is not necessary on iOS, due to OS-protected storage.
+  // However, due to https://codereview.chromium.org/135183021/, cookies were
+  // accidentally encrypted. In order to allow these cookies to still be used,a
+  // a CookieCryptoDelegate is provided that can decrypt existing cookies.
+  // However, new cookies will not be encrypted. The alternatives considered
+  // were not supplying a delegate at all (thus invalidating all existing
+  // encrypted cookies) or in migrating all cookies at once, which may impose
+  // startup costs.  Eventually, all cookies will get migrated as they are
+  // rewritten.
+  return false;
+#else
+  return true;
+#endif
 }
 
 bool CookieOSCryptoDelegate::EncryptString(const std::string& plaintext,
@@ -41,17 +54,22 @@ bool CookieOSCryptoDelegate::DecryptString(const std::string& ciphertext,
   return OSCrypt::DecryptString(ciphertext, plaintext);
 }
 
+// Using a LazyInstance is safe here because this class is stateless and
+// requires 0 initialization.
+base::LazyInstance<CookieOSCryptoDelegate>::DestructorAtExit
+    g_cookie_crypto_delegate = LAZY_INSTANCE_INITIALIZER;
+
 }  // namespace
 
-std::unique_ptr<net::CookieCryptoDelegate> GetCookieCryptoDelegate() {
-  return std::make_unique<CookieOSCryptoDelegate>();
+net::CookieCryptoDelegate* GetCookieCryptoDelegate() {
+  return g_cookie_crypto_delegate.Pointer();
 }
-#else   // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
+#else   // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
-std::unique_ptr<net::CookieCryptoDelegate> GetCookieCryptoDelegate() {
-  return nullptr;
+net::CookieCryptoDelegate* GetCookieCryptoDelegate() {
+  return NULL;
 }
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
 
 }  // namespace cookie_config

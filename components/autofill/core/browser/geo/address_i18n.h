@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "base/functional/callback_forward.h"
 #include "components/autofill/core/browser/field_types.h"
@@ -38,17 +37,18 @@ CreateAddressDataFromAutofillProfile(const AutofillProfile& profile,
                                      const std::string& app_locale);
 
 // Returns the corresponding Autofill server type for |field|.
-FieldType TypeForField(::i18n::addressinput::AddressField field);
+ServerFieldType TypeForField(::i18n::addressinput::AddressField field);
 
 // Sets |field| to the corresponding address field for the Autofill
 // |server_type|. Returns |true| if |server_type| can be represented as an
 // address field. The |field| parameter can be NULL.
-bool FieldForType(FieldType server_type,
+bool FieldForType(ServerFieldType server_type,
                   ::i18n::addressinput::AddressField* field);
 
 // Returns whether the field specified by |server_type| is required for this
 // |country_code|, according to the libaddressinput metadata.
-bool IsFieldRequired(FieldType server_type, const std::string& country_code);
+bool IsFieldRequired(ServerFieldType server_type,
+                     const std::string& country_code);
 
 }  // namespace i18n
 }  // namespace autofill

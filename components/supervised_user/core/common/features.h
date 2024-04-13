@@ -6,67 +6,32 @@
 #define COMPONENTS_SUPERVISED_USER_CORE_COMMON_FEATURES_H_
 
 #include "base/feature_list.h"
-#include "base/metrics/field_trial_params.h"
-#include "build/build_config.h"
-#include "extensions/buildflags/buildflags.h"
 
 namespace supervised_user {
 
-// Experiment to enable kid-friendly content feed.
-BASE_DECLARE_FEATURE(kKidFriendlyContentFeed);
-extern const base::FeatureParam<std::string> kKidFriendlyContentFeedEndpoint;
+BASE_DECLARE_FEATURE(kWebFilterInterstitialRefresh);
 
 BASE_DECLARE_FEATURE(kLocalWebApprovals);
+extern const char kLocalWebApprovalsPreferredButtonLocal[];
+extern const char kLocalWebApprovalsPreferredButtonRemote[];
 
-// Applies the updated extension approval flow, which can skip parent-approvals
-// on extension installations.
-BASE_DECLARE_FEATURE(
-    kEnableSupervisedUserSkipParentApprovalToInstallExtensions);
+BASE_DECLARE_FEATURE(kAllowHistoryDeletionForChildAccounts);
+BASE_DECLARE_FEATURE(kSynchronousSignInChecking);
 
-// Applies new informative strings during the parental extension approval flow.
-BASE_DECLARE_FEATURE(kUpdatedSupervisedUserExtensionApprovalStrings);
-
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+// Flags related to supervision features on Desktop and iOS platforms.
+BASE_DECLARE_FEATURE(kEnableSupervisionOnDesktopAndIOS);
+BASE_DECLARE_FEATURE(kFilterWebsitesForSupervisedUsersOnDesktopAndIOS);
 BASE_DECLARE_FEATURE(kEnableExtensionsPermissionsForSupervisedUsersOnDesktop);
-#endif
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-// Returns whether the new mode for extension approval management is enabled.
-// Under this mode, supervised users may request parent approval on each
-// extension installation or the parent allows and approves by default all
-// extension installations.
-// On Win/Linux/Mac enabling the new mode requires that the feature
-// `kEnableExtensionsPermissionsForSupervisedUsersOnDesktop` is also enabled.
-bool IsSupervisedUserSkipParentApprovalToInstallExtensionsEnabled();
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+BASE_DECLARE_FEATURE(kLocalExtensionApprovalsV2);
 
-// Enable different web sign in interception behaviour for supervised users:
-//
-// 1. Supervised user signs in to existing signed out Profile: show modal
-//    explaining that supervision features will apply.
-// 2. Supervised user signs in as secondary account in existing signed in
-//    Profile
-//
-// Only affects Desktop platforms.
-BASE_DECLARE_FEATURE(kCustomWebSignInInterceptForSupervisedUsers);
+BASE_DECLARE_FEATURE(kRetireStaticDenyList);
 
-// Runs a shadow no-op safe-sites call alongside kids-api call, to compare
-// latencies.
-BASE_DECLARE_FEATURE(kShadowKidsApiWithSafeSites);
+BASE_DECLARE_FEATURE(kEnableProtoApiForClassifyUrl);
 
-// Updates usages of Profile.isChild() in Profile.java to use the account
-// capability to determine if account is supervised.
-#if BUILDFLAG(IS_ANDROID)
-BASE_DECLARE_FEATURE(kMigrateAccountManagementSettingsToCapabilities);
-#endif
-
-// Sets kForceYouTubeRestrict to be applied according to parental controls set
-// on Family Link
-BASE_DECLARE_FEATURE(kRemoveForceAppliedYoutubeRestrictPolicy);
-
-// Uses PrimaryAccountAccessTokenFetcher::Mode::kWaitUntilAvailable for
-// ClassifyUrl fetches.
-BASE_DECLARE_FEATURE(kWaitUntilAccessTokenAvailableForClassifyUrl);
+// Returns whether refreshed version of the website filter interstitial is
+// enabled.
+bool IsWebFilterInterstitialRefreshEnabled();
 
 // Returns whether local parent approvals on Family Link user's device are
 // enabled.
@@ -74,12 +39,23 @@ BASE_DECLARE_FEATURE(kWaitUntilAccessTokenAvailableForClassifyUrl);
 // filter interstitial is enabled.
 bool IsLocalWebApprovalsEnabled();
 
-// Returns whether the experiment to display a kid-friendly content stream on
-// the New Tab page has been enabled.
-bool IsKidFriendlyContentFeedAvailable();
+// Returns whether the local parent approval should be displayed as the
+// preferred option.
+// This should only be called if IsLocalWebApprovalsEnabled() returns true.
+bool IsLocalWebApprovalThePreferredButton();
 
-// Returns whether to shadow safe-sites call with kids-api call.
-bool IsShadowKidsApiWithSafeSitesEnabled();
+// Returns whether to use the new Api for fetching.
+bool IsKidsManagementServiceEnabled();
+
+// Returns whether the ClassifyUrl call uses proto apis.
+bool IsProtoApiForClassifyUrlEnabled();
+
+// Returns whether the First Run Experience will rely on checking the sign-in
+// status synchronously - http://b/264382308.
+bool IsSynchronousSignInCheckingEnabled();
+
+// Returns whether the new local extension approval experience is enabled.
+bool IsLocalExtensionApprovalsV2Enabled();
 
 }  // namespace supervised_user
 

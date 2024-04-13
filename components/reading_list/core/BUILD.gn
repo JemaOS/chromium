@@ -27,6 +27,7 @@ source_set("core") {
   deps = [
     "//components/keyed_service/core",
     "//components/prefs",
+    "//components/reading_list/features:flags",
     "//components/sync",
     "//net",
     "//url",
@@ -72,6 +73,7 @@ source_set("unit_tests") {
     ":test_support",
     "//base",
     "//base/test:test_support",
+    "//components/reading_list/features:flags",
     "//components/sync",
     "//components/sync:test_support",
     "//testing/gtest",

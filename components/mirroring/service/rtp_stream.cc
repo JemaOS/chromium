@@ -32,7 +32,7 @@ VideoRtpStream::VideoRtpStream(
     refresh_timer_.Start(
         FROM_HERE, refresh_interval_,
         base::BindRepeating(&VideoRtpStream::OnRefreshTimerFired,
-                            weak_ptr_factory_.GetWeakPtr()));
+                            this->AsWeakPtr()));
   }
 }
 

@@ -11,6 +11,10 @@ namespace syncer {
 
 // Contains everything needed to talk to and identify a user account.
 struct SyncCredentials {
+  SyncCredentials() = default;
+  SyncCredentials(const SyncCredentials& other) = default;
+  ~SyncCredentials() = default;
+
   // The email associated with this account.
   std::string email;
 

@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/command_line.h"
-#include "base/containers/span.h"
 #include "base/files/file_proxy.h"
 #include "base/files/file_util.h"
 #include "base/lazy_instance.h"
@@ -23,6 +22,10 @@
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "url/gurl.h"
+
+#if BUILDFLAG(IS_WIN)
+#include "base/win/windows_version.h"
+#endif
 
 namespace {
 
@@ -42,10 +45,17 @@ const base::FilePath::StringType NaClIrtName() {
 
 #if defined(ARCH_CPU_X86_FAMILY)
 #if defined(ARCH_CPU_X86_64)
-  irt_name.append(FILE_PATH_LITERAL("x86_64"));
+  bool is64 = true;
+#elif BUILDFLAG(IS_WIN)
+  bool is64 = base::win::OSInfo::GetInstance()->IsWowX86OnAMD64();
 #else
-  irt_name.append(FILE_PATH_LITERAL("x86_32"));
+  bool is64 = false;
 #endif
+  if (is64)
+    irt_name.append(FILE_PATH_LITERAL("x86_64"));
+  else
+    irt_name.append(FILE_PATH_LITERAL("x86_32"));
+
 #elif defined(ARCH_CPU_ARM_FAMILY)
   irt_name.append(FILE_PATH_LITERAL("arm"));
 #elif defined(ARCH_CPU_MIPSEL)
@@ -156,7 +166,9 @@ NaClBrowserDelegate* NaClBrowser::GetDelegate() {
   return g_browser_delegate;
 }
 
-void NaClBrowser::ClearAndDeleteDelegate() {
+void NaClBrowser::ClearAndDeleteDelegateForTest() {
+  DCHECK(
+      !content::BrowserThread::IsThreadInitialized(content::BrowserThread::UI));
   DCHECK(g_browser_delegate);
   delete g_browser_delegate;
   g_browser_delegate = nullptr;
@@ -193,6 +205,19 @@ void NaClBrowser::InitIrtFilePath() {
     irt_filepath_ = plugin_dir.Append(NaClIrtName());
   }
 }
+
+#if BUILDFLAG(IS_WIN)
+bool NaClBrowser::GetNaCl64ExePath(base::FilePath* exe_path) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  base::FilePath module_path;
+  if (!base::PathService::Get(base::FILE_MODULE, &module_path)) {
+    LOG(ERROR) << "NaCl process launch failed: could not resolve module";
+    return false;
+  }
+  *exe_path = module_path.DirName().Append(L"nacl64");
+  return true;
+}
+#endif
 
 // static
 NaClBrowser* NaClBrowser::GetInstanceInternal() {
@@ -353,7 +378,7 @@ void NaClBrowser::OnValidationCacheLoaded(const std::string *data) {
     // No file found.
     validation_cache_.Reset();
   } else {
-    base::Pickle pickle = base::Pickle::WithData(base::as_byte_span(*data));
+    base::Pickle pickle(data->data(), data->size());
     validation_cache_.Deserialize(&pickle);
   }
   validation_cache_state_ = NaClResourceReady;

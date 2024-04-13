@@ -27,8 +27,7 @@ class PrivacySandboxAdsPageLoadMetricsObserver
   enum class PrivacySandboxAdsApi {
     kAttributionReporting,
     kFencedFrames,
-    kProtectedAudienceRunAdAuction,
-    kProtectedAudienceJoinAdInterestGroup,
+    kFledge,
     kPrivateAggregation,
     kSharedStorage,
     kTopics,

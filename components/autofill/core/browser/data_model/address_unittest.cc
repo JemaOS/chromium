@@ -9,50 +9,26 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
 #include "components/autofill/core/browser/autofill_type.h"
-#include "components/autofill/core/browser/country_type.h"
 #include "components/autofill/core/browser/data_model/address.h"
-#include "components/autofill/core/browser/data_model/autofill_i18n_api.h"
-#include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/geo/alternative_state_name_map_test_utils.h"
+#include "components/autofill/core/browser/geo/country_names.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-using autofill::i18n_model_definition::kLegacyHierarchyCountryCode;
 using base::ASCIIToUTF16;
 
 namespace autofill {
 
 class AddressTest : public testing::Test {
  public:
-  AddressTest() {
-    features_.InitWithFeatures(
-        {
-            features::kAutofillEnableSupportForLandmark,
-            features::kAutofillEnableSupportForBetweenStreets,
-            features::kAutofillEnableSupportForAdminLevel2,
-            features::kAutofillEnableSupportForApartmentNumbers,
-            features::kAutofillEnableSupportForAddressOverflow,
-            features::kAutofillEnableSupportForBetweenStreetsOrLandmark,
-            features::kAutofillEnableSupportForAddressOverflowAndLandmark,
-            features::kAutofillUseAUAddressModel,
-            features::kAutofillUseBRAddressModel,
-            features::kAutofillUseDEAddressModel,
-            features::kAutofillUseINAddressModel,
-            features::kAutofillUseMXAddressModel,
-            features::kAutofillUseI18nAddressModel,
-        },
-        {});
-  }
-
- private:
-  base::test::ScopedFeatureList features_;
+  AddressTest() { CountryNames::SetLocaleString("en-US"); }
 };
 
 // Test that country data can be properly returned as either a country code or a
 // localized country name.
 TEST_F(AddressTest, GetCountry) {
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   EXPECT_EQ(std::u16string(), address.GetRawInfo(ADDRESS_HOME_COUNTRY));
 
   // Make sure that nothing breaks when the country code is missing.
@@ -63,44 +39,48 @@ TEST_F(AddressTest, GetCountry) {
   address.SetInfo(AutofillType(ADDRESS_HOME_COUNTRY), u"US", "en-US");
   country = address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
   EXPECT_EQ(u"United States", country);
-  country = address.GetInfo(AutofillType(HtmlFieldType::kCountryName), "en-US");
+  country = address.GetInfo(
+      AutofillType(HtmlFieldType::kCountryName, HtmlFieldMode::kNone), "en-US");
   EXPECT_EQ(u"United States", country);
-  country = address.GetInfo(AutofillType(HtmlFieldType::kCountryCode), "en-US");
+  country = address.GetInfo(
+      AutofillType(HtmlFieldType::kCountryCode, HtmlFieldMode::kNone), "en-US");
   EXPECT_EQ(u"US", country);
 
   address.SetRawInfo(ADDRESS_HOME_COUNTRY, u"CA");
   country = address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
   EXPECT_EQ(u"Canada", country);
-  country = address.GetInfo(AutofillType(HtmlFieldType::kCountryName), "en-US");
+  country = address.GetInfo(
+      AutofillType(HtmlFieldType::kCountryName, HtmlFieldMode::kNone), "en-US");
   EXPECT_EQ(u"Canada", country);
-  country = address.GetInfo(AutofillType(HtmlFieldType::kCountryCode), "en-US");
+  country = address.GetInfo(
+      AutofillType(HtmlFieldType::kCountryCode, HtmlFieldMode::kNone), "en-US");
   EXPECT_EQ(u"CA", country);
 }
 
 // Test that country data can be properly returned as either a country code or a
 // full country name that can even be localized.
 TEST_F(AddressTest, SetHtmlCountryCodeTypeWithFullCountryName) {
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   EXPECT_EQ(std::u16string(), address.GetRawInfo(ADDRESS_HOME_COUNTRY));
 
   // Create an autofill type from HtmlFieldType::kCountryCode.
-  AutofillType autofill_type(HtmlFieldType::kCountryCode);
+  AutofillType autofill_type(HtmlFieldType::kCountryCode, HtmlFieldMode::kNone);
 
   // Test that the country value can be set and retrieved if it is not
   // a country code but a full country name.
   address.SetInfo(autofill_type, u"Germany", "en-US");
   std::u16string actual_country =
       address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
-  std::u16string actual_country_code =
-      address.GetInfo(AutofillType(HtmlFieldType::kCountryCode), "en-US");
+  std::u16string actual_country_code = address.GetInfo(
+      AutofillType(HtmlFieldType::kCountryCode, HtmlFieldMode::kNone), "en-US");
   EXPECT_EQ(u"Germany", actual_country);
   EXPECT_EQ(u"DE", actual_country_code);
 
   // Reset the country and verify that the reset works as expected.
   address.SetInfo(autofill_type, u"", "en-US");
   actual_country = address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
-  actual_country_code =
-      address.GetInfo(AutofillType(HtmlFieldType::kCountryCode), "en-US");
+  actual_country_code = address.GetInfo(
+      AutofillType(HtmlFieldType::kCountryCode, HtmlFieldMode::kNone), "en-US");
   EXPECT_EQ(u"", actual_country);
   EXPECT_EQ(u"", actual_country_code);
 
@@ -108,8 +88,8 @@ TEST_F(AddressTest, SetHtmlCountryCodeTypeWithFullCountryName) {
   // a country code but a full country name with a non-standard locale.
   address.SetInfo(autofill_type, u"deutschland", "de");
   actual_country = address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
-  actual_country_code =
-      address.GetInfo(AutofillType(HtmlFieldType::kCountryCode), "en-US");
+  actual_country_code = address.GetInfo(
+      AutofillType(HtmlFieldType::kCountryCode, HtmlFieldMode::kNone), "en-US");
   EXPECT_EQ(u"Germany", actual_country);
   EXPECT_EQ(u"DE", actual_country_code);
 
@@ -120,15 +100,15 @@ TEST_F(AddressTest, SetHtmlCountryCodeTypeWithFullCountryName) {
   // country code.
   address.SetInfo(autofill_type, u"DE", "en-US");
   actual_country = address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
-  actual_country_code =
-      address.GetInfo(AutofillType(HtmlFieldType::kCountryCode), "en-US");
+  actual_country_code = address.GetInfo(
+      AutofillType(HtmlFieldType::kCountryCode, HtmlFieldMode::kNone), "en-US");
   EXPECT_EQ(u"DE", actual_country_code);
   EXPECT_EQ(u"Germany", actual_country);
 }
 
 // Test that we properly detect country codes appropriate for each country.
 TEST_F(AddressTest, SetCountry) {
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   EXPECT_EQ(std::u16string(), address.GetRawInfo(ADDRESS_HOME_COUNTRY));
 
   // Test basic conversion.
@@ -165,7 +145,7 @@ TEST_F(AddressTest, SetCountry) {
 
   // Test setting the country based on an HTML field type.
   AutofillType html_type_country_code =
-      AutofillType(HtmlFieldType::kCountryCode);
+      AutofillType(HtmlFieldType::kCountryCode, HtmlFieldMode::kNone);
   address.SetInfo(html_type_country_code, u"US", "en-US");
   country = address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
   EXPECT_EQ(u"US", address.GetRawInfo(ADDRESS_HOME_COUNTRY));
@@ -183,40 +163,39 @@ TEST_F(AddressTest, SetCountry) {
   country = address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
   EXPECT_EQ(std::u16string(), address.GetRawInfo(ADDRESS_HOME_COUNTRY));
   EXPECT_EQ(std::u16string(), country);
-
-  // Test incorrect use of country codes (when a country name is passed
-  // as a country code).
-  address.SetInfo(html_type_country_code, u"日本", "ja-JP");
-  country = address.GetInfo(AutofillType(ADDRESS_HOME_COUNTRY), "en-US");
-  EXPECT_EQ(u"JP", address.GetRawInfo(ADDRESS_HOME_COUNTRY));
-  EXPECT_EQ(u"Japan", country);
 }
 
 // Test setting and getting the new structured address tokens
 TEST_F(AddressTest, StructuredAddressTokens) {
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
 
   // Set the address tokens.
   address.SetRawInfo(ADDRESS_HOME_STREET_NAME, u"StreetName");
   address.SetRawInfo(ADDRESS_HOME_HOUSE_NUMBER, u"HouseNumber");
+  address.SetRawInfo(ADDRESS_HOME_DEPENDENT_STREET_NAME,
+                     u"DependentStreetName");
+  address.SetRawInfo(ADDRESS_HOME_PREMISE_NAME, u"PremiseNmae");
   address.SetRawInfo(ADDRESS_HOME_SUBPREMISE, u"SubPremise");
 
   // Retrieve the tokens and verify that they are correct.
   EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STREET_NAME), u"StreetName");
   EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_HOUSE_NUMBER), u"HouseNumber");
+  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_DEPENDENT_STREET_NAME),
+            u"DependentStreetName");
+  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_PREMISE_NAME), u"PremiseNmae");
   EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_SUBPREMISE), u"SubPremise");
 }
 
 // Test that we properly match typed values to stored country data.
 TEST_F(AddressTest, IsCountry) {
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   address.SetRawInfo(ADDRESS_HOME_COUNTRY, u"US");
 
   const char* const kValidMatches[] = {"United States", "USA", "US",
                                        "United states", "us"};
   for (const char* valid_match : kValidMatches) {
     SCOPED_TRACE(valid_match);
-    FieldTypeSet matching_types;
+    ServerFieldTypeSet matching_types;
     address.GetMatchingTypes(ASCIIToUTF16(valid_match), "US", &matching_types);
     ASSERT_EQ(1U, matching_types.size());
     EXPECT_EQ(ADDRESS_HOME_COUNTRY, *matching_types.begin());
@@ -224,7 +203,7 @@ TEST_F(AddressTest, IsCountry) {
 
   const char* const kInvalidMatches[] = {"United", "Garbage"};
   for (const char* invalid_match : kInvalidMatches) {
-    FieldTypeSet matching_types;
+    ServerFieldTypeSet matching_types;
     address.GetMatchingTypes(ASCIIToUTF16(invalid_match), "US",
                              &matching_types);
     EXPECT_EQ(0U, matching_types.size());
@@ -233,7 +212,7 @@ TEST_F(AddressTest, IsCountry) {
   // Make sure that garbage values don't match when the country code is empty.
   address.SetRawInfo(ADDRESS_HOME_COUNTRY, std::u16string());
   EXPECT_EQ(std::u16string(), address.GetRawInfo(ADDRESS_HOME_COUNTRY));
-  FieldTypeSet matching_types;
+  ServerFieldTypeSet matching_types;
   address.GetMatchingTypes(u"Garbage", "US", &matching_types);
   EXPECT_EQ(0U, matching_types.size());
 }
@@ -243,7 +222,7 @@ TEST_F(AddressTest, GetStreetAddress) {
   const AutofillType type = AutofillType(ADDRESS_HOME_STREET_ADDRESS);
 
   // Address has no address lines.
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   EXPECT_TRUE(address.GetRawInfo(ADDRESS_HOME_LINE1).empty());
   EXPECT_TRUE(address.GetRawInfo(ADDRESS_HOME_LINE2).empty());
   EXPECT_TRUE(address.GetRawInfo(ADDRESS_HOME_LINE3).empty());
@@ -304,7 +283,7 @@ TEST_F(AddressTest, GetStreetAddress) {
 // than N lines does not result in an address with blank lines at the end.
 TEST_F(AddressTest, GetStreetAddressAfterOverwritingLongAddressWithShorterOne) {
   // Start with an address that has two lines.
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   address.SetRawInfo(ADDRESS_HOME_LINE1, u"123 Example Ave.");
   address.SetRawInfo(ADDRESS_HOME_LINE2, u"Apt. 42");
 
@@ -327,7 +306,7 @@ TEST_F(AddressTest, SetRawStreetAddress) {
       u"Apt. 42\n"
       u"(The one with the blue door)";
 
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   EXPECT_EQ(std::u16string(), address.GetRawInfo(ADDRESS_HOME_LINE1));
   EXPECT_EQ(std::u16string(), address.GetRawInfo(ADDRESS_HOME_LINE2));
 
@@ -360,7 +339,7 @@ TEST_F(AddressTest, SetStreetAddress) {
   const AutofillType type = AutofillType(ADDRESS_HOME_STREET_ADDRESS);
 
   // Start with a non-empty address.
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   address.SetRawInfo(ADDRESS_HOME_LINE1, u"123 Example Ave.");
   address.SetRawInfo(ADDRESS_HOME_LINE2, u"Apt. 42");
   address.SetRawInfo(ADDRESS_HOME_LINE3, u"and a half");
@@ -396,7 +375,7 @@ TEST_F(AddressTest, SetStreetAddress) {
 // ADDRESS_HOME_STREET_ADDRESS if the data has any interior blank lines.
 TEST_F(AddressTest, SetStreetAddressRejectsAddressesWithInteriorBlankLines) {
   // Start with a non-empty address.
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   address.SetRawInfo(ADDRESS_HOME_LINE1, u"123 Example Ave.");
   address.SetRawInfo(ADDRESS_HOME_LINE2, u"Apt. 42");
   EXPECT_FALSE(address.GetRawInfo(ADDRESS_HOME_LINE1).empty());
@@ -419,7 +398,7 @@ TEST_F(AddressTest, SetStreetAddressRejectsAddressesWithInteriorBlankLines) {
 // ADDRESS_HOME_STREET_ADDRESS if the data has any leading blank lines.
 TEST_F(AddressTest, SetStreetAddressRejectsAddressesWithLeadingBlankLines) {
   // Start with a non-empty address.
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   address.SetRawInfo(ADDRESS_HOME_LINE1, u"123 Example Ave.");
   address.SetRawInfo(ADDRESS_HOME_LINE2, u"Apt. 42");
   EXPECT_FALSE(address.GetRawInfo(ADDRESS_HOME_LINE1).empty());
@@ -442,7 +421,7 @@ TEST_F(AddressTest, SetStreetAddressRejectsAddressesWithLeadingBlankLines) {
 // ADDRESS_HOME_STREET_ADDRESS if the data has any trailing blank lines.
 TEST_F(AddressTest, SetStreetAddressRejectsAddressesWithTrailingBlankLines) {
   // Start with a non-empty address.
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   address.SetRawInfo(ADDRESS_HOME_LINE1, u"123 Example Ave.");
   address.SetRawInfo(ADDRESS_HOME_LINE2, u"Apt. 42");
   EXPECT_FALSE(address.GetRawInfo(ADDRESS_HOME_LINE1).empty());
@@ -464,8 +443,8 @@ TEST_F(AddressTest, SetStreetAddressRejectsAddressesWithTrailingBlankLines) {
 // Verifies that the merging-related methods for structured addresses are
 // implemented correctly. This is not a test of the merging logic itself.
 TEST_F(AddressTest, TestMergeStructuredAddresses) {
-  Address address1(kLegacyHierarchyCountryCode);
-  Address address2(kLegacyHierarchyCountryCode);
+  Address address1;
+  Address address2;
 
   // Two empty addresses are mergeable by default.
   EXPECT_TRUE(address1.IsStructuredAddressMergeable(address2));
@@ -479,18 +458,18 @@ TEST_F(AddressTest, TestMergeStructuredAddresses) {
   // The merging should maintain the value because address2 is not more
   // recently used.
   address1.MergeStructuredAddress(address2,
-                                  /*newer_was_more_recently_used=*/false);
+                                  /*newer_use_more_recently_used=*/false);
   EXPECT_EQ(address1.GetRawInfo(ADDRESS_HOME_ZIP), u"12345");
 
   // Once it is more recently used, the value from address2 should be copied
   // into address1.
   address1.MergeStructuredAddress(address2,
-                                  /*newer_was_more_recently_used=*/true);
+                                  /*newer_use_more_recently_used=*/true);
   EXPECT_EQ(address1.GetRawInfo(ADDRESS_HOME_ZIP), u"1234");
 
   // With a second incompatible ZIP code the addresses are not mergeable
   // anymore.
-  Address address3(kLegacyHierarchyCountryCode);
+  Address address3;
   address3.SetRawInfo(ADDRESS_HOME_ZIP, u"67890");
   EXPECT_FALSE(address1.IsStructuredAddressMergeable(address3));
 }
@@ -499,8 +478,8 @@ TEST_F(AddressTest, TestMergeStructuredAddresses) {
 // country information, it is used as their common country during comparison and
 // for rewriting rules.
 TEST_F(AddressTest, TestMergeStructuredAddressesMissingCountry) {
-  Address address1(kLegacyHierarchyCountryCode);
-  Address address2(kLegacyHierarchyCountryCode);
+  Address address1;
+  Address address2;
 
   address1.SetRawInfo(ADDRESS_HOME_COUNTRY, u"GB");
   address1.SetRawInfoWithVerificationStatus(ADDRESS_HOME_STREET_ADDRESS,
@@ -523,18 +502,18 @@ TEST_F(AddressTest, TestMergeStructuredAddressesMissingCountry) {
 // Tests the retrieval of the structured address.
 TEST_F(AddressTest, TestGettingTheStructuredAddress) {
   // Create the address and set a test value.
-  Address address1(kLegacyHierarchyCountryCode);
+  Address address1;
   address1.SetRawInfo(ADDRESS_HOME_ZIP, u"12345");
 
   // Get the structured address and verify that it has the same test value set.
-  const AddressComponent& structured_address = address1.GetRoot();
+  AddressNode structured_address = address1.GetStructuredAddress();
   EXPECT_EQ(structured_address.GetValueForType(ADDRESS_HOME_ZIP), u"12345");
 }
 
 // For structured address, test that the structured information is wiped
 // correctly when the unstructured street address changes.
 TEST_F(AddressTest, ResetStructuredTokens) {
-  Address address(kLegacyHierarchyCountryCode);
+  Address address;
   // Set a structured address line and call the finalization routine.
   address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_STREET_ADDRESS,
                                            u"Erika-Mann-Str 12",
@@ -583,203 +562,6 @@ TEST_F(AddressTest, ResetStructuredTokens) {
   ASSERT_EQ(address.GetRawInfo(ADDRESS_HOME_HOUSE_NUMBER), u"");
   EXPECT_EQ(address.GetVerificationStatus(ADDRESS_HOME_HOUSE_NUMBER),
             VerificationStatus::kNoStatus);
-}
-
-TEST_F(AddressTest, IsLegacyAddress) {
-  Address address(kLegacyHierarchyCountryCode);
-  EXPECT_TRUE(address.IsLegacyAddress());
-
-  Address address_br(AddressCountryCode("BR"));
-  EXPECT_FALSE(address_br.IsLegacyAddress());
-
-  Address address_mx(AddressCountryCode("MX"));
-  EXPECT_FALSE(address_mx.IsLegacyAddress());
-
-  Address i18n_copy(kLegacyHierarchyCountryCode);
-  // The legacy address should adopt the non-legacy one.
-  i18n_copy = address_mx;
-  EXPECT_FALSE(i18n_copy.IsLegacyAddress());
-  // The non-legacy address should adopt the legacy one.
-  address_br = address;
-  EXPECT_TRUE(address_br.IsLegacyAddress());
-  // Assignment between legacy addresses should stay legacy.
-  Address legacy_copy(kLegacyHierarchyCountryCode);
-  legacy_copy = address;
-  EXPECT_TRUE(legacy_copy.IsLegacyAddress());
-}
-
-TEST_F(AddressTest, IsLegacyAddressUpdateCountry) {
-  Address address(kLegacyHierarchyCountryCode);
-  EXPECT_TRUE(address.IsLegacyAddress());
-
-  address.SetRawInfo(ADDRESS_HOME_COUNTRY, u"BR");
-  EXPECT_FALSE(address.IsLegacyAddress());
-
-  address.SetRawInfo(ADDRESS_HOME_COUNTRY, u"AZ");
-  EXPECT_TRUE(address.IsLegacyAddress());
-
-  address.SetRawInfo(ADDRESS_HOME_COUNTRY, u"MX");
-  EXPECT_FALSE(address.IsLegacyAddress());
-
-  address.SetRawInfo(ADDRESS_HOME_COUNTRY, u"");
-  EXPECT_TRUE(address.IsLegacyAddress());
-}
-
-TEST_F(AddressTest, TestUpdateLegacyToCustomHierarchy) {
-  Address address(kLegacyHierarchyCountryCode);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_CITY, u"Munich",
-                                           VerificationStatus::kObserved);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_STATE, u"Bayern",
-                                           VerificationStatus::kObserved);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_ZIP, u"111",
-                                           VerificationStatus::kObserved);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_DEPENDENT_LOCALITY,
-                                           u"Municipality",
-                                           VerificationStatus::kObserved);
-
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_STREET_ADDRESS,
-                                           u"12 Erika-Mann-Str Floor 15 Apt 13",
-                                           VerificationStatus::kUserVerified);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_STREET_LOCATION,
-                                           u"12 Erika-Mann-Str",
-                                           VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(
-      ADDRESS_HOME_STREET_NAME, u"Erika-Mann-Str", VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_HOUSE_NUMBER, u"12",
-                                           VerificationStatus::kParsed);
-
-  address.SetRawInfoWithVerificationStatus(
-      ADDRESS_HOME_SUBPREMISE, u"Floor 15 Apt 13", VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_FLOOR, u"15",
-                                           VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_APT_NUM, u"13",
-                                           VerificationStatus::kParsed);
-
-  // Updates the internal hierarchy and copies the data into the new model.
-  address.SetRawInfo(ADDRESS_HOME_COUNTRY, u"BR");
-  // Completes all gaps in the new model.
-  address.FinalizeAfterImport();
-
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_COUNTRY), u"BR");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_CITY), u"Munich");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STATE), u"Bayern");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_ZIP), u"111");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_DEPENDENT_LOCALITY),
-            u"Municipality");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STREET_ADDRESS),
-            u"12 Erika-Mann-Str Floor 15 Apt 13");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STREET_LOCATION),
-            u"12 Erika-Mann-Str");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STREET_NAME), u"Erika-Mann-Str");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_HOUSE_NUMBER), u"12");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_SUBPREMISE), u"Floor 15 Apt 13");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_FLOOR), u"15");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_APT_NUM), u"13");
-
-  // BR specific nodes.
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_OVERFLOW_AND_LANDMARK),
-            u"Floor 15 Apt 13");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_OVERFLOW), u"Floor 15 Apt 13");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_APT), u"13");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_LANDMARK), u"");
-}
-
-TEST_F(AddressTest, TestUpdateCustomHierarchyToLegacy) {
-  Address address(AddressCountryCode("BR"));
-
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_CITY, u"Munich",
-                                           VerificationStatus::kObserved);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_STATE, u"Bayern",
-                                           VerificationStatus::kObserved);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_ZIP, u"111",
-                                           VerificationStatus::kObserved);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_DEPENDENT_LOCALITY,
-                                           u"Municipality",
-                                           VerificationStatus::kObserved);
-
-  address.SetRawInfoWithVerificationStatus(
-      ADDRESS_HOME_STREET_ADDRESS,
-      u"12 Erika-Mann-Str Floor 15 Apt 13, Near red tower",
-      VerificationStatus::kUserVerified);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_STREET_LOCATION,
-                                           u"12 Erika-Mann-Str",
-                                           VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(
-      ADDRESS_HOME_STREET_NAME, u"Erika-Mann-Str", VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_HOUSE_NUMBER, u"12",
-                                           VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_OVERFLOW_AND_LANDMARK,
-                                           u"Floor 15 Apt 13, Near red tower",
-                                           VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(
-      ADDRESS_HOME_OVERFLOW, u"Floor 15 Apt 13", VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(
-      ADDRESS_HOME_LANDMARK, u"Near red tower", VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(
-      ADDRESS_HOME_SUBPREMISE, u"Floor 15 Apt 13", VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_FLOOR, u"15",
-                                           VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_APT, u"Apt 13",
-                                           VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_APT_TYPE, u"Apt",
-                                           VerificationStatus::kParsed);
-  address.SetRawInfoWithVerificationStatus(ADDRESS_HOME_APT_NUM, u"13",
-                                           VerificationStatus::kParsed);
-
-  // Updates the internal hierarchy and copies the data into the legacy model.
-  address.SetRawInfo(ADDRESS_HOME_COUNTRY, u"AZ");
-  address.FinalizeAfterImport();
-
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_COUNTRY), u"AZ");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_CITY), u"Munich");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STATE), u"Bayern");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_ZIP), u"111");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_DEPENDENT_LOCALITY),
-            u"Municipality");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STREET_ADDRESS),
-            u"12 Erika-Mann-Str Floor 15 Apt 13, Near red tower");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STREET_LOCATION),
-            u"12 Erika-Mann-Str");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_STREET_NAME), u"Erika-Mann-Str");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_HOUSE_NUMBER), u"12");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_SUBPREMISE), u"Floor 15 Apt 13");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_FLOOR), u"15");
-  EXPECT_EQ(address.GetRawInfo(ADDRESS_HOME_APT_NUM), u"13");
-}
-
-TEST_F(AddressTest, TestSynthesizedNodesGeneration) {
-  Address address1(AddressCountryCode("IN"));
-  address1.SetRawInfoWithVerificationStatus(ADDRESS_HOME_DEPENDENT_LOCALITY,
-                                            u"Kondapur",
-                                            VerificationStatus::kObserved);
-  address1.FinalizeAfterImport();
-  EXPECT_EQ(address1.GetRawInfo(ADDRESS_HOME_DEPENDENT_LOCALITY_AND_LANDMARK),
-            u"Kondapur");
-
-  Address address2(AddressCountryCode("IN"));
-  address2.SetRawInfoWithVerificationStatus(
-      ADDRESS_HOME_STREET_LOCATION, u"12/110, Flat no. 504, Raja Apartments",
-      VerificationStatus::kObserved);
-  address2.SetRawInfoWithVerificationStatus(ADDRESS_HOME_DEPENDENT_LOCALITY,
-                                            u"Kondapur",
-                                            VerificationStatus::kObserved);
-  address2.SetRawInfoWithVerificationStatus(ADDRESS_HOME_LANDMARK,
-                                            u"Opp to Ayyappa Swamy temple",
-                                            VerificationStatus::kObserved);
-  // Finalize after import generates values for synthesized nodes.
-  address2.FinalizeAfterImport();
-  // Check values for synthesized nodes.
-  EXPECT_EQ(address2.GetRawInfo(ADDRESS_HOME_DEPENDENT_LOCALITY_AND_LANDMARK),
-            u"Kondapur, Opp to Ayyappa Swamy temple");
-  EXPECT_EQ(
-      address2.GetRawInfo(ADDRESS_HOME_STREET_LOCATION_AND_LANDMARK),
-      u"12/110, Flat no. 504, Raja Apartments, Opp to Ayyappa Swamy temple");
-  // Check values for internal nodes.
-  EXPECT_EQ(address2.GetRawInfo(ADDRESS_HOME_STREET_LOCATION_AND_LOCALITY),
-            u"12/110, Flat no. 504, Raja Apartments, Kondapur");
-  EXPECT_EQ(address2.GetRawInfo(ADDRESS_HOME_STREET_ADDRESS),
-            u"12/110, Flat no. 504, Raja Apartments, Kondapur, Opp to Ayyappa "
-            u"Swamy temple");
 }
 
 }  // namespace autofill

@@ -10,28 +10,29 @@
 
 namespace webauthn {
 
-// JSONUser enumerates the callers of the parsing functions since they currently
-// need different semantics.
-//
-// TODO(https://crbug.com/1454841): remove this.
-enum class JSONUser {
-  kAndroid,
-  kRemoteDesktop,
-};
-
 // Converts a `PublicKeyCredentialCreationOptions` into a `base::Value`.
 //
-// The output conforms to the WebAuthn `PublicKeyCredentialCreationOptionsJSON`
-// dictionary IDL (see
-// https://w3c.github.io/webauthn/#dictdef-publickeycredentialcreationoptionsjson).
+// The output conforms to the WebAuthn `PublicKeyCredentialCreationOptions`
+// dictionary IDL, but with all ArrayBuffer and BufferSource attributes
+// represented as base64url-encoded strings instead. The `timeout` field is
+// omitted.
+// (https://w3c.github.io/webauthn/#dictdef-publickeycredentialcreationoptions)
+//
+// TODO(crbug.com/1231802): Reference spec and update code to match once
+// https://github.com/w3c/webauthn/pull/1703 lands.
 base::Value ToValue(
     const blink::mojom::PublicKeyCredentialCreationOptionsPtr& options);
 
 // Converts a `PublicKeyCredentialRequestOptions` into a `base::Value`.
 //
-// The output conforms to the WebAuthn `PublicKeyCredentialRequestOptionsJSON`
-// dictionary IDL (see
-// https://w3c.github.io/webauthn/#dictdef-publickeycredentialrequestoptionsjson).
+// The output conforms to the WebAuthn `PublicKeyCredentialRequestOptions`
+// dictionary IDL, but with all ArrayBuffer and BufferSource attributes
+// represented as base64url-encoded strings instead. The `timeout` field is
+// omitted.
+// (https://w3c.github.io/webauthn/#dictdef-publickeycredentialrequestoptions)
+//
+// TODO(crbug.com/1231802): Reference spec and update code to match once
+// https://github.com/w3c/webauthn/pull/1703 lands.
 base::Value ToValue(
     const blink::mojom::PublicKeyCredentialRequestOptionsPtr& options);
 
@@ -40,22 +41,28 @@ base::Value ToValue(
 // Returns a pair of the converted message and an error string. The message will
 // be nullptr on error, and the error string empty on success.
 //
-// The input is expected to conform to the WebAuthn RegistrationResponseJSON
-// dictionary IDL (see
-// https://w3c.github.io/webauthn/#dictdef-registrationresponsejson).
+// The input is expected to be a JSON-serialized `PublicKeyCredential` in which
+// ArrayBuffer-valued attributes are replaced by base64url-encoded strings. The
+// `response` value must be a an `AuthenticatorAttestationResponse`.
+//
+// TODO(crbug.com/1231802): Reference spec and update code to match once
+// https://github.com/w3c/webauthn/pull/1703 lands.
 std::pair<blink::mojom::MakeCredentialAuthenticatorResponsePtr, std::string>
-MakeCredentialResponseFromValue(const base::Value& value, JSONUser user);
+MakeCredentialResponseFromValue(const base::Value& value);
 
 // Converts a `base::Value` encoding a `PublicKeyCredential` instance from a
 // WebAuthn `get()` request into a `GetAssertionAuthenticatorResponse`. Returns
 // a pair of the converted message and an error string. The message will be
 // nullptr on error, and the error string empty on success.
 //
-// The input is expected to conform to the WebAuthn AuthenticationResponseJSON
-// dictionary IDL (see
-// https://w3c.github.io/webauthn/#dictdef-authenticationresponsejson).
+// The input is expected to be a JSON-serialized `PublicKeyCredential` in which
+// ArrayBuffer-valued attributes are replaced by base64url-encoded strings. The
+// `response` value must be a an `AuthenticatorAssertionResponse`.
+//
+// TODO(crbug.com/1231802): Reference spec and update code to match once
+// https://github.com/w3c/webauthn/pull/1703 lands.
 std::pair<blink::mojom::GetAssertionAuthenticatorResponsePtr, std::string>
-GetAssertionResponseFromValue(const base::Value& value, JSONUser user);
+GetAssertionResponseFromValue(const base::Value& value);
 
 }  // namespace webauthn
 

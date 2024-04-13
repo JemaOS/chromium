@@ -26,73 +26,43 @@ TEST_F(IbanMetricsTest, LogStoredIbanMetrics) {
   // Helper timestamps for setting up the test data.
   base::Time now = AutofillClock::Now();
   base::Time one_month_ago = now - base::Days(30);
-  base::Time two_months_ago = now - base::Days(60);
 
-  std::vector<std::unique_ptr<Iban>> local_ibans;
-  std::vector<std::unique_ptr<Iban>> server_ibans;
+  std::vector<std::unique_ptr<IBAN>> local_ibans;
+  local_ibans.reserve(5);
 
-  // Create 2 in-use IBANs, one with nickname and the other not. Save as local
-  // IBANs.
-  Iban iban_in_use_0 = test::GetLocalIban();
+  // Create 2 in-use IBANs, one with nickname and the other not.
+  IBAN iban_in_use_0 = test::GetIBAN();
   iban_in_use_0.set_use_date(one_month_ago);
   iban_in_use_0.set_use_count(10);
-  iban_in_use_0.set_nickname(u"");
-  local_ibans.push_back(std::make_unique<Iban>(std::move(iban_in_use_0)));
+  local_ibans.push_back(std::make_unique<IBAN>(std::move(iban_in_use_0)));
 
-  Iban iban_in_use_1 = test::GetLocalIban();
+  IBAN iban_in_use_1 = test::GetIBAN();
   iban_in_use_1.set_use_date(one_month_ago);
   iban_in_use_1.set_use_count(10);
   iban_in_use_1.set_nickname(u"My doctor's IBAN");
-  local_ibans.push_back(std::make_unique<Iban>(std::move(iban_in_use_1)));
+  local_ibans.push_back(std::make_unique<IBAN>(std::move(iban_in_use_1)));
 
-  // Create 2 in-use IBANs, one with nickname and the other not. Save as server
-  // IBANs.
-  Iban iban_in_use_2 = test::GetServerIban();
-  iban_in_use_2.set_use_date(two_months_ago);
-  iban_in_use_2.set_use_count(10);
-  iban_in_use_2.set_nickname(u"");
-  server_ibans.push_back(std::make_unique<Iban>(std::move(iban_in_use_2)));
-
-  Iban iban_in_use_3 = test::GetServerIban2();
-  iban_in_use_3.set_use_date(two_months_ago);
-  iban_in_use_3.set_use_count(10);
-  iban_in_use_3.set_nickname(u"My doctor's IBAN");
-  server_ibans.push_back(std::make_unique<Iban>(std::move(iban_in_use_3)));
-
-  // Create 3 disused IBANs. Saved as both local and server IBANs.
+  // Create 3 in-disuse IBANs.
   for (int i = 0; i < 3; ++i) {
-    Iban local_iban_in_disuse = test::GetLocalIban();
-    local_iban_in_disuse.set_use_date(now - base::Days(200));
-    local_iban_in_disuse.set_use_count(10);
-    local_iban_in_disuse.set_nickname(u"");
-    local_ibans.push_back(
-        std::make_unique<Iban>(std::move(local_iban_in_disuse)));
-
-    Iban server_disused_iban = test::GetServerIban();
-    server_disused_iban.set_use_date(now - base::Days(250));
-    server_disused_iban.set_use_count(10);
-    server_disused_iban.set_nickname(u"");
-    server_ibans.push_back(std::make_unique<Iban>(server_disused_iban));
+    IBAN iban_in_disuse = test::GetIBAN();
+    iban_in_disuse.set_use_date(now - base::Days(200));
+    iban_in_disuse.set_use_count(10);
+    local_ibans.push_back(std::make_unique<IBAN>(std::move(iban_in_disuse)));
   }
 
   base::HistogramTester histogram_tester;
-  autofill_metrics::LogStoredIbanMetrics(local_ibans, server_ibans,
+  autofill_metrics::LogStoredIbanMetrics(local_ibans,
                                          kDisusedDataModelTimeDelta);
 
   // Validate the count metrics.
-  histogram_tester.ExpectUniqueSample("Autofill.StoredIbanCount", 10, 1);
-  histogram_tester.ExpectUniqueSample(
-      "Autofill.StoredIbanCount.Local.WithNickname", 1, 1);
-  histogram_tester.ExpectUniqueSample("Autofill.StoredIbanCount.Local", 5, 1);
-  histogram_tester.ExpectUniqueSample(
-      "Autofill.StoredIbanCount.Server.WithNickname", 1, 1);
-  histogram_tester.ExpectUniqueSample("Autofill.StoredIbanCount.Server", 5, 1);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.StoredIbanCount.Local.WithNickname", 1);
+  histogram_tester.ExpectTotalCount("Autofill.StoredIbanCount.Local", 1);
 
   // Validate the disused count metrics.
-  histogram_tester.ExpectUniqueSample("Autofill.StoredIbanDisusedCount.Local",
-                                      3, 1);
-  histogram_tester.ExpectUniqueSample("Autofill.StoredIbanDisusedCount.Server",
-                                      3, 1);
+  histogram_tester.ExpectTotalCount("Autofill.StoredIbanDisusedCount.Local", 1);
+  histogram_tester.ExpectBucketCount("Autofill.StoredIbanDisusedCount.Local", 3,
+                                     1);
 
   // Validate the days-since-last-use metrics.
   histogram_tester.ExpectTotalCount(
@@ -101,12 +71,6 @@ TEST_F(IbanMetricsTest, LogStoredIbanMetrics) {
       "Autofill.DaysSinceLastUse.StoredIban.Local", 30, 2);
   histogram_tester.ExpectBucketCount(
       "Autofill.DaysSinceLastUse.StoredIban.Local", 200, 3);
-  histogram_tester.ExpectTotalCount(
-      "Autofill.DaysSinceLastUse.StoredIban.Server", 5);
-  histogram_tester.ExpectBucketCount(
-      "Autofill.DaysSinceLastUse.StoredIban.Server", 60, 2);
-  histogram_tester.ExpectBucketCount(
-      "Autofill.DaysSinceLastUse.StoredIban.Server", 250, 3);
 }
 
 }  // namespace autofill::autofill_metrics

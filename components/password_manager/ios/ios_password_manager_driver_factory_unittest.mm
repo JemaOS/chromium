@@ -4,7 +4,6 @@
 
 #import "components/password_manager/ios/ios_password_manager_driver_factory.h"
 
-#import "base/memory/raw_ptr.h"
 #import "base/strings/sys_string_conversions.h"
 #import "components/password_manager/core/browser/password_manager.h"
 #import "components/password_manager/core/browser/password_manager_client.h"
@@ -17,6 +16,10 @@
 #import "testing/gtest_mac.h"
 #import "testing/platform_test.h"
 #import "third_party/ocmock/OCMock/OCMock.h"
+
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
 
 class IOSPasswordManagerDriverFactoryTest : public PlatformTest {
  public:
@@ -32,7 +35,7 @@ class IOSPasswordManagerDriverFactoryTest : public PlatformTest {
 
  protected:
   web::FakeWebState web_state_;
-  raw_ptr<web::FakeWebFramesManager> web_frames_manager_;
+  web::FakeWebFramesManager* web_frames_manager_;
   std::unique_ptr<password_manager::PasswordManager> password_manager_;
   SharedPasswordController* password_controller_;
   password_manager::StubPasswordManagerClient password_manager_client_;
@@ -48,7 +51,7 @@ TEST_F(IOSPasswordManagerDriverFactoryTest, CreateFactoryAndDriver) {
       IOSPasswordManagerDriverFactory::FromWebState(&web_state_);
   ASSERT_TRUE(factory != nullptr);
 
-  auto web_frame = web::FakeWebFrame::CreateMainWebFrame(GURL());
+  auto web_frame = web::FakeWebFrame::CreateMainWebFrame(GURL::EmptyGURL());
   web::FakeWebFrame* frame = web_frame.get();
   web_frames_manager_->AddWebFrame(std::move(web_frame));
 
@@ -86,7 +89,7 @@ TEST_F(IOSPasswordManagerDriverFactoryTest,
   IOSPasswordManagerDriverFactory::CreateForWebState(
       &web_state_, password_controller_, password_manager_.get());
 
-  auto web_frame = web::FakeWebFrame::CreateMainWebFrame(GURL());
+  auto web_frame = web::FakeWebFrame::CreateMainWebFrame(GURL::EmptyGURL());
   web::FakeWebFrame* frame = web_frame.get();
   web_frames_manager_->AddWebFrame(std::move(web_frame));
 

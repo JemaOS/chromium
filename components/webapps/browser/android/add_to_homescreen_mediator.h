@@ -15,7 +15,6 @@
 #include "components/webapps/browser/android/add_to_homescreen_installer.h"
 #include "components/webapps/browser/android/add_to_homescreen_params.h"
 #include "components/webapps/browser/banners/app_banner_manager.h"
-#include "components/webapps/browser/banners/app_banner_settings_helper.h"
 #include "components/webapps/browser/installable/installable_logging.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "url/gurl.h"
@@ -28,8 +27,6 @@ namespace webapps {
 
 struct ShortcutInfo;
 class AddToHomescreenInstaller;
-
-using AppType = AddToHomescreenParams::AppType;
 
 // AddToHomescreenMediator is the C++ counterpart of
 // org.chromium.components.webapps.addtohomescreen.AddToHomescreenMediator
@@ -53,14 +50,13 @@ class AddToHomescreenMediator : public AddToHomescreenDataFetcher::Observer {
   void StartForAppMenu(
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& java_web_contents,
-      int title_id,
-      bool universal_install);
+      int title_id);
 
   // Called from the Java side when the user accepts app installation from the
   // dialog.
-  void AddToHomescreen(JNIEnv* env,
-                       const base::android::JavaParamRef<jstring>& j_user_title,
-                       jint j_app_type);
+  void AddToHomescreen(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jstring>& j_user_title);
 
   // Called from the Java side when the installation UI is dismissed.
   void OnUiDismissed(JNIEnv* env);
@@ -76,21 +72,20 @@ class AddToHomescreenMediator : public AddToHomescreenDataFetcher::Observer {
 
   // Called immediatedly after |params_| is available. Displays |display_icon|
   // in the installation UI.
-  void SetIcon(const SkBitmap& display_icon);
+  void SetIcon(const SkBitmap& display_icon, bool need_to_add_padding);
 
   // Sends the Web App info to the Java side.
   void SetWebAppInfo(const std::u16string& user_title,
                      const GURL& url,
-                     AddToHomescreenParams::AppType app_type);
+                     bool is_webapk);
 
   // AddToHomescreenDataFetcher::Observer:
   void OnUserTitleAvailable(const std::u16string& user_title,
                             const GURL& url,
-                            AddToHomescreenParams::AppType app_type) override;
+                            bool is_webapk_compatible) override;
 
   void OnDataAvailable(const ShortcutInfo& info,
                        const SkBitmap& display_icon,
-                       AddToHomescreenParams::AppType app_type,
                        InstallableStatusCode status_code) override;
 
   void RecordEventForAppMenu(AddToHomescreenInstaller::Event event,
@@ -112,11 +107,7 @@ class AddToHomescreenMediator : public AddToHomescreenDataFetcher::Observer {
                                const AddToHomescreenParams&)>
       event_callback_;
 
-  int app_menu_type_ = AppBannerSettingsHelper::APP_MENU_OPTION_UNKNOWN;
-
-  // Keeps track of whether the Universal Install dialog was used to trigger the
-  // Add to homescreen process.
-  bool universal_install_ = false;
+  int title_id_ = -1;
 
   AddToHomescreenMediator(const AddToHomescreenMediator&) = delete;
   AddToHomescreenMediator& operator=(const AddToHomescreenMediator&) = delete;

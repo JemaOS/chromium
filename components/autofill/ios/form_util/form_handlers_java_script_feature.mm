@@ -4,21 +4,20 @@
 
 #import "components/autofill/ios/form_util/form_handlers_java_script_feature.h"
 
-#import "base/no_destructor.h"
-#import "base/values.h"
-#import "components/autofill/core/common/autofill_features.h"
-#import "components/autofill/ios/common/javascript_feature_util.h"
-#import "components/autofill/ios/form_util/child_frame_registrar.h"
-#import "components/autofill/ios/form_util/form_activity_tab_helper.h"
+#include "base/no_destructor.h"
+#include "base/values.h"
+#include "components/autofill/ios/form_util/form_activity_tab_helper.h"
 #import "components/autofill/ios/form_util/form_util_java_script_feature.h"
 #import "components/password_manager/ios/password_manager_java_script_feature.h"
-#import "ios/web/public/js_messaging/java_script_feature_util.h"
-#import "ios/web/public/js_messaging/script_message.h"
+#include "ios/web/public/js_messaging/java_script_feature_util.h"
+
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
 
 namespace {
 constexpr char kScriptName[] = "form_handlers";
 constexpr char kScriptMessageName[] = "FormHandlersMessage";
-constexpr char kChildFrameCommand[] = "registerAsChildFrame";
 }  // namespace
 
 namespace autofill {
@@ -31,7 +30,9 @@ FormHandlersJavaScriptFeature* FormHandlersJavaScriptFeature::GetInstance() {
 
 FormHandlersJavaScriptFeature::FormHandlersJavaScriptFeature()
     : web::JavaScriptFeature(
-          ContentWorldForAutofillJavascriptFeatures(),
+          // TODO(crbug.com/1175793): Move autofill code to kIsolatedWorld
+          // once all scripts are converted to JavaScriptFeatures.
+          web::ContentWorld::kPageContentWorld,
           {FeatureScript::CreateWithFilename(
               kScriptName,
               FeatureScript::InjectionTime::kDocumentStart,
@@ -47,22 +48,22 @@ FormHandlersJavaScriptFeature::~FormHandlersJavaScriptFeature() = default;
 
 void FormHandlersJavaScriptFeature::TrackFormMutations(
     web::WebFrame* frame,
-    int mutation_tracking_delay,
-    bool allowBatching) {
-  CallJavaScriptFunction(frame, "formHandlers.trackFormMutations",
-                         base::Value::List()
-                             .Append(mutation_tracking_delay)
-                             .Append(allowBatching));
+    int mutation_tracking_delay) {
+  std::vector<base::Value> parameters;
+  parameters.push_back(base::Value(mutation_tracking_delay));
+  CallJavaScriptFunction(frame, "formHandlers.trackFormMutations", parameters);
 }
 
 void FormHandlersJavaScriptFeature::ToggleTrackingUserEditedFields(
     web::WebFrame* frame,
     bool track_user_edited_fields) {
+  std::vector<base::Value> parameters;
+  parameters.push_back(base::Value(track_user_edited_fields));
   CallJavaScriptFunction(frame, "formHandlers.toggleTrackingUserEditedFields",
-                         base::Value::List().Append(track_user_edited_fields));
+                         parameters);
 }
 
-std::optional<std::string>
+absl::optional<std::string>
 FormHandlersJavaScriptFeature::GetScriptMessageHandlerName() const {
   return kScriptMessageName;
 }
@@ -70,24 +71,6 @@ FormHandlersJavaScriptFeature::GetScriptMessageHandlerName() const {
 void FormHandlersJavaScriptFeature::ScriptMessageReceived(
     web::WebState* web_state,
     const web::ScriptMessage& message) {
-  // Delegate to ChildFrameRegistrar for kChildFrameCommand messages.
-  if (base::FeatureList::IsEnabled(
-          autofill::features::kAutofillAcrossIframesIos)) {
-    if (message.body() && message.body()->is_dict()) {
-      const std::string* command =
-          message.body()->GetDict().FindString("command");
-      if (command && *command == kChildFrameCommand) {
-        ChildFrameRegistrar* registrar =
-            ChildFrameRegistrar::GetOrCreateForWebState(web_state);
-        if (registrar) {
-          registrar->ProcessRegistrationMessage(message.body());
-        }
-        return;
-      }
-    }
-  }
-
-  // Delegate to FormActivityTabHelper for all other messages.
   FormActivityTabHelper* helper =
       FormActivityTabHelper::GetOrCreateForWebState(web_state);
   helper->OnFormMessageReceived(web_state, message);

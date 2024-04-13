@@ -7,7 +7,6 @@
 
 #include <stddef.h>
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -39,14 +38,19 @@ enum ContentSetting {
 // Range-checked conversion of an int to a ContentSetting, for use when reading
 // prefs off disk.
 ContentSetting IntToContentSetting(int content_setting);
+
+// Converts a given content setting to its histogram value, for use when saving
+// content settings types to a histogram.
+int ContentSettingTypeToHistogramValue(ContentSettingsType content_setting,
+                                       size_t* num_values);
+
 struct ContentSettingPatternSource {
   ContentSettingPatternSource(const ContentSettingsPattern& primary_pattern,
                               const ContentSettingsPattern& secondary_patttern,
                               base::Value setting_value,
                               const std::string& source,
                               bool incognito,
-                              content_settings::RuleMetaData metadata =
-                                  content_settings::RuleMetaData());
+                              content_settings::RuleMetaData metadata = {});
   ContentSettingPatternSource(const ContentSettingPatternSource& other);
   ContentSettingPatternSource();
   ContentSettingPatternSource& operator=(
@@ -55,8 +59,6 @@ struct ContentSettingPatternSource {
   ContentSetting GetContentSetting() const;
   bool IsExpired() const;
 
-  bool operator==(const ContentSettingPatternSource& other) const;
-
   ContentSettingsPattern primary_pattern;
   ContentSettingsPattern secondary_pattern;
   base::Value setting_value;
@@ -64,10 +66,6 @@ struct ContentSettingPatternSource {
   std::string source;
   bool incognito;
 };
-
-// Formatter method for Google Test.
-std::ostream& operator<<(std::ostream& os,
-                         const ContentSettingPatternSource& source);
 
 typedef std::vector<ContentSettingPatternSource> ContentSettingsForOneType;
 
@@ -90,8 +88,6 @@ struct RendererContentSettingRules {
       const RendererContentSettingRules& rules);
   RendererContentSettingRules& operator=(RendererContentSettingRules&& rules);
 
-  bool operator==(const RendererContentSettingRules& other) const;
-
   ContentSettingsForOneType image_rules;
   ContentSettingsForOneType script_rules;
   ContentSettingsForOneType popup_redirect_rules;
@@ -113,14 +109,13 @@ enum SettingSource {
   SETTING_SOURCE_ALLOWLIST,
   SETTING_SOURCE_SUPERVISED,
   SETTING_SOURCE_INSTALLED_WEBAPP,
-  SETTING_SOURCE_TPCD_GRANT,
 };
 
 // |SettingInfo| provides meta data for content setting values. |source|
 // contains the source of a value. |primary_pattern| and |secondary_pattern|
 // contains the patterns of the appling rule.
 struct SettingInfo {
-  SettingSource source = SETTING_SOURCE_NONE;
+  SettingSource source;
   ContentSettingsPattern primary_pattern;
   ContentSettingsPattern secondary_pattern;
   RuleMetaData metadata;

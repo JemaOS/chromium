@@ -9,5 +9,6 @@ created binary streams. In Chromium, this binary blob is a
 net::URLRequestContextGetter, which is used by grpc_support::BidirectionalStream
 to drive a net::BidirectionalStream.
 
-Eventually code inside of Chromium should be able to use gRPC by providing
+Currently Cronet (//components/cronet/ios) is the only consumer of this API,
+but eventually code inside of Chromium should be able to use gRPC by providing
 a net::URLRequestContextGetter.

@@ -15,7 +15,9 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.blink.mojom.SerializedBlob;
 import org.chromium.webshare.mojom.SharedFile;
 
-/** Unit tests for {@link SharedFileCollator}. */
+/**
+ * Unit tests for {@link SharedFileCollator}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class SharedFileCollatorTest {
@@ -25,8 +27,7 @@ public class SharedFileCollatorTest {
         Assert.assertEquals("*/*", SharedFileCollator.commonMimeType(new SharedFile[0]));
         Assert.assertEquals(
                 "*/*", SharedFileCollator.commonMimeType(createFiles("text/plain", "image/jpeg")));
-        Assert.assertEquals(
-                "*/*",
+        Assert.assertEquals("*/*",
                 SharedFileCollator.commonMimeType(
                         createFiles("video/mpeg", "video/ogg", "text/html")));
     }
@@ -37,16 +38,14 @@ public class SharedFileCollatorTest {
         Assert.assertEquals("*/*", SharedFileCollator.commonMimeType(createFiles("invalid")));
         Assert.assertEquals(
                 "*/*", SharedFileCollator.commonMimeType(createFiles("text/xml/svg", "text/xml")));
-        Assert.assertEquals(
-                "*/*",
+        Assert.assertEquals("*/*",
                 SharedFileCollator.commonMimeType(createFiles("image/webp", "image/webp/jpeg")));
     }
 
     @Test
     @SmallTest
     public void testApplication() {
-        Assert.assertEquals(
-                "application/*",
+        Assert.assertEquals("application/*",
                 SharedFileCollator.commonMimeType(
                         createFiles("application/rtf", "application/x-bzip2")));
     }
@@ -54,8 +53,7 @@ public class SharedFileCollatorTest {
     @Test
     @SmallTest
     public void testAudio() {
-        Assert.assertEquals(
-                "audio/*",
+        Assert.assertEquals("audio/*",
                 SharedFileCollator.commonMimeType(createFiles("audio/mp3", "audio/wav")));
     }
 
@@ -64,15 +62,12 @@ public class SharedFileCollatorTest {
     public void testImage() {
         Assert.assertEquals(
                 "image/jpeg", SharedFileCollator.commonMimeType(createFiles("image/jpeg")));
-        Assert.assertEquals(
-                "image/gif",
+        Assert.assertEquals("image/gif",
                 SharedFileCollator.commonMimeType(
                         createFiles("image/gif", "image/gif", "image/gif")));
-        Assert.assertEquals(
-                "image/*",
+        Assert.assertEquals("image/*",
                 SharedFileCollator.commonMimeType(createFiles("image/gif", "image/jpeg")));
-        Assert.assertEquals(
-                "image/*",
+        Assert.assertEquals("image/*",
                 SharedFileCollator.commonMimeType(
                         createFiles("image/gif", "image/gif", "image/jpeg")));
     }
@@ -83,8 +78,7 @@ public class SharedFileCollatorTest {
         Assert.assertEquals("text/css", SharedFileCollator.commonMimeType(createFiles("text/css")));
         Assert.assertEquals(
                 "text/csv", SharedFileCollator.commonMimeType(createFiles("text/csv", "text/csv")));
-        Assert.assertEquals(
-                "text/*",
+        Assert.assertEquals("text/*",
                 SharedFileCollator.commonMimeType(
                         createFiles("text/csv", "text/html", "text/csv")));
     }
@@ -94,11 +88,9 @@ public class SharedFileCollatorTest {
     public void testVideo() {
         Assert.assertEquals(
                 "video/webm", SharedFileCollator.commonMimeType(createFiles("video/webm")));
-        Assert.assertEquals(
-                "video/*",
+        Assert.assertEquals("video/*",
                 SharedFileCollator.commonMimeType(createFiles("video/mpeg", "video/webm")));
-        Assert.assertEquals(
-                "video/*",
+        Assert.assertEquals("video/*",
                 SharedFileCollator.commonMimeType(
                         createFiles("video/mpeg", "video/webm", "video/webm")));
     }

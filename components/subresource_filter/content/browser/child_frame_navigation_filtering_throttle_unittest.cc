@@ -7,7 +7,6 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include <string_view>
 
 #include "base/containers/contains.h"
 #include "base/functional/callback.h"
@@ -29,11 +28,23 @@
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_renderer_host.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/common/frame/frame_ad_evidence.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
 namespace subresource_filter {
+
+const char kCnameAliasHadAliasesHistogram[] =
+    "SubresourceFilter.CnameAlias.Browser.HadAliases";
+const char kCnameAliasIsInvalidCountHistogram[] =
+    "SubresourceFilter.CnameAlias.Browser.InvalidCount";
+const char kCnameAliasIsRedundantCountHistogram[] =
+    "SubresourceFilter.CnameAlias.Browser.RedundantCount";
+const char kCnameAliasListLengthHistogram[] =
+    "SubresourceFilter.CnameAlias.Browser.ListLength";
+const char kCnameAliasWasAdTaggedCountHistogram[] =
+    "SubresourceFilter.CnameAlias.Browser.WasAdTaggedBasedOnAliasCount";
+const char kCnameAliasWasBlockedCountHistogram[] =
+    "SubresourceFilter.CnameAlias.Browser.WasBlockedBasedOnAliasCount";
 
 class ChildFrameNavigationFilteringThrottleTest
     : public content::RenderViewHostTestHarness,
@@ -74,8 +85,7 @@ class ChildFrameNavigationFilteringThrottleTest
     // throttle if the parent is not activated with a valid filter.
     if (parent_filter_) {
       auto throttle = std::make_unique<ChildFrameNavigationFilteringThrottle>(
-          navigation_handle, parent_filter_.get(),
-          blink::FrameAdEvidence(/*parent_is_ad=*/false));
+          navigation_handle, parent_filter_.get());
       ASSERT_NE(nullptr, throttle->GetNameForLogging());
       navigation_handle->RegisterThrottleForTesting(std::move(throttle));
     }
@@ -93,7 +103,7 @@ class ChildFrameNavigationFilteringThrottleTest
 
   void InitializeDocumentSubresourceFilterWithSubstringRules(
       const GURL& document_url,
-      std::vector<std::string_view> urls_to_block,
+      std::vector<base::StringPiece> urls_to_block,
       mojom::ActivationLevel parent_level = mojom::ActivationLevel::kEnabled) {
     ASSERT_NO_FATAL_FAILURE(
         test_ruleset_creator_.CreateRulesetToDisallowURLWithSubstrings(
@@ -352,6 +362,27 @@ class ChildFrameNavigationFilteringThrottleDnsAliasTest
 
   ~ChildFrameNavigationFilteringThrottleDnsAliasTest() override = default;
 
+  void ExpectHistogramsMatching(CnameAliasMetricInfo info) {
+    bool has_aliases = info.list_length > 0;
+    histogram_tester_.ExpectUniqueSample(kCnameAliasHadAliasesHistogram,
+                                         has_aliases, 1);
+
+    if (has_aliases) {
+      histogram_tester_.ExpectUniqueSample(kCnameAliasListLengthHistogram,
+                                           info.list_length, 1);
+      histogram_tester_.ExpectUniqueSample(
+          kCnameAliasWasAdTaggedCountHistogram,
+          info.was_ad_tagged_based_on_alias_count, 1);
+      histogram_tester_.ExpectUniqueSample(
+          kCnameAliasWasBlockedCountHistogram,
+          info.was_blocked_based_on_alias_count, 1);
+      histogram_tester_.ExpectUniqueSample(kCnameAliasIsInvalidCountHistogram,
+                                           info.invalid_count, 1);
+      histogram_tester_.ExpectUniqueSample(kCnameAliasIsRedundantCountHistogram,
+                                           info.redundant_count, 1);
+    }
+  }
+
  private:
   base::test::ScopedFeatureList feature_list_;
   base::HistogramTester histogram_tester_;
@@ -374,6 +405,14 @@ TEST_F(ChildFrameNavigationFilteringThrottleDnsAliasTest,
             SimulateCommitAndGetResult(navigation_simulator()));
   EXPECT_TRUE(
       base::Contains(GetConsoleMessages(), GetFilterConsoleMessage(url)));
+
+  CnameAliasMetricInfo info = {.list_length = 7,
+                               .was_ad_tagged_based_on_alias_count = 0,
+                               .was_blocked_based_on_alias_count = 2,
+                               .invalid_count = 2,
+                               .redundant_count = 1};
+
+  ExpectHistogramsMatching(info);
 }
 
 TEST_F(ChildFrameNavigationFilteringThrottleDnsAliasTest,
@@ -394,6 +433,14 @@ TEST_F(ChildFrameNavigationFilteringThrottleDnsAliasTest,
             SimulateCommitAndGetResult(navigation_simulator()));
   EXPECT_FALSE(
       base::Contains(GetConsoleMessages(), GetFilterConsoleMessage(url)));
+
+  CnameAliasMetricInfo info = {.list_length = 6,
+                               .was_ad_tagged_based_on_alias_count = 3,
+                               .was_blocked_based_on_alias_count = 0,
+                               .invalid_count = 1,
+                               .redundant_count = 0};
+
+  ExpectHistogramsMatching(info);
 }
 
 TEST_F(ChildFrameNavigationFilteringThrottleDnsAliasTest, EnabledNoAliases) {
@@ -411,6 +458,10 @@ TEST_F(ChildFrameNavigationFilteringThrottleDnsAliasTest, EnabledNoAliases) {
             SimulateCommitAndGetResult(navigation_simulator()));
   EXPECT_FALSE(
       base::Contains(GetConsoleMessages(), GetFilterConsoleMessage(url)));
+
+  CnameAliasMetricInfo info;
+
+  ExpectHistogramsMatching(info);
 }
 
 }  // namespace subresource_filter

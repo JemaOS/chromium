@@ -30,15 +30,11 @@ class PhishingModelSetterImpl : public mojom::PhishingModelSetter,
       blink::AssociatedInterfaceRegistry* associated_interfaces) override;
 
   // mojom::PhishingModelSetter overrides:
-  void SetImageEmbeddingAndPhishingFlatBufferModel(
-      base::ReadOnlySharedMemoryRegion flatbuffer_region,
-      base::File tflite_visual_model,
-      base::File image_embedding_model) override;
+  void SetPhishingModel(const std::string& model,
+                        base::File tflite_visual_model) override;
   void SetPhishingFlatBufferModel(
       base::ReadOnlySharedMemoryRegion flatbuffer_region,
       base::File tflite_visual_model) override;
-  void AttachImageEmbeddingModel(base::File image_embedding_model) override;
-  void ClearScorer() override;
   void SetTestObserver(
       mojo::PendingRemote<mojom::PhishingModelSetterTestObserver> observer,
       SetTestObserverCallback callback) override;

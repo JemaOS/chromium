@@ -19,8 +19,7 @@ namespace location_bar_model {
 // indicates a secure connection.
 const gfx::VectorIcon& GetSecurityVectorIcon(
     security_state::SecurityLevel security_level,
-    bool use_updated_connection_security_indicators,
-    security_state::MaliciousContentStatus malicious_content_status);
+    bool use_updated_connection_security_indicators);
 
 // Helper function to enable the omnibox chrome refresh icons based on the
 // feature flags turned on. This is a duplicate of

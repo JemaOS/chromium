@@ -21,9 +21,9 @@
 
 namespace autofill {
 
-CountryComboboxModel::CountryComboboxModel() = default;
+CountryComboboxModel::CountryComboboxModel() {}
 
-CountryComboboxModel::~CountryComboboxModel() = default;
+CountryComboboxModel::~CountryComboboxModel() {}
 
 void CountryComboboxModel::SetCountries(
     const PersonalDataManager& manager,

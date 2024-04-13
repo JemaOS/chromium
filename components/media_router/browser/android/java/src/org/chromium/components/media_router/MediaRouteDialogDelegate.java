@@ -4,7 +4,9 @@
 
 package org.chromium.components.media_router;
 
-/** An interface providing callbacks for {@link BaseMediaRouteDialogManager}. */
+/**
+ * An interface providing callbacks for {@link BaseMediaRouteDialogManager}.
+ */
 public interface MediaRouteDialogDelegate {
     /**
      * Notifies the delegate if the user has chosen a {@link MediaSink} to connect to.
@@ -20,6 +22,8 @@ public interface MediaRouteDialogDelegate {
      */
     void onRouteClosed(String mediaRouteId);
 
-    /** Notifies the delegate if the dialog was dismissed without any user action. */
+    /**
+     * Notifies the delegate if the dialog was dismissed without any user action.
+     */
     void onDialogCancelled();
 }

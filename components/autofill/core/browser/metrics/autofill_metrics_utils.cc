@@ -105,65 +105,44 @@ const char* GetProfileCategorySuffix(AutofillProfileSourceCategory category) {
 }
 
 SettingsVisibleFieldTypeForMetrics ConvertSettingsVisibleFieldTypeForMetrics(
-    FieldType field_type) {
+    ServerFieldType field_type) {
   switch (field_type) {
-    case FieldType::NAME_FULL:
+    case ServerFieldType::NAME_FULL:
       return SettingsVisibleFieldTypeForMetrics::kName;
 
-    case FieldType::EMAIL_ADDRESS:
+    case ServerFieldType::EMAIL_ADDRESS:
       return SettingsVisibleFieldTypeForMetrics::kEmailAddress;
 
-    case FieldType::PHONE_HOME_WHOLE_NUMBER:
+    case ServerFieldType::PHONE_HOME_WHOLE_NUMBER:
       return SettingsVisibleFieldTypeForMetrics::kPhoneNumber;
 
-    case FieldType::ADDRESS_HOME_CITY:
+    case ServerFieldType::ADDRESS_HOME_CITY:
       return SettingsVisibleFieldTypeForMetrics::kCity;
 
-    case FieldType::ADDRESS_HOME_COUNTRY:
+    case ServerFieldType::ADDRESS_HOME_COUNTRY:
       return SettingsVisibleFieldTypeForMetrics::kCountry;
 
-    case FieldType::ADDRESS_HOME_ZIP:
+    case ServerFieldType::ADDRESS_HOME_ZIP:
       return SettingsVisibleFieldTypeForMetrics::kZip;
 
-    case FieldType::ADDRESS_HOME_STATE:
+    case ServerFieldType::ADDRESS_HOME_STATE:
       return SettingsVisibleFieldTypeForMetrics::kState;
 
-    case FieldType::ADDRESS_HOME_STREET_ADDRESS:
+    case ServerFieldType::ADDRESS_HOME_STREET_ADDRESS:
       return SettingsVisibleFieldTypeForMetrics::kStreetAddress;
 
-    case FieldType::ADDRESS_HOME_DEPENDENT_LOCALITY:
+    case ServerFieldType::ADDRESS_HOME_DEPENDENT_LOCALITY:
       return SettingsVisibleFieldTypeForMetrics::kDependentLocality;
 
-    case FieldType::COMPANY_NAME:
+    case ServerFieldType::NAME_HONORIFIC_PREFIX:
+      return SettingsVisibleFieldTypeForMetrics::kHonorificPrefix;
+
+    case ServerFieldType::COMPANY_NAME:
       return SettingsVisibleFieldTypeForMetrics::kCompany;
 
     default:
       return SettingsVisibleFieldTypeForMetrics::kUndefined;
   }
-}
-
-void MergeFormGroupFillingStats(const FormGroupFillingStats& first,
-                                FormGroupFillingStats& second) {
-  second.num_accepted = first.num_accepted + second.num_accepted;
-  second.num_corrected_to_same_type =
-      first.num_corrected_to_same_type + second.num_corrected_to_same_type;
-  second.num_corrected_to_different_type =
-      first.num_corrected_to_different_type +
-      second.num_corrected_to_different_type;
-  second.num_corrected_to_unknown_type = first.num_corrected_to_unknown_type +
-                                         second.num_corrected_to_unknown_type;
-  second.num_corrected_to_empty =
-      first.num_corrected_to_empty + second.num_corrected_to_empty;
-  second.num_manually_filled_to_same_type =
-      first.num_manually_filled_to_same_type +
-      second.num_manually_filled_to_same_type;
-  second.num_manually_filled_to_differt_type =
-      first.num_manually_filled_to_differt_type +
-      second.num_manually_filled_to_differt_type;
-  second.num_manually_filled_to_unknown_type =
-      first.num_manually_filled_to_unknown_type +
-      second.num_manually_filled_to_unknown_type;
-  second.num_left_empty = first.num_left_empty + second.num_left_empty;
 }
 
 }  // namespace autofill::autofill_metrics

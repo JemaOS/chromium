@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/singleton.h"
 #include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 #include "components/keyed_service/core/keyed_service.h"
@@ -19,10 +18,8 @@
 // changes and is per-Profile.
 class PolicyBlocklistService : public KeyedService {
  public:
-  PolicyBlocklistService(
-      std::unique_ptr<policy::URLBlocklistManager> url_blocklist_manager,
-      PrefService* user_prefs);
-
+  explicit PolicyBlocklistService(
+      std::unique_ptr<policy::URLBlocklistManager> url_blocklist_manager);
   PolicyBlocklistService(const PolicyBlocklistService&) = delete;
   PolicyBlocklistService& operator=(const PolicyBlocklistService&) = delete;
   ~PolicyBlocklistService() override;
@@ -30,18 +27,8 @@ class PolicyBlocklistService : public KeyedService {
   policy::URLBlocklist::URLBlocklistState GetURLBlocklistState(
       const GURL& url) const;
 
-#if BUILDFLAG(IS_CHROMEOS)
-  // Configures the URL filters source the `url_blocklist_manager_`. If
-  // `enforced` is false, the default URL filters source is used (i.e. the
-  // URLBlocklist and URLAllowlist prefs). If `enforced` is true, the
-  // `url_blocklist_manager_` is configured to use a custom source for URL
-  // filters.
-  void SetAlwaysOnVpnPreConnectUrlAllowlistEnforced(bool enforced);
-#endif
-
  private:
   std::unique_ptr<policy::URLBlocklistManager> url_blocklist_manager_;
-  raw_ptr<PrefService> user_prefs_;
 };
 
 class PolicyBlocklistFactory : public BrowserContextKeyedServiceFactory {
@@ -59,7 +46,7 @@ class PolicyBlocklistFactory : public BrowserContextKeyedServiceFactory {
   friend struct base::DefaultSingletonTraits<PolicyBlocklistFactory>;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
   // Finds which browser context (if any) to use.

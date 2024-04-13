@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_POLICY_CORE_COMMON_CLOUD_CLOUD_POLICY_SERVICE_H_
 #define COMPONENTS_POLICY_CORE_COMMON_CLOUD_CLOUD_POLICY_SERVICE_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,6 +16,7 @@
 #include "components/policy/core/common/cloud/cloud_policy_client.h"
 #include "components/policy/core/common/cloud/cloud_policy_store.h"
 #include "components/policy/policy_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 
@@ -55,11 +55,7 @@ class POLICY_EXPORT CloudPolicyService : public CloudPolicyClient::Observer,
 
   // Refreshes policy. |callback| will be invoked after the operation completes
   // or aborts because of errors.
-  //
-  // The |reason| parameter will be used to tag the request to DMServer. This
-  // will allow for more targeted monitoring and alerting.
-  virtual void RefreshPolicy(RefreshPolicyCallback callback,
-                             PolicyFetchReason reason);
+  virtual void RefreshPolicy(RefreshPolicyCallback callback);
 
   // Adds/Removes an Observer for this object.
   void AddObserver(Observer* observer);
@@ -84,7 +80,7 @@ class POLICY_EXPORT CloudPolicyService : public CloudPolicyClient::Observer,
   // If initial policy refresh was completed returns its result.
   // This allows ChildPolicyObserver to know whether policy was fetched before
   // profile creation.
-  std::optional<bool> initial_policy_refresh_result() const {
+  absl::optional<bool> initial_policy_refresh_result() const {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return initial_policy_refresh_result_;
   }
@@ -131,7 +127,7 @@ class POLICY_EXPORT CloudPolicyService : public CloudPolicyClient::Observer,
 
   // Set to true if initial policy refresh was successful. Set to false
   // otherwise.
-  std::optional<bool> initial_policy_refresh_result_;
+  absl::optional<bool> initial_policy_refresh_result_;
 
   // Observers who will receive notifications when the service has finished
   // initializing.

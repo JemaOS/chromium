@@ -5,10 +5,10 @@
 #ifndef COMPONENTS_MEDIA_ROUTER_COMMON_PROVIDERS_CAST_CHANNEL_CAST_MESSAGE_UTIL_H_
 #define COMPONENTS_MEDIA_ROUTER_COMMON_PROVIDERS_CAST_CHANNEL_CAST_MESSAGE_UTIL_H_
 
-#include <optional>
 #include <string>
 
 #include "base/values.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/openscreen/src/cast/common/channel/proto/cast_channel.pb.h"
 
 namespace cast_channel {
@@ -26,6 +26,8 @@ static constexpr char kConnectionNamespace[] =
     "urn:x-cast:com.google.cast.tp.connection";
 static constexpr char kReceiverNamespace[] =
     "urn:x-cast:com.google.cast.receiver";
+static constexpr char kBroadcastNamespace[] =
+    "urn:x-cast:com.google.cast.broadcast";
 static constexpr char kMediaNamespace[] = "urn:x-cast:com.google.cast.media";
 
 // Sender and receiver IDs to use for platform messages.
@@ -58,7 +60,7 @@ enum class CastMessageType {
   // Close virtual connection
   kCloseConnection,
 
-  // Application broadcast/precache. No longer used.
+  // Application broadcast / precache
   kBroadcast,
 
   // Session launch request
@@ -242,6 +244,24 @@ CastMessage CreateGetAppAvailabilityRequest(const std::string& source_id,
 CastMessage CreateReceiverStatusRequest(const std::string& source_id,
                                         int request_id);
 
+// Represents a broadcast request. Currently it is used for precaching data
+// on a receiver.
+struct BroadcastRequest {
+  BroadcastRequest(const std::string& broadcast_namespace,
+                   const std::string& message);
+  ~BroadcastRequest();
+  bool operator==(const BroadcastRequest& other) const;
+
+  std::string broadcast_namespace;
+  std::string message;
+};
+
+// Creates a broadcast request with the given parameters.
+CastMessage CreateBroadcastRequest(const std::string& source_id,
+                                   int request_id,
+                                   const std::vector<std::string>& app_ids,
+                                   const BroadcastRequest& request);
+
 // Creates a session launch request with the given parameters.
 CastMessage CreateLaunchRequest(
     const std::string& source_id,
@@ -249,7 +269,7 @@ CastMessage CreateLaunchRequest(
     const std::string& app_id,
     const std::string& locale,
     const std::vector<std::string>& supported_app_types,
-    const std::optional<base::Value>& app_params);
+    const absl::optional<base::Value>& app_params);
 
 CastMessage CreateStopRequest(const std::string& source_id,
                               int request_id,
@@ -284,7 +304,7 @@ enum class GetAppAvailabilityResult {
 const char* ToString(GetAppAvailabilityResult result);
 
 // Extracts request ID from |payload| corresponding to a Cast message response.
-std::optional<int> GetRequestIdFromResponse(const base::Value::Dict& payload);
+absl::optional<int> GetRequestIdFromResponse(const base::Value::Dict& payload);
 
 // Returns the GetAppAvailabilityResult corresponding to |app_id| in |payload|.
 // Returns kUnknown if result is not found.
@@ -320,7 +340,7 @@ struct LaunchSessionResponse {
 
   Result result = Result::kUnknown;
   // Populated if |result| is |kOk|.
-  std::optional<base::Value::Dict> receiver_status;
+  absl::optional<base::Value::Dict> receiver_status;
   // Populated if |result| is |kError|.
   std::string error_msg;
 };

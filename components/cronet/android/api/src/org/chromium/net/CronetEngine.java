@@ -6,16 +6,12 @@ package org.chromium.net;
 
 import android.content.Context;
 import android.net.http.HttpResponseCache;
-import android.os.Process;
-import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.net.impl.CronetLogger;
-import org.chromium.net.impl.CronetLoggerFactory;
-
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandlerFactory;
@@ -36,11 +32,14 @@ import javax.net.ssl.HttpsURLConnection;
  */
 public abstract class CronetEngine {
     private static final String TAG = CronetEngine.class.getSimpleName();
-
-    /** The value of the active request count is unknown */
+    /**
+     * The value of the active request count is unknown
+     */
     public static final int ACTIVE_REQUEST_COUNT_UNKNOWN = -1;
 
-    /** The value of a connection metric is unknown. */
+    /**
+     * The value of a connection metric is unknown.
+     */
     public static final int CONNECTION_METRIC_UNKNOWN = -1;
 
     /**
@@ -85,9 +84,6 @@ public abstract class CronetEngine {
      */
     public static final int EFFECTIVE_CONNECTION_TYPE_4G = 5;
 
-    /** The value to be used to undo any previous network binding. */
-    public static final long UNBIND_NETWORK_HANDLE = -1;
-
     /**
      * A builder for {@link CronetEngine}s, which allows runtime configuration of {@code
      * CronetEngine}. Configuration options are set on the builder and then {@link #build} is called
@@ -115,7 +111,9 @@ public abstract class CronetEngine {
             public abstract void loadLibrary(String libName);
         }
 
-        /** Reference to the actual builder implementation. {@hide exclude from JavaDoc}. */
+        /**
+         * Reference to the actual builder implementation. {@hide exclude from JavaDoc}.
+         */
         protected final ICronetEngineBuilder mBuilderDelegate;
 
         /**
@@ -335,11 +333,8 @@ public abstract class CronetEngine {
          * @throws IllegalArgumentException if the given host name is invalid or {@code pinsSha256}
          * contains a byte array that does not represent a valid SHA-256 hash.
          */
-        public Builder addPublicKeyPins(
-                String hostName,
-                Set<byte[]> pinsSha256,
-                boolean includeSubdomains,
-                Date expirationDate) {
+        public Builder addPublicKeyPins(String hostName, Set<byte[]> pinsSha256,
+                boolean includeSubdomains, Date expirationDate) {
             mBuilderDelegate.addPublicKeyPins(
                     hostName, pinsSha256, includeSubdomains, expirationDate);
             return this;
@@ -408,7 +403,9 @@ public abstract class CronetEngine {
             return this;
         }
 
-        /** @see #setQuicOptions(QuicOptions) */
+        /**
+         * @see #setQuicOptions(QuicOptions)
+         */
         @QuicOptions.Experimental
         public Builder setQuicOptions(QuicOptions.Builder quicOptionsBuilder) {
             return setQuicOptions(quicOptionsBuilder.build());
@@ -428,7 +425,9 @@ public abstract class CronetEngine {
             return this;
         }
 
-        /** @see #setDnsOptions(DnsOptions) */
+        /**
+         * @see #setDnsOptions(DnsOptions)
+         */
         @DnsOptions.Experimental
         public Builder setDnsOptions(DnsOptions.Builder dnsOptions) {
             return setDnsOptions(dnsOptions.build());
@@ -450,26 +449,13 @@ public abstract class CronetEngine {
             return this;
         }
 
-        /** @see #setConnectionMigrationOptions(ConnectionMigrationOptions) */
+        /**
+         * @see #setConnectionMigrationOptions(ConnectionMigrationOptions)
+         */
         @ConnectionMigrationOptions.Experimental
         public Builder setConnectionMigrationOptions(
                 ConnectionMigrationOptions.Builder connectionMigrationOptionsBuilder) {
             return setConnectionMigrationOptions(connectionMigrationOptionsBuilder.build());
-        }
-
-        protected ExperimentalCronetEngine buildExperimental() {
-            int implLevel = getImplApiLevel(mBuilderDelegate);
-            if (implLevel != -1 && implLevel < getMaximumApiLevel()) {
-                Log.w(
-                        TAG,
-                        "The implementation version is lower than the API version. Calls to "
-                                + "methods added in API "
-                                + (implLevel + 1)
-                                + " and newer will "
-                                + "likely have no effect.");
-            }
-
-            return mBuilderDelegate.build();
         }
 
         /**
@@ -478,7 +464,15 @@ public abstract class CronetEngine {
          * @return constructed {@link CronetEngine}.
          */
         public CronetEngine build() {
-            return buildExperimental();
+            int implLevel = getImplementationApiLevel();
+            if (implLevel != -1 && implLevel < getMaximumApiLevel()) {
+                Log.w(TAG,
+                        "The implementation version is lower than the API version. Calls to "
+                                + "methods added in API " + (implLevel + 1) + " and newer will "
+                                + "likely have no effect.");
+            }
+
+            return mBuilderDelegate.build();
         }
 
         /**
@@ -490,40 +484,15 @@ public abstract class CronetEngine {
          * @return the created {@code ICronetEngineBuilder}.
          */
         private static ICronetEngineBuilder createBuilderDelegate(Context context) {
-            var startUptimeMillis = SystemClock.uptimeMillis();
-            CronetProvider.ProviderInfo providerInfo =
-                    getEnabledCronetProviders(
-                                    context,
-                                    new ArrayList<>(CronetProvider.getAllProviderInfos(context)))
-                            .get(0);
-            var logger = CronetLoggerFactory.createLogger(context, providerInfo.logSource);
-            var logInfo = new CronetLogger.CronetEngineBuilderInitializedInfo();
-            try {
-                logInfo.creationSuccessful = false;
-                logInfo.author = CronetLogger.CronetEngineBuilderInitializedInfo.Author.API;
-                logInfo.source = providerInfo.logSource;
-                logInfo.uid = Process.myUid();
-                logInfo.apiVersion = new CronetLogger.CronetVersion(ApiVersion.getCronetVersion());
-                if (Log.isLoggable(TAG, Log.DEBUG)) {
-                    Log.d(
-                            TAG,
-                            String.format(
-                                    "Using '%s' provider for creating CronetEngine.Builder.",
-                                    providerInfo.provider));
-                }
-                var builderDelegate = providerInfo.provider.createBuilder().mBuilderDelegate;
-                var implCronetVersion = getImplCronetVersion(builderDelegate);
-                if (implCronetVersion != null) {
-                    logInfo.implVersion = new CronetLogger.CronetVersion(implCronetVersion);
-                }
-                logInfo.cronetInitializationRef = builderDelegate.getLogCronetInitializationRef();
-                logInfo.creationSuccessful = true;
-                return builderDelegate;
-            } finally {
-                logInfo.engineBuilderCreatedLatencyMillis =
-                        (int) (SystemClock.uptimeMillis() - startUptimeMillis);
-                logger.logCronetEngineBuilderInitializedInfo(logInfo);
+            List<CronetProvider> providers =
+                    new ArrayList<>(CronetProvider.getAllProviders(context));
+            CronetProvider provider = getEnabledCronetProviders(context, providers).get(0);
+            if (Log.isLoggable(TAG, Log.DEBUG)) {
+                Log.d(TAG,
+                        String.format("Using '%s' provider for creating CronetEngine.Builder.",
+                                provider));
             }
+            return provider.createBuilder().mBuilderDelegate;
         }
 
         /**
@@ -534,54 +503,46 @@ public abstract class CronetEngine {
          * @param providers the list of enabled and disabled providers to filter out and sort.
          * @return the sorted list of enabled providers. The list contains at least one provider.
          * @throws RuntimeException is the list of providers is empty or all of the providers are
-         *     disabled.
+         * disabled.
          */
         @VisibleForTesting
-        static List<CronetProvider.ProviderInfo> getEnabledCronetProviders(
-                Context context, List<CronetProvider.ProviderInfo> providers) {
+        static List<CronetProvider> getEnabledCronetProviders(
+                Context context, List<CronetProvider> providers) {
             // Check that there is at least one available provider.
             if (providers.isEmpty()) {
-                throw new RuntimeException(
-                        "Unable to find any Cronet provider."
-                                + " Have you included all necessary jars?");
+                throw new RuntimeException("Unable to find any Cronet provider."
+                        + " Have you included all necessary jars?");
             }
 
             // Exclude disabled providers from the list.
-            for (Iterator<CronetProvider.ProviderInfo> i = providers.iterator(); i.hasNext(); ) {
-                CronetProvider.ProviderInfo providerInfo = i.next();
-                if (!providerInfo.provider.isEnabled()) {
+            for (Iterator<CronetProvider> i = providers.iterator(); i.hasNext();) {
+                CronetProvider provider = i.next();
+                if (!provider.isEnabled()) {
                     i.remove();
                 }
             }
 
             // Check that there is at least one enabled provider.
             if (providers.isEmpty()) {
-                throw new RuntimeException(
-                        "All available Cronet providers are disabled."
-                                + " A provider should be enabled before it can be used.");
+                throw new RuntimeException("All available Cronet providers are disabled."
+                        + " A provider should be enabled before it can be used.");
             }
 
             // Sort providers based on version and type.
-            Collections.sort(
-                    providers,
-                    new Comparator<CronetProvider.ProviderInfo>() {
-                        @Override
-                        public int compare(
-                                CronetProvider.ProviderInfo p1, CronetProvider.ProviderInfo p2) {
-                            // The fallback provider should always be at the end of the list.
-                            if (CronetProvider.PROVIDER_NAME_FALLBACK.equals(
-                                    p1.provider.getName())) {
-                                return 1;
-                            }
-                            if (CronetProvider.PROVIDER_NAME_FALLBACK.equals(
-                                    p2.provider.getName())) {
-                                return -1;
-                            }
-                            // A provider with higher version should go first.
-                            return -compareVersions(
-                                    p1.provider.getVersion(), p2.provider.getVersion());
-                        }
-                    });
+            Collections.sort(providers, new Comparator<CronetProvider>() {
+                @Override
+                public int compare(CronetProvider p1, CronetProvider p2) {
+                    // The fallback provider should always be at the end of the list.
+                    if (CronetProvider.PROVIDER_NAME_FALLBACK.equals(p1.getName())) {
+                        return 1;
+                    }
+                    if (CronetProvider.PROVIDER_NAME_FALLBACK.equals(p2.getName())) {
+                        return -1;
+                    }
+                    // A provider with higher version should go first.
+                    return -compareVersions(p1.getVersion(), p2.getVersion());
+                }
+            });
             return providers;
         }
 
@@ -612,12 +573,8 @@ public abstract class CronetEngine {
                         return Integer.signum(s1segment - s2segment);
                     }
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException(
-                            "Unable to convert version segments into"
-                                    + " integers: "
-                                    + s1segments[i]
-                                    + " & "
-                                    + s2segments[i],
+                    throw new IllegalArgumentException("Unable to convert version segments into"
+                                    + " integers: " + s1segments[i] + " & " + s2segments[i],
                             e);
                 }
             }
@@ -629,62 +586,28 @@ public abstract class CronetEngine {
         }
 
         /**
-         * Returns the ImplVersion class from the impl.
-         *
-         * <p>NOTE: this functionality is not available if the impl was built before
-         * https://crrev.com/c/5190726, in which case this function will return null.
-         *
-         * @see org.chromium.net.impl.ImplVersion
+         * Returns the implementation version, the implementation being represented by the delegate
+         * builder, or {@code -1} if the version couldn't be retrieved.
          */
-        private static Class<?> getImplVersionClass(ICronetEngineBuilder builderDelegate) {
+        private int getImplementationApiLevel() {
             try {
-                return builderDelegate
-                        .getClass()
-                        .getClassLoader()
-                        .loadClass("org.chromium.net.impl.ImplVersion");
-            } catch (ClassNotFoundException exception) {
-                return null;
-            }
-        }
+                ClassLoader implClassLoader = mBuilderDelegate.getClass().getClassLoader();
+                Class<?> implVersionClass =
+                        implClassLoader.loadClass("org.chromium.net.impl.ImplVersion");
+                Method getApiLevel = implVersionClass.getMethod("getApiLevel");
+                int implementationApiLevel = (Integer) getApiLevel.invoke(null);
 
-        /**
-         * Returns the API level that the impl was built against.
-         *
-         * <p>NOTE: this functionality is not available if the impl was built before
-         * https://crrev.com/c/5190726, in which case this function will return -1.
-         *
-         * @see org.chromium.net.impl.ImplVersion#getApiLevel
-         */
-        private static int getImplApiLevel(ICronetEngineBuilder builderDelegate) {
-            try {
-                var implVersionClass = getImplVersionClass(builderDelegate);
-                if (implVersionClass == null) return -1;
-                return (Integer) implVersionClass.getMethod("getApiLevel").invoke(null);
-            } catch (ReflectiveOperationException exception) {
-                throw new RuntimeException("Failed to retrieve Cronet impl API level", exception);
-            }
-        }
-
-        /**
-         * Returns the Cronet version that the impl was built from.
-         *
-         * <p>NOTE: this functionality is not available if the impl was built before
-         * https://crrev.com/c/5190726, in which case this function will return null.
-         *
-         * @see org.chromium.net.impl.ImplVersion#getCronetVersion
-         */
-        private static String getImplCronetVersion(ICronetEngineBuilder builderDelegate) {
-            try {
-                var implVersionClass = getImplVersionClass(builderDelegate);
-                if (implVersionClass == null) return null;
-                return (String) implVersionClass.getMethod("getCronetVersion").invoke(null);
-            } catch (ReflectiveOperationException exception) {
-                throw new RuntimeException("Failed to retrieve Cronet impl version", exception);
+                return implementationApiLevel;
+            } catch (Exception e) {
+                // Any exception in the block above isn't critical, don't bother the app about it.
+                return -1;
             }
         }
     }
 
-    /** @return a human-readable version string of the engine. */
+    /**
+     * @return a human-readable version string of the engine.
+     */
     public abstract String getVersionString();
 
     /**
@@ -796,33 +719,16 @@ public abstract class CronetEngine {
             String url, UrlRequest.Callback callback, Executor executor);
 
     /**
-     * Creates a builder for {@link BidirectionalStream} objects. All callbacks for generated {@code
-     * BidirectionalStream} objects will be invoked on {@code executor}. {@code executor} must not
-     * run tasks on the current thread, otherwise the networking operations may block and exceptions
-     * may be thrown at shutdown time.
-     *
-     * @param url URL for the generated streams.
-     * @param callback the {@link BidirectionalStream.Callback} object that gets invoked upon
-     * different events occurring.
-     * @param executor the {@link Executor} on which {@code callback} methods will be invoked.
-     * @return the created builder.
-     *
-     * {@hide}
-     */
-    public BidirectionalStream.Builder newBidirectionalStreamBuilder(
-            String url, BidirectionalStream.Callback callback, Executor executor) {
-        throw new UnsupportedOperationException("Not implemented.");
-    }
-
-    /**
-     * Returns the number of active requests.
+     * Returns the number of in-flight requests.
      * <p>
-     * A request becomes "active" in UrlRequest.start(), assuming that method
-     * does not throw an exception. It becomes inactive when all callbacks have
-     * returned and no additional callbacks can be triggered in the future. In
-     * practice, that means the request is inactive once
-     * onSucceeded/onCanceled/onFailed has returned and all request finished
-     * listeners have returned.
+     * A request is in-flight if its start() method has been called but it hasn't reached a final
+     * state yet. A request reaches the final state when one of the following callbacks has been
+     * called:
+     * <ul>
+     *    <li>onSucceeded</li>
+     *    <li>onCanceled</li>
+     *    <li>onFailed</li>
+     * </ul>
      *
      * <a href="https://developer.android.com/guide/topics/connectivity/cronet/lifecycle">Cronet
      *         requests's lifecycle</a> for more information.
@@ -907,18 +813,6 @@ public abstract class CronetEngine {
     public void startNetLogToDisk(String dirPath, boolean logAll, int maxSize) {}
 
     /**
-     * Binds the engine to the specified network handle. All requests created through this engine
-     * will use the network associated to this handle. If this network disconnects all requests will
-     * fail, the exact error will depend on the stage of request processing when the network
-     * disconnects. Network handles can be obtained through {@code Network#getNetworkHandle}. Only
-     * available starting from Android Marshmallow.
-     *
-     * @param networkHandle the network handle to bind the engine to. Specify {@link
-     * #UNBIND_NETWORK_HANDLE} to unbind.
-     */
-    public void bindToNetwork(long networkHandle) {}
-
-    /**
      * Returns an estimate of the effective connection type computed by the network quality
      * estimator. Call {@link Builder#enableNetworkQualityEstimator} to begin computing this value.
      *
@@ -940,10 +834,9 @@ public abstract class CronetEngine {
      *         computing
      * the effective connection type or when writing the prefs.
      */
-    public void configureNetworkQualityEstimatorForTesting(
-            boolean useLocalHostRequests,
-            boolean useSmallerResponses,
-            boolean disableOfflineCheck) {}
+    @VisibleForTesting
+    public void configureNetworkQualityEstimatorForTesting(boolean useLocalHostRequests,
+            boolean useSmallerResponses, boolean disableOfflineCheck) {}
 
     /**
      * Registers a listener that gets called whenever the network quality estimator witnesses a

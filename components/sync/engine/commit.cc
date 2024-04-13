@@ -11,6 +11,7 @@
 #include "base/notreached.h"
 #include "base/rand_util.h"
 #include "base/trace_event/trace_event.h"
+#include "components/sync/base/data_type_histogram.h"
 #include "components/sync/engine/active_devices_invalidation_info.h"
 #include "components/sync/engine/commit_processor.h"
 #include "components/sync/engine/commit_util.h"
@@ -19,7 +20,6 @@
 #include "components/sync/engine/events/commit_response_event.h"
 #include "components/sync/engine/syncer.h"
 #include "components/sync/engine/syncer_proto_util.h"
-#include "net/http/http_status_code.h"
 
 namespace syncer {
 
@@ -41,25 +41,35 @@ std::string RandASCIIString(size_t length) {
 }
 
 SyncCommitError GetSyncCommitError(SyncerError syncer_error) {
-  switch (syncer_error.type()) {
-    case SyncerError::Type::kSuccess:
+  switch (syncer_error.value()) {
+    case SyncerError::UNSET:
+    case SyncerError::SYNCER_OK:
+    case SyncerError::SERVER_MORE_TO_DOWNLOAD:
       NOTREACHED();
       break;
-    case SyncerError::Type::kNetworkError:
+    case SyncerError::NETWORK_CONNECTION_UNAVAILABLE:
+    case SyncerError::NETWORK_IO_ERROR:
       return SyncCommitError::kNetworkError;
-    case SyncerError::Type::kHttpError:
-      if (syncer_error.GetHttpErrorOrDie() == net::HTTP_UNAUTHORIZED) {
-        return SyncCommitError::kAuthError;
-      } else {
-        return SyncCommitError::kServerError;
-      }
-    case SyncerError::Type::kProtocolError:
+    case SyncerError::SYNC_AUTH_ERROR:
+      return SyncCommitError::kAuthError;
+    case SyncerError::SYNC_SERVER_ERROR:
+    case SyncerError::SERVER_RETURN_UNKNOWN_ERROR:
+    case SyncerError::SERVER_RETURN_THROTTLED:
+    case SyncerError::SERVER_RETURN_TRANSIENT_ERROR:
+    case SyncerError::SERVER_RETURN_MIGRATION_DONE:
+    case SyncerError::SERVER_RETURN_CLEAR_PENDING:
+    case SyncerError::SERVER_RETURN_NOT_MY_BIRTHDAY:
+    case SyncerError::SERVER_RETURN_CONFLICT:
+    case SyncerError::SERVER_RETURN_CLIENT_DATA_OBSOLETE:
+    case SyncerError::SERVER_RETURN_ENCRYPTION_OBSOLETE:
+    case SyncerError::SERVER_RETURN_DISABLED_BY_ADMIN:
       return SyncCommitError::kServerError;
-    case SyncerError::Type::kProtocolViolationError:
+    case SyncerError::SERVER_RESPONSE_VALIDATION_FAILED:
       return SyncCommitError::kBadServerResponse;
   }
 
-  NOTREACHED_NORETURN();
+  NOTREACHED();
+  return SyncCommitError::kServerError;
 }
 
 }  // namespace
@@ -76,6 +86,7 @@ Commit::~Commit() = default;
 // static
 std::unique_ptr<Commit> Commit::Init(
     ModelTypeSet enabled_types,
+    bool proxy_tabs_datatype_enabled,
     size_t max_entries,
     const std::string& account_name,
     const std::string& cache_guid,
@@ -118,7 +129,7 @@ std::unique_ptr<Commit> Commit::Init(
 
   // Set the client config params.
   commit_util::AddClientConfigParamsToMessage(
-      enabled_types, cookie_jar_mismatch,
+      enabled_types, proxy_tabs_datatype_enabled, cookie_jar_mismatch,
       active_devices_invalidation_info.IsSingleClientForTypes(
           contributed_data_types),
       active_devices_invalidation_info
@@ -176,7 +187,7 @@ SyncerError Commit::PostAndProcessResponse(
   CommitResponseEvent response_event(base::Time::Now(), post_result, response);
   cycle->SendProtocolEvent(response_event);
 
-  if (post_result.type() != SyncerError::Type::kSuccess) {
+  if (post_result.value() != SyncerError::SYNCER_OK) {
     LOG(WARNING) << "Post commit failed";
     ReportFullCommitFailure(post_result);
     return post_result;
@@ -184,7 +195,8 @@ SyncerError Commit::PostAndProcessResponse(
 
   if (!response.has_commit()) {
     LOG(WARNING) << "Commit response has no commit body!";
-    const SyncerError syncer_error = SyncerError::ProtocolViolationError();
+    const SyncerError syncer_error(
+        SyncerError::SERVER_RESPONSE_VALIDATION_FAILED);
     ReportFullCommitFailure(syncer_error);
     return syncer_error;
   }
@@ -195,7 +207,8 @@ SyncerError Commit::PostAndProcessResponse(
     LOG(ERROR) << "Commit response has wrong number of entries! "
                << "Expected: " << message_entries << ", "
                << "Got: " << response_entries;
-    const SyncerError syncer_error = SyncerError::ProtocolViolationError();
+    const SyncerError syncer_error(
+        SyncerError::SERVER_RESPONSE_VALIDATION_FAILED);
     ReportFullCommitFailure(syncer_error);
     return syncer_error;
   }
@@ -207,19 +220,17 @@ SyncerError Commit::PostAndProcessResponse(
   }
 
   // Let the contributors process the responses to each of their requests.
-  SyncerError processing_result = SyncerError::Success();
+  SyncerError processing_result = SyncerError(SyncerError::SYNCER_OK);
   for (const auto& [type, contributions] : contributions_) {
     const char* model_type_str = ModelTypeToDebugString(type);
     TRACE_EVENT1("sync", "ProcessCommitResponse", "type", model_type_str);
     SyncerError type_result =
         contributions->ProcessCommitResponse(response, status);
-    if (type_result.type() == SyncerError::Type::kProtocolError &&
-        type_result.GetProtocolErrorOrDie() ==
-            SyncProtocolErrorType::CONFLICT) {
+    if (type_result.value() == SyncerError::SERVER_RETURN_CONFLICT) {
       nudge_tracker->RecordCommitConflict(type);
     }
-    if (processing_result.type() == SyncerError::Type::kSuccess &&
-        type_result.type() != SyncerError::Type::kSuccess) {
+    if (processing_result.value() == SyncerError::SYNCER_OK &&
+        type_result.value() != SyncerError::SYNCER_OK) {
       processing_result = type_result;
     }
   }

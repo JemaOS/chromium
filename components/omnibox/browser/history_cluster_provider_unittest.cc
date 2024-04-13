@@ -11,7 +11,6 @@
 #include "base/test/task_environment.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history_clusters/core/config.h"
-#include "components/history_clusters/core/features.h"
 #include "components/history_clusters/core/history_clusters_prefs.h"
 #include "components/history_clusters/core/history_clusters_service.h"
 #include "components/history_clusters/core/history_clusters_service_test_api.h"
@@ -46,38 +45,35 @@ class HistoryClustersProviderTest : public testing::Test,
   void SetUp() override {
     config_.is_journeys_enabled_no_locale_check = true;
     config_.omnibox_history_cluster_provider = true;
-    // Setting this to false even though users see true behavior so that we do
-    // not need to register history clusters specific prefs in this test.
-    config_.persist_caches_to_prefs = false;
     history_clusters::SetConfigForTesting(config_);
 
     CHECK(history_dir_.CreateUniqueTempDir());
     history_service_ =
         history::CreateHistoryService(history_dir_.GetPath(), true);
 
-    autocomplete_provider_client_ =
-        std::make_unique<FakeAutocompleteProviderClient>();
-    static_cast<TestingPrefServiceSimple*>(
-        autocomplete_provider_client_->GetPrefs())
-        ->registry()
-        ->RegisterBooleanPref(history_clusters::prefs::kVisible, true);
-
     history_clusters_service_ =
         std::make_unique<history_clusters::HistoryClustersService>(
             "en-US", history_service_.get(),
+            /*entity_metadata_provider=*/nullptr,
             /*url_loader_factory=*/nullptr,
             /*engagement_score_provider=*/nullptr,
             /*template_url_service=*/nullptr,
-            /*optimization_guide_decider=*/nullptr,
-            autocomplete_provider_client_->GetPrefs());
+            /*optimization_guide_decider=*/nullptr, /*pref_service=*/nullptr);
 
     history_clusters_service_test_api_ =
         std::make_unique<history_clusters::HistoryClustersServiceTestApi>(
             history_clusters_service_.get(), history_service_.get());
     history_clusters_service_test_api_->SetAllKeywordsCache(
         {{u"keyword", {}}, {u"keyword2", {}}});
+
+    autocomplete_provider_client_ =
+        std::make_unique<FakeAutocompleteProviderClient>();
     autocomplete_provider_client_->set_history_clusters_service(
         history_clusters_service_.get());
+    static_cast<TestingPrefServiceSimple*>(
+        autocomplete_provider_client_->GetPrefs())
+        ->registry()
+        ->RegisterBooleanPref(history_clusters::prefs::kVisible, true);
 
     search_provider_ =
         new FakeAutocompleteProvider(AutocompleteProvider::Type::TYPE_SEARCH);
@@ -88,10 +84,6 @@ class HistoryClustersProviderTest : public testing::Test,
     provider_ = new HistoryClusterProvider(
         autocomplete_provider_client_.get(), this, search_provider_.get(),
         history_url_provider_.get(), history_quick_provider_.get());
-  }
-
-  void TearDown() override {
-    autocomplete_provider_client_->set_history_clusters_service(nullptr);
   }
 
   ~HistoryClustersProviderTest() override {
@@ -120,12 +112,12 @@ class HistoryClustersProviderTest : public testing::Test,
 
   base::test::TaskEnvironment task_environment_;
 
-  std::unique_ptr<FakeAutocompleteProviderClient> autocomplete_provider_client_;
-
   base::ScopedTempDir history_dir_;
   std::unique_ptr<history::HistoryService> history_service_;
   std::unique_ptr<history_clusters::HistoryClustersService>
       history_clusters_service_;
+
+  std::unique_ptr<FakeAutocompleteProviderClient> autocomplete_provider_client_;
 
   scoped_refptr<FakeAutocompleteProvider> search_provider_;
   scoped_refptr<FakeAutocompleteProvider> history_url_provider_;
@@ -164,10 +156,10 @@ TEST_F(HistoryClustersProviderTest, SyncSearchMatches) {
   ASSERT_EQ(provider_->matches().size(), 1u);
   EXPECT_EQ(provider_->matches()[0].relevance, 900);
   EXPECT_EQ(provider_->matches()[0].description, u"keyword");
-  EXPECT_EQ(provider_->matches()[0].contents, u"Resume browsing");
+  EXPECT_EQ(provider_->matches()[0].contents, u"Resume your journey");
   EXPECT_EQ(provider_->matches()[0].fill_into_edit, u"keyword");
   EXPECT_EQ(provider_->matches()[0].destination_url,
-            GURL("chrome://history/grouped?q=keyword"));
+            GURL("chrome://history/journeys?q=keyword"));
 
   EXPECT_TRUE(on_provider_update_calls_.empty());
 }
@@ -457,5 +449,5 @@ TEST_F(HistoryClustersProviderTest, Grouping_Ranking) {
 
   provider_->Start(input, false);
   ASSERT_EQ(provider_->matches().size(), 1u);
-  EXPECT_EQ(provider_->matches()[0].suggestion_group_id, std::nullopt);
+  EXPECT_EQ(provider_->matches()[0].suggestion_group_id, absl::nullopt);
 }

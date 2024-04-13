@@ -143,7 +143,7 @@ void ViewElement::SetBounds(const gfx::Rect& bounds) {
 
 std::vector<std::string> ViewElement::GetAttributes() const {
   // TODO(lgrey): Change name to class after updating tests.
-  return {"class", view_->GetClassName(), "name", view_->GetObjectName()};
+  return {"name", view_->GetClassName()};
 }
 
 std::pair<gfx::NativeWindow, gfx::Rect>
@@ -165,7 +165,7 @@ int UIElement::FindUIElementIdForBackendElement<views::View>(
       UIElement::GetBackingElement<views::View, ViewElement>(this) == element) {
     return node_id_;
   }
-  for (ui_devtools::UIElement* child : children_) {
+  for (auto* child : children_) {
     int ui_element_id = child->FindUIElementIdForBackendElement(element);
     if (ui_element_id)
       return ui_element_id;
@@ -239,7 +239,7 @@ ui::Layer* ViewElement::GetLayer() const {
 
 void ViewElement::RebuildTree() {
   ClearChildren();
-  for (views::View* child : view_->children()) {
+  for (auto* child : view_->children()) {
     AddChild(new ViewElement(child, delegate(), this));
   }
 }

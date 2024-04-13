@@ -25,6 +25,8 @@ static_library("core") {
     "counters/passwords_counter.h",
     "counters/sync_tracker.cc",
     "counters/sync_tracker.h",
+    "features.cc",
+    "features.h",
     "history_notice_utils.cc",
     "history_notice_utils.h",
     "pref_names.cc",
@@ -45,8 +47,6 @@ static_library("core") {
     "//components/webdata/common",
     "//ui/base",
   ]
-
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
 }
 
 if (is_android) {

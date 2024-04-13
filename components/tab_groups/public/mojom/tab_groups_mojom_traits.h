@@ -36,10 +36,9 @@ struct EnumTraits<tab_groups::mojom::Color, tab_groups::TabGroupColorId> {
         return MojoTabGroupColorId::kCyan;
       case TabGroupColorId::kOrange:
         return MojoTabGroupColorId::kOrange;
-      case TabGroupColorId::kNumEntries:
-        NOTREACHED() << "kNumEntries is not a supported color enum.";
-        return MojoTabGroupColorId::kGrey;
     }
+    NOTREACHED();
+    return MojoTabGroupColorId::kGrey;
   }
 
   static bool FromMojom(MojoTabGroupColorId input, TabGroupColorId* out) {

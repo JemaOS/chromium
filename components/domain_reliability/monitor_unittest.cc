@@ -31,7 +31,6 @@
 #include "net/base/net_errors.h"
 #include "net/base/network_anonymization_key.h"
 #include "net/base/request_priority.h"
-#include "net/http/http_connection_info.h"
 #include "net/http/http_response_headers.h"
 #include "net/http/http_response_info.h"
 #include "net/http/http_util.h"
@@ -127,7 +126,7 @@ class DomainReliabilityMonitorTest : public testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::MainThreadType::IO};
   std::unique_ptr<net::URLRequestContext> url_request_context_;
-  raw_ptr<MockTime, DanglingUntriaged> time_;
+  raw_ptr<MockTime> time_;
   DomainReliabilityMonitor monitor_;
   DomainReliabilityMonitor::RequestInfo request_;
 };
@@ -638,7 +637,7 @@ TEST_F(DomainReliabilityMonitorTest, RealRequest) {
   EXPECT_EQ("HTTP", beacons[0]->protocol);
   EXPECT_FALSE(beacons[0]->details.quic_broken);
   EXPECT_EQ(quic::QUIC_NO_ERROR, beacons[0]->details.quic_connection_error);
-  EXPECT_EQ(net::HttpConnectionInfo::kHTTP1_1,
+  EXPECT_EQ(net::HttpResponseInfo::CONNECTION_INFO_HTTP1_1,
             beacons[0]->details.connection_info);
   EXPECT_FALSE(beacons[0]->details.quic_port_migration_detected);
   EXPECT_EQ(-1, beacons[0]->http_response_code);

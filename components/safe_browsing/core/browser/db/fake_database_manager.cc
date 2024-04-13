@@ -38,19 +38,22 @@ bool FakeSafeBrowsingDatabaseManager::CanCheckRequestDestination(
   return true;
 }
 
+bool FakeSafeBrowsingDatabaseManager::ChecksAreAlwaysAsync() const {
+  return false;
+}
+
 bool FakeSafeBrowsingDatabaseManager::CheckBrowseUrl(
     const GURL& url,
     const SBThreatTypeSet& threat_types,
     Client* client,
-    CheckBrowseUrlType check_type) {
+    MechanismExperimentHashDatabaseCache experiment_cache_selection) {
   const auto it = dangerous_urls_.find(url);
   if (it == dangerous_urls_.end())
     return true;
 
   const SBThreatType result_threat_type = it->second;
-  if (result_threat_type == SBThreatType::SB_THREAT_TYPE_SAFE) {
+  if (result_threat_type == SB_THREAT_TYPE_SAFE)
     return true;
-  }
 
   ThreatPatternType pattern_type = ThreatPatternType::NONE;
   const auto it1 = dangerous_patterns_.find(url);
@@ -76,9 +79,8 @@ bool FakeSafeBrowsingDatabaseManager::CheckDownloadUrl(
       continue;
 
     const SBThreatType result_threat_type = it->second;
-    if (result_threat_type == SBThreatType::SB_THREAT_TYPE_SAFE) {
+    if (result_threat_type == SB_THREAT_TYPE_SAFE)
       continue;
-    }
 
     sb_task_runner()->PostTask(
         FROM_HERE,
@@ -102,14 +104,8 @@ bool FakeSafeBrowsingDatabaseManager::CheckUrlForSubresourceFilter(
   return true;
 }
 
-safe_browsing::ThreatSource
-FakeSafeBrowsingDatabaseManager::GetBrowseUrlThreatSource(
-    CheckBrowseUrlType check_type) const {
-  return safe_browsing::ThreatSource::LOCAL_PVER4;
-}
-
-safe_browsing::ThreatSource
-FakeSafeBrowsingDatabaseManager::GetNonBrowseUrlThreatSource() const {
+safe_browsing::ThreatSource FakeSafeBrowsingDatabaseManager::GetThreatSource()
+    const {
   return safe_browsing::ThreatSource::LOCAL_PVER4;
 }
 

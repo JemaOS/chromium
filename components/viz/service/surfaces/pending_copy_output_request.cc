@@ -11,12 +11,10 @@ namespace viz {
 PendingCopyOutputRequest::PendingCopyOutputRequest(
     LocalSurfaceId surface_id,
     SubtreeCaptureId subtree_id,
-    std::unique_ptr<CopyOutputRequest> request,
-    bool capture_exact_id)
+    std::unique_ptr<CopyOutputRequest> request)
     : local_surface_id(surface_id),
       subtree_capture_id(subtree_id),
-      copy_output_request(std::move(request)),
-      capture_exact_surface_id(capture_exact_id) {}
+      copy_output_request(std::move(request)) {}
 
 PendingCopyOutputRequest::PendingCopyOutputRequest(PendingCopyOutputRequest&&) =
     default;

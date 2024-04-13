@@ -12,7 +12,6 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
-#include "base/time/time.h"
 #include "components/history/core/browser/history_service.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 
@@ -103,35 +102,6 @@ void MaybeRecordInteractionAsAction(MetricsHelper::Interaction interaction,
   } else if (interaction == MetricsHelper::OPEN_TIME_SETTINGS) {
     if (metric_name == "bad_clock")
       RecordAction(UserMetricsAction("BadClockInterstitial.Settings"));
-  } else if (metric_name == "phishing" ||
-             metric_name == "phishing_subresource") {
-    if (interaction == MetricsHelper::SHOW_PRIVACY_POLICY) {
-      RecordAction(UserMetricsAction("PhishingInterstitial.PrivacyPolicy"));
-    } else if (interaction == MetricsHelper::SHOW_DIAGNOSTIC) {
-      RecordAction(UserMetricsAction("PhishingInterstitial.Diagnostic"));
-    } else if (interaction == MetricsHelper::SHOW_LEARN_MORE) {
-      RecordAction(UserMetricsAction("PhishingInterstitial.LearnMore"));
-    } else if (interaction == MetricsHelper::SET_EXTENDED_REPORTING_ENABLED) {
-      RecordAction(UserMetricsAction(
-          "PhishingInterstitial.SetExtendedReportingEnabled"));
-    } else if (interaction == MetricsHelper::SET_EXTENDED_REPORTING_DISABLED) {
-      RecordAction(UserMetricsAction(
-          "PhishingInterstitial.SetExtendedReportingDisabled"));
-    } else if (interaction == MetricsHelper::REPORT_PHISHING_ERROR) {
-      RecordAction(
-          UserMetricsAction("PhishingInterstitial.ReportPhishingError"));
-    } else if (interaction == MetricsHelper::SHOW_WHITEPAPER) {
-      RecordAction(UserMetricsAction("PhishingInterstitial.WhitePaper"));
-    } else if (interaction == MetricsHelper::SHOW_ENHANCED_PROTECTION) {
-      RecordAction(
-          UserMetricsAction("PhishingInterstitial.EnhancedProtectionMessage"));
-    } else if (interaction == MetricsHelper::OPEN_ENHANCED_PROTECTION) {
-      RecordAction(
-          UserMetricsAction("PhishingInterstitial.EnhancedProtectionSettings"));
-    } else if (interaction == MetricsHelper::CLOSE_INTERSTITIAL_WITHOUT_UI) {
-      RecordAction(
-          UserMetricsAction("PhishingInterstitial.CloseInterstitialWithoutUI"));
-    }
   }
 }
 
@@ -184,11 +154,6 @@ void MetricsHelper::RecordUserDecisionToMetrics(
     RecordSingleDecisionToMetrics(
         decision, histogram_name + "." + settings_.extra_suffix);
   }
-  std::string has_page_shown_suffix =
-      settings_.blocked_page_shown_timestamp.has_value() ? "after_page_shown"
-                                                         : "before_page_shown";
-  RecordSingleDecisionToMetrics(decision,
-                                histogram_name + "." + has_page_shown_suffix);
 }
 
 void MetricsHelper::RecordUserInteraction(Interaction interaction) {
@@ -199,32 +164,12 @@ void MetricsHelper::RecordUserInteraction(Interaction interaction) {
     RecordSingleInteractionToMetrics(
         interaction, histogram_name + "." + settings_.extra_suffix);
   }
-  std::string has_page_shown_suffix =
-      settings_.blocked_page_shown_timestamp.has_value() ? "after_page_shown"
-                                                         : "before_page_shown";
-  RecordSingleInteractionToMetrics(
-      interaction, histogram_name + "." + has_page_shown_suffix);
 
   MaybeRecordInteractionAsAction(interaction, settings_.metric_prefix);
 }
 
 void MetricsHelper::RecordShutdownMetrics() {
   RecordExtraShutdownMetrics();
-}
-
-void MetricsHelper::RecordInterstitialShowDelay() {
-  const std::string histogram_name("interstitial." + settings_.metric_prefix +
-                                   ".show_delay");
-  base::TimeDelta delay =
-      settings_.blocked_page_shown_timestamp.has_value()
-          ? base::TimeTicks::Now() -
-                settings_.blocked_page_shown_timestamp.value()
-          : base::TimeDelta::Min();
-  base::UmaHistogramTimes(histogram_name, delay);
-  if (!settings_.extra_suffix.empty()) {
-    base::UmaHistogramTimes(histogram_name + "." + settings_.extra_suffix,
-                            delay);
-  }
 }
 
 int MetricsHelper::NumVisits() {

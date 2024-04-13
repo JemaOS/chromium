@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <functional>
-#include <optional>
 #include <utility>
 
 #include "base/containers/contains.h"
@@ -15,7 +14,6 @@
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
-#include "base/process/kill.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "components/no_state_prefetch/browser/no_state_prefetch_contents_delegate.h"
@@ -23,7 +21,6 @@
 #include "components/no_state_prefetch/common/no_state_prefetch_final_status.h"
 #include "components/no_state_prefetch/common/no_state_prefetch_utils.h"
 #include "components/no_state_prefetch/common/render_frame_prerender_messages.mojom.h"
-#include "components/paint_preview/browser/paint_preview_client.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -40,6 +37,7 @@
 #include "net/http/http_response_headers.h"
 #include "services/resource_coordinator/public/cpp/memory_instrumentation/memory_instrumentation.h"
 #include "services/service_manager/public/cpp/binder_registry.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/gfx/geometry/size.h"
@@ -61,7 +59,7 @@ class NoStatePrefetchContentsFactoryImpl
       content::BrowserContext* browser_context,
       const GURL& url,
       const content::Referrer& referrer,
-      const std::optional<url::Origin>& initiator_origin,
+      const absl::optional<url::Origin>& initiator_origin,
       Origin origin) override {
     return new NoStatePrefetchContents(
         std::move(delegate), no_state_prefetch_manager, browser_context, url,
@@ -138,17 +136,6 @@ class NoStatePrefetchContents::WebContentsDelegateImpl
     return no_state_prefetch_contents_->bounds_.size();
   }
 
-  void CapturePaintPreviewOfSubframe(
-      WebContents* web_contents,
-      const gfx::Rect& rect,
-      const base::UnguessableToken& guid,
-      RenderFrameHost* render_frame_host) override {
-    auto* client =
-        paint_preview::PaintPreviewClient::FromWebContents(web_contents);
-    if (client)
-      client->CaptureSubframePaintPreview(guid, rect, render_frame_host);
-  }
-
  private:
   raw_ptr<NoStatePrefetchContents> no_state_prefetch_contents_;
 };
@@ -161,15 +148,18 @@ NoStatePrefetchContents::NoStatePrefetchContents(
     content::BrowserContext* browser_context,
     const GURL& url,
     const content::Referrer& referrer,
-    const std::optional<url::Origin>& initiator_origin,
+    const absl::optional<url::Origin>& initiator_origin,
     Origin origin)
-    : no_state_prefetch_manager_(no_state_prefetch_manager),
+    : prerendering_has_started_(false),
+      no_state_prefetch_manager_(no_state_prefetch_manager),
       delegate_(std::move(delegate)),
-      prefetch_url_(url),
+      prerender_url_(url),
       referrer_(referrer),
       initiator_origin_(initiator_origin),
       browser_context_(browser_context),
+      has_finished_loading_(false),
       final_status_(FINAL_STATUS_UNKNOWN),
+      prerendering_has_been_cancelled_(false),
       process_pid_(base::kNullProcessId),
       origin_(origin),
       network_bytes_(0) {
@@ -198,7 +188,7 @@ NoStatePrefetchContents::NoStatePrefetchContents(
 }
 
 bool NoStatePrefetchContents::Init() {
-  return AddAliasURL(prefetch_url_);
+  return AddAliasURL(prerender_url_);
 }
 
 // static
@@ -264,7 +254,7 @@ void NoStatePrefetchContents::StartPrerendering(
     base::WeakPtr<content::PreloadingAttempt> attempt) {
   DCHECK(browser_context_);
   DCHECK(!bounds.IsEmpty());
-  DCHECK(!prefetching_has_started_);
+  DCHECK(!prerendering_has_started_);
   DCHECK(!no_state_prefetch_contents_);
   DCHECK_EQ(1U, alias_urls_.size());
 
@@ -275,13 +265,12 @@ void NoStatePrefetchContents::StartPrerendering(
   DCHECK(load_start_time_.is_null());
   load_start_time_ = base::TimeTicks::Now();
 
-  prefetching_has_started_ = true;
+  prerendering_has_started_ = true;
   attempt_ = std::move(attempt);
   SetPreloadingTriggeringOutcome(
       attempt_.get(), content::PreloadingTriggeringOutcome::kRunning);
 
   no_state_prefetch_contents_ = CreateWebContents(session_storage_namespace);
-  no_state_prefetch_contents_->SetOwnerLocationForDebug(FROM_HERE);
   content::WebContentsObserver::Observe(no_state_prefetch_contents_.get());
   delegate_->OnNoStatePrefetchContentsCreated(
       no_state_prefetch_contents_.get());
@@ -300,7 +289,7 @@ void NoStatePrefetchContents::StartPrerendering(
 
   NotifyPrefetchStart();
 
-  content::NavigationController::LoadURLParams load_url_params(prefetch_url_);
+  content::NavigationController::LoadURLParams load_url_params(prerender_url_);
   load_url_params.referrer = referrer_;
   load_url_params.initiator_origin = initiator_origin_;
   load_url_params.transition_type = ui::PAGE_TRANSITION_LINK;
@@ -328,7 +317,7 @@ void NoStatePrefetchContents::SetFinalStatus(FinalStatus final_status) {
 
 NoStatePrefetchContents::~NoStatePrefetchContents() {
   DCHECK_NE(FINAL_STATUS_UNKNOWN, final_status());
-  DCHECK(prefetching_has_been_cancelled() ||
+  DCHECK(prerendering_has_been_cancelled() ||
          final_status() == FINAL_STATUS_USED);
   DCHECK_NE(ORIGIN_MAX, origin());
 
@@ -420,10 +409,9 @@ bool NoStatePrefetchContents::Matches(
 
 void NoStatePrefetchContents::PrimaryMainFrameRenderProcessGone(
     base::TerminationStatus status) {
-  if (status == base::TERMINATION_STATUS_NORMAL_TERMINATION ||
-      status == base::TERMINATION_STATUS_STILL_RUNNING) {
-    // The renderer process is deliberately terminated (e.g. browser or test
-    // shutdown) before the termination notification is received.
+  if (status == base::TERMINATION_STATUS_STILL_RUNNING) {
+    // The renderer process is being killed because of the browser/test
+    // shutdown, before the termination notification is received.
     Destroy(FINAL_STATUS_APP_TERMINATING);
   }
   Destroy(FINAL_STATUS_RENDERER_CRASHED);
@@ -514,21 +502,19 @@ void NoStatePrefetchContents::DidFinishNavigation(
 void NoStatePrefetchContents::Destroy(FinalStatus final_status) {
   DCHECK_NE(final_status, FINAL_STATUS_USED);
 
-  if (prefetching_has_been_cancelled_) {
+  if (prerendering_has_been_cancelled_)
     return;
-  }
 
   SetFinalStatus(final_status);
 
-  prefetching_has_been_cancelled_ = true;
+  prerendering_has_been_cancelled_ = true;
   no_state_prefetch_manager_->AddToHistory(this);
-  no_state_prefetch_manager_->SetPrefetchFinalStatusForUrl(prefetch_url_,
+  no_state_prefetch_manager_->SetPrefetchFinalStatusForUrl(prerender_url_,
                                                            final_status);
   no_state_prefetch_manager_->MoveEntryToPendingDelete(this, final_status);
 
-  if (prefetching_has_started()) {
+  if (prerendering_has_started())
     NotifyPrefetchStop();
-  }
 }
 
 void NoStatePrefetchContents::DestroyWhenUsingTooManyResources() {
@@ -586,11 +572,11 @@ RenderFrameHost* NoStatePrefetchContents::GetPrimaryMainFrame() {
              : nullptr;
 }
 
-std::optional<base::Value::Dict> NoStatePrefetchContents::GetAsDict() const {
+absl::optional<base::Value::Dict> NoStatePrefetchContents::GetAsDict() const {
   if (!no_state_prefetch_contents_)
-    return std::nullopt;
+    return absl::nullopt;
   base::Value::Dict dict;
-  dict.Set("url", prefetch_url_.spec());
+  dict.Set("url", prerender_url_.spec());
   base::TimeTicks current_time = base::TimeTicks::Now();
   base::TimeDelta duration = current_time - load_start_time_;
   dict.Set("duration", static_cast<int>(duration.InSeconds()));

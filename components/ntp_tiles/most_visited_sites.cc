@@ -5,10 +5,10 @@
 #include "components/ntp_tiles/most_visited_sites.h"
 
 #include <algorithm>
+#include <cctype>
 #include <iterator>
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -470,8 +470,6 @@ void MostVisitedSites::OnMostVisitedURLsAvailable(
     // MostVisitedURL.title is either the title or the URL which is treated
     // exactly as the title. Differentiating here is not worth the overhead.
     tile.title_source = TileTitleSource::TITLE_TAG;
-    tile.visit_count = visited.visit_count;
-    tile.last_visit_time = visited.last_visit_time;
     // TODO(crbug.com/773278): Populate |data_generation_time| here in order to
     // log UMA metrics of age.
     tiles.push_back(std::move(tile));
@@ -566,7 +564,7 @@ NTPTilesVector MostVisitedSites::CreatePopularSitesTiles(
 
 void MostVisitedSites::OnHomepageTitleDetermined(
     NTPTilesVector tiles,
-    const std::optional<std::u16string>& title) {
+    const absl::optional<std::u16string>& title) {
   if (!title.has_value())
     return;  // If there is no title, the most recent tile was already sent out.
 
@@ -751,10 +749,15 @@ bool MostVisitedSites::WasNtpAppMigratedToWebApp(PrefService* prefs, GURL url) {
 
 NTPTilesVector MostVisitedSites::RemoveInvalidPreinstallApps(
     NTPTilesVector new_tiles) {
-  std::erase_if(new_tiles, [this](NTPTile ntp_tile) {
-    return MostVisitedSites::IsNtpTileFromPreinstalledApp(ntp_tile.url) &&
-           MostVisitedSites::WasNtpAppMigratedToWebApp(prefs_, ntp_tile.url);
-  });
+  new_tiles.erase(
+      std::remove_if(new_tiles.begin(), new_tiles.end(),
+                     [this](NTPTile ntp_tile) {
+                       return MostVisitedSites::IsNtpTileFromPreinstalledApp(
+                                  ntp_tile.url) &&
+                              MostVisitedSites::WasNtpAppMigratedToWebApp(
+                                  prefs_, ntp_tile.url);
+                     }),
+      new_tiles.end());
   return new_tiles;
 }
 

@@ -74,14 +74,13 @@ class FakeProfileOAuth2TokenServiceDelegateDesktop
   std::unique_ptr<OAuth2AccessTokenFetcher> CreateAccessTokenFetcher(
       const CoreAccountId& account_id,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      OAuth2AccessTokenConsumer* consumer,
-      const std::string& token_binding_challenge) override {
+      OAuth2AccessTokenConsumer* consumer) override {
     if (GetAuthError(account_id).IsPersistentError()) {
       return std::make_unique<OAuth2AccessTokenFetcherImmediateError>(
           consumer, GetAuthError(account_id));
     }
     return FakeProfileOAuth2TokenServiceDelegate::CreateAccessTokenFetcher(
-        account_id, url_loader_factory, consumer, token_binding_challenge);
+        account_id, url_loader_factory, consumer);
   }
   void InvalidateTokenForMultilogin(
       const CoreAccountId& failed_account) override {
@@ -122,10 +121,9 @@ class ProfileOAuth2TokenServiceTest : public testing::Test {
       base::test::SingleThreadTaskEnvironment::MainThreadType::
           IO};  // net:: stuff needs IO
                 // message loop.
-  raw_ptr<network::TestURLLoaderFactory, DanglingUntriaged>
-      test_url_loader_factory_ = nullptr;
-  raw_ptr<FakeProfileOAuth2TokenServiceDelegate, DanglingUntriaged>
-      delegate_ptr_ = nullptr;  // Not owned.
+  raw_ptr<network::TestURLLoaderFactory> test_url_loader_factory_ = nullptr;
+  raw_ptr<FakeProfileOAuth2TokenServiceDelegate> delegate_ptr_ =
+      nullptr;  // Not owned.
   std::unique_ptr<ProfileOAuth2TokenService> oauth2_service_;
   CoreAccountId account_id_;
   TestingOAuth2AccessTokenManagerConsumer consumer_;

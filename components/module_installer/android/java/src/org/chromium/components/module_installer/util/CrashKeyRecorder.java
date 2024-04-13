@@ -20,7 +20,9 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.TreeSet;
 
-/** CrashKey Recorder for installed modules. */
+/**
+ * CrashKey Recorder for installed modules.
+ */
 class CrashKeyRecorder {
     public static void updateCrashKeys() {
         Context context = ContextUtils.getApplicationContext();

@@ -40,16 +40,6 @@
 #include "ui/ozone/public/ozone_platform.h"
 #endif
 
-#if BUILDFLAG(USE_DAWN) || BUILDFLAG(SKIA_USE_DAWN)
-#include <dawn/dawn_proc.h>
-#include <dawn/dawn_thread_dispatch_proc.h>
-#include <dawn/native/DawnNative.h>
-#endif
-
-#if BUILDFLAG(SKIA_USE_DAWN)
-#include "gpu/command_buffer/service/dawn_context_provider.h"
-#endif
-
 namespace viz {
 
 namespace {
@@ -189,16 +179,6 @@ TestGpuServiceHolder::TestGpuServiceHolder(
         "been started.");
   }
 
-#if BUILDFLAG(USE_DAWN) || BUILDFLAG(SKIA_USE_DAWN)
-  // The test will run both service and client in the same process, so we need
-  // to set dawn procs for both.
-  dawnProcSetProcs(&dawnThreadDispatchProcTable);
-
-  // Use the native procs as default procs for all threads. It will be used
-  // for GPU service side threads.
-  dawnProcSetDefaultThreadProcs(&dawn::native::GetProcs());
-#endif
-
   base::Thread::Options gpu_thread_options;
 #if BUILDFLAG(IS_OZONE)
   gpu_thread_options.message_pump_type = ui::OzonePlatform::GetInstance()
@@ -305,47 +285,45 @@ void TestGpuServiceHolder::InitializeOnGpuThread(
   gpu::GpuFeatureInfo gpu_feature_info = gpu::ComputeGpuFeatureInfo(
       gpu_info, gpu_preferences, base::CommandLine::ForCurrentProcess(),
       /*needs_more_info=*/nullptr);
-  gpu_feature_info.status_values[gpu::GPU_FEATURE_TYPE_GPU_TILE_RASTERIZATION] =
+  gpu_feature_info.status_values[gpu::GPU_FEATURE_TYPE_GPU_RASTERIZATION] =
       gpu::kGpuFeatureStatusEnabled;
 
+  // On MacOS, the default texture target for native GpuMemoryBuffers is
+  // GL_TEXTURE_RECTANGLE_ARB. This is due to CGL's requirements for creating
+  // a GL surface. However, when ANGLE is used on top of SwiftShader or Metal,
+  // it's necessary to use GL_TEXTURE_2D instead.
+  // TODO(crbug.com/1056312): The proper behavior is to check the config
+  // parameter set by the EGL_ANGLE_iosurface_client_buffer extension
 #if BUILDFLAG(IS_MAC)
-  gpu::SetMacOSSpecificTextureTargetFromCurrentGLImplementation();
-#endif  // BUILDFLAG(IS_MAC)
-
-  GpuServiceImpl::InitParams init_params;
-  init_params.io_runner = io_thread_.task_runner();
-#if BUILDFLAG(ENABLE_VULKAN)
-  init_params.vulkan_implementation = vulkan_implementation_.get();
-#endif
-  init_params.exit_callback = base::DoNothing();
-
-  if (gpu_preferences.gr_context_type == gpu::GrContextType::kGraphiteDawn) {
-#if BUILDFLAG(SKIA_USE_DAWN)
-    init_params.dawn_context_provider = gpu::DawnContextProvider::Create(
-        gpu_preferences,
-        gpu::GpuDriverBugWorkarounds(
-            gpu_feature_info.enabled_gpu_driver_bug_workarounds));
-    CHECK(init_params.dawn_context_provider);
-#else
-    NOTREACHED_NORETURN();
-#endif
+  if (gl::GetGLImplementation() == gl::kGLImplementationEGLANGLE &&
+      (gl::GetANGLEImplementation() == gl::ANGLEImplementation::kSwiftShader ||
+       gl::GetANGLEImplementation() == gl::ANGLEImplementation::kMetal)) {
+    gpu::SetMacOSSpecificTextureTarget(GL_TEXTURE_2D);
   }
+#endif  // BUILDFLAG(IS_MAC)
 
   // TODO(rivr): Investigate why creating a GPUInfo and GpuFeatureInfo from
   // the command line causes the test SkiaOutputSurfaceImplTest.SubmitPaint to
   // fail on Android.
   gpu_service_ = std::make_unique<GpuServiceImpl>(
-      gpu_preferences, gpu_info, gpu_feature_info,
+      gpu::GPUInfo(), /*watchdog_thread=*/nullptr, io_thread_.task_runner(),
+      gpu_feature_info, gpu_preferences,
       /*gpu_info_for_hardware_gpu=*/gpu::GPUInfo(),
       /*gpu_feature_info_for_hardware_gpu=*/gpu::GpuFeatureInfo(),
-      /*gpu_extra_info=*/gfx::GpuExtraInfo(), std::move(init_params));
+      /*gpu_extra_info=*/gfx::GpuExtraInfo(),
+#if BUILDFLAG(ENABLE_VULKAN)
+      vulkan_implementation_.get(),
+#else
+      /*vulkan_implementation=*/nullptr,
+#endif
+      /*exit_callback=*/base::DoNothing());
 
   // Use a disconnected mojo remote for GpuHost, we don't need to receive any
   // messages.
   mojo::PendingRemote<mojom::GpuHost> gpu_host_proxy;
   std::ignore = gpu_host_proxy.InitWithNewPipeAndPassReceiver();
   gpu_service_->InitializeWithHost(
-      std::move(gpu_host_proxy), gpu::GpuProcessShmCount(),
+      std::move(gpu_host_proxy), gpu::GpuProcessActivityFlags(),
       gl::init::CreateOffscreenGLSurface(gl::GetDefaultDisplay(), gfx::Size()),
       /*sync_point_manager=*/nullptr, /*shared_image_manager=*/nullptr,
       /*scheduler=*/nullptr, /*shutdown_event=*/nullptr);

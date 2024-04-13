@@ -7,10 +7,10 @@
 
 #include <stddef.h>
 
-#include <optional>
 #include <string>
 #include <vector>
 
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
 #include "third_party/metrics_proto/omnibox_focus_type.pb.h"
 #include "third_party/metrics_proto/omnibox_input_type.pb.h"
@@ -266,8 +266,8 @@ class AutocompleteInput {
   }
 
   // Returns the ID of the query tile selected by the user, if any.
-  // If no tile was selected, returns std::nullopt.
-  const std::optional<std::string>& query_tile_id() const {
+  // If no tile was selected, returns absl::nullopt.
+  const absl::optional<std::string>& query_tile_id() const {
     return query_tile_id_;
   }
 
@@ -294,19 +294,12 @@ class AutocompleteInput {
     return added_default_scheme_to_typed_url_;
   }
 
-  bool typed_url_had_http_scheme() const { return typed_url_had_http_scheme_; }
-
   void WriteIntoTrace(perfetto::TracedValue context) const;
 
   // Returns true if in zero prefix input state.
-  // Zero-Suggest state is determined from focus type and is used to inform
-  // autocomplete providers, tab matching, and action attachment. Note that the
-  // Zero-Suggest state does NOT mean that `text_` is empty.
+  // Zero suggest state is determined implicitly from focus type and is
+  // used to inform autocomplete tab matching and action attachment.
   bool IsZeroSuggest() const;
-
-  // Uses the keyword entry mode to decide if the user is currently in keyword
-  // mode.
-  bool InKeywordMode() const;
 
  private:
   friend class AutocompleteProviderTest;
@@ -337,12 +330,11 @@ class AutocompleteInput {
   metrics::OmniboxFocusType focus_type_ =
       metrics::OmniboxFocusType::INTERACTION_DEFAULT;
   std::vector<std::u16string> terms_prefixed_by_http_or_https_;
-  std::optional<std::string> query_tile_id_;
+  absl::optional<std::string> query_tile_id_;
 
   // Flags for OmniboxDefaultNavigationsToHttps feature.
   bool should_use_https_as_default_scheme_;
-  bool added_default_scheme_to_typed_url_ = false;
-  bool typed_url_had_http_scheme_ = false;
+  bool added_default_scheme_to_typed_url_;
   // Port used by the embedded https server in tests. This is used to determine
   // the correct port while upgrading URLs to https if the original URL has a
   // non-default port.

@@ -43,20 +43,11 @@ bool ListCapability<Option, Traits>::IsValid() const {
 }
 
 template <class Option, class Traits>
-std::string ListCapability<Option, Traits>::GetPath() const {
-  return Traits::GetCapabilityPath();
-}
-
-template <class Option, class Traits>
-std::string ListTicketItem<Option, Traits>::GetPath() const {
-  return Traits::GetTicketItemPath();
-}
-
-template <class Option, class Traits>
 bool ListCapability<Option, Traits>::LoadFrom(
     const CloudDeviceDescription& description) {
   Reset();
-  const base::Value::List* options_value = description.GetListItem(GetPath());
+  const base::Value::List* options_value =
+      description.GetListItem(Traits::GetCapabilityPath());
   if (!options_value)
     return false;
   for (const base::Value& option_value : *options_value) {
@@ -74,13 +65,13 @@ template <class Option, class Traits>
 void ListCapability<Option, Traits>::SaveTo(
     CloudDeviceDescription* description) const {
   DCHECK(IsValid());
-  base::Value::List options_list;
+  base::Value::List* options_list =
+      description->CreateListItem(Traits::GetCapabilityPath());
   for (const Option& option : options_) {
     base::Value::Dict option_value;
     Traits::Save(option, &option_value);
-    options_list.Append(std::move(option_value));
+    options_list->Append(std::move(option_value));
   }
-  description->SetListItem(GetPath(), std::move(options_list));
 }
 
 template <class Option, class Traits>
@@ -134,9 +125,9 @@ template <class Option, class Traits>
 void SelectionCapability<Option, Traits>::SaveTo(
     CloudDeviceDescription* description) const {
   DCHECK(IsValid());
-  base::Value::Dict dict;
-  SaveTo(&dict);
-  description->SetDictItem(Traits::GetCapabilityPath(), std::move(dict));
+  base::Value::Dict* dict =
+      description->CreateDictItem(Traits::GetCapabilityPath());
+  SaveTo(dict);
 }
 
 template <class Option, class Traits>
@@ -202,11 +193,10 @@ bool BooleanCapability<Traits>::LoadFrom(
 template <class Traits>
 void BooleanCapability<Traits>::SaveTo(
     CloudDeviceDescription* description) const {
-  base::Value::Dict dict;
-  if (default_value_ != Traits::kDefault) {
-    dict.Set(json::kKeyDefault, default_value_);
-  }
-  description->SetDictItem(Traits::GetCapabilityPath(), std::move(dict));
+  base::Value::Dict* dict =
+      description->CreateDictItem(Traits::GetCapabilityPath());
+  if (default_value_ != Traits::kDefault)
+    dict->Set(json::kKeyDefault, default_value_);
 }
 
 template <class Traits>
@@ -218,7 +208,7 @@ bool EmptyCapability<Traits>::LoadFrom(
 template <class Traits>
 void EmptyCapability<Traits>::SaveTo(
     CloudDeviceDescription* description) const {
-  description->SetDictItem(Traits::GetCapabilityPath(), base::Value::Dict());
+  description->CreateDictItem(Traits::GetCapabilityPath());
 }
 
 template <class Option, class Traits>
@@ -254,9 +244,9 @@ template <class Option, class Traits>
 void ValueCapability<Option, Traits>::SaveTo(
     CloudDeviceDescription* description) const {
   DCHECK(IsValid());
-  base::Value::Dict dict;
-  Traits::Save(value(), &dict);
-  description->SetDictItem(Traits::GetCapabilityPath(), std::move(dict));
+  base::Value::Dict* dict =
+      description->CreateDictItem(Traits::GetCapabilityPath());
+  Traits::Save(value(), dict);
 }
 
 template <class Option, class Traits>
@@ -292,9 +282,9 @@ template <class Option, class Traits>
 void TicketItem<Option, Traits>::SaveTo(
     CloudDeviceDescription* description) const {
   DCHECK(IsValid());
-  base::Value::Dict dict;
-  Traits::Save(value(), &dict);
-  description->SetDictItem(Traits::GetTicketItemPath(), std::move(dict));
+  base::Value::Dict* dict =
+      description->CreateDictItem(Traits::GetTicketItemPath());
+  Traits::Save(value(), dict);
 }
 
 }  // namespace cloud_devices

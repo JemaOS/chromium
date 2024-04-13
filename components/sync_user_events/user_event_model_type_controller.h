@@ -8,8 +8,8 @@
 #include <memory>
 
 #include "base/memory/raw_ptr.h"
-#include "components/sync/service/model_type_controller.h"
-#include "components/sync/service/sync_service_observer.h"
+#include "components/sync/driver/model_type_controller.h"
+#include "components/sync/driver/sync_service_observer.h"
 
 namespace syncer {
 
@@ -22,8 +22,7 @@ class UserEventModelTypeController : public syncer::ModelTypeController,
   // |sync_service| must not be null and must outlive this object.
   UserEventModelTypeController(
       SyncService* sync_service,
-      std::unique_ptr<ModelTypeControllerDelegate> delegate_for_full_sync_mode,
-      std::unique_ptr<ModelTypeControllerDelegate> delegate_for_transport_mode);
+      std::unique_ptr<ModelTypeControllerDelegate> delegate_for_full_sync_mode);
 
   UserEventModelTypeController(const UserEventModelTypeController&) = delete;
   UserEventModelTypeController& operator=(const UserEventModelTypeController&) =
@@ -31,7 +30,7 @@ class UserEventModelTypeController : public syncer::ModelTypeController,
 
   ~UserEventModelTypeController() override;
 
-  // syncer::ModelTypeController implementation.
+  // syncer::DataTypeController implementation.
   void Stop(SyncStopMetadataFate fate, StopCallback callback) override;
   PreconditionState GetPreconditionState() const override;
 
@@ -39,7 +38,7 @@ class UserEventModelTypeController : public syncer::ModelTypeController,
   void OnStateChanged(syncer::SyncService* sync) override;
 
  private:
-  const raw_ptr<SyncService> sync_service_;
+  raw_ptr<SyncService> sync_service_;
 };
 
 }  // namespace syncer

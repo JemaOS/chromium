@@ -18,21 +18,11 @@
 #include "gpu/vulkan/vulkan_function_pointers.h"
 #include "gpu/vulkan/vulkan_implementation.h"
 #include "gpu/vulkan/vulkan_surface.h"
-#include "third_party/skia/include/core/SkColorType.h"
-#include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/core/SkSurface.h"
-#include "third_party/skia/include/core/SkSurfaceProps.h"
 #include "third_party/skia/include/gpu/GrBackendSemaphore.h"
 #include "third_party/skia/include/gpu/GrBackendSurface.h"
 #include "third_party/skia/include/gpu/GrDirectContext.h"
-#include "third_party/skia/include/gpu/GrRecordingContext.h"
-#include "third_party/skia/include/gpu/GrTypes.h"
-#include "third_party/skia/include/gpu/MutableTextureState.h"
-#include "third_party/skia/include/gpu/ganesh/SkSurfaceGanesh.h"
-#include "third_party/skia/include/gpu/ganesh/vk/GrVkBackendSemaphore.h"
-#include "third_party/skia/include/gpu/ganesh/vk/GrVkBackendSurface.h"
 #include "third_party/skia/include/gpu/vk/GrVkTypes.h"
-#include "third_party/skia/include/gpu/vk/VulkanMutableTextureState.h"
 #include "ui/gfx/presentation_feedback.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -64,7 +54,6 @@ SkiaOutputDeviceVulkan::SkiaOutputDeviceVulkan(
     gpu::MemoryTracker* memory_tracker,
     DidSwapBufferCompleteCallback did_swap_buffer_complete_callback)
     : SkiaOutputDevice(context_provider->GetGrContext(),
-                       /*graphite_context=*/nullptr,
                        memory_tracker,
                        did_swap_buffer_complete_callback),
       context_provider_(context_provider),
@@ -114,19 +103,16 @@ void SkiaOutputDeviceVulkan::Submit(bool sync_cpu, base::OnceClosure callback) {
     DCHECK(sk_surface);
     auto queue_index =
         context_provider_->GetDeviceQueue()->GetVulkanQueueIndex();
-    skgpu::MutableTextureState state = skgpu::MutableTextureStates::MakeVulkan(
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, queue_index);
-    if (GrDirectContext* direct_context =
-            GrAsDirectContext(sk_surface->recordingContext())) {
-      direct_context->flush(sk_surface.get(), {}, &state);
-    }
+    GrBackendSurfaceMutableState state(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                       queue_index);
+    sk_surface->flush({}, &state);
   }
 
   SkiaOutputDevice::Submit(sync_cpu, std::move(callback));
 }
 
 void SkiaOutputDeviceVulkan::Present(
-    const std::optional<gfx::Rect>& update_rect,
+    const absl::optional<gfx::Rect>& update_rect,
     BufferPresentedCallback feedback,
     OutputSurfaceFrame frame) {
   gfx::Rect rect =
@@ -193,7 +179,7 @@ SkSurface* SkiaOutputDeviceVulkan::BeginPaint(
       sk_surface_size_pairs_[scoped_write.image_index()].sk_surface;
 
   if (UNLIKELY(!sk_surface)) {
-    SkSurfaceProps surface_props;
+    SkSurfaceProps surface_props{0, kUnknown_SkPixelGeometry};
     const auto surface_format = vulkan_surface_->surface_format().format;
     DCHECK(surface_format == VK_FORMAT_B8G8R8A8_UNORM ||
            surface_format == VK_FORMAT_R8G8B8A8_UNORM);
@@ -208,8 +194,8 @@ SkSurface* SkiaOutputDeviceVulkan::BeginPaint(
     vk_image_info.fCurrentQueueFamily = VK_QUEUE_FAMILY_IGNORED;
     vk_image_info.fProtected = GrProtected::kNo;
     const auto& vk_image_size = vulkan_surface_->image_size();
-    GrBackendTexture backend_texture = GrBackendTextures::MakeVk(
-        vk_image_size.width(), vk_image_size.height(), vk_image_info);
+    GrBackendTexture backend_texture(vk_image_size.width(),
+                                     vk_image_size.height(), vk_image_info);
 
     // Estimate size of GPU memory needed for the GrBackendRenderTarget.
     VkMemoryRequirements requirements;
@@ -219,7 +205,7 @@ SkSurface* SkiaOutputDeviceVulkan::BeginPaint(
     sk_surface_size_pairs_[scoped_write.image_index()].bytes_allocated =
         requirements.size;
     memory_type_tracker_->TrackMemAlloc(requirements.size);
-    sk_surface = SkSurfaces::WrapBackendTexture(
+    sk_surface = SkSurface::MakeFromBackendTexture(
         context_provider_->GetGrContext(), backend_texture,
         kTopLeft_GrSurfaceOrigin, sample_count_, color_type_, color_space_,
         &surface_props);
@@ -227,15 +213,15 @@ SkSurface* SkiaOutputDeviceVulkan::BeginPaint(
       return nullptr;
     }
   } else {
-    auto backend = SkSurfaces::GetBackendRenderTarget(
-        sk_surface.get(), SkSurfaces::BackendHandleAccess::kFlushRead);
-    GrBackendRenderTargets::SetVkImageLayout(&backend,
-                                             scoped_write.image_layout());
+    auto backend = sk_surface->getBackendRenderTarget(
+        SkSurface::kFlushRead_BackendHandleAccess);
+    backend.setVkImageLayout(scoped_write.image_layout());
   }
 
   VkSemaphore vk_semaphore = scoped_write.begin_semaphore();
   DCHECK(vk_semaphore != VK_NULL_HANDLE);
-  GrBackendSemaphore semaphore = GrBackendSemaphores::MakeVk(vk_semaphore);
+  GrBackendSemaphore semaphore;
+  semaphore.initVulkan(vk_semaphore);
   auto result =
       sk_surface->wait(1, &semaphore, /*deleteSemaphoresAfterWait=*/false);
   if (UNLIKELY(!result)) {
@@ -243,8 +229,8 @@ SkSurface* SkiaOutputDeviceVulkan::BeginPaint(
   }
 
   DCHECK(scoped_write.end_semaphore() != VK_NULL_HANDLE);
-  GrBackendSemaphore end_semaphore =
-      GrBackendSemaphores::MakeVk(scoped_write.end_semaphore());
+  GrBackendSemaphore end_semaphore;
+  end_semaphore.initVulkan(scoped_write.end_semaphore());
   end_semaphores->push_back(std::move(end_semaphore));
 
   scoped_write_ = std::move(scoped_write);
@@ -256,17 +242,12 @@ void SkiaOutputDeviceVulkan::EndPaint() {
 
   auto& sk_surface =
       sk_surface_size_pairs_[scoped_write_->image_index()].sk_surface;
-  auto backend = SkSurfaces::GetBackendRenderTarget(
-        sk_surface.get(), SkSurfaces::BackendHandleAccess::kFlushRead);
-#if DCHECK_IS_ON()
+  auto backend = sk_surface->getBackendRenderTarget(
+      SkSurface::kFlushRead_BackendHandleAccess);
   GrVkImageInfo vk_image_info;
-  if (UNLIKELY(
-          !context_provider_->GetGrContext()->abandoned() &&
-          !GrBackendRenderTargets::GetVkImageInfo(backend, &vk_image_info))) {
+  if (UNLIKELY(!backend.getVkImageInfo(&vk_image_info)))
     NOTREACHED() << "Failed to get the image info.";
-  }
   DCHECK_EQ(vk_image_info.fImageLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-#endif
   scoped_write_.reset();
 #if DCHECK_IS_ON()
   image_modified_ = true;

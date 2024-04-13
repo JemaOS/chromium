@@ -11,23 +11,17 @@
 #include "base/check.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
-#include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
-#include "base/types/expected.h"
 #include "components/reporting/util/status.h"
 #include "components/reporting/util/statusor.h"
-#include "components/reporting/util/test_support_callbacks.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
-using ::testing::Eq;
 
 namespace reporting {
 namespace {
@@ -50,10 +44,20 @@ TEST_F(TaskRunner, SingleAction) {
     void OnStart() override { Response(true); }
   };
 
-  test::TestEvent<bool> test_event;
-  Start<SingleActionContext>(test_event.cb(),
-                             base::SequencedTaskRunner::GetCurrentDefault());
-  EXPECT_TRUE(test_event.result());
+  bool result = false;
+  // Created context reference is self-destruct upon completion of 'Start',
+  // but the context itself lives through until all tasks are done.
+  base::RunLoop run_loop;
+  Start<SingleActionContext>(
+      base::BindOnce(
+          [](base::RunLoop* run_loop, bool* var, bool val) {
+            *var = val;
+            run_loop->Quit();
+          },
+          &run_loop, &result),
+      base::SequencedTaskRunner::GetCurrentDefault());
+  run_loop.Run();
+  EXPECT_TRUE(result);
 }
 
 // This test runs a series of action on a sequenced task runner.
@@ -83,10 +87,19 @@ TEST_F(TaskRunner, SeriesOfActions) {
     const uint32_t init_value_;
   };
 
-  test::TestEvent<uint32_t> test_event;
-  Start<SeriesOfActionsContext>(128, test_event.cb(),
-                                base::SequencedTaskRunner::GetCurrentDefault());
-  EXPECT_THAT(test_event.result(), Eq(7u));
+  uint32_t result = 0;
+  base::RunLoop run_loop;
+  Start<SeriesOfActionsContext>(
+      128,
+      base::BindOnce(
+          [](base::RunLoop* run_loop, uint32_t* var, uint32_t val) {
+            *var = val;
+            run_loop->Quit();
+          },
+          &run_loop, &result),
+      base::SequencedTaskRunner::GetCurrentDefault());
+  run_loop.Run();
+  EXPECT_EQ(result, 7u);
 }
 
 // This test runs the same series of actions injecting delays.
@@ -119,10 +132,21 @@ TEST_F(TaskRunner, SeriesOfDelays) {
     base::TimeDelta delay_;
   };
 
-  test::TestEvent<uint32_t> test_event;
-  Start<SeriesOfDelaysContext>(128, test_event.cb(),
-                               base::SequencedTaskRunner::GetCurrentDefault());
-  EXPECT_THAT(test_event.result(), Eq(7u));
+  // Run on another thread, so that we can wait on the quit event here
+  // and avoid RunLoopIdle (which would exit on the first delay).
+  uint32_t result = 0;
+  base::RunLoop run_loop;
+  Start<SeriesOfDelaysContext>(
+      128,
+      base::BindOnce(
+          [](base::RunLoop* run_loop, uint32_t* var, uint32_t val) {
+            *var = val;
+            run_loop->Quit();
+          },
+          &run_loop, &result),
+      base::SequencedTaskRunner::GetCurrentDefault());
+  run_loop.Run();
+  EXPECT_EQ(result, 7u);
 }
 
 // This test runs the same series of actions offsetting them to a random threads
@@ -169,10 +193,22 @@ TEST_F(TaskRunner, SeriesOfAsyncs) {
     base::TimeDelta delay_;
   };
 
-  test::TestEvent<uint32_t> test_event;
-  Start<SeriesOfAsyncsContext>(128, test_event.cb(),
-                               base::SequencedTaskRunner::GetCurrentDefault());
-  EXPECT_THAT(test_event.result(), Eq(7u));
+  // Run on another thread, so that we can wait on the quit event here
+  // and avoid RunLoopIdle (which would exit on the first delay).
+  uint32_t result = 0;
+  base::RunLoop run_loop;
+  Start<SeriesOfAsyncsContext>(
+      128,
+      base::BindOnce(
+          [](base::RunLoop* run_loop, uint32_t* var, uint32_t val) {
+            *var = val;
+            run_loop->Quit();
+          },
+          &run_loop, &result),
+      base::SequencedTaskRunner::GetCurrentDefault());
+
+  run_loop.Run();
+  EXPECT_EQ(result, 7u);
 }
 
 // This test calculates Fibonacci as a tree of recurrent actions on a sequenced
@@ -189,7 +225,7 @@ TEST_F(TaskRunner, TreeOfActions) {
 
    protected:
     virtual ~Summator() {
-      CHECK(!callback_.is_null());
+      DCHECK(!callback_.is_null());
       std::move(callback_).Run(result_);
     }
 
@@ -243,25 +279,34 @@ TEST_F(TaskRunner, TreeOfActions) {
       {0,  1,  1,   2,   3,   5,   8,   13,   21,   34,
        55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181});
   std::vector<uint32_t> actual_fibo_results(expected_fibo_results.size());
-  test::TestCallbackWaiter waiter;
+  base::RunLoop run_loop;
+  size_t count = expected_fibo_results.size();
   // Start all calculations (they will intermix on the same sequential runner).
   for (uint32_t n = 0; n < expected_fibo_results.size(); ++n) {
-    waiter.Attach();
+    uint32_t* const result = &actual_fibo_results[n];
+    *result = 0;
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindLambdaForTesting([n, &waiter, &actual_fibo_results]() {
-          Start<TreeOfActionsContext>(
-              n,
-              base::BindLambdaForTesting(
-                  [n, &waiter, &actual_fibo_results](uint32_t value) {
-                    actual_fibo_results[n] = value;
-                    waiter.Signal();
-                  }),
-              base::SequencedTaskRunner::GetCurrentDefault());
-        }));
+        FROM_HERE, base::BindOnce(
+                       [](size_t* count, base::RunLoop* run_loop, uint32_t n,
+                          uint32_t* result) {
+                         Start<TreeOfActionsContext>(
+                             n,
+                             base::BindOnce(
+                                 [](size_t* count, base::RunLoop* run_loop,
+                                    uint32_t* var, uint32_t val) {
+                                   *var = val;
+                                   if (!--*count) {
+                                     run_loop->Quit();
+                                   }
+                                 },
+                                 count, run_loop, result),
+                             base::SequencedTaskRunner::GetCurrentDefault());
+                       },
+                       &count, &run_loop, n, result));
   }
-  waiter.Wait();
-  EXPECT_THAT(actual_fibo_results, Eq(expected_fibo_results));
+  // Wait for it all to finish and compare the results.
+  run_loop.Run();
+  EXPECT_THAT(actual_fibo_results, ::testing::Eq(expected_fibo_results));
 }
 
 // This test runs a series of actions returning non-primitive object as a result
@@ -297,14 +342,22 @@ TEST_F(TaskRunner, ActionsWithStatus) {
     const std::vector<Status> vector_;
   };
 
-  test::TestEvent<Status> test_event;
+  Status result(error::UNKNOWN, "Not yet set");
+  base::RunLoop run_loop;
   Start<ActionsWithStatusContext>(
       std::vector<Status>({Status::StatusOK(), Status::StatusOK(),
                            Status::StatusOK(),
                            Status(error::CANCELLED, "Cancelled"),
                            Status::StatusOK(), Status::StatusOK()}),
-      test_event.cb(), base::SequencedTaskRunner::GetCurrentDefault());
-  EXPECT_THAT(test_event.result(), Eq(Status(error::CANCELLED, "Cancelled")));
+      base::BindOnce(
+          [](base::RunLoop* run_loop, Status* result, Status res) {
+            *result = res;
+            run_loop->Quit();
+          },
+          &run_loop, &result),
+      base::SequencedTaskRunner::GetCurrentDefault());
+  run_loop.Run();
+  EXPECT_EQ(result, Status(error::CANCELLED, "Cancelled"));
 }
 
 // This test runs a series of actions returning non-primitive non-copyable
@@ -338,7 +391,7 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
     void Pick(size_t index) {
       CheckOnValidSequence();
       if (index < vector_->size()) {
-        if (!vector_->at(index).has_value()) {
+        if (!vector_->at(index).ok()) {
           Schedule(&ActionsWithStatusOrContext::Pick, base::Unretained(this),
                    index + 1);
           return;
@@ -346,28 +399,36 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
         Response(std::move(vector_->at(index)));
         return;
       }
-      Response(
-          base::unexpected(Status(error::OUT_OF_RANGE, "All statuses are OK")));
+      Response(Status(error::OUT_OF_RANGE, "All statuses are OK"));
     }
 
     void OnStart() override { Pick(0); }
 
-    const raw_ptr<std::vector<StatusOrPtr>> vector_;
+    std::vector<StatusOrPtr>* const vector_;
   };
 
   const int kI = 0;
   std::vector<StatusOrPtr> vector;
-  for (int i = 0; i < 5; ++i) {
-    vector.emplace_back(
-        base::unexpected(Status(error::CANCELLED, "Cancelled")));
-  }
+  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
+  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
+  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
+  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
+  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
   vector.emplace_back(std::make_unique<WrappedValue>(kI));
-  test::TestEvent<StatusOrPtr> test_event;
+  StatusOrPtr result;
+  base::RunLoop run_loop;
   Start<ActionsWithStatusOrContext>(
-      &vector, test_event.cb(), base::SequencedTaskRunner::GetCurrentDefault());
-  const StatusOrPtr result = test_event.result();
-  ASSERT_TRUE(result.has_value()) << result.error();
-  EXPECT_EQ(result.value()->value(), kI);
+      &vector,
+      base::BindOnce(
+          [](base::RunLoop* run_loop, StatusOrPtr* result, StatusOrPtr res) {
+            *result = std::move(res);
+            run_loop->Quit();
+          },
+          &run_loop, &result),
+      base::SequencedTaskRunner::GetCurrentDefault());
+  run_loop.Run();
+  EXPECT_TRUE(result.ok()) << result.status();
+  EXPECT_EQ(result.ValueOrDie()->value(), kI);
 }
 
 }  // namespace

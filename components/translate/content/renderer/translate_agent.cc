@@ -161,11 +161,16 @@ void TranslateAgent::SeedLanguageDetectionModelForTesting(
 }
 
 void TranslateAgent::PrepareForUrl(const GURL& url) {
-  // Navigated to a new url, reset current page translation.
+  // Navigated to a new url, reset current page translation and related state.
+  page_contents_length_ = 0;
   ResetPage();
 }
 
 void TranslateAgent::PageCaptured(const std::u16string& contents) {
+  // This method should only be called if it was not already run on captured
+  // content on the page.
+  DCHECK(!WasPageContentCapturedForUrl());
+
   // Get the document language as set by WebKit from the http-equiv
   // meta tag for "content-language".  This may or may not also
   // have a value derived from the actual Content-Language HTTP
@@ -214,21 +219,24 @@ void TranslateAgent::PageCaptured(const std::u16string& contents) {
     details.contents = contents;
     details.has_run_lang_detection = true;
     ResetPage();
-
-    last_details_ = std::move(details);
-    RenewPageRegistration();
+    GetTranslateHandler()->RegisterPage(
+        receiver_.BindNewPipeAndPassRemote(
+            main_frame->GetTaskRunner(blink::TaskType::kInternalTranslation)),
+        details, !details.has_notranslate && !language.empty());
     return;
   }
 
   LanguageDetectionDetails details;
   std::string language;
-  if (page_contents_length_ == 0) {
-    // If captured content is empty do not run language detection and pass "und"
-    // as the model defined language along with page-provided languages.
+  // Under kSkipLanguageDetectionOnEmptyContent, if captured content is empty,
+  // default to using "und" instead of attempting language detection.
+  if (base::FeatureList::IsEnabled(
+          translate::kSkipLanguageDetectionOnEmptyContent) &&
+      page_contents_length_ == 0) {
+    // Use the page-provided language if available.
     language = translate::DeterminePageLanguage(
         content_language, html_lang, translate::kUnknownLanguageCode, false);
   } else if (translate::IsTFLiteLanguageDetectionEnabled()) {
-    // Use TFLite and page contents to assist with language detection.
     translate::LanguageDetectionModel& language_detection_model =
         GetLanguageDetectionModel();
     bool is_available = language_detection_model.IsAvailable();
@@ -246,7 +254,6 @@ void TranslateAgent::PageCaptured(const std::u16string& contents) {
     detection_model_version = language_detection_model.GetModelVersion();
     details.has_run_lang_detection = true;
   } else {
-    // Use CLD3 and page contents to assist with language detection.
     language = DeterminePageLanguage(
         content_language, html_lang, contents, &model_detected_language,
         &is_model_reliable, model_reliability_score);
@@ -256,6 +263,8 @@ void TranslateAgent::PageCaptured(const std::u16string& contents) {
 
   if (language.empty())
     return;
+
+  language_determined_time_ = base::TimeTicks::Now();
 
   details.time = base::Time::Now();
   details.url = web_detection_details.url;
@@ -275,30 +284,10 @@ void TranslateAgent::PageCaptured(const std::u16string& contents) {
   // For the same render frame with the same url, each time when its texts are
   // captured, it should be treated as a new page to do translation.
   ResetPage();
-
-  last_details_ = std::move(details);
-  RenewPageRegistration();
-}
-
-void TranslateAgent::RenewPageRegistration() {
-  if (!last_details_.has_value()) {
-    return;
-  }
-
-  WebLocalFrame* main_frame = render_frame()->GetWebFrame();
-  if (!main_frame) {
-    return;
-  }
-
-  LanguageDetectionDetails details = std::move(*last_details_);
-
-  ResetPage();
   GetTranslateHandler()->RegisterPage(
       receiver_.BindNewPipeAndPassRemote(
           main_frame->GetTaskRunner(blink::TaskType::kInternalTranslation)),
-      details, !details.has_notranslate && !details.adopted_language.empty());
-
-  last_details_ = std::move(details);
+      details, !details.has_notranslate && !language.empty());
 }
 
 void TranslateAgent::CancelPendingTranslation() {
@@ -446,6 +435,11 @@ int64_t TranslateAgent::ExecuteScriptAndGetIntegerResult(
 }
 
 // mojom::TranslateAgent implementations.
+void TranslateAgent::GetWebLanguageDetectionDetails(
+    GetWebLanguageDetectionDetailsCallback callback) {
+  NOTREACHED() << "This interface supported by PerFrameTranslateAgent";
+}
+
 void TranslateAgent::TranslateFrame(const std::string& translate_script,
                                     const std::string& source_lang,
                                     const std::string& target_lang,
@@ -477,6 +471,11 @@ void TranslateAgent::TranslateFrame(const std::string& translate_script,
   source_lang_ = (source_lang != kUnknownLanguageCode) ? source_lang
                                                        : kAutoDetectionLanguage;
   target_lang_ = target_lang;
+
+  ReportUserActionDuration(language_determined_time_, base::TimeTicks::Now());
+
+  GURL url(main_frame->GetDocument().Url());
+  ReportPageScheme(url.scheme());
 
   // Set up v8 isolated world.
   EnsureIsolatedWorldInitialized(world_id_);
@@ -625,7 +624,6 @@ TranslateAgent::GetTranslateHandler() {
 }
 
 void TranslateAgent::ResetPage() {
-  last_details_ = {};
   receiver_.reset();
   translate_callback_pending_.Reset();
   CancelPendingTranslation();

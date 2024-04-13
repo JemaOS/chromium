@@ -7,7 +7,7 @@ package org.chromium.components.signin.identitymanager;
 import androidx.annotation.IntDef;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
+import org.chromium.base.annotations.CalledByNative;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -43,8 +43,9 @@ public class PrimaryAccountChangeEvent {
         mEventTypeForConsentLevelNotRequired = eventTypeForConsentLevelNotRequired;
         mEventTypeForConsentLevelSync = eventTypeForConsentLevelSync;
         assert mEventTypeForConsentLevelNotRequired != Type.NONE
-                        || mEventTypeForConsentLevelSync != Type.NONE
-                : "PrimaryAccountChangeEvent should not be fired for no-change events";
+                || mEventTypeForConsentLevelSync
+                        != Type.NONE
+            : "PrimaryAccountChangeEvent should not be fired for no-change events";
     }
 
     /**
@@ -56,8 +57,7 @@ public class PrimaryAccountChangeEvent {
      *         CLEARED - The primary account set for consentLevel is cleared.
      */
     public @Type int getEventTypeFor(@ConsentLevel int consentLevel) {
-        return consentLevel == ConsentLevel.SYNC
-                ? mEventTypeForConsentLevelSync
-                : mEventTypeForConsentLevelNotRequired;
+        return consentLevel == ConsentLevel.SYNC ? mEventTypeForConsentLevelSync
+                                                 : mEventTypeForConsentLevelNotRequired;
     }
 }

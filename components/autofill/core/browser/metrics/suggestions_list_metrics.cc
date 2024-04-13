@@ -6,87 +6,56 @@
 
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
-#include "base/notreached.h"
-#include "components/autofill/core/browser/filling_product.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
+#include "components/autofill/core/browser/ui/popup_types.h"
 
 namespace autofill::autofill_metrics {
 namespace {
 
-ManageSuggestionType ToManageSuggestionType(FillingProduct popup_type) {
+ManageSuggestionType ToManageSuggestionType(PopupType popup_type) {
   switch (popup_type) {
-    case FillingProduct::kAddress:
+    case PopupType::kPersonalInformation:
+      return ManageSuggestionType::kPersonalInformation;
+    case PopupType::kAddresses:
       return ManageSuggestionType::kAddresses;
-    case FillingProduct::kCreditCard:
+    case PopupType::kCreditCards:
       return ManageSuggestionType::kPaymentMethodsCreditCards;
-    case FillingProduct::kIban:
+    case PopupType::kIbans:
       return ManageSuggestionType::kPaymentMethodsIbans;
-    case FillingProduct::kAutocomplete:
-    case FillingProduct::kCompose:
-    case FillingProduct::kMerchantPromoCode:
-    case FillingProduct::kPassword:
-    case FillingProduct::kPlusAddresses:
-    case FillingProduct::kNone:
+    case PopupType::kPasswords:
+      ABSL_FALLTHROUGH_INTENDED;
+    case PopupType::kUnspecified:
       return ManageSuggestionType::kOther;
   }
 }
 
 }  // anonymous namespace
 
-void LogSuggestionsCount(size_t num_suggestions,
-                         FillingProduct filling_product) {
-  switch (filling_product) {
-    case FillingProduct::kAddress:
-      // TODO(b/324029575): Remove when the metric below gets to Stable.
-      base::UmaHistogramCounts100("Autofill.AddressSuggestionsCount",
-                                  num_suggestions);
-      base::UmaHistogramCounts100("Autofill.SuggestionsCount.Address",
-                                  num_suggestions);
-      break;
-    case FillingProduct::kCreditCard:
-      base::UmaHistogramCounts100("Autofill.SuggestionsCount.CreditCard",
-                                  num_suggestions);
-      break;
-    case FillingProduct::kNone:
-    case FillingProduct::kMerchantPromoCode:
-    case FillingProduct::kIban:
-    case FillingProduct::kAutocomplete:
-    case FillingProduct::kPassword:
-    case FillingProduct::kCompose:
-    case FillingProduct::kPlusAddresses:
-      NOTREACHED_NORETURN();
-  }
-}
-
-void LogSuggestionAcceptedIndex(int index,
-                                FillingProduct filling_product,
-                                bool off_the_record) {
+void LogAutofillSuggestionAcceptedIndex(int index,
+                                        PopupType popup_type,
+                                        bool off_the_record) {
   const int uma_index = std::min(index, kMaxBucketsCount);
   base::UmaHistogramSparse("Autofill.SuggestionAcceptedIndex", uma_index);
 
-  switch (filling_product) {
-    case FillingProduct::kCreditCard:
+  switch (popup_type) {
+    case PopupType::kCreditCards:
       base::UmaHistogramSparse("Autofill.SuggestionAcceptedIndex.CreditCard",
                                uma_index);
       break;
-    case FillingProduct::kAddress:
+    case PopupType::kAddresses:
+    case PopupType::kPersonalInformation:
       base::UmaHistogramSparse("Autofill.SuggestionAcceptedIndex.Profile",
                                uma_index);
       break;
-    case FillingProduct::kPassword:
-    case FillingProduct::kNone:
+    case PopupType::kPasswords:
+    case PopupType::kUnspecified:
       base::UmaHistogramSparse("Autofill.SuggestionAcceptedIndex.Other",
                                uma_index);
       break;
-    case FillingProduct::kAutocomplete:
-      base::UmaHistogramSparse("Autofill.SuggestionAcceptedIndex.Autocomplete",
-                               uma_index);
-      break;
-    case FillingProduct::kIban:
-    case FillingProduct::kCompose:
-    case FillingProduct::kPlusAddresses:
-    case FillingProduct::kMerchantPromoCode:
-      // It is NOTREACHED because all other types should be handled separately.
+    case PopupType::kIbans:
+      // It is NOTREACHED because it's a single field form fill type (the above
+      // types are all multi fields main Autofill type), and thus the logging
+      // will be handled separately by SingleFieldFormFiller.
       NOTREACHED_NORETURN();
   }
 
@@ -96,17 +65,10 @@ void LogSuggestionAcceptedIndex(int index,
                             off_the_record);
 }
 
-void LogAutofillSelectedManageEntry(FillingProduct filling_product) {
-  const ManageSuggestionType uma_type = ToManageSuggestionType(filling_product);
+void LogAutofillSelectedManageEntry(PopupType popup_type) {
+  const ManageSuggestionType uma_type = ToManageSuggestionType(popup_type);
   base::UmaHistogramEnumeration("Autofill.SuggestionsListManageClicked",
                                 uma_type);
-}
-
-void LogAutofillShowCardsFromGoogleAccountButtonEventMetric(
-    ShowCardsFromGoogleAccountButtonEvent event) {
-  base::UmaHistogramEnumeration(
-      "Autofill.ButterForPayments.ShowCardsFromGoogleAccountButtonEvents",
-      event);
 }
 
 }  // namespace autofill::autofill_metrics

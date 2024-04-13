@@ -11,16 +11,13 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.components.omnibox.R;
 
 /**
  * Omnibox Actions are additional actions associated with Omnibox Matches. For more information,
  * please check on OmniboxAction class definition on native side.
  */
-public abstract class OmniboxAction {
+public class OmniboxAction {
     /** Describes the ChipView decoration. */
     public static final class ChipIcon {
         public final @DrawableRes int iconRes;
@@ -35,71 +32,22 @@ public abstract class OmniboxAction {
             this.tintWithTextColor = tintWithTextColor;
         }
     }
-
     /** The default action icon. */
     @VisibleForTesting
-    public static final ChipIcon DEFAULT_ICON =
-            new ChipIcon(R.drawable.action_default, /* tintWithTextColor= */ false);
-
+    static final ChipIcon DEFAULT_ICON =
+            new ChipIcon(R.drawable.action_default, /*tintWithTextColor=*/false);
     /** The type of an underlying action. */
-    public final @OmniboxActionId int actionId;
-
+    public final @OmniboxActionType int actionId;
     /** The string to present/announce to the user when the action is shown. */
     public final @NonNull String hint;
-
-    /** The text to announce when the action chip is focused. */
-    public final @NonNull String accessibilityHint;
-
     /** The icon to use to decorate the Action chip. */
     public final @NonNull ChipIcon icon;
 
-    /** The corresponding native instance, or 0 if the native instance is not available. */
-    private long mNativeInstance;
-
     public OmniboxAction(
-            @OmniboxActionId int actionId,
-            long nativeInstance,
-            @NonNull String hint,
-            @NonNull String accessibilityHint,
-            @Nullable ChipIcon icon) {
+            @OmniboxActionType int type, @NonNull String hint, @Nullable ChipIcon icon) {
         assert !TextUtils.isEmpty(hint);
-        this.actionId = actionId;
+        this.actionId = type;
         this.hint = hint;
-        this.accessibilityHint = accessibilityHint;
         this.icon = icon != null ? icon : DEFAULT_ICON;
-        mNativeInstance = nativeInstance;
-    }
-
-    @CalledByNative
-    @VisibleForTesting
-    public void destroy() {
-        mNativeInstance = 0;
-    }
-
-    /**
-     * Report information about pedal being shown.
-     *
-     * @return true if information was recorded.
-     */
-    public boolean recordActionShown(int position, boolean executed) {
-        if (mNativeInstance != 0L) {
-            OmniboxActionJni.get().recordActionShown(mNativeInstance, position, executed);
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Execute the associated action.
-     *
-     * @param delegate delegate capable of routing and executing variety of action-specific tasks
-     */
-    public abstract void execute(@NonNull OmniboxActionDelegate delegate);
-
-    @NativeMethods
-    public interface Natives {
-        /** Emit histograms related to the action. */
-        void recordActionShown(long nativeOmniboxAction, int position, boolean executed);
     }
 }

@@ -60,24 +60,25 @@ bool DeviceInfo::PhoneAsASecurityKeyInfo::NonRotatingFieldsEqual(
          peer_public_key_x962 == other.peer_public_key_x962;
 }
 
-DeviceInfo::DeviceInfo(const std::string& guid,
-                       const std::string& client_name,
-                       const std::string& chrome_version,
-                       const std::string& sync_user_agent,
-                       const sync_pb::SyncEnums::DeviceType device_type,
-                       const OsType os_type,
-                       const FormFactor form_factor,
-                       const std::string& signin_scoped_device_id,
-                       const std::string& manufacturer_name,
-                       const std::string& model_name,
-                       const std::string& full_hardware_class,
-                       base::Time last_updated_timestamp,
-                       base::TimeDelta pulse_interval,
-                       bool send_tab_to_self_receiving_enabled,
-                       const std::optional<SharingInfo>& sharing_info,
-                       const std::optional<PhoneAsASecurityKeyInfo>& paask_info,
-                       const std::string& fcm_registration_token,
-                       const ModelTypeSet& interested_data_types)
+DeviceInfo::DeviceInfo(
+    const std::string& guid,
+    const std::string& client_name,
+    const std::string& chrome_version,
+    const std::string& sync_user_agent,
+    const sync_pb::SyncEnums::DeviceType device_type,
+    const OsType os_type,
+    const FormFactor form_factor,
+    const std::string& signin_scoped_device_id,
+    const std::string& manufacturer_name,
+    const std::string& model_name,
+    const std::string& full_hardware_class,
+    base::Time last_updated_timestamp,
+    base::TimeDelta pulse_interval,
+    bool send_tab_to_self_receiving_enabled,
+    const absl::optional<SharingInfo>& sharing_info,
+    const absl::optional<PhoneAsASecurityKeyInfo>& paask_info,
+    const std::string& fcm_registration_token,
+    const ModelTypeSet& interested_data_types)
     : guid_(guid),
       client_name_(client_name),
       chrome_version_(chrome_version),
@@ -159,11 +160,12 @@ bool DeviceInfo::send_tab_to_self_receiving_enabled() const {
   return send_tab_to_self_receiving_enabled_;
 }
 
-const std::optional<DeviceInfo::SharingInfo>& DeviceInfo::sharing_info() const {
+const absl::optional<DeviceInfo::SharingInfo>& DeviceInfo::sharing_info()
+    const {
   return sharing_info_;
 }
 
-const std::optional<DeviceInfo::PhoneAsASecurityKeyInfo>&
+const absl::optional<DeviceInfo::PhoneAsASecurityKeyInfo>&
 DeviceInfo::paask_info() const {
   return paask_info_;
 }
@@ -190,13 +192,12 @@ void DeviceInfo::set_send_tab_to_self_receiving_enabled(bool new_value) {
 }
 
 void DeviceInfo::set_sharing_info(
-    const std::optional<SharingInfo>& sharing_info) {
+    const absl::optional<SharingInfo>& sharing_info) {
   sharing_info_ = sharing_info;
 }
 
-void DeviceInfo::set_paask_info(
-    std::optional<PhoneAsASecurityKeyInfo>&& paask_info) {
-  paask_info_ = std::move(paask_info);
+void DeviceInfo::set_paask_info(PhoneAsASecurityKeyInfo&& paask_info) {
+  paask_info_.emplace(std::forward<PhoneAsASecurityKeyInfo>(paask_info));
 }
 
 void DeviceInfo::set_client_name(const std::string& client_name) {

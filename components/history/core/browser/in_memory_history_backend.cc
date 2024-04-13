@@ -51,9 +51,8 @@ void InMemoryHistoryBackend::OnURLsModified(HistoryService* history_service,
   }
 }
 
-void InMemoryHistoryBackend::OnHistoryDeletions(
-    HistoryService* history_service,
-    const DeletionInfo& deletion_info) {
+void InMemoryHistoryBackend::OnURLsDeleted(HistoryService* history_service,
+                                           const DeletionInfo& deletion_info) {
   DCHECK(db_);
 
   if (deletion_info.IsAllHistory()) {

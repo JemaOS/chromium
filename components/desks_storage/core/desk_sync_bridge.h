@@ -8,12 +8,10 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/containers/flat_map.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
@@ -49,10 +47,10 @@ class DeskSyncBridge : public syncer::ModelTypeSyncBridge, public DeskModel {
   // syncer::ModelTypeSyncBridge overrides.
   std::unique_ptr<syncer::MetadataChangeList> CreateMetadataChangeList()
       override;
-  std::optional<syncer::ModelError> MergeFullSyncData(
+  absl::optional<syncer::ModelError> MergeFullSyncData(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_data) override;
-  std::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_changes) override;
   void GetData(StorageKeyList storage_keys, DataCallback callback) override;
@@ -75,7 +73,7 @@ class DeskSyncBridge : public syncer::ModelTypeSyncBridge, public DeskModel {
   size_t GetDeskTemplateEntryCount() const override;
   size_t GetMaxSaveAndRecallDeskEntryCount() const override;
   size_t GetMaxDeskTemplateEntryCount() const override;
-  std::set<base::Uuid> GetAllEntryUuids() const override;
+  std::vector<base::Uuid> GetAllEntryUuids() const override;
   bool IsReady() const override;
   // Whether this sync bridge is syncing local data to sync. This sync bridge
   // still allows user to save desk templates locally when users disable syncing
@@ -87,10 +85,9 @@ class DeskSyncBridge : public syncer::ModelTypeSyncBridge, public DeskModel {
       ash::DeskTemplateType type,
       const base::Uuid& uuid) const override;
 
-  std::string GetCacheGuid() override;
-
   // Other helper methods.
   bool HasUuid(const base::Uuid& uuid) const;
+
   const ash::DeskTemplate* GetUserEntryByUUID(const base::Uuid& uuid) const;
 
  private:
@@ -104,24 +101,23 @@ class DeskSyncBridge : public syncer::ModelTypeSyncBridge, public DeskModel {
   // Notify all observers that the model is loaded;
   void NotifyDeskModelLoaded();
 
-  // Notify all observers of any `new_entries` when they are added/updated
-  // via sync.
+  // Notify all observers of any `new_entries` when they are added/updated via
+  // sync.
   void NotifyRemoteDeskTemplateAddedOrUpdated(
-      const std::vector<raw_ptr<const ash::DeskTemplate, VectorExperimental>>&
-          new_entries);
+      const std::vector<const ash::DeskTemplate*>& new_entries);
 
   // Notify all observers when the entries with `uuids` have been removed via
   // sync or disabling sync locally.
   void NotifyRemoteDeskTemplateDeleted(const std::vector<base::Uuid>& uuids);
 
   // Methods used as callbacks given to DataTypeStore.
-  void OnStoreCreated(const std::optional<syncer::ModelError>& error,
+  void OnStoreCreated(const absl::optional<syncer::ModelError>& error,
                       std::unique_ptr<syncer::ModelTypeStore> store);
   void OnReadAllData(std::unique_ptr<DeskEntries> initial_entries,
-                     const std::optional<syncer::ModelError>& error);
-  void OnReadAllMetadata(const std::optional<syncer::ModelError>& error,
+                     const absl::optional<syncer::ModelError>& error);
+  void OnReadAllMetadata(const absl::optional<syncer::ModelError>& error,
                          std::unique_ptr<syncer::MetadataBatch> metadata_batch);
-  void OnCommit(const std::optional<syncer::ModelError>& error);
+  void OnCommit(const absl::optional<syncer::ModelError>& error);
 
   // Persists changes in sync store.
   void Commit(std::unique_ptr<syncer::ModelTypeStore::WriteBatch> batch);
@@ -140,8 +136,7 @@ class DeskSyncBridge : public syncer::ModelTypeSyncBridge, public DeskModel {
   // is ready to be accessed.
   bool is_ready_;
 
-  // In charge of actually persisting changes to disk, or loading previous
-  // data.
+  // In charge of actually persisting changes to disk, or loading previous data.
   std::unique_ptr<syncer::ModelTypeStore> store_;
 
   // Account ID of the user this class will sync data for.

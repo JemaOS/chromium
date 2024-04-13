@@ -18,7 +18,6 @@
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
-#include "net/base/proxy_chain.h"
 #include "net/base/url_util.h"
 #include "net/http/http_response_headers.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
@@ -103,59 +102,6 @@ bool FailedWithProxy(const std::string& mime_type,
   return false;
 }
 
-std::string ResponseCodeToString(int response_code) {
-  switch (response_code) {
-    case DeviceManagementService::kSuccess:
-      return "Success";
-    case DeviceManagementService::kInvalidArgument:
-      return "InvalidArgument";
-    case DeviceManagementService::kInvalidAuthCookieOrDMToken:
-      return "InvalidAuthCookieOrDMToken";
-    case DeviceManagementService::kMissingLicenses:
-      return "MissingLicenses";
-    case DeviceManagementService::kDeviceManagementNotAllowed:
-      return "DeviceManagementNotAllowed";
-    case DeviceManagementService::kInvalidURL:
-      return "InvalidURL";
-    case DeviceManagementService::kInvalidSerialNumber:
-      return "InvalidSerialNumber";
-    case DeviceManagementService::kDomainMismatch:
-      return "DomainMismatch";
-    case DeviceManagementService::kDeviceIdConflict:
-      return "DeviceIdConflict";
-    case DeviceManagementService::kDeviceNotFound:
-      return "DeviceNotFound";
-    case DeviceManagementService::kPendingApproval:
-      return "PendingApproval";
-    case DeviceManagementService::kRequestTooLarge:
-      return "RequestTooLarge";
-    case DeviceManagementService::kConsumerAccountWithPackagedLicense:
-      return "ConsumerAccountWithPackagedLicense";
-    case DeviceManagementService::kTooManyRequests:
-      return "TooManyRequests";
-    case DeviceManagementService::kInternalServerError:
-      return "InternalServerError";
-    case DeviceManagementService::kServiceUnavailable:
-      return "ServiceUnavailable";
-    case DeviceManagementService::kPolicyNotFound:
-      return "PolicyNotFound";
-    case DeviceManagementService::kDeprovisioned:
-      return "Deprovisioned";
-    case DeviceManagementService::kArcDisabled:
-      return "ArcDisabled";
-    case DeviceManagementService::kInvalidDomainlessCustomer:
-      return "InvalidDomainlessCustomer";
-    case DeviceManagementService::kTosHasNotBeenAccepted:
-      return "TosHasNotBeenAccepted";
-    case DeviceManagementService::kIllegalAccountForPackagedEDULicense:
-      return "IllegalAccountForPackagedEDULicense";
-    case DeviceManagementService::kInvalidPackagedDeviceForKiosk:
-      return "InvalidPackagedDeviceForKiosk";
-  }
-
-  return base::NumberToString(response_code);
-}
-
 }  // namespace
 
 // While these are declared as constexpr in the header file, they also need to
@@ -189,97 +135,90 @@ const int DeviceManagementService::kInvalidPackagedDeviceForKiosk;
 // static
 std::string DeviceManagementService::JobConfiguration::GetJobTypeAsString(
     JobType type) {
-  // Please also update EnterpriseDMServerRequest in
-  // tools/metrics/histograms/metadata/enterprise/histograms.xml when updating
-  // this.
-  //
-  // Please keep sorted by returned string (case-insensitive).
   switch (type) {
-    case DeviceManagementService::JobConfiguration::
-        TYPE_ANDROID_MANAGEMENT_CHECK:
-      return "AndroidManagementCheck";
-    case DeviceManagementService::JobConfiguration::TYPE_API_AUTH_CODE_FETCH:
-      return "ApiAuthCodeFetch";
-    case DeviceManagementService::JobConfiguration::TYPE_ATTRIBUTE_UPDATE:
-      return "AttributeUpdate";
-    case DeviceManagementService::JobConfiguration::
-        TYPE_ATTRIBUTE_UPDATE_PERMISSION:
-      return "AttributeUpdatePermission";
-    case DeviceManagementService::JobConfiguration::TYPE_AUTO_ENROLLMENT:
-      return "AutoEnrollment";
-    case DeviceManagementService::JobConfiguration::
-        TYPE_BROWSER_UPLOAD_PUBLIC_KEY:
-      return "BrowserUploadPublicKey";
-    case DeviceManagementService::JobConfiguration::
-        TYPE_CERT_BASED_REGISTRATION:
-      return "CertBasedRegistration";
-    case DeviceManagementService::JobConfiguration::
-        TYPE_CERT_PROVISIONING_REQUEST:
-      return "CertProvisioningRequest";
-    case DeviceManagementService::JobConfiguration::TYPE_CHECK_USER_ACCOUNT:
-      return "CheckUserAccount";
-    case DeviceManagementService::JobConfiguration::TYPE_CHROME_DESKTOP_REPORT:
-      return "ChromeDesktopReport";
-    case DeviceManagementService::JobConfiguration::TYPE_CHROME_OS_USER_REPORT:
-      return "ChromeOsUserReport";
-    case DeviceManagementService::JobConfiguration::TYPE_CHROME_PROFILE_REPORT:
-      return "ChromeProfileReport";
-    case DeviceManagementService::JobConfiguration::TYPE_DEVICE_STATE_RETRIEVAL:
-      return "DeviceStateRetrieval";
-    case DeviceManagementService::JobConfiguration::TYPE_GCM_ID_UPDATE:
-      return "GcmIdUpdate";
-    case DeviceManagementService::JobConfiguration::
-        TYPE_INITIAL_ENROLLMENT_STATE_RETRIEVAL:
-      return "InitialEnrollmentStateRetrieval";
     case DeviceManagementService::JobConfiguration::TYPE_INVALID:
       return "Invalid";
-    case DeviceManagementService::JobConfiguration::TYPE_OIDC_REGISTRATION:
-      return "OidcRegistration";
-    case DeviceManagementService::JobConfiguration::TYPE_POLICY_FETCH:
-      return "PolicyFetch";
-    case DeviceManagementService::JobConfiguration::
-        TYPE_PSM_HAS_DEVICE_STATE_REQUEST:
-      return "PSMDeviceStateRequest";
-    case DeviceManagementService::JobConfiguration::TYPE_REQUEST_SAML_URL:
-      return "PublicSamlUserRequest";
+    case DeviceManagementService::JobConfiguration::TYPE_AUTO_ENROLLMENT:
+      return "AutoEnrollment";
     case DeviceManagementService::JobConfiguration::TYPE_REGISTRATION:
       return "Registration";
-    case DeviceManagementService::JobConfiguration::TYPE_REMOTE_COMMANDS:
-      return "RemoteCommands";
-    case DeviceManagementService::JobConfiguration::TYPE_TOKEN_ENROLLMENT:
-      return "TokenEnrollment";
+    case DeviceManagementService::JobConfiguration::TYPE_API_AUTH_CODE_FETCH:
+      return "ApiAuthCodeFetch";
+    case DeviceManagementService::JobConfiguration::TYPE_POLICY_FETCH:
+      return "PolicyFetch";
     case DeviceManagementService::JobConfiguration::TYPE_UNREGISTRATION:
       return "Unregistration";
     case DeviceManagementService::JobConfiguration::TYPE_UPLOAD_CERTIFICATE:
       return "UploadCertificate";
+    case DeviceManagementService::JobConfiguration::TYPE_DEVICE_STATE_RETRIEVAL:
+      return "DeviceStateRetrieval";
+    case DeviceManagementService::JobConfiguration::TYPE_UPLOAD_STATUS:
+      return "UploadStatus";
+    case DeviceManagementService::JobConfiguration::TYPE_REMOTE_COMMANDS:
+      return "RemoteCommands";
     case DeviceManagementService::JobConfiguration::
-        TYPE_UPLOAD_ENCRYPTED_REPORT:
-      return "UploadEncryptedReport";
-    case DeviceManagementService::JobConfiguration::TYPE_UPLOAD_EUICC_INFO:
-      return "UploadEuiccInfo";
+        TYPE_ATTRIBUTE_UPDATE_PERMISSION:
+      return "AttributeUpdatePermission";
+    case DeviceManagementService::JobConfiguration::TYPE_ATTRIBUTE_UPDATE:
+      return "AttributeUpdate";
+    case DeviceManagementService::JobConfiguration::TYPE_GCM_ID_UPDATE:
+      return "GcmIdUpdate";
+    case DeviceManagementService::JobConfiguration::
+        TYPE_ANDROID_MANAGEMENT_CHECK:
+      return "AndroidManagementCheck";
+    case DeviceManagementService::JobConfiguration::
+        TYPE_CERT_BASED_REGISTRATION:
+      return "CertBasedRegistration";
+    case DeviceManagementService::JobConfiguration::
+        TYPE_ACTIVE_DIRECTORY_ENROLL_PLAY_USER:
+      return "ActiveDirectoryEnrollPlayUser";
+    case DeviceManagementService::JobConfiguration::
+        TYPE_ACTIVE_DIRECTORY_PLAY_ACTIVITY:
+      return "ActiveDirectoryPlayActivity";
+    case DeviceManagementService::JobConfiguration::TYPE_TOKEN_ENROLLMENT:
+      return "TokenEnrollment";
+    case DeviceManagementService::JobConfiguration::TYPE_CHROME_DESKTOP_REPORT:
+      return "ChromeDesktopReport";
+    case DeviceManagementService::JobConfiguration::
+        TYPE_INITIAL_ENROLLMENT_STATE_RETRIEVAL:
+      return "InitialEnrollmentStateRetrieval";
     case DeviceManagementService::JobConfiguration::
         TYPE_UPLOAD_POLICY_VALIDATION_REPORT:
       return "UploadPolicyValidationReport";
     case DeviceManagementService::JobConfiguration::
         TYPE_UPLOAD_REAL_TIME_REPORT:
       return "UploadrealtimeReport";
-    case DeviceManagementService::JobConfiguration::TYPE_UPLOAD_STATUS:
-      return "UploadStatus";
-    // TODO(b/263367348): Remove the Active Directory types below, after they're
-    // removed from the corresponding enum.
+    case DeviceManagementService::JobConfiguration::TYPE_REQUEST_SAML_URL:
+      return "PublicSamlUserRequest";
+    case DeviceManagementService::JobConfiguration::TYPE_CHROME_OS_USER_REPORT:
+      return "ChromeOsUserReport";
     case DeviceManagementService::JobConfiguration::
-        TYPE_ACTIVE_DIRECTORY_ENROLL_PLAY_USER:
+        TYPE_CERT_PROVISIONING_REQUEST:
+      return "CertProvisioningRequest";
     case DeviceManagementService::JobConfiguration::
-        TYPE_ACTIVE_DIRECTORY_PLAY_ACTIVITY:
-      NOTREACHED() << "Invalid job type: " << type;
-      return "";
+        TYPE_PSM_HAS_DEVICE_STATE_REQUEST:
+      return "PSMDeviceStateRequest";
+    case DeviceManagementService::JobConfiguration::
+        TYPE_UPLOAD_ENCRYPTED_REPORT:
+      return "UploadEncryptedReport";
+    case DeviceManagementService::JobConfiguration::TYPE_CHECK_USER_ACCOUNT:
+      return "CheckUserAccount";
+    case DeviceManagementService::JobConfiguration::TYPE_UPLOAD_EUICC_INFO:
+      return "UploadEuiccInfo";
+    case DeviceManagementService::JobConfiguration::
+        TYPE_BROWSER_UPLOAD_PUBLIC_KEY:
+      return "BrowserUploadPublicKey";
+    case DeviceManagementService::JobConfiguration::TYPE_CHROME_PROFILE_REPORT:
+      return "ChromeProfileReport";
   }
+  NOTREACHED() << "Invalid job type " << type;
+  return "";
 }
 
 JobConfigurationBase::JobConfigurationBase(
     JobType type,
     DMAuth auth_data,
-    std::optional<std::string> oauth_token,
+    absl::optional<std::string> oauth_token,
     scoped_refptr<network::SharedURLLoaderFactory> factory)
     : type_(type),
       factory_(factory),
@@ -288,7 +227,7 @@ JobConfigurationBase::JobConfigurationBase(
   CHECK(!auth_data_.has_oauth_token()) << "Use |oauth_token| instead";
 
 #if !BUILDFLAG(IS_IOS)
-  if (oauth_token_ && auth_data.token_type() != DMAuthTokenType::kOidc) {
+  if (oauth_token_) {
     // Put the oauth token in the query parameters for platforms that are not
     // iOS. On iOS we are trying the oauth token in the request headers
     // (crbug.com/1312158). We might want to use the iOS approach on all
@@ -409,26 +348,18 @@ JobConfigurationBase::GetResourceRequest(bool bypass_proxy, int last_error) {
           std::string(dm_protocol::kEnrollmentTokenAuthHeaderPrefix) +
               auth_data_.enrollment_token());
       break;
-    case DMAuthTokenType::kOauth:
-      // OAuth token is transferred as a HTTP query parameter.
-      break;
-    case DMAuthTokenType::kOidc:
-      // Send OIDC Auth token and ID token in auth header, send profile ID in
-      // URL parameter
+    case DMAuthTokenType::kJema:
       rr->headers.SetHeader(
           dm_protocol::kAuthHeader,
-          base::StrCat({dm_protocol::kOidcAuthHeaderPrefix,
-                        dm_protocol::kOidcAuthTokenHeaderPrefix, *oauth_token_,
-                        ",", dm_protocol::kOidcIdTokenHeaderPrefix,
-                        auth_data_.oidc_id_token()}));
+          std::string(dm_protocol::kJemaEnrollmentTokenAuthHeaderPrefix) +
+              auth_data_.jema_token());
+      break;
+    case DMAuthTokenType::kOauth:
+      // OAuth token is transferred as a HTTP query parameter.
       break;
   }
 
   return rr;
-}
-
-bool JobConfigurationBase::ShouldRecordUma() const {
-  return true;
 }
 
 DeviceManagementService::Job::RetryMethod JobConfigurationBase::ShouldRetry(
@@ -438,7 +369,7 @@ DeviceManagementService::Job::RetryMethod JobConfigurationBase::ShouldRetry(
   return DeviceManagementService::Job::NO_RETRY;
 }
 
-std::optional<base::TimeDelta> JobConfigurationBase::GetTimeoutDuration() {
+absl::optional<base::TimeDelta> JobConfigurationBase::GetTimeoutDuration() {
   return timeout_;
 }
 
@@ -507,9 +438,8 @@ void DeviceManagementService::JobImpl::CreateUrlLoader() {
   url_loader_ = network::SimpleURLLoader::Create(std::move(rr), annotation);
   url_loader_->AttachStringForUpload(config_->GetPayload(), kPostContentType);
   url_loader_->SetAllowHttpErrorResults(true);
-  if (config_->GetTimeoutDuration()) {
+  if (config_->GetTimeoutDuration())
     url_loader_->SetTimeoutDuration(config_->GetTimeoutDuration().value());
-  }
 }
 
 void DeviceManagementService::JobImpl::OnURLLoaderComplete(
@@ -519,18 +449,16 @@ void DeviceManagementService::JobImpl::OnURLLoaderComplete(
   std::string mime_type;
   if (url_loader_->ResponseInfo()) {
     was_fetched_via_proxy =
-        url_loader_->ResponseInfo()->proxy_chain.IsValid() &&
-        !url_loader_->ResponseInfo()->proxy_chain.is_direct();
+        url_loader_->ResponseInfo()->proxy_server.is_valid() &&
+        !url_loader_->ResponseInfo()->proxy_server.is_direct();
     mime_type = url_loader_->ResponseInfo()->mime_type;
-    if (url_loader_->ResponseInfo()->headers) {
+    if (url_loader_->ResponseInfo()->headers)
       response_code = url_loader_->ResponseInfo()->headers->response_code();
-    }
   }
 
   std::string response_body_str;
-  if (response_body.get()) {
+  if (response_body.get())
     response_body_str = std::move(*response_body.get());
-  }
 
   OnURLLoaderCompleteInternal(response_body_str, mime_type,
                               url_loader_->NetError(), response_code,
@@ -579,17 +507,15 @@ DeviceManagementService::JobImpl::HandleResponseData(
     int net_error,
     int response_code,
     bool was_fetched_via_proxy) {
+  std::string uma_name = config_->GetUmaName();
   if (net_error != net::OK) {
-    if (config_->ShouldRecordUma()) {
-      // Using histogram functions which allows runtime histogram name.
-      base::UmaHistogramEnumeration(config_->GetUmaName(),
-                                    DMServerRequestSuccess::kRequestFailed);
-    }
+    // Using histogram functions which allows runtime histogram name.
+    base::UmaHistogramEnumeration(uma_name,
+                                  DMServerRequestSuccess::kRequestFailed);
     LOG_POLICY(WARNING, CBCM_ENROLLMENT)
         << "Request of type "
         << JobConfiguration::GetJobTypeAsString(config_->GetType())
-        << " failed (net_error = " << net::ErrorToString(net_error) << " ("
-        << net_error << ")).";
+        << " failed (net_error = " << net_error << ").";
     config_->OnURLLoadComplete(this, net_error, response_code, std::string());
     return RetryMethod::NO_RETRY;
   }
@@ -598,12 +524,9 @@ DeviceManagementService::JobImpl::HandleResponseData(
     LOG_POLICY(WARNING, CBCM_ENROLLMENT)
         << "Request of type "
         << JobConfiguration::GetJobTypeAsString(config_->GetType())
-        << " failed (response_code = " << ResponseCodeToString(response_code)
-        << " (" << response_code << ")).";
-    if (config_->ShouldRecordUma()) {
-      base::UmaHistogramEnumeration(config_->GetUmaName(),
-                                    DMServerRequestSuccess::kRequestError);
-    }
+        << " failed (response_code = " << response_code << ").";
+    base::UmaHistogramEnumeration(uma_name,
+                                  DMServerRequestSuccess::kRequestError);
   } else {
     // Success with retries_count_ retries.
     if (retries_count_) {
@@ -612,11 +535,9 @@ DeviceManagementService::JobImpl::HandleResponseData(
           << JobConfiguration::GetJobTypeAsString(config_->GetType())
           << " succeeded after " << retries_count_ << " retries.";
     }
-    if (config_->ShouldRecordUma()) {
-      base::UmaHistogramExactLinear(
-          config_->GetUmaName(), retries_count_,
-          static_cast<int>(DMServerRequestSuccess::kMaxValue) + 1);
-    }
+    base::UmaHistogramExactLinear(
+        uma_name, retries_count_,
+        static_cast<int>(DMServerRequestSuccess::kMaxValue) + 1);
   }
 
   config_->OnURLLoadComplete(this, net_error, response_code, response_body);
@@ -738,9 +659,8 @@ void DeviceManagementService::ScheduleInitialization(
     int64_t delay_milliseconds) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (initialized_) {
+  if (initialized_)
     return;
-  }
   task_runner_->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&DeviceManagementService::Initialize,
@@ -750,9 +670,8 @@ void DeviceManagementService::ScheduleInitialization(
 
 void DeviceManagementService::Initialize() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (initialized_) {
+  if (initialized_)
     return;
-  }
   initialized_ = true;
 
   StartQueuedJobs();
@@ -787,12 +706,16 @@ void DeviceManagementService::SetRetryDelayForTesting(long retry_delay_ms) {
   g_retry_delay_ms = retry_delay_ms;
 }
 
+void DeviceManagementService::ResetConfiguration(std::unique_ptr<Configuration> configuration) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  configuration_ = std::move(configuration);
+}
+
 void DeviceManagementService::AddJob(JobImpl* job) {
-  if (initialized_) {
+  if (initialized_)
     job->Start();
-  } else {
+  else
     queued_jobs_.push_back(job->GetWeakPtr());
-  }
 }
 
 base::WeakPtr<DeviceManagementService> DeviceManagementService::GetWeakPtr() {

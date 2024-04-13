@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_CRX_FILE_ID_UTIL_H_
 #define COMPONENTS_CRX_FILE_ID_UTIL_H_
 
-#include "base/containers/span.h"
 #include "base/strings/string_piece.h"
 
 #include <stddef.h>
@@ -31,8 +30,8 @@ std::string GenerateId(base::StringPiece input);
 std::string GenerateIdFromHex(const std::string& input);
 
 // Generates an ID from the first |kIdSize| bytes of a SHA256 hash.
-// |span| must be at least |kIdSize| bytes.
-std::string GenerateIdFromHash(base::span<const uint8_t> hash);
+// |hash_size| must be at least |kIdSize|.
+std::string GenerateIdFromHash(const uint8_t* hash, size_t hash_size);
 
 // Generates an ID for an extension in the given path.
 // Used while developing extensions, before they have a key.

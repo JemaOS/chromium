@@ -24,10 +24,10 @@ BrowserContextKeyedServiceShutdownNotifierFactory::Get(
       GetServiceForBrowserContext(context, true));
 }
 
-std::unique_ptr<KeyedService>
-  BrowserContextKeyedServiceShutdownNotifierFactory::BuildServiceInstanceForBrowserContext(
+KeyedService*
+BrowserContextKeyedServiceShutdownNotifierFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique <KeyedServiceShutdownNotifier>();
+  return new KeyedServiceShutdownNotifier;
 }
 
 content::BrowserContext*

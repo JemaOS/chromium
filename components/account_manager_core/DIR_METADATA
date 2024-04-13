@@ -1,1 +1,2 @@
-mixins: "//ash/login/LOGIN_LOCK_METADATA"
+mixins: "//components/signin/COMMON_METADATA"
+

@@ -4,12 +4,11 @@
 
 #include "components/sync/base/user_selectable_type.h"
 
-#include <optional>
-#include <ostream>
-
 #include "base/notreached.h"
 #include "build/chromeos_buildflags.h"
+#include "components/sync/base/features.h"
 #include "components/sync/base/model_type.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace syncer {
 
@@ -34,13 +33,11 @@ constexpr char kExtensionsTypeName[] = "extensions";
 constexpr char kAppsTypeName[] = "apps";
 constexpr char kReadingListTypeName[] = "readingList";
 constexpr char kTabsTypeName[] = "tabs";
+constexpr char kWifiConfigurationsTypeName[] = "wifiConfigurations";
 constexpr char kSavedTabGroupsTypeName[] = "savedTabGroups";
-constexpr char kSharedTabGroupDataTypeName[] = "sharedTabGroupData";
-constexpr char kPaymentsTypeName[] = "payments";
-constexpr char kCompareTypeName[] = "compare";
 
 UserSelectableTypeInfo GetUserSelectableTypeInfo(UserSelectableType type) {
-  static_assert(52 == syncer::GetNumModelTypes(),
+  static_assert(46 == syncer::GetNumModelTypes(),
                 "Almost always when adding a new ModelType, you must tie it to "
                 "a UserSelectableType below (new or existing) so the user can "
                 "disable syncing of that data. Today you must also update the "
@@ -59,21 +56,27 @@ UserSelectableTypeInfo GetUserSelectableTypeInfo(UserSelectableType type) {
               {PREFERENCES, DICTIONARY, PRIORITY_PREFERENCES, SEARCH_ENGINES,
                SEGMENTATION}};
     case UserSelectableType::kPasswords:
-      return {
-          kPasswordsTypeName,
-          PASSWORDS,
-          {PASSWORDS, WEBAUTHN_CREDENTIAL, INCOMING_PASSWORD_SHARING_INVITATION,
-           OUTGOING_PASSWORD_SHARING_INVITATION}};
+      // TODO(crbug.com/1223853): Revisit whether WEBAUTHN_CREDENTIAL should be
+      // its own UserSelectableType before launch.
+      return {kPasswordsTypeName, PASSWORDS, {PASSWORDS, WEBAUTHN_CREDENTIAL}};
     case UserSelectableType::kAutofill:
       return {kAutofillTypeName,
               AUTOFILL,
-              {AUTOFILL, AUTOFILL_PROFILE, CONTACT_INFO}};
+              {AUTOFILL, AUTOFILL_PROFILE, AUTOFILL_WALLET_DATA,
+               AUTOFILL_WALLET_METADATA, AUTOFILL_WALLET_OFFER,
+               AUTOFILL_WALLET_USAGE, CONTACT_INFO}};
     case UserSelectableType::kThemes:
       return {kThemesTypeName, THEMES, {THEMES}};
-    case UserSelectableType::kHistory:
-      return {kHistoryTypeName,
-              HISTORY,
-              {HISTORY, HISTORY_DELETE_DIRECTIVES, USER_EVENTS}};
+    case UserSelectableType::kHistory: {
+      // TODO(crbug.com/1365291): After HISTORY has launched, remove TYPED_URLS
+      // from here.
+      ModelTypeSet types = {TYPED_URLS, HISTORY, HISTORY_DELETE_DIRECTIVES,
+                            SESSIONS, USER_EVENTS};
+      if (base::FeatureList::IsEnabled(kSyncEnableHistoryDataType)) {
+        types.Remove(SESSIONS);
+      }
+      return {kHistoryTypeName, TYPED_URLS, types};
+    }
     case UserSelectableType::kExtensions:
       return {
           kExtensionsTypeName, EXTENSIONS, {EXTENSIONS, EXTENSION_SETTINGS}};
@@ -82,28 +85,23 @@ UserSelectableTypeInfo GetUserSelectableTypeInfo(UserSelectableType type) {
       // In Ash, "Apps" part of Chrome OS settings.
       return {kAppsTypeName, UNSPECIFIED};
 #else
-      return {kAppsTypeName, APPS, {APPS, APP_SETTINGS, WEB_APPS, WEB_APKS}};
+      return {kAppsTypeName, APPS, {APPS, APP_SETTINGS, WEB_APPS}};
 #endif
     case UserSelectableType::kReadingList:
       return {kReadingListTypeName, READING_LIST, {READING_LIST}};
     case UserSelectableType::kTabs:
-      return {kTabsTypeName, SESSIONS, {SESSIONS}};
+      return {kTabsTypeName, PROXY_TABS, {PROXY_TABS, SESSIONS}};
+    case UserSelectableType::kWifiConfigurations:
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+      // In Ash, "Wi-Fi configurations" is part of Chrome OS settings.
+      return {kWifiConfigurationsTypeName, UNSPECIFIED};
+#else
+      return {kWifiConfigurationsTypeName,
+              WIFI_CONFIGURATIONS,
+              {WIFI_CONFIGURATIONS}};
+#endif
     case UserSelectableType::kSavedTabGroups:
       return {kSavedTabGroupsTypeName, SAVED_TAB_GROUP, {SAVED_TAB_GROUP}};
-    case UserSelectableType::kSharedTabGroupData:
-      // Note: COLLABORATION_GROUP might be re-used for other features. If this
-      // happens, it should probably be in AlwaysPreferredUserTypes().
-      return {kSharedTabGroupDataTypeName,
-              SHARED_TAB_GROUP_DATA,
-              {SHARED_TAB_GROUP_DATA, COLLABORATION_GROUP}};
-    case UserSelectableType::kPayments:
-      return {kPaymentsTypeName,
-              AUTOFILL_WALLET_DATA,
-              {AUTOFILL_WALLET_CREDENTIAL, AUTOFILL_WALLET_DATA,
-               AUTOFILL_WALLET_METADATA, AUTOFILL_WALLET_OFFER,
-               AUTOFILL_WALLET_USAGE}};
-    case UserSelectableType::kCompare:
-      return {kCompareTypeName, COMPARE, {COMPARE}};
   }
   NOTREACHED();
   return {nullptr, UNSPECIFIED, {}};
@@ -113,7 +111,6 @@ UserSelectableTypeInfo GetUserSelectableTypeInfo(UserSelectableType type) {
 constexpr char kOsAppsTypeName[] = "osApps";
 constexpr char kOsPreferencesTypeName[] = "osPreferences";
 constexpr char kOsWifiConfigurationsTypeName[] = "osWifiConfigurations";
-constexpr char kWifiConfigurationsTypeName[] = "wifiConfigurations";
 
 UserSelectableTypeInfo GetUserSelectableOsTypeInfo(UserSelectableOsType type) {
   // UserSelectableTypeInfo::type_name is used in js code and shouldn't be
@@ -142,7 +139,7 @@ const char* GetUserSelectableTypeName(UserSelectableType type) {
   return GetUserSelectableTypeInfo(type).type_name;
 }
 
-std::optional<UserSelectableType> GetUserSelectableTypeFromString(
+absl::optional<UserSelectableType> GetUserSelectableTypeFromString(
     const std::string& type) {
   if (type == kBookmarksTypeName) {
     return UserSelectableType::kBookmarks;
@@ -174,16 +171,13 @@ std::optional<UserSelectableType> GetUserSelectableTypeFromString(
   if (type == kTabsTypeName) {
     return UserSelectableType::kTabs;
   }
+  if (type == kWifiConfigurationsTypeName) {
+    return UserSelectableType::kWifiConfigurations;
+  }
   if (type == kSavedTabGroupsTypeName) {
     return UserSelectableType::kSavedTabGroups;
   }
-  if (type == kSharedTabGroupDataTypeName) {
-    return UserSelectableType::kSharedTabGroupData;
-  }
-  if (type == kCompareTypeName) {
-    return UserSelectableType::kCompare;
-  }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::string UserSelectableTypeSetToString(UserSelectableTypeSet types) {
@@ -221,7 +215,7 @@ std::string UserSelectableOsTypeSetToString(UserSelectableOsTypeSet types) {
   return result;
 }
 
-std::optional<UserSelectableOsType> GetUserSelectableOsTypeFromString(
+absl::optional<UserSelectableOsType> GetUserSelectableOsTypeFromString(
     const std::string& type) {
   if (type == kOsAppsTypeName) {
     return UserSelectableOsType::kOsApps;
@@ -248,7 +242,7 @@ std::optional<UserSelectableOsType> GetUserSelectableOsTypeFromString(
   if (type == kPreferencesTypeName) {
     return UserSelectableOsType::kOsPreferences;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 ModelTypeSet UserSelectableOsTypeToAllModelTypes(UserSelectableOsType type) {
@@ -259,14 +253,5 @@ ModelType UserSelectableOsTypeToCanonicalModelType(UserSelectableOsType type) {
   return GetUserSelectableOsTypeInfo(type).canonical_model_type;
 }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-std::ostream& operator<<(std::ostream& stream, const UserSelectableType& type) {
-  return stream << GetUserSelectableTypeName(type);
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         const UserSelectableTypeSet& types) {
-  return stream << UserSelectableTypeSetToString(types);
-}
 
 }  // namespace syncer

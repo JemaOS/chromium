@@ -15,9 +15,7 @@ enum class AnrSkippedReason {
   kFilesystemReadFailure = 0,
   kFilesystemWriteFailure = 1,
   kMissingVersion = 2,
-  kOnlyMissingNative = 3,
-  kNotSkipped = 4,
-  kMaxValue = kNotSkipped,
+  kMaxValue = kMissingVersion,
 };
 
 #endif  // COMPONENTS_CRASH_ANDROID_ANR_SKIPPED_REASON_H_

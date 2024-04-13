@@ -5,11 +5,10 @@
 #include "components/media_router/browser/android/media_router_android.h"
 
 #include <algorithm>
-#include <optional>
 #include <string>
 #include <utility>
-#include <vector>
 
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
@@ -20,6 +19,7 @@
 #include "components/media_router/browser/presentation_connection_message_observer.h"
 #include "components/media_router/browser/route_message_util.h"
 #include "components/media_router/common/route_request_result.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace media_router {
@@ -58,7 +58,7 @@ void MediaRouterAndroid::PresentationConnectionProxy::DidClose(
   auto& route_connections =
       media_router_android_->presentation_connections_[route_id_];
   DCHECK(!route_connections.empty());
-  std::erase_if(route_connections, [this](const auto& connection) {
+  base::EraseIf(route_connections, [this](const auto& connection) {
     return connection.get() == this;
   });
 }
@@ -111,7 +111,8 @@ void MediaRouterAndroid::CreateRoute(const MediaSource::Id& source_id,
                                      const url::Origin& origin,
                                      content::WebContents* web_contents,
                                      MediaRouteResponseCallback callback,
-                                     base::TimeDelta timeout) {
+                                     base::TimeDelta timeout,
+                                     bool incognito) {
   DCHECK(callback);
   // TODO(avayvod): Implement timeouts (crbug.com/583036).
   std::string presentation_id = MediaRouterBase::CreatePresentationId();
@@ -128,7 +129,8 @@ void MediaRouterAndroid::JoinRoute(const MediaSource::Id& source_id,
                                    const url::Origin& origin,
                                    content::WebContents* web_contents,
                                    MediaRouteResponseCallback callback,
-                                   base::TimeDelta timeout) {
+                                   base::TimeDelta timeout,
+                                   bool incognito) {
   DCHECK(callback);
   // TODO(avayvod): Implement timeouts (crbug.com/583036).
   DVLOG(2) << "JoinRoute: " << source_id << ", " << presentation_id << ", "
@@ -316,7 +318,7 @@ void MediaRouterAndroid::OnRouteTerminated(const MediaRoute::Id& route_id) {
 
 void MediaRouterAndroid::OnRouteClosed(
     const MediaRoute::Id& route_id,
-    const std::optional<std::string>& error) {
+    const absl::optional<std::string>& error) {
   RemoveRoute(route_id);
   // TODO(crbug.com/882690): When the sending context is destroyed, tell MRP to
   // clean up the connection.
@@ -375,7 +377,7 @@ void MediaRouterAndroid::OnRouteRequestError(
     const std::string& error_text,
     int route_request_id,
     base::OnceCallback<void(mojom::RouteRequestResultCode,
-                            std::optional<mojom::MediaRouteProviderId>)>
+                            absl::optional<mojom::MediaRouteProviderId>)>
         callback) {
   MediaRouteRequest* request = route_requests_.Lookup(route_request_id);
   if (!request)

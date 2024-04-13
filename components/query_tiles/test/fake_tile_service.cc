@@ -49,8 +49,8 @@ std::vector<std::unique_ptr<Tile>> BuildFakeTree() {
   return top_tiles;
 }
 
-std::optional<Tile> FindTile(std::vector<std::unique_ptr<Tile>>& tiles,
-                             const std::string& id) {
+absl::optional<Tile> FindTile(std::vector<std::unique_ptr<Tile>>& tiles,
+                              const std::string& id) {
   for (const auto& tile : tiles) {
     if (id == tile->id)
       return *tile.get();
@@ -63,7 +63,7 @@ std::optional<Tile> FindTile(std::vector<std::unique_ptr<Tile>>& tiles,
     }
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -105,7 +105,7 @@ void FakeTileService::SetServerUrl(const std::string& url) {}
 void FakeTileService::OnTileClicked(const std::string& url) {}
 
 void FakeTileService::OnQuerySelected(
-    const std::optional<std::string>& parent_tile_id,
+    const absl::optional<std::string>& parent_tile_id,
     const std::u16string& query_text) {}
 
 Logger* FakeTileService::GetLogger() {

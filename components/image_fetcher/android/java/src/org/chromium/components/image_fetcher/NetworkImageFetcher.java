@@ -6,11 +6,13 @@ package org.chromium.components.image_fetcher;
 
 import android.graphics.Bitmap;
 
-import jp.tomorrowkey.android.gifplayer.BaseGifImage;
-
 import org.chromium.base.Callback;
 
-/** Image Fetcher implementation that fetches from the network. */
+import jp.tomorrowkey.android.gifplayer.BaseGifImage;
+
+/**
+ * Image Fetcher implementation that fetches from the network.
+ */
 public class NetworkImageFetcher extends ImageFetcher {
     /**
      * Creates a NetworkImageFetcher.
@@ -34,16 +36,11 @@ public class NetworkImageFetcher extends ImageFetcher {
     @Override
     public void fetchImage(final Params params, Callback<Bitmap> callback) {
         long startTimeMillis = System.currentTimeMillis();
-        getImageFetcherBridge()
-                .fetchImage(
-                        getConfig(),
-                        params,
-                        (Bitmap bitmapFromNative) -> {
-                            callback.onResult(bitmapFromNative);
-                            getImageFetcherBridge()
-                                    .reportTotalFetchTimeFromNative(
-                                            params.clientName, startTimeMillis);
-                        });
+        getImageFetcherBridge().fetchImage(getConfig(), params, (Bitmap bitmapFromNative) -> {
+            callback.onResult(bitmapFromNative);
+            getImageFetcherBridge().reportTotalFetchTimeFromNative(
+                    params.clientName, startTimeMillis);
+        });
     }
 
     @Override

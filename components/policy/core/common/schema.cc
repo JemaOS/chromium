@@ -58,8 +58,6 @@ std::string ErrorPathToString(const std::string& policy_name,
   return error_path_string.str();
 }
 
-const char kSensitiveValueMask[] = "********";
-
 namespace {
 
 struct ReferencesAndIDs {
@@ -86,6 +84,11 @@ struct StorageSizes {
   size_t int_enums = 0;
   size_t string_enums = 0;
 };
+
+// |Schema::MaskSensitiveValues| will replace sensitive values with this string.
+// It should be consistent with the mask |NetworkConfigurationPolicyHandler|
+// uses for network credential fields.
+constexpr char kSensitiveValueMask[] = "********";
 
 // An invalid index, indicating that a node is not present; similar to a NULL
 // pointer.
@@ -423,9 +426,9 @@ bool IsValidSchema(const base::Value::Dict& dict,
 
   if (type_string == schema::kInteger) {
     // Validate 'minimum' > 'maximum'.
-    const std::optional<double> minimum_value =
+    const absl::optional<double> minimum_value =
         dict.FindDouble(schema::kMinimum);
-    const std::optional<double> maximum_value =
+    const absl::optional<double> maximum_value =
         dict.FindDouble(schema::kMaximum);
     if (minimum_value && maximum_value) {
       if (minimum_value.value() > maximum_value.value()) {
@@ -1453,7 +1456,7 @@ void Schema::MaskSensitiveValues(base::Value* value) const {
 Schema Schema::Parse(const std::string& content, std::string* error) {
   // Validate as a generic JSON schema, and ignore unknown attributes; they
   // may become used in a future version of the schema format.
-  std::optional<base::Value::Dict> dict = Schema::ParseToDictAndValidate(
+  absl::optional<base::Value::Dict> dict = Schema::ParseToDictAndValidate(
       content, kSchemaOptionsIgnoreUnknownAttributes, error);
   if (!dict.has_value())
     return Schema();
@@ -1483,7 +1486,7 @@ Schema Schema::Parse(const std::string& content, std::string* error) {
 }
 
 // static
-std::optional<base::Value::Dict> Schema::ParseToDictAndValidate(
+absl::optional<base::Value::Dict> Schema::ParseToDictAndValidate(
     const std::string& schema,
     int validator_options,
     std::string* error) {
@@ -1493,15 +1496,15 @@ std::optional<base::Value::Dict> Schema::ParseToDictAndValidate(
 
   if (!value_with_error.has_value()) {
     *error = value_with_error.error().message;
-    return std::nullopt;
+    return absl::nullopt;
   }
   base::Value json = std::move(*value_with_error);
   if (!json.is_dict()) {
     *error = "Schema must be a JSON object";
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (!IsValidSchema(json.GetDict(), validator_options, error)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return std::move(json).TakeDict();
 }

@@ -6,7 +6,6 @@
 #define COMPONENTS_OMNIBOX_BROWSER_SEARCH_SUGGESTION_PARSER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,6 +17,7 @@
 #include "components/omnibox/browser/autocomplete_provider.h"
 #include "components/omnibox/browser/suggestion_answer.h"
 #include "components/omnibox/browser/suggestion_group_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/omnibox_proto/chrome_searchbox_stats.pb.h"
 #include "third_party/omnibox_proto/entity_info.pb.h"
 #include "third_party/omnibox_proto/types.pb.h"
@@ -53,7 +53,6 @@ class SearchSuggestionParser {
            int relevance,
            bool relevance_from_server,
            AutocompleteMatchType::Type type,
-           omnibox::SuggestType suggest_type,
            std::vector<int> subtypes,
            const std::string& deletion_url);
     Result(const Result& other);
@@ -67,7 +66,6 @@ class SearchSuggestionParser {
     }
 
     AutocompleteMatchType::Type type() const { return type_; }
-    omnibox::SuggestType suggest_type() const { return suggest_type_; }
     const std::vector<int>& subtypes() const { return subtypes_; }
     int relevance() const { return relevance_; }
     void set_relevance(int relevance) { relevance_ = relevance; }
@@ -101,11 +99,7 @@ class SearchSuggestionParser {
     // True if the result came from a keyword suggestion.
     bool from_keyword_;
 
-    // AutocompleteMatch type.
     AutocompleteMatchType::Type type_;
-
-    // Suggestion type.
-    omnibox::SuggestType suggest_type_;
 
     // Suggestion subtypes.
     std::vector<int> subtypes_;
@@ -136,7 +130,6 @@ class SearchSuggestionParser {
    public:
     SuggestResult(const std::u16string& suggestion,
                   AutocompleteMatchType::Type type,
-                  omnibox::SuggestType suggest_type,
                   std::vector<int> subtypes,
                   bool from_keyword,
                   int relevance,
@@ -144,7 +137,6 @@ class SearchSuggestionParser {
                   const std::u16string& input_text);
     SuggestResult(const std::u16string& suggestion,
                   AutocompleteMatchType::Type type,
-                  omnibox::SuggestType suggest_type,
                   std::vector<int> subtypes,
                   const std::u16string& match_contents,
                   const std::u16string& match_contents_prefix,
@@ -169,17 +161,16 @@ class SearchSuggestionParser {
     const std::u16string& annotation() const { return annotation_; }
 
     void set_suggestion_group_id(
-        std::optional<omnibox::GroupId> suggestion_group_id) {
+        absl::optional<omnibox::GroupId> suggestion_group_id) {
       suggestion_group_id_ = suggestion_group_id;
     }
-    std::optional<omnibox::GroupId> suggestion_group_id() const {
+    absl::optional<omnibox::GroupId> suggestion_group_id() const {
       return suggestion_group_id_;
     }
 
     void SetAnswer(const SuggestionAnswer& answer);
-    const std::optional<SuggestionAnswer>& answer() const { return answer_; }
+    const absl::optional<SuggestionAnswer>& answer() const { return answer_; }
 
-    void SetEntityInfo(const omnibox::EntityInfo&);
     const omnibox::EntityInfo& entity_info() const { return entity_info_; }
 
     bool should_prefetch() const { return should_prefetch_; }
@@ -213,10 +204,10 @@ class SearchSuggestionParser {
 
     // The optional suggestion group ID used to look up the suggestion group
     // config for the group this suggestion belongs to from the server response.
-    std::optional<omnibox::GroupId> suggestion_group_id_;
+    absl::optional<omnibox::GroupId> suggestion_group_id_;
 
     // Optional short answer to the input that produced this suggestion.
-    std::optional<SuggestionAnswer> answer_;
+    absl::optional<SuggestionAnswer> answer_;
 
     // Proto containing various pieces of data related to entity suggestions.
     omnibox::EntityInfo entity_info_;
@@ -234,7 +225,6 @@ class SearchSuggestionParser {
     NavigationResult(const AutocompleteSchemeClassifier& scheme_classifier,
                      const GURL& url,
                      AutocompleteMatchType::Type type,
-                     omnibox::SuggestType suggest_type,
                      std::vector<int> subtypes,
                      const std::u16string& description,
                      const std::string& deletion_url,
@@ -350,7 +340,7 @@ class SearchSuggestionParser {
   // Parses JSON response received from the provider, stripping XSSI
   // protection if needed. Returns the parsed data if successful, NULL
   // otherwise.
-  static std::optional<base::Value::List> DeserializeJsonData(
+  static absl::optional<base::Value::List> DeserializeJsonData(
       base::StringPiece json_data);
 
   // Parses results from the suggest server and updates the appropriate suggest

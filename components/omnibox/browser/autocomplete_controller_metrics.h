@@ -75,6 +75,16 @@ class AutocompleteControllerMetrics {
  private:
   friend class AutocompleteControllerMetricsTest;
 
+  // Checks `controller_` `done()`, `expire_timer_done()` and `in_start()` to
+  // determine whether the controller is absolutely done; i.e., there won't be
+  // any changes to results until the next user action. Just checking `done()`
+  // isn't sufficient, as the expiring copied matches can change the results.
+  // Just checking `done()` and `expire_timer_done()` isn't sufficient, as
+  // they'll both be true during the sync pass, and all async providers complete
+  // during the sync pass, there won't be a followup async update to trigger
+  // logging metrics.
+  bool ControllerIdle();
+
   // Logs
   // 'Omnibox.AsyncAutocompletionTime.[Done|LastChange|LastDefaultChange]'.
   // Additionally logs either '*.Completed' or '*.Interrupted' for each of the
@@ -113,8 +123,7 @@ class AutocompleteControllerMetrics {
   // default suggestion.
   base::TimeTicks last_default_change_time_;
   // Whether `LogSuggestionFinalizationMetrics()` has been invoked for the
-  // current request. Used for `DCHECK`s and iOS only. The autocomplete
-  // controller state should be the source of truth instead.
+  // current request.
   bool logged_finalization_metrics_ = true;
 };
 

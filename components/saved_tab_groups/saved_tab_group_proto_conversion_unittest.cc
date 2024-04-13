@@ -2,18 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "components/saved_tab_groups/saved_tab_group.h"
+
 #include <memory>
-#include <optional>
 
 #include "base/time/time.h"
 #include "base/uuid.h"
-#include "components/saved_tab_groups/saved_tab_group.h"
 #include "components/saved_tab_groups/saved_tab_group_tab.h"
 #include "components/sync/protocol/saved_tab_group_specifics.pb.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
-namespace tab_groups {
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class SavedTabGroupConversionTest : public testing::Test {
  public:
@@ -72,11 +71,11 @@ TEST_F(SavedTabGroupConversionTest, GroupToSpecificRetainsData) {
   // Create a group.
   const std::u16string& title = u"Test title";
   const tab_groups::TabGroupColorId& color = tab_groups::TabGroupColorId::kBlue;
-  std::optional<base::Uuid> saved_guid = base::Uuid::GenerateRandomV4();
-  std::optional<base::Time> creation_time_windows_epoch_micros = time_;
-  std::optional<base::Time> update_time_windows_epoch_micros = time_;
-  SavedTabGroup group(title, color, {}, 0, saved_guid, std::nullopt,
-                      creation_time_windows_epoch_micros,
+  absl::optional<base::Uuid> saved_guid = base::Uuid::GenerateRandomV4();
+  absl::optional<base::Time> creation_time_windows_epoch_micros = time_;
+  absl::optional<base::Time> update_time_windows_epoch_micros = time_;
+  SavedTabGroup group(title, color, {}, saved_guid, absl::nullopt,
+                      absl::nullopt, creation_time_windows_epoch_micros,
                       update_time_windows_epoch_micros);
 
   // Use the group to create a STGSpecific.
@@ -95,9 +94,9 @@ TEST_F(SavedTabGroupConversionTest, GroupToSpecificRetainsData) {
 TEST_F(SavedTabGroupConversionTest, TabToSpecificRetainsData) {
   // Create a tab.
   SavedTabGroupTab tab(GURL("chrome://hidden_link"), u"Hidden Title",
-                       base::Uuid::GenerateRandomV4(), /*position=*/0,
-                       base::Uuid::GenerateRandomV4(), std::nullopt, time_,
-                       time_);
+                       base::Uuid::GenerateRandomV4(), nullptr,
+                       base::Uuid::GenerateRandomV4(), absl::nullopt,
+                       absl::nullopt, time_, time_);
 
   // Create a STGSpecific using `tab`.
   std::unique_ptr<sync_pb::SavedTabGroupSpecifics> specific = tab.ToSpecifics();
@@ -173,11 +172,11 @@ TEST_F(SavedTabGroupConversionTest, MergedGroupHoldsCorrectData) {
   const base::Time old_time = base::Time::Now();
   const std::u16string& title = u"Test title";
   const tab_groups::TabGroupColorId& color = tab_groups::TabGroupColorId::kBlue;
-  std::optional<base::Uuid> saved_guid = base::Uuid::GenerateRandomV4();
-  std::optional<base::Time> creation_time_windows_epoch_micros = time_;
-  std::optional<base::Time> update_time_windows_epoch_micros = time_;
-  SavedTabGroup group1(title, color, {}, 0, saved_guid, std::nullopt,
-                       creation_time_windows_epoch_micros,
+  absl::optional<base::Uuid> saved_guid = base::Uuid::GenerateRandomV4();
+  absl::optional<base::Time> creation_time_windows_epoch_micros = time_;
+  absl::optional<base::Time> update_time_windows_epoch_micros = time_;
+  SavedTabGroup group1(title, color, {}, saved_guid, absl::nullopt,
+                       absl::nullopt, creation_time_windows_epoch_micros,
                        update_time_windows_epoch_micros);
 
   // Create a new group with the same data and update it. Calling set functions
@@ -205,8 +204,7 @@ TEST_F(SavedTabGroupConversionTest, MergedTabHoldsCorrectData) {
   // Create a tab.
   const base::Time old_time = base::Time::Now();
   base::Uuid saved_guid = base::Uuid::GenerateRandomV4();
-  SavedTabGroupTab tab1(GURL("Test url"), u"Test Title", saved_guid,
-                        /*position=*/0);
+  SavedTabGroupTab tab1(GURL("Test url"), u"Test Title", saved_guid);
 
   // Create a new group with the same data and update it. Calling set functions
   // should internally update update_time_windows_epoch_micros.
@@ -226,5 +224,3 @@ TEST_F(SavedTabGroupConversionTest, MergedTabHoldsCorrectData) {
   tab2.SetUpdateTimeWindowsEpochMicros(old_time);
   EXPECT_FALSE(tab1.ShouldMergeTab(*tab2.ToSpecifics()));
 }
-
-}  // namespace tab_groups

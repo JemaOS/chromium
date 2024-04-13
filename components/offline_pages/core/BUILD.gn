@@ -85,7 +85,6 @@ static_library("core") {
   deps = [
     ":switches",
     "//base",
-    "//base:i18n",
     "//components/filename_generation",
     "//components/keyed_service/core",
     "//components/offline_items_collection/core/utilities",

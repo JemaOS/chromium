@@ -43,8 +43,7 @@ class COMPONENTS_PREFS_EXPORT WriteablePrefStore : public PrefStore {
                         base::Value value,
                         uint32_t flags) = 0;
 
-  // Removes the value for |key|. |flags| is a bitmask of
-  // PrefWriteFlags.
+  // Removes the value for |key|.
   virtual void RemoveValue(const std::string& key, uint32_t flags) = 0;
 
   // Equivalent to PrefStore::GetValue but returns a mutable value.

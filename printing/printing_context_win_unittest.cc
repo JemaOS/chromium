@@ -31,7 +31,7 @@ class PrintingContextTest : public PrintingTest<testing::Test>,
   void PrintSettingsCallback(mojom::ResultCode result) { result_ = result; }
 
   // PrintingContext::Delegate methods.
-  gfx::NativeView GetParentView() override { return gfx::NativeView(); }
+  gfx::NativeView GetParentView() override { return nullptr; }
   std::string GetAppLocale() override { return std::string(); }
 
  protected:
@@ -58,10 +58,8 @@ using ScopedGlobalAlloc =
 
 class MockPrintingContextWin : public PrintingContextSystemDialogWin {
  public:
-  MockPrintingContextWin(Delegate* delegate)
-      : PrintingContextSystemDialogWin(
-            delegate,
-            PrintingContext::ProcessBehavior::kOopDisabled) {}
+  explicit MockPrintingContextWin(Delegate* delegate)
+      : PrintingContextSystemDialogWin(delegate) {}
 
  protected:
   // This is a fake PrintDlgEx implementation that sets the right fields in
@@ -185,8 +183,7 @@ TEST_F(PrintingContextTest, DISABLED_Base) {
   auto settings = std::make_unique<PrintSettings>();
   settings->set_device_name(base::WideToUTF16(GetDefaultPrinter()));
   // Initialize it.
-  PrintingContextWin context(this,
-                             PrintingContext::ProcessBehavior::kOopDisabled);
+  PrintingContextWin context(this);
   EXPECT_EQ(mojom::ResultCode::kSuccess,
             context.InitWithSettingsForTest(std::move(settings)));
 

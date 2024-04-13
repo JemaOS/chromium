@@ -104,12 +104,10 @@ void StorageMonitorWinTest::TearDown() {
 
   // Windows storage monitor must be destroyed on the same thread
   // as construction.
-  volume_mount_watcher_ = nullptr;
   monitor_.reset();
 }
 
 void StorageMonitorWinTest::PreAttachDevices() {
-  volume_mount_watcher_ = nullptr;
   monitor_.reset();
   auto volume_mount_watcher = std::make_unique<TestVolumeMountWatcherWin>();
   volume_mount_watcher_ = volume_mount_watcher.get();

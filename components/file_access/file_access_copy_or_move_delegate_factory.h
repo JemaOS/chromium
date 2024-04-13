@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "base/component_export.h"
+#include "base/memory/weak_ptr.h"
 
 namespace storage {
 
@@ -23,7 +24,8 @@ namespace file_access {
 // instance. When it is replaced the old instance is destructed. The class is
 // used in the copy operation to be able to inject in the different copy stages
 // (begin, process, end).
-class COMPONENT_EXPORT(FILE_ACCESS) FileAccessCopyOrMoveDelegateFactory {
+class COMPONENT_EXPORT(FILE_ACCESS) FileAccessCopyOrMoveDelegateFactory
+    : public base::SupportsWeakPtr<FileAccessCopyOrMoveDelegateFactory> {
  public:
   FileAccessCopyOrMoveDelegateFactory(
       const FileAccessCopyOrMoveDelegateFactory&) = delete;

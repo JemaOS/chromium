@@ -10,7 +10,6 @@
 
 #include <list>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -38,8 +37,9 @@
 #include "components/history/core/browser/keyword_id.h"
 #include "components/history/core/browser/sync/history_backend_for_sync.h"
 #include "components/history/core/browser/visit_tracker.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
 #include "sql/init_status.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/origin.h"
 
 class SkBitmap;
@@ -73,6 +73,7 @@ struct HistoryDatabaseParams;
 class HistoryDBTask;
 class HistorySyncBridge;
 class InMemoryHistoryBackend;
+class TypedURLSyncBridge;
 class URLDatabase;
 
 // Returns a formatted version of `url` with the HTTP/HTTPS scheme, port,
@@ -161,10 +162,8 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
 
     // Notify HistoryService that the user is visiting a URL. The event will
     // be forwarded to the HistoryServiceObservers in the correct thread.
-    virtual void NotifyURLVisited(
-        const URLRow& url_row,
-        const VisitRow& visit_row,
-        std::optional<int64_t> local_navigation_id) = 0;
+    virtual void NotifyURLVisited(const URLRow& url_row,
+                                  const VisitRow& visit_row) = 0;
 
     // Notify HistoryService that some URLs have been modified. The event will
     // be forwarded to the HistoryServiceObservers in the correct thread.
@@ -173,7 +172,7 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
     // Notify HistoryService that some or all of the URLs have been deleted.
     // The event will be forwarded to the HistoryServiceObservers in the correct
     // thread.
-    virtual void NotifyDeletions(DeletionInfo deletion_info) = 0;
+    virtual void NotifyURLsDeleted(DeletionInfo deletion_info) = 0;
 
     // Notify HistoryService that some keyword has been searched using omnibox.
     // The event will be forwarded to the HistoryServiceObservers in the correct
@@ -292,8 +291,6 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
       base::OnceCallback<void(HistoryBackend*, URLDatabase*)> callback);
 
   QueryURLResult QueryURL(const GURL& url, bool want_visits);
-  std::vector<QueryURLResult> QueryURLs(const std::vector<GURL>& urls,
-                                        bool want_visits);
   QueryResults QueryHistory(const std::u16string& text_query,
                             const QueryOptions& options);
 
@@ -367,12 +364,6 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
       base::Time report_time,
       int number_of_days_to_report,
       DomainMetricBitmaskType metric_type_bitmask);
-
-  // Gets unique domains (eLTD+1) visited within the time range
-  // [`begin_time`, `end_time`) for local and synced visits sorted in
-  // reverse-chronological order.
-  DomainsVisitedResult GetUniqueDomainsVisited(base::Time begin_time,
-                                               base::Time end_time);
 
   // Gets the last time any webpage on the given host was visited within the
   // time range [`begin_time`, `end_time`). If the given host has not been
@@ -500,20 +491,16 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
 
   std::vector<AnnotatedVisit> GetAnnotatedVisits(
       const QueryOptions& options,
-      bool compute_redirect_chain_start_properties,
-      bool get_unclustered_visits_only,
       bool* limited_by_max_count = nullptr);
 
   // Utility method to Construct `AnnotatedVisit`s.
-  std::vector<AnnotatedVisit> ToAnnotatedVisitsFromRows(
-      const VisitVector& visit_rows,
-      bool compute_redirect_chain_start_properties) override;
+  std::vector<AnnotatedVisit> ToAnnotatedVisits(
+      const VisitVector& visit_rows) override;
 
   // Like above, but will first construct `visit_rows` from each `VisitID`
-  // before delegating to the `ToAnnotatedVisitsFromRows()` above.
-  std::vector<AnnotatedVisit> ToAnnotatedVisitsFromIds(
-      const std::vector<VisitID>& visit_ids,
-      bool compute_redirect_chain_start_properties);
+  // before delegating to the overloaded `ToAnnotatedVisits()` above.
+  std::vector<AnnotatedVisit> ToAnnotatedVisits(
+      const std::vector<VisitID>& visit_ids);
 
   // Utility method to construct `ClusterVisit`s. Since `duplicate_visits` isn't
   // always useful and requires extra SQL executions, it's only populated if
@@ -549,14 +536,9 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
 
   void UpdateClusterTriggerability(const std::vector<Cluster>& clusters);
 
-  // Use `UpdateVisitsInteractionState` instead to preserve the visits' scores.
   void HideVisits(const std::vector<VisitID>& visit_ids);
 
   void UpdateClusterVisit(const history::ClusterVisit& cluster_visit);
-
-  void UpdateVisitsInteractionState(
-      const std::vector<VisitID>& visit_ids,
-      const ClusterVisit::InteractionState interaction_state);
 
   std::vector<Cluster> GetMostRecentClusters(
       base::Time inclusive_min_time,
@@ -620,13 +602,20 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
 
   bool GetVisitsForURL(URLID id, VisitVector* visits);
 
-  std::map<GURL, VisitRow> GetMostRecentVisitForEachURL(
-      const std::vector<GURL>& urls);
-
   bool GetMostRecentVisitForURL(URLID id, VisitRow* visit_row) override;
 
   // Fetches up to `max_visits` most recent visits for the passed URL.
   bool GetMostRecentVisitsForURL(URLID id, int max_visits, VisitVector* visits);
+
+  // For each element in `urls`, updates the pre-existing URLRow in the database
+  // with the same ID; or ignores the element if no such row exists. Returns the
+  // number of records successfully updated.
+  size_t UpdateURLs(const URLRows& urls);
+
+  // While adding visits in batch, the source needs to be provided.
+  bool AddVisits(const GURL& url,
+                 const std::vector<VisitInfo>& visits,
+                 VisitSource visit_source);
 
   // Searches for a visit with the given `originator_visit_id` coming from
   // another device (identified by `originator_cache_guid`). If found, returns
@@ -642,8 +631,8 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
       const std::u16string& title,
       bool hidden,
       const VisitRow& visit,
-      const std::optional<VisitContextAnnotations>& context_annotations,
-      const std::optional<VisitContentAnnotations>& content_annotations)
+      const absl::optional<VisitContextAnnotations>& context_annotations,
+      const absl::optional<VisitContentAnnotations>& content_annotations)
       override;
 
   // Updates a visit coming from another device (typically to update its
@@ -658,8 +647,8 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
       const std::u16string& title,
       bool hidden,
       const VisitRow& visit,
-      const std::optional<VisitContextAnnotations>& context_annotations,
-      const std::optional<VisitContentAnnotations>& content_annotations)
+      const absl::optional<VisitContextAnnotations>& context_annotations,
+      const absl::optional<VisitContentAnnotations>& content_annotations)
       override;
 
   // Updates the `referring_visit` and `opener_visit` fields for the visit with
@@ -678,10 +667,7 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   // and foreign.
   void DeleteAllForeignVisitsAndResetIsKnownToSync() override;
 
-  // Removes `visits` from local state. `deletion_reason` specifies the reason
-  // for why the removal action was initiated.
-  bool RemoveVisits(const VisitVector& visits,
-                    DeletionInfo::Reason deletion_reason);
+  bool RemoveVisits(const VisitVector& visits);
 
   // Returns the `VisitSource` associated with each one of the passed visits.
   // If there is no entry in the map for a given visit, that means the visit
@@ -701,6 +687,11 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   // multiple visits can have the same timestamp), returns the last visit in the
   // redirect chain.
   bool GetLastVisitByTime(base::Time visit_time, VisitRow* visit_row) override;
+
+  // Returns the sync controller delegate for syncing typed urls. The returned
+  // delegate is owned by `this` object.
+  base::WeakPtr<syncer::ModelTypeControllerDelegate>
+  GetTypedURLSyncControllerDelegate();
 
   // Returns the sync controller delegate for syncing history. The returned
   // delegate is owned by `this` object.
@@ -722,7 +713,6 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
 
   // Calls ExpireHistoryBackend::ExpireHistoryBetween and commits the change.
   void ExpireHistoryBetween(const std::set<GURL>& restrict_urls,
-                            std::optional<std::string> restrict_app_id,
                             base::Time begin_time,
                             base::Time end_time,
                             bool user_initiated);
@@ -785,6 +775,8 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   ExpireHistoryBackend* expire_backend() { return &expirer_; }
 #endif
 
+  void SetTypedURLSyncBridgeForTest(std::unique_ptr<TypedURLSyncBridge> bridge);
+
   // Returns true if the passed visit time is already expired (used by the sync
   // code to avoid syncing visits that would immediately be expired).
   bool IsExpiredVisitTime(const base::Time& time) const override;
@@ -824,39 +816,24 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   // of the associated URL (whether added or not) is returned. Both values will
   // be 0 on failure.
   //
-  // If the caller wants to add this visit to the VisitedLinkDatabase, it needs
-  // to provide values for the `top_level_url` and `frame_url` parameters.
-  // `top_level_url` is a GURL representing the top-level frame that this
-  // navigation originated from. `frame_url` is GURL representing the immediate
-  // frame that this navigation originated from. For example, if a link to
-  // `c.com` is clicked in an iframe `b.com` that is embedded in `a.com`, the
-  // `top_level_url` is `a.com` and the `frame_url` is `b.com` (and the `url` is
-  // `c.com`).
-  //
   // This does not schedule database commits, it is intended to be used as a
   // subroutine for AddPage only. It also assumes the database is valid.
-  // Note that |app_is| is used for mobile only; |nullopt| on other platforms.
   std::pair<URLID, VisitID> AddPageVisit(
       const GURL& url,
       base::Time time,
       VisitID referring_visit,
-      const GURL& external_referrer_url,
       ui::PageTransition transition,
       bool hidden,
       VisitSource visit_source,
       bool should_increment_typed_count,
       VisitID opener_visit,
       bool consider_for_ntp_most_visited,
-      std::optional<int64_t> local_navigation_id = std::nullopt,
-      std::optional<std::u16string> title = std::nullopt,
-      std::optional<GURL> top_level_url = std::nullopt,
-      std::optional<GURL> frame_url = std::nullopt,
-      std::optional<std::string> app_id = std::nullopt,
-      std::optional<base::TimeDelta> visit_duration = std::nullopt,
-      std::optional<std::string> originator_cache_guid = std::nullopt,
-      std::optional<VisitID> originator_visit_id = std::nullopt,
-      std::optional<VisitID> originator_referring_visit = std::nullopt,
-      std::optional<VisitID> originator_opener_visit = std::nullopt,
+      absl::optional<std::u16string> title = absl::nullopt,
+      absl::optional<base::TimeDelta> visit_duration = absl::nullopt,
+      absl::optional<std::string> originator_cache_guid = absl::nullopt,
+      absl::optional<VisitID> originator_visit_id = absl::nullopt,
+      absl::optional<VisitID> originator_referring_visit = absl::nullopt,
+      absl::optional<VisitID> originator_opener_visit = absl::nullopt,
       bool is_known_to_sync = false);
 
   // Returns a redirect-or-referral chain in `redirects` for the VisitID
@@ -980,13 +957,11 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   void NotifyFaviconsChanged(const std::set<GURL>& page_urls,
                              const GURL& icon_url) override;
   void NotifyURLVisited(const URLRow& url_row,
-                        const VisitRow& visit_row,
-                        std::optional<int64_t> local_navigation_id) override;
+                        const VisitRow& visit_row) override;
   void NotifyURLsModified(const URLRows& changed_urls,
                           bool is_from_expiration) override;
-  void NotifyDeletions(DeletionInfo deletion_info) override;
-  void NotifyVisitUpdated(const VisitRow& visit,
-                          VisitUpdateReason reason) override;
+  void NotifyURLsDeleted(DeletionInfo deletion_info) override;
+  void NotifyVisitUpdated(const VisitRow& visit) override;
   void NotifyVisitDeleted(const VisitRow& visit) override;
 
   // Deleting all history ------------------------------------------------------
@@ -1051,6 +1026,9 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   bool scheduled_kill_db_ = false;  // Database is being killed due to error.
   std::unique_ptr<favicon::FaviconBackend> favicon_backend_;
 
+  // Manages expiration between the various databases.
+  ExpireHistoryBackend expirer_;
+
   // A commit has been scheduled to occur sometime in the future. We can check
   // !IsCancelled() to see if there is a commit scheduled in the future (note
   // that CancelableOnceClosure starts cancelled with the default constructor),
@@ -1086,9 +1064,6 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   // Used to determine if a URL is bookmarked; may be null.
   std::unique_ptr<HistoryBackendClient> backend_client_;
 
-  // Manages expiration between the various databases.
-  ExpireHistoryBackend expirer_;
-
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
   // Listens for the system being under memory pressure.
@@ -1101,6 +1076,11 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
 
   // List of observers
   base::ObserverList<HistoryBackendObserver>::Unchecked observers_;
+
+  // Used to manage syncing of the typed urls datatype. It will be null before
+  // HistoryBackend::Init() is called. Defined after `observers_` because
+  // it unregisters itself as observer during destruction.
+  std::unique_ptr<TypedURLSyncBridge> typed_url_sync_bridge_;
 
   // Used to manage syncing of the history datatype. It will be null before
   // HistoryBackend::Init() is called. Defined after `observers_` because

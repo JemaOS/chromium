@@ -13,26 +13,25 @@
 #include "components/autofill/core/browser/metrics/payments/card_unmask_authentication_metrics.h"
 #include "components/autofill/core/browser/payments/card_unmask_challenge_option.h"
 #include "components/autofill/core/browser/payments/full_card_request.h"
-#include "components/autofill/core/browser/payments/payments_autofill_client.h"
 
 namespace autofill {
 
 CreditCardCvcAuthenticator::CvcAuthenticationResponse::
-    CvcAuthenticationResponse() = default;
+    CvcAuthenticationResponse() {}
 CreditCardCvcAuthenticator::CvcAuthenticationResponse::
-    ~CvcAuthenticationResponse() = default;
+    ~CvcAuthenticationResponse() {}
 
 CreditCardCvcAuthenticator::CreditCardCvcAuthenticator(AutofillClient* client)
     : client_(client) {}
 
-CreditCardCvcAuthenticator::~CreditCardCvcAuthenticator() = default;
+CreditCardCvcAuthenticator::~CreditCardCvcAuthenticator() {}
 
 void CreditCardCvcAuthenticator::Authenticate(
     const CreditCard* card,
     base::WeakPtr<Requester> requester,
     PersonalDataManager* personal_data_manager,
-    std::optional<std::string> context_token,
-    std::optional<CardUnmaskChallengeOption> selected_challenge_option) {
+    absl::optional<std::string> vcn_context_token,
+    absl::optional<CardUnmaskChallengeOption> selected_challenge_option) {
   requester_ = requester;
   if (!card) {
     return OnFullCardRequestFailed(
@@ -40,18 +39,16 @@ void CreditCardCvcAuthenticator::Authenticate(
         payments::FullCardRequest::FailureType::GENERIC_FAILURE);
   }
   full_card_request_ = std::make_unique<payments::FullCardRequest>(
-      client_,
-      client_->GetPaymentsAutofillClient()->GetPaymentsNetworkInterface(),
-      personal_data_manager);
+      client_, client_->GetPaymentsClient(), personal_data_manager);
 
   CreditCard::RecordType card_record_type = card->record_type();
   autofill_metrics::LogCvcAuthAttempt(card_record_type);
-  if (card_record_type == CreditCard::RecordType::kVirtualCard) {
-    // `context_token` and `challenge_option` are required for
+  if (card_record_type == CreditCard::VIRTUAL_CARD) {
+    // `vcn_context_token` and `challenge_option` are required for
     // `FullCardRequest::GetFullVirtualCardViaCVC()`, so DCHECK that they are
     // present. The caller of Authenticate() should ensure to always set these
     // variables for the virtual card case.
-    DCHECK(context_token);
+    DCHECK(vcn_context_token);
     DCHECK(selected_challenge_option);
     DCHECK_EQ(selected_challenge_option->type,
               CardUnmaskChallengeOptionType::kCvc);
@@ -72,15 +69,13 @@ void CreditCardCvcAuthenticator::Authenticate(
     return full_card_request_->GetFullVirtualCardViaCVC(
         *card, AutofillClient::UnmaskCardReason::kAutofill,
         weak_ptr_factory_.GetWeakPtr(), weak_ptr_factory_.GetWeakPtr(),
-        last_committed_primary_main_frame_origin, *context_token,
-        *selected_challenge_option,
-        client_->GetLastCommittedPrimaryMainFrameOrigin());
+        last_committed_primary_main_frame_origin, *vcn_context_token,
+        *selected_challenge_option);
   }
 
   full_card_request_->GetFullCard(
       *card, AutofillClient::UnmaskCardReason::kAutofill,
-      weak_ptr_factory_.GetWeakPtr(), weak_ptr_factory_.GetWeakPtr(),
-      client_->GetLastCommittedPrimaryMainFrameOrigin(), context_token);
+      weak_ptr_factory_.GetWeakPtr(), weak_ptr_factory_.GetWeakPtr());
 }
 
 void CreditCardCvcAuthenticator::OnFullCardRequestSucceeded(
@@ -93,7 +88,7 @@ void CreditCardCvcAuthenticator::OnFullCardRequestSucceeded(
   if (!requester_)
     return;
 
-  payments::PaymentsNetworkInterface::UnmaskResponseDetails response =
+  payments::PaymentsClient::UnmaskResponseDetails response =
       full_card_request.unmask_response_details();
   requester_->OnCvcAuthenticationComplete(
       CvcAuthenticationResponse()
@@ -169,8 +164,7 @@ payments::FullCardRequest* CreditCardCvcAuthenticator::GetFullCardRequest() {
   // this function directly.
   if (!full_card_request_) {
     full_card_request_ = std::make_unique<payments::FullCardRequest>(
-        client_,
-        client_->GetPaymentsAutofillClient()->GetPaymentsNetworkInterface(),
+        client_, client_->GetPaymentsClient(),
         client_->GetPersonalDataManager());
   }
   return full_card_request_.get();

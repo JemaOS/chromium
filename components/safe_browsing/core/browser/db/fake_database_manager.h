@@ -30,19 +30,18 @@ class FakeSafeBrowsingDatabaseManager : public TestSafeBrowsingDatabaseManager {
   // These are implemented as needed to return stubbed values.
   bool CanCheckRequestDestination(
       network::mojom::RequestDestination request_destination) const override;
+  bool ChecksAreAlwaysAsync() const override;
   bool CheckBrowseUrl(
       const GURL& url,
       const SBThreatTypeSet& threat_types,
       Client* client,
-      CheckBrowseUrlType check_type) override;
+      MechanismExperimentHashDatabaseCache experiment_cache_selection) override;
   bool CheckDownloadUrl(const std::vector<GURL>& url_chain,
                         Client* client) override;
   bool CheckExtensionIDs(const std::set<std::string>& extension_ids,
                          Client* client) override;
   bool CheckUrlForSubresourceFilter(const GURL& url, Client* client) override;
-  safe_browsing::ThreatSource GetBrowseUrlThreatSource(
-      CheckBrowseUrlType check_type) const override;
-  safe_browsing::ThreatSource GetNonBrowseUrlThreatSource() const override;
+  safe_browsing::ThreatSource GetThreatSource() const override;
 
  private:
   ~FakeSafeBrowsingDatabaseManager() override;

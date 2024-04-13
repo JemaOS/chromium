@@ -76,10 +76,10 @@ class PowerBookmarkSyncBridge : public syncer::ModelTypeSyncBridge {
   // syncer::ModelTypeSyncBridge:
   std::unique_ptr<syncer::MetadataChangeList> CreateMetadataChangeList()
       override;
-  std::optional<syncer::ModelError> MergeFullSyncData(
+  absl::optional<syncer::ModelError> MergeFullSyncData(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_changes) override;
-  std::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_changes) override;
   std::string GetStorageKey(const syncer::EntityData& entity_data) override;
@@ -89,9 +89,6 @@ class PowerBookmarkSyncBridge : public syncer::ModelTypeSyncBridge {
 
   void SendPowerToSync(const Power& power);
   void NotifySyncForDeletion(const std::string& guid);
-
-  void ReportError(const syncer::ModelError& error);
-  bool initialized() { return initialized_; }
 
  private:
   // Create a change list to store metadata inside the power bookmark database.
@@ -106,14 +103,13 @@ class PowerBookmarkSyncBridge : public syncer::ModelTypeSyncBridge {
   // Helper function called by both `MergeFullSyncData` with
   // is_initial_merge=true and `ApplyIncrementalSyncChanges` with
   // is_initial_merge=false.
-  std::optional<syncer::ModelError> ApplyChanges(
+  absl::optional<syncer::ModelError> ApplyChanges(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList& entity_changes,
       bool is_initial_merge);
 
   const raw_ptr<PowerBookmarkSyncMetadataDatabase, DanglingUntriaged> meta_db_;
   const raw_ptr<Delegate> delegate_;
-  bool initialized_ = false;
 };
 
 }  // namespace power_bookmarks

@@ -101,7 +101,7 @@ class MediaStreamDevicesController {
       const std::vector<blink::mojom::PermissionStatus>& permissions_status);
 
   bool HasAvailableDevices(blink::PermissionType permission,
-                           const std::vector<std::string>& device_ids) const;
+                           const std::string& device_id) const;
 
   // The current state of the audio/video content settings which may be updated
   // through the lifetime of the request.

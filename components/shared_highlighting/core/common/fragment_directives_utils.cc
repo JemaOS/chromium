@@ -6,7 +6,6 @@
 
 #include <string.h>
 
-#include <optional>
 #include <sstream>
 
 #include "base/json/json_writer.h"
@@ -17,6 +16,7 @@
 #include "base/strings/string_util.h"
 #include "components/shared_highlighting/core/common/fragment_directives_constants.h"
 #include "components/shared_highlighting/core/common/text_fragment.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace shared_highlighting {
 
@@ -29,7 +29,7 @@ base::Value ParseTextFragments(const GURL& url) {
 
   base::Value::List parsed;
   for (const std::string& fragment : fragments) {
-    std::optional<TextFragment> opt_frag =
+    absl::optional<TextFragment> opt_frag =
         TextFragment::FromEscapedString(fragment);
     if (opt_frag.has_value()) {
       parsed.Append(opt_frag->ToValue());

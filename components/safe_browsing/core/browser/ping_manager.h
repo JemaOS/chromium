@@ -18,7 +18,6 @@
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/safe_browsing/core/browser/db/hit_report.h"
 #include "components/safe_browsing/core/browser/db/util.h"
-#include "components/safe_browsing/core/browser/safe_browsing_hats_delegate.h"
 #include "components/safe_browsing/core/browser/safe_browsing_token_fetcher.h"
 #include "components/safe_browsing/core/common/proto/csd.pb.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
@@ -54,25 +53,13 @@ class PingManager : public KeyedService {
     virtual void AddToHitReportsSent(std::unique_ptr<HitReport> hit_report) = 0;
   };
 
-  explicit PingManager(
-      const V4ProtocolConfig& config,
-      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      std::unique_ptr<SafeBrowsingTokenFetcher> token_fetcher,
-      base::RepeatingCallback<bool()> get_should_fetch_access_token,
-      WebUIDelegate* webui_delegate,
-      scoped_refptr<base::SequencedTaskRunner> ui_task_runner,
-      base::RepeatingCallback<ChromeUserPopulation()>
-          get_user_population_callback,
-      base::RepeatingCallback<ChromeUserPopulation::PageLoadToken(GURL)>
-          get_page_load_token_callback,
-      std::unique_ptr<SafeBrowsingHatsDelegate> hats_delegate);
   PingManager(const PingManager&) = delete;
   PingManager& operator=(const PingManager&) = delete;
 
   ~PingManager() override;
 
   // Create an instance of the safe browsing ping manager.
-  static std::unique_ptr<PingManager> Create(
+  static PingManager* Create(
       const V4ProtocolConfig& config,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       std::unique_ptr<SafeBrowsingTokenFetcher> token_fetcher,
@@ -82,8 +69,7 @@ class PingManager : public KeyedService {
       base::RepeatingCallback<ChromeUserPopulation()>
           get_user_population_callback,
       base::RepeatingCallback<ChromeUserPopulation::PageLoadToken(GURL)>
-          get_page_load_token_callback,
-      std::unique_ptr<SafeBrowsingHatsDelegate> hats_delegate);
+          get_page_load_token_callback);
 
   void OnURLLoaderComplete(network::SimpleURLLoader* source,
                            std::unique_ptr<std::string> response_body);
@@ -101,24 +87,40 @@ class PingManager : public KeyedService {
 
   // Sends a detailed threat report after performing validation, sanitizing
   // contained URLs, and adding extra details to the report. The returned object
-  // provides details on whether the report was successful.
+  // provides details on whether the report was successful. Only when
+  // |attach_default_data| is true will default information like the user
+  // population, page load token, and access token be populated on the report if
+  // applicable. That parameter is only needed for the temporary experiment
+  // SafeBrowsingLookupMechanismExperiment, which sends a CSBRR that we don't
+  // need any additional information for other than the experiment-specific
+  // validation information.
+  // TODO(crbug.com/1410253): Deprecate |attach_default_data| parameter.
   virtual ReportThreatDetailsResult ReportThreatDetails(
-      std::unique_ptr<ClientSafeBrowsingReportRequest> report);
-
-  // Launches a survey and attaches ThreatDetails to the survey response.
-  virtual void AttachThreatDetailsAndLaunchSurvey(
-      std::unique_ptr<ClientSafeBrowsingReportRequest> report);
+      std::unique_ptr<ClientSafeBrowsingReportRequest> report,
+      bool attach_default_data = true);
 
   // Only used for tests
   void SetURLLoaderFactoryForTesting(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory);
   void SetTokenFetcherForTesting(
       std::unique_ptr<SafeBrowsingTokenFetcher> token_fetcher);
-  void SetHatsDelegateForTesting(
-      std::unique_ptr<SafeBrowsingHatsDelegate> hats_delegate);
+
+  // Helper function to return a weak pointer.
+  base::WeakPtr<PingManager> GetWeakPtr();
 
  protected:
   friend class PingManagerTest;
+  explicit PingManager(
+      const V4ProtocolConfig& config,
+      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+      std::unique_ptr<SafeBrowsingTokenFetcher> token_fetcher,
+      base::RepeatingCallback<bool()> get_should_fetch_access_token,
+      WebUIDelegate* webui_delegate,
+      scoped_refptr<base::SequencedTaskRunner> ui_task_runner,
+      base::RepeatingCallback<ChromeUserPopulation()>
+          get_user_population_callback,
+      base::RepeatingCallback<ChromeUserPopulation::PageLoadToken(GURL)>
+          get_page_load_token_callback);
 
  private:
   FRIEND_TEST_ALL_PREFIXES(PingManagerTest, TestSafeBrowsingHitUrl);
@@ -179,9 +181,6 @@ class PingManager : public KeyedService {
   // Pulls the page load token.
   base::RepeatingCallback<ChromeUserPopulation::PageLoadToken(GURL)>
       get_page_load_token_callback_;
-
-  // Launches HaTS surveys.
-  std::unique_ptr<SafeBrowsingHatsDelegate> hats_delegate_;
 
   base::WeakPtrFactory<PingManager> weak_factory_{this};
 };

@@ -7,7 +7,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,6 +33,7 @@
 #include "content/public/browser/webauthn_security_utils.h"
 #include "content/public/common/content_features.h"
 #include "services/data_decoder/public/cpp/decode_image.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/payments/payment_request.mojom.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -168,7 +168,7 @@ struct SecurePaymentConfirmationAppFactory::Request
   scoped_refptr<payments::PaymentManifestWebDataService> web_data_service;
   mojom::SecurePaymentConfirmationRequestPtr mojo_request;
   std::unique_ptr<webauthn::InternalAuthenticator> authenticator;
-  std::optional<int> pending_icon_download_request_id;
+  absl::optional<int> pending_icon_download_request_id;
 };
 
 void SecurePaymentConfirmationAppFactory::

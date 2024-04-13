@@ -15,7 +15,6 @@
 #include "build/build_config.h"
 #include "components/policy/core/common/policy_map.h"
 #include "components/policy/core/common/policy_namespace.h"
-#include "components/policy/core/common/policy_types.h"
 #include "components/policy/policy_export.h"
 
 namespace policy {
@@ -128,15 +127,12 @@ class POLICY_EXPORT PolicyService {
   // Asks the PolicyService to reload policy from all available policy sources.
   // |callback| is invoked once every source has reloaded its policies, and
   // GetPolicies() is guaranteed to return the updated values at that point.
-  virtual void RefreshPolicies(base::OnceClosure callback,
-                               PolicyFetchReason reason) = 0;
+  virtual void RefreshPolicies(base::OnceClosure callback) = 0;
 
 #if BUILDFLAG(IS_ANDROID)
   // Get the PolicyService JNI bridge instance.
   virtual android::PolicyServiceAndroid* GetPolicyServiceAndroid() = 0;
 #endif
-  virtual void UseLocalTestPolicyProvider(
-      ConfigurationPolicyProvider* provider) = 0;
 };
 
 // A registrar that only observes changes to particular policies within the

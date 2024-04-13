@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <string>
-#include <string_view>
 
 #include "ash/public/cpp/desk_template.h"
 #include "base/json/json_reader.h"
@@ -25,16 +24,17 @@ namespace {
 base::Value PerformPolicyRoundtrip(const base::Value& expected,
                                    DeskSyncBridge* bridge,
                                    apps::AppRegistryCache* cache) {
-  auto policy_dt = desk_template_conversion::ParseDeskTemplateFromBaseValue(
-      expected, ash::DeskTemplateSource::kPolicy);
+  std::unique_ptr<ash::DeskTemplate> policy_dt =
+      desk_template_conversion::ParseDeskTemplateFromSource(
+          expected, ash::DeskTemplateSource::kPolicy);
 
-  EXPECT_TRUE(policy_dt.has_value());
+  EXPECT_TRUE(policy_dt != nullptr);
 
   sync_pb::WorkspaceDeskSpecifics proto_desk =
-      desk_template_conversion::ToSyncProto(policy_dt.value().get(), cache);
+      desk_template_conversion::ToSyncProto(policy_dt.get(), cache);
 
   // Convert back to original format.
-  return desk_template_conversion::SerializeDeskTemplateAsBaseValue(
+  return desk_template_conversion::SerializeDeskTemplateAsPolicy(
       desk_template_conversion::FromSyncProto(proto_desk).get(), cache);
 }
 
@@ -79,7 +79,7 @@ class DeskTemplateSemanticsTest : public testing::TestWithParam<std::string> {
 
 TEST_P(DeskTemplateSemanticsTest, PolicyTemplateSemanticallyEquivalentToProto) {
   auto expected_json = base::JSONReader::ReadAndReturnValueWithError(
-      std::string_view(GetParam()));
+      base::StringPiece(GetParam()));
 
   EXPECT_TRUE(expected_json.has_value());
   EXPECT_TRUE(expected_json->is_dict());

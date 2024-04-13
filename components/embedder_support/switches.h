@@ -14,7 +14,6 @@ namespace embedder_support {
 extern const char kDisableAutoReload[];
 extern const char kDisablePopupBlocking[];
 extern const char kEnableAutoReload[];
-extern const char kHeadless[];
 extern const char kOriginTrialDisabledFeatures[];
 extern const char kOriginTrialDisabledTokens[];
 extern const char kOriginTrialPublicKey[];

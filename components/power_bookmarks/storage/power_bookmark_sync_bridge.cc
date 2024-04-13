@@ -44,7 +44,6 @@ PowerBookmarkSyncBridge::~PowerBookmarkSyncBridge() = default;
 void PowerBookmarkSyncBridge::Init() {
   std::unique_ptr<syncer::MetadataBatch> batch = meta_db_->GetAllSyncMetadata();
   if (batch) {
-    initialized_ = true;
     change_processor()->ModelReadyToSync(std::move(batch));
   } else {
     change_processor()->ReportError({FROM_HERE, "Failed to load metadata"});
@@ -56,14 +55,14 @@ PowerBookmarkSyncBridge::CreateMetadataChangeList() {
   return std::make_unique<syncer::InMemoryMetadataChangeList>();
 }
 
-std::optional<syncer::ModelError> PowerBookmarkSyncBridge::MergeFullSyncData(
+absl::optional<syncer::ModelError> PowerBookmarkSyncBridge::MergeFullSyncData(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_changes) {
   return ApplyChanges(std::move(metadata_change_list), entity_changes,
                       /*is_initial_merge=*/true);
 }
 
-std::optional<syncer::ModelError>
+absl::optional<syncer::ModelError>
 PowerBookmarkSyncBridge::ApplyIncrementalSyncChanges(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_changes) {
@@ -122,7 +121,7 @@ PowerBookmarkSyncBridge::CreateMetadataChangeListInTransaction() {
                           change_processor()->GetWeakPtr()));
 }
 
-std::optional<syncer::ModelError> PowerBookmarkSyncBridge::ApplyChanges(
+absl::optional<syncer::ModelError> PowerBookmarkSyncBridge::ApplyChanges(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList& entity_changes,
     bool is_initial_merge) {
@@ -176,10 +175,6 @@ std::optional<syncer::ModelError> PowerBookmarkSyncBridge::ApplyChanges(
 
   delegate_->NotifyPowersChanged();
   return {};
-}
-
-void PowerBookmarkSyncBridge::ReportError(const syncer::ModelError& error) {
-  change_processor()->ReportError(error);
 }
 
 }  // namespace power_bookmarks

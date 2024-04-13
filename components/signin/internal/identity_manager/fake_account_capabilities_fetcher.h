@@ -16,7 +16,6 @@ class FakeAccountCapabilitiesFetcher : public AccountCapabilitiesFetcher {
  public:
   explicit FakeAccountCapabilitiesFetcher(
       const CoreAccountInfo& account_info,
-      AccountCapabilitiesFetcher::FetchPriority fetch_priority,
       OnCompleteCallback on_complete_callback,
       base::OnceClosure on_destroy_callback);
   ~FakeAccountCapabilitiesFetcher() override;
@@ -27,7 +26,7 @@ class FakeAccountCapabilitiesFetcher : public AccountCapabilitiesFetcher {
       const FakeAccountCapabilitiesFetcher&) = delete;
 
   void CompleteFetch(
-      const std::optional<AccountCapabilities>& account_capabilities);
+      const absl::optional<AccountCapabilities>& account_capabilities);
 
  protected:
   // AccountCapabilitiesFetcher:

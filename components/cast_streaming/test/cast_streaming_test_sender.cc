@@ -103,7 +103,7 @@ class CastStreamingTestSender::SenderObserver final
 CastStreamingTestSender::CastStreamingTestSender()
     : task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
       environment_(&openscreen::Clock::now,
-                   task_runner_,
+                   &task_runner_,
                    openscreen::IPEndpoint::kAnyV4()) {}
 
 CastStreamingTestSender::~CastStreamingTestSender() = default;
@@ -111,8 +111,8 @@ CastStreamingTestSender::~CastStreamingTestSender() = default;
 void CastStreamingTestSender::Start(
     std::unique_ptr<cast_api_bindings::MessagePort> message_port,
     net::IPAddress receiver_address,
-    std::optional<media::AudioDecoderConfig> audio_config,
-    std::optional<media::VideoDecoderConfig> video_config) {
+    absl::optional<media::AudioDecoderConfig> audio_config,
+    absl::optional<media::VideoDecoderConfig> video_config) {
   VLOG(1) << __func__;
   CHECK(!has_startup_completed_);
   CHECK(!sender_session_);

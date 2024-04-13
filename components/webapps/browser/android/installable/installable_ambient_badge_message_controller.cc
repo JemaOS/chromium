@@ -4,7 +4,6 @@
 
 #include "components/webapps/browser/android/installable/installable_ambient_badge_message_controller.h"
 
-#include "base/command_line.h"
 #include "base/containers/lru_cache.h"
 #include "base/functional/bind.h"
 #include "base/no_destructor.h"
@@ -15,15 +14,10 @@
 #include "components/webapps/browser/android/installable/installable_ambient_badge_client.h"
 #include "components/webapps/browser/android/webapps_icon_utils.h"
 #include "components/webapps/browser/features.h"
-#include "components/webapps/common/switches.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace webapps {
-
-namespace {
-constexpr int kThrottleDomainsCapacity = 100;
-}
 
 InstallableAmbientBadgeMessageController::
     InstallableAmbientBadgeMessageController(
@@ -46,9 +40,7 @@ void InstallableAmbientBadgeMessageController::EnqueueMessage(
     const bool is_primary_icon_maskable,
     const GURL& start_url) {
   DCHECK(!message_);
-  if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kBypassInstallThrottleForTesting) &&
-      !GetThrottler()->ShouldShow(
+  if (!GetThrottler()->ShouldShow(
           web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin())) {
     return;
   }
@@ -58,10 +50,10 @@ void InstallableAmbientBadgeMessageController::EnqueueMessage(
       messages::MessageIdentifier::INSTALLABLE_AMBIENT_BADGE,
       base::BindOnce(
           &InstallableAmbientBadgeMessageController::HandleInstallButtonClicked,
-          weak_factory_.GetWeakPtr()),
+          base::Unretained(this)),
       base::BindOnce(
           &InstallableAmbientBadgeMessageController::HandleMessageDismissed,
-          weak_factory_.GetWeakPtr()));
+          base::Unretained(this)));
 
   message_->SetTitle(l10n_util::GetStringFUTF16(
       IDS_AMBIENT_BADGE_INSTALL_ALTERNATIVE, app_name));
@@ -113,7 +105,8 @@ void InstallableAmbientBadgeMessageController::HandleMessageDismissed(
 // static
 messages::DomainSessionThrottler*
 InstallableAmbientBadgeMessageController::GetThrottler() {
-  static messages::DomainSessionThrottler instance(kThrottleDomainsCapacity);
+  static messages::DomainSessionThrottler instance(
+      features::kInstallableAmbientBadgeMessage_ThrottleDomainsCapacity.Get());
   return &instance;
 }
 

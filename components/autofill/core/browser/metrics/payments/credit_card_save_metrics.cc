@@ -7,7 +7,6 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/user_metrics.h"
-#include "base/strings/strcat.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 
 namespace autofill::autofill_metrics {
@@ -35,9 +34,8 @@ void LogCardUploadDecisionsUkm(ukm::UkmRecorder* ukm_recorder,
       .Record(ukm_recorder);
 }
 
-void LogCardUploadEnabledMetric(
-    CardUploadEnabled metric_value,
-    AutofillMetrics::PaymentsSigninState sync_state) {
+void LogCardUploadEnabledMetric(CardUploadEnabled metric_value,
+                                AutofillSyncSigninState sync_state) {
   const std::string parent_metric = std::string("Autofill.CardUploadEnabled");
   base::UmaHistogramEnumeration(parent_metric, metric_value);
 
@@ -66,20 +64,18 @@ void LogSaveCardCardholderNameWasEdited(bool edited) {
   UMA_HISTOGRAM_BOOLEAN("Autofill.SaveCardCardholderNameWasEdited", edited);
 }
 
-void LogSaveCardPromptOfferMetric(
-    SaveCardPromptOffer metric,
-    bool is_uploading,
-    bool is_reshow,
-    AutofillClient::SaveCreditCardOptions options,
-    security_state::SecurityLevel security_level,
-    AutofillMetrics::PaymentsSigninState sync_state) {
+void LogSaveCardPromptOfferMetric(SaveCardPromptOffer metric,
+                                  bool is_uploading,
+                                  bool is_reshow,
+                                  AutofillClient::SaveCreditCardOptions options,
+                                  security_state::SecurityLevel security_level,
+                                  AutofillSyncSigninState sync_state) {
   DCHECK_LE(metric, SaveCardPromptOffer::kMaxValue);
   std::string base_histogram_name = "Autofill.SaveCreditCardPromptOffer";
   std::string destination = is_uploading ? ".Upload" : ".Local";
   std::string show = is_reshow ? ".Reshows" : ".FirstShow";
   std::string metric_with_destination_and_show =
-      base::StrCat({base_histogram_name, destination, show});
-
+      base_histogram_name + destination + show;
   base::UmaHistogramEnumeration(metric_with_destination_and_show, metric);
 
   base::UmaHistogramEnumeration(
@@ -95,19 +91,17 @@ void LogSaveCardPromptOfferMetric(
     base::UmaHistogramEnumeration(
         metric_with_destination_and_show + ".RequestingExpirationDate", metric);
   }
+  if (options.has_non_focusable_field) {
+    base::UmaHistogramEnumeration(
+        metric_with_destination_and_show + ".FromNonFocusableForm", metric);
+  }
+  if (options.from_dynamic_change_form) {
+    base::UmaHistogramEnumeration(
+        metric_with_destination_and_show + ".FromDynamicChangeForm", metric);
+  }
   if (options.has_multiple_legal_lines) {
     base::UmaHistogramEnumeration(
         metric_with_destination_and_show + ".WithMultipleLegalLines", metric);
-  }
-  if (options.has_same_last_four_as_server_card_but_different_expiration_date) {
-    base::UmaHistogramEnumeration(metric_with_destination_and_show +
-                                      ".WithSameLastFourButDifferentExpiration",
-                                  metric);
-  }
-  if (options.card_save_type ==
-      AutofillClient::CardSaveType::kCardSaveWithCvc) {
-    base::UmaHistogramEnumeration(
-        metric_with_destination_and_show + ".SavingWithCvc", metric);
   }
 
   if (security_level != security_state::SecurityLevel::SECURITY_LEVEL_COUNT) {
@@ -124,13 +118,13 @@ void LogSaveCardPromptResultMetric(
     bool is_reshow,
     AutofillClient::SaveCreditCardOptions options,
     security_state::SecurityLevel security_level,
-    AutofillMetrics::PaymentsSigninState sync_state) {
+    AutofillSyncSigninState sync_state) {
   DCHECK_LE(metric, SaveCardPromptResult::kMaxValue);
   std::string base_histogram_name = "Autofill.SaveCreditCardPromptResult";
   std::string destination = is_uploading ? ".Upload" : ".Local";
   std::string show = is_reshow ? ".Reshows" : ".FirstShow";
   std::string metric_with_destination_and_show =
-      base::StrCat({base_histogram_name, destination, show});
+      base_histogram_name + destination + show;
 
   base::UmaHistogramEnumeration(metric_with_destination_and_show, metric);
 
@@ -147,19 +141,17 @@ void LogSaveCardPromptResultMetric(
     base::UmaHistogramEnumeration(
         metric_with_destination_and_show + ".RequestingExpirationDate", metric);
   }
+  if (options.has_non_focusable_field) {
+    base::UmaHistogramEnumeration(
+        metric_with_destination_and_show + ".FromNonFocusableForm", metric);
+  }
+  if (options.from_dynamic_change_form) {
+    base::UmaHistogramEnumeration(
+        metric_with_destination_and_show + ".FromDynamicChangeForm", metric);
+  }
   if (options.has_multiple_legal_lines) {
     base::UmaHistogramEnumeration(
         metric_with_destination_and_show + ".WithMultipleLegalLines", metric);
-  }
-  if (options.has_same_last_four_as_server_card_but_different_expiration_date) {
-    base::UmaHistogramEnumeration(metric_with_destination_and_show +
-                                      ".WithSameLastFourButDifferentExpiration",
-                                  metric);
-  }
-  if (options.card_save_type ==
-      AutofillClient::CardSaveType::kCardSaveWithCvc) {
-    base::UmaHistogramEnumeration(
-        metric_with_destination_and_show + ".SavingWithCvc", metric);
   }
 
   if (security_level != security_state::SecurityLevel::SECURITY_LEVEL_COUNT) {
@@ -170,85 +162,11 @@ void LogSaveCardPromptResultMetric(
   }
 }
 
-void LogSaveCvcPromptOfferMetric(SaveCardPromptOffer metric,
-                                 bool is_uploading,
-                                 bool is_reshow) {
-  DCHECK_LE(metric, SaveCardPromptOffer::kMaxValue);
-  std::string_view base_histogram_name = "Autofill.SaveCvcPromptOffer";
-  std::string_view destination = is_uploading ? ".Upload" : ".Local";
-  std::string_view show = is_reshow ? ".Reshows" : ".FirstShow";
-
-  base::UmaHistogramEnumeration(
-      base::StrCat({base_histogram_name, destination, show}), metric);
-}
-
-void LogSaveCvcPromptResultMetric(SaveCardPromptResult metric,
-                                  bool is_uploading,
-                                  bool is_reshow) {
-  DCHECK_LE(metric, SaveCardPromptResult::kMaxValue);
-  std::string_view base_histogram_name = "Autofill.SaveCvcPromptResult";
-  std::string_view destination = is_uploading ? ".Upload" : ".Local";
-  std::string_view show = is_reshow ? ".Reshows" : ".FirstShow";
-
-  base::UmaHistogramEnumeration(
-      base::StrCat({base_histogram_name, destination, show}), metric);
-}
-
-void LogCvcInfoBarMetric(AutofillMetrics::InfoBarMetric metric,
-                         bool is_uploading) {
-  CHECK_LT(metric, AutofillMetrics::InfoBarMetric::NUM_INFO_BAR_METRICS);
-  base::UmaHistogramEnumeration(
-      base::StrCat(
-          {"Autofill.CvcInfoBar", is_uploading ? ".Upload" : ".Local"}),
-      metric, AutofillMetrics::InfoBarMetric::NUM_INFO_BAR_METRICS);
-}
-
 void LogSaveCardRequestExpirationDateReasonMetric(
     SaveCardRequestExpirationDateReason reason) {
   DCHECK_LE(reason, SaveCardRequestExpirationDateReason::kMaxValue);
   UMA_HISTOGRAM_ENUMERATION("Autofill.SaveCardRequestExpirationDateReason",
                             reason);
-}
-
-void LogCreditCardUploadRanLocalSaveFallbackMetric(bool new_local_card_added) {
-  base::UmaHistogramBoolean("Autofill.CreditCardUpload.RanLocalSaveFallback",
-                            new_local_card_added);
-}
-
-void LogCreditCardUploadLoadingViewShownMetric(bool is_shown) {
-  base::UmaHistogramBoolean("Autofill.CreditCardUpload.LoadingShown", is_shown);
-}
-
-void LogCreditCardUploadConfirmationViewShownMetric(bool is_shown,
-                                                    bool is_card_uploaded) {
-  std::string_view base_histogram_name =
-      "Autofill.CreditCardUpload.ConfirmationShown.";
-  std::string_view is_card_uploaded_name =
-      is_card_uploaded ? "CardUploaded" : "CardNotUploaded";
-
-  base::UmaHistogramBoolean(
-      base::StrCat({base_histogram_name, is_card_uploaded_name}), is_shown);
-}
-
-void LogCreditCardUploadLoadingViewResultMetric(SaveCardPromptResult metric) {
-  CHECK_LE(metric, SaveCardPromptResult::kMaxValue);
-
-  base::UmaHistogramEnumeration("Autofill.CreditCardUpload.LoadingResult",
-                                metric);
-}
-
-void LogCreditCardUploadConfirmationViewResultMetric(
-    SaveCardPromptResult metric,
-    bool is_card_uploaded) {
-  CHECK_LE(metric, SaveCardPromptResult::kMaxValue);
-
-  std::string_view base_histogram_name =
-      "Autofill.CreditCardUpload.ConfirmationResult.";
-  std::string_view is_card_uploaded_name =
-      is_card_uploaded ? "CardUploaded" : "CardNotUploaded";
-
-  base::UmaHistogramEnumeration(
-      base::StrCat({base_histogram_name, is_card_uploaded_name}), metric);
 }
 
 // Clank-specific metrics.

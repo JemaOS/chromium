@@ -4,8 +4,6 @@
 
 package org.chromium.components.browser_ui.bottomsheet;
 
-import android.view.MotionEvent;
-
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
@@ -19,7 +17,9 @@ public class BottomSheetTestSupport {
     /** A handle to the actual implementation class of the {@link BottomSheetController}. */
     BottomSheetControllerImpl mController;
 
-    /** @param controller A handle to the public {@link BottomSheetController}. */
+    /**
+     * @param controller A handle to the public {@link BottomSheetController}.
+     */
     public BottomSheetTestSupport(BottomSheetController controller) {
         mController = (BottomSheetControllerImpl) controller;
     }
@@ -75,11 +75,6 @@ public class BottomSheetTestSupport {
         getBottomSheet().showContent(content);
     }
 
-    /** @see {@link BottomSheet#shouldGestureMoveSheet()} */
-    public boolean shouldGestureMoveSheet(MotionEvent initialEvent, MotionEvent currentEvent) {
-        return getBottomSheet().shouldGestureMoveSheet(initialEvent, currentEvent);
-    }
-
     /**
      * Force the sheet's state for testing.
      * @param state The state the sheet should be in.
@@ -114,7 +109,9 @@ public class BottomSheetTestSupport {
         return (BottomSheet) mController.getBottomSheetViewForTesting();
     }
 
-    /** @return Whether has any token to suppress the bottom sheet. */
+    /**
+     * @return Whether has any token to suppress the bottom sheet.
+     */
     public boolean hasSuppressionTokens() {
         return ThreadUtils.runOnUiThreadBlockingNoException(
                 () -> mController.hasSuppressionTokensForTesting());
@@ -128,22 +125,20 @@ public class BottomSheetTestSupport {
      */
     public static void waitForState(BottomSheetController controller, @SheetState int state) {
         CallbackHelper stateChangeHelper = new CallbackHelper();
-        final BottomSheetObserver observer =
-                new EmptyBottomSheetObserver() {
-                    @Override
-                    public void onSheetStateChanged(int newState, int reason) {
-                        if (state == newState) stateChangeHelper.notifyCalled();
-                    }
-                };
+        final BottomSheetObserver observer = new EmptyBottomSheetObserver() {
+            @Override
+            public void onSheetStateChanged(int newState, int reason) {
+                if (state == newState) stateChangeHelper.notifyCalled();
+            }
+        };
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    if (controller.getSheetState() == state) {
-                        stateChangeHelper.notifyCalled();
-                    } else {
-                        controller.addObserver(observer);
-                    }
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            if (controller.getSheetState() == state) {
+                stateChangeHelper.notifyCalled();
+            } else {
+                controller.addObserver(observer);
+            }
+        });
 
         try {
             stateChangeHelper.waitForFirst();
@@ -162,34 +157,30 @@ public class BottomSheetTestSupport {
     public static void waitForOpen(BottomSheetController controller) {
         CallbackHelper stateChangeHelper = new CallbackHelper();
 
-        final BottomSheetObserver observer =
-                new EmptyBottomSheetObserver() {
-                    @Override
-                    public void onSheetStateChanged(int newState, int reason) {
-                        if (newState == BottomSheetController.SheetState.HALF
-                                || newState == SheetState.FULL) {
-                            stateChangeHelper.notifyCalled();
-                        }
-                    }
-                };
+        final BottomSheetObserver observer = new EmptyBottomSheetObserver() {
+            @Override
+            public void onSheetStateChanged(int newState, int reason) {
+                if (newState == BottomSheetController.SheetState.HALF
+                        || newState == SheetState.FULL) {
+                    stateChangeHelper.notifyCalled();
+                }
+            }
+        };
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    if (controller.getSheetState() == BottomSheetController.SheetState.HALF
-                            || controller.getSheetState()
-                                    == BottomSheetController.SheetState.FULL) {
-                        stateChangeHelper.notifyCalled();
-                    } else {
-                        controller.addObserver(observer);
-                    }
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            if (controller.getSheetState() == BottomSheetController.SheetState.HALF
+                    || controller.getSheetState() == BottomSheetController.SheetState.FULL) {
+                stateChangeHelper.notifyCalled();
+            } else {
+                controller.addObserver(observer);
+            }
+        });
 
         try {
             stateChangeHelper.waitForFirst();
         } catch (TimeoutException ex) {
-            assert false
-                    : "Bottom sheet state never half or full. Current State: "
-                            + sheetStateToString(controller.getSheetState());
+            assert false : "Bottom sheet state never half or full. Current State: "
+                           + sheetStateToString(controller.getSheetState());
         }
 
         TestThreadUtils.runOnUiThreadBlocking(() -> controller.removeObserver(observer));
@@ -213,15 +204,14 @@ public class BottomSheetTestSupport {
         }
 
         CallbackHelper contentChangeHelper = new CallbackHelper();
-        BottomSheetObserver observer =
-                new EmptyBottomSheetObserver() {
-                    @Override
-                    public void onSheetContentChanged(BottomSheetContent newContent) {
-                        if ((contentShouldBeNull && newContent == null) || content == newContent) {
-                            contentChangeHelper.notifyCalled();
-                        }
-                    }
-                };
+        BottomSheetObserver observer = new EmptyBottomSheetObserver() {
+            @Override
+            public void onSheetContentChanged(BottomSheetContent newContent) {
+                if ((contentShouldBeNull && newContent == null) || content == newContent) {
+                    contentChangeHelper.notifyCalled();
+                }
+            }
+        };
         controller.addObserver(observer);
         try {
             contentChangeHelper.waitForFirst();

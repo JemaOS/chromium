@@ -8,11 +8,10 @@
 #include <map>
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "third_party/omnibox_proto/groups.pb.h"
 
-using PMatches = std::vector<raw_ptr<AutocompleteMatch, VectorExperimental>>;
+using PMatches = std::vector<AutocompleteMatch*>;
 
 // `Group` class and subclasses used to compose `Section`s.
 
@@ -45,11 +44,6 @@ class Group {
   // the count for the `GroupId` of the match. `CanAdd()` should be verified by
   // the caller.
   void Add(const AutocompleteMatch& match);
-  // Performs semantic grouping by Search vs URL.
-  // TODO(ender): investigate whether we should split `Group` into ZPS and
-  // non-ZPS specific subclasses. If this proves valuable, move the call below
-  // to the non-ZPS subclass.
-  void GroupMatchesBySearchVsUrl();
 
   size_t limit() const { return limit_; }
   void set_limit(size_t limit) { limit_ = limit; }

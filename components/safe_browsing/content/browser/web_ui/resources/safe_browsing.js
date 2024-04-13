@@ -5,7 +5,7 @@
 import 'chrome://resources/cr_elements/cr_tab_box/cr_tab_box.js';
 
 import {addWebUiListener, sendWithPromise} from 'chrome://resources/js/cr.js';
-import {$} from 'chrome://resources/js/util.js';
+import {$} from 'chrome://resources/js/util_ts.js';
 
 /**
  * Asks the C++ SafeBrowsingUIHandler to get the lists of Safe Browsing
@@ -132,40 +132,22 @@ function initialize() {
     addPGResponse(result);
   });
 
-  sendWithPromise('getURTLookupPings', []).then((urtLookupPings) => {
-    urtLookupPings.forEach(function(urtLookupPing) {
-      addURTLookupPing(urtLookupPing);
+  sendWithPromise('getRTLookupPings', []).then((rtLookupPings) => {
+    rtLookupPings.forEach(function(rtLookupPing) {
+      addRTLookupPing(rtLookupPing);
     });
   });
-  addWebUiListener('urt-lookup-pings-update', function(result) {
-    addURTLookupPing(result);
+  addWebUiListener('rt-lookup-pings-update', function(result) {
+    addRTLookupPing(result);
   });
 
-  sendWithPromise('getURTLookupResponses', []).then((urtLookupResponses) => {
-    urtLookupResponses.forEach(function(urtLookupResponse) {
-      addURTLookupResponse(urtLookupResponse);
+  sendWithPromise('getRTLookupResponses', []).then((rtLookupResponses) => {
+    rtLookupResponses.forEach(function(rtLookupResponse) {
+      addRTLookupResponse(rtLookupResponse);
     });
   });
-  addWebUiListener('urt-lookup-responses-update', function(result) {
-    addURTLookupResponse(result);
-  });
-
-  sendWithPromise('getHPRTLookupPings', []).then((hprtLookupPings) => {
-    hprtLookupPings.forEach(function(hprtLookupPing) {
-      addHPRTLookupPing(hprtLookupPing);
-    });
-  });
-  addWebUiListener('hprt-lookup-pings-update', function(result) {
-    addHPRTLookupPing(result);
-  });
-
-  sendWithPromise('getHPRTLookupResponses', []).then((hprtLookupResponses) => {
-    hprtLookupResponses.forEach(function(hprtLookupResponse) {
-      addHPRTLookupResponse(hprtLookupResponse);
-    });
-  });
-  addWebUiListener('hprt-lookup-responses-update', function(result) {
-    addHPRTLookupResponse(result);
+  addWebUiListener('rt-lookup-responses-update', function(result) {
+    addRTLookupResponse(result);
   });
 
   sendWithPromise('getLogMessages', []).then((logMessages) => {
@@ -202,16 +184,6 @@ function initialize() {
   // </if>
 
   $('get-referrer-chain-form').addEventListener('submit', addReferrerChain);
-
-  sendWithPromise('getTailoredVerdictOverride', [])
-      .then(displayTailoredVerdictOverride);
-  addWebUiListener(
-      'tailored-verdict-override-update', displayTailoredVerdictOverride);
-
-  $('tailored-verdict-override-form')
-      .addEventListener('submit', setTailoredVerdictOverride);
-  $('tailored-verdict-override-clear')
-      .addEventListener('click', clearTailoredVerdictOverride);
 
   // Allow tabs to be navigated to by fragment. The fragment with be of the
   // format "#tab-<tab id>"
@@ -390,20 +362,12 @@ function addPGResponse(result) {
   addResultToTable('pg-ping-list', result[0], result[1], 1);
 }
 
-function addURTLookupPing(result) {
-  addResultToTable('urt-lookup-ping-list', result[0], result[1], 0);
+function addRTLookupPing(result) {
+  addResultToTable('rt-lookup-ping-list', result[0], result[1], 0);
 }
 
-function addURTLookupResponse(result) {
-  addResultToTable('urt-lookup-ping-list', result[0], result[1], 1);
-}
-
-function addHPRTLookupPing(result) {
-  addResultToTable('hprt-lookup-ping-list', result[0], result[1], 0);
-}
-
-function addHPRTLookupResponse(result) {
-  addResultToTable('hprt-lookup-ping-list', result[0], result[1], 1);
+function addRTLookupResponse(result) {
+  addResultToTable('rt-lookup-ping-list', result[0], result[1], 1);
 }
 
 function addDeepScan(result) {
@@ -470,48 +434,6 @@ function addReferringAppInfo(info) {
   $('referring-app-info').textContent = info;
 }
 // </if>
-
-// Format the browser's response nicely.
-function displayTailoredVerdictOverride(response) {
-  let displayString = `Status: ${response.status}`;
-  if (response.override_value) {
-    displayString +=
-        `\nOverride value: ${JSON.stringify(response.override_value)}`;
-  }
-  $('tailored-verdict-override-content').innerHTML = trustedTypes.emptyHTML;
-  $('tailored-verdict-override-content').textContent = displayString;
-}
-
-function setTailoredVerdictOverride(e) {
-  // Don't navigate
-  e.preventDefault();
-
-  const inputs = $('tailored-verdict-override-form').elements;
-
-  // The structured data to send to the browser.
-  const inputValue = {
-    tailored_verdict_type: inputs['tailored_verdict_type'].value,
-    adjustments: [],
-  };
-  inputs['adjustments'].forEach((checkbox) => {
-    if (checkbox.checked) {
-      inputValue.adjustments.push(checkbox.value);
-    }
-  });
-
-  sendWithPromise('setTailoredVerdictOverride', inputValue)
-      .then(displayTailoredVerdictOverride);
-}
-
-function clearTailoredVerdictOverride(e) {
-  // Don't navigate
-  e.preventDefault();
-
-  $('tailored-verdict-override-form').reset();
-
-  sendWithPromise('clearTailoredVerdictOverride')
-      .then(displayTailoredVerdictOverride);
-}
 
 function showTab(tabId) {
   const tabs = document.querySelectorAll('div[slot=\'tab\']');

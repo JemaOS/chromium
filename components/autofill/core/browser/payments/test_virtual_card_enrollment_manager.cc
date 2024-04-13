@@ -10,10 +10,10 @@ namespace autofill {
 
 TestVirtualCardEnrollmentManager::TestVirtualCardEnrollmentManager(
     TestPersonalDataManager* personal_data_manager,
-    payments::TestPaymentsNetworkInterface* payments_network_interface,
+    payments::TestPaymentsClient* payments_client,
     TestAutofillClient* autofill_client = nullptr)
     : VirtualCardEnrollmentManager(personal_data_manager,
-                                   payments_network_interface,
+                                   payments_client,
                                    autofill_client) {}
 
 TestVirtualCardEnrollmentManager::~TestVirtualCardEnrollmentManager() = default;
@@ -40,11 +40,6 @@ void TestVirtualCardEnrollmentManager::Reset() {
 void TestVirtualCardEnrollmentManager::ShowVirtualCardEnrollBubble() {
   bubble_shown_ = true;
   VirtualCardEnrollmentManager::ShowVirtualCardEnrollBubble();
-}
-
-void TestVirtualCardEnrollmentManager::
-    OnVirtualCardEnrollmentBubbleCancelled() {
-  VirtualCardEnrollmentManager::OnVirtualCardEnrollmentBubbleCancelled();
 }
 
 }  // namespace autofill

@@ -4,7 +4,7 @@
 
 package org.chromium.net;
 
-import static com.google.common.truth.Truth.assertThat;
+import static junit.framework.Assert.assertEquals;
 
 import android.os.ConditionVariable;
 
@@ -37,7 +37,7 @@ class TestNetworkQualityThroughputListener extends NetworkQualityThroughputListe
                 mExecutorThread = Thread.currentThread();
             }
             // Verify that the listener is always notified on the same thread.
-            assertThat(Thread.currentThread()).isEqualTo(mExecutorThread);
+            assertEquals(mExecutorThread, Thread.currentThread());
         }
     }
 

@@ -21,6 +21,7 @@
 #include "components/omnibox/browser/autocomplete_input.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/omnibox.mojom-shared.h"
+#include "components/omnibox/browser/omnibox_controller.h"
 #include "components/omnibox/browser/omnibox_popup_selection.h"
 #include "components/omnibox/browser/omnibox_view.h"
 #include "components/omnibox/common/omnibox_focus_state.h"
@@ -30,8 +31,11 @@
 #include "ui/gfx/native_widget_types.h"
 #include "url/gurl.h"
 
-class OmniboxController;
+class AutocompleteResult;
+class OmniboxClient;
+class OmniboxEditModelDelegate;
 class OmniboxPopupView;
+
 namespace gfx {
 class Image;
 }
@@ -63,14 +67,31 @@ class OmniboxEditModel {
     const AutocompleteInput autocomplete_input;
   };
 
-  OmniboxEditModel(OmniboxController* controller, OmniboxView* view);
+  OmniboxEditModel(OmniboxView* view,
+                   OmniboxEditModelDelegate* edit_model_delegate,
+                   std::unique_ptr<OmniboxClient> client);
   virtual ~OmniboxEditModel();
   OmniboxEditModel(const OmniboxEditModel&) = delete;
   OmniboxEditModel& operator=(const OmniboxEditModel&) = delete;
 
+  // TODO(jdonnelly): Remove this accessor when the AutocompleteController has
+  //     completely moved to OmniboxController.
+  AutocompleteController* autocomplete_controller() const {
+    return omnibox_controller_->autocomplete_controller();
+  }
+
+  void set_autocomplete_controller(
+      std::unique_ptr<AutocompleteController> autocomplete_controller) {
+    omnibox_controller_->set_autocomplete_controller(
+        std::move(autocomplete_controller));
+  }
+
   void set_popup_view(OmniboxPopupView* popup_view);
-  OmniboxPopupView* get_popup_view() { return popup_view_; }
-  const OmniboxPopupView* get_popup_view() const { return popup_view_; }
+  OmniboxPopupView* get_popup_view();
+
+  OmniboxEditModelDelegate* delegate() const { return edit_model_delegate_; }
+
+  OmniboxClient* client() const { return client_.get(); }
 
   metrics::OmniboxEventProto::PageClassification GetPageClassification() const;
 
@@ -134,7 +155,7 @@ class OmniboxEditModel {
   // Returns the SuperGIcon for chrome builds. Otherwise return an empty
   // ImageModel. If `dark_mode` is enabled, return the monochrome version of the
   // icon.
-  ui::ImageModel GetSuperGIcon(int image_size, bool dark_mode) const;
+  ui::ImageModel GetSuperGIcon(int image_size, bool dark_mode);
 
   // Sets the state of user_input_in_progress_, and notifies the observer if
   // that state has changed.
@@ -177,6 +198,15 @@ class OmniboxEditModel {
   // selection, so make sure to set those before calling StartAutocomplete().
   void StartAutocomplete(bool has_selected_text,
                          bool prevent_inline_autocomplete);
+
+  // Starts an autocomplete prefetch request so that zero-prefix providers can
+  // optionally start a prefetch request to warm up the their underlying
+  // service(s) and/or optionally cache their otherwise async response.
+  // Virtual for testing.
+  virtual void StartPrefetch();
+
+  // Closes the popup and cancels any pending asynchronous queries.
+  void StopAutocomplete();
 
   // Determines whether the user can "paste and go", given the specified text.
   bool CanPasteAndGo(const std::u16string& text) const;
@@ -227,6 +257,10 @@ class OmniboxEditModel {
     return !is_keyword_hint_ && !keyword_.empty();
   }
 
+  // A stronger version of is_keyword_selected(), which depends on there
+  // being input after the keyword.
+  bool InExplicitExperimentalKeywordMode();
+
   // Accepts the current keyword hint as a keyword. It always returns true for
   // caller convenience. |entry_method| indicates how the user entered
   // keyword mode.
@@ -248,6 +282,13 @@ class OmniboxEditModel {
 
   // Clears additional text.
   void ClearAdditionalText();
+
+  // Returns the current autocomplete result.  This logic should in the future
+  // live in AutocompleteController but resides here for now.  This method is
+  // used by AutomationProvider::AutocompleteEditGetMatches.
+  const AutocompleteResult& result() const {
+    return omnibox_controller_->result();
+  }
 
   // Called when the view is gaining focus.  |control_down| is whether the
   // control key is down (at the time we're gaining focus).
@@ -295,17 +336,13 @@ class OmniboxEditModel {
   // Returns true if pasting is in progress.
   bool is_pasting() const { return paste_state_ == PASTING; }
 
-  // Called when the user presses arrow up, arrow down, page up, or page down.
-  void OnUpOrDownPressed(bool down, bool page);
+  // Called when the user presses up or down.  |count| is a repeat count,
+  // negative for moving up, positive for moving down. Virtual for testing.
+  virtual void OnUpOrDownKeyPressed(int count);
 
-  // Called when the user presses tab or shift+tab. The latter will traverse up
-  // the selections instead of down.
-  void OnTabPressed(bool shift);
-
-  // Called when the user presses the space key without modifiers.
-  // Returns true if the space is handled in a special way, for example
-  // entering keyword mode on a match somewhere down the list.
-  bool OnSpacePressed();
+  // If no query is in progress, starts working on an autocomplete query.
+  // Returns true if started; false otherwise.
+  bool MaybeStartQueryForPopup();
 
   // Called when any relevant data changes.  This rolls together several
   // separate pieces of data into one call so we can update all the UI
@@ -368,13 +405,16 @@ class OmniboxEditModel {
   // Also resets the popup to the initial state.
   void RevertTemporaryTextAndPopup();
 
+  // Returns whether to prevent elision of the display URL.
+  bool ShouldPreventElision() const;
+
   // Returns true if the destination URL of the match is bookmarked.
   bool IsStarredMatch(const AutocompleteMatch& match) const;
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   // Gets the icon for the given `match`.
   gfx::Image GetMatchIcon(const AutocompleteMatch& match,
-                          SkColor vector_icon_color) const;
+                          SkColor vector_icon_color);
 #endif
 
   // Returns true if the popup exists and is open. Virtual for testing.
@@ -396,6 +436,13 @@ class OmniboxEditModel {
   void SetPopupSelection(OmniboxPopupSelection new_selection,
                          bool reset_to_default = false,
                          bool force_update_ui = false);
+
+  // Changes the popup selection to the next available selection.
+  // Stepping the popup selection gives special consideration for
+  // keyword mode state.
+  OmniboxPopupSelection StepPopupSelection(
+      OmniboxPopupSelection::Direction direction,
+      OmniboxPopupSelection::Step step);
 
   // Returns true if popup selection is on the initial line, which is usually
   // the default match (except in the no-default-match case).
@@ -430,10 +477,6 @@ class OmniboxEditModel {
 
   // Stores the image in a local data member and schedules a repaint.
   void SetPopupRichSuggestionBitmap(int result_index, const SkBitmap& bitmap);
-
-  // Updates the popup view when the visibility of a group changes.
-  void SetPopupSuggestionGroupVisibility(size_t match_index,
-                                         bool suggestion_group_hidden);
 
   // Called to indicate a navigation may occur based on
   // |navigation_predictor| to the suggestion on |line|.
@@ -486,25 +529,30 @@ class OmniboxEditModel {
                        // with ctrl-l or copying the selected text with ctrl-c.
   };
 
-  AutocompleteController* autocomplete_controller() const;
-
-  // If no query is in progress, starts working on an autocomplete query.
-  // Returns true if started; false otherwise.
-  bool MaybeStartQueryForPopup();
-
-  // Changes the popup selection to the next available selection. Stepping the
-  // popup selection gives special consideration for keyword mode state.
-  void StepPopupSelection(OmniboxPopupSelection::Direction direction,
-                          OmniboxPopupSelection::Step step);
-
   // Asks the browser to load the popup's currently selected item, using the
   // supplied disposition.  This may close the popup.
   void AcceptInput(
       WindowOpenDisposition disposition,
       base::TimeTicks match_selection_timestamp = base::TimeTicks());
 
-  // Asks the browser to load |match| or execute one of its actions
-  // according to |selection|.
+  // If the match in result() specified by `match_index` has an
+  // action that takes over the match, this executes that action
+  // with given `disposition` and returns true. Returns false otherwise.
+  bool ExecuteTakeoverAction(size_t match_index,
+                             WindowOpenDisposition disposition,
+                             base::TimeTicks match_selection_timestamp);
+
+  // Executes the action associated with match at given `selection`
+  // within result(). `disposition` may be used by actions to open
+  // in another tab, a new window, etc.
+  void ExecuteAction(OmniboxPopupSelection selection,
+                     WindowOpenDisposition disposition,
+                     base::TimeTicks match_selection_timestamp);
+
+  // Asks the browser to load |match|. |index| is only used for logging, and
+  // can be kNoMatch if the popup was closed, or if none of the suggestions
+  // in the popup were used (in the unusual no-default-match case). In that
+  // case, an artificial result set with only |match| will be logged.
   //
   // OpenMatch() needs to know the original text that drove this action.  If
   // |pasted_text| is non-empty, this is a Paste-And-Go/Search action, and
@@ -521,12 +569,18 @@ class OmniboxEditModel {
   //     could clear that data, leaving us with a pointer-to-garbage.  So at
   //     some point someone needs to make a copy of the match anyway, to
   //     preserve it past the popup closure.
-  void OpenMatch(OmniboxPopupSelection selection,
-                 AutocompleteMatch match,
+  void OpenMatch(AutocompleteMatch match,
                  WindowOpenDisposition disposition,
                  const GURL& alternate_nav_url,
                  const std::u16string& pasted_text,
+                 size_t index,
                  base::TimeTicks match_selection_timestamp = base::TimeTicks());
+
+  // Returns true if a query to an autocomplete provider is currently
+  // in progress.  This logic should in the future live in
+  // AutocompleteController but resides here for now.  This method is used by
+  // AutomationProvider::AutocompleteEditIsQueryInProgress.
+  bool query_in_progress() const { return !autocomplete_controller()->done(); }
 
   // An internal method to set the user text. Notably, this differs from
   // SetUserText because it does not change the user-input-in-progress state.
@@ -584,19 +638,26 @@ class OmniboxEditModel {
 
   // This is an event handler that notifies the popup view of match icon
   // changes.
-  void OnFaviconFetched(const GURL& page_url, const gfx::Image& icon) const;
+  void OnFaviconFetched(const GURL& page_url, const gfx::Image& icon);
 
   // Returns view text if there is a view. Until the model is made the primary
   // data source, this should not be called when there's no view.
   std::u16string GetText() const;
 
-  // Owns this.
-  raw_ptr<OmniboxController> controller_;
+  // NOTE: |client_| must outlive |omnibox_controller_|, as the latter has a
+  // reference to the former.
+  std::unique_ptr<OmniboxClient> client_;
 
-  // Owns `OmniboxController` which owns this.
+  std::unique_ptr<OmniboxController> omnibox_controller_;
+
+  // This may be null if the model is instantiated by the Realbox. Ideally,
+  // the model should not depend so much on the view as a primary data source,
+  // and the view should accurately reflect model state as source of truth.
   raw_ptr<OmniboxView> view_;
 
-  OmniboxFocusState focus_state_ = OMNIBOX_FOCUS_NONE;
+  raw_ptr<OmniboxEditModelDelegate> edit_model_delegate_;
+
+  OmniboxFocusState focus_state_;
 
   // Used to keep track whether the input currently in progress originated by
   // focusing in the Omnibox, Fakebox or Search button. This will be INVALID if
@@ -635,6 +696,9 @@ class OmniboxEditModel {
   // Used to know what should be displayed. Updated when e.g. the popup
   // selection changes, the results change, on navigation, on tab switch etc; it
   // should always be up-to-date.
+  // TODO(manukh): When `kRedoCurrentMatch` is disabled, this is unused and
+  //   replaced by `OmniboxController::current_match_` which serves the same
+  //   purpose but is less often correctly set to a valid match.
   AutocompleteMatch current_match_;
 
   // We keep track of when the user last focused on the omnibox.
@@ -764,6 +828,11 @@ class OmniboxEditModel {
   // suggestion whose tab switch button was focused, so that we may compare
   // if equal.
   GURL old_focused_url_;
+
+  // Whether an existing `AutocompleteClient` should be used or a new one
+  // generated in some cases. This is related to a performance optimization and
+  // all new calls to an `AutocompleteClient` should use the existing client.
+  bool use_existing_autocomplete_client_;
 
   base::WeakPtrFactory<OmniboxEditModel> weak_factory_{this};
 };

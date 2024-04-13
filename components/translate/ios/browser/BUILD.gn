@@ -3,12 +3,17 @@
 # found in the LICENSE file.
 
 import("//build/config/features.gni")
-import("//ios/web/public/js_messaging/optimize_ts.gni")
+import("//ios/web/public/js_messaging/optimize_js.gni")
 
 source_set("browser") {
+  configs += [ "//build/config/compiler:enable_arc" ]
   sources = [
     "ios_translate_driver.h",
     "ios_translate_driver.mm",
+    "js_translate_web_frame_manager.h",
+    "js_translate_web_frame_manager.mm",
+    "js_translate_web_frame_manager_factory.h",
+    "js_translate_web_frame_manager_factory.mm",
     "language_detection_model_service.h",
     "language_detection_model_service.mm",
     "translate_controller.h",
@@ -39,9 +44,10 @@ source_set("browser") {
   ]
 }
 
-optimize_ts("injected_js") {
+optimize_js("injected_js") {
   visibility = [ ":browser" ]
-  sources = [ "resources/translate_ios.ts" ]
+  primary_script = "resources/translate_ios.js"
+  sources = [ "resources/translate_ios.js" ]
 
   deps = [
     "//ios/web/public/js_messaging:gcrweb",
@@ -50,9 +56,11 @@ optimize_ts("injected_js") {
 }
 
 source_set("unit_tests") {
+  configs += [ "//build/config/compiler:enable_arc" ]
   testonly = true
   sources = [
     "ios_translate_driver_unittest.mm",
+    "js_translate_web_frame_manager_unittest.mm",
     "translate_controller_unittest.mm",
   ]
 
@@ -73,4 +81,12 @@ source_set("unit_tests") {
     "//ui/base",
     "//url",
   ]
+
+  # TODO(crbug.com/1427365): Test currently fails on iOS blink.
+  if (is_ios && use_blink) {
+    sources -= [
+      "js_translate_web_frame_manager_unittest.mm",
+      "translate_controller_unittest.mm",
+    ]
+  }
 }

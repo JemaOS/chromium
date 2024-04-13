@@ -16,6 +16,7 @@
 #include "components/history/core/browser/history_types.h"
 #include "components/segmentation_platform/internal/database/ukm_types.h"
 #include "components/segmentation_platform/internal/signals/url_signal_handler.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace history {
@@ -27,8 +28,7 @@ namespace segmentation_platform {
 class HistoryDelegateImpl : public UrlSignalHandler::HistoryDelegate {
  public:
   HistoryDelegateImpl(history::HistoryService* history_service,
-                      UrlSignalHandler* url_signal_handler,
-                      const std::string& profile_id);
+                      UrlSignalHandler* url_signal_handler);
 
   ~HistoryDelegateImpl() override;
   HistoryDelegateImpl(const HistoryDelegateImpl&) = delete;
@@ -43,9 +43,6 @@ class HistoryDelegateImpl : public UrlSignalHandler::HistoryDelegate {
   bool FastCheckUrl(const GURL& url) override;
   void FindUrlInHistory(const GURL& url,
                         UrlSignalHandler::FindCallback callback) override;
-  const std::string& profile_id() override;
-
-  // Getters.
 
  private:
   void OnHistoryQueryResult(UrlId url_id,
@@ -57,9 +54,6 @@ class HistoryDelegateImpl : public UrlSignalHandler::HistoryDelegate {
   // The task tracker for the HistoryService callbacks, destroyed after
   // observer is unregistered.
   base::CancelableTaskTracker task_tracker_;
-
-  // ProfileId associated with the current profile.
-  const std::string profile_id_;
 
   base::ScopedObservation<UrlSignalHandler, UrlSignalHandler::HistoryDelegate>
       ukm_db_observation_{this};

@@ -6,7 +6,9 @@ package org.chromium.net.impl;
 
 import org.chromium.net.CallbackException;
 
-/** An implementation of {@link CallbackException}. */
+/**
+ * An implementation of {@link CallbackException}.
+ */
 public class CallbackExceptionImpl extends CallbackException {
     public CallbackExceptionImpl(String message, Throwable cause) {
         super(message, cause);

@@ -116,12 +116,7 @@ base::FilePath GenerateFilename(const std::u16string& title,
   // back to a URL, and if it matches the original page URL, we know the page
   // had no title (or had a title equal to its URL, which is fine to treat
   // similarly).
-  if (title == url_formatter::FormatUrl(
-                   url,
-                   url_formatter::kFormatUrlOmitDefaults |
-                       url_formatter::kFormatUrlOmitTrivialSubdomains |
-                       url_formatter::kFormatUrlOmitHTTPS,
-                   base::UnescapeRule::SPACES, nullptr, nullptr, nullptr)) {
+  if (title == url_formatter::FormatUrl(url)) {
     std::string url_path;
     if (!url.SchemeIs(url::kDataScheme)) {
       name_with_proper_ext = net::GenerateFileName(

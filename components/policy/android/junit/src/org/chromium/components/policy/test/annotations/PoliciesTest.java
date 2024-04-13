@@ -20,7 +20,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** Unit tests for the {@link Policies} annotations */
+/**
+ * Unit tests for the {@link Policies} annotations
+ */
 @RunWith(BlockJUnit4ClassRunner.class)
 public class PoliciesTest {
     @Test
@@ -56,8 +58,7 @@ public class PoliciesTest {
 
         // Annotations can be removed
         method = SomeClass.class.getDeclaredMethod("someMethodThatTilRecentlyHadNi");
-        assertThat(
-                Policies.getPolicies(method).keySet(),
+        assertThat(Policies.getPolicies(method).keySet(),
                 is(makeSet("Ekke Ekke Ekke Ekke Ptangya Zoooooooom Boing Ni")));
     }
 

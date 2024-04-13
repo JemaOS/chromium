@@ -5,9 +5,8 @@
 #ifndef COMPONENTS_SERVICES_FONT_FONTCONFIG_MATCHING_H_
 #define COMPONENTS_SERVICES_FONT_FONTCONFIG_MATCHING_H_
 
-#include <optional>
-
 #include "base/files/file_path.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace font_service {
 // Searches FontConfig for a system font uniquely identified by full font name
@@ -20,11 +19,11 @@ class FontConfigLocalMatching {
     unsigned ttc_index;
   };
 
-  static std::optional<FontConfigMatchResult>
+  static absl::optional<FontConfigMatchResult>
   FindFontByPostscriptNameOrFullFontName(const std::string& font_name);
 
  private:
-  static std::optional<FontConfigMatchResult> FindFontBySpecifiedName(
+  static absl::optional<FontConfigMatchResult> FindFontBySpecifiedName(
       const char* fontconfig_parameter_name,
       const std::string& font_name);
 };

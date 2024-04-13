@@ -111,8 +111,8 @@ TEST_F(WinPlatformDelegateTest, GetSigningCertificatesPublicKeys_Signed) {
   EXPECT_TRUE(public_keys->subject_name);
   EXPECT_EQ(public_keys->subject_name.value(), "Joe's-Software-Emporium");
 
-  const std::string base64_encoded_public_key =
-      base::Base64Encode(public_keys.value().hashes[0]);
+  std::string base64_encoded_public_key;
+  base::Base64Encode(public_keys.value().hashes[0], &base64_encoded_public_key);
   EXPECT_EQ(base64_encoded_public_key, kExpectedSignedBase64PublicKey);
 }
 
@@ -131,11 +131,11 @@ TEST_F(WinPlatformDelegateTest, GetSigningCertificatesPublicKeys_MultiSigned) {
   EXPECT_TRUE(public_keys->subject_name);
   EXPECT_EQ(public_keys->subject_name.value(), "SebL's-Software-Emporium");
 
-  std::string base64_encoded_public_key =
-      base::Base64Encode(public_keys.value().hashes[0]);
+  std::string base64_encoded_public_key;
+  base::Base64Encode(public_keys.value().hashes[0], &base64_encoded_public_key);
   EXPECT_EQ(base64_encoded_public_key,
             kExpectedMultiSignedPrimaryBase64PublicKey);
-  base64_encoded_public_key = base::Base64Encode(public_keys.value().hashes[1]);
+  base::Base64Encode(public_keys.value().hashes[1], &base64_encoded_public_key);
   EXPECT_EQ(base64_encoded_public_key,
             kExpectedMultiSignedSecondaryBase64PublicKey);
 }

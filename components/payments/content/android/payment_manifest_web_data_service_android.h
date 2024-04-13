@@ -81,11 +81,10 @@ class PaymentManifestWebDataServiceAndroid : public WebDataServiceConsumer {
  private:
   void OnWebAppManifestRequestDone(JNIEnv* env,
                                    WebDataServiceBase::Handle h,
-                                   std::unique_ptr<WDTypedResult> result);
-  void OnPaymentMethodManifestRequestDone(
-      JNIEnv* env,
-      WebDataServiceBase::Handle h,
-      std::unique_ptr<WDTypedResult> result);
+                                   WDTypedResult* result);
+  void OnPaymentMethodManifestRequestDone(JNIEnv* env,
+                                          WebDataServiceBase::Handle h,
+                                          WDTypedResult* result);
   scoped_refptr<PaymentManifestWebDataService>
   GetPaymentManifestWebDataService();
 

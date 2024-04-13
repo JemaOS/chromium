@@ -11,6 +11,7 @@
 #include "base/time/time.h"
 #include "components/signin/public/identity_manager/access_token_info.h"
 #include "components/trusted_vault/trusted_vault_access_token_fetcher.h"
+#include "components/trusted_vault/trusted_vault_histograms.h"
 #include "components/trusted_vault/trusted_vault_server_constants.h"
 #include "google_apis/credentials_mode.h"
 #include "google_apis/gaia/core_account_id.h"
@@ -60,29 +61,29 @@ net::NetworkTrafficAnnotationTag CreateTrafficAnnotationTag() {
   return net::DefineNetworkTrafficAnnotation("trusted_vault_request",
                                              R"(
       semantics {
-        sender: "Trusted Vault Service"
+        sender: "Chrome Sync"
         description:
           "Request to vault service in order to retrieve, change or support "
-          "future retrieval or change of encryption keys for Chrome or "
-          "Chrome OS features (such as Chrome Sync)."
+          "future retrieval or change of Sync encryption keys."
         trigger:
           "Periodically/upon certain non-user controlled events after user "
           "signs in Chrome profile."
         data:
-          "An OAuth2 access token, metadata associated with encryption keys: "
-          "encrypted encryption keys, public counterpart of encryption keys."
+          "An OAuth2 access token, sync metadata associated with encryption "
+          "keys: encrypted encryption keys, public counterpart of encryption "
+          "keys."
         destination: GOOGLE_OWNED_SERVICE
       }
       policy {
         cookies_allowed: NO
         setting:
-          "This feature cannot be disabled in settings, but if user signs "
-          "out of Chrome, this request would not be made."
+          "Users can disable Chrome Sync by going into the profile settings "
+          "and choosing to sign out."
         chrome_policy {
-          SigninAllowed {
-            policy_options {mode: MANDATORY}
-            SigninAllowed: false
-          }
+            SyncDisabled {
+               policy_options {mode: MANDATORY}
+               SyncDisabled: false
+            }
         }
       })");
 }
@@ -93,8 +94,6 @@ std::string GetHttpMethodString(TrustedVaultRequest::HttpMethod http_method) {
       return "GET";
     case TrustedVaultRequest::HttpMethod::kPost:
       return "POST";
-    case TrustedVaultRequest::HttpMethod::kPatch:
-      return "PATCH";
   }
   NOTREACHED();
   return std::string();
@@ -121,23 +120,22 @@ TrustedVaultRequest::TrustedVaultRequest(
     const CoreAccountId& account_id,
     HttpMethod http_method,
     const GURL& request_url,
-    const std::optional<std::string>& serialized_request_proto,
+    const absl::optional<std::string>& serialized_request_proto,
     base::TimeDelta max_retry_duration,
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
     std::unique_ptr<TrustedVaultAccessTokenFetcher> access_token_fetcher,
-    RecordFetchStatusCallback record_fetch_status_callback)
+    TrustedVaultURLFetchReasonForUMA reason_for_uma)
     : account_id_(account_id),
       http_method_(http_method),
       request_url_(request_url),
       serialized_request_proto_(serialized_request_proto),
       url_loader_factory_(std::move(url_loader_factory)),
       access_token_fetcher_(std::move(access_token_fetcher)),
-      record_fetch_status_callback_(record_fetch_status_callback),
+      reason_for_uma_(reason_for_uma),
       max_retry_time_(base::TimeTicks::Now() + max_retry_duration),
       backoff_entry_(&kRetryPolicy) {
   DCHECK(url_loader_factory_);
   DCHECK(http_method == HttpMethod::kPost ||
-         http_method == HttpMethod::kPatch ||
          !serialized_request_proto.has_value());
   DCHECK(access_token_fetcher_);
 }
@@ -191,10 +189,9 @@ void TrustedVaultRequest::OnURLLoadComplete(
     http_response_code = url_loader_->ResponseInfo()->headers->response_code();
   }
 
-  if (record_fetch_status_callback_) {
-    record_fetch_status_callback_.Run(http_response_code,
-                                      url_loader_->NetError());
-  }
+  trusted_vault::RecordTrustedVaultURLFetchResponse(
+      /*http_response_code=*/http_response_code,
+      /*net_error=*/url_loader_->NetError(), reason_for_uma_);
 
   std::string response_content = response_body ? *response_body : std::string();
   if (http_response_code == 0) {

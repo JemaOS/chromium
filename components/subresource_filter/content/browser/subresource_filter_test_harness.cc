@@ -59,8 +59,7 @@ void SubresourceFilterTestHarness::SetUp() {
 
   // Set up the ruleset service.
   ASSERT_TRUE(ruleset_service_dir_.CreateUniqueTempDir());
-  IndexedRulesetVersion::RegisterPrefs(pref_service_.registry(),
-                                       kSafeBrowsingFilterTag);
+  IndexedRulesetVersion::RegisterPrefs(pref_service_.registry());
   // TODO(csharrison): having separated blocking and background task runners
   // for |ContentRulesetService| and |RulesetService| would be a good idea, but
   // external unit tests code implicitly uses knowledge that blocking and
@@ -165,7 +164,7 @@ SubresourceFilterTestHarness::CreateAndNavigateDisallowedSubframe(
 void SubresourceFilterTestHarness::ConfigureAsSubresourceFilterOnlyURL(
     const GURL& url) {
   fake_safe_browsing_database()->AddBlocklistedUrl(
-      url, safe_browsing::SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER);
+      url, safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER);
 }
 
 void SubresourceFilterTestHarness::RemoveURLFromBlocklist(const GURL& url) {

@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <optional>
 #include <vector>
 
 #include "base/memory/raw_ref.h"
@@ -17,6 +16,7 @@
 #include "components/zucchini/buffer_view.h"
 #include "components/zucchini/image_utils.h"
 #include "components/zucchini/type_elf.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace zucchini {
 
@@ -69,7 +69,7 @@ class RelocReaderElf : public ReferenceReader {
   rva_t GetRelocationTarget(elf::Elf64_Rel rel) const;
 
   // ReferenceReader:
-  std::optional<Reference> GetNext() override;
+  absl::optional<Reference> GetNext() override;
 
  private:
   const ConstBufferView image_;

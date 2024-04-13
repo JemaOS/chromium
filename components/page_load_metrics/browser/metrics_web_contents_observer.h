@@ -12,7 +12,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/read_only_shared_memory_region.h"
-#include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/time/time.h"
 #include "components/page_load_metrics/browser/page_load_metrics_observer.h"
@@ -48,6 +47,7 @@ class MetricsWebContentsObserver
     : public content::WebContentsObserver,
       public content::WebContentsUserData<MetricsWebContentsObserver>,
       public content::RenderWidgetHost::InputEventObserver,
+      public base::SupportsWeakPtr<MetricsWebContentsObserver>,
       public mojom::PageLoadMetrics {
  public:
   // Record a set of WebFeatures directly from the browser process. This
@@ -113,7 +113,8 @@ class MetricsWebContentsObserver
                          const content::CookieAccessDetails& details) override;
   void OnCookiesAccessed(content::RenderFrameHost* rfh,
                          const content::CookieAccessDetails& details) override;
-  void DidActivatePreviewedPage(base::TimeTicks activaation_time) override;
+  void DidActivatePortal(content::WebContents* predecessor_web_contents,
+                         base::TimeTicks activation_time) override;
 
   void OnStorageAccessed(content::RenderFrameHost* rfh,
                          const GURL& url,
@@ -150,9 +151,9 @@ class MetricsWebContentsObserver
       mojom::FrameRenderDataUpdatePtr render_data,
       mojom::CpuTimingPtr cpu_timing,
       mojom::InputTimingPtr input_timing_delta,
-      const std::optional<blink::SubresourceLoadMetrics>&
+      const absl::optional<blink::SubresourceLoadMetrics>&
           subresource_load_metrics,
-      mojom::SoftNavigationMetricsPtr);
+      uint32_t soft_navigation_count);
 
   // Informs the observers of the currently committed primary page load that
   // it's likely that prefetch will occur in this WebContents. This should
@@ -166,13 +167,6 @@ class MetricsWebContentsObserver
 
   // Called when a `SharedStorageWorkletHost` is created for `rfh`.
   void OnSharedStorageWorkletHostCreated(content::RenderFrameHost* rfh);
-
-  // Returns the time this MetricsWebContentsObserver was created.
-  base::TimeTicks GetCreated();
-
-  base::WeakPtr<MetricsWebContentsObserver> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
 
  protected:
   // Protected rather than private so that derived test classes can call
@@ -213,17 +207,16 @@ class MetricsWebContentsObserver
       content::NavigationHandle* navigation_handle);
 
   // page_load_metrics::mojom::PageLoadMetrics implementation.
-  void UpdateTiming(
-      mojom::PageLoadTimingPtr timing,
-      mojom::FrameMetadataPtr metadata,
-      const std::vector<blink::UseCounterFeature>& new_features,
-      std::vector<mojom::ResourceDataUpdatePtr> resources,
-      mojom::FrameRenderDataUpdatePtr render_data,
-      mojom::CpuTimingPtr cpu_timing,
-      mojom::InputTimingPtr input_timing,
-      const std::optional<blink::SubresourceLoadMetrics>&
-          subresource_load_metrics,
-      mojom::SoftNavigationMetricsPtr soft_navigation_metrics) override;
+  void UpdateTiming(mojom::PageLoadTimingPtr timing,
+                    mojom::FrameMetadataPtr metadata,
+                    const std::vector<blink::UseCounterFeature>& new_features,
+                    std::vector<mojom::ResourceDataUpdatePtr> resources,
+                    mojom::FrameRenderDataUpdatePtr render_data,
+                    mojom::CpuTimingPtr cpu_timing,
+                    mojom::InputTimingPtr input_timing,
+                    const absl::optional<blink::SubresourceLoadMetrics>&
+                        subresource_load_metrics,
+                    uint32_t soft_navigation_count) override;
 
   void SetUpSharedMemoryForSmoothness(
       base::ReadOnlySharedMemoryRegion shared_memory) override;
@@ -304,7 +297,7 @@ class MetricsWebContentsObserver
   bool MaybeActivatePageLoadTracker(
       content::NavigationHandle* navigation_handle);
 
-  // Notifies `tracker` about cookie read or write.
+  // Notify `tracker` about cookie read or write.
   void OnCookiesAccessedImpl(PageLoadTracker& tracker,
                              const content::CookieAccessDetails& details);
 
@@ -364,10 +357,6 @@ class MetricsWebContentsObserver
       page_load_metrics_receivers_;
 
   bool web_contents_will_soon_be_destroyed_ = false;
-
-  base::TimeTicks created_;
-
-  base::WeakPtrFactory<MetricsWebContentsObserver> weak_ptr_factory_{this};
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

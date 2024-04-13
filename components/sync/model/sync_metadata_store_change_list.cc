@@ -68,8 +68,8 @@ void SyncMetadataStoreChangeList::ClearMetadata(
   }
 }
 
-std::optional<ModelError> SyncMetadataStoreChangeList::TakeError() {
-  std::optional<ModelError> temp = error_;
+absl::optional<ModelError> SyncMetadataStoreChangeList::TakeError() {
+  absl::optional<ModelError> temp = error_;
   error_.reset();
   return temp;
 }

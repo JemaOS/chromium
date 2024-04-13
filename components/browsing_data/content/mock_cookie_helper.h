@@ -33,8 +33,8 @@ class MockCookieHelper : public CookieHelper {
   // Adds some cookie samples.
   void AddCookieSamples(const GURL& url,
                         const std::string& cookie_line,
-                        std::optional<net::CookiePartitionKey>
-                            cookie_partition_key = std::nullopt);
+                        absl::optional<net::CookiePartitionKey>
+                            cookie_partition_key = absl::nullopt);
 
   // Notifies the callback.
   void Notify();

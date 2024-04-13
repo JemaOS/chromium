@@ -9,7 +9,7 @@
 
 #include "base/functional/callback.h"
 #include "components/autofill/core/browser/autofill_client.h"
-#include "components/autofill/core/browser/payments/payments_network_interface.h"
+#include "components/autofill/core/browser/payments/payments_client.h"
 #include "components/autofill/core/browser/payments/payments_requests/payments_request.h"
 
 namespace base {
@@ -22,8 +22,7 @@ class GetUnmaskDetailsRequest : public PaymentsRequest {
  public:
   GetUnmaskDetailsRequest(
       base::OnceCallback<void(AutofillClient::PaymentsRpcResult,
-                              PaymentsNetworkInterface::UnmaskDetails&)>
-          callback,
+                              PaymentsClient::UnmaskDetails&)> callback,
       const std::string& app_locale,
       const bool full_sync_enabled);
   GetUnmaskDetailsRequest(const GetUnmaskDetailsRequest&) = delete;
@@ -40,14 +39,14 @@ class GetUnmaskDetailsRequest : public PaymentsRequest {
 
  private:
   base::OnceCallback<void(AutofillClient::PaymentsRpcResult,
-                          PaymentsNetworkInterface::UnmaskDetails&)>
+                          PaymentsClient::UnmaskDetails&)>
       callback_;
   std::string app_locale_;
   const bool full_sync_enabled_;
 
   // Suggested authentication method and other information to facilitate card
   // unmasking.
-  payments::PaymentsNetworkInterface::UnmaskDetails unmask_details_;
+  payments::PaymentsClient::UnmaskDetails unmask_details_;
 };
 
 }  // namespace autofill::payments

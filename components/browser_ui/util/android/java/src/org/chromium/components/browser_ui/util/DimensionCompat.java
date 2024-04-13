@@ -17,7 +17,9 @@ import androidx.annotation.RequiresApi;
 
 import org.chromium.base.ApiCompatibilityUtils;
 
-/** Collection of methods computing various height dimensions that differ by OS build version. */
+/**
+ * Collection of methods computing various height dimensions that differ by OS build version.
+ */
 public abstract class DimensionCompat {
     protected final Activity mActivity;
     protected final Runnable mPositionUpdater;
@@ -70,8 +72,7 @@ public abstract class DimensionCompat {
         @Override
         @Px
         public int getStatusbarHeight() {
-            return mActivity
-                    .getWindowManager()
+            return mActivity.getWindowManager()
                     .getCurrentWindowMetrics()
                     .getWindowInsets()
                     .getInsets(WindowInsets.Type.statusBars())
@@ -81,8 +82,7 @@ public abstract class DimensionCompat {
         @Override
         @Px
         public int getNavbarHeight() {
-            return mActivity
-                    .getWindowManager()
+            return mActivity.getWindowManager()
                     .getCurrentWindowMetrics()
                     .getWindowInsets()
                     .getInsets(WindowInsets.Type.navigationBars())
@@ -111,23 +111,14 @@ public abstract class DimensionCompat {
             // attempted later again by |onPostInflationStartUp|.
             if (contentFrame == null) return;
 
-            contentFrame.addOnLayoutChangeListener(
-                    new View.OnLayoutChangeListener() {
-                        @Override
-                        public void onLayoutChange(
-                                View v,
-                                int left,
-                                int top,
-                                int right,
-                                int bottom,
-                                int oldLeft,
-                                int oldTop,
-                                int oldRight,
-                                int oldBottom) {
-                            contentFrame.removeOnLayoutChangeListener(this);
-                            mPositionUpdater.run();
-                        }
-                    });
+            contentFrame.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override
+                public void onLayoutChange(View v, int left, int top, int right, int bottom,
+                        int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                    contentFrame.removeOnLayoutChangeListener(this);
+                    mPositionUpdater.run();
+                }
+            });
         }
 
         // TODO(jinsukkim): Explore the way to use androidx.window.WindowManager or
@@ -179,8 +170,7 @@ public abstract class DimensionCompat {
             // On some devices, only one returns the right height, the other returning a height
             // bigger that the actual value. Heuristically we choose the smaller of the two.
             return getWindowHeight()
-                    - Math.max(
-                            getAppUsableScreenHeightFromContent(),
+                    - Math.max(getAppUsableScreenHeightFromContent(),
                             getAppUsableScreenHeightFromDisplay());
         }
 

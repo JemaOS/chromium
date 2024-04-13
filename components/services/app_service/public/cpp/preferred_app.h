@@ -7,14 +7,13 @@
 
 #include <vector>
 
-#include "base/component_export.h"
 #include "base/containers/flat_map.h"
 #include "components/services/app_service/public/cpp/intent_filter.h"
 
 namespace apps {
 
 // The preferred app represents by `app_id` for `intent_filter`.
-struct COMPONENT_EXPORT(APP_TYPES) PreferredApp {
+struct PreferredApp {
   PreferredApp(IntentFilterPtr intent_filter, const std::string& app_id);
   PreferredApp(const PreferredApp&) = delete;
   PreferredApp& operator=(const PreferredApp&) = delete;
@@ -34,7 +33,7 @@ using PreferredApps = std::vector<PreferredAppPtr>;
 
 // Represents changes which have been made to the preferred apps list, both
 // adding new filters and removing existing filters.
-struct COMPONENT_EXPORT(APP_TYPES) PreferredAppChanges {
+struct PreferredAppChanges {
   PreferredAppChanges();
   PreferredAppChanges(const PreferredAppChanges&) = delete;
   PreferredAppChanges& operator=(const PreferredAppChanges&) = delete;
@@ -53,10 +52,8 @@ using PreferredAppChangesPtr = std::unique_ptr<PreferredAppChanges>;
 using ReplacedAppPreferences = base::flat_map<std::string, IntentFilters>;
 
 // Creates a deep copy of `preferred_apps`.
-COMPONENT_EXPORT(APP_TYPES)
 PreferredApps ClonePreferredApps(const PreferredApps& preferred_apps);
 
-COMPONENT_EXPORT(APP_TYPES)
 bool IsEqual(const PreferredApps& source, const PreferredApps& target);
 
 }  // namespace apps

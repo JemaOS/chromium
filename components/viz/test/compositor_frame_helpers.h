@@ -6,7 +6,6 @@
 #define COMPONENTS_VIZ_TEST_COMPOSITOR_FRAME_HELPERS_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/memory/weak_ptr.h"
@@ -16,8 +15,8 @@
 #include "components/viz/common/resources/transferable_resource.h"
 #include "components/viz/common/surfaces/surface_id.h"
 #include "components/viz/service/display/aggregated_frame.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkBlendMode.h"
-#include "ui/gfx/video_types.h"
 #include "ui/latency/latency_info.h"
 
 namespace viz {
@@ -52,8 +51,6 @@ struct TextureQuadParams {
   bool flipped = false;
   bool nearest_neighbor = false;
   bool secure_output_only = false;
-  gfx::ProtectedVideoType protected_video_type =
-      gfx::ProtectedVideoType::kClear;
 };
 
 // Helper to build a CompositorRenderPass and add quads to it. By default the
@@ -154,7 +151,7 @@ class RenderPassBuilder {
   RenderPassBuilder& SetQuadOpacity(float opacity);
 
   // Sets SharedQuadState::clip_rect for the last quad.
-  RenderPassBuilder& SetQuadClipRect(std::optional<gfx::Rect> clip_rect);
+  RenderPassBuilder& SetQuadClipRect(absl::optional<gfx::Rect> clip_rect);
 
   // Sets the damage_rect for the last quad. This is only valid to call if the
   // last quad has a `damage_rect` member.
@@ -246,7 +243,7 @@ class CompositorFrameBuilder {
  private:
   CompositorFrame MakeInitCompositorFrame() const;
 
-  std::optional<CompositorFrame> frame_;
+  absl::optional<CompositorFrame> frame_;
   CompositorRenderPassId::Generator render_pass_id_generator_;
 };
 

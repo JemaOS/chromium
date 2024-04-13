@@ -6,13 +6,15 @@
 
 #include "base/no_destructor.h"
 #include "base/values.h"
-#import "components/autofill/ios/common/javascript_feature_util.h"
 #import "ios/web/public/js_messaging/java_script_feature_util.h"
+
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
 
 namespace {
 const char kFillScriptName[] = "fill";
 const char kFormScriptName[] = "form";
-const char kFeaturesScriptName[] = "autofill_form_features";
 }  // namespace
 
 namespace autofill {
@@ -25,13 +27,10 @@ FormUtilJavaScriptFeature* FormUtilJavaScriptFeature::GetInstance() {
 
 FormUtilJavaScriptFeature::FormUtilJavaScriptFeature()
     : web::JavaScriptFeature(
-          ContentWorldForAutofillJavascriptFeatures(),
+          // TODO(crbug.com/1175793): Move autofill code to kIsolatedWorld
+          // once all scripts are converted to JavaScriptFeatures.
+          web::ContentWorld::kPageContentWorld,
           {FeatureScript::CreateWithFilename(
-               kFeaturesScriptName,
-               FeatureScript::InjectionTime::kDocumentStart,
-               FeatureScript::TargetFrames::kAllFrames,
-               FeatureScript::ReinjectionBehavior::kInjectOncePerWindow),
-           FeatureScript::CreateWithFilename(
                kFillScriptName,
                FeatureScript::InjectionTime::kDocumentStart,
                FeatureScript::TargetFrames::kAllFrames,
@@ -49,24 +48,9 @@ FormUtilJavaScriptFeature::~FormUtilJavaScriptFeature() = default;
 void FormUtilJavaScriptFeature::SetUpForUniqueIDsWithInitialState(
     web::WebFrame* frame,
     uint32_t next_available_id) {
-  CallJavaScriptFunction(
-      frame, "fill.setUpForUniqueIDs",
-      base::Value::List().Append(static_cast<int>(next_available_id)));
-}
-
-void FormUtilJavaScriptFeature::SetAutofillAcrossIframes(web::WebFrame* frame,
-                                                         bool enabled) {
-  CallJavaScriptFunction(frame,
-                         "autofill_form_features.setAutofillAcrossIframes",
-                         base::Value::List().Append(enabled));
-}
-
-void FormUtilJavaScriptFeature::SetAutofillXHRSubmissionDetection(
-    web::WebFrame* frame,
-    bool enabled) {
-  CallJavaScriptFunction(
-      frame, "autofill_form_features.setAutofillXHRSubmissionDetection",
-      base::Value::List().Append(enabled));
+  std::vector<base::Value> parameters;
+  parameters.emplace_back(static_cast<int>(next_available_id));
+  CallJavaScriptFunction(frame, "fill.setUpForUniqueIDs", parameters);
 }
 
 }  // namespace autofill

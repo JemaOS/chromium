@@ -6,6 +6,7 @@
 #define COMPONENTS_SYSTEM_MEDIA_CONTROLS_MAC_REMOTE_COMMAND_CENTER_DELEGATE_H_
 
 #include "base/containers/flat_set.h"
+#include "base/mac/scoped_nsobject.h"
 #include "base/observer_list.h"
 
 @class RemoteCommandCenterDelegateCocoa;
@@ -16,7 +17,6 @@ class TimeDelta;
 
 namespace system_media_controls {
 
-class SystemMediaControls;
 class SystemMediaControlsObserver;
 
 namespace internal {
@@ -24,8 +24,7 @@ namespace internal {
 // Wraps an NSObject which interfaces with the MPRemoteCommandCenter.
 class RemoteCommandCenterDelegate {
  public:
-  explicit RemoteCommandCenterDelegate(
-      SystemMediaControls* system_media_controls);
+  RemoteCommandCenterDelegate();
 
   RemoteCommandCenterDelegate(const RemoteCommandCenterDelegate&) = delete;
   RemoteCommandCenterDelegate& operator=(const RemoteCommandCenterDelegate&) =
@@ -63,11 +62,10 @@ class RemoteCommandCenterDelegate {
 
   bool ShouldSetCommandEnabled(Command command, bool will_enable);
 
-  RemoteCommandCenterDelegateCocoa* __strong
+  base::scoped_nsobject<RemoteCommandCenterDelegateCocoa>
       remote_command_center_delegate_cocoa_;
   base::ObserverList<SystemMediaControlsObserver> observers_;
   base::flat_set<Command> enabled_commands_;
-  const raw_ptr<SystemMediaControls> system_media_controls_;
 };
 
 }  // namespace internal

@@ -1,6 +1,5 @@
 include_rules = [
   "+components/keyed_service/core",
-  "+components/prefs",
   "+components/sync/base",
   "+components/sync/engine",
   "+components/sync/protocol",

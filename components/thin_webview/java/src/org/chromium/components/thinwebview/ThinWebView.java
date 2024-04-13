@@ -17,7 +17,9 @@ import org.chromium.content_public.browser.WebContents;
  * provided in the native.
  */
 public interface ThinWebView {
-    /**@return The android {@link View} representing this widget. */
+    /**
+     *@return The android {@link View} representing this widget.
+     */
     View getView();
 
     /**
@@ -29,9 +31,7 @@ public interface ThinWebView {
      *        This is recommended for the WebContents created explicitly for ThisWebView, in case
      *        it needs one.
      */
-    void attachWebContents(
-            WebContents webContents,
-            @Nullable View contentView,
+    void attachWebContents(WebContents webContents, @Nullable View contentView,
             @Nullable WebContentsDelegateAndroid delegate);
 
     /**
@@ -40,6 +40,8 @@ public interface ThinWebView {
      */
     void setAlpha(float alpha);
 
-    /** Should be called for cleanup when the CompositorView instance is no longer used. */
+    /**
+     * Should be called for cleanup when the CompositorView instance is no longer used.
+     */
     void destroy();
 }

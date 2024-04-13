@@ -6,46 +6,52 @@
 #define COMPONENTS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_TAB_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "base/uuid.h"
-#include "components/saved_tab_groups/types.h"
 #include "components/sync/protocol/saved_tab_group_specifics.pb.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/image/image.h"
 #include "url/gurl.h"
 
-namespace tab_groups {
+class SavedTabGroup;
 
 // A SavedTabGroupTab stores the url, title, and favicon of a tab.
 class SavedTabGroupTab {
  public:
-  SavedTabGroupTab(
-      const GURL& url,
-      const std::u16string& title,
-      const base::Uuid& group_guid,
-      std::optional<size_t> position,
-      std::optional<base::Uuid> saved_tab_guid = std::nullopt,
-      std::optional<LocalTabID> local_tab_id = std::nullopt,
-      std::optional<base::Time> creation_time_windows_epoch_micros =
-          std::nullopt,
-      std::optional<base::Time> update_time_windows_epoch_micros = std::nullopt,
-      std::optional<gfx::Image> favicon = std::nullopt);
+  // Used to denote groups that have not been given a position.
+  static constexpr int kUnsetPosition = -1;
+
+  SavedTabGroupTab(const GURL& url,
+                   const std::u16string& title,
+                   const base::Uuid& group_guid,
+                   SavedTabGroup* group = nullptr,
+                   absl::optional<base::Uuid> saved_tab_guid = absl::nullopt,
+                   absl::optional<base::Token> local_tab_id = absl::nullopt,
+                   absl::optional<int> position = absl::nullopt,
+                   absl::optional<base::Time>
+                       creation_time_windows_epoch_micros = absl::nullopt,
+                   absl::optional<base::Time> update_time_windows_epoch_micros =
+                       absl::nullopt,
+                   absl::optional<gfx::Image> favicon = absl::nullopt);
   SavedTabGroupTab(const SavedTabGroupTab& other);
   ~SavedTabGroupTab();
 
   // Accessors.
   const base::Uuid& saved_tab_guid() const { return saved_tab_guid_; }
   const base::Uuid& saved_group_guid() const { return saved_group_guid_; }
-  const std::optional<LocalTabID> local_tab_id() const { return local_tab_id_; }
-  std::optional<size_t> position() const { return position_; }
+  const absl::optional<base::Token> local_tab_id() const {
+    return local_tab_id_;
+  }
+  int position() const { return position_; }
+  const SavedTabGroup* saved_tab_group() const { return saved_tab_group_; }
   const GURL& url() const { return url_; }
   const std::u16string& title() const { return title_; }
-  const std::optional<gfx::Image>& favicon() const { return favicon_; }
+  const absl::optional<gfx::Image>& favicon() const { return favicon_; }
   const base::Time& creation_time_windows_epoch_micros() const {
     return creation_time_windows_epoch_micros_;
   }
@@ -54,6 +60,11 @@ class SavedTabGroupTab {
   }
 
   // Mutators.
+  SavedTabGroupTab& SetSavedTabGroup(SavedTabGroup* saved_tab_group) {
+    saved_tab_group_ = saved_tab_group;
+    SetUpdateTimeWindowsEpochMicros(base::Time::Now());
+    return *this;
+  }
   SavedTabGroupTab& SetURL(GURL url) {
     url_ = url;
     SetUpdateTimeWindowsEpochMicros(base::Time::Now());
@@ -64,17 +75,17 @@ class SavedTabGroupTab {
     SetUpdateTimeWindowsEpochMicros(base::Time::Now());
     return *this;
   }
-  SavedTabGroupTab& SetFavicon(std::optional<gfx::Image> favicon) {
+  SavedTabGroupTab& SetFavicon(absl::optional<gfx::Image> favicon) {
     favicon_ = favicon;
     SetUpdateTimeWindowsEpochMicros(base::Time::Now());
     return *this;
   }
-  SavedTabGroupTab& SetLocalTabID(std::optional<LocalTabID> local_tab_id) {
+  SavedTabGroupTab& SetLocalTabID(absl::optional<base::Token> local_tab_id) {
     local_tab_id_ = local_tab_id;
     SetUpdateTimeWindowsEpochMicros(base::Time::Now());
     return *this;
   }
-  SavedTabGroupTab& SetPosition(size_t position) {
+  SavedTabGroupTab& SetPosition(int position) {
     position_ = position;
     SetUpdateTimeWindowsEpochMicros(base::Time::Now());
     return *this;
@@ -104,9 +115,6 @@ class SavedTabGroupTab {
   // Converts this `SavedTabGroupTab` into a `SavedTabGroupSpecifics` for sync.
   std::unique_ptr<sync_pb::SavedTabGroupSpecifics> ToSpecifics() const;
 
-  // Returns true iff syncable data fields in `this` and `other` are equivalent.
-  bool IsSyncEquivalent(const SavedTabGroupTab& other) const;
-
  private:
   // The ID used to represent the tab in sync.
   base::Uuid saved_tab_guid_;
@@ -115,12 +123,16 @@ class SavedTabGroupTab {
   base::Uuid saved_group_guid_;
 
   // The ID used to represent the tab in reference to the web_contents locally.
-  std::optional<LocalTabID> local_tab_id_;
+  absl::optional<base::Token> local_tab_id_;
 
   // The current position of the tab in relation to all other tabs in the group.
-  // A value of nullopt means that the group was not assigned a position and
-  // will be assigned one when it is added into its saved group.
-  std::optional<size_t> position_;
+  // A value of kUnsetPosition means that the group was not assigned a position
+  // and will be assigned one when it is added into its saved group.
+  int position_;
+
+  // The Group which owns this tab, this can be null if sync hasn't sent the
+  // group over yet.
+  raw_ptr<SavedTabGroup> saved_tab_group_;
 
   // The link to navigate with.
   GURL url_;
@@ -129,7 +141,7 @@ class SavedTabGroupTab {
   std::u16string title_;
 
   // The favicon of the website this SavedTabGroupTab represents.
-  std::optional<gfx::Image> favicon_;
+  absl::optional<gfx::Image> favicon_;
 
   // Timestamp for when the tab was created using windows epoch microseconds.
   base::Time creation_time_windows_epoch_micros_;
@@ -138,7 +150,5 @@ class SavedTabGroupTab {
   // microseconds.
   base::Time update_time_windows_epoch_micros_;
 };
-
-}  // namespace tab_groups
 
 #endif  // COMPONENTS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_TAB_H_

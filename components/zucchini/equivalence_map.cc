@@ -4,11 +4,10 @@
 
 #include "components/zucchini/equivalence_map.h"
 
-#include <deque>
 #include <tuple>
 #include <utility>
-#include <vector>
 
+#include "base/containers/cxx20_erase.h"
 #include "base/logging.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/ranges/algorithm.h"
@@ -306,7 +305,7 @@ void OffsetMapper::ForwardProjectAll(std::deque<offset_t>* offsets) const {
       src = kInvalidOffset;
     }
   }
-  std::erase(*offsets, kInvalidOffset);
+  base::Erase(*offsets, kInvalidOffset);
   offsets->shrink_to_fit();
 }
 
@@ -383,7 +382,7 @@ void OffsetMapper::PruneEquivalencesAndSortBySource(
   }
 
   // Discard all equivalences with length == 0.
-  std::erase_if(*equivalences, [](const Equivalence& equivalence) {
+  base::EraseIf(*equivalences, [](const Equivalence& equivalence) {
     return equivalence.length == 0;
   });
   equivalences->shrink_to_fit();
@@ -559,7 +558,7 @@ void EquivalenceMap::Prune(
   }
 
   // Discard all candidates with similarity smaller than |min_similarity|.
-  std::erase_if(candidates_,
+  base::EraseIf(candidates_,
                 [min_similarity](const EquivalenceCandidate& candidate) {
                   return candidate.similarity < min_similarity;
                 });

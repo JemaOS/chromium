@@ -23,6 +23,7 @@
 #include "sql/test/test_helpers.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/sqlite/sqlite3.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -865,7 +866,7 @@ TEST_F(FaviconDatabaseTest, FindFirstPageURLForHost) {
                                           {favicon_base::IconType::kFavicon}));
 
   // Expect a match when we search for a TouchIcon.
-  std::optional<GURL> result = db.FindFirstPageURLForHost(
+  absl::optional<GURL> result = db.FindFirstPageURLForHost(
       kPageUrlHttps,
       {favicon_base::IconType::kFavicon, favicon_base::IconType::kTouchIcon});
 
@@ -1053,7 +1054,7 @@ TEST_F(FaviconDatabaseTest, Recovery) {
 
     {
       sql::test::ScopedErrorExpecter expecter;
-      expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
+      expecter.ExpectError(SQLITE_CORRUPT);
       // Accessing the index will throw SQLITE_CORRUPT. The corruption handler
       // will recover the database and poison the handle, so the outer call
       // fails.
@@ -1094,8 +1095,8 @@ TEST_F(FaviconDatabaseTest, Recovery) {
     sql::Database raw_db;
     {
       sql::test::ScopedErrorExpecter expecter;
-      expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
-      EXPECT_FALSE(raw_db.Open(file_name_));
+      expecter.ExpectError(SQLITE_CORRUPT);
+      EXPECT_TRUE(raw_db.Open(file_name_));
       EXPECT_TRUE(expecter.SawExpectedErrors());
     }
     EXPECT_EQ("ok", sql::test::IntegrityCheck(raw_db));
@@ -1106,7 +1107,7 @@ TEST_F(FaviconDatabaseTest, Recovery) {
     FaviconDatabase db;
     {
       sql::test::ScopedErrorExpecter expecter;
-      expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
+      expecter.ExpectError(SQLITE_CORRUPT);
       ASSERT_EQ(sql::INIT_OK, db.Init(file_name_));
       ASSERT_TRUE(expecter.SawExpectedErrors());
     }
@@ -1148,7 +1149,7 @@ TEST_F(FaviconDatabaseTest, Recovery7) {
     ASSERT_EQ(sql::INIT_OK, db.Init(file_name_));
     {
       sql::test::ScopedErrorExpecter expecter;
-      expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
+      expecter.ExpectError(SQLITE_CORRUPT);
       // Accessing the index will throw SQLITE_CORRUPT. The corruption handler
       // will recover the database and poison the handle, so the outer call
       // fails.
@@ -1189,8 +1190,8 @@ TEST_F(FaviconDatabaseTest, Recovery7) {
     sql::Database raw_db;
     {
       sql::test::ScopedErrorExpecter expecter;
-      expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
-      ASSERT_FALSE(raw_db.Open(file_name_));
+      expecter.ExpectError(SQLITE_CORRUPT);
+      ASSERT_TRUE(raw_db.Open(file_name_));
       EXPECT_TRUE(expecter.SawExpectedErrors());
     }
     EXPECT_EQ("ok", sql::test::IntegrityCheck(raw_db));
@@ -1201,7 +1202,7 @@ TEST_F(FaviconDatabaseTest, Recovery7) {
     FaviconDatabase db;
     {
       sql::test::ScopedErrorExpecter expecter;
-      expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
+      expecter.ExpectError(SQLITE_CORRUPT);
       ASSERT_EQ(sql::INIT_OK, db.Init(file_name_));
       EXPECT_TRUE(expecter.SawExpectedErrors());
     }
@@ -1230,8 +1231,8 @@ TEST_F(FaviconDatabaseTest, Recovery6) {
     sql::Database raw_db;
     {
       sql::test::ScopedErrorExpecter expecter;
-      expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
-      EXPECT_FALSE(raw_db.Open(file_name_));
+      expecter.ExpectError(SQLITE_CORRUPT);
+      EXPECT_TRUE(raw_db.Open(file_name_));
       EXPECT_TRUE(expecter.SawExpectedErrors());
     }
     EXPECT_EQ("ok", sql::test::IntegrityCheck(raw_db));
@@ -1241,7 +1242,7 @@ TEST_F(FaviconDatabaseTest, Recovery6) {
   {
     FaviconDatabase db;
     sql::test::ScopedErrorExpecter expecter;
-    expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
+    expecter.ExpectError(SQLITE_CORRUPT);
     ASSERT_EQ(sql::INIT_OK, db.Init(file_name_));
     EXPECT_TRUE(expecter.SawExpectedErrors());
   }
@@ -1276,8 +1277,8 @@ TEST_F(FaviconDatabaseTest, Recovery5) {
     sql::Database raw_db;
     {
       sql::test::ScopedErrorExpecter expecter;
-      expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
-      EXPECT_FALSE(raw_db.Open(file_name_));
+      expecter.ExpectError(SQLITE_CORRUPT);
+      EXPECT_TRUE(raw_db.Open(file_name_));
       EXPECT_TRUE(expecter.SawExpectedErrors());
     }
     EXPECT_EQ("ok", sql::test::IntegrityCheck(raw_db));
@@ -1286,7 +1287,7 @@ TEST_F(FaviconDatabaseTest, Recovery5) {
   // Database open should succeed.
   {
     sql::test::ScopedErrorExpecter expecter;
-    expecter.ExpectError(sql::SqliteResultCode::kCorrupt);
+    expecter.ExpectError(SQLITE_CORRUPT);
     FaviconDatabase db;
     ASSERT_EQ(sql::INIT_OK, db.Init(file_name_));
     ASSERT_TRUE(expecter.SawExpectedErrors());

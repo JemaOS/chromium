@@ -43,8 +43,10 @@ std::string GenerateLogWithMinCompressedSize(size_t min_compressed_size) {
   std::string rand_bytes = base::RandBytesAsString(min_compressed_size);
   while (Compress(rand_bytes).size() < min_compressed_size)
     rand_bytes.append(base::RandBytesAsString(min_compressed_size));
+  std::string base64_data_for_logging;
+  base::Base64Encode(rand_bytes, &base64_data_for_logging);
   SCOPED_TRACE(testing::Message()
-               << "Using random data " << base::Base64Encode(rand_bytes));
+               << "Using random data " << base64_data_for_logging);
   return rand_bytes;
 }
 
@@ -91,10 +93,9 @@ class TestUnsentLogStore : public UnsentLogStore {
                        service,
                        kTestPrefName,
                        /*metadata_pref_name=*/nullptr,
-                       UnsentLogStore::UnsentLogStoreLimits{
-                           .min_log_count = kLogCountLimit,
-                           .min_queue_size_bytes = min_log_bytes,
-                       },
+                       kLogCountLimit,
+                       min_log_bytes,
+                       /*max_log_size=*/0,
                        /*signing_key=*/std::string(),
                        /*logs_event_manager=*/nullptr) {}
   TestUnsentLogStore(PrefService* service,
@@ -104,10 +105,9 @@ class TestUnsentLogStore : public UnsentLogStore {
                        service,
                        kTestPrefName,
                        /*metadata_pref_name=*/nullptr,
-                       UnsentLogStore::UnsentLogStoreLimits{
-                           .min_log_count = kLogCountLimit,
-                           .min_queue_size_bytes = min_log_bytes,
-                       },
+                       kLogCountLimit,
+                       min_log_bytes,
+                       /*max_log_size=*/0,
                        signing_key,
                        /*logs_event_manager=*/nullptr) {}
   TestUnsentLogStore(std::unique_ptr<UnsentLogStoreMetrics> metrics,
@@ -117,11 +117,9 @@ class TestUnsentLogStore : public UnsentLogStore {
                        service,
                        kTestPrefName,
                        kTestMetaDataPrefName,
-                       UnsentLogStore::UnsentLogStoreLimits{
-                           .min_log_count = kLogCountLimit,
-                           .min_queue_size_bytes = 1,
-                           .max_log_size_bytes = max_log_size,
-                       },
+                       kLogCountLimit,
+                       /*min_log_bytes=*/1,
+                       max_log_size,
                        /*signing_key=*/std::string(),
                        /*logs_event_manager=*/nullptr) {}
 
@@ -525,8 +523,9 @@ TEST_F(UnsentLogStoreTest, Signatures) {
   std::string expected_signature_base64 =
       "DA2Y9+PZ1F5y6Id7wbEEMn77nAexjy/+ztdtgTB/H/8=";
 
-  std::string actual_signature_base64 =
-      base::Base64Encode(unsent_log_store.staged_log_signature());
+  std::string actual_signature_base64;
+  base::Base64Encode(unsent_log_store.staged_log_signature(),
+                     &actual_signature_base64);
   EXPECT_EQ(expected_signature_base64, actual_signature_base64);
 
   // Test a different key results in a different signature.
@@ -544,8 +543,8 @@ TEST_F(UnsentLogStoreTest, Signatures) {
   // signature. To use previous python code change:
   // key = "secret key, don't tell anyone"
   expected_signature_base64 = "DV7z8wdDrjLkQrCzrXR3UjWsR3/YVM97tIhMnhUvfXM=";
-  actual_signature_base64 =
-      base::Base64Encode(unsent_log_store_different_key.staged_log_signature());
+  base::Base64Encode(unsent_log_store_different_key.staged_log_signature(),
+                     &actual_signature_base64);
 
   EXPECT_EQ(expected_signature_base64, actual_signature_base64);
 }
@@ -555,7 +554,7 @@ TEST_F(UnsentLogStoreTest, StoreLogWithUserId) {
   const uint64_t user_id = 12345L;
 
   TestUnsentLogStore unsent_log_store(&prefs_, kLogByteLimit);
-  LogMetadata log_metadata(std::nullopt, user_id, std::nullopt);
+  LogMetadata log_metadata(absl::nullopt, user_id);
   unsent_log_store.StoreLog(foo_text, log_metadata,
                             MetricsLogsEventManager::CreateReason::kUnknown);
   unsent_log_store.StageNextLog();
@@ -580,7 +579,7 @@ TEST_F(UnsentLogStoreTest, StoreLogWithLargeUserId) {
   const uint64_t large_user_id = std::numeric_limits<uint64_t>::max();
 
   TestUnsentLogStore unsent_log_store(&prefs_, kLogByteLimit);
-  LogMetadata log_metadata(std::nullopt, large_user_id, std::nullopt);
+  LogMetadata log_metadata(absl::nullopt, large_user_id);
   unsent_log_store.StoreLog(foo_text, log_metadata,
                             MetricsLogsEventManager::CreateReason::kUnknown);
   unsent_log_store.StageNextLog();
@@ -598,34 +597,6 @@ TEST_F(UnsentLogStoreTest, StoreLogWithLargeUserId) {
   // Ensure that the user_id was parsed correctly.
   read_unsent_log_store.StageNextLog();
   EXPECT_EQ(large_user_id, read_unsent_log_store.staged_log_user_id().value());
-}
-
-TEST_F(UnsentLogStoreTest, StoreLogWithOnlyAppKMLogSource) {
-  const char foo_text[] = "foo";
-  const UkmLogSourceType log_source_type = UkmLogSourceType::APPKM_ONLY;
-
-  TestUnsentLogStore unsent_log_store(&prefs_, kLogByteLimit);
-  LogMetadata log_metadata(std::nullopt, std::nullopt, log_source_type);
-  unsent_log_store.StoreLog(foo_text, log_metadata,
-                            MetricsLogsEventManager::CreateReason::kUnknown);
-  unsent_log_store.StageNextLog();
-
-  EXPECT_EQ(Compress(foo_text), unsent_log_store.staged_log());
-  EXPECT_EQ(unsent_log_store.staged_log_metadata().log_source_type.value(),
-            log_source_type);
-
-  unsent_log_store.TrimAndPersistUnsentLogs(/*overwrite_in_memory_store=*/true);
-
-  // Reads persisted logs from new log store.
-  TestUnsentLogStore read_unsent_log_store(&prefs_, kLogByteLimit);
-  read_unsent_log_store.LoadPersistedUnsentLogs();
-  EXPECT_EQ(1U, read_unsent_log_store.size());
-
-  // Ensure that the log source type was updated correctly in log metadata.
-  read_unsent_log_store.StageNextLog();
-  EXPECT_EQ(
-      log_source_type,
-      read_unsent_log_store.staged_log_metadata().log_source_type.value());
 }
 
 TEST_F(UnsentLogStoreTest, UnsentLogMetadataMetrics) {
@@ -653,7 +624,7 @@ TEST_F(UnsentLogStoreTest, UnsentLogMetadataMetrics) {
   const char kNoSampleLog[] = "no sample log";
 
   LogMetadata log_metadata_with_oversize_sample(kOversizeLogSampleCount,
-                                                std::nullopt, std::nullopt);
+                                                absl::nullopt);
   unsent_log_store.StoreLog(oversize_log, log_metadata_with_oversize_sample,
                             MetricsLogsEventManager::CreateReason::kUnknown);
 
@@ -661,14 +632,12 @@ TEST_F(UnsentLogStoreTest, UnsentLogMetadataMetrics) {
   unsent_log_store.StoreLog(kNoSampleLog, log_metadata_with_no_sample,
                             MetricsLogsEventManager::CreateReason::kUnknown);
 
-  LogMetadata log_metadata_foo_sample(kFooSampleCount, std::nullopt,
-                                      std::nullopt);
+  LogMetadata log_metadata_foo_sample(kFooSampleCount, absl::nullopt);
   unsent_log_store.StoreLog(kFooText, log_metadata_foo_sample,
                             MetricsLogsEventManager::CreateReason::kUnknown);
 
   // The foobar_log will be staged first.
-  LogMetadata log_metadata_foo_bar_sample(kFooBarSampleCount, std::nullopt,
-                                          std::nullopt);
+  LogMetadata log_metadata_foo_bar_sample(kFooBarSampleCount, absl::nullopt);
   unsent_log_store.StoreLog(foobar_log, log_metadata_foo_bar_sample,
                             MetricsLogsEventManager::CreateReason::kUnknown);
 

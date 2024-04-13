@@ -146,10 +146,6 @@ void JourneyLogger::SetOptOutOffered() {
   SetEvent2Occurred(Event2::kOptOutOffered);
 }
 
-void JourneyLogger::SetActivationlessShow() {
-  SetEvent2Occurred(Event2::kActivationlessShow);
-}
-
 void JourneyLogger::SetSkippedShow() {
   SetEventOccurred(EVENT_SKIPPED_SHOW);
   SetEvent2Occurred(Event2::kSkippedShow);
@@ -281,6 +277,11 @@ void JourneyLogger::SetCompleted() {
 }
 
 void JourneyLogger::SetAborted(AbortReason reason) {
+  // Always record the first abort reason regardless of whether the
+  // PaymentRequest.show() was triggered or not.
+  base::UmaHistogramEnumeration("PaymentRequest.CheckoutFunnel.Aborted", reason,
+                                ABORT_REASON_MAX);
+
   if (reason == ABORT_REASON_ABORTED_BY_USER ||
       reason == ABORT_REASON_USER_NAVIGATION)
     RecordJourneyStatsHistograms(COMPLETION_STATUS_USER_ABORTED);
@@ -290,9 +291,11 @@ void JourneyLogger::SetAborted(AbortReason reason) {
     RecordJourneyStatsHistograms(COMPLETION_STATUS_OTHER_ABORTED);
 }
 
-void JourneyLogger::SetNotShown() {
+void JourneyLogger::SetNotShown(NotShownReason reason) {
   DCHECK(!WasPaymentRequestTriggered());
   RecordJourneyStatsHistograms(COMPLETION_STATUS_COULD_NOT_SHOW);
+  base::UmaHistogramEnumeration("PaymentRequest.CheckoutFunnel.NoShow", reason,
+                                NOT_SHOWN_REASON_MAX);
 }
 
 void JourneyLogger::SetNoMatchingCredentialsShown() {
@@ -493,13 +496,6 @@ void JourneyLogger::ValidateEventBits() const {
     // Internal secure payment confirmation payment handler should not skip UI
     // show.
     DCHECK(!(events_ & EVENT_SELECTED_SECURE_PAYMENT_CONFIRMATION));
-  }
-
-  // Validate activationless show.
-  if (WasOccurred(Event2::kActivationlessShow)) {
-    // Should not be able to record an activationless show without show itself
-    // being recorded.
-    DCHECK(WasOccurred(Event2::kShown) || WasOccurred(Event2::kSkippedShow));
   }
 
   // Check that the two bits are not set at the same time.

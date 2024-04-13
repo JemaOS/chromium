@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim.h"
+#include "base/allocator/partition_allocator/shim/allocator_shim.h"
 #include "base/check_op.h"
 #include "base/compiler_specific.h"
 #include "base/numerics/safe_math.h"
@@ -19,6 +19,7 @@
 #include "components/gwp_asan/client/guarded_page_allocator.h"
 #include "components/gwp_asan/client/sampling_state.h"
 #include "components/gwp_asan/common/crash_key_name.h"
+#include "components/gwp_asan/common/lightweight_detector.h"
 
 #if BUILDFLAG(IS_APPLE)
 #include <pthread.h>
@@ -32,7 +33,7 @@ namespace {
 using allocator_shim::AllocatorDispatch;
 
 // By being implemented as a global with inline method definitions, method calls
-// and member accesses are inlined and as efficient as possible in the
+// and member acceses are inlined and as efficient as possible in the
 // performance-sensitive allocation hot-path.
 //
 // Note that this optimization has not been benchmarked. However since it is
@@ -135,12 +136,6 @@ size_t GetSizeEstimateFn(const AllocatorDispatch* self,
     return gpa->GetRequestedSize(address);
 
   return self->next->get_size_estimate_function(self->next, address, context);
-}
-
-size_t GoodSizeFn(const AllocatorDispatch* self, size_t size, void* context) {
-  // We don't know whether the allocation would be handled by the guarded page
-  // allocator, cannot return what it would prefer here.
-  return self->next->good_size_function(self->next, size, context);
 }
 
 bool ClaimedAddressFn(const AllocatorDispatch* self,
@@ -269,7 +264,6 @@ AllocatorDispatch g_allocator_dispatch = {
     &ReallocFn,
     &FreeFn,
     &GetSizeEstimateFn,
-    &GoodSizeFn,
     &ClaimedAddressFn,
     &BatchMallocFn,
     &BatchFreeFn,
@@ -296,7 +290,7 @@ void InstallMallocHooks(size_t max_allocated_pages,
   static crash_reporter::CrashKeyString<24> malloc_crash_key(kMallocCrashKey);
   gpa = new GuardedPageAllocator();
   gpa->Init(max_allocated_pages, num_metadata, total_pages, std::move(callback),
-            false);
+            false, LightweightDetector::State::kDisabled, 0);
   malloc_crash_key.Set(gpa->GetCrashKey());
   sampling_state.Init(sampling_frequency);
   allocator_shim::InsertAllocatorDispatch(&g_allocator_dispatch);

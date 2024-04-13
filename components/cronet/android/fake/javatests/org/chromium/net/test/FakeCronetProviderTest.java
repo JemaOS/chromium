@@ -4,7 +4,8 @@
 
 package org.chromium.net.test;
 
-import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
@@ -18,7 +19,9 @@ import org.junit.runner.RunWith;
 
 import org.chromium.net.impl.ImplVersion;
 
-/** Test functionality of {@link FakeCronetProvider}. */
+/**
+ * Test functionality of {@link FakeCronetProvider}.
+ */
 @RunWith(AndroidJUnit4.class)
 public class FakeCronetProviderTest {
     Context mContext;
@@ -34,31 +37,31 @@ public class FakeCronetProviderTest {
     @SmallTest
     public void testGetName() {
         String expectedName = "Fake-Cronet-Provider";
-        assertThat(mProvider.getName()).isEqualTo(expectedName);
+        assertEquals(expectedName, mProvider.getName());
     }
 
     @Test
     @SmallTest
     public void testGetVersion() {
-        assertThat(mProvider.getVersion()).isEqualTo(ImplVersion.getCronetVersion());
+        assertEquals(ImplVersion.getCronetVersion(), mProvider.getVersion());
     }
 
     @Test
     @SmallTest
     public void testIsEnabled() {
-        assertThat(mProvider.isEnabled()).isTrue();
+        assertTrue(mProvider.isEnabled());
     }
 
     @Test
     @SmallTest
     public void testHashCode() {
         FakeCronetProvider otherProvider = new FakeCronetProvider(mContext);
-        assertThat(mProvider.hashCode()).isEqualTo(otherProvider.hashCode());
+        assertEquals(otherProvider.hashCode(), mProvider.hashCode());
     }
 
     @Test
     @SmallTest
     public void testEquals() {
-        assertThat(mProvider).isEqualTo(new FakeCronetProvider(mContext));
+        assertTrue(mProvider.equals(new FakeCronetProvider(mContext)));
     }
 }

@@ -31,6 +31,7 @@ static_library("crypto") {
     "//crypto",
     "//net",
     "//third_party/boringssl",
+    "//third_party/leveldatabase",
     "//third_party/protobuf:protobuf_lite",
   ]
 }

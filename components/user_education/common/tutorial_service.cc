@@ -10,6 +10,7 @@
 #include "base/auto_reset.h"
 #include "base/callback_list.h"
 #include "base/functional/bind.h"
+#include "base/logging.h"
 #include "base/time/time.h"
 #include "components/user_education/common/help_bubble.h"
 #include "components/user_education/common/help_bubble_factory_registry.h"
@@ -31,7 +32,7 @@ constexpr base::TimeDelta kTutorialNotStartedTimeout = base::Seconds(60);
 }  // namespace
 
 TutorialService::TutorialCreationParams::TutorialCreationParams(
-    const TutorialDescription* description,
+    TutorialDescription* description,
     ui::ElementContext context)
     : description_(description), context_(context) {}
 
@@ -39,19 +40,33 @@ TutorialService::TutorialService(
     TutorialRegistry* tutorial_registry,
     HelpBubbleFactoryRegistry* help_bubble_factory_registry)
     : tutorial_registry_(tutorial_registry),
-      help_bubble_factory_registry_(help_bubble_factory_registry) {}
+      help_bubble_factory_registry_(help_bubble_factory_registry) {
+  toggle_focus_subscription_ =
+      help_bubble_factory_registry->AddToggleFocusCallback(
+          base::BindRepeating(&TutorialService::OnFocusToggledForAccessibility,
+                              base::Unretained(this)));
+}
 
 TutorialService::~TutorialService() = default;
 
 void TutorialService::StartTutorial(TutorialIdentifier id,
                                     ui::ElementContext context,
                                     CompletedCallback completed_callback,
-                                    AbortedCallback aborted_callback,
-                                    RestartedCallback restarted_callback) {
-  CancelTutorialIfRunning();
+                                    AbortedCallback aborted_callback) {
+  // End the current tutorial, if any.
+  if (running_tutorial_) {
+    if (is_final_bubble_) {
+      // The current tutorial is showing the final congratulatory bubble, so it
+      // is effectively complete.
+      CompleteTutorial();
+    } else {
+      running_tutorial_->Abort();
+    }
+  }
+  is_final_bubble_ = false;
 
   // Get the description from the tutorial registry.
-  const TutorialDescription* const description =
+  TutorialDescription* description =
       tutorial_registry_->GetTutorialDescription(id);
   CHECK(description);
 
@@ -62,7 +77,6 @@ void TutorialService::StartTutorial(TutorialIdentifier id,
   // Set the external callbacks.
   completed_callback_ = std::move(completed_callback);
   aborted_callback_ = std::move(aborted_callback);
-  restarted_callback_ = std::move(restarted_callback);
 
   // Save the params for creating the tutorial to be used when restarting.
   running_tutorial_creation_params_ =
@@ -76,41 +90,13 @@ void TutorialService::StartTutorial(TutorialIdentifier id,
                      base::Unretained(this)));
 
   // Start the tutorial and mark the params used to created it for restarting.
-  most_recent_tutorial_id_ = id;
-  if (description->temporary_state_callback) {
-    running_tutorial_->SetState(
-        description->temporary_state_callback.Run(context));
-  }
   running_tutorial_->Start();
-}
-
-bool TutorialService::CancelTutorialIfRunning(
-    std::optional<TutorialIdentifier> id) {
-  if (!running_tutorial_) {
-    return false;
-  }
-
-  // If a specific tutorial was requested to be aborted, make sure that's the
-  // one that is running.
-  if (id.has_value() && most_recent_tutorial_id_ != id) {
-    return false;
-  }
-
-  if (is_final_bubble_) {
-    // The current tutorial is showing the final congratulatory bubble, so it
-    // is effectively complete.
-    CompleteTutorial();
-    is_final_bubble_ = false;
-  } else {
-    running_tutorial_->Abort();
-  }
-
-  return true;
+  toggle_focus_count_ = 0;
 }
 
 void TutorialService::LogIPHLinkClicked(TutorialIdentifier id,
                                         bool iph_link_was_clicked) {
-  const TutorialDescription* const description =
+  TutorialDescription* description =
       tutorial_registry_->GetTutorialDescription(id);
   CHECK(description);
 
@@ -120,7 +106,7 @@ void TutorialService::LogIPHLinkClicked(TutorialIdentifier id,
 
 void TutorialService::LogStartedFromWhatsNewPage(TutorialIdentifier id,
                                                  bool success) {
-  const TutorialDescription* const description =
+  TutorialDescription* description =
       tutorial_registry_->GetTutorialDescription(id);
   CHECK(description);
 
@@ -142,14 +128,6 @@ bool TutorialService::RestartTutorial() {
     return false;
   }
 
-  if (running_tutorial_creation_params_->description_
-          ->temporary_state_callback) {
-    running_tutorial_->SetState(
-        running_tutorial_creation_params_->description_
-            ->temporary_state_callback.Run(
-                running_tutorial_creation_params_->context_));
-  }
-
   // Note: if we restart the tutorial, we won't record whether the user pressed
   // the pane focus key to focus the help bubble until the user actually decides
   // they're finished, but we also won't reset the count, so at the end we can
@@ -158,12 +136,10 @@ bool TutorialService::RestartTutorial() {
   running_tutorial_was_restarted_ = true;
   running_tutorial_->Start();
 
-  restarted_callback_.Run();
-
   return true;
 }
 
-void TutorialService::AbortTutorial(std::optional<int> abort_step) {
+void TutorialService::AbortTutorial(absl::optional<int> abort_step) {
   // For various reasons, we could get called here while e.g. tearing down the
   // interaction sequence. We only want to actually run AbortTutorial() or
   // CompleteTutorial() exactly once, so we won't continue if the tutorial has
@@ -195,6 +171,12 @@ void TutorialService::AbortTutorial(std::optional<int> abort_step) {
   // Reset the tutorial and call the external abort callback.
   ResetRunningTutorial();
 
+  // Record how many times the user toggled focus during the tutorial using
+  // the keyboard.
+  UMA_HISTOGRAM_CUSTOM_COUNTS("Tutorial.FocusToggleCount.Aborted",
+                              toggle_focus_count_, 0, 50, 6);
+  toggle_focus_count_ = 0;
+
   if (aborted_callback_) {
     std::move(aborted_callback_).Run();
   }
@@ -224,6 +206,12 @@ void TutorialService::CompleteTutorial() {
   UMA_HISTOGRAM_BOOLEAN("Tutorial.Completion", true);
 
   ResetRunningTutorial();
+
+  // Record how many times the user toggled focus during the tutorial using
+  // the keyboard.
+  UMA_HISTOGRAM_CUSTOM_COUNTS("Tutorial.FocusToggleCount.Completed",
+                              toggle_focus_count_, 0, 50, 6);
+  toggle_focus_count_ = 0;
 
   std::move(completed_callback_).Run();
 }
@@ -256,12 +244,8 @@ void TutorialService::HideCurrentBubbleIfShowing() {
   currently_displayed_bubble_.reset();
 }
 
-bool TutorialService::IsRunningTutorial(
-    std::optional<TutorialIdentifier> id) const {
-  if (!running_tutorial_) {
-    return false;
-  }
-  return !id.has_value() || id.value() == most_recent_tutorial_id_;
+bool TutorialService::IsRunningTutorial() const {
+  return running_tutorial_ != nullptr;
 }
 
 void TutorialService::ResetRunningTutorial() {
@@ -271,6 +255,11 @@ void TutorialService::ResetRunningTutorial() {
   running_tutorial_creation_params_.reset();
   running_tutorial_was_restarted_ = false;
   HideCurrentBubbleIfShowing();
+}
+
+void TutorialService::OnFocusToggledForAccessibility(HelpBubble* bubble) {
+  if (bubble == currently_displayed_bubble_.get())
+    ++toggle_focus_count_;
 }
 
 void TutorialService::OnBrokenTutorial() {

@@ -82,7 +82,9 @@ void LanguageUsageMetrics::ParseAcceptLanguages(
     base::StringPiece accept_languages,
     std::set<int>* languages) {
   languages->clear();
-  base::StringViewTokenizer locales(accept_languages, ",");
+  base::CStringTokenizer locales(
+      accept_languages.data(),
+      accept_languages.data() + accept_languages.size(), ",");
   while (locales.GetNext()) {
     const int language_code = ToLanguageCodeHash(locales.token_piece());
     if (language_code != 0)

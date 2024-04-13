@@ -23,8 +23,6 @@ class MockPermissionPrompt : public PermissionPrompt {
   bool UpdateAnchor() override;
   TabSwitchingBehavior GetTabSwitchingBehavior() override;
   PermissionPromptDisposition GetPromptDisposition() const override;
-  std::optional<gfx::Rect> GetViewBoundsInScreen() const override;
-  bool ShouldFinalizeRequestAfterDecided() const override;
 
   bool IsVisible();
 

@@ -6,7 +6,9 @@ package org.chromium.net.impl;
 
 import java.nio.ByteBuffer;
 
-/** Utility class to check preconditions. */
+/**
+ * Utility class to check preconditions.
+ */
 public final class Preconditions {
     private Preconditions() {}
 

@@ -17,12 +17,9 @@ import org.chromium.base.Callback;
 import org.chromium.base.ThreadUtils;
 import org.chromium.components.signin.AccessTokenData;
 import org.chromium.components.signin.AccountManagerDelegate;
-import org.chromium.components.signin.AccountManagerDelegateException;
 import org.chromium.components.signin.AccountUtils;
 import org.chromium.components.signin.AccountsChangeObserver;
 import org.chromium.components.signin.AuthException;
-import org.chromium.components.signin.base.AccountInfo;
-import org.chromium.components.signin.base.CoreAccountId;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -32,23 +29,17 @@ import java.util.UUID;
 /**
  * The FakeAccountManagerDelegate is intended for testing components that use AccountManagerFacade.
  *
- * <p>You should provide a set of accounts as a constructor argument, or use the more direct
- * approach and provide an array of AccountHolder objects.
+ * You should provide a set of accounts as a constructor argument, or use the more direct approach
+ * and provide an array of AccountHolder objects.
  *
- * <p>Currently, this implementation supports adding and removing accounts, handling credentials
- * (including confirming them), and handling of placeholder auth tokens.
+ * Currently, this implementation supports adding and removing accounts, handling credentials
+ * (including confirming them), and handling of dummy auth tokens.
  */
 public class FakeAccountManagerDelegate implements AccountManagerDelegate {
-    /** Converts an email to a fake gaia Id. */
-    public static String toGaiaId(String email) {
-        return "gaia-id-" + email.replace("@", "_at_");
-    }
-
     private final Object mLock = new Object();
 
     @GuardedBy("mLock")
     private final Set<AccountHolder> mAccounts = new LinkedHashSet<>();
-
     private AccountsChangeObserver mObserver;
 
     public FakeAccountManagerDelegate() {
@@ -58,8 +49,7 @@ public class FakeAccountManagerDelegate implements AccountManagerDelegate {
     @Nullable
     @Override
     public String getAccountGaiaId(String accountEmail) {
-        @Nullable AccountHolder accountHolder = tryGetAccountHolder(accountEmail);
-        return accountHolder != null ? accountHolder.getAccountInfo().getGaiaId() : null;
+        return "gaia-id-" + accountEmail.replace("@", "_at_");
     }
 
     @Override
@@ -68,7 +58,7 @@ public class FakeAccountManagerDelegate implements AccountManagerDelegate {
     }
 
     @Override
-    public Account[] getAccountsSynchronous() throws AccountManagerDelegateException {
+    public Account[] getAccounts() {
         ArrayList<Account> result = new ArrayList<>();
         synchronized (mLock) {
             for (AccountHolder ah : mAccounts) {
@@ -78,39 +68,33 @@ public class FakeAccountManagerDelegate implements AccountManagerDelegate {
         return result.toArray(new Account[0]);
     }
 
-    /** Adds an AccountHolder. */
-    public void addAccount(AccountInfo accountInfo) {
+    /**
+     * Adds an AccountHolder.
+     */
+    public void addAccount(AccountHolder accountHolder) {
         synchronized (mLock) {
-            boolean added = mAccounts.add(new AccountHolder(accountInfo));
+            boolean added = mAccounts.add(accountHolder);
             assert added : "Account already added";
         }
-        callOnCoreAccountInfoChanged();
+        ThreadUtils.runOnUiThreadBlocking(mObserver::onAccountsChanged);
     }
 
-    /** Removes an AccountHolder. */
-    public void removeAccount(CoreAccountId accountId) {
+    /**
+     * Removes an AccountHolder.
+     */
+    public void removeAccount(AccountHolder accountHolder) {
         synchronized (mLock) {
-            @Nullable AccountHolder accountHolder = tryGetAccountHolder(accountId);
-            if (accountHolder == null || !mAccounts.remove(accountHolder)) {
-                throw new IllegalArgumentException(
-                        String.format("Can't find the account: %s", accountId.getId()));
-            }
+            boolean removed = mAccounts.remove(accountHolder);
+            assert removed : "Can't find account";
         }
-        callOnCoreAccountInfoChanged();
-    }
-
-    public void callOnCoreAccountInfoChanged() {
-        if (mObserver != null) {
-            ThreadUtils.runOnUiThreadBlocking(mObserver::onCoreAccountInfosChanged);
-        }
+        ThreadUtils.runOnUiThreadBlocking(mObserver::onAccountsChanged);
     }
 
     @Override
     public AccessTokenData getAuthToken(Account account, String scope) throws AuthException {
-        AccountHolder accountHolder = tryGetAccountHolder(account.name);
+        AccountHolder accountHolder = tryGetAccountHolder(account);
         if (accountHolder == null) {
-            throw new AuthException(
-                    AuthException.NONTRANSIENT,
+            throw new AuthException(AuthException.NONTRANSIENT,
                     "Cannot get auth token for unknown account '" + account + "'");
         }
         synchronized (mLock) {
@@ -145,8 +129,9 @@ public class FakeAccountManagerDelegate implements AccountManagerDelegate {
 
     @Override
     public boolean hasFeature(Account account, String feature) {
-        // Account features aren't supported in FakeAccountManagerDelegate.
-        return false;
+        AccountHolder accountHolder = tryGetAccountHolder(account);
+        // Features status is queried asynchronously, so the account could have been removed.
+        return accountHolder != null && accountHolder.hasFeature(feature);
     }
 
     @Override
@@ -173,26 +158,14 @@ public class FakeAccountManagerDelegate implements AccountManagerDelegate {
         callback.onResult(null);
     }
 
-    // TODO(crbug.com/40274844): Remove this method after migrating the interface to CoreAccountId.
-    private @Nullable AccountHolder tryGetAccountHolder(String accountEmail) {
+    private AccountHolder tryGetAccountHolder(Account account) {
         synchronized (mLock) {
-            return mAccounts.stream()
-                    .filter(
-                            accountHolder ->
-                                    accountEmail.equals(accountHolder.getAccountInfo().getEmail()))
-                    .findFirst()
-                    .orElse(null);
+            for (AccountHolder accountHolder : mAccounts) {
+                if (account.equals(accountHolder.getAccount())) {
+                    return accountHolder;
+                }
+            }
         }
-    }
-
-    private @Nullable AccountHolder tryGetAccountHolder(CoreAccountId accountId) {
-        synchronized (mLock) {
-            return mAccounts.stream()
-                    .filter(
-                            accountHolder ->
-                                    accountId.equals(accountHolder.getAccountInfo().getId()))
-                    .findFirst()
-                    .orElse(null);
-        }
+        return null;
     }
 }

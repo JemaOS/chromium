@@ -4,8 +4,6 @@
 
 #include "components/history_clusters/core/clusterer.h"
 
-#include <unordered_map>
-
 #include "base/containers/adapters.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/history_clusters/core/config.h"
@@ -55,13 +53,12 @@ std::vector<history::Cluster> Clusterer::CreateInitialClustersFromVisits(
               return a.annotated_visit.visit_row < b.annotated_visit.visit_row;
             });
 
-  std::unordered_map<SimilarVisit, size_t, SimilarVisit::Hash,
-                     SimilarVisit::Equals>
+  base::flat_map<SimilarVisit, size_t, SimilarVisit::Comp>
       similar_visit_to_cluster_map;
   base::flat_map<history::VisitID, size_t> visit_id_to_cluster_map;
   std::vector<history::Cluster> clusters;
   for (auto& visit : visits) {
-    std::optional<size_t> cluster_idx;
+    absl::optional<size_t> cluster_idx;
     std::vector<history::VisitID> previous_visit_ids_to_check;
     if (visit.annotated_visit.opener_visit_of_redirect_chain_start != 0) {
       previous_visit_ids_to_check.push_back(
@@ -106,7 +103,7 @@ std::vector<history::Cluster> Clusterer::CreateInitialClustersFromVisits(
 
         // Reset the working cluster index so we start a new cluster for this
         // visit.
-        cluster_idx = std::nullopt;
+        cluster_idx = absl::nullopt;
       }
     }
 

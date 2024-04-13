@@ -6,13 +6,12 @@
 
 #include <stddef.h>
 
-#include <optional>
-
 #include "base/metrics/field_trial_params.h"
 #include "base/strings/string_number_conversions.h"
 #include "build/build_config.h"
 #include "components/variations/variations_associated_data.h"
 #include "components/variations/variations_switches.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace variations {
 namespace {
@@ -25,21 +24,21 @@ constexpr base::TimeDelta kVariationsSeedFetchIntervalMinimum =
 // |kVariationsSeedFetchInterval| switch. The value returned is subject to a
 // minimum value, |kVariationsSeedFetchIntervalMinimum|. If no overridden value
 // is specified, or if it is malformed, an empty optional is returned.
-std::optional<base::TimeDelta> GetOverriddenFetchPeriod() {
+absl::optional<base::TimeDelta> GetOverriddenFetchPeriod() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   const std::string switch_value =
       command_line->GetSwitchValueASCII(switches::kVariationsSeedFetchInterval);
 
   if (switch_value.empty())
-    return std::nullopt;
+    return absl::nullopt;
 
   int overridden_period;
   if (!base::StringToInt(switch_value, &overridden_period)) {
     LOG(DFATAL) << "Malformed value for --"
                 << switches::kVariationsSeedFetchInterval << ". "
                 << "Expected int, got: " << switch_value;
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return std::max(base::Minutes(overridden_period),
@@ -73,7 +72,8 @@ void VariationsRequestScheduler::ScheduleFetchShortly() {
 
   // If there is a fetch interval specified in the command line, and it is
   // shorter than |fetch_shortly_delay|, use it instead.
-  std::optional<base::TimeDelta> overridden_period = GetOverriddenFetchPeriod();
+  absl::optional<base::TimeDelta> overridden_period =
+      GetOverriddenFetchPeriod();
   if (overridden_period.has_value()) {
     fetch_shortly_delay =
         std::min(fetch_shortly_delay, overridden_period.value());
@@ -88,7 +88,8 @@ void VariationsRequestScheduler::OnAppEnterForeground() {
 
 base::TimeDelta VariationsRequestScheduler::GetFetchPeriod() const {
   // The fetch interval can be overridden through the command line.
-  std::optional<base::TimeDelta> overridden_period = GetOverriddenFetchPeriod();
+  absl::optional<base::TimeDelta> overridden_period =
+      GetOverriddenFetchPeriod();
   if (overridden_period.has_value())
     return overridden_period.value();
 

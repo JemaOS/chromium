@@ -25,7 +25,9 @@ public class OneShotImpressionListener implements Listener {
         mListener.onImpression();
     }
 
-    /** Resets this object, so subsequent impressions will be forwarded to its listener again. */
+    /**
+     * Resets this object, so subsequent impressions will be forwarded to its listener again.
+     */
     public void reset() {
         mTriggered = false;
     }

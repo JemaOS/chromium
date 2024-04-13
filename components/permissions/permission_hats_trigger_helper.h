@@ -6,11 +6,9 @@
 #define COMPONENTS_PERMISSIONS_PERMISSION_HATS_TRIGGER_HELPER_H_
 
 #include <map>
-#include <optional>
 #include <utility>
 
 #include "components/keyed_service/core/keyed_service.h"
-#include "components/messages/android/message_enums.h"
 #include "components/permissions/permission_util.h"
 #include "constants.h"
 
@@ -46,48 +44,32 @@ class PermissionHatsTriggerHelper {
     BUCKET_GT20    // >20
   };
 
-  struct PromptParametersForHats {
-    PromptParametersForHats(
+  struct PromptParametersForHaTS {
+    PromptParametersForHaTS(
         permissions::RequestType request_type,
-        std::optional<permissions::PermissionAction> action,
+        absl::optional<permissions::PermissionAction> action,
         permissions::PermissionPromptDisposition prompt_disposition,
         permissions::PermissionPromptDispositionReason
             prompt_disposition_reason,
         permissions::PermissionRequestGestureType gesture_type,
         const std::string& channel,
         const std::string& survey_display_time,
-        std::optional<base::TimeDelta> prompt_display_duration,
+        absl::optional<base::TimeDelta> prompt_display_duration,
         OneTimePermissionPromptsDecidedBucket one_time_prompts_decided_bucket,
-        std::optional<GURL> gurl);
-    PromptParametersForHats(const PromptParametersForHats& other);
-    ~PromptParametersForHats();
+        absl::optional<GURL> gurl);
+    PromptParametersForHaTS(const PromptParametersForHaTS& other);
+    ~PromptParametersForHaTS();
 
     permissions::RequestType request_type;
-    std::optional<permissions::PermissionAction> action;
+    absl::optional<permissions::PermissionAction> action;
     permissions::PermissionPromptDisposition prompt_disposition;
     permissions::PermissionPromptDispositionReason prompt_disposition_reason;
     permissions::PermissionRequestGestureType gesture_type;
     std::string channel;
     std::string survey_display_time;
-    std::optional<base::TimeDelta> prompt_display_duration;
+    absl::optional<base::TimeDelta> prompt_display_duration;
     OneTimePermissionPromptsDecidedBucket one_time_prompts_decided_bucket;
     std::string url;
-  };
-
-  struct SurveyParametersForHats {
-    explicit SurveyParametersForHats(
-        double trigger_probability,
-        std::optional<std::string> supplied_trigger_id = std::nullopt,
-        std::optional<std::u16string> custom_survey_invitation = std::nullopt,
-        std::optional<messages::MessageIdentifier> message_identifier =
-            std::nullopt);
-    SurveyParametersForHats(const SurveyParametersForHats& other);
-    ~SurveyParametersForHats();
-
-    double trigger_probability;
-    std::optional<std::string> supplied_trigger_id;
-    std::optional<std::u16string> custom_survey_invitation;
-    std::optional<messages::MessageIdentifier> message_identifier;
   };
 
   struct SurveyProductSpecificData {
@@ -95,7 +77,7 @@ class PermissionHatsTriggerHelper {
     ~SurveyProductSpecificData();
 
     static SurveyProductSpecificData PopulateFrom(
-        PromptParametersForHats prompt_parameters);
+        PromptParametersForHaTS prompt_parameters);
 
     const SurveyBitsData survey_bits_data;
     const SurveyStringData survey_string_data;
@@ -113,7 +95,7 @@ class PermissionHatsTriggerHelper {
   static void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
   static bool ArePromptTriggerCriteriaSatisfied(
-      PromptParametersForHats prompt_parameters);
+      PromptParametersForHaTS prompt_parameters);
 
   static OneTimePermissionPromptsDecidedBucket GetOneTimePromptsDecidedBucket(
       PrefService* pref_service);
@@ -128,14 +110,6 @@ class PermissionHatsTriggerHelper {
   // have decided.
   static std::string GetOneTimePromptsDecidedBucketString(
       OneTimePermissionPromptsDecidedBucket bucket);
-
-  // Returns the survey parameters corresponding to a specific
-  // request type. Returns empty value if there is a configuration error or the
-  // passed request type is not configured.
-  static std::optional<SurveyParametersForHats>
-  GetSurveyParametersForRequestType(RequestType request_type);
-
-  static void SetIsTest();
 };
 
 }  // namespace permissions

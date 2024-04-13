@@ -22,8 +22,7 @@
 
 namespace viz {
 
-constexpr base::TimeDelta VideoDetector::kMaxVideoTimeout;
-constexpr base::TimeDelta VideoDetector::kMinVideoTimeout;
+constexpr base::TimeDelta VideoDetector::kVideoTimeout;
 constexpr base::TimeDelta VideoDetector::kMinVideoDuration;
 
 // Stores information about updates to a client and determines whether it's
@@ -168,8 +167,7 @@ void VideoDetector::OnFrameSinkIdInvalidated(const FrameSinkId& frame_sink_id) {
 }
 
 bool VideoDetector::OnSurfaceDamaged(const SurfaceId& surface_id,
-                                     const BeginFrameAck& ack,
-                                     HandleInteraction handle_interaction) {
+                                     const BeginFrameAck& ack) {
   return false;
 }
 
@@ -193,13 +191,8 @@ void VideoDetector::OnSurfaceWillBeDrawn(Surface* surface) {
   base::TimeTicks now = tick_clock_->NowTicks();
 
   if (it->second->ReportDrawnAndCheckForVideo(surface, now)) {
-    // Avoid (re)starting the timer every frame since it has considerable
-    // overhead.
-    if (!video_inactive_timer_.IsRunning() ||
-        (video_inactive_timer_.desired_run_time() - now) < kMinVideoTimeout) {
-      video_inactive_timer_.Start(FROM_HERE, kMaxVideoTimeout, this,
-                                  &VideoDetector::OnVideoActivityEnded);
-    }
+    video_inactive_timer_.Start(FROM_HERE, kVideoTimeout, this,
+                                &VideoDetector::OnVideoActivityEnded);
     if (!video_is_playing_) {
       video_is_playing_ = true;
       for (auto& observer : observers_) {

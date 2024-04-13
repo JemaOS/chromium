@@ -10,6 +10,7 @@
 #include "base/cancelable_callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/ref_counted.h"
 #include "base/time/clock.h"
 #include "base/time/tick_clock.h"
 #include "base/time/time.h"
@@ -98,12 +99,8 @@ class POLICY_EXPORT CloudPolicyRefreshScheduler
   // For testing: get the value randomly assigned to refresh_delay_salt_ms_.
   int64_t GetSaltDelayForTesting() const { return refresh_delay_salt_ms_; }
 
-  // Schedules a refresh to be performed immediately if the `client_` is
-  // registered. Otherwise, this is a no-op.
-  //
-  // The |reason| parameter will be used to tag the request to DMServer. This
-  // will allow for more targeted monitoring and alerting.
-  void RefreshSoon(PolicyFetchReason reason);
+  // Schedules a refresh to be performed immediately.
+  void RefreshSoon();
 
   // The refresh scheduler starts by assuming that invalidations are not
   // available. This call can be used to signal whether the invalidations
@@ -155,12 +152,12 @@ class POLICY_EXPORT CloudPolicyRefreshScheduler
   void ScheduleRefresh();
 
   // Triggers a policy refresh.
-  void PerformRefresh(PolicyFetchReason reason);
+  void PerformRefresh();
 
   // Schedules a policy refresh to happen no later than |delta_ms| +
   // |refresh_delay_salt_ms_| msecs after |last_refresh_| or
   // |last_refresh_ticks_| whichever is sooner.
-  void RefreshAfter(int delta_ms, PolicyFetchReason reason);
+  void RefreshAfter(int delta_ms);
 
   // Cancels the scheduled policy refresh.
   void CancelRefresh();
@@ -187,7 +184,8 @@ class POLICY_EXPORT CloudPolicyRefreshScheduler
   // The delayed refresh callback.
   base::CancelableOnceClosure refresh_callback_;
 
-  // Whether the refresh is scheduled for soon (using |RefreshSoon|).
+  // Whether the refresh is scheduled for soon (using |RefreshSoon| or
+  // |RefreshNow|).
   bool is_scheduled_for_soon_ = false;
 
   // The last time a policy fetch was attempted or completed.
@@ -211,6 +209,10 @@ class POLICY_EXPORT CloudPolicyRefreshScheduler
   // Whether the invalidations service is available and receiving notifications
   // of policy updates.
   bool invalidations_available_;
+
+  // Used to measure how long it took for the invalidations service to report
+  // its initial status.
+  base::Time creation_time_;
 
   base::ObserverList<CloudPolicyRefreshSchedulerObserver, true> observers_;
 };

@@ -15,7 +15,6 @@
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/time/time.h"
-#include "cc/base/math_util.h"
 #include "components/viz/common/quads/compositor_frame.h"
 #include "components/viz/common/quads/compositor_render_pass.h"
 #include "components/viz/common/quads/compositor_render_pass_draw_quad.h"
@@ -34,7 +33,6 @@
 #include "ui/gfx/animation/keyframe/timing_function.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/geometry/size_conversions.h"
 #include "ui/gfx/geometry/size_f.h"
@@ -55,7 +53,7 @@ namespace {
 void ReplaceSharedElementWithRenderPass(
     CompositorRenderPass* target_render_pass,
     const SharedElementDrawQuad& shared_element_quad,
-    CompositorRenderPass* shared_element_content_pass) {
+    const CompositorRenderPass* shared_element_content_pass) {
   auto pass_id = shared_element_content_pass->id;
   const gfx::Rect& shared_pass_output_rect =
       shared_element_content_pass->output_rect;
@@ -66,28 +64,24 @@ void ReplaceSharedElementWithRenderPass(
 
   gfx::Transform transform = GetViewTransitionTransform(
       shared_element_quad.rect, shared_pass_output_rect);
-  copied_quad_state->quad_to_target_transform.PreConcat(transform);
-  copied_quad_state->quad_layer_rect = shared_pass_output_rect;
-  copied_quad_state->visible_quad_layer_rect = shared_pass_output_rect;
 
-  shared_element_content_pass->transform_to_root_target =
-      copied_quad_state->quad_to_target_transform;
-  shared_element_content_pass->transform_to_root_target.PostConcat(
-      target_render_pass->transform_to_root_target);
+  copied_quad_state->quad_to_target_transform.PreConcat(transform);
 
   auto* render_pass_quad =
       target_render_pass
           ->CreateAndAppendDrawQuad<CompositorRenderPassDrawQuad>();
-  gfx::RectF tex_coord_rect(gfx::Rect(shared_pass_output_rect.size()));
+  gfx::RectF tex_coord_rect(gfx::SizeF(shared_element_quad.rect.size()));
+  tex_coord_rect.Offset(-shared_pass_output_rect.x(),
+                        -shared_pass_output_rect.y());
   render_pass_quad->SetNew(
       /*shared_quad_state=*/copied_quad_state,
-      /*rect=*/shared_pass_output_rect,
+      /*rect=*/shared_element_quad.rect,
       /*visible_rect=*/shared_pass_output_rect,
       /*render_pass_id=*/pass_id,
       /*mask_resource_id=*/kInvalidResourceId,
       /*mask_uv_rect=*/gfx::RectF(),
       /*mask_texture_size=*/gfx::Size(),
-      /*filters_scale=*/gfx::Vector2dF(1.0f, 1.0f),
+      /*filters_scale=*/gfx::Vector2dF(),
       /*filters_origin=*/gfx::PointF(),
       /*tex_coord_rect=*/tex_coord_rect,
       /*force_anti_aliasing_off=*/false,
@@ -99,11 +93,14 @@ void ReplaceSharedElementWithRenderPass(
 // drawn.
 // |shared_element_quad| is the quad providing the geometry to draw this shared
 // element's content.
+// |y_flipped| indicates if the texture should be flipped vertically when
+// composited.
 // |id| is a reference to the texture which provides the content for this shared
 // element.
 void ReplaceSharedElementWithTexture(
     CompositorRenderPass* target_render_pass,
     const SharedElementDrawQuad& shared_element_quad,
+    bool y_flipped,
     ResourceId resource_id) {
   auto* copied_quad_state =
       target_render_pass->CreateAndAppendSharedQuadState();
@@ -111,6 +108,7 @@ void ReplaceSharedElementWithTexture(
 
   auto* texture_quad =
       target_render_pass->CreateAndAppendDrawQuad<TextureDrawQuad>();
+  float vertex_opacity[] = {1.f, 1.f, 1.f, 1.f};
   texture_quad->SetNew(
       /*shared_quad_state=*/copied_quad_state,
       /*rect=*/shared_element_quad.rect,
@@ -121,7 +119,7 @@ void ReplaceSharedElementWithTexture(
       /*uv_top_left=*/gfx::PointF(0, 0),
       /*uv_bottom_right=*/gfx::PointF(1, 1),
       /*background_color=*/SkColors::kTransparent,
-      /*y_flipped=*/false,
+      /*vertex_opacity=*/vertex_opacity, y_flipped,
       /*nearest_neighbor=*/false,
       /*secure_output_only=*/false,
       /*protected_video_type=*/gfx::ProtectedVideoType::kClear);
@@ -179,12 +177,6 @@ void SurfaceAnimationManager::Animate() {
   empty_resource_ids_.clear();
 }
 
-void SurfaceAnimationManager::ReceiveFromChild(
-    const std::vector<TransferableResource>& resources) {
-  // We don't do anything here, because resources are initially reffed via
-  // `ImportResources`.
-}
-
 void SurfaceAnimationManager::RefResources(
     const std::vector<TransferableResource>& resources) {
   if (transferable_resource_tracker_.is_empty())
@@ -208,7 +200,7 @@ void SurfaceAnimationManager::UnrefResources(
 bool SurfaceAnimationManager::FilterSharedElementsWithRenderPassOrResource(
     std::vector<TransferableResource>* resource_list,
     const base::flat_map<ViewTransitionElementResourceId,
-                         CompositorRenderPass*>* element_id_to_pass,
+                         const CompositorRenderPass*>* element_id_to_pass,
     const DrawQuad& quad,
     CompositorRenderPass& copy_pass) {
   if (quad.material != DrawQuad::Material::kSharedElement)
@@ -235,8 +227,10 @@ bool SurfaceAnimationManager::FilterSharedElementsWithRenderPassOrResource(
 
       resource_list->push_back(transferable_resource);
 
+      // GPU textures are flipped but software bitmaps are not.
+      bool y_flipped = !transferable_resource.is_software;
       ReplaceSharedElementWithTexture(&copy_pass, shared_element_quad,
-                                      resource_list->back().id);
+                                      y_flipped, resource_list->back().id);
       return true;
     }
   }
@@ -274,11 +268,15 @@ void SurfaceAnimationManager::ReplaceSharedElementResources(Surface* surface) {
   if (!active_frame.metadata.has_shared_element_resources)
     return;
 
+  // A frame created by resolving ViewTransitionElementResourceIds to their
+  // corresponding static or live snapshot.
+  DCHECK(!surface->HasInterpolatedFrame())
+      << "Can not override interpolated frame";
   CompositorFrame resolved_frame;
   resolved_frame.metadata = active_frame.metadata.Clone();
   resolved_frame.resource_list = active_frame.resource_list;
 
-  base::flat_map<ViewTransitionElementResourceId, CompositorRenderPass*>
+  base::flat_map<ViewTransitionElementResourceId, const CompositorRenderPass*>
       element_id_to_pass;
   TransitionUtils::FilterCallback filter_callback = base::BindRepeating(
       &SurfaceAnimationManager::FilterSharedElementsWithRenderPassOrResource,
@@ -304,8 +302,7 @@ void SurfaceAnimationManager::ReplaceSharedElementResources(Surface* surface) {
     resolved_frame.render_pass_list.push_back(std::move(pass_copy));
   }
 
-  RefResources(resolved_frame.resource_list);
-  surface->SetActiveFrameForViewTransition(std::move(resolved_frame));
+  surface->SetInterpolatedFrame(std::move(resolved_frame));
 }
 
 void SurfaceAnimationManager::CompleteSaveForTesting() {

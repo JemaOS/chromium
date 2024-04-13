@@ -28,11 +28,12 @@ bool MockInvalidation::IsUnknownVersion() const {
 }
 
 const std::string& MockInvalidation::GetPayload() const {
+  DCHECK(!is_unknown_version_);
   return payload_;
 }
 
 int64_t MockInvalidation::GetVersion() const {
-  CHECK(!is_unknown_version_);
+  DCHECK(!is_unknown_version_);
   return version_;
 }
 

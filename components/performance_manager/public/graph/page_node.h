@@ -5,21 +5,18 @@
 #ifndef COMPONENTS_PERFORMANCE_MANAGER_PUBLIC_GRAPH_PAGE_NODE_H_
 #define COMPONENTS_PERFORMANCE_MANAGER_PUBLIC_GRAPH_PAGE_NODE_H_
 
-#include <optional>
 #include <ostream>
 #include <string>
 
 #include "base/containers/flat_set.h"
 #include "base/functional/function_ref.h"
-#include "base/memory/raw_ptr.h"
 #include "components/performance_manager/public/freezing/freezing.h"
 #include "components/performance_manager/public/graph/node.h"
 #include "components/performance_manager/public/mojom/coordination_unit.mojom.h"
 #include "components/performance_manager/public/mojom/lifecycle.mojom.h"
-#include "components/performance_manager/public/resource_attribution/page_context.h"
 #include "components/performance_manager/public/web_contents_proxy.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
-#include "third_party/blink/public/common/permissions/permission_utils.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class GURL;
 
@@ -123,19 +120,12 @@ class PageNode : public Node {
   // lifetime of this page. See "OnEmbedderFrameNodeChanged".
   virtual const FrameNode* GetEmbedderFrameNode() const = 0;
 
-  // Gets the unique token identifying this node for resource attribution. This
-  // token will not be reused after the node is destroyed.
-  virtual resource_attribution::PageContext GetResourceContext() const = 0;
-
   // Returns the type of relationship this node has with its embedder, if it has
   // an embedder.
   virtual EmbeddingType GetEmbeddingType() const = 0;
 
   // Returns the type of the page.
   virtual PageType GetType() const = 0;
-
-  // Returns true if this page has the focus.
-  virtual bool IsFocused() const = 0;
 
   // Returns true if this page is currently visible, false otherwise.
   // See PageNodeObserver::OnIsVisibleChanged.
@@ -148,17 +138,6 @@ class PageNode : public Node {
   // Returns true if this page is currently audible, false otherwise.
   // See PageNodeObserver::OnIsAudibleChanged.
   virtual bool IsAudible() const = 0;
-
-  // Returns the time since the last audible change. Unlike
-  // GetTimeSinceLastVisibilityChange(), this returns nullopt for a node which
-  // has never been audible. If a node is audible when created, it is considered
-  // to change from inaudible to audible at that point.
-  virtual std::optional<base::TimeDelta> GetTimeSinceLastAudibleChange()
-      const = 0;
-
-  // Returns true if this page is displaying content in a picture-in-picture
-  // window, false otherwise.
-  virtual bool HasPictureInPicture() const = 0;
 
   // Returns the page's loading state.
   virtual LoadingState GetLoadingState() const = 0;
@@ -186,13 +165,9 @@ class PageNode : public Node {
   // See PageNodeObserver::OnMainFrameNavigationCommitted.
   virtual int64_t GetNavigationID() const = 0;
 
-  // Returns the MIME type for the last committed main frame navigation.
+  // Returns the MIME type of the contents associated with the last committed
+  // navigation event for the main frame of this page.
   virtual const std::string& GetContentsMimeType() const = 0;
-
-  // Returns the notification permission status for the last committed main
-  // frame navigation (nullopt if it wasn't retrieved).
-  virtual std::optional<blink::mojom::PermissionStatus>
-  GetNotificationPermissionStatus() const = 0;
 
   // Returns "zero" if no navigation has happened, otherwise returns the time
   // since the last navigation commit.
@@ -212,19 +187,13 @@ class PageNode : public Node {
   // are no main frames at the moment, returns the empty set. Note that this
   // incurs a full container copy of all main frame nodes. Please use
   // VisitMainFrameNodes when that makes sense.
-  virtual const base::flat_set<raw_ptr<const FrameNode, CtnExperimental>>
-  GetMainFrameNodes() const = 0;
+  virtual const base::flat_set<const FrameNode*> GetMainFrameNodes() const = 0;
 
   // Returns the URL the main frame last committed a navigation to, or the
   // initial URL of the page before navigation. The latter case is distinguished
   // by a zero navigation ID.
   // See PageNodeObserver::OnMainFrameNavigationCommitted.
   virtual const GURL& GetMainFrameUrl() const = 0;
-
-  // Returns the private memory footprint size of the main frame and its
-  // children. This differs from EstimatePrivateFootprintSize which includes
-  // all the frames under the page node.
-  virtual uint64_t EstimateMainFramePrivateFootprintSize() const = 0;
 
   // Indicates if at least one of the frames in the page has received some form
   // interactions.
@@ -242,12 +211,12 @@ class PageNode : public Node {
 
   // Indicates if there's a freezing vote for this page node. This has 3
   // possible values:
-  //   - std::nullopt: There's no active freezing vote for this page.
+  //   - absl::nullopt: There's no active freezing vote for this page.
   //   - freezing::FreezingVoteValue::kCanFreeze: There's one or more positive
   //     freezing vote for this page and no negative vote.
   //   - freezing::FreezingVoteValue::kCannotFreeze: There's at least one
   //     negative freezing vote for this page.
-  virtual const std::optional<freezing::FreezingVote>& GetFreezingVote()
+  virtual const absl::optional<freezing::FreezingVote>& GetFreezingVote()
       const = 0;
 
   // Returns the current page state. See "PageNodeObserver::OnPageStateChanged".
@@ -306,25 +275,11 @@ class PageNodeObserver {
   virtual void OnTypeChanged(const PageNode* page_node,
                              PageType previous_type) = 0;
 
-  // Invoked when the IsFocused property changes.
-  virtual void OnIsFocusedChanged(const PageNode* page_node) = 0;
-
   // Invoked when the IsVisible property changes.
-  //
-  // GetTimeSinceLastVisibilityChange() will return the time since the previous
-  // IsVisible change. After all observers have fired it will return the time of
-  // this property change.
   virtual void OnIsVisibleChanged(const PageNode* page_node) = 0;
 
   // Invoked when the IsAudible property changes.
-  //
-  // GetTimeSinceLastAudibleChange() will return the time since the previous
-  // IsAudible change. After all observers have fired it will return the time of
-  // this property change.
   virtual void OnIsAudibleChanged(const PageNode* page_node) = 0;
-
-  // Invoked when the HasPictureInPicture property changes.
-  virtual void OnHasPictureInPictureChanged(const PageNode* page_node) = 0;
 
   // Invoked when the GetLoadingState property changes.
   virtual void OnLoadingStateChanged(const PageNode* page_node,
@@ -381,7 +336,7 @@ class PageNodeObserver {
   // Called every time the aggregated freezing vote changes or gets invalidated.
   virtual void OnFreezingVoteChanged(
       const PageNode* page_node,
-      std::optional<freezing::FreezingVote> previous_vote) = 0;
+      absl::optional<freezing::FreezingVote> previous_vote) = 0;
 };
 
 // Default implementation of observer that provides dummy versions of each
@@ -409,10 +364,8 @@ class PageNode::ObserverDefaultImpl : public PageNodeObserver {
       EmbeddingType previous_embedding_type) override {}
   void OnTypeChanged(const PageNode* page_node,
                      PageType previous_type) override {}
-  void OnIsFocusedChanged(const PageNode* page_node) override {}
   void OnIsVisibleChanged(const PageNode* page_node) override {}
   void OnIsAudibleChanged(const PageNode* page_node) override {}
-  void OnHasPictureInPictureChanged(const PageNode* page_node) override {}
   void OnLoadingStateChanged(const PageNode* page_node,
                              PageNode::LoadingState previous_state) override {}
   void OnUkmSourceIdChanged(const PageNode* page_node) override {}
@@ -430,7 +383,7 @@ class PageNode::ObserverDefaultImpl : public PageNodeObserver {
                             const PageNode* new_page_node) override {}
   void OnFreezingVoteChanged(
       const PageNode* page_node,
-      std::optional<freezing::FreezingVote> previous_vote) override {}
+      absl::optional<freezing::FreezingVote> previous_vote) override {}
 };
 
 // std::ostream support for PageNode::EmbeddingType.

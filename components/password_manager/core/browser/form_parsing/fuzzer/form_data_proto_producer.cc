@@ -9,7 +9,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "components/autofill/core/common/form_field_data.h"
-#include "components/password_manager/core/browser/form_parsing/form_data_parser.h"
+#include "components/password_manager/core/browser/form_parsing/form_parser.h"
 #include "components/password_manager/core/browser/form_parsing/fuzzer/form_data_essentials.pb.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -34,6 +34,7 @@ FormData GenerateWithProto(const ::form_data_fuzzer::Form& form_proto) {
 
   result.id_attribute = UTF8ToUTF16(form_proto.id());
   result.name_attribute = UTF8ToUTF16(form_proto.name());
+  result.is_form_tag = form_proto.is_form_tag();
   result.name = UTF8ToUTF16(form_proto.name());
   result.action = GURL(form_proto.action());
   result.url = GURL(form_proto.origin());
@@ -46,8 +47,7 @@ FormData GenerateWithProto(const ::form_data_fuzzer::Form& form_proto) {
     result.fields[i].id_attribute = UTF8ToUTF16(form_data_proto.id());
     result.fields[i].name_attribute = UTF8ToUTF16(form_data_proto.name());
     result.fields[i].is_focusable = form_data_proto.is_focusable();
-    result.fields[i].form_control_type = static_cast<autofill::FormControlType>(
-        form_data_proto.form_control_type());
+    result.fields[i].form_control_type = form_data_proto.form_control_type();
     result.fields[i].autocomplete_attribute =
         form_data_proto.autocomplete_attribute();
     result.fields[i].label = UTF8ToUTF16(form_data_proto.label());

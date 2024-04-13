@@ -31,9 +31,11 @@ void YUVVideoDrawQuad::SetNew(const SharedQuadState* shared_quad_state,
                               ResourceId v_plane_resource_id,
                               ResourceId a_plane_resource_id,
                               const gfx::ColorSpace& color_space,
+                              float offset,
+                              float multiplier,
                               uint32_t bits,
                               gfx::ProtectedVideoType video_type,
-                              std::optional<gfx::HDRMetadata> metadata) {
+                              absl::optional<gfx::HDRMetadata> metadata) {
   DrawQuad::SetAll(shared_quad_state, DrawQuad::Material::kYuvVideoContent,
                    rect, visible_rect, needs_blending);
 
@@ -51,6 +53,8 @@ void YUVVideoDrawQuad::SetNew(const SharedQuadState* shared_quad_state,
   resources.ids[kAPlaneResourceIdIndex] = a_plane_resource_id;
   resources.count = a_plane_resource_id ? 4 : 3;
   video_color_space = color_space;
+  resource_offset = offset;
+  resource_multiplier = multiplier;
   bits_per_channel = bits;
   protected_video_type = video_type;
   hdr_metadata = metadata;
@@ -69,14 +73,16 @@ void YUVVideoDrawQuad::SetAll(const SharedQuadState* shared_quad_state,
                               ResourceId v_plane_resource_id,
                               ResourceId a_plane_resource_id,
                               const gfx::ColorSpace& color_space,
+                              float offset,
+                              float multiplier,
                               uint32_t bits,
                               gfx::ProtectedVideoType video_type,
-                              std::optional<gfx::HDRMetadata> metadata) {
+                              absl::optional<gfx::HDRMetadata> metadata) {
   SetNew(shared_quad_state, rect, visible_rect, needs_blending,
          video_frame_coded_size, video_frame_visible_rect,
          video_frame_uv_sample_size, y_plane_resource_id, u_plane_resource_id,
-         v_plane_resource_id, a_plane_resource_id, color_space, bits,
-         video_type, metadata);
+         v_plane_resource_id, a_plane_resource_id, color_space, offset,
+         multiplier, bits, video_type, metadata);
 }
 
 const YUVVideoDrawQuad* YUVVideoDrawQuad::MaterialCast(const DrawQuad* quad) {

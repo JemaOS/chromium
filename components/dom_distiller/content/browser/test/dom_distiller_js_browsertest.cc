@@ -104,7 +104,7 @@ class DomDistillerJsTest : public content::ContentBrowserTest {
 
   void SetUpTestServer() {
     base::FilePath path;
-    base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &path);
+    base::PathService::Get(base::DIR_SOURCE_ROOT, &path);
     path = path.AppendASCII(kExternalTestResourcesPath);
     embedded_test_server()->ServeFilesFromDirectory(path);
     ASSERT_TRUE(embedded_test_server()->Start());
@@ -160,13 +160,13 @@ IN_PROC_BROWSER_TEST_F(DomDistillerJsTest, MAYBE_RunJsTests) {
   ASSERT_TRUE(result_.is_dict()) << "Result is not a dictionary: " << result_;
 
   const base::Value::Dict& dict = result_.GetDict();
-  std::optional<bool> success = dict.FindBool("success");
+  absl::optional<bool> success = dict.FindBool("success");
   ASSERT_TRUE(success.has_value());
-  std::optional<int> num_tests = dict.FindInt("numTests");
+  absl::optional<int> num_tests = dict.FindInt("numTests");
   ASSERT_TRUE(num_tests.has_value());
-  std::optional<int> failed = dict.FindInt("failed");
+  absl::optional<int> failed = dict.FindInt("failed");
   ASSERT_TRUE(failed.has_value());
-  std::optional<int> skipped = dict.FindInt("skipped");
+  absl::optional<int> skipped = dict.FindInt("skipped");
   ASSERT_TRUE(skipped.has_value());
 
   VLOG(0) << "Ran " << num_tests.value()

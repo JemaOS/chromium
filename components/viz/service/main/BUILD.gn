@@ -4,9 +4,7 @@
 
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/ui.gni")
-import("//skia/features.gni")
 import("//testing/test.gni")
-import("//ui/gl/features.gni")
 
 source_set("main") {
   output_name = "viz_main_impl"

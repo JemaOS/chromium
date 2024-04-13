@@ -8,7 +8,6 @@ option optimize_for = LITE_RUNTIME;
 
 package reporting;
 
-import "components/reporting/proto/synced/health.proto";
 import "components/reporting/proto/synced/record_constants.proto";
 import "components/reporting/proto/synced/record.proto";
 import "components/reporting/proto/synced/status.proto";
@@ -24,10 +23,6 @@ message EnqueueRecordRequest {
   // //chrome/cros/reporting/api/proto/synced/record_constants.proto
   // indicates what priority queue the record should be included in.
   optional Priority priority = 2;
-
-  // Flag indicating health data logging state (`true` means "enable logging").
-  // Can only be present when originating from Ash.
-  optional bool health_data_logging_enabled = 3 [default = false];
 }
 
 // EnqueueRecordResponse indicates the enqueue success or
@@ -52,9 +47,6 @@ message EnqueueRecordResponse {
   //     "The daemon has no available threads for processing"
   //     - Retryable
   optional StatusProto status = 1;
-
-  // Portion of debug logging (if enabled).
-  optional ERPHealthData health_data = 2;
 }
 
 // FlushPriorityRequest requests that the indicated priority
@@ -62,10 +54,6 @@ message EnqueueRecordResponse {
 message FlushPriorityRequest {
   // Priority of the desired queue. Defaults to MANUAL_BATCH.
   optional Priority priority = 1 [default = MANUAL_BATCH];
-
-  // Flag indicating health data logging state (`true` means "enable logging").
-  // Can only be present when originating from Ash.
-  optional bool health_data_logging_enabled = 2 [default = false];
 }
 
 // FlushPriorityResponse indicates success or failure of
@@ -87,9 +75,6 @@ message FlushPriorityResponse {
   //     "The daemon is still starting."
   //     - Retryable
   optional StatusProto status = 1;
-
-  // Portion of debug logging (if enabled).
-  optional ERPHealthData health_data = 2;
 }
 
 // --------------- CHROME CALLS AND RESPONSES -------------------
@@ -110,9 +95,6 @@ message UploadEncryptedRecordRequest {
 
   // The rate (bytes/sec) at which new events are added to the storage.
   optional uint64 new_events_rate = 4;
-
-  // Portion of debug logging (if enabled).
-  optional ERPHealthData health_data = 5;
 }
 
 message UploadEncryptedRecordResponse {
@@ -125,14 +107,6 @@ message UploadEncryptedRecordResponse {
   //      "Policy controlling reporting upload is unset or off."
   //      - Not Retryable
   optional StatusProto status = 1;
-
-  // Flag indicating that missived should be disabled, if set to `true`:
-  // for example, because Chrome got a bad (dummy) API key - see b/239253702.
-  optional bool disable = 2 [default = false];
-
-  // Flag indicating health data logging state (`true` means "enable logging").
-  // Can only be present when originating from Ash.
-  optional bool health_data_logging_enabled = 3 [default = false];
 }
 
 // ConfirmRecordUploadRequest is expected to only come from
@@ -148,10 +122,6 @@ message ConfirmRecordUploadRequest {
   // If true, daemon should update to the provided sequence_information
   // regardless of its current state.
   optional bool force_confirm = 2;
-
-  // Flag indicating health data logging state (`true` means "enable logging").
-  // Can only be present when originating from Ash.
-  optional bool health_data_logging_enabled = 3 [default = false];
 }
 
 // ConfirmRecordUploadResponse indicates that the request was
@@ -176,9 +146,6 @@ message ConfirmRecordUploadResponse {
   //     "The daemon is still starting."
   //     - Retryable
   optional StatusProto status = 1;
-
-  // Portion of debug logging (if enabled).
-  optional ERPHealthData health_data = 2;
 }
 
 // UpdateEncryptionKeyRequest sends a SignedEncryptionInfo to the daemon.
@@ -187,30 +154,6 @@ message UpdateEncryptionKeyRequest {
 }
 
 message UpdateEncryptionKeyResponse {
-  // Indicates success or failure of UpdateEncryptionKeyRequest.
-  // Specific error codes indicate if a retry is appropriate.
-  // Expected errors:
-  //   FAILED_PRECONDITION:
-  //     "The daemon has insufficient permissions to read/write from/to disk"
-  //     - Not Retryable
-  //   FAILED_PRECONDITION:
-  //     "Policy controlling daemon is either unset or off."
-  //     - Not Retryable
-  //   UNAVAILABLE:
-  //     "The daemon is still starting."
-  //     - Retryable
-  optional StatusProto status = 1;
-}
-
-// UpdateConfigInMissiveRequest sends a the information received from the
-// server configuration file that missive needs.
-message UpdateConfigInMissiveRequest {
-  // Repeated field for the blocked destinations gotten from the configuration
-  // file fetched from the server.
-  optional ListOfBlockedDestinations list_of_blocked_destinations = 1;
-}
-
-message UpdateConfigInMissiveResponse {
   // Indicates success or failure of UpdateEncryptionKeyRequest.
   // Specific error codes indicate if a retry is appropriate.
   // Expected errors:

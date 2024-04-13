@@ -12,7 +12,7 @@ declare_args() {
   # Note: For Chrome-branded Android builds, this is always considered as set to
   # true (see below). This is done to avoid the binary size impact (~40 KiB) on
   # Android.
-  disable_fieldtrial_testing_config = false
+  disable_fieldtrial_testing_config = true
 
   # Set to true to make a build that force enables activation of field trial
   # tests specified in testing/variations/fieldtrial_testing_config.json.
@@ -36,20 +36,12 @@ static_library("service") {
   sources = [
     "google_groups_updater_service.cc",
     "google_groups_updater_service.h",
-    "limited_entropy_randomization.cc",
-    "limited_entropy_randomization.h",
-    "limited_entropy_synthetic_trial.cc",
-    "limited_entropy_synthetic_trial.h",
     "safe_seed_manager.cc",
     "safe_seed_manager.h",
-    "safe_seed_manager_base.cc",
-    "safe_seed_manager_base.h",
     "ui_string_overrider.cc",
     "ui_string_overrider.h",
     "variations_field_trial_creator.cc",
     "variations_field_trial_creator.h",
-    "variations_field_trial_creator_base.cc",
-    "variations_field_trial_creator_base.h",
     "variations_service.cc",
     "variations_service.h",
     "variations_service_client.cc",
@@ -58,13 +50,12 @@ static_library("service") {
     "variations_service_utils.h",
   ]
 
-  public_deps = [ "//base" ]
   deps = [
     ":buildflags",
+    "//base",
     "//build:branding_buildflags",
     "//build:chromeos_buildflags",
     "//build/config/chromebox_for_meetings:buildflags",
-    "//components/country_codes",
     "//components/encrypted_messages",
     "//components/keyed_service/core",
     "//components/language/core/browser",
@@ -81,14 +72,19 @@ static_library("service") {
     "//services/network/public/cpp",
     "//ui/base",
   ]
+
+  if (is_chromeos_ash) {
+    deps += [
+      "//chromeos/ash/components/dbus/featured",
+      "//components/variations/cros:proto",
+    ]
+  }
 }
 
 source_set("unit_tests") {
   testonly = true
   sources = [
     "google_groups_updater_service_unittest.cc",
-    "limited_entropy_randomization_unittest.cc",
-    "limited_entropy_synthetic_trial_unittest.cc",
     "safe_seed_manager_unittest.cc",
     "ui_string_overrider_unittest.cc",
     "variations_field_trial_creator_unittest.cc",
@@ -118,4 +114,11 @@ source_set("unit_tests") {
     "//services/network/public/cpp",
     "//testing/gtest",
   ]
+
+  if (is_chromeos_ash) {
+    deps += [
+      "//chromeos/ash/components/dbus/featured",
+      "//components/variations/cros:proto",
+    ]
+  }
 }

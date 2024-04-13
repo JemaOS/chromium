@@ -22,6 +22,7 @@ class IPEndPoint;
 
 namespace openscreen {
 
+class TaskRunner;
 struct TlsCredentials;
 struct TlsListenOptions;
 
@@ -31,8 +32,8 @@ namespace openscreen_platform {
 
 class TlsConnectionFactory final : public openscreen::TlsConnectionFactory {
  public:
-  explicit TlsConnectionFactory(
-      openscreen::TlsConnectionFactory::Client* client);
+  TlsConnectionFactory(openscreen::TlsConnectionFactory::Client* client,
+                       openscreen::TaskRunner* task_runner);
 
   ~TlsConnectionFactory() final;
 
@@ -89,8 +90,8 @@ class TlsConnectionFactory final : public openscreen::TlsConnectionFactory {
 
   void OnTcpConnect(TcpConnectRequest request,
                     int32_t net_result,
-                    const std::optional<net::IPEndPoint>& local_address,
-                    const std::optional<net::IPEndPoint>& remote_address,
+                    const absl::optional<net::IPEndPoint>& local_address,
+                    const absl::optional<net::IPEndPoint>& remote_address,
                     mojo::ScopedDataPipeConsumerHandle receive_stream,
                     mojo::ScopedDataPipeProducerHandle send_stream);
 
@@ -98,9 +99,10 @@ class TlsConnectionFactory final : public openscreen::TlsConnectionFactory {
                     int32_t net_result,
                     mojo::ScopedDataPipeConsumerHandle receive_stream,
                     mojo::ScopedDataPipeProducerHandle send_stream,
-                    const std::optional<net::SSLInfo>& ssl_info);
+                    const absl::optional<net::SSLInfo>& ssl_info);
 
   raw_ptr<openscreen::TlsConnectionFactory::Client> client_;
+  const raw_ptr<openscreen::TaskRunner> task_runner_;
   base::WeakPtrFactory<TlsConnectionFactory> weak_factory_{this};
 };
 

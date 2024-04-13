@@ -72,6 +72,10 @@ TEST(ProtoEnumConversionsTest, GetWifiConfigurationProxyOptionString) {
       sync_pb::WifiConfigurationSpecifics::ProxyConfiguration::ProxyOption);
 }
 
+TEST(ProtoEnumConversionsTest, GetUpdatesSourceString) {
+  TestEnumStringsNonEmpty(sync_pb::GetUpdatesCallerInfo::GetUpdatesSource);
+}
+
 TEST(ProtoEnumConversionsTest, GetUpdatesOriginString) {
   TestEnumStringsNonEmpty(sync_pb::SyncEnums::GetUpdatesOrigin);
 }
@@ -101,10 +105,6 @@ TEST(ProtoEnumConversionsTest, GetSavedTabGroupColorString) {
   TestEnumStringsNonEmpty(sync_pb::SavedTabGroup::SavedTabGroupColor);
 }
 
-TEST(ProtoEnumConversionsTest, GetSharedTabGroupColorString) {
-  TestEnumStringsNonEmpty(sync_pb::SharedTabGroup::Color);
-}
-
 TEST(ProtoEnumConversionsTest, GetIssuerString) {
   TestEnumStringsNonEmpty(sync_pb::CardIssuer::Issuer);
 }
@@ -119,15 +119,6 @@ TEST(ProtoEnumConversionsTest, GetNoteTargetTypeString) {
 
 TEST(ProtoEnumConversionsTest, GetInitialSyncStateString) {
   TestEnumStringsNonEmpty(sync_pb::ModelTypeState::InitialSyncState);
-}
-
-TEST(ProtoEnumConversionsTest, GetCategoryBenefitTypeString) {
-  TestEnumStringsNonEmpty(sync_pb::CardBenefit::CategoryBenefitType);
-}
-
-TEST(ProtoEnumConversionsTest, GetAutoUpgradeExperimentGroupString) {
-  TestEnumStringsNonEmpty(sync_pb::NigoriSpecifics::AutoUpgradeDebugInfo::
-    AutoUpgradeExperimentGroup);
 }
 
 }  // namespace

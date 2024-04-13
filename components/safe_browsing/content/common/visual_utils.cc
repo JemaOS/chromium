@@ -17,6 +17,7 @@
 #include "components/safe_browsing/core/common/proto/client_model.pb.h"
 #include "components/safe_browsing/core/common/proto/csd.pb.h"
 #include "skia/ext/image_operations.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColorPriv.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
@@ -175,33 +176,31 @@ std::unique_ptr<SkBitmap> BlockMeanAverage(const SkBitmap& image,
 }
 
 #if BUILDFLAG(IS_ANDROID)
-CanExtractVisualFeaturesResult CanExtractVisualFeatures(
-    bool is_extended_reporting,
-    bool is_off_the_record,
-    gfx::Size size) {
+bool CanExtractVisualFeatures(bool is_extended_reporting,
+                              bool is_off_the_record,
+                              gfx::Size size) {
 #else
-CanExtractVisualFeaturesResult CanExtractVisualFeatures(
-    bool is_extended_reporting,
-    bool is_off_the_record,
-    gfx::Size size,
-    double zoom_level) {
+bool CanExtractVisualFeatures(bool is_extended_reporting,
+                              bool is_off_the_record,
+                              gfx::Size size,
+                              double zoom_level) {
 #endif
   if (!is_extended_reporting)
-    return CanExtractVisualFeaturesResult::kNotExtendedReporting;
+    return false;
 
   if (is_off_the_record)
-    return CanExtractVisualFeaturesResult::kOffTheRecord;
+    return false;
 
   if (size.width() < GetMinWidthForVisualFeatures() ||
       size.height() < GetMinHeightForVisualFeatures())
-    return CanExtractVisualFeaturesResult::kBelowMinFrame;
+    return false;
 
 #if !BUILDFLAG(IS_ANDROID)
   if (zoom_level > kMaxZoomForVisualFeatures) {
-    return CanExtractVisualFeaturesResult::kAboveZoomLevel;
+    return false;
   }
 #endif
-  return CanExtractVisualFeaturesResult::kCanExtractVisualFeatures;
+  return true;
 }
 
 std::unique_ptr<VisualFeatures> ExtractVisualFeatures(

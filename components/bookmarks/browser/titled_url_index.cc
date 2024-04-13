@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "base/containers/cxx20_erase.h"
 #include "base/i18n/case_conversion.h"
 #include "base/i18n/unicodestring.h"
 #include "base/logging.h"
@@ -112,7 +113,7 @@ std::vector<TitledUrlMatch> TitledUrlIndex::GetResultsMatching(
 }
 
 // static
-std::u16string TitledUrlIndex::Normalize(std::u16string_view text) {
+std::u16string TitledUrlIndex::Normalize(const std::u16string& text) {
   UErrorCode status = U_ZERO_ERROR;
   const icu::Normalizer2* normalizer2 =
       icu::Normalizer2::getInstance(nullptr, "nfkc", UNORM2_COMPOSE, status);
@@ -127,7 +128,7 @@ std::u16string TitledUrlIndex::Normalize(std::u16string_view text) {
   if (U_FAILURE(status)) {
     // This should not happen. Log the error and fall back.
     LOG(ERROR) << "normalization failed: " << u_errorName(status);
-    return std::u16string(text);
+    return text;
   }
   return base::i18n::UnicodeStringToString16(unicode_normalized_text);
 }
@@ -154,7 +155,7 @@ std::vector<TitledUrlMatch> TitledUrlIndex::MatchTitledUrlNodesWithQuery(
   std::vector<TitledUrlMatch> matches;
   for (TitledUrlNodes::const_iterator i = nodes.begin();
        i != nodes.end() && matches.size() < max_count; ++i) {
-    std::optional<TitledUrlMatch> match =
+    absl::optional<TitledUrlMatch> match =
         MatchTitledUrlNodeWithQuery(*i, query_nodes, query_terms);
     if (match)
       matches.emplace_back(std::move(match).value());
@@ -162,12 +163,12 @@ std::vector<TitledUrlMatch> TitledUrlIndex::MatchTitledUrlNodesWithQuery(
   return matches;
 }
 
-std::optional<TitledUrlMatch> TitledUrlIndex::MatchTitledUrlNodeWithQuery(
+absl::optional<TitledUrlMatch> TitledUrlIndex::MatchTitledUrlNodeWithQuery(
     const TitledUrlNode* node,
     const query_parser::QueryNodeVector& query_nodes,
     const std::vector<std::u16string>& query_terms) {
   if (!node) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   // Check that the result matches the query.  The previous search
   // was a simple per-word search, while the more complex matching
@@ -208,7 +209,7 @@ std::optional<TitledUrlMatch> TitledUrlIndex::MatchTitledUrlNodeWithQuery(
         return false;
       });
   if (!approximate_match)
-    return std::nullopt;
+    return absl::nullopt;
 
   // If `node` passed the approximate check above, to the more accurate check.
   query_parser::QueryWordVector title_words, url_words, ancestor_words;
@@ -231,7 +232,7 @@ std::optional<TitledUrlMatch> TitledUrlIndex::MatchTitledUrlNodeWithQuery(
     query_has_ancestor_matches =
         query_has_ancestor_matches || has_ancestor_matches;
     if (!has_title_matches && !has_url_matches && !has_ancestor_matches)
-      return std::nullopt;
+      return absl::nullopt;
     query_parser::QueryParser::SortAndCoalesceMatchPositions(&title_matches);
     query_parser::QueryParser::SortAndCoalesceMatchPositions(&url_matches);
   }

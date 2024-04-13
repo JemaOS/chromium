@@ -26,12 +26,16 @@ import org.chromium.components.module_installer.engine.InstallEngine;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Test suite for the ActivityObserver class. */
+/**
+ * Test suite for the ActivityObserver class.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 public class ActivityObserverTest {
-    @Mock private InstallEngine mInstallEngineMock;
+    @Mock
+    private InstallEngine mInstallEngineMock;
 
-    @Mock private Activity mActivityMock;
+    @Mock
+    private Activity mActivityMock;
 
     private ActivityObserverFacade mFacade;
     private ActivityObserver mObserver;
@@ -51,7 +55,8 @@ public class ActivityObserverTest {
     @Test
     public void whenOnCreate_verifySplitCompatted() {
         // Arrange.
-        @ActivityState Integer newState = ActivityState.CREATED;
+        @ActivityState
+        Integer newState = ActivityState.CREATED;
 
         // Act.
         mObserver.onActivityStateChange(mActivityMock, newState);
@@ -63,7 +68,8 @@ public class ActivityObserverTest {
     @Test
     public void whenOnResume_verifySplitCompatted() {
         // Arrange.
-        @ActivityState Integer newState = ActivityState.RESUMED;
+        @ActivityState
+        Integer newState = ActivityState.RESUMED;
 
         // Act.
         mObserver.onActivityStateChange(mActivityMock, newState);
@@ -75,7 +81,8 @@ public class ActivityObserverTest {
     @Test
     public void whenOnResumeTwice_verifySplitCompattedOnlyOnce() {
         // Arrange.
-        @ActivityState Integer newState = ActivityState.RESUMED;
+        @ActivityState
+        Integer newState = ActivityState.RESUMED;
 
         // Act.
         mObserver.onActivityStateChange(mActivityMock, newState);
@@ -88,7 +95,8 @@ public class ActivityObserverTest {
     @Test
     public void whenOnResumeAfterModuleInstall_verifySplitCompatted() {
         // Arrange.
-        @ActivityState Integer newState = ActivityState.RESUMED;
+        @ActivityState
+        Integer newState = ActivityState.RESUMED;
 
         // Act.
         mObserver.onActivityStateChange(mActivityMock, newState);
@@ -114,7 +122,8 @@ public class ActivityObserverTest {
     @Test
     public void whenMultipleInstances_verifySplitCompatCalledOnlyOnce() {
         // Arrange.
-        @ActivityState Integer newState = ActivityState.RESUMED;
+        @ActivityState
+        Integer newState = ActivityState.RESUMED;
         ActivityObserver newObserver = new ActivityObserver(mFacade, mInstallEngineMock);
 
         // Act.

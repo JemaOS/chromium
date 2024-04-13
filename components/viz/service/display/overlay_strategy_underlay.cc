@@ -36,16 +36,10 @@ void OverlayStrategyUnderlay::Propose(
     std::vector<gfx::Rect>* content_bounds) {
   auto* render_pass = render_pass_list->back().get();
   QuadList& quad_list = render_pass->quad_list;
-
-  OverlayCandidateFactory::OverlayContext context;
-  context.supports_mask_filter = true;
-  context.supports_flip_rotate_transform =
-      capability_checker_->SupportsFlipRotateTransform();
-
   OverlayCandidateFactory candidate_factory = OverlayCandidateFactory(
       render_pass, resource_provider, surface_damage_rect_list,
       &output_color_matrix, GetPrimaryPlaneDisplayRect(primary_plane),
-      &render_pass_filters, context);
+      &render_pass_filters);
 
   for (auto it = quad_list.begin(); it != quad_list.end(); ++it) {
     OverlayCandidate candidate;
@@ -70,7 +64,7 @@ void OverlayStrategyUnderlay::Propose(
     candidate.damage_area_estimate = candidate_factory.EstimateVisibleDamage(
         *it, candidate, quad_list.begin(), it);
 
-    candidates->emplace_back(it, candidate, this);
+    candidates->push_back({it, candidate, this});
   }
 }
 

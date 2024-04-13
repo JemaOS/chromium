@@ -13,14 +13,12 @@ SimpleAlertInfoBarDelegate::SimpleAlertInfoBarDelegate(
     const gfx::VectorIcon* vector_icon,
     const std::u16string& message,
     bool auto_expire,
-    bool should_animate,
-    bool closeable)
+    bool should_animate)
     : infobar_identifier_(infobar_identifier),
       vector_icon_(vector_icon),
       message_(message),
       auto_expire_(auto_expire),
-      should_animate_(should_animate),
-      closeable_(closeable) {}
+      should_animate_(should_animate) {}
 
 SimpleAlertInfoBarDelegate::~SimpleAlertInfoBarDelegate() = default;
 
@@ -48,8 +46,4 @@ std::u16string SimpleAlertInfoBarDelegate::GetMessageText() const {
 
 int SimpleAlertInfoBarDelegate::GetButtons() const {
   return BUTTON_NONE;
-}
-
-bool SimpleAlertInfoBarDelegate::IsCloseable() const {
-  return closeable_;
 }

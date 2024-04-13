@@ -9,6 +9,10 @@
 namespace download {
 namespace features {
 
+BASE_FEATURE(kUseDownloadOfflineContentProvider,
+             "UseDownloadOfflineContentProvider",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kParallelDownloading,
              "ParallelDownloading",
 #if BUILDFLAG(IS_ANDROID)
@@ -27,19 +31,6 @@ BASE_FEATURE(kRefreshExpirationDate,
              "RefreshExpirationDate",
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
-
-BASE_FEATURE(kDownloadsMigrateToJobsAPI,
-             "DownloadsMigrateToJobsAPI",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kDownloadNotificationServiceUnifiedAPI,
-             "DownloadNotificationServiceUnifiedAPI",
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
 
 BASE_FEATURE(kUseInProgressDownloadManagerForDownloadService,
              "UseInProgressDownloadManagerForDownloadService",
@@ -73,6 +64,9 @@ BASE_FEATURE(kDeleteOverwrittenDownloads,
 BASE_FEATURE(kAllowFileBufferSizeControl,
              "AllowFileBufferSizeControl",
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kDownloadRange, "DownloadRange", base::FEATURE_ENABLED_BY_DEFAULT);
+
 }  // namespace features
 
 }  // namespace download

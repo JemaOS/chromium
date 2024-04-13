@@ -12,7 +12,6 @@ source_set("lib") {
     "//base",
     "//mojo/public/cpp/bindings",
     "//third_party/ced",
-    "//third_party/zlib",
     "//third_party/zlib/google:zip",
   ]
 

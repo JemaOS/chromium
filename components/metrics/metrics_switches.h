@@ -5,9 +5,7 @@
 #ifndef COMPONENTS_METRICS_METRICS_SWITCHES_H_
 #define COMPONENTS_METRICS_METRICS_SWITCHES_H_
 
-namespace base {
-class CommandLine;
-}
+#include "base/command_line.h"
 
 namespace metrics {
 namespace switches {
@@ -26,24 +24,25 @@ extern const char kUmaInsecureServerUrl[];
 
 }  // namespace switches
 
-// Returns true if `kMetricsRecordingOnly` is on the command line for the
-// current process.
+// Returns true if kMetricsRecordingOnly is on the command line for the current
+// process.
 bool IsMetricsRecordingOnlyEnabled();
 
-// Returns true if `kForceEnableMetricsReporting` is on the command line for the
+// Returns true if kForceEnableMetricsReporting is on the command line for the
 // current process.
 bool IsMetricsReportingForceEnabled();
 
-// Returns true if `kForceMsbbSettingOnForUkm` is on the command line for the
+// Returns true if kForceMsbbSettingOnForUkm is on the command line for the
 // current process.
 bool IsMsbbSettingForcedOnForUkm();
 
-// Adds `kMetricsRecordingOnly` to `command_line` if not already present.
-void EnableMetricsRecordingOnlyForTesting(base::CommandLine* command_line);
+// Adds kMetricsRecordingOnly to |command_line| if not already present.
+void EnableMetricsRecordingOnlyForTesting(
+    base::CommandLine* command_line = base::CommandLine::ForCurrentProcess());
 
-// Adds `kForceEnableMetricsReporting` to the command line for the current
-// process if not already present.
-void ForceEnableMetricsReportingForTesting();
+// Adds kForceEnableMetricsReporting to |command_line| if not already present.
+void ForceEnableMetricsReportingForTesting(
+    base::CommandLine* command_line = base::CommandLine::ForCurrentProcess());
 
 }  // namespace metrics
 

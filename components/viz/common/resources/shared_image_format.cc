@@ -4,14 +4,13 @@
 
 #include "components/viz/common/resources/shared_image_format.h"
 
-#include <compare>
-#include <optional>
 #include <type_traits>
 
 #include "base/check_op.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "base/strings/stringprintf.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace viz {
 namespace {
@@ -25,86 +24,87 @@ static size_t ConvertBitsToBytes(size_t bits) {
   return bytes;
 }
 
-const char* SinglePlaneFormatToString(SharedImageFormat format) {
-  CHECK(format.is_single_plane());
-  if (format == SinglePlaneFormat::kRGBA_8888) {
-    return "RGBA_8888";
-  } else if (format == SinglePlaneFormat::kRGBA_4444) {
-    return "RGBA_4444";
-  } else if (format == SinglePlaneFormat::kBGRA_8888) {
-    return "BGRA_8888";
-  } else if (format == SinglePlaneFormat::kALPHA_8) {
-    return "ALPHA_8";
-  } else if (format == SinglePlaneFormat::kLUMINANCE_8) {
-    return "LUMINANCE_8";
-  } else if (format == SinglePlaneFormat::kRGB_565) {
-    return "RGB_565";
-  } else if (format == SinglePlaneFormat::kBGR_565) {
-    return "BGR_565";
-  } else if (format == SinglePlaneFormat::kETC1) {
-    return "ETC1";
-  } else if (format == SinglePlaneFormat::kR_8) {
-    return "R_8";
-  } else if (format == SinglePlaneFormat::kRG_88) {
-    return "RG_88";
-  } else if (format == SinglePlaneFormat::kLUMINANCE_F16) {
-    return "LUMINANCE_F16";
-  } else if (format == SinglePlaneFormat::kRGBA_F16) {
-    return "RGBA_F16";
-  } else if (format == SinglePlaneFormat::kR_16) {
-    return "R_16";
-  } else if (format == SinglePlaneFormat::kRG_1616) {
-    return "RG_1616";
-  } else if (format == SinglePlaneFormat::kRGBX_8888) {
-    return "RGBX_8888";
-  } else if (format == SinglePlaneFormat::kBGRX_8888) {
-    return "BGRX_8888";
-  } else if (format == SinglePlaneFormat::kRGBA_1010102) {
-    return "RGBA_1010102";
-  } else if (format == SinglePlaneFormat::kBGRA_1010102) {
-    return "BGRA_1010102";
-  } else if (format == LegacyMultiPlaneFormat::kYV12) {
-    return "YV12_LEGACY";
-  } else if (format == LegacyMultiPlaneFormat::kNV12) {
-    return "NV12_LEGACY";
-  } else if (format == LegacyMultiPlaneFormat::kNV12A) {
-    return "NV12A_LEGACY";
-  } else if (format == LegacyMultiPlaneFormat::kP010) {
-    return "P010_LEGACY";
-  } else if (format == SinglePlaneFormat::kR_F16) {
-    return "R_F16";
+const char* ResourceFormatToString(ResourceFormat format) {
+  switch (format) {
+    case ResourceFormat::RGBA_8888:
+      return "RGBA_8888";
+    case ResourceFormat::RGBA_4444:
+      return "RGBA_4444";
+    case ResourceFormat::BGRA_8888:
+      return "BGRA_8888";
+    case ResourceFormat::ALPHA_8:
+      return "ALPHA_8";
+    case ResourceFormat::LUMINANCE_8:
+      return "LUMINANCE_8";
+    case ResourceFormat::RGB_565:
+      return "RGB_565";
+    case ResourceFormat::BGR_565:
+      return "BGR_565";
+    case ResourceFormat::ETC1:
+      return "ETC1";
+    case ResourceFormat::RED_8:
+      return "R_8";
+    case ResourceFormat::RG_88:
+      return "RG_88";
+    case ResourceFormat::LUMINANCE_F16:
+      return "LUMINANCE_F16";
+    case ResourceFormat::RGBA_F16:
+      return "RGBA_F16";
+    case ResourceFormat::R16_EXT:
+      return "R_16";
+    case ResourceFormat::RG16_EXT:
+      return "RG_1616";
+    case ResourceFormat::RGBX_8888:
+      return "RGBX_8888";
+    case ResourceFormat::BGRX_8888:
+      return "BGRX_8888";
+    case ResourceFormat::RGBA_1010102:
+      return "RGBA_1010102";
+    case ResourceFormat::BGRA_1010102:
+      return "BGRA_1010102";
+    case ResourceFormat::YVU_420:
+      return "YVU_420";
+    case ResourceFormat::YUV_420_BIPLANAR:
+      return "YUV_420_BIPLANAR";
+    case ResourceFormat::YUVA_420_TRIPLANAR:
+      return "YUVA_420_TRIPLANAR";
+    case ResourceFormat::P010:
+      return "P010";
   }
-  NOTREACHED_NORETURN();
 }
 
-int BitsPerPixelForTrueSinglePlaneFormat(SharedImageFormat format) {
-  CHECK(format.is_single_plane() && !format.IsLegacyMultiplanar());
-  if (format == SinglePlaneFormat::kRGBA_F16) {
-    return 64;
-  } else if (format == SinglePlaneFormat::kBGRA_8888 ||
-             format == SinglePlaneFormat::kRGBA_8888 ||
-             format == SinglePlaneFormat::kRGBX_8888 ||
-             format == SinglePlaneFormat::kBGRX_8888 ||
-             format == SinglePlaneFormat::kRGBA_1010102 ||
-             format == SinglePlaneFormat::kBGRA_1010102 ||
-             format == SinglePlaneFormat::kRG_1616) {
-    return 32;
-  } else if (format == SinglePlaneFormat::kRGBA_4444 ||
-             format == SinglePlaneFormat::kRGB_565 ||
-             format == SinglePlaneFormat::kLUMINANCE_F16 ||
-             format == SinglePlaneFormat::kR_F16 ||
-             format == SinglePlaneFormat::kR_16 ||
-             format == SinglePlaneFormat::kBGR_565 ||
-             format == SinglePlaneFormat::kRG_88) {
-    return 16;
-  } else if (format == SinglePlaneFormat::kALPHA_8 ||
-             format == SinglePlaneFormat::kLUMINANCE_8 ||
-             format == SinglePlaneFormat::kR_8) {
-    return 8;
-  } else if (format == SinglePlaneFormat::kETC1) {
-    return 4;
+int BitsPerPixelForResourceFormat(ResourceFormat format) {
+  switch (format) {
+    case RGBA_F16:
+      return 64;
+    case BGRA_8888:
+    case RGBA_8888:
+    case RGBX_8888:
+    case BGRX_8888:
+    case RGBA_1010102:
+    case BGRA_1010102:
+    case RG16_EXT:
+      return 32;
+    case RGBA_4444:
+    case RGB_565:
+    case LUMINANCE_F16:
+    case R16_EXT:
+    case BGR_565:
+    case RG_88:
+      return 16;
+    case ALPHA_8:
+    case LUMINANCE_8:
+    case RED_8:
+      return 8;
+    case ETC1:
+      return 4;
+    case YVU_420:
+    case YUV_420_BIPLANAR:
+    case P010:
+    case YUVA_420_TRIPLANAR:
+      NOTREACHED();
+      return 0;
   }
-  NOTREACHED_NORETURN();
 }
 
 uint64_t StorageBytesPerElement(SharedImageFormat::ChannelFormat channel) {
@@ -121,16 +121,12 @@ uint64_t StorageBytesPerElement(SharedImageFormat::ChannelFormat channel) {
 
 const char* PlaneConfigToString(SharedImageFormat::PlaneConfig plane) {
   switch (plane) {
-    case SharedImageFormat::PlaneConfig::kY_U_V:
-      return "Y_U_V";
     case SharedImageFormat::PlaneConfig::kY_V_U:
       return "Y_V_U";
     case SharedImageFormat::PlaneConfig::kY_UV:
       return "Y_UV";
     case SharedImageFormat::PlaneConfig::kY_UV_A:
       return "Y_UV_A";
-    case SharedImageFormat::PlaneConfig::kY_U_V_A:
-      return "Y_U_V_A";
   }
 }
 
@@ -138,10 +134,6 @@ const char* SubsamplingToString(SharedImageFormat::Subsampling subsampling) {
   switch (subsampling) {
     case SharedImageFormat::Subsampling::k420:
       return "420";
-    case SharedImageFormat::Subsampling::k422:
-      return "422";
-    case SharedImageFormat::Subsampling::k444:
-      return "444";
   }
 }
 
@@ -158,23 +150,21 @@ const char* ChannelFormatToString(SharedImageFormat::ChannelFormat channel) {
   }
 }
 
-const char* PrefersExternalSamplerToString(SharedImageFormat format) {
-  return format.PrefersExternalSampler() ? "ExtSamplerOn" : "ExtSamplerOff";
-}
-
-SharedImageFormat GetEquivalentMultiplanarFormat(SharedImageFormat format) {
-  if (format == LegacyMultiPlaneFormat::kYV12) {
-    return MultiPlaneFormat::kYV12;
-  } else if (format == LegacyMultiPlaneFormat::kNV12) {
-    return MultiPlaneFormat::kNV12;
-  } else if (format == LegacyMultiPlaneFormat::kNV12A) {
-    return MultiPlaneFormat::kNV12A;
-  } else if (format == LegacyMultiPlaneFormat::kP010) {
-    return MultiPlaneFormat::kP010;
+SharedImageFormat GetEquivalentMultiplanarFormat(
+    ResourceFormat resource_format) {
+  switch (resource_format) {
+    case ResourceFormat::YVU_420:
+      return MultiPlaneFormat::kYV12;
+    case ResourceFormat::YUV_420_BIPLANAR:
+      return MultiPlaneFormat::kNV12;
+    case ResourceFormat::YUVA_420_TRIPLANAR:
+      return MultiPlaneFormat::kNV12A;
+    case ResourceFormat::P010:
+      return MultiPlaneFormat::kP010;
+    default:
+      NOTREACHED();
+      return SinglePlaneFormat::kRGBA_8888;
   }
-
-  NOTREACHED();
-  return SinglePlaneFormat::kRGBA_8888;
 }
 
 }  // namespace
@@ -189,24 +179,19 @@ static_assert(std::is_trivially_copyable_v<SharedImageFormat>);
 // like manually packing bits into a single uint64_t for storage.
 
 bool SharedImageFormat::IsBitmapFormatSupported() const {
-  return is_single_plane() &&
-         singleplanar_format() == mojom::SingleplanarFormat::RGBA_8888;
+  return is_single_plane() && resource_format() == RGBA_8888;
 }
 
 int SharedImageFormat::NumberOfPlanes() const {
-  if (is_single_plane()) {
+  if (is_single_plane())
     return 1;
-  }
   switch (plane_config()) {
-    case PlaneConfig::kY_U_V:
     case PlaneConfig::kY_V_U:
       return 3;
     case PlaneConfig::kY_UV:
       return 2;
     case PlaneConfig::kY_UV_A:
       return 3;
-    case PlaneConfig::kY_U_V_A:
-      return 4;
   }
 }
 
@@ -214,75 +199,50 @@ bool SharedImageFormat::IsValidPlaneIndex(int plane_index) const {
   return plane_index >= 0 && plane_index < NumberOfPlanes();
 }
 
-std::optional<size_t> SharedImageFormat::MaybeEstimatedPlaneSizeInBytes(
-    int plane_index,
+absl::optional<size_t> SharedImageFormat::MaybeEstimatedSizeInBytes(
     const gfx::Size& size) const {
   DCHECK(!size.IsEmpty());
 
   if (is_single_plane()) {
     if (IsLegacyMultiplanar()) {
-      return GetEquivalentMultiplanarFormat(*this)
-          .MaybeEstimatedPlaneSizeInBytes(plane_index, size);
+      return GetEquivalentMultiplanarFormat(resource_format())
+          .MaybeEstimatedSizeInBytes(size);
     }
 
-    DCHECK_EQ(plane_index, 0);
-
     base::CheckedNumeric<size_t> bits_per_row =
-        BitsPerPixelForTrueSinglePlaneFormat(*this);
+        BitsPerPixelForResourceFormat(resource_format());
     bits_per_row *= size.width();
     if (!bits_per_row.IsValid()) {
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     base::CheckedNumeric<size_t> estimated_bytes =
         ConvertBitsToBytes(bits_per_row.ValueOrDie());
     estimated_bytes *= size.height();
     if (!estimated_bytes.IsValid()) {
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     return estimated_bytes.ValueOrDie();
   }
 
   size_t bytes_per_element = StorageBytesPerElement(channel_format());
-
-  gfx::Size plane_size = GetPlaneSize(plane_index, size);
-
-  base::CheckedNumeric<size_t> plane_estimated_bytes =
-      bytes_per_element * NumChannelsInPlane(plane_index);
-  DCHECK(plane_estimated_bytes.IsValid());
-  plane_estimated_bytes *= plane_size.width();
-  plane_estimated_bytes *= plane_size.height();
-  if (!plane_estimated_bytes.IsValid()) {
-    return std::nullopt;
-  }
-
-  return plane_estimated_bytes.ValueOrDie();
-}
-
-std::optional<size_t> SharedImageFormat::MaybeEstimatedSizeInBytes(
-    const gfx::Size& size) const {
-  DCHECK(!size.IsEmpty());
-
-  if (is_single_plane()) {
-    if (IsLegacyMultiplanar()) {
-      return GetEquivalentMultiplanarFormat(*this).MaybeEstimatedSizeInBytes(
-          size);
-    }
-    return MaybeEstimatedPlaneSizeInBytes(0, size);
-  }
-
   base::CheckedNumeric<size_t> total_estimated_bytes = 0;
   for (int plane_index = 0; plane_index < NumberOfPlanes(); ++plane_index) {
-    std::optional<size_t> plane_estimated_bytes =
-        MaybeEstimatedPlaneSizeInBytes(plane_index, size);
-    if (!plane_estimated_bytes.has_value()) {
-      return std::nullopt;
+    gfx::Size plane_size = GetPlaneSize(plane_index, size);
+
+    base::CheckedNumeric<size_t> plane_estimated_bytes =
+        bytes_per_element * NumChannelsInPlane(plane_index);
+    DCHECK(plane_estimated_bytes.IsValid());
+    plane_estimated_bytes *= plane_size.width();
+    plane_estimated_bytes *= plane_size.height();
+    if (!plane_estimated_bytes.IsValid()) {
+      return absl::nullopt;
     }
 
-    total_estimated_bytes += plane_estimated_bytes.value();
+    total_estimated_bytes += plane_estimated_bytes;
     if (!total_estimated_bytes.IsValid()) {
-      return std::nullopt;
+      return absl::nullopt;
     }
   }
 
@@ -293,53 +253,42 @@ size_t SharedImageFormat::EstimatedSizeInBytes(const gfx::Size& size) const {
   return MaybeEstimatedSizeInBytes(size).value_or(0);
 }
 
-bool SharedImageFormat::VerifySizeInBytes(const gfx::Size& size) const {
-  return MaybeEstimatedSizeInBytes(size).has_value();
-}
-
 gfx::Size SharedImageFormat::GetPlaneSize(int plane_index,
                                           const gfx::Size& size) const {
   DCHECK(IsValidPlaneIndex(plane_index));
-  if (is_single_plane()) {
+  if (is_single_plane())
     return size;
-  }
 
-  // First plane is always Y plane and it is always size (not subsampled).
-  if (plane_index == 0) {
-    return size;
+  switch (plane_config()) {
+    case PlaneConfig::kY_V_U:
+      if (plane_index == 0) {
+        return size;
+      } else {
+        DCHECK_EQ(subsampling(), Subsampling::k420);
+        return gfx::ScaleToCeiledSize(size, 0.5);
+      }
+    case PlaneConfig::kY_UV:
+      if (plane_index == 1) {
+        DCHECK_EQ(subsampling(), Subsampling::k420);
+        return gfx::ScaleToCeiledSize(size, 0.5);
+      } else {
+        return size;
+      }
+    case PlaneConfig::kY_UV_A:
+      if (plane_index == 1) {
+        DCHECK_EQ(subsampling(), Subsampling::k420);
+        return gfx::ScaleToCeiledSize(size, 0.5);
+      } else {
+        return size;
+      }
   }
-  // A plane is always size
-  if (plane_config() == PlaneConfig::kY_UV_A && plane_index == 2) {
-    return size;
-  }
-  if (plane_config() == PlaneConfig::kY_U_V_A && plane_index == 3) {
-    return size;
-  }
-
-  // UV scales
-  float width_scale = 1.0;
-  float height_scale = 1.0;
-  switch (subsampling()) {
-    case Subsampling::k420:
-      width_scale = 0.5;
-      height_scale = 0.5;
-      break;
-    case Subsampling::k422:
-      width_scale = 0.5;
-      break;
-    case Subsampling::k444:
-      break;
-  }
-  return gfx::ScaleToCeiledSize(size, width_scale, height_scale);
 }
 
 // For multiplanar formats.
 int SharedImageFormat::NumChannelsInPlane(int plane_index) const {
   DCHECK(IsValidPlaneIndex(plane_index));
   switch (plane_config()) {
-    case PlaneConfig::kY_U_V:
     case PlaneConfig::kY_V_U:
-    case PlaneConfig::kY_U_V_A:
       return 1;
     case PlaneConfig::kY_UV:
       return plane_index == 1 ? 2 : 1;
@@ -370,13 +319,12 @@ std::string SharedImageFormat::ToString() const {
     case PlaneType::kUnknown:
       return "Unknown";
     case PlaneType::kSinglePlane:
-      return SinglePlaneFormatToString(*this);
+      return ResourceFormatToString(resource_format());
     case PlaneType::kMultiPlane:
-      return base::StringPrintf("(%s, %s, %s, %s)",
+      return base::StringPrintf("(%s, %s, %s)",
                                 PlaneConfigToString(plane_config()),
                                 SubsamplingToString(subsampling()),
-                                ChannelFormatToString(channel_format()),
-                                PrefersExternalSamplerToString(*this));
+                                ChannelFormatToString(channel_format()));
   }
 }
 
@@ -385,129 +333,88 @@ std::string SharedImageFormat::ToTestParamString() const {
     case PlaneType::kUnknown:
       return "Unknown";
     case PlaneType::kSinglePlane:
-      return SinglePlaneFormatToString(*this);
+      return ResourceFormatToString(resource_format());
     case PlaneType::kMultiPlane:
-      return base::StringPrintf("%s_%s_%s_%s",
-                                PlaneConfigToString(plane_config()),
+      return base::StringPrintf("%s_%s_%s", PlaneConfigToString(plane_config()),
                                 SubsamplingToString(subsampling()),
-                                ChannelFormatToString(channel_format()),
-                                PrefersExternalSamplerToString(*this));
+                                ChannelFormatToString(channel_format()));
   }
 }
 
 bool SharedImageFormat::HasAlpha() const {
   if (is_single_plane()) {
-    switch (singleplanar_format()) {
-      case mojom::SingleplanarFormat::RGBA_8888:
-      case mojom::SingleplanarFormat::RGBA_4444:
-      case mojom::SingleplanarFormat::RGBX_1010102:
-      case mojom::SingleplanarFormat::BGRA_8888:
-      case mojom::SingleplanarFormat::BGRX_1010102:
-      case mojom::SingleplanarFormat::ALPHA_8:
-      case mojom::SingleplanarFormat::RGBA_F16:
-      case mojom::SingleplanarFormat::NV12A_LEGACY:
+    switch (resource_format()) {
+      case ResourceFormat::RGBA_8888:
+      case ResourceFormat::RGBA_4444:
+      case ResourceFormat::RGBA_1010102:
+      case ResourceFormat::BGRA_8888:
+      case ResourceFormat::BGRA_1010102:
+      case ResourceFormat::ALPHA_8:
+      case ResourceFormat::RGBA_F16:
+      case ResourceFormat::YUVA_420_TRIPLANAR:
         return true;
       default:
         return false;
     }
   }
   switch (plane_config()) {
-    case PlaneConfig::kY_U_V:
     case PlaneConfig::kY_V_U:
     case PlaneConfig::kY_UV:
       return false;
     case PlaneConfig::kY_UV_A:
-    case PlaneConfig::kY_U_V_A:
       return true;
   }
 }
 
 bool SharedImageFormat::IsCompressed() const {
-  return is_single_plane() &&
-         singleplanar_format() == mojom::SingleplanarFormat::ETC1;
+  return is_single_plane() && resource_format() == ResourceFormat::ETC1;
 }
 
 bool SharedImageFormat::IsLegacyMultiplanar() const {
-  if (!is_single_plane()) {
+  if (!is_single_plane())
     return false;
-  }
 
-  switch (singleplanar_format()) {
-    case mojom::SingleplanarFormat::YV12_LEGACY:
-    case mojom::SingleplanarFormat::NV12_LEGACY:
-    case mojom::SingleplanarFormat::NV12A_LEGACY:
-    case mojom::SingleplanarFormat::P010_LEGACY:
+  switch (resource_format()) {
+    case ResourceFormat::YVU_420:
+    case ResourceFormat::YUV_420_BIPLANAR:
+    case ResourceFormat::YUVA_420_TRIPLANAR:
+    case ResourceFormat::P010:
       return true;
     default:
       return false;
   }
 }
 
-int SharedImageFormat::BitsPerPixel() const {
-  CHECK(is_single_plane());
-  switch (singleplanar_format()) {
-    case mojom::SingleplanarFormat::RGBA_F16:
-      return 64;
-    case mojom::SingleplanarFormat::BGRA_8888:
-    case mojom::SingleplanarFormat::RGBA_8888:
-    case mojom::SingleplanarFormat::RGBX_8888:
-    case mojom::SingleplanarFormat::BGRX_8888:
-    case mojom::SingleplanarFormat::RGBX_1010102:
-    case mojom::SingleplanarFormat::BGRX_1010102:
-    case mojom::SingleplanarFormat::RG16_EXT:
-      return 32;
-    case mojom::SingleplanarFormat::RGBA_4444:
-    case mojom::SingleplanarFormat::RGB_565:
-    case mojom::SingleplanarFormat::LUMINANCE_F16:
-    case mojom::SingleplanarFormat::R_F16:
-    case mojom::SingleplanarFormat::R16_EXT:
-    case mojom::SingleplanarFormat::BGR_565:
-    case mojom::SingleplanarFormat::RG_88:
-      return 16;
-    case mojom::SingleplanarFormat::ALPHA_8:
-    case mojom::SingleplanarFormat::LUMINANCE_8:
-    case mojom::SingleplanarFormat::RED_8:
-      return 8;
-    case mojom::SingleplanarFormat::ETC1:
-      return 4;
-    case mojom::SingleplanarFormat::P010_LEGACY:
-    case mojom::SingleplanarFormat::NV12A_LEGACY:
-    case mojom::SingleplanarFormat::YV12_LEGACY:
-    case mojom::SingleplanarFormat::NV12_LEGACY:
-      // Legacy multiplanar formats are not supported.
-      CHECK(0);
-  }
-  NOTREACHED_NORETURN();
-}
-
 bool SharedImageFormat::operator==(const SharedImageFormat& o) const {
-  if (plane_type_ != o.plane_type()) {
+  if (plane_type_ != o.plane_type())
     return false;
-  }
 
   switch (plane_type_) {
     case PlaneType::kUnknown:
       return true;
     case PlaneType::kSinglePlane:
-      return singleplanar_format() == o.singleplanar_format();
+      return resource_format() == o.resource_format();
     case PlaneType::kMultiPlane:
       return multiplanar_format() == o.multiplanar_format();
   }
 }
 
-std::weak_ordering SharedImageFormat::operator<=>(
-    const SharedImageFormat& o) const {
+bool SharedImageFormat::operator!=(const SharedImageFormat& o) const {
+  return !operator==(o);
+}
+
+bool SharedImageFormat::operator<(const SharedImageFormat& o) const {
   if (plane_type_ != o.plane_type()) {
-    return plane_type_ <=> o.plane_type();
+    return plane_type_ < o.plane_type();
   }
 
   switch (plane_type_) {
     case PlaneType::kUnknown:
-      return std::weak_ordering::equivalent;
+      return false;
     case PlaneType::kSinglePlane:
-      return singleplanar_format() <=> o.singleplanar_format();
+      return resource_format() < o.resource_format();
     case PlaneType::kMultiPlane:
-      return multiplanar_format() <=> o.multiplanar_format();
+      return multiplanar_format() < o.multiplanar_format();
   }
 }
 
@@ -516,11 +423,13 @@ bool SharedImageFormat::SharedImageFormatUnion::MultiplanarFormat::operator==(
   return plane_config == o.plane_config && subsampling == o.subsampling &&
          channel_format == o.channel_format;
 }
-
-std::weak_ordering
-SharedImageFormat::SharedImageFormatUnion::MultiplanarFormat::operator<=>(
+bool SharedImageFormat::SharedImageFormatUnion::MultiplanarFormat::operator!=(
     const MultiplanarFormat& o) const {
-  return std::tie(plane_config, subsampling, channel_format) <=>
+  return !operator==(o);
+}
+bool SharedImageFormat::SharedImageFormatUnion::MultiplanarFormat::operator<(
+    const MultiplanarFormat& o) const {
+  return std::tie(plane_config, subsampling, channel_format) <
          std::tie(o.plane_config, o.subsampling, o.channel_format);
 }
 

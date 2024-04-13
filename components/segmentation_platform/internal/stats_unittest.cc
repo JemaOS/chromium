@@ -4,44 +4,21 @@
 
 #include "components/segmentation_platform/internal/stats.h"
 
-#include "base/functional/callback_forward.h"
-#include "base/run_loop.h"
 #include "base/test/metrics/histogram_tester.h"
-#include "base/test/task_environment.h"
 #include "components/segmentation_platform/internal/metadata/metadata_utils.h"
 #include "components/segmentation_platform/internal/metadata/metadata_writer.h"
 #include "components/segmentation_platform/internal/post_processor/post_processing_test_utils.h"
 #include "components/segmentation_platform/public/constants.h"
 #include "components/segmentation_platform/public/proto/segmentation_platform.pb.h"
 #include "components/segmentation_platform/public/proto/types.pb.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace segmentation_platform {
 using proto::SignalType;
 namespace stats {
 
-#define EXPECT_SEGMENTATION_UMA(count, name, value) \
-  WaitForMetricsFlush();                            \
-  EXPECT_EQ(count, tester.GetBucketCount(name, value))
-
-class StatsTest : public testing::Test {
- public:
-  StatsTest() { BackgroundUmaRecorder::GetInstance().Initialize(); }
-
-  void WaitForMetricsFlush() {
-    task_env_.AdvanceClock(base::Seconds(5));
-    base::RunLoop wait;
-    BackgroundUmaRecorder::GetInstance().bg_task_runner_for_testing()->PostTask(
-        FROM_HERE, wait.QuitClosure());
-    wait.Run();
-  }
-
- protected:
-  base::test::TaskEnvironment task_env_{
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-};
-
-TEST_F(StatsTest, ModelExecutionZeroValuePercent) {
+TEST(StatsTest, ModelExecutionZeroValuePercent) {
   base::HistogramTester tester;
   std::vector<float> empty{};
   std::vector<float> single_zero{0};
@@ -52,48 +29,51 @@ TEST_F(StatsTest, ModelExecutionZeroValuePercent) {
 
   RecordModelExecutionZeroValuePercent(
       SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, empty);
-  EXPECT_SEGMENTATION_UMA(
-      1, "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 0);
+  EXPECT_EQ(
+      1, tester.GetBucketCount(
+             "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 0));
 
   RecordModelExecutionZeroValuePercent(
       SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, single_zero);
-  EXPECT_SEGMENTATION_UMA(
+  EXPECT_EQ(
       1,
-
-      "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 100);
+      tester.GetBucketCount(
+          "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 100));
 
   RecordModelExecutionZeroValuePercent(
       SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, single_non_zero);
-  EXPECT_SEGMENTATION_UMA(
-      2, "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 0);
+  EXPECT_EQ(
+      2, tester.GetBucketCount(
+             "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 0));
 
   RecordModelExecutionZeroValuePercent(
       SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, all_zeroes);
-  EXPECT_SEGMENTATION_UMA(
+  EXPECT_EQ(
       2,
-
-      "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 100);
+      tester.GetBucketCount(
+          "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 100));
 
   RecordModelExecutionZeroValuePercent(
       SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, one_non_zero);
-  EXPECT_SEGMENTATION_UMA(
+  EXPECT_EQ(
       1,
-
-      "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 66);
+      tester.GetBucketCount(
+          "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 66));
 
   RecordModelExecutionZeroValuePercent(
       SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, all_non_zero);
-  EXPECT_SEGMENTATION_UMA(
-      3, "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 0);
+  EXPECT_EQ(
+      3, tester.GetBucketCount(
+             "SegmentationPlatform.ModelExecution.ZeroValuePercent.NewTab", 0));
 }
 
-TEST_F(StatsTest, AdaptiveToolbarSegmentSwitch) {
+TEST(StatsTest, AdaptiveToolbarSegmentSwitch) {
   std::string histogram("SegmentationPlatform.AdaptiveToolbar.SegmentSwitched");
   base::HistogramTester tester;
   Config config;
   config.segmentation_key = kAdaptiveToolbarSegmentationKey;
-  config.segmentation_uma_name = kAdaptiveToolbarUmaName;
-  config.auto_execute_and_cache = true;
+  config.segmentation_uma_name =
+      SegmentationKeyToUmaName(config.segmentation_key);
 
   // Share -> New tab.
   RecordSegmentSelectionComputed(
@@ -102,7 +82,7 @@ TEST_F(StatsTest, AdaptiveToolbarSegmentSwitch) {
 
   // None -> Share.
   RecordSegmentSelectionComputed(
-      config, SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_SHARE, std::nullopt);
+      config, SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_SHARE, absl::nullopt);
 
   // Share -> Share.
   RecordSegmentSelectionComputed(
@@ -122,38 +102,38 @@ TEST_F(StatsTest, AdaptiveToolbarSegmentSwitch) {
       "SegmentationPlatform.AdaptiveToolbar.SegmentSelection.Computed", 3);
 }
 
-TEST_F(StatsTest, SegmentSwitchWithMultiOutput) {
+TEST(StatsTest, SegmentSwitchWithMultiOutput) {
   std::string switched_histogram(
       "SegmentationPlatform.PowerUser.PostProcessing.TopLabel.Switched");
 
   base::HistogramTester tester;
   Config config;
   config.segmentation_key = kPowerUserKey;
-  config.segmentation_uma_name = kPowerUserUmaName;
-  config.auto_execute_and_cache = true;
+  config.segmentation_uma_name =
+      SegmentationKeyToUmaName(config.segmentation_key);
 
   auto result_low = metadata_utils::CreatePredictionResult(
       /*model_scores=*/{0.2},
       test_utils::GetTestOutputConfigForBinnedClassifier(),
-      /*timestamp=*/base::Time::Now(), /*model_version=*/1);
+      /*timestamp=*/base::Time::Now());
 
   auto result_medium = metadata_utils::CreatePredictionResult(
       /*model_scores=*/{0.3},
       test_utils::GetTestOutputConfigForBinnedClassifier(),
-      /*timestamp=*/base::Time::Now(), /*model_version=*/1);
+      /*timestamp=*/base::Time::Now());
 
   auto result_high = metadata_utils::CreatePredictionResult(
       /*model_scores=*/{0.8},
       test_utils::GetTestOutputConfigForBinnedClassifier(),
-      /*timestamp=*/base::Time::Now(), /*model_version=*/1);
+      /*timestamp=*/base::Time::Now());
 
   auto result_underflow = metadata_utils::CreatePredictionResult(
       /*model_scores=*/{0.1},
       test_utils::GetTestOutputConfigForBinnedClassifier(),
-      /*timestamp=*/base::Time::Now(), /*model_version=*/1);
+      /*timestamp=*/base::Time::Now());
 
   // Low -> Low. No switched histograms.
-  RecordClassificationResultUpdated(config, &result_low, result_low);
+  RecordClassificationResultUpdated(config, result_low, result_low);
   EXPECT_THAT(tester.GetAllSamples(switched_histogram), testing::ElementsAre());
 
   // Verify all possible combinations in a 3-label classifier.
@@ -166,15 +146,15 @@ TEST_F(StatsTest, SegmentSwitchWithMultiOutput) {
   // label 1 -> label 2 : 102
   // label 2 -> label 0 : 200
   // label 2 -> label 1 : 201
-  RecordClassificationResultUpdated(config, nullptr, result_low);
-  RecordClassificationResultUpdated(config, nullptr, result_medium);
-  RecordClassificationResultUpdated(config, nullptr, result_high);
-  RecordClassificationResultUpdated(config, &result_low, result_medium);
-  RecordClassificationResultUpdated(config, &result_low, result_high);
-  RecordClassificationResultUpdated(config, &result_medium, result_low);
-  RecordClassificationResultUpdated(config, &result_medium, result_high);
-  RecordClassificationResultUpdated(config, &result_high, result_low);
-  RecordClassificationResultUpdated(config, &result_high, result_medium);
+  RecordClassificationResultUpdated(config, absl::nullopt, result_low);
+  RecordClassificationResultUpdated(config, absl::nullopt, result_medium);
+  RecordClassificationResultUpdated(config, absl::nullopt, result_high);
+  RecordClassificationResultUpdated(config, result_low, result_medium);
+  RecordClassificationResultUpdated(config, result_low, result_high);
+  RecordClassificationResultUpdated(config, result_medium, result_low);
+  RecordClassificationResultUpdated(config, result_medium, result_high);
+  RecordClassificationResultUpdated(config, result_high, result_low);
+  RecordClassificationResultUpdated(config, result_high, result_medium);
 
   tester.ExpectTotalCount(switched_histogram, 9);
   EXPECT_THAT(tester.GetAllSamples(switched_histogram),
@@ -185,35 +165,35 @@ TEST_F(StatsTest, SegmentSwitchWithMultiOutput) {
                                    base::Bucket(201, 1)));
 }
 
-TEST_F(StatsTest, SegmentComputedWithMultiOutput) {
+TEST(StatsTest, SegmentComputedWithMultiOutput) {
   std::string computed_histogram(
       "SegmentationPlatform.PowerUser.PostProcessing.TopLabel.Computed");
 
   base::HistogramTester tester;
   Config config;
   config.segmentation_key = kPowerUserKey;
-  config.segmentation_uma_name = kPowerUserUmaName;
-  config.auto_execute_and_cache = true;
+  config.segmentation_uma_name =
+      SegmentationKeyToUmaName(config.segmentation_key);
 
   auto result_low = metadata_utils::CreatePredictionResult(
       /*model_scores=*/{0.2},
       test_utils::GetTestOutputConfigForBinnedClassifier(),
-      /*timestamp=*/base::Time::Now(), /*model_version=*/1);
+      /*timestamp=*/base::Time::Now());
 
   auto result_medium = metadata_utils::CreatePredictionResult(
       /*model_scores=*/{0.3},
       test_utils::GetTestOutputConfigForBinnedClassifier(),
-      /*timestamp=*/base::Time::Now(), /*model_version=*/1);
+      /*timestamp=*/base::Time::Now());
 
   auto result_high = metadata_utils::CreatePredictionResult(
       /*model_scores=*/{0.8},
       test_utils::GetTestOutputConfigForBinnedClassifier(),
-      /*timestamp=*/base::Time::Now(), /*model_version=*/1);
+      /*timestamp=*/base::Time::Now());
 
   auto result_underflow = metadata_utils::CreatePredictionResult(
       /*model_scores=*/{0.1},
       test_utils::GetTestOutputConfigForBinnedClassifier(),
-      /*timestamp=*/base::Time::Now(), /*model_version=*/1);
+      /*timestamp=*/base::Time::Now());
 
   RecordClassificationResultComputed(config, result_low);
   RecordClassificationResultComputed(config, result_medium);
@@ -225,20 +205,20 @@ TEST_F(StatsTest, SegmentComputedWithMultiOutput) {
                                    base::Bucket(2, 1)));
 }
 
-TEST_F(StatsTest, BooleanSegmentSwitch) {
+TEST(StatsTest, BooleanSegmentSwitch) {
   std::string histogram(
-      "SegmentationPlatform.ChromeStartAndroidV2.SegmentSwitched");
+      "SegmentationPlatform.ChromeStartAndroid.SegmentSwitched");
   base::HistogramTester tester;
   Config config;
-  config.segmentation_key = kChromeStartAndroidV2SegmentationKey;
-  config.segmentation_uma_name = kChromeStartAndroidV2UmaName;
-  config.auto_execute_and_cache = true;
+  config.segmentation_key = kChromeStartAndroidSegmentationKey;
+  config.segmentation_uma_name =
+      SegmentationKeyToUmaName(config.segmentation_key);
   config.is_boolean_segment = true;
 
   // Start to none.
   RecordSegmentSelectionComputed(
       config, SegmentId::OPTIMIZATION_TARGET_UNKNOWN,
-      SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_CHROME_START_ANDROID_V2);
+      SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_CHROME_START_ANDROID);
 
   tester.ExpectTotalCount(histogram, 1);
   EXPECT_THAT(tester.GetAllSamples(histogram),
@@ -246,9 +226,8 @@ TEST_F(StatsTest, BooleanSegmentSwitch) {
                   static_cast<int>(BooleanSegmentSwitch::kEnabledToNone), 1)));
   // None to start.
   RecordSegmentSelectionComputed(
-      config,
-      SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_CHROME_START_ANDROID_V2,
-      std::nullopt);
+      config, SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_CHROME_START_ANDROID,
+      absl::nullopt);
 
   tester.ExpectTotalCount(histogram, 2);
 
@@ -260,11 +239,10 @@ TEST_F(StatsTest, BooleanSegmentSwitch) {
           base::Bucket(static_cast<int>(BooleanSegmentSwitch::kEnabledToNone),
                        1)));
   tester.ExpectTotalCount(
-      "SegmentationPlatform.ChromeStartAndroidV2.SegmentSelection.Computed2",
-      2);
+      "SegmentationPlatform.ChromeStartAndroid.SegmentSelection.Computed2", 2);
 }
 
-TEST_F(StatsTest, SignalsListeningCount) {
+TEST(StatsTest, SignalsListeningCount) {
   base::HistogramTester tester;
   std::set<uint64_t> user_actions{1, 2, 3, 4};
   std::set<std::pair<std::string, proto::SignalType>> histograms;
@@ -287,7 +265,7 @@ TEST_F(StatsTest, SignalsListeningCount) {
              "SegmentationPlatform.Signals.ListeningCount.HistogramValue", 2));
 }
 
-TEST_F(StatsTest, TrainingDataCollectionEvent) {
+TEST(StatsTest, TrainingDataCollectionEvent) {
   base::HistogramTester tester;
   RecordTrainingDataCollectionEvent(
       SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_SHARE,
@@ -297,26 +275,25 @@ TEST_F(StatsTest, TrainingDataCollectionEvent) {
                 "SegmentationPlatform.TrainingDataCollectionEvents.Share", 0));
 }
 
-TEST_F(StatsTest, RecordModelExecutionResult) {
+TEST(StatsTest, RecordModelExecutionResult) {
   base::HistogramTester tester;
 
   // Test default case of multiplying result by 100.
   stats::RecordModelExecutionResult(
-      SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_CHROME_LOW_USER_ENGAGEMENT,
-      0.19, proto::SegmentationModelMetadata::RETURN_TYPE_PROBABILITY);
-  EXPECT_EQ(
-      1,
-      tester.GetBucketCount(
-          "SegmentationPlatform.ModelExecution.Result.ChromeLowUserEngagement",
-          19));
+      SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_QUERY_TILES, 0.19,
+      proto::SegmentationModelMetadata::RETURN_TYPE_PROBABILITY);
+  EXPECT_EQ(1,
+            tester.GetBucketCount(
+                "SegmentationPlatform.ModelExecution.Result.QueryTiles", 19));
 
   // Test segments that uses rank as scores, which should be recorded as-is.
   stats::RecordModelExecutionResult(
       SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_SEARCH_USER, 75,
       proto::SegmentationModelMetadata::RETURN_TYPE_MULTISEGMENT);
-  EXPECT_EQ(1,
-            tester.GetBucketCount(
-                "SegmentationPlatform.ModelExecution.Result.SearchUser", 75));
+  EXPECT_EQ(
+      1,
+      tester.GetBucketCount(
+          "SegmentationPlatform.ModelExecution.Result.SearchUserSegment", 75));
 
   // Test segments that returns an unbound float result, which should be
   // recorded as int.
@@ -327,7 +304,7 @@ TEST_F(StatsTest, RecordModelExecutionResult) {
                    "SegmentationPlatform.ModelExecution.Result.Share", 75));
 }
 
-TEST_F(StatsTest, RecordModelExecutionResultForMultiOutput) {
+TEST(StatsTest, RecordModelExecutionResultForMultiOutput) {
   base::HistogramTester tester;
   auto output_config = test_utils::GetTestOutputConfigForMultiClassClassifier(
       /*top_k-outputs=*/2,
@@ -361,52 +338,6 @@ TEST_F(StatsTest, RecordModelExecutionResultForMultiOutput) {
       1,
       tester.GetBucketCount(
           "SegmentationPlatform.ModelExecution.Result.0.PowerUserSegment", 5));
-}
-
-TEST_F(StatsTest, SegmentIdToHistogramVariant) {
-  EXPECT_EQ("CrossDeviceUserSegment",
-            SegmentIdToHistogramVariant(SegmentId::CROSS_DEVICE_USER_SEGMENT));
-  EXPECT_EQ("NewTab", SegmentIdToHistogramVariant(
-                          SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB));
-  EXPECT_EQ(
-      "ChromeStartAndroidV2",
-      SegmentIdToHistogramVariant(
-          SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_CHROME_START_ANDROID_V2));
-  EXPECT_EQ("WebAppInstallationPromo",
-            SegmentIdToHistogramVariant(
-                SegmentId::OPTIMIZATION_TARGET_WEB_APP_INSTALLATION_PROMO));
-  EXPECT_EQ("Other", SegmentIdToHistogramVariant(
-                         proto::SegmentId::OPTIMIZATION_TARGET_UNKNOWN));
-}
-
-class BackgroundRecorderTest : public testing::Test {
- protected:
-  base::test::TaskEnvironment task_env_;
-};
-
-// TODO(ssid): This test may cause delay in the test framework, fix and re-enable the test.
-// Tracking: b/299529800.
-TEST_F(BackgroundRecorderTest, DISABLED_Recording) {
-  BackgroundUmaRecorder& recorder = BackgroundUmaRecorder::GetInstance();
-  recorder.InitializeForTesting(task_env_.GetMainThreadTaskRunner());
-  int counter = 0;
-  auto count_callback =
-      base::BindRepeating([](int* counter) { *counter += 1; }, &counter);
-
-  recorder.AddMetric(count_callback);
-  recorder.AddMetric(count_callback);
-  // The metrics are not recorded yet.
-  EXPECT_EQ(counter, 0);
-
-  // Wait for the metrics to record and check the counter.
-  base::RunLoop wait;
-  auto wait_callback =
-      base::BindRepeating([](base::OnceClosure quit) { std::move(quit).Run(); },
-                          wait.QuitClosure());
-  recorder.AddMetric(wait_callback);
-  wait.Run();
-
-  EXPECT_EQ(counter, 2);
 }
 
 }  // namespace stats

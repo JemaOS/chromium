@@ -24,7 +24,7 @@ class UkmDatabase;
 // before being written to the database.
 class UrlSignalHandler {
  public:
-  using FindCallback = base::OnceCallback<void(bool, const std::string&)>;
+  using FindCallback = base::OnceCallback<void(bool)>;
 
   // Delegate class, usually one per each HistoryService, used for checking if
   // an URL is part of the history database on-demand.
@@ -36,8 +36,6 @@ class UrlSignalHandler {
     virtual bool FastCheckUrl(const GURL& url);
     // Query the history database to check if the |url| is part of the database.
     virtual void FindUrlInHistory(const GURL& url, FindCallback callback) = 0;
-    // Getters for getting profile id.
-    virtual const std::string& profile_id() = 0;
 
     virtual ~HistoryDelegate() = default;
   };
@@ -55,7 +53,7 @@ class UrlSignalHandler {
   // Called by history service when a visit is added for the |url|. This
   // notification should mean that the |url| will be stored in history database
   // URL table until it is removed by OnUrlsRemovedFromHistory().
-  void OnHistoryVisit(const GURL& url, const std::string& profile_id);
+  void OnHistoryVisit(const GURL& url);
 
   // Called when |urls| are removed from the history database.
   void OnUrlsRemovedFromHistory(const std::vector<GURL>& urls, bool all_urls);
@@ -75,14 +73,12 @@ class UrlSignalHandler {
       const GURL& url,
       std::unique_ptr<base::flat_set<HistoryDelegate*>> delegates_checked,
       FindCallback callback,
-      bool found,
-      const std::string& profile_id);
+      bool found);
 
   // Called when finished checking all the history delegates.
   void OnCheckedHistory(ukm::SourceId source_id,
                         const GURL& url,
-                        bool in_history,
-                        const std::string& profile_id);
+                        bool in_history);
 
   raw_ptr<UkmDatabase> ukm_database_;
 

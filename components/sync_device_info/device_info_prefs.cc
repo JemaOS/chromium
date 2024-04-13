@@ -9,7 +9,6 @@
 
 #include "base/time/clock.h"
 #include "base/time/default_clock.h"
-#include "base/trace_event/trace_event.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
@@ -62,7 +61,6 @@ DeviceInfoPrefs::~DeviceInfoPrefs() = default;
 
 bool DeviceInfoPrefs::IsRecentLocalCacheGuid(
     const std::string& cache_guid) const {
-  TRACE_EVENT0("sync", "DeviceInfoPrefs::IsRecentLocalCacheGuid");
   const base::Value::List& recent_local_cache_guids =
       pref_service_->GetList(kDeviceInfoRecentGUIDsWithTimestamps);
 
@@ -76,7 +74,6 @@ bool DeviceInfoPrefs::IsRecentLocalCacheGuid(
 }
 
 void DeviceInfoPrefs::AddLocalCacheGuid(const std::string& cache_guid) {
-  TRACE_EVENT0("sync", "DeviceInfoPrefs::AddLocalCacheGuid");
   ScopedListPrefUpdate update_cache_guids(pref_service_,
                                           kDeviceInfoRecentGUIDsWithTimestamps);
   base::Value::List& update_list = update_cache_guids.Get();
@@ -113,7 +110,8 @@ void DeviceInfoPrefs::GarbageCollectExpiredCacheGuids() {
       return true;
     }
 
-    std::optional<int> days_since_epoch = dict.GetDict().FindInt(kTimestampKey);
+    absl::optional<int> days_since_epoch =
+        dict.GetDict().FindInt(kTimestampKey);
 
     // Avoid crashes if the dictionary contains no timestamp and meanwhile clean
     // up these corrupt entries.

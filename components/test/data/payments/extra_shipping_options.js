@@ -7,9 +7,8 @@
 /**
  * Launches the PaymentRequest UI with shipping options, but does not request a
  * shipping address.
- * @param {String} methodData - An array of payment method objects.
  */
-function buyWithMethods(methodData) {
+function buy() {
   try {
     var details = {
       total: {label: 'Total', amount: {currency: 'USD', value: '5.00'}},
@@ -20,8 +19,9 @@ function buyWithMethods(methodData) {
         selected: true,
       }],
     };
-    var request =
-        new PaymentRequest(methodData, details);
+    var request = new PaymentRequest(
+        [{supportedMethods: 'basic-card', data: {supportedNetworks: ['visa']}}],
+        details);
     request.show()
         .then(function(resp) {
           resp.complete('success')

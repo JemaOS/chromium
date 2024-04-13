@@ -153,7 +153,7 @@ class PageStateObserver::WebContentsObserverWrapper
   }
 
   content::NavigationHandle* navigation_handle_ = nullptr;
-  raw_ref<PageStateObserver> wrapped_;
+  base::raw_ref<PageStateObserver> wrapped_;
 };
 
 PageStateObserver::PageStateObserver()

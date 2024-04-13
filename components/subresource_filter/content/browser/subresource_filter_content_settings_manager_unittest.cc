@@ -4,7 +4,6 @@
 
 #include "components/subresource_filter/content/browser/subresource_filter_content_settings_manager.h"
 
-#include <optional>
 #include <set>
 #include <string>
 
@@ -20,6 +19,7 @@
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace subresource_filter {
@@ -62,9 +62,11 @@ class SubresourceFilterContentSettingsManagerTest : public testing::Test {
   }
 
   ContentSetting GetContentSettingMatchingUrlWithEmptyPath(const GURL& url) {
+    ContentSettingsForOneType host_settings;
+    GetSettingsMap()->GetSettingsForOneType(ContentSettingsType::ADS,
+                                            &host_settings);
     GURL url_with_empty_path = url.GetWithEmptyPath();
-    for (const auto& it :
-         GetSettingsMap()->GetSettingsForOneType(ContentSettingsType::ADS)) {
+    for (const auto& it : host_settings) {
       // Need GURL conversion to get rid of unnecessary default ports.
       if (GURL(it.primary_pattern.ToString()) == url_with_empty_path)
         return it.GetContentSetting();
@@ -120,7 +122,7 @@ TEST_F(SubresourceFilterContentSettingsManagerTest,
 TEST_F(SubresourceFilterContentSettingsManagerTest,
        NoSiteMetadata_SiteActivationFalse) {
   GURL url("https://example.test/");
-  settings_manager()->SetSiteMetadataForTesting(url, std::nullopt);
+  settings_manager()->SetSiteMetadataForTesting(url, absl::nullopt);
   EXPECT_FALSE(settings_manager()->GetSiteActivationFromMetadata(url));
 }
 
@@ -137,7 +139,7 @@ TEST_F(SubresourceFilterContentSettingsManagerTest,
   task_environment()->FastForwardBy(
       SubresourceFilterContentSettingsManager::kMaxPersistMetadataDuration);
   dict = settings_manager()->GetSiteMetadata(url);
-  EXPECT_EQ(dict, std::nullopt);
+  EXPECT_EQ(dict, absl::nullopt);
 
   // Verify once metadata has expired we revert to metadata V1 and do not set
   // activation using the metadata activation key.
@@ -145,7 +147,7 @@ TEST_F(SubresourceFilterContentSettingsManagerTest,
       url, false /* is_activated */,
       SubresourceFilterContentSettingsManager::ActivationSource::kSafeBrowsing);
   dict = settings_manager()->GetSiteMetadata(url);
-  EXPECT_EQ(dict, std::nullopt);
+  EXPECT_EQ(dict, absl::nullopt);
 }
 
 // TODO(https://crbug.com/1113967): Remove test once ability to persist metadata
@@ -171,13 +173,13 @@ TEST_F(SubresourceFilterContentSettingsManagerTest,
       SubresourceFilterContentSettingsManager::ActivationSource::kSafeBrowsing);
 
   auto dict = settings_manager()->GetSiteMetadata(url);
-  EXPECT_NE(dict, std::nullopt);
+  EXPECT_NE(dict, absl::nullopt);
 
   // Advance the clock, metadata should be cleared.
   task_environment()->FastForwardBy(base::Minutes(1));
 
   dict = settings_manager()->GetSiteMetadata(url);
-  EXPECT_EQ(dict, std::nullopt);
+  EXPECT_EQ(dict, absl::nullopt);
 }
 
 TEST_F(SubresourceFilterContentSettingsManagerTest,
@@ -194,7 +196,7 @@ TEST_F(SubresourceFilterContentSettingsManagerTest,
   task_environment()->FastForwardBy(
       SubresourceFilterContentSettingsManager::kMaxPersistMetadataDuration);
   dict = settings_manager()->GetSiteMetadata(url);
-  EXPECT_EQ(dict, std::nullopt);
+  EXPECT_EQ(dict, absl::nullopt);
 }
 
 TEST_F(SubresourceFilterContentSettingsManagerTest,

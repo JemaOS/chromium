@@ -8,7 +8,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 
-import androidx.test.annotation.UiThreadTest;
 import androidx.test.filters.SmallTest;
 
 import org.junit.Assert;
@@ -19,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import org.chromium.base.test.BaseJUnit4ClassRunner;
+import org.chromium.base.test.UiThreadTest;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.content_public.browser.test.NativeLibraryTestUtils;
@@ -37,7 +37,8 @@ import java.util.Map;
 @RunWith(BaseJUnit4ClassRunner.class)
 @Batch(Batch.UNIT_TESTS)
 public class AndroidPaymentAppUnitTest {
-    @Mock private AndroidPaymentApp.Launcher mLauncherMock;
+    @Mock
+    private AndroidPaymentApp.Launcher mLauncherMock;
 
     private String mErrorMessage;
     private String mPaymentMethodName;
@@ -66,8 +67,7 @@ public class AndroidPaymentAppUnitTest {
     @UiThreadTest
     public void testCancelledPaymentWithoutIsReadyToPayService() throws Exception {
         runTest(Activity.RESULT_CANCELED);
-        Assert.assertEquals(
-                "Payment app returned RESULT_CANCELED code. This is how payment apps "
+        Assert.assertEquals("Payment app returned RESULT_CANCELED code. This is how payment apps "
                         + "can close their activity programmatically.",
                 mErrorMessage);
         Assert.assertNull(mPaymentMethodName);
@@ -85,17 +85,10 @@ public class AndroidPaymentAppUnitTest {
         mReadyToPayQueryFinished = false;
         mInvokePaymentAppFinished = false;
 
-        AndroidPaymentApp app =
-                new AndroidPaymentApp(
-                        mLauncherMock,
-                        "com.company.app",
-                        "com.company.app.PaymentActivity",
-                        /* isReadyToPayService= */ null,
-                        "App Label",
-                        /* icon= */ null,
-                        /* isIncognito= */ false,
-                        /* appToHide= */ null,
-                        new SupportedDelegations());
+        AndroidPaymentApp app = new AndroidPaymentApp(mLauncherMock, "com.company.app",
+                "com.company.app.PaymentActivity",
+                /*isReadyToPayService=*/null, "App Label", /*icon=*/null, /*isIncognito=*/false,
+                /*appToHide=*/null, new SupportedDelegations());
         app.addMethodName("https://company.com/pay");
 
         Map<String, PaymentMethodData> methods = new HashMap<>();
@@ -103,13 +96,8 @@ public class AndroidPaymentAppUnitTest {
 
         Map<String, PaymentDetailsModifier> modifiers = new HashMap<>();
 
-        app.maybeQueryIsReadyToPayService(
-                methods,
-                "https://merchant.com",
-                "https://psp.com",
-                /* certificateChain= */ null,
-                modifiers,
-                new AndroidPaymentApp.IsReadyToPayCallback() {
+        app.maybeQueryIsReadyToPayService(methods, "https://merchant.com", "https://psp.com",
+                /*certificateChain=*/null, modifiers, new AndroidPaymentApp.IsReadyToPayCallback() {
                     @Override
                     public void onIsReadyToPayResponse(
                             AndroidPaymentApp app, boolean isReadyToPay) {
@@ -125,19 +113,10 @@ public class AndroidPaymentAppUnitTest {
         total.amount.currency = "USD";
         total.amount.value = "1.00";
         total.label = "Total";
-        app.invokePaymentApp(
-                "request-id",
-                "Merchant Name",
-                "https://merchant.com",
-                "https://psp.com",
-                /* certificateChain= */ null,
-                methods,
-                total,
-                /* displayItems= */ new ArrayList<PaymentItem>(),
-                modifiers,
-                new PaymentOptions(),
-                new ArrayList<PaymentShippingOption>(),
-                new PaymentApp.InstrumentDetailsCallback() {
+        app.invokePaymentApp("request-id", "Merchant Name", "https://merchant.com",
+                "https://psp.com", /*certificateChain=*/null, methods, total,
+                /*displayItems=*/new ArrayList<PaymentItem>(), modifiers, new PaymentOptions(),
+                new ArrayList<PaymentShippingOption>(), new PaymentApp.InstrumentDetailsCallback() {
                     @Override
                     public void onInstrumentDetailsReady(
                             String methodName, String stringifiedDetails, PayerData payerData) {

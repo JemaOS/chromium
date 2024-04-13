@@ -4,7 +4,7 @@
 
 package org.chromium.components.strictmode;
 
-/** Placeholder exception thrown for the custom death penalty. */
+/** Dummy exception thrown for the custom death penalty. */
 public final class StrictModePolicyViolation extends Error {
     public StrictModePolicyViolation(Violation v) {
         super(v.violationString());

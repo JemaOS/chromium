@@ -36,22 +36,27 @@ import java.lang.annotation.RetentionPolicy;
 /**
  * A general-purpose dialog for presenting a list of things to pick from.
  *
- * <p>The dialog is shown by the ItemChooserDialog constructor, and always calls
+ * The dialog is shown by the ItemChooserDialog constructor, and always calls
  * ItemSelectedCallback.onItemSelected() as it's closing.
  */
 public class ItemChooserDialog implements DeviceItemAdapter.Observer {
-    /** An interface to implement to get a callback when something has been selected. */
+    /**
+     * An interface to implement to get a callback when something has been
+     * selected.
+     */
     public interface ItemSelectedCallback {
         /**
          * Returns the user selection.
          *
-         * @param id The id of the item selected. Blank if the dialog was closed without selecting
-         *     anything.
+         * @param id The id of the item selected. Blank if the dialog was closed
+         * without selecting anything.
          */
         void onItemSelected(String id);
     }
 
-    /** The labels to show in the dialog. */
+    /**
+     * The labels to show in the dialog.
+     */
     public static class ItemChooserLabels {
         // The title at the top of the dialog.
         public final CharSequence title;
@@ -71,14 +76,9 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
         // The label for the positive button (e.g. Select/Pair).
         public final CharSequence positiveButton;
 
-        public ItemChooserLabels(
-                CharSequence title,
-                CharSequence searching,
-                CharSequence noneFound,
-                CharSequence statusActive,
-                CharSequence statusIdleNoneFound,
-                CharSequence statusIdleSomeFound,
-                CharSequence positiveButton) {
+        public ItemChooserLabels(CharSequence title, CharSequence searching, CharSequence noneFound,
+                CharSequence statusActive, CharSequence statusIdleNoneFound,
+                CharSequence statusIdleSomeFound, CharSequence positiveButton) {
             this.title = title;
             this.searching = searching;
             this.noneFound = noneFound;
@@ -89,13 +89,11 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
         }
     }
 
-    /** The various states the dialog can represent. */
-    @IntDef({
-        State.INITIALIZING_ADAPTER,
-        State.STARTING,
-        State.PROGRESS_UPDATE_AVAILABLE,
-        State.DISCOVERY_IDLE
-    })
+    /**
+     * The various states the dialog can represent.
+     */
+    @IntDef({State.INITIALIZING_ADAPTER, State.STARTING, State.PROGRESS_UPDATE_AVAILABLE,
+            State.DISCOVERY_IDLE})
     @Retention(RetentionPolicy.SOURCE)
     public @interface State {
         int INITIALIZING_ADAPTER = 0;
@@ -148,19 +146,15 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
      * @param callback The callback used to communicate back what was selected.
      * @param labels The labels to show in the dialog.
      */
-    public ItemChooserDialog(
-            Context context,
-            Window window,
-            ItemSelectedCallback callback,
+    public ItemChooserDialog(Context context, Window window, ItemSelectedCallback callback,
             ItemChooserLabels labels) {
         mContext = context;
         mWindow = window;
         mItemSelectedCallback = callback;
         mLabels = labels;
 
-        LinearLayout dialogContainer =
-                (LinearLayout)
-                        LayoutInflater.from(mContext).inflate(R.layout.item_chooser_dialog, null);
+        LinearLayout dialogContainer = (LinearLayout) LayoutInflater.from(mContext).inflate(
+                R.layout.item_chooser_dialog, null);
 
         mListView = (ListView) dialogContainer.findViewById(R.id.items);
         mProgressBar = (ProgressBar) dialogContainer.findViewById(R.id.progress);
@@ -179,19 +173,17 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
         mConfirmButton.setText(labels.positiveButton);
         mConfirmButton.setEnabled(false);
 
-        View.OnClickListener clickListener =
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        mItemSelectedCallback.onItemSelected(mItemAdapter.getSelectedItemKey());
-                        mDialog.setOnDismissListener(null);
-                        mDialog.dismiss();
-                    }
-                };
+        View.OnClickListener clickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mItemSelectedCallback.onItemSelected(mItemAdapter.getSelectedItemKey());
+                mDialog.setOnDismissListener(null);
+                mDialog.dismiss();
+            }
+        };
 
-        mItemAdapter =
-                new DeviceItemAdapter(
-                        mContext, /* itemsSelectable= */ true, R.layout.item_chooser_dialog_row);
+        mItemAdapter = new DeviceItemAdapter(
+                mContext, /*itemsSelectable=*/true, R.layout.item_chooser_dialog_row);
         mItemAdapter.setNotifyOnChange(true);
         mItemAdapter.setObserver(this);
 
@@ -214,14 +206,10 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
                         // The list is the main element in the dialog and it should grow and
                         // shrink according to the size of the screen available.
                         View listViewContainer = dialogContainer.findViewById(R.id.container);
-                        listViewContainer.setLayoutParams(
-                                new LinearLayout.LayoutParams(
-                                        LayoutParams.MATCH_PARENT,
-                                        getListHeight(
-                                                mWindow.getDecorView().getHeight(),
-                                                mContext.getResources()
-                                                        .getDisplayMetrics()
-                                                        .density)));
+                        listViewContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                                LayoutParams.MATCH_PARENT,
+                                getListHeight(mWindow.getDecorView().getHeight(),
+                                        mContext.getResources().getDisplayMetrics().density)));
                     }
                 });
     }
@@ -236,7 +224,7 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
      * Sets whether the window should be closed when it loses focus.
      *
      * @param ignorePendingWindowFocusChangeForClose Whether the window should be closed when it
-     *     loses focus.
+     * loses focus.
      */
     public void setIgnorePendingWindowFocusChangeForClose(
             boolean ignorePendingWindowFocusChangeForClose) {
@@ -255,21 +243,18 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
     }
 
     private void showDialogForView(View view) {
-        mDialog =
-                new Dialog(mContext) {
-                    @Override
-                    public void onWindowFocusChanged(boolean hasFocus) {
-                        super.onWindowFocusChanged(hasFocus);
-                        if (!mIgnorePendingWindowFocusChangeForClose && !hasFocus) super.dismiss();
-                        setIgnorePendingWindowFocusChangeForClose(false);
-                    }
-                };
+        mDialog = new Dialog(mContext) {
+            @Override
+            public void onWindowFocusChanged(boolean hasFocus) {
+                super.onWindowFocusChanged(hasFocus);
+                if (!mIgnorePendingWindowFocusChangeForClose && !hasFocus) super.dismiss();
+                setIgnorePendingWindowFocusChangeForClose(false);
+            }
+        };
         mDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         mDialog.setCanceledOnTouchOutside(true);
-        mDialog.addContentView(
-                view,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
+        mDialog.addContentView(view,
+                new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.MATCH_PARENT));
 
         // Use setOnDismissListener() so that the callback is invoked when the
@@ -295,31 +280,29 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
     }
 
     /**
-     * Adds an item to the end of the list to show in the dialog if the item was not in the chooser.
-     * Otherwise updates the items description.
+     * Adds an item to the end of the list to show in the dialog if the item
+     * was not in the chooser. Otherwise updates the items description.
      *
      * @param key Unique identifier for that item.
      * @param description Text in the row.
      */
     public void addOrUpdateItem(String key, String description) {
-        addOrUpdateItem(key, description, /* icon= */ null, /* iconDescription= */ null);
+        addOrUpdateItem(key, description, null /* icon */, null /* iconDescription */);
     }
 
     /**
-     * Adds an item to the end of the list to show in the dialog if the item was not in the chooser.
-     * Otherwise updates the items description or icon. Note that as long as at least one item has
-     * an icon all rows will be inset with the icon dimensions.
+     * Adds an item to the end of the list to show in the dialog if the item
+     * was not in the chooser. Otherwise updates the items description or icon.
+     * Note that as long as at least one item has an icon all rows will be inset
+     * with the icon dimensions.
      *
      * @param key Unique identifier for that item.
      * @param description Text in the row.
-     * @param icon Drawable to show left of the description. The drawable provided should be
-     *     stateful and handle the selected state to be rendered correctly.
+     * @param icon Drawable to show left of the description. The drawable provided should
+     *        be stateful and handle the selected state to be rendered correctly.
      * @param iconDescription Description of the icon.
      */
-    public void addOrUpdateItem(
-            String key,
-            String description,
-            @Nullable Drawable icon,
+    public void addOrUpdateItem(String key, String description, @Nullable Drawable icon,
             @Nullable String iconDescription) {
         mProgressBar.setVisibility(View.GONE);
         mItemAdapter.addOrUpdate(key, description, icon, iconDescription);
@@ -336,24 +319,32 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
         setState(State.DISCOVERY_IDLE);
     }
 
-    /** Indicates the chooser that no more items will be added. */
+    /**
+     * Indicates the chooser that no more items will be added.
+     */
     public void setIdleState() {
         mProgressBar.setVisibility(View.GONE);
         setState(State.DISCOVERY_IDLE);
     }
 
-    /** Indicates the adapter is being initialized. */
+    /**
+     * Indicates the adapter is being initialized.
+     */
     public void signalInitializingAdapter() {
         setState(State.INITIALIZING_ADAPTER);
     }
 
-    /** Clear all items from the dialog. */
+    /**
+     * Clear all items from the dialog.
+     */
     public void clear() {
         mItemAdapter.clear();
         setState(State.STARTING);
     }
 
-    /** Shows an error message in the dialog. */
+    /**
+     * Shows an error message in the dialog.
+     */
     public void setErrorState(CharSequence errorMessage, CharSequence errorStatus) {
         mListView.setVisibility(View.GONE);
         mProgressBar.setVisibility(View.GONE);
@@ -366,7 +357,7 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
         switch (state) {
             case State.STARTING:
                 mStatus.setText(mLabels.searching);
-                // fall through
+            // fall through
             case State.INITIALIZING_ADAPTER:
                 mListView.setVisibility(View.GONE);
                 mProgressBar.setVisibility(View.VISIBLE);
@@ -379,22 +370,26 @@ public class ItemChooserDialog implements DeviceItemAdapter.Observer {
                 break;
             case State.DISCOVERY_IDLE:
                 boolean showEmptyMessage = mItemAdapter.isEmpty();
-                mStatus.setText(
-                        showEmptyMessage
-                                ? mLabels.statusIdleNoneFound
-                                : mLabels.statusIdleSomeFound);
+                mStatus.setText(showEmptyMessage ? mLabels.statusIdleNoneFound
+                                                 : mLabels.statusIdleSomeFound);
                 mEmptyMessage.setText(mLabels.noneFound);
                 mEmptyMessage.setVisibility(showEmptyMessage ? View.VISIBLE : View.GONE);
                 break;
         }
     }
 
-    /** Returns the dialog associated with this class. For use with tests only. */
+    /**
+     * Returns the dialog associated with this class. For use with tests only.
+     */
+    @VisibleForTesting
     public Dialog getDialogForTesting() {
         return mDialog;
     }
 
-    /** Returns the ItemAdapter associated with this class. For use with tests only. */
+    /**
+     * Returns the ItemAdapter associated with this class. For use with tests only.
+     */
+    @VisibleForTesting
     public DeviceItemAdapter getItemAdapterForTesting() {
         return mItemAdapter;
     }

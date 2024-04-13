@@ -5,10 +5,8 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_METRICS_SUGGESTIONS_LIST_METRICS_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_METRICS_SUGGESTIONS_LIST_METRICS_H_
 
-#include <cstddef>
-
 namespace autofill {
-enum class FillingProduct;
+enum class PopupType;
 
 namespace autofill_metrics {
 
@@ -19,43 +17,20 @@ namespace autofill_metrics {
 // Used by LogAutofillSelectedManageEntry().
 enum class ManageSuggestionType {
   kOther = 0,
-  // kPersonalInformation 1 is deprecated, see b/316345315.
+  kPersonalInformation = 1,
   kAddresses = 2,
   kPaymentMethodsCreditCards = 3,
   kPaymentMethodsIbans = 4,
   kMaxValue = kPaymentMethodsIbans,
 };
 
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-// Used by LogAutofillShowCardsFromGoogleAccountButtonEventMetric().
-enum class ShowCardsFromGoogleAccountButtonEvent {
-  // 'Show Cards from Google Account' button appeared.
-  kButtonAppeared = 0,
-  // 'Show Cards from Google Account' button appeared. Logged once per page
-  // load.
-  kButtonAppearedOnce = 1,
-  // 'Show Cards from Google Account' button clicked.
-  kButtonClicked = 2,
-  kMaxValue = kButtonClicked,
-};
-
-// Log the number of Autofill suggestions for the given
-// `filling_product`presented to the user when displaying the autofill popup.
-void LogSuggestionsCount(size_t num_suggestions,
-                         FillingProduct filling_product);
-
 // Log the index of the selected Autofill suggestion in the popup.
-void LogSuggestionAcceptedIndex(int index,
-                                FillingProduct filling_product,
-                                bool off_the_record);
+void LogAutofillSuggestionAcceptedIndex(int index,
+                                        autofill::PopupType popup_type,
+                                        bool off_the_record);
 
 // Logs that the user selected 'Manage...' settings entry in the popup.
-void LogAutofillSelectedManageEntry(FillingProduct filling_product);
-
-// Logs the 'Show cards from your Google Account" button events.
-void LogAutofillShowCardsFromGoogleAccountButtonEventMetric(
-    ShowCardsFromGoogleAccountButtonEvent event);
+void LogAutofillSelectedManageEntry(autofill::PopupType popup_type);
 
 }  // namespace autofill_metrics
 }  // namespace autofill

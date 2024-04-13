@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,6 +15,7 @@
 #include "base/sequence_checker.h"
 #include "components/component_updater/update_scheduler.h"
 #include "components/update_client/persisted_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class TimeTicks;
@@ -58,8 +58,6 @@ class CrxUpdateService : public ComponentUpdateService,
   bool GetComponentDetails(const std::string& id,
                            CrxUpdateItem* item) const override;
   base::Version GetRegisteredVersion(const std::string& app_id) override;
-  base::Version GetMaxPreviousProductVersion(
-      const std::string& app_id) override;
 
   // Overrides for Observer.
   void OnEvent(Events event, const std::string& id) override;
@@ -84,15 +82,13 @@ class CrxUpdateService : public ComponentUpdateService,
 
   CrxComponent ToCrxComponent(const ComponentRegistration& component) const;
 
-  std::optional<ComponentRegistration> GetComponent(
+  absl::optional<ComponentRegistration> GetComponent(
       const std::string& id) const;
 
   const CrxUpdateItem* GetComponentState(const std::string& id) const;
 
-  void GetCrxComponents(
-      const std::vector<std::string>& ids,
-      base::OnceCallback<void(const std::vector<std::optional<CrxComponent>>&)>
-          callback);
+  std::vector<absl::optional<CrxComponent>> GetCrxComponents(
+      const std::vector<std::string>& ids);
   void OnUpdateComplete(Callback callback,
                         const base::TimeTicks& start_time,
                         update_client::Error error);

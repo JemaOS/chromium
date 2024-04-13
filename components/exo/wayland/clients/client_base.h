@@ -71,7 +71,7 @@ class ClientBase {
     bool use_xdg = false;
     bool use_release_fences = false;
     bool use_stylus = false;
-    std::optional<std::string> wayland_socket = {};
+    absl::optional<std::string> wayland_socket = {};
     uint32_t linux_dmabuf_version = ZWP_LINUX_DMABUF_V1_MODIFIER_SINCE_VERSION;
   };
 
@@ -110,8 +110,7 @@ class ClientBase {
   std::unique_ptr<Buffer> CreateBuffer(const gfx::Size& size,
                                        int32_t drm_format,
                                        int32_t bo_usage,
-                                       bool add_buffer_listener = true,
-                                       bool use_vulkan = false);
+                                       bool add_buffer_listener = true);
   std::unique_ptr<Buffer> CreateDrmBuffer(const gfx::Size& size,
                                           int32_t drm_format,
                                           const uint64_t* modifiers,
@@ -205,13 +204,15 @@ class ClientBase {
   std::unique_ptr<wl_shell_surface> shell_surface_;
   std::unique_ptr<xdg_surface> xdg_surface_;
   std::unique_ptr<xdg_toplevel> xdg_toplevel_;
+  std::unique_ptr<zxdg_surface_v6> zxdg_surface_;
+  std::unique_ptr<zxdg_toplevel_v6> zxdg_toplevel_;
   std::unique_ptr<wl_pointer> wl_pointer_;
   std::unique_ptr<zcr_pointer_stylus_v2> zcr_pointer_stylus_;
   Globals globals_;
 #if defined(USE_GBM)
   base::ScopedFD drm_fd_;
   std::unique_ptr<gbm_device> device_;
-  raw_ptr<gl::GLDisplayEGL> egl_display_ = nullptr;
+  raw_ptr<gl::GLDisplayEGL, ExperimentalAsh> egl_display_ = nullptr;
 #if defined(USE_VULKAN)
   std::unique_ptr<gpu::VulkanImplementation> vk_implementation_;
   std::unique_ptr<ScopedVkInstance> vk_instance_;

@@ -27,8 +27,7 @@ namespace {
 void HashSpecifics(const sync_pb::EntitySpecifics& specifics,
                    std::string* hash) {
   DCHECK_GT(specifics.ByteSize(), 0);
-  *hash =
-      base::Base64Encode(base::SHA1HashString(specifics.SerializeAsString()));
+  base::Base64Encode(base::SHA1HashString(specifics.SerializeAsString()), hash);
 }
 
 }  // namespace

@@ -11,7 +11,6 @@
 #include "base/synchronization/waitable_event.h"
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
-#include "components/exo/wayland/output_controller_test_api.h"
 #include "components/exo/wayland/test/client_util.h"
 #include "components/exo/wayland/test/server_util.h"
 #include "components/exo/wayland/test/wayland_server_test.h"
@@ -20,12 +19,32 @@
 
 namespace exo::wayland {
 
-using WaylandDisplayOutputTest = test::WaylandServerTest;
+namespace {
+
+class WaylandDisplayOutputTest : public test::WaylandServerTest {
+ public:
+  WaylandDisplayOutputTest()
+      : test::WaylandServerTest(
+            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
+  WaylandDisplayOutputTest(const WaylandDisplayOutputTest&) = delete;
+  WaylandDisplayOutputTest& operator=(const WaylandDisplayOutputTest&) = delete;
+  ~WaylandDisplayOutputTest() override = default;
+
+  void TearDown() override {
+    task_environment()->RunUntilIdle();
+
+    test::WaylandServerTest::TearDown();
+  }
+};
+
+}  // namespace
 
 TEST_F(WaylandDisplayOutputTest, DelayedSelfDestruct) {
   class ClientData : public test::TestClient::CustomData {
    public:
-    raw_ptr<wl_output, DanglingUntriaged> output = nullptr;
+    raw_ptr<wl_output, ExperimentalAsh> output = nullptr;
+    uint32_t output_name = 0;
+    uint32_t output_version = 0;
   };
 
   // Start with 2 displays.
@@ -37,10 +56,13 @@ TEST_F(WaylandDisplayOutputTest, DelayedSelfDestruct) {
     auto data = std::make_unique<ClientData>();
     // This gets the latest bound output on the client side, which should be the
     // 2nd display here.
-    ASSERT_EQ(client->globals().outputs.size(), 2u);
-    data->output = client->globals().outputs.back().get();
-    output_resource_key = test::client_util::GetResourceKey(data->output);
+    data->output = client->output();
+    data->output_name = client->globals().output.name();
+    data->output_version =
+        wl_proxy_get_version(reinterpret_cast<wl_proxy*>(client->output()));
     client->set_data(std::move(data));
+
+    output_resource_key = test::client_util::GetResourceKey(client->output());
   });
 
   auto* display_handler =
@@ -58,12 +80,14 @@ TEST_F(WaylandDisplayOutputTest, DelayedSelfDestruct) {
   // Try releasing now and check for client error.
   PostToClientAndWait([&](test::TestClient* client) {
     auto* data = client->GetDataAs<ClientData>();
-    ASSERT_EQ(client->globals().outputs.size(), 2u);
-    EXPECT_EQ(data->output, client->globals().outputs.back().get());
-    wl_output_release(client->globals().outputs.back().release());
+    EXPECT_EQ(data->output, client->globals().output.get());
+    wl_output_release(client->globals().output.release());
     client->Roundtrip();
     EXPECT_EQ(wl_display_get_error(client->display()), 0);
   });
+
+  task_environment()->FastForwardBy(WaylandDisplayOutput::kDeleteTaskDelay *
+                                    WaylandDisplayOutput::kDeleteRetries);
 }
 
 // Verify that in the case where an output is added and removed quickly before
@@ -77,7 +101,7 @@ TEST_F(WaylandDisplayOutputTest, DelayedSelfDestructBeforeFirstBind) {
   ASSERT_TRUE(client_thread_->task_runner()->PostTask(
       FROM_HERE, base::BindLambdaForTesting([&] { block_bind_event.Wait(); })));
 
-  // Quickly add then remove a 2nd display while the client is blocked.
+  // Quickly add then remove a display while the client is blocked.
   UpdateDisplay("800x600,1024x786");
   UpdateDisplay("800x600");
 
@@ -95,42 +119,13 @@ TEST_F(WaylandDisplayOutputTest, DelayedSelfDestructBeforeFirstBind) {
     EXPECT_EQ(wl_display_get_error(client->display()), 0);
   });
 
-  // Clean up client's 2nd output object that was removed.
+  // Clean up client output object.
   PostToClientAndWait([&](test::TestClient* client) {
-    wl_output_release(client->globals().outputs.back().release());
+    wl_output_release(client->globals().output.release());
   });
-}
 
-// Tests to ensure exo processes added displays before removed displays for
-// display configuration updates. This ensures exo's clients always see a valid
-// Output during such configuration updates.
-TEST_F(WaylandDisplayOutputTest, MaintainsNonEmptyOutputList) {
-  // Start with 2 displays.
-  UpdateDisplay("300x400,500x600");
-
-  // Update to a new display configuration. The total global Outputs maintained
-  // by exo should remain non-zero while processing the change (exo will CHECK
-  // crash if it enters a zero output state).
-  UpdateDisplay("700x800,900x1000", /*from_native_platform=*/false,
-                /*generate_new_ids=*/true);
-}
-
-// Ensures metrics are correctly initialized and updated.
-TEST_F(WaylandDisplayOutputTest, InitializesAndUpdatesMetrics) {
-  // Start with a typical display configuration and confirm dimensions are
-  // reflected in the metrics.
-  UpdateDisplay("800x600");
-  const int64_t display_id =
-      display::Screen::GetScreen()->GetAllDisplays()[0].id();
-  OutputControllerTestApi output_controller_test_api(
-      *server_->output_controller_for_testing());
-  WaylandDisplayOutput* display_output =
-      output_controller_test_api.GetWaylandDisplayOutput(display_id);
-  EXPECT_EQ(gfx::Size(800, 600), display_output->metrics().logical_size);
-
-  // Update display dimensions, this should be reflected in the metrics.
-  UpdateDisplay("1200x800");
-  EXPECT_EQ(gfx::Size(1200, 800), display_output->metrics().logical_size);
+  task_environment()->FastForwardBy(WaylandDisplayOutput::kDeleteTaskDelay *
+                                    WaylandDisplayOutput::kDeleteRetries);
 }
 
 }  // namespace exo::wayland

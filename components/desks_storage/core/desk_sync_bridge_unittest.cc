@@ -15,7 +15,6 @@
 #include "base/containers/fixed_flat_set.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -367,9 +366,6 @@ WorkspaceDeskSpecifics ExampleWorkspaceDeskSpecificsWithoutDeskType(
   FillExampleChromeAppWindow(desk->add_apps());
   FillExampleProgressiveWebAppWindow(desk->add_apps());
   FillExampleSystemWebAppWindow(desk->add_apps());
-  specifics.set_device_form_factor(
-      sync_pb::SyncEnums::DeviceFormFactor::
-          SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP);
   return specifics;
 }
 
@@ -384,9 +380,6 @@ WorkspaceDeskSpecifics ExampleWorkspaceDeskSpecifics(
       ExampleWorkspaceDeskSpecificsWithoutDeskType(
           uuid, template_name, created_time, number_of_tabs);
   specifics.set_desk_type(desk_type);
-  specifics.set_device_form_factor(
-      sync_pb::SyncEnums::DeviceFormFactor::
-          SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP);
   return specifics;
 }
 
@@ -419,9 +412,6 @@ WorkspaceDeskSpecifics ExampleWorkspaceDeskSpecifics(
   FillExampleChromeAppWindow(desk->add_apps());
   FillExampleProgressiveWebAppWindow(desk->add_apps());
   FillExampleSystemWebAppWindow(desk->add_apps());
-  specifics.set_device_form_factor(
-      sync_pb::SyncEnums::DeviceFormFactor::
-          SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP);
   return specifics;
 }
 
@@ -448,21 +438,6 @@ WorkspaceDeskSpecifics CreateWorkspaceDeskWithoutDeskType() {
       /*number_of_tabs=*/2);
 }
 
-WorkspaceDeskSpecifics CreateFloatingWorkspaceTemplateExpectedValue(
-    std::string cache_guid) {
-  WorkspaceDeskSpecifics expected_desk_specifics =
-      ExampleWorkspaceDeskSpecifics(
-          MakeTestUuid(TestUuidId(1)).AsLowercaseString(),
-          base::StringPrintf(kNameFormat, 1), base::Time::Now(),
-          /*number_of_tabs=*/2,
-          SyncDeskType::WorkspaceDeskSpecifics_DeskType_FLOATING_WORKSPACE);
-  expected_desk_specifics.set_device_form_factor(
-      sync_pb::SyncEnums::DeviceFormFactor::
-          SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP);
-  expected_desk_specifics.set_client_cache_guid(cache_guid);
-  return expected_desk_specifics;
-}
-
 WorkspaceDeskSpecifics CreateBrowserTemplateExpectedValue(
     int template_index,
     const base::Time& created_time) {
@@ -475,9 +450,6 @@ WorkspaceDeskSpecifics CreateBrowserTemplateExpectedValue(
       created_time.ToDeltaSinceWindowsEpoch().InMicroseconds());
   expected_desk_specifics.set_desk_type(
       SyncDeskType::WorkspaceDeskSpecifics_DeskType_TEMPLATE);
-  expected_desk_specifics.set_device_form_factor(
-      sync_pb::SyncEnums::DeviceFormFactor::
-          SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP);
   Desk* expected_desk = expected_desk_specifics.mutable_desk();
   WorkspaceDeskSpecifics_App* app = expected_desk->add_apps();
   app->set_window_id(kBrowserWindowId);
@@ -504,9 +476,6 @@ WorkspaceDeskSpecifics CreatePwaTemplateExpectedValue(
       created_time.ToDeltaSinceWindowsEpoch().InMicroseconds());
   expected_desk_specifics.set_desk_type(
       SyncDeskType::WorkspaceDeskSpecifics_DeskType_TEMPLATE);
-  expected_desk_specifics.set_device_form_factor(
-      sync_pb::SyncEnums::DeviceFormFactor::
-          SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP);
   Desk* expected_desk = expected_desk_specifics.mutable_desk();
   WorkspaceDeskSpecifics_App* app = expected_desk->add_apps();
   app->set_window_id(kPwaWindowId);
@@ -535,9 +504,6 @@ WorkspaceDeskSpecifics CreateChromeAppTemplateExpectedValue(
       created_time.ToDeltaSinceWindowsEpoch().InMicroseconds());
   expected_desk_specifics.set_desk_type(
       SyncDeskType::WorkspaceDeskSpecifics_DeskType_TEMPLATE);
-  expected_desk_specifics.set_device_form_factor(
-      sync_pb::SyncEnums::DeviceFormFactor::
-          SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP);
   Desk* expected_desk = expected_desk_specifics.mutable_desk();
   WorkspaceDeskSpecifics_App* app = expected_desk->add_apps();
   app->set_window_id(window_id);
@@ -557,10 +523,8 @@ ModelTypeState StateWithEncryption(const std::string& encryption_key_name) {
 class MockDeskModelObserver : public DeskModelObserver {
  public:
   MOCK_METHOD0(DeskModelLoaded, void());
-  MOCK_METHOD1(
-      EntriesAddedOrUpdatedRemotely,
-      void(
-          const std::vector<raw_ptr<const DeskTemplate, VectorExperimental>>&));
+  MOCK_METHOD1(EntriesAddedOrUpdatedRemotely,
+               void(const std::vector<const DeskTemplate*>&));
   MOCK_METHOD1(EntriesRemovedRemotely, void(const std::vector<base::Uuid>&));
 };
 
@@ -636,7 +600,7 @@ class DeskSyncBridgeTest : public testing::Test {
     store_->CommitWriteBatch(
         std::move(batch),
         base::BindOnce(
-            [](base::RunLoop* loop, const std::optional<ModelError>& result) {
+            [](base::RunLoop* loop, const absl::optional<ModelError>& result) {
               EXPECT_FALSE(result.has_value()) << result->ToString();
               loop->Quit();
             },
@@ -660,8 +624,8 @@ class DeskSyncBridgeTest : public testing::Test {
   }
 
   // Helper method to reduce duplicated code between tests. Wraps the given
-  // specifics objects in an EntityData and EntityChange of type ACTION_ADD,
-  // and returns an EntityChangeList containing them all. Order is maintained.
+  // specifics objects in an EntityData and EntityChange of type ACTION_ADD, and
+  // returns an EntityChangeList containing them all. Order is maintained.
   EntityChangeList EntityAddList(
       const std::vector<WorkspaceDeskSpecifics>& specifics_list) {
     EntityChangeList changes;
@@ -711,8 +675,8 @@ class DeskSyncBridgeTest : public testing::Test {
   }
 
   void AddTwoTemplatesWithDuplicatedNames() {
-    // These two templates will have new UUIDs but with names that collides
-    // with "template 1"
+    // These two templates will have new UUIDs but with names that collides with
+    // "template 1"
     auto desk_template1 =
         desk_template_conversion::FromSyncProto(ExampleWorkspaceDeskSpecifics(
             MakeTestUuid(TestUuidId(8)).AsLowercaseString(), "template 1",
@@ -754,7 +718,7 @@ class DeskSyncBridgeTest : public testing::Test {
     std::string policy_json;
     base::Value::List template_list;
     template_list.Append(
-        desk_template_conversion::SerializeDeskTemplateAsBaseValue(
+        desk_template_conversion::SerializeDeskTemplateAsPolicy(
             admin_template1.get(), cache_.get()));
     bool conversion_success =
         base::JSONWriter::Write(template_list, &policy_json);
@@ -824,21 +788,19 @@ TEST_F(DeskSyncBridgeTest, DeskTemplateJsonConversionShouldBeLossless) {
       desk_template_conversion::FromSyncProto(desk_proto);
 
   base::Value template_value =
-      desk_template_conversion::SerializeDeskTemplateAsBaseValue(
+      desk_template_conversion::SerializeDeskTemplateAsPolicy(
           desk_template.get(), app_cache());
 
-  auto converted_desk_template =
-      desk_template_conversion::ParseDeskTemplateFromBaseValue(
+  std::unique_ptr<ash::DeskTemplate> converted_desk_template =
+      desk_template_conversion::ParseDeskTemplateFromSource(
           template_value, ash::DeskTemplateSource::kPolicy);
 
-  EXPECT_TRUE(converted_desk_template.has_value());
-  EXPECT_EQ(
-      desk_template->desk_restore_data()->ConvertToValue(),
-      converted_desk_template.value()->desk_restore_data()->ConvertToValue());
+  EXPECT_EQ(desk_template->desk_restore_data()->ConvertToValue(),
+            converted_desk_template->desk_restore_data()->ConvertToValue());
 
   WorkspaceDeskSpecifics converted_desk_proto =
-      desk_template_conversion::ToSyncProto(
-          converted_desk_template.value().get(), app_cache());
+      desk_template_conversion::ToSyncProto(converted_desk_template.get(),
+                                            app_cache());
 
   EXPECT_THAT(converted_desk_proto, EqualsSpecifics(desk_proto));
 }
@@ -962,21 +924,6 @@ TEST_F(DeskSyncBridgeTest, TabGroupInfoConversionShouldBeLossless) {
     // Shift range up by one.
     ++curr_start;
   }
-}
-
-TEST_F(DeskSyncBridgeTest, FloatingWorkspaceConversionShouldBeLossless) {
-  CreateBridge();
-  WorkspaceDeskSpecifics desk_proto =
-      CreateFloatingWorkspaceTemplateExpectedValue("cache_guid");
-  std::unique_ptr<DeskTemplate> desk_template =
-      desk_template_conversion::FromSyncProto(desk_proto);
-  WorkspaceDeskSpecifics converted_desk_proto =
-      desk_template_conversion::ToSyncProto(desk_template.get(), app_cache());
-
-  std::unique_ptr<DeskTemplate> converted_desk_template =
-      desk_template_conversion::FromSyncProto(converted_desk_proto);
-
-  EXPECT_THAT(converted_desk_proto, EqualsSpecifics(desk_proto));
 }
 
 // Tests that URLs are saved properly when converting a DeskTemplate
@@ -1144,8 +1091,8 @@ TEST_F(DeskSyncBridgeTest, EnsureUnsupportedAppCanBeIgnored) {
           kChromeAppWindowId, desk_test_util::kTestChromeAppId)));
 }
 
-// Tests that the sync bridge appropriately handles explicitly unknown desk
-// type as invalid.
+// Tests that the sync bridge appropriately handles explicitly unknown desk type
+// as invalid.
 TEST_F(DeskSyncBridgeTest, EnsureGracefulHandlingOfUnknownDeskTypes) {
   WorkspaceDeskSpecifics unknown_desk = CreateUnknownDeskType();
   std::unique_ptr<DeskTemplate> desk_template =
@@ -1414,22 +1361,6 @@ TEST_F(DeskSyncBridgeTest, GetEntryByUUIDShouldSucceed) {
   auto result = bridge()->GetEntryByUUID(MakeTestUuid(TestUuidId(1)));
   EXPECT_EQ(result.status, DeskModel::GetEntryByUuidStatus::kOk);
   EXPECT_TRUE(result.entry);
-}
-
-TEST_F(DeskSyncBridgeTest, GetAllEntriesByUuidsReturnsCorrectSet) {
-  InitializeBridge();
-
-  AddTwoTemplates();
-
-  std::set<base::Uuid> entry_uuids = bridge()->GetAllEntryUuids();
-
-  EXPECT_EQ(2ul, entry_uuids.size());
-
-  entry_uuids.erase(MakeTestUuid(TestUuidId(1)));
-  entry_uuids.erase(MakeTestUuid(TestUuidId(2)));
-
-  // IFF the set is correct it should be empty.
-  EXPECT_TRUE(entry_uuids.empty());
 }
 
 // Verify that event_flag placeholder has been set. This is a short-term

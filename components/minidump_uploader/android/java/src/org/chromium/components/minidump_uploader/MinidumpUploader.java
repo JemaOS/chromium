@@ -132,16 +132,14 @@ public class MinidumpUploader {
                             new GZIPOutputStream(connection.getOutputStream())) {
                 streamCopy(minidumpInputStream, requestBodyStream);
                 int responseCode = connection.getResponseCode();
-                // The crash server returns the crash ID in the response body.
-                String responseContent = getResponseContentAsString(connection);
-                String uploadId = responseContent != null ? responseContent : "unknown";
                 if (isSuccessful(responseCode)) {
+                    // The crash server returns the crash ID in the response body.
+                    String responseContent = getResponseContentAsString(connection);
+                    String uploadId = responseContent != null ? responseContent : "unknown";
                     return Result.success(uploadId);
                 } else {
                     // Return the remote error code and message.
-                    return Result.uploadError(
-                            responseCode,
-                            connection.getResponseMessage() + " uploadId: " + uploadId);
+                    return Result.uploadError(responseCode, connection.getResponseMessage());
                 }
             } finally {
                 connection.disconnect();

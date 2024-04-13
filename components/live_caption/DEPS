@@ -22,7 +22,6 @@ include_rules = [
   "+ui/accessibility",
   "+ui/base",
   "+ui/color",
-  "+ui/compositor",
   "+ui/events",
   "+ui/gfx",
   "+ui/native_theme",

@@ -4,31 +4,26 @@
 
 #include "components/performance_manager/performance_manager_tab_helper.h"
 
-#include <optional>
 #include <set>
 #include <utility>
 
 #include "base/containers/contains.h"
+#include "base/run_loop.h"
+#include "base/test/bind.h"
 #include "components/performance_manager/graph/frame_node_impl.h"
 #include "components/performance_manager/graph/graph_impl_operations.h"
 #include "components/performance_manager/graph/page_node_impl.h"
-#include "components/performance_manager/graph/process_node_impl.h"
 #include "components/performance_manager/performance_manager_impl.h"
 #include "components/performance_manager/public/graph/page_node.h"
 #include "components/performance_manager/render_process_user_data.h"
 #include "components/performance_manager/test_support/performance_manager_test_harness.h"
-#include "components/performance_manager/test_support/run_in_graph.h"
-#include "content/public/browser/browser_context.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/common/content_features.h"
-#include "content/public/common/process_type.h"
-#include "content/public/test/mock_permission_controller.h"
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/render_frame_host_test_support.h"
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/common/permissions/permission_utils.h"
 #include "third_party/blink/public/mojom/favicon/favicon_url.mojom.h"
 
 namespace performance_manager {
@@ -68,19 +63,23 @@ class PerformanceManagerTabHelperTest : public PerformanceManagerTestHarness {
          !it.IsAtEnd(); it.Advance()) {
       ++num_hosts;
     }
-    return num_hosts;
-  }
 
-  static size_t CountAllRenderProcessNodes(GraphImpl* graph) {
-    size_t num_hosts = 0;
-    for (ProcessNodeImpl* process_node : graph->GetAllProcessNodeImpls()) {
-      if (process_node->GetProcessType() == content::PROCESS_TYPE_RENDERER) {
-        ++num_hosts;
-      }
-    }
     return num_hosts;
   }
 };
+
+void CallOnGraphSync(PerformanceManagerImpl::GraphImplCallback callback) {
+  base::RunLoop run_loop;
+
+  PerformanceManagerImpl::CallOnGraphImpl(
+      FROM_HERE,
+      base::BindLambdaForTesting([&run_loop, &callback](GraphImpl* graph) {
+        std::move(callback).Run(graph);
+        run_loop.Quit();
+      }));
+
+  run_loop.Run();
+}
 
 void PerformanceManagerTabHelperTest::CheckGraphTopology(
     const std::set<content::RenderProcessHost*>& hosts,
@@ -102,50 +101,49 @@ void PerformanceManagerTabHelperTest::CheckGraphTopology(
   EXPECT_EQ(process_nodes.size(), hosts.size());
 
   // Check out the graph itself.
-  RunInGraph([&process_nodes, num_hosts, grandchild_url](GraphImpl* graph) {
-    EXPECT_GE(num_hosts, CountAllRenderProcessNodes(graph));
-    EXPECT_EQ(4u, graph->GetAllFrameNodeImpls().size());
+  CallOnGraphSync(base::BindLambdaForTesting(
+      [&process_nodes, num_hosts, grandchild_url](GraphImpl* graph) {
+        EXPECT_GE(num_hosts, graph->GetAllProcessNodeImpls().size());
+        EXPECT_EQ(4u, graph->GetAllFrameNodeImpls().size());
 
-    // Expect all frame nodes to be current. This fails if our
-    // implementation of RenderFrameHostChanged is borked.
-    for (auto* frame : graph->GetAllFrameNodeImpls()) {
-      EXPECT_TRUE(frame->IsCurrent());
-    }
+        // Expect all frame nodes to be current. This fails if our
+        // implementation of RenderFrameHostChanged is borked.
+        for (auto* frame : graph->GetAllFrameNodeImpls())
+          EXPECT_TRUE(frame->is_current());
 
-    ASSERT_EQ(1u, graph->GetAllPageNodeImpls().size());
-    auto* page = graph->GetAllPageNodeImpls()[0];
+        ASSERT_EQ(1u, graph->GetAllPageNodeImpls().size());
+        auto* page = graph->GetAllPageNodeImpls()[0];
 
-    // Extra RPHs can and most definitely do exist.
-    auto associated_process_nodes =
-        GraphImplOperations::GetAssociatedProcessNodes(page);
-    EXPECT_GE(CountAllRenderProcessNodes(graph),
-              associated_process_nodes.size());
-    EXPECT_GE(num_hosts, associated_process_nodes.size());
+        // Extra RPHs can and most definitely do exist.
+        auto associated_process_nodes =
+            GraphImplOperations::GetAssociatedProcessNodes(page);
+        EXPECT_GE(graph->GetAllProcessNodeImpls().size(),
+                  associated_process_nodes.size());
+        EXPECT_GE(num_hosts, associated_process_nodes.size());
 
-    for (ProcessNodeImpl* process_node : associated_process_nodes) {
-      EXPECT_TRUE(base::Contains(process_nodes, process_node));
-    }
+        for (auto* process_node : associated_process_nodes)
+          EXPECT_TRUE(base::Contains(process_nodes, process_node));
 
-    EXPECT_EQ(4u, GraphImplOperations::GetFrameNodes(page).size());
-    ASSERT_EQ(1u, page->main_frame_nodes().size());
+        EXPECT_EQ(4u, GraphImplOperations::GetFrameNodes(page).size());
+        ASSERT_EQ(1u, page->main_frame_nodes().size());
 
-    auto* main_frame = page->main_frame_node();
-    EXPECT_EQ(kParentUrl, main_frame->GetURL().spec());
-    EXPECT_EQ(2u, main_frame->child_frame_nodes().size());
+        auto* main_frame = page->GetMainFrameNodeImpl();
+        EXPECT_EQ(kParentUrl, main_frame->url().spec());
+        EXPECT_EQ(2u, main_frame->child_frame_nodes().size());
 
-    for (FrameNodeImpl* child_frame : main_frame->child_frame_nodes()) {
-      if (child_frame->GetURL().spec() == kChild1Url) {
-        ASSERT_EQ(1u, child_frame->child_frame_nodes().size());
-        auto* grandchild_frame =
-            (*child_frame->child_frame_nodes().begin()).get();
-        EXPECT_EQ(grandchild_url, grandchild_frame->GetURL().spec());
-      } else if (child_frame->GetURL().spec() == kChild2Url) {
-        EXPECT_TRUE(child_frame->child_frame_nodes().empty());
-      } else {
-        FAIL() << "Unexpected child frame: " << child_frame->GetURL().spec();
-      }
-    }
-  });
+        for (auto* child_frame : main_frame->child_frame_nodes()) {
+          if (child_frame->url().spec() == kChild1Url) {
+            ASSERT_EQ(1u, child_frame->child_frame_nodes().size());
+            auto* grandchild_frame =
+                *(child_frame->child_frame_nodes().begin());
+            EXPECT_EQ(grandchild_url, grandchild_frame->url().spec());
+          } else if (child_frame->url().spec() == kChild2Url) {
+            EXPECT_TRUE(child_frame->child_frame_nodes().empty());
+          } else {
+            FAIL() << "Unexpected child frame: " << child_frame->url().spec();
+          }
+        }
+      }));
 }
 
 }  // namespace
@@ -201,33 +199,25 @@ TEST_F(PerformanceManagerTabHelperTest, FrameHierarchyReflectsToGraph) {
 
   size_t num_hosts = CountAllRenderProcessHosts();
 
-  RunInGraph([num_hosts](GraphImpl* graph) {
-    EXPECT_GE(num_hosts, CountAllRenderProcessNodes(graph));
-    EXPECT_EQ(0u, graph->GetAllFrameNodeImpls().size());
-    ASSERT_EQ(0u, graph->GetAllPageNodeImpls().size());
-  });
+  PerformanceManagerImpl::CallOnGraphImpl(
+      FROM_HERE, base::BindLambdaForTesting([num_hosts](GraphImpl* graph) {
+        EXPECT_GE(num_hosts, graph->GetAllProcessNodeImpls().size());
+        EXPECT_EQ(0u, graph->GetAllFrameNodeImpls().size());
+        ASSERT_EQ(0u, graph->GetAllPageNodeImpls().size());
+      }));
+
+  task_environment()->RunUntilIdle();
 }
 
 namespace {
 
 void ExpectPageIsAudible(bool is_audible) {
-  RunInGraph([&](GraphImpl* graph) {
+  CallOnGraphSync(base::BindLambdaForTesting([&](GraphImpl* graph) {
     ASSERT_EQ(1u, graph->GetAllPageNodeImpls().size());
     auto* page = graph->GetAllPageNodeImpls()[0];
-    EXPECT_EQ(is_audible, page->IsAudible());
-  });
+    EXPECT_EQ(is_audible, page->is_audible());
+  }));
 }
-
-#if !BUILDFLAG(IS_ANDROID)
-void ExpectNotificationPermissionStatus(
-    std::optional<blink::mojom::PermissionStatus> status) {
-  RunInGraph([&](GraphImpl* graph) {
-    ASSERT_EQ(1u, graph->GetAllPageNodeImpls().size());
-    auto* page = graph->GetAllPageNodeImpls()[0];
-    EXPECT_EQ(status, page->GetNotificationPermissionStatus());
-  });
-}
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 }  // namespace
 
@@ -240,83 +230,6 @@ TEST_F(PerformanceManagerTabHelperTest, PageIsAudible) {
   content::WebContentsTester::For(web_contents())->SetIsCurrentlyAudible(false);
   ExpectPageIsAudible(false);
 }
-
-#if !BUILDFLAG(IS_ANDROID)
-TEST_F(PerformanceManagerTabHelperTest, NotificationPermission) {
-  auto owned_permission_controller = std::make_unique<
-      testing::StrictMock<content::MockPermissionController>>();
-  auto* permission_controller = owned_permission_controller.get();
-  GetBrowserContext()->SetPermissionControllerForTesting(
-      std::move(owned_permission_controller));
-  content::PermissionController::SubscriptionId::Generator
-      subscription_id_generator;
-  const auto kFirstSubscriptionId = subscription_id_generator.GenerateNextId();
-  const auto kSecondSubscriptionId = subscription_id_generator.GenerateNextId();
-
-  SetContents(CreateTestWebContents());
-  ExpectNotificationPermissionStatus(std::nullopt);
-
-  // Navigate to an origin with `PermissionStatus::ASK`.
-  {
-    content::RenderFrameHost* rfh_arg = nullptr;
-    content::RenderProcessHost* rph_arg = nullptr;
-    EXPECT_CALL(*permission_controller,
-                GetPermissionStatusForCurrentDocument(
-                    blink::PermissionType::NOTIFICATIONS, testing::_))
-        .WillOnce(testing::DoAll(
-            testing::SaveArg<1>(&rfh_arg),
-            testing::Return(blink::mojom::PermissionStatus::ASK)));
-    EXPECT_CALL(
-        *permission_controller,
-        SubscribeToPermissionStatusChange(blink::PermissionType::NOTIFICATIONS,
-                                          testing::_, testing::_, testing::_))
-        .WillOnce(testing::DoAll(testing::SaveArg<1>(&rph_arg),
-                                 testing::Return(kFirstSubscriptionId)));
-    content::NavigationSimulator::NavigateAndCommitFromBrowser(
-        web_contents(), GURL(kParentUrl));
-    testing::Mock::VerifyAndClear(permission_controller);
-    EXPECT_EQ(rfh_arg, web_contents()->GetPrimaryMainFrame());
-    EXPECT_EQ(rph_arg, web_contents()->GetPrimaryMainFrame()->GetProcess());
-    ExpectNotificationPermissionStatus(blink::mojom::PermissionStatus::ASK);
-  }
-
-  base::RepeatingCallback<void(content::PermissionStatus)> callback_arg;
-
-  // Navigate to an origin with `PermissionStatus::GRANTED`.
-  {
-    content::RenderFrameHost* rfh_arg = nullptr;
-    content::RenderProcessHost* rph_arg = nullptr;
-    EXPECT_CALL(*permission_controller,
-                GetPermissionStatusForCurrentDocument(
-                    blink::PermissionType::NOTIFICATIONS, testing::_))
-        .WillOnce(testing::DoAll(
-            testing::SaveArg<1>(&rfh_arg),
-            testing::Return(blink::mojom::PermissionStatus::GRANTED)));
-    EXPECT_CALL(*permission_controller,
-                UnsubscribeFromPermissionStatusChange(kFirstSubscriptionId));
-    EXPECT_CALL(
-        *permission_controller,
-        SubscribeToPermissionStatusChange(blink::PermissionType::NOTIFICATIONS,
-                                          testing::_, testing::_, testing::_))
-        .WillOnce(testing::DoAll(testing::SaveArg<1>(&rph_arg),
-                                 testing::SaveArg<3>(&callback_arg),
-                                 testing::Return(kSecondSubscriptionId)));
-    content::NavigationSimulator::NavigateAndCommitFromBrowser(
-        web_contents(), GURL(kCousinFreddyUrl));
-    testing::Mock::VerifyAndClear(permission_controller);
-    EXPECT_EQ(rfh_arg, web_contents()->GetPrimaryMainFrame());
-    ExpectNotificationPermissionStatus(blink::mojom::PermissionStatus::GRANTED);
-  }
-
-  // Simulate a change of permission status independent from navigation.
-  callback_arg.Run(blink::mojom::PermissionStatus::DENIED);
-  ExpectNotificationPermissionStatus(blink::mojom::PermissionStatus::DENIED);
-
-  // The last subscription is removed when the tab helper is deleted.
-  EXPECT_CALL(*permission_controller,
-              UnsubscribeFromPermissionStatusChange(kSecondSubscriptionId));
-}
-#endif  // BUILDFLAG(IS_ANDROID)
 
 TEST_F(PerformanceManagerTabHelperTest, GetFrameNode) {
   SetContents(CreateTestWebContents());
@@ -375,7 +288,16 @@ TEST_F(PerformanceManagerTabHelperTest,
 
   // Mock observer, this can only be used from the PM sequence.
   MockPageNodeObserver observer;
-  RunInGraph([&](Graph* graph) { graph->AddPageNodeObserver(&observer); });
+  {
+    base::RunLoop run_loop;
+    auto quit_closure = run_loop.QuitClosure();
+    PerformanceManager::CallOnGraph(
+        FROM_HERE, base::BindLambdaForTesting([&](Graph* graph) {
+          graph->AddPageNodeObserver(&observer);
+          std::move(quit_closure).Run();
+        }));
+    run_loop.Run();
+  }
 
   auto* tab_helper =
       PerformanceManagerTabHelper::FromWebContents(web_contents());
@@ -386,12 +308,19 @@ TEST_F(PerformanceManagerTabHelperTest,
   tab_helper->DidUpdateFaviconURL(first_nav_main_rfh, {});
   tab_helper->DidUpdateFaviconURL(first_nav_main_rfh, {});
 
-  RunInGraph([&] {
-    // The observer shouldn't have been called at this point.
-    testing::Mock::VerifyAndClear(&observer);
-    // Set the expectation for the next check.
-    EXPECT_CALL(observer, OnFaviconUpdated(::testing::_));
-  });
+  {
+    base::RunLoop run_loop;
+    auto quit_closure = run_loop.QuitClosure();
+    PerformanceManager::CallOnGraph(
+        FROM_HERE, base::BindLambdaForTesting([&]() {
+          // The observer shouldn't have been called at this point.
+          testing::Mock::VerifyAndClear(&observer);
+          std::move(quit_closure).Run();
+          // Set the expectation for the next check.
+          EXPECT_CALL(observer, OnFaviconUpdated(::testing::_));
+        }));
+    run_loop.Run();
+  }
 
   // Sanity check to ensure that notification sent to the active main frame are
   // forwarded. DidUpdateFaviconURL needs to be called twice as the first
@@ -399,10 +328,17 @@ TEST_F(PerformanceManagerTabHelperTest,
   tab_helper->DidUpdateFaviconURL(web_contents()->GetPrimaryMainFrame(), {});
   tab_helper->DidUpdateFaviconURL(web_contents()->GetPrimaryMainFrame(), {});
 
-  RunInGraph([&](Graph* graph) {
-    testing::Mock::VerifyAndClear(&observer);
-    graph->RemovePageNodeObserver(&observer);
-  });
+  {
+    base::RunLoop run_loop;
+    auto quit_closure = run_loop.QuitClosure();
+    PerformanceManager::CallOnGraph(
+        FROM_HERE, base::BindLambdaForTesting([&](Graph* graph) {
+          testing::Mock::VerifyAndClear(&observer);
+          graph->RemovePageNodeObserver(&observer);
+          std::move(quit_closure).Run();
+        }));
+    run_loop.Run();
+  }
 }
 
 }  // namespace performance_manager

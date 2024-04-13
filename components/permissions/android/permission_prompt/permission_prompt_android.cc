@@ -6,14 +6,11 @@
 
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
-#include "components/permissions/features.h"
 #include "components/permissions/permission_request.h"
 #include "components/resources/android/theme_resources.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/url_formatter/elide_url.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/strings/grit/ui_strings.h"
 
 namespace permissions {
 
@@ -36,25 +33,12 @@ PermissionPromptAndroid::GetTabSwitchingBehavior() {
   return TabSwitchingBehavior::kKeepPromptAlive;
 }
 
-std::optional<gfx::Rect> PermissionPromptAndroid::GetViewBoundsInScreen()
-    const {
-  return std::nullopt;
-}
-
-bool PermissionPromptAndroid::ShouldFinalizeRequestAfterDecided() const {
-  return true;
-}
-
 void PermissionPromptAndroid::Closing() {
   delegate_->Dismiss();
 }
 
 void PermissionPromptAndroid::Accept() {
   delegate_->Accept();
-}
-
-void PermissionPromptAndroid::AcceptThisTime() {
-  delegate_->AcceptThisTime();
 }
 
 void PermissionPromptAndroid::Deny() {
@@ -73,7 +57,7 @@ bool PermissionPromptAndroid::ShouldCurrentRequestUseQuietUI() {
   return delegate_->ShouldCurrentRequestUseQuietUI();
 }
 
-std::optional<PermissionUiSelector::QuietUiReason>
+absl::optional<PermissionUiSelector::QuietUiReason>
 PermissionPromptAndroid::ReasonForUsingQuietUi() const {
   return delegate_->ReasonForUsingQuietUi();
 }
@@ -84,15 +68,13 @@ size_t PermissionPromptAndroid::PermissionCount() const {
 
 ContentSettingsType PermissionPromptAndroid::GetContentSettingType(
     size_t position) const {
-  const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests =
-      delegate_->Requests();
+  const std::vector<PermissionRequest*>& requests = delegate_->Requests();
   CHECK_LT(position, requests.size());
   return requests[position]->GetContentSettingsType();
 }
 
 static bool IsValidMediaRequestGroup(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-        requests) {
+    const std::vector<PermissionRequest*>& requests) {
   if (requests.size() < 2)
     return false;
   return ((requests[0]->request_type() == RequestType::kMicStream &&
@@ -103,58 +85,41 @@ static bool IsValidMediaRequestGroup(
 
 // Grouped permission requests can only be Mic+Camera, Camera+Mic.
 static void CheckValidRequestGroup(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-        requests) {
+    const std::vector<PermissionRequest*>& requests) {
   DCHECK_EQ(static_cast<size_t>(2u), requests.size());
   DCHECK((IsValidMediaRequestGroup(requests)));
 }
 
 int PermissionPromptAndroid::GetIconId() const {
-  const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests =
-      delegate_->Requests();
-  if (requests.size() == 1) {
-    if (requests[0]->request_type() == RequestType::kStorageAccess) {
-      return IDR_ANDROID_GLOBE;
-    }
+  const std::vector<PermissionRequest*>& requests = delegate_->Requests();
+  if (requests.size() == 1)
     return permissions::GetIconId(requests[0]->request_type());
-  }
   CheckValidRequestGroup(requests);
   return IDR_ANDROID_INFOBAR_MEDIA_STREAM_CAMERA;
 }
 
-PermissionRequest::AnnotatedMessageText
-PermissionPromptAndroid::GetAnnotatedMessageText() const {
-  const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests =
-      delegate_->Requests();
+std::u16string PermissionPromptAndroid::GetMessageText() const {
+  const std::vector<PermissionRequest*>& requests = delegate_->Requests();
   if (requests.size() == 1) {
-    return requests[0]->GetDialogAnnotatedMessageText(
-        delegate_->GetEmbeddingOrigin());
+    if (requests[0]->request_type() == RequestType::kStorageAccess) {
+      return l10n_util::GetStringFUTF16(
+          IDS_STORAGE_ACCESS_INFOBAR_TEXT,
+          url_formatter::FormatUrlForSecurityDisplay(
+              delegate_->GetRequestingOrigin(),
+              url_formatter::SchemeDisplay::OMIT_CRYPTOGRAPHIC),
+          url_formatter::FormatUrlForSecurityDisplay(
+              delegate_->GetEmbeddingOrigin(),
+              url_formatter::SchemeDisplay::OMIT_CRYPTOGRAPHIC));
+    } else {
+      return requests[0]->GetDialogMessageText();
+    }
   }
   CheckValidRequestGroup(requests);
-
-  // We only end up here if 2 requests are combined in one prompt (which only
-  // happens for Audio & Video). All other requests are handled in the if block
-  // above. For Audio and Video (which can be allowed once), only format origins
-  // bold if one time permissions are enabled.
-  return PermissionRequest::GetDialogAnnotatedMessageText(
+  return l10n_util::GetStringFUTF16(
+      IDS_MEDIA_CAPTURE_AUDIO_AND_VIDEO_INFOBAR_TEXT,
       url_formatter::FormatUrlForSecurityDisplay(
           delegate_->GetRequestingOrigin(),
-          url_formatter::SchemeDisplay::OMIT_CRYPTOGRAPHIC),
-      IDS_MEDIA_CAPTURE_AUDIO_AND_VIDEO_INFOBAR_TEXT,
-      /*format_origin_bold=*/
-      base::FeatureList::IsEnabled(permissions::features::kOneTimePermission));
-}
-
-bool PermissionPromptAndroid::ShouldUseRequestingOriginFavicon() const {
-  const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests =
-      delegate_->Requests();
-  CHECK_GT(requests.size(), 0U);
-
-  return requests[0]->request_type() == RequestType::kStorageAccess;
-}
-
-GURL PermissionPromptAndroid::GetRequestingOrigin() const {
-  return delegate_->GetRequestingOrigin();
+          url_formatter::SchemeDisplay::OMIT_CRYPTOGRAPHIC));
 }
 
 }  // namespace permissions

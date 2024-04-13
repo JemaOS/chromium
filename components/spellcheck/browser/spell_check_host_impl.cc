@@ -11,6 +11,13 @@
 SpellCheckHostImpl::SpellCheckHostImpl() = default;
 SpellCheckHostImpl::~SpellCheckHostImpl() = default;
 
+void SpellCheckHostImpl::RequestDictionary() {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+
+  // This API requires Chrome-only features.
+  return;
+}
+
 void SpellCheckHostImpl::NotifyChecked(const std::u16string& word,
                                        bool misspelled) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -37,6 +44,7 @@ void SpellCheckHostImpl::CallSpellingService(
 
 #if BUILDFLAG(USE_BROWSER_SPELLCHECKER) && !BUILDFLAG(ENABLE_SPELLING_SERVICE)
 void SpellCheckHostImpl::RequestTextCheck(const std::u16string& text,
+                                          int route_id,
                                           RequestTextCheckCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
@@ -49,6 +57,7 @@ void SpellCheckHostImpl::RequestTextCheck(const std::u16string& text,
 }
 
 void SpellCheckHostImpl::CheckSpelling(const std::u16string& word,
+                                       int route_id,
                                        CheckSpellingCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   NOTREACHED();

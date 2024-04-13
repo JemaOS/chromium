@@ -110,11 +110,7 @@ void WebContentsModalDialogManager::BlockWebContentsInteraction(bool blocked) {
     return;
   }
 
-  if (blocked) {
-    scoped_ignore_input_events_ = contents->IgnoreInputEvents(std::nullopt);
-  } else {
-    scoped_ignore_input_events_.reset();
-  }
+  contents->SetIgnoreInputEvents(blocked);
   if (delegate_)
     delegate_->SetWebContentsBlocked(contents, blocked);
 }
@@ -167,23 +163,16 @@ void WebContentsModalDialogManager::OnVisibilityChanged(
   const bool web_contents_was_hidden = web_contents_is_hidden_;
   web_contents_is_hidden_ = visibility == content::Visibility::HIDDEN;
 
-  if (child_dialogs_.empty()) {
+  // Avoid reshowing on transitions between VISIBLE and OCCLUDED.
+  if (child_dialogs_.empty() ||
+      web_contents_is_hidden_ == web_contents_was_hidden) {
     return;
   }
 
-  const bool state_changed = web_contents_is_hidden_ != web_contents_was_hidden;
-  if (web_contents_is_hidden_) {
-    if (state_changed) {
-      child_dialogs_.front().manager->Hide();
-    }
-  } else {
-    // Show the dialog if it transitioned from HIDDEN to VISIBLE or OCCLUDED, or
-    // from OCCLUDED to VISIBLE if the dialog is no longer active.
-    // TODO(crbug.com/1487345): Add an interaction test for this.
-    if (state_changed || !child_dialogs_.front().manager->IsActive()) {
-      child_dialogs_.front().manager->Show();
-    }
-  }
+  if (web_contents_is_hidden_)
+    child_dialogs_.front().manager->Hide();
+  else
+    child_dialogs_.front().manager->Show();
 }
 
 void WebContentsModalDialogManager::WebContentsDestroyed() {

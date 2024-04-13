@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_POLICY_CORE_COMMON_POLICY_LOADER_IOS_H_
 #define COMPONENTS_POLICY_CORE_COMMON_POLICY_LOADER_IOS_H_
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "components/policy/core/common/async_policy_loader.h"
@@ -41,7 +40,7 @@ class POLICY_EXPORT PolicyLoaderIOS : public AsyncPolicyLoader {
                                            const base::Value& value);
 
   // The schema used by |ValidatePolicyData()|.
-  raw_ptr<const Schema> policy_schema_;
+  const Schema* policy_schema_;
 
   // Used to Bind() a WeakPtr to |this| for the callback passed to the
   // |notification_observer_|.

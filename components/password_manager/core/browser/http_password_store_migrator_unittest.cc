@@ -9,9 +9,8 @@
 #include "base/ranges/algorithm.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/task_environment.h"
-#include "components/password_manager/core/browser/password_form.h"
-#include "components/password_manager/core/browser/password_store/mock_password_store_interface.h"
-#include "components/password_manager/core/browser/password_store/mock_smart_bubble_stats_store.h"
+#include "components/password_manager/core/browser/mock_password_store_interface.h"
+#include "components/password_manager/core/browser/mock_smart_bubble_stats_store.h"
 #include "services/network/test/test_network_context.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -22,7 +21,6 @@ namespace {
 using testing::_;
 using testing::ElementsAre;
 using testing::Invoke;
-using testing::IsEmpty;
 using testing::Pointee;
 using testing::Return;
 using testing::SaveArg;
@@ -41,7 +39,6 @@ PasswordForm CreateTestForm() {
   form.action = GURL("https://example.org/action.html");
   form.username_value = u"user";
   form.password_value = u"password";
-  form.match_type = PasswordForm::MatchType::kExact;
   return form;
 }
 
@@ -53,7 +50,7 @@ PasswordForm CreateTestPSLForm() {
   form.action = GURL(kTestSubdomainHttpURL);
   form.username_value = u"user2";
   form.password_value = u"password2";
-  form.match_type = PasswordForm::MatchType::kPSL;
+  form.is_public_suffix_match = true;
   return form;
 }
 
@@ -65,7 +62,7 @@ PasswordForm CreateAndroidCredential() {
   form.signon_realm = "android://hash@com.example.android/";
   form.url = GURL(form.signon_realm);
   form.action = GURL();
-  form.match_type = PasswordForm::MatchType::kPSL;
+  form.is_affiliation_based_match = true;
   return form;
 }
 
@@ -78,16 +75,20 @@ PasswordForm CreateLocalFederatedCredential() {
   form.action = GURL("http://localhost/");
   form.federation_origin =
       url::Origin::Create(GURL("https://federation.example.com"));
-  form.match_type = PasswordForm::MatchType::kExact;
   return form;
 }
 
 class MockConsumer : public HttpPasswordStoreMigrator::Consumer {
  public:
-  MOCK_METHOD(void,
-              ProcessMigratedForms,
-              (std::vector<std::unique_ptr<PasswordForm>>),
-              (override));
+  MOCK_METHOD1(ProcessForms, void(const std::vector<PasswordForm*>& forms));
+
+  void ProcessMigratedForms(
+      std::vector<std::unique_ptr<PasswordForm>> forms) override {
+    std::vector<PasswordForm*> raw_forms(forms.size());
+    base::ranges::transform(forms, raw_forms.begin(),
+                            &std::unique_ptr<PasswordForm>::get);
+    ProcessForms(raw_forms);
+  }
 };
 
 class MockNetworkContext : public network::TestNetworkContext {
@@ -155,7 +156,7 @@ void HttpPasswordStoreMigratorTest::TestEmptyStore(bool is_hsts) {
                                      &store(), &mock_network_context(),
                                      &consumer());
 
-  EXPECT_CALL(consumer(), ProcessMigratedForms(IsEmpty()));
+  EXPECT_CALL(consumer(), ProcessForms(std::vector<PasswordForm*>()));
   migrator.OnGetPasswordStoreResults(
       std::vector<std::unique_ptr<PasswordForm>>());
 }
@@ -195,8 +196,8 @@ void HttpPasswordStoreMigratorTest::TestFullStore(bool is_hsts) {
   EXPECT_CALL(store(), RemoveLogin(form)).Times(is_hsts);
   EXPECT_CALL(store(), RemoveLogin(federated_form)).Times(is_hsts);
   EXPECT_CALL(consumer(),
-              ProcessMigratedForms(ElementsAre(
-                  Pointee(expected_form), Pointee(expected_federated_form))));
+              ProcessForms(ElementsAre(Pointee(expected_form),
+                                       Pointee(expected_federated_form))));
   std::vector<std::unique_ptr<PasswordForm>> results;
   results.push_back(std::make_unique<PasswordForm>(psl_form));
   results.push_back(std::make_unique<PasswordForm>(form));
@@ -228,8 +229,9 @@ void HttpPasswordStoreMigratorTest::TestMigratorDeletionByConsumer(
       url::Origin::Create(GURL(kTestHttpsURL)), &store(),
       &mock_network_context(), &consumer());
 
-  EXPECT_CALL(consumer(), ProcessMigratedForms(_))
-      .WillOnce(Invoke([&migrator](Unused) { migrator.reset(); }));
+  EXPECT_CALL(consumer(), ProcessForms(_)).WillOnce(Invoke([&migrator](Unused) {
+    migrator.reset();
+  }));
 
   migrator->OnGetPasswordStoreResults(
       std::vector<std::unique_ptr<PasswordForm>>());

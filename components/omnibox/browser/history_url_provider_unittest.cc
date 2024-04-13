@@ -254,10 +254,9 @@ class HistoryURLProviderTest : public testing::Test,
   base::test::TaskEnvironment task_environment_;
   ACMatches matches_;
   std::unique_ptr<FakeAutocompleteProviderClient> client_;
-  scoped_refptr<HistoryURLProvider> provider_;
+  scoped_refptr<HistoryURLProvider> autocomplete_;
   // Should the matches be sorted and duplicates removed?
   bool sort_matches_;
-  base::OnceClosure quit_closure_;
 };
 
 class HistoryURLProviderTestNoDB : public HistoryURLProviderTest {
@@ -281,9 +280,8 @@ class HistoryURLProviderTestNoSearchProvider : public HistoryURLProviderTest {
 void HistoryURLProviderTest::OnProviderUpdate(
     bool updated_matches,
     const AutocompleteProvider* provider) {
-  if (provider_->done()) {
-    std::move(quit_closure_).Run();
-  }
+  if (autocomplete_->done())
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
 }
 
 bool HistoryURLProviderTest::SetUpImpl(bool create_history_db) {
@@ -296,14 +294,13 @@ bool HistoryURLProviderTest::SetUpImpl(bool create_history_db) {
       std::make_unique<TemplateURLService>(nullptr, 0));
   if (!client_->GetHistoryService())
     return false;
-  provider_ = base::MakeRefCounted<HistoryURLProvider>(client_.get(), this);
+  autocomplete_ = base::MakeRefCounted<HistoryURLProvider>(client_.get(), this);
   FillData();
   return true;
 }
 
 void HistoryURLProviderTest::TearDown() {
-  matches_.clear();
-  provider_ = nullptr;
+  autocomplete_ = nullptr;
   client_.reset();
   task_environment_.RunUntilIdle();
 }
@@ -340,17 +337,17 @@ void HistoryURLProviderTest::RunTest(
                           TestSchemeClassifier());
   input.set_prevent_inline_autocomplete(prevent_inline_autocomplete);
   *identified_input_type = input.type();
-  provider_->Start(input, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(input, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
 
-  matches_ = provider_->matches();
+  matches_ = autocomplete_->matches();
   if (sort_matches_) {
     TemplateURLService* service = client_->GetTemplateURLService();
-    AutocompleteResult::DeduplicateMatches(&matches_, input, service);
+    for (auto i = matches_.begin(); i != matches_.end(); ++i) {
+      i->ComputeStrippedDestinationURL(input, service);
+    }
+    AutocompleteResult::DeduplicateMatches(&matches_);
     std::sort(matches_.begin(), matches_.end(),
               &AutocompleteMatch::MoreRelevant);
   }
@@ -379,15 +376,12 @@ void HistoryURLProviderTest::ExpectFormattedFullMatch(
   AutocompleteInput input(ASCIIToUTF16(input_text),
                           metrics::OmniboxEventProto::OTHER,
                           TestSchemeClassifier());
-  provider_->Start(input, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(input, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
 
   // Test the variations of URL formatting on the first match.
-  auto& match = provider_->matches().front();
+  auto& match = autocomplete_->matches().front();
   EXPECT_EQ(expected_match_contents_string, match.contents);
 
   // Verify pre-match portion classification, if it should exist.
@@ -678,12 +672,9 @@ TEST_F(HistoryURLProviderTest, Files) {
   AutocompleteInput ios_input_1(
       u"file:///foo", std::u16string::npos, std::string(),
       metrics::OmniboxEventProto::OTHER, TestSchemeClassifier());
-  provider_->Start(ios_input_1, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(ios_input_1, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
   EXPECT_EQ(matches_.size(), 0u);
 #endif  // BUILDFLAG(IS_IOS)
 
@@ -711,12 +702,9 @@ TEST_F(HistoryURLProviderTest, Files) {
   AutocompleteInput ios_input_2(u"/foo", std::u16string::npos, std::string(),
                                 metrics::OmniboxEventProto::OTHER,
                                 TestSchemeClassifier());
-  provider_->Start(ios_input_2, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(ios_input_2, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
   EXPECT_EQ(matches_.size(), 0u);
 #endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_IOS)
 }
@@ -775,22 +763,20 @@ TEST_F(HistoryURLProviderTest, EmptyVisits) {
 
   AutocompleteInput input(u"pa", metrics::OmniboxEventProto::OTHER,
                           TestSchemeClassifier());
-  provider_->Start(input, false);
+  autocomplete_->Start(input, false);
   // HistoryURLProvider shouldn't be done (waiting on async results).
-  EXPECT_FALSE(provider_->done());
+  EXPECT_FALSE(autocomplete_->done());
 
   // We should get back an entry for pandora.
-  matches_ = provider_->matches();
+  matches_ = autocomplete_->matches();
   ASSERT_GT(matches_.size(), 0u);
   EXPECT_EQ(GURL("http://pandora.com/"), matches_[0].destination_url);
   int pandora_relevance = matches_[0].relevance;
 
   // Run the message loop. When |autocomplete_| finishes the loop is quit.
-  base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-  quit_closure_ = loop.QuitWhenIdleClosure();
-  loop.Run();
-  EXPECT_TRUE(provider_->done());
-  matches_ = provider_->matches();
+  base::RunLoop().Run();
+  EXPECT_TRUE(autocomplete_->done());
+  matches_ = autocomplete_->matches();
   ASSERT_GT(matches_.size(), 0u);
   EXPECT_EQ(GURL("http://pandora.com/"), matches_[0].destination_url);
   EXPECT_EQ(pandora_relevance, matches_[0].relevance);
@@ -833,14 +819,11 @@ TEST_F(HistoryURLProviderTest, AutocompleteOnTrailingWhitespace) {
                                 TestSchemeClassifier());
         input.set_prevent_inline_autocomplete(
             input_prevent_inline_autocomplete);
-        provider_->Start(input, false);
-        if (!provider_->done()) {
-          base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-          quit_closure_ = loop.QuitWhenIdleClosure();
-          loop.Run();
-        }
+        autocomplete_->Start(input, false);
+        if (!autocomplete_->done())
+          base::RunLoop().Run();
 
-        matches_ = provider_->matches();
+        matches_ = autocomplete_->matches();
         EXPECT_EQ(matches_.size(), expectations.size()) << debug;
         for (size_t i = 0; i < matches_.size(); ++i) {
           EXPECT_EQ(matches_[i].fill_into_edit,
@@ -1025,12 +1008,9 @@ TEST_F(HistoryURLProviderTest, CrashDueToFixup) {
     AutocompleteInput input(ASCIIToUTF16(test_cases[i]),
                             metrics::OmniboxEventProto::OTHER,
                             TestSchemeClassifier());
-    provider_->Start(input, false);
-    if (!provider_->done()) {
-      base::RunLoop loop;
-      quit_closure_ = loop.QuitWhenIdleClosure();
-      loop.Run();
-    }
+    autocomplete_->Start(input, false);
+    if (!autocomplete_->done())
+      base::RunLoop().Run();
   }
 }
 
@@ -1038,8 +1018,8 @@ TEST_F(HistoryURLProviderTest, DoesNotProvideMatchesOnFocus) {
   AutocompleteInput input(u"foo", metrics::OmniboxEventProto::OTHER,
                           TestSchemeClassifier());
   input.set_focus_type(metrics::OmniboxFocusType::INTERACTION_FOCUS);
-  provider_->Start(input, false);
-  EXPECT_TRUE(provider_->matches().empty());
+  autocomplete_->Start(input, false);
+  EXPECT_TRUE(autocomplete_->matches().empty());
 }
 
 TEST_F(HistoryURLProviderTest, DoesNotInlinePunycodeMatches) {
@@ -1212,7 +1192,7 @@ TEST_F(HistoryURLProviderTest, SuggestExactInput) {
                             TestSchemeClassifier());
     input.set_current_url(GURL("about:blank"));
     AutocompleteMatch match(VerbatimMatchForInput(
-        provider_.get(), client_.get(), input, input.canonicalized_url(),
+        autocomplete_.get(), client_.get(), input, input.canonicalized_url(),
         test_cases[i].trim_http));
     EXPECT_EQ(ASCIIToUTF16(test_cases[i].contents), match.contents);
     for (size_t match_index = 0; match_index < match.contents_class.size();
@@ -1321,7 +1301,7 @@ TEST_F(HistoryURLProviderTest, HUPScoringExperiment) {
               .spec();
       output[max_matches].allowed_to_be_default_match = true;
     }
-    provider_->scoring_params_ = test_cases[i].scoring_params;
+    autocomplete_->scoring_params_ = test_cases[i].scoring_params;
 
     // Test the experimental scoring params.
     ASSERT_NO_FATAL_FAILURE(RunTest(ASCIIToUTF16(test_cases[i].input),
@@ -1390,7 +1370,7 @@ TEST_F(HistoryURLProviderTest, DoTrimHttpScheme) {
   auto params =
       BuildHistoryURLProviderParams("face", "http://www.facebook.com", false);
 
-  AutocompleteMatch match = provider_->HistoryMatchToACMatch(*params, 0, 0);
+  AutocompleteMatch match = autocomplete_->HistoryMatchToACMatch(*params, 0, 0);
   EXPECT_EQ(u"facebook.com", match.contents);
 }
 
@@ -1399,7 +1379,7 @@ TEST_F(HistoryURLProviderTest, DontTrimHttpSchemeIfInputHasScheme) {
   auto params = BuildHistoryURLProviderParams("http://face",
                                               "http://www.facebook.com", false);
 
-  AutocompleteMatch match = provider_->HistoryMatchToACMatch(*params, 0, 0);
+  AutocompleteMatch match = autocomplete_->HistoryMatchToACMatch(*params, 0, 0);
   EXPECT_EQ(u"http://facebook.com", match.contents);
 }
 
@@ -1408,7 +1388,7 @@ TEST_F(HistoryURLProviderTest, DontTrimHttpSchemeIfInputMatchesInScheme) {
   auto params =
       BuildHistoryURLProviderParams("ht face", "http://www.facebook.com", true);
 
-  AutocompleteMatch match = provider_->HistoryMatchToACMatch(*params, 0, 0);
+  AutocompleteMatch match = autocomplete_->HistoryMatchToACMatch(*params, 0, 0);
   EXPECT_EQ(u"http://facebook.com", match.contents);
 }
 
@@ -1417,7 +1397,7 @@ TEST_F(HistoryURLProviderTest, DontTrimHttpsSchemeIfInputMatchesInScheme) {
   auto params = BuildHistoryURLProviderParams(
       "https://face", "https://www.facebook.com", false);
 
-  AutocompleteMatch match = provider_->HistoryMatchToACMatch(*params, 0, 0);
+  AutocompleteMatch match = autocomplete_->HistoryMatchToACMatch(*params, 0, 0);
   EXPECT_EQ(u"https://facebook.com", match.contents);
 }
 
@@ -1426,7 +1406,7 @@ TEST_F(HistoryURLProviderTest, DoTrimHttpsScheme) {
   auto params =
       BuildHistoryURLProviderParams("face", "https://www.facebook.com", false);
 
-  AutocompleteMatch match = provider_->HistoryMatchToACMatch(*params, 0, 0);
+  AutocompleteMatch match = autocomplete_->HistoryMatchToACMatch(*params, 0, 0);
   EXPECT_EQ(u"facebook.com", match.contents);
 }
 
@@ -1434,6 +1414,9 @@ TEST_F(HistoryURLProviderTest, DoTrimHttpsScheme) {
 // In this mode, suggestions should be provided for only the user input after
 // the keyword, i.e. "@history google" should only match "google".
 TEST_F(HistoryURLProviderTest, KeywordModeExtractUserInput) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(omnibox::kSiteSearchStarterPack);
+
   // Populate template URL with starter pack entries
   std::vector<std::unique_ptr<TemplateURLData>> turls =
       TemplateURLStarterPackData::GetStarterPackEngines();
@@ -1444,14 +1427,11 @@ TEST_F(HistoryURLProviderTest, KeywordModeExtractUserInput) {
   // Test result for user text "google", we should get back a result for google.
   AutocompleteInput input(u"google", metrics::OmniboxEventProto::OTHER,
                           TestSchemeClassifier());
-  provider_->Start(input, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(input, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
 
-  matches_ = provider_->matches();
+  matches_ = autocomplete_->matches();
   ASSERT_GT(matches_.size(), 0u);
   EXPECT_EQ(GURL("http://www.google.com/"), matches_[0].destination_url);
 
@@ -1460,28 +1440,22 @@ TEST_F(HistoryURLProviderTest, KeywordModeExtractUserInput) {
   // searching for the whole input text including "@history".
   AutocompleteInput input2(u"@history", metrics::OmniboxEventProto::OTHER,
                            TestSchemeClassifier());
-  provider_->Start(input2, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(input2, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
 
-  matches_ = provider_->matches();
+  matches_ = autocomplete_->matches();
   ASSERT_GT(matches_.size(), 0u);
   EXPECT_EQ(GURL("https://history.com/"), matches_[0].destination_url);
 
   AutocompleteInput input3(u"@history google",
                            metrics::OmniboxEventProto::OTHER,
                            TestSchemeClassifier());
-  provider_->Start(input3, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(input3, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
 
-  matches_ = provider_->matches();
+  matches_ = autocomplete_->matches();
   ASSERT_EQ(matches_.size(), 0u);
 
   // Turn on keyword mode, test result again, we should get back the result for
@@ -1489,14 +1463,11 @@ TEST_F(HistoryURLProviderTest, KeywordModeExtractUserInput) {
   input3.set_prefer_keyword(true);
   input3.set_keyword_mode_entry_method(
       metrics::OmniboxEventProto_KeywordModeEntryMethod_TAB);
-  provider_->Start(input3, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(input3, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
 
-  matches_ = provider_->matches();
+  matches_ = autocomplete_->matches();
   ASSERT_GT(matches_.size(), 0u);
   EXPECT_EQ(GURL("http://www.google.com/"), matches_[0].destination_url);
   EXPECT_TRUE(matches_[0].from_keyword);
@@ -1512,29 +1483,24 @@ TEST_F(HistoryURLProviderTest, MaxMatches) {
   // Keyword mode is off. We should only get provider_max_matches_ matches.
   AutocompleteInput input(u"star", metrics::OmniboxEventProto::OTHER,
                           TestSchemeClassifier());
-  provider_->Start(input, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(input, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
 
-  matches_ = provider_->matches();
-  EXPECT_EQ(matches_.size(), provider_->provider_max_matches());
+  matches_ = autocomplete_->matches();
+  EXPECT_EQ(matches_.size(), autocomplete_->provider_max_matches());
 
   // Turn keyword mode on. we should be able to get more matches now.
   input.set_keyword_mode_entry_method(
       metrics::OmniboxEventProto_KeywordModeEntryMethod_TAB);
   input.set_prefer_keyword(true);
-  provider_->Start(input, false);
-  if (!provider_->done()) {
-    base::RunLoop loop{base::RunLoop::Type::kNestableTasksAllowed};
-    quit_closure_ = loop.QuitWhenIdleClosure();
-    loop.Run();
-  }
+  autocomplete_->Start(input, false);
+  if (!autocomplete_->done())
+    base::RunLoop().Run();
 
-  matches_ = provider_->matches();
-  EXPECT_EQ(matches_.size(), provider_->provider_max_matches_in_keyword_mode());
+  matches_ = autocomplete_->matches();
+  EXPECT_EQ(matches_.size(),
+            autocomplete_->provider_max_matches_in_keyword_mode());
 }
 
 TEST_F(HistoryURLProviderTest, HistoryMatchToACMatchWithScoringSignals) {
@@ -1552,8 +1518,8 @@ TEST_F(HistoryURLProviderTest, HistoryMatchToACMatchWithScoringSignals) {
   params->matches.push_back(history_match);
 
   AutocompleteMatch match =
-      provider_->HistoryMatchToACMatch(*params, 0, /*relevance=*/1,
-                                       /*populate_scoring_signals=*/true);
+      autocomplete_->HistoryMatchToACMatch(*params, 0, /*relevance=*/1,
+                                           /*populate_scoring_signals=*/true);
   EXPECT_EQ(match.scoring_signals->typed_count(), 3);
   EXPECT_EQ(match.scoring_signals->visit_count(), 5);
   EXPECT_TRUE(match.scoring_signals->allowed_to_be_default_match());

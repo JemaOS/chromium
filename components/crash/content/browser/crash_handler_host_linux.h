@@ -13,7 +13,6 @@
 
 #include "base/files/file_path.h"
 #include "base/files/scoped_file.h"
-#include "base/memory/raw_ptr.h"
 #include "base/message_loop/message_pump_for_io.h"
 #include "base/process/process_handle.h"
 #include "base/synchronization/atomic_flag.h"
@@ -174,7 +173,7 @@ class CrashHandlerHost : public base::MessagePumpForIO::FdWatcher,
   void WillDestroyCurrentMessageLoop() override;
 
   base::Lock observers_lock_;
-  std::set<raw_ptr<Observer, SetExperimental>> observers_;
+  std::set<Observer*> observers_;
   base::MessagePumpForIO::FdWatchController fd_watch_controller_;
   base::ScopedFD process_socket_;
   base::ScopedFD browser_socket_;

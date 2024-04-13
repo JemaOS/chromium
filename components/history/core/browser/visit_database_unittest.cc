@@ -11,7 +11,6 @@
 #include "base/time/time.h"
 #include "components/history/core/browser/url_database.h"
 #include "components/history/core/browser/visit_database.h"
-#include "components/history/core/browser/visited_link_database.h"
 #include "sql/database.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -37,16 +36,14 @@ bool IsVisitInfoEqual(const VisitRow& a, const VisitRow& b) {
          a.originator_cache_guid == b.originator_cache_guid &&
          a.originator_visit_id == b.originator_visit_id &&
          a.is_known_to_sync == b.is_known_to_sync &&
-         a.consider_for_ntp_most_visited == b.consider_for_ntp_most_visited &&
-         a.app_id == b.app_id;
+         a.consider_for_ntp_most_visited == b.consider_for_ntp_most_visited;
 }
 
 }  // namespace
 
 class VisitDatabaseTest : public PlatformTest,
                           public URLDatabase,
-                          public VisitDatabase,
-                          public VisitedLinkDatabase {
+                          public VisitDatabase {
  public:
   VisitDatabaseTest() {}
 
@@ -60,7 +57,6 @@ class VisitDatabaseTest : public PlatformTest,
     // Initialize the tables for this test.
     CreateURLTable(false);
     CreateMainURLIndex();
-    CreateVisitedLinkTable();
     InitVisitTable();
   }
   void TearDown() override {
@@ -92,14 +88,12 @@ TEST_F(VisitDatabaseTest, Add) {
   // Add third visit for a different page.
   VisitRow visit_info3(2, visit_info1.visit_time + base::Seconds(2), 0,
                        ui::PAGE_TRANSITION_LINK, 0, false, 0);
-  // Verify we can add a corresponding VisitedLinkID.
-  visit_info3.visited_link_id = 10000;
   EXPECT_TRUE(AddVisit(&visit_info3, SOURCE_BROWSED));
 
   // Query the first two.
   std::vector<VisitRow> matches;
   EXPECT_TRUE(GetVisitsForURL(visit_info1.url_id, &matches));
-  EXPECT_EQ(2U, matches.size());
+  EXPECT_EQ(static_cast<size_t>(2), matches.size());
 
   // Make sure we got both (order in result set is visit time).
   EXPECT_TRUE(IsVisitInfoEqual(matches[0], visit_info1) &&
@@ -128,7 +122,7 @@ TEST_F(VisitDatabaseTest, Delete) {
   // First make sure all the visits are there.
   std::vector<VisitRow> matches;
   EXPECT_TRUE(GetVisitsForURL(visit_info1.url_id, &matches));
-  EXPECT_EQ(3U, matches.size());
+  EXPECT_EQ(static_cast<size_t>(3), matches.size());
   EXPECT_TRUE(IsVisitInfoEqual(matches[0], visit_info1) &&
               IsVisitInfoEqual(matches[1], visit_info2) &&
               IsVisitInfoEqual(matches[2], visit_info3));
@@ -141,7 +135,7 @@ TEST_F(VisitDatabaseTest, Delete) {
   visit_info3.referring_visit = visit_info1.visit_id;
   matches.clear();
   EXPECT_TRUE(GetVisitsForURL(visit_info1.url_id, &matches));
-  EXPECT_EQ(2U, matches.size());
+  EXPECT_EQ(static_cast<size_t>(2), matches.size());
   EXPECT_TRUE(IsVisitInfoEqual(matches[0], visit_info1) &&
               IsVisitInfoEqual(matches[1], visit_info3));
 }
@@ -319,7 +313,7 @@ TEST_F(VisitDatabaseTest, GetVisitsForTimes) {
     times.push_back(test_visit_rows[i].visit_time);
     VisitVector results;
     GetVisitsForTimes(times, &results);
-    ASSERT_EQ(1U, results.size());
+    ASSERT_EQ(static_cast<size_t>(1), results.size());
     EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[i]));
   }
 }
@@ -327,49 +321,34 @@ TEST_F(VisitDatabaseTest, GetVisitsForTimes) {
 TEST_F(VisitDatabaseTest, GetAllVisitsInRange) {
   std::vector<VisitRow> test_visit_rows = GetTestVisitRows();
 
-  test_visit_rows[1].app_id = "org.chromium.dino";
-  test_visit_rows[2].app_id = "org.chromium.dino";
-
   for (size_t i = 0; i < test_visit_rows.size(); ++i) {
     EXPECT_TRUE(AddVisit(&test_visit_rows[i], SOURCE_BROWSED));
   }
 
   // Query the visits for all time.  We should get all visits.
   VisitVector results;
-  GetAllVisitsInRange(Time(), Time(), kNoAppIdFilter, 0, &results);
-  ASSERT_EQ(6U, test_visit_rows.size());
+  GetAllVisitsInRange(Time(), Time(), 0, &results);
   ASSERT_EQ(test_visit_rows.size(), results.size());
   for (size_t i = 0; i < test_visit_rows.size(); ++i) {
     EXPECT_TRUE(IsVisitInfoEqual(results[i], test_visit_rows[i]));
   }
 
-  // Query the visits with an app ID. Only those with a given ID are returned.
-  GetAllVisitsInRange(Time(), Time(), "org.chromium.dino", 0, &results);
-  ASSERT_EQ(2U, results.size());
-  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[1]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[2]));
-
   // Query a time range and make sure beginning is inclusive and ending is
   // exclusive.
   GetAllVisitsInRange(test_visit_rows[1].visit_time,
-                      test_visit_rows[3].visit_time, kNoAppIdFilter, 0,
-                      &results);
-  ASSERT_EQ(2U, results.size());
+                      test_visit_rows[3].visit_time, 0, &results);
+  ASSERT_EQ(static_cast<size_t>(2), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[1]));
   EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[2]));
 
   // Query for a max count and make sure we get only that number.
-  GetAllVisitsInRange(Time(), Time(), kNoAppIdFilter, 1, &results);
-  ASSERT_EQ(1U, results.size());
+  GetAllVisitsInRange(Time(), Time(), 1, &results);
+  ASSERT_EQ(static_cast<size_t>(1), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[0]));
 }
 
 TEST_F(VisitDatabaseTest, GetVisibleVisitsInRange) {
   std::vector<VisitRow> test_visit_rows = GetTestVisitRows();
-
-  test_visit_rows[1].app_id = "org.chromium.dino";
-  test_visit_rows[2].app_id = "org.chromium.dino";
-  test_visit_rows[3].app_id = "org.chromium.dino";
 
   for (size_t i = 0; i < test_visit_rows.size(); ++i) {
     EXPECT_TRUE(AddVisit(&test_visit_rows[i], SOURCE_BROWSED));
@@ -380,33 +359,15 @@ TEST_F(VisitDatabaseTest, GetVisibleVisitsInRange) {
   VisitVector results;
   QueryOptions options;
   GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(2U, results.size());
+  ASSERT_EQ(static_cast<size_t>(2), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[5]));
   EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[3]));
-
-  // Query the visits with app_id. Only those with the matching app_id will be
-  // returned. With app_id, the second visit is not a duplicate of the sixth.
-  // Therefore the second and the fourth are returned.
-  options.app_id = "org.chromium.dino";
-  GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(2U, results.size());
-  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[3]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[1]));
-
-  // Test the query with app_id, but in the reverse order.
-  options.visit_order = QueryOptions::OLDEST_FIRST;
-  GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(2U, results.size());
-  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[1]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[3]));
-
-  options = QueryOptions();  // Reset options to default.
 
   // Now try with only per-day de-duping -- the second visit should appear,
   // since it's a duplicate of visit6 but on a different day.
   options.duplicate_policy = QueryOptions::REMOVE_DUPLICATES_PER_DAY;
   GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(3U, results.size());
+  ASSERT_EQ(static_cast<size_t>(3), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[5]));
   EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[3]));
   EXPECT_TRUE(IsVisitInfoEqual(results[2], test_visit_rows[1]));
@@ -414,7 +375,7 @@ TEST_F(VisitDatabaseTest, GetVisibleVisitsInRange) {
   // Now try without de-duping, expect to see all visible visits.
   options.duplicate_policy = QueryOptions::KEEP_ALL_DUPLICATES;
   GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(4U, results.size());
+  ASSERT_EQ(static_cast<size_t>(4), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[5]));
   EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[3]));
   EXPECT_TRUE(IsVisitInfoEqual(results[2], test_visit_rows[1]));
@@ -425,7 +386,7 @@ TEST_F(VisitDatabaseTest, GetVisibleVisitsInRange) {
   // query range.
   options.end_time = test_visit_rows[1].visit_time;
   GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(1U, results.size());
+  ASSERT_EQ(static_cast<size_t>(1), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[0]));
 
   options = QueryOptions();  // Reset options to default.
@@ -433,7 +394,7 @@ TEST_F(VisitDatabaseTest, GetVisibleVisitsInRange) {
   // Query for a max count and make sure we get only that number.
   options.max_count = 1;
   GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(1U, results.size());
+  ASSERT_EQ(static_cast<size_t>(1), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[5]));
 
   // Query a time range and make sure beginning is inclusive and ending is
@@ -442,14 +403,14 @@ TEST_F(VisitDatabaseTest, GetVisibleVisitsInRange) {
   options.end_time = test_visit_rows[3].visit_time;
   options.max_count = 0;
   GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(1U, results.size());
+  ASSERT_EQ(static_cast<size_t>(1), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[1]));
 
   // Query oldest visits in a time range and make sure beginning is exclusive
   // and ending is inclusive.
   options.visit_order = QueryOptions::OLDEST_FIRST;
   GetVisibleVisitsInRange(options, &results);
-  ASSERT_EQ(1U, results.size());
+  ASSERT_EQ(static_cast<size_t>(1), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[3]));
 }
 
@@ -503,83 +464,48 @@ TEST_F(VisitDatabaseTest, VisitSource) {
 TEST_F(VisitDatabaseTest, GetVisibleVisitsForURL) {
   std::vector<VisitRow> test_visit_rows = GetTestVisitRows();
 
-  test_visit_rows[1].app_id = "org.chromium.dino";
-  test_visit_rows[2].app_id = "org.chromium.dino";
-  test_visit_rows[3].app_id = "org.chromium.dino";
-  test_visit_rows[5].app_id = "org.chromium.dino";
-
-  VisitRow visit_info6 = test_visit_rows[5];
-
-  // Add another visit for the same URL as visit 1, 2 and 6, but exactly a day
-  // later than visit 6.
-  VisitRow visit_info7(
-      visit_info6.url_id, visit_info6.visit_time + base::Days(1), 1,
-      ui::PageTransitionFromInt(ui::PAGE_TRANSITION_TYPED |
-                                ui::PAGE_TRANSITION_CHAIN_START |
-                                ui::PAGE_TRANSITION_CHAIN_END),
-      0, true, 0);
-  visit_info6.visit_id = 7;
-  test_visit_rows.push_back(visit_info7);
-
   for (size_t i = 0; i < test_visit_rows.size(); ++i) {
     EXPECT_TRUE(AddVisit(&test_visit_rows[i], SOURCE_BROWSED));
   }
 
-  // Query the visits for the first url id.  We should not get the first, the
-  // second or the sixth (duplicates of the seventh) or any other urls,
-  // redirects or subframe visits.
+  // Query the visits for the first url id.  We should not get the first or the
+  // second visit (duplicates of the sixth) or any other urls, redirects or
+  // subframe visits.
   VisitVector results;
   QueryOptions options;
   int url_id = test_visit_rows[0].url_id;
   GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(1U, results.size());
-  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[6]));
-
-  // Query the visits with app_id. Only those with the matching both url id
-  // (1,2,6,7) and app id(2,3,4,6) will be returned(2, 6) -> 6 (deduped).
-  options.app_id = "org.chromium.dino";
-  GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(1U, results.size());
+  ASSERT_EQ(static_cast<size_t>(1), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[5]));
-
-  // Test the query with app_id, but in the reverse order.
-  options.visit_order = QueryOptions::OLDEST_FIRST;
-  GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(1U, results.size());
-  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[1]));
-
-  options = QueryOptions();  // Reset options to default.
 
   // Now try with only per-day de-duping -- the second visit should appear,
   // since it's a duplicate of visit6 but on a different day.
   options.duplicate_policy = QueryOptions::REMOVE_DUPLICATES_PER_DAY;
   GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(3U, results.size());
-  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[6]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[5]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[2], test_visit_rows[1]));
+  ASSERT_EQ(static_cast<size_t>(2), results.size());
+  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[5]));
+  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[1]));
 
   // Now try without de-duping, expect to see all visible visits to url id 1.
   options.duplicate_policy = QueryOptions::KEEP_ALL_DUPLICATES;
   GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(4U, results.size());
-  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[6]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[5]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[2], test_visit_rows[1]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[3], test_visit_rows[0]));
+  ASSERT_EQ(static_cast<size_t>(3), results.size());
+  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[5]));
+  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[1]));
+  EXPECT_TRUE(IsVisitInfoEqual(results[2], test_visit_rows[0]));
 
   // Now try with a `max_count` limit to get the newest 2 visits only.
   options.max_count = 2;
   GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(2U, results.size());
-  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[6]));
-  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[5]));
+  ASSERT_EQ(static_cast<size_t>(2), results.size());
+  EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[5]));
+  EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[1]));
 
   // Now try getting the oldest 2 visits and make sure they're ordered oldest
   // first.
   options.visit_order = QueryOptions::OLDEST_FIRST;
   GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(2U, results.size());
+  ASSERT_EQ(static_cast<size_t>(2), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[0]));
   EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[1]));
 
@@ -590,7 +516,7 @@ TEST_F(VisitDatabaseTest, GetVisibleVisitsForURL) {
   options.visit_order = QueryOptions::RECENT_FIRST;
   options.max_count = 0;
   GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(2U, results.size());
+  ASSERT_EQ(static_cast<size_t>(2), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[1]));
   EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[0]));
 
@@ -598,7 +524,7 @@ TEST_F(VisitDatabaseTest, GetVisibleVisitsForURL) {
   // and ending is inclusive.
   options.visit_order = QueryOptions::OLDEST_FIRST;
   GetVisibleVisitsForURL(url_id, options, &results);
-  ASSERT_EQ(2U, results.size());
+  ASSERT_EQ(static_cast<size_t>(2), results.size());
   EXPECT_TRUE(IsVisitInfoEqual(results[0], test_visit_rows[1]));
   EXPECT_TRUE(IsVisitInfoEqual(results[1], test_visit_rows[5]));
 }
@@ -1058,8 +984,7 @@ TEST_F(VisitDatabaseTest, GetLastVisitToURL) {
   }
 }
 
-// TODO(crbug.com/1499614): Test is failing.
-TEST_F(VisitDatabaseTest, DISABLED_GetDailyVisitsToHostWithVisits) {
+TEST_F(VisitDatabaseTest, GetDailyVisitsToHostWithVisits) {
   base::Time begin_time = base::Time::Now();
   base::Time end_time = begin_time + base::Days(10);
 

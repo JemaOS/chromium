@@ -10,39 +10,16 @@ import("//gpu/vulkan/features.gni")
 import("//media/gpu/args.gni")
 import("//skia/features.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
-import("//third_party/jni_zero/jni_zero.gni")
 
 config("viz_service_implementation") {
 }
 
-source_set("viz_service_export") {
-  sources = [ "viz_service_export.h" ]
-}
-
-static_library("viz_debugger") {
+viz_component("service") {
   sources = [
     "debugger/rwlock.cc",
     "debugger/rwlock.h",
     "debugger/viz_debugger.cc",
     "debugger/viz_debugger.h",
-  ]
-
-  defines = [ "VIZ_SERVICE_IMPLEMENTATION" ]
-
-  deps = [
-    ":viz_service_export",
-    "//base",
-    "//components/viz/common:buildflags",
-    "//components/viz/service/debugger/mojom",
-    "//mojo/public/cpp/bindings",
-    "//skia",
-    "//skia:skia_core_public_headers",
-    "//ui/gfx/geometry",
-  ]
-}
-
-viz_component("service") {
-  sources = [
     "display/aggregated_frame.cc",
     "display/aggregated_frame.h",
     "display/bsp_tree.cc",
@@ -80,8 +57,6 @@ viz_component("service") {
     "display/display_scheduler.h",
     "display/display_scheduler_base.cc",
     "display/display_scheduler_base.h",
-    "display/display_utils.cc",
-    "display/display_utils.h",
     "display/draw_polygon.cc",
     "display/draw_polygon.h",
     "display/external_use_client.cc",
@@ -109,7 +84,6 @@ viz_component("service") {
     "display/overlay_processor_stub.h",
     "display/pending_swap_params.cc",
     "display/pending_swap_params.h",
-    "display/render_pass_alpha_type.h",
     "display/renderer_utils.cc",
     "display/renderer_utils.h",
     "display/resolved_frame_data.cc",
@@ -175,8 +149,6 @@ viz_component("service") {
     "frame_sinks/compositor_frame_sink_impl.h",
     "frame_sinks/compositor_frame_sink_support.cc",
     "frame_sinks/compositor_frame_sink_support.h",
-    "frame_sinks/eviction_handler.cc",
-    "frame_sinks/eviction_handler.h",
     "frame_sinks/external_begin_frame_source_mojo.cc",
     "frame_sinks/external_begin_frame_source_mojo.h",
     "frame_sinks/frame_counter.cc",
@@ -189,6 +161,8 @@ viz_component("service") {
     "frame_sinks/gmb_video_frame_pool_context_provider.h",
     "frame_sinks/gmb_video_frame_pool_context_provider_impl.cc",
     "frame_sinks/gmb_video_frame_pool_context_provider_impl.h",
+    "frame_sinks/gpu_vsync_begin_frame_source.cc",
+    "frame_sinks/gpu_vsync_begin_frame_source.h",
     "frame_sinks/root_compositor_frame_sink_impl.cc",
     "frame_sinks/root_compositor_frame_sink_impl.h",
     "frame_sinks/surface_resource_holder.cc",
@@ -219,10 +193,10 @@ viz_component("service") {
     "hit_test/hit_test_manager.h",
     "layers/layer_context_impl.cc",
     "layers/layer_context_impl.h",
-    "performance_hint/boost_manager.cc",
-    "performance_hint/boost_manager.h",
     "performance_hint/hint_session.cc",
     "performance_hint/hint_session.h",
+    "performance_hint/utils.cc",
+    "performance_hint/utils.h",
     "surfaces/frame_index_constants.h",
     "surfaces/latest_local_surface_id_lookup_delegate.h",
     "surfaces/pending_copy_output_request.cc",
@@ -249,6 +223,7 @@ viz_component("service") {
     "transitions/surface_animation_manager.h",
     "transitions/transferable_resource_tracker.cc",
     "transitions/transferable_resource_tracker.h",
+    "viz_service_export.h",
   ]
 
   defines = [ "VIZ_SERVICE_IMPLEMENTATION" ]
@@ -259,12 +234,10 @@ viz_component("service") {
     "//cc/base",
     "//cc/paint",
     "//components/crash/core/common:crash_key",
-    "//components/startup_metric_utils",
+    "//components/power_scheduler",
 
     # Note that dependency on //gpu/ipc/client is for GpuMemoryBufferImpl. This
     # dependency should not be in public_deps.
-    "//components/ml/webnn:features",
-    "//components/version_info:version_info",
     "//components/viz/common",
     "//gpu/command_buffer/client",
     "//gpu/config",
@@ -280,18 +253,14 @@ viz_component("service") {
     "//services/metrics/public/mojom",
     "//services/tracing/public/cpp:cpp",
     "//services/viz/privileged/mojom",
-    "//services/webnn:webnn_service",
     "//skia",
     "//skia:skcms",
     "//third_party/libyuv",
-    "//ui/base:ozone_buildflags",
     "//ui/display/types",
     "//ui/gfx/animation/keyframe",
   ]
 
   public_deps = [
-    ":viz_debugger",
-    ":viz_service_export",
     "//base",
     "//cc",
     "//cc/animation",
@@ -306,7 +275,6 @@ viz_component("service") {
     "//services/viz/privileged/mojom/compositing",
     "//services/viz/privileged/mojom/gl",
     "//services/viz/public/mojom",
-    "//services/webnn/public/mojom",
     "//skia",
     "//ui/base/prediction",
     "//ui/gfx",
@@ -351,12 +319,6 @@ viz_component("service") {
       ]
 
       frameworks += [ "CoreGraphics.framework" ]
-    }
-    if (is_mac) {
-      sources += [
-        "frame_sinks/external_begin_frame_source_mac.cc",
-        "frame_sinks/external_begin_frame_source_mac.h",
-      ]
     }
   }
 
@@ -407,8 +369,6 @@ viz_component("service") {
     sources += [
       "display/overlay_processor_delegated.cc",
       "display/overlay_processor_delegated.h",
-      "display/overlay_processor_delegated_support.cc",
-      "display/overlay_processor_delegated_support.h",
       "display/overlay_processor_ozone.cc",
       "display/overlay_processor_ozone.h",
       "display_embedder/software_output_device_ozone.cc",
@@ -430,8 +390,6 @@ viz_component("service") {
       "display_embedder/skia_output_device_dcomp.h",
       "display_embedder/software_output_device_win.cc",
       "display_embedder/software_output_device_win.h",
-      "frame_sinks/external_begin_frame_source_win.cc",
-      "frame_sinks/external_begin_frame_source_win.h",
       "gl/info_collection_gpu_service_impl.cc",
       "gl/info_collection_gpu_service_impl.h",
     ]
@@ -489,19 +447,14 @@ viz_component("service") {
         "//ui/gfx/x",
       ]
     }
-
-    if (is_chromeos && use_v4l2_codec) {
-      deps += [ "//media/gpu/chromeos:common" ]
-    }
   }
 
-  if (skia_use_dawn) {
-    if (is_win || is_android) {
-      sources += [
-        "display_embedder/skia_output_device_dawn.cc",
-        "display_embedder/skia_output_device_dawn.h",
-      ]
-    }
+  if (skia_use_dawn && is_win) {
+    sources += [
+      "display_embedder/skia_output_device_dawn.cc",
+      "display_embedder/skia_output_device_dawn.h",
+    ]
+
     public_deps += [ "//third_party/dawn/include/dawn:headers" ]
 
     deps += [
@@ -531,7 +484,6 @@ viz_source_set("unit_tests") {
     "display/display_resource_provider_software_unittest.cc",
     "display/display_scheduler_unittest.cc",
     "display/display_unittest.cc",
-    "display/display_utils_unittest.cc",
     "display/draw_polygon_unittest.cc",
     "display/frame_rate_decider_unittest.cc",
     "display/overlay_candidate_factory_unittest.cc",
@@ -562,7 +514,6 @@ viz_source_set("unit_tests") {
     "gl/gpu_service_impl_unittest.cc",
     "hit_test/hit_test_aggregator_unittest.cc",
     "main/viz_main_impl_unittest.cc",
-    "performance_hint/boost_manager_unittest.cc",
     "surfaces/referenced_surface_tracker_unittest.cc",
     "surfaces/surface_unittest.cc",
     "transitions/transferable_resource_tracker_unittest.cc",
@@ -576,13 +527,11 @@ viz_source_set("unit_tests") {
 
   deps = [
     ":service",
-    ":viz_debugger",
     "//base",
     "//base/test:test_support",
     "//build:chromeos_buildflags",
     "//cc:test_support",
     "//cc/paint",
-    "//components/ml/webnn:features",
     "//components/viz/client",
     "//components/viz/common",
     "//components/viz/host",
@@ -590,11 +539,9 @@ viz_source_set("unit_tests") {
     "//components/viz/test:test_suite",
     "//components/viz/test:test_support",
     "//gpu/command_buffer/client",
-    "//gpu/command_buffer/client:raster_interface",
     "//gpu/ipc:gl_in_process_context",
     "//gpu/ipc/service",
     "//media",
-    "//media:test_support",
     "//media/capture:capture_lib",
     "//services/viz/public/mojom",
     "//skia",
@@ -708,12 +655,11 @@ if (is_android) {
   android_library("service_java") {
     deps = [
       "//base:base_java",
+      "//base:jni_java",
       "//build/android:build_java",
-      "//third_party/jni_zero:jni_zero_java",
       "//ui/android:ui_no_recycler_view_java",
     ]
-
-    srcjar_deps = [ ":service_jni_headers" ]
+    annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
     sources = [
       "java/src/org/chromium/components/viz/service/frame_sinks/ExternalBeginFrameSourceAndroid.java",
       "java/src/org/chromium/components/viz/service/gl/ThrowUncaughtException.java",

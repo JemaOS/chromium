@@ -23,6 +23,9 @@ class INVALIDATION_EXPORT AckHandler {
 
   // Record the local acknowledgement of an invalidation identified by |handle|.
   virtual void Acknowledge(const Topic& topic, const AckHandle& handle) = 0;
+
+  // Record the drop of an invalidation identified by |handle|.
+  virtual void Drop(const Topic& topic, const AckHandle& handle) = 0;
 };
 
 }  // namespace invalidation

@@ -75,16 +75,14 @@ class LocalSessionEventHandlerImpl : public LocalSessionEventHandler {
 
   // Returns tab specifics from |tab_delegate|. Exposed publicly for testing.
   sync_pb::SessionTab GetTabSpecificsFromDelegateForTest(
-      SyncedTabDelegate& tab_delegate) const;
+      const SyncedTabDelegate& tab_delegate) const;
 
  private:
   enum ReloadTabsOption { RELOAD_TABS, DONT_RELOAD_TABS };
 
   void CleanupLocalTabs(WriteBatch* batch);
 
-  void AssociateWindows(ReloadTabsOption option,
-                        WriteBatch* batch,
-                        bool is_session_restore);
+  void AssociateWindows(ReloadTabsOption option, WriteBatch* batch);
 
   // Loads and reassociates the local tab referenced in |tab|.
   // |batch| must not be null. This function will append necessary
@@ -93,10 +91,11 @@ class LocalSessionEventHandlerImpl : public LocalSessionEventHandler {
 
   // Set |session_tab| from |tab_delegate|.
   sync_pb::SessionTab GetTabSpecificsFromDelegate(
-      SyncedTabDelegate& tab_delegate) const;
+      const SyncedTabDelegate& tab_delegate) const;
 
-  bool AssociatePlaceholderTab(std::unique_ptr<SyncedTabDelegate> snapshot,
-                               WriteBatch* batch);
+  // Update |tab_specifics| with the corresponding task ids.
+  static void WriteTasksIntoSpecifics(sync_pb::SessionTab* tab_specifics,
+                                      SyncedTabDelegate* tab_delegate);
 
   // Injected dependencies (not owned).
   const raw_ptr<Delegate> delegate_;

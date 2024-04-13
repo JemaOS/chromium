@@ -15,8 +15,7 @@ features:
   dynamic_refresh: true
   per_profile: false
 owners:
-- ust@google.com
-- chromeos-commercial-printing@google.com
+- srad@google.com
 - pawliczek@chromium.org
 schema:
   items:

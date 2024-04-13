@@ -36,9 +36,26 @@ void TestPageSpecificContentSettingsDelegate::
     SetDefaultRendererContentSettingRules(content::RenderFrameHost* rfh,
                                           RendererContentSettingRules* rules) {}
 
+std::vector<storage::FileSystemType>
+TestPageSpecificContentSettingsDelegate::GetAdditionalFileSystemTypes() {
+  return {};
+}
+
+browsing_data::CookieHelper::IsDeletionDisabledCallback
+TestPageSpecificContentSettingsDelegate::GetIsDeletionDisabledCallback() {
+  return base::NullCallback();
+}
+
+bool TestPageSpecificContentSettingsDelegate::IsMicrophoneCameraStateChanged(
+    PageSpecificContentSettings::MicrophoneCameraState microphone_camera_state,
+    const std::string& media_stream_selected_audio_device,
+    const std::string& media_stream_selected_video_device) {
+  return false;
+}
+
 PageSpecificContentSettings::MicrophoneCameraState
 TestPageSpecificContentSettingsDelegate::GetMicrophoneCameraState() {
-  return {};
+  return PageSpecificContentSettings::MICROPHONE_CAMERA_NOT_ACCESSED;
 }
 
 content::WebContents* TestPageSpecificContentSettingsDelegate::
@@ -53,9 +70,17 @@ void TestPageSpecificContentSettingsDelegate::OnContentAllowed(
 void TestPageSpecificContentSettingsDelegate::OnContentBlocked(
     ContentSettingsType type) {}
 
-bool TestPageSpecificContentSettingsDelegate::IsFrameAllowlistedForJavaScript(
-    content::RenderFrameHost* render_frame_host) {
-  return false;
-}
+void TestPageSpecificContentSettingsDelegate::OnStorageAccessAllowed(
+    content_settings::mojom::ContentSettingsManager::StorageType storage_type,
+    const url::Origin& origin,
+    content::Page& page) {}
+
+void TestPageSpecificContentSettingsDelegate::OnCookieAccessAllowed(
+    const net::CookieList& accessed_cookies,
+    content::Page& page) {}
+
+void TestPageSpecificContentSettingsDelegate::OnServiceWorkerAccessAllowed(
+    const url::Origin& origin,
+    content::Page& page) {}
 
 }  // namespace content_settings

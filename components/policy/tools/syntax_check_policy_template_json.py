@@ -234,6 +234,9 @@ CHROME_STAR_PLATFORMS = ['chrome.win', 'chrome.mac', 'chrome.linux']
 # List of supported metapolicy types.
 METAPOLICY_TYPES = ['merge', 'precedence']
 
+# List of supported chrome os management tags.
+SUPPORTED_CHROME_OS_MANAGEMENT = ['google_cloud', 'active_directory']
+
 # Helper function to determine if a given type defines a key in a dictionary
 # that is used to condition certain backwards compatibility checks.
 def IsKeyDefinedForTypeInDictionary(type, key, key_per_type_dict):
@@ -401,6 +404,7 @@ class PolicyTemplateChecker(object):
   def __init__(self):
     self.num_policies = 0
     self.num_groups = 0
+    self.num_policies_in_groups = 0
     self.options = None
     self.features = []
     self.schema_validator = SchemaValidator()
@@ -725,8 +729,8 @@ class PolicyTemplateChecker(object):
       # try and ensure the items are still described in the descriptions.
       value_to_names = {
           None: {'none', 'unset', 'not set', 'not configured'},
-          True: {'true', 'enable', 'allowed'},
-          False: {'false', 'disable', 'not allowed', 'disallowed'},
+          True: {'true', 'enable'},
+          False: {'false', 'disable'},
       }
       if policy['name'] not in LEGACY_NO_ENABLE_DISABLE_DESC:
         for value in required_values:
@@ -847,7 +851,11 @@ class PolicyTemplateChecker(object):
 
     return False
 
-  def _CheckPolicyDefinition(self, policy, current_version, schemas_by_id):
+  def _CheckPolicyDefinition(self,
+                             policy,
+                             current_version,
+                             schemas_by_id,
+                             is_in_group=False):
     if not isinstance(policy, dict):
       self._Error('Each policy must be a dictionary.', 'policy', None, policy)
       return
@@ -881,6 +889,7 @@ class PolicyTemplateChecker(object):
           'default_for_managed_devices_doc_only',
           'default_policy_level',
           'arc_support',
+          'supported_chrome_os_management',
       ):
         self._PolicyError(f'Unknown key: {key}', policy, key)
 
@@ -917,6 +926,10 @@ class PolicyTemplateChecker(object):
     self._CheckContains(policy, 'arc_support', str, True)
 
     if policy_type == 'group':
+      # Groups must not be nested.
+      if is_in_group:
+        self._Error('Policy groups must not be nested.', 'policy', policy)
+
       # Each policy group must have a list of policies.
       policies = self._CheckContains(policy, 'policies', list)
 
@@ -978,11 +991,11 @@ class PolicyTemplateChecker(object):
         if (not self._SupportedPolicy(policy, current_version)
             and not policy.get('deprecated', False)):
           self._PolicyError(
-              'Marked as no longer supported, but is not marked as '
-              'deprecated.\n'
-              '  Unsupported policies must be marked as `deprecated: true`. '
-              'You may see this error after branch point. Please fix the '
-              'issue and cc the policy owners.', policy, 'supported_on')
+              "Marked as no longer supported, but isn't marked as "
+              '"deprecated.\n'
+              '  Unsupported policies must be marked as "deprecated": True. '
+              'You may see this error after branch point. Please fix the'
+              f' issue and cc the policy owners.', policy, 'supported_on')
 
       supported_platforms = ExpandChromeStar(supported_platforms)
       future_on = ExpandChromeStar(
@@ -1182,6 +1195,31 @@ class PolicyTemplateChecker(object):
                           policy, 'features')
 
 
+      # Chrome OS policies may have a non-empty supported_chrome_os_management
+      # list with either 'active_directory' or 'google_cloud' or both.
+      supported_chrome_os_management = self._CheckContains(
+          policy, 'supported_chrome_os_management', list, True)
+      if supported_chrome_os_management is not None:
+        # Must be on Chrome OS.
+        if (supported_on is not None
+            and not any('chrome_os' == str
+                        for str in (supported_platforms +
+                                    (future_on if future_on else [])))):
+          self._PolicyError(
+              '"supported_chrome_os_management" is used for policy that does '
+              'not support Chrome OS.', policy, 'supported_on')
+        # Must be non-empty.
+        if len(supported_chrome_os_management) == 0:
+          self._PolicyError('"supported_chrome_os_management" is empty', policy,
+                            'supported_chrome_os_management')
+        # Must be either 'active_directory' or 'google_cloud'.
+        if (any(str not in SUPPORTED_CHROME_OS_MANAGEMENT
+                for str in supported_chrome_os_management)):
+          self._PolicyError(
+              '"supported_chrome_os_management" contains supported entry.\n'
+              f'Please use one of {SUPPORTED_CHROME_OS_MANAGEMENT}', policy,
+              'supported_chrome_os_management')
+
       # Each policy must have an 'example_value' of appropriate type.
       self._CheckContains(policy, 'example_value',
                           _GetPolicyValueType(policy_type))
@@ -1220,6 +1258,8 @@ class PolicyTemplateChecker(object):
 
       # Statistics.
       self.num_policies += 1
+      if is_in_group:
+        self.num_policies_in_groups += 1
 
       self._CheckItems(policy, current_version)
 
@@ -1547,9 +1587,7 @@ class PolicyTemplateChecker(object):
       with the `current_version` and previous versions of the policy.
       This also check that the policy definition schema matches the expected
       schema for a policy.
-      'skip_compatibility_check' is a flag used to bypass compatibility checks
-      (use `BYPASS_POLICY_COMPATIBILITY_CHECK=<reason>` in CL description to
-      skip these checks).
+      'skip_compatibility_check' is a flag used to bypass compatibility checks.
       Returns warnings and errors found in the policies.
     '''
     for policy_change in policy_change_list:

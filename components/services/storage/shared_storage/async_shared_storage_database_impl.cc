@@ -17,7 +17,6 @@
 #include "base/time/time.h"
 #include "components/services/storage/public/mojom/storage_usage_info.mojom.h"
 #include "components/services/storage/shared_storage/shared_storage_options.h"
-#include "net/base/schemeful_site.h"
 #include "storage/browser/quota/special_storage_policy.h"
 #include "url/origin.h"
 
@@ -155,16 +154,6 @@ void AsyncSharedStorageDatabaseImpl::Entries(
       .Then(std::move(callback));
 }
 
-void AsyncSharedStorageDatabaseImpl::BytesUsed(
-    url::Origin context_origin,
-    base::OnceCallback<void(int)> callback) {
-  DCHECK(callback);
-  DCHECK(database_);
-  database_.AsyncCall(&SharedStorageDatabase::BytesUsed)
-      .WithArgs(std::move(context_origin))
-      .Then(std::move(callback));
-}
-
 void AsyncSharedStorageDatabaseImpl::PurgeMatchingOrigins(
     StorageKeyPolicyMatcherFunction storage_key_policy,
     base::Time begin,
@@ -197,23 +186,23 @@ void AsyncSharedStorageDatabaseImpl::FetchOrigins(
 }
 
 void AsyncSharedStorageDatabaseImpl::MakeBudgetWithdrawal(
-    net::SchemefulSite context_site,
+    url::Origin context_origin,
     double bits_debit,
     base::OnceCallback<void(OperationResult)> callback) {
   DCHECK(callback);
   DCHECK(database_);
   database_.AsyncCall(&SharedStorageDatabase::MakeBudgetWithdrawal)
-      .WithArgs(std::move(context_site), bits_debit)
+      .WithArgs(std::move(context_origin), bits_debit)
       .Then(std::move(callback));
 }
 
 void AsyncSharedStorageDatabaseImpl::GetRemainingBudget(
-    net::SchemefulSite context_site,
+    url::Origin context_origin,
     base::OnceCallback<void(BudgetResult)> callback) {
   DCHECK(callback);
   DCHECK(database_);
   database_.AsyncCall(&SharedStorageDatabase::GetRemainingBudget)
-      .WithArgs(std::move(context_site))
+      .WithArgs(std::move(context_origin))
       .Then(std::move(callback));
 }
 
@@ -320,12 +309,12 @@ void AsyncSharedStorageDatabaseImpl::OverrideClockForTesting(
 }
 
 void AsyncSharedStorageDatabaseImpl::GetNumBudgetEntriesForTesting(
-    net::SchemefulSite context_site,
+    url::Origin context_origin,
     base::OnceCallback<void(int)> callback) {
   DCHECK(callback);
   DCHECK(database_);
   database_.AsyncCall(&SharedStorageDatabase::GetNumBudgetEntriesForTesting)
-      .WithArgs(std::move(context_site))
+      .WithArgs(std::move(context_origin))
       .Then(std::move(callback));
 }
 

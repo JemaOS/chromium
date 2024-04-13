@@ -171,7 +171,7 @@ V8ContextDescriptionStatus ValidateV8ContextDescription(
   return V8ContextDescriptionStatus::kValid;
 }
 
-std::optional<bool> ExpectIframeAttributionDataForV8ContextDescription(
+absl::optional<bool> ExpectIframeAttributionDataForV8ContextDescription(
     const mojom::V8ContextDescription& description,
     Graph* graph) {
   switch (description.world_type) {
@@ -185,7 +185,7 @@ std::optional<bool> ExpectIframeAttributionDataForV8ContextDescription(
         return IsSynchronousIframeAttributionDataExpected(ec);
       }
       // Unable to be determined.
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     case mojom::V8ContextWorldType::kWorkerOrWorklet:

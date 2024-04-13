@@ -7,6 +7,10 @@
 #include "base/strings/string_number_conversions.h"
 #include "ios/web/public/js_messaging/script_message.h"
 
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
+
 namespace autofill {
 
 BaseFormActivityParams::BaseFormActivityParams() = default;
@@ -61,9 +65,6 @@ bool BaseFormActivityParams::FromMessage(const web::ScriptMessage& message,
   return true;
 }
 
-bool BaseFormActivityParams::operator==(const BaseFormActivityParams&) const =
-    default;
-
 bool FormActivityParams::FromMessage(const web::ScriptMessage& message,
                                      FormActivityParams* params) {
   const base::Value::Dict* message_body = nullptr;
@@ -78,7 +79,7 @@ bool FormActivityParams::FromMessage(const web::ScriptMessage& message,
   const std::string* field_type = message_body->FindString("fieldType");
   const std::string* type = message_body->FindString("type");
   const std::string* value = message_body->FindString("value");
-  std::optional<bool> has_user_gesture =
+  absl::optional<bool> has_user_gesture =
       message_body->FindBool("hasUserGesture");
   if (!field_identifier || !unique_field_id || !field_type || !type || !value ||
       !has_user_gesture) {
@@ -105,14 +106,6 @@ bool FormActivityParams::FromMessage(const web::ScriptMessage& message,
   }
 
   return true;
-}
-
-bool FormActivityParams::operator==(const FormActivityParams& params) const {
-  return BaseFormActivityParams::operator==(params) &&
-         (field_identifier == params.field_identifier) &&
-         (unique_field_id == params.unique_field_id) &&
-         (field_type == params.field_type) && (value == params.value) &&
-         (type == params.type) && (has_user_gesture == params.has_user_gesture);
 }
 
 }  // namespace autofill

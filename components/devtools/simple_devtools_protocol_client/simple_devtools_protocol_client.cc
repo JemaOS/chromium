@@ -5,7 +5,6 @@
 #include "components/devtools/simple_devtools_protocol_client/simple_devtools_protocol_client.h"
 
 #include <algorithm>
-#include <optional>
 #include <vector>
 
 #include "base/functional/bind.h"
@@ -18,6 +17,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using content::DevToolsAgentHost;
 
@@ -126,7 +126,7 @@ void SimpleDevToolsProtocolClient::DispatchProtocolMessageTask(
   VLOG(kVLogLevel) << "\n[CDP RECV] " << message.DebugString();
 
   // Handle response message shutting down the host if it's unexpected.
-  if (std::optional<int> id = message.FindInt(kId)) {
+  if (absl::optional<int> id = message.FindInt(kId)) {
     auto it = pending_response_map_.find(*id);
     if (it == pending_response_map_.cend()) {
       LOG(ERROR) << "Unexpected message id=" << *id;

@@ -113,7 +113,10 @@ class SyncerTest : public testing::Test,
 
   void OnReceivedCustomNudgeDelays(
       const std::map<ModelType, base::TimeDelta>& delay_map) override {
-    auto iter = delay_map.find(BOOKMARKS);
+    auto iter = delay_map.find(SESSIONS);
+    if (iter != delay_map.end() && iter->second.is_positive())
+      last_sessions_commit_delay_ = iter->second;
+    iter = delay_map.find(BOOKMARKS);
     if (iter != delay_map.end() && iter->second.is_positive())
       last_bookmarks_commit_delay_ = iter->second;
   }
@@ -121,9 +124,9 @@ class SyncerTest : public testing::Test,
   void OnReceivedGuRetryDelay(const base::TimeDelta& delay) override {}
   void OnReceivedMigrationRequest(ModelTypeSet types) override {}
   void OnReceivedQuotaParamsForExtensionTypes(
-      std::optional<int> max_tokens,
-      std::optional<base::TimeDelta> refill_interval,
-      std::optional<base::TimeDelta> depleted_quota_nudge_delay) override {}
+      absl::optional<int> max_tokens,
+      absl::optional<base::TimeDelta> refill_interval,
+      absl::optional<base::TimeDelta> depleted_quota_nudge_delay) override {}
   void OnProtocolEvent(const ProtocolEvent& event) override {}
   void OnSyncProtocolError(const SyncProtocolError& error) override {}
 
@@ -145,7 +148,7 @@ class SyncerTest : public testing::Test,
     ResetCycle();
 
     // Pretend we've seen a local change, to make the nudge_tracker look normal.
-    nudge_tracker_.RecordLocalChange(BOOKMARKS, false);
+    nudge_tracker_.RecordLocalChange(BOOKMARKS);
 
     return syncer_->NormalSyncShare(context_->GetConnectedTypes(),
                                     &nudge_tracker_, cycle_.get());
@@ -178,14 +181,15 @@ class SyncerTest : public testing::Test,
     context_ = std::make_unique<SyncCycleContext>(
         mock_server_.get(), extensions_activity_.get(), listeners,
         debug_info_getter_.get(), model_type_registry_.get(),
-        local_cache_guid(), mock_server_->store_birthday(), "fake_bag_of_chips",
+        "fake_invalidator_client_id", local_cache_guid(),
+        mock_server_->store_birthday(), "fake_bag_of_chips",
         /*poll_interval=*/base::Minutes(30));
     auto syncer = std::make_unique<Syncer>(&cancelation_signal_);
     // The syncer is destroyed with the scheduler that owns it.
     syncer_ = syncer.get();
     scheduler_ = std::make_unique<SyncSchedulerImpl>(
         "TestSyncScheduler", BackoffDelayProvider::FromDefaults(),
-        context_.get(), std::move(syncer), false, false);
+        context_.get(), std::move(syncer), false);
 
     mock_server_->SetKeystoreKey("encryption_key");
   }
@@ -248,7 +252,7 @@ class SyncerTest : public testing::Test,
   CancelationSignal cancelation_signal_;
   std::map<ModelType, MockModelTypeProcessor> mock_model_type_processors_;
 
-  raw_ptr<Syncer, DanglingUntriaged> syncer_ = nullptr;
+  raw_ptr<Syncer> syncer_ = nullptr;
 
   std::unique_ptr<SyncCycle> cycle_;
   MockNudgeHandler mock_nudge_handler_;
@@ -256,6 +260,7 @@ class SyncerTest : public testing::Test,
   std::unique_ptr<SyncSchedulerImpl> scheduler_;
   std::unique_ptr<SyncCycleContext> context_;
   base::TimeDelta last_poll_interval_received_;
+  base::TimeDelta last_sessions_commit_delay_;
   base::TimeDelta last_bookmarks_commit_delay_;
   int last_client_invalidation_hint_buffer_size_ = 10;
 
@@ -265,7 +270,7 @@ class SyncerTest : public testing::Test,
 };
 
 TEST_F(SyncerTest, CommitFiltersThrottledEntries) {
-  const ModelTypeSet throttled_types = {BOOKMARKS};
+  const ModelTypeSet throttled_types(BOOKMARKS);
 
   GetProcessor(BOOKMARKS)->AppendCommitRequest(
       ClientTagHash::FromHashed("tag1"), MakeBookmarkSpecificsToCommit(),
@@ -310,7 +315,7 @@ TEST_F(SyncerTest, GetUpdatesPartialThrottled) {
 
   // Set BOOKMARKS throttled but PREFERENCES not,
   // then BOOKMARKS should not get synced but PREFERENCES should.
-  ModelTypeSet throttled_types = {BOOKMARKS};
+  ModelTypeSet throttled_types(BOOKMARKS);
   mock_server_->set_throttling(true);
   mock_server_->SetPartialFailureTypes(throttled_types);
 
@@ -365,7 +370,7 @@ TEST_F(SyncerTest, GetUpdatesPartialFailure) {
 
   // Set BOOKMARKS failure but PREFERENCES not,
   // then BOOKMARKS should not get synced but PREFERENCES should.
-  ModelTypeSet failed_types = {BOOKMARKS};
+  ModelTypeSet failed_types(BOOKMARKS);
   mock_server_->set_partial_failure(true);
   mock_server_->SetPartialFailureTypes(failed_types);
 
@@ -490,18 +495,18 @@ TEST_F(SyncerTest, CommitManyItemsInOneGo_PostBufferFail) {
   EXPECT_FALSE(SyncShareNudge());
 
   EXPECT_EQ(1U, mock_server_->commit_messages().size());
-  ASSERT_EQ(
-      cycle_->status_controller().model_neutral_state().commit_result.type(),
-      SyncerError::Type::kHttpError);
+  EXPECT_EQ(
+      SyncerError::SYNC_SERVER_ERROR,
+      cycle_->status_controller().model_neutral_state().commit_result.value());
 
   // Since the second batch fails, the third one should not even be gathered.
   EXPECT_EQ(2, GetProcessor(PREFERENCES)->GetLocalChangesCallCount());
 
   histogram_tester.ExpectBucketCount("Sync.CommitResponse.PREFERENCE",
-                                     SyncerErrorValueForUma::kSyncServerError,
+                                     SyncerError::SYNC_SERVER_ERROR,
                                      /*expected_count=*/1);
   histogram_tester.ExpectBucketCount("Sync.CommitResponse",
-                                     SyncerErrorValueForUma::kSyncServerError,
+                                     SyncerError::SYNC_SERVER_ERROR,
                                      /*expected_count=*/1);
 }
 
@@ -696,6 +701,7 @@ TEST_F(SyncerTest, TestClientCommandDuringUpdate) {
   auto command = std::make_unique<ClientCommand>();
   command->set_set_sync_poll_interval(8);
   command->set_set_sync_long_poll_interval(800);
+  command->set_sessions_commit_delay_seconds(3141);
   sync_pb::CustomNudgeDelay* bookmark_delay =
       command->add_custom_nudge_delays();
   bookmark_delay->set_datatype_id(
@@ -707,11 +713,13 @@ TEST_F(SyncerTest, TestClientCommandDuringUpdate) {
   EXPECT_TRUE(SyncShareNudge());
 
   EXPECT_EQ(base::Seconds(8), last_poll_interval_received_);
+  EXPECT_EQ(base::Seconds(3141), last_sessions_commit_delay_);
   EXPECT_EQ(base::Milliseconds(950), last_bookmarks_commit_delay_);
 
   command = std::make_unique<ClientCommand>();
   command->set_set_sync_poll_interval(180);
   command->set_set_sync_long_poll_interval(190);
+  command->set_sessions_commit_delay_seconds(2718);
   bookmark_delay = command->add_custom_nudge_delays();
   bookmark_delay->set_datatype_id(
       GetSpecificsFieldNumberFromModelType(BOOKMARKS));
@@ -722,6 +730,7 @@ TEST_F(SyncerTest, TestClientCommandDuringUpdate) {
   EXPECT_TRUE(SyncShareNudge());
 
   EXPECT_EQ(base::Seconds(180), last_poll_interval_received_);
+  EXPECT_EQ(base::Seconds(2718), last_sessions_commit_delay_);
   EXPECT_EQ(base::Milliseconds(1050), last_bookmarks_commit_delay_);
 }
 
@@ -731,6 +740,7 @@ TEST_F(SyncerTest, TestClientCommandDuringCommit) {
   auto command = std::make_unique<ClientCommand>();
   command->set_set_sync_poll_interval(8);
   command->set_set_sync_long_poll_interval(800);
+  command->set_sessions_commit_delay_seconds(3141);
   sync_pb::CustomNudgeDelay* bookmark_delay =
       command->add_custom_nudge_delays();
   bookmark_delay->set_datatype_id(
@@ -743,11 +753,13 @@ TEST_F(SyncerTest, TestClientCommandDuringCommit) {
   EXPECT_TRUE(SyncShareNudge());
 
   EXPECT_EQ(base::Seconds(8), last_poll_interval_received_);
+  EXPECT_EQ(base::Seconds(3141), last_sessions_commit_delay_);
   EXPECT_EQ(base::Milliseconds(950), last_bookmarks_commit_delay_);
 
   command = std::make_unique<ClientCommand>();
   command->set_set_sync_poll_interval(180);
   command->set_set_sync_long_poll_interval(190);
+  command->set_sessions_commit_delay_seconds(2718);
   bookmark_delay = command->add_custom_nudge_delays();
   bookmark_delay->set_datatype_id(
       GetSpecificsFieldNumberFromModelType(BOOKMARKS));
@@ -759,6 +771,7 @@ TEST_F(SyncerTest, TestClientCommandDuringCommit) {
   EXPECT_TRUE(SyncShareNudge());
 
   EXPECT_EQ(base::Seconds(180), last_poll_interval_received_);
+  EXPECT_EQ(base::Seconds(2718), last_sessions_commit_delay_);
   EXPECT_EQ(base::Milliseconds(1050), last_bookmarks_commit_delay_);
 }
 
@@ -1118,7 +1131,7 @@ TEST_F(SyncerTest, ConfigureFailsDontApplyUpdates) {
 TEST_F(SyncerTest, ConfigureFailedUnregisteredType) {
   // Simulate type being unregistered before configuration by including type
   // that isn't registered with ModelTypeRegistry.
-  SyncShareConfigureTypes({APPS});
+  SyncShareConfigureTypes(ModelTypeSet(APPS));
 
   // No explicit verification, DCHECK shouldn't have been triggered.
 }
@@ -1130,7 +1143,8 @@ TEST_F(SyncerTest, GetKeySuccess) {
 
   SyncShareConfigure();
 
-  EXPECT_FALSE(cycle_->status_controller().last_get_key_failed());
+  EXPECT_EQ(SyncerError::SYNCER_OK,
+            cycle_->status_controller().last_get_key_result().value());
   EXPECT_FALSE(keystore_keys_handler->NeedKeystoreKey());
 }
 
@@ -1142,7 +1156,8 @@ TEST_F(SyncerTest, GetKeyEmpty) {
   mock_server_->SetKeystoreKey(std::string());
   SyncShareConfigure();
 
-  EXPECT_TRUE(cycle_->status_controller().last_get_key_failed());
+  EXPECT_NE(SyncerError::SYNCER_OK,
+            cycle_->status_controller().last_get_key_result().value());
   EXPECT_TRUE(keystore_keys_handler->NeedKeystoreKey());
 }
 
@@ -1151,7 +1166,7 @@ TEST_F(SyncerTest, GetKeyEmpty) {
 // are correctly removed before commit.
 TEST_F(SyncerTest, CommitOnlyTypes) {
   mock_server_->set_partial_failure(true);
-  mock_server_->SetPartialFailureTypes({PREFERENCES});
+  mock_server_->SetPartialFailureTypes(ModelTypeSet(PREFERENCES));
 
   EnableDatatype(USER_EVENTS);
 

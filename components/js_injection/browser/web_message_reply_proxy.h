@@ -21,6 +21,10 @@ class WebMessageReplyProxy {
   // is used.
   virtual void PostWebMessage(blink::WebMessagePayload message) = 0;
 
+  // Returns true if the page associated with the channel is in the back
+  // forward cache.
+  virtual bool IsInBackForwardCache() = 0;
+
   // Returns the page the messages are sent to.
   virtual content::Page& GetPage() = 0;
 

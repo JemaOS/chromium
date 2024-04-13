@@ -10,7 +10,6 @@
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
-#include "base/rand_util.h"
 #include "base/time/time.h"
 #include "components/viz/common/surfaces/surface_id.h"
 #include "components/viz/service/surfaces/surface_observer.h"
@@ -19,16 +18,6 @@
 
 namespace viz {
 class SurfaceManager;
-
-enum class ToggleFrameRateCase : uint8_t {
-  kNone = 0,
-  kHardwareSupported = 1,
-  kSingleVideoPerfectCadenceMatchesDisplay = 2,
-  kSingleVideoPerfectCadenceDiffersFromDisplay = 3,
-  kSingleVideoNoPerfectCadence = 4,
-  kMultipleVideos = 5,
-  kMaxValue = kMultipleVideos
-};
 
 // The class is used to decide the optimal refresh rate the display should run
 // at based on the content sources being updated onscreen and the ideal rate at
@@ -83,6 +72,10 @@ class VIZ_SERVICE_EXPORT FrameRateDecider : public SurfaceObserver {
   void set_min_num_of_frames_to_toggle_interval_for_testing(size_t num) {
     min_num_of_frames_to_toggle_interval_ = num;
   }
+  void set_frame_interval_for_sinks_with_no_preference_for_testing(
+      base::TimeDelta interval) {
+    frame_interval_for_sinks_with_no_preference_ = interval;
+  }
 
   // SurfaceObserver implementation.
   void OnSurfaceWillBeDrawn(Surface* surface) override;
@@ -92,9 +85,9 @@ class VIZ_SERVICE_EXPORT FrameRateDecider : public SurfaceObserver {
   void EndAggregation();
   void UpdatePreferredFrameIntervalIfNeeded();
   void SetPreferredInterval(base::TimeDelta new_preferred_interval);
-  ToggleFrameRateCase GetToggleFrameRateCase(
-      const std::vector<base::TimeDelta>& fixed_interval_frame_sink_intervals)
-      const;
+  bool ShouldToggleFrameInterval(
+      int num_of_frame_sinks_with_fixed_interval,
+      int num_of_frame_sinks_with_no_preference) const;
 
   bool multiple_refresh_rates_supported() const;
 
@@ -112,8 +105,7 @@ class VIZ_SERVICE_EXPORT FrameRateDecider : public SurfaceObserver {
   base::TimeDelta current_preferred_frame_interval_;
 
   size_t min_num_of_frames_to_toggle_interval_;
-
-  base::MetricsSubSampler metrics_subsampler_;
+  base::TimeDelta frame_interval_for_sinks_with_no_preference_;
 
   const raw_ptr<SurfaceManager> surface_manager_;
   const raw_ptr<Client> client_;

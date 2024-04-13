@@ -8,8 +8,6 @@
 
 #include "base/functional/bind.h"
 #include "base/task/single_thread_task_runner.h"
-#include "components/download/public/common/download_features.h"
-#include "components/download/public/common/download_utils.h"
 #include "components/download/public/common/stream_handle_input_stream.h"
 #include "components/download/public/common/url_download_handler.h"
 #include "components/download/public/common/url_loader_factory_provider.h"
@@ -38,7 +36,7 @@ class URLLoaderStatusMonitor : public network::mojom::URLLoaderClient {
   void OnReceiveResponse(
       network::mojom::URLResponseHeadPtr head,
       mojo::ScopedDataPipeConsumerHandle body,
-      std::optional<mojo_base::BigBuffer> cached_metadata) override {}
+      absl::optional<mojo_base::BigBuffer> cached_metadata) override {}
   void OnReceiveRedirect(const net::RedirectInfo& redirect_info,
                          network::mojom::URLResponseHeadPtr head) override {}
   void OnUploadProgress(int64_t current_position,
@@ -106,8 +104,7 @@ void ResourceDownloader::InterceptNavigationResponse(
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
     const URLSecurityPolicy& url_security_policy,
     mojo::PendingRemote<device::mojom::WakeLockProvider> wake_lock_provider,
-    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-    bool is_transient) {
+    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner) {
   auto downloader = std::make_unique<ResourceDownloader>(
       delegate, std::move(resource_request), render_process_id, render_frame_id,
       serialized_embedder_download_data, tab_url, tab_referrer_url, true,
@@ -124,8 +121,7 @@ void ResourceDownloader::InterceptNavigationResponse(
                   base::SingleThreadTaskRunner::GetCurrentDefault()))));
   raw_downloader->InterceptResponse(
       std::move(url_chain), cert_status, std::move(response_head),
-      std::move(response_body), std::move(url_loader_client_endpoints),
-      is_transient);
+      std::move(response_body), std::move(url_loader_client_endpoints));
 }
 
 ResourceDownloader::ResourceDownloader(
@@ -209,20 +205,16 @@ void ResourceDownloader::InterceptResponse(
     net::CertStatus cert_status,
     network::mojom::URLResponseHeadPtr response_head,
     mojo::ScopedDataPipeConsumerHandle response_body,
-    network::mojom::URLLoaderClientEndpointsPtr endpoints,
-    bool is_transient) {
+    network::mojom::URLLoaderClientEndpointsPtr endpoints) {
   // Set the URLLoader.
   url_loader_.Bind(std::move(endpoints->url_loader));
-
-#if BUILDFLAG(IS_ANDROID)
-  is_must_download_ = IsContentDispositionAttachmentInHead(*response_head);
-#endif  // BUILDFLAG(IS_ANDROID)
 
   // Create the new URLLoaderClient that will intercept the navigation.
   url_loader_client_ = std::make_unique<DownloadResponseHandler>(
       resource_request_.get(), this, std::make_unique<DownloadSaveInfo>(),
-      false,               /* is_parallel_request */
-      is_transient, false, /* fetch_error_body */
+      false, /* is_parallel_request */
+      false, /* is_transient */
+      false, /* fetch_error_body */
       network::mojom::RedirectMode::kFollow,
       download::DownloadUrlParameters::RequestHeadersType(),
       std::string(),                              /* request_origin */
@@ -231,8 +223,8 @@ void ResourceDownloader::InterceptResponse(
 
   // Simulate on the new URLLoaderClient calls that happened on the old client.
   response_head->cert_status = cert_status;
-  url_loader_client_->OnReceiveResponse(std::move(response_head),
-                                        std::move(response_body), std::nullopt);
+  url_loader_client_->OnReceiveResponse(
+      std::move(response_head), std::move(response_body), absl::nullopt);
 
   // Bind the new client.
   url_loader_client_receiver_ =
@@ -255,9 +247,6 @@ void ResourceDownloader::OnResponseStarted(
   download_create_info->is_content_initiated = is_content_initiated_;
   download_create_info->transition_type =
       ui::PageTransitionFromInt(resource_request_->transition_type);
-#if BUILDFLAG(IS_ANDROID)
-  download_create_info->is_must_download = is_must_download_;
-#endif  // BUILDFLAG(IS_ANDROID)
 
   delegate_task_runner_->PostTask(
       FROM_HERE,
@@ -277,7 +266,7 @@ void ResourceDownloader::OnReceiveRedirect() {
       std::vector<std::string>() /* removed_headers */,
       net::HttpRequestHeaders() /* modified_headers */,
       net::HttpRequestHeaders() /* modified_cors_exempt_headers */,
-      std::nullopt);
+      absl::nullopt);
 }
 
 void ResourceDownloader::OnResponseCompleted() {

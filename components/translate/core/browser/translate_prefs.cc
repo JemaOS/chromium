@@ -9,9 +9,9 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/feature_list.h"
 #include "base/i18n/rtl.h"
 #include "base/json/values_util.h"
@@ -77,7 +77,7 @@ void PurgeUnsupportedLanguagesInLanguageFamily(base::StringPiece language,
   }
 
   // Purge all languages in the same family as |language|.
-  std::erase_if(*list, [base_language](const std::string& lang) {
+  base::EraseIf(*list, [base_language](const std::string& lang) {
     return base_language == language::ExtractBaseLanguage(lang);
   });
 }
@@ -136,6 +136,33 @@ void MigrateObsoleteAlwaysTranslateLanguagesPref(PrefService* prefs) {
 }
 
 }  // namespace
+
+const char TranslatePrefs::kPrefForceTriggerTranslateCount[] =
+    "translate_force_trigger_on_english_count_for_backoff_1";
+const char TranslatePrefs::kPrefNeverPromptSitesDeprecated[] =
+    "translate_site_blacklist";
+const char TranslatePrefs::kPrefTranslateDeniedCount[] =
+    "translate_denied_count_for_language";
+const char TranslatePrefs::kPrefTranslateIgnoredCount[] =
+    "translate_ignored_count_for_language";
+const char TranslatePrefs::kPrefTranslateAcceptedCount[] =
+    "translate_accepted_count";
+
+// TODO(crbug/1303963): Deprecated 10/2021. Check status of bug before removing.
+const char TranslatePrefs::kPrefAlwaysTranslateListDeprecated[] =
+    "translate_whitelists";
+
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+const char TranslatePrefs::kPrefTranslateAutoAlwaysCount[] =
+    "translate_auto_always_count";
+const char TranslatePrefs::kPrefTranslateAutoNeverCount[] =
+    "translate_auto_never_count";
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
+const char TranslatePrefs::kPrefExplicitLanguageAskShown[] =
+    "translate_explicit_language_ask_shown";
+#endif
 
 // The below properties used to be used but now are deprecated. Don't use them
 // since an old profile might have some values there.
@@ -609,7 +636,7 @@ std::vector<std::string> TranslatePrefs::GetNeverPromptSitesBetween(
   std::vector<std::string> result;
   const auto& dict = prefs_->GetDict(prefs::kPrefNeverPromptSitesWithTime);
   for (const auto entry : dict) {
-    std::optional<base::Time> time = base::ValueToTime(entry.second);
+    absl::optional<base::Time> time = base::ValueToTime(entry.second);
     if (!time) {
       // Badly formatted preferences may be synced from the server, see
       // https://crbug.com/1295549
@@ -818,6 +845,14 @@ void TranslatePrefs::ResetTranslationAutoNeverCount(
 #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 
 #if BUILDFLAG(IS_ANDROID)
+bool TranslatePrefs::GetExplicitLanguageAskPromptShown() const {
+  return prefs_->GetBoolean(kPrefExplicitLanguageAskShown);
+}
+
+void TranslatePrefs::SetExplicitLanguageAskPromptShown(bool shown) {
+  prefs_->SetBoolean(kPrefExplicitLanguageAskShown, shown);
+}
+
 bool TranslatePrefs::GetAppLanguagePromptShown() const {
   return prefs_->GetBoolean(language::prefs::kAppLanguagePromptShown);
 }
@@ -913,7 +948,8 @@ void TranslatePrefs::ReportAcceptedAfterForceTriggerOnEnglishPages() {
 // static
 void TranslatePrefs::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
-  registry->RegisterListPref(kPrefNeverPromptSitesDeprecated);
+  registry->RegisterListPref(kPrefNeverPromptSitesDeprecated,
+                             user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterDictionaryPref(
       prefs::kPrefNeverPromptSitesWithTime,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
@@ -923,7 +959,9 @@ void TranslatePrefs::RegisterProfilePrefs(
   registry->RegisterDictionaryPref(
       kPrefTranslateDeniedCount,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
-  registry->RegisterDictionaryPref(kPrefTranslateIgnoredCount);
+  registry->RegisterDictionaryPref(
+      kPrefTranslateIgnoredCount,
+      user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterDictionaryPref(
       kPrefTranslateAcceptedCount,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
@@ -944,6 +982,12 @@ void TranslatePrefs::RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
 #endif
 
+#if BUILDFLAG(IS_ANDROID)
+  registry->RegisterBooleanPref(
+      kPrefExplicitLanguageAskShown, false,
+      user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+#endif
+
   RegisterProfilePrefsForMigration(registry);
 }
 
@@ -959,12 +1003,9 @@ void TranslatePrefs::MigrateNeverPromptSites() {
   // Migration copies any sites on the deprecated never prompt pref to
   // the new version and clears all references to the old one. This will
   // make subsequent calls to migrate no-ops.
-
-  // Use of ScopedDictPrefUpdate is avoided since a call to its Get() ensures
-  // that the observers are notified upon destruction no matter if the value was
-  // changed or not.
-  base::Value::Dict never_prompt_list =
-      prefs_->GetDict(prefs::kPrefNeverPromptSitesWithTime).Clone();
+  ScopedDictPrefUpdate never_prompt_list_update(
+      prefs_, prefs::kPrefNeverPromptSitesWithTime);
+  base::Value::Dict& never_prompt_list = never_prompt_list_update.Get();
   ScopedListPrefUpdate deprecated_prompt_list_update(
       prefs_, kPrefNeverPromptSitesDeprecated);
   base::Value::List& deprecated_list = deprecated_prompt_list_update.Get();
@@ -977,8 +1018,6 @@ void TranslatePrefs::MigrateNeverPromptSites() {
     }
   }
   deprecated_list.clear();
-  prefs_->SetDict(prefs::kPrefNeverPromptSitesWithTime,
-                  std::move(never_prompt_list));
 }
 
 bool TranslatePrefs::IsValueOnNeverPromptList(const char* pref_id,

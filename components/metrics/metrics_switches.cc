@@ -5,7 +5,6 @@
 #include "components/metrics/metrics_switches.h"
 
 #include "base/check.h"
-#include "base/command_line.h"
 
 namespace metrics {
 namespace switches {
@@ -74,14 +73,13 @@ bool IsMsbbSettingForcedOnForUkm() {
 }
 
 void EnableMetricsRecordingOnlyForTesting(base::CommandLine* command_line) {
-  CHECK(command_line);
+  DCHECK(command_line != nullptr);
   if (!command_line->HasSwitch(switches::kMetricsRecordingOnly))
     command_line->AppendSwitch(switches::kMetricsRecordingOnly);
 }
 
-void ForceEnableMetricsReportingForTesting() {
-  auto* command_line = base::CommandLine::ForCurrentProcess();
-  CHECK(command_line);
+void ForceEnableMetricsReportingForTesting(base::CommandLine* command_line) {
+  DCHECK(command_line != nullptr);
   if (!command_line->HasSwitch(switches::kForceEnableMetricsReporting))
     command_line->AppendSwitch(switches::kForceEnableMetricsReporting);
 }

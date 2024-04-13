@@ -45,9 +45,8 @@ NativeWebContentsModalDialogManagerViews::
   if (host_)
     host_->RemoveObserver(this);
 
-  for (views::Widget* widget : observed_widgets_) {
+  for (auto* widget : observed_widgets_)
     widget->RemoveObserver(this);
-  }
   CHECK(!IsInObserverList());
 }
 
@@ -79,10 +78,6 @@ void NativeWebContentsModalDialogManagerViews::ManageDialog() {
 }
 
 // SingleWebContentsDialogManager:
-
-bool NativeWebContentsModalDialogManagerViews::IsActive() const {
-  return GetWidget(dialog_)->IsActive();
-}
 
 void NativeWebContentsModalDialogManagerViews::Show() {
   // The host destroying means the dialogs will be destroyed in short order.
@@ -156,9 +151,8 @@ void NativeWebContentsModalDialogManagerViews::Pulse() {}
 void NativeWebContentsModalDialogManagerViews::OnPositionRequiresUpdate() {
   DCHECK(host_);
 
-  for (views::Widget* widget : observed_widgets_) {
+  for (auto* widget : observed_widgets_)
     constrained_window::UpdateWebContentsModalDialogPosition(widget, host_);
-  }
 }
 
 void NativeWebContentsModalDialogManagerViews::OnHostDestroying() {
@@ -190,7 +184,7 @@ void NativeWebContentsModalDialogManagerViews::HostChanged(
   if (host_) {
     host_->AddObserver(this);
 
-    for (views::Widget* widget : observed_widgets_) {
+    for (auto* widget : observed_widgets_) {
       views::Widget::ReparentNativeView(widget->GetNativeView(),
                                         host_->GetHostView());
     }

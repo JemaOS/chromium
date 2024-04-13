@@ -13,13 +13,12 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.TransitionDrawable;
 import android.graphics.drawable.VectorDrawable;
+import android.support.annotation.NonNull;
+import android.support.annotation.VisibleForTesting;
 import android.util.IntProperty;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.VisibleForTesting;
-
 import org.chromium.components.browser_ui.widget.animation.CancelAwareAnimatorListener;
-import org.chromium.ui.interpolators.Interpolators;
+import org.chromium.components.browser_ui.widget.animation.Interpolators;
 
 /**
  * Re-implementation of {@link TransitionDrawable} that works with {@link VectorDrawable} and uses
@@ -53,13 +52,12 @@ public class ChromeTransitionDrawable extends LayerDrawable {
          */
         public TransitionHandle withEndAction(@NonNull Runnable endAction) {
             mAnimator.removeAllListeners();
-            mAnimator.addListener(
-                    new CancelAwareAnimatorListener() {
-                        @Override
-                        public void onEnd(Animator animator) {
-                            endAction.run();
-                        }
-                    });
+            mAnimator.addListener(new CancelAwareAnimatorListener() {
+                @Override
+                public void onEnd(Animator animator) {
+                    endAction.run();
+                }
+            });
             return this;
         }
     }
@@ -77,9 +75,12 @@ public class ChromeTransitionDrawable extends LayerDrawable {
                 }
             };
 
-    @NonNull private final Drawable mInitialDrawable;
-    @NonNull private final Drawable mFinalDrawable;
-    @NonNull private ObjectAnimator mAnimator;
+    @NonNull
+    private final Drawable mInitialDrawable;
+    @NonNull
+    private final Drawable mFinalDrawable;
+    @NonNull
+    private ObjectAnimator mAnimator;
 
     private boolean mCrossFade;
     private int mProgress;

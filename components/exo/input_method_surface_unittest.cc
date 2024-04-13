@@ -39,7 +39,8 @@ TEST_F(InputMethodSurfaceTest, SetGeometryShouldIgnoreWorkArea) {
                                            gfx::Insets::TLBR(200, 0, 0, 0));
 
   gfx::Size buffer_size(800, 600);
-  auto buffer = test::ExoTestHelper::CreateBuffer(buffer_size);
+  std::unique_ptr<Buffer> buffer(
+      new Buffer(exo_test_helper()->CreateGpuMemoryBuffer(buffer_size)));
   std::unique_ptr<Surface> surface(new Surface);
   auto shell_surface =
       exo_test_helper()->CreateInputMethodSurface(surface.get(), this);

@@ -12,6 +12,7 @@ import android.util.AttributeSet;
 import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.widget.ImageViewCompat;
 import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat;
 
@@ -41,9 +42,8 @@ public abstract class CheckableSelectableItemView<E> extends SelectableItemViewB
         super(context, attrs);
         mIconSelectedColorList =
                 ColorStateList.valueOf(SemanticColorUtils.getDefaultIconColorInverse(context));
-        mCheckDrawable =
-                AnimatedVectorDrawableCompat.create(
-                        getContext(), R.drawable.ic_check_googblue_24dp_animated);
+        mCheckDrawable = AnimatedVectorDrawableCompat.create(
+                getContext(), R.drawable.ic_check_googblue_24dp_animated);
     }
 
     // Abstract methods.
@@ -112,6 +112,7 @@ public abstract class CheckableSelectableItemView<E> extends SelectableItemViewB
         assert levelMatches || levelChangeSuccess;
     }
 
+    @VisibleForTesting
     public void endAnimationsForTests() {
         mCheckDrawable.stop();
     }

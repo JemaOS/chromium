@@ -66,7 +66,7 @@ std::vector<std::unique_ptr<Config>> CreateTestConfigs() {
     config->segment_selection_ttl = base::Days(14);
     config->AddSegmentId(
         SegmentId::OPTIMIZATION_TARGET_SEGMENTATION_SHOPPING_USER);
-    config->auto_execute_and_cache = false;
+    config->on_demand_execution = true;
     configs.push_back(std::move(config));
   }
   {
@@ -85,7 +85,6 @@ constexpr char kTestSegmentationKey1[] = "test_key1";
 constexpr char kTestSegmentationKey2[] = "test_key2";
 constexpr char kTestSegmentationKey3[] = "test_key3";
 constexpr char kTestSegmentationKey4[] = "test_key4";
-constexpr char kTestProfileId[] = "test_id";
 
 SegmentationPlatformServiceTestBase::SegmentationPlatformServiceTestBase() {
   device_info_tracker_ = std::make_unique<syncer::FakeDeviceInfoTracker>();
@@ -125,18 +124,18 @@ void SegmentationPlatformServiceTestBase::InitPlatform(
   }
   auto storage_service = std::make_unique<StorageService>(
       std::move(segment_db), std::move(signal_db),
-      std::move(segment_storage_config_db), task_runner_, &test_clock_,
-      ukm_data_manager, std::move(configs), model_provider_factory.get(),
-      &pref_service_, base::DoNothing());
+      std::move(segment_storage_config_db), &test_clock_, ukm_data_manager,
+      all_segment_ids, model_provider_factory.get(), &pref_service_);
 
   auto params = std::make_unique<SegmentationPlatformServiceImpl::InitParams>();
-  params->profile_id = kTestProfileId;
   params->storage_service = std::move(storage_service);
-  params->model_provider = std::move(model_provider_factory);
+  params->model_provider =
+      std::make_unique<TestModelProviderFactory>(&model_provider_data_);
   params->profile_prefs = &pref_service_;
   params->history_service = history_service;
   params->task_runner = task_runner_;
   params->clock = &test_clock_;
+  params->configs = std::move(configs);
   params->field_trial_register = std::make_unique<MockFieldTrialRegister>();
   params->device_info_tracker = device_info_tracker_.get();
   params->input_delegate_holder =

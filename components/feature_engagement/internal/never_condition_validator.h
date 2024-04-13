@@ -5,17 +5,15 @@
 #ifndef COMPONENTS_FEATURE_ENGAGEMENT_INTERNAL_NEVER_CONDITION_VALIDATOR_H_
 #define COMPONENTS_FEATURE_ENGAGEMENT_INTERNAL_NEVER_CONDITION_VALIDATOR_H_
 
-#include <optional>
-
 #include "base/feature_list.h"
 #include "components/feature_engagement/internal/condition_validator.h"
 #include "components/feature_engagement/public/feature_list.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace feature_engagement {
 class AvailabilityModel;
 class DisplayLockController;
 class EventModel;
-class TimeProvider;
 
 // An ConditionValidator that never acknowledges that a feature has met its
 // conditions.
@@ -37,16 +35,15 @@ class NeverConditionValidator : public ConditionValidator {
       const AvailabilityModel& availability_model,
       const DisplayLockController& display_lock_controller,
       const Configuration* configuration,
-      const TimeProvider& time_provider) const override;
+      uint32_t current_day) const override;
   void NotifyIsShowing(
       const base::Feature& feature,
       const FeatureConfig& config,
       const std::vector<std::string>& all_feature_names) override;
   void NotifyDismissed(const base::Feature& feature) override;
   void SetPriorityNotification(
-      const std::optional<std::string>& feature) override;
-  std::optional<std::string> GetPendingPriorityNotification() override;
-  void ResetSession() override;
+      const absl::optional<std::string>& feature) override;
+  absl::optional<std::string> GetPendingPriorityNotification() override;
 };
 
 }  // namespace feature_engagement

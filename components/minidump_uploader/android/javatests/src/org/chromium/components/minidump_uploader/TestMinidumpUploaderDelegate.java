@@ -8,7 +8,9 @@ import org.chromium.components.minidump_uploader.util.CrashReportingPermissionMa
 
 import java.io.File;
 
-/** Test-implementation of MinidumpUploaderDelegate. */
+/**
+ * Test-implementation of MinidumpUploaderDelegate.
+ */
 class TestMinidumpUploaderDelegate implements MinidumpUploaderDelegate {
     private CrashReportingPermissionManager mPermissionManager;
     private File mCacheDir;

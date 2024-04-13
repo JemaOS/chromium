@@ -12,6 +12,7 @@
 #include "components/user_education/common/help_bubble.h"
 #include "components/user_education/common/help_bubble_factory.h"
 #include "components/user_education/common/help_bubble_params.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/interaction/element_tracker.h"
@@ -83,8 +84,7 @@ class HelpBubbleViews : public HelpBubble,
       scoped_observation_{this};
 
   // Track the anchor element to determine if/when it goes away.
-  raw_ptr<const ui::TrackedElement, AcrossTasksDanglingUntriaged>
-      anchor_element_;
+  base::raw_ptr<const ui::TrackedElement, DanglingUntriaged> anchor_element_;
 
   // Listens so that the bubble can be closed if the anchor element disappears.
   // The specific anchor view is not tracked because in a few cases (e.g. Mac
@@ -121,7 +121,7 @@ class HelpBubbleFactoryViews : public HelpBubbleFactory {
       HelpBubbleParams params);
 
  private:
-  raw_ptr<const HelpBubbleDelegate> delegate_;
+  base::raw_ptr<const HelpBubbleDelegate> delegate_;
 };
 
 }  // namespace user_education

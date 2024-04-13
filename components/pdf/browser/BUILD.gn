@@ -9,11 +9,9 @@ assert(enable_pdf)
 
 source_set("browser") {
   sources = [
-    "pdf_document_helper.cc",
-    "pdf_document_helper.h",
-    "pdf_document_helper_client.h",
-    "pdf_frame_util.cc",
-    "pdf_frame_util.h",
+    "pdf_web_contents_helper.cc",
+    "pdf_web_contents_helper.h",
+    "pdf_web_contents_helper_client.h",
   ]
 
   public_deps = [
@@ -25,10 +23,7 @@ source_set("browser") {
   ]
 
   deps = [
-    "//components/pdf/common:constants",
-    "//components/pdf/common:util",
     "//content/public/common",
-    "//pdf:features",
     "//ui/base",
     "//ui/gfx/geometry",
   ]
@@ -59,11 +54,9 @@ source_set("interceptors") {
 
   deps = [
     "//base",
-    "//components/pdf/common:constants",
     "//mojo/public/cpp/bindings",
     "//mojo/public/cpp/system",
     "//net",
-    "//pdf:features",
     "//services/network/public/cpp:cpp_base",
     "//services/network/public/mojom",
     "//ui/base",

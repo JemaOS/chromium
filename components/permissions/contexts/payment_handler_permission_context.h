@@ -7,6 +7,12 @@
 
 #include "components/permissions/permission_context_base.h"
 
+class GURL;
+
+namespace permissions {
+class PermissionRequestID;
+}
+
 namespace content {
 class WebContents;
 }  // namespace content
@@ -29,7 +35,10 @@ class PaymentHandlerPermissionContext
  private:
   // PermissionContextBase
   void DecidePermission(
-      permissions::PermissionRequestData request_data,
+      const permissions::PermissionRequestID& id,
+      const GURL& requesting_origin,
+      const GURL& embedding_origin,
+      bool user_gesture,
       permissions::BrowserPermissionCallback callback) override;
 };
 

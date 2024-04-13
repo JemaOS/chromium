@@ -47,8 +47,8 @@ std::unique_ptr<DeviceInfo> CreateDeviceInfo(
       kLocalDeviceFormFactor, "device_id", "manufacturer_name", "model_name",
       "full_hardware_class", last_updated,
       syncer::DeviceInfoUtil::GetPulseInterval(),
-      /*send_tab_to_self_receiving_enabled=*/false, std::nullopt,
-      /*paask_info=*/std::nullopt,
+      /*send_tab_to_self_receiving_enabled=*/false, absl::nullopt,
+      /*paask_info=*/absl::nullopt,
       /*fcm_registration_token=*/std::string(),
       /*interested_data_types=*/syncer::ModelTypeSet());
 }
@@ -204,10 +204,9 @@ TEST_F(SyncDeviceInfoObserverTest,
       .tensor_length = 10,
       .fill_policy = proto::CustomInput::FILL_SYNC_DEVICE_INFO,
       .name = "SyncDeviceInfo"});
-  auto input_context = CreateInputContext();
-  input_context->metadata_args.emplace("wait_for_device_info_in_seconds",
-                                       ProcessedValue(2));
-  state.set_input_context_for_testing(input_context);
+  (*sync_input->mutable_additional_args())["wait_for_device_info_in_seconds"] =
+      "2";
+  state.set_input_context_for_testing(CreateInputContext());
 
   std::vector<float> expected_result = {0, 0, 0, 0, 0, 1, 0, 0, 0, 0};
   base::RunLoop loop;

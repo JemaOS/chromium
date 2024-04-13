@@ -103,29 +103,22 @@ struct TranslateLanguageInfo {
 // It is assumed that |prefs_| is alive while this instance is alive.
 class TranslatePrefs {
  public:
-  static constexpr char kPrefForceTriggerTranslateCount[] =
-      "translate_force_trigger_on_english_count_for_backoff_1";
+  static const char kPrefLanguageProfile[];
+  static const char kPrefForceTriggerTranslateCount[];
   // TODO(crbug.com/524927): Remove kPrefNeverPromptSites after
   // 3 milestones (M74).
-  static constexpr char kPrefNeverPromptSitesDeprecated[] =
-      "translate_site_blacklist";
-  static constexpr char kPrefTranslateDeniedCount[] =
-      "translate_denied_count_for_language";
-  static constexpr char kPrefTranslateIgnoredCount[] =
-      "translate_ignored_count_for_language";
-  static constexpr char kPrefTranslateAcceptedCount[] =
-      "translate_accepted_count";
-
-  // TODO(crbug/1303963): Deprecated 10/2021. Check status of bug before
-  // removing.
-  static constexpr char kPrefAlwaysTranslateListDeprecated[] =
-      "translate_whitelists";
-
+  static const char kPrefNeverPromptSitesDeprecated[];
+  static const char kPrefTranslateDeniedCount[];
+  static const char kPrefTranslateIgnoredCount[];
+  static const char kPrefTranslateAcceptedCount[];
+  // Deprecated 10/2021.
+  static const char kPrefAlwaysTranslateListDeprecated[];
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  static constexpr char kPrefTranslateAutoAlwaysCount[] =
-      "translate_auto_always_count";
-  static constexpr char kPrefTranslateAutoNeverCount[] =
-      "translate_auto_never_count";
+  static const char kPrefTranslateAutoAlwaysCount[];
+  static const char kPrefTranslateAutoNeverCount[];
+#endif
+#if BUILDFLAG(IS_ANDROID)
+  static const char kPrefExplicitLanguageAskShown[];
 #endif
 
   // This parameter specifies how the language should be moved within the list.
@@ -305,6 +298,11 @@ class TranslatePrefs {
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
+  // These methods are used to determine whether the explicit language ask
+  // prompt was displayed to the user already.
+  bool GetExplicitLanguageAskPromptShown() const;
+  void SetExplicitLanguageAskPromptShown(bool shown);
+
   // These methods are used to determine whether the app language prompt was
   // displayed to the user already. Once shown it can not be unset.
   bool GetAppLanguagePromptShown() const;

@@ -14,16 +14,15 @@ public class CommerceSubscription {
     public final @IdentifierType int idType;
     public final String id;
     public final @ManagementType int managementType;
-    @Nullable public final UserSeenOffer userSeenOffer;
+    @Nullable
+    public final UserSeenOffer userSeenOffer;
 
     /** User seen offer data upon price tracking subscribing. */
     public static class UserSeenOffer {
         /** Associated offer id. */
         public final String offerId;
-
         /** The price upon subscribing. */
         public final long userSeenPrice;
-
         /** Country code of the offer. */
         public final String countryCode;
 
@@ -34,12 +33,8 @@ public class CommerceSubscription {
         }
     }
 
-    public CommerceSubscription(
-            @SubscriptionType int type,
-            @IdentifierType int idType,
-            String id,
-            @ManagementType int managementType,
-            @Nullable UserSeenOffer userSeenOffer) {
+    public CommerceSubscription(@SubscriptionType int type, @IdentifierType int idType, String id,
+            @ManagementType int managementType, @Nullable UserSeenOffer userSeenOffer) {
         this.type = type;
         this.idType = idType;
         this.id = id;
@@ -55,9 +50,7 @@ public class CommerceSubscription {
 
         // We intentionally don't check userSeenOffer since it's not considered important in
         // uniquely identifying a subscription.
-        return sub.type == type
-                && sub.idType == idType
-                && TextUtils.equals(sub.id, id)
+        return sub.type == type && sub.idType == idType && TextUtils.equals(sub.id, id)
                 && sub.managementType == managementType;
     }
 

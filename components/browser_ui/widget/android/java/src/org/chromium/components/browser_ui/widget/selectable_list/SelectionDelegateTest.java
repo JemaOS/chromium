@@ -13,7 +13,9 @@ import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 
-/** Tests for the {@link SelectionDelegate} class. */
+/**
+ * Tests for the {@link SelectionDelegate} class.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class SelectionDelegateTest {

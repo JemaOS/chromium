@@ -1,1 +1,3 @@
-mixins: "//components/flags_ui/COMMON_METADATA"
+monorail {
+  component: "UI>Browser>WebUI"
+}

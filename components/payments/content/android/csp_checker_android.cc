@@ -52,7 +52,7 @@ void CSPCheckerAndroid::AllowConnectToSource(
     const GURL& url_before_redirects,
     bool did_follow_redirect,
     base::OnceCallback<void(bool)> result_callback) {
-  JNIEnv* env = jni_zero::AttachCurrentThread();
+  JNIEnv* env = base::android::AttachCurrentThread();
   if (!env)
     return;
 

@@ -67,7 +67,6 @@ source_set("unit_tests") {
   deps = [
     ":lens",
     "//base",
-    "//base/test:test_support",
     "//testing/gmock",
     "//testing/gtest",
     "//url",

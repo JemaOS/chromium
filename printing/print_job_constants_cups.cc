@@ -19,7 +19,6 @@ const char kCUPSCanonCNColorMode[] = "CNColorMode";
 const char kCUPSCanonCNIJGrayScale[] = "CNIJGrayScale";
 const char kCUPSEpsonInk[] = "Ink";
 const char kCUPSHpColorMode[] = "HPColorMode";
-const char kCUPSHpPjlColorAsGray[] = "HPPJLColorAsGray";
 const char kCUPSKonicaMinoltaSelectColor[] = "SelectColor";
 const char kCUPSLexmarkBLW[] = "BLW";
 const char kCUPSOkiControl[] = "OKControl";
@@ -45,8 +44,6 @@ const char kGreyscale[] = "Greyscale";
 const char kHighGray[] = "High.Gray";
 const char kHpColorPrint[] = "ColorPrint";
 const char kHpGrayscalePrint[] = "GrayscalePrint";
-const char kHpPjlColorAsGrayNo[] = "no";
-const char kHpPjlColorAsGrayYes[] = "yes";
 const char kLexmarkBLWFalse[] = "FalseM";
 const char kLexmarkBLWTrue[] = "TrueM";
 const char kMono[] = "Mono";
@@ -78,7 +75,6 @@ base::span<const PpdColorSetting> GetKnownPpdColorSettings() {
       {kCUPSColorModel, kGray, kColor},                      // Generic
       {kCUPSEpsonInk, kEpsonMono, kEpsonColor},              // Epson
       {kCUPSHpColorMode, kHpGrayscalePrint, kHpColorPrint},  // HP
-      {kCUPSHpPjlColorAsGray, kHpPjlColorAsGrayYes, kHpPjlColorAsGrayNo},  // HP
       {kCUPSKonicaMinoltaSelectColor, kGrayscale, kColor},   // Konica Minolta
       {kCUPSLexmarkBLW, kLexmarkBLWTrue, kLexmarkBLWFalse},  // Lexmark
       {kCUPSOkiControl, kGray, kAuto},                       // Oki

@@ -5,9 +5,8 @@
 #ifndef COMPONENTS_PDF_BROWSER_FAKE_PDF_STREAM_DELEGATE_H_
 #define COMPONENTS_PDF_BROWSER_FAKE_PDF_STREAM_DELEGATE_H_
 
-#include <optional>
-
 #include "components/pdf/browser/pdf_stream_delegate.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace pdf {
 
@@ -23,23 +22,15 @@ class FakePdfStreamDelegate : public PdfStreamDelegate {
   ~FakePdfStreamDelegate() override;
 
   // `PdfStreamDelegate`:
-  std::optional<GURL> MapToOriginalUrl(
-      content::NavigationHandle& navigation_handle) override;
-  std::optional<StreamInfo> GetStreamInfo(
-      content::RenderFrameHost* embedder_frame) override;
-  void OnPdfEmbedderSandboxed(int frame_tree_node_id) override;
-  bool ShouldAllowPdfFrameNavigation(
-      content::NavigationHandle* navigation_handle) override;
+  absl::optional<GURL> MapToOriginalUrl(content::WebContents* contents,
+                                        const GURL& stream_url) override;
+  absl::optional<StreamInfo> GetStreamInfo(
+      content::WebContents* contents) override;
 
   void clear_stream_info() { stream_info_.reset(); }
 
-  void set_should_allow_pdf_frame_navigation(bool should_allow) {
-    should_allow_pdf_frame_navigation_ = should_allow;
-  }
-
  private:
-  bool should_allow_pdf_frame_navigation_ = true;
-  std::optional<StreamInfo> stream_info_;
+  absl::optional<StreamInfo> stream_info_;
 };
 
 }  // namespace pdf

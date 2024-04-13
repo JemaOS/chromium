@@ -155,7 +155,9 @@ bool SqliteDatabaseTransaction::Commit() {
 
 PowerBookmarkDatabaseImpl::PowerBookmarkDatabaseImpl(
     const base::FilePath& database_dir)
-    : db_(sql::DatabaseOptions{.page_size = 4096, .cache_size = 128}),
+    : db_(sql::DatabaseOptions{.exclusive_locking = true,
+                               .page_size = 4096,
+                               .cache_size = 128}),
       database_path_(database_dir.Append(kDatabaseName)) {
   sync_db_ =
       std::make_unique<PowerBookmarkSyncMetadataDatabase>(&db_, &meta_table_);
@@ -343,7 +345,7 @@ std::vector<std::unique_ptr<Power>> PowerBookmarkDatabaseImpl::GetPowersForURL(
   while (statement.Step()) {
     DCHECK_EQ(3, statement.ColumnCount());
 
-    std::optional<sync_pb::PowerBookmarkSpecifics> specifics =
+    absl::optional<sync_pb::PowerBookmarkSpecifics> specifics =
         DeserializeOrDelete(
             statement.ColumnString(1),
             base::Uuid::ParseLowercase(statement.ColumnString(0)));
@@ -380,7 +382,7 @@ PowerBookmarkDatabaseImpl::GetPowerOverviewsForType(
   while (statement.Step()) {
     DCHECK_EQ(3, statement.ColumnCount());
 
-    std::optional<sync_pb::PowerBookmarkSpecifics> specifics =
+    absl::optional<sync_pb::PowerBookmarkSpecifics> specifics =
         DeserializeOrDelete(
             statement.ColumnString(1),
             base::Uuid::ParseLowercase(statement.ColumnString(0)));
@@ -415,7 +417,7 @@ PowerBookmarkDatabaseImpl::GetPowersForSearchParams(
   while (statement.Step()) {
     DCHECK_EQ(2, statement.ColumnCount());
 
-    std::optional<sync_pb::PowerBookmarkSpecifics> specifics =
+    absl::optional<sync_pb::PowerBookmarkSpecifics> specifics =
         DeserializeOrDelete(
             statement.ColumnString(1),
             base::Uuid::ParseLowercase(statement.ColumnString(0)));
@@ -485,7 +487,7 @@ PowerBookmarkDatabaseImpl::GetPowerOverviewsForSearchParams(
       overview_count = 1;
     }
 
-    std::optional<sync_pb::PowerBookmarkSpecifics> specifics =
+    absl::optional<sync_pb::PowerBookmarkSpecifics> specifics =
         DeserializeOrDelete(
             statement.ColumnString(1),
             base::Uuid::ParseLowercase(statement.ColumnString(0)));
@@ -623,7 +625,7 @@ PowerBookmarkDatabaseImpl::GetPowersForGUIDs(
   while (statement.Step()) {
     DCHECK_EQ(3, statement.ColumnCount());
 
-    std::optional<sync_pb::PowerBookmarkSpecifics> specifics =
+    absl::optional<sync_pb::PowerBookmarkSpecifics> specifics =
         DeserializeOrDelete(
             statement.ColumnString(1),
             base::Uuid::ParseLowercase(statement.ColumnString(0)));
@@ -652,7 +654,7 @@ std::vector<std::unique_ptr<Power>> PowerBookmarkDatabaseImpl::GetAllPowers() {
   while (statement.Step()) {
     DCHECK_EQ(3, statement.ColumnCount());
 
-    std::optional<sync_pb::PowerBookmarkSpecifics> specifics =
+    absl::optional<sync_pb::PowerBookmarkSpecifics> specifics =
         DeserializeOrDelete(
             statement.ColumnString(1),
             base::Uuid::ParseLowercase(statement.ColumnString(0)));
@@ -685,7 +687,7 @@ std::unique_ptr<Power> PowerBookmarkDatabaseImpl::GetPowerForGUID(
   while (statement.Step()) {
     DCHECK_EQ(3, statement.ColumnCount());
 
-    std::optional<sync_pb::PowerBookmarkSpecifics> specifics =
+    absl::optional<sync_pb::PowerBookmarkSpecifics> specifics =
         DeserializeOrDelete(
             statement.ColumnString(1),
             base::Uuid::ParseLowercase(statement.ColumnString(0)));
@@ -720,7 +722,7 @@ PowerBookmarkDatabaseImpl::GetSyncMetadataDatabase() {
   return sync_db_.get();
 }
 
-std::optional<sync_pb::PowerBookmarkSpecifics>
+absl::optional<sync_pb::PowerBookmarkSpecifics>
 PowerBookmarkDatabaseImpl::DeserializeOrDelete(const std::string& data,
                                                const base::Uuid& id) {
   sync_pb::PowerBookmarkSpecifics specifics;
@@ -731,7 +733,7 @@ PowerBookmarkDatabaseImpl::DeserializeOrDelete(const std::string& data,
 
   bool delete_success = DeletePower(id);
   DCHECK(delete_success);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::vector<std::string> PowerBookmarkDatabaseImpl::GetGUIDsForURL(

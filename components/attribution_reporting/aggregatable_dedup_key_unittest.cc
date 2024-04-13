@@ -4,90 +4,84 @@
 
 #include "components/attribution_reporting/aggregatable_dedup_key.h"
 
-#include "base/test/gmock_expected_support.h"
+#include "base/functional/function_ref.h"
 #include "base/test/values_test_util.h"
-#include "base/time/time.h"
 #include "base/types/expected.h"
 #include "base/values.h"
 #include "components/attribution_reporting/filters.h"
 #include "components/attribution_reporting/test_utils.h"
 #include "components/attribution_reporting/trigger_registration_error.mojom.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace attribution_reporting {
 namespace {
 
 using ::attribution_reporting::mojom::TriggerRegistrationError;
-using ::base::test::ErrorIs;
-using ::base::test::ValueIs;
-using ::testing::AllOf;
-using ::testing::Field;
+
+AggregatableDedupKey AggregatableDedupKeyWith(
+    base::FunctionRef<void(AggregatableDedupKey&)> f) {
+  AggregatableDedupKey key;
+  f(key);
+  return key;
+}
 
 TEST(AggregatableDedupKeyTest, FromJSON) {
   const struct {
     const char* description;
     const char* json;
-    ::testing::Matcher<
-        base::expected<AggregatableDedupKey, TriggerRegistrationError>>
-        matches;
+    base::expected<AggregatableDedupKey, TriggerRegistrationError> expected;
   } kTestCases[] = {
       {
           "empty",
           R"json({})json",
-          ValueIs(AllOf(Field(&AggregatableDedupKey::dedup_key, std::nullopt),
-                        Field(&AggregatableDedupKey::filters, FilterPair()))),
+          AggregatableDedupKey(),
       },
       {
           "dedup_key_valid",
           R"json({"deduplication_key":"3"})json",
-          ValueIs(Field(&AggregatableDedupKey::dedup_key, 3)),
+          AggregatableDedupKeyWith(
+              [](AggregatableDedupKey& key) { key.dedup_key = 3; }),
       },
       {
           "dedup_key_wrong_type",
           R"json({"deduplication_key":123})json",
-          ErrorIs(TriggerRegistrationError::kAggregatableDedupKeyValueInvalid),
+          AggregatableDedupKey(),
       },
       {
           "dedup_key_invalid",
           R"json({"deduplication_key":"abc"})json",
-          ErrorIs(TriggerRegistrationError::kAggregatableDedupKeyValueInvalid),
+          AggregatableDedupKey(),
       },
       {
           "filters_valid",
-          R"json({"filters":{"a":["b"], "_lookback_window": 1}})json",
-          ValueIs(Field(&AggregatableDedupKey::filters,
-                        FilterPair(/*positive=*/{*FilterConfig::Create(
-                                       {{{"a", {"b"}}}},
-                                       /*lookback_window=*/base::Seconds(1))},
-                                   /*negative=*/FiltersDisjunction()))),
+          R"json({"filters":{"a":["b"]}})json",
+          AggregatableDedupKeyWith([](AggregatableDedupKey& key) {
+            key.filters.positive = FiltersDisjunction({{{"a", {"b"}}}});
+          }),
       },
       {
           "filters_wrong_type",
           R"json({"filters":123})json",
-          ErrorIs(TriggerRegistrationError::kFiltersWrongType),
+          base::unexpected(TriggerRegistrationError::kFiltersWrongType),
       },
       {
           "not_filters_valid",
-          R"json({"not_filters":{"a":["b"], "_lookback_window": 1}})json",
-          ValueIs(Field(&AggregatableDedupKey::filters,
-                        FilterPair(
-                            /*positive=*/FiltersDisjunction(),
-                            /*negative=*/{*FilterConfig::Create(
-                                {{{"a", {"b"}}}},
-                                /*lookback_window=*/base::Seconds(1))}))),
+          R"json({"not_filters":{"a":["b"]}})json",
+          AggregatableDedupKeyWith([](AggregatableDedupKey& key) {
+            key.filters.negative = FiltersDisjunction({{{"a", {"b"}}}});
+          }),
       },
       {
           "not_filters_wrong_type",
           R"json({"not_filters":123})json",
-          ErrorIs(TriggerRegistrationError::kFiltersWrongType),
+          base::unexpected(TriggerRegistrationError::kFiltersWrongType),
       },
   };
 
   for (const auto& test_case : kTestCases) {
-    SCOPED_TRACE(test_case.description);
     base::Value value = base::test::ParseJson(test_case.json);
-    EXPECT_THAT(AggregatableDedupKey::FromJSON(value), test_case.matches);
+    EXPECT_EQ(AggregatableDedupKey::FromJSON(value), test_case.expected)
+        << test_case.description;
   }
 }
 
@@ -102,9 +96,8 @@ TEST(AggregatableDedupKeyTest, ToJson) {
       },
       {
           AggregatableDedupKey(
-              /*dedup_key=*/3,
-              FilterPair(/*positive=*/{*FilterConfig::Create({{"a", {}}})},
-                         /*negative=*/{*FilterConfig::Create({{"b", {}}})})),
+              /*dedup_key=*/3, FilterPair(/*positive=*/{{{"a", {}}}},
+                                          /*negative=*/{{{"b", {}}}})),
           R"json({
             "deduplication_key": "3",
             "filters": [{"a": []}],

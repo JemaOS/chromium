@@ -9,12 +9,11 @@ import android.annotation.SuppressLint;
 import androidx.annotation.IntDef;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeClassQualifiedName;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.Log;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeClassQualifiedName;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.net.UploadDataProvider;
 import org.chromium.net.UploadDataSink;
 
@@ -49,30 +48,28 @@ public final class CronetUploadDataStream extends UploadDataSink {
     private long mByteBufferLimit;
 
     // Reusable read task, to reduce redundant memory allocation.
-    private final Runnable mReadTask =
-            new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (mLock) {
-                        if (mUploadDataStreamAdapter == 0) {
-                            return;
-                        }
-                        checkState(UserCallback.NOT_IN_CALLBACK);
-                        if (mByteBuffer == null) {
-                            throw new IllegalStateException(
-                                    "Unexpected readData call. Buffer is null");
-                        }
-                        mInWhichUserCallback = UserCallback.READ;
-                    }
-                    try {
-                        checkCallingThread();
-                        assert mByteBuffer.position() == 0;
-                        mDataProvider.read(CronetUploadDataStream.this, mByteBuffer);
-                    } catch (Exception exception) {
-                        onError(exception);
-                    }
+    private final Runnable mReadTask = new Runnable() {
+        @Override
+        public void run() {
+            synchronized (mLock) {
+                if (mUploadDataStreamAdapter == 0) {
+                    return;
                 }
-            };
+                checkState(UserCallback.NOT_IN_CALLBACK);
+                if (mByteBuffer == null) {
+                    throw new IllegalStateException("Unexpected readData call. Buffer is null");
+                }
+                mInWhichUserCallback = UserCallback.READ;
+            }
+            try {
+                checkCallingThread();
+                assert mByteBuffer.position() == 0;
+                mDataProvider.read(CronetUploadDataStream.this, mByteBuffer);
+            } catch (Exception exception) {
+                onError(exception);
+            }
+        }
+    };
 
     // ByteBuffer created in the native code and passed to
     // UploadDataProvider for reading. It is only valid from the
@@ -90,12 +87,8 @@ public final class CronetUploadDataStream extends UploadDataSink {
     @GuardedBy("mLock")
     private long mUploadDataStreamAdapter;
 
-    @IntDef({
-        UserCallback.READ,
-        UserCallback.REWIND,
-        UserCallback.GET_LENGTH,
-        UserCallback.NOT_IN_CALLBACK
-    })
+    @IntDef({UserCallback.READ, UserCallback.REWIND, UserCallback.GET_LENGTH,
+            UserCallback.NOT_IN_CALLBACK})
     @Retention(RetentionPolicy.SOURCE)
     private @interface UserCallback {
         int READ = 0;
@@ -106,10 +99,8 @@ public final class CronetUploadDataStream extends UploadDataSink {
 
     @GuardedBy("mLock")
     private @UserCallback int mInWhichUserCallback = UserCallback.NOT_IN_CALLBACK;
-
     @GuardedBy("mLock")
     private boolean mDestroyAdapterPostponed;
-
     private Runnable mOnDestroyedCallbackForTesting;
 
     /**
@@ -139,29 +130,30 @@ public final class CronetUploadDataStream extends UploadDataSink {
     // TODO(mmenke): Consider implementing a cancel method.
     // currently wait for any pending read to complete.
 
-    /** Called by native code to make the UploadDataProvider rewind upload data. */
+    /**
+     * Called by native code to make the UploadDataProvider rewind upload data.
+     */
     @SuppressWarnings("unused")
     @CalledByNative
     void rewind() {
-        Runnable task =
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        synchronized (mLock) {
-                            if (mUploadDataStreamAdapter == 0) {
-                                return;
-                            }
-                            checkState(UserCallback.NOT_IN_CALLBACK);
-                            mInWhichUserCallback = UserCallback.REWIND;
-                        }
-                        try {
-                            checkCallingThread();
-                            mDataProvider.rewind(CronetUploadDataStream.this);
-                        } catch (Exception exception) {
-                            onError(exception);
-                        }
+        Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                synchronized (mLock) {
+                    if (mUploadDataStreamAdapter == 0) {
+                        return;
                     }
-                };
+                    checkState(UserCallback.NOT_IN_CALLBACK);
+                    mInWhichUserCallback = UserCallback.REWIND;
+                }
+                try {
+                    checkCallingThread();
+                    mDataProvider.rewind(CronetUploadDataStream.this);
+                } catch (Exception exception) {
+                    onError(exception);
+                }
+            }
+        };
         postTaskToExecutor(task);
     }
 
@@ -197,7 +189,8 @@ public final class CronetUploadDataStream extends UploadDataSink {
         synchronized (mLock) {
             if (mInWhichUserCallback == UserCallback.NOT_IN_CALLBACK) {
                 throw new IllegalStateException(
-                        "There is no read or rewind or length check in progress.", exception);
+                        "There is no read or rewind or length check in progress.",
+                        exception);
             }
             sendClose = mInWhichUserCallback == UserCallback.GET_LENGTH;
             mInWhichUserCallback = UserCallback.NOT_IN_CALLBACK;
@@ -237,8 +230,7 @@ public final class CronetUploadDataStream extends UploadDataSink {
             mRemainingLength -= bytesRead;
             if (mRemainingLength < 0 && mLength >= 0) {
                 throw new IllegalArgumentException(
-                        String.format(
-                                "Read upload data length %d exceeds expected length %d",
+                        String.format("Read upload data length %d exceeds expected length %d",
                                 mLength - mRemainingLength, mLength));
             }
             mByteBuffer.position(0);
@@ -250,12 +242,8 @@ public final class CronetUploadDataStream extends UploadDataSink {
             if (mUploadDataStreamAdapter == 0) {
                 return;
             }
-            CronetUploadDataStreamJni.get()
-                    .onReadSucceeded(
-                            mUploadDataStreamAdapter,
-                            CronetUploadDataStream.this,
-                            bytesRead,
-                            lastChunk);
+            CronetUploadDataStreamJni.get().onReadSucceeded(
+                    mUploadDataStreamAdapter, CronetUploadDataStream.this, bytesRead, lastChunk);
         }
     }
 
@@ -277,8 +265,8 @@ public final class CronetUploadDataStream extends UploadDataSink {
             if (mUploadDataStreamAdapter == 0) {
                 return;
             }
-            CronetUploadDataStreamJni.get()
-                    .onRewindSucceeded(mUploadDataStreamAdapter, CronetUploadDataStream.this);
+            CronetUploadDataStreamJni.get().onRewindSucceeded(
+                    mUploadDataStreamAdapter, CronetUploadDataStream.this);
         }
     }
 
@@ -290,7 +278,9 @@ public final class CronetUploadDataStream extends UploadDataSink {
         }
     }
 
-    /** Posts task to application Executor. */
+    /**
+     * Posts task to application Executor.
+     */
     void postTaskToExecutor(Runnable task) {
         try {
             mExecutor.execute(task);
@@ -322,18 +312,17 @@ public final class CronetUploadDataStream extends UploadDataSink {
                 mOnDestroyedCallbackForTesting.run();
             }
         }
-        postTaskToExecutor(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            checkCallingThread();
-                            mDataProvider.close();
-                        } catch (Exception e) {
-                            Log.e(TAG, "Exception thrown when closing", e);
-                        }
-                    }
-                });
+        postTaskToExecutor(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    checkCallingThread();
+                    mDataProvider.close();
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception thrown when closing", e);
+                }
+            }
+        });
     }
 
     /**
@@ -382,10 +371,8 @@ public final class CronetUploadDataStream extends UploadDataSink {
      */
     void attachNativeAdapterToRequest(final long requestAdapter) {
         synchronized (mLock) {
-            mUploadDataStreamAdapter =
-                    CronetUploadDataStreamJni.get()
-                            .attachUploadDataToRequest(
-                                    CronetUploadDataStream.this, requestAdapter, mLength);
+            mUploadDataStreamAdapter = CronetUploadDataStreamJni.get().attachUploadDataToRequest(
+                    CronetUploadDataStream.this, requestAdapter, mLength);
         }
     }
 
@@ -394,19 +381,19 @@ public final class CronetUploadDataStream extends UploadDataSink {
      * CronetUploadDataStream for testing.
      * @return the address of the native CronetUploadDataStream object.
      */
+    @VisibleForTesting
     public long createUploadDataStreamForTesting() throws IOException {
         synchronized (mLock) {
-            mUploadDataStreamAdapter =
-                    CronetUploadDataStreamJni.get()
-                            .createAdapterForTesting(CronetUploadDataStream.this);
+            mUploadDataStreamAdapter = CronetUploadDataStreamJni.get().createAdapterForTesting(
+                    CronetUploadDataStream.this);
             mLength = mDataProvider.getLength();
             mRemainingLength = mLength;
-            return CronetUploadDataStreamJni.get()
-                    .createUploadDataStreamForTesting(
-                            CronetUploadDataStream.this, mLength, mUploadDataStreamAdapter);
+            return CronetUploadDataStreamJni.get().createUploadDataStreamForTesting(
+                    CronetUploadDataStream.this, mLength, mUploadDataStreamAdapter);
         }
     }
 
+    @VisibleForTesting
     void setOnDestroyedCallbackForTesting(Runnable onDestroyedCallbackForTesting) {
         mOnDestroyedCallbackForTesting = onDestroyedCallbackForTesting;
     }
@@ -418,10 +405,8 @@ public final class CronetUploadDataStream extends UploadDataSink {
                 CronetUploadDataStream caller, long urlRequestAdapter, long length);
 
         long createAdapterForTesting(CronetUploadDataStream caller);
-
         long createUploadDataStreamForTesting(
                 CronetUploadDataStream caller, long length, long adapter);
-
         @NativeClassQualifiedName("CronetUploadDataStreamAdapter")
         void onReadSucceeded(
                 long nativePtr, CronetUploadDataStream caller, int bytesRead, boolean finalChunk);

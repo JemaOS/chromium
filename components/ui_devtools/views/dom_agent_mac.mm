@@ -6,29 +6,27 @@
 
 #import <AppKit/AppKit.h>
 
-#include "base/functional/bind.h"
 #include "base/ranges/algorithm.h"
 #include "components/ui_devtools/views/widget_element.h"
 #include "ui/views/widget/native_widget_mac.h"
 
 namespace ui_devtools {
 
-DOMAgentMac::DOMAgentMac() = default;
+DOMAgentMac::DOMAgentMac() {}
 
 DOMAgentMac::~DOMAgentMac() {
   CHECK(!IsInObserverList());
 }
 
 protocol::Response DOMAgentMac::enable() {
-  init_native_widget_subscription_ =
-      views::NativeWidgetMac::RegisterInitNativeWidgetCallback(
-          base::BindRepeating(&DOMAgentMac::OnNativeWidgetAdded,
-                              base::Unretained(this)));
+  views::NativeWidgetMac::SetInitNativeWidgetCallback(base::BindRepeating(
+      &DOMAgentMac::OnNativeWidgetAdded, base::Unretained(this)));
   return DOMAgent::enable();
 }
 
 protocol::Response DOMAgentMac::disable() {
-  init_native_widget_subscription_ = {};
+  views::NativeWidgetMac::SetInitNativeWidgetCallback(
+      base::RepeatingCallback<void(views::NativeWidgetMac*)>());
   for (views::Widget* widget : roots_)
     widget->RemoveObserver(this);
   roots_.clear();
@@ -69,19 +67,11 @@ std::unique_ptr<protocol::DOM::Node> DOMAgentMac::BuildTreeForWindow(
 }
 
 void DOMAgentMac::InitializeRootsFromOpenWindows() {
-  for (NSWindow* window in NSApp.windows) {
+  for (NSWindow* window : [NSApp windows]) {
     if (views::Widget* widget =
             views::Widget::GetWidgetForNativeWindow(window)) {
-      // When in immersive fullscreen mode, an overlay widget has two associated
-      // NSWindows:
-      // 1. An invisible one created by Chrome, which serves as an anchor
-      //    for child widgets.
-      // 2. A visible AppKit-owned NSToolbarFullScreenWindow.
-      // We ensures here that a widget is only observed once.
-      if (!widget->HasObserver(this)) {
-        widget->AddObserver(this);
-        roots_.push_back(widget);
-      }
+      widget->AddObserver(this);
+      roots_.push_back(widget);
     }
   }
 }

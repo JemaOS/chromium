@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <string_view>
 
 #include "base/containers/flat_map.h"
 #include "base/memory/raw_ref.h"
@@ -48,7 +47,7 @@ class BindingsManager final : public cast_api_bindings::Manager,
   BindingsManager& operator=(const BindingsManager&) = delete;
   BindingsManager& operator=(BindingsManager&&) = delete;
 
-  void AddBinding(std::string_view binding_script);
+  void AddBinding(base::StringPiece binding_script);
 
   // Configures the |message_port_connector_| for use with this |web_contents|
   // and connects it to the bindings service.
@@ -62,8 +61,8 @@ class BindingsManager final : public cast_api_bindings::Manager,
   void OnError() override;
 
   // cast_api_bindings::Manager overrides.
-  void AddBinding(std::string_view binding_name,
-                  std::string_view binding_script) override;
+  void AddBinding(base::StringPiece binding_name,
+                  base::StringPiece binding_script) override;
 
   int next_script_id_{0};
 
@@ -74,9 +73,9 @@ class BindingsManager final : public cast_api_bindings::Manager,
   // Used to open a MessageChannel for connecting API bindings.
   std::unique_ptr<BindingsMessagePortConnector> message_port_connector_;
 
-  raw_ref<MessagePortService> message_port_service_;
+  base::raw_ref<MessagePortService> message_port_service_;
 
-  raw_ref<Client> client_;
+  base::raw_ref<Client> client_;
 };
 
 }  // namespace cast_receiver

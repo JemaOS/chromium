@@ -38,7 +38,7 @@ ParseInitializeClientHintsStroage() {
       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
           switches::kInitializeClientHintsStorage);
 
-  std::optional<base::Value> maybe_value =
+  absl::optional<base::Value> maybe_value =
       base::JSONReader::Read(raw_client_hint_json);
 
   if (!maybe_value || !maybe_value->is_dict()) {
@@ -64,7 +64,7 @@ ParseInitializeClientHintsStroage() {
       continue;
     }
 
-    std::optional<std::vector<network::mojom::WebClientHintsType>>
+    absl::optional<std::vector<network::mojom::WebClientHintsType>>
         maybe_parsed_accept_ch =
             network::ParseClientHintsHeader(entry.second.GetString());
 
@@ -129,9 +129,8 @@ void ClientHints::GetAllowedClientHintsFromSource(
           url, GURL(), ContentSettingsType::CLIENT_HINTS, nullptr),
       client_hints);
 
-  for (auto hint : additional_hints_) {
+  for (auto hint : additional_hints_)
     client_hints->SetIsEnabled(hint, true);
-  }
 }
 
 bool ClientHints::IsJavaScriptAllowed(const GURL& url,
@@ -146,7 +145,9 @@ bool ClientHints::IsJavaScriptAllowed(const GURL& url,
 
 bool ClientHints::AreThirdPartyCookiesBlocked(const GURL& url,
                                               content::RenderFrameHost* rfh) {
-  return !cookie_settings_->IsThirdPartyAccessAllowed(url);
+  return settings_map_->GetContentSetting(
+             url, url, ContentSettingsType::COOKIES) == CONTENT_SETTING_BLOCK ||
+         cookie_settings_->ShouldBlockThirdPartyCookies();
 }
 
 blink::UserAgentMetadata ClientHints::GetUserAgentMetadata() {
@@ -164,13 +165,11 @@ void ClientHints::PersistClientHints(
   // TODO(tbansal): crbug.com/735518. Consider killing the renderer that sent
   // the malformed IPC.
   if (!primary_url.is_valid() ||
-      !network::IsUrlPotentiallyTrustworthy(primary_url)) {
+      !network::IsUrlPotentiallyTrustworthy(primary_url))
     return;
-  }
 
-  if (!IsJavaScriptAllowed(primary_url, parent_rfh)) {
+  if (!IsJavaScriptAllowed(primary_url, parent_rfh))
     return;
-  }
 
   DCHECK_LE(
       client_hints.size(),
@@ -197,13 +196,17 @@ void ClientHints::PersistClientHints(
   client_hints_dictionary.Set(kClientHintsSettingKey,
                               std::move(client_hints_list));
 
+  const auto session_model =
+      base::FeatureList::IsEnabled(blink::features::kDurableClientHintsCache)
+          ? content_settings::SessionModel::Durable
+          : content_settings::SessionModel::UserSession;
+
   // TODO(tbansal): crbug.com/735518. Disable updates to client hints settings
   // when cookies are disabled for |primary_origin|.
-  content_settings::ContentSettingConstraints constraints;
-  constraints.set_session_model(content_settings::mojom::SessionModel::DURABLE);
   settings_map_->SetWebsiteSettingDefaultScope(
       primary_url, GURL(), ContentSettingsType::CLIENT_HINTS,
-      base::Value(std::move(client_hints_dictionary)), constraints);
+      base::Value(std::move(client_hints_dictionary)),
+      {base::Time(), session_model});
   network::LogClientHintsPersistenceMetrics(persistence_started,
                                             client_hints.size());
 }
@@ -224,15 +227,6 @@ void ClientHints::SetMostRecentMainFrameViewportSize(
 
 gfx::Size ClientHints::GetMostRecentMainFrameViewportSize() {
   return viewport_size_;
-}
-
-void ClientHints::ForceEmptyViewportSizeForTesting(
-    bool should_force_empty_viewport_size) {
-  should_force_empty_viewport_size_ = should_force_empty_viewport_size;
-}
-
-bool ClientHints::ShouldForceEmptyViewportSize() {
-  return should_force_empty_viewport_size_;
 }
 
 }  // namespace client_hints

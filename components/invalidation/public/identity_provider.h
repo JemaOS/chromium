@@ -91,6 +91,9 @@ class IdentityProvider {
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 
+  void RequestDetailedStatus(
+      base::RepeatingCallback<void(base::Value::Dict)> caller) const;
+
  protected:
   IdentityProvider();
 
@@ -109,6 +112,18 @@ class IdentityProvider {
   void FireOnActiveAccountLogout();
 
  private:
+  struct Diagnostics {
+    Diagnostics();
+
+    // Collect all the internal variables in a single readable dictionary.
+    base::Value::Dict CollectDebugData() const;
+
+    int token_removal_for_not_active_account_count = 0;
+    int token_update_for_not_active_account_count = 0;
+    base::Time account_token_updated;
+  };
+
+  Diagnostics diagnostic_info_;
   base::ObserverList<Observer, true>::Unchecked observers_;
 };
 

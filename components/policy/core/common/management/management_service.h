@@ -6,7 +6,6 @@
 #define COMPONENTS_POLICY_CORE_COMMON_MANAGEMENT_MANAGEMENT_SERVICE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +14,7 @@
 #include "base/sequence_checker.h"
 #include "components/policy/policy_export.h"
 #include "components/prefs/persistent_pref_store.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 
 // For more imformation about this file please read
@@ -116,15 +116,7 @@ class POLICY_EXPORT ManagementService {
   // Returns whether there is any management authority at all.
   bool IsManaged();
 
-  // Returns whether the profile is managed because the signed in account is a
-  // managed account.
-  bool IsAccountManaged();
-
-  // Returns whether the profile is managed because the whole browser is
-  // managed.
-  bool IsBrowserManaged();
-
-  const std::optional<int>& management_authorities_for_testing() {
+  const absl::optional<int>& management_authorities_for_testing() {
     return management_authorities_for_testing_;
   }
 
@@ -153,7 +145,7 @@ class POLICY_EXPORT ManagementService {
   // managed entity.
   int GetManagementAuthorities();
 
-  std::optional<int> management_authorities_for_testing_;
+  absl::optional<int> management_authorities_for_testing_;
   std::vector<std::unique_ptr<ManagementStatusProvider>>
       management_status_providers_;
 

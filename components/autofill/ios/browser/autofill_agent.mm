@@ -10,12 +10,10 @@
 #import <string>
 #import <utility>
 
-#import "base/apple/foundation_util.h"
-#import "base/feature_list.h"
 #import "base/format_macros.h"
 #import "base/json/json_reader.h"
 #import "base/json/json_writer.h"
-#import "base/memory/raw_ptr.h"
+#import "base/mac/foundation_util.h"
 #import "base/memory/weak_ptr.h"
 #import "base/metrics/field_trial.h"
 #import "base/metrics/histogram_macros.h"
@@ -23,22 +21,20 @@
 #import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
 #import "base/time/time.h"
-#import "base/types/cxx23_to_underlying.h"
 #import "base/uuid.h"
 #import "base/values.h"
-#import "build/branding_buildflags.h"
 #import "components/autofill/core/browser/autofill_field.h"
 #import "components/autofill/core/browser/browser_autofill_manager.h"
 #import "components/autofill/core/browser/data_model/autofill_profile.h"
 #import "components/autofill/core/browser/data_model/credit_card.h"
-#import "components/autofill/core/browser/filling_product.h"
 #import "components/autofill/core/browser/metrics/autofill_metrics.h"
 #import "components/autofill/core/browser/ui/popup_item_ids.h"
+#import "components/autofill/core/browser/ui/popup_types.h"
 #import "components/autofill/core/browser/ui/suggestion.h"
 #import "components/autofill/core/common/autofill_constants.h"
 #import "components/autofill/core/common/autofill_features.h"
-#import "components/autofill/core/common/autofill_payments_features.h"
 #import "components/autofill/core/common/autofill_prefs.h"
+#import "components/autofill/core/common/autofill_tick_clock.h"
 #import "components/autofill/core/common/autofill_util.h"
 #import "components/autofill/core/common/field_data_manager.h"
 #import "components/autofill/core/common/form_data.h"
@@ -49,18 +45,16 @@
 #import "components/autofill/ios/browser/autofill_util.h"
 #import "components/autofill/ios/browser/form_suggestion.h"
 #import "components/autofill/ios/browser/form_suggestion_provider.h"
-#import "components/autofill/ios/common/features.h"
 #import "components/autofill/ios/form_util/form_activity_observer_bridge.h"
 #import "components/autofill/ios/form_util/form_activity_params.h"
 #import "components/autofill/ios/form_util/form_handlers_java_script_feature.h"
-#import "components/autofill/ios/form_util/form_util_java_script_feature.h"
 #import "components/autofill/ios/form_util/unique_id_data_tab_helper.h"
-#import "components/grit/components_resources.h"
 #import "components/prefs/ios/pref_observer_bridge.h"
 #import "components/prefs/pref_change_registrar.h"
 #import "components/prefs/pref_service.h"
 #import "components/ukm/ios/ukm_url_recorder.h"
 #import "ios/web/common/url_scheme_util.h"
+#import "ios/web/public/deprecated/url_verification_constants.h"
 #import "ios/web/public/js_messaging/web_frame.h"
 #import "ios/web/public/js_messaging/web_frames_manager.h"
 #import "ios/web/public/js_messaging/web_frames_manager_observer_bridge.h"
@@ -68,9 +62,12 @@
 #import "ios/web/public/web_state.h"
 #import "ios/web/public/web_state_observer_bridge.h"
 #import "services/metrics/public/cpp/ukm_builders.h"
-#import "ui/base/resource/resource_bundle.h"
 #import "ui/gfx/geometry/rect.h"
 #import "url/gurl.h"
+
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
 
 using autofill::AutofillJavaScriptFeature;
 using autofill::FieldDataManager;
@@ -78,20 +75,18 @@ using autofill::FieldRendererId;
 using autofill::FormGlobalId;
 using autofill::FormHandlersJavaScriptFeature;
 using autofill::FormRendererId;
-using autofill::FormUtilJavaScriptFeature;
 using autofill::FieldPropertiesFlags::kAutofilledOnUserTrigger;
 using base::NumberToString;
 using base::SysNSStringToUTF16;
 using base::SysNSStringToUTF8;
 using base::SysUTF16ToNSString;
-using base::SysUTF8ToNSString;
 
 namespace {
 
 using FormDataVector = std::vector<autofill::FormData>;
 
 // The type of the completion handler block for
-// |fetchFormsWithName:completionHandler|
+// |fetchFormsWithName:minimumRequiredFieldsCount:completionHandler|
 typedef void (^FetchFormsCompletionHandler)(BOOL, const FormDataVector&);
 
 // Gets the field specified by |fieldIdentifier| from |form|, if focusable. Also
@@ -100,7 +95,7 @@ void GetFormField(autofill::FormFieldData* field,
                   const autofill::FormData& form,
                   FieldRendererId fieldIdentifier) {
   for (const auto& currentField : form.fields) {
-    if (currentField.renderer_id == fieldIdentifier &&
+    if (currentField.unique_renderer_id == fieldIdentifier &&
         currentField.is_focusable) {
       *field = currentField;
       break;
@@ -110,7 +105,7 @@ void GetFormField(autofill::FormFieldData* field,
     return;
 
   // Hack to get suggestions from select input elements.
-  if (field->IsSelectElement()) {
+  if (field->form_control_type == "select-one") {
     // Any value set will cause the BrowserAutofillManager to filter suggestions
     // (only show suggestions that begin the same as the current value) with the
     // effect that one only suggestion would be returned; the value itself.
@@ -123,10 +118,6 @@ void GetFormField(autofill::FormFieldData* field,
 // the enqueued utterance.
 constexpr base::TimeDelta kA11yAnnouncementQueueDelay = base::Seconds(1);
 
-// The correct icon size to use in suggestions. Used to ensure images are scaled
-// appropriately.
-constexpr CGFloat kSuggestionIconWidth = 32;
-
 }  // namespace
 
 @interface AutofillAgent () <CRWWebStateObserver,
@@ -135,7 +126,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
                              PrefObserverDelegate> {
   // The WebState this instance is observing. Will be null after
   // -webStateDestroyed: has been called.
-  raw_ptr<web::WebState> _webState;
+  web::WebState* _webState;
 
   // Bridge to observe the web state from Objective-C.
   std::unique_ptr<web::WebStateObserverBridge> _webStateObserverBridge;
@@ -145,7 +136,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
       _webFramesManagerObserverBridge;
 
   // The pref service for which this agent was created.
-  raw_ptr<PrefService> _prefService;
+  PrefService* _prefService;
 
   // The unique renderer ID of the most recent autocomplete field;
   // tracks the currently-focused form element in order to force filling of
@@ -175,7 +166,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   // The autofill data that needs to be send when the |webState_| is shown.
   // The pair contains the frame ID and the base::Value::Dict to send.
   // If the value is nullopt, no data needs to be sent.
-  std::optional<std::pair<std::string, base::Value::Dict>> _pendingFormData;
+  absl::optional<std::pair<std::string, base::Value::Dict>> _pendingFormData;
 
   // Bridge to listen to pref changes.
   std::unique_ptr<PrefObserverBridge> _prefObserverBridge;
@@ -246,23 +237,34 @@ constexpr CGFloat kSuggestionIconWidth = 32;
                        webFrame:(web::WebFrame*)webFrame {
   if (!webState || !_webStateObserverBridge)
     return nullptr;
-  return &autofill::AutofillDriverIOS::FromWebStateAndWebFrame(webState,
-                                                               webFrame)
-              ->GetAutofillManager();
+  return autofill::AutofillDriverIOS::FromWebStateAndWebFrame(webState,
+                                                              webFrame)
+      ->autofill_manager();
 }
 
 // Notifies the autofill manager when forms are detected on a page.
-- (void)notifyFormsSeen:(const FormDataVector&)updatedForms
-                inFrame:(web::WebFrame*)frame {
-  auto* driver =
-      autofill::AutofillDriverIOS::FromWebStateAndWebFrame(_webState, frame);
-  if (!driver) {
-    return;
-  }
+- (void)notifyBrowserAutofillManager:
+            (autofill::BrowserAutofillManager*)autofillManager
+                         ofFormsSeen:(const FormDataVector&)updated_forms {
+  DCHECK(autofillManager);
+  DCHECK(!updated_forms.empty());
+  // TODO(crbug.com/1215337): Notify |autofillManager| about deleted fields.
+  std::vector<FormGlobalId> removed_forms;
+  autofillManager->OnFormsSeen(/*updated_forms=*/updated_forms,
+                               /*removed_forms=*/removed_forms);
+}
 
-  DCHECK(!updatedForms.empty());
-
-  driver->FormsSeen(/*updated_forms=*/updatedForms);
+// Notifies the autofill manager when forms are submitted.
+- (void)notifyBrowserAutofillManager:
+            (autofill::BrowserAutofillManager*)autofillManager
+                    ofFormsSubmitted:(const FormDataVector&)forms
+                       userInitiated:(BOOL)userInitiated {
+  DCHECK(autofillManager);
+  // Exactly one form should be extracted.
+  DCHECK_EQ(1U, forms.size());
+  autofill::FormData form = forms[0];
+  autofillManager->OnFormSubmitted(
+      form, false, autofill::mojom::SubmissionSource::FORM_SUBMISSION);
 }
 
 // Invokes the form extraction script in |frame| and loads the output into the
@@ -277,9 +279,10 @@ constexpr CGFloat kSuggestionIconWidth = 32;
 // Calls |completionHandler| with NO if the forms could not be extracted.
 // |completionHandler| cannot be nil.
 - (void)fetchFormsFiltered:(BOOL)filtered
-                  withName:(const std::u16string&)formName
-                   inFrame:(web::WebFrame*)frame
-         completionHandler:(FetchFormsCompletionHandler)completionHandler {
+                      withName:(const std::u16string&)formName
+    minimumRequiredFieldsCount:(NSUInteger)requiredFieldsCount
+                       inFrame:(web::WebFrame*)frame
+             completionHandler:(FetchFormsCompletionHandler)completionHandler {
   DCHECK(completionHandler);
 
   // Necessary so the values can be used inside a block.
@@ -290,7 +293,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   scoped_refptr<autofill::FieldDataManager> fieldDataManager =
       _fieldDataManager;
   AutofillJavaScriptFeature::GetInstance()->FetchForms(
-      frame, base::BindOnce(^(NSString* formJSON) {
+      frame, requiredFieldsCount, base::BindOnce(^(NSString* formJSON) {
         std::vector<autofill::FormData> formData;
         bool success = autofill::ExtractFormsData(
             formJSON, filtered, formNameCopy, pageURL, frameOrigin,
@@ -310,16 +313,24 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   _suggestionsAvailableCompletion = nil;
 }
 
+#pragma mark - FormSuggestionProvider
+
 // Sends a request to BrowserAutofillManager to retrieve suggestions for the
 // specified form and field.
 - (void)queryAutofillForForm:(const autofill::FormData&)form
              fieldIdentifier:(FieldRendererId)fieldIdentifier
                         type:(NSString*)type
                   typedValue:(NSString*)typedValue
-                       frame:(base::WeakPtr<web::WebFrame>)frame
+                     frameID:(NSString*)frameID
                     webState:(web::WebState*)webState
            completionHandler:(SuggestionsAvailableCompletion)completion {
-  if (!frame) {
+  web::WebFramesManager* frames_manager =
+      AutofillJavaScriptFeature::GetInstance()->GetWebFramesManager(webState);
+  web::WebFrame* frame =
+      frames_manager->GetFrameWithId(SysNSStringToUTF8(frameID));
+  autofill::BrowserAutofillManager* autofillManager =
+      [self autofillManagerFromWebState:webState webFrame:frame];
+  if (!autofillManager) {
     completion(NO);
     return;
   }
@@ -335,11 +346,10 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   // Query the BrowserAutofillManager for suggestions. Results will arrive in
   // -showAutofillPopup:popupDelegate:.
   _lastQueriedFieldID = field.global_id();
-  autofill::AutofillDriverIOS::FromWebStateAndWebFrame(_webState, frame.get())
-      ->AskForValuesToFill(form, field);
+  autofillManager->OnAskForValuesToFill(
+      form, field, gfx::RectF(), autofill::AutoselectFirstSuggestion(false),
+      autofill::FormElementWasClicked(false));
 }
-
-#pragma mark - FormSuggestionProvider
 
 - (void)checkIfSuggestionsAvailableForForm:
             (FormSuggestionProviderQuery*)formQuery
@@ -372,14 +382,13 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   // Once the active form and field are extracted, send a query to the
   // BrowserAutofillManager for suggestions.
   __weak AutofillAgent* weakSelf = self;
-  __block base::WeakPtr<web::WebFrame> weakFrame = frame->AsWeakPtr();
   id completionHandler = ^(BOOL success, const FormDataVector& forms) {
     if (success && forms.size() == 1) {
       [weakSelf queryAutofillForForm:forms[0]
                      fieldIdentifier:formQuery.uniqueFieldID
                                 type:formQuery.type
                           typedValue:formQuery.typedValue
-                               frame:weakFrame
+                             frameID:formQuery.frameID
                             webState:webState
                    completionHandler:completion];
     }
@@ -389,9 +398,10 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   // input element are considered because key/value suggestions are offered
   // even on short forms.
   [self fetchFormsFiltered:YES
-                  withName:SysNSStringToUTF16(formQuery.formName)
-                   inFrame:frame
-         completionHandler:completionHandler];
+                        withName:SysNSStringToUTF16(formQuery.formName)
+      minimumRequiredFieldsCount:1
+                         inFrame:frame
+               completionHandler:completionHandler];
 }
 
 - (void)retrieveSuggestionsForForm:(FormSuggestionProviderQuery*)formQuery
@@ -404,11 +414,9 @@ constexpr CGFloat kSuggestionIconWidth = 32;
 }
 
 - (void)updateFieldManagerForClearedIDs:(NSString*)jsonString {
-  std::optional<std::vector<FieldRendererId>> clearingResults =
-      autofill::ExtractIDs<FieldRendererId>(jsonString);
-
-  if (clearingResults) {
-    for (auto uniqueID : *clearingResults) {
+  std::vector<FieldRendererId> clearingResults;
+  if (autofill::ExtractIDs(jsonString, &clearingResults)) {
+    for (auto uniqueID : clearingResults) {
       _fieldDataManager->UpdateFieldDataMap(uniqueID, std::u16string(),
                                             kAutofilledOnUserTrigger);
     }
@@ -454,29 +462,16 @@ constexpr CGFloat kSuggestionIconWidth = 32;
         });
   }
 
-  if (suggestion.popupItemId == autofill::PopupItemId::kAddressEntry ||
-      suggestion.popupItemId == autofill::PopupItemId::kCreditCardEntry ||
-      suggestion.popupItemId == autofill::PopupItemId::kCreateNewPlusAddress ||
-      (base::FeatureList::IsEnabled(
-           autofill::features::kAutofillEnableVirtualCards) &&
-       suggestion.popupItemId ==
-           autofill::PopupItemId::kVirtualCreditCardEntry)) {
+  if (suggestion.identifier > 0) {
     _pendingAutocompleteFieldID = uniqueFieldID;
     if (_popupDelegate) {
       // TODO(966411): Replace 0 with the index of the selected suggestion.
       autofill::Suggestion autofill_suggestion;
       autofill_suggestion.main_text.value =
           SysNSStringToUTF16(suggestion.value);
-      autofill_suggestion.popup_item_id = suggestion.popupItemId;
-      if (!suggestion.backendIdentifier.length) {
-        autofill_suggestion.payload = autofill::Suggestion::BackendId();
-      } else {
-        autofill_suggestion.payload =
-            autofill::Suggestion::BackendId(autofill::Suggestion::Guid(
-                SysNSStringToUTF8(suggestion.backendIdentifier)));
-      }
-
-      _popupDelegate->DidAcceptSuggestion(autofill_suggestion, {0, 0});
+      autofill_suggestion.frontend_id = suggestion.identifier;
+      autofill_suggestion.payload = autofill::Suggestion::BackendId();
+      _popupDelegate->DidAcceptSuggestion(autofill_suggestion, 0);
     }
     return;
   }
@@ -496,16 +491,14 @@ constexpr CGFloat kSuggestionIconWidth = 32;
     return;
   }
 
-  if (suggestion.popupItemId == autofill::PopupItemId::kAutocompleteEntry ||
-      suggestion.popupItemId ==
-          autofill::PopupItemId::kFillExistingPlusAddress) {
+  if (suggestion.identifier == autofill::POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY) {
     // FormSuggestion is a simple, single value that can be filled out now.
     [self fillField:SysNSStringToUTF8(fieldIdentifier)
         uniqueFieldID:uniqueFieldID
              formName:SysNSStringToUTF8(formName)
                 value:SysNSStringToUTF16(suggestion.value)
               inFrame:frame];
-  } else if (suggestion.popupItemId == autofill::PopupItemId::kClearForm) {
+  } else if (suggestion.identifier == autofill::POPUP_ITEM_ID_CLEAR_FORM) {
     __weak AutofillAgent* weakSelf = self;
     SuggestionHandledCompletion suggestionHandledCompletionCopy =
         [_suggestionHandledCompletion copy];
@@ -521,16 +514,15 @@ constexpr CGFloat kSuggestionIconWidth = 32;
           suggestionHandledCompletionCopy();
         }));
 
-  } else if (suggestion.popupItemId ==
-             autofill::PopupItemId::kShowAccountCards) {
+  } else if (suggestion.identifier ==
+             autofill::POPUP_ITEM_ID_SHOW_ACCOUNT_CARDS) {
     autofill::BrowserAutofillManager* autofillManager =
         [self autofillManagerFromWebState:_webState webFrame:frame];
     if (autofillManager) {
       autofillManager->OnUserAcceptedCardsFromAccountOption();
     }
   } else {
-    NOTREACHED() << "unknown identifier "
-                 << base::to_underlying(suggestion.popupItemId);
+    NOTREACHED() << "unknown identifier " << suggestion.identifier;
   }
 }
 
@@ -538,9 +530,9 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   return SuggestionProviderTypeAutofill;
 }
 
-- (autofill::FillingProduct)mainFillingProduct {
-  return _popupDelegate ? _popupDelegate->GetMainFillingProduct()
-                        : autofill::FillingProduct::kNone;
+- (autofill::PopupType)suggestionType {
+  return _popupDelegate ? _popupDelegate->GetPopupType()
+                        : autofill::PopupType::kUnspecified;
 }
 
 #pragma mark - AutofillDriverIOSBridge
@@ -549,8 +541,9 @@ constexpr CGFloat kSuggestionIconWidth = 32;
              inFrame:(web::WebFrame*)frame {
   base::Value::Dict autofillData;
   autofillData.Set("formName", base::Value(base::UTF16ToUTF8(form.name)));
-  autofillData.Set("formRendererID",
-                   base::Value(static_cast<int>(form.renderer_id.value())));
+  autofillData.Set(
+      "formRendererID",
+      base::Value(static_cast<int>(form.unique_renderer_id.value())));
 
   base::Value::Dict fieldsData;
   for (const auto& field : form.fields) {
@@ -561,7 +554,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
     base::Value::Dict fieldData;
     fieldData.Set("value", field.value);
     fieldData.Set("section", field.section.ToString());
-    fieldsData.Set(NumberToString(field.renderer_id.value()),
+    fieldsData.Set(NumberToString(field.unique_renderer_id.value()),
                    std::move(fieldData));
   }
   autofillData.Set("fields", std::move(fieldsData));
@@ -575,47 +568,16 @@ constexpr CGFloat kSuggestionIconWidth = 32;
     [self sendData:std::move(autofillData) toFrame:frame];
   }
 
-  autofill::AutofillDriverIOS::FromWebStateAndWebFrame(_webState, frame)
-      ->DidFillAutofillFormData(form, base::TimeTicks::Now());
+  autofill::BrowserAutofillManager* autofillManager =
+      [self autofillManagerFromWebState:_webState webFrame:frame];
+  if (autofillManager)
+    autofillManager->OnDidFillAutofillFormData(
+        form, autofill::AutofillTickClock::NowTicks());
 }
 
-// Similar to `fillField`, but does not rely on `FillActiveFormField`, opting
-// instead to find and fill a specific field in `frame` with `value`. In other
-// words, `field` need not be `document.activeElement`.
-- (void)fillSpecificFormField:(const autofill::FieldRendererId&)field
-                    withValue:(const std::u16string)value
-                      inFrame:(web::WebFrame*)frame {
-  base::Value::Dict data;
-  data.Set("renderer_id", static_cast<int>(field.value()));
-  data.Set("value", value);
-
-  __weak AutofillAgent* weakSelf = self;
-  SuggestionHandledCompletion suggestionHandledCompletionCopy =
-      [_suggestionHandledCompletion copy];
-  _suggestionHandledCompletion = nil;
-
-  AutofillJavaScriptFeature::GetInstance()->FillSpecificFormField(
-      frame, std::move(data), base::BindOnce(^(BOOL success) {
-        AutofillAgent* strongSelf = weakSelf;
-        if (!strongSelf) {
-          return;
-        }
-        if (success) {
-          [strongSelf updateFieldManagerForSpecificField:field withValue:value];
-        }
-        // Especially in test code, it is possible that the fill was not
-        // initiated by selecting a suggestion. In this case the callback is
-        // nil.
-        if (suggestionHandledCompletionCopy) {
-          suggestionHandledCompletionCopy();
-        }
-      }));
-}
-
-- (void)handleParsedForms:
-            (const std::vector<
-                raw_ptr<autofill::FormStructure, VectorExperimental>>&)forms
+- (void)handleParsedForms:(const std::vector<autofill::FormStructure*>&)forms
                   inFrame:(web::WebFrame*)frame {
+  // No op.
 }
 
 - (void)fillFormDataPredictions:
@@ -631,29 +593,14 @@ constexpr CGFloat kSuggestionIconWidth = 32;
     base::Value::Dict fieldData;
     DCHECK(form.fields.size() == form.data.fields.size());
     for (size_t i = 0; i < form.fields.size(); i++) {
-      fieldData.Set(NumberToString(form.data.fields[i].renderer_id.value()),
-                    base::Value(form.fields[i].overall_type));
+      fieldData.Set(
+          NumberToString(form.data.fields[i].unique_renderer_id.value()),
+          base::Value(form.fields[i].overall_type));
     }
     predictionData.Set(base::UTF16ToUTF8(form.data.name), std::move(fieldData));
   }
   AutofillJavaScriptFeature::GetInstance()->FillPredictionData(
       frame, std::move(predictionData));
-}
-
-- (void)scanFormsInWebState:(web::WebState*)webState
-                    inFrame:(web::WebFrame*)webFrame {
-  __weak AutofillAgent* weakSelf = self;
-  id completionHandler = ^(BOOL success, const FormDataVector& forms) {
-    if (!success || forms.empty()) {
-      return;
-    }
-    [weakSelf notifyFormsSeen:forms inFrame:webFrame];
-  };
-  // The document has now been fully loaded. Scan for forms to be extracted.
-  [self fetchFormsFiltered:NO
-                  withName:std::u16string()
-                   inFrame:webFrame
-         completionHandler:completionHandler];
 }
 
 #pragma mark - AutofillClientIOSBridge
@@ -672,26 +619,14 @@ constexpr CGFloat kSuggestionIconWidth = 32;
     // for example. We can't include that enum because it's from WebKit, but
     // fortunately almost all the entries we are interested in (profile or
     // autofill entries) are zero or positive. Negative entries we are
-    // interested in is autofill::PopupItemId::kClearForm, used to show the
+    // interested in is autofill::POPUP_ITEM_ID_CLEAR_FORM, used to show the
     // "clear form" button.
     NSString* value = nil;
-    NSString* minorValue = nil;
     NSString* displayDescription = nil;
-    UIImage* icon = nil;
-
-    if (popup_suggestion.popup_item_id ==
-            autofill::PopupItemId::kAutocompleteEntry ||
-        popup_suggestion.popup_item_id ==
-            autofill::PopupItemId::kAddressEntry ||
-        popup_suggestion.popup_item_id ==
-            autofill::PopupItemId::kCreditCardEntry ||
-        (base::FeatureList::IsEnabled(
-             autofill::features::kAutofillEnableVirtualCards) &&
-         popup_suggestion.popup_item_id ==
-             autofill::PopupItemId::kVirtualCreditCardEntry)) {
+    if (popup_suggestion.frontend_id >= 0) {
       // Filter out any key/value suggestions if the user hasn't typed yet.
-      if (popup_suggestion.popup_item_id ==
-              autofill::PopupItemId::kAutocompleteEntry &&
+      if (popup_suggestion.frontend_id ==
+              autofill::POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY &&
           [_typedValue length] == 0) {
         continue;
       }
@@ -699,43 +634,20 @@ constexpr CGFloat kSuggestionIconWidth = 32;
       // displayDescription will contain a summary of the data to be filled in
       // the other elements.
       value = SysUTF16ToNSString(popup_suggestion.main_text.value);
-
-      if (base::FeatureList::IsEnabled(
-              autofill::features::kAutofillEnableVirtualCards) &&
-          (!popup_suggestion.minor_text.value.empty())) {
-        // For Virtual Cards, the main_text is just "Virtual card" so we need to
-        // include the minor_text (which is the card name + last 4 digits ||
-        // card holder's name) as the minorValue.
-        minorValue = SysUTF16ToNSString(popup_suggestion.minor_text.value);
-      }
-
       if (!popup_suggestion.labels.empty()) {
         DCHECK_EQ(popup_suggestion.labels.size(), 1U);
         DCHECK_EQ(popup_suggestion.labels[0].size(), 1U);
         displayDescription =
             SysUTF16ToNSString(popup_suggestion.labels[0][0].value);
       }
-
-      // Only show icon for credit card suggestions.
-      if (delegate && delegate->GetMainFillingProduct() ==
-                          autofill::FillingProduct::kCreditCard) {
-        icon = [self createIcon:popup_suggestion];
-      }
-    } else if (popup_suggestion.popup_item_id ==
-               autofill::PopupItemId::kClearForm) {
+    } else if (popup_suggestion.frontend_id ==
+               autofill::POPUP_ITEM_ID_CLEAR_FORM) {
       // Show the "clear form" button.
       value = SysUTF16ToNSString(popup_suggestion.main_text.value);
-    } else if (popup_suggestion.popup_item_id ==
-               autofill::PopupItemId::kShowAccountCards) {
+    } else if (popup_suggestion.frontend_id ==
+               autofill::POPUP_ITEM_ID_SHOW_ACCOUNT_CARDS) {
       // Show opt-in for showing cards from account.
       value = SysUTF16ToNSString(popup_suggestion.main_text.value);
-    } else if (popup_suggestion.popup_item_id ==
-                   autofill::PopupItemId::kFillExistingPlusAddress ||
-               popup_suggestion.popup_item_id ==
-                   autofill::PopupItemId::kCreateNewPlusAddress) {
-      // Show any plus_address suggestions.
-      value = SysUTF16ToNSString(popup_suggestion.main_text.value);
-      icon = [self plusAddressIcon:popup_suggestion];
     }
 
     if (!value)
@@ -745,20 +657,18 @@ constexpr CGFloat kSuggestionIconWidth = 32;
         popup_suggestion.acceptance_a11y_announcement.has_value()
             ? SysUTF16ToNSString(*popup_suggestion.acceptance_a11y_announcement)
             : nil;
-
-    FormSuggestion* suggestion = [FormSuggestion
-               suggestionWithValue:value
-                        minorValue:minorValue
-                displayDescription:displayDescription
-                              icon:icon
-                       popupItemId:popup_suggestion.popup_item_id
-                 backendIdentifier:SysUTF8ToNSString(
-                                       popup_suggestion
-                                           .GetBackendId<
-                                               autofill::Suggestion::Guid>()
-                                           .value())
-                    requiresReauth:NO
-        acceptanceA11yAnnouncement:acceptanceA11yAnnouncement];
+    // Only show icon for credit card suggestions.
+    NSString* icon = delegate && delegate->GetPopupType() ==
+                                     autofill::PopupType::kCreditCards
+                         ? base::SysUTF8ToNSString(popup_suggestion.icon)
+                         : nil;
+    FormSuggestion* suggestion =
+        [FormSuggestion suggestionWithValue:value
+                         displayDescription:displayDescription
+                                       icon:icon
+                                 identifier:popup_suggestion.frontend_id
+                             requiresReauth:NO
+                 acceptanceA11yAnnouncement:acceptanceA11yAnnouncement];
 
     if (!popup_suggestion.feature_for_iph.empty()) {
       suggestion.featureForIPH =
@@ -766,7 +676,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
     }
 
     // Put "clear form" entry at the front of the suggestions.
-    if (popup_suggestion.popup_item_id == autofill::PopupItemId::kClearForm) {
+    if (popup_suggestion.frontend_id == autofill::POPUP_ITEM_ID_CLEAR_FORM) {
       [suggestions insertObject:suggestion atIndex:0];
     } else {
       [suggestions addObject:suggestion];
@@ -798,7 +708,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
 
   std::pair<std::string, base::Value::Dict> pendingFormData =
       std::move(_pendingFormData).value();
-  _pendingFormData = std::nullopt;
+  _pendingFormData = absl::nullopt;
 
   // The frameID cannot be empty.
   DCHECK(!pendingFormData.first.empty());
@@ -886,14 +796,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   if (driver->is_processed())
     return;
   driver->set_processed(true);
-
-  FormUtilJavaScriptFeature::GetInstance()->SetAutofillAcrossIframes(
-      frame, base::FeatureList::IsEnabled(
-                 autofill::features::kAutofillAcrossIframesIos));
-
-  FormUtilJavaScriptFeature::GetInstance()->SetAutofillXHRSubmissionDetection(
-      frame, base::FeatureList::IsEnabled(
-                 autofill::features::kAutofillEnableXHRSubmissionDetectionIOS));
+  AutofillJavaScriptFeature::GetInstance()->AddJSDelayInFrame(frame);
 
   if (frame->IsMainFrame()) {
     _popupDelegate.reset();
@@ -909,16 +812,39 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   // Use a delay of 200ms when tracking form mutations to reduce the
   // communication overhead (as mutations are likely to come in batch).
   constexpr int kMutationTrackingEnabledDelayInMs = 200;
-  const bool allowMsgBatching =
-      base::FeatureList::IsEnabled(kAutofillFormActivityMsgBatchingIos);
-  formHandlerFeature->TrackFormMutations(
-      frame, kMutationTrackingEnabledDelayInMs, allowMsgBatching);
+  formHandlerFeature->TrackFormMutations(frame,
+                                         kMutationTrackingEnabledDelayInMs);
 
   formHandlerFeature->ToggleTrackingUserEditedFields(
       frame,
       /*track_user_edited_fields=*/true);
 
   [self scanFormsInWebState:webState inFrame:frame];
+}
+
+- (void)scanFormsInWebState:(web::WebState*)webState
+                    inFrame:(web::WebFrame*)webFrame {
+  __weak AutofillAgent* weakSelf = self;
+  id completionHandler = ^(BOOL success, const FormDataVector& forms) {
+    AutofillAgent* strongSelf = weakSelf;
+    if (!strongSelf || !success)
+      return;
+    autofill::BrowserAutofillManager* autofillManager =
+        [strongSelf autofillManagerFromWebState:webState webFrame:webFrame];
+    if (!autofillManager || forms.empty())
+      return;
+    [strongSelf notifyBrowserAutofillManager:autofillManager ofFormsSeen:forms];
+  };
+  // The document has now been fully loaded. Scan for forms to be extracted.
+  size_t min_required_fields =
+      MIN(autofill::kMinRequiredFieldsForUpload,
+          MIN(autofill::kMinRequiredFieldsForHeuristics,
+              autofill::kMinRequiredFieldsForQuery));
+  [self fetchFormsFiltered:NO
+                        withName:std::u16string()
+      minimumRequiredFieldsCount:min_required_fields
+                         inFrame:webFrame
+               completionHandler:completionHandler];
 }
 
 #pragma mark -
@@ -946,8 +872,8 @@ constexpr CGFloat kSuggestionIconWidth = 32;
     return;
 
   // If the event is a form_changed, then the event concerns the whole page and
-  // not a particular form. The whole document's forms need to be extracted to
-  // find the new forms.
+  // not a particular form. The whole page need to be reparsed to find the new
+  // forms.
   if (params.type == "form_changed") {
     [self scanFormsInWebState:webState inFrame:frame];
     return;
@@ -962,22 +888,29 @@ constexpr CGFloat kSuggestionIconWidth = 32;
 
   // The completion block is executed asynchronously, thus it cannot refer
   // directly to `params.field_identifier` (as params is passed by reference
-  // and may have been destroyed by the point the block is executed).
+  // and may have been destroyed by the point the block is executed) nor to
+  // web::WebFrame* (as it can be deallocated before the block execution).
+  //
+  // Copy the `field_identifier` to a local variable that can be captured
+  // and save the frame identifier that will be used to get the WebFrame in
+  // -onFormsFetched:formsData:webFrameId:fieldIdentifier.
   __weak AutofillAgent* weakSelf = self;
   __block const std::string webFrameId = frame->GetFrameId();
   __block FieldRendererId fieldIdentifier = params.unique_field_id;
   auto completionHandler = ^(BOOL success, const FormDataVector& forms) {
     [weakSelf onFormsFetched:success
                    formsData:forms
-                    webFrame:frame->AsWeakPtr()
+                  webFrameId:webFrameId
              fieldIdentifier:fieldIdentifier];
   };
 
-  // Extract the active form and field only.
+  // Extract the active form and field only. There is no minimum field
+  // requirement because key/value suggestions are offered even on short forms.
   [self fetchFormsFiltered:YES
-                  withName:base::UTF8ToUTF16(params.form_name)
-                   inFrame:frame
-         completionHandler:completionHandler];
+                        withName:base::UTF8ToUTF16(params.form_name)
+      minimumRequiredFieldsCount:1
+                         inFrame:frame
+               completionHandler:completionHandler];
 }
 
 - (void)webState:(web::WebState*)webState
@@ -985,10 +918,11 @@ constexpr CGFloat kSuggestionIconWidth = 32;
                           withData:(const std::string&)formData
                     hasUserGesture:(BOOL)hasUserGesture
                            inFrame:(web::WebFrame*)frame {
-  if (![self isAutofillEnabled] || !frame) {
+  if (![self isAutofillEnabled])
+    return;
+  if (!frame) {
     return;
   }
-
   FormDataVector forms;
 
   bool success = autofill::ExtractFormsData(
@@ -996,18 +930,14 @@ constexpr CGFloat kSuggestionIconWidth = 32;
       webState->GetLastCommittedURL(), frame->GetSecurityOrigin(),
       *_fieldDataManager, &forms);
 
-  auto* driver =
-      autofill::AutofillDriverIOS::FromWebStateAndWebFrame(webState, frame);
-  if (!driver || !success || forms.empty()) {
+  autofill::BrowserAutofillManager* autofillManager =
+      [self autofillManagerFromWebState:webState webFrame:frame];
+  if (!autofillManager || !success || forms.empty())
     return;
-  }
-
-  // Exactly one form should be extracted.
-  DCHECK_EQ(1U, forms.size());
-  autofill::FormData form = forms[0];
-  driver->FormSubmitted(form,
-                        /*known_success=*/false,
-                        autofill::mojom::SubmissionSource::FORM_SUBMISSION);
+  DCHECK(forms.size() <= 1) << "Only one form should be extracted.";
+  [self notifyBrowserAutofillManager:autofillManager
+                    ofFormsSubmitted:forms
+                       userInitiated:hasUserGesture];
 }
 
 #pragma mark - PrefObserverDelegate
@@ -1025,7 +955,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
 // if the current URL has a web scheme and the page content is HTML.
 - (BOOL)isAutofillEnabled {
   if (!autofill::prefs::IsAutofillProfileEnabled(_prefService) &&
-      !autofill::prefs::IsAutofillPaymentMethodsEnabled(_prefService)) {
+      !autofill::prefs::IsAutofillCreditCardEnabled(_prefService)) {
     return NO;
   }
 
@@ -1047,7 +977,7 @@ constexpr CGFloat kSuggestionIconWidth = 32;
             value:(const std::u16string)value
           inFrame:(web::WebFrame*)frame {
   base::Value::Dict data;
-  data.Set("renderer_id", static_cast<int>(uniqueFieldID.value()));
+  data.Set("unique_renderer_id", static_cast<int>(uniqueFieldID.value()));
   data.Set("identifier", fieldIdentifier);
   data.Set("form", formName);
   data.Set("value", value);
@@ -1063,8 +993,8 @@ constexpr CGFloat kSuggestionIconWidth = 32;
         if (!strongSelf)
           return;
         if (success) {
-          [strongSelf updateFieldManagerForSpecificField:uniqueFieldID
-                                               withValue:value];
+          strongSelf->_fieldDataManager->UpdateFieldDataMap(
+              uniqueFieldID, value, kAutofilledOnUserTrigger);
         }
         suggestionHandledCompletionCopy();
       }));
@@ -1086,12 +1016,6 @@ constexpr CGFloat kSuggestionIconWidth = 32;
   ukm::builders::Autofill_FormFillSuccessIOS(source_id)
       .SetFormFillSuccess(!fillingResults.empty())
       .Record(ukm::UkmRecorder::Get());
-}
-
-- (void)updateFieldManagerForSpecificField:(FieldRendererId)uniqueFieldID
-                                 withValue:(const std::u16string&)value {
-  _fieldDataManager->UpdateFieldDataMap(uniqueFieldID, value,
-                                        kAutofilledOnUserTrigger);
 }
 
 // Sends the the |data| to |frame| to actually fill the data.
@@ -1121,87 +1045,31 @@ constexpr CGFloat kSuggestionIconWidth = 32;
 // the method needs to check for those edge cases.
 - (void)onFormsFetched:(BOOL)success
              formsData:(const FormDataVector&)forms
-              webFrame:(base::WeakPtr<web::WebFrame>)webFrame
+            webFrameId:(const std::string&)webFrameId
        fieldIdentifier:(FieldRendererId)fieldIdentifier {
-  if (!success || forms.size() != 1 || !_webState || !webFrame) {
+  if (!success || forms.size() != 1)
     return;
-  }
 
-  auto* driver = autofill::AutofillDriverIOS::FromWebStateAndWebFrame(
-      _webState, webFrame.get());
-  if (!driver) {
+  if (!_webState)
     return;
-  }
+
+  web::WebFramesManager* frames_manager =
+      AutofillJavaScriptFeature::GetInstance()->GetWebFramesManager(_webState);
+
+  DCHECK(frames_manager);
+  web::WebFrame* webFrame = frames_manager->GetFrameWithId(webFrameId);
+  if (!webFrame)
+    return;
+
+  autofill::BrowserAutofillManager* autofillManager =
+      [self autofillManagerFromWebState:_webState webFrame:webFrame];
+  if (!autofillManager)
+    return;
 
   autofill::FormFieldData field;
   GetFormField(&field, forms[0], fieldIdentifier);
-  driver->TextFieldDidChange(forms[0], field, base::TimeTicks::Now());
-}
-
-// Helper method to create icons for payment cards.
-- (UIImage*)createIcon:(autofill::Suggestion)popup_suggestion {
-  // If available, the custom icon for the card is preferred over the
-  // generic network icon. The network icon may also be missing, in
-  // which case we do not set an icon at all.
-  if (!popup_suggestion.custom_icon.IsEmpty()) {
-    UIImage* icon = popup_suggestion.custom_icon.ToUIImage();
-
-    // On iOS, the keyboard accessory wants smaller icons than the default
-    // 40x24 size, so we resize them to 32x20, if the provided icon is
-    // larger than that.
-    if (icon && (icon.size.width > kSuggestionIconWidth)) {
-      // For a simple image resize, we can keep the same underlying image
-      // and only adjust the ratio.
-      CGFloat ratio = icon.size.width / kSuggestionIconWidth;
-      return [UIImage imageWithCGImage:[icon CGImage]
-                                 scale:icon.scale * ratio
-                           orientation:icon.imageOrientation];
-    }
-    return icon;
-  } else if (popup_suggestion.icon != autofill::Suggestion::Icon::kNoIcon) {
-    const int resourceID =
-        autofill::CreditCard::IconResourceId(popup_suggestion.icon);
-    return ui::ResourceBundle::GetSharedInstance()
-        .GetNativeImageNamed(resourceID)
-        .ToUIImage();
-  }
-  return nil;
-}
-
-// Helper method to create icons for plus_address icons. Intended to be called
-// only with `autofill::Suggestion`s whose `popup_item_id` is
-// `kFillExistingPlusAddress` or `kCreateNewPlusAddress`.
-- (UIImage*)plusAddressIcon:(autofill::Suggestion)plus_address_suggestion {
-  // Ensure the suggestion is of the correct type.
-  if (plus_address_suggestion.popup_item_id !=
-          autofill::PopupItemId::kFillExistingPlusAddress &&
-      plus_address_suggestion.popup_item_id !=
-          autofill::PopupItemId::kCreateNewPlusAddress) {
-    return nil;
-  }
-  // TODO(crbug.com/40276862): Finalize icons, including in the unbranded case.
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  if (plus_address_suggestion.icon !=
-      autofill::Suggestion::Icon::kPlusAddress) {
-    return nil;
-  }
-  UIImage* icon = ui::ResourceBundle::GetSharedInstance()
-                      .GetNativeImageNamed(IDR_PLUS_ADDRESS_LOGO)
-                      .ToUIImage();
-  // Ensure the image is sized appropriately for the width of the suggestion UI
-  // element.
-  if (icon && (icon.size.width > kSuggestionIconWidth)) {
-    // For a simple image resize, we can keep the same underlying image
-    // and only adjust the ratio.
-    CGFloat ratio = icon.size.width / kSuggestionIconWidth;
-    return [UIImage imageWithCGImage:[icon CGImage]
-                               scale:icon.scale * ratio
-                         orientation:icon.imageOrientation];
-  }
-  return icon;
-#else
-  return nil;
-#endif
+  autofillManager->OnTextFieldDidChange(
+      forms[0], field, gfx::RectF(), autofill::AutofillTickClock::NowTicks());
 }
 
 @end

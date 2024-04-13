@@ -23,6 +23,8 @@
 #include "crypto/mock_apple_keychain.h"
 #include "crypto/symmetric_key.h"
 
+using crypto::AppleKeychain;
+
 namespace os_crypt {
 class EncryptionKeyCreationUtil;
 }
@@ -105,7 +107,7 @@ crypto::SymmetricKey* OSCryptImpl::GetEncryptionKey() {
     crypto::MockAppleKeychain keychain;
     password = keychain.GetEncryptionPassword();
   } else {
-    crypto::AppleKeychain keychain;
+    AppleKeychain keychain;
     KeychainPassword encryptor_password(keychain);
     password = encryptor_password.GetPassword();
   }

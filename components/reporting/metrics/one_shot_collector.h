@@ -6,7 +6,6 @@
 #define COMPONENTS_REPORTING_METRICS_ONE_SHOT_COLLECTOR_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback_helpers.h"
@@ -16,6 +15,7 @@
 #include "components/reporting/client/report_queue.h"
 #include "components/reporting/metrics/collector_base.h"
 #include "components/reporting/proto/synced/metric_data.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -27,10 +27,6 @@ class ReportingSettings;
 // setting is enabled.
 class OneShotCollector : public CollectorBase {
  public:
-  // Metrics name for reporting missing metric data to UMA.
-  static constexpr char kNoMetricDataMetricsName[] =
-      "Browser.ERP.MetricsReporting.OneShotCollectorNoMetricData";
-
   // Start observing the reporting setting immediately to start collection.
   OneShotCollector(
       Sampler* sampler,
@@ -62,7 +58,7 @@ class OneShotCollector : public CollectorBase {
  protected:
   // CollectorBase:
   void OnMetricDataCollected(bool is_event_driven,
-                             std::optional<MetricData> metric_data) override;
+                             absl::optional<MetricData> metric_data) override;
   bool CanCollect() const override;
 
  private:

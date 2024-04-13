@@ -26,11 +26,9 @@
 #include "net/base/isolation_info.h"
 #include "net/base/load_flags.h"
 #include "net/cookies/site_for_cookies.h"
-#include "net/http/http_content_disposition.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_status_code.h"
 #include "services/network/public/cpp/resource_request.h"
-
 #include "url/origin.h"
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/content_uri_utils.h"
@@ -91,11 +89,15 @@ void AppendExtraHeaders(net::HttpRequestHeaders* headers,
 
 // Return whether the download is explicitly to fetch part of the file.
 bool IsArbitraryRangeRequest(DownloadSaveInfo* save_info) {
+  if (!base::FeatureList::IsEnabled(features::kDownloadRange))
+    return false;
   return save_info && save_info->IsArbitraryRangeRequest();
 }
 
 bool IsArbitraryRangeRequest(DownloadUrlParameters* parameters) {
   DCHECK(parameters);
+  if (!base::FeatureList::IsEnabled(features::kDownloadRange))
+    return false;
   auto offsets = parameters->range_request_offset();
   return offsets.first != kInvalidRange || offsets.second != kInvalidRange;
 }
@@ -550,22 +552,22 @@ DownloadDBEntry CreateDownloadDBEntryFromItem(const DownloadItemImpl& item) {
   in_progress_info.range_request_from = range_request_offset.first;
   in_progress_info.range_request_to = range_request_offset.second;
 
-  download_info.in_progress_info = std::move(in_progress_info);
+  download_info.in_progress_info = in_progress_info;
 
   download_info.ukm_info =
       UkmInfo(item.GetDownloadSource(), item.ukm_download_id());
-  entry.download_info = std::move(download_info);
+  entry.download_info = download_info;
   return entry;
 }
 
 std::unique_ptr<DownloadEntry> CreateDownloadEntryFromDownloadDBEntry(
-    std::optional<DownloadDBEntry> entry) {
+    absl::optional<DownloadDBEntry> entry) {
   if (!entry || !entry->download_info)
     return nullptr;
 
-  std::optional<InProgressInfo> in_progress_info =
+  absl::optional<InProgressInfo> in_progress_info =
       entry->download_info->in_progress_info;
-  std::optional<UkmInfo> ukm_info = entry->download_info->ukm_info;
+  absl::optional<UkmInfo> ukm_info = entry->download_info->ukm_info;
   if (!ukm_info || !in_progress_info)
     return nullptr;
 
@@ -794,51 +796,6 @@ void DetermineLocalPath(DownloadItem* download,
   }
 #endif  // BUILDFLAG(IS_ANDROID)
   std::move(callback).Run(virtual_path, base::FilePath());
-}
-
-bool IsInterruptedDownloadAutoResumable(download::DownloadItem* download_item,
-                                        int auto_resumption_size_limit) {
-  DCHECK_EQ(download::DownloadItem::INTERRUPTED, download_item->GetState());
-  if (download_item->IsDangerous()) {
-    return false;
-  }
-
-  if (!download_item->GetURL().SchemeIsHTTPOrHTTPS()) {
-    return false;
-  }
-
-  if (download_item->GetBytesWasted() > auto_resumption_size_limit) {
-    return false;
-  }
-
-  if (download_item->GetTargetFilePath().empty()) {
-    return false;
-  }
-
-  // TODO(shaktisahu): Use DownloadItemImpl::kMaxAutoResumeAttempts.
-  if (download_item->GetAutoResumeCount() >= 5) {
-    return false;
-  }
-
-  int interrupt_reason = download_item->GetLastReason();
-  DCHECK_NE(interrupt_reason, download::DOWNLOAD_INTERRUPT_REASON_NONE);
-  return interrupt_reason ==
-             download::DOWNLOAD_INTERRUPT_REASON_NETWORK_TIMEOUT ||
-         interrupt_reason ==
-             download::DOWNLOAD_INTERRUPT_REASON_NETWORK_FAILED ||
-         interrupt_reason ==
-             download::DOWNLOAD_INTERRUPT_REASON_NETWORK_DISCONNECTED ||
-         interrupt_reason == download::DOWNLOAD_INTERRUPT_REASON_CRASH;
-}
-
-bool IsContentDispositionAttachmentInHead(
-    const network::mojom::URLResponseHead& response_head) {
-  std::string disposition;
-  response_head.headers->GetNormalizedHeader("content-disposition",
-                                             &disposition);
-  return !disposition.empty() &&
-         net::HttpContentDisposition(disposition, std::string())
-             .is_attachment();
 }
 
 }  // namespace download

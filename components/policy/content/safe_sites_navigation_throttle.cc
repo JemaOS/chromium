@@ -5,6 +5,7 @@
 #include "components/policy/content/safe_sites_navigation_throttle.h"
 
 #include "base/functional/bind.h"
+#include "base/strings/string_piece.h"
 #include "components/policy/content/safe_search_service.h"
 #include "components/url_matcher/url_util.h"
 #include "content/public/browser/navigation_handle.h"
@@ -32,7 +33,7 @@ SafeSitesNavigationThrottle::SafeSitesNavigationThrottle(
 SafeSitesNavigationThrottle::SafeSitesNavigationThrottle(
     content::NavigationHandle* navigation_handle,
     content::BrowserContext* context,
-    std::string_view safe_sites_error_page_content)
+    base::StringPiece safe_sites_error_page_content)
     : NavigationThrottle(navigation_handle),
       safe_seach_service_(SafeSearchFactory::GetForBrowserContext(context)),
       deferred_result_callback_(

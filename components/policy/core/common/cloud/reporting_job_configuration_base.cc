@@ -5,7 +5,6 @@
 #include "components/policy/core/common/cloud/reporting_job_configuration_base.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -22,6 +21,7 @@
 #include "components/version_info/version_info.h"
 #include "google_apis/google_api_keys.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace policy {
@@ -90,7 +90,7 @@ ReportingJobConfigurationBase::DeviceDictionaryBuilder::GetNamePath() {
 // static
 std::string
 ReportingJobConfigurationBase::DeviceDictionaryBuilder::GetStringPath(
-    std::string_view leaf_name) {
+    base::StringPiece leaf_name) {
   return base::JoinString({kDeviceKey, leaf_name}, ".");
 }
 
@@ -122,9 +122,8 @@ ReportingJobConfigurationBase::BrowserDictionaryBuilder::BuildBrowserDictionary(
     browser_dictionary.Set(kBrowserId, browser_id.AsUTF8Unsafe());
   }
 
-  if (include_device_info) {
+  if (include_device_info)
     browser_dictionary.Set(kMachineUser, GetOSUsername());
-  }
 
   browser_dictionary.Set(kChromeVersion, version_info::GetVersionNumber());
   return browser_dictionary;
@@ -157,7 +156,7 @@ std::string ReportingJobConfigurationBase::BrowserDictionaryBuilder::
 // static
 std::string
 ReportingJobConfigurationBase::BrowserDictionaryBuilder::GetStringPath(
-    std::string_view leaf_name) {
+    base::StringPiece leaf_name) {
   return base::JoinString({kBrowserKey, leaf_name}, ".");
 }
 
@@ -182,7 +181,6 @@ std::string ReportingJobConfigurationBase::GetPayload() {
 }
 
 std::string ReportingJobConfigurationBase::GetUmaName() {
-  DCHECK(ShouldRecordUma());
   return GetUmaString() + GetJobTypeAsString(GetType());
 }
 
@@ -215,7 +213,7 @@ void ReportingJobConfigurationBase::OnURLLoadComplete(
     int net_error,
     int response_code,
     const std::string& response_body) {
-  std::optional<base::Value> response = base::JSONReader::Read(response_body);
+  absl::optional<base::Value> response = base::JSONReader::Read(response_body);
 
   // Parse the response even if |response_code| is not a success since the
   // response data may contain an error message.
@@ -249,9 +247,10 @@ void ReportingJobConfigurationBase::OnURLLoadComplete(
     }
   }
 
-  auto response_dict = response && response->is_dict()
-                           ? std::make_optional(std::move(*response).TakeDict())
-                           : std::nullopt;
+  auto response_dict =
+      response && response->is_dict()
+          ? absl::make_optional(std::move(*response).TakeDict())
+          : absl::nullopt;
   std::move(callback_).Run(job, status, response_code,
                            std::move(response_dict));
 }
@@ -281,7 +280,7 @@ ReportingJobConfigurationBase::ReportingJobConfigurationBase(
     UploadCompleteCallback callback)
     : JobConfigurationBase(type,
                            std::move(auth_data),
-                           /*oauth_token=*/std::nullopt,
+                           /*oauth_token=*/absl::nullopt,
                            factory),
       callback_(std::move(callback)),
       server_url_(server_url) {}

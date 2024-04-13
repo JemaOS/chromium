@@ -62,7 +62,7 @@ class WinSignalsCollector : public BaseSignalsCollector {
                                const std::vector<InstalledHotfix>& hotfixes);
 
   // Instance used to retrieve a pointer to a SystemSignalsService instance.
-  raw_ptr<SystemSignalsServiceHost> system_service_host_;
+  base::raw_ptr<SystemSignalsServiceHost> system_service_host_;
 
   SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<WinSignalsCollector> weak_factory_{this};

@@ -6,16 +6,18 @@ package org.chromium.net;
 
 import android.net.Network;
 
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.net.impl.CronetEngineBuilderImpl;
 import org.chromium.net.impl.CronetUrlRequest;
 import org.chromium.net.impl.CronetUrlRequestContext;
 
-/** Utilities for Cronet testing */
+/**
+ * Utilities for Cronet testing
+ */
 @JNINamespace("cronet")
 public class CronetTestUtil {
     // QUIC test domain must match the certificate used
@@ -53,19 +55,21 @@ public class CronetTestUtil {
         return new JSONObject().put("host_resolver_rules", rules);
     }
 
-    /** Prepare {@code cronetEngine}'s network thread so libcronet_test code can run on it. */
+    /**
+     * Prepare {@code cronetEngine}'s network thread so libcronet_test code can run on it.
+     */
     public static class NetworkThreadTestConnector {
         private final CronetUrlRequestContext mRequestContext;
 
         public NetworkThreadTestConnector(CronetEngine cronetEngine) {
             mRequestContext = (CronetUrlRequestContext) cronetEngine;
-            CronetTestUtilJni.get()
-                    .prepareNetworkThread(mRequestContext.getUrlRequestContextAdapter());
+            CronetTestUtilJni.get().prepareNetworkThread(
+                    mRequestContext.getUrlRequestContextAdapter());
         }
 
         public void shutdown() {
-            CronetTestUtilJni.get()
-                    .cleanupNetworkThread(mRequestContext.getUrlRequestContextAdapter());
+            CronetTestUtilJni.get().cleanupNetworkThread(
+                    mRequestContext.getUrlRequestContextAdapter());
         }
     }
 
@@ -74,16 +78,15 @@ public class CronetTestUtil {
      * @param urlRequest is the UrlRequest object of interest.
      */
     public static int getLoadFlags(UrlRequest urlRequest) {
-        return CronetTestUtilJni.get()
-                .getLoadFlags(((CronetUrlRequest) urlRequest).getUrlRequestAdapterForTesting());
+        return CronetTestUtilJni.get().getLoadFlags(
+                ((CronetUrlRequest) urlRequest).getUrlRequestAdapterForTesting());
     }
 
     public static boolean doesURLRequestContextExistForTesting(
             CronetEngine engine, Network network) {
         CronetUrlRequestContext context = (CronetUrlRequestContext) engine;
-        return CronetTestUtilJni.get()
-                .uRLRequestContextExistsForTesting(
-                        context.getUrlRequestContextAdapter(), network.getNetworkHandle());
+        return CronetTestUtilJni.get().uRLRequestContextExistsForTesting(
+                context.getUrlRequestContextAdapter(), network.getNetworkHandle());
     }
 
     public static void setMockCertVerifierForTesting(
@@ -93,12 +96,14 @@ public class CronetTestUtil {
 
     static CronetEngineBuilderImpl getCronetEngineBuilderImpl(
             ExperimentalCronetEngine.Builder builder) {
-        return (CronetEngineBuilderImpl)
-                ((ExperimentalOptionsTranslatingCronetEngineBuilder) builder.getBuilderDelegate())
-                        .getDelegate();
+        return (CronetEngineBuilderImpl) ((ExperimentalOptionsTranslatingCronetEngineBuilder)
+                                                  builder.getBuilderDelegate())
+                .getDelegate();
     }
 
-    /** Returns whether the device supports calling nativeGetTaggedBytes(). */
+    /**
+     * Returns whether the device supports calling nativeGetTaggedBytes().
+     */
     public static boolean nativeCanGetTaggedBytes() {
         return CronetTestUtilJni.get().canGetTaggedBytes();
     }
@@ -116,15 +121,10 @@ public class CronetTestUtil {
     @NativeMethods("cronet_tests")
     interface Natives {
         boolean canGetTaggedBytes();
-
         long getTaggedBytes(int expectedTag);
-
         int getLoadFlags(long urlRequestAdapter);
-
         void prepareNetworkThread(long contextAdapter);
-
         void cleanupNetworkThread(long contextAdapter);
-
         boolean uRLRequestContextExistsForTesting(long contextAdapter, long networkHandle);
     }
 }

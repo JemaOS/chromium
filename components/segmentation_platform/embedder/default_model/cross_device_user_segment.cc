@@ -11,7 +11,6 @@
 #include "components/segmentation_platform/internal/metadata/metadata_writer.h"
 #include "components/segmentation_platform/public/config.h"
 #include "components/segmentation_platform/public/constants.h"
-#include "components/segmentation_platform/public/features.h"
 #include "components/segmentation_platform/public/model_provider.h"
 #include "components/segmentation_platform/public/proto/model_metadata.pb.h"
 #include "ui/base/device_form_factor.h"
@@ -21,7 +20,7 @@ namespace segmentation_platform {
 namespace {
 
 // List of sub-segments for cross device segment.
-enum class CrossDeviceUserBin {
+enum class CrossDeviceUserSubsegment {
   kUnknown = 0,
   kNoCrossDeviceUsage = 1,
   kCrossDeviceMobile = 2,
@@ -39,13 +38,13 @@ enum class CrossDeviceUserBin {
 
 using proto::SegmentId;
 
-// Default parameters for cross device model.
-constexpr int kModelVersion = 2;
+// Default parameters for Chrome Start model.
 constexpr SegmentId kCrossDeviceUserSegmentId =
     SegmentId::CROSS_DEVICE_USER_SEGMENT;
 constexpr int64_t kCrossDeviceUserSignalStorageLength = 28;
 constexpr int64_t kCrossDeviceUserMinSignalCollectionLength = 1;
 constexpr int kCrossDeviceUserSegmentSelectionTTLDays = 7;
+constexpr int kCrossDeviceUserSegmentUnknownSelectionTTLDays = 7;
 
 // InputFeatures.
 
@@ -78,56 +77,83 @@ constexpr std::array<MetadataWriter::UMAFeature, 4>
             kCrossDeviceFeatureDefaultValue.size(),
             kCrossDeviceFeatureDefaultValue.data())};
 
+// Any updates to these strings need to also update the field trials allowlist
+// in go/segmentation-field-trials-map.
+std::string CrossDeviceUserSubsegmentToString(
+    CrossDeviceUserSubsegment cross_device_group) {
+  switch (cross_device_group) {
+    case CrossDeviceUserSubsegment::kUnknown:
+      return "Unknown";
+    case CrossDeviceUserSubsegment::kNoCrossDeviceUsage:
+      return "NoCrossDeviceUsage";
+    case CrossDeviceUserSubsegment::kCrossDeviceMobile:
+      return "CrossDeviceMobile";
+    case CrossDeviceUserSubsegment::kCrossDeviceDesktop:
+      return "CrossDeviceDesktop";
+    case CrossDeviceUserSubsegment::kCrossDeviceTablet:
+      return "CrossDeviceTablet";
+    case CrossDeviceUserSubsegment::kCrossDeviceMobileAndDesktop:
+      return "CrossDeviceMobileAndDesktop";
+    case CrossDeviceUserSubsegment::kCrossDeviceMobileAndTablet:
+      return "CrossDeviceMobileAndTablet";
+    case CrossDeviceUserSubsegment::kCrossDeviceDesktopAndTablet:
+      return "CrossDeviceDesktopAndTablet";
+    case CrossDeviceUserSubsegment::kCrossDeviceAllDeviceTypes:
+      return "CrossDeviceAllDeviceTypes";
+    case CrossDeviceUserSubsegment::kCrossDeviceOther:
+      return "CrossDeviceOther";
+  }
+}
+
 }  // namespace
 
 // static
 std::unique_ptr<Config> CrossDeviceUserSegment::GetConfig() {
-  if (!base::FeatureList::IsEnabled(
-          features::kSegmentationPlatformCrossDeviceUser)) {
-    return nullptr;
-  }
   auto config = std::make_unique<Config>();
   config->segmentation_key = kCrossDeviceUserKey;
   config->segmentation_uma_name = kCrossDeviceUserUmaName;
   config->AddSegmentId(SegmentId::CROSS_DEVICE_USER_SEGMENT,
                        std::make_unique<CrossDeviceUserSegment>());
-  config->auto_execute_and_cache = true;
+  config->segment_selection_ttl =
+      base::Days(kCrossDeviceUserSegmentSelectionTTLDays);
+  config->unknown_selection_ttl =
+      base::Days(kCrossDeviceUserSegmentUnknownSelectionTTLDays);
+  config->is_boolean_segment = true;
   return config;
 }
 
 CrossDeviceUserSegment::CrossDeviceUserSegment()
-    : DefaultModelProvider(kCrossDeviceUserSegmentId) {}
+    : ModelProvider(kCrossDeviceUserSegmentId) {}
 
-std::unique_ptr<DefaultModelProvider::ModelConfig>
-CrossDeviceUserSegment::GetModelConfig() {
+absl::optional<std::string> CrossDeviceUserSegment::GetSubsegmentName(
+    int subsegment_rank) {
+  DCHECK(RANK(CrossDeviceUserSubsegment::kUnknown) <= subsegment_rank &&
+         subsegment_rank <= RANK(CrossDeviceUserSubsegment::kMaxValue));
+  CrossDeviceUserSubsegment subgroup =
+      static_cast<CrossDeviceUserSubsegment>(subsegment_rank);
+  return CrossDeviceUserSubsegmentToString(subgroup);
+}
+
+void CrossDeviceUserSegment::InitAndFetchModel(
+    const ModelUpdatedCallback& model_updated_callback) {
   proto::SegmentationModelMetadata chrome_start_metadata;
   MetadataWriter writer(&chrome_start_metadata);
   writer.SetDefaultSegmentationMetadataConfig(
       kCrossDeviceUserMinSignalCollectionLength,
       kCrossDeviceUserSignalStorageLength);
 
+  writer.AddBooleanSegmentDiscreteMappingWithSubsegments(
+      kCrossDeviceUserKey, 1, RANK(CrossDeviceUserSubsegment::kMaxValue));
+
   // Set features.
   writer.AddUmaFeatures(kCrossDeviceUserUMAFeatures.data(),
                         kCrossDeviceUserUMAFeatures.size());
 
-  //  Set OutputConfig.
-  writer.AddOutputConfigForBinnedClassifier(
-      /*bins=*/{{1, kNoCrossDeviceUsage},
-                {2, kCrossDeviceMobile},
-                {3, kCrossDeviceDesktop},
-                {4, kCrossDeviceTablet},
-                {5, kCrossDeviceMobileAndDesktop},
-                {6, kCrossDeviceMobileAndTablet},
-                {7, kCrossDeviceDesktopAndTablet},
-                {8, kCrossDeviceAllDeviceTypes},
-                {9, kCrossDeviceOther}},
-      /*underflow_label=*/kNoCrossDeviceUsage);
-  writer.AddPredictedResultTTLInOutputConfig(
-      /*top_label_to_ttl_list=*/{}, kCrossDeviceUserSegmentSelectionTTLDays,
-      /*time_unit=*/proto::TimeUnit::DAY);
-
-  return std::make_unique<ModelConfig>(std::move(chrome_start_metadata),
-                                       kModelVersion);
+  constexpr int kModelVersion = 1;
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindRepeating(model_updated_callback, kCrossDeviceUserSegmentId,
+                          std::move(chrome_start_metadata), kModelVersion));
 }
 
 void CrossDeviceUserSegment::ExecuteModelWithInput(
@@ -136,10 +162,11 @@ void CrossDeviceUserSegment::ExecuteModelWithInput(
   // Invalid inputs.
   if (inputs.size() != kCrossDeviceUserUMAFeatures.size()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+        FROM_HERE, base::BindOnce(std::move(callback), absl::nullopt));
     return;
   }
-  CrossDeviceUserBin segment = CrossDeviceUserBin::kNoCrossDeviceUsage;
+  CrossDeviceUserSubsegment segment =
+      CrossDeviceUserSubsegment::kNoCrossDeviceUsage;
 
   float phone_count = inputs[1];
   float desktop_count = inputs[2];
@@ -165,30 +192,34 @@ void CrossDeviceUserSegment::ExecuteModelWithInput(
 
   if (multi_device_active) {
     if (phone_active && desktop_active && tablet_active) {
-      segment = CrossDeviceUserBin::kCrossDeviceAllDeviceTypes;
+      segment = CrossDeviceUserSubsegment::kCrossDeviceAllDeviceTypes;
     } else if (phone_active && desktop_active) {
-      segment = CrossDeviceUserBin::kCrossDeviceMobileAndDesktop;
+      segment = CrossDeviceUserSubsegment::kCrossDeviceMobileAndDesktop;
     } else if (phone_active && tablet_active) {
-      segment = CrossDeviceUserBin::kCrossDeviceMobileAndTablet;
+      segment = CrossDeviceUserSubsegment::kCrossDeviceMobileAndTablet;
     } else if (desktop_active && tablet_active) {
-      segment = CrossDeviceUserBin::kCrossDeviceDesktopAndTablet;
+      segment = CrossDeviceUserSubsegment::kCrossDeviceDesktopAndTablet;
     } else if (phone_active) {
-      segment = CrossDeviceUserBin::kCrossDeviceMobile;
+      segment = CrossDeviceUserSubsegment::kCrossDeviceMobile;
     } else if (desktop_active) {
-      segment = CrossDeviceUserBin::kCrossDeviceDesktop;
+      segment = CrossDeviceUserSubsegment::kCrossDeviceDesktop;
     } else if (tablet_active) {
-      segment = CrossDeviceUserBin::kCrossDeviceTablet;
+      segment = CrossDeviceUserSubsegment::kCrossDeviceTablet;
     } else {
-      segment = CrossDeviceUserBin::kCrossDeviceOther;
+      segment = CrossDeviceUserSubsegment::kCrossDeviceOther;
     }
   } else {
-    segment = segment = CrossDeviceUserBin::kNoCrossDeviceUsage;
+    segment = segment = CrossDeviceUserSubsegment::kNoCrossDeviceUsage;
   }
 
   float result = RANK(segment);
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(std::move(callback), ModelProvider::Response(1, result)));
+}
+
+bool CrossDeviceUserSegment::ModelAvailable() {
+  return true;
 }
 
 }  // namespace segmentation_platform

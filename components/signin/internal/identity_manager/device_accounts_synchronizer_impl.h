@@ -22,13 +22,7 @@ class DeviceAccountsSynchronizerImpl : public DeviceAccountsSynchronizer {
 
   // DeviceAccountsSynchronizer implementation.
   void ReloadAllAccountsFromSystemWithPrimaryAccount(
-      const std::optional<CoreAccountId>& primary_account_id) override;
-
-#if BUILDFLAG(IS_ANDROID)
-  void SeedAccountsThenReloadAllAccountsWithPrimaryAccount(
-      const std::vector<CoreAccountInfo>& core_account_infos,
-      const std::optional<CoreAccountId>& primary_account_id) override;
-#endif
+      const absl::optional<CoreAccountId>& primary_account_id) override;
 
 #if BUILDFLAG(IS_IOS)
   void ReloadAccountFromSystem(const CoreAccountId& account_id) override;

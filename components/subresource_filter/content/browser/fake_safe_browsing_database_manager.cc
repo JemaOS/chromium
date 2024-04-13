@@ -7,7 +7,6 @@
 #include "base/check_op.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
-#include "components/safe_browsing/core/common/features.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "url/gurl.h"
@@ -51,38 +50,29 @@ FakeSafeBrowsingDatabaseManager::~FakeSafeBrowsingDatabaseManager() {}
 bool FakeSafeBrowsingDatabaseManager::CheckUrlForSubresourceFilter(
     const GURL& url,
     Client* client) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-
-  if (synchronous_failure_ && !url_to_threat_type_.count(url)) {
+  if (synchronous_failure_ && !url_to_threat_type_.count(url))
     return true;
-  }
 
   // Enforce the invariant that a client will not send multiple requests, with
   // the subresource filter client implementation.
   DCHECK(checks_.find(client) == checks_.end());
   checks_.insert(client);
-  if (simulate_timeout_) {
+  if (simulate_timeout_)
     return false;
-  }
-  content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&FakeSafeBrowsingDatabaseManager::
-                         OnCheckUrlForSubresourceFilterComplete,
-                     weak_factory_.GetWeakPtr(), client->GetWeakPtr(), url));
+  content::GetIOThreadTaskRunner({})->PostTask(
+      FROM_HERE, base::BindOnce(&FakeSafeBrowsingDatabaseManager::
+                                    OnCheckUrlForSubresourceFilterComplete,
+                                weak_factory_.GetWeakPtr(),
+                                base::Unretained(client), url));
   return false;
 }
 
 void FakeSafeBrowsingDatabaseManager::OnCheckUrlForSubresourceFilterComplete(
-    base::WeakPtr<Client> client_weak_ptr,
+    Client* client,
     const GURL& url) {
-  if (!client_weak_ptr) {
-    return;
-  }
-  Client* client = client_weak_ptr.get();
   // Check to see if the request was cancelled to avoid use-after-free.
-  if (checks_.find(client) == checks_.end()) {
+  if (checks_.find(client) == checks_.end())
     return;
-  }
   safe_browsing::ThreatMetadata metadata;
   safe_browsing::SBThreatType threat_type =
       safe_browsing::SBThreatType::SB_THREAT_TYPE_SAFE;
@@ -104,6 +94,9 @@ bool FakeSafeBrowsingDatabaseManager::CheckResourceUrl(const GURL& url,
   return true;
 }
 
+bool FakeSafeBrowsingDatabaseManager::ChecksAreAlwaysAsync() const {
+  return false;
+}
 void FakeSafeBrowsingDatabaseManager::CancelCheck(Client* client) {
   size_t erased = checks_.erase(client);
   DCHECK_EQ(erased, 1u);
@@ -113,14 +106,8 @@ bool FakeSafeBrowsingDatabaseManager::CanCheckRequestDestination(
   return true;
 }
 
-safe_browsing::ThreatSource
-FakeSafeBrowsingDatabaseManager::GetBrowseUrlThreatSource(
-    safe_browsing::CheckBrowseUrlType check_type) const {
-  return safe_browsing::ThreatSource::LOCAL_PVER4;
-}
-
-safe_browsing::ThreatSource
-FakeSafeBrowsingDatabaseManager::GetNonBrowseUrlThreatSource() const {
+safe_browsing::ThreatSource FakeSafeBrowsingDatabaseManager::GetThreatSource()
+    const {
   return safe_browsing::ThreatSource::LOCAL_PVER4;
 }
 

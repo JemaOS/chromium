@@ -14,6 +14,7 @@ namespace switches {
 extern const char kDisablePnaclCrashThrottling[];
 extern const char kEnableNaClDebug[];
 extern const char kForcePNaClSubzero[];
+extern const char kNaClBrokerProcess[];
 extern const char kNaClDebugMask[];
 extern const char kNaClGdbScript[];
 extern const char kNaClGdb[];

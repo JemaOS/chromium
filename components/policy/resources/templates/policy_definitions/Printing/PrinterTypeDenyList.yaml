@@ -29,13 +29,14 @@ items:
 - caption: Extension-based destinations
   name: extension
   value: extension
-- caption: The 'Save as PDF' destination, as well as the 'Save to Google Drive' destination on <ph name="PRODUCT_OS_NAME">$2<ex>Google ChromeOS</ex></ph> devices
+- caption: The 'Save as PDF' destination
   name: pdf
   value: pdf
 - caption: Local printer destinations
   name: local
   value: local
-- caption: <ph name="CLOUD_PRINT_NAME">Google Cloud Print</ph> (Deprecated)
+- caption: <ph name="CLOUD_PRINT_NAME">Google Cloud Print</ph> and 'Save to Google
+    Drive' destinations (Deprecated)
   name: cloud
   supported_on:
   - chrome_os:80-101

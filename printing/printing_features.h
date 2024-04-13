@@ -17,11 +17,6 @@ namespace features {
 // The following features are declared alphabetically. The features should be
 // documented with descriptions of their behaviors in the .cc file.
 
-#if BUILDFLAG(IS_CHROMEOS)
-COMPONENT_EXPORT(PRINTING_BASE)
-BASE_DECLARE_FEATURE(kAddPrinterViaPrintscanmgr);
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
 #if BUILDFLAG(IS_MAC)
 COMPONENT_EXPORT(PRINTING_BASE) BASE_DECLARE_FEATURE(kCupsIppPrintingBackend);
 #endif  // BUILDFLAG(IS_MAC)
@@ -49,16 +44,16 @@ bool ShouldPrintUsingXps(bool source_is_pdf);
 #if BUILDFLAG(ENABLE_OOP_PRINTING)
 COMPONENT_EXPORT(PRINTING_BASE) BASE_DECLARE_FEATURE(kEnableOopPrintDrivers);
 COMPONENT_EXPORT(PRINTING_BASE)
-extern const base::FeatureParam<bool> kEnableOopPrintDriversEarlyStart;
-COMPONENT_EXPORT(PRINTING_BASE)
 extern const base::FeatureParam<bool> kEnableOopPrintDriversJobPrint;
 COMPONENT_EXPORT(PRINTING_BASE)
 extern const base::FeatureParam<bool> kEnableOopPrintDriversSandbox;
-#if BUILDFLAG(IS_WIN)
-COMPONENT_EXPORT(PRINTING_BASE)
-extern const base::FeatureParam<bool> kEnableOopPrintDriversSingleProcess;
-#endif
 #endif  // BUILDFLAG(ENABLE_OOP_PRINTING)
+
+#if BUILDFLAG(ENABLE_PRINT_CONTENT_ANALYSIS)
+COMPONENT_EXPORT(PRINTING_BASE)
+BASE_DECLARE_FEATURE(kEnablePrintContentAnalysis);
+BASE_DECLARE_FEATURE(kEnablePrintScanAfterPreview);
+#endif  // BUILDFLAG(ENABLE_PRINT_CONTENT_ANALYSIS)
 
 }  // namespace features
 }  // namespace printing

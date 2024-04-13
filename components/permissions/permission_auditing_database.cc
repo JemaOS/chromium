@@ -8,7 +8,6 @@
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -18,6 +17,7 @@
 #include "sql/meta_table.h"
 #include "sql/statement.h"
 #include "sql/transaction.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace permissions {
@@ -160,7 +160,7 @@ PermissionAuditingDatabase::GetPermissionUsageHistory(ContentSettingsType type,
   return sessions;
 }
 
-std::optional<base::Time>
+absl::optional<base::Time>
 PermissionAuditingDatabase::GetLastPermissionUsageTime(
     ContentSettingsType type,
     const url::Origin& origin) {
@@ -174,7 +174,7 @@ PermissionAuditingDatabase::GetLastPermissionUsageTime(
                              "LIMIT 1"));
   statement.BindString(0, origin.Serialize());
   statement.BindInt(1, static_cast<int32_t>(type));
-  std::optional<base::Time> last_usage;
+  absl::optional<base::Time> last_usage;
   if (statement.Step()) {
     last_usage = statement.ColumnTime(0);
   }

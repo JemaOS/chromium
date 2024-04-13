@@ -8,10 +8,10 @@
 
 #include <memory>
 
-#include "base/apple/scoped_cftyperef.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/json/json_string_value_serializer.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "base/strings/sys_string_conversions.h"
 #import "base/task/sequenced_task_runner.h"
 #include "base/task/sequenced_task_runner.h"
@@ -30,6 +30,10 @@
 #include "components/policy/core/common/schema_registry.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/platform_test.h"
+
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
 
 namespace policy {
 
@@ -132,8 +136,8 @@ void TestHarness::InstallStringListPolicy(
     const std::string& policy_name,
     const base::Value::List& policy_value) {
   NSString* key = base::SysUTF8ToNSString(policy_name);
-  base::apple::ScopedCFTypeRef<CFPropertyListRef> value =
-      ValueToProperty(base::Value(policy_value.Clone()));
+  base::ScopedCFTypeRef<CFPropertyListRef> value(
+      ValueToProperty(base::Value(policy_value.Clone())));
 
   if (encode_complex_data_as_json_) {
     // Convert |policy_value| to a JSON-encoded string.
@@ -160,8 +164,8 @@ void TestHarness::InstallDictionaryPolicy(
 
     AddPolicies(@{key : base::SysUTF8ToNSString(json_string)});
   } else {
-    base::apple::ScopedCFTypeRef<CFPropertyListRef> value =
-        ValueToProperty(base::Value(policy_value.Clone()));
+    base::ScopedCFTypeRef<CFPropertyListRef> value(
+        ValueToProperty(base::Value(policy_value.Clone())));
     AddPolicies(@{key : (__bridge NSDictionary*)(value.get())});
   }
 }

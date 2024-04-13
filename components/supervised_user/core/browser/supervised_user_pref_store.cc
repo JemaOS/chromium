@@ -10,12 +10,15 @@
 #include <vector>
 
 #include "base/command_line.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_piece.h"
 #include "base/values.h"
 #include "build/build_config.h"
+#include "components/autofill/core/common/autofill_prefs.h"
 #include "components/feed/core/shared_prefs/pref_names.h"
+#include "components/history/core/common/pref_names.h"
 #include "components/policy/core/common/policy_pref_names.h"
 #include "components/prefs/pref_value_map.h"
 #include "components/safe_search_api/safe_search_util.h"
@@ -23,12 +26,9 @@
 #include "components/signin/public/base/signin_switches.h"
 #include "components/supervised_user/core/browser/supervised_user_settings_service.h"
 #include "components/supervised_user/core/browser/supervised_user_url_filter.h"
-#include "components/supervised_user/core/browser/supervised_user_utils.h"
 #include "components/supervised_user/core/common/features.h"
 #include "components/supervised_user/core/common/pref_names.h"
 #include "components/supervised_user/core/common/supervised_user_constants.h"
-#include "components/sync/base/user_selectable_type.h"
-#include "components/sync/service/sync_prefs.h"
 #include "extensions/buildflags/buildflags.h"
 
 namespace {
@@ -52,6 +52,10 @@ SupervisedUserSettingsPrefMappingEntry kSupervisedUserSettingsPrefMapping[] = {
         prefs::kSupervisedUserManualURLs,
     },
     {
+        supervised_user::kForceSafeSearch,
+        policy::policy_prefs::kForceGoogleSafeSearch,
+    },
+    {
         supervised_user::kSafeSitesEnabled,
         prefs::kSupervisedUserSafeSites,
     },
@@ -59,27 +63,11 @@ SupervisedUserSettingsPrefMappingEntry kSupervisedUserSettingsPrefMapping[] = {
         supervised_user::kSigninAllowed,
         prefs::kSigninAllowed,
     },
-    {
-        supervised_user::kSigninAllowedOnNextStartup,
-        prefs::kSigninAllowedOnNextStartup,
-    },
-    {
-        supervised_user::kSkipParentApprovalToInstallExtensions,
-        prefs::kSkipParentApprovalToInstallExtensions,
-    },
 };
 
 }  // namespace
 
-SupervisedUserPrefStore::SupervisedUserPrefStore() = default;
-
 SupervisedUserPrefStore::SupervisedUserPrefStore(
-    supervised_user::SupervisedUserSettingsService*
-        supervised_user_settings_service) {
-  Init(supervised_user_settings_service);
-}
-
-void SupervisedUserPrefStore::Init(
     supervised_user::SupervisedUserSettingsService*
         supervised_user_settings_service) {
   user_settings_subscription_ =
@@ -130,25 +118,17 @@ void SupervisedUserPrefStore::OnNewSettingsAvailable(
   prefs_ = std::make_unique<PrefValueMap>();
   if (!settings.empty()) {
     // Set hardcoded prefs and defaults.
-    prefs_->SetInteger(
-        prefs::kDefaultSupervisedUserFilteringBehavior,
-        static_cast<int>(supervised_user::FilteringBehavior::kAllow));
-
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
-    if (!base::FeatureList::IsEnabled(
-            supervised_user::kRemoveForceAppliedYoutubeRestrictPolicy)) {
-      prefs_->SetInteger(policy::policy_prefs::kForceYouTubeRestrict,
-                         safe_search_api::YOUTUBE_RESTRICT_MODERATE);
-    }
-#endif
-
+    prefs_->SetInteger(prefs::kDefaultSupervisedUserFilteringBehavior,
+                       supervised_user::SupervisedUserURLFilter::ALLOW);
+    prefs_->SetBoolean(policy::policy_prefs::kForceGoogleSafeSearch, true);
+    prefs_->SetInteger(policy::policy_prefs::kForceYouTubeRestrict,
+                       safe_search_api::YOUTUBE_RESTRICT_MODERATE);
     prefs_->SetBoolean(policy::policy_prefs::kHideWebStoreIcon, false);
-    prefs_->SetBoolean(feed::prefs::kEnableSnippets,
-                       supervised_user::IsKidFriendlyContentFeedAvailable());
+    prefs_->SetBoolean(prefs::kSigninAllowed, false);
+    prefs_->SetBoolean(feed::prefs::kEnableSnippets, false);
 
 #if BUILDFLAG(IS_ANDROID)
-    syncer::SyncPrefs::SetTypeDisabledByCustodian(
-        prefs_.get(), syncer::UserSelectableType::kPayments);
+    prefs_->SetBoolean(autofill::prefs::kAutofillWalletImportEnabled, false);
 #endif
 
     // Copy supervised user settings to prefs.
@@ -161,6 +141,11 @@ void SupervisedUserPrefStore::OnNewSettingsAvailable(
 
     // Manually set preferences that aren't direct copies of the settings value.
     {
+      // Allow history deletion for supervised accounts on supported platforms.
+      bool allow_history_deletion = base::FeatureList::IsEnabled(
+          supervised_user::kAllowHistoryDeletionForChildAccounts);
+      prefs_->SetBoolean(prefs::kAllowDeletingBrowserHistory,
+                         allow_history_deletion);
       // Incognito is disabled for supervised users across platforms.
       // First-party sites use signed-in cookies to ensure that parental
       // restrictions are applied for Unicorn accounts.
@@ -169,15 +154,18 @@ void SupervisedUserPrefStore::OnNewSettingsAvailable(
           static_cast<int>(policy::IncognitoModeAvailability::kDisabled));
     }
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
-    if (!base::FeatureList::IsEnabled(
-            supervised_user::kRemoveForceAppliedYoutubeRestrictPolicy)) {
-      // This can't be set automatically as part of
-      // |kSupervisedUserSettingsPrefMapping|, because it is an int, not a bool.
+    {
+      // Note that |policy::policy_prefs::kForceGoogleSafeSearch| is set
+      // automatically as part of |kSupervisedUserSettingsPrefMapping|, but this
+      // can't be done for |policy::policy_prefs::kForceYouTubeRestrict| because
+      // it is an int, not a bool.
+      bool force_safe_search =
+          settings.FindBool(supervised_user::kForceSafeSearch).value_or(true);
       prefs_->SetInteger(policy::policy_prefs::kForceYouTubeRestrict,
-                         safe_search_api::YOUTUBE_RESTRICT_MODERATE);
+                         force_safe_search
+                             ? safe_search_api::YOUTUBE_RESTRICT_MODERATE
+                             : safe_search_api::YOUTUBE_RESTRICT_OFF);
     }
-#endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
     {
@@ -187,7 +175,7 @@ void SupervisedUserPrefStore::OnNewSettingsAvailable(
       // being disallowed.
       bool permissions_disallowed =
           settings.FindBool(supervised_user::kGeolocationDisabled)
-              .value_or(false);
+              .value_or(true);
       prefs_->SetBoolean(prefs::kSupervisedUserExtensionsMayRequestPermissions,
                          !permissions_disallowed);
       base::UmaHistogramBoolean(

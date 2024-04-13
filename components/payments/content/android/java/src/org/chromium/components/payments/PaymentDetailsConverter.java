@@ -33,7 +33,9 @@ public class PaymentDetailsConverter {
                 String methodName, PaymentApp invokedPaymentApp);
     }
 
-    /** This class has only static methods. */
+    /**
+     * This class has only static methods.
+     */
     private PaymentDetailsConverter() {}
 
     /**
@@ -65,7 +67,7 @@ public class PaymentDetailsConverter {
 
             for (int i = 0; i < details.modifiers.length; i++) {
                 if (!methodChecker.isInvokedInstrumentValidForPaymentMethodIdentifier(
-                        details.modifiers[i].methodData.supportedMethod, invokedPaymentApp)) {
+                            details.modifiers[i].methodData.supportedMethod, invokedPaymentApp)) {
                     continue;
                 }
 

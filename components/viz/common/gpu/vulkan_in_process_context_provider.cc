@@ -15,7 +15,6 @@
 #include "gpu/vulkan/vulkan_instance.h"
 #include "gpu/vulkan/vulkan_util.h"
 #include "third_party/skia/include/gpu/GrDirectContext.h"
-#include "third_party/skia/include/gpu/ganesh/vk/GrVkDirectContext.h"
 #include "third_party/skia/include/gpu/vk/GrVkExtensions.h"
 
 namespace {
@@ -178,7 +177,7 @@ bool VulkanInProcessContextProvider::InitializeGrContext(
   backend_context.fGetProc = get_proc;
   backend_context.fProtectedContext = GrProtected::kNo;
 
-  gr_context_ = GrDirectContexts::MakeVulkan(backend_context, context_options);
+  gr_context_ = GrDirectContext::MakeVulkan(backend_context, context_options);
 
   return gr_context_ != nullptr;
 }
@@ -232,16 +231,15 @@ void VulkanInProcessContextProvider::EnqueueSecondaryCBPostSubmitTask(
   NOTREACHED();
 }
 
-std::optional<uint32_t> VulkanInProcessContextProvider::GetSyncCpuMemoryLimit()
+absl::optional<uint32_t> VulkanInProcessContextProvider::GetSyncCpuMemoryLimit()
     const {
   // Return false to indicate that there's no limit.
-  if (!sync_cpu_memory_limit_) {
-    return std::nullopt;
-  }
+  if (!sync_cpu_memory_limit_)
+    return absl::optional<uint32_t>();
   return base::TimeTicks::Now() < critical_memory_pressure_expiration_time_
-             ? std::optional<uint32_t>(
+             ? absl::optional<uint32_t>(
                    kSyncCpuMemoryLimitAtMemoryPressureCritical)
-             : std::optional<uint32_t>(sync_cpu_memory_limit_);
+             : absl::optional<uint32_t>(sync_cpu_memory_limit_);
 }
 
 void VulkanInProcessContextProvider::OnMemoryPressure(

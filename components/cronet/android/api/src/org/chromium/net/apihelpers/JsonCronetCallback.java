@@ -14,14 +14,12 @@ import org.chromium.net.UrlResponseInfo;
  * JSON.
  */
 public abstract class JsonCronetCallback extends InMemoryTransformCronetCallback<JSONObject> {
-    private static final StringCronetCallback STRING_CALLBACK =
-            new StringCronetCallback() {
-                @Override
-                protected boolean shouldFollowRedirect(
-                        UrlResponseInfo info, String newLocationUrl) {
-                    throw new UnsupportedOperationException();
-                }
-            };
+    private static final StringCronetCallback STRING_CALLBACK = new StringCronetCallback() {
+        @Override
+        protected boolean shouldFollowRedirect(UrlResponseInfo info, String newLocationUrl) {
+            throw new UnsupportedOperationException();
+        }
+    };
 
     @Override // Override to return the subtype
     public JsonCronetCallback addCompletionListener(

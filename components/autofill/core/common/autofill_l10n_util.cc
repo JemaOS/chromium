@@ -4,13 +4,15 @@
 
 #include "components/autofill/core/common/autofill_l10n_util.h"
 
+#include <string>
 #include <utility>
 
 #include "base/i18n/string_compare.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
 
-namespace autofill::l10n {
+namespace autofill {
+namespace l10n {
 
 std::unique_ptr<icu::Collator> GetCollatorForLocale(const icu::Locale& locale) {
   UErrorCode error_code = U_ZERO_ERROR;
@@ -47,10 +49,11 @@ CaseInsensitiveCompare::CaseInsensitiveCompare(const icu::Locale& locale)
     collator_->setStrength(icu::Collator::PRIMARY);
 }
 
-CaseInsensitiveCompare::~CaseInsensitiveCompare() = default;
+CaseInsensitiveCompare::~CaseInsensitiveCompare() {
+}
 
-bool CaseInsensitiveCompare::StringsEqual(std::u16string_view lhs,
-                                          std::u16string_view rhs) const {
+bool CaseInsensitiveCompare::StringsEqual(const std::u16string& lhs,
+                                          const std::u16string& rhs) const {
   if (collator_) {
     return base::i18n::CompareString16WithCollator(*collator_, lhs, rhs) ==
            UCOL_EQUAL;
@@ -58,4 +61,5 @@ bool CaseInsensitiveCompare::StringsEqual(std::u16string_view lhs,
   return lhs == rhs;
 }
 
-}  // namespace autofill::l10n
+}  // namespace l10n
+}  // namespace autofill

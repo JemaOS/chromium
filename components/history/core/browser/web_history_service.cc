@@ -5,7 +5,6 @@
 #include "components/history/core/browser/web_history_service.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/command_line.h"
@@ -24,7 +23,6 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/primary_account_access_token_fetcher.h"
 #include "components/signin/public/identity_manager/scope_set.h"
-#include "components/sync/base/features.h"
 #include "components/sync/base/sync_util.h"
 #include "components/sync/protocol/history_status.pb.h"
 #include "google_apis/gaia/gaia_urls.h"
@@ -36,13 +34,15 @@
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace history {
 
 namespace {
 
-const char kHistoryOAuthScope[] = "https://www.googleapis.com/auth/chromesync";
+const char kHistoryOAuthScope[] =
+    "https://www.googleapis.com/auth/chromesync";
 
 const char kHistoryQueryHistoryUrl[] =
     "https://history.google.com/history/api/lookup?client=chrome";
@@ -163,21 +163,12 @@ class RequestImpl : public WebHistoryService::Request {
     signin::ScopeSet oauth_scopes;
     oauth_scopes.insert(kHistoryOAuthScope);
 
-    // TODO(crbug.com/40066882): Simplify this once
-    // kReplaceSyncPromosWithSignInPromos has rolled out on all platforms.
-    signin::ConsentLevel consent_level = signin::ConsentLevel::kSync;
-    if (base::FeatureList::IsEnabled(
-            syncer::kReplaceSyncPromosWithSignInPromos)) {
-      consent_level = signin::ConsentLevel::kSignin;
-    }
-
     access_token_fetcher_ =
         std::make_unique<signin::PrimaryAccountAccessTokenFetcher>(
             "web_history", identity_manager_, oauth_scopes,
             base::BindOnce(&RequestImpl::OnAccessTokenFetchComplete,
                            base::Unretained(this)),
-            signin::PrimaryAccountAccessTokenFetcher::Mode::kImmediate,
-            consent_level);
+            signin::PrimaryAccountAccessTokenFetcher::Mode::kImmediate);
     is_pending_ = true;
   }
 
@@ -196,7 +187,7 @@ class RequestImpl : public WebHistoryService::Request {
       signin::ScopeSet oauth_scopes;
       oauth_scopes.insert(kHistoryOAuthScope);
       identity_manager_->RemoveAccessTokenFromCache(
-          identity_manager_->GetPrimaryAccountId(signin::ConsentLevel::kSignin),
+          identity_manager_->GetPrimaryAccountId(signin::ConsentLevel::kSync),
           oauth_scopes, access_token_);
 
       access_token_.clear();
@@ -235,7 +226,7 @@ class RequestImpl : public WebHistoryService::Request {
   GURL url_;
 
   // POST data to be sent with the request (may be empty).
-  std::optional<std::string> post_data_;
+  absl::optional<std::string> post_data_;
 
   // MIME type of the post requests. Defaults to text/plain.
   std::string post_data_mime_type_;
@@ -276,9 +267,8 @@ class RequestImpl : public WebHistoryService::Request {
 // Converts a time into a string for use as a parameter in a request to the
 // history server.
 std::string ServerTimeString(base::Time time) {
-  if (time < base::Time::UnixEpoch()) {
+  if (time < base::Time::UnixEpoch())
     return base::NumberToString(0);
-  }
   return base::NumberToString(
       (time - base::Time::UnixEpoch()).InMicroseconds());
 }
@@ -305,8 +295,8 @@ GURL GetQueryUrl(const std::u16string& text_query,
   url = net::AppendQueryParameter(url, "max", ServerTimeString(end_time));
 
   if (!options.begin_time.is_null()) {
-    url = net::AppendQueryParameter(url, "min",
-                                    ServerTimeString(options.begin_time));
+    url = net::AppendQueryParameter(
+        url, "min", ServerTimeString(options.begin_time));
   }
 
   if (options.max_count) {
@@ -314,13 +304,11 @@ GURL GetQueryUrl(const std::u16string& text_query,
                                     base::NumberToString(options.max_count));
   }
 
-  if (!text_query.empty()) {
+  if (!text_query.empty())
     url = net::AppendQueryParameter(url, "q", base::UTF16ToUTF8(text_query));
-  }
 
-  if (!version_info.empty()) {
+  if (!version_info.empty())
     url = net::AppendQueryParameter(url, "kvi", version_info);
-  }
 
   return url;
 }
@@ -332,9 +320,8 @@ base::Value::Dict CreateDeletion(const std::string& min_time,
                                  const GURL& url) {
   base::Value::Dict deletion;
   deletion.Set("type", "CHROME_HISTORY");
-  if (url.is_valid()) {
+  if (url.is_valid())
     deletion.Set("url", url.spec());
-  }
   deletion.Set("min_timestamp_usec", min_time);
   deletion.Set("max_timestamp_usec", max_time);
   return deletion;
@@ -371,18 +358,16 @@ WebHistoryService::Request* WebHistoryService::CreateRequest(
 }
 
 // static
-std::optional<base::Value::Dict> WebHistoryService::ReadResponse(
+absl::optional<base::Value> WebHistoryService::ReadResponse(
     WebHistoryService::Request* request) {
-  if (request->GetResponseCode() != net::HTTP_OK) {
-    return std::nullopt;
+  if (request->GetResponseCode() == net::HTTP_OK) {
+    absl::optional<base::Value> value =
+        base::JSONReader::Read(request->GetResponseBody());
+    if (value && value->is_dict())
+      return value;
+    DLOG(WARNING) << "Non-JSON response received from history server.";
   }
-  std::optional<base::Value> value =
-      base::JSONReader::Read(request->GetResponseBody());
-  if (value && value->is_dict()) {
-    return std::move(*value).TakeDict();
-  }
-  DLOG(WARNING) << "Non-JSON response received from history server.";
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::unique_ptr<WebHistoryService::Request> WebHistoryService::QueryHistory(
@@ -414,18 +399,15 @@ void WebHistoryService::ExpireHistory(
     std::string min_timestamp = ServerTimeString(expire.begin_time);
     // TODO(dubroy): Use sane time (crbug.com/146090) here when it's available.
     base::Time end_time = expire.end_time;
-    if (end_time.is_null() || end_time > now) {
+    if (end_time.is_null() || end_time > now)
       end_time = now;
-    }
     std::string max_timestamp = ServerTimeString(end_time);
 
-    for (const auto& url : expire.urls) {
+    for (const auto& url : expire.urls)
       deletions.Append(CreateDeletion(min_timestamp, max_timestamp, url));
-    }
     // If no URLs were specified, delete everything in the time range.
-    if (expire.urls.empty()) {
+    if (expire.urls.empty())
       deletions.Append(CreateDeletion(min_timestamp, max_timestamp, GURL()));
-    }
   }
   delete_request.Set("del", std::move(deletions));
   std::string post_data;
@@ -435,9 +417,8 @@ void WebHistoryService::ExpireHistory(
 
   // Append the version info token, if it is available, to help ensure
   // consistency with any previous deletions.
-  if (!server_version_info_.empty()) {
+  if (!server_version_info_.empty())
     url = net::AppendQueryParameter(url, "kvi", server_version_info_);
-  }
 
   // Wrap the original callback into a generic completion callback.
   CompletionCallback completion_callback =
@@ -569,8 +550,11 @@ void WebHistoryService::QueryHistoryCompletionCallback(
     WebHistoryService::QueryWebHistoryCallback callback,
     WebHistoryService::Request* request,
     bool success) {
+  absl::optional<base::Value> response_value;
+  if (success)
+    response_value = ReadResponse(request);
   std::move(callback).Run(request,
-                          success ? ReadResponse(request) : std::nullopt);
+                          response_value ? &(*response_value) : nullptr);
 }
 
 void WebHistoryService::ExpireHistoryCompletionCallback(
@@ -581,25 +565,19 @@ void WebHistoryService::ExpireHistoryCompletionCallback(
       std::move(pending_expire_requests_[request]);
   pending_expire_requests_.erase(request);
 
-  if (!success) {
-    std::move(callback).Run(/*success=*/false);
-    return;
+  absl::optional<base::Value> response_value;
+  if (success) {
+    response_value = ReadResponse(request);
+    if (response_value) {
+      if (const auto* version = response_value->FindStringKey("version_info"))
+        server_version_info_ = *version;
+      // Inform the observers about the history deletion.
+      for (WebHistoryServiceObserver& observer : observer_list_)
+        observer.OnWebHistoryDeleted();
+    }
   }
 
-  std::optional<base::Value::Dict> response = ReadResponse(request);
-  if (!response) {
-    std::move(callback).Run(/*success=*/false);
-    return;
-  }
-
-  if (const auto* version = response->FindString("version_info")) {
-    server_version_info_ = *version;
-  }
-  // Inform the observers about the history deletion.
-  for (WebHistoryServiceObserver& observer : observer_list_) {
-    observer.OnWebHistoryDeleted();
-  }
-  std::move(callback).Run(/*success=*/true);
+  std::move(callback).Run(response_value && success);
 }
 
 void WebHistoryService::AudioHistoryCompletionCallback(
@@ -610,25 +588,22 @@ void WebHistoryService::AudioHistoryCompletionCallback(
       std::move(pending_audio_history_requests_[request]);
   pending_audio_history_requests_.erase(request);
 
-  if (!success) {
-    std::move(callback).Run(/*success=*/false, /*new_enabled_value=*/false);
-    return;
-  }
-
-  if (std::optional<base::Value::Dict> response = ReadResponse(request)) {
-    bool enabled_value = false;
-    if (std::optional<bool> enabled =
-            response->FindBool("history_recording_enabled")) {
-      enabled_value = *enabled;
+  absl::optional<base::Value> response_value;
+  bool enabled_value = false;
+  if (success) {
+    response_value = ReadResponse(request);
+    if (response_value) {
+      if (absl::optional<bool> enabled =
+              response_value->GetDict().FindBool("history_recording_enabled")) {
+        enabled_value = *enabled;
+      }
     }
-    std::move(callback).Run(/*success=*/true, enabled_value);
-    return;
   }
 
   // If there is no response_value, then for our purposes, the request has
   // failed, despite receiving a true `success` value. This can happen if
   // the user is offline.
-  std::move(callback).Run(/*success=*/false, /*new_enabled_value=*/false);
+  std::move(callback).Run(success && response_value, enabled_value);
 }
 
 void WebHistoryService::QueryWebAndAppActivityCompletionCallback(
@@ -639,21 +614,20 @@ void WebHistoryService::QueryWebAndAppActivityCompletionCallback(
       std::move(pending_web_and_app_activity_requests_[request]);
   pending_web_and_app_activity_requests_.erase(request);
 
-  if (!success) {
-    std::move(callback).Run(/*web_and_app_activity_enabled=*/false);
-    return;
-  }
+  absl::optional<base::Value> response_value;
+  bool web_and_app_activity_enabled = false;
 
-  if (std::optional<base::Value::Dict> response = ReadResponse(request)) {
-    if (std::optional<bool> enabled =
-            response->FindBool("history_recording_enabled")) {
-      std::move(callback).Run(
-          /*web_and_app_activity_enabled=*/*enabled);
-      return;
+  if (success) {
+    response_value = ReadResponse(request);
+    if (response_value) {
+      if (absl::optional<bool> enabled =
+              response_value->GetDict().FindBool("history_recording_enabled")) {
+        web_and_app_activity_enabled = *enabled;
+      }
     }
   }
 
-  std::move(callback).Run(/*web_and_app_activity_enabled=*/false);
+  std::move(callback).Run(web_and_app_activity_enabled);
 }
 
 void WebHistoryService::QueryOtherFormsOfBrowsingHistoryCompletionCallback(
@@ -667,9 +641,8 @@ void WebHistoryService::QueryOtherFormsOfBrowsingHistoryCompletionCallback(
   bool has_other_forms_of_browsing_history = false;
   if (success && request->GetResponseCode() == net::HTTP_OK) {
     sync_pb::HistoryStatusResponse history_status;
-    if (history_status.ParseFromString(request->GetResponseBody())) {
+    if (history_status.ParseFromString(request->GetResponseBody()))
       has_other_forms_of_browsing_history = history_status.has_derived_data();
-    }
   }
 
   std::move(callback).Run(has_other_forms_of_browsing_history);

@@ -18,9 +18,6 @@ const omnibox::GroupConfigMap& BuildDefaultGroups();
 // omnibox::GROUP_INVALID when there is no corresponding enum object.
 GroupId GroupIdForNumber(int value);
 
-// Releases all previously created group definitions for testing purposes.
-void ResetDefaultGroupsForTest();
-
 }  // namespace omnibox
 
 #endif  // COMPONENTS_OMNIBOX_BROWSER_SUGGESTION_GROUP_UTIL_H_

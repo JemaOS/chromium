@@ -6,15 +6,14 @@
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_UI_FAST_CHECKOUT_CLIENT_H_
 
 #include "base/memory/weak_ptr.h"
-#include "components/autofill/core/browser/ui/fast_checkout_enums.h"
 
 class GURL;
 
 namespace autofill {
-
 class AutofillManager;
 struct FormData;
 struct FormFieldData;
+}  // namespace autofill
 
 // Abstract interface for handling a fast checkout run.
 class FastCheckoutClient {
@@ -43,8 +42,8 @@ class FastCheckoutClient {
   // Notifies the `FastCheckoutClient` when a navigation happened.
   virtual void OnNavigation(const GURL& url, bool is_cart_or_checkout_url) = 0;
 
-  // Returns the outcome of trying to launch FC on `form` and `field`.
-  virtual autofill::FastCheckoutTriggerOutcome CanRun(
+  // Returns `true` if a run could be launched on `form` and `field`.
+  virtual bool IsSupported(
       const autofill::FormData& form,
       const autofill::FormFieldData& field,
       const autofill::AutofillManager& autofill_manager) const = 0;
@@ -54,7 +53,5 @@ class FastCheckoutClient {
  protected:
   FastCheckoutClient() = default;
 };
-
-}  // namespace autofill
 
 #endif  // COMPONENTS_AUTOFILL_CORE_BROWSER_UI_FAST_CHECKOUT_CLIENT_H_

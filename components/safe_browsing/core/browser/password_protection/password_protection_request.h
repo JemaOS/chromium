@@ -56,7 +56,8 @@ using password_manager::metrics_util::PasswordType;
 //     |        | On deletion of |password_protection_service_|, cancel request.
 class PasswordProtectionRequest
     : public CancelableRequest,
-      public base::RefCountedDeleteOnSequence<PasswordProtectionRequest> {
+      public base::RefCountedDeleteOnSequence<PasswordProtectionRequest>,
+      public base::SupportsWeakPtr<PasswordProtectionRequest> {
  public:
   // Not copyable or movable
   PasswordProtectionRequest(const PasswordProtectionRequest&) = delete;
@@ -114,8 +115,6 @@ class PasswordProtectionRequest
     Finish(outcome, std::move(response));
   }
 
-  virtual base::WeakPtr<PasswordProtectionRequest> AsWeakPtr() = 0;
-
  protected:
   friend class base::RefCountedThreadSafe<PasswordProtectionRequest>;
 
@@ -164,10 +163,6 @@ class PasswordProtectionRequest
   }
 
   std::unique_ptr<LoginReputationClientRequest> request_proto_;
-
-  // Used in tests to avoid dispatching a real request. Tests using this must
-  // manually finish the request.
-  bool prevent_initiating_url_loader_for_testing_ = false;
 
  private:
   friend base::RefCountedDeleteOnSequence<PasswordProtectionRequest>;
@@ -288,6 +283,8 @@ class PasswordProtectionRequest
 
   // Whether there is a modal warning triggered by this request.
   bool is_modal_warning_showing_;
+
+  base::WeakPtrFactory<PasswordProtectionRequest> weak_factory_{this};
 };
 
 }  // namespace safe_browsing

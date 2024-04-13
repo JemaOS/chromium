@@ -70,9 +70,8 @@ bool URLLoaderPostInterceptor::ExpectRequest(
     std::unique_ptr<RequestMatcher> request_matcher,
     const base::FilePath& filepath) {
   std::string response;
-  if (filepath.empty() || !base::ReadFileToString(filepath, &response)) {
+  if (filepath.empty() || !base::ReadFileToString(filepath, &response))
     return false;
-  }
 
   expectations_.push({std::move(request_matcher),
                       ExpectationResponse(net::HTTP_OK, response)});
@@ -106,9 +105,8 @@ std::string URLLoaderPostInterceptor::GetRequestsAsString() const {
   const std::vector<InterceptedRequest> requests = GetRequests();
   std::string s = "Requests are:";
   int i = 0;
-  for (auto it = requests.cbegin(); it != requests.cend(); ++it) {
+  for (auto it = requests.cbegin(); it != requests.cend(); ++it)
     s.append(base::StringPrintf("\n  [%d]: %s", ++i, std::get<0>(*it).c_str()));
-  }
   return s;
 }
 
@@ -126,10 +124,9 @@ void URLLoaderPostInterceptor::Pause() {
 void URLLoaderPostInterceptor::Resume() {
   is_paused_ = false;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindLambdaForTesting([&] {
-        if (!pending_expectations_.size()) {
+      FROM_HERE, base::BindLambdaForTesting([&]() {
+        if (!pending_expectations_.size())
           return;
-        }
 
         PendingExpectation expectation =
             std::move(pending_expectations_.front());
@@ -155,9 +152,8 @@ int URLLoaderPostInterceptor::GetHitCountForURL(const GURL& url) {
       replacements.ClearQuery();
       url_no_query = url_no_query.ReplaceComponents(replacements);
     }
-    if (url_no_query == url) {
+    if (url_no_query == url)
       hit_count++;
-    }
   }
   return hit_count;
 }
@@ -172,15 +168,13 @@ void URLLoaderPostInterceptor::InitializeWithInterceptor() {
           replacements.ClearQuery();
           url = url.ReplaceComponents(replacements);
         }
-        if (!base::Contains(filtered_urls_, url)) {
+        if (!base::Contains(filtered_urls_, url))
           return;
-        }
 
         std::string request_body = network::GetUploadData(request);
         requests_.push_back({request_body, request.headers, request.url});
-        if (expectations_.empty()) {
+        if (expectations_.empty())
           return;
-        }
         const auto& expectation = expectations_.front();
         if (expectation.first->Match(request_body)) {
           const net::HttpStatusCode response_code(
@@ -215,9 +209,8 @@ std::unique_ptr<net::test_server::HttpResponse>
 URLLoaderPostInterceptor::RequestHandler(
     const net::test_server::HttpRequest& request) {
   // Only intercepts POST.
-  if (request.method != net::test_server::METHOD_POST) {
+  if (request.method != net::test_server::METHOD_POST)
     return nullptr;
-  }
 
   GURL url = request.GetURL();
   if (url.has_query()) {
@@ -225,19 +218,16 @@ URLLoaderPostInterceptor::RequestHandler(
     replacements.ClearQuery();
     url = url.ReplaceComponents(replacements);
   }
-  if (!base::Contains(filtered_urls_, url)) {
+  if (!base::Contains(filtered_urls_, url))
     return nullptr;
-  }
 
   std::string request_body = request.content;
   net::HttpRequestHeaders headers;
-  for (auto pair : request.headers) {
+  for (auto pair : request.headers)
     headers.SetHeader(pair.first, pair.second);
-  }
   requests_.push_back({request_body, headers, url});
-  if (expectations_.empty()) {
+  if (expectations_.empty())
     return nullptr;
-  }
 
   const auto& expectation = expectations_.front();
   if (expectation.first->Match(request_body)) {

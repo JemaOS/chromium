@@ -4,6 +4,7 @@
 
 #include "components/metrics/metrics_state_manager.h"
 
+#include <ctype.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -30,7 +31,6 @@
 #include "components/variations/pref_names.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/abseil-cpp/absl/strings/ascii.h"
 
 namespace metrics {
 namespace {
@@ -44,7 +44,7 @@ void VerifyClientId(const std::string& client_id) {
     if (i == 8 || i == 13 || i == 18 || i == 23)
       EXPECT_EQ('-', current);
     else
-      EXPECT_TRUE(absl::ascii_isxdigit(static_cast<unsigned char>(current)));
+      EXPECT_TRUE(isxdigit(current));
   }
 }
 
@@ -193,9 +193,7 @@ TEST_F(MetricsStateManagerTest, EntropySourceUsed_Low) {
   prefs_.SetInt64(prefs::kInstallDate, base::Time::Now().ToTimeT());
 
   std::unique_ptr<MetricsStateManager> state_manager(CreateStateManager());
-  // |enable_limited_entropy_mode| is irrelevant but is set for test coverage.
-  state_manager->CreateEntropyProviders(
-      /*enable_limited_entropy_mode=*/true);
+  state_manager->CreateEntropyProviders();
   EXPECT_EQ(state_manager->entropy_source_returned(),
             MetricsStateManager::ENTROPY_SOURCE_LOW);
   EXPECT_EQ(state_manager->initial_client_id_for_testing(), "");
@@ -204,41 +202,11 @@ TEST_F(MetricsStateManagerTest, EntropySourceUsed_Low) {
 TEST_F(MetricsStateManagerTest, EntropySourceUsed_High) {
   EnableMetricsReporting();
   std::unique_ptr<MetricsStateManager> state_manager(CreateStateManager());
-  // |enable_limited_entropy_mode| is irrelevant but is set for test coverage.
-  state_manager->CreateEntropyProviders(
-      /*enable_limited_entropy_mode=*/true);
+  state_manager->CreateEntropyProviders();
   EXPECT_EQ(state_manager->entropy_source_returned(),
             MetricsStateManager::ENTROPY_SOURCE_HIGH);
   EXPECT_EQ(state_manager->initial_client_id_for_testing(),
             state_manager->client_id());
-}
-
-TEST_F(MetricsStateManagerTest, EntropySourceUsed_High_ExternalClientId) {
-  EnableMetricsReporting();
-  const std::string kExternalClientId = "abc";
-  std::unique_ptr<MetricsStateManager> state_manager(
-      CreateStateManager(kExternalClientId));
-  // |enable_limited_entropy_mode| is irrelevant but is set for test coverage.
-  state_manager->CreateEntropyProviders(
-      /*enable_limited_entropy_mode=*/true);
-  EXPECT_EQ(state_manager->entropy_source_returned(),
-            MetricsStateManager::ENTROPY_SOURCE_HIGH);
-  EXPECT_EQ(state_manager->client_id(), kExternalClientId);
-  EXPECT_EQ(state_manager->initial_client_id_for_testing(), kExternalClientId);
-}
-
-TEST_F(MetricsStateManagerTest,
-       EntropySourceUsed_High_ExternalClientId_MetricsReportingDisabled) {
-  const std::string kExternalClientId = "abc";
-  std::unique_ptr<MetricsStateManager> state_manager(
-      CreateStateManager(kExternalClientId));
-  // |enable_limited_entropy_mode| is irrelevant but is set for test coverage.
-  state_manager->CreateEntropyProviders(
-      /*enable_limited_entropy_mode=*/true);
-  EXPECT_TRUE(state_manager->client_id().empty());
-  EXPECT_EQ(state_manager->entropy_source_returned(),
-            MetricsStateManager::ENTROPY_SOURCE_HIGH);
-  EXPECT_EQ(state_manager->initial_client_id_for_testing(), kExternalClientId);
 }
 
 // Check that setting the kMetricsResetIds pref to true causes the client id to
@@ -365,16 +333,11 @@ TEST_F(MetricsStateManagerTest, ProvisionalClientId_PromotedToClientId) {
   // No client id should have been stored.
   EXPECT_TRUE(prefs_.FindPreference(prefs::kMetricsClientID)->IsDefaultValue());
   int low_entropy_source = state_manager->GetLowEntropySource();
-  // The default entropy provider should be the high entropy one since we have a
-  // provisional client ID. |enable_limited_entropy_mode| is irrelevant but is
-  // set to true for test coverage.
-  state_manager->CreateEntropyProviders(
-      /*enable_limited_entropy_mode=*/true);
+  // The default entropy provider should be the high entropy one since we a
+  // the provisional client ID.
+  state_manager->CreateEntropyProviders();
   EXPECT_EQ(state_manager->entropy_source_returned(),
             MetricsStateManager::ENTROPY_SOURCE_HIGH);
-  // The high entropy source used should be the provisional client ID.
-  EXPECT_EQ(state_manager->initial_client_id_for_testing(),
-            provisional_client_id);
 
   // Forcing client id creation should promote the provisional client id to
   // become the real client id and keep the low entropy source.
@@ -409,16 +372,11 @@ TEST_F(MetricsStateManagerTest, ProvisionalClientId_PersistedAcrossFirstRuns) {
     // No client id should have been stored.
     EXPECT_TRUE(
         prefs_.FindPreference(prefs::kMetricsClientID)->IsDefaultValue());
-    // The default entropy provider should be the high entropy one since we have
-    // a provisional client ID. |enable_limited_entropy_mode| is irrelevant but
-    // is set to true for test coverage.
-    state_manager->CreateEntropyProviders(
-        /*enable_limited_entropy_mode=*/true);
+    // The default entropy provider should be the high entropy one since we a
+    // the provisional client ID.
+    state_manager->CreateEntropyProviders();
     EXPECT_EQ(state_manager->entropy_source_returned(),
               MetricsStateManager::ENTROPY_SOURCE_HIGH);
-    // The high entropy source used should be the provisional client ID.
-    EXPECT_EQ(state_manager->initial_client_id_for_testing(),
-              provisional_client_id);
   }
 
   // Now, simulate a second run, and verify that the provisional client ID is
@@ -429,18 +387,12 @@ TEST_F(MetricsStateManagerTest, ProvisionalClientId_PersistedAcrossFirstRuns) {
     EXPECT_EQ(provisional_client_id,
               prefs_.GetString(prefs::kMetricsProvisionalClientID));
     // There still should not be any stored client ID.
-    EXPECT_TRUE(
-        prefs_.FindPreference(prefs::kMetricsClientID)->IsDefaultValue());
-    // The default entropy provider should be the high entropy one since we have
-    // a provisional client ID. |enable_limited_entropy_mode| is irrelevant but
-    // is set to true for test coverage.
-    state_manager->CreateEntropyProviders(
-        /*enable_limited_entropy_mode=*/true);
+    EXPECT_TRUE(prefs_.FindPreference(prefs::kMetricsClientID));
+    // The default entropy provider should be the high entropy one since we a
+    // the provisional client ID.
+    state_manager->CreateEntropyProviders();
     EXPECT_EQ(state_manager->entropy_source_returned(),
               MetricsStateManager::ENTROPY_SOURCE_HIGH);
-    // The high entropy source used should be the provisional client ID.
-    EXPECT_EQ(state_manager->initial_client_id_for_testing(),
-              provisional_client_id);
   }
 }
 #endif  // !BUILDFLAG(IS_WIN)

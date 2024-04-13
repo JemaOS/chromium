@@ -4,8 +4,6 @@
 
 #include "components/zucchini/reloc_elf.h"
 
-#include <stddef.h>
-
 #include <algorithm>
 
 #include "base/logging.h"
@@ -91,7 +89,7 @@ rva_t RelocReaderElf::GetRelocationTarget(elf::Elf64_Rel rel) const {
   return kInvalidRva;
 }
 
-std::optional<Reference> RelocReaderElf::GetNext() {
+absl::optional<Reference> RelocReaderElf::GetNext() {
   offset_t cur_entry_size = cur_section_dimensions_->entry_size;
   offset_t cur_section_dimensions_end =
       base::checked_cast<offset_t>(cur_section_dimensions_->region.hi());
@@ -100,12 +98,12 @@ std::optional<Reference> RelocReaderElf::GetNext() {
     while (cursor_ >= cur_section_dimensions_end) {
       ++cur_section_dimensions_;
       if (cur_section_dimensions_ == reloc_section_dimensions_->end())
-        return std::nullopt;
+        return absl::nullopt;
       cur_entry_size = cur_section_dimensions_->entry_size;
       cursor_ =
           base::checked_cast<offset_t>(cur_section_dimensions_->region.offset);
       if (cursor_ + cur_entry_size > hi_)
-        return std::nullopt;
+        return absl::nullopt;
       cur_section_dimensions_end =
           base::checked_cast<offset_t>(cur_section_dimensions_->region.hi());
     }
@@ -134,7 +132,7 @@ std::optional<Reference> RelocReaderElf::GetNext() {
     cursor_ += cur_entry_size;
     return Reference{location, target};
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 /******** RelocWriterElf ********/
@@ -151,14 +149,12 @@ RelocWriterElf::~RelocWriterElf() = default;
 void RelocWriterElf::PutNext(Reference ref) {
   switch (bitness_) {
     case kBit32:
-      image_.write<decltype(elf::Elf32_Rel::r_offset)>(
-          ref.location + offsetof(elf::Elf32_Rel, r_offset),
-          target_offset_to_rva_.Convert(ref.target));
+      image_.modify<elf::Elf32_Rel>(ref.location).r_offset =
+          target_offset_to_rva_.Convert(ref.target);
       break;
     case kBit64:
-      image_.write<decltype(elf::Elf64_Rel::r_offset)>(
-          ref.location + offsetof(elf::Elf64_Rel, r_offset),
-          target_offset_to_rva_.Convert(ref.target));
+      image_.modify<elf::Elf64_Rel>(ref.location).r_offset =
+          target_offset_to_rva_.Convert(ref.target);
       break;
   }
   // Leave |reloc.r_info| alone.

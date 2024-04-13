@@ -13,8 +13,7 @@ namespace viz {
 enum class RendererType {
   kSkiaGL,
   kSkiaVk,
-  kSkiaGraphiteDawn,
-  kSkiaGraphiteMetal,
+  kSkiaGraphite,
   kSoftware,
 };
 
@@ -26,6 +25,9 @@ std::vector<RendererType> GetRendererTypes();
 // Returns a list containing all RendererTypes, except SoftwareRenderer,
 // applicable to the platform.
 std::vector<RendererType> GetGpuRendererTypes();
+
+// Returns a list containing all Skia RendererTypes applicable to the platform.
+std::vector<RendererType> GetRendererTypesSkiaOnly();
 
 }  // namespace viz
 

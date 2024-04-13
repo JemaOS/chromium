@@ -84,8 +84,8 @@ std::unique_ptr<syncer::DeviceInfo> CreateDevice(
       syncer::DeviceInfo::FormFactor::kDesktop, "scoped_id", "manufacturer",
       "model", "full_hardware_class", last_updated_timestamp,
       syncer::DeviceInfoUtil::GetPulseInterval(),
-      send_tab_to_self_receiving_enabled, /*sharing_info=*/std::nullopt,
-      /*paask_info=*/std::nullopt,
+      send_tab_to_self_receiving_enabled, /*sharing_info=*/absl::nullopt,
+      /*paask_info=*/absl::nullopt,
       /*fcm_registration_token=*/std::string(),
       /*interested_data_types=*/syncer::ModelTypeSet());
 }
@@ -375,8 +375,8 @@ TEST_F(SendTabToSelfBridgeTest, LocalHistoryDeletion) {
   EXPECT_CALL(*processor(), Delete("guid1", _));
   EXPECT_CALL(*processor(), Delete("guid2", _));
 
-  bridge()->OnHistoryDeletions(nullptr, history::DeletionInfo::ForUrls(
-                                            urls_to_remove, std::set<GURL>()));
+  bridge()->OnURLsDeleted(nullptr, history::DeletionInfo::ForUrls(
+                                       urls_to_remove, std::set<GURL>()));
   EXPECT_EQ(1ul, bridge()->GetAllGuids().size());
 }
 

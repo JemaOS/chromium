@@ -10,18 +10,15 @@
 
 #include "base/containers/contains.h"
 #include "base/run_loop.h"
-#include "base/test/run_until.h"
 #include "components/viz/common/constants.h"
 #include "components/viz/common/frame_sinks/begin_frame_source.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
 #include "components/viz/service/display_embedder/server_shared_bitmap_manager.h"
 #include "components/viz/service/frame_sinks/compositor_frame_sink_support.h"
-#include "components/viz/service/surfaces/surface.h"
 #include "components/viz/service/surfaces/surface_manager.h"
 #include "components/viz/test/begin_frame_source_test.h"
 #include "components/viz/test/compositor_frame_helpers.h"
 #include "components/viz/test/fake_external_begin_frame_source.h"
-#include "components/viz/test/fake_surface_observer.h"
 #include "components/viz/test/mock_compositor_frame_sink_client.h"
 #include "components/viz/test/mock_display_client.h"
 #include "components/viz/test/test_output_surface_provider.h"
@@ -112,10 +109,6 @@ class FrameSinkManagerTest : public testing::Test {
     }
   }
 
-  void SetUp() override {
-    manager_.surface_manager()->AddObserver(&surface_observer_);
-  }
-
   // testing::Test implementation.
   void TearDown() override {
     // Make sure that all FrameSinkSourceMappings have been deleted.
@@ -126,8 +119,6 @@ class FrameSinkManagerTest : public testing::Test {
 
     // Make sure test has invalidated all registered FrameSinkIds.
     EXPECT_TRUE(manager_.frame_sink_data_.empty());
-
-    manager_.surface_manager()->RemoveObserver(&surface_observer_);
   }
 
  protected:
@@ -135,7 +126,6 @@ class FrameSinkManagerTest : public testing::Test {
   ServerSharedBitmapManager shared_bitmap_manager_;
   TestOutputSurfaceProvider output_surface_provider_;
   FrameSinkManagerImpl manager_;
-  FakeSurfaceObserver surface_observer_;
 };
 
 TEST_F(FrameSinkManagerTest, CreateRootCompositorFrameSink) {
@@ -159,7 +149,7 @@ TEST_F(FrameSinkManagerTest, CreateCompositorFrameSink) {
   MockCompositorFrameSinkClient compositor_frame_sink_client;
   mojo::Remote<mojom::CompositorFrameSink> compositor_frame_sink;
   manager_.CreateCompositorFrameSink(
-      kFrameSinkIdA, /*bundle_id=*/std::nullopt,
+      kFrameSinkIdA, /*bundle_id=*/absl::nullopt,
       compositor_frame_sink.BindNewPipeAndPassReceiver(),
       compositor_frame_sink_client.BindInterfaceRemote());
   EXPECT_TRUE(CompositorFrameSinkExists(kFrameSinkIdA));
@@ -176,7 +166,7 @@ TEST_F(FrameSinkManagerTest, CompositorFrameSinkConnectionLost) {
   MockCompositorFrameSinkClient compositor_frame_sink_client;
   mojo::Remote<mojom::CompositorFrameSink> compositor_frame_sink;
   manager_.CreateCompositorFrameSink(
-      kFrameSinkIdA, /*bundle_id=*/std::nullopt,
+      kFrameSinkIdA, /*bundle_id=*/absl::nullopt,
       compositor_frame_sink.BindNewPipeAndPassReceiver(),
       compositor_frame_sink_client.BindInterfaceRemote());
   EXPECT_TRUE(CompositorFrameSinkExists(kFrameSinkIdA));
@@ -680,23 +670,15 @@ TEST_F(FrameSinkManagerTest, EvictRootSurfaceId) {
   manager_.CreateRootCompositorFrameSink(
       root_data.BuildParams(kFrameSinkIdRoot));
 
-  GetRootCompositorFrameSinkImpl()->Resize(gfx::Size(20, 20));
-
   ParentLocalSurfaceIdAllocator allocator;
   allocator.GenerateId();
   const LocalSurfaceId local_surface_id = allocator.GetCurrentLocalSurfaceId();
   const SurfaceId surface_id(kFrameSinkIdRoot, local_surface_id);
   GetRootCompositorFrameSinkImpl()->SubmitCompositorFrame(
-      local_surface_id, MakeDefaultCompositorFrame(), std::nullopt, 0);
+      local_surface_id, MakeDefaultCompositorFrame(), absl::nullopt, 0);
   EXPECT_EQ(surface_id, GetRootCompositorFrameSinkImpl()->CurrentSurfaceId());
   manager_.EvictSurfaces({surface_id});
-
-  // Eviction of the root surface takes a snapshot, so the root surface will
-  // not be evicted immediately.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return !GetRootCompositorFrameSinkImpl()->CurrentSurfaceId().is_valid();
-  }));
-
+  EXPECT_FALSE(GetRootCompositorFrameSinkImpl()->CurrentSurfaceId().is_valid());
   manager_.InvalidateFrameSinkId(kFrameSinkIdRoot);
 }
 
@@ -708,26 +690,18 @@ TEST_F(FrameSinkManagerTest, EvictNewerRootSurfaceId) {
   manager_.CreateRootCompositorFrameSink(
       root_data.BuildParams(kFrameSinkIdRoot));
 
-  GetRootCompositorFrameSinkImpl()->Resize(gfx::Size(20, 20));
-
   ParentLocalSurfaceIdAllocator allocator;
   allocator.GenerateId();
   const LocalSurfaceId local_surface_id = allocator.GetCurrentLocalSurfaceId();
   const SurfaceId surface_id(kFrameSinkIdRoot, local_surface_id);
   GetRootCompositorFrameSinkImpl()->SubmitCompositorFrame(
-      local_surface_id, MakeDefaultCompositorFrame(), std::nullopt, 0);
+      local_surface_id, MakeDefaultCompositorFrame(), absl::nullopt, 0);
   EXPECT_EQ(surface_id, GetRootCompositorFrameSinkImpl()->CurrentSurfaceId());
   allocator.GenerateId();
   const LocalSurfaceId next_local_surface_id =
       allocator.GetCurrentLocalSurfaceId();
   manager_.EvictSurfaces({{kFrameSinkIdRoot, next_local_surface_id}});
-
-  // Eviction of the root surface takes a snapshot, so the root surface will
-  // not be evicted immediately.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return !GetRootCompositorFrameSinkImpl()->CurrentSurfaceId().is_valid();
-  }));
-
+  EXPECT_FALSE(GetRootCompositorFrameSinkImpl()->CurrentSurfaceId().is_valid());
   manager_.InvalidateFrameSinkId(kFrameSinkIdRoot);
 }
 
@@ -739,8 +713,6 @@ TEST_F(FrameSinkManagerTest, SubmitCompositorFrameWithEvictedSurfaceId) {
   manager_.CreateRootCompositorFrameSink(
       root_data.BuildParams(kFrameSinkIdRoot));
 
-  GetRootCompositorFrameSinkImpl()->Resize(gfx::Size(20, 20));
-
   ParentLocalSurfaceIdAllocator allocator;
   allocator.GenerateId();
   const LocalSurfaceId local_surface_id = allocator.GetCurrentLocalSurfaceId();
@@ -749,170 +721,18 @@ TEST_F(FrameSinkManagerTest, SubmitCompositorFrameWithEvictedSurfaceId) {
   const LocalSurfaceId local_surface_id2 = allocator.GetCurrentLocalSurfaceId();
   const SurfaceId surface_id2(kFrameSinkIdRoot, local_surface_id2);
   GetRootCompositorFrameSinkImpl()->SubmitCompositorFrame(
-      local_surface_id, MakeDefaultCompositorFrame(), std::nullopt, 0);
+      local_surface_id, MakeDefaultCompositorFrame(), absl::nullopt, 0);
   EXPECT_EQ(surface_id, GetRootCompositorFrameSinkImpl()->CurrentSurfaceId());
-  manager_.EvictSurfaces({surface_id});
-
-  // Eviction of the root surface takes a snapshot, so the root surface will
-  // not be evicted immediately.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return !GetRootCompositorFrameSinkImpl()->CurrentSurfaceId().is_valid();
-  }));
-
-  manager_.EvictSurfaces({surface_id2});
-
+  manager_.EvictSurfaces({surface_id, surface_id2});
+  EXPECT_FALSE(GetRootCompositorFrameSinkImpl()->CurrentSurfaceId().is_valid());
   GetRootCompositorFrameSinkImpl()->SubmitCompositorFrame(
-      local_surface_id2, MakeDefaultCompositorFrame(), std::nullopt, 0);
+      local_surface_id2, MakeDefaultCompositorFrame(), absl::nullopt, 0);
 
   // Even though `surface_id2` was just submitted, Display should not reference
   // it because it was evicted.
   EXPECT_NE(surface_id2, GetRootCompositorFrameSinkImpl()->CurrentSurfaceId());
 
   manager_.InvalidateFrameSinkId(kFrameSinkIdRoot);
-}
-
-// Test that `FrameSinkManagerImpl::DiscardPendingCopyOfOutputRequests`
-// relocates the exact `PendingCopyOutputRequest`s to the target surfaces.
-TEST_F(FrameSinkManagerTest,
-       CopyOutputRequestPreservedAfterDiscardPendingCopyOfOutputRequests) {
-  StubBeginFrameSource source;
-  manager_.RegisterBeginFrameSource(&source, kFrameSinkIdA);
-
-  // Create a CompositorFrameSinkImpl.
-  MockCompositorFrameSinkClient compositor_frame_sink_client;
-  mojo::Remote<mojom::CompositorFrameSink> compositor_frame_sink;
-  manager_.CreateCompositorFrameSink(
-      kFrameSinkIdA, /*bundle_id=*/std::nullopt,
-      compositor_frame_sink.BindNewPipeAndPassReceiver(),
-      compositor_frame_sink_client.BindInterfaceRemote());
-  EXPECT_TRUE(CompositorFrameSinkExists(kFrameSinkIdA));
-
-  ParentLocalSurfaceIdAllocator allocator;
-  allocator.GenerateId();
-  const auto id1 = allocator.GetCurrentLocalSurfaceId();
-  const auto surface_id1 = SurfaceId(kFrameSinkIdA, id1);
-
-  manager_.GetFrameSinkForId(kFrameSinkIdA)
-      ->SubmitCompositorFrame(id1, MakeDefaultCompositorFrame());
-  auto* surface1 = manager_.surface_manager()->GetSurfaceForId(surface_id1);
-  ASSERT_TRUE(surface1);
-
-  auto request = std::make_unique<CopyOutputRequest>(
-      CopyOutputRequest::ResultFormat::RGBA,
-      CopyOutputRequest::ResultDestination::kSystemMemory,
-      base::BindOnce([](std::unique_ptr<CopyOutputResult> result) {}));
-  auto* request_ptr = request.get();
-  manager_.RequestCopyOfOutput(surface_id1, std::move(request),
-                               /*capture_exact_surface_id=*/true);
-
-  manager_.DiscardPendingCopyOfOutputRequests(&source);
-  ASSERT_TRUE(surface_observer_.IsSurfaceDamaged(surface_id1));
-
-  // `request` is emplaced at the end of the root RenderPass.
-  const auto& preserved_request = *(
-      surface1->GetActiveFrame().render_pass_list.back()->copy_requests.back());
-  // Expect the identical `CopyOutputRequest`.
-  ASSERT_EQ(&preserved_request, request_ptr);
-
-  // For `manager_.CreateCompositorFrameSink`.
-  manager_.InvalidateFrameSinkId(kFrameSinkIdA);
-  // For `manager_.RegisterBeginFrameSource`.
-  manager_.UnregisterBeginFrameSource(&source);
-}
-
-// Submit an exact copy request while there is no frame sink. Such request can
-// only be picked up by the specified surface.
-TEST_F(FrameSinkManagerTest, ExactCopyOutputRequestTakenBySurfaceRightAway) {
-  StubBeginFrameSource source;
-  manager_.RegisterBeginFrameSource(&source, kFrameSinkIdA);
-
-  // Create a CompositorFrameSinkImpl.
-  MockCompositorFrameSinkClient compositor_frame_sink_client;
-  mojo::Remote<mojom::CompositorFrameSink> compositor_frame_sink;
-  manager_.CreateCompositorFrameSink(
-      kFrameSinkIdA, /*bundle_id=*/std::nullopt,
-      compositor_frame_sink.BindNewPipeAndPassReceiver(),
-      compositor_frame_sink_client.BindInterfaceRemote());
-  EXPECT_TRUE(CompositorFrameSinkExists(kFrameSinkIdA));
-
-  ParentLocalSurfaceIdAllocator allocator;
-  allocator.GenerateId();
-  const auto id1 = allocator.GetCurrentLocalSurfaceId();
-  const auto surface_id1 = SurfaceId(kFrameSinkIdA, id1);
-
-  manager_.GetFrameSinkForId(kFrameSinkIdA)
-      ->SubmitCompositorFrame(id1, MakeDefaultCompositorFrame());
-  auto* surface1 = manager_.surface_manager()->GetSurfaceForId(surface_id1);
-  ASSERT_TRUE(surface1);
-
-  // Invalidate the frame sink after we create the surface. This makes sure
-  // the exact request can only be taken by the exact surface, instead of being
-  // queued in the `CompositorFrameSinkSupport`.
-  manager_.InvalidateFrameSinkId(kFrameSinkIdA);
-
-  auto request = std::make_unique<CopyOutputRequest>(
-      CopyOutputRequest::ResultFormat::RGBA,
-      CopyOutputRequest::ResultDestination::kSystemMemory,
-      base::BindOnce([](std::unique_ptr<CopyOutputResult> result) {}));
-  auto* request_ptr = request.get();
-  manager_.RequestCopyOfOutput(surface_id1, std::move(request),
-                               /*capture_exact_surface_id=*/true);
-  ASSERT_TRUE(surface_observer_.IsSurfaceDamaged(surface_id1));
-  // `request` is emplaced at the end of the root RenderPass.
-  const auto& preserved_request = *(
-      surface1->GetActiveFrame().render_pass_list.back()->copy_requests.back());
-  // Expect the identical `CopyOutputRequest`.
-  ASSERT_EQ(&preserved_request, request_ptr);
-
-  // Already de-registered `kFrameSinkIdA`.
-
-  // For `manager_.RegisterBeginFrameSource`.
-  manager_.UnregisterBeginFrameSource(&source);
-}
-
-// Submit an exact copy request while there is no specified surface. Such
-// request will be queued in the `CompositorFrameSinkSupport`, just like the
-// non-exact requests.
-TEST_F(FrameSinkManagerTest,
-       ExactCopyOutputRequestQueuedInCompositorFrameSinkSupport) {
-  StubBeginFrameSource source;
-  manager_.RegisterBeginFrameSource(&source, kFrameSinkIdA);
-
-  // Create a CompositorFrameSinkImpl.
-  MockCompositorFrameSinkClient compositor_frame_sink_client;
-  mojo::Remote<mojom::CompositorFrameSink> compositor_frame_sink;
-  manager_.CreateCompositorFrameSink(
-      kFrameSinkIdA, /*bundle_id=*/std::nullopt,
-      compositor_frame_sink.BindNewPipeAndPassReceiver(),
-      compositor_frame_sink_client.BindInterfaceRemote());
-  EXPECT_TRUE(CompositorFrameSinkExists(kFrameSinkIdA));
-
-  ParentLocalSurfaceIdAllocator allocator;
-  allocator.GenerateId();
-  const auto id1 = allocator.GetCurrentLocalSurfaceId();
-  const auto surface_id1 = SurfaceId(kFrameSinkIdA, id1);
-
-  // Submit the request.
-  auto request = std::make_unique<CopyOutputRequest>(
-      CopyOutputRequest::ResultFormat::RGBA,
-      CopyOutputRequest::ResultDestination::kSystemMemory,
-      base::BindOnce([](std::unique_ptr<CopyOutputResult> result) {}));
-  auto* request_ptr = request.get();
-  manager_.RequestCopyOfOutput(surface_id1, std::move(request),
-                               /*capture_exact_surface_id=*/true);
-  // Won't be marked because the surface does not exist.
-  ASSERT_FALSE(surface_observer_.IsSurfaceDamaged(surface_id1));
-
-  auto* cfss = manager_.GetFrameSinkForId(kFrameSinkIdA);
-  ASSERT_TRUE(cfss);
-  // Since this is an exact request, it can only be taken by the matching
-  // `LocalSurfaceId`.
-  auto requests = cfss->TakeCopyOutputRequests(id1);
-  ASSERT_EQ(requests.size(), 1u);
-  ASSERT_EQ(requests[0].copy_output_request.get(), request_ptr);
-
-  manager_.InvalidateFrameSinkId(kFrameSinkIdA);
-  manager_.UnregisterBeginFrameSource(&source);
 }
 
 namespace {

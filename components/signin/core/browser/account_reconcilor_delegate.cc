@@ -33,7 +33,7 @@ bool AccountReconcilorDelegate::ShouldAbortReconcileIfPrimaryHasError() const {
 
 ConsentLevel AccountReconcilorDelegate::GetConsentLevelForPrimaryAccount()
     const {
-  return ConsentLevel::kSignin;
+  return ConsentLevel::kSync;
 }
 
 MultiloginParameters
@@ -175,8 +175,8 @@ AccountReconcilorDelegate::GetChromeAccountsForReconcile(
   return std::vector<CoreAccountId>();
 }
 
-void AccountReconcilorDelegate::RevokeSecondaryTokensForReconcileIfNeeded(
-    const std::vector<gaia::ListedAccount>& gaia_accounts) {}
+void AccountReconcilorDelegate::RevokeSecondaryTokensBeforeReconcileIfNeeded() {
+}
 
 void AccountReconcilorDelegate::OnAccountsCookieDeletedByUserAction(
     bool synced_data_deletion_in_progress) {}

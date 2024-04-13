@@ -9,7 +9,6 @@
 #include <set>
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/time/time.h"
 #include "components/keyed_service/core/keyed_service.h"
@@ -65,7 +64,7 @@ class AccountConsistencyService : public KeyedService,
 
   // Enqueues a request to set the CHROME_CONNECTED cookie for the domain of the
   // |url|. The cookie is set if it is not already on the domain.
-  void SetChromeConnectedCookieWithUrls(const std::vector<GURL>& urls);
+  void SetChromeConnectedCookieWithUrls(const std::vector<const GURL>& urls);
 
   // Removes CHROME_CONNECTED cookies on all the Google domains where it was
   // set. Calls callback once all cookies were removed.
@@ -116,16 +115,16 @@ class AccountConsistencyService : public KeyedService,
       const GoogleServiceAuthError& error) override;
 
   // Browser state associated with the service.
-  raw_ptr<web::BrowserState> browser_state_;
+  web::BrowserState* browser_state_;
   // Service managing accounts reconciliation, notified of GAIA responses with
   // the X-Chrome-Manage-Accounts header
-  raw_ptr<AccountReconcilor> account_reconcilor_;
+  AccountReconcilor* account_reconcilor_;
   // Cookie settings currently in use for |browser_state_|, used to check if
   // setting CHROME_CONNECTED cookies is valid.
   scoped_refptr<content_settings::CookieSettings> cookie_settings_;
   // Identity manager, observed to be notified of primary account signin and
   // signout events.
-  raw_ptr<signin::IdentityManager> identity_manager_;
+  signin::IdentityManager* identity_manager_;
 
   // The number of cookie manager requests that are being processed.
   // Used for testing purposes only.

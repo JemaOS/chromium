@@ -9,8 +9,7 @@
 namespace viz {
 
 std::string SubtreeCaptureId::ToString() const {
-  return base::StringPrintf("SubtreeCaptureId(%s)",
-                            subtree_id_.ToString().c_str());
+  return base::StringPrintf("SubtreeCaptureId(%u)", subtree_id_);
 }
 
 }  // namespace viz

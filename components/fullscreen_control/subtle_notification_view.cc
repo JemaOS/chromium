@@ -56,9 +56,8 @@ constexpr char16_t kKeyNameDelimiter[] = u"|";
 // Class containing the instruction text. Contains fancy styling on the keyboard
 // key (not just a simple label).
 class SubtleNotificationView::InstructionView : public views::View {
-  METADATA_HEADER(InstructionView, views::View)
-
  public:
+  METADATA_HEADER(InstructionView);
   // Creates an InstructionView with specific text. |text| may contain one or
   // more segments delimited by a pair of pipes ('|'); each of these segments
   // will be displayed as a keyboard key. e.g., "Press |Alt|+|Q| to exit" will
@@ -179,7 +178,7 @@ void SubtleNotificationView::InstructionView::AddTextSegment(
   AddChildView(key);
 }
 
-BEGIN_METADATA(SubtleNotificationView, InstructionView)
+BEGIN_METADATA(SubtleNotificationView, InstructionView, views::View)
 ADD_PROPERTY_METADATA(std::u16string, Text)
 END_METADATA
 
@@ -208,7 +207,7 @@ void SubtleNotificationView::UpdateContent(
     const std::u16string& instruction_text) {
   instruction_view_->SetText(instruction_text);
   instruction_view_->SetVisible(!instruction_text.empty());
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 void SubtleNotificationView::UpdateContent(
@@ -216,7 +215,7 @@ void SubtleNotificationView::UpdateContent(
     std::vector<std::unique_ptr<views::View>> key_images) {
   instruction_view_->SetTextAndImages(instruction_text, std::move(key_images));
   instruction_view_->SetVisible(!instruction_text.empty());
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 // static
@@ -226,16 +225,10 @@ views::Widget* SubtleNotificationView::CreatePopupWidget(
   // Initialize the popup.
   views::Widget* popup = new views::Widget;
   views::Widget::InitParams params(views::Widget::InitParams::TYPE_POPUP);
-#if !BUILDFLAG(IS_WIN)
-  // On Windows, this widget isn't parented on purpose to avoid it being
-  // obscured by other topmost widgets. See crbug.com/1431043.
-  // TODO(crbug.com/1459121): Aura should respect the fine-grained levels of
-  // topmost windows defined in ZOrderLevel.
-  params.parent = parent_view;
-#endif
   params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
   params.ownership = views::Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
   params.z_order = ui::ZOrderLevel::kSecuritySurface;
+  params.parent = parent_view;
   params.accept_events = false;
   popup->Init(std::move(params));
   popup->SetContentsView(std::move(view));
@@ -258,5 +251,5 @@ void SubtleNotificationView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   node_data->SetNameChecked(accessible_name);
 }
 
-BEGIN_METADATA(SubtleNotificationView)
+BEGIN_METADATA(SubtleNotificationView, views::View)
 END_METADATA

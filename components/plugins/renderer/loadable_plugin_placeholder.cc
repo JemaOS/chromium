@@ -39,8 +39,12 @@ void LoadablePluginPlaceholder::MaybeLoadBlockedPlugin(
 
 LoadablePluginPlaceholder::LoadablePluginPlaceholder(
     RenderFrame* render_frame,
-    const blink::WebPluginParams& params)
-    : PluginPlaceholderBase(render_frame, params) {}
+    const blink::WebPluginParams& params,
+    const std::string& html_data)
+    : PluginPlaceholderBase(render_frame, params, html_data),
+      is_blocked_for_prerendering_(false),
+      allow_loading_(false),
+      finished_loading_(false) {}
 
 LoadablePluginPlaceholder::~LoadablePluginPlaceholder() {
 }

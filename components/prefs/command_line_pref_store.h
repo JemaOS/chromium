@@ -5,13 +5,9 @@
 #ifndef COMPONENTS_PREFS_COMMAND_LINE_PREF_STORE_H_
 #define COMPONENTS_PREFS_COMMAND_LINE_PREF_STORE_H_
 
-#include "base/containers/span.h"
+#include "base/command_line.h"
 #include "base/memory/raw_ptr.h"
 #include "components/prefs/value_map_pref_store.h"
-
-namespace base {
-class CommandLine;
-}
 
 // Base class for a PrefStore that maps command line switches to preferences.
 // The Apply...Switches() methods can be called by subclasses with their own
@@ -37,22 +33,24 @@ class COMPONENTS_PREFS_EXPORT CommandLinePrefStore : public ValueMapPrefStore {
   // Apply command-line switches to the corresponding preferences of the switch
   // map, where the value associated with the switch is a string.
   void ApplyStringSwitches(
-      base::span<const SwitchToPreferenceMapEntry> string_switch_map);
+      const SwitchToPreferenceMapEntry string_switch_map[], size_t size);
 
   // Apply command-line switches to the corresponding preferences of the switch
   // map, where the value associated with the switch is a path.
-  void ApplyPathSwitches(
-      base::span<const SwitchToPreferenceMapEntry> path_switch_map);
+  void ApplyPathSwitches(const SwitchToPreferenceMapEntry path_switch_map[],
+                         size_t size);
 
   // Apply command-line switches to the corresponding preferences of the switch
   // map, where the value associated with the switch is an integer.
   void ApplyIntegerSwitches(
-      base::span<const SwitchToPreferenceMapEntry> integer_switch_map);
+      const SwitchToPreferenceMapEntry integer_switch_map[], size_t size);
 
   // Apply command-line switches to the corresponding preferences of the
   // boolean switch map.
   void ApplyBooleanSwitches(
-      base::span<const BooleanSwitchToPreferenceMapEntry> boolean_switch_map);
+      const BooleanSwitchToPreferenceMapEntry boolean_switch_map[],
+      size_t size);
+
 
  protected:
   explicit CommandLinePrefStore(const base::CommandLine* command_line);

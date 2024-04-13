@@ -12,7 +12,9 @@ import android.os.Build;
 
 import java.util.Locale;
 
-/** Constructs a User-Agent string. */
+/**
+ * Constructs a User-Agent string.
+ */
 public final class UserAgent {
     private static final Object sLock = new Object();
 

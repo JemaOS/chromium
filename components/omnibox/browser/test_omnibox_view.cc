@@ -6,9 +6,6 @@
 
 #include <algorithm>
 
-#include "components/omnibox/browser/omnibox_controller.h"
-#include "components/omnibox/browser/test_omnibox_client.h"
-#include "components/omnibox/browser/test_omnibox_edit_model.h"
 #include "ui/gfx/native_widget_types.h"
 
 // static
@@ -24,6 +21,10 @@ OmniboxView::State TestOmniboxView::CreateState(std::string text,
   state.sel_end = sel_end;
   state.all_sel_length = all_sel_length;
   return state;
+}
+
+void TestOmniboxView::SetModel(std::unique_ptr<OmniboxEditModel> model) {
+  model_ = std::move(model);
 }
 
 std::u16string TestOmniboxView::GetText() const {
@@ -98,11 +99,11 @@ bool TestOmniboxView::OnAfterPossibleChange(bool allow_keyword_ui_change) {
 }
 
 gfx::NativeView TestOmniboxView::GetNativeView() const {
-  return gfx::NativeView();
+  return nullptr;
 }
 
 gfx::NativeView TestOmniboxView::GetRelativeWindowForPopup() const {
-  return gfx::NativeView();
+  return nullptr;
 }
 
 bool TestOmniboxView::IsImeComposing() const {

@@ -17,18 +17,13 @@ class ArcPackageSpecifics;
 class AutofillProfileSpecifics;
 class AutofillSpecifics;
 class AutofillOfferSpecifics;
-class AutofillWalletCredentialSpecifics;
 class AutofillWalletSpecifics;
 class AutofillWalletUsageSpecifics;
-class BankAccountDetails;
 class BookmarkSpecifics;
 class ClientConfigParams;
 class ClientToServerMessage;
 class ClientToServerResponse;
-class CollaborationGroupSpecifics;
-class CompareSpecifics;
 class ContactInfoSpecifics;
-class CrossUserSharingPublicKey;
 class DebugEventInfo;
 class DebugInfo;
 class DeviceInfoSpecifics;
@@ -40,19 +35,15 @@ class ExtensionSettingSpecifics;
 class ExtensionSpecifics;
 class HistoryDeleteDirectiveSpecifics;
 class HistorySpecifics;
-class IncomingPasswordSharingInvitationSpecifics;
 class LinkedAppIconInfo;
 class ManagedUserSettingSpecifics;
 class NavigationRedirect;
 class NigoriSpecifics;
 class OsPreferenceSpecifics;
 class OsPriorityPreferenceSpecifics;
-class OutgoingPasswordSharingInvitationSpecifics;
 class PasswordSpecifics;
 class PasswordSpecificsData;
-class PaymentInstrument;
 class PaymentsCustomerData;
-class PlusAddressSpecifics;
 class PowerBookmarkSpecifics;
 class PreferenceSpecifics;
 class PrinterPPDReference;
@@ -83,7 +74,6 @@ class WalletCreditCardCloudTokenData;
 class WalletMaskedCreditCard;
 class WalletMetadataSpecifics;
 class WalletPostalAddress;
-class WebApkSpecifics;
 class WebAppSpecifics;
 class WebauthnCredentialSpecifics;
 class WifiConfigurationSpecifics;
@@ -118,10 +108,6 @@ base::Value AutofillProfileSpecificsToValue(
 base::Value AutofillSpecificsToValue(
     const sync_pb::AutofillSpecifics& autofill_specifics);
 
-base::Value AutofillWalletCredentialSpecificsToValue(
-    const sync_pb::AutofillWalletCredentialSpecifics&
-        autofill_wallet_credential_specifics);
-
 base::Value AutofillWalletSpecificsToValue(
     const sync_pb::AutofillWalletSpecifics& autofill_wallet_specifics);
 
@@ -129,19 +115,10 @@ base::Value AutofillWalletUsageSpecificsToValue(
     const sync_pb::AutofillWalletUsageSpecifics&
         autofill_wallet_usage_specifics);
 
-base::Value BankAccountDetailsToValue(
-    const sync_pb::BankAccountDetails& bank_account_details);
-
 base::Value BookmarkSpecificsToValue(
     const sync_pb::BookmarkSpecifics& bookmark_specifics);
 
 base::Value ClientConfigParamsToValue(const sync_pb::ClientConfigParams& proto);
-
-base::Value CollaborationGroupSpecificsToValue(
-    const sync_pb::CollaborationGroupSpecifics& proto);
-
-base::Value CompareSpecificsToValue(
-    const sync_pb::CompareSpecifics& compare_specifics);
 
 base::Value ContactInfoSpecificsToValue(
     const sync_pb::ContactInfoSpecifics& proto);
@@ -175,9 +152,6 @@ base::Value HistoryDeleteDirectiveSpecificsToValue(
 base::Value HistorySpecificsToValue(
     const sync_pb::HistorySpecifics& history_specifics);
 
-base::Value IncomingPasswordSharingInvitationSpecificsToValue(
-    const sync_pb::IncomingPasswordSharingInvitationSpecifics& specifics);
-
 base::Value LinkedAppIconInfoToValue(
     const sync_pb::LinkedAppIconInfo& linked_app_icon_info);
 
@@ -196,26 +170,17 @@ base::Value OsPreferenceSpecificsToValue(
 base::Value OsPriorityPreferenceSpecificsToValue(
     const sync_pb::OsPriorityPreferenceSpecifics& specifics);
 
-base::Value OutgoingPasswordSharingInvitationSpecificsToValue(
-    const sync_pb::OutgoingPasswordSharingInvitationSpecifics& specifics);
-
 base::Value PasswordSpecificsToValue(
     const sync_pb::PasswordSpecifics& password_specifics);
 
 base::Value PasswordSpecificsDataToValue(
     const sync_pb::PasswordSpecificsData& password_specifics_data);
 
-base::Value PaymentInstrumentToValue(
-    const sync_pb::PaymentInstrument& payment_instrument);
+base::Value PowerBookmarkSpecificsToValue(
+    const sync_pb::PowerBookmarkSpecifics& power_bookmark_specifics);
 
 base::Value PaymentsCustomerDataToValue(
     const sync_pb::PaymentsCustomerData& payments_customer_data);
-
-base::Value PlusAddressSpecificsToValue(
-    const sync_pb::PlusAddressSpecifics& plus_address_specifics);
-
-base::Value PowerBookmarkSpecificsToValue(
-    const sync_pb::PowerBookmarkSpecifics& power_bookmark_specifics);
 
 base::Value PreferenceSpecificsToValue(
     const sync_pb::PreferenceSpecifics& password_specifics);
@@ -232,9 +197,6 @@ base::Value PrintersAuthorizationServerSpecificsToValue(
 
 base::Value PriorityPreferenceSpecificsToValue(
     const sync_pb::PriorityPreferenceSpecifics& proto);
-
-base::Value CrossUserSharingPublicKeyToValue(
-    const sync_pb::CrossUserSharingPublicKey& proto);
 
 base::Value ReadingListSpecificsToValue(
     const sync_pb::ReadingListSpecifics& proto);
@@ -300,9 +262,6 @@ base::Value WalletMetadataSpecificsToValue(
 
 base::Value WalletPostalAddressToValue(
     const sync_pb::WalletPostalAddress& wallet_postal_address);
-
-base::Value WebApkSpecificsToValue(
-    const sync_pb::WebApkSpecifics& web_apk_specifics);
 
 base::Value WebAppSpecificsToValue(
     const sync_pb::WebAppSpecifics& web_app_specifics);

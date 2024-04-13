@@ -28,23 +28,32 @@ group("common") {
 }
 
 use_crashpad_annotation =
-    (is_mac || is_ios || is_win || is_android || is_chromeos ||
-     (is_linux && !is_castos)) && !use_crash_key_stubs
+    (is_mac || (is_ios && use_blink && !is_official_build) || is_win ||
+     is_android || (is_linux && !is_castos)) && !use_crash_key_stubs
 
-# Make sure that breakpad use is limited to is_castos here so that there's no
-# unknown unenumerated target.
-assert(use_crash_key_stubs || use_crashpad_annotation || is_castos)
+# Causes both Crashpad and Breakpad crash keys to be used. Both key
+# implementations will be instantiated and set, doubling the storage
+# used for keys. This is intended to be used temporarily to test Crashpad
+# integrations without disabling Breakpad.
+use_combined_annotations =
+    ((is_ios && (!use_blink || is_official_build) && !is_cronet_build) ||
+     is_chromeos) && !use_crash_key_stubs
 
 buildflag_header("crash_buildflags") {
   header = "crash_buildflags.h"
   flags = [
     "USE_CRASHPAD_ANNOTATION=$use_crashpad_annotation",
+    "USE_COMBINED_ANNOTATIONS=$use_combined_annotations",
     "USE_CRASH_KEY_STUBS=$use_crash_key_stubs",
   ]
 }
 
 group("crash_key") {
   public_deps = [ ":crash_key_lib" ]
+
+  if (use_combined_annotations) {
+    public_deps += [ "//third_party/crashpad/crashpad/client" ]
+  }
 }
 
 # Crashpad's annotation system can store data on a per-module basis (i.e.,
@@ -96,12 +105,25 @@ target(crash_key_target_type, "crash_key_lib") {
   } else {
     include_dirs = [ "//third_party/breakpad/breakpad/src" ]
 
-    sources += [
-      "crash_key_breakpad.cc",
-      "crash_key_internal.h",
-    ]
+    if (is_ios) {
+      sources += [ "crash_key_breakpad_ios.mm" ]
+      deps += [
+        ":reporter_running_ios",
+        "//components/previous_session_info",
+      ]
+
+      configs += [ "//build/config/compiler:enable_arc" ]
+    } else {
+      sources += [
+        "crash_key_breakpad.cc",
+        "crash_key_internal.h",
+      ]
+    }
 
     deps += [ "//third_party/breakpad:client" ]
+    if (use_combined_annotations) {
+      public_deps += [ "//third_party/crashpad/crashpad/client" ]
+    }
   }
 }
 
@@ -129,10 +151,6 @@ if (is_apple) {
     ]
 
     defines = [ "CRASH_CORE_COMMON_IMPLEMENTATION" ]
-
-    # Do not compile with ARC because ARC would prevent intercepting and
-    # interfering with low-level object destruction.
-    configs -= [ "//build/config/compiler:enable_arc" ]
 
     deps = [
       ":crash_key",
@@ -172,13 +190,13 @@ source_set("unit_tests") {
 
   if (is_apple) {
     sources += [ "objc_zombie_unittest.mm" ]
-
-    # Do not compile with ARC because ARC would prevent intercepting and
-    # interfering with low-level object destruction.
-    configs -= [ "//build/config/compiler:enable_arc" ]
   }
 
-  if (is_castos) {
+  if (is_ios && use_combined_annotations) {
+    sources += [ "crash_key_breakpad_ios_unittest.cc" ]
+    deps += [ "//third_party/breakpad:client" ]
+    include_dirs = [ "//third_party/breakpad/breakpad/src/" ]
+  } else if (is_castos || is_chromeos) {
     include_dirs = [ "//third_party/breakpad/breakpad/src/" ]
     sources += [ "crash_key_breakpad_unittest.cc" ]
   }

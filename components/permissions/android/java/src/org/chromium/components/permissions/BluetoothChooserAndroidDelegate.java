@@ -6,7 +6,9 @@ package org.chromium.components.permissions;
 
 import org.chromium.components.omnibox.AutocompleteSchemeClassifier;
 
-/**  Provides embedder-level information to {@link BluetoothChooserDialog}. */
+/**
+ *  Provides embedder-level information to {@link BluetoothChooserDialog}.
+ */
 public interface BluetoothChooserAndroidDelegate {
     /**
      * Creates a new {@link AutoCompleteSchemeClassifier}. After use

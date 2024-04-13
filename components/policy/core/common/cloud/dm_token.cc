@@ -9,21 +9,23 @@
 namespace policy {
 
 // static
-DMToken DMToken::CreateValidToken(const std::string& value) {
+DMToken DMToken::CreateValidTokenForTesting(const std::string& value) {
   return DMToken(Status::kValid, value);
 }
 
 // static
-DMToken DMToken::CreateInvalidToken() {
+DMToken DMToken::CreateInvalidTokenForTesting() {
   return DMToken(Status::kInvalid, "");
 }
 
 // static
-DMToken DMToken::CreateEmptyToken() {
+DMToken DMToken::CreateEmptyTokenForTesting() {
   return DMToken(Status::kEmpty, "");
 }
 
-DMToken::DMToken(Status status, const std::string_view value)
+DMToken::DMToken() : DMToken(Status::kEmpty, "") {}
+
+DMToken::DMToken(Status status, const base::StringPiece value)
     : status_(status), value_(value) {}
 
 const std::string& DMToken::value() const {

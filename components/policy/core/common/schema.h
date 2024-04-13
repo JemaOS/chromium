@@ -5,15 +5,16 @@
 #ifndef COMPONENTS_POLICY_CORE_COMMON_SCHEMA_H_
 #define COMPONENTS_POLICY_CORE_COMMON_SCHEMA_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "absl/types/variant.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "base/memory/ref_counted.h"
 #include "base/values.h"
 #include "components/policy/policy_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 namespace internal {
@@ -73,11 +74,6 @@ enum SchemaOnErrorStrategy {
 constexpr int kSchemaOptionsNone = 0;
 constexpr int kSchemaOptionsIgnoreUnknownAttributes = 1 << 0;
 
-// String used to hide sensitive policy values.
-// It should be consistent with the mask |NetworkConfigurationPolicyHandler|
-// uses for network credential fields.
-extern const char kSensitiveValueMask[];
-
 class Schema;
 
 typedef std::vector<Schema> SchemaList;
@@ -133,7 +129,7 @@ class POLICY_EXPORT Schema {
   // accept any strings.
   // |options| is a bitwise-OR combination of the options above (see
   // |kSchemaOptions*| above).
-  static std::optional<base::Value::Dict> ParseToDictAndValidate(
+  static absl::optional<base::Value::Dict> ParseToDictAndValidate(
       const std::string& schema,
       int options,
       std::string* error);
@@ -203,7 +199,7 @@ class POLICY_EXPORT Schema {
    private:
     scoped_refptr<const InternalStorage> storage_;
     raw_ptr<const internal::PropertyNode, AllowPtrArithmetic> it_;
-    raw_ptr<const internal::PropertyNode, AllowPtrArithmetic> end_;
+    raw_ptr<const internal::PropertyNode> end_;
   };
 
   // These methods should be called only if type() == Type::DICT,
@@ -274,8 +270,9 @@ class POLICY_EXPORT Schema {
   void MaskSensitiveValuesRecursive(base::Value* value) const;
 
   scoped_refptr<const InternalStorage> storage_;
-  raw_ptr<const internal::SchemaNode, DanglingUntriaged | AllowPtrArithmetic>
-      node_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #union
+  RAW_PTR_EXCLUSION const internal::SchemaNode* node_;
 };
 
 }  // namespace policy

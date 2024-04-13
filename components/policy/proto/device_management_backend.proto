@@ -40,7 +40,6 @@ message LicenseType {
 // is currently logged in.
 // This enum is used in the response payload of the
 // `FETCH_CRD_AVAILABILITY_INFO` remote command.
-// NOTE: Please DO NOT rename enum entries as they are used by external APIs.
 enum UserSessionType {
   USER_SESSION_TYPE_UNKNOWN = 0;
   AUTO_LAUNCHED_KIOSK_SESSION = 1;
@@ -67,7 +66,6 @@ enum CrdSessionType {
 // Enum indicating why a CRD session is or is not available.
 // This enum is used in the response payload of the
 // `FETCH_CRD_AVAILABILITY_INFO` remote command.
-// NOTE: Please DO NOT rename enum entries as they are used by external APIs.
 enum CrdSessionAvailability {
   CRD_SESSION_AVAILABILITY_UNKNOWN = 0;
   // The CRD session is available and the admin can start a CRD session.
@@ -77,72 +75,6 @@ enum CrdSessionAvailability {
   // The CRD session is not available since the device is in an unmanaged
   // environment.
   UNAVAILABLE_UNMANAGED_ENVIRONMENT = 3;
-  // The CRD session type is unsupported by device os version
-  UNAVAILABLE_UNSUPPORTED_DEVICE_OS_VERSION = 4;
-  // CRD is disabled on the device by the 'enterprise remote support connection'
-  // policy.
-  UNAVAILABLE_DISABLED_BY_POLICY = 5;
-}
-
-// Result code used in the response payload of the `START_CRD_SESSION` remote
-// command. This is used because it is more granular than the normal
-// `ResultType` enum used as the result code for a remote command.
-enum StartCrdSessionResultCode {
-  START_CRD_SESSION_RESULT_UNKNOWN = -1;
-  // Successfully obtained access code.
-  START_CRD_SESSION_SUCCESS = 0;
-  // Failed as required services are not launched on the device.
-  SERVICES_NOT_READY = 1;
-  // Failure as the current user type does not support remotely starting CRD.
-  FAILURE_UNSUPPORTED_USER_TYPE = 2;
-  // Failed as device is currently in use and no interruptUser flag is set.
-  FAILURE_NOT_IDLE = 3;
-  // Failed as we could not get OAuth token for whatever reason.
-  FAILURE_NO_OAUTH_TOKEN = 4;
-  // Failed as we could not get ICE configuration for whatever reason.
-  // deprecated
-  FAILURE_NO_ICE_CONFIG = 5;
-  // Failure during attempt to start CRD host and obtain CRD token.
-  FAILURE_CRD_HOST_ERROR = 6;
-  // Failure to start a curtained session as we're not in a managed environment.
-  FAILURE_UNMANAGED_ENVIRONMENT = 7;
-  // Failed because RemoteAccessHostAllowEnterpriseRemoteSupportConnections
-  // policy is disabled.
-  FAILURE_DISABLED_BY_POLICY = 8;
-}
-
-// Result code used in the response payload of the `FETCH_SUPPORT_PACKET` remote
-// command. The response payload will be a JSON string as follows:
-// {
-//   "result": <FetchSupportPacketResultCode enum>,
-//   (optional) "notes": [<FetchSupportPacketResultNote enums>]
-// }
-enum FetchSupportPacketResultCode {
-  // Unspecified result.
-  FETCH_SUPPORT_PACKET_RESULT_CODE_UNSPECIFIED = 0;
-  // Success.
-  FETCH_SUPPORT_PACKET_RESULT_SUCCESS = 1;
-  // Command is not enabled for the device or the user.
-  FAILURE_COMMAND_NOT_ENABLED = 2;
-  // Failed to create the file to upload.
-  FAILURE_EXPORTING_FILE = 3;
-  // Internal failure at reporting pipeline. LogUploadEvent can't be enqueued.
-  FAILURE_REPORTING_PIPELINE = 4;
-  // File upload to File Storage Server has failed.
-  FAILURE_LOG_UPLOAD = 5;
-}
-
-// Result payload field that will used for FETCH_SUPPORT_PACKET remote command.
-// This field represents the warnings or notes that the device sends along with
-// the command result. This enum will be used to attach optional notes to
-// successful execution. Failure details will be send to the server in
-// FetchSupportPacketResultCode enum.
-enum FetchSupportPacketResultNote {
-  FETCH_SUPPORT_PACKET_RESULT_PAYLOAD_UNSPECIFIED = 0;
-  // Warning that the requested PII is not allowed to be included in the
-  // collected logs due to privacy issues. This is not an error but a warning to
-  // the admin. The log file will be created and uploaded without PII.
-  WARNING_PII_NOT_ALLOWED = 1;
 }
 
 // Data along with a cryptographic signature verifying their authenticity.
@@ -161,8 +93,6 @@ message CheckUserAccountRequest {
   // Email address of a user.
   // The user may not exist in GAIA.
   optional string user_email = 1;
-  // If enrollment nudge policy is required.
-  optional bool enrollment_nudge_request = 2 [default = false];
 }
 
 // Request from device to server to register a device, user or browser.
@@ -269,13 +199,6 @@ message DeviceRegisterRequest {
     // Attestation re-enrollment just failed, attempt manual enrollment as
     // fallback.
     FLAVOR_ENROLLMENT_ATTESTATION_ROLLBACK_MANUAL_FALLBACK = 17;
-    // Device state downloaded from the server indicated that initial enrollment
-    // is mandatory and should be token-based.
-    FLAVOR_ENROLLMENT_TOKEN_INITIAL_SERVER_FORCED = 18;
-    // Device state downloaded from the server indicated that initial
-    // token-based enrollment is mandatory, but it failed and we are doing
-    // fallback to manual enrollment.
-    FLAVOR_ENROLLMENT_TOKEN_INITIAL_MANUAL_FALLBACK = 19;
   }
 
   // Indicates the registration flavor. This is passed to the server FYI when
@@ -352,12 +275,7 @@ message DeviceRegisterRequest {
   // milliseconds since Epoch in UTC timezone (Java time).
   optional int64 psm_determination_timestamp_ms = 20;
 
-  // Information specific to Demo Mode about the device and the demo context.
-  // Only set when the device is enrolling into Demo Mode, as defined by
-  // DeviceRegisterRequest.requisition == "cros-demo-mode".
-  optional DemoModeDimensions demo_mode_dimensions = 21;
-
-  // Next id: 22.
+  // Next id: 21.
 }
 
 // Identification of a device used during its registration.
@@ -386,19 +304,6 @@ message CheckUserAccountResponse {
 
   // The account type mapping from the specific user email.
   optional UserAccountType user_account_type = 2;
-
-  // Enum listing the possible enrollment nudge types.
-  enum EnrollmentNudgeType {
-    UNKNOWN_ENROLLMENT_NUDGE_TYPE = 0;
-    // Enrollment is not required.
-    NONE = 1;
-    // Requires the user to complete the enrollment process before they can
-    // login.
-    ENROLLMENT_REQUIRED = 2;
-  }
-
-  // Whether to nudge managed users to enroll unowned devices.
-  optional EnrollmentNudgeType enrollment_nudge_type = 3;
 }
 
 // Response from server to device register request.
@@ -426,9 +331,9 @@ message DeviceRegisterResponse {
     // device settings from the cloud, but additionally this mode enables the
     // demo account on the device.
     RETAIL_DEPRECATED = 1;
-    // DEPRECATED: Devices in CHROME_AD mode are in enterprises with AD.  Device
-    // settings are controlled through the AD policy infrastructure.
-    CHROME_AD_DEPRECATED = 2;
+    // Devices in CHROME_AD mode are in enterprises with AD.  Device settings
+    // are controlled through the AD policy infrastructure.
+    CHROME_AD = 2;
     // Devices in DEMO mode have no local owner and get their device settings
     // from the cloud. They are controlled by demo mode domain and provide
     // customized demo experience to the users.
@@ -445,29 +350,6 @@ message DeviceRegisterResponse {
   // registering for policy is affiliated on the device.
   // Only sent if DeviceRegisterRequest.Type == USER
   repeated string user_affiliation_ids = 5;
-
-  // The display name Chrome should use when setting up the profile, used for
-  // OIDC managed profile only.
-  optional string user_display_name = 7;
-
-  // The email of the user who logged into this profile, used for OIDC managed
-  // profile only.
-  optional string user_email = 8;
-
-  // Enum listing the possible types of the third party identity used for OIDC
-  // managed profiles.
-  enum ThirdPartyIdentityType {
-    // The profile does not have third party identity.
-    NONE = 0;
-    // The third party identity is synced to Google (Dasher) and there is an
-    // associated GAIA ID for it.
-    DASHER_BASED = 1;
-    // The third party identity is not synced to Google and there is no
-    // associated GAIA ID for it.
-    DASHERLESS = 2;
-  }
-  optional ThirdPartyIdentityType third_party_identity_type = 9
-      [default = NONE];
 }
 
 // Request from device to server to unregister device.
@@ -919,13 +801,6 @@ message PolicyFetchResponse {
   // to new_public_key_verification_data_signature, but is computed over
   // DEPRECATEDPolicyPublicKeyAndDomain (which is equivalent to
   // PublicKeyVerificationData proto with version field unset).
-  //
-  // Do not remove this unless you know for sure that this is not required by
-  // managed devices any more, including devices that might be pinned to
-  // milestones older than current Stable.
-  // Note: As of February 2024, this is still strictly required by
-  // CloudPolicyValidator, see
-  // https://source.chromium.org/chromium/chromium/src/+/main:components/policy/core/common/cloud/cloud_policy_validator.cc;drc=08b91b49531894cbe9061a1148fd535155c2554b;l=407
   optional bytes new_public_key_verification_signature_deprecated = 7
       [deprecated = true];
 
@@ -1007,48 +882,6 @@ message DevicePolicyRequest {
   // from a non-TT client.  The repeated field allows clients to request
   // multiple policies for better performance.
   repeated PolicyFetchRequest requests = 3;
-
-  // Reason for the requesting policies, to help with monitoring and alerting
-  // (e.g. to detect an increase in fetch failures during enrollment).
-  enum Reason {
-    UNSPECIFIED = 0;
-    // Required policy fetch during device enrollment.
-    DEVICE_ENROLLMENT = 1;
-    // Policy fetch triggered by incoming FCM invalidation.
-    INVALIDATION = 2;
-    // CloudPolicyClient registration changed (e.g. during startup).
-    REGISTRATION_CHANGED = 3;
-    // Retry after previous policy fetch failure.
-    RETRY = 4;
-    // Various retry reasons based on DMServer status, see
-    // `CloudPolicyRefreshScheduler`.
-    RETRY_AFTER_STATUS_SERVICE_ACTIVATION_PENDING = 5;
-    RETRY_AFTER_STATUS_SERVICE_POLICY_NOT_FOUND = 6;
-    RETRY_AFTER_STATUS_SERVICE_TOO_MANY_REQUESTS = 7;
-    RETRY_AFTER_STATUS_REQUEST_FAILED = 8;
-    RETRY_AFTER_STATUS_TEMPORARY_UNAVAILABLE = 9;
-    RETRY_AFTER_STATUS_CANNOT_SIGN_REQUEST = 10;
-    RETRY_AFTER_STATUS_REQUEST_INVALID = 11;
-    RETRY_AFTER_STATUS_HTTP_STATUS_ERROR = 12;
-    RETRY_AFTER_STATUS_RESPONSE_DECODING_ERROR = 13;
-    RETRY_AFTER_STATUS_SERVICE_MANAGEMENT_NOT_SUPPORTED = 14;
-    RETRY_AFTER_STATUS_REQUEST_TOO_LARGE = 15;
-    // Scheduled policy refresh (e.g. once per day).
-    SCHEDULED = 16;
-    // Policy fetch triggered by sign-in.
-    SIGNIN = 17;
-    // A placeholder reason used for tests (should not occur in production).
-    TEST = 18;
-    // Policy fetched at browser start, e.g. device policies at Ash start.
-    BROWSER_START = 19;
-    // ChromeOS Policy fetch request from Lacros to Ash.
-    LACROS = 20;
-    // Policy fetched as requested by the user, e.g. through chrome://policy.
-    USER_REQUEST = 21;
-    // Policy fetches triggered by the Chrome Remote Desktop policy watcher.
-    CRD_HOST_POLICY_WATCHER = 22;
-  }
-  optional Reason reason = 4;
 }
 
 // Response from server to device for reading policies.
@@ -1660,25 +1493,6 @@ message LaCrOsBrowserReport {
   optional BrowserReport browser_report = 2;
 }
 
-// Information specific to Demo Mode about the device and the demo context.
-message DemoModeDimensions {
-  // Two-letter country code.
-  optional string country = 1;
-  // Name of the retailer whose store the device is running in. Also called
-  // retailer_id elsewhere in some legacy field names.
-  optional string retailer_name = 2;
-  // Retailer-defined number to identify the store that a device is running in.
-  // Also called store_id elsewhere in some legacy field names.
-  optional string store_number = 3;
-  // Device attributes significant to Demo Mode for customization purposes.
-  enum CustomizationFacet {
-    UNDEFINED = 0;
-    CLOUD_GAMING_DEVICE = 1;
-    FEATURE_AWARE_DEVICE = 2;
-  }
-  repeated CustomizationFacet customization_facets = 4;
-}
-
 // Report device level status.
 message DeviceStatusReportRequest {
   reserved 4, 7, 13, 20;
@@ -1826,10 +1640,6 @@ message DeviceStatusReportRequest {
 
   // Flag whether LaCros is the primary browser.
   optional bool is_lacros_primary_browser = 48;
-
-  // Information specific to Demo Mode about the device and the demo context.
-  // Only included for devices in Demo Mode.
-  optional DemoModeDimensions demo_mode_dimensions = 49;
 }
 
 message OsUpdateStatus {
@@ -2193,8 +2003,6 @@ message ExtensionPolicy {
 // Cloud policy last fetch time.
 message PolicyFetchTimestamp {
   // The type of cloud policy.
-  // TODO(b/327655459): This field is deprecated, delete once server
-  // side references are all removed.
   optional string type = 1;
   // The last time the policies where fetched for the policy type.
   // [timestamp] is milliseconds since Epoch in UTC timezone (Java time).
@@ -2299,9 +2107,14 @@ message OSReport {
   optional VersionType version_type = 4;
 }
 
+// An enum shows which information a partial CBCM report contains.
+enum PartialReportType {
+  UNSPECIFIED = 0;
+  EXTENSION_REQUEST = 1;
+}
+
 // Report the status of a Chrome installation on non-Chrome OS platform.
 message ChromeDesktopReportRequest {
-  reserved 10;
   // The name of the machine within its local network. The string is a JSON
   // encoded structure with a single computername field.
   // This field is replaced by computer_name and only used by old Chrome
@@ -2335,6 +2148,10 @@ message ChromeDesktopReportRequest {
   // TODO(crbug.com/1105938): This will also replace the computer_name and
   // serial_number fields.
   optional BrowserDeviceIdentifier browser_device_identifier = 9;
+  // A list of flags indicating that the report only contains particular
+  // information. When the list is empty or unset, the report should contain all
+  // information.
+  repeated PartialReportType partial_report_types = 10;
   // Public key that can be used for attesting the machine.
   optional string machine_attestation_key = 11;
   // A string that represents the device model.
@@ -2346,11 +2163,14 @@ message ChromeDesktopReportRequest {
 // Report user level status on Chrome OS platform. Chrome OS equivalent of
 // ChromeDesktopReportRequest.
 message ChromeOsUserReportRequest {
-  reserved 3;
   // Browser related info.
   optional BrowserReport browser_report = 1;
   // Android applications installed in primary profile.
   repeated AndroidAppInfo android_app_infos = 2;
+  // A list of flags indicates that the report only contains particular
+  // information. When list is empty or unset, the report should contains all
+  // information.
+  repeated PartialReportType partial_report_types = 3;
 }
 
 // Report user level status on all platforms. It includes the information of the
@@ -2369,7 +2189,7 @@ message PolicyValueValidationIssue {
   // Policy name of the faulty value.
   optional string policy_name = 1;
 
-  // LINT.IfChange
+  // # LINT.IfChange
   enum ValueValidationIssueSeverity {
     // Default value for when a severity is not specified.
     VALUE_VALIDATION_ISSUE_SEVERITY_UNSPECIFIED = 0;
@@ -2380,8 +2200,8 @@ message PolicyValueValidationIssue {
     // This result is an error. The policy blob was rejected completely and not
     // updated on the device.
     VALUE_VALIDATION_ISSUE_SEVERITY_ERROR = 2;
-  }
-  // LINT.ThenChange(//depot/google3/chrome/cros/reporting/api/proto/policy_validation_report.proto)
+  }  // LINT.ThenChange(
+  // //depot/google3/chrome/cros/reporting/api/proto/policy_validation_report.proto)
 
   // Severity of this policy value validation result.
   optional ValueValidationIssueSeverity severity = 2;
@@ -2471,8 +2291,8 @@ message PolicyValidationReportRequest {
     // payload validation errors, and zero or more payload validation warnings.
     // Client behavior: Policy blob rejected.
     VALIDATION_RESULT_TYPE_VALUE_ERROR = 15;
-  }
-  // LINT.ThenChange(//depot/google3/chrome/cros/reporting/api/proto/policy_validation_report.proto)
+  }  // LINT.ThenChange(
+  // //depot/google3/chrome/cros/reporting/api/proto/policy_validation_report.proto)
 
   // The validation result.
   optional ValidationResultType validation_result_type = 3;
@@ -2709,11 +2529,6 @@ message DeviceAutoEnrollmentResponse {
 // and secondary state enrollment. In this case, this request can also be sent
 // by brand new devices and the server would not know their serial number and
 // brand code, hence the values are supplied as part of the request.
-//
-// Another device state retrieval scenario is Flex Auto Enrollment initial
-// state determination, in which case the Flex enrollment token is included
-// (along with brand code and serial number) to retrieve token-keyed state
-// from the server.
 message DeviceStateRetrievalRequest {
   // Opaque, client-determined, unpredictable, stable and unique device
   // identifier to retrieve state for. This field contains 32 bytes of data that
@@ -2727,9 +2542,6 @@ message DeviceStateRetrievalRequest {
 
   // The 4-character brand code of the device.
   optional string brand_code = 3;
-
-  // The enrollment token for Flex Auto Enrollment.
-  optional string enrollment_token = 4;
 }
 
 // Sent by the client to the server when in registered state to update the
@@ -2792,9 +2604,6 @@ message DeviceInitialEnrollmentStateRequest {
 
   // The 4-character brand code of the device.
   optional string brand_code = 2;
-
-  // The enrollment token for Flex Auto Enrollment.
-  optional string enrollment_token = 3;
 }
 
 // Response from server DeviceInitialEnrollmentStateRequest.
@@ -2811,8 +2620,6 @@ message DeviceInitialEnrollmentStateResponse {
     // The device has been disabled by its owner. The device will show a warning
     // screen and prevent the user from proceeding further.
     INITIAL_ENROLLMENT_MODE_DISABLED = 3;
-    // Token-based enrollment is enforced and cannot be skipped.
-    INITIAL_ENROLLMENT_MODE_TOKEN_ENROLLMENT_ENFORCED = 4;
   }
 
   // The server-indicated initial enrollment mode.
@@ -3033,13 +2840,6 @@ message RemoteCommand {
   // |DEVICE_GET_DIAGNOSTIC_ROUTINE_UPDATE|: {"id" : id_integer, "command" :
   // command, "includeOutput" : include_output_bool}, where command must be a
   // valid `ash::cros_healthd::mojom::DiagnosticRoutineCommandEnum`.
-  // |DEVICE_REBOOT|: {"user_session_delay_s": delay_integer}, where delay value
-  // represents seconds until reboot in user session.
-  // |FETCH_SUPPORT_PACKET|:
-  // {"supportPacketDetails":{ "issueCaseId": optional_support_case_id_string,
-  // "issueDescription": optional_issue_description_string,
-  // "requestedDataCollectors": [<list of `support_tool::DataCollectorType`
-  // enums>], "requestedPiiTypes": [<list of `support_tool::PiiType` enums>]}}
   optional string payload = 4;
 
   // An identifier for the target this command is for. This is the same as
@@ -3092,11 +2892,6 @@ message DeviceRemoteCommandRequest {
   // What type of signature to use. Only valid if send_secure_commmands is true.
   // If NONE is passed, SHA1_RSA will be used instead for compatibility.
   optional PolicyFetchRequest.SignatureType signature_type = 4;
-
-  // A string that represents the type of RemoteCommands that need to be
-  // fetched. This type helps the server redirect the request to different
-  // handlers.
-  optional string type = 5;
 }
 
 message DeviceRemoteCommandResponse {
@@ -3181,18 +2976,6 @@ message CertificateBasedDeviceRegisterRequest {
   // signed_request.signature field is a signature of the data field signed
   // with the enrollment certificate's private key.
   optional SignedData signed_request = 1;
-}
-
-// Request from device to server to register a device (authenticated with an
-// enrollment token).
-message TokenBasedDeviceRegisterRequest {
-  optional DeviceRegisterRequest device_register_request = 1;
-}
-
-// Response to a token-based device registration request
-// (@code `TokenBasedDeviceRegisterRequest`).
-message TokenBasedDeviceRegisterResponse {
-  optional DeviceRegisterResponse device_register_response = 1;
 }
 
 // Requested configuration to be passed along a registration request.
@@ -3897,32 +3680,16 @@ message RsuLookupKeyUploadResponse {
 // Information about an eSIM profile installed on an EUICC (Embedded Universal
 // Integrated Circuit Card).
 message ESimProfileInfo {
-  // ICCID of the eSIM profile. Up to 22 decimal digits encoded as ASCII string.
+  // ICCID of the eSIM profile. Upto 22 decimal digits encoded
+  // as ASCII string.
   // Example: 3554020401587593554020.
   optional string iccid = 1;
 
-  // SM-DP+ (Subscription Manager - Data Preparation) activation code that was
-  // used to install this eSIM profile. The "address" terminology is historical
-  // since the string is not strictly just an address. This field should be
-  // considered mutually exclusive with |smds_address|. Up to 255 characters
-  // encoded as UTF8 string.
-  // Example: LPA:1$esim.example.com$matchingId
-  optional string smdp_address = 2;
-
-  // SM-DS (Subscription Manager - Discovery Service) activation code that was
-  // used to install this eSIM profile. The "address" terminology is historical
-  // since the string is not strictly just an address. This field should be
-  // considered mutually exclusive with |smdp_address|. Up to 255 characters
+  // SMDP (Subscription Management - Data Preparation) server address
+  // that was used to install this eSIM profile. Upto 255 characters
   // encoded as UTF8 string.
   // Example: LPA:1$esim.example.com$
-  optional string smds_address = 3;
-
-  // The name of the policy-defined network that resulted in the installation of
-  // this eSIM profile. This metadata is required to guarantee that multiple
-  // policy-defined networks that are configured with the same activation code
-  // are handled correctly, and will result in the appropriate number of eSIM
-  // profiles being installed.
-  optional string name = 4;
+  optional string smdp_address = 2;
 }
 
 // Request from device to server to update information about EUICCs
@@ -4236,42 +4003,18 @@ message DownloadCertResponse {
   optional string pem_encoded_certificate = 1;
 }
 
-// "Dynamic" flow: Used to start a cerificate provisioning process.
-message CertProvStartRequest {}
-
-message CertProvStartResponse {
-  // The client should register for FCM messages using this topic in order to
-  // receive notifications for the certificate provisioning process.
-  optional string invalidation_topic = 1;
-}
-
-// "Dynamic" flow: Used to fetch the next instruction that the client should
+// "Dynamic" flow: Used to start or continue a cerificate provisioning
 // process.
-message CertProvGetNextInstructionRequest {}
-
-message CertProvGetNextInstructionResponse {
-  // One of the instructions must be filled.
-  // If no instruction is available yet, the server should respond with a
-  // `CertProvBackendError` instead of a `CertProvGetNextInstructionResponse`.
-  oneof instruction {
-    CertProvAuthorizeInstruction authorize_instruction = 1;
-    CertProvProofOfPossessionInstruction proof_of_possession_instruction = 2;
-    CertProvImportCertificateInstruction import_certificate_instruction = 3;
-  }
-}
+message CertProvStartOrContinueRequest {}
 
 // "Dynamic" flow: Used to authorize the client, currently using a Verified
 // Access challenge response.
-// The client should send this request after it received a
-// `CertProvAuthorizeInstruction`.
 message CertProvAuthorizeRequest {
   // Verified access challenge response.
   optional bytes va_challenge_response = 1;
 }
 
-message CertProvAuthorizeResponse {}
-
-// "Dynamic" flow: Upload the result of a `ProofOfPossessionInstruction`.
+// "Dynamic" flow: Upload the result of a `ProofOfPossessionChallenge`.
 message CertProvUploadProofOfPossessionRequest {
   // A client-generated cryptographic signature proving the possession of the
   // client's private key.
@@ -4285,7 +4028,13 @@ message CertProvUploadProofOfPossessionRequest {
   optional bytes signature = 1;
 }
 
-message CertProvUploadProofOfPossessionResponse {}
+// The client should try again later.
+message CertProvTryLaterInstruction {
+  // The delay after which the client should retry on its own.
+  // It should also be observing the invalidation for the certificate
+  // provisioning process.
+  optional int64 delay_ms = 1;
+}
 
 // The client should perform an authorization step.
 message CertProvAuthorizeInstruction {
@@ -4296,6 +4045,8 @@ message CertProvAuthorizeInstruction {
 // The client should provide a proof-of-possession signature generated using
 // the private key.
 message CertProvProofOfPossessionInstruction {
+  reserved 1;
+
   // Data to sign for CSR creation.
   // The signing algorithm is currently RSA_PKCS1_V1_5. The client will perform
   // PKCS#1 v1.5 padding on `data_to_sign`. `data_to_sign` is expected to
@@ -4303,7 +4054,7 @@ message CertProvProofOfPossessionInstruction {
   // add such a prefix. Also `data_to_sign` must be shorter than (key_size-11)
   // bytes. If no other key size was specified in the
   // RequiredClientCertificateFor{User,Device} policy, 2048 bits is assumed.
-  optional bytes data_to_sign = 1;
+  optional bytes data_to_sign = 2;
 }
 
 // The client should import an issued certificate.
@@ -4312,10 +4063,32 @@ message CertProvImportCertificateInstruction {
   optional string pem_encoded_certificate = 1;
 }
 
+// Response for all requests in the "Dynamic" flow.
+// Encodes the next action that the client should perform.
+message CertProvNextActionResponse {
+  // The client should register for FCM messages using this topic in order to
+  // receive notifications for the certificate provisioning process.
+  // The client starts listening to the first such `invalidation_topic` per
+  // certificate provisioning process and ignores subsequent values.
+  optional string invalidation_topic = 1;
+
+  // One of the instructions must be filled.
+  // If no instruction is available yet, the server should fill
+  // `try_again_later_ms`.
+  oneof instruction {
+    // If filled, the request can currently not be processed and the client
+    // is supposed to continue later using StartOrContinueRequest.
+    CertProvTryLaterInstruction try_later_instruction = 5;
+
+    CertProvAuthorizeInstruction authorize_instruction = 2;
+    CertProvProofOfPossessionInstruction proof_of_possession_instruction = 3;
+    CertProvImportCertificateInstruction import_certificate_instruction = 4;
+  }
+}
+
 // Start / continue client certificate provisioning process for the profile
 // `cert_profile_id`.
 message ClientCertificateProvisioningRequest {
-  reserved 9 to 11;
   // The scope of the certificate. Similar to policy_type in PolicyFetchRequest.
   //   google/chromeos/device => a certificate for a device is being requested.
   //   google/chromeos/user => a certificate for a user is being requested.
@@ -4339,11 +4112,10 @@ message ClientCertificateProvisioningRequest {
     DownloadCertRequest download_cert_request = 7;
 
     // "Dynamic" flow (go/cert-prov-api-dm-changes)
-    CertProvStartRequest start_request = 12;
-    CertProvGetNextInstructionRequest get_next_instruction_request = 13;
-    CertProvAuthorizeRequest authorize_request = 14;
+    CertProvStartOrContinueRequest start_or_continue_request = 9;
+    CertProvAuthorizeRequest authorize_request = 10;
     CertProvUploadProofOfPossessionRequest upload_proof_of_possession_request =
-        15;
+        11;
   }
 
   // Received as part of policy for client certificate profiles. The client
@@ -4353,67 +4125,8 @@ message ClientCertificateProvisioningRequest {
   optional bytes policy_version = 8;
 }
 
-// This marks an error between ChromeOS client and backend, including those
-// involving the Certificate Authority or a Connector software.
-// These could be mapped to HTTP error codes, but reuse of HTTP error codes was
-// deemed confusing and difficult in the existing device management protocol
-// (see existing usage of HTTP error codes described in the
-// `DeviceManagementResponse` comment).
-message CertProvBackendError {
-  enum Error {
-    ERROR_UNSPECIFIED = 0;
-    // The attempted request is invalid in the current state of the certificate
-    // provisioning process.
-    INVALID_OPERATION = 1;
-    // The client has sent inconsistent data. This can happen if the client has
-    // outdated policy.
-    INCONSISTENT_DATA = 2;
-    // The identity of the client could not be verified.
-    IDENTITY_VERIFICATION_ERROR = 3;
-    // The Certificate Provisioning Process (CPP) already exists and cannot be
-    // started again.
-    CPP_ALREADY_EXISTS = 4;
-    // The backend does not accept the public key sent by the client.
-    BAD_PUBLIC_KEY = 5;
-    // The signature provided by the client is invalid.
-    INVALID_SIGNATURE = 6;
-    // The next instruction on how to proceed in the certificate provisioning
-    // protocol is not yet available.
-    INSTRUCTION_NOT_YET_AVAILABLE = 7;
-    // The CA did not respond within the deadline.
-    CA_UNAVAILABLE = 8;
-    // The CA exhibited an internal server error.
-    CA_FAILURE = 9;
-    // The referenced certificate provisioning profile does not exist.
-    PROFILE_NOT_FOUND = 10;
-    // The user primary email cannot be found.
-    USER_PRIMARY_EMAIL_NOT_FOUND = 11;
-    // The certificate provisioning profile is referencing a non-existent CA
-    // connection.
-    CA_CONNECTION_NOT_FOUND = 12;
-    // The CA connection referenced by the certificate provisioning profile
-    // is referencing a non-existent PubSub topic, or the system does not have
-    // permission to publish to that PubSub topic.
-    PUBSUB_TOPIC_NOT_FOUND = 13;
-    // The Adapter uploaded a certificate that cannot be parsed or was issued
-    // for a wrong public key.
-    BAD_ADAPTER_CERTIFICATE_RECEIVED = 14;
-    // The requested certificate provisioning process cannot be found on
-    // Spanner.
-    CERTIFICATE_PROVISIONING_PROCESS_NOT_FOUND = 15;
-  }
-
-  // The specific error type.
-  optional Error error = 1;
-
-  // A debug message that could be useful for understanding the error.
-  optional string debug_message = 2;
-}
-
 // Response for ClientCertificateProvisioningRequest.
 message ClientCertificateProvisioningResponse {
-  reserved 6;
-
   // Error conditions that the server side reports to the client that don't fit
   // into the standard HTTP error schema.
   // Note that HTTP errors can still be signaled for the client certificate
@@ -4448,23 +4161,21 @@ message ClientCertificateProvisioningResponse {
   // is supposed to try again later using the same data.
   // The value is the number of milliseconds when the client should
   // automatically retry.
-  // Used in "Static" flow only.
+  // Used in "Static" flow only. The "Dynamic" flow uses the
+  // `try_again_later_ms` field in `CertProvNextActionResponse`.
   optional int64 try_again_later = 1;
 
   oneof response {
-    // Used in "Static" flow.
+    // Used in "Static" and "Dynamic" flows.
     Error error = 2;
+
+    // Used in "Static" flow.
     StartCsrResponse start_csr_response = 3;
     FinishCsrResponse finish_csr_response = 4;
     DownloadCertResponse download_cert_response = 5;
 
     // Used in "Dynamic" flow.
-    CertProvStartResponse start_response = 7;
-    CertProvGetNextInstructionResponse get_next_instruction_response = 8;
-    CertProvAuthorizeResponse authorize_response = 9;
-    CertProvUploadProofOfPossessionResponse
-        upload_proof_of_possession_response = 10;
-    CertProvBackendError backend_error = 11;
+    CertProvNextActionResponse next_action_response = 6;
   }
 }
 
@@ -4488,20 +4199,13 @@ message BrowserPublicKeyUploadRequest {
 
   // Public key in EC_NID_X9_62_PRIME256V1_PUBLIC_DER format.
   optional bytes public_key = 1;
-
   // Signature of the new public key signed using the existing key, empty for
   // initial upload.
   optional bytes signature = 2;
-
   // Trust Level of the key.
   optional KeyTrustLevel key_trust_level = 3;
-
   // Type of the key.
   optional KeyType key_type = 4;
-
-  // Whether the server should create a client certificate for that public key
-  // and return it as part of the response or not.
-  optional bool provision_certificate = 5;
 }
 
 // Response from server to device for cert upload request.
@@ -4514,10 +4218,6 @@ message BrowserPublicKeyUploadResponse {
     INVALID_SIGNATURE = 2;
   }
   optional ResponseCode response_code = 1;
-
-  // If the request had `provision_certificate` as true, this property will
-  // contain the X.509 client certificate in PEM format.
-  optional string pem_encoded_certificate = 2;
 }
 
 // Additional detail about the error which can be used to clarify user messaging
@@ -4578,7 +4278,7 @@ enum DeviceManagementErrorDetail {
 //   * deviceid: MUST BE no more than 64-char in [\x21-\x7E].
 //   * agent: MUST BE no more than 64-char long.
 // * HTTP Authorization header MUST be in the following formats:
-//   * For register for Chrome browsers and token_based_register requests.
+//   * For register for Chrome browsers
 //     Authorization: GoogleEnrollmentToken token=<enrollment token>
 //
 //   * For unregister, policy, status, cert_upload, remote_commands,
@@ -4763,12 +4463,7 @@ message DeviceManagementRequest {
   // HTTP query parameter 'request': 'chrome_profile_report'
   optional ChromeProfileReportRequest chrome_profile_report_request = 40;
 
-  // Request to register a device with an enrollment token.
-  // HTTP query parameter 'request': 'token_based_register'
-  optional TokenBasedDeviceRegisterRequest token_based_device_register_request =
-      41;
-
-  // Next id: 42.
+  // Next id: 41.
 }
 
 // Response from server to device.
@@ -4781,8 +4476,7 @@ message DeviceManagementRequest {
 // Possible HTTP status codes:
 // 200 OK: valid response is returned to client.
 // 400 Bad Request: invalid argument or payload.
-// 401 Unauthorized: invalid auth cookie/OAuth token, DMToken or enrollment
-//     token.
+// 401 Unauthorized: invalid auth cookie/OAuth token or DMToken.
 // 402 Missing license.
 // 403 Forbidden: device management is not allowed (e.g. user may not enroll).
 // 404 Not Found: the request URL is invalid.
@@ -4924,11 +4618,7 @@ message DeviceManagementResponse {
   // Response to a Chrome Profile report request.
   optional ChromeProfileReportResponse chrome_profile_report_response = 38;
 
-  // Response to a token-based register request.
-  optional TokenBasedDeviceRegisterResponse
-      token_based_device_register_response = 40;
-
-  // Next id: 41.
+  // Next id: 40.
 }
 
 // Device State Information stored in the server is retrieval at

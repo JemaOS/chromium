@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <string>
 
-#include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/memory_usage_estimator.h"
@@ -72,10 +71,6 @@ const char* AutocompleteProvider::TypeToString(Type type) {
       return "OpenTab";
     case TYPE_HISTORY_CLUSTER_PROVIDER:
       return "HistoryCluster";
-    case TYPE_CALCULATOR:
-      return "Calculator";
-    case TYPE_FEATURED_SEARCH:
-      return "FeaturedSearch";
     default:
       NOTREACHED() << "Unhandled AutocompleteProvider::Type " << type;
       return "Unknown";
@@ -87,9 +82,8 @@ void AutocompleteProvider::AddListener(AutocompleteProviderListener* listener) {
 }
 
 void AutocompleteProvider::NotifyListeners(bool updated_matches) const {
-  for (AutocompleteProviderListener* listener : listeners_) {
+  for (auto* listener : listeners_)
     listener->OnProviderUpdate(updated_matches, this);
-  }
 }
 
 void AutocompleteProvider::StartPrefetch(const AutocompleteInput& input) {
@@ -107,6 +101,34 @@ void AutocompleteProvider::Stop(bool clear_cached_results,
 
 const char* AutocompleteProvider::GetName() const {
   return TypeToString(type_);
+}
+
+// static
+ACMatchClassifications AutocompleteProvider::ClassifyAllMatchesInString(
+    const std::u16string& find_text,
+    const std::u16string& text,
+    const bool text_is_search_query,
+    const ACMatchClassifications& original_class) {
+  // TODO (manukh) Move this function to autocomplete_match_classification
+  DCHECK(!find_text.empty());
+
+  if (text.empty())
+    return original_class;
+
+  TermMatches term_matches = FindTermMatches(find_text, text);
+
+  ACMatchClassifications classifications;
+  if (text_is_search_query) {
+    classifications = ClassifyTermMatches(term_matches, text.size(),
+                                          ACMatchClassification::NONE,
+                                          ACMatchClassification::MATCH);
+  } else
+    classifications = ClassifyTermMatches(term_matches, text.size(),
+                                          ACMatchClassification::MATCH,
+                                          ACMatchClassification::NONE);
+
+  return AutocompleteMatch::MergeClassifications(original_class,
+                                                 classifications);
 }
 
 metrics::OmniboxEventProto_ProviderType
@@ -150,21 +172,8 @@ AutocompleteProvider::AsOmniboxEventProviderType() const {
       return metrics::OmniboxEventProto::OPEN_TAB;
     case TYPE_HISTORY_CLUSTER_PROVIDER:
       return metrics::OmniboxEventProto::HISTORY_CLUSTER;
-    case TYPE_CALCULATOR:
-      // TODO(manukh): Since there's a high likelihood the calc provider won't
-      //   launch, log as search provider to avoid the adding then deprecating
-      //   the provider in the proto and histograms.
-      return metrics::OmniboxEventProto::SEARCH;
-    case TYPE_FEATURED_SEARCH:
-      return metrics::OmniboxEventProto::FEATURED_SEARCH;
     default:
-      // TODO(crbug.com/1499235) This was a NOTREACHED that we converted to help
-      //   debug crbug.com/1499235 since NOTREACHED's don't log their message in
-      //   crash reports. Should be reverted back to a NOTREACHED or
-      //   NOTREACHED_NORETURN if their logs eventually begin being logged to
-      //   crash reports.
-      DUMP_WILL_BE_NOTREACHED_NORETURN()
-          << "[NOTREACHED] Unhandled AutocompleteProvider::Type " << type_;
+      NOTREACHED() << "Unhandled AutocompleteProvider::Type " << type_;
       return metrics::OmniboxEventProto::UNKNOWN_PROVIDER;
   }
 }
@@ -289,6 +298,41 @@ size_t AutocompleteProvider::TrimSchemePrefix(std::u16string* url,
     ++prefix_end;
   url->erase(scheme_pos, prefix_end - scheme_pos);
   return (scheme_pos == 0) ? prefix_end : 0;
+}
+
+// static
+bool AutocompleteProvider::InKeywordMode(const AutocompleteInput& input) {
+  return input.keyword_mode_entry_method() !=
+         metrics::OmniboxEventProto::INVALID;
+}
+
+// static
+bool AutocompleteProvider::InExplicitExperimentalKeywordMode(
+    const AutocompleteInput& input,
+    const std::u16string& keyword) {
+  return OmniboxFieldTrial::IsExperimentalKeywordModeEnabled() &&
+         input.prefer_keyword() &&
+         base::StartsWith(input.text(), keyword,
+                          base::CompareCase::SENSITIVE) &&
+         InExplicitKeywordMode(input, keyword);
+}
+
+// static
+bool AutocompleteProvider::InExplicitKeywordMode(
+    const AutocompleteInput& input,
+    const std::u16string& keyword) {
+  // It is important to this method that we determine if the user entered
+  // keyword mode intentionally, as we use this routine to e.g. filter
+  // all but keyword results. Currently we assume that the user entered
+  // keyword mode intentionally with all entry methods except with a
+  // space (and disregard entry method during a backspace). However, if the
+  // user has typed a char past the space, we again assume keyword mode.
+  return (((input.keyword_mode_entry_method() !=
+                metrics::OmniboxEventProto::SPACE_AT_END &&
+            input.keyword_mode_entry_method() !=
+                metrics::OmniboxEventProto::SPACE_IN_MIDDLE) &&
+           !input.prevent_inline_autocomplete()) ||
+          input.text().size() > keyword.size() + 1);
 }
 
 void AutocompleteProvider::ResizeMatches(size_t max_matches,

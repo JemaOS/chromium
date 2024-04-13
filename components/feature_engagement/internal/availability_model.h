@@ -7,10 +7,9 @@
 
 #include <stdint.h>
 
-#include <optional>
-
 #include "base/feature_list.h"
 #include "base/functional/callback_forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace feature_engagement {
 
@@ -39,7 +38,7 @@ class AvailabilityModel {
   // Returns the day number since epoch (1970-01-01) in the local timezone for
   // when the particular |feature| was made available.
   // See TimeProvider::GetCurrentDay().
-  virtual std::optional<uint32_t> GetAvailability(
+  virtual absl::optional<uint32_t> GetAvailability(
       const base::Feature& feature) const = 0;
 
  protected:

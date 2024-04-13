@@ -11,11 +11,12 @@ ProtocolEvent::ProtocolEvent() = default;
 ProtocolEvent::~ProtocolEvent() = default;
 
 base::Value::Dict ProtocolEvent::ToValue(bool include_specifics) const {
-  return base::Value::Dict()
-      .Set("time", GetTimestamp().InMillisecondsFSinceUnixEpoch())
-      .Set("type", GetType())
-      .Set("details", GetDetails())
-      .Set("proto", GetProtoMessage(include_specifics));
+  base::Value::Dict dict;
+  dict.Set("time", GetTimestamp().ToJsTime());
+  dict.Set("type", GetType());
+  dict.Set("details", GetDetails());
+  dict.Set("proto", GetProtoMessage(include_specifics));
+  return dict;
 }
 
 base::Time ProtocolEvent::GetTimestampForTesting() const {

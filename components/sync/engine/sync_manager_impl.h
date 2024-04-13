@@ -78,12 +78,12 @@ class SyncManagerImpl
   std::string cache_guid() override;
   std::string birthday() override;
   std::string bag_of_chips() override;
-  ModelTypeSet GetTypesWithUnsyncedData() override;
   bool HasUnsyncedItemsForTest() override;
   SyncEncryptionHandler* GetEncryptionHandler() override;
   std::vector<std::unique_ptr<ProtocolEvent>> GetBufferedProtocolEvents()
       override;
   void OnCookieJarChanged(bool account_mismatch) override;
+  void UpdateInvalidationClientId(const std::string& client_id) override;
   void UpdateActiveDevicesInvalidationInfo(
       ActiveDevicesInvalidationInfo active_devices_invalidation_info) override;
 
@@ -130,12 +130,11 @@ class SyncManagerImpl
 
   const std::string name_;
 
-  const raw_ptr<network::NetworkConnectionTracker> network_connection_tracker_;
+  raw_ptr<network::NetworkConnectionTracker> network_connection_tracker_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 
-  base::ObserverList<SyncManager::Observer>::UncheckedAndDanglingUntriaged
-      observers_;
+  base::ObserverList<SyncManager::Observer>::Unchecked observers_;
 
   // The ServerConnectionManager used to abstract communication between the
   // client (the Syncer) and the sync server.
@@ -158,16 +157,16 @@ class SyncManagerImpl
   std::unique_ptr<SyncStatusTracker> sync_status_tracker_;
 
   // Set to true once Init has been called.
-  bool initialized_ = false;
+  bool initialized_;
 
-  bool observing_network_connectivity_changes_ = false;
+  bool observing_network_connectivity_changes_;
 
   // This is for keeping track of client events to send to the server.
   DebugInfoEventListener debug_info_event_listener_;
 
   ProtocolEventBuffer protocol_event_buffer_;
 
-  raw_ptr<SyncEncryptionHandler> sync_encryption_handler_ = nullptr;
+  raw_ptr<SyncEncryptionHandler> sync_encryption_handler_;
 
   std::unique_ptr<SyncEncryptionHandler::Observer> encryption_observer_proxy_;
 

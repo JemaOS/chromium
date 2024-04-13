@@ -13,6 +13,7 @@
 #include "components/viz/common/surfaces/surface_range.h"
 #include "components/viz/common/viz_common_export.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/delegated_ink_metadata.h"
 #include "ui/gfx/display_color_spaces.h"
@@ -62,7 +63,6 @@ TEST(CompositorFrameMetadata, Clone) {
   metadata.content_color_usage = gfx::ContentColorUsage::kHDR;
   metadata.may_contain_video = true;
   metadata.is_resourceless_software_draw_with_scroll_or_animation = true;
-  metadata.is_handling_interaction = true;
   metadata.root_background_color = SkColors::kBlue;
   metadata.latency_info.emplace_back(ui::SourceEventType::KEY_PRESS);
   metadata.referenced_surfaces.emplace_back(
@@ -82,7 +82,7 @@ TEST(CompositorFrameMetadata, Clone) {
       gfx::PointF(88.8, 44.4), 1.f, SK_ColorRED,
       base::TimeTicks() + base::Seconds(125), gfx::RectF(1, 2, 3, 4), true);
   metadata.transition_directives.emplace_back(
-      CompositorFrameTransitionDirective::CreateSave(NavigationId::Create(), 4u,
+      CompositorFrameTransitionDirective::CreateSave(NavigationID::Create(), 4u,
                                                      {}));
 
   CompositorFrameMetadata clone = metadata.Clone();
@@ -94,7 +94,6 @@ TEST(CompositorFrameMetadata, Clone) {
   EXPECT_EQ(clone.may_contain_video, metadata.may_contain_video);
   EXPECT_EQ(clone.is_resourceless_software_draw_with_scroll_or_animation,
             metadata.is_resourceless_software_draw_with_scroll_or_animation);
-  EXPECT_EQ(clone.is_handling_interaction, metadata.is_handling_interaction);
   EXPECT_EQ(clone.root_background_color, metadata.root_background_color);
 
   EXPECT_EQ(clone.latency_info.size(), metadata.latency_info.size());

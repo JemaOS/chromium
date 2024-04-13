@@ -117,22 +117,7 @@ class StartSuggestServiceTest : public ::testing::Test {
 
   void TearDown() override { service_->Shutdown(); }
 
-  void ResetSuggestions() { suggestions_ = std::nullopt; }
-
-  void WaitForSuggestions() {
-    if (suggestions_.has_value()) {
-      return;
-    }
-
-    suggestions_run_loop_ = std::make_unique<base::RunLoop>();
-    suggestions_run_loop_->Run();
-    suggestions_run_loop_.reset();
-  }
-
   void OnSuggestionsReceived(std::vector<QuerySuggestion> suggestions) {
-    if (!suggestions_.has_value() && suggestions_run_loop_) {
-      suggestions_run_loop_->Quit();
-    }
     suggestions_ = std::move(suggestions);
   }
 
@@ -154,9 +139,7 @@ class StartSuggestServiceTest : public ::testing::Test {
     return weak_factory_.GetWeakPtr();
   }
 
-  const std::vector<QuerySuggestion>& suggestions() const {
-    return suggestions_.value();
-  }
+  std::vector<QuerySuggestion>* suggestions() { return &suggestions_; }
 
   GURL GetQueryDestinationURL(const std::string& query) {
     return service_->GetQueryDestinationURL(base::ASCIIToUTF16(query),
@@ -170,9 +153,7 @@ class StartSuggestServiceTest : public ::testing::Test {
   data_decoder::test::InProcessDataDecoder in_process_data_decoder_;
   network::TestURLLoaderFactory test_url_loader_factory_;
   std::unique_ptr<TestStartSuggestService> service_;
-
-  std::optional<std::vector<QuerySuggestion>> suggestions_;
-  std::unique_ptr<base::RunLoop> suggestions_run_loop_;
+  std::vector<QuerySuggestion> suggestions_;
 
   base::WeakPtrFactory<StartSuggestServiceTest> weak_factory_;
 };
@@ -187,29 +168,27 @@ TEST_F(StartSuggestServiceTest,
                                          GoodServerResponse());
   EXPECT_CALL(*service()->search_provider_observer(), is_google())
       .WillOnce(testing::Return(true));
-  ResetSuggestions();
   service()->FetchSuggestions(
       args, base::BindOnce(&StartSuggestServiceTest::OnSuggestionsReceived,
                            GetWeakPtr()));
-  WaitForSuggestions();
+  base::RunLoop().RunUntilIdle();
 
   std::vector<QuerySuggestion> expected_server_queries{
       {u"query1", GetQueryDestinationURL("query1")},
       {u"query2", GetQueryDestinationURL("query2")}};
-  ASSERT_EQ(2.0, suggestions().size());
-  EXPECT_EQ(expected_server_queries.front(), suggestions().front());
-  EXPECT_EQ(expected_server_queries.at(1), suggestions().at(1));
+  ASSERT_EQ(2.0, suggestions()->size());
+  EXPECT_EQ(expected_server_queries.front(), suggestions()->front());
+  EXPECT_EQ(expected_server_queries.at(1), suggestions()->at(1));
 
   // Test that if the default search engine is not Google the service returns no
   // suggestions even if it has some stored.
   EXPECT_CALL(*service()->search_provider_observer(), is_google())
       .WillOnce(testing::Return(false));
-  ResetSuggestions();
   service()->FetchSuggestions(
       args, base::BindOnce(&StartSuggestServiceTest::OnSuggestionsReceived,
                            GetWeakPtr()));
-  WaitForSuggestions();
-  ASSERT_EQ(0.0, suggestions().size());
+  base::RunLoop().RunUntilIdle();
+  ASSERT_EQ(0.0, suggestions()->size());
 }
 
 // Test that the service synchronously returns cached fetched suggestions
@@ -220,31 +199,30 @@ TEST_F(StartSuggestServiceTest, TestReturnSavedSuggestions) {
                                          GoodServerResponse());
   EXPECT_CALL(*service()->search_provider_observer(), is_google())
       .WillRepeatedly(testing::Return(true));
-  ResetSuggestions();
   service()->FetchSuggestions(
       args, base::BindOnce(&StartSuggestServiceTest::OnSuggestionsReceived,
                            GetWeakPtr()));
-  WaitForSuggestions();
+  base::RunLoop().RunUntilIdle();
 
   std::vector<QuerySuggestion> expected_server_queries{
       {u"query1", GetQueryDestinationURL("query1")},
       {u"query2", GetQueryDestinationURL("query2")}};
-  ASSERT_EQ(2.0, suggestions().size());
-  EXPECT_EQ(expected_server_queries.front(), suggestions().front());
-  EXPECT_EQ(expected_server_queries.at(1), suggestions().at(1));
+  ASSERT_EQ(2.0, suggestions()->size());
+  EXPECT_EQ(expected_server_queries.front(), suggestions()->front());
+  EXPECT_EQ(expected_server_queries.at(1), suggestions()->at(1));
 
   test_url_loader_factory()->ClearResponses();
 
-  // This fetch should not need WaitForSuggestions() since the saved suggestions
+  // This fetch should not need RunUntilIdle() since the saved suggestions
   // should be used.
   service()->FetchSuggestions(
       args, base::BindOnce(&StartSuggestServiceTest::OnSuggestionsReceived,
                            GetWeakPtr()));
-  ASSERT_EQ(2.0, suggestions().size());
+  ASSERT_EQ(2.0, suggestions()->size());
   // They may be shuffled.
   bool first_expected_query_found = false;
   bool second_expected_query_found = false;
-  for (const auto& suggestion : suggestions()) {
+  for (auto& suggestion : *suggestions()) {
     if (expected_server_queries.front() == suggestion) {
       first_expected_query_found = true;
     }
@@ -264,36 +242,34 @@ TEST_F(StartSuggestServiceTest, TestFetchFromServerSet) {
                                          GoodServerResponse());
   EXPECT_CALL(*service()->search_provider_observer(), is_google())
       .WillRepeatedly(testing::Return(true));
-  ResetSuggestions();
   service()->FetchSuggestions(
       args, base::BindOnce(&StartSuggestServiceTest::OnSuggestionsReceived,
                            GetWeakPtr()));
-  WaitForSuggestions();
+  base::RunLoop().RunUntilIdle();
 
   std::vector<QuerySuggestion> expected_server_queries{
       {u"query1", GetQueryDestinationURL("query1")},
       {u"query2", GetQueryDestinationURL("query2")}};
-  ASSERT_EQ(2.0, suggestions().size());
-  EXPECT_EQ(expected_server_queries.front(), suggestions().front());
-  EXPECT_EQ(expected_server_queries.at(1), suggestions().at(1));
+  ASSERT_EQ(2.0, suggestions()->size());
+  EXPECT_EQ(expected_server_queries.front(), suggestions()->front());
+  EXPECT_EQ(expected_server_queries.at(1), suggestions()->at(1));
 
   test_url_loader_factory()->ClearResponses();
   test_url_loader_factory()->AddResponse(service()->GetRequestURL(args).spec(),
                                          GoodServerResponse2());
-  ResetSuggestions();
   service()->FetchSuggestions(
       args,
       base::BindOnce(&StartSuggestServiceTest::OnSuggestionsReceived,
                      GetWeakPtr()),
       true);
-  WaitForSuggestions();
-
   std::vector<QuerySuggestion> second_expected_server_queries{
       {u"query3", GetQueryDestinationURL("query3")},
       {u"query4", GetQueryDestinationURL("query4")}};
-  ASSERT_EQ(2.0, suggestions().size());
-  EXPECT_EQ(second_expected_server_queries.front(), suggestions().front());
-  EXPECT_EQ(second_expected_server_queries.at(1), suggestions().at(1));
+  base::RunLoop().RunUntilIdle();
+
+  ASSERT_EQ(2.0, suggestions()->size());
+  EXPECT_EQ(second_expected_server_queries.front(), suggestions()->front());
+  EXPECT_EQ(second_expected_server_queries.at(1), suggestions()->at(1));
 }
 
 // Test that the service returns an empty list in response to bad JSON returned.
@@ -303,11 +279,10 @@ TEST_F(StartSuggestServiceTest, TestBadResponseReturnsNothing) {
                                          BadServerResponse());
   EXPECT_CALL(*service()->search_provider_observer(), is_google())
       .WillRepeatedly(testing::Return(true));
-  ResetSuggestions();
   service()->FetchSuggestions(
       args, base::BindOnce(&StartSuggestServiceTest::OnSuggestionsReceived,
                            GetWeakPtr()));
-  WaitForSuggestions();
+  base::RunLoop().RunUntilIdle();
 
-  ASSERT_EQ(0.0, suggestions().size());
+  ASSERT_EQ(0.0, suggestions()->size());
 }

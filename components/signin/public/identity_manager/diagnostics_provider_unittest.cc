@@ -14,6 +14,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 constexpr char kAccountEmail[] = "user @gmail.com ";
+constexpr char kAccountGaiaId[] = "user_gaia_id";
 
 namespace {
 
@@ -74,10 +75,11 @@ TEST_F(DiagnosticsProviderTest, GetDelayBeforeMakingCookieRequests) {
   identity_test_env()
       ->identity_manager()
       ->GetAccountsCookieMutator()
-      ->LogOutAllAccounts(gaia::GaiaSource::kChrome, base::DoNothing());
+      ->AddAccountToCookie(CoreAccountId::FromGaiaId(kAccountGaiaId),
+                           gaia::GaiaSource::kChrome, base::DoNothing());
   EXPECT_EQ(diagnostics_provider()->GetDelayBeforeMakingCookieRequests(), zero);
 
-  identity_test_env()->SimulateGaiaLogOutFailure(
+  identity_test_env()->SimulateMergeSessionFailure(
       GoogleServiceAuthError(GoogleServiceAuthError::REQUEST_CANCELED));
   EXPECT_GT(diagnostics_provider()->GetDelayBeforeMakingCookieRequests(), zero);
 }

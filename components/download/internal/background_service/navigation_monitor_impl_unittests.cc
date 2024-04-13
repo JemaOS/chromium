@@ -75,9 +75,8 @@ class NavigationMonitorImplTest : public testing::Test {
   }
 
   void TearDown() override {
-    navigation_monitor_->SetObserver(nullptr);
-    observer_.reset();
     navigation_monitor_.reset();
+    observer_.reset();
   }
 
   void WaitUntilDone() { task_runner_->FastForwardUntilNoTasksRemain(); }

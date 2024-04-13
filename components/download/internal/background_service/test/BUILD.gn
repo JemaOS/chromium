@@ -2,15 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//build/config/features.gni")
-
 # Test target for download internal tests to depend on.
 source_set("test_support") {
   visibility = [
     "//components/download/content/internal:unit_tests",
     "//components/download/internal/background_service:unit_tests",
     "//components/download/internal/background_service/ios:unit_tests",
-    "//ios/chrome/browser/download/model/background_service:unit_tests",
+    "//ios/chrome/browser/download/background_service:unit_tests",
   ]
 
   testonly = true
@@ -28,7 +26,7 @@ source_set("test_support") {
     "test_store.h",
   ]
 
-  if (use_blink) {
+  if (!is_ios) {
     sources += [
       "download_params_utils.cc",
       "download_params_utils.h",
@@ -57,7 +55,7 @@ source_set("test_support") {
   public_deps += [ "//net:test_support" ]
 
   deps = [ "//components/download/internal/background_service:storage" ]
-  if (use_blink) {
+  if (!is_ios) {
     deps += [
       "//components/download/internal/background_service:internal",
       "//components/download/network",

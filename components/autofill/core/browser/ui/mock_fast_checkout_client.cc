@@ -4,10 +4,6 @@
 
 #include "components/autofill/core/browser/ui/mock_fast_checkout_client.h"
 
-namespace autofill {
-
 MockFastCheckoutClient::MockFastCheckoutClient() = default;
 
 MockFastCheckoutClient::~MockFastCheckoutClient() = default;
-
-}  // namespace autofill

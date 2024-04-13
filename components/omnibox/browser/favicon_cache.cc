@@ -182,9 +182,8 @@ void FaviconCache::InvalidateCachedRequests(const Request& request) {
   }
 }
 
-void FaviconCache::OnHistoryDeletions(
-    history::HistoryService* history_service,
-    const history::DeletionInfo& deletion_info) {
+void FaviconCache::OnURLsDeleted(history::HistoryService* history_service,
+                                 const history::DeletionInfo& deletion_info) {
   // We only care about actual user (or sync) deletions.
   if (deletion_info.is_from_expiration())
     return;

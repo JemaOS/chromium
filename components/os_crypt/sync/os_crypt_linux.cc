@@ -10,6 +10,7 @@
 #include <iterator>
 #include <memory>
 
+#include "base/cxx17_backports.h"
 #include "base/logging.h"
 #include "base/memory/singleton.h"
 #include "base/metrics/histogram_functions.h"
@@ -326,7 +327,7 @@ crypto::SymmetricKey* OSCryptImpl::GetPasswordV11() {
     std::unique_ptr<KeyStorageLinux> key_storage =
         std::move(storage_provider_factory_).Run();
     if (key_storage) {
-      std::optional<std::string> key = key_storage->GetKey();
+      absl::optional<std::string> key = key_storage->GetKey();
       if (key.has_value()) {
         password_v11_cache_ = GenerateEncryptionKey(*key);
       }

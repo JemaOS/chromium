@@ -4,27 +4,57 @@
 
 #include "components/performance_manager/graph/graph_impl_operations.h"
 
-#include "base/memory/raw_ptr.h"
-#include "components/performance_manager/graph/frame_node_impl.h"
-#include "components/performance_manager/graph/page_node_impl.h"
 #include "components/performance_manager/graph/process_node_impl.h"
 
 namespace performance_manager {
 
-// static
-base::flat_set<raw_ptr<PageNodeImpl, CtnExperimental>>
-GraphImplOperations::GetAssociatedPageNodes(const ProcessNodeImpl* process) {
-  base::flat_set<raw_ptr<PageNodeImpl, CtnExperimental>> page_nodes;
-  for (FrameNodeImpl* frame_node : process->frame_nodes()) {
-    page_nodes.insert(frame_node->page_node());
+namespace {
+
+// Implementation details for VisitFrameTree*.
+
+bool VisitFrameAndChildrenPreOrder(
+    FrameNodeImpl* frame,
+    GraphImplOperations::FrameNodeImplVisitor visitor) {
+  if (!visitor(frame)) {
+    return false;
   }
+  for (auto* child : frame->child_frame_nodes()) {
+    if (!VisitFrameAndChildrenPreOrder(child, visitor)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool VisitFrameAndChildrenPostOrder(
+    FrameNodeImpl* frame,
+    GraphImplOperations::FrameNodeImplVisitor visitor) {
+  for (auto* child : frame->child_frame_nodes()) {
+    if (!VisitFrameAndChildrenPostOrder(child, visitor)) {
+      return false;
+    }
+  }
+  if (!visitor(frame)) {
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
+
+// static
+base::flat_set<PageNodeImpl*> GraphImplOperations::GetAssociatedPageNodes(
+    const ProcessNodeImpl* process) {
+  base::flat_set<PageNodeImpl*> page_nodes;
+  for (auto* frame_node : process->frame_nodes())
+    page_nodes.insert(frame_node->page_node());
   return page_nodes;
 }
 
 // static
-base::flat_set<raw_ptr<ProcessNodeImpl, CtnExperimental>>
-GraphImplOperations::GetAssociatedProcessNodes(const PageNodeImpl* page) {
-  base::flat_set<raw_ptr<ProcessNodeImpl, CtnExperimental>> process_nodes;
+base::flat_set<ProcessNodeImpl*> GraphImplOperations::GetAssociatedProcessNodes(
+    const PageNodeImpl* page) {
+  base::flat_set<ProcessNodeImpl*> process_nodes;
   VisitFrameTreePreOrder(page,
                          [&process_nodes](FrameNodeImpl* frame_node) -> bool {
                            if (auto* process_node = frame_node->process_node())
@@ -40,54 +70,22 @@ std::vector<FrameNodeImpl*> GraphImplOperations::GetFrameNodes(
   std::vector<FrameNodeImpl*> frame_nodes;
   frame_nodes.reserve(20);  // This is in the 99.9th %ile of frame tree sizes.
 
-  for (FrameNodeImpl* main_frame_node : page->main_frame_nodes()) {
+  for (auto* main_frame_node : page->main_frame_nodes())
     frame_nodes.push_back(main_frame_node);
-  }
 
   for (size_t i = 0; i < frame_nodes.size(); ++i) {
     auto* parent_frame_node = frame_nodes[i];
-    for (FrameNodeImpl* frame_node : parent_frame_node->child_frame_nodes()) {
+    for (auto* frame_node : parent_frame_node->child_frame_nodes())
       frame_nodes.push_back(frame_node);
-    }
   }
 
   return frame_nodes;
 }
 
 // static
-bool GraphImplOperations::VisitFrameAndChildrenPreOrder(
-    FrameNodeImpl* frame,
-    GraphImplOperations::FrameNodeImplVisitor visitor) {
-  if (!visitor(frame)) {
-    return false;
-  }
-  for (FrameNodeImpl* child : frame->child_frame_nodes()) {
-    if (!VisitFrameAndChildrenPreOrder(child, visitor)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// static
-bool GraphImplOperations::VisitFrameAndChildrenPostOrder(
-    FrameNodeImpl* frame,
-    GraphImplOperations::FrameNodeImplVisitor visitor) {
-  for (FrameNodeImpl* child : frame->child_frame_nodes()) {
-    if (!VisitFrameAndChildrenPostOrder(child, visitor)) {
-      return false;
-    }
-  }
-  if (!visitor(frame)) {
-    return false;
-  }
-  return true;
-}
-
-// static
 bool GraphImplOperations::VisitFrameTreePreOrder(const PageNodeImpl* page,
                                                  FrameNodeImplVisitor visitor) {
-  for (FrameNodeImpl* main_frame_node : page->main_frame_nodes()) {
+  for (auto* main_frame_node : page->main_frame_nodes()) {
     if (!VisitFrameAndChildrenPreOrder(main_frame_node, visitor)) {
       return false;
     }
@@ -99,7 +97,7 @@ bool GraphImplOperations::VisitFrameTreePreOrder(const PageNodeImpl* page,
 bool GraphImplOperations::VisitFrameTreePostOrder(
     const PageNodeImpl* page,
     FrameNodeImplVisitor visitor) {
-  for (FrameNodeImpl* main_frame_node : page->main_frame_nodes()) {
+  for (auto* main_frame_node : page->main_frame_nodes()) {
     if (!VisitFrameAndChildrenPostOrder(main_frame_node, visitor)) {
       return false;
     }

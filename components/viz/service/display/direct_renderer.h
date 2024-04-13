@@ -6,7 +6,6 @@
 #define COMPONENTS_VIZ_SERVICE_DISPLAY_DIRECT_RENDERER_H_
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -24,8 +23,8 @@
 #include "components/viz/service/display/display_resource_provider.h"
 #include "components/viz/service/display/overlay_candidate.h"
 #include "components/viz/service/display/overlay_processor_interface.h"
-#include "components/viz/service/display/render_pass_alpha_type.h"
 #include "components/viz/service/viz_service_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/ca_layer_result.h"
 #include "ui/gfx/delegated_ink_metadata.h"
 #include "ui/gfx/display_color_spaces.h"
@@ -80,7 +79,6 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
 
   bool use_partial_swap() const { return use_partial_swap_; }
 
-  void SetOutputSurfaceClipRect(const gfx::Rect& clip_rect);
   void SetVisible(bool visible);
   void ReallocatedFrameBuffers();
   void DecideRenderPassAllocationsForFrame(
@@ -113,8 +111,7 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
 #if BUILDFLAG(IS_APPLE)
     gfx::CALayerResult ca_layer_error_code = gfx::kCALayerSuccess;
 #endif
-    std::optional<int64_t> choreographer_vsync_id;
-    int64_t swap_trace_id = -1;
+    absl::optional<int64_t> choreographer_vsync_id;
   };
   virtual void SwapBuffers(SwapFrameData swap_frame_data) = 0;
   virtual void SwapBuffersSkipped() {}
@@ -147,7 +144,7 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
     // When we have a buffer queue, the output surface could be treated as an
     // overlay plane, and the struct to store that information is in
     // |output_surface_plane|.
-    std::optional<OverlayProcessorInterface::OutputSurfaceOverlayPlane>
+    absl::optional<OverlayProcessorInterface::OutputSurfaceOverlayPlane>
         output_surface_plane;
   };
 
@@ -210,7 +207,6 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
     bool generate_mipmap = false;
     SharedImageFormat format;
     gfx::ColorSpace color_space;
-    RenderPassAlphaType alpha_type = RenderPassAlphaType::kPremul;
     // Render pass wants scanout
     bool is_scanout = false;
     // Render pass wants to synchronize updates with other overlays, on Windows
@@ -268,7 +264,7 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
       AggregatedRenderPassId render_pass_id) const;
   const cc::FilterOperations* BackdropFiltersForPass(
       AggregatedRenderPassId render_pass_id) const;
-  const std::optional<gfx::RRectF> BackdropFilterBoundsForPass(
+  const absl::optional<gfx::RRectF> BackdropFilterBoundsForPass(
       AggregatedRenderPassId render_pass_id) const;
 
   // Private interface implemented by subclasses for use by DirectRenderer.
@@ -312,7 +308,6 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
       const copy_output::RenderPassGeometry& geometry,
       std::unique_ptr<CopyOutputRequest> request) = 0;
   virtual void GenerateMipmap() = 0;
-  virtual bool SupportsBGRA() const;
 
   gfx::Size surface_size_for_swap_buffers() const {
     return reshape_params_ ? reshape_params_->size : gfx::Size();
@@ -368,7 +363,7 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
       render_pass_filters_;
   base::flat_map<AggregatedRenderPassId, cc::FilterOperations*>
       render_pass_backdrop_filters_;
-  base::flat_map<AggregatedRenderPassId, std::optional<gfx::RRectF>>
+  base::flat_map<AggregatedRenderPassId, absl::optional<gfx::RRectF>>
       render_pass_backdrop_filter_bounds_;
   base::flat_map<AggregatedRenderPassId, gfx::Rect>
       backdrop_filter_output_rects_;
@@ -409,10 +404,6 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
     DCHECK(reshape_params_);
     return reshape_params_->color_space;
   }
-  RenderPassAlphaType reshape_alpha_type() const {
-    DCHECK(reshape_params_);
-    return reshape_params_->alpha_type;
-  }
 
   // Sets a DelegatedInkPointRendererSkiaForTest to be used for testing only, in
   // order to save delegated ink metadata values that would otherwise be reset.
@@ -442,11 +433,7 @@ class VIZ_SERVICE_EXPORT DirectRenderer {
   // Cached values given to Reshape(). The `reshape_params_` is optional
   // to prevent use of uninitialized values. The size in these parameters
   // may be larger than the `device_viewport_size_` that users see.
-  std::optional<OutputSurface::ReshapeParams> reshape_params_;
-
-  // If present additionally restricts drawing to the OutputSurface. WebView
-  // gets this rect from the HWUI.
-  std::optional<gfx::Rect> output_surface_clip_rect_;
+  absl::optional<OutputSurface::ReshapeParams> reshape_params_;
   gfx::Size device_viewport_size_;
   gfx::OverlayTransform reshape_display_transform_ =
       gfx::OVERLAY_TRANSFORM_INVALID;

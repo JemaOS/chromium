@@ -39,8 +39,10 @@ enum class RedirectPosition {
 
 // Navigation throttle responsible for activating subresource filtering on page
 // loads that match the SUBRESOURCE_FILTER Safe Browsing list.
-class SubresourceFilterSafeBrowsingActivationThrottle final
-    : public content::NavigationThrottle {
+class SubresourceFilterSafeBrowsingActivationThrottle
+    : public content::NavigationThrottle,
+      public base::SupportsWeakPtr<
+          SubresourceFilterSafeBrowsingActivationThrottle> {
  public:
   // Interface that allows the client of this class to adjust activation
   // decisions if/as desired.
@@ -144,9 +146,6 @@ class SubresourceFilterSafeBrowsingActivationThrottle final
   // Whether this throttle is deferring the navigation. Only set to true in
   // WillProcessResponse if there are ongoing safe browsing checks.
   bool deferring_ = false;
-
-  base::WeakPtrFactory<SubresourceFilterSafeBrowsingActivationThrottle>
-      weak_ptr_factory_{this};
 };
 
 }  // namespace subresource_filter

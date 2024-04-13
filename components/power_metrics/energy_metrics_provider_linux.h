@@ -44,7 +44,7 @@ class EnergyMetricsProviderLinux : public EnergyMetricsProvider {
   ~EnergyMetricsProviderLinux() override;
 
   // EnergyMetricsProvider implementation.
-  std::optional<EnergyMetrics> CaptureMetrics() override;
+  absl::optional<EnergyMetrics> CaptureMetrics() override;
 
  private:
   EnergyMetricsProviderLinux();

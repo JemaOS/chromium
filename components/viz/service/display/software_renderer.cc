@@ -123,7 +123,6 @@ void SoftwareRenderer::SwapBuffers(SwapFrameData swap_frame_data) {
   output_frame.latency_info = std::move(swap_frame_data.latency_info);
   output_frame.top_controls_visible_height_changed =
       swap_frame_data.top_controls_visible_height_changed;
-  output_frame.data.swap_trace_id = swap_frame_data.swap_trace_id;
   output_surface_->SwapBuffers(std::move(output_frame));
 }
 
@@ -394,7 +393,7 @@ void SoftwareRenderer::DrawPictureQuad(const PictureDrawQuad* quad) {
 
   SkCanvas* raster_canvas = current_canvas_;
 
-  std::optional<skia::OpacityFilterCanvas> opacity_canvas;
+  absl::optional<skia::OpacityFilterCanvas> opacity_canvas;
   if (needs_transparency || disable_image_filtering) {
     // TODO(aelias): This isn't correct in all cases. We should detect these
     // cases and fall back to a persistent bitmap backing
@@ -544,7 +543,8 @@ void SoftwareRenderer::DrawRenderPassQuad(
   const cc::FilterOperations* filters = FiltersForPass(quad->render_pass_id);
   if (filters) {
     DCHECK(!filters->IsEmpty());
-    auto paint_filter = cc::RenderSurfaceFilters::BuildImageFilter(*filters);
+    auto paint_filter = cc::RenderSurfaceFilters::BuildImageFilter(
+        *filters, gfx::SizeF(source_bitmap.width(), source_bitmap.height()));
     auto image_filter =
         paint_filter ? paint_filter->cached_sk_filter_ : nullptr;
     if (image_filter) {
@@ -735,7 +735,7 @@ sk_sp<SkImage> SoftwareRenderer::ApplyImageFilter(
                              : quad->rect.origin();
   SkImageInfo dst_info =
       SkImageInfo::MakeN32Premul(result_rect->width(), result_rect->height());
-  sk_sp<SkSurface> surface = SkSurfaces::Raster(dst_info);
+  sk_sp<SkSurface> surface = SkSurface::MakeRaster(dst_info);
   if (!surface)
     return nullptr;
 
@@ -766,10 +766,10 @@ SkBitmap SoftwareRenderer::GetBackdropBitmap(
 gfx::Rect SoftwareRenderer::GetBackdropBoundingBoxForRenderPassQuad(
     const AggregatedRenderPassDrawQuad* quad,
     const cc::FilterOperations* backdrop_filters,
-    std::optional<gfx::RRectF> backdrop_filter_bounds_input,
+    absl::optional<gfx::RRectF> backdrop_filter_bounds_input,
     gfx::Transform contents_device_transform,
     gfx::Transform* backdrop_filter_bounds_transform,
-    std::optional<gfx::RRectF>* backdrop_filter_bounds,
+    absl::optional<gfx::RRectF>* backdrop_filter_bounds,
     gfx::Rect* unclipped_rect) const {
   DCHECK(backdrop_filter_bounds_transform);
   DCHECK(backdrop_filter_bounds);
@@ -809,9 +809,10 @@ sk_sp<SkShader> SoftwareRenderer::GetBackdropFilterShader(
       BackdropFiltersForPass(quad->render_pass_id);
   if (!ShouldApplyBackdropFilters(backdrop_filters, quad))
     return nullptr;
-  std::optional<gfx::RRectF> backdrop_filter_bounds_input =
+  absl::optional<gfx::RRectF> backdrop_filter_bounds_input =
       BackdropFilterBoundsForPass(quad->render_pass_id);
-
+  DCHECK(!FiltersForPass(quad->render_pass_id))
+      << "Filters should always be in a separate Effect node";
   if (backdrop_filter_bounds_input.has_value()) {
     backdrop_filter_bounds_input->Scale(quad->filters_scale.x(),
                                         quad->filters_scale.y());
@@ -826,7 +827,7 @@ sk_sp<SkShader> SoftwareRenderer::GetBackdropFilterShader(
       current_frame()->target_to_device_transform);
   contents_device_transform.Flatten();
 
-  std::optional<gfx::RRectF> backdrop_filter_bounds;
+  absl::optional<gfx::RRectF> backdrop_filter_bounds;
   gfx::Transform backdrop_filter_bounds_transform;
   gfx::Rect unclipped_rect;
   gfx::Rect backdrop_rect = GetBackdropBoundingBoxForRenderPassQuad(
@@ -855,30 +856,23 @@ sk_sp<SkShader> SoftwareRenderer::GetBackdropFilterShader(
     // Crop the source image to the backdrop_filter_bounds.
     sk_sp<SkImage> cropped_image = SkImages::RasterFromBitmap(backdrop_bitmap);
     cropped_image = cropped_image->makeSubset(
-        static_cast<GrDirectContext*>(nullptr), RectToSkIRect(filter_clip));
+        RectToSkIRect(filter_clip), static_cast<GrDirectContext*>(nullptr));
     cropped_image->asLegacyBitmap(&backdrop_bitmap);
     image_offset = filter_clip.origin();
   }
 
-  // TODO (crbug.com/1451898): software_renderer doesn't apply backdrop filters
-  // correctly in the context of the ZOOM_FILTER operation (the lens bounds are
-  // not applied correctly). The ZOOM_FILTER is never used on platforms that
-  // use software_renderer, so skip calculating the filter bounds to pass
-  // to BuildImageFilter().
+  gfx::Vector2dF clipping_offset =
+      (unclipped_rect.top_right() - backdrop_rect.top_right()) +
+      (unclipped_rect.bottom_left() - backdrop_rect.bottom_left());
+
   sk_sp<cc::PaintFilter> paint_filter =
-      cc::RenderSurfaceFilters::BuildImageFilter(*backdrop_filters);
+      cc::RenderSurfaceFilters::BuildImageFilter(
+          *backdrop_filters,
+          gfx::SizeF(backdrop_bitmap.width(), backdrop_bitmap.height()),
+          clipping_offset);
   if (!paint_filter)
     return nullptr;
   sk_sp<SkImageFilter> filter = paint_filter->cached_sk_filter_;
-
-  // software_renderer doesn't support render passes with combined effects.
-  // While the effect node tree currently doesn't combine them, it may in the
-  // future (crbug.com1495777 and UI layers can combine them. Currently, only
-  // the magnifier widget does so, which mixes a ZOOM backdrop filter with an
-  // OFFSET filter. Due to crbug.com/1451898, that scenario never reaches this
-  // check.
-  DCHECK(!FiltersForPass(quad->render_pass_id))
-      << "Filters should always be in a separate Effect node";
 
   // TODO(989238): Software renderer does not support/implement kClamp_TileMode.
   SkIRect result_rect;

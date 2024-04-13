@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_AUTOFILL_IOS_BROWSER_TEST_AUTOFILL_MANAGER_INJECTOR_H_
 #define COMPONENTS_AUTOFILL_IOS_BROWSER_TEST_AUTOFILL_MANAGER_INJECTOR_H_
 
-#include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "components/autofill/core/browser/autofill_client.h"
 #include "components/autofill/core/browser/browser_autofill_manager.h"
@@ -26,8 +25,9 @@ namespace autofill {
 //
 //   class MockAutofillManager : BrowserAutofillManager {
 //    public:
-//     explicit MockAutofillManager(AutofillDriverIOS* driver)
-//         : BrowserAutofillManager(driver, "en-US") {}
+//     MockAutofillManager(AutofillDriverIOS* driver,
+//                         AutofillClient* client)
+//         : BrowserAutofillManager(driver, client, "en-US") {}
 //     MOCK_METHOD(...);
 //     ...
 //   };
@@ -61,10 +61,10 @@ class TestAutofillManagerInjector : public web::WebFramesManager::Observer,
   }
 
   T* GetForFrame(web::WebFrame* web_frame) {
-    BrowserAutofillManager& autofill_manager =
+    BrowserAutofillManager* autofill_manager =
         AutofillDriverIOS::FromWebStateAndWebFrame(web_state_, web_frame)
-            ->GetAutofillManager();
-    return &static_cast<T&>(autofill_manager);
+            ->autofill_manager();
+    return static_cast<T*>(autofill_manager);
   }
 
  private:
@@ -83,10 +83,16 @@ class TestAutofillManagerInjector : public web::WebFramesManager::Observer,
   void Inject(web::WebFrame* web_frame) {
     AutofillDriverIOS* driver =
         AutofillDriverIOS::FromWebStateAndWebFrame(web_state_, web_frame);
-    driver->set_autofill_manager_for_testing(std::make_unique<T>(driver));
+    AutofillClient* client = driver->client();
+    driver->set_autofill_manager_for_testing(CreateManager(driver, client));
   }
 
-  raw_ptr<web::WebState> web_state_;
+  std::unique_ptr<T> CreateManager(AutofillDriverIOS* driver,
+                                   AutofillClient* client) {
+    return std::make_unique<T>(driver, client);
+  }
+
+  web::WebState* web_state_;
   base::ScopedObservation<web::WebFramesManager,
                           web::WebFramesManager::Observer>
       frames_manager_observation_{this};

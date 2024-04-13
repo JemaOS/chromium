@@ -13,7 +13,7 @@
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
-#include "components/affiliations/core/browser/affiliation_utils.h"
+#include "components/password_manager/core/browser/affiliation/affiliation_utils.h"
 #include "components/password_manager/core/browser/hash_password_manager.h"
 #include "components/password_manager/core/browser/password_form.h"
 
@@ -23,10 +23,8 @@ std::unique_ptr<PasswordForm> PasswordFormFromData(
     const PasswordFormData& form_data) {
   auto form = std::make_unique<PasswordForm>();
   form->scheme = form_data.scheme;
-  form->date_last_used =
-      base::Time::FromSecondsSinceUnixEpoch(form_data.last_usage_time);
-  form->date_created =
-      base::Time::FromSecondsSinceUnixEpoch(form_data.creation_time);
+  form->date_last_used = base::Time::FromDoubleT(form_data.last_usage_time);
+  form->date_created = base::Time::FromDoubleT(form_data.creation_time);
   if (form_data.signon_realm)
     form->signon_realm = std::string(form_data.signon_realm);
   if (form_data.origin)
@@ -59,7 +57,7 @@ std::unique_ptr<PasswordForm> FillPasswordFormWithData(
     form->password_value.clear();
     form->federation_origin =
         url::Origin::Create(GURL("https://accounts.google.com/login"));
-    if (!affiliations::IsValidAndroidFacetURI(form->signon_realm)) {
+    if (!IsValidAndroidFacetURI(form->signon_realm)) {
       form->signon_realm =
           "federation://" + form->url.host() + "/accounts.google.com";
       form->type = PasswordForm::Type::kApi;
@@ -70,26 +68,18 @@ std::unique_ptr<PasswordForm> FillPasswordFormWithData(
   return form;
 }
 
-PasswordForm CreateEntry(const std::string& username,
-                         const std::string& password,
-                         const GURL& origin_url,
-                         PasswordForm::MatchType match_type) {
-  PasswordForm form;
-  form.username_value = base::ASCIIToUTF16(username);
-  form.password_value = base::ASCIIToUTF16(password);
-  form.url = origin_url;
-  form.signon_realm = origin_url.GetWithEmptyPath().spec();
-  form.match_type = match_type;
+std::unique_ptr<PasswordForm> CreateEntry(const std::string& username,
+                                          const std::string& password,
+                                          const GURL& origin_url,
+                                          bool is_psl_match,
+                                          bool is_affiliation_based_match) {
+  auto form = std::make_unique<PasswordForm>();
+  form->username_value = base::ASCIIToUTF16(username);
+  form->password_value = base::ASCIIToUTF16(password);
+  form->url = origin_url;
+  form->is_public_suffix_match = is_psl_match;
+  form->is_affiliation_based_match = is_affiliation_based_match;
   return form;
-}
-
-std::unique_ptr<PasswordForm> CreateUniquePtrEntry(
-    const std::string& username,
-    const std::string& password,
-    const GURL& origin_url,
-    PasswordForm::MatchType match_type) {
-  return std::make_unique<PasswordForm>(
-      CreateEntry(username, password, origin_url, match_type));
 }
 
 bool ContainsEqualPasswordFormsUnordered(
@@ -134,49 +124,26 @@ MockPasswordStoreObserver::MockPasswordStoreObserver() = default;
 
 MockPasswordStoreObserver::~MockPasswordStoreObserver() = default;
 
-PasswordStoreWaiter::PasswordStoreWaiter(PasswordStoreInterface* store) {
-  password_store_observer_.Observe(store);
-}
-
-PasswordStoreWaiter::~PasswordStoreWaiter() = default;
-
-void PasswordStoreWaiter::WaitOrReturn() {
-  run_loop_.Run();
-}
-
-void PasswordStoreWaiter::OnLoginsChanged(
-    PasswordStoreInterface* store,
-    const PasswordStoreChangeList& changes) {
-  run_loop_.Quit();
-}
-
 MockPasswordReuseDetectorConsumer::MockPasswordReuseDetectorConsumer() =
     default;
 
 MockPasswordReuseDetectorConsumer::~MockPasswordReuseDetectorConsumer() =
     default;
 
-base::WeakPtr<PasswordReuseDetectorConsumer>
-MockPasswordReuseDetectorConsumer::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 PasswordHashDataMatcher::PasswordHashDataMatcher(
-    std::optional<PasswordHashData> expected)
+    absl::optional<PasswordHashData> expected)
     : expected_(expected) {}
 
 PasswordHashDataMatcher::~PasswordHashDataMatcher() = default;
 
 bool PasswordHashDataMatcher::MatchAndExplain(
-    std::optional<PasswordHashData> hash_data,
+    absl::optional<PasswordHashData> hash_data,
     ::testing::MatchResultListener* listener) const {
-  if (expected_ == std::nullopt) {
-    return hash_data == std::nullopt;
-  }
+  if (expected_ == absl::nullopt)
+    return hash_data == absl::nullopt;
 
-  if (hash_data == std::nullopt) {
+  if (hash_data == absl::nullopt)
     return false;
-  }
 
   return expected_->username == hash_data->username &&
          expected_->length == hash_data->length &&
@@ -191,8 +158,8 @@ void PasswordHashDataMatcher::DescribeNegationTo(::std::ostream* os) const {
   *os << "doesn't match password hash data for " << expected_->username;
 }
 
-::testing::Matcher<std::optional<PasswordHashData>> Matches(
-    std::optional<PasswordHashData> expected) {
+::testing::Matcher<absl::optional<PasswordHashData>> Matches(
+    absl::optional<PasswordHashData> expected) {
   return ::testing::MakeMatcher(new PasswordHashDataMatcher(expected));
 }
 

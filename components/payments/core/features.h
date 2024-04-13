@@ -6,7 +6,6 @@
 #define COMPONENTS_PAYMENTS_CORE_FEATURES_H_
 
 #include "base/feature_list.h"
-#include "build/build_config.h"
 
 namespace payments {
 namespace features {
@@ -30,6 +29,10 @@ BASE_DECLARE_FEATURE(kAppStoreBillingDebug);
 // Used to control whether allow crawling just-in-time installable payment app.
 BASE_DECLARE_FEATURE(kWebPaymentsJustInTimePaymentApp);
 
+// Desktop only, if enabled payment handler window size matches the pop up
+// window size.
+BASE_DECLARE_FEATURE(kPaymentHandlerPopUpSizeWindow);
+
 // Used to test icon refetch for JIT installed apps with missing icons.
 BASE_DECLARE_FEATURE(kAllowJITInstallationWhenAppIconIsMissing);
 
@@ -44,24 +47,9 @@ BASE_DECLARE_FEATURE(kGPayAppDynamicUpdate);
 // credential store APIs, or if it can only rely on the user-profile database.
 BASE_DECLARE_FEATURE(kSecurePaymentConfirmationUseCredentialStoreAPIs);
 
-#if !BUILDFLAG(IS_ANDROID)
 // Desktop only, if enabled PaymentHandler will use the new minimal header UX.
 // See https://crbug.com/1385136.
 BASE_DECLARE_FEATURE(kPaymentHandlerMinimalHeaderUX);
-
-// Desktop only, if enabled the Task Manager will show the PaymentHandler
-// window.
-BASE_DECLARE_FEATURE(kPaymentHandlerWindowInTaskManager);
-#endif
-
-// If enabled, the web-app manifest for already-installed service-worker apps
-// will always be refetched for every Payment Request, in order to potentially
-// refresh the icon for the app.
-BASE_DECLARE_FEATURE(kPaymentHandlerAlwaysRefreshIcon);
-
-// If enabled, the payment method manifest fetch for Payment Handler must go via
-// a Link header with rel="payment-method-manifest".
-BASE_DECLARE_FEATURE(kPaymentHandlerRequireLinkHeader);
 
 }  // namespace features
 }  // namespace payments

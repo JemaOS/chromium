@@ -23,6 +23,7 @@ class DrainableIOBuffer;
 class DrainableIOBuffer;
 class GrowableIOBuffer;
 class IOBuffer;
+class Socket;
 }  // namespace net
 
 namespace cast_channel {

@@ -28,7 +28,9 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.components.paintpreview.player.OverscrollHandler;
 
-/** Tests for the {@link PlayerFrameScrollController} class. */
+/**
+ * Tests for the {@link PlayerFrameScrollController} class.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(shadows = {PaintPreviewCustomFlingingShadowScroller.class})
 public class PlayerFrameScrollControllerTest {
@@ -38,8 +40,10 @@ public class PlayerFrameScrollControllerTest {
 
     private OverScroller mScroller;
     private PlayerFrameViewport mViewport;
-    @Mock private PlayerFrameMediatorDelegate mMediatorDelegateMock;
-    @Mock private OverscrollHandler mOverscrollHandlerMock;
+    @Mock
+    private PlayerFrameMediatorDelegate mMediatorDelegateMock;
+    @Mock
+    private OverscrollHandler mOverscrollHandlerMock;
     private boolean mDidScroll;
     private boolean mDidFling;
     private PlayerFrameScrollController mScrollController;
@@ -55,12 +59,13 @@ public class PlayerFrameScrollControllerTest {
         when(mMediatorDelegateMock.getViewport()).thenReturn(mViewport);
         when(mMediatorDelegateMock.getContentSize())
                 .thenReturn(new Size(CONTENT_WIDTH, CONTENT_HEIGHT));
-        mScrollController =
-                new PlayerFrameScrollController(
-                        mScroller, mMediatorDelegateMock, mOnScrollListener, mOnFlingListener);
+        mScrollController = new PlayerFrameScrollController(
+                mScroller, mMediatorDelegateMock, mOnScrollListener, mOnFlingListener);
     }
 
-    /** Test that scrolling updates the viewport correctly and triggers expected callbacks. */
+    /**
+     * Test that scrolling updates the viewport correctly and triggers expected callbacks.
+     */
     @Test
     public void testScrollBy() {
         mViewport.setSize(100, 100);
@@ -75,7 +80,9 @@ public class PlayerFrameScrollControllerTest {
         Assert.assertTrue(mDidScroll);
     }
 
-    /** Test that scrolling won't exceed content bounds. */
+    /**
+     * Test that scrolling won't exceed content bounds.
+     */
     @Test
     public void testScrollByWithinBounds() {
         mViewport.setSize(100, 100);
@@ -168,7 +175,9 @@ public class PlayerFrameScrollControllerTest {
         Assert.assertEquals(mScroller.getFinalY(), mViewport.getTransY(), TOLERANCE);
     }
 
-    /** Test that the overscroll-to-refresh handler is called when appropriate. */
+    /**
+     * Test that the overscroll-to-refresh handler is called when appropriate.
+     */
     @Test
     public void testOverscrollToRefresh() {
         mScrollController.setOverscrollHandler(mOverscrollHandlerMock);
@@ -185,7 +194,9 @@ public class PlayerFrameScrollControllerTest {
         verify(mOverscrollHandlerMock).release();
     }
 
-    /** Test that the overscroll-to-refresh handler is eased correctly. */
+    /**
+     * Test that the overscroll-to-refresh handler is eased correctly.
+     */
     @Test
     public void testOverscrollToRefreshEasedOff() {
         mScrollController.setOverscrollHandler(mOverscrollHandlerMock);
@@ -205,7 +216,9 @@ public class PlayerFrameScrollControllerTest {
         verify(mOverscrollHandlerMock, never()).release();
     }
 
-    /** Test that the bitmap scale matrix updates correctly if it isn't identity. */
+    /**
+     * Test that the bitmap scale matrix updates correctly if it isn't identity.
+     */
     @Test
     public void testOffsetBitmapScaleMatrix() {
         mViewport.setSize(100, 100);

@@ -11,8 +11,9 @@ namespace offline_pages {
 
 namespace {
 std::string Base64EncodeString(const std::string value) {
-  return base::Base64Encode(value);
-  ;
+  std::string encoded_value;
+  base::Base64Encode(value, &encoded_value);
+  return encoded_value;
 }
 }  // namespace
 

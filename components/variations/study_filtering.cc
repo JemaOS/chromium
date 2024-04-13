@@ -14,7 +14,6 @@
 #include "base/logging.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
-#include "components/variations/variations_layers.h"
 #include "components/variations/variations_seed_processor.h"
 
 namespace variations {
@@ -307,13 +306,12 @@ bool ShouldAddStudy(const ProcessedStudy& processed_study,
       return false;
     }
 
-    if (!VariationsLayers::AllowsHighEntropy(study) &&
+    if (processed_study.ShouldStudyUseLowEntropy() &&
         layers.ActiveLayerMemberDependsOnHighEntropy(
             study.layer().layer_id())) {
-      DVLOG(1)
-          << "Filtered out study " << study.name()
-          << " due to not allowing a high entropy source yet being a member "
-             "of a layer using the default (high) entropy source.";
+      DVLOG(1) << "Filtered out study " << study.name()
+               << " due to requiring a low entropy source yet being a member "
+                  "of a layer using the default entropy source.";
       return false;
     }
   }

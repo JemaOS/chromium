@@ -5,7 +5,7 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_PAYMENTS_PAYMENTS_REQUESTS_UNMASK_CARD_REQUEST_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_PAYMENTS_PAYMENTS_REQUESTS_UNMASK_CARD_REQUEST_H_
 
-#include "components/autofill/core/browser/payments/payments_network_interface.h"
+#include "components/autofill/core/browser/payments/payments_client.h"
 #include "components/autofill/core/browser/payments/payments_requests/payments_request.h"
 
 namespace autofill {
@@ -14,17 +14,16 @@ namespace payments {
 class UnmaskCardRequest : public PaymentsRequest {
  public:
   UnmaskCardRequest(
-      const PaymentsNetworkInterface::UnmaskRequestDetails& request_details,
+      const PaymentsClient::UnmaskRequestDetails& request_details,
       const bool full_sync_enabled,
-      base::OnceCallback<void(
-          AutofillClient::PaymentsRpcResult,
-          const PaymentsNetworkInterface::UnmaskResponseDetails&)> callback);
+      base::OnceCallback<void(AutofillClient::PaymentsRpcResult,
+                              PaymentsClient::UnmaskResponseDetails&)>
+          callback);
   UnmaskCardRequest(const UnmaskCardRequest&) = delete;
   UnmaskCardRequest& operator=(const UnmaskCardRequest&) = delete;
   ~UnmaskCardRequest() override;
 
-  const PaymentsNetworkInterface::UnmaskResponseDetails&
-  GetResponseDetailsForTesting() {
+  const PaymentsClient::UnmaskResponseDetails& GetResponseDetailsForTesting() {
     return response_details_;
   }
 
@@ -46,13 +45,12 @@ class UnmaskCardRequest : public PaymentsRequest {
   // perform an authentication for a virtual card.
   bool CanPerformVirtualCardAuth();
 
-  PaymentsNetworkInterface::UnmaskRequestDetails request_details_;
+  PaymentsClient::UnmaskRequestDetails request_details_;
   const bool full_sync_enabled_;
-  base::OnceCallback<void(
-      AutofillClient::PaymentsRpcResult,
-      const PaymentsNetworkInterface::UnmaskResponseDetails&)>
+  base::OnceCallback<void(AutofillClient::PaymentsRpcResult,
+                          PaymentsClient::UnmaskResponseDetails&)>
       callback_;
-  PaymentsNetworkInterface::UnmaskResponseDetails response_details_;
+  PaymentsClient::UnmaskResponseDetails response_details_;
 };
 
 }  // namespace payments

@@ -127,11 +127,11 @@ mojom::ResultCode TestPrintBackend::GetPrinterSemanticCapsAndDefaults(
 #if BUILDFLAG(IS_WIN)
   // The Windows implementation does not load the printable area for all
   // paper sizes, only for the default size.  Mimic this behavior by
-  // defaulting the printable area to the physical size for all other paper
+  // defaulting the printable area to the physical size any other paper
   // sizes.
   for (auto& paper : printer_caps->papers) {
     if (paper != printer_caps->default_paper) {
-      paper.set_printable_area_to_paper_size();
+      paper.printable_area_um = gfx::Rect(paper.size_um);
     }
   }
 #endif
@@ -145,23 +145,23 @@ mojom::ResultCode TestPrintBackend::GetPrinterCapsAndDefaults(
   return ReportErrorNotImplemented(FROM_HERE);
 }
 
-std::optional<gfx::Rect> TestPrintBackend::GetPaperPrintableArea(
+absl::optional<gfx::Rect> TestPrintBackend::GetPaperPrintableArea(
     const std::string& printer_name,
     const std::string& paper_vendor_id,
     const gfx::Size& paper_size_um) {
   auto found = printer_map_.find(printer_name);
   if (found == printer_map_.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const std::unique_ptr<PrinterData>& data = found->second;
   if (data->blocked_by_permissions) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Capabilities might not have been provided.
   if (!data->caps) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Windows uses non-zero IDs to represent specific standard paper sizes.
@@ -169,13 +169,13 @@ std::optional<gfx::Rect> TestPrintBackend::GetPaperPrintableArea(
   if (base::StringToUint(paper_vendor_id, &id) && id) {
     PrinterSemanticCapsAndDefaults::Papers& papers = data->caps->papers;
     for (auto paper = papers.begin(); paper != papers.end(); ++paper) {
-      if (paper->vendor_id() == paper_vendor_id) {
-        return paper->printable_area_um();
+      if (paper->vendor_id == paper_vendor_id) {
+        return paper->printable_area_um;
       }
     }
 
     // No match for the specified paper identification.
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Custom paper size.  For testing just treat as match to paper size.
@@ -183,10 +183,10 @@ std::optional<gfx::Rect> TestPrintBackend::GetPaperPrintableArea(
 }
 #endif  // BUILDFLAG(IS_WIN)
 
-std::vector<std::string> TestPrintBackend::GetPrinterDriverInfo(
+std::string TestPrintBackend::GetPrinterDriverInfo(
     const std::string& printer_name) {
   // not implemented
-  return std::vector<std::string>();
+  return "";
 }
 
 bool TestPrintBackend::IsValidPrinter(const std::string& printer_name) {

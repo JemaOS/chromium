@@ -81,8 +81,7 @@ constexpr char kExpectedMediaSize[] = R"json({
       "imageable_area_right_microns": 600,
       "imageable_area_top_microns": 1000,
       "vendor_id": "12",
-      "width_microns": 4961,
-      "has_borderless_variant": true
+      "width_microns": 4961
     }, {
       "custom_display_name": "Letter",
       "height_microns": 6600,
@@ -111,12 +110,6 @@ constexpr char kExpectedMediaSize[] = R"json({
       "imageable_area_top_microns": 10200,
       "vendor_id": "89",
       "width_microns": 6600
-    }, {
-      "custom_display_name": "Custom",
-      "is_continuous_feed": true,
-      "max_height_microns": 20000,
-      "min_height_microns": 5080,
-      "width_microns": 2540
     }
 ]})json";
 
@@ -148,8 +141,7 @@ constexpr char kExpectedMediaSizeWithWiderPaper[] = R"json({
       "imageable_area_right_microns": 600,
       "imageable_area_top_microns": 1000,
       "vendor_id": "12",
-      "width_microns": 4961,
-      "has_borderless_variant": true
+      "width_microns": 4961
     }, {
       "custom_display_name": "Letter",
       "height_microns": 6600,
@@ -163,9 +155,9 @@ constexpr char kExpectedMediaSizeWithWiderPaper[] = R"json({
     }, {
       "custom_display_name": "NA_INDEX_3X5",
       "height_microns": 127000,
-      "imageable_area_bottom_microns": 700,
+      "imageable_area_bottom_microns": 1000,
       "imageable_area_left_microns": 500,
-      "imageable_area_right_microns": 76000,
+      "imageable_area_right_microns": 75700,
       "imageable_area_top_microns": 126000,
       "name": "NA_INDEX_3X5",
       "vendor_id": "15",
@@ -188,24 +180,6 @@ constexpr char kExpectedMediaSizeWithWiderPaper[] = R"json({
       "imageable_area_top_microns": 10200,
       "vendor_id": "89",
       "width_microns": 6600
-    }, {
-      "custom_display_name": "Custom",
-      "is_continuous_feed": true,
-      "max_height_microns": 20000,
-      "min_height_microns": 5080,
-      "width_microns": 2540
-    }
-]})json";
-
-constexpr char kExpectedMediaType[] = R"json({
-  "option": [
-    {
-      "custom_display_name": "Plain Paper",
-      "is_default": true,
-      "vendor_id": "stationery"
-    }, {
-      "custom_display_name": "Photo Paper",
-      "vendor_id": "photographic"
     }
 ]})json";
 
@@ -308,9 +282,9 @@ TEST(CloudPrintCddConversionTest, ValidCloudPrintCddConversion) {
   const base::Value::Dict* printer_dict = GetPrinterDict(output);
   ASSERT_TRUE(printer_dict);
 #if BUILDFLAG(IS_CHROMEOS)
-  ASSERT_EQ(10u, printer_dict->size());
-#else
   ASSERT_EQ(9u, printer_dict->size());
+#else
+  ASSERT_EQ(8u, printer_dict->size());
 #endif  // BUILDFLAG(IS_CHROMEOS)
   base::ExpectDictValue(base::test::ParseJson(kExpectedCollateDefaultTrue),
                         *printer_dict, "collate");
@@ -324,8 +298,6 @@ TEST(CloudPrintCddConversionTest, ValidCloudPrintCddConversion) {
                         "duplex");
   base::ExpectDictValue(base::test::ParseJson(kExpectedMediaSize),
                         *printer_dict, "media_size");
-  base::ExpectDictValue(base::test::ParseJson(kExpectedMediaType),
-                        *printer_dict, "media_type");
   base::ExpectDictValue(base::test::ParseJson(kExpectedPageOrientation),
                         *printer_dict, "page_orientation");
   base::ExpectDictValue(base::test::ParseJson(kExpectedSupportedContentType),
@@ -346,9 +318,9 @@ TEST(CloudPrintCddConversionTest, MissingEntry) {
 
   ASSERT_TRUE(printer_dict);
 #if BUILDFLAG(IS_CHROMEOS)
-  ASSERT_EQ(9u, printer_dict->size());
-#else
   ASSERT_EQ(8u, printer_dict->size());
+#else
+  ASSERT_EQ(7u, printer_dict->size());
 #endif  // BUILDFLAG(IS_CHROMEOS)
   ASSERT_FALSE(printer_dict->contains("collate"));
 }
@@ -363,9 +335,9 @@ TEST(CloudPrintCddConversionTest, CollateDefaultIsFalse) {
 
   ASSERT_TRUE(printer_dict);
 #if BUILDFLAG(IS_CHROMEOS)
-  ASSERT_EQ(10u, printer_dict->size());
-#else
   ASSERT_EQ(9u, printer_dict->size());
+#else
+  ASSERT_EQ(8u, printer_dict->size());
 #endif  // BUILDFLAG(IS_CHROMEOS)
   base::ExpectDictValue(base::test::ParseJson(kExpectedCollateDefaultFalse),
                         *printer_dict, "collate");
@@ -373,41 +345,26 @@ TEST(CloudPrintCddConversionTest, CollateDefaultIsFalse) {
 
 TEST(CloudPrintCddConversionTest, WiderPaper) {
   // Test that a Paper that has a larger width swaps its width and height when
-  // converting to a CDD.  Additionally, create the printable area such that
-  // none of the margins are equal.  Create margins as so:  left: 1000,
-  // bottom: 500, right: 700, top: 200.
+  // converting to a CDD.
   printing::PrinterSemanticCapsAndDefaults input =
       printing::GenerateSamplePrinterSemanticCapsAndDefaults({});
   input.papers.push_back(printing::PrinterSemanticCapsAndDefaults::Paper(
       "NA_INDEX_3X5", "15", gfx::Size(127000, 76200),
-      gfx::Rect(1000, 500, 125300, 75500)));
+      gfx::Rect(1000, 500, 125000, 75200)));
   const base::Value output = PrinterSemanticCapsAndDefaultsToCdd(input);
   const base::Value::Dict* printer_dict = GetPrinterDict(output);
 
   ASSERT_TRUE(printer_dict);
 #if BUILDFLAG(IS_CHROMEOS)
-  ASSERT_EQ(10u, printer_dict->size());
-#else
   ASSERT_EQ(9u, printer_dict->size());
+#else
+  ASSERT_EQ(8u, printer_dict->size());
 #endif  // BUILDFLAG(IS_CHROMEOS)
   base::ExpectDictValue(base::test::ParseJson(kExpectedMediaSizeWithWiderPaper),
                         *printer_dict, "media_size");
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
-TEST(CloudPrintCddConversionTest, MediaTypeOnlyOne) {
-  printing::PrinterSemanticCapsAndDefaults input =
-      printing::GenerateSamplePrinterSemanticCapsAndDefaults({});
-  input.media_types = {input.media_types[0]};
-  const base::Value output = PrinterSemanticCapsAndDefaultsToCdd(input);
-  const base::Value::Dict* printer_dict = GetPrinterDict(output);
-
-  // The media type list should only be included when more than one media type
-  // is supported.
-  ASSERT_TRUE(printer_dict);
-  EXPECT_FALSE(printer_dict->contains("media_type"));
-}
-
 TEST(CloudPrintCddConversionTest, PinAndAdvancedCapabilities) {
   printing::PrinterSemanticCapsAndDefaults input =
       printing::GenerateSamplePrinterSemanticCapsAndDefaults(
@@ -416,7 +373,7 @@ TEST(CloudPrintCddConversionTest, PinAndAdvancedCapabilities) {
   const base::Value::Dict* printer_dict = GetPrinterDict(output);
 
   ASSERT_TRUE(printer_dict);
-  ASSERT_EQ(11u, printer_dict->size());
+  ASSERT_EQ(10u, printer_dict->size());
   base::ExpectDictValue(base::test::ParseJson(kExpectedPinSupportedTrue),
                         *printer_dict, "pin");
   base::ExpectDictValue(base::test::ParseJson(kExpectedAdvancedCapabilities),
@@ -434,7 +391,7 @@ TEST(CloudPrintCddConversionTest, PageOutputQualityWithDefaultQuality) {
   const base::Value::Dict* printer_dict = GetPrinterDict(output);
 
   ASSERT_TRUE(printer_dict);
-  ASSERT_EQ(10u, printer_dict->size());
+  ASSERT_EQ(9u, printer_dict->size());
   base::ExpectDictValue(base::test::ParseJson(kExpectedPageOutputQuality),
                         *printer_dict, "vendor_capability");
 }
@@ -447,7 +404,7 @@ TEST(CloudPrintCddConversionTest, PageOutputQualityNullDefaultQuality) {
   const base::Value::Dict* printer_dict = GetPrinterDict(output);
 
   ASSERT_TRUE(printer_dict);
-  ASSERT_EQ(10u, printer_dict->size());
+  ASSERT_EQ(9u, printer_dict->size());
   base::ExpectDictValue(
       base::test::ParseJson(kExpectedPageOutputQualityNullDefault),
       *printer_dict, "vendor_capability");

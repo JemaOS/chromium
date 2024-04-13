@@ -31,9 +31,10 @@ std::vector<double> PresetZoomValues(PageZoomValueType value_type,
   // factors. The values in content::kPresetZoomFactors will already be in
   // sorted order.
   std::vector<double> zoom_values;
-  zoom_values.reserve(blink::kPresetZoomFactors.size());
+  zoom_values.reserve(zoom::kPresetZoomFactorsSize);
   bool found_custom = false;
-  for (double zoom_value : blink::kPresetZoomFactors) {
+  for (size_t i = 0; i < zoom::kPresetZoomFactorsSize; i++) {
+    double zoom_value = zoom::kPresetZoomFactors[i];
     if (value_type == PAGE_ZOOM_VALUE_TYPE_LEVEL)
       zoom_value = blink::PageZoomFactorToZoomLevel(zoom_value);
     if (blink::PageZoomValuesEqual(zoom_value, custom_value))

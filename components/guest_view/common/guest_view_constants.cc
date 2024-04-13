@@ -21,6 +21,7 @@ const char kEventResize[] = "guestViewInternal.onResize";
 
 // Parameters/properties on events.
 const char kCode[] = "code";
+const char kID[] = "id";
 const char kIsTopLevel[] = "isTopLevel";
 const char kNewWidth[] = "newWidth";
 const char kNewHeight[] = "newHeight";
@@ -31,6 +32,7 @@ const char kUrl[] = "url";
 const char kUserGesture[] = "userGesture";
 
 // Initialization parameters.
+const char kParameterApi[] = "api";
 const char kParameterInstanceId[] = "instanceId";
 
 // Other.

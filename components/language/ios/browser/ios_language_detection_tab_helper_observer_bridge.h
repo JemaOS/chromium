@@ -7,7 +7,6 @@
 
 #import <Foundation/Foundation.h>
 
-#include "base/memory/raw_ptr.h"
 #include "components/language/ios/browser/ios_language_detection_tab_helper.h"
 
 // Objective-C equivalent of language::IOSLanguageDetectionTabHelper::Observer.
@@ -45,7 +44,7 @@ class IOSLanguageDetectionTabHelperObserverBridge
       IOSLanguageDetectionTabHelper* tab_helper) override;
 
  private:
-  raw_ptr<IOSLanguageDetectionTabHelper> tab_helper_ = nullptr;
+  IOSLanguageDetectionTabHelper* tab_helper_ = nullptr;
   __weak id<IOSLanguageDetectionTabHelperObserving> owner_;
 };
 

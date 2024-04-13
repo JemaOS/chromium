@@ -4,7 +4,6 @@
 
 #include "components/policy/core/browser/policy_conversions_client.h"
 
-#include "base/strings/strcat.h"
 #include "components/policy/core/common/policy_map.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -15,13 +14,13 @@ constexpr char kPolicyName2[] = "policy_b";
 constexpr char kPolicyName3[] = "policy_c";
 }  // namespace
 
-class StubPolicyConversionsClient : public PolicyConversionsClient {
+class MockPolicyConversionsClient : public PolicyConversionsClient {
  public:
-  StubPolicyConversionsClient() = default;
-  StubPolicyConversionsClient(const StubPolicyConversionsClient&) = delete;
-  StubPolicyConversionsClient& operator=(const StubPolicyConversionsClient&) =
+  MockPolicyConversionsClient() = default;
+  MockPolicyConversionsClient(const MockPolicyConversionsClient&) = delete;
+  MockPolicyConversionsClient& operator=(const MockPolicyConversionsClient&) =
       delete;
-  ~StubPolicyConversionsClient() override = default;
+  ~MockPolicyConversionsClient() override = default;
 
  private:
   // PolicyConversionsClient.
@@ -57,7 +56,7 @@ class PolicyConversionsClientTest : public ::testing::Test {
   base::Value::Dict GetPolicyValues(
       const PolicyConversionsClient& client,
       const PolicyMap& map,
-      const std::optional<PolicyConversions::PolicyToSchemaMap>&
+      const absl::optional<PolicyConversions::PolicyToSchemaMap>&
           known_policy_schemas) const {
     return client.GetPolicyValues(map, nullptr, PoliciesSet(), PoliciesSet(),
                                   known_policy_schemas);
@@ -71,13 +70,13 @@ TEST_F(PolicyConversionsClientTest, SetDropDefaultValues) {
   policy_map.Set(kPolicyName2, CreateEntry(true /* set_is_default */));
   policy_map.Set(kPolicyName3, CreateEntry(false /* set_is_default */));
 
-  std::optional<PolicyConversions::PolicyToSchemaMap> policy_schemas =
+  absl::optional<PolicyConversions::PolicyToSchemaMap> policy_schemas =
       policy::PolicyConversions::PolicyToSchemaMap{
           {{kPolicyName1, policy::Schema()},
            {kPolicyName2, policy::Schema()},
            {kPolicyName3, policy::Schema()}}};
 
-  StubPolicyConversionsClient client;
+  MockPolicyConversionsClient client;
 
   // All policies should exist because |drop_default_values_enabled_| is false
   // by default.
@@ -97,38 +96,6 @@ TEST_F(PolicyConversionsClientTest, SetDropDefaultValues) {
   EXPECT_EQ(2u, policies2.size());
   EXPECT_NE(nullptr, policies2.FindDict(kPolicyName1));
   EXPECT_NE(nullptr, policies2.FindDict(kPolicyName3));
-}
-
-TEST_F(PolicyConversionsClientTest, HideMachineValues) {
-  policy::PolicyMap policy_map;
-  base::Value value("value");
-  base::Value hidden_value("********");
-  policy_map.Set(kPolicyName1, POLICY_LEVEL_MANDATORY, POLICY_SCOPE_USER,
-                 POLICY_SOURCE_CLOUD, value.Clone(), nullptr);
-  policy_map.Set(kPolicyName2, POLICY_LEVEL_MANDATORY, POLICY_SCOPE_MACHINE,
-                 POLICY_SOURCE_CLOUD, value.Clone(), nullptr);
-  std::optional<PolicyConversions::PolicyToSchemaMap> policy_schemas =
-      policy::PolicyConversions::PolicyToSchemaMap{
-          {{kPolicyName1, policy::Schema()}}};
-  StubPolicyConversionsClient client;
-
-  base::Value::Dict policies =
-      GetPolicyValues(client, policy_map, policy_schemas);
-  EXPECT_EQ(value,
-            *policies.FindByDottedPath(base::StrCat({kPolicyName1, ".value"})));
-  EXPECT_EQ(value,
-            *policies.FindByDottedPath(base::StrCat({kPolicyName2, ".value"})));
-  EXPECT_TRUE(
-      policies.FindByDottedPath(base::StrCat({kPolicyName2, ".error"})));
-
-  client.EnableShowMachineValues(false);
-  policies = GetPolicyValues(client, policy_map, policy_schemas);
-  EXPECT_EQ(value,
-            *policies.FindByDottedPath(base::StrCat({kPolicyName1, ".value"})));
-  EXPECT_EQ(hidden_value,
-            *policies.FindByDottedPath(base::StrCat({kPolicyName2, ".value"})));
-  EXPECT_FALSE(
-      policies.FindByDottedPath(base::StrCat({kPolicyName2, ".error"})));
 }
 
 }  // namespace policy

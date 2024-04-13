@@ -8,11 +8,8 @@
 #include <string>
 
 #include "base/memory/raw_ptr.h"
-#include "base/test/scoped_feature_list.h"
-#include "components/global_media_controls/public/views/media_item_ui_detailed_view.h"
 #include "components/global_media_controls/public/views/media_item_ui_view.h"
 #include "components/media_message_center/mock_media_notification_item.h"
-#include "media/base/media_switches.h"
 #include "ui/views/test/views_test_base.h"
 
 using testing::NiceMock;
@@ -28,8 +25,7 @@ const char kTestItemId3[] = "testid3";
 
 }  // anonymous namespace
 
-class MediaItemUIListViewTest : public views::ViewsTestBase,
-                                public testing::WithParamInterface<bool> {
+class MediaItemUIListViewTest : public views::ViewsTestBase {
  public:
   MediaItemUIListViewTest() = default;
   MediaItemUIListViewTest(const MediaItemUIListViewTest&) = delete;
@@ -39,14 +35,6 @@ class MediaItemUIListViewTest : public views::ViewsTestBase,
   // views::ViewsTestBase:
   void SetUp() override {
     views::ViewsTestBase::SetUp();
-
-#if BUILDFLAG(IS_CHROMEOS)
-    feature_list_.InitWithFeatureState(media::kGlobalMediaControlsCrOSUpdatedUI,
-                                       UseUpdatedUI());
-#else
-    feature_list_.InitWithFeatureState(media::kGlobalMediaControlsUpdatedUI,
-                                       UseUpdatedUI());
-#endif
 
     widget_ = CreateTestWidget();
 
@@ -63,19 +51,9 @@ class MediaItemUIListViewTest : public views::ViewsTestBase,
     views::ViewsTestBase::TearDown();
   }
 
-  bool UseUpdatedUI() { return GetParam(); }
-
   void ShowItem(const std::string& id) {
-    if (UseUpdatedUI()) {
-      list_view_->ShowItem(
-          id, std::make_unique<MediaItemUIView>(
-                  id, item_->GetWeakPtr(), nullptr, nullptr, std::nullopt,
-                  media_message_center::MediaColorTheme(),
-                  MediaDisplayPage::kQuickSettingsMediaView));
-    } else {
-      list_view_->ShowItem(id, std::make_unique<MediaItemUIView>(
-                                   id, item_->GetWeakPtr(), nullptr, nullptr));
-    }
+    list_view_->ShowItem(id, std::make_unique<MediaItemUIView>(
+                                 id, item_->GetWeakPtr(), nullptr, nullptr));
   }
 
   void HideItem(const std::string& id) { list_view_->HideItem(id); }
@@ -84,16 +62,11 @@ class MediaItemUIListViewTest : public views::ViewsTestBase,
 
  private:
   std::unique_ptr<views::Widget> widget_;
-  raw_ptr<MediaItemUIListView, DanglingUntriaged> list_view_ = nullptr;
+  raw_ptr<MediaItemUIListView> list_view_ = nullptr;
   std::unique_ptr<media_message_center::test::MockMediaNotificationItem> item_;
-  base::test::ScopedFeatureList feature_list_;
 };
 
-INSTANTIATE_TEST_SUITE_P(GlobalMediaControlsCrOSUpdatedUI,
-                         MediaItemUIListViewTest,
-                         testing::Bool());
-
-TEST_P(MediaItemUIListViewTest, NoSeparatorForOneItem) {
+TEST_F(MediaItemUIListViewTest, NoSeparatorForOneItem) {
   // Show a single item.
   ShowItem(kTestItemId1);
 
@@ -105,7 +78,7 @@ TEST_P(MediaItemUIListViewTest, NoSeparatorForOneItem) {
             list_view()->items_for_testing().at(kTestItemId1)->GetBorder());
 }
 
-TEST_P(MediaItemUIListViewTest, SeparatorBetweenItems) {
+TEST_F(MediaItemUIListViewTest, SeparatorBetweenItems) {
   // Show two items.
   ShowItem(kTestItemId1);
   ShowItem(kTestItemId2);
@@ -113,17 +86,15 @@ TEST_P(MediaItemUIListViewTest, SeparatorBetweenItems) {
   // There should be two items.
   EXPECT_EQ(2u, list_view()->items_for_testing().size());
 
-  if (!UseUpdatedUI()) {
-    // There should be a separator between them. Since the separators are
-    // top-sided, the bottom item should have one.
-    EXPECT_EQ(nullptr,
-              list_view()->items_for_testing().at(kTestItemId1)->GetBorder());
-    EXPECT_NE(nullptr,
-              list_view()->items_for_testing().at(kTestItemId2)->GetBorder());
-  }
+  // There should be a separator between them. Since the separators are
+  // top-sided, the bottom item should have one.
+  EXPECT_EQ(nullptr,
+            list_view()->items_for_testing().at(kTestItemId1)->GetBorder());
+  EXPECT_NE(nullptr,
+            list_view()->items_for_testing().at(kTestItemId2)->GetBorder());
 }
 
-TEST_P(MediaItemUIListViewTest, SeparatorRemovedWhenItemRemoved) {
+TEST_F(MediaItemUIListViewTest, SeparatorRemovedWhenItemRemoved) {
   // Show three items.
   ShowItem(kTestItemId1);
   ShowItem(kTestItemId2);
@@ -132,15 +103,13 @@ TEST_P(MediaItemUIListViewTest, SeparatorRemovedWhenItemRemoved) {
   // There should be three items.
   EXPECT_EQ(3u, list_view()->items_for_testing().size());
 
-  if (!UseUpdatedUI()) {
-    // There should be separators.
-    EXPECT_EQ(nullptr,
-              list_view()->items_for_testing().at(kTestItemId1)->GetBorder());
-    EXPECT_NE(nullptr,
-              list_view()->items_for_testing().at(kTestItemId2)->GetBorder());
-    EXPECT_NE(nullptr,
-              list_view()->items_for_testing().at(kTestItemId3)->GetBorder());
-  }
+  // There should be separators.
+  EXPECT_EQ(nullptr,
+            list_view()->items_for_testing().at(kTestItemId1)->GetBorder());
+  EXPECT_NE(nullptr,
+            list_view()->items_for_testing().at(kTestItemId2)->GetBorder());
+  EXPECT_NE(nullptr,
+            list_view()->items_for_testing().at(kTestItemId3)->GetBorder());
 
   // Remove the topmost item.
   HideItem(kTestItemId1);
@@ -148,13 +117,11 @@ TEST_P(MediaItemUIListViewTest, SeparatorRemovedWhenItemRemoved) {
   // There should be two items.
   EXPECT_EQ(2u, list_view()->items_for_testing().size());
 
-  if (!UseUpdatedUI()) {
-    // The new top item should have lost its top separator.
-    EXPECT_EQ(nullptr,
-              list_view()->items_for_testing().at(kTestItemId2)->GetBorder());
-    EXPECT_NE(nullptr,
-              list_view()->items_for_testing().at(kTestItemId3)->GetBorder());
-  }
+  // The new top item should have lost its top separator.
+  EXPECT_EQ(nullptr,
+            list_view()->items_for_testing().at(kTestItemId2)->GetBorder());
+  EXPECT_NE(nullptr,
+            list_view()->items_for_testing().at(kTestItemId3)->GetBorder());
 }
 
 }  // namespace global_media_controls

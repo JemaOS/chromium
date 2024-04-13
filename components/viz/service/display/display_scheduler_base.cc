@@ -7,11 +7,9 @@
 namespace viz {
 
 DisplaySchedulerBase::DisplaySchedulerBase() = default;
-
 DisplaySchedulerBase::~DisplaySchedulerBase() {
-  if (damage_tracker_) {
-    damage_tracker_->SetDelegate(nullptr);
-  }
+  if (damage_tracker_)
+    damage_tracker_->RemoveObserver(this);
 }
 
 void DisplaySchedulerBase::SetClient(DisplaySchedulerClient* client) {
@@ -23,7 +21,7 @@ void DisplaySchedulerBase::SetDamageTracker(
   DCHECK(!damage_tracker_);
   DCHECK(damage_tracker);
   damage_tracker_ = damage_tracker;
-  damage_tracker_->SetDelegate(this);
+  damage_tracker_->AddObserver(this);
 }
 
 }  // namespace viz

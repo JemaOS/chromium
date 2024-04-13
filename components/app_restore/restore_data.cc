@@ -6,11 +6,13 @@
 
 #include <utility>
 
+#include "base/i18n/number_formatting.h"
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
 #include "components/app_constants/constants.h"
 #include "components/app_restore/app_launch_info.h"
+#include "components/app_restore/window_info.h"
 
 namespace app_restore {
 
@@ -84,7 +86,7 @@ RestoreData::RestoreData(base::Value restore_data_value) {
       auto app_restore_data =
           std::make_unique<AppRestoreData>(std::move(*app_restore_data_dict));
       if (removing_desk_guid_.is_valid() &&
-          app_restore_data->window_info.desk_guid == removing_desk_guid_) {
+          app_restore_data->desk_guid == removing_desk_guid_) {
         continue;
       }
 
@@ -110,27 +112,26 @@ std::unique_ptr<RestoreData> RestoreData::Clone() const {
 }
 
 base::Value RestoreData::ConvertToValue() const {
-  base::Value::Dict restore_data_dict;
-  for (const auto& [app_id, launch_list] : app_id_to_launch_list_) {
-    if (launch_list.empty()) {
+  base::Value restore_data_dict(base::Value::Type::DICT);
+  for (const auto& it : app_id_to_launch_list_) {
+    if (it.second.empty())
       continue;
+
+    base::Value info_dict(base::Value::Type::DICT);
+    for (const auto& data : it.second) {
+      info_dict.SetKey(base::NumberToString(data.first),
+                       data.second->ConvertToValue());
     }
 
-    base::Value::Dict info_dict;
-    for (const auto& [window_id, app_restore_data] : launch_list) {
-      info_dict.Set(base::NumberToString(window_id),
-                    app_restore_data->ConvertToValue());
-    }
-
-    restore_data_dict.Set(app_id, std::move(info_dict));
+    restore_data_dict.SetKey(it.first, std::move(info_dict));
   }
 
   if (removing_desk_guid_.is_valid()) {
-    restore_data_dict.Set(kRemovingDeskGuidKey,
-                          removing_desk_guid_.AsLowercaseString());
+    restore_data_dict.GetDict().Set(kRemovingDeskGuidKey,
+                                    removing_desk_guid_.AsLowercaseString());
   }
 
-  return base::Value(std::move(restore_data_dict));
+  return restore_data_dict;
 }
 
 bool RestoreData::HasAppTypeBrowser() const {
@@ -138,11 +139,13 @@ bool RestoreData::HasAppTypeBrowser() const {
   if (it == app_id_to_launch_list_.end())
     return false;
 
-  return base::ranges::any_of(
-      it->second,
-      [](const std::pair<const int, std::unique_ptr<AppRestoreData>>& data) {
-        return data.second->browser_extra_info.app_type_browser.value_or(false);
-      });
+  for (const auto& data : it->second) {
+    if (data.second->app_type_browser.has_value() &&
+        data.second->app_type_browser.value()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool RestoreData::HasBrowser() const {
@@ -150,12 +153,13 @@ bool RestoreData::HasBrowser() const {
   if (it == app_id_to_launch_list_.end())
     return false;
 
-  return base::ranges::any_of(
-      it->second,
-      [](const std::pair<const int, std::unique_ptr<AppRestoreData>>& data) {
-        return !data.second->browser_extra_info.app_type_browser.value_or(
-            false);
-      });
+  for (const auto& data : it->second) {
+    if (!data.second->app_type_browser.has_value() ||
+        !data.second->app_type_browser.value()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool RestoreData::HasAppRestoreData(const std::string& app_id,
@@ -219,9 +223,8 @@ void RestoreData::SetNextRestoreWindowIdForChromeApp(
 
   // When a chrome app has multiple windows, all windows will be sent to the
   // background.
-  for (auto& [window_id, app_restore_data] : it->second) {
-    app_restore_data->window_info.activation_index = INT32_MAX;
-  }
+  for (auto& data_it : it->second)
+    data_it.second->activation_index = INT32_MAX;
 }
 
 void RestoreData::RemoveAppRestoreData(const std::string& app_id,
@@ -236,9 +239,9 @@ void RestoreData::RemoveAppRestoreData(const std::string& app_id,
 
 void RestoreData::SendWindowToBackground(const std::string& app_id,
                                          int window_id) {
-  if (auto* app_restore_data = GetAppRestoreDataMutable(app_id, window_id)) {
-    app_restore_data->window_info.activation_index = INT32_MAX;
-  }
+  auto* app_restore_data = GetAppRestoreDataMutable(app_id, window_id);
+  if (app_restore_data)
+    app_restore_data->activation_index = INT32_MAX;
 }
 
 void RestoreData::RemoveApp(const std::string& app_id) {
@@ -299,10 +302,10 @@ const AppRestoreData* RestoreData::GetAppRestoreData(const std::string& app_id,
   return data_it->second.get();
 }
 
-void RestoreData::SetDeskUuid(const base::Uuid& desk_uuid) {
+void RestoreData::SetDeskIndex(int desk_index) {
   for (auto& [app_id, launch_list] : app_id_to_launch_list_) {
     for (auto& [window_id, app_restore_data] : launch_list) {
-      app_restore_data->window_info.desk_guid = desk_uuid;
+      app_restore_data->desk_id = desk_index;
     }
   }
 }
@@ -343,7 +346,33 @@ void RestoreData::UpdateBrowserAppIdToLacros() {
 }
 
 std::string RestoreData::ToString() const {
-  return ConvertToValue().DebugString();
+  if (app_id_to_launch_list_.empty() && !removing_desk_guid_.is_valid()) {
+    return "empty";
+  }
+
+  std::string result = "( ";
+  for (const auto& entry : app_id_to_launch_list_) {
+    result += base::StringPrintf(
+        "(App ID: %s, Count: %s)", entry.first.c_str(),
+        base::UTF16ToUTF8(base::FormatNumber(entry.second.size())).c_str());
+    for (const auto& windows : entry.second) {
+      result +=
+          base::StringPrintf(
+              "(Window ID: %s)",
+              base::UTF16ToUTF8(base::FormatNumber(windows.first)).c_str()) +
+          windows.second->GetWindowInfo()->ToString();
+    }
+  }
+
+  result += " )";
+
+  if (removing_desk_guid_.is_valid()) {
+    result +=
+        base::StringPrintf(" (Removing Desk GUID: %s)",
+                           removing_desk_guid_.AsLowercaseString().c_str());
+  }
+
+  return result;
 }
 
 AppRestoreData* RestoreData::GetAppRestoreDataMutable(const std::string& app_id,

@@ -10,15 +10,10 @@
 #include "base/containers/flat_map.h"
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
-#include "components/exo/wayland/output_metrics.h"
 
 struct wl_client;
 struct wl_global;
 struct wl_resource;
-
-namespace display {
-class Display;
-}  // namespace display
 
 namespace exo {
 namespace wayland {
@@ -31,7 +26,7 @@ namespace wayland {
 // they're removed immediately.
 class WaylandDisplayOutput {
  public:
-  explicit WaylandDisplayOutput(const display::Display& display);
+  explicit WaylandDisplayOutput(int64_t display_id);
 
   WaylandDisplayOutput(const WaylandDisplayOutput&) = delete;
   WaylandDisplayOutput& operator=(const WaylandDisplayOutput&) = delete;
@@ -43,27 +38,13 @@ class WaylandDisplayOutput {
   // Number of times to retry deletion.
   static constexpr int kDeleteRetries = 3;
 
-  int64_t id() const { return id_; }
-  const OutputMetrics& metrics() const { return metrics_; }
-
-  void set_global(wl_global* global) { global_ = global; }
-  const wl_global* global() const { return global_; }
+  int64_t id() const;
+  void set_global(wl_global* global);
 
   // Register/Unregister output resources, which will be used to
   // notify surface when enter/leave the output.
   void UnregisterOutput(wl_resource* output_resource);
   void RegisterOutput(wl_resource* output_resource);
-
-  // Dispatches updated metrics to all clients currently bound to the wrapped
-  // wl_output global.
-  // TODO(tluk): `display` is only used by WaylandDisplayObservers to construct
-  // wayland output metrics to send to the client. Wrap any remaining metrics
-  // into OutputMetrics and propagate this instead.
-  void SendDisplayMetricsChanges(const display::Display& display,
-                                 uint32_t changed_metrics);
-
-  // Notifies clients of the activation of this output.
-  void SendOutputActivated();
 
   wl_resource* GetOutputResourceForClient(wl_client* client);
 
@@ -76,8 +57,7 @@ class WaylandDisplayOutput {
 
  private:
   const int64_t id_;
-  OutputMetrics metrics_;
-  raw_ptr<wl_global, DanglingUntriaged> global_ = nullptr;
+  raw_ptr<wl_global, ExperimentalAsh> global_ = nullptr;
   base::flat_map<wl_client*, wl_resource*> output_ids_;
   bool had_registered_output_ = false;
   bool is_destructing_ = false;

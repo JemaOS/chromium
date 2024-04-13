@@ -12,8 +12,6 @@
 
 namespace permissions {
 
-using PermissionStatus = blink::mojom::PermissionStatus;
-
 class MidiPermissionContextTests : public testing::Test {
  public:
   content::TestBrowserContext* browser_context() { return &browser_context_; }
@@ -30,23 +28,23 @@ TEST_F(MidiPermissionContextTests, TestNoSysexAllowedAllOrigins) {
   GURL insecure_url("http://www.example.com");
   GURL secure_url("https://www.example.com");
 
-  EXPECT_EQ(PermissionStatus::DENIED,
+  EXPECT_EQ(CONTENT_SETTING_BLOCK,
             permission_context
                 .GetPermissionStatus(nullptr /* render_frame_host */,
                                      insecure_url, insecure_url)
-                .status);
+                .content_setting);
 
-  EXPECT_EQ(PermissionStatus::DENIED,
+  EXPECT_EQ(CONTENT_SETTING_BLOCK,
             permission_context
                 .GetPermissionStatus(nullptr /* render_frame_host */,
                                      insecure_url, secure_url)
-                .status);
+                .content_setting);
 
-  EXPECT_EQ(PermissionStatus::GRANTED,
+  EXPECT_EQ(CONTENT_SETTING_ALLOW,
             permission_context
                 .GetPermissionStatus(nullptr /* render_frame_host */,
                                      secure_url, secure_url)
-                .status);
+                .content_setting);
 }
 
 }  // namespace permissions

@@ -9,14 +9,12 @@
 #include <string>
 #include <utility>
 
-#include "base/check_is_test.h"
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/stringprintf.h"
 #include "base/syslog_logging.h"
-#include "build/chromeos_buildflags.h"
 #include "components/policy/core/common/cloud/cloud_policy_client.h"
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
 #include "components/policy/core/common/cloud/cloud_policy_store.h"
@@ -162,40 +160,26 @@ const char* RemoteCommandsService::GetMetricNameReceivedRemoteCommand(
 std::string RemoteCommandsService::GetMetricNameExecutedRemoteCommand(
     PolicyInvalidationScope scope,
     em::RemoteCommand_Type command_type) {
-  const char* const command = RemoteCommandTypeToString(command_type);
+  const char* base_metric_name = nullptr;
   switch (scope) {
     case PolicyInvalidationScope::kUser:
-      return base::StringPrintf(kMetricUserRemoteCommandExecutedTemplate,
-                                command);
+      base_metric_name = kMetricUserRemoteCommandExecutedTemplate;
+      break;
     case PolicyInvalidationScope::kDevice:
-      return base::StringPrintf(kMetricDeviceRemoteCommandExecutedTemplate,
-                                command);
+      base_metric_name = kMetricDeviceRemoteCommandExecutedTemplate;
+      break;
     case PolicyInvalidationScope::kCBCM:
-      return base::StringPrintf(kMetricCBCMRemoteCommandExecutedTemplate,
-                                command);
+      base_metric_name = kMetricCBCMRemoteCommandExecutedTemplate;
+      break;
     case PolicyInvalidationScope::kDeviceLocalAccount:
-      NOTREACHED_NORETURN()
-          << "Unexpected instance of remote commands service with "
-             "device local account scope.";
+      NOTREACHED() << "Unexpected instance of remote commands service with "
+                      "device local account scope.";
+      return "";
   }
-}
 
-// static
-std::string RemoteCommandsService::GetRequestType(
-    PolicyInvalidationScope scope) {
-  switch (scope) {
-    case PolicyInvalidationScope::kDevice:
-    case PolicyInvalidationScope::kDeviceLocalAccount:
-      return dm_protocol::kChromeDeviceRemoteCommandType;
-    case PolicyInvalidationScope::kCBCM:
-      return dm_protocol::kChromeBrowserRemoteCommandType;
-    case PolicyInvalidationScope::kUser:
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-      return dm_protocol::kChromeAshUserRemoteCommandType;
-#else
-      return dm_protocol::kChromeUserRemoteCommandType;
-#endif
-  }
+  DCHECK(base_metric_name);
+  return base::StringPrintf(base_metric_name,
+                            RemoteCommandTypeToString(command_type));
 }
 
 RemoteCommandsService::RemoteCommandsService(
@@ -208,13 +192,12 @@ RemoteCommandsService::RemoteCommandsService(
       store_(store),
       scope_(scope) {
   DCHECK(client_);
-  remote_commands_queue_observation.Observe(&queue_);
-  if (!factory_) {
-    CHECK_IS_TEST();
-  }
+  queue_.AddObserver(this);
 }
 
-RemoteCommandsService::~RemoteCommandsService() = default;
+RemoteCommandsService::~RemoteCommandsService() {
+  queue_.RemoveObserver(this);
+}
 
 bool RemoteCommandsService::FetchRemoteCommands() {
   if (!client_->is_registered()) {
@@ -251,7 +234,6 @@ bool RemoteCommandsService::FetchRemoteCommands() {
 
   client_->FetchRemoteCommands(
       std::move(id_to_acknowledge), previous_results, GetSignatureType(),
-      GetRequestType(scope_),
       base::BindOnce(&RemoteCommandsService::OnRemoteCommandsFetched,
                      weak_factory_.GetWeakPtr()));
 
@@ -384,8 +366,7 @@ void RemoteCommandsService::OnJobFinished(RemoteCommandJob* command) {
   if (command->GetResult()) {
     em::RemoteCommandResult result;
     result.set_command_id(command->unique_id());
-    result.set_timestamp(
-        command->execution_started_time().InMillisecondsSinceUnixEpoch());
+    result.set_timestamp(command->execution_started_time().ToJavaTime());
     result.set_result(command->GetResult().value());
 
     std::unique_ptr<std::string> result_payload = command->GetResultPayload();

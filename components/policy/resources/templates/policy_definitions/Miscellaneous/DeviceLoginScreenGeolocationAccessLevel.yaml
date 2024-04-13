@@ -9,7 +9,7 @@ desc: |-
   access is allowed for the managed devices. If an invalid policy value is sent,
   the access falls back to
   <ph name="DISALLOW">Disallow</ph>. For unmanaged devices it's always
-  <ph name="ALLOW">Allow</ph>.
+  <ph name="DISALLOW">Disallow</ph>.
 
   WARNING: Be careful when changing this setting, it could break other policies
   involving geolocation
@@ -29,13 +29,15 @@ features:
   per_profile: false
 supported_on:
 - chrome_os:114-
+supported_chrome_os_management:
+- google_cloud
 type: int-enum
 schema:
   type: integer
   enum:
   - 0
   - 1
-default: 1
+default: 0
 default_for_managed_devices_doc_only: 1
 example_value: 0
 items:

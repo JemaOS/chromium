@@ -2,19 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "components/component_updater/configurator_impl.h"
-
 #include <memory>
 
 #include "base/command_line.h"
 #include "base/test/scoped_command_line.h"
-#include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "components/component_updater/component_updater_command_line_config_policy.h"
 #include "components/component_updater/component_updater_switches.h"
+#include "components/component_updater/configurator_impl.h"
 #include "components/update_client/command_line_config_policy.h"
-#include "net/base/mock_network_change_notifier.h"
-#include "net/base/network_change_notifier.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace component_updater {
@@ -29,9 +25,6 @@ class ComponentUpdaterConfiguratorImplTest : public testing::Test {
       const ComponentUpdaterConfiguratorImplTest&) = delete;
 
   ~ComponentUpdaterConfiguratorImplTest() override = default;
-
- private:
-  base::test::TaskEnvironment environment_;
 };
 
 TEST_F(ComponentUpdaterConfiguratorImplTest, FastUpdate) {
@@ -39,19 +32,19 @@ TEST_F(ComponentUpdaterConfiguratorImplTest, FastUpdate) {
   base::CommandLine cmdline(base::CommandLine::NO_PROGRAM);
   std::unique_ptr<ConfiguratorImpl> config = std::make_unique<ConfiguratorImpl>(
       ComponentUpdaterCommandLineConfigPolicy(&cmdline), false);
-  EXPECT_EQ(base::Minutes(1), config->InitialDelay());
-  EXPECT_EQ(base::Hours(5), config->NextCheckDelay());
-  EXPECT_EQ(base::Minutes(30), config->OnDemandDelay());
-  EXPECT_EQ(base::Minutes(15), config->UpdateDelay());
+  CHECK_EQ(base::Minutes(1), config->InitialDelay());
+  CHECK_EQ(base::Hours(5), config->NextCheckDelay());
+  CHECK_EQ(base::Minutes(30), config->OnDemandDelay());
+  CHECK_EQ(base::Minutes(15), config->UpdateDelay());
 
   // Test the fast-update timings.
   cmdline.AppendSwitchASCII("--component-updater", "fast-update");
   config = std::make_unique<ConfiguratorImpl>(
       ComponentUpdaterCommandLineConfigPolicy(&cmdline), false);
-  EXPECT_EQ(base::Seconds(10), config->InitialDelay());
-  EXPECT_EQ(base::Hours(5), config->NextCheckDelay());
-  EXPECT_EQ(base::Seconds(2), config->OnDemandDelay());
-  EXPECT_EQ(base::Seconds(10), config->UpdateDelay());
+  CHECK_EQ(base::Seconds(10), config->InitialDelay());
+  CHECK_EQ(base::Hours(5), config->NextCheckDelay());
+  CHECK_EQ(base::Seconds(2), config->OnDemandDelay());
+  CHECK_EQ(base::Seconds(10), config->UpdateDelay());
 }
 
 TEST_F(ComponentUpdaterConfiguratorImplTest, FastUpdateWithCustomPolicy) {
@@ -73,10 +66,10 @@ TEST_F(ComponentUpdaterConfiguratorImplTest, FastUpdateWithCustomPolicy) {
 
   std::unique_ptr<ConfiguratorImpl> config = std::make_unique<ConfiguratorImpl>(
       DefaultCommandLineConfigPolicy(), false);
-  EXPECT_EQ(base::Minutes(1), config->InitialDelay());
-  EXPECT_EQ(base::Hours(5), config->NextCheckDelay());
-  EXPECT_EQ(base::Minutes(30), config->OnDemandDelay());
-  EXPECT_EQ(base::Minutes(15), config->UpdateDelay());
+  CHECK_EQ(base::Minutes(1), config->InitialDelay());
+  CHECK_EQ(base::Hours(5), config->NextCheckDelay());
+  CHECK_EQ(base::Minutes(30), config->OnDemandDelay());
+  CHECK_EQ(base::Minutes(15), config->UpdateDelay());
 
   // Test the fast-update timings.
   class FastUpdateCommandLineConfigurator
@@ -88,16 +81,16 @@ TEST_F(ComponentUpdaterConfiguratorImplTest, FastUpdateWithCustomPolicy) {
   };
   config = std::make_unique<ConfiguratorImpl>(
       FastUpdateCommandLineConfigurator(), false);
-  EXPECT_EQ(base::Seconds(10), config->InitialDelay());
-  EXPECT_EQ(base::Hours(5), config->NextCheckDelay());
-  EXPECT_EQ(base::Seconds(2), config->OnDemandDelay());
-  EXPECT_EQ(base::Seconds(10), config->UpdateDelay());
+  CHECK_EQ(base::Seconds(10), config->InitialDelay());
+  CHECK_EQ(base::Hours(5), config->NextCheckDelay());
+  CHECK_EQ(base::Seconds(2), config->OnDemandDelay());
+  CHECK_EQ(base::Seconds(10), config->UpdateDelay());
 }
 
 TEST_F(ComponentUpdaterConfiguratorImplTest, InitialDelay) {
   std::unique_ptr<ConfiguratorImpl> config = std::make_unique<ConfiguratorImpl>(
       update_client::CommandLineConfigPolicy(), false);
-  EXPECT_EQ(base::Minutes(1), config->InitialDelay());
+  CHECK_EQ(base::Minutes(1), config->InitialDelay());
 
   class CommandLineConfigPolicy
       : public update_client::CommandLineConfigPolicy {
@@ -127,21 +120,21 @@ TEST_F(ComponentUpdaterConfiguratorImplTest, InitialDelay) {
     CommandLineConfigPolicy clcp;
     clcp.set_fast_update(true);
     config = std::make_unique<ConfiguratorImpl>(clcp, false);
-    EXPECT_EQ(base::Seconds(10), config->InitialDelay());
+    CHECK_EQ(base::Seconds(10), config->InitialDelay());
   }
 
   {
     CommandLineConfigPolicy clcp;
     clcp.set_fast_update(false);
     config = std::make_unique<ConfiguratorImpl>(clcp, false);
-    EXPECT_EQ(base::Minutes(1), config->InitialDelay());
+    CHECK_EQ(base::Minutes(1), config->InitialDelay());
   }
 
   {
     CommandLineConfigPolicy clcp;
     clcp.set_initial_delay(base::Minutes(2));
     config = std::make_unique<ConfiguratorImpl>(clcp, false);
-    EXPECT_EQ(base::Minutes(2), config->InitialDelay());
+    CHECK_EQ(base::Minutes(2), config->InitialDelay());
   }
 
   {
@@ -152,7 +145,7 @@ TEST_F(ComponentUpdaterConfiguratorImplTest, InitialDelay) {
                                     "initial-delay=3.14");
     config = std::make_unique<ConfiguratorImpl>(
         ComponentUpdaterCommandLineConfigPolicy(command_line), false);
-    EXPECT_EQ(base::Seconds(3.14), config->InitialDelay());
+    CHECK_EQ(base::Seconds(3.14), config->InitialDelay());
   }
 }
 
@@ -191,26 +184,6 @@ TEST_F(ComponentUpdaterConfiguratorImplTest, TestRequest) {
   extra_request_params = config->ExtraRequestParams();
   EXPECT_EQ("1", extra_request_params["testrequest"]);
   EXPECT_EQ("dev", extra_request_params["testsource"]);
-}
-
-TEST_F(ComponentUpdaterConfiguratorImplTest, MeteredConnection) {
-  std::unique_ptr<net::test::MockNetworkChangeNotifier>
-      network_change_notifier = net::test::MockNetworkChangeNotifier::Create();
-  base::CommandLine cmdline(base::CommandLine::NO_PROGRAM);
-  std::unique_ptr<ConfiguratorImpl> config = std::make_unique<ConfiguratorImpl>(
-      ComponentUpdaterCommandLineConfigPolicy(&cmdline), false);
-
-  network_change_notifier->SetConnectionCost(
-      net::NetworkChangeNotifier::CONNECTION_COST_UNKNOWN);
-  EXPECT_EQ(false, config->IsConnectionMetered());
-
-  network_change_notifier->SetConnectionCost(
-      net::NetworkChangeNotifier::CONNECTION_COST_METERED);
-  EXPECT_EQ(true, config->IsConnectionMetered());
-
-  network_change_notifier->SetConnectionCost(
-      net::NetworkChangeNotifier::CONNECTION_COST_UNMETERED);
-  EXPECT_EQ(false, config->IsConnectionMetered());
 }
 
 }  // namespace component_updater

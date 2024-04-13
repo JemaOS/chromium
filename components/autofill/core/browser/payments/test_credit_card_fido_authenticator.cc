@@ -21,15 +21,15 @@ TestCreditCardFidoAuthenticator::TestCreditCardFidoAuthenticator(
 TestCreditCardFidoAuthenticator::~TestCreditCardFidoAuthenticator() = default;
 
 void TestCreditCardFidoAuthenticator::Authenticate(
-    CreditCard card,
+    const CreditCard* card,
     base::WeakPtr<Requester> requester,
     base::Value::Dict request_options,
-    std::optional<std::string> context_token) {
+    absl::optional<std::string> context_token) {
   authenticate_invoked_ = true;
-  card_ = std::move(card);
+  card_ = *card;
   context_token_ = context_token;
   CreditCardFidoAuthenticator::Authenticate(
-      *card_, requester, std::move(request_options), context_token);
+      card, requester, std::move(request_options), context_token);
 }
 
 void TestCreditCardFidoAuthenticator::GetAssertion(
@@ -57,8 +57,6 @@ void TestCreditCardFidoAuthenticator::GetAssertion(
     blink::mojom::GetAssertionAuthenticatorResponsePtr response =
         blink::mojom::GetAssertionAuthenticatorResponse::New();
     response->info = blink::mojom::CommonCredentialInfo::New();
-    response->extensions =
-        blink::mojom::AuthenticationExtensionsClientOutputs::New();
     fido_authenticator->OnDidGetAssertion(
         blink::mojom::AuthenticatorStatus::SUCCESS, std::move(response),
         /*dom_exception_details=*/nullptr);
@@ -124,7 +122,7 @@ bool TestCreditCardFidoAuthenticator::IsUserOptedIn() {
 
 void TestCreditCardFidoAuthenticator::Reset() {
   is_user_verifiable_ = false;
-  is_user_opted_in_ = std::nullopt;
+  is_user_opted_in_ = absl::nullopt;
   opt_out_called_ = false;
   authenticate_invoked_ = false;
   card_ = CreditCard();

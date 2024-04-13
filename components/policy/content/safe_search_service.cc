@@ -98,10 +98,9 @@ SafeSearchFactory::SafeSearchFactory()
 
 SafeSearchFactory::~SafeSearchFactory() = default;
 
-std::unique_ptr<KeyedService>
-SafeSearchFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SafeSearchFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<SafeSearchService>(context);
+  return new SafeSearchService(context);
 }
 
 content::BrowserContext* SafeSearchFactory::GetBrowserContextToUse(

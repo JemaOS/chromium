@@ -67,8 +67,4 @@ source_set("unit_tests") {
     "//skia",
     "//testing/gtest",
   ]
-
-  if (is_ios) {
-    deps += [ "//components/test:value_store_test_bundle_data" ]
-  }
 }

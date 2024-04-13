@@ -4,71 +4,37 @@
 
 package org.chromium.components.webauthn;
 
-import android.content.Context;
-
 import org.chromium.blink.mojom.AuthenticatorStatus;
 import org.chromium.blink.mojom.PaymentOptions;
 import org.chromium.blink.mojom.PublicKeyCredentialCreationOptions;
 import org.chromium.blink.mojom.PublicKeyCredentialRequestOptions;
 import org.chromium.content_public.browser.RenderFrameHost;
-import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.browser.WebAuthenticationDelegate;
 import org.chromium.url.Origin;
 
 /** A mock Fido2CredentialRequest that returns NOT_IMPLEMENTED for all calls. */
 public class MockFido2CredentialRequest extends Fido2CredentialRequest {
-    private static final AuthenticationContextProvider STUB_PROVIDER =
-            new AuthenticationContextProvider() {
-
-                @Override
-                public Context getContext() {
-                    return null;
-                }
-
-                @Override
-                public RenderFrameHost getRenderFrameHost() {
-                    return null;
-                }
-
-                @Override
-                public FidoIntentSender getIntentSender() {
-                    return null;
-                }
-
-                @Override
-                public WebContents getWebContents() {
-                    return null;
-                }
-            };
-
     public MockFido2CredentialRequest() {
-        super(STUB_PROVIDER);
+        super(null, WebAuthenticationDelegate.Support.BROWSER);
     }
 
     @Override
-    public void handleMakeCredentialRequest(
-            PublicKeyCredentialCreationOptions options,
-            byte[] maybeClientDataHash,
-            Origin origin,
-            MakeCredentialResponseCallback callback,
+    public void handleMakeCredentialRequest(PublicKeyCredentialCreationOptions options,
+            RenderFrameHost frameHost, Origin origin, MakeCredentialResponseCallback callback,
             FidoErrorResponseCallback errorCallback) {
         errorCallback.onError(AuthenticatorStatus.NOT_IMPLEMENTED);
     }
 
     @Override
-    public void handleGetAssertionRequest(
-            PublicKeyCredentialRequestOptions options,
-            byte[] maybeClientDataHash,
-            Origin callerOrigin,
-            Origin topOrigin,
-            PaymentOptions payment,
-            GetAssertionResponseCallback callback,
-            FidoErrorResponseCallback errorCallback) {
+    public void handleGetAssertionRequest(PublicKeyCredentialRequestOptions options,
+            RenderFrameHost frameHost, Origin callerOrigin, PaymentOptions payment,
+            GetAssertionResponseCallback callback, FidoErrorResponseCallback errorCallback) {
         errorCallback.onError(AuthenticatorStatus.NOT_IMPLEMENTED);
     }
 
     @Override
     public void handleIsUserVerifyingPlatformAuthenticatorAvailableRequest(
-            IsUvpaaResponseCallback callback) {
+            RenderFrameHost frameHost, IsUvpaaResponseCallback callback) {
         callback.onIsUserVerifyingPlatformAuthenticatorAvailableResponse(false);
     }
 }

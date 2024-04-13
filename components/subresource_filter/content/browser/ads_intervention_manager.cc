@@ -4,8 +4,6 @@
 
 #include "components/subresource_filter/content/browser/ads_intervention_manager.h"
 
-#include <optional>
-
 #include "base/metrics/histogram_macros.h"
 #include "base/time/default_clock.h"
 #include "base/time/time.h"
@@ -15,6 +13,7 @@
 #include "content/public/browser/navigation_handle.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace subresource_filter {
@@ -28,6 +27,9 @@ const char kLastAdsViolationKey[] = "LastAdsViolation";
 // Histograms
 const char kAdsInterventionRecordedHistogramName[] =
     "SubresourceFilter.PageLoad.AdsInterventionTriggered";
+
+const char kTimeSinceAdsInterventionTriggeredHistogramName[] =
+    "SubresourceFilter.PageLoad.TimeSinceLastActiveAdsIntervention";
 
 AdsInterventionStatus GetAdsInterventionStatus(bool activation_status,
                                                bool intervention_active) {
@@ -63,7 +65,7 @@ void AdsInterventionManager::TriggerAdsInterventionForUrlOnSubsequentLoads(
     mojom::AdsViolation ads_violation) {
   base::Value::Dict additional_metadata;
 
-  double now = clock_->Now().InSecondsFSinceUnixEpoch();
+  double now = clock_->Now().ToDoubleT();
   additional_metadata.Set(kLastAdsViolationTimeKey, now);
   additional_metadata.Set(kLastAdsViolationKey,
                           static_cast<int>(ads_violation));
@@ -81,29 +83,28 @@ void AdsInterventionManager::TriggerAdsInterventionForUrlOnSubsequentLoads(
                             ads_violation);
 }
 
-std::optional<AdsInterventionManager::LastAdsIntervention>
+absl::optional<AdsInterventionManager::LastAdsIntervention>
 AdsInterventionManager::GetLastAdsIntervention(const GURL& url) const {
   // The last active ads intervention is stored in the site metadata.
-  std::optional<base::Value::Dict> dict =
+  absl::optional<base::Value::Dict> dict =
       settings_manager_->GetSiteMetadata(url);
 
   if (!dict)
-    return std::nullopt;
+    return absl::nullopt;
 
-  std::optional<int> ads_violation = dict->FindInt(kLastAdsViolationKey);
-  std::optional<double> last_violation_time =
+  absl::optional<int> ads_violation = dict->FindInt(kLastAdsViolationKey);
+  absl::optional<double> last_violation_time =
       dict->FindDouble(kLastAdsViolationTimeKey);
 
   if (ads_violation && last_violation_time) {
     base::TimeDelta diff =
-        clock_->Now() -
-        base::Time::FromSecondsSinceUnixEpoch(*last_violation_time);
+        clock_->Now() - base::Time::FromDoubleT(*last_violation_time);
 
     return LastAdsIntervention(
         {diff, static_cast<mojom::AdsViolation>(*ads_violation)});
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool AdsInterventionManager::ShouldActivate(
@@ -112,8 +113,8 @@ bool AdsInterventionManager::ShouldActivate(
   // TODO(https://crbug.com/1136987): Add new ads intervention
   // manager function to return struct with all ads intervention
   // metadata to reduce metadata accesses.
-  std::optional<AdsInterventionManager::LastAdsIntervention> last_intervention =
-      GetLastAdsIntervention(url);
+  absl::optional<AdsInterventionManager::LastAdsIntervention>
+      last_intervention = GetLastAdsIntervention(url);
 
   // Only activate the subresource filter if we are intervening on
   // ads.
@@ -130,6 +131,9 @@ bool AdsInterventionManager::ShouldActivate(
         last_intervention->duration_since <
         AdsInterventionManager::GetInterventionDuration(
             last_intervention->ads_violation);
+    UMA_HISTOGRAM_COUNTS_1000(kTimeSinceAdsInterventionTriggeredHistogramName,
+                              last_intervention->duration_since.InHours());
+
     auto* ukm_recorder = ukm::UkmRecorder::Get();
     ukm::builders::AdsIntervention_LastIntervention builder(
         ukm::ConvertToSourceId(navigation_handle->GetNavigationId(),

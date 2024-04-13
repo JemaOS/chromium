@@ -8,8 +8,6 @@
 #include <stddef.h>
 
 #include <string>
-#include <utility>
-#include <vector>
 
 #include "base/memory/weak_ptr.h"
 #include "third_party/icu/source/i18n/unicode/coll.h"
@@ -34,7 +32,6 @@ class TranslateUILanguagesManager {
 
   TranslateUILanguagesManager(
       const base::WeakPtr<TranslateManager>& translate_manager,
-      const std::vector<std::string>& language_codes,
       const std::string& source_language,
       const std::string& target_language);
 

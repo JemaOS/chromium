@@ -9,6 +9,10 @@
 #import "testing/gtest/include/gtest/gtest.h"
 #import "testing/gtest_mac.h"
 
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
+
 using base::test::ios::kWaitForJSCompletionTimeout;
 using base::test::ios::WaitUntilConditionOrTimeout;
 
@@ -179,6 +183,7 @@ TEST_F(LanguageDetectionJavascriptTest,
   NSDictionary* body = handler().lastReceivedMessage.body;
   ASSERT_TRUE(body);
   ASSERT_TRUE([body isKindOfClass:[NSDictionary class]]);
+  EXPECT_TRUE(body[@"captureTextTime"]);
   EXPECT_TRUE(body[@"frameId"]);
   EXPECT_TRUE(body[@"hasNoTranslate"]);
   EXPECT_TRUE(body[@"htmlLang"]);

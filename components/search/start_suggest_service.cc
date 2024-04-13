@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <utility>
-#include <vector>
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
@@ -182,7 +181,7 @@ void StartSuggestService::SuggestResponseLoaded(
   // Ensure the request succeeded and that the provider used is still available.
   // A verbatim match cannot be generated without this provider, causing errors.
   const bool request_succeeded = response && loader->NetError() == net::OK;
-  std::erase_if(loaders_, [loader](const auto& loader_ptr) {
+  base::EraseIf(loaders_, [loader](const auto& loader_ptr) {
     return loader == loader_ptr.get();
   });
   if (!request_succeeded) {
@@ -204,27 +203,28 @@ void StartSuggestService::SuggestResponseLoaded(
 void StartSuggestService::SuggestionsParsed(
     SuggestResultCallback callback,
     data_decoder::DataDecoder::ValueOrError result) {
-  std::move(callback).Run([&] {
-    QuerySuggestions query_suggestions;
-    if (result.has_value() && result.value().is_list()) {
-      SearchSuggestionParser::Results results;
-      AutocompleteInput input;
-      if (SearchSuggestionParser::ParseSuggestResults(
-              result->GetList(), input, *scheme_classifier_,
-              /*default_result_relevance=*/-1, /*is_keyword_result=*/false,
-              &results)) {
-        for (SearchSuggestionParser::SuggestResult suggest :
-             results.suggest_results) {
-          QuerySuggestion query;
-          query.query = suggest.suggestion();
-          query.destination_url = GetQueryDestinationURL(
-              query.query, template_url_service_->GetDefaultSearchProvider());
-          query_suggestions.push_back(std::move(query));
-        }
-        suggestions_cache_[kTrendingQuerySuggestionCachedResults] =
-            query_suggestions;
-      }
-    }
-    return query_suggestions;
-  }());
+  if (!result.has_value() || !result.value().is_list()) {
+    std::move(callback).Run(QuerySuggestions());
+    return;
+  }
+
+  SearchSuggestionParser::Results results;
+  AutocompleteInput input;
+  const bool results_parsed = SearchSuggestionParser::ParseSuggestResults(
+      result->GetList(), input, *scheme_classifier_, -1, false, &results);
+  if (!results_parsed) {
+    std::move(callback).Run(QuerySuggestions());
+    return;
+  }
+  QuerySuggestions query_suggestions;
+  for (SearchSuggestionParser::SuggestResult suggest :
+       results.suggest_results) {
+    QuerySuggestion query;
+    query.query = suggest.suggestion();
+    query.destination_url = GetQueryDestinationURL(
+        query.query, template_url_service_->GetDefaultSearchProvider());
+    query_suggestions.push_back(query);
+  }
+  suggestions_cache_[kTrendingQuerySuggestionCachedResults] = query_suggestions;
+  std::move(callback).Run(std::move(query_suggestions));
 }

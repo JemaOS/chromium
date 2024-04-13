@@ -18,38 +18,20 @@ namespace autofill {
 class AutofillProfile;
 class PersonalDataManager;
 
-// Autofill internal version of libaddressinput AddressUiComponent struct for
-// storing Autofill specific data.
-struct AutofillAddressUIComponent {
-  // The types of hints for how large the field should be in a multiline address
-  // form.
-  enum LengthHint {
-    HINT_LONG,  // The field should take up the whole line.
-    HINT_SHORT  // The field does not need to take up the whole line.
-  };
-
-  // The server field type for this UI component (e.g. ADDRESS_HOME_COUNTRY).
-  FieldType field = FieldType::UNKNOWN_TYPE;
-
-  // The name of the field, for example "City".
-  std::string name;
-
-  // The hint for how large the input field should be in a multiline address
-  // form.
-  LengthHint length_hint;
-
-  // The literal string for this element. This field is dedicated
-  // for literals such as "," "-", "\n" and " ".  If empty, then this
-  // AutofillAddressUIComponent represents an address field type not a literal.
-  std::string literal;
-
-  // Whether the component is required or not.
+// Extended addressinput struct for storing Autofill specific data.
+struct ExtendedAddressUiComponent
+    : public ::i18n::addressinput::AddressUiComponent {
   bool is_required = false;
+
+  ExtendedAddressUiComponent(const ::i18n::addressinput::AddressUiComponent&&,
+                             bool);
+  explicit ExtendedAddressUiComponent(
+      const ::i18n::addressinput::AddressUiComponent&&);
 };
 
-// Creates autofill ui components from libaddressinput ones with respect to
+// Creates extended ui components from libaddressinput ones with respect to
 // the |country| provided.
-std::vector<AutofillAddressUIComponent> ConvertAddressUiComponents(
+std::vector<ExtendedAddressUiComponent> ConvertAddressUiComponents(
     const std::vector<::i18n::addressinput::AddressUiComponent>&
         addressinput_components,
     const AutofillCountry& country);
@@ -58,7 +40,7 @@ std::vector<AutofillAddressUIComponent> ConvertAddressUiComponents(
 // used make fields beyond libaddressinput's format available in Autofill's
 // settings UI and import dialogs.
 void ExtendAddressComponents(
-    std::vector<AutofillAddressUIComponent>& components,
+    std::vector<ExtendedAddressUiComponent>& components,
     const AutofillCountry& country,
     const ::i18n::addressinput::Localization& localization,
     bool include_literals);
@@ -75,7 +57,7 @@ void GetAddressComponents(
     const std::string& country_code,
     const std::string& ui_language_code,
     bool include_literals,
-    std::vector<std::vector<AutofillAddressUIComponent>>* address_components,
+    std::vector<std::vector<ExtendedAddressUiComponent>>* address_components,
     std::string* components_language_code);
 
 // Returns the address stored in `profile` when UI BCP 47 language code is
@@ -98,12 +80,25 @@ std::u16string GetProfileDescription(const AutofillProfile& profile,
                                      const std::string& ui_language_code,
                                      bool include_address_and_contacts);
 
+// Fields in order they should appear in differences for AutofillProfile update.
+static constexpr ServerFieldType kVisibleTypesForProfileDifferences[] = {
+    NAME_FULL_WITH_HONORIFIC_PREFIX,
+    COMPANY_NAME,
+    ADDRESS_HOME_STREET_ADDRESS,
+    ADDRESS_HOME_DEPENDENT_LOCALITY,
+    ADDRESS_HOME_CITY,
+    ADDRESS_HOME_STATE,
+    ADDRESS_HOME_ZIP,
+    ADDRESS_HOME_COUNTRY,
+    EMAIL_ADDRESS,
+    PHONE_HOME_WHOLE_NUMBER};
+
 // Gets the difference of two profiles in name, address, email and phone number
 // in that order. Differences in name, email and phone number are computed and
-// keyed by NAME_FULL, EMAIL_ADDRESS and  PHONE_HOME_WHOLE_NUMBER respectively.
-// Address differences are computed by difference in the envelope style address
-// of both profile, and keyed by ADDRESS_HOME_ADDRESS. All computations are done
-// against `app_locale`.
+// keyed by NAME_FULL_WITH_HONORIFIC_PREFIX, EMAIL_ADDRESS and
+// PHONE_HOME_WHOLE_NUMBER respectively. Address differences are computed by
+// difference in the envelope style address of both profile, and keyed by
+// ADDRESS_HOME_ADDRESS. All computations are done against `app_locale`.
 std::vector<ProfileValueDifference> GetProfileDifferenceForUi(
     const AutofillProfile& first_profile,
     const AutofillProfile& second_profile,

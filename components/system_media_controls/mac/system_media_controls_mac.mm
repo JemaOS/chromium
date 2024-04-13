@@ -3,26 +3,22 @@
 // found in the LICENSE file.
 
 #include "components/system_media_controls/mac/system_media_controls_mac.h"
-#include "base/notimplemented.h"
 
 namespace system_media_controls {
 
 // static
 std::unique_ptr<SystemMediaControls> SystemMediaControls::Create(
-    const std::string& product_name,
-    int window) {
-  return std::make_unique<internal::SystemMediaControlsMac>();
-}
-// static
-void SystemMediaControls::SetVisibilityChangedCallbackForTesting(
-    base::RepeatingCallback<void(bool)>*) {
-  NOTIMPLEMENTED();
+    const std::string& product_name) {
+  // The required APIs for interacting with the Now Playing Info Center only
+  // exist on 10.13.1 or later.
+  if (@available(macOS 10.13.1, *))
+    return std::make_unique<internal::SystemMediaControlsMac>();
+  return nullptr;
 }
 
 namespace internal {
 
-SystemMediaControlsMac::SystemMediaControlsMac()
-    : remote_command_center_delegate_(this) {}
+SystemMediaControlsMac::SystemMediaControlsMac() = default;
 
 SystemMediaControlsMac::~SystemMediaControlsMac() = default;
 
@@ -83,11 +79,6 @@ void SystemMediaControlsMac::SetPosition(
 
 void SystemMediaControlsMac::ClearMetadata() {
   now_playing_info_center_delegate_.ClearMetadata();
-}
-
-bool SystemMediaControlsMac::GetVisibilityForTesting() const {
-  NOTIMPLEMENTED();
-  return false;
 }
 
 }  // namespace internal

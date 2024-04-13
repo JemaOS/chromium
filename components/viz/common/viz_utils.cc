@@ -29,11 +29,13 @@
 
 namespace viz {
 
-#if BUILDFLAG(IS_ANDROID)
 bool PreferRGB565ResourcesForDisplay() {
+#if BUILDFLAG(IS_ANDROID)
   return base::SysInfo::AmountOfPhysicalMemoryMB() <= 512;
-}
+#else
+  return false;
 #endif
+}
 
 #if BUILDFLAG(IS_ANDROID)
 bool AlwaysUseWideColorGamut() {
@@ -165,7 +167,10 @@ gfx::Rect GetExpandedRectWithPixelMovingForegroundFilter(
     const DrawQuad& rpdq,
     const cc::FilterOperations& filters) {
   const SharedQuadState* shared_quad_state = rpdq.shared_quad_state;
-  gfx::Rect expanded_rect = filters.ExpandRectForPixelMovement(rpdq.rect);
+  float max_pixel_movement = filters.MaximumPixelMovement();
+  gfx::RectF rect(rpdq.rect);
+  rect.Inset(-max_pixel_movement);
+  gfx::Rect expanded_rect = gfx::ToEnclosingRect(rect);
 
   // expanded_rect in the target space
   return cc::MathUtil::MapEnclosingClippedRect(
@@ -187,30 +192,6 @@ gfx::Transform GetViewTransitionTransform(
                                       -view_transition_content_output.y());
 
   return view_transition_transform;
-}
-
-bool QuadRoundedCornersBoundsIntersects(const DrawQuad* quad,
-                                        const gfx::RectF& target_quad) {
-  const SharedQuadState* sqs = quad->shared_quad_state;
-  const gfx::MaskFilterInfo& mask_filter_info = sqs->mask_filter_info;
-
-  // There is no rounded corner set.
-  if (!mask_filter_info.HasRoundedCorners()) {
-    return false;
-  }
-
-  const gfx::RRectF& rounded_corner_bounds =
-      mask_filter_info.rounded_corner_bounds();
-
-  const gfx::RRectF::Corner corners[] = {
-      gfx::RRectF::Corner::kUpperLeft, gfx::RRectF::Corner::kUpperRight,
-      gfx::RRectF::Corner::kLowerRight, gfx::RRectF::Corner::kLowerLeft};
-  for (auto c : corners) {
-    if (rounded_corner_bounds.CornerBoundingRect(c).Intersects(target_quad)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 }  // namespace viz

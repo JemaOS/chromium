@@ -41,16 +41,6 @@ AccountCapabilities::GetSupportedAccountCapabilityNames() {
   return *kCapabilityNames;
 }
 
-bool AccountCapabilities::AreAnyCapabilitiesKnown() const {
-  for (const std::string& capability_name :
-       GetSupportedAccountCapabilityNames()) {
-    if (GetCapabilityByName(capability_name) != signin::Tribool::kUnknown) {
-      return true;
-    }
-  }
-  return false;
-}
-
 bool AccountCapabilities::AreAllCapabilitiesKnown() const {
   for (const std::string& capability_name :
        GetSupportedAccountCapabilityNames()) {
@@ -74,10 +64,9 @@ signin::Tribool AccountCapabilities::can_have_email_address_displayed() const {
   return GetCapabilityByName(kCanHaveEmailAddressDisplayedCapabilityName);
 }
 
-signin::Tribool AccountCapabilities::
-    can_show_history_sync_opt_ins_without_minor_mode_restrictions() const {
-  return GetCapabilityByName(
-      kCanShowHistorySyncOptInsWithoutMinorModeRestrictionsCapabilityName);
+signin::Tribool AccountCapabilities::can_offer_extended_chrome_sync_promos()
+    const {
+  return GetCapabilityByName(kCanOfferExtendedChromeSyncPromosCapabilityName);
 }
 
 signin::Tribool AccountCapabilities::can_run_chrome_privacy_sandbox_trials()
@@ -85,44 +74,39 @@ signin::Tribool AccountCapabilities::can_run_chrome_privacy_sandbox_trials()
   return GetCapabilityByName(kCanRunChromePrivacySandboxTrialsCapabilityName);
 }
 
-signin::Tribool AccountCapabilities::is_opted_in_to_parental_supervision()
-    const {
-  return GetCapabilityByName(kIsOptedInToParentalSupervisionCapabilityName);
+signin::Tribool AccountCapabilities::can_stop_parental_supervision() const {
+  return GetCapabilityByName(kCanStopParentalSupervisionCapabilityName);
 }
 
 signin::Tribool AccountCapabilities::can_toggle_auto_updates() const {
   return GetCapabilityByName(kCanToggleAutoUpdatesName);
 }
 
-signin::Tribool AccountCapabilities::can_use_chrome_ip_protection() const {
-  return GetCapabilityByName(kCanUseChromeIpProtectionName);
-}
-
-signin::Tribool AccountCapabilities::can_use_devtools_generative_ai_features()
-    const {
-  return GetCapabilityByName(kCanUseDevToolsGenerativeAiFeaturesCapabilityName);
-}
-
-signin::Tribool AccountCapabilities::can_use_edu_features() const {
-  return GetCapabilityByName(kCanUseEduFeaturesCapabilityName);
-}
-
-signin::Tribool AccountCapabilities::can_use_manta_service() const {
-  return GetCapabilityByName(kCanUseMantaServiceName);
-}
-
-signin::Tribool AccountCapabilities::can_use_model_execution_features() const {
-  return GetCapabilityByName(kCanUseModelExecutionFeaturesName);
-}
-
 signin::Tribool AccountCapabilities::is_allowed_for_machine_learning() const {
   return GetCapabilityByName(kIsAllowedForMachineLearningCapabilityName);
 }
 
+// Temporary implementation that return true for accounts that are not allowed
+// to run privacy sandbox trials and that are not subject for parental controls.
+//
+// TODO(crbug.com/1430845): Update to use the real account capability once it
+// is defined server-side.
 signin::Tribool AccountCapabilities::
     is_subject_to_chrome_privacy_sandbox_restricted_measurement_notice() const {
-  return GetCapabilityByName(
-      kIsSubjectToChromePrivacySandboxRestrictedMeasurementNotice);
+  signin::Tribool can_run_chrome_privacy_sandbox_trials =
+      AccountCapabilities::can_run_chrome_privacy_sandbox_trials();
+  signin::Tribool is_subject_to_parental_controls =
+      AccountCapabilities::is_subject_to_parental_controls();
+
+  if (can_run_chrome_privacy_sandbox_trials == signin::Tribool::kUnknown ||
+      is_subject_to_parental_controls == signin::Tribool::kUnknown) {
+    return signin::Tribool::kUnknown;
+  }
+  if (can_run_chrome_privacy_sandbox_trials == signin::Tribool::kTrue ||
+      is_subject_to_parental_controls == signin::Tribool::kTrue) {
+    return signin::Tribool::kFalse;
+  }
+  return signin::Tribool::kTrue;
 }
 
 signin::Tribool AccountCapabilities::is_subject_to_enterprise_policies() const {
@@ -202,9 +186,4 @@ AccountCapabilities::ConvertToJavaAccountCapabilities(JNIEnv* env) const {
 AccountCapabilities::AccountCapabilities(
     base::flat_map<std::string, bool> capabilities)
     : capabilities_map_(std::move(capabilities)) {}
-
-const base::flat_map<std::string, bool>&
-AccountCapabilities::ConvertToAccountCapabilitiesIOS() {
-  return capabilities_map_;
-}
 #endif

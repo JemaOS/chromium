@@ -9,21 +9,31 @@
 
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted.h"
+#include "base/path_service.h"
 #include "base/run_loop.h"
 #include "base/strings/string_util.h"
 #include "base/test/task_environment.h"
-#include "components/prefs/testing_pref_service.h"
 #include "components/update_client/net/url_loader_post_interceptor.h"
-#include "components/update_client/persisted_data.h"
 #include "components/update_client/test_configurator.h"
-#include "components/update_client/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace update_client {
+
 namespace {
 
-constexpr char kUrl1[] = "https://localhost2/path1";
-constexpr char kUrl2[] = "https://localhost2/path2";
+const char kUrl1[] = "https://localhost2/path1";
+const char kUrl2[] = "https://localhost2/path2";
+
+// TODO(sorin): refactor as a utility function for unit tests.
+base::FilePath test_file(const char* file) {
+  base::FilePath path;
+  base::PathService::Get(base::DIR_SOURCE_ROOT, &path);
+  return path.AppendASCII("components")
+      .AppendASCII("test")
+      .AppendASCII("data")
+      .AppendASCII("update_client")
+      .AppendASCII(file);
+}
 
 }  // namespace
 
@@ -51,8 +61,6 @@ class RequestSenderTest : public testing::Test,
 
   base::test::TaskEnvironment task_environment_;
 
-  std::unique_ptr<TestingPrefServiceSimple> pref_ =
-      std::make_unique<TestingPrefServiceSimple>();
   scoped_refptr<TestConfigurator> config_;
   std::unique_ptr<RequestSender> request_sender_;
 
@@ -73,8 +81,7 @@ RequestSenderTest::RequestSenderTest()
 RequestSenderTest::~RequestSenderTest() = default;
 
 void RequestSenderTest::SetUp() {
-  RegisterPersistedDataPrefs(pref_->registry());
-  config_ = base::MakeRefCounted<TestConfigurator>(pref_.get());
+  config_ = base::MakeRefCounted<TestConfigurator>();
   request_sender_ = std::make_unique<RequestSender>(config_);
 
   std::vector<GURL> urls;
@@ -104,9 +111,8 @@ void RequestSenderTest::RunThreads() {
 }
 
 void RequestSenderTest::Quit() {
-  if (!quit_closure_.is_null()) {
+  if (!quit_closure_.is_null())
     std::move(quit_closure_).Run();
-  }
 }
 
 void RequestSenderTest::RequestSenderComplete(int error,
@@ -121,9 +127,9 @@ void RequestSenderTest::RequestSenderComplete(int error,
 // Tests that when a request to the first url succeeds, the subsequent urls are
 // not tried.
 TEST_P(RequestSenderTest, RequestSendSuccess) {
-  EXPECT_TRUE(post_interceptor_->ExpectRequest(
-      std::make_unique<PartialMatch>("test"),
-      GetTestFilePath("updatecheck_reply_1.json")));
+  EXPECT_TRUE(
+      post_interceptor_->ExpectRequest(std::make_unique<PartialMatch>("test"),
+                                       test_file("updatecheck_reply_1.json")));
 
   const bool is_foreground = GetParam();
   request_sender_->Send(
@@ -232,9 +238,9 @@ TEST_F(RequestSenderTest, RequestSendFailedNoUrls) {
 
 // Tests that a CUP request fails if the response is not signed.
 TEST_F(RequestSenderTest, RequestSendCupError) {
-  EXPECT_TRUE(post_interceptor_->ExpectRequest(
-      std::make_unique<PartialMatch>("test"),
-      GetTestFilePath("updatecheck_reply_1.json")));
+  EXPECT_TRUE(
+      post_interceptor_->ExpectRequest(std::make_unique<PartialMatch>("test"),
+                                       test_file("updatecheck_reply_1.json")));
 
   const std::vector<GURL> urls = {GURL(kUrl1)};
   request_sender_ = std::make_unique<RequestSender>(config_);

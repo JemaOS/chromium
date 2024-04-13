@@ -5,8 +5,6 @@
 #ifndef COMPONENTS_POLICY_CORE_COMMON_ASYNC_POLICY_LOADER_H_
 #define COMPONENTS_POLICY_CORE_COMMON_ASYNC_POLICY_LOADER_H_
 
-#include <optional>
-
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
@@ -16,6 +14,7 @@
 #include "components/policy/core/common/management/management_service.h"
 #include "components/policy/core/common/schema_map.h"
 #include "components/policy/policy_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class SequencedTaskRunner;
@@ -134,7 +133,7 @@ class POLICY_EXPORT AsyncPolicyLoader {
   // Task runner for running foregroud jobs.
   scoped_refptr<base::SequencedTaskRunner> ui_thread_task_runner_;
 
-  std::optional<ManagementAuthorityTrustworthiness>
+  absl::optional<ManagementAuthorityTrustworthiness>
       platform_management_trustworthiness_;
 
   raw_ptr<ManagementService> management_service_;

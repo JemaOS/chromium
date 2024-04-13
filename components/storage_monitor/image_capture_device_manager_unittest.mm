@@ -2,16 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/memory/raw_ptr.h"
+
 #import <Foundation/Foundation.h>
 #import <ImageCaptureCore/ImageCaptureCore.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
-#include "base/apple/bridging.h"
-#include "base/apple/foundation_util.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/memory/raw_ptr.h"
+#include "base/mac/foundation_util.h"
 #include "base/memory/weak_ptr.h"
 #include "components/storage_monitor/image_capture_device.h"
 #include "components/storage_monitor/image_capture_device_manager.h"
@@ -34,7 +33,7 @@ const char kTestFileContents[] = "test";
 
 @interface MockICCameraDevice : ICCameraDevice {
  @private
-  NSMutableArray* __strong _allMediaFiles;
+  base::scoped_nsobject<NSMutableArray> _allMediaFiles;
 }
 
 - (void)addMediaFile:(ICCameraFile*)file;
@@ -76,9 +75,8 @@ const char kTestFileContents[] = "test";
 }
 
 - (void)addMediaFile:(ICCameraFile*)file {
-  if (!_allMediaFiles) {
-    _allMediaFiles = [[NSMutableArray alloc] init];
-  }
+  if (!_allMediaFiles.get())
+    _allMediaFiles.reset([[NSMutableArray alloc] init]);
   [_allMediaFiles addObject:file];
 }
 
@@ -91,8 +89,8 @@ const char kTestFileContents[] = "test";
            downloadDelegate:(id<ICCameraDeviceDownloadDelegate>)downloadDelegate
         didDownloadSelector:(SEL)selector
                 contextInfo:(void*)contextInfo {
-  base::FilePath saveDir =
-      base::apple::NSURLToFilePath(options[ICDownloadsDirectoryURL]);
+  base::FilePath saveDir(
+      base::SysNSStringToUTF8([options[ICDownloadsDirectoryURL] path]));
   std::string saveAsFilename =
       base::SysNSStringToUTF8(options[ICSaveAsFilename]);
   // It appears that the ImageCapture library adds an extension to the requested
@@ -114,19 +112,20 @@ const char kTestFileContents[] = "test";
 
 @end
 
-@interface MockICCameraFolder : ICCameraFolder
+@interface MockICCameraFolder : ICCameraFolder {
+ @private
+  base::scoped_nsobject<NSString> _name;
+}
 
 - (instancetype)initWithName:(NSString*)name;
 
 @end
 
-@implementation MockICCameraFolder {
-  NSString* __strong _name;
-}
+@implementation MockICCameraFolder
 
 - (instancetype)initWithName:(NSString*)name {
   if ((self = [super init])) {
-    _name = [name copy];
+    _name.reset([name retain]);
   }
   return self;
 }
@@ -141,35 +140,37 @@ const char kTestFileContents[] = "test";
 
 @end
 
-@interface MockICCameraFile : ICCameraFile
+@interface MockICCameraFile : ICCameraFile {
+ @private
+  base::scoped_nsobject<NSString> _name;
+  base::scoped_nsobject<NSDate> _date;
+  base::scoped_nsobject<MockICCameraFolder> _parent;
+}
 
 - (instancetype)init:(NSString*)name;
 - (void)setParent:(NSString*)parent;
 
 @end
 
-@implementation MockICCameraFile {
-  NSString* __strong _name;
-  NSDate* __strong _date;
-  MockICCameraFolder* __strong _parent;
-}
+@implementation MockICCameraFile
 
 - (instancetype)init:(NSString*)name {
   if ((self = [super init])) {
-    NSDateFormatter* iso8601day = [[NSDateFormatter alloc] init];
-    iso8601day.dateFormat = @"yyyy-MM-dd";
-    _name = [name copy];
-    _date = [iso8601day dateFromString:@"2012-12-12"];
+    base::scoped_nsobject<NSDateFormatter> iso8601day(
+        [[NSDateFormatter alloc] init]);
+    [iso8601day setDateFormat:@"yyyy-MM-dd"];
+    _name.reset([name retain]);
+    _date.reset([[iso8601day dateFromString:@"2012-12-12"] retain]);
   }
   return self;
 }
 
 - (void)setParent:(NSString*)parent {
-  _parent = [[MockICCameraFolder alloc] initWithName:parent];
+  _parent.reset([[MockICCameraFolder alloc] initWithName:parent]);
 }
 
 - (ICCameraFolder*)parentFolder {
-  return _parent;
+  return _parent.get();
 }
 
 - (NSString*)name {
@@ -177,19 +178,15 @@ const char kTestFileContents[] = "test";
 }
 
 - (NSString*)UTI {
-  if (@available(macOS 11, *)) {
-    return UTTypeImage.identifier;
-  } else {
-    return base::apple::CFToNSPtrCast(kUTTypeImage);
-  }
+  return base::mac::CFToNSCast(kUTTypeImage);
 }
 
 - (NSDate*)modificationDate {
-  return _date;
+  return _date.get();
 }
 
 - (NSDate*)creationDate {
-  return _date;
+  return _date.get();
 }
 
 - (off_t)fileSize {
@@ -247,12 +244,14 @@ class ImageCaptureDeviceManagerTest : public testing::Test {
   void TearDown() override { TestStorageMonitor::Destroy(); }
 
   MockICCameraDevice* AttachDevice(ImageCaptureDeviceManager* manager) {
-    MockICCameraDevice* device = [[MockICCameraDevice alloc] init];
+    // Ownership will be passed to the device browser delegate.
+    base::scoped_nsobject<MockICCameraDevice> device(
+        [[MockICCameraDevice alloc] init]);
     id<ICDeviceBrowserDelegate> delegate = manager->device_browser_delegate();
     [delegate deviceBrowser:manager->device_browser_for_test()
                didAddDevice:device
                  moreComing:NO];
-    return device;
+    return device.autorelease();
   }
 
   void DetachDevice(ImageCaptureDeviceManager* manager,
@@ -267,7 +266,7 @@ class ImageCaptureDeviceManagerTest : public testing::Test {
 
  protected:
   content::BrowserTaskEnvironment task_environment_;
-  raw_ptr<TestStorageMonitor, DanglingUntriaged> monitor_;
+  raw_ptr<TestStorageMonitor> monitor_;
   TestCameraListener listener_;
 };
 
@@ -293,14 +292,16 @@ TEST_F(ImageCaptureDeviceManagerTest, OpenCamera) {
   EXPECT_FALSE(ImageCaptureDeviceManager::deviceForUUID(
       "nonexistent"));
 
-  ImageCaptureDevice* camera =
-      ImageCaptureDeviceManager::deviceForUUID(kDeviceId);
+  base::scoped_nsobject<ImageCaptureDevice> camera(
+      [ImageCaptureDeviceManager::deviceForUUID(kDeviceId) retain]);
 
   [camera setListener:listener_.AsWeakPtr()];
   [camera open];
 
-  MockICCameraFile* picture1 = [[MockICCameraFile alloc] init:@"pic1"];
-  MockICCameraFile* picture2 = [[MockICCameraFile alloc] init:@"pic2"];
+  base::scoped_nsobject<MockICCameraFile> picture1(
+      [[MockICCameraFile alloc] init:@"pic1"]);
+  base::scoped_nsobject<MockICCameraFile> picture2(
+      [[MockICCameraFile alloc] init:@"pic2"]);
   [camera cameraDevice:device didAddItems:@[ picture1, picture2 ]];
   ASSERT_EQ(2U, listener_.items().size());
   EXPECT_EQ("pic1", listener_.items()[0]);
@@ -322,15 +323,14 @@ TEST_F(ImageCaptureDeviceManagerTest, RemoveCamera) {
   manager.SetNotifications(monitor_->receiver());
   ICCameraDevice* device = AttachDevice(&manager);
 
-  ImageCaptureDevice* camera =
-      ImageCaptureDeviceManager::deviceForUUID(kDeviceId);
+  base::scoped_nsobject<ImageCaptureDevice> camera(
+      [ImageCaptureDeviceManager::deviceForUUID(kDeviceId) retain]);
 
   [camera setListener:listener_.AsWeakPtr()];
   [camera open];
 
   [camera didRemoveDevice:device];
   EXPECT_TRUE(listener_.removed());
-  [camera setListener:nullptr];
 }
 
 TEST_F(ImageCaptureDeviceManagerTest, DownloadFile) {
@@ -338,16 +338,16 @@ TEST_F(ImageCaptureDeviceManagerTest, DownloadFile) {
   manager.SetNotifications(monitor_->receiver());
   MockICCameraDevice* device = AttachDevice(&manager);
 
-  ImageCaptureDevice* camera =
-      ImageCaptureDeviceManager::deviceForUUID(kDeviceId);
+  base::scoped_nsobject<ImageCaptureDevice> camera(
+      [ImageCaptureDeviceManager::deviceForUUID(kDeviceId) retain]);
 
   [camera setListener:listener_.AsWeakPtr()];
   [camera open];
 
   std::string kTestFileName("pic1");
 
-  MockICCameraFile* picture1 =
-      [[MockICCameraFile alloc] init:base::SysUTF8ToNSString(kTestFileName)];
+  base::scoped_nsobject<MockICCameraFile> picture1(
+      [[MockICCameraFile alloc] init:base::SysUTF8ToNSString(kTestFileName)]);
   [device addMediaFile:picture1];
   [camera cameraDevice:device didAddItems:@[ picture1 ]];
 
@@ -383,7 +383,6 @@ TEST_F(ImageCaptureDeviceManagerTest, DownloadFile) {
             std::string(file_contents, strlen(kTestFileContents)));
 
   [camera didRemoveDevice:device];
-  [camera setListener:nullptr];
 }
 
 TEST_F(ImageCaptureDeviceManagerTest, TestSubdirectories) {
@@ -391,16 +390,16 @@ TEST_F(ImageCaptureDeviceManagerTest, TestSubdirectories) {
   manager.SetNotifications(monitor_->receiver());
   MockICCameraDevice* device = AttachDevice(&manager);
 
-  ImageCaptureDevice* camera =
-      ImageCaptureDeviceManager::deviceForUUID(kDeviceId);
+  base::scoped_nsobject<ImageCaptureDevice> camera(
+      [ImageCaptureDeviceManager::deviceForUUID(kDeviceId) retain]);
 
   [camera setListener:listener_.AsWeakPtr()];
   [camera open];
 
   std::string kTestFileName("pic1");
-  MockICCameraFile* picture1 =
-      [[MockICCameraFile alloc] init:base::SysUTF8ToNSString(kTestFileName)];
-  [picture1 setParent:@"dir"];
+  base::scoped_nsobject<MockICCameraFile> picture1(
+      [[MockICCameraFile alloc] init:base::SysUTF8ToNSString(kTestFileName)]);
+  [picture1 setParent:base::SysUTF8ToNSString("dir")];
   [device addMediaFile:picture1];
   [camera cameraDevice:device didAddItems:@[ picture1 ]];
 
@@ -418,7 +417,6 @@ TEST_F(ImageCaptureDeviceManagerTest, TestSubdirectories) {
             std::string(file_contents, strlen(kTestFileContents)));
 
   [camera didRemoveDevice:device];
-  [camera setListener:nullptr];
 }
 
 }  // namespace storage_monitor

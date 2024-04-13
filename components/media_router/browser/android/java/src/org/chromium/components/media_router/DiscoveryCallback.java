@@ -33,11 +33,8 @@ public class DiscoveryCallback extends MediaRouter.Callback {
         mRouteSelector = selector;
     }
 
-    public DiscoveryCallback(
-            String sourceUrn,
-            List<MediaSink> knownSinks,
-            DiscoveryDelegate delegate,
-            MediaRouteSelector selector) {
+    public DiscoveryCallback(String sourceUrn, List<MediaSink> knownSinks,
+            DiscoveryDelegate delegate, MediaRouteSelector selector) {
         this(sourceUrn, delegate, selector);
         setAndUpdateSinks(knownSinks);
     }

@@ -25,7 +25,6 @@ class ScopedWinHttpProxyInfo {
   ScopedWinHttpProxyInfo& operator=(const ScopedWinHttpProxyInfo& other) =
       delete;
   ScopedWinHttpProxyInfo(ScopedWinHttpProxyInfo&& other) {
-    proxy_info_.dwAccessType = other.proxy_info_.dwAccessType;
     proxy_info_.lpszProxy = other.proxy_info_.lpszProxy;
     other.proxy_info_.lpszProxy = nullptr;
 
@@ -34,7 +33,6 @@ class ScopedWinHttpProxyInfo {
   }
 
   ScopedWinHttpProxyInfo& operator=(ScopedWinHttpProxyInfo&& other) {
-    proxy_info_.dwAccessType = other.proxy_info_.dwAccessType;
     proxy_info_.lpszProxy = other.proxy_info_.lpszProxy;
     other.proxy_info_.lpszProxy = nullptr;
 
@@ -44,13 +42,11 @@ class ScopedWinHttpProxyInfo {
   }
 
   ~ScopedWinHttpProxyInfo() {
-    if (proxy_info_.lpszProxy) {
+    if (proxy_info_.lpszProxy)
       ::GlobalFree(proxy_info_.lpszProxy);
-    }
 
-    if (proxy_info_.lpszProxyBypass) {
+    if (proxy_info_.lpszProxyBypass)
       ::GlobalFree(proxy_info_.lpszProxyBypass);
-    }
   }
 
   bool IsValid() const { return proxy_info_.lpszProxy; }
@@ -62,21 +58,20 @@ class ScopedWinHttpProxyInfo {
   wchar_t* proxy() const { return proxy_info_.lpszProxy; }
 
   void set_proxy(const std::wstring& proxy) {
-    if (proxy.empty()) {
+    if (proxy.empty())
       return;
-    }
 
     proxy_info_.lpszProxy = GlobalAlloc(proxy);
   }
 
   void set_proxy_bypass(const std::wstring& proxy_bypass) {
-    if (proxy_bypass.empty()) {
+    if (proxy_bypass.empty())
       return;
-    }
 
     proxy_info_.lpszProxyBypass = GlobalAlloc(proxy_bypass);
   }
 
+  // Return the raw pointer since WinHttpSetOption requires a non const pointer.
   const WINHTTP_PROXY_INFO* get() const { return &proxy_info_; }
 
   WINHTTP_PROXY_INFO* receive() { return &proxy_info_; }

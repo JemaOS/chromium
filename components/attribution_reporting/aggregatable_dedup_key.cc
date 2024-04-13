@@ -6,15 +6,14 @@
 
 #include <stdint.h>
 
-#include <optional>
 #include <utility>
 
 #include "base/types/expected.h"
-#include "base/types/expected_macros.h"
 #include "base/values.h"
 #include "components/attribution_reporting/filters.h"
 #include "components/attribution_reporting/parsing_utils.h"
 #include "components/attribution_reporting/trigger_registration_error.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace attribution_reporting {
 
@@ -33,20 +32,19 @@ AggregatableDedupKey::FromJSON(base::Value& value) {
         TriggerRegistrationError::kAggregatableDedupKeyWrongType);
   }
 
-  AggregatableDedupKey out;
+  auto filters = FilterPair::FromJSON(*dict);
+  if (!filters.has_value()) {
+    return base::unexpected(filters.error());
+  }
 
-  ASSIGN_OR_RETURN(out.filters, FilterPair::FromJSON(*dict));
+  absl::optional<uint64_t> dedup_key = ParseDeduplicationKey(*dict);
 
-  ASSIGN_OR_RETURN(out.dedup_key, ParseDeduplicationKey(*dict), [](ParseError) {
-    return TriggerRegistrationError::kAggregatableDedupKeyValueInvalid;
-  });
-
-  return out;
+  return AggregatableDedupKey(dedup_key, std::move(*filters));
 }
 
 AggregatableDedupKey::AggregatableDedupKey() = default;
 
-AggregatableDedupKey::AggregatableDedupKey(std::optional<uint64_t> dedup_key,
+AggregatableDedupKey::AggregatableDedupKey(absl::optional<uint64_t> dedup_key,
                                            FilterPair filters)
     : dedup_key(dedup_key), filters(std::move(filters)) {}
 

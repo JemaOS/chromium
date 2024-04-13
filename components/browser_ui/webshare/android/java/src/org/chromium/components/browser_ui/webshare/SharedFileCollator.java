@@ -10,7 +10,9 @@ import org.chromium.base.task.TaskTraits;
 import org.chromium.mojo.system.MojoResult;
 import org.chromium.webshare.mojom.SharedFile;
 
-/** Initiates the share dialog when all files have been received. */
+/**
+ * Initiates the share dialog when all files have been received.
+ */
 public class SharedFileCollator implements Callback<Integer> {
     private static final String WILDCARD = "*/*";
 
@@ -45,10 +47,7 @@ public class SharedFileCollator implements Callback<Integer> {
         mCallback = null;
 
         PostTask.postTask(
-                TaskTraits.UI_DEFAULT,
-                () -> {
-                    callback.onResult(result == MojoResult.OK);
-                });
+                TaskTraits.UI_DEFAULT, () -> { callback.onResult(result == MojoResult.OK); });
     }
 
     /**

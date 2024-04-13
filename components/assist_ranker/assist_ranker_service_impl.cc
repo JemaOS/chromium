@@ -27,8 +27,8 @@ AssistRankerServiceImpl::FetchBinaryClassifierPredictor(
   auto predictor_it = predictor_map_.find(model_name);
   if (predictor_it != predictor_map_.end()) {
     DVLOG(1) << "Predictor " << model_name << " already initialized.";
-    return static_cast<BinaryClassifierPredictor*>(predictor_it->second.get())
-        ->AsWeakPtr();
+    return base::AsWeakPtr(
+        static_cast<BinaryClassifierPredictor*>(predictor_it->second.get()));
   }
 
   // The predictor does not exist yet, so we create one.
@@ -36,7 +36,8 @@ AssistRankerServiceImpl::FetchBinaryClassifierPredictor(
   std::unique_ptr<BinaryClassifierPredictor> predictor =
       BinaryClassifierPredictor::Create(config, GetModelPath(model_name),
                                         url_loader_factory_);
-  base::WeakPtr<BinaryClassifierPredictor> weak_ptr = predictor->AsWeakPtr();
+  base::WeakPtr<BinaryClassifierPredictor> weak_ptr =
+      base::AsWeakPtr(predictor.get());
   predictor_map_[model_name] = std::move(predictor);
   return weak_ptr;
 }

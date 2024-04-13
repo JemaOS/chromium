@@ -6,7 +6,6 @@
 #define COMPONENTS_SYNC_MODEL_MODEL_TYPE_CHANGE_PROCESSOR_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +14,7 @@
 #include "components/sync/base/model_type.h"
 #include "components/sync/model/model_error.h"
 #include "components/sync/model/model_type_controller_delegate.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace syncer {
 
@@ -100,9 +100,9 @@ class ModelTypeChangeProcessor {
   virtual void ModelReadyToSync(std::unique_ptr<MetadataBatch> batch) = 0;
 
   // Returns a boolean representing whether the processor's metadata is
-  // currently tracking the model type's data. This typically becomes true after
-  // ModelReadyToSync() was called (if the data type is enabled). If false,
-  // then Put() and Delete() will no-op and can be omitted by bridge.
+  // currently up to date and accurately tracking the model type's data. If
+  // false, and ModelReadyToSync() has already been called, then Put and Delete
+  // will no-op and can be omitted by bridge.
   virtual bool IsTrackingMetadata() const = 0;
 
   // Returns the account ID for which metadata is being tracked, or empty if not
@@ -122,7 +122,7 @@ class ModelTypeChangeProcessor {
 
   // Returns whether the processor has encountered any error, either reported
   // by the bridge via ReportError() or by other means.
-  virtual std::optional<ModelError> GetError() const = 0;
+  virtual absl::optional<ModelError> GetError() const = 0;
 
   // Returns the delegate for the controller.
   virtual base::WeakPtr<ModelTypeControllerDelegate>

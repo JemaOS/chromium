@@ -297,18 +297,17 @@ LogSource::EntryDetailsList
 BackgroundDownloadServiceImpl::GetServiceDownloads() {
   EntryDetailsList list;
   auto entries = model_->PeekEntries();
-  for (download::Entry* entry : entries) {
-    list.push_back(std::make_pair(entry, std::nullopt));
-  }
+  for (auto* entry : entries)
+    list.push_back(std::make_pair(entry, absl::nullopt));
   return list;
 }
 
-std::optional<LogSource::EntryDetails>
+absl::optional<LogSource::EntryDetails>
 BackgroundDownloadServiceImpl::GetServiceDownload(const std::string& guid) {
   auto* entry = model_->Get(guid);
 
-  return std::optional<LogSource::EntryDetails>(
-      std::make_pair(entry, std::nullopt));
+  return absl::optional<LogSource::EntryDetails>(
+      std::make_pair(entry, absl::nullopt));
 }
 
 void BackgroundDownloadServiceImpl::OnDownloadFinished(

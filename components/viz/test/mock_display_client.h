@@ -6,6 +6,7 @@
 #define COMPONENTS_VIZ_TEST_MOCK_DISPLAY_CLIENT_H_
 
 #include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 #include "gpu/command_buffer/common/context_result.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -13,7 +14,6 @@
 #include "services/viz/privileged/mojom/compositing/display_private.mojom.h"
 #include "services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
 #include "testing/gmock/include/gmock/gmock.h"
-#include "ui/base/ozone_buildflags.h"
 
 namespace viz {
 
@@ -43,9 +43,11 @@ class MockDisplayClient : public mojom::DisplayClient {
   MOCK_METHOD1(SetWideColorEnabled, void(bool enabled));
   MOCK_METHOD1(SetPreferredRefreshRate, void(float refresh_rate));
 #endif
-#if BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
   MOCK_METHOD1(DidCompleteSwapWithNewSize, void(const gfx::Size&));
-#endif  // BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+#endif
 
  private:
   mojo::Receiver<mojom::DisplayClient> receiver_{this};

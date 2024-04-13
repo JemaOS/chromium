@@ -14,7 +14,6 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/timer/elapsed_timer.h"
 #include "build/build_config.h"
-#include "build/chromecast_buildflags.h"
 #include "build/chromeos_buildflags.h"
 #include "components/viz/common/buildflags.h"
 #include "components/viz/common/features.h"
@@ -23,7 +22,6 @@
 #include "components/viz/service/display/overlay_strategy_underlay.h"
 #include "gpu/command_buffer/client/shared_image_interface.h"
 #include "gpu/command_buffer/service/shared_image/shared_image_manager.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/gfx/buffer_format_util.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/size_conversions.h"
@@ -58,7 +56,8 @@ void ConvertToOzoneOverlaySurface(
 void ConvertToOzoneOverlaySurface(
     const OverlayCandidate& overlay_candidate,
     ui::OverlaySurfaceCandidate* ozone_candidate) {
-  ozone_candidate->transform = overlay_candidate.transform;
+  ozone_candidate->transform =
+      absl::get<gfx::OverlayTransform>(overlay_candidate.transform);
   ozone_candidate->format = overlay_candidate.format;
   ozone_candidate->color_space = overlay_candidate.color_space;
   ozone_candidate->display_rect = overlay_candidate.display_rect;
@@ -77,27 +76,6 @@ void ConvertToOzoneOverlaySurface(
       overlay_candidate.color) {
     ozone_candidate->background_color = overlay_candidate.color->toSkColor();
   }
-}
-
-void ConvertToTiledOzoneOverlaySurface(
-    const OverlayCandidate& overlay_candidate,
-    ui::OverlaySurfaceCandidate* ozone_candidate) {
-  ozone_candidate->transform = gfx::OVERLAY_TRANSFORM_NONE;
-  ozone_candidate->format = gfx::BufferFormat::RGBA_8888;
-  ozone_candidate->color_space = overlay_candidate.color_space;
-  ozone_candidate->display_rect = overlay_candidate.display_rect;
-  ozone_candidate->crop_rect = gfx::RectF(1.0, 1.0);
-  ozone_candidate->clip_rect = std::nullopt;
-  ozone_candidate->is_opaque = overlay_candidate.is_opaque;
-  ozone_candidate->opacity = overlay_candidate.opacity;
-  ozone_candidate->plane_z_order = overlay_candidate.plane_z_order;
-  ozone_candidate->buffer_size =
-      gfx::Size(static_cast<int>(overlay_candidate.display_rect.width()),
-                static_cast<int>(overlay_candidate.display_rect.height()));
-  ozone_candidate->requires_overlay = true;
-  ozone_candidate->priority_hint = overlay_candidate.priority_hint;
-  ozone_candidate->rounded_corners = overlay_candidate.rounded_corners;
-  ozone_candidate->native_pixmap = nullptr;
 }
 
 uint32_t MailboxToUInt32(const gpu::Mailbox& mailbox) {
@@ -120,6 +98,11 @@ bool AllowColorSpaceCombination(
   // should be consistent with the overlay path.
   if (!source_color_space.IsValid())
     return true;
+
+  // TODO(b/249215983): Disable promotion of HDR content to overlay until
+  // decoding to monitor colorspace is supported.
+  if (source_color_space.IsHDR())
+    return false;
 
   // Since https://crrev.com/c/2336347, we force BT.601/narrow for the
   // COLOR_ENCODING and COLOR_RANGE DRM/KMS properties. On the other hand, the
@@ -145,12 +128,9 @@ bool AllowColorSpaceCombination(
   //
   // TODO(b/243150091): Remove the call to IsYUVColorSpace() or turn it into a
   // DCHECK() once LaCrOS plumbs the correct color space.
-  bool is_yuv_color_space = features::IsLacrosColorManagementEnabled() ||
-                            IsYUVColorSpace(source_color_space);
   if ((source_format == gfx::BufferFormat::YUV_420_BIPLANAR ||
-       source_format == gfx::BufferFormat::YVU_420 ||
-       source_format == gfx::BufferFormat::P010) &&
-      is_yuv_color_space &&
+       source_format == gfx::BufferFormat::YVU_420) &&
+      IsYUVColorSpace(source_color_space) &&
       (source_color_space.GetMatrixID() ==
            gfx::ColorSpace::MatrixID::BT2020_NCL ||
        source_color_space.GetRangeID() == gfx::ColorSpace::RangeID::FULL)) {
@@ -218,17 +198,6 @@ bool OverlayProcessorOzone::NeedsSurfaceDamageRectList() const {
   return true;
 }
 
-bool OverlayProcessorOzone::SupportsFlipRotateTransform() const {
-  // TODO(petermcneeley): Test and enable for ChromeOS.
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  return false;
-#elif BUILDFLAG(IS_CASTOS)
-  return false;
-#else
-  return false;
-#endif
-}
-
 void OverlayProcessorOzone::CheckOverlaySupportImpl(
     const OverlayProcessorInterface::OutputSurfaceOverlayPlane* primary_plane,
     OverlayCandidateList* surfaces) {
@@ -293,12 +262,6 @@ void OverlayProcessorOzone::CheckOverlaySupportImpl(
     for (; ozone_surface_iterator < ozone_surface_list.end() &&
            surface_iterator < surfaces->cend();
          ozone_surface_iterator++, surface_iterator++) {
-      if (surface_iterator->needs_detiling) {
-        ConvertToTiledOzoneOverlaySurface(*surface_iterator,
-                                          &(*ozone_surface_iterator));
-        continue;
-      }
-
       ConvertToOzoneOverlaySurface(*surface_iterator,
                                    &(*ozone_surface_iterator));
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -405,6 +368,9 @@ void OverlayProcessorOzone::MaybeObserveHardwareCapabilities() {
 
 void OverlayProcessorOzone::ReceiveHardwareCapabilities(
     ui::HardwareCapabilities hardware_capabilities) {
+  UMA_HISTOGRAM_BOOLEAN(
+      "Compositing.Display.OverlayProcessorOzone.HardwareCapabilitiesIsValid",
+      hardware_capabilities.is_valid);
   if (hardware_capabilities.is_valid) {
     // Subtract 1 because one of these overlay capable planes will be needed for
     // the primary plane.

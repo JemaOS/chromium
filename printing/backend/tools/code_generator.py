@@ -41,8 +41,6 @@ HANDLER_HEADER = """// DO NOT MODIFY
 
 #include "printing/backend/ipp_handler_map.h"
 
-#include <string_view>
-
 #include "base/functional/bind.h"
 #include "printing/backend/ipp_handlers.h"
 
@@ -66,8 +64,8 @@ L10N_HEADER = """// DO NOT MODIFY
 #include "base/no_destructor.h"
 #include "components/strings/grit/components_strings.h"
 
-const std::map<std::string_view, int>& CapabilityLocalizationMap() {
-  static const base::NoDestructor<std::map<std::string_view, int>> l10n_map({
+const std::map<base::StringPiece, int>& CapabilityLocalizationMap() {
+  static const base::NoDestructor<std::map<base::StringPiece, int>> l10n_map({
 """
 
 L10N_FOOTER = """  });
@@ -227,13 +225,10 @@ def main():
         if args.localization_map and not handler.startswith('Multivalue'):
           add_l10n(l10n_file, attr_name)
 
-    # media-source and media-type are only handled for localization because
-    # they're inside of the media-col collection and we don't handle
-    # collections otherwise.
+    # media-source is only handled for localization because it's inside of
+    # the media-col collection and we don't handle collections otherwise.
     supported_items.add("media-source")
     add_l10n(l10n_file, "media-source")
-    supported_items.add("media-type")
-    add_l10n(l10n_file, "media-type")
 
     with open(args.keyword_values_file, 'r') as keyword_file:
       keyword_reader = csv.reader(keyword_file)

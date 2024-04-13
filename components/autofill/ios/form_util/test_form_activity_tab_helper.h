@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include "base/memory/raw_ptr.h"
-
 namespace web {
 class WebFrame;
 class WebState;
@@ -39,7 +37,7 @@ class TestFormActivityTabHelper {
                          bool has_user_gesture);
 
  private:
-  raw_ptr<web::WebState> web_state_ = nullptr;
+  web::WebState* web_state_ = nullptr;
 };
 
 }  // namespace autofill

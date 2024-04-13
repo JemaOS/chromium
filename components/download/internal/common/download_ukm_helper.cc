@@ -4,7 +4,6 @@
 
 #include "components/download/public/common/download_ukm_helper.h"
 
-#include "base/numerics/safe_conversions.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 
 namespace download {
@@ -18,8 +17,7 @@ double CalcBucketIncrement() {
 }  // namespace
 
 int DownloadUkmHelper::CalcExponentialBucket(int value) {
-  return base::saturated_cast<int>(
-      floor(log10(value + 1) / CalcBucketIncrement()));
+  return static_cast<int>(floor(log10(value + 1) / CalcBucketIncrement()));
 }
 
 int DownloadUkmHelper::CalcNearestKB(int num_bytes) {
@@ -43,7 +41,7 @@ void DownloadUkmHelper::RecordDownloadStarted(int download_id,
 
 void DownloadUkmHelper::RecordDownloadInterrupted(
     int download_id,
-    std::optional<int> change_in_file_size,
+    absl::optional<int> change_in_file_size,
     DownloadInterruptReason reason,
     int resulting_file_size,
     const base::TimeDelta& time_since_start,

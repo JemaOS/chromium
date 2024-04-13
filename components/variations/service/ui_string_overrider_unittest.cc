@@ -32,7 +32,8 @@ const int kResourceIndices[] = {
 
 class UIStringOverriderTest : public ::testing::Test {
  public:
-  UIStringOverriderTest() : provider_(kResourceHashes, kResourceIndices) {}
+  UIStringOverriderTest()
+      : provider_(kResourceHashes, kResourceIndices, kNumResources) {}
 
   UIStringOverriderTest(const UIStringOverriderTest&) = delete;
   UIStringOverriderTest& operator=(const UIStringOverriderTest&) = delete;

@@ -48,7 +48,7 @@ class EcdhImplementation : public EcAlgorithm {
 
   Status DeriveBits(const blink::WebCryptoAlgorithm& algorithm,
                     const blink::WebCryptoKey& base_key,
-                    std::optional<unsigned int> length_bits,
+                    absl::optional<unsigned int> length_bits,
                     std::vector<uint8_t>* derived_bytes) const override {
     if (base_key.GetType() != blink::kWebCryptoKeyTypePrivate)
       return Status::ErrorUnexpectedKeyType();
@@ -88,12 +88,11 @@ class EcdhImplementation : public EcAlgorithm {
     // secret are zero. So for P-521, the maximum length is 528 bits, not 521.
     int field_size_bytes =
         NumBitsToBytes(EC_GROUP_get_degree(EC_KEY_get0_group(private_key_ec)));
-    unsigned int field_size_bits =
-        static_cast<unsigned int>(field_size_bytes * 8);
 
     // If a desired key length was not specified, default to the field size
     // (rounded up to nearest byte).
-    unsigned int actual_length_bits = length_bits.value_or(field_size_bits);
+    unsigned int actual_length_bits =
+        length_bits.value_or(field_size_bytes * 8);
 
     // Short-circuit when deriving an empty key.
     // TODO(eroman): ECDH_compute_key() is not happy when given a NULL output.
@@ -103,8 +102,8 @@ class EcdhImplementation : public EcAlgorithm {
       return Status::Success();
     }
 
-    if (actual_length_bits > field_size_bits) {
-      return Status::ErrorEcdhLengthTooBig(field_size_bits);
+    if (actual_length_bits > static_cast<unsigned int>(field_size_bytes * 8)) {
+      return Status::ErrorEcdhLengthTooBig(field_size_bytes * 8);
     }
 
     // Resize to target length in bytes (BoringSSL can operate on a shorter
@@ -117,9 +116,7 @@ class EcdhImplementation : public EcAlgorithm {
       return Status::OperationError();
 
     TruncateToBitLength(actual_length_bits, derived_bytes);
-    return actual_length_bits < field_size_bits
-               ? Status::SuccessDeriveBitsTruncation()
-               : Status::Success();
+    return Status::Success();
   }
 };
 

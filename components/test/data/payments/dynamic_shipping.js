@@ -8,6 +8,17 @@
  * Launches the PaymentRequest UI that offers free shipping in California and
  * $5.00 shipping in US. Does not allow shipping outside of US.
  *
+ * Legacy entry-point until basic-card is disabled
+ */
+function buy() {
+  buyWithMethods(
+      [{supportedMethods: 'basic-card', data: {supportedNetworks: ['visa']}}]);
+}
+
+/**
+ * Launches the PaymentRequest UI that offers free shipping in California and
+ * $5.00 shipping in US. Does not allow shipping outside of US.
+ *
  * @param {String} methodData - An array of payment method objects.
  */
 function buyWithMethods(methodData) {

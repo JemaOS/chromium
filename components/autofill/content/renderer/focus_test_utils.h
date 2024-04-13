@@ -6,7 +6,6 @@
 #define COMPONENTS_AUTOFILL_CONTENT_RENDERER_FOCUS_TEST_UTILS_H_
 
 #include <string>
-#include <string_view>
 
 #include "base/functional/callback.h"
 #include "third_party/blink/public/web/web_document.h"
@@ -26,11 +25,8 @@ class FocusTestUtils {
   // 5. Change event for the field with name '1'
   // 6. Blur event for field with name '1'
  public:
-  using ExecuteJavascriptFunction =
-      base::RepeatingCallback<void(std::string_view)>;
-
   explicit FocusTestUtils(
-      ExecuteJavascriptFunction execute_java_script_function);
+      base::RepeatingCallback<void(const char*)> execute_java_script_function);
   ~FocusTestUtils();
   FocusTestUtils(const FocusTestUtils&) = delete;
   FocusTestUtils& operator=(const FocusTestUtils&) = delete;
@@ -39,14 +35,14 @@ class FocusTestUtils {
   // blur and change events for the form elements.
   void SetUpFocusLogging();
 
-  // Emits focus event for the given field with id `element_id`.
-  void FocusElement(std::string_view element_id);
+  // Emits focus event for the given field with id |element_id|.
+  void FocusElement(const char* element_id);
 
   // Returns the sequence of focus events (see class description).
   std::string GetFocusLog(const blink::WebDocument& document);
 
  private:
-  ExecuteJavascriptFunction execute_java_script_function_;
+  base::RepeatingCallback<void(const char*)> execute_java_script_function_;
 };
 
 }  // namespace test

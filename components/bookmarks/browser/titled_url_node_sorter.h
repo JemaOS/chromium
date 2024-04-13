@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "base/containers/flat_set.h"
-#include "base/memory/raw_ptr.h"
 
 namespace bookmarks {
 
@@ -16,10 +15,8 @@ class TitledUrlNode;
 
 class TitledUrlNodeSorter {
  public:
-  using TitledUrlNodes =
-      std::vector<raw_ptr<const TitledUrlNode, CtnExperimental>>;
-  using TitledUrlNodeSet =
-      base::flat_set<raw_ptr<const TitledUrlNode, CtnExperimental>>;
+  using TitledUrlNodes = std::vector<const TitledUrlNode*>;
+  using TitledUrlNodeSet = base::flat_set<const TitledUrlNode*>;
 
   virtual ~TitledUrlNodeSorter() {}
 

@@ -40,9 +40,7 @@ class LogBuffer;
   /* The website modified a field */                                   \
   T(WebsiteModifiedFieldValue)                                         \
   /* Chrome Fast Checkout run. */                                      \
-  T(FastCheckout)                                                      \
-  /* Touch To Fill UI. */                                              \
-  T(TouchToFill)
+  T(FastCheckout)
 
 // Define a bunch of logging scopes: kContext, kParsing, ...
 #define AUTOFILL_TEMPLATE(NAME) k##NAME,

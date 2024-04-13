@@ -11,20 +11,20 @@
 
 namespace policy {
 
-std::optional<std::string> GetManagedBy(
+absl::optional<std::string> GetManagedBy(
     const policy::CloudPolicyManager* manager) {
   if (!manager) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const policy::CloudPolicyStore* store = manager->core()->store();
   if (!store) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const enterprise_management::PolicyData* policy = store->policy();
   if (!policy || !policy->has_managed_by()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return policy->managed_by();

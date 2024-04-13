@@ -64,10 +64,11 @@ TemplateURL* SearchHostToURLsMap::GetTemplateURLForHost(
   // Because we have to happily tolerate duplicates in TemplateURLService now,
   /// return the best TemplateURL for `host`, just like
   // `GetTemplateURLForKeyword` returns the best TemplateURL for a keyword.
-  return *std::min_element(iter->second.begin(), iter->second.end(),
-                           [](const auto& a, const auto& b) {
-                             return a->IsBetterThanConflictingEngine(b);
-                           });
+  return *std::min_element(
+      iter->second.begin(), iter->second.end(),
+      [](const auto& a, const auto& b) {
+        return a->IsBetterThanEngineWithConflictingKeyword(b);
+      });
 }
 
 SearchHostToURLsMap::TemplateURLSet* SearchHostToURLsMap::GetURLsForHost(

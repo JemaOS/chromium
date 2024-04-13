@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -184,12 +183,7 @@ void AutocompleteInput::Init(
   PopulateTermsPrefixedByHttpOrHttps(text_, &terms_prefixed_by_http_or_https_);
 
   DCHECK(!added_default_scheme_to_typed_url_);
-  typed_url_had_http_scheme_ =
-      base::StartsWith(text,
-                       base::ASCIIToUTF16(base::StrCat(
-                           {url::kHttpScheme, url::kStandardSchemeSeparator})),
-                       base::CompareCase::INSENSITIVE_ASCII) &&
-      canonicalized_url.SchemeIs(url::kHttpScheme);
+
   GURL upgraded_url;
   if (should_use_https_as_default_scheme_ &&
       type_ == metrics::OmniboxInputType::URL &&
@@ -274,16 +268,16 @@ metrics::OmniboxInputType AutocompleteInput::Parse(
     return metrics::OmniboxInputType::QUERY;
 
 #if BUILDFLAG(IS_CHROMEOS)
-  const bool is_lacros_or_lacros_is_enabled =
+  const bool is_lacros_or_lacros_is_primary =
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
       true;
 #else
       // ChromeOS's launcher is using the omnibox from Ash. As such we have to
       // allow Ash to use the os scheme if Lacros is the primary browser.
-      crosapi::lacros_startup_state::IsLacrosEnabled();
+      crosapi::lacros_startup_state::IsLacrosPrimaryEnabled();
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-  if (is_lacros_or_lacros_is_enabled &&
-      crosapi::gurl_os_handler_utils::IsOsScheme(parsed_scheme_utf8)) {
+  if (is_lacros_or_lacros_is_primary &&
+      crosapi::gurl_os_handler_utils::IsAshOsAsciiScheme(parsed_scheme_utf8)) {
     // Lacros and Ash have a different set of internal chrome:// pages.
     // However - once Lacros is the primary browser, the Ash browser cannot be
     // reached anymore and many internal status / information / ... pages
@@ -795,8 +789,4 @@ void AutocompleteInput::WriteIntoTrace(perfetto::TracedValue context) const {
 
 bool AutocompleteInput::IsZeroSuggest() const {
   return focus_type_ != metrics::OmniboxFocusType::INTERACTION_DEFAULT;
-}
-
-bool AutocompleteInput::InKeywordMode() const {
-  return keyword_mode_entry_method_ != metrics::OmniboxEventProto::INVALID;
 }

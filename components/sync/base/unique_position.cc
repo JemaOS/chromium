@@ -169,12 +169,13 @@ std::string UniquePosition::ToDebugString() const {
   if (bytes.empty())
     return std::string("INVALID[]");
 
-  std::string debug_string = base::HexEncode(bytes);
+  std::string debug_string = base::HexEncode(bytes.data(), bytes.length());
   if (!IsValid()) {
     debug_string = "INVALID[" + debug_string + "]";
   }
 
-  std::string compressed_string = base::HexEncode(compressed_);
+  std::string compressed_string =
+      base::HexEncode(compressed_.data(), compressed_.length());
   debug_string.append(", compressed: " + compressed_string);
   return debug_string;
 }

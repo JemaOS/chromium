@@ -8,9 +8,13 @@ import android.animation.Animator;
 
 import androidx.annotation.Nullable;
 
-/** Handler to prepare and trigger swiping animation of {@link MessageStateHandler}. */
+/**
+ * Handler to prepare and trigger swiping animation of {@link MessageStateHandler}.
+ */
 public interface SwipeAnimationHandler {
-    /** Should be called when swipe is started. */
+    /**
+     * Should be called when swipe is started.
+     */
     void onSwipeStart();
 
     /**
@@ -20,6 +24,8 @@ public interface SwipeAnimationHandler {
      */
     void onSwipeEnd(@Nullable Animator animator);
 
-    /** @return Whether the message view should consume the swipe gesture. */
+    /**
+     * @return Whether the message view should consume the swipe gesture.
+     */
     boolean isSwipeEnabled();
 }

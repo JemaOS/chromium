@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_USER_NOTES_BROWSER_USER_NOTE_SERVICE_H_
 #define COMPONENTS_USER_NOTES_BROWSER_USER_NOTE_SERVICE_H_
 
-#include "base/memory/raw_ptr.h"
 #include "components/keyed_service/core/keyed_service.h"
 
 #include <memory>
@@ -114,7 +113,7 @@ class UserNoteService : public KeyedService,
     ModelMapEntry& operator=(const ModelMapEntry&) = delete;
 
     std::unique_ptr<UserNote> model;
-    std::unordered_set<raw_ptr<UserNoteManager, CtnExperimental>> managers;
+    std::unordered_set<UserNoteManager*> managers;
   };
 
   friend class MockUserNoteService;

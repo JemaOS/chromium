@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 package org.chromium.components.content_capture;
 
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.CommandLine;
+import org.chromium.base.annotations.NativeMethods;
 
-/** The class to get if feature is enabled from native. */
+/**
+ * The class to get if feature is enabled from native.
+ */
 public class ContentCaptureFeatures {
     private static final String FLAG = "dump-captured-content-to-logcat-for-testing";
 
@@ -26,7 +27,6 @@ public class ContentCaptureFeatures {
     @NativeMethods
     interface Natives {
         boolean isEnabled();
-
         boolean shouldTriggerContentCaptureForExperiment();
     }
 }

@@ -84,6 +84,9 @@ metrics_util::LeakDialogType GetLeakDialogType(CredentialLeakType leak_type);
 GURL GetPasswordCheckupURL(PasswordCheckupReferrer referrer =
                                PasswordCheckupReferrer::kLeakDetectionDialog);
 
+// Returns whether to use the naming for unified password manager.
+bool UsesPasswordManagerUpdatedNaming();
+
 // Returns whether to use Google Chrome branded strings.
 constexpr bool UsesPasswordManagerGoogleBranding() {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -156,14 +159,21 @@ class LeakDialogTraitsImp<metrics_util::LeakDialogType::kCheckup>
   }
 
   std::u16string GetDescription() const override {
+    if (UsesPasswordManagerUpdatedNaming()) {
       return l10n_util::GetStringUTF16(
           UsesPasswordManagerGoogleBranding()
               ? IDS_CREDENTIAL_LEAK_CHECK_PASSWORDS_MESSAGE_GPM_BRANDED
               : IDS_CREDENTIAL_LEAK_CHECK_PASSWORDS_MESSAGE_GPM_NON_BRANDED);
+    } else {
+      return l10n_util::GetStringUTF16(
+          IDS_CREDENTIAL_LEAK_CHECK_PASSWORDS_MESSAGE);
+    }
   }
 
   std::u16string GetTitle() const override {
-    return l10n_util::GetStringUTF16(IDS_CREDENTIAL_LEAK_TITLE_CHECK_GPM);
+    return l10n_util::GetStringUTF16(UsesPasswordManagerUpdatedNaming()
+                                         ? IDS_CREDENTIAL_LEAK_TITLE_CHECK_GPM
+                                         : IDS_CREDENTIAL_LEAK_TITLE_CHECK);
   }
 
   bool ShouldCheckPasswords() const override { return true; }
@@ -189,10 +199,15 @@ class LeakDialogTraitsImp<metrics_util::LeakDialogType::kChange>
   }
 
   std::u16string GetDescription() const override {
+    if (UsesPasswordManagerUpdatedNaming()) {
       return l10n_util::GetStringUTF16(
           UsesPasswordManagerGoogleBranding()
               ? IDS_CREDENTIAL_LEAK_CHANGE_PASSWORD_MESSAGE_GPM_BRANDED
               : IDS_CREDENTIAL_LEAK_CHANGE_PASSWORD_MESSAGE_GPM_NON_BRANDED);
+    } else {
+      return l10n_util::GetStringUTF16(
+          IDS_CREDENTIAL_LEAK_CHANGE_PASSWORD_MESSAGE);
+    }
   }
 
   std::u16string GetTitle() const override {
@@ -222,14 +237,20 @@ class LeakDialogTraitsImp<metrics_util::LeakDialogType::kCheckupAndChange>
   }
 
   std::u16string GetDescription() const override {
+    if (UsesPasswordManagerUpdatedNaming())
       return l10n_util::GetStringUTF16(
           UsesPasswordManagerGoogleBranding()
               ? IDS_CREDENTIAL_LEAK_CHANGE_AND_CHECK_PASSWORDS_MESSAGE_GPM_BRANDED
               : IDS_CREDENTIAL_LEAK_CHANGE_AND_CHECK_PASSWORDS_MESSAGE_GPM_NON_BRANDED);
+    else
+      return l10n_util::GetStringUTF16(
+          IDS_CREDENTIAL_LEAK_CHANGE_AND_CHECK_PASSWORDS_MESSAGE);
   }
 
   std::u16string GetTitle() const override {
-    return l10n_util::GetStringUTF16(IDS_CREDENTIAL_LEAK_TITLE_CHECK_GPM);
+    return l10n_util::GetStringUTF16(UsesPasswordManagerUpdatedNaming()
+                                         ? IDS_CREDENTIAL_LEAK_TITLE_CHECK_GPM
+                                         : IDS_CREDENTIAL_LEAK_TITLE_CHECK);
   }
 
   bool ShouldCheckPasswords() const override { return true; }

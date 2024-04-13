@@ -11,7 +11,6 @@
 #include "components/omnibox/browser/autocomplete_match_classification.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_service.h"
-#include "third_party/omnibox_proto/types.pb.h"
 
 namespace {
 // Maximum and minimum score allowed for voice suggestions.
@@ -47,9 +46,7 @@ void VoiceSuggestProvider::Start(const AutocompleteInput& input,
     AddMatchToMap(
         SearchSuggestionParser::SuggestResult(
             score_and_suggestion_pair.second,
-            AutocompleteMatchType::VOICE_SUGGEST,
-            /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-            false,
+            AutocompleteMatchType::VOICE_SUGGEST, {}, false,
             ConfidenceScoreToSuggestionScore(score_and_suggestion_pair.first),
             false, {}),
         {}, input,

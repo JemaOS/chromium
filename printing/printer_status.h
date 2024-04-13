@@ -56,8 +56,7 @@ struct COMPONENT_EXPORT(PRINTING_BASE) PrinterStatus {
       kDeveloperLow = 31,
       kDeveloperEmpty = 32,
       kInterpreterResourceUnavailable = 33,
-      kCupsPkiExpired = 34,
-      kMaxValue = kCupsPkiExpired
+      kMaxValue = kInterpreterResourceUnavailable
     };
 
     // Severity of the state-reason.

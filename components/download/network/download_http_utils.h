@@ -5,7 +5,7 @@
 #ifndef COMPONENTS_DOWNLOAD_NETWORK_DOWNLOAD_HTTP_UTILS_H_
 #define COMPONENTS_DOWNLOAD_NETWORK_DOWNLOAD_HTTP_UTILS_H_
 
-#include <optional>
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace net {
 class HttpByteRange;
@@ -16,7 +16,7 @@ namespace download {
 
 // Returns the http byte range for range request. Or nullopt if failed to parse
 // the range header.
-std::optional<net::HttpByteRange> ParseRangeHeader(
+absl::optional<net::HttpByteRange> ParseRangeHeader(
     const net::HttpRequestHeaders& request_headers);
 
 // Validates the http request header. Returns true if request headers can be

@@ -7,8 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/check.h"
-#include "base/containers/flat_set.h"
 #include "base/logging.h"
 #include "components/sync/base/data_type_histogram.h"
 #include "components/sync/base/time.h"
@@ -30,11 +28,10 @@ ClientTagBasedRemoteUpdateHandler::ClientTagBasedRemoteUpdateHandler(
   DCHECK(entity_tracker_);
 }
 
-std::optional<ModelError>
+absl::optional<ModelError>
 ClientTagBasedRemoteUpdateHandler::ProcessIncrementalUpdate(
     const sync_pb::ModelTypeState& model_type_state,
-    UpdateResponseDataList updates,
-    std::optional<sync_pb::GarbageCollectionDirective> gc_directive) {
+    UpdateResponseDataList updates) {
   std::unique_ptr<MetadataChangeList> metadata_changes =
       bridge_->CreateMetadataChangeList();
   EntityChangeList entity_changes;
@@ -61,8 +58,7 @@ ClientTagBasedRemoteUpdateHandler::ProcessIncrementalUpdate(
       // 2. Reflection, thus should be ignored.
       // 3. Update without a client tag hash (including permanent nodes, which
       // have server tags instead).
-      // 4. Remote creation or update containing invalid data according to the
-      // bridge.
+      // 4. Remote creation containing invalid data according to the bridge.
       continue;
     }
 
@@ -102,21 +98,6 @@ ClientTagBasedRemoteUpdateHandler::ProcessIncrementalUpdate(
     } else {
       metadata_changes->UpdateMetadata(entity->storage_key(),
                                        entity->metadata());
-    }
-  }
-
-  if (gc_directive && gc_directive->has_collaboration_gc()) {
-    auto active_collaborations = base::MakeFlatSet<std::string>(
-        gc_directive->collaboration_gc().active_collaboration_ids());
-    std::vector<std::string> removed_storage_keys =
-        entity_tracker_->RemoveInactiveCollaborations(active_collaborations);
-    DVLOG(2) << "Storage keys to remove for inactive collaborations: "
-             << removed_storage_keys.size();
-    for (const std::string& removed_storage_key : removed_storage_keys) {
-      metadata_changes->ClearMetadata(removed_storage_key);
-      entity_changes.push_back(
-          EntityChange::CreateDeletedCollaborationMembership(
-              removed_storage_key));
     }
   }
 
@@ -180,18 +161,6 @@ ProcessorEntity* ClientTagBasedRemoteUpdateHandler::ProcessUpdate(
     return nullptr;
   }
 
-  // TODO(crbug.com/1409462): Remove the storage key check as storage keys
-  // should not be empty after IsEntityDataValid() has been implemented by all
-  // bridges.
-  if (!data.is_deleted() && (!bridge_->IsEntityDataValid(data) ||
-                             (bridge_->SupportsGetStorageKey() &&
-                              bridge_->GetStorageKey(data).empty()))) {
-    DLOG(WARNING) << "Received invalid remote update."
-                  << " client_tag_hash: " << client_tag_hash << " for "
-                  << ModelTypeToDebugString(type_);
-    return nullptr;
-  }
-
   // Cache update encryption_key_name and is_deleted in case |update| will be
   // moved away into ResolveConflict().
   const std::string update_encryption_key_name = update.encryption_key_name;
@@ -200,7 +169,13 @@ ProcessorEntity* ClientTagBasedRemoteUpdateHandler::ProcessUpdate(
     // Remote creation.
     DCHECK(!data.is_deleted());
     entity = CreateEntity(update);
-    CHECK(entity);
+    // |entity| is null in case remote creation is invalid.
+    if (!entity) {
+      DLOG(WARNING) << "Received invalid remote creation."
+                    << " client_tag_hash: " << client_tag_hash << " for "
+                    << ModelTypeToDebugString(type_);
+      return nullptr;
+    }
     entity_changes->push_back(EntityChange::CreateAdd(
         entity->storage_key(), std::move(update.entity)));
   } else if (entity->IsUnsynced()) {
@@ -332,7 +307,9 @@ void ClientTagBasedRemoteUpdateHandler::ResolveConflict(
 
 ProcessorEntity* ClientTagBasedRemoteUpdateHandler::CreateEntity(
     const UpdateResponseData& update) {
-  CHECK(bridge_->IsEntityDataValid(update.entity));
+  if (!bridge_->IsEntityDataValid(update.entity)) {
+    return nullptr;
+  }
   DCHECK(!update.entity.client_tag_hash.value().empty());
   if (bridge_->SupportsGetClientTag()) {
     DCHECK_EQ(update.entity.client_tag_hash,
@@ -342,8 +319,11 @@ ProcessorEntity* ClientTagBasedRemoteUpdateHandler::CreateEntity(
   std::string storage_key;
   if (bridge_->SupportsGetStorageKey()) {
     storage_key = bridge_->GetStorageKey(update.entity);
-    // If the storage key was empty, CreateEntity() won't be reached.
-    CHECK(!storage_key.empty());
+    // TODO(crbug.com/1057947): Remove this as storage keys should not be
+    // empty after ValidateRemoteUpdate() has been implemented by all bridges.
+    if (storage_key.empty()) {
+      return nullptr;
+    }
   }
   return entity_tracker_->AddRemote(
       storage_key, update,

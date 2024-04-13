@@ -15,8 +15,9 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/uuid.h"
-#include "components/bookmarks/browser/bookmark_uuids.h"
+#include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/common/bookmark_metrics.h"
+#include "components/bookmarks/test/test_bookmark_client.h"
 #include "components/favicon/core/test/mock_favicon_service.h"
 #include "components/sync/base/client_tag_hash.h"
 #include "components/sync/base/hash_util.h"
@@ -29,11 +30,9 @@
 #include "components/sync/protocol/model_type_state.pb.h"
 #include "components/sync/protocol/unique_position.pb.h"
 #include "components/sync_bookmarks/bookmark_model_merger.h"
-#include "components/sync_bookmarks/bookmark_model_view.h"
 #include "components/sync_bookmarks/bookmark_specifics_conversions.h"
 #include "components/sync_bookmarks/switches.h"
 #include "components/sync_bookmarks/synced_bookmark_tracker_entity.h"
-#include "components/sync_bookmarks/test_bookmark_model_view.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -89,13 +88,16 @@ std::string GetFakeServerIdFromGUID(const base::Uuid& guid) {
   // For convenience in tests, |guid| may refer to permanent nodes too,
   // and yet the returned sync ID will honor the sync ID constants for permanent
   // nodes.
-  if (guid.AsLowercaseString() == bookmarks::kBookmarkBarNodeUuid) {
+  if (guid.AsLowercaseString() ==
+      bookmarks::BookmarkNode::kBookmarkBarNodeUuid) {
     return kBookmarkBarId;
   }
-  if (guid.AsLowercaseString() == bookmarks::kOtherBookmarksNodeUuid) {
+  if (guid.AsLowercaseString() ==
+      bookmarks::BookmarkNode::kOtherBookmarksNodeUuid) {
     return kOtherBookmarksId;
   }
-  if (guid.AsLowercaseString() == bookmarks::kMobileBookmarksNodeUuid) {
+  if (guid.AsLowercaseString() ==
+      bookmarks::BookmarkNode::kMobileBookmarksNodeUuid) {
     return kMobileBookmarksId;
   }
   return base::StrCat({"server_id_for_", guid.AsLowercaseString()});
@@ -130,7 +132,7 @@ sync_pb::BookmarkMetadata CreatePermanentNodeMetadata(
 }
 
 sync_pb::BookmarkModelMetadata CreateMetadataForPermanentNodes(
-    const BookmarkModelView* bookmark_model) {
+    const bookmarks::BookmarkModel* bookmark_model) {
   sync_pb::BookmarkModelMetadata model_metadata;
   model_metadata.mutable_model_type_state()->set_initial_sync_state(
       sync_pb::ModelTypeState_InitialSyncState_INITIAL_SYNC_DONE);
@@ -243,23 +245,27 @@ syncer::UpdateResponseDataList CreatePermanentFoldersUpdateData() {
 class BookmarkRemoteUpdatesHandlerWithInitialMergeTest : public testing::Test {
  public:
   BookmarkRemoteUpdatesHandlerWithInitialMergeTest()
-      : tracker_(SyncedBookmarkTracker::CreateEmpty(sync_pb::ModelTypeState())),
-        updates_handler_(&bookmark_model_, &favicon_service_, tracker_.get()) {
-    BookmarkModelMerger(CreatePermanentFoldersUpdateData(), &bookmark_model_,
-                        &favicon_service_, tracker_.get())
+      : bookmark_model_(bookmarks::TestBookmarkClient::CreateModel()),
+        tracker_(SyncedBookmarkTracker::CreateEmpty(sync_pb::ModelTypeState())),
+        updates_handler_(bookmark_model_.get(),
+                         &favicon_service_,
+                         tracker_.get()) {
+    BookmarkModelMerger(CreatePermanentFoldersUpdateData(),
+                        bookmark_model_.get(), &favicon_service_,
+                        tracker_.get())
         .Merge();
   }
 
-  BookmarkModelView* bookmark_model() { return &bookmark_model_; }
+  bookmarks::BookmarkModel* bookmark_model() { return bookmark_model_.get(); }
   SyncedBookmarkTracker* tracker() { return tracker_.get(); }
   favicon::MockFaviconService* favicon_service() { return &favicon_service_; }
   BookmarkRemoteUpdatesHandler* updates_handler() { return &updates_handler_; }
 
   const base::Uuid kBookmarkBarGuid =
-      base::Uuid::ParseLowercase(bookmarks::kBookmarkBarNodeUuid);
+      base::Uuid::ParseLowercase(bookmarks::BookmarkNode::kBookmarkBarNodeUuid);
 
  private:
-  TestBookmarkModelView bookmark_model_;
+  std::unique_ptr<bookmarks::BookmarkModel> bookmark_model_;
   std::unique_ptr<SyncedBookmarkTracker> tracker_;
   testing::NiceMock<favicon::MockFaviconService> favicon_service_;
   BookmarkRemoteUpdatesHandler updates_handler_;
@@ -288,7 +294,7 @@ TEST(BookmarkRemoteUpdatesHandlerReorderUpdatesTest,
   const std::string kTitle = "title";
   const syncer::UniquePosition kPosition = RandomUniquePosition();
   const base::Uuid kBookmarkBarGuid =
-      base::Uuid::ParseLowercase(bookmarks::kBookmarkBarNodeUuid);
+      base::Uuid::ParseLowercase(bookmarks::BookmarkNode::kBookmarkBarNodeUuid);
 
   syncer::UpdateResponseDataList updates;
 
@@ -316,7 +322,7 @@ TEST(BookmarkRemoteUpdatesHandlerReorderUpdatesTest,
 TEST(BookmarkRemoteUpdatesHandlerReorderUpdatesTest,
      ShouldReorderParentsUpdateBeforeChildrenAndBothBeforeDeletions) {
   const base::Uuid kBookmarkBarGuid =
-      base::Uuid::ParseLowercase(bookmarks::kBookmarkBarNodeUuid);
+      base::Uuid::ParseLowercase(bookmarks::BookmarkNode::kBookmarkBarNodeUuid);
 
   // Prepare creation updates to build this structure:
   // bookmark_bar
@@ -971,7 +977,8 @@ TEST_F(BookmarkRemoteUpdatesHandlerWithInitialMergeTest,
   sync_pb::BookmarkSpecifics* bookmark_specifics =
       data.specifics.mutable_bookmark();
   bookmark_specifics->set_guid(kParentGuid.AsLowercaseString());
-  bookmark_specifics->set_parent_guid(bookmarks::kBookmarkBarNodeUuid);
+  bookmark_specifics->set_parent_guid(
+      bookmarks::BookmarkNode::kBookmarkBarNodeUuid);
   bookmark_specifics->set_legacy_canonicalized_title(kTitle);
   bookmark_specifics->set_url(kUrl.spec());
   bookmark_specifics->set_type(sync_pb::BookmarkSpecifics::URL);
@@ -1022,7 +1029,8 @@ TEST_F(BookmarkRemoteUpdatesHandlerWithInitialMergeTest,
       data.specifics.mutable_bookmark();
   bookmark_specifics->set_guid(
       base::Uuid::GenerateRandomV4().AsLowercaseString());
-  bookmark_specifics->set_parent_guid(bookmarks::kBookmarkBarNodeUuid);
+  bookmark_specifics->set_parent_guid(
+      bookmarks::BookmarkNode::kBookmarkBarNodeUuid);
   // Use the server id as the title for simplicity.
   bookmark_specifics->set_legacy_canonicalized_title(kTitle);
   bookmark_specifics->set_url(kUrl.spec());
@@ -1065,7 +1073,8 @@ TEST_F(BookmarkRemoteUpdatesHandlerWithInitialMergeTest,
       data.specifics.mutable_bookmark();
   bookmark_specifics->set_guid(
       base::Uuid::GenerateRandomV4().AsLowercaseString());
-  bookmark_specifics->set_parent_guid(bookmarks::kBookmarkBarNodeUuid);
+  bookmark_specifics->set_parent_guid(
+      bookmarks::BookmarkNode::kBookmarkBarNodeUuid);
   // Use the server id as the title for simplicity.
   bookmark_specifics->set_legacy_canonicalized_title(kTitle);
   bookmark_specifics->set_url(kUrl.spec());
@@ -1110,7 +1119,8 @@ TEST_F(BookmarkRemoteUpdatesHandlerWithInitialMergeTest,
   sync_pb::BookmarkSpecifics* bookmark_specifics = specifics.mutable_bookmark();
   bookmark_specifics->set_guid(
       base::Uuid::GenerateRandomV4().AsLowercaseString());
-  bookmark_specifics->set_parent_guid(bookmarks::kBookmarkBarNodeUuid);
+  bookmark_specifics->set_parent_guid(
+      bookmarks::BookmarkNode::kBookmarkBarNodeUuid);
   bookmark_specifics->set_legacy_canonicalized_title("Title");
   bookmark_specifics->set_type(sync_pb::BookmarkSpecifics::FOLDER);
   *bookmark_specifics->mutable_unique_position() =
@@ -1118,11 +1128,12 @@ TEST_F(BookmarkRemoteUpdatesHandlerWithInitialMergeTest,
 
   ASSERT_TRUE(IsValidBookmarkSpecifics(*bookmark_specifics));
 
-  const bookmarks::BookmarkNode* node = bookmark_model()->AddFolder(
-      /*parent=*/bookmark_model()->bookmark_bar_node(),
-      /*index=*/0, u"title", /*meta_info=*/nullptr,
-      /*creation_time=*/std::nullopt, kBookmarkGuid);
-
+  bookmarks::BookmarkNode parent(/*id=*/1, base::Uuid::GenerateRandomV4(),
+                                 GURL());
+  bookmarks::BookmarkNode* node =
+      parent.Add(std::make_unique<bookmarks::BookmarkNode>(
+                     /*id=*/2, kBookmarkGuid, GURL()),
+                 /*index=*/0);
   // Track a sync entity (similar to what happens after a local creation). The
   // |originator_client_item_id| is used a temp sync id and mark the entity that
   // it needs to be committed..
@@ -1171,6 +1182,9 @@ TEST_F(
   const int64_t kServerVersion = 1000;
   const base::Time kModificationTime(base::Time::Now() - base::Seconds(1));
 
+  bookmarks::BookmarkNode parent(/*id=*/1, base::Uuid::GenerateRandomV4(),
+                                 GURL());
+
   sync_pb::ModelTypeState model_type_state;
   model_type_state.set_initial_sync_state(
       sync_pb::ModelTypeState_InitialSyncState_INITIAL_SYNC_DONE);
@@ -1178,8 +1192,7 @@ TEST_F(
   sync_pb::EntitySpecifics specifics;
   sync_pb::BookmarkSpecifics* bookmark_specifics = specifics.mutable_bookmark();
   bookmark_specifics->set_guid(kBookmarkGuid.AsLowercaseString());
-  bookmark_specifics->set_parent_guid(
-      bookmark_model()->bookmark_bar_node()->uuid().AsLowercaseString());
+  bookmark_specifics->set_parent_guid(parent.uuid().AsLowercaseString());
   bookmark_specifics->set_legacy_canonicalized_title("Title");
   bookmark_specifics->set_type(sync_pb::BookmarkSpecifics::FOLDER);
   *bookmark_specifics->mutable_unique_position() =
@@ -1187,10 +1200,10 @@ TEST_F(
 
   ASSERT_TRUE(IsValidBookmarkSpecifics(*bookmark_specifics));
 
-  const bookmarks::BookmarkNode* node = bookmark_model()->AddFolder(
-      /*parent=*/bookmark_model()->bookmark_bar_node(),
-      /*index=*/0, u"title", /*meta_info=*/nullptr,
-      /*creation_time=*/std::nullopt, kBookmarkGuid);
+  bookmarks::BookmarkNode* node =
+      parent.Add(std::make_unique<bookmarks::BookmarkNode>(
+                     /*id=*/2, kBookmarkGuid, GURL()),
+                 /*index=*/0);
   // Track a sync entity (similar to what happens after a local creation).
   const SyncedBookmarkTrackerEntity* entity =
       tracker()->Add(node, /*sync_id=*/kSyncId, /*server_version=*/0,
@@ -1284,7 +1297,8 @@ TEST_F(BookmarkRemoteUpdatesHandlerWithInitialMergeTest,
   auto* node = entity->bookmark_node();
   tracker()->MarkDeleted(entity);
   tracker()->IncrementSequenceNumber(entity);
-  bookmark_model()->Remove(node);
+  bookmark_model()->Remove(node,
+                           bookmarks::metrics::BookmarkEditSource::kOther);
 
   // Process an update with outdated encryption. This should cause a conflict
   // and the remote version must be applied. Local tombstone entity will be
@@ -1364,7 +1378,8 @@ TEST_F(
   ASSERT_THAT(tracker()->GetEntityForUuid(kGuid)->IsUnsynced(), Eq(true));
 
   // Remove the bookmark from the local bookmark model.
-  bookmark_model()->Remove(bookmark_bar_node->children().front().get());
+  bookmark_model()->Remove(bookmark_bar_node->children().front().get(),
+                           bookmarks::metrics::BookmarkEditSource::kOther);
   ASSERT_THAT(bookmark_bar_node->children().size(), Eq(0u));
 
   // Push a remote deletion for the same entity with an out of date encryption
@@ -1443,7 +1458,8 @@ TEST_F(BookmarkRemoteUpdatesHandlerWithInitialMergeTest,
   ASSERT_THAT(entity->IsUnsynced(), Eq(true));
 
   // Remove the bookmark from the local bookmark model.
-  bookmark_model()->Remove(bookmark_bar_node->children().front().get());
+  bookmark_model()->Remove(bookmark_bar_node->children().front().get(),
+                           bookmarks::metrics::BookmarkEditSource::kOther);
   ASSERT_THAT(bookmark_bar_node->children().size(), Eq(0u));
 
   // Push a remote deletion for the same entity.
@@ -1538,7 +1554,8 @@ TEST_F(BookmarkRemoteUpdatesHandlerWithInitialMergeTest,
   ASSERT_THAT(entity->IsUnsynced(), Eq(true));
 
   // Remove the bookmark from the local bookmark model.
-  bookmark_model()->Remove(bookmark_bar_node->children().front().get());
+  bookmark_model()->Remove(bookmark_bar_node->children().front().get(),
+                           bookmarks::metrics::BookmarkEditSource::kOther);
   ASSERT_THAT(bookmark_bar_node->children().size(), Eq(0u));
 
   // Push an update for the same entity.
@@ -1966,13 +1983,15 @@ TEST(BookmarkRemoteUpdatesHandlerTest,
   const syncer::UniquePosition pos1 =
       syncer::UniquePosition::InitialPosition(suffix);
 
-  TestBookmarkModelView bookmark_model;
+  std::unique_ptr<bookmarks::BookmarkModel> bookmark_model =
+      bookmarks::TestBookmarkClient::CreateModel();
   std::unique_ptr<SyncedBookmarkTracker> tracker =
       SyncedBookmarkTracker::CreateFromBookmarkModelAndMetadata(
-          &bookmark_model, CreateMetadataForPermanentNodes(&bookmark_model));
+          bookmark_model.get(),
+          CreateMetadataForPermanentNodes(bookmark_model.get()));
 
   const bookmarks::BookmarkNode* bookmark_bar_node =
-      bookmark_model.bookmark_bar_node();
+      bookmark_model->bookmark_bar_node();
 
   // Should always return 0 for any UniquePosition in the initial state.
   EXPECT_EQ(0u, BookmarkRemoteUpdatesHandler::ComputeChildNodeIndexForTest(
@@ -1980,10 +1999,11 @@ TEST(BookmarkRemoteUpdatesHandlerTest,
 }
 
 TEST(BookmarkRemoteUpdatesHandlerTest, ShouldComputeRightChildNodeIndex) {
-  TestBookmarkModelView bookmark_model;
+  std::unique_ptr<bookmarks::BookmarkModel> bookmark_model =
+      bookmarks::TestBookmarkClient::CreateModel();
 
   const bookmarks::BookmarkNode* bookmark_bar_node =
-      bookmark_model.bookmark_bar_node();
+      bookmark_model->bookmark_bar_node();
   const std::string suffix = syncer::UniquePosition::RandomSuffix();
 
   const syncer::UniquePosition pos1 =
@@ -1994,22 +2014,22 @@ TEST(BookmarkRemoteUpdatesHandlerTest, ShouldComputeRightChildNodeIndex) {
       syncer::UniquePosition::After(pos2, suffix);
 
   // Create 3 nodes using remote update.
-  const bookmarks::BookmarkNode* node1 = bookmark_model.AddFolder(
+  const bookmarks::BookmarkNode* node1 = bookmark_model->AddFolder(
       bookmark_bar_node, /*index=*/0, /*title=*/std::u16string());
-  const bookmarks::BookmarkNode* node2 = bookmark_model.AddFolder(
+  const bookmarks::BookmarkNode* node2 = bookmark_model->AddFolder(
       bookmark_bar_node, /*index=*/1, /*title=*/std::u16string());
-  const bookmarks::BookmarkNode* node3 = bookmark_model.AddFolder(
+  const bookmarks::BookmarkNode* node3 = bookmark_model->AddFolder(
       bookmark_bar_node, /*index=*/2, /*title=*/std::u16string());
 
   sync_pb::BookmarkModelMetadata model_metadata =
-      CreateMetadataForPermanentNodes(&bookmark_model);
+      CreateMetadataForPermanentNodes(bookmark_model.get());
   *model_metadata.add_bookmarks_metadata() = CreateNodeMetadata(node1, pos1);
   *model_metadata.add_bookmarks_metadata() = CreateNodeMetadata(node2, pos2);
   *model_metadata.add_bookmarks_metadata() = CreateNodeMetadata(node3, pos3);
 
   std::unique_ptr<SyncedBookmarkTracker> tracker =
       SyncedBookmarkTracker::CreateFromBookmarkModelAndMetadata(
-          &bookmark_model, std::move(model_metadata));
+          bookmark_model.get(), std::move(model_metadata));
 
   // Check for the same position as existing bookmarks have. In practice this
   // shouldn't happen.

@@ -176,8 +176,8 @@ class OmniboxPedal : public OmniboxAction {
 
   OmniboxPedal(OmniboxPedalId id, LabelStrings strings, GURL url);
 
-  // Downcasts the given OmniboxAction to an OmniboxPedal if the supplied
-  // instance represents one, otherwise returns nullptr.
+  // Return an OmniboxPedal instance if the supplied OmniboxAction instance
+  // represents one.
   static const OmniboxPedal* FromAction(const OmniboxAction* action);
 
   // Called after the OmniboxPedalProvider finishes loading all pedals data.
@@ -256,6 +256,10 @@ class OmniboxPedal : public OmniboxAction {
   SynonymGroup verbatim_synonym_group_;
 
   std::vector<SynonymGroup> synonym_groups_;
+
+#if BUILDFLAG(IS_ANDROID)
+  mutable base::android::ScopedJavaGlobalRef<jobject> j_omnibox_action_;
+#endif
 };
 
 // This is a simple pedal suitable only for use by tests.

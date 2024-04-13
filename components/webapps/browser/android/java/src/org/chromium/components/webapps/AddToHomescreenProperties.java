@@ -11,7 +11,9 @@ import android.view.View.OnClickListener;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 
-/** Contains the properties that an add-to-homescreen {@link PropertyModel} can have. */
+/**
+ * Contains the properties that an add-to-homescreen {@link PropertyModel} can have.
+ */
 public class AddToHomescreenProperties {
     public static final PropertyModel.WritableObjectPropertyKey<String> TITLE =
             new PropertyModel.WritableObjectPropertyKey<>();
@@ -32,15 +34,6 @@ public class AddToHomescreenProperties {
     public static final PropertyModel.WritableFloatPropertyKey NATIVE_APP_RATING =
             new PropertyModel.WritableFloatPropertyKey();
 
-    public static final PropertyKey[] ALL_KEYS = {
-        TITLE,
-        URL,
-        DESCRIPTION,
-        ICON,
-        TYPE,
-        CAN_SUBMIT,
-        CLICK_LISTENER,
-        NATIVE_INSTALL_BUTTON_TEXT,
-        NATIVE_APP_RATING
-    };
+    public static final PropertyKey[] ALL_KEYS = {TITLE, URL, DESCRIPTION, ICON, TYPE, CAN_SUBMIT,
+            CLICK_LISTENER, NATIVE_INSTALL_BUTTON_TEXT, NATIVE_APP_RATING};
 }

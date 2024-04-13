@@ -45,8 +45,10 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/version.h"
 #include "components/subresource_filter/content/browser/ruleset_publisher.h"
-#include "components/subresource_filter/core/browser/ruleset_version.h"
-#include "components/subresource_filter/core/browser/verified_ruleset_dealer.h"
+#include "components/subresource_filter/content/browser/ruleset_version.h"
+#include "components/subresource_filter/content/browser/verified_ruleset_dealer.h"
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
 
 namespace base {
 class SequencedTaskRunner;
@@ -118,7 +120,7 @@ class IndexedRulesetLocator {
 //
 // Obsolete files deletion and rulesets indexing are posted to
 // |background_task_runner|.
-class RulesetService {
+class RulesetService : public base::SupportsWeakPtr<RulesetService> {
  public:
   // Enumerates the possible outcomes of indexing a ruleset and writing it to
   // disk. Used in UMA histograms, so the order of enumerators should not be
@@ -224,7 +226,7 @@ class RulesetService {
   // Writes all files comprising the given |indexed_version| of the ruleset
   // into the corresponding subdirectory in |indexed_ruleset_base_dir|.
   // More specifically, it writes:
-  //  -- the |indexed_ruleset_data|,
+  //  -- the |indexed_ruleset_data| of the given |indexed_ruleset_size|,
   //  -- a copy of the LICENSE file at |license_path|, if exists.
   // Returns true on success. To be called on the |background_task_runner|.
   // Attempts not to leave an incomplete copy in the target directory.
@@ -234,7 +236,8 @@ class RulesetService {
   static IndexAndWriteRulesetResult WriteRuleset(
       const base::FilePath& indexed_ruleset_version_dir,
       const base::FilePath& license_source_path,
-      base::span<const uint8_t> indexed_ruleset_data);
+      const uint8_t* indexed_ruleset_data,
+      size_t indexed_ruleset_size);
 
   // Indirections for accessing these routines, so as to allow overriding and
   // injecting faults in tests.
@@ -270,8 +273,6 @@ class RulesetService {
   bool is_initialized_;
 
   const base::FilePath indexed_ruleset_base_dir_;
-
-  base::WeakPtrFactory<RulesetService> weak_ptr_factory_{this};
 };
 
 }  // namespace subresource_filter

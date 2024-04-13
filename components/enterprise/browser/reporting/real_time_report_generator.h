@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include "components/enterprise/browser/reporting/real_time_report_type.h"
 #include "third_party/protobuf/src/google/protobuf/message_lite.h"
 
 namespace enterprise_reporting {
@@ -20,9 +19,10 @@ class ReportingDelegateFactory;
 // uploaded much more frequently than the CBCM status report.
 class RealTimeReportGenerator {
  public:
-  struct Data {
-    bool operator==(const Data&) const = default;
-  };
+  enum class ReportType { kExtensionRequest = 0 };
+
+  struct Data {};
+
   // Delegate class that is used to collect information and generate reports
   // outside the //components. For example, RealTimeReportGeneratorDesktop
   // actual_report chrome/browser/enterprise/reporting.
@@ -34,7 +34,7 @@ class RealTimeReportGenerator {
     virtual ~Delegate();
 
     virtual std::vector<std::unique_ptr<google::protobuf::MessageLite>>
-    Generate(RealTimeReportType type, const Data& data) = 0;
+    Generate(ReportType type, const Data& data) = 0;
   };
 
   explicit RealTimeReportGenerator(ReportingDelegateFactory* delegate_factory);
@@ -45,7 +45,7 @@ class RealTimeReportGenerator {
   // Generates and returns reports for |type|. Multiple reports can be generated
   // together in case of previous events are not generated successfully.
   virtual std::vector<std::unique_ptr<google::protobuf::MessageLite>> Generate(
-      RealTimeReportType type,
+      ReportType type,
       const Data& data);
 
  private:

@@ -10,7 +10,6 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "components/printing/browser/print_manager_utils.h"
-#include "components/printing/common/print_params.h"
 #include "printing/print_settings.h"
 #include "printing/units.h"
 #include "ui/gfx/geometry/size.h"
@@ -84,21 +83,19 @@ absl::variant<printing::PageRanges, PdfPrintResult> TextPageRangesToPageRanges(
 
 absl::variant<printing::mojom::PrintPagesParamsPtr, std::string>
 GetPrintPagesParams(const GURL& page_url,
-                    std::optional<bool> landscape,
-                    std::optional<bool> display_header_footer,
-                    std::optional<bool> print_background,
-                    std::optional<double> scale,
-                    std::optional<double> paper_width,
-                    std::optional<double> paper_height,
-                    std::optional<double> margin_top,
-                    std::optional<double> margin_bottom,
-                    std::optional<double> margin_left,
-                    std::optional<double> margin_right,
-                    std::optional<std::string> header_template,
-                    std::optional<std::string> footer_template,
-                    std::optional<bool> prefer_css_page_size,
-                    std::optional<bool> generate_tagged_pdf,
-                    std::optional<bool> generate_document_outline) {
+                    absl::optional<bool> landscape,
+                    absl::optional<bool> display_header_footer,
+                    absl::optional<bool> print_background,
+                    absl::optional<double> scale,
+                    absl::optional<double> paper_width,
+                    absl::optional<double> paper_height,
+                    absl::optional<double> margin_top,
+                    absl::optional<double> margin_bottom,
+                    absl::optional<double> margin_left,
+                    absl::optional<double> margin_right,
+                    absl::optional<std::string> header_template,
+                    absl::optional<std::string> footer_template,
+                    absl::optional<bool> prefer_css_page_size) {
   printing::PrintSettings print_settings;
   print_settings.set_dpi(printing::kPointsPerInch);
   print_settings.SetOrientation(landscape.value_or(false));
@@ -156,7 +153,7 @@ GetPrintPagesParams(const GURL& page_url,
   if (paper_height_in_inches <= 0)
     return "paper height is zero or negative";
 
-  gfx::Size paper_size_in_points = gfx::ToCeiledSize(
+  gfx::Size paper_size_in_points = gfx::ToRoundedSize(
       gfx::SizeF(paper_width_in_inches * printing::kPointsPerInch,
                  paper_height_in_inches * printing::kPointsPerInch));
   gfx::Rect printable_area_device_units(paper_size_in_points);
@@ -176,24 +173,6 @@ GetPrintPagesParams(const GURL& page_url,
       base::UTF8ToUTF16(footer_template.value_or(""));
   print_pages_params->params->prefer_css_page_size =
       prefer_css_page_size.value_or(false);
-  print_pages_params->params->generate_tagged_pdf = generate_tagged_pdf;
-  print_pages_params->params->generate_document_outline =
-      generate_document_outline.value_or(false);
-
-  CHECK(!print_pages_params->params->page_size.IsEmpty())
-      << print_pages_params->params->page_size.ToString();
-
-  if (print_pages_params->params->printable_area.IsEmpty()) {
-    return "invalid print parameters: printable area is empty";
-  }
-
-  if (print_pages_params->params->content_size.IsEmpty()) {
-    return "invalid print parameters: content area is empty";
-  }
-
-  if (!printing::PrintMsgPrintParamsIsValid(*print_pages_params->params)) {
-    return "invalid print parameters";
-  }
 
   return print_pages_params;
 }

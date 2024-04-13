@@ -7,9 +7,13 @@ package org.chromium.components.language;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Default implementation of language profile delegate. */
+/**
+ * Default implementation of language profile delegate.
+ */
 public class LanguageProfileDelegateImpl implements LanguageProfileDelegate {
-    /** @return True if ULP is currently supported. */
+    /**
+     * @return True if ULP is currently supported.
+     */
     @Override
     public boolean isULPSupported() {
         // ULP is not supported in the default implementation.

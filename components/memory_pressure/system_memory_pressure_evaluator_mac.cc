@@ -13,12 +13,21 @@
 #include <cmath>
 
 #include "base/check_op.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/mac/mac_util.h"
 #include "base/memory/memory_pressure_monitor.h"
 #include "base/task/sequenced_task_runner.h"
 
 namespace memory_pressure::mac {
+
+namespace {
+
+BASE_FEATURE(kMacRenotifyMemoryPressureSignal,
+             "MacRenotifyMemoryPressureSignal",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+}  // namespace
 
 base::MemoryPressureListener::MemoryPressureLevel
 SystemMemoryPressureEvaluator::MemoryPressureLevelForMacMemoryPressureLevel(
@@ -59,7 +68,7 @@ SystemMemoryPressureEvaluator::SystemMemoryPressureEvaluator(
 
   // Attach an event handler to the memory pressure event source.
   if (memory_level_event_source_.get()) {
-    dispatch_source_set_event_handler(memory_level_event_source_.get(), ^{
+    dispatch_source_set_event_handler(memory_level_event_source_, ^{
       task_runner->PostTask(
           FROM_HERE,
           base::BindRepeating(
@@ -68,14 +77,14 @@ SystemMemoryPressureEvaluator::SystemMemoryPressureEvaluator(
     });
 
     // Start monitoring the event source.
-    dispatch_resume(memory_level_event_source_.get());
+    dispatch_resume(memory_level_event_source_);
   }
 }
 
 SystemMemoryPressureEvaluator::~SystemMemoryPressureEvaluator() {
   // Remove the memory pressure event source.
   if (memory_level_event_source_.get()) {
-    dispatch_source_cancel(memory_level_event_source_.get());
+    dispatch_source_cancel(memory_level_event_source_);
   }
 }
 
@@ -112,10 +121,12 @@ void SystemMemoryPressureEvaluator::OnMemoryPressureChanged() {
                 base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE;
   SendCurrentVote(notify);
 
-  if (notify) {
-    renotify_current_vote_timer_.Reset();
-  } else {
-    renotify_current_vote_timer_.Stop();
+  if (base::FeatureList::IsEnabled(kMacRenotifyMemoryPressureSignal)) {
+    if (notify) {
+      renotify_current_vote_timer_.Reset();
+    } else {
+      renotify_current_vote_timer_.Stop();
+    }
   }
 }
 

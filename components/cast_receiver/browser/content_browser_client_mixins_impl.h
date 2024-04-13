@@ -29,7 +29,7 @@ namespace cast_receiver {
 class ContentBrowserClientMixinsImpl : public ContentBrowserClientMixins {
  public:
   explicit ContentBrowserClientMixinsImpl(
-      network::NetworkContextGetter network_context_getter);
+      NetworkContextGetter network_context_getter);
   ~ContentBrowserClientMixinsImpl() override;
 
   // ContentBrowserClientMixins implementation.

@@ -45,11 +45,7 @@ class HistoryProvider : public AutocompleteProvider {
   AutocompleteProviderClient* client() const { return client_; }
 
  private:
-  // TODO(https://issues.chromium.org/issues/41485238#comment6) investigate why
-  // this pointer is kept dangling, for longer than the duration of the task.
-  raw_ptr<AutocompleteProviderClient,
-          FlakyDanglingUntriaged | AcrossTasksDanglingUntriaged>
-      client_;
+  raw_ptr<AutocompleteProviderClient, DanglingUntriaged> client_;
 };
 
 #endif  // COMPONENTS_OMNIBOX_BROWSER_HISTORY_PROVIDER_H_

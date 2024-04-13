@@ -35,8 +35,7 @@ class ProfileOAuth2TokenServiceIOSDelegate
   std::unique_ptr<OAuth2AccessTokenFetcher> CreateAccessTokenFetcher(
       const CoreAccountId& account_id,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      OAuth2AccessTokenConsumer* consumer,
-      const std::string& token_binding_challenge) override;
+      OAuth2AccessTokenConsumer* consumer) override;
 
   // KeyedService
   void Shutdown() override;
@@ -57,7 +56,7 @@ class ProfileOAuth2TokenServiceIOSDelegate
   void RevokeAllCredentials() override;
 
   void ReloadAllAccountsFromSystemWithPrimaryAccount(
-      const std::optional<CoreAccountId>& primary_account_id) override;
+      const absl::optional<CoreAccountId>& primary_account_id) override;
   void ReloadAccountFromSystem(const CoreAccountId& account_id) override;
 
   // Adds |account_id| to |accounts_| if it does not exist or udpates

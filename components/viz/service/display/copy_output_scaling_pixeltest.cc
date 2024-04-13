@@ -68,12 +68,6 @@ class CopyOutputScalingPixelTest
   // The scene is drawn, which also causes the copy request to execute. Then,
   // the resulting bitmap is compared against an expected bitmap.
   void RunTest() {
-    // TODO(b/297344089): Enable these tests once Skia Graphite supports stale
-    // mipmap regeneration.
-    if (is_skia_graphite()) {
-      GTEST_SKIP();
-    }
-
     const char* result_format_as_str = "<unknown>";
 
     // Tests only issue requests for system-memory destinations, no need to
@@ -201,7 +195,7 @@ class CopyOutputScalingPixelTest
         copy_output::ComputeResultRect(copy_rect, scale_from_, scale_to_);
     EXPECT_EQ(expected_result_rect, result->rect());
     EXPECT_EQ(result_format_, result->format());
-    std::optional<CopyOutputResult::ScopedSkBitmap> scoped_bitmap;
+    absl::optional<CopyOutputResult::ScopedSkBitmap> scoped_bitmap;
     SkBitmap result_bitmap;
     if (result_format_ == CopyOutputResult::Format::I420_PLANES) {
       result_bitmap = ReadI420ResultToSkBitmap(*result);

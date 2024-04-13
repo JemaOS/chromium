@@ -12,16 +12,17 @@ import android.graphics.drawable.Drawable;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenu;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuItemProperties;
 import org.chromium.ui.base.WindowAndroid;
-import org.chromium.ui.listmenu.ListMenu;
-import org.chromium.ui.listmenu.ListMenuItemProperties;
 import org.chromium.ui.modelutil.PropertyModel;
 
-/** Java side of native MessageWrapper class that represents a message for native features. */
+/**
+ * Java side of native MessageWrapper class that represents a message for native features.
+ */
 @JNINamespace("messages")
 public final class MessageWrapper implements ListMenu.Delegate {
     private long mNativeMessageWrapper;
@@ -35,8 +36,7 @@ public final class MessageWrapper implements ListMenu.Delegate {
      * @return reference to created MessageWrapper.
      */
     @CalledByNative
-    @VisibleForTesting
-    public static MessageWrapper create(long nativeMessageWrapper, int messageIdentifier) {
+    static MessageWrapper create(long nativeMessageWrapper, int messageIdentifier) {
         return new MessageWrapper(nativeMessageWrapper, messageIdentifier);
     }
 
@@ -46,19 +46,13 @@ public final class MessageWrapper implements ListMenu.Delegate {
                 new PropertyModel.Builder(MessageBannerProperties.ALL_KEYS)
                         .with(MessageBannerProperties.MESSAGE_IDENTIFIER, messageIdentifier)
                         .with(MessageBannerProperties.ON_PRIMARY_ACTION, this::handleActionClick)
-                        .with(
-                                MessageBannerProperties.ON_SECONDARY_ACTION,
+                        .with(MessageBannerProperties.ON_SECONDARY_ACTION,
                                 this::handleSecondaryActionClick)
                         .with(MessageBannerProperties.ON_DISMISSED, this::handleMessageDismissed)
                         .build();
     }
 
-    /**
-     * Get the {@link PropertyModel} wrapped inside.
-     * Note that actions for this property model are linked from the native side creator, so making
-     * updates for actions are not advised.
-     */
-    public PropertyModel getMessageProperties() {
+    PropertyModel getMessageProperties() {
         return mMessageProperties;
     }
 
@@ -120,8 +114,7 @@ public final class MessageWrapper implements ListMenu.Delegate {
         assert context != null;
         if (mMessageSecondaryMenuItems != null) {
             mMessageProperties.set(MessageBannerProperties.SECONDARY_MENU_MAX_SIZE, maxSize);
-            mMessageProperties.set(
-                    MessageBannerProperties.SECONDARY_MENU_BUTTON_DELEGATE,
+            mMessageProperties.set(MessageBannerProperties.SECONDARY_MENU_BUTTON_DELEGATE,
                     () -> mMessageSecondaryMenuItems.createListMenu(context, this));
         }
     }
@@ -141,6 +134,7 @@ public final class MessageWrapper implements ListMenu.Delegate {
                 itemId, resourceId, itemText, itemDescription);
     }
 
+    @VisibleForTesting
     MessageSecondaryMenuItems getMessageSecondaryMenuItemsForTesting() {
         return mMessageSecondaryMenuItems;
     }
@@ -251,11 +245,8 @@ public final class MessageWrapper implements ListMenu.Delegate {
     @NativeMethods
     interface Natives {
         void handleActionClick(long nativeMessageWrapper);
-
         void handleSecondaryActionClick(long nativeMessageWrapper);
-
         void handleSecondaryMenuItemSelected(long nativeMessageWrapper, int itemId);
-
         void handleDismissCallback(long nativeMessageWrapper, @DismissReason int dismissReason);
     }
 }

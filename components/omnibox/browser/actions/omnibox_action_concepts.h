@@ -12,13 +12,12 @@
 //
 // Automatically generate a corresponding Java enum:
 // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.components.omnibox.action
-// GENERATED_JAVA_CLASS_NAME_OVERRIDE: OmniboxActionId
+// GENERATED_JAVA_CLASS_NAME_OVERRIDE: OmniboxActionType
 enum class OmniboxActionId {
   UNKNOWN = 0,
   PEDAL,
   HISTORY_CLUSTERS,
   ACTION_IN_SUGGEST,
-  TAB_SWITCH,
 
   // Keep as a last item in the list, with ID one larger than the last valid
   // Action Id.

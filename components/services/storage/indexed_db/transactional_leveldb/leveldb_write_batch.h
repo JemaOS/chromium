@@ -6,7 +6,8 @@
 #define COMPONENTS_SERVICES_STORAGE_INDEXED_DB_TRANSACTIONAL_LEVELDB_LEVELDB_WRITE_BATCH_H_
 
 #include <memory>
-#include <string_view>
+
+#include "base/strings/string_piece.h"
 
 namespace leveldb {
 class WriteBatch;
@@ -22,8 +23,8 @@ class LevelDBWriteBatch {
   static std::unique_ptr<LevelDBWriteBatch> Create();
   ~LevelDBWriteBatch();
 
-  void Put(std::string_view key, std::string_view value);
-  void Remove(std::string_view key);
+  void Put(const base::StringPiece& key, const base::StringPiece& value);
+  void Remove(const base::StringPiece& key);
   void Clear();
 
  private:

@@ -11,7 +11,6 @@
 
 #include "base/callback_list.h"
 #include "base/functional/callback.h"
-#include "base/metrics/field_trial_params.h"
 #include "base/time/time.h"
 #include "components/metrics/metrics_log_store.h"
 #include "components/metrics/metrics_log_uploader.h"
@@ -31,16 +30,10 @@ namespace variations {
 class SyntheticTrialRegistry;
 }
 
-class IdentifiabilityStudyState;
-
 namespace metrics {
 
 class MetricsLogUploader;
 class MetricsService;
-
-namespace structured {
-class StructuredMetricsService;
-}
 
 // An abstraction of operations that depend on the embedder's (e.g. Chrome)
 // environment.
@@ -65,14 +58,6 @@ class MetricsServiceClient {
 
   // Returns the UkmService instance that this client is associated with.
   virtual ukm::UkmService* GetUkmService();
-
-  // Returns the IdentifiabilityStudyState instance that this client is
-  // associated with. Might be nullptr.
-  virtual IdentifiabilityStudyState* GetIdentifiabilityStudyState();
-
-  // Returns the StructuredMetricsService instance that this client is
-  // associated with.
-  virtual structured::StructuredMetricsService* GetStructuredMetricsService();
 
   // Returns true if metrics should be uploaded for the given |user_id|, which
   // corresponds to the |user_id| field in ChromeUserMetricsExtension.
@@ -111,11 +96,6 @@ class MetricsServiceClient {
   // |serialized_environment| are consumed by the call, but the caller maintains
   // ownership.
   virtual void OnEnvironmentUpdate(std::string* serialized_environment) {}
-
-  // Collects child process histograms and merges them into StatisticsRecorder.
-  // Called when child process histograms need to be merged ASAP. For example,
-  // on Android, when the browser was backgrounded.
-  virtual void MergeSubprocessHistograms() {}
 
   // Called prior to a metrics log being closed, allowing the client to collect
   // extra histograms that will go in that log. Asynchronous API - the client
@@ -163,6 +143,10 @@ class MetricsServiceClient {
 
   // Return true iff the system is currently on a cellular connection.
   virtual bool IsOnCellularConnection();
+
+  // Returns whether the allowlist for external experiment ids is enabled. Some
+  // embedders like WebLayer disable it. For Chrome, it should be enabled.
+  virtual bool IsExternalExperimentAllowlistEnabled();
 
   // Returns true iff UKM is allowed for all profiles.
   // See //components/ukm/observers/ukm_consent_state_observer.h for details.
@@ -220,21 +204,21 @@ class MetricsServiceClient {
   // when a user metric consent state should not be applied (ie no logged in
   // user or managed policy).
   //
-  // Will return std::nullopt if there is no current user or current user
+  // Will return absl::nullopt if there is no current user or current user
   // metrics consent should not be applied to determine metrics reporting state.
   //
   // Not all platforms support per-user consent. If per-user consent is not
-  // supported, this function should return std::nullopt.
-  virtual std::optional<bool> GetCurrentUserMetricsConsent() const;
+  // supported, this function should return absl::nullopt.
+  virtual absl::optional<bool> GetCurrentUserMetricsConsent() const;
 
   // Returns the current user id.
   //
-  // Will return std::nullopt if there is no current user, metrics reporting is
+  // Will return absl::nullopt if there is no current user, metrics reporting is
   // disabled, or current user should not have a user id.
   //
   // Not all platforms support per-user consent. If per-user consent is not
-  // supported, this function should return std::nullopt.
-  virtual std::optional<std::string> GetCurrentUserId() const;
+  // supported, this function should return absl::nullopt.
+  virtual absl::optional<std::string> GetCurrentUserId() const;
 
  private:
   base::RepeatingClosure update_running_services_;

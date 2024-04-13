@@ -126,7 +126,7 @@ void PaymentRequestSpec::Retry(
 }
 
 std::u16string PaymentRequestSpec::GetShippingAddressError(
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   if (!details_->shipping_address_errors)
     return std::u16string();
 
@@ -164,7 +164,8 @@ std::u16string PaymentRequestSpec::GetShippingAddressError(
   return std::u16string();
 }
 
-std::u16string PaymentRequestSpec::GetPayerError(autofill::FieldType type) {
+std::u16string PaymentRequestSpec::GetPayerError(
+    autofill::ServerFieldType type) {
   if (!payer_errors_)
     return std::u16string();
 
@@ -336,7 +337,6 @@ bool PaymentRequestSpec::IsAppStoreBillingAlsoRequested() const {
               .empty();
 }
 
-#if !BUILDFLAG(IS_ANDROID)
 bool PaymentRequestSpec::IsPaymentHandlerMinimalHeaderUXEnabled() const {
   // PaymentHandlerMinimalHeaderUX is enabled when both the browser feature
   // (enabled by default) and the blink feature (as indicated in the details)
@@ -345,7 +345,6 @@ bool PaymentRequestSpec::IsPaymentHandlerMinimalHeaderUXEnabled() const {
              features::kPaymentHandlerMinimalHeaderUX) &&
          details_->payment_handler_minimal_header_ux_enabled;
 }
-#endif
 
 base::WeakPtr<PaymentRequestSpec> PaymentRequestSpec::AsWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();

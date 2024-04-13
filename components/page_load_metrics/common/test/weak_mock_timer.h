@@ -12,20 +12,13 @@ namespace page_load_metrics {
 namespace test {
 
 // WeakMockTimer is a MockTimer that allows clients to keep WeakPtr<>s to it.
-class WeakMockTimer final : public base::MockOneShotTimer {
+class WeakMockTimer : public base::MockOneShotTimer,
+                      public base::SupportsWeakPtr<WeakMockTimer> {
  public:
   WeakMockTimer();
-  ~WeakMockTimer() override;
 
   WeakMockTimer(const WeakMockTimer&) = delete;
   WeakMockTimer& operator=(const WeakMockTimer&) = delete;
-
-  base::WeakPtr<WeakMockTimer> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
- private:
-  base::WeakPtrFactory<WeakMockTimer> weak_ptr_factory_{this};
 };
 
 // WeakMockTimerProvider is a testing helper class that test classes can inherit

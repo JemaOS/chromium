@@ -11,7 +11,6 @@ namespace gwp_asan {
 // for the malloc/PartitionAlloc hooks to the crash handler.
 const char kMallocCrashKey[] = "gwp-asan-malloc";
 const char kPartitionAllocCrashKey[] = "gwp-asan-partitionalloc";
-const char kLightweightDetectorCrashKey[] = "lightweight-uaf-detector";
 
 }  // namespace gwp_asan
 

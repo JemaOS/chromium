@@ -5,6 +5,8 @@
 #ifndef PRINTING_BACKEND_CUPS_CONNECTION_H_
 #define PRINTING_BACKEND_CUPS_CONNECTION_H_
 
+#include <cups/cups.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -15,6 +17,7 @@
 #include "printing/backend/cups_jobs.h"
 #include "printing/backend/cups_printer.h"
 #include "printing/printer_status.h"
+#include "url/gurl.h"
 
 namespace printing {
 
@@ -33,7 +36,9 @@ class COMPONENT_EXPORT(PRINT_BACKEND) CupsConnection {
  public:
   virtual ~CupsConnection() = default;
 
-  static std::unique_ptr<CupsConnection> Create();
+  static std::unique_ptr<CupsConnection> Create(const GURL& print_server_url,
+                                                http_encryption_t encryption,
+                                                bool blocking);
 
   // Obtain a vector of all the printers configure on the CUPS server.  Returns
   // true if the list of printers was obtained, and false if an error was
@@ -56,6 +61,8 @@ class COMPONENT_EXPORT(PRINT_BACKEND) CupsConnection {
   // Returns true if the query was successful.
   virtual bool GetPrinterStatus(const std::string& printer_id,
                                 PrinterStatus* printer_status) = 0;
+
+  virtual std::string server_name() const = 0;
 
   virtual int last_error() const = 0;
   virtual std::string last_error_message() const = 0;

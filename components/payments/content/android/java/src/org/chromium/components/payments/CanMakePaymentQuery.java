@@ -4,10 +4,9 @@
 
 package org.chromium.components.payments;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.payments.mojom.PaymentMethodData;
 
@@ -27,17 +26,14 @@ public class CanMakePaymentQuery {
      *
      * @return True if the given query for canMakePayment() is allowed.
      */
-    public static boolean canQuery(
-            WebContents webContents,
-            String topLevelOrigin,
-            String frameOrigin,
-            Map<String, PaymentMethodData> query) {
+    public static boolean canQuery(WebContents webContents, String topLevelOrigin,
+            String frameOrigin, Map<String, PaymentMethodData> query) {
         assert webContents != null;
         assert topLevelOrigin != null;
         assert frameOrigin != null;
         assert query != null;
-        return CanMakePaymentQueryJni.get()
-                .canQuery(webContents, topLevelOrigin, frameOrigin, query);
+        return CanMakePaymentQueryJni.get().canQuery(
+                webContents, topLevelOrigin, frameOrigin, query);
     }
 
     @CalledByNative
@@ -56,10 +52,7 @@ public class CanMakePaymentQuery {
 
     @NativeMethods
     interface Natives {
-        boolean canQuery(
-                WebContents webContents,
-                String topLevelOrigin,
-                String frameOrigin,
+        boolean canQuery(WebContents webContents, String topLevelOrigin, String frameOrigin,
                 Map<String, PaymentMethodData> query);
     }
 }

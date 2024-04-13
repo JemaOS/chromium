@@ -50,6 +50,9 @@ class OnDeviceHeadProvider : public AutocompleteProvider {
   // from the on device head model for a search request to the model.
   struct OnDeviceHeadProviderParams;
 
+  // The structure holds params for on device model files.
+  struct OnDeviceModelFileParams;
+
   OnDeviceHeadProvider(AutocompleteProviderClient* client,
                        AutocompleteProviderListener* listener);
   ~OnDeviceHeadProvider() override;
@@ -58,40 +61,28 @@ class OnDeviceHeadProvider : public AutocompleteProvider {
 
   bool IsOnDeviceHeadProviderAllowed(const AutocompleteInput& input);
 
-  // Helper functions used for asynchronous search to the on device models.
+  // Helper functions used for asynchronous search to the on device head model.
   // The Autocomplete input and output from the model will be passed from
-  // DoSearch to AllSearchDone via the OnDeviceHeadProviderParams object.
-  // DoSearch: searches the on device models and returns the tops suggestions
+  // DoSearch to SearchDone via the OnDeviceHeadProviderParams object.
+  // DoSearch: searches the on device model and returns the tops suggestions
   // matches the given AutocompleteInput.
   void DoSearch(std::unique_ptr<OnDeviceHeadProviderParams> params);
-  // AllSearchDone: called after all searches are completed, fills |matches_|
-  // with the suggestions fetched by DoSearch and then calls NotifyListeners.
-  void AllSearchDone(std::unique_ptr<OnDeviceHeadProviderParams> params);
-  // Helper function to be called when searches to the head model is done.
-  void HeadModelSearchDone(std::unique_ptr<OnDeviceHeadProviderParams> params);
+  // SearchDone: called after DoSearch, fills |matches_| with the suggestions
+  // fetches by DoSearch and then calls NotifyListeners.
+  void SearchDone(std::unique_ptr<OnDeviceHeadProviderParams> params);
 
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
-  // Helper function to be called when searches to the tail model is done.
-  void TailModelSearchDone(
-      std::unique_ptr<OnDeviceHeadProviderParams> params,
-      std::vector<OnDeviceTailModelExecutor::Prediction> predictions);
-#endif
-
-  // Helper functions to read head model filename from the static
+  // Helper functions to read model file params from the static
   // OnDeviceModelUpdateListener instance.
-  std::string GetOnDeviceHeadModelFilename() const;
+  static OnDeviceModelFileParams GetOnDeviceModelFileParams();
 
-  // Fetches suggestions matching the params from the given on device head
-  // model.
-  static std::unique_ptr<OnDeviceHeadProviderParams>
-  GetSuggestionsFromHeadModel(
-      const std::string& model_filename,
+  // Fetches suggestions matching the params from the given on device model.
+  static std::unique_ptr<OnDeviceHeadProviderParams> GetSuggestionsFromModel(
+      OnDeviceModelFileParams model_file_params,
+#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
+      OnDeviceTailModelExecutor* tail_model_executor,
+#endif
       const size_t provider_max_matches,
       std::unique_ptr<OnDeviceHeadProviderParams> params);
-
-  // Determines whether should fetch tail suggestions.
-  static bool ShouldFetchTailSuggestions(
-      const OnDeviceHeadProviderParams& params);
 
   raw_ptr<AutocompleteProviderClient> client_;
 
@@ -107,6 +98,14 @@ class OnDeviceHeadProvider : public AutocompleteProvider {
   // The id will be increased whenever a new request is received from the
   // AutocompleteController.
   size_t on_device_search_request_id_;
+
+#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
+  using ExecutorUniquePtr =
+      std::unique_ptr<OnDeviceTailModelExecutor, base::OnTaskRunnerDeleter>;
+
+  // The executor to run the tail suggest model.
+  ExecutorUniquePtr on_device_tail_model_executor_;
+#endif
 
   base::WeakPtrFactory<OnDeviceHeadProvider> weak_ptr_factory_{this};
 };

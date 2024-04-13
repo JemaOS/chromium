@@ -48,7 +48,7 @@ class COMPONENT_EXPORT(GLOBAL_MEDIA_CONTROLS) MediaSessionItemProducer
       mojo::Remote<media_session::mojom::MediaControllerManager>
           controller_manager_remote,
       MediaItemManager* item_manager,
-      std::optional<base::UnguessableToken> source_id);
+      absl::optional<base::UnguessableToken> source_id);
   MediaSessionItemProducer(const MediaSessionItemProducer&) = delete;
   MediaSessionItemProducer& operator=(const MediaSessionItemProducer&) = delete;
   ~MediaSessionItemProducer() override;
@@ -78,8 +78,7 @@ class COMPONENT_EXPORT(GLOBAL_MEDIA_CONTROLS) MediaSessionItemProducer
   void OnRequestIdReleased(const base::UnguessableToken& request_id) override;
 
   // MediaItemUIObserver implementation.
-  void OnMediaItemUIClicked(const std::string& id,
-                            bool activate_original_media) override;
+  void OnMediaItemUIClicked(const std::string& id) override;
   void OnMediaItemUIDismissed(const std::string& id) override;
 
   void AddObserver(MediaSessionItemProducerObserver* observer);
@@ -121,14 +120,15 @@ class COMPONENT_EXPORT(GLOBAL_MEDIA_CONTROLS) MediaSessionItemProducer
     void MediaSessionInfoChanged(
         media_session::mojom::MediaSessionInfoPtr session_info) override;
     void MediaSessionMetadataChanged(
-        const std::optional<media_session::MediaMetadata>& metadata) override {}
+        const absl::optional<media_session::MediaMetadata>& metadata) override {
+    }
     void MediaSessionActionsChanged(
         const std::vector<media_session::mojom::MediaSessionAction>& actions)
         override;
     void MediaSessionChanged(
-        const std::optional<base::UnguessableToken>& request_id) override {}
+        const absl::optional<base::UnguessableToken>& request_id) override {}
     void MediaSessionPositionChanged(
-        const std::optional<media_session::MediaPosition>& position) override;
+        const absl::optional<media_session::MediaPosition>& position) override;
 
     // Called when the request ID associated with this session is released (i.e.
     // when the tab is closed).
@@ -177,7 +177,7 @@ class COMPONENT_EXPORT(GLOBAL_MEDIA_CONTROLS) MediaSessionItemProducer
     base::TimeTicks last_interaction_time_ = base::TimeTicks::Now();
 
     // The reason why this session was dismissed/removed.
-    std::optional<GlobalMediaControlsDismissReason> dismiss_reason_;
+    absl::optional<GlobalMediaControlsDismissReason> dismiss_reason_;
 
     // True if the session's playback state is "playing".
     bool is_playing_ = false;
@@ -206,6 +206,7 @@ class COMPONENT_EXPORT(GLOBAL_MEDIA_CONTROLS) MediaSessionItemProducer
   void OnSessionBecameActive(const std::string& id);
   // Called by a Session when it becomes inactive.
   void OnSessionBecameInactive(const std::string& id);
+  void HideMediaDialog();
   void OnReceivedAudioFocusRequests(
       std::vector<media_session::mojom::AudioFocusRequestStatePtr> sessions);
   void OnItemUnfrozen(const std::string& id);

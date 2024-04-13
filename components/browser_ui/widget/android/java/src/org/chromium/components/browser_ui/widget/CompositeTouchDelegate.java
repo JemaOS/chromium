@@ -30,7 +30,9 @@ import java.util.List;
 public class CompositeTouchDelegate extends TouchDelegate {
     private final List<TouchDelegate> mDelegates = new ArrayList<>();
 
-    /** @param view Used to get the context. */
+    /**
+     * @param view Used to get the context.
+     */
     public CompositeTouchDelegate(View view) {
         super(new Rect(), view);
     }

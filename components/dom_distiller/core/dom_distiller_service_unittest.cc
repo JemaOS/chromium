@@ -71,7 +71,6 @@ class DomDistillerServiceTest : public testing::Test {
 
   void TearDown() override {
     base::RunLoop().RunUntilIdle();
-    distiller_page_factory_ = nullptr;
     distiller_factory_ = nullptr;
     service_.reset();
   }

@@ -60,22 +60,6 @@ google::internal::identity::passwords::leak::check::v1::
       return google::internal::identity::passwords::leak::check::v1::
           LookupSingleLeakRequest::ClientUseCase::
               LookupSingleLeakRequest_ClientUseCase_CHROME_EDIT_CHECK;
-    case LeakDetectionInitiator::kIGABulkSyncedPasswordsCheck:
-      return google::internal::identity::passwords::leak::check::v1::
-          LookupSingleLeakRequest::ClientUseCase::
-              LookupSingleLeakRequest_ClientUseCase_IGA_BULK_SYNCED_PASSWORDS_CHECK;
-    case LeakDetectionInitiator::kClientUseCaseUnspecified:
-      return google::internal::identity::passwords::leak::check::v1::
-          LookupSingleLeakRequest::ClientUseCase::
-              LookupSingleLeakRequest_ClientUseCase_CLIENT_USE_CASE_UNSPECIFIED;
-    case LeakDetectionInitiator::kDesktopProactivePasswordCheckup:
-      return google::internal::identity::passwords::leak::check::v1::
-          LookupSingleLeakRequest::ClientUseCase::
-              LookupSingleLeakRequest_ClientUseCase_CHROME_DESKTOP_SIGNED_IN_ON_DEVICE_PROACTIVE_PASSWORD_CHECKUP;
-    case LeakDetectionInitiator::kIosProactivePasswordCheckup:
-      return google::internal::identity::passwords::leak::check::v1::
-          LookupSingleLeakRequest::ClientUseCase::
-              LookupSingleLeakRequest_ClientUseCase_CHROME_IOS_SIGNED_IN_ON_DEVICE_PROACTIVE_PASSWORD_CHECKUP;
   }
   NOTREACHED_NORETURN();
 }
@@ -101,8 +85,8 @@ LeakDetectionRequest::~LeakDetectionRequest() = default;
 
 void LeakDetectionRequest::LookupSingleLeak(
     network::mojom::URLLoaderFactory* url_loader_factory,
-    const std::optional<std::string>& access_token,
-    const std::optional<std::string>& api_key,
+    const absl::optional<std::string>& access_token,
+    const absl::optional<std::string>& api_key,
     LookupSingleLeakPayload payload,
     LookupSingleLeakCallback callback) {
   net::NetworkTrafficAnnotationTag traffic_annotation =
@@ -131,18 +115,8 @@ void LeakDetectionRequest::LookupSingleLeak(
             "user"
           data:
             "A hash prefix of the username and the encrypted username and "
-            "password. An OAuth2 access token for the user account."
+            "password."
           destination: GOOGLE_OWNED_SERVICE
-          internal {
-            contacts {
-              owners: "//components/password_manager/OWNERS"
-            }
-          }
-          user_data {
-            type: ACCESS_TOKEN
-            type: CREDENTIALS
-          }
-          last_reviewed: "2023-08-14"
         }
         policy {
           cookies_allowed: NO
@@ -216,7 +190,8 @@ void LeakDetectionRequest::OnLookupSingleLeakResponse(
       LookupSingleLeakResponse leak_response;
   if (!leak_response.ParseFromString(*response)) {
     RecordLookupResponseResult(LeakLookupResponseResult::kParseError);
-    DLOG(ERROR) << "Could not parse response: " << base::HexEncode(*response);
+    DLOG(ERROR) << "Could not parse response: "
+                << base::HexEncode(response->data(), response->size());
     std::move(callback).Run(nullptr,
                             LeakDetectionError::kInvalidServerResponse);
     return;
@@ -234,7 +209,7 @@ void LeakDetectionRequest::OnLookupSingleLeakResponse(
   base::UmaHistogramCounts100000(
       "PasswordManager.LeakDetection.SingleLeakResponsePrefixes",
       single_lookup_response->encrypted_leak_match_prefixes.size());
-  std::move(callback).Run(std::move(single_lookup_response), std::nullopt);
+  std::move(callback).Run(std::move(single_lookup_response), absl::nullopt);
 }
 
 }  // namespace password_manager

@@ -121,6 +121,13 @@ cr.googleTranslate = (function() {
    */
   let resultCallback;
 
+  /**
+   * Callback invoked when Translate Element requests load of javascript files.
+   * Currently main.js and element_main.js are expected to be loaded.
+   * @type {function(string)}
+   */
+  let loadJavascriptCallback;
+
   function checkLibReady() {
     if (lib.isAvailable()) {
       readyTime = performance.now();
@@ -198,6 +205,16 @@ cr.googleTranslate = (function() {
     set resultCallback(callback) {
       if (!resultCallback) {
         resultCallback = callback;
+      }
+    },
+
+    /**
+     * Setter for loadJavascriptCallback. No op if already set.
+     * @param {function(string)} callback The function to be invoked.
+     */
+    set loadJavascriptCallback(callback) {
+      if (!loadJavascriptCallback) {
+        loadJavascriptCallback = callback;
       }
     },
 
@@ -386,6 +403,11 @@ cr.googleTranslate = (function() {
       if (!url.startsWith(securityOrigin)) {
         console.error('Translate: ' + url + ' is not allowed to load.');
         errorCode = ERROR['BAD_ORIGIN'];
+        return;
+      }
+
+      if (loadJavascriptCallback) {
+        loadJavascriptCallback(url);
         return;
       }
 

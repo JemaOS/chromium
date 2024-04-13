@@ -5,12 +5,11 @@
 #ifndef COMPONENTS_CAST_STREAMING_BROWSER_PUBLIC_RECEIVER_CONFIG_H_
 #define COMPONENTS_CAST_STREAMING_BROWSER_PUBLIC_RECEIVER_CONFIG_H_
 
-#include <optional>
-
 #include "base/time/time.h"
 #include "media/base/audio_codecs.h"
 #include "media/base/channel_layout.h"
 #include "media/base/video_codecs.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/rect.h"
 
 namespace cast_streaming {
@@ -29,7 +28,7 @@ class ReceiverConfig {
 
     // Maximum maintainable frame rate.  If left unset, will use the
     // implementation default.
-    std::optional<int> max_frame_rate;
+    absl::optional<int> max_frame_rate;
 
     // Whether the embedder is capable of scaling content. If set to false, the
     // sender will manage the aspect ratio scaling.
@@ -40,11 +39,11 @@ class ReceiverConfig {
   struct AudioLimits {
     // Audio codec these limits apply to. If left empty, this instance is
     // assumed to apply to all codecs.
-    std::optional<media::AudioCodec> codec;
+    absl::optional<media::AudioCodec> codec;
 
     // Maximum audio sample rate.If left unset, will use the implementation
     // default.
-    std::optional<int> max_sample_rate;
+    absl::optional<int> max_sample_rate;
 
     // Maximum audio channels.
     media::ChannelLayout channel_layout = media::CHANNEL_LAYOUT_STEREO;
@@ -52,8 +51,8 @@ class ReceiverConfig {
     // Minimum and maximum bitrates. Generally capture is done at the maximum
     // bit rate, since audio bandwidth is much lower than video for most
     // content.  If left unset, will use the implementation defaults.
-    std::optional<int> min_bit_rate;
-    std::optional<int> max_bit_rate;
+    absl::optional<int> min_bit_rate;
+    absl::optional<int> max_bit_rate;
 
     // Max playout delay in milliseconds.
     base::TimeDelta max_delay = base::Milliseconds(1500);
@@ -63,7 +62,7 @@ class ReceiverConfig {
   struct VideoLimits {
     // Video codec these limits apply to. If left empty, this instance is
     // assumed to apply to all codecs.
-    std::optional<media::VideoCodec> codec;
+    absl::optional<media::VideoCodec> codec;
 
     // Maximum pixels per second. Value is the standard amount of pixels for
     // 1080P at 30FPS.
@@ -75,14 +74,14 @@ class ReceiverConfig {
 
     // Maximum maintainable frame rate. If left unset, will use the
     // implementation default.
-    std::optional<int> max_frame_rate;
+    absl::optional<int> max_frame_rate;
 
     // Minimum and maximum bitrates. Default values are based on default min and
     // max dimensions, embedders that support different display dimensions
     // should strongly consider setting these fields.  If left unset, will use
     // the implementation defaults.
-    std::optional<int> min_bit_rate;
-    std::optional<int> max_bit_rate;
+    absl::optional<int> min_bit_rate;
+    absl::optional<int> max_bit_rate;
 
     // Max playout delay in milliseconds.
     base::TimeDelta max_delay = base::Milliseconds(1500);
@@ -92,53 +91,26 @@ class ReceiverConfig {
   // remoting streams. These properties are based on the current control
   // protocol and allow remoting with current senders.
   struct RemotingConstraints {
-    RemotingConstraints();
-    ~RemotingConstraints();
-
-    RemotingConstraints(RemotingConstraints&&) noexcept;
-    RemotingConstraints(const RemotingConstraints&);
-    RemotingConstraints& operator=(RemotingConstraints&&) noexcept;
-    RemotingConstraints& operator=(const RemotingConstraints&);
+    // Current remoting senders take an "all or nothing" support for audio
+    // codec support. While Opus and AAC support is handled in our Constraints'
+    // |audio_codecs| property, support for the following codecs must be
+    // enabled or disabled all together:
+    // MP3
+    // PCM, including Mu-Law, S16BE, S24BE, and ALAW variants
+    // Ogg Vorbis
+    // FLAC
+    // AMR, including narrow band (NB) and wide band (WB) variants
+    // GSM Mobile Station (MS)
+    // EAC3 (Dolby Digital Plus)
+    // ALAC (Apple Lossless)
+    // AC-3 (Dolby Digital)
+    // These properties are tied directly to what Chrome supports. See:
+    // https://source.chromium.org/chromium/chromium/src/+/main:media/base/audio_codecs.h
+    bool supports_chrome_audio_codecs = false;
 
     // Current remoting senders assume that the receiver supports 4K for all
     // video codecs supplied in |video_codecs|, or none of them.
     bool supports_4k = false;
-
-    // Current remoting senders take an "all or nothing" support for audio
-    // codec support. While Opus and AAC support is handled in our Constraints'
-    // |audio_codecs| property, support for the following codecs must be
-    // enabled or disabled all together in the underlying remoting protocol. In
-    // the event that some of these codecs are marked as supported and others
-    // are not, then remoting requests will be accepted for unsupported codecs
-    // and then the remoting session will fall back to mirroring.
-    bool supports_ogg_vorbis = true;
-
-    bool supports_flac = true;
-
-    // Includes Mu-Law, S16BE, S24BE, and ALAW variants.
-    bool supports_pcm = true;
-
-    bool supports_mp3 = false;
-
-    bool supports_mpegh = false;
-
-    // Includes narrow band (NB) and wide band (WB) variants.
-    bool supports_amr = false;
-
-    // GSM Mobile Station (MS).
-    bool supports_gsm = false;
-
-    // Apple Lossless.
-    bool supports_alac = false;
-
-    // Dolby Digital Plus.
-    bool supports_eac3 = false;
-
-    // Dolby Digital.
-    bool supports_ac3 = false;
-
-    // Dolby True Sound. Includes DTS XP2 and DTSE
-    bool supports_dts = false;
   };
 
   ReceiverConfig();
@@ -148,7 +120,7 @@ class ReceiverConfig {
                  std::vector<media::AudioCodec> audio_codecs,
                  std::vector<AudioLimits> audio_limits,
                  std::vector<VideoLimits> video_limits,
-                 std::optional<Display> description);
+                 absl::optional<Display> description);
   ~ReceiverConfig();
 
   ReceiverConfig(ReceiverConfig&&) noexcept;
@@ -170,12 +142,12 @@ class ReceiverConfig {
   // vector of size 1 with the |codec| field empty.
   std::vector<AudioLimits> audio_limits;
   std::vector<VideoLimits> video_limits;
-  std::optional<Display> display_description;
+  absl::optional<Display> display_description;
 
   // Libcast remoting support is opt-in: embedders wishing to field remoting
   // offers may provide a set of remoting constraints, or leave nullptr for all
   // remoting OFFERs to be rejected in favor of continuing streaming.
-  std::optional<RemotingConstraints> remoting;
+  absl::optional<RemotingConstraints> remoting;
 };
 
 }  // namespace cast_streaming

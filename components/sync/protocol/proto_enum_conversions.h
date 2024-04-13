@@ -19,7 +19,6 @@
 #include "components/sync/protocol/saved_tab_group_specifics.pb.h"
 #include "components/sync/protocol/segmentation_specifics.pb.h"
 #include "components/sync/protocol/session_specifics.pb.h"
-#include "components/sync/protocol/shared_tab_group_data_specifics.pb.h"
 #include "components/sync/protocol/sync.pb.h"
 #include "components/sync/protocol/sync_enums.pb.h"
 #include "components/sync/protocol/user_consent_types.pb.h"
@@ -47,9 +46,6 @@ const char* ProtoEnumToString(sync_pb::AppSpecifics::LaunchType launch_type);
 const char* ProtoEnumToString(
     sync_pb::AutofillWalletSpecifics::WalletInfoType wallet_info_type);
 
-const char* ProtoEnumToString(
-    sync_pb::BankAccountDetails::AccountType account_type);
-
 const char* ProtoEnumToString(sync_pb::BookmarkSpecifics::Type type);
 
 const char* ProtoEnumToString(
@@ -58,14 +54,10 @@ const char* ProtoEnumToString(
 const char* ProtoEnumToString(
     sync_pb::ContactInfoSpecifics::VerificationStatus verification_status);
 
-const char* ProtoEnumToString(sync_pb::NigoriSpecifics::
-    AutoUpgradeDebugInfo::AutoUpgradeExperimentGroup
-        auto_upgrade_experiment_group);
+const char* ProtoEnumToString(
+    sync_pb::GetUpdatesCallerInfo::GetUpdatesSource updates_source);
 
 const char* ProtoEnumToString(sync_pb::NigoriSpecifics::PassphraseType type);
-
-const char* ProtoEnumToString(
-    sync_pb::PaymentInstrument::SupportedRail supported_rail);
 
 const char* ProtoEnumToString(
     sync_pb::PowerBookmarkSpecifics::PowerType power_type);
@@ -76,8 +68,6 @@ const char* ProtoEnumToString(
     sync_pb::ReadingListSpecifics::ReadingListEntryStatus status);
 
 const char* ProtoEnumToString(sync_pb::SavedTabGroup::SavedTabGroupColor color);
-
-const char* ProtoEnumToString(sync_pb::SharedTabGroup::Color color);
 
 const char* ProtoEnumToString(
     sync_pb::SearchEngineSpecifics::ActiveStatus is_active);
@@ -128,6 +118,10 @@ const char* ProtoEnumToString(
 const char* ProtoEnumToString(
     sync_pb::GaiaPasswordReuse::PasswordReuseLookup::ReputationVerdict verdict);
 
+// TODO(markusheintz): Remove.
+const char* ProtoEnumToString(
+    sync_pb::GaiaPasswordReuse::PasswordCaptured::EventTrigger trigger);
+
 const char* ProtoEnumToString(
     sync_pb::SegmentationSpecifics::DeviceMetadata::PlatformType platform_type);
 
@@ -150,9 +144,6 @@ const char* ProtoEnumToString(
 
 const char* ProtoEnumToString(
     sync_pb::WalletMaskedCreditCard::WalletCardType wallet_card_type);
-
-const char* ProtoEnumToString(
-    sync_pb::CardBenefit::CategoryBenefitType category_benefit_type);
 
 const char* ProtoEnumToString(sync_pb::CardIssuer::Issuer issuer);
 

@@ -24,6 +24,11 @@ NormalGetUpdatesDelegate::~NormalGetUpdatesDelegate() = default;
 // This function assumes the progress markers have already been populated.
 void NormalGetUpdatesDelegate::HelpPopulateGuMessage(
     sync_pb::GetUpdatesMessage* get_updates) const {
+  // Set legacy GetUpdatesMessage.GetUpdatesCallerInfo information. It's not
+  // used anymore, but |source| is a required field so we have to set it anyway.
+  get_updates->mutable_caller_info()->set_source(
+      sync_pb::GetUpdatesCallerInfo::UNKNOWN);
+
   // Set the origin.
   get_updates->set_get_updates_origin(sync_pb::SyncEnums::GU_TRIGGER);
   get_updates->set_is_retry(nudge_tracker_->IsRetryRequired());
@@ -67,6 +72,11 @@ ConfigureGetUpdatesDelegate::~ConfigureGetUpdatesDelegate() = default;
 
 void ConfigureGetUpdatesDelegate::HelpPopulateGuMessage(
     sync_pb::GetUpdatesMessage* get_updates) const {
+  // Set legacy GetUpdatesMessage.GetUpdatesCallerInfo information. It's not
+  // used anymore, but |source| is a required field so we have to set it anyway.
+  get_updates->mutable_caller_info()->set_source(
+      sync_pb::GetUpdatesCallerInfo::UNKNOWN);
+
   get_updates->set_get_updates_origin(origin_);
 }
 
@@ -88,6 +98,11 @@ PollGetUpdatesDelegate::~PollGetUpdatesDelegate() = default;
 
 void PollGetUpdatesDelegate::HelpPopulateGuMessage(
     sync_pb::GetUpdatesMessage* get_updates) const {
+  // Set legacy GetUpdatesMessage.GetUpdatesCallerInfo information. It's not
+  // used anymore, but |source| is a required field so we have to set it anyway.
+  get_updates->mutable_caller_info()->set_source(
+      sync_pb::GetUpdatesCallerInfo::UNKNOWN);
+
   get_updates->set_get_updates_origin(sync_pb::SyncEnums::PERIODIC);
 }
 

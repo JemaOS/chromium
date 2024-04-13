@@ -6,7 +6,6 @@
 
 #include "components/media_router/common/media_source.h"
 #include "components/media_router/common/mojom/media_router.mojom.h"
-#include "components/media_router/common/providers/cast/channel/cast_device_capability.h"
 #include "services/network/public/cpp/ip_address_mojom_traits.h"
 #include "services/network/public/cpp/ip_endpoint_mojom_traits.h"
 #include "url/mojom/url_gurl_mojom_traits.h"
@@ -23,7 +22,7 @@ bool StructTraits<media_router::mojom::IssueDataView, media_router::IssueInfo>::
   if (!data.ReadSeverity(&out->severity))
     return false;
 
-  std::optional<std::string> message;
+  absl::optional<std::string> message;
   if (!data.ReadMessage(&message))
     return false;
 
@@ -142,8 +141,7 @@ bool StructTraits<media_router::mojom::CastMediaSinkDataView,
   if (!data.ReadModelName(&out->model_name))
     return false;
 
-  out->capabilities = cast_channel::CastDeviceCapabilitySet::FromEnumBitmask(
-      data.capabilities());
+  out->capabilities = data.capabilities();
   out->cast_channel_id = data.cast_channel_id();
 
   return true;
@@ -164,7 +162,7 @@ bool StructTraits<media_router::mojom::MediaRouteDataView,
     return false;
   out->set_presentation_id(presentation_id);
 
-  std::optional<media_router::MediaSource::Id> media_source_id;
+  absl::optional<media_router::MediaSource::Id> media_source_id;
   if (!data.ReadMediaSource(&media_source_id))
     return false;
   if (media_source_id)
@@ -191,6 +189,7 @@ bool StructTraits<media_router::mojom::MediaRouteDataView,
   out->set_controller_type(controller_type);
 
   out->set_local(data.is_local());
+  out->set_off_the_record(data.is_off_the_record());
   out->set_local_presentation(data.is_local_presentation());
   out->set_is_connecting(data.is_connecting());
 

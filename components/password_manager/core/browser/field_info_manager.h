@@ -1,105 +1,67 @@
-// Copyright 2023 The Chromium Authors
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef COMPONENTS_PASSWORD_MANAGER_CORE_BROWSER_FIELD_INFO_MANAGER_H_
 #define COMPONENTS_PASSWORD_MANAGER_CORE_BROWSER_FIELD_INFO_MANAGER_H_
 
-#include <deque>
-#include <string>
-#include <vector>
+#include <map>
 
-#include "base/task/single_thread_task_runner.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include "base/memory/weak_ptr.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/common/signatures.h"
-#include "components/autofill/core/common/unique_ids.h"
 #include "components/keyed_service/core/keyed_service.h"
-#include "components/password_manager/core/browser/form_parsing/password_field_prediction.h"
+#include "components/password_manager/core/browser/password_store_consumer.h"
 
 namespace password_manager {
 
-struct FormPredictions;
+class PasswordStoreInterface;
+struct PasswordForm;
 
-constexpr base::TimeDelta kFieldInfoLifetime = base::Minutes(5);
+class FieldInfoManager {
+ public:
+  virtual ~FieldInfoManager() = default;
+  virtual void AddFieldType(autofill::FormSignature form_signature,
+                            autofill::FieldSignature field_signature,
+                            autofill::ServerFieldType field_type) = 0;
 
-struct FieldInfo {
-  // Id of the PasswordManagerDriver which corresponds to the frame of the
-  // field. Paired with the |field_id|, this identifies a field globally.
-  int driver_id = -1;
-
-  // The renderer id of a field.
-  autofill::FieldRendererId field_id;
-
-  // Signon realm of the form.
-  std::string signon_realm;
-
-  // Lowercased field value.
-  std::u16string value;
-
-  // Whether the field is likely to be an OTP field, based on its HTML
-  // attributes.
-  bool is_likely_otp;
-
-  // The type of the field predicted by the server.
-  autofill::FieldType type = autofill::FieldType::UNKNOWN_TYPE;
-
-  // Predictions for the form containing the field.
-  std::optional<FormPredictions> stored_predictions;
-
-  FieldInfo(int driver_id,
-            autofill::FieldRendererId field_id,
-            std::string signon_realm,
-            std::u16string value,
-            bool is_likely_otp);
-  FieldInfo(const FieldInfo&);
-  FieldInfo& operator=(const FieldInfo&);
-  ~FieldInfo();
-
-  friend bool operator==(const FieldInfo& lhs, const FieldInfo& rhs) = default;
+  virtual autofill::ServerFieldType GetFieldType(
+      autofill::FormSignature form_signature,
+      autofill::FieldSignature field_signature) const = 0;
 };
 
-// Manages information about the last user-interacted fields, keeps
-// the data and erases it once it becomes stale.
-class FieldInfoManager : public KeyedService {
+// Keeps semantic types of web forms fields. Fields are specified with a pair
+// (FormSignature, FieldSignature), which uniquely defines fields in the web
+// (more details on the signature calculation are in signature_util.cc). Types
+// might be PASSWORD, USERNAME, NEW_PASSWORD etc.
+class FieldInfoManagerImpl : public FieldInfoManager,
+                             public KeyedService,
+                             public PasswordStoreConsumer {
  public:
-  explicit FieldInfoManager(
-      scoped_refptr<base::SingleThreadTaskRunner> task_runner);
-  ~FieldInfoManager() override;
+  explicit FieldInfoManagerImpl(
+      scoped_refptr<password_manager::PasswordStoreInterface> store);
+  ~FieldInfoManagerImpl() override;
 
-  // Caches |info|.
-  void AddFieldInfo(const FieldInfo& new_info,
-                    const std::optional<FormPredictions>& predictions);
-
-  // Retrieves field info for the given |signon_realm|.
-  std::vector<FieldInfo> GetFieldInfo(const std::string& signon_realm);
-
-  // Propagates signatures and field type received from the server.
-  void ProcessServerPredictions(
-      const std::map<autofill::FormSignature, FormPredictions>& predictions);
+  // FieldInfoManager:
+  void AddFieldType(autofill::FormSignature form_signature,
+                    autofill::FieldSignature field_signature,
+                    autofill::ServerFieldType field_type) override;
+  autofill::ServerFieldType GetFieldType(
+      autofill::FormSignature form_signature,
+      autofill::FieldSignature field_signature) const override;
 
  private:
-  struct FieldInfoEntry {
-    // Cached field info.
-    FieldInfo field_info;
+  // PasswordStoreConsumer:
+  void OnGetPasswordStoreResults(
+      std::vector<std::unique_ptr<PasswordForm>> results) override;
+  void OnGetAllFieldInfo(std::vector<FieldInfo>) override;
 
-    // The timer for tracking field info expiration.
-    std::unique_ptr<base::OneShotTimer> timer;
+  std::map<std::pair<autofill::FormSignature, autofill::FieldSignature>,
+           autofill::ServerFieldType>
+      field_types_;
+  scoped_refptr<password_manager::PasswordStoreInterface> store_;
 
-    FieldInfoEntry(FieldInfo field_info,
-                   std::unique_ptr<base::OneShotTimer> timer);
-    ~FieldInfoEntry();
-  };
-
-  // Deletes the oldest field info entry.
-  void ClearOldestFieldInfoEntry();
-
-  // TODO(crbug/1468297): Reset the cache after a save prompt is accepted.
-  std::deque<FieldInfoEntry> field_info_cache_;
-
-  // Task runner used for evicting field info entries after timeout.
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  base::WeakPtrFactory<FieldInfoManagerImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace password_manager

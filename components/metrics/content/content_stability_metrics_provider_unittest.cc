@@ -15,6 +15,9 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/child_process_data.h"
 #include "content/public/browser/child_process_termination_info.h"
+#include "content/public/browser/notification_details.h"
+#include "content/public/browser/notification_source.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/common/process_type.h"
@@ -105,7 +108,7 @@ TEST_F(ContentStabilityMetricsProviderTest,
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-TEST_F(ContentStabilityMetricsProviderTest, RenderProcessObserver) {
+TEST_F(ContentStabilityMetricsProviderTest, NotificationObserver) {
   metrics::ContentStabilityMetricsProvider provider(prefs(), nullptr);
   content::TestBrowserContext browser_context;
   content::MockRenderProcessHostFactory rph_factory;
@@ -122,28 +125,36 @@ TEST_F(ContentStabilityMetricsProviderTest, RenderProcessObserver) {
   content::ChildProcessTerminationInfo crash_details;
   crash_details.status = base::TERMINATION_STATUS_PROCESS_CRASHED;
   crash_details.exit_code = 1;
-  provider.OnRenderProcessHostCreated(host);
-  provider.RenderProcessExited(host, crash_details);
+  provider.Observe(
+      content::NOTIFICATION_RENDERER_PROCESS_CLOSED,
+      content::Source<content::RenderProcessHost>(host),
+      content::Details<content::ChildProcessTerminationInfo>(&crash_details));
 
   content::ChildProcessTerminationInfo term_details;
   term_details.status = base::TERMINATION_STATUS_ABNORMAL_TERMINATION;
   term_details.exit_code = 1;
-  provider.OnRenderProcessHostCreated(host);
-  provider.RenderProcessExited(host, term_details);
+  provider.Observe(
+      content::NOTIFICATION_RENDERER_PROCESS_CLOSED,
+      content::Source<content::RenderProcessHost>(host),
+      content::Details<content::ChildProcessTerminationInfo>(&term_details));
 
   // Kill does not increment renderer crash count.
   content::ChildProcessTerminationInfo kill_details;
   kill_details.status = base::TERMINATION_STATUS_PROCESS_WAS_KILLED;
   kill_details.exit_code = 1;
-  provider.OnRenderProcessHostCreated(host);
-  provider.RenderProcessExited(host, kill_details);
+  provider.Observe(
+      content::NOTIFICATION_RENDERER_PROCESS_CLOSED,
+      content::Source<content::RenderProcessHost>(host),
+      content::Details<content::ChildProcessTerminationInfo>(&kill_details));
 
   // Failed launch increments failed launch count.
   content::ChildProcessTerminationInfo failed_launch_details;
   failed_launch_details.status = base::TERMINATION_STATUS_LAUNCH_FAILED;
   failed_launch_details.exit_code = 1;
-  provider.OnRenderProcessHostCreated(host);
-  provider.RenderProcessExited(host, failed_launch_details);
+  provider.Observe(content::NOTIFICATION_RENDERER_PROCESS_CLOSED,
+                   content::Source<content::RenderProcessHost>(host),
+                   content::Details<content::ChildProcessTerminationInfo>(
+                       &failed_launch_details));
 
   // Verify metrics.
   histogram_tester.ExpectBucketCount("Stability.Counts2",
@@ -153,26 +164,6 @@ TEST_F(ContentStabilityMetricsProviderTest, RenderProcessObserver) {
   histogram_tester.ExpectBucketCount("Stability.Counts2",
                                      StabilityEventType::kExtensionCrash, 0);
 }
-
-TEST_F(ContentStabilityMetricsProviderTest,
-       MetricsServicesWebContentsObserver) {
-  metrics::ContentStabilityMetricsProvider provider(prefs(), nullptr);
-  base::HistogramTester histogram_tester;
-  histogram_tester.ExpectBucketCount("Stability.Counts2",
-                                     StabilityEventType::kPageLoad, 0);
-
-  // Simulate page loads.
-  const auto expected_page_load_count = 4;
-  for (int i = 0; i < expected_page_load_count; i++) {
-    provider.OnPageLoadStarted();
-  }
-
-  // Verify metrics.
-  histogram_tester.ExpectBucketCount("Stability.Counts2",
-                                     StabilityEventType::kPageLoad,
-                                     expected_page_load_count);
-}
-
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Assertions for an extension related crash.
@@ -201,15 +192,19 @@ TEST_F(ContentStabilityMetricsProviderTest, ExtensionsNotificationObserver) {
   content::ChildProcessTerminationInfo crash_details;
   crash_details.status = base::TERMINATION_STATUS_PROCESS_CRASHED;
   crash_details.exit_code = 1;
-  provider.OnRenderProcessHostCreated(extension_host);
-  provider.RenderProcessExited(extension_host, crash_details);
+  provider.Observe(
+      content::NOTIFICATION_RENDERER_PROCESS_CLOSED,
+      content::Source<content::RenderProcessHost>(extension_host),
+      content::Details<content::ChildProcessTerminationInfo>(&crash_details));
 
   // Failed launch increments failed launch count.
   content::ChildProcessTerminationInfo failed_launch_details;
   failed_launch_details.status = base::TERMINATION_STATUS_LAUNCH_FAILED;
   failed_launch_details.exit_code = 1;
-  provider.OnRenderProcessHostCreated(extension_host);
-  provider.RenderProcessExited(extension_host, failed_launch_details);
+  provider.Observe(content::NOTIFICATION_RENDERER_PROCESS_CLOSED,
+                   content::Source<content::RenderProcessHost>(extension_host),
+                   content::Details<content::ChildProcessTerminationInfo>(
+                       &failed_launch_details));
 
   // Verify metrics.
   histogram_tester.ExpectBucketCount("Stability.Counts2",

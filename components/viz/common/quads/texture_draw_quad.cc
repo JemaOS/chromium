@@ -5,7 +5,6 @@
 #include "components/viz/common/quads/texture_draw_quad.h"
 
 #include <stddef.h>
-#include <algorithm>
 
 #include "base/check.h"
 #include "base/trace_event/traced_value.h"
@@ -40,11 +39,13 @@ void TextureDrawQuad::SetNew(const SharedQuadState* shared_quad_state,
                              const gfx::PointF& top_left,
                              const gfx::PointF& bottom_right,
                              SkColor4f background,
+                             const float opacity[4],
                              bool flipped,
                              bool nearest,
                              bool secure_output,
                              gfx::ProtectedVideoType video_type) {
-  this->needs_blending = needs_blending;
+  needs_blending = needs_blending || opacity[0] != 1.0f || opacity[1] != 1.0f ||
+                   opacity[2] != 1.0f || opacity[3] != 1.0f;
   DrawQuad::SetAll(shared_quad_state, DrawQuad::Material::kTextureContent, rect,
                    visible_rect, needs_blending);
   resources.ids[kResourceIdIndex] = resource_id;
@@ -53,6 +54,10 @@ void TextureDrawQuad::SetNew(const SharedQuadState* shared_quad_state,
   uv_top_left = top_left;
   uv_bottom_right = bottom_right;
   background_color = background;
+  vertex_opacity[0] = opacity[0];
+  vertex_opacity[1] = opacity[1];
+  vertex_opacity[2] = opacity[2];
+  vertex_opacity[3] = opacity[3];
   y_flipped = flipped;
   nearest_neighbor = nearest;
   secure_output_only = secure_output;
@@ -69,6 +74,7 @@ void TextureDrawQuad::SetAll(const SharedQuadState* shared_quad_state,
                              const gfx::PointF& top_left,
                              const gfx::PointF& bottom_right,
                              SkColor4f background,
+                             const float opacity[4],
                              bool flipped,
                              bool nearest,
                              bool secure_output,
@@ -82,6 +88,10 @@ void TextureDrawQuad::SetAll(const SharedQuadState* shared_quad_state,
   uv_top_left = top_left;
   uv_bottom_right = bottom_right;
   background_color = background;
+  vertex_opacity[0] = opacity[0];
+  vertex_opacity[1] = opacity[1];
+  vertex_opacity[2] = opacity[2];
+  vertex_opacity[3] = opacity[3];
   y_flipped = flipped;
   nearest_neighbor = nearest;
   secure_output_only = secure_output;
@@ -127,23 +137,6 @@ void TextureDrawQuad::ExtendValue(base::trace_event::TracedValue* value) const {
   value->SetBoolean("is_stream_video", is_stream_video);
   value->SetInteger("protected_video_type",
                     static_cast<int>(protected_video_type));
-}
-
-void TextureDrawQuad::set_vertex_opacity(float opacity) {
-  if (opacity != 1.f) {
-    // We can never unset 'needs_blending' as it can be set manually.
-    needs_blending = true;
-  }
-  vertex_opacity.fill(opacity);
-}
-
-void TextureDrawQuad::set_vertex_opacity(base::span<const float, 4> opacity) {
-  if (std::any_of(opacity.begin(), opacity.end(),
-                  [](float opacity_value) { return opacity_value != 1.f; })) {
-    // We can never unset 'needs_blending' as it can be set manually.
-    needs_blending = true;
-  }
-  std::copy(opacity.begin(), opacity.end(), vertex_opacity.begin());
 }
 
 TextureDrawQuad::OverlayResources::OverlayResources() = default;

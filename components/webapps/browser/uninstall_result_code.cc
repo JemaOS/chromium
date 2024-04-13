@@ -4,34 +4,20 @@
 
 #include "components/webapps/browser/uninstall_result_code.h"
 
-#include <ostream>
+#include <string>
 
 namespace webapps {
 
-bool UninstallSucceeded(UninstallResultCode code) {
+std::string ConvertUninstallResultCodeToString(UninstallResultCode code) {
   switch (code) {
     case UninstallResultCode::kSuccess:
+      return "Success";
     case UninstallResultCode::kNoAppToUninstall:
-      return true;
+      return "No App found for uninstall";
     case UninstallResultCode::kCancelled:
+      return "Uninstall cancelled";
     case UninstallResultCode::kError:
-    case UninstallResultCode::kShutdown:
-      return false;
-  }
-}
-
-std::ostream& operator<<(std::ostream& os, UninstallResultCode code) {
-  switch (code) {
-    case UninstallResultCode::kSuccess:
-      return os << "kSuccess";
-    case UninstallResultCode::kNoAppToUninstall:
-      return os << "kNoAppToUninstall";
-    case UninstallResultCode::kCancelled:
-      return os << "kCancelled";
-    case UninstallResultCode::kError:
-      return os << "kError";
-    case UninstallResultCode::kShutdown:
-      return os << "kShutdown";
+      return "Error";
   }
 }
 

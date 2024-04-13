@@ -1,30 +1,31 @@
-caption: Enable the touch virtual keyboard
+caption: Enable virtual keyboard
 default: null
 desc: |-
-  Controls the touch virtual keyboard, acting as a supplementary policy to the <ph name="VIRTUAL_KEYBOARD_ENABLED_POLICY_NAME">VirtualKeyboardEnabled</ph> policy.
+  Controls the on-screen keyboard, acting as a supplementary policy to the <ph name="VIRTUAL_KEYBOARD_ENABLED_POLICY_NAME">VirtualKeyboardEnabled</ph> policy.
 
-        If accessibility virtual keyboard is turned on, this policy has no effect.
+        If the <ph name="VIRTUAL_KEYBOARD_ENABLED_POLICY_NAME">VirtualKeyboardEnabled</ph> policy is True or if the Enable on-screen keyboard ChromeOS setting is on, this policy has no effect.
 
-        Otherwise, this policy has the following effect:
-        If this policy is not set, the virtual keyboard is displayed based on the default system heuristics, such as whether there are keyboards attached.
-        If this policy is set to True, the virtual keyboard is always displayed.
-        If this policy is set to False, the virtual keyboard is never displayed.
+        If the <ph name="VIRTUAL_KEYBOARD_ENABLED_POLICY_NAME">VirtualKeyboardEnabled</ph> policy is False or not set and the Enable on-screen keyboard ChromeOS setting is off, this policy has the following effect:
+        If this policy is not set, the on-screen keyboard is displayed when the device is in tablet mode.
+        If this policy is set to True, the on-screen keyboard is always displayed.
+        If this policy is set to False, the on-screen keyboard is never displayed.
 
-        The virtual keyboard may change to a compact layout depending on the input method.
+        The on-screen keyboard may change to a compact layout depending on the input method.
+
+        If you set the policy, users can't change it.
 example_value: false
 features:
   dynamic_refresh: true
   per_profile: true
 items:
-- caption: Enable touch virtual keyboard
+- caption: Enable on-screen keyboard
   value: true
-- caption: Disable touch virtual keyboard
+- caption: Disable on-screen keyboard
   value: false
-- caption: Enable touch virtual keyboard based on the default system heuristics
+- caption: Enable on-screen keyboard in tablet mode
   value: null
 owners:
-- shend@chromium.org
-- e14s-eng@google.com
+- rsadam@chromium.org
 schema:
   type: boolean
 supported_on:

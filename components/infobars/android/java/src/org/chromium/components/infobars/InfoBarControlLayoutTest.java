@@ -10,7 +10,6 @@ import android.view.View.MeasureSpec;
 import android.view.ViewGroup.LayoutParams;
 
 import androidx.test.InstrumentationRegistry;
-import androidx.test.annotation.UiThreadTest;
 import androidx.test.filters.SmallTest;
 
 import org.junit.Assert;
@@ -19,11 +18,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.test.BaseJUnit4ClassRunner;
+import org.chromium.base.test.UiThreadTest;
 import org.chromium.components.infobars.InfoBarControlLayout.ControlLayoutParams;
 import org.chromium.components.infobars.test.R;
 
 /**
- * Tests for InfoBarControlLayout. This suite doesn't check for specific details, like margins
+ * Tests for InfoBarControlLayout.  This suite doesn't check for specific details, like margins
  * paddings, and instead focuses on whether controls are placed correctly.
  */
 @RunWith(BaseJUnit4ClassRunner.class)
@@ -32,6 +32,7 @@ public class InfoBarControlLayoutTest {
     private static final int SWITCH_ID_2 = 2;
     private static final int SWITCH_ID_3 = 3;
     private static final int SWITCH_ID_4 = 4;
+    private static final int SWITCH_ID_5 = 5;
     private static final int INFOBAR_WIDTH = 3200;
 
     private Context mContext;
@@ -42,7 +43,9 @@ public class InfoBarControlLayoutTest {
         mContext.setTheme(R.style.Theme_BrowserUI_DayNight);
     }
 
-    /** A small control on the last line takes up the full width. */
+    /**
+     * A small control on the last line takes up the full width.
+     */
     @Test
     @SmallTest
     @UiThreadTest
@@ -67,11 +70,17 @@ public class InfoBarControlLayoutTest {
 
     /**
      * Tests the layout algorithm on a set of five controls, the second of which is a huge control
-     * and takes up the whole line. The other smaller controls try to pack themselves as tightly as
-     * possible, strecthing out if necessary for aesthetics, resulting in a layout like this:
+     * and takes up the whole line.  The other smaller controls try to pack themselves as tightly
+     * as possible, strecthing out if necessary for aesthetics, resulting in a layout like this:
      *
-     * <p>------------------------- | A (small) | ------------------------- | B (big) |
-     * ------------------------- | C (small) | D (small) | ------------------------- | E (small) |
+     * -------------------------
+     * | A (small)             |
+     * -------------------------
+     * | B (big)               |
+     * -------------------------
+     * | C (small) | D (small) |
+     * -------------------------
+     * | E (small)             |
      * -------------------------
      */
     @Test
@@ -136,7 +145,9 @@ public class InfoBarControlLayoutTest {
         Assert.assertEquals(INFOBAR_WIDTH, switch5.getMeasuredWidth());
     }
 
-    /** Tests that the message is always the full width of the layout. */
+    /**
+     * Tests that the message is always the full width of the layout.
+     */
     @Test
     @SmallTest
     @UiThreadTest

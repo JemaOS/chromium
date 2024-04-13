@@ -61,18 +61,17 @@ class ForwardingModelTypeStore : public ModelTypeStore {
   }
 
  private:
-  const raw_ptr<ModelTypeStore, DanglingUntriaged> other_;
+  raw_ptr<ModelTypeStore> other_;
 };
 
 }  // namespace
 
 // static
 std::unique_ptr<ModelTypeStore>
-ModelTypeStoreTestUtil::CreateInMemoryStoreForTest(ModelType type,
-                                                   StorageType storage_type) {
+ModelTypeStoreTestUtil::CreateInMemoryStoreForTest(ModelType type) {
   std::unique_ptr<BlockingModelTypeStoreImpl, base::OnTaskRunnerDeleter>
       blocking_store(new BlockingModelTypeStoreImpl(
-                         type, storage_type,
+                         type, StorageType::kUnspecified,
                          ModelTypeStoreBackend::CreateInMemoryForTest()),
                      base::OnTaskRunnerDeleter(
                          base::SequencedTaskRunner::GetCurrentDefault()));
@@ -81,7 +80,7 @@ ModelTypeStoreTestUtil::CreateInMemoryStoreForTest(ModelType type,
   // let keep memory sanitizers happy.
   ANNOTATE_LEAKING_OBJECT_PTR(blocking_store.get());
   return std::make_unique<ModelTypeStoreImpl>(
-      type, storage_type, std::move(blocking_store),
+      type, StorageType::kUnspecified, std::move(blocking_store),
       base::SequencedTaskRunner::GetCurrentDefault());
 }
 
@@ -90,7 +89,7 @@ RepeatingModelTypeStoreFactory
 ModelTypeStoreTestUtil::FactoryForInMemoryStoreForTest() {
   return base::BindRepeating(
       [](ModelType type, ModelTypeStore::InitCallback callback) {
-        std::move(callback).Run(/*error=*/std::nullopt,
+        std::move(callback).Run(/*error=*/absl::nullopt,
                                 CreateInMemoryStoreForTest(type));
       });
 }
@@ -101,7 +100,7 @@ OnceModelTypeStoreFactory ModelTypeStoreTestUtil::MoveStoreToFactory(
   return base::BindOnce(
       [](std::unique_ptr<ModelTypeStore> store, ModelType type,
          ModelTypeStore::InitCallback callback) {
-        std::move(callback).Run(/*error=*/std::nullopt, std::move(store));
+        std::move(callback).Run(/*error=*/absl::nullopt, std::move(store));
       },
       std::move(store));
 }
@@ -113,7 +112,7 @@ ModelTypeStoreTestUtil::FactoryForForwardingStore(ModelTypeStore* target) {
       [](ModelTypeStore* target, ModelType,
          ModelTypeStore::InitCallback callback) {
         std::move(callback).Run(
-            /*error=*/std::nullopt,
+            /*error=*/absl::nullopt,
             std::make_unique<ForwardingModelTypeStore>(target));
       },
       base::Unretained(target));

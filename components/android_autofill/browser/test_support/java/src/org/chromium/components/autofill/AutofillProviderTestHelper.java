@@ -4,23 +4,31 @@
 
 package org.chromium.components.autofill;
 
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
+import android.os.Build;
 
+import androidx.annotation.RequiresApi;
+
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.content_public.browser.WebContents;
 
-/** The help class for Autofill Provider test to access the native code. */
+/**
+ * The help class for Autofill Provider test to access the native code.
+ */
+@RequiresApi(Build.VERSION_CODES.O)
 @JNINamespace("autofill")
 public class AutofillProviderTestHelper {
     /**
-     * Disable crowdsourcing for testing to avoid that the server response affects the integration
+     * Disable the download server for testing to avoid the server response affect the integration
      * tests. Must be called before WebContents is created.
      */
-    public static void disableCrowdsourcingForTesting() {
-        AutofillProviderTestHelperJni.get().disableCrowdsourcingForTesting();
+    public static void disableDownloadServerForTesting() {
+        AutofillProviderTestHelperJni.get().disableDownloadServerForTesting();
     }
 
-    /** Simulate the primary server type only. */
+    /**
+     * Simulate the primary server type only.
+     */
     public static boolean simulateMainFrameAutofillServerResponseForTesting(
             WebContents webContents, String[] fieldIds, int[] fieldTypes) {
         return AutofillProviderTestHelperJni.get()
@@ -28,7 +36,9 @@ public class AutofillProviderTestHelper {
                         webContents, fieldIds, fieldTypes);
     }
 
-    /** Simulate the server predictions, the first prediction will be set as primary server type. */
+    /**
+     * Simulate the server predictions, the first prediction will be set as primary server type.
+     */
     public static boolean simulateMainFramePredictionsAutofillServerResponseForTesting(
             WebContents webContents, String[] fieldIds, int[][] fieldTypes) {
         return AutofillProviderTestHelperJni.get()
@@ -36,14 +46,18 @@ public class AutofillProviderTestHelper {
                         webContents, fieldIds, fieldTypes);
     }
 
+    public static void simulateMainFrameAutofillQueryFailedForTesting(WebContents webContents) {
+        AutofillProviderTestHelperJni.get().simulateMainFrameAutofillQueryFailedForTesting(
+                webContents);
+    }
+
     @NativeMethods
     interface Natives {
-        void disableCrowdsourcingForTesting();
-
+        void disableDownloadServerForTesting();
         boolean simulateMainFrameAutofillServerResponseForTesting(
                 WebContents webContents, String[] fieldIds, int[] fieldTypes);
-
         boolean simulateMainFramePredictionsAutofillServerResponseForTesting(
                 WebContents webContents, String[] fieldIds, int[][] fieldTypes);
+        void simulateMainFrameAutofillQueryFailedForTesting(WebContents webContents);
     }
 }

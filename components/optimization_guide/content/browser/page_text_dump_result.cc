@@ -35,14 +35,14 @@ void PageTextDumpResult::AddFrameTextDumpResult(
   frame_results_.emplace(frame_result);
 }
 
-std::optional<std::string> PageTextDumpResult::GetAMPTextContent() const {
+absl::optional<std::string> PageTextDumpResult::GetAMPTextContent() const {
   if (empty()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // AMP frames are sorted in beginning, so if there are none then return null.
   if (!frame_results_.begin()->amp_frame()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   std::vector<std::string> amp_text;
@@ -60,14 +60,15 @@ std::optional<std::string> PageTextDumpResult::GetAMPTextContent() const {
   return base::JoinString(amp_text, " ");
 }
 
-std::optional<std::string> PageTextDumpResult::GetMainFrameTextContent() const {
+absl::optional<std::string> PageTextDumpResult::GetMainFrameTextContent()
+    const {
   if (empty()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Mainframes are sorted to the end.
   if (frame_results_.rbegin()->amp_frame()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // There should only be one mainframe.
@@ -75,9 +76,10 @@ std::optional<std::string> PageTextDumpResult::GetMainFrameTextContent() const {
   return *frame_results_.rbegin()->utf8_contents();
 }
 
-std::optional<std::string> PageTextDumpResult::GetAllFramesTextContent() const {
+absl::optional<std::string> PageTextDumpResult::GetAllFramesTextContent()
+    const {
   if (empty()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   std::vector<std::string> text;
@@ -124,9 +126,9 @@ bool FrameTextDumpResult::IsCompleted() const {
   return !!contents();
 }
 
-std::optional<std::string> FrameTextDumpResult::utf8_contents() const {
+absl::optional<std::string> FrameTextDumpResult::utf8_contents() const {
   if (!contents_) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return base::UTF16ToUTF8(*contents_);
 }

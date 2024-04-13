@@ -84,9 +84,8 @@ void NewBadgeLabel::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   node_data->SetNameChecked(accessible_name);
 }
 
-gfx::Size NewBadgeLabel::CalculatePreferredSize(
-    const views::SizeBounds& available_size) const {
-  gfx::Size size = Label::CalculatePreferredSize(available_size);
+gfx::Size NewBadgeLabel::CalculatePreferredSize() const {
+  gfx::Size size = Label::CalculatePreferredSize();
   if (display_new_badge_)
     size.SetToMax(GetNewBadgeSize());
   return size;
@@ -174,7 +173,7 @@ void NewBadgeLabel::SetBorder(std::unique_ptr<views::Border> b) {
   NOTREACHED() << "Calling SetBorder() externally is currently not allowed.";
 }
 
-BEGIN_METADATA(NewBadgeLabel)
+BEGIN_METADATA(NewBadgeLabel, views::Label)
 ADD_PROPERTY_METADATA(bool, DisplayNewBadge)
 ADD_PROPERTY_METADATA(NewBadgeLabel::BadgePlacement, BadgePlacement)
 ADD_PROPERTY_METADATA(bool, PadAfterNewBadge)

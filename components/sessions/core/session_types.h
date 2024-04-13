@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,6 +21,7 @@
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
 #include "components/variations/variations_associated_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/gfx/color_palette.h"
@@ -77,7 +77,7 @@ struct SESSIONS_EXPORT SessionTab {
   int current_navigation_index;
 
   // The tab's group ID, if any.
-  std::optional<tab_groups::TabGroupId> group;
+  absl::optional<tab_groups::TabGroupId> group;
 
   // True if the tab is pinned.
   bool pinned;
@@ -92,9 +92,10 @@ struct SESSIONS_EXPORT SessionTab {
   // Timestamp for when this tab was last modified.
   base::Time timestamp;
 
-  // Timestamp for when this tab was last activated.
-  // Corresponds to WebContents::GetLastActiveTime().
-  base::Time last_active_time;
+  // Timestamp for when this tab was last activated. As these use TimeTicks,
+  // they should not be compared with one another, unless it's within the same
+  // chrome session.
+  base::TimeTicks last_active_time;
 
   std::vector<sessions::SerializedNavigationEntry> navigations;
 
@@ -133,7 +134,7 @@ struct SESSIONS_EXPORT SessionTabGroup {
 
   // Used to notify the SavedTabGroupModel that this restore group was once
   // saved and should track any changes made on the group.
-  std::optional<std::string> saved_guid;
+  absl::optional<std::string> saved_guid;
 };
 
 // SessionWindow -------------------------------------------------------------

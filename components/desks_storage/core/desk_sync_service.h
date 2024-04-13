@@ -24,7 +24,6 @@ class DeskModel;
 // KeyedService responsible for desk templates sync.
 class DeskSyncService : public KeyedService {
  public:
-  DeskSyncService();
   DeskSyncService(version_info::Channel channel,
                   syncer::OnceModelTypeStoreFactory create_store_callback,
                   const AccountId& account_id);

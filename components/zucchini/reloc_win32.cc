@@ -84,7 +84,6 @@ RelocRvaReaderWin32::RelocRvaReaderWin32(
   if (lo > cur_reloc_units_offset) {
     offset_t delta =
         AlignCeil<offset_t>(lo - cur_reloc_units_offset, kRelocUnitSize);
-    // Okay if this empties |cur_reloc_units_|.
     cur_reloc_units_.Skip(delta);
   }
 }
@@ -94,23 +93,21 @@ RelocRvaReaderWin32::RelocRvaReaderWin32(RelocRvaReaderWin32&&) = default;
 RelocRvaReaderWin32::~RelocRvaReaderWin32() = default;
 
 // Unrolls a nested loop: outer = reloc blocks and inner = reloc entries.
-std::optional<RelocUnitWin32> RelocRvaReaderWin32::GetNext() {
+absl::optional<RelocUnitWin32> RelocRvaReaderWin32::GetNext() {
   // "Outer loop" to find non-empty reloc block.
   while (cur_reloc_units_.Remaining() < kRelocUnitSize) {
     if (!LoadRelocBlock(cur_reloc_units_.end()))
-      return std::nullopt;
+      return absl::nullopt;
   }
   if (end_it_ - cur_reloc_units_.begin() < kRelocUnitSize)
-    return std::nullopt;
+    return absl::nullopt;
   // "Inner loop" to extract single reloc unit.
   offset_t location =
       base::checked_cast<offset_t>(cur_reloc_units_.begin() - image_.begin());
   uint16_t entry = cur_reloc_units_.read<uint16_t>(0);
   uint8_t type = static_cast<uint8_t>(entry >> 12);
   rva_t rva = rva_hi_bits_ + (entry & 0xFFF);
-  if (!cur_reloc_units_.Skip(kRelocUnitSize)) {
-    return std::nullopt;
-  }
+  cur_reloc_units_.Skip(kRelocUnitSize);
   return RelocUnitWin32{type, location, rva};
 }
 
@@ -129,7 +126,7 @@ bool RelocRvaReaderWin32::LoadRelocBlock(
   if ((block_size - sizeof(pe::RelocHeader)) % kRelocUnitSize != 0)
     return false;
   cur_reloc_units_ = BufferSource(block_begin, block_size);
-  cur_reloc_units_.Skip(sizeof(pe::RelocHeader));  // Always succeeds.
+  cur_reloc_units_.Skip(sizeof(pe::RelocHeader));
   return true;
 }
 
@@ -147,8 +144,8 @@ RelocReaderWin32::RelocReaderWin32(RelocRvaReaderWin32&& reloc_rva_reader,
 RelocReaderWin32::~RelocReaderWin32() = default;
 
 // ReferenceReader:
-std::optional<Reference> RelocReaderWin32::GetNext() {
-  for (std::optional<RelocUnitWin32> unit = reloc_rva_reader_.GetNext();
+absl::optional<Reference> RelocReaderWin32::GetNext() {
+  for (absl::optional<RelocUnitWin32> unit = reloc_rva_reader_.GetNext();
        unit.has_value(); unit = reloc_rva_reader_.GetNext()) {
     if (unit->type != reloc_type_)
       continue;
@@ -161,7 +158,7 @@ std::optional<Reference> RelocReaderWin32::GetNext() {
     offset_t location = unit->location;
     return Reference{location, target};
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 /******** RelocWriterWin32 ********/

@@ -6,7 +6,6 @@
 #define COMPONENTS_IMAGE_FETCHER_CORE_CACHE_IMAGE_CACHE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +14,7 @@
 #include "base/memory/weak_ptr.h"
 #include "components/image_fetcher/core/cache/image_store_types.h"
 #include "components/image_fetcher/core/cache/proto/cached_image_metadata.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefRegistrySimple;
 class PrefService;
@@ -92,7 +92,7 @@ class ImageCache : public base::RefCounted<ImageCache> {
       const std::string& key,
       ImageDataCallback callback,
       base::TimeTicks start_time,
-      std::optional<CachedImageMetadataProto> metadata);
+      absl::optional<CachedImageMetadataProto> metadata);
   // Deletes the data for |url|.
   void DeleteImageImpl(const std::string& url);
 

@@ -11,7 +11,9 @@ import org.junit.runner.RunWith;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.CallbackHelper;
 
-/** Tests for the {@link PlayerUserFrustrationDetector} class */
+/**
+ * Tests for the {@link PlayerUserFrustrationDetector} class
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 public class PlayerUserFrustrationDetectorTest {
     @Test
@@ -26,23 +28,17 @@ public class PlayerUserFrustrationDetectorTest {
 
         // Record |tapsCount| consecutive taps in shorter than |tapsWindow| intervals. This should
         // trigger the detection.
-        Assert.assertEquals(
-                "Frustration callback shouldn't have been called",
-                0,
+        Assert.assertEquals("Frustration callback shouldn't have been called", 0,
                 detectionCallback.getCallCount());
         for (int i = 0; i < tapsCount; i++) {
             detector.recordUnconsumedTap(startTime + i * tapsWindow);
         }
-        Assert.assertEquals(
-                "Frustration callback should have been called once",
-                1,
+        Assert.assertEquals("Frustration callback should have been called once", 1,
                 detectionCallback.getCallCount());
 
         // A new tap, even if it's within the window, should not trigger the callback.
         detector.recordUnconsumedTap(startTime + tapsCount * tapsWindow);
-        Assert.assertEquals(
-                "Frustration callback shouldn't have been called",
-                1,
+        Assert.assertEquals("Frustration callback shouldn't have been called", 1,
                 detectionCallback.getCallCount());
 
         // Perform |tapsCount - 1| series of consecutive taps. Each time, delay one of the taps
@@ -55,9 +51,7 @@ public class PlayerUserFrustrationDetectorTest {
                 int delay = i == j ? 10 : 0;
                 detector.recordUnconsumedTap(startTime + j * tapsWindow + delay);
             }
-            Assert.assertEquals(
-                    "Frustration callback shouldn't have been called",
-                    1,
+            Assert.assertEquals("Frustration callback shouldn't have been called", 1,
                     detectionCallback.getCallCount());
         }
 
@@ -66,9 +60,7 @@ public class PlayerUserFrustrationDetectorTest {
         for (int i = 0; i < tapsCount; i++) {
             detector.recordUnconsumedTap(startTime + i * tapsWindow);
         }
-        Assert.assertEquals(
-                "Frustration callback should have been called once",
-                2,
+        Assert.assertEquals("Frustration callback should have been called once", 2,
                 detectionCallback.getCallCount());
     }
 }

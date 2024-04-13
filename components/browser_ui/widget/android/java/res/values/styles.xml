@@ -32,7 +32,6 @@ found in the LICENSE file.
         <item name="windowActionBar">false</item>
     </style>
 
-
     <!-- Card styles -->
     <style name="CardTransparentForDark">
         <item name="android:background">@drawable/incognito_card_bg</item>
@@ -40,17 +39,28 @@ found in the LICENSE file.
 
     <style name="MaterialCardStyle">
         <item name="cornerRadius">@dimen/card_rounded_corner_radius</item>
-        <item name="cardElevation">@dimen/default_elevation_2</item>
+        <item name="cardElevation">?attr/cardElevation</item>
     </style>
 
     <style name="ListActionButton" parent="@style/TextButton">
         <item name="android:minHeight">48dp</item>
     </style>
 
-    <style name="TextAppearance.BrowserUIListMenuItem">
+    <style name="TextAppearance.ListMenuItem">
         <item name="android:textColor">@color/default_text_color_list</item>
         <item name="android:textSize">16sp</item>
     </style>
+
+    <!-- ListMenuButton -->
+    <style name="ListMenuItemStyle">
+        <item name="android:paddingStart">@dimen/default_list_row_padding</item>
+        <item name="android:paddingEnd">@dimen/default_list_row_padding</item>
+    </style>
+
+    <style name="EndIconMenuAnim" parent="AnchoredPopupAnimEndTop" />
+    <style name="EndIconMenuAnimBottom" parent="AnchoredPopupAnimEndBottom" />
+    <style name="StartIconMenuAnim" parent="AnchoredPopupAnimStartTop" />
+    <style name="StartIconMenuAnimBottom" parent="AnchoredPopupAnimStartBottom" />
 
     <!-- Modern List Item -->
     <style name="ListItemContainer">
@@ -89,7 +99,7 @@ found in the LICENSE file.
         <item name="android:background">@null</item>
         <item name="android:scaleType">center</item>
     </style>
-
+    
     <!-- Promo dialogs -->
     <style name="PromoDialog" >
         <item name="android:background">@android:color/transparent</item>

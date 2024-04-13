@@ -13,10 +13,6 @@ namespace printing {
 
 // static
 void PageRange::Normalize(PageRanges& ranges) {
-  if (ranges.empty()) {
-    return;
-  }
-
   std::sort(ranges.begin(), ranges.end());
   PageRanges::iterator dst = ranges.begin();
   for (PageRanges::iterator src = ranges.begin() + 1; src < ranges.end();

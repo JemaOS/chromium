@@ -36,7 +36,7 @@ PrefServiceSyncable::PrefServiceSyncable(
     scoped_refptr<PersistentPrefStore> user_prefs,
     scoped_refptr<PersistentPrefStore> standalone_browser_prefs,
     scoped_refptr<user_prefs::PrefRegistrySyncable> pref_registry,
-    scoped_refptr<PrefModelAssociatorClient> pref_model_associator_client,
+    const PrefModelAssociatorClient* pref_model_associator_client,
     base::RepeatingCallback<void(PersistentPrefStore::PrefReadError)>
         read_error_callback,
     bool async)
@@ -71,7 +71,7 @@ PrefServiceSyncable::PrefServiceSyncable(
     scoped_refptr<DualLayerUserPrefStore> dual_layer_user_prefs,
     scoped_refptr<PersistentPrefStore> standalone_browser_prefs,
     scoped_refptr<user_prefs::PrefRegistrySyncable> pref_registry,
-    scoped_refptr<PrefModelAssociatorClient> pref_model_associator_client,
+    const PrefModelAssociatorClient* pref_model_associator_client,
     base::RepeatingCallback<void(PersistentPrefStore::PrefReadError)>
         read_error_callback,
     bool async)
@@ -96,10 +96,9 @@ PrefServiceSyncable::PrefServiceSyncable(
                                         dual_layer_user_prefs,
                                         syncer::OS_PRIORITY_PREFERENCES),
 #endif
-      pref_registry_(std::move(pref_registry)),
-      dual_layer_user_prefs_(std::move(dual_layer_user_prefs)) {
+      pref_registry_(std::move(pref_registry)) {
   CHECK(base::FeatureList::IsEnabled(syncer::kEnablePreferencesAccountStorage));
-  CHECK(dual_layer_user_prefs_);
+  CHECK(dual_layer_user_prefs);
   ConnectAssociatorsAndRegisterPreferences();
 }
 
@@ -147,13 +146,11 @@ PrefServiceSyncable::CreateIncognitoPrefService(
     incognito_pref_store->RegisterPersistentPref(persistent_pref_name);
   }
 
-  // Only the primary profile can configure the standalone_browser_store.
-  auto standalone_browser_store = base::MakeRefCounted<InMemoryPrefStore>();
-
   auto pref_value_store = pref_value_store_->CloneAndSpecialize(
       nullptr,  // managed
       nullptr,  // supervised_user
-      incognito_extension_pref_store, standalone_browser_store.get(),
+      incognito_extension_pref_store,
+      nullptr,  // standalone_browser_prefs
       nullptr,  // command_line_prefs
       incognito_pref_store.get(),
       nullptr,  // recommended
@@ -256,10 +253,15 @@ void PrefServiceSyncable::AddRegisteredSyncablePreference(
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   if (flags & user_prefs::PrefRegistrySyncable::SYNCABLE_OS_PREF) {
     os_pref_sync_associator_.RegisterPref(path);
+    // Also register under the old ModelType::PREFERENCES. This ensures that
+    // local changes to OS prefs are also synced to old clients that have the
+    // pref registered as a browser SYNCABLE_PREF.
+    pref_sync_associator_.RegisterPrefWithLegacyModelType(path);
     return;
   }
   if (flags & user_prefs::PrefRegistrySyncable::SYNCABLE_OS_PRIORITY_PREF) {
     os_priority_pref_sync_associator_.RegisterPref(path);
+    priority_pref_sync_associator_.RegisterPrefWithLegacyModelType(path);
     return;
   }
 #endif
@@ -282,13 +284,6 @@ uint32_t PrefServiceSyncable::GetWriteFlags(
     const std::string& pref_name) const {
   const Preference* pref = FindPreference(pref_name);
   return PrefService::GetWriteFlags(pref);
-}
-
-void PrefServiceSyncable::OnSyncServiceInitialized(
-    syncer::SyncService* sync_service) {
-  if (dual_layer_user_prefs_) {
-    dual_layer_user_prefs_->OnSyncServiceInitialized(sync_service);
-  }
 }
 
 }  // namespace sync_preferences

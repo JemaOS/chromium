@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_OFFLINE_ITEMS_COLLECTION_CORE_OFFLINE_ITEM_H_
 #define COMPONENTS_OFFLINE_ITEMS_COLLECTION_CORE_OFFLINE_ITEM_H_
 
-#include <optional>
 #include <string>
 
 #include "base/files/file_path.h"
@@ -14,6 +13,7 @@
 #include "components/offline_items_collection/core/offline_item_filter.h"
 #include "components/offline_items_collection/core/offline_item_state.h"
 #include "components/offline_items_collection/core/pending_state.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/image/image.h"
 #include "url/gurl.h"
 
@@ -38,8 +38,6 @@ struct ContentId {
   ~ContentId();
 
   bool operator==(const ContentId& content_id) const;
-
-  bool operator!=(const ContentId& content_id) const;
 
   bool operator<(const ContentId& content_id) const;
 };
@@ -74,7 +72,7 @@ struct OfflineItem {
 
     // The maximum value of the download progress. Absence of the value implies
     // indeterminate progress.
-    std::optional<int64_t> max;
+    absl::optional<int64_t> max;
 
     // The unit of progress to be displayed in the UI.
     OfflineItemProgressUnit unit;
@@ -182,9 +180,6 @@ struct OfflineItem {
 
   // Identifies the item's publisher.
   std::string attribution;
-
-  // The URL of document that is considered the referrer for the original URL.
-  GURL referrer_url;
 
   // In Progress Metadata.
   // ---------------------------------------------------------------------------

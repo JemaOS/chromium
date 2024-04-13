@@ -53,12 +53,9 @@ void ProtoTableManager::CreateOrClearTablesIfNecessary() {
   // was previously written.
   if (!sql::MetaTable::DoesTableExist(db))
     db->Raze();
-  if (!sql::MetaTable::RazeIfIncompatible(
-          db, /*lowest_supported_version=*/schema_version_,
-          /*current_version=*/schema_version_)) {
-    ResetDB();
-    return;
-  }
+  sql::MetaTable::RazeIfIncompatible(
+      db, /*lowest_supported_version=*/schema_version_,
+      /*current_version=*/schema_version_);
 
   sql::Transaction transaction(db);
   bool success = transaction.Begin();

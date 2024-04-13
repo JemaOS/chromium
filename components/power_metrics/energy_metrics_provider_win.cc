@@ -65,11 +65,11 @@ std::unique_ptr<EnergyMetricsProviderWin> EnergyMetricsProviderWin::Create() {
   return base::WrapUnique(new EnergyMetricsProviderWin());
 }
 
-std::optional<EnergyMetricsProvider::EnergyMetrics>
+absl::optional<EnergyMetricsProvider::EnergyMetrics>
 EnergyMetricsProviderWin::CaptureMetrics() {
   if (!Initialize()) {
     handle_.Close();
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
@@ -85,7 +85,7 @@ EnergyMetricsProviderWin::CaptureMetrics() {
                        measurement_data.data(), measurement_data_size_bytes,
                        &bytes_returned, nullptr)) {
     PLOG(ERROR) << "IOCTL_EMI_GET_MEASUREMENT failed";
-    return std::nullopt;
+    return absl::nullopt;
   }
   CHECK_EQ(bytes_returned, measurement_data_size_bytes);
 

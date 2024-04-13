@@ -9,10 +9,10 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "base/memory/ref_counted.h"
 #include "components/policy/core/browser/browser_policy_connector_base.h"
+#include "components/policy/core/common/cloud/device_management_service.h"
 #include "components/policy/policy_export.h"
 
 class PrefRegistrySimple;
@@ -24,7 +24,6 @@ class SharedURLLoaderFactory;
 
 namespace policy {
 
-class DeviceManagementService;
 class PolicyStatisticsCollector;
 
 // The BrowserPolicyConnector keeps some shared components of the policy system.
@@ -68,9 +67,6 @@ class POLICY_EXPORT BrowserPolicyConnector : public BrowserPolicyConnectorBase {
   // Returns the URL for the encrypted reporting service endpoint.
   std::string GetEncryptedReportingUrl() const;
 
-  // Returns the URL for the File Storage Server endpoint for uploads.
-  std::string GetFileStorageServerUploadUrl() const;
-
   // Registers refresh rate prefs.
   static void RegisterPrefs(PrefRegistrySimple* registry);
 
@@ -78,6 +74,9 @@ class POLICY_EXPORT BrowserPolicyConnector : public BrowserPolicyConnectorBase {
   virtual bool IsCommandLineSwitchSupported() const = 0;
 
  protected:
+  // ---***JEMAOS BEGIN***---
+  void ResetDeviceManagementServiceConfiguration(std::unique_ptr<DeviceManagementService::Configuration> configuration);
+  // ---***JEMAOS END***---
   // Builds an uninitialized BrowserPolicyConnector.
   // Init() should be called to create and start the policy components.
   explicit BrowserPolicyConnector(
@@ -95,8 +94,7 @@ class POLICY_EXPORT BrowserPolicyConnector : public BrowserPolicyConnectorBase {
   // Helper function to read URL overriding flags. If `flag` isn't set or if the
   // Chrome channel doesn't allowing overriding, `default_value` is returned
   // instead.
-  std::string GetUrlOverride(const char* flag,
-                             std::string_view default_value) const;
+  std::string GetUrlOverride(const char* flag, const char* default_value) const;
 
   std::unique_ptr<PolicyStatisticsCollector> policy_statistics_collector_;
 

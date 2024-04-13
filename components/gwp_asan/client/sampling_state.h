@@ -9,11 +9,15 @@
 #include <limits>
 #include <random>
 
-#include "base/check_op.h"
 #include "base/compiler_specific.h"
-#include "components/gwp_asan/client/thread_local_random_bit_generator.h"
-#include "components/gwp_asan/client/thread_local_state.h"
+#include "base/rand_util.h"
+#include "build/build_config.h"
 #include "third_party/boringssl/src/include/openssl/rand.h"
+
+#if BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_ANDROID)
+#define USE_PTHREAD_TLS
+#include <pthread.h>
+#endif
 
 namespace gwp_asan {
 namespace internal {
@@ -21,8 +25,6 @@ namespace internal {
 enum ParentAllocator {
   MALLOC = 0,
   PARTITIONALLOC = 1,
-  LIGHTWEIGHTDETECTOR = 2,
-  EXTREMELIGHTWEIGHTDETECTOR = 3,
 };
 
 // Class that encapsulates the current sampling state. Sampling is performed
@@ -31,18 +33,17 @@ enum ParentAllocator {
 // This class is templated so that a thread-local global it contains is not
 // shared between different instances (used by shims for different allocators.)
 template <ParentAllocator PA>
-class SamplingState : ThreadLocalState<SamplingState<PA>> {
+class SamplingState {
  public:
-  using TLS = ThreadLocalState<SamplingState<PA>>;
-
-  constexpr SamplingState() = default;
+  constexpr SamplingState() {}
 
   void Init(size_t sampling_frequency) {
     DCHECK_GT(sampling_frequency, 0U);
     sampling_probability_ = 1.0 / sampling_frequency;
 
-    ThreadLocalRandomBitGenerator::InitIfNeeded();
-    TLS::InitIfNeeded();
+#if defined(USE_PTHREAD_TLS)
+    pthread_key_create(&tls_key_, nullptr);
+#endif
   }
 
   // Return true if this allocation should be sampled.
@@ -53,11 +54,11 @@ class SamplingState : ThreadLocalState<SamplingState<PA>> {
     //
     // Instead, use zero to mean 'get a new counter value' and one to mean
     // that this allocation should be sampled.
-    size_t samples_left = TLS::GetState();
+    size_t samples_left = GetCounter();
     if (UNLIKELY(!samples_left))
       samples_left = NextSample();
 
-    TLS::SetState(samples_left - 1);
+    SetCounter(samples_left - 1);
     return (samples_left == 1);
   }
 
@@ -65,13 +66,42 @@ class SamplingState : ThreadLocalState<SamplingState<PA>> {
   // Sample an allocation on every average one out of every
   // |sampling_frequency_| allocations.
   size_t NextSample() {
-    ThreadLocalRandomBitGenerator generator;
+    base::NonAllocatingRandomBitGenerator generator;
     std::geometric_distribution<size_t> distribution(sampling_probability_);
     return distribution(generator) + 1;
   }
 
+#if !defined(USE_PTHREAD_TLS)
+  ALWAYS_INLINE size_t GetCounter() { return tls_counter_; }
+  ALWAYS_INLINE void SetCounter(size_t value) { tls_counter_ = value; }
+
+  static thread_local size_t tls_counter_;
+#else
+  // On macOS and Android (before Q), the first use of a thread_local variable
+  // on a new thread will cause an allocation, leading to infinite recursion.
+  // Instead, use pthread TLS to store the counter.
+  //
+  // TODO: This is not necessary for PartitionAlloc and likely slower, refactor
+  // SamplingState to be able to use pthread TLS for malloc() and thread_local
+  // for PartitionAlloc in this case.
+  ALWAYS_INLINE size_t GetCounter() {
+    return reinterpret_cast<size_t>(pthread_getspecific(tls_key_));
+  }
+
+  ALWAYS_INLINE void SetCounter(size_t value) {
+    pthread_setspecific(tls_key_, reinterpret_cast<void*>(value));
+  }
+
+  pthread_key_t tls_key_ = 0;
+#endif
+
   double sampling_probability_ = 0;
 };
+
+#if !defined(USE_PTHREAD_TLS)
+template <ParentAllocator PA>
+thread_local size_t SamplingState<PA>::tls_counter_ = 0;
+#endif
 
 }  // namespace internal
 }  // namespace gwp_asan

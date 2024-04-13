@@ -4,16 +4,15 @@
 
 package org.chromium.net;
 
-import static com.google.common.truth.Truth.assertThat;
-
 import android.content.Context;
 import android.os.ConditionVariable;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeClassQualifiedName;
-import org.jni_zero.NativeMethods;
+import org.junit.Assert;
 
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeClassQualifiedName;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.net.impl.CronetUrlRequestContext;
 
 /**
@@ -42,11 +41,8 @@ public final class TestUploadDataStreamHandler {
         mNetworkThreadTestConnector = new CronetTestUtil.NetworkThreadTestConnector(mCronetEngine);
         CronetUrlRequestContext requestContext = (CronetUrlRequestContext) mCronetEngine;
         mTestUploadDataStreamHandler =
-                TestUploadDataStreamHandlerJni.get()
-                        .createTestUploadDataStreamHandler(
-                                this,
-                                uploadDataStream,
-                                requestContext.getUrlRequestContextAdapter());
+                TestUploadDataStreamHandlerJni.get().createTestUploadDataStreamHandler(
+                        this, uploadDataStream, requestContext.getUrlRequestContextAdapter());
     }
 
     public void destroyNativeObjects() {
@@ -58,7 +54,9 @@ public final class TestUploadDataStreamHandler {
         }
     }
 
-    /** Init and returns whether init completes synchronously. */
+    /**
+     * Init and returns whether init completes synchronously.
+     */
     public boolean init() {
         mData = "";
         TestUploadDataStreamHandlerJni.get().init(mTestUploadDataStreamHandler);
@@ -83,8 +81,8 @@ public final class TestUploadDataStreamHandler {
      * by the native UploadDataStream.
      */
     public void checkInitCallbackNotInvoked() {
-        TestUploadDataStreamHandlerJni.get()
-                .checkInitCallbackNotInvoked(mTestUploadDataStreamHandler);
+        TestUploadDataStreamHandlerJni.get().checkInitCallbackNotInvoked(
+                mTestUploadDataStreamHandler);
         mWaitCheckInit.block();
         mWaitCheckInit.close();
     }
@@ -94,8 +92,8 @@ public final class TestUploadDataStreamHandler {
      * by the native UploadDataStream.
      */
     public void checkReadCallbackNotInvoked() {
-        TestUploadDataStreamHandlerJni.get()
-                .checkReadCallbackNotInvoked(mTestUploadDataStreamHandler);
+        TestUploadDataStreamHandlerJni.get().checkReadCallbackNotInvoked(
+                mTestUploadDataStreamHandler);
         mWaitCheckRead.block();
         mWaitCheckRead.close();
     }
@@ -151,14 +149,14 @@ public final class TestUploadDataStreamHandler {
     // Called on network thread.
     @CalledByNative
     private void onCheckInitCallbackNotInvoked(boolean initCallbackNotInvoked) {
-        assertThat(initCallbackNotInvoked).isTrue();
+        Assert.assertTrue(initCallbackNotInvoked);
         mWaitCheckInit.open();
     }
 
     // Called on network thread.
     @CalledByNative
     private void onCheckReadCallbackNotInvoked(boolean readCallbackNotInvoked) {
-        assertThat(readCallbackNotInvoked).isTrue();
+        Assert.assertTrue(readCallbackNotInvoked);
         mWaitCheckRead.open();
     }
 

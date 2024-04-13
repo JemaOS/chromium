@@ -10,8 +10,8 @@ namespace zucchini {
 
 /******** EmptyReferenceReader ********/
 
-std::optional<Reference> EmptyReferenceReader::GetNext() {
-  return std::nullopt;
+absl::optional<Reference> EmptyReferenceReader::GetNext() {
+  return absl::nullopt;
 }
 
 /******** EmptyReferenceWriter ********/

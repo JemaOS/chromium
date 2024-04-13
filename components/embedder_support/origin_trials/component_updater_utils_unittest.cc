@@ -10,18 +10,14 @@
 #include "base/command_line.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/strings/strcat.h"
-#include "base/strings/string_util.h"
 #include "base/values.h"
 #include "base/version.h"
 #include "components/component_updater/installer_policies/origin_trials_component_installer.h"
-#include "components/embedder_support/origin_trials/mock_origin_trials_settings_storage.h"
 #include "components/embedder_support/origin_trials/origin_trial_prefs.h"
-#include "components/embedder_support/origin_trials/origin_trials_settings_storage.h"
 #include "components/embedder_support/origin_trials/pref_names.h"
 #include "components/embedder_support/switches.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "components/prefs/testing_pref_service.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/platform_test.h"
 
@@ -49,21 +45,18 @@ static const char kNewDisabledFeature1[] = "newly disabled 1";
 static const char kNewDisabledFeature2[] = "newly disabled 2";
 static const std::vector<std::string> kNewDisabledFeatures = {
     kNewDisabledFeature1, kNewDisabledFeature2};
-static const char kExistingDisabledToken1[] = "already disabled token 1";
-static const char kExistingDisabledToken2[] = "already disabled token 2";
-static const char kExistingDisabledToken3[] = "already disabled token 3";
+static const char kExistingDisabledToken[] = "already disabled token";
 static const std::vector<std::string> kExistingDisabledTokens = {
-    kExistingDisabledToken1};
+    kExistingDisabledToken};
 static const char kNewDisabledToken1[] = "newly disabled token 1";
 static const char kNewDisabledToken2[] = "newly disabled token 2";
 static const std::vector<std::string> kNewDisabledTokens = {kNewDisabledToken1,
                                                             kNewDisabledToken2};
 
-static const char kTokenSeparator[] = "|";
-
 }  // namespace
 
 namespace component_updater {
+
 class OriginTrialsComponentInstallerTest : public PlatformTest {
  public:
   OriginTrialsComponentInstallerTest() = default;
@@ -344,35 +337,29 @@ TEST_F(OriginTrialsComponentInstallerTest, ParametersAddedToCommandLine) {
   AddDisabledFeaturesToPrefs(kNewDisabledFeatures);
   AddDisabledTokensToPrefs(kNewDisabledTokens);
 
-  embedder_support::MockOriginTrialsSettingsStorage settings_storage;
-  base::Value::List expected_tokens =
-      base::Value::List().Append(kNewDisabledToken1).Append(kNewDisabledToken2);
-  EXPECT_CALL(settings_storage,
-              PopulateSettings(testing::Eq(std::ref(expected_tokens))));
-
-  embedder_support::SetupOriginTrialsCommandLineAndSettings(local_state(),
-                                                            &settings_storage);
+  embedder_support::SetupOriginTrialsCommandLine(local_state());
   base::CommandLine* cmdline = base::CommandLine::ForCurrentProcess();
 
   ASSERT_TRUE(cmdline->HasSwitch(embedder_support::kOriginTrialPublicKey));
   ASSERT_TRUE(
       cmdline->HasSwitch(embedder_support::kOriginTrialDisabledFeatures));
+  ASSERT_TRUE(cmdline->HasSwitch(embedder_support::kOriginTrialDisabledTokens));
   EXPECT_EQ(kNewPublicKey, cmdline->GetSwitchValueASCII(
                                embedder_support::kOriginTrialPublicKey));
   EXPECT_EQ(base::StrCat({kNewDisabledFeature1, "|", kNewDisabledFeature2}),
             cmdline->GetSwitchValueASCII(
                 embedder_support::kOriginTrialDisabledFeatures));
+  EXPECT_EQ(base::StrCat({kNewDisabledToken1, "|", kNewDisabledToken2}),
+            cmdline->GetSwitchValueASCII(
+                embedder_support::kOriginTrialDisabledTokens));
 }
 
 TEST_F(OriginTrialsComponentInstallerTest, DoesNotOverwriteExistingValues) {
   base::CommandLine* cmdline = base::CommandLine::ForCurrentProcess();
   cmdline->AppendSwitchASCII(embedder_support::kOriginTrialPublicKey,
                              kExistingPublicKey);
-  cmdline->AppendSwitchASCII(
-      embedder_support::kOriginTrialDisabledTokens,
-      base::JoinString({kExistingDisabledToken1, kExistingDisabledToken2,
-                        kExistingDisabledToken3},
-                       kTokenSeparator));
+  cmdline->AppendSwitchASCII(embedder_support::kOriginTrialDisabledTokens,
+                             kExistingDisabledToken);
   cmdline->AppendSwitchASCII(embedder_support::kOriginTrialDisabledFeatures,
                              kExistingDisabledFeature);
 
@@ -381,16 +368,7 @@ TEST_F(OriginTrialsComponentInstallerTest, DoesNotOverwriteExistingValues) {
   AddDisabledFeaturesToPrefs(kNewDisabledFeatures);
   AddDisabledTokensToPrefs(kNewDisabledTokens);
 
-  embedder_support::MockOriginTrialsSettingsStorage settings_storage;
-  base::Value::List expected_tokens = base::Value::List()
-                                          .Append(kExistingDisabledToken1)
-                                          .Append(kExistingDisabledToken2)
-                                          .Append(kExistingDisabledToken3);
-  EXPECT_CALL(settings_storage,
-              PopulateSettings(testing::Eq(std::ref(expected_tokens))));
-
-  embedder_support::SetupOriginTrialsCommandLineAndSettings(local_state(),
-                                                            &settings_storage);
+  embedder_support::SetupOriginTrialsCommandLine(local_state());
 
   // The existing values should not be overwritten
   EXPECT_EQ(kExistingPublicKey, cmdline->GetSwitchValueASCII(
@@ -398,6 +376,9 @@ TEST_F(OriginTrialsComponentInstallerTest, DoesNotOverwriteExistingValues) {
   EXPECT_EQ(kExistingDisabledFeature,
             cmdline->GetSwitchValueASCII(
                 embedder_support::kOriginTrialDisabledFeatures));
+  EXPECT_EQ(kExistingDisabledToken,
+            cmdline->GetSwitchValueASCII(
+                embedder_support::kOriginTrialDisabledTokens));
 }
 
 }  // namespace component_updater

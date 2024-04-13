@@ -18,11 +18,9 @@
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/base/signin_switches.h"
-#include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/platform_test.h"
 
 using signin::ConsentLevel;
@@ -55,8 +53,6 @@ using RefreshTokenRemovedCallback =
 
 // Helper IdentityManager::Observer that forwards some events to the
 // callback passed to the constructor.
-// TODO(crbug.com/40067058): Delete this class when ConsentLevel::kSync is
-//     deleted. See ConsentLevel::kSync documentation for details.
 class ClearPrimaryAccountTestObserver
     : public signin::IdentityManager::Observer {
  public:
@@ -112,15 +108,15 @@ class ClearPrimaryAccountTestObserver
 //
 // Optionally, it's possible to specify whether a normal auth process will
 // take place, or whether an auth error should happen, useful for some tests.
-//
-// TODO(crbug.com/40067058): Delete this test when ConsentLevel::kSync is
-//     deleted. See ConsentLevel::kSync documentation for details.
 void RunRevokeConsentTest(
     RevokeConsentAction action,
+    signin::AccountConsistencyMethod account_consistency_method,
     RemoveAccountExpectation account_expectation,
     AuthExpectation auth_expection = AuthExpectation::kAuthNormal) {
   base::test::TaskEnvironment task_environment;
-  signin::IdentityTestEnvironment environment;
+  signin::IdentityTestEnvironment environment(
+      /*test_url_loader_factory=*/nullptr, /*pref_service=*/nullptr,
+      account_consistency_method);
 
   signin::IdentityManager* identity_manager = environment.identity_manager();
   signin::PrimaryAccountMutator* primary_account_mutator =
@@ -134,7 +130,7 @@ void RunRevokeConsentTest(
   // With the exception of ClearPrimaryAccount_AuthInProgress, every other
   // ClearPrimaryAccount_* test requires a primary account to be signed in.
   EXPECT_FALSE(
-      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync));
   AccountInfo account_info =
       environment.MakeAccountAvailable(kPrimaryAccountEmail);
   signin::PrimaryAccountMutator::PrimaryAccountError setPrimaryAccountResult =
@@ -170,7 +166,7 @@ void RunRevokeConsentTest(
 
   // Grab this before clearing for token checks below.
   auto former_primary_account =
-      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin);
+      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSync);
 
   // Make sure we exit the run loop.
   base::RunLoop run_loop;
@@ -195,11 +191,13 @@ void RunRevokeConsentTest(
   switch (action) {
     case RevokeConsentAction::kRevokeSyncConsent:
       primary_account_mutator->RevokeSyncConsent(
-          signin_metrics::ProfileSignout::kTest);
+          signin_metrics::ProfileSignout::kTest,
+          signin_metrics::SignoutDelete::kIgnoreMetric);
       break;
     case RevokeConsentAction::kClearPrimaryAccount:
       primary_account_mutator->ClearPrimaryAccount(
-          signin_metrics::ProfileSignout::kTest);
+          signin_metrics::ProfileSignout::kTest,
+          signin_metrics::SignoutDelete::kIgnoreMetric);
       break;
   }
   run_loop.Run();
@@ -232,82 +230,21 @@ void RunRevokeConsentTest(
   }
 }
 
-class MockIdentityManagerObserver : public signin::IdentityManager::Observer {
- public:
-  explicit MockIdentityManagerObserver(
-      signin::IdentityManager* identity_manager) {
-    observation.Observe(identity_manager);
-  }
-
-  MockIdentityManagerObserver(const MockIdentityManagerObserver&) = delete;
-  MockIdentityManagerObserver& operator=(const MockIdentityManagerObserver&) =
-      delete;
-
-  MOCK_METHOD1(OnPrimaryAccountChanged,
-               void(const signin::PrimaryAccountChangeEvent&));
-  MOCK_METHOD1(OnRefreshTokenRemovedForAccount, void(const CoreAccountId&));
-
- private:
-  base::ScopedObservation<signin::IdentityManager,
-                          signin::IdentityManager::Observer>
-      observation{this};
-};
-
-void RunClearPrimaryAccountTestForSigninOnly() {
-  base::test::TaskEnvironment task_environment;
-  signin::IdentityTestEnvironment environment;
-
-  signin::IdentityManager* identity_manager = environment.identity_manager();
-  signin::PrimaryAccountMutator* primary_account_mutator =
-      identity_manager->GetPrimaryAccountMutator();
-
-  // Abort the test if the current platform does not support mutation of the
-  // primary account (the returned PrimaryAccountMutator* will be null).
-  if (!primary_account_mutator) {
-    return;
-  }
-
-  AccountInfo primary_account_info =
-      environment.MakeAccountAvailable(kPrimaryAccountEmail);
-  AccountInfo secondary_account_info =
-      environment.MakeAccountAvailable(kAnotherAccountEmail);
-  EXPECT_EQ(primary_account_mutator->SetPrimaryAccount(
-                primary_account_info.account_id, signin::ConsentLevel::kSignin,
-                signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN),
-            signin::PrimaryAccountMutator::PrimaryAccountError::kNoError);
-
-  base::RunLoop run_loop;
-  MockIdentityManagerObserver observer(identity_manager);
-  EXPECT_CALL(observer, OnPrimaryAccountChanged(testing::_))
-      .WillOnce([&](const signin::PrimaryAccountChangeEvent& event) {
-        ASSERT_EQ(event.GetEventTypeFor(signin::ConsentLevel::kSignin),
-                  signin::PrimaryAccountChangeEvent::Type::kCleared);
-        // TODO(crbug.com/40067058): Delete this assert when ConsentLevel::kSync
-        //     is deleted. See ConsentLevel::kSync documentation for details.
-        ASSERT_EQ(event.GetEventTypeFor(signin::ConsentLevel::kSync),
-                  signin::PrimaryAccountChangeEvent::Type::kNone);
-        run_loop.Quit();
-      });
-  EXPECT_CALL(observer,
-              OnRefreshTokenRemovedForAccount(primary_account_info.account_id));
-  EXPECT_CALL(observer, OnRefreshTokenRemovedForAccount(
-                            secondary_account_info.account_id));
-
-  primary_account_mutator->ClearPrimaryAccount(
-      signin_metrics::ProfileSignout::kTest);
-  run_loop.Run();
-
-  EXPECT_FALSE(
-      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
-  EXPECT_FALSE(identity_manager->HasPrimaryAccountWithRefreshToken(
-      signin::ConsentLevel::kSignin));
-
-  EXPECT_FALSE(identity_manager->HasAccountWithRefreshToken(
-      primary_account_info.account_id));
-  EXPECT_FALSE(identity_manager->HasAccountWithRefreshToken(
-      secondary_account_info.account_id));
+void RunRevokeSyncConsentTest(
+    signin::AccountConsistencyMethod account_consistency_method,
+    RemoveAccountExpectation account_expectation,
+    AuthExpectation auth_expection = AuthExpectation::kAuthNormal) {
+  RunRevokeConsentTest(RevokeConsentAction::kRevokeSyncConsent,
+                       account_consistency_method, account_expectation,
+                       auth_expection);
 }
 
+void RunClearPrimaryAccountTest(
+    signin::AccountConsistencyMethod account_consistency_method) {
+  RunRevokeConsentTest(
+      RevokeConsentAction::kClearPrimaryAccount, account_consistency_method,
+      RemoveAccountExpectation::kRemoveAll, AuthExpectation::kAuthNormal);
+}
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 
 }  // namespace
@@ -315,7 +252,7 @@ void RunClearPrimaryAccountTestForSigninOnly() {
 using PrimaryAccountMutatorTest = PlatformTest;
 
 // Checks that setting the primary account works.
-TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount_Signin) {
+TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount) {
   base::test::TaskEnvironment task_environment;
   signin::IdentityTestEnvironment environment;
 
@@ -325,51 +262,14 @@ TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount_Signin) {
 
   // Abort the test if the current platform does not support mutation of the
   // primary account (the returned PrimaryAccountMutator* will be null).
-  if (!primary_account_mutator) {
+  if (!primary_account_mutator)
     return;
-  }
 
   AccountInfo account_info =
       environment.MakeAccountAvailable(kPrimaryAccountEmail);
 
   EXPECT_FALSE(environment.identity_manager()->HasPrimaryAccount(
-      signin::ConsentLevel::kSignin));
-  signin::PrimaryAccountMutator::PrimaryAccountError
-      set_primary_account_result = primary_account_mutator->SetPrimaryAccount(
-          account_info.account_id, signin::ConsentLevel::kSignin,
-          signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN);
-  EXPECT_EQ(signin::PrimaryAccountMutator::PrimaryAccountError::kNoError,
-            set_primary_account_result);
-
-  EXPECT_TRUE(
-      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
-  EXPECT_EQ(
-      identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin),
-      account_info.account_id);
-}
-
-// Checks that setting the primary account works.
-// TODO(crbug.com/40067058): Delete this test when ConsentLevel::kSync is
-//     deleted. See ConsentLevel::kSync documentation for details.
-TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount_Sync) {
-  base::test::TaskEnvironment task_environment;
-  signin::IdentityTestEnvironment environment;
-
-  signin::IdentityManager* identity_manager = environment.identity_manager();
-  signin::PrimaryAccountMutator* primary_account_mutator =
-      identity_manager->GetPrimaryAccountMutator();
-
-  // Abort the test if the current platform does not support mutation of the
-  // primary account (the returned PrimaryAccountMutator* will be null).
-  if (!primary_account_mutator) {
-    return;
-  }
-
-  AccountInfo account_info =
-      environment.MakeAccountAvailable(kPrimaryAccountEmail);
-
-  EXPECT_FALSE(environment.identity_manager()->HasPrimaryAccount(
-      signin::ConsentLevel::kSignin));
+      signin::ConsentLevel::kSync));
   signin::PrimaryAccountMutator::PrimaryAccountError setPrimaryAccountResult =
       primary_account_mutator->SetPrimaryAccount(
           account_info.account_id, signin::ConsentLevel::kSync,
@@ -404,11 +304,11 @@ TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount_NoAccount) {
     return;
 
   EXPECT_FALSE(
-      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync));
   signin::PrimaryAccountMutator::PrimaryAccountError setPrimaryAccountResult =
       primary_account_mutator->SetPrimaryAccount(
           CoreAccountId::FromGaiaId(kUnknownAccountId),
-          signin::ConsentLevel::kSignin,
+          signin::ConsentLevel::kSync,
           signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN);
   EXPECT_EQ(
       signin::PrimaryAccountMutator::PrimaryAccountError::kAccountInfoEmpty,
@@ -433,11 +333,11 @@ TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount_UnknownAccount) {
       environment.MakeAccountAvailable(kPrimaryAccountEmail);
 
   EXPECT_FALSE(
-      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync));
   signin::PrimaryAccountMutator::PrimaryAccountError setPrimaryAccountResult =
       primary_account_mutator->SetPrimaryAccount(
           CoreAccountId::FromGaiaId(kUnknownAccountId),
-          signin::ConsentLevel::kSignin,
+          signin::ConsentLevel::kSync,
           signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN);
   EXPECT_EQ(
       signin::PrimaryAccountMutator::PrimaryAccountError::kAccountInfoEmpty,
@@ -446,8 +346,6 @@ TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount_UnknownAccount) {
 
 // Checks that trying to set the primary account fails when there is already a
 // primary account.
-// TODO(crbug.com/40067058): Delete this test when ConsentLevel::kSync is
-//     deleted. See ConsentLevel::kSync documentation for details.
 TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount_AlreadyHasPrimaryAccount) {
   base::test::TaskEnvironment task_environment;
   signin::IdentityTestEnvironment environment;
@@ -467,7 +365,7 @@ TEST_F(PrimaryAccountMutatorTest, SetPrimaryAccount_AlreadyHasPrimaryAccount) {
       environment.MakeAccountAvailable(kAnotherAccountEmail);
 
   EXPECT_FALSE(
-      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync));
   signin::PrimaryAccountMutator::PrimaryAccountError setPrimaryAccountResult =
       primary_account_mutator->SetPrimaryAccount(
           primary_account_info.account_id, signin::ConsentLevel::kSync,
@@ -605,10 +503,10 @@ TEST_F(PrimaryAccountMutatorTest,
   pref_service.SetBoolean(prefs::kSigninAllowed, false);
 
   EXPECT_FALSE(
-      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync));
   signin::PrimaryAccountMutator::PrimaryAccountError setPrimaryAccountResult =
       primary_account_mutator->SetPrimaryAccount(
-          primary_account_info.account_id, signin::ConsentLevel::kSignin,
+          primary_account_info.account_id, signin::ConsentLevel::kSync,
           signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN);
   EXPECT_EQ(
       signin::PrimaryAccountMutator::PrimaryAccountError::kSigninNotAllowed,
@@ -636,27 +534,52 @@ TEST_F(PrimaryAccountMutatorTest, ClearPrimaryAccount_NotSignedIn) {
 
   // Trying to signout an account that hasn't signed in first should fail.
   EXPECT_FALSE(
-      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync));
   EXPECT_FALSE(primary_account_mutator->ClearPrimaryAccount(
-      signin_metrics::ProfileSignout::kTest));
+      signin_metrics::ProfileSignout::kTest,
+      signin_metrics::SignoutDelete::kIgnoreMetric));
 }
 
 // Test that ClearPrimaryAccount() clears the primary account, revokes the
-// sync consent and removes all accounts.
+// sync consent and removes all accounts, independently of the account
+// consistency method.
 TEST_F(PrimaryAccountMutatorTest, ClearPrimaryAccount) {
-  RunRevokeConsentTest(RevokeConsentAction::kClearPrimaryAccount,
-                       RemoveAccountExpectation::kRemoveAll,
-                       AuthExpectation::kAuthNormal);
+  const signin::AccountConsistencyMethod kTestedAccountConsistencyMethods[] = {
+      signin::AccountConsistencyMethod::kDisabled,
+      signin::AccountConsistencyMethod::kMirror,
+      signin::AccountConsistencyMethod::kDice,
+  };
+  for (signin::AccountConsistencyMethod account_consistency_method :
+       kTestedAccountConsistencyMethods) {
+    RunClearPrimaryAccountTest(account_consistency_method);
+  }
 }
 
-// Test that revoking the sync consent does not clear the primary account.
-TEST_F(PrimaryAccountMutatorTest, RevokeSyncConsent) {
-  RunRevokeConsentTest(RevokeConsentAction::kRevokeSyncConsent,
-                       RemoveAccountExpectation::kKeepAll,
-                       AuthExpectation::kAuthNormal);
+// Test that revoking the sync consent when account consistency is disabled
+// also clears the primary account and removes all accounts.
+TEST_F(PrimaryAccountMutatorTest, RevokeSyncConsent_DisabledConsistency) {
+  RunRevokeSyncConsentTest(signin::AccountConsistencyMethod::kDisabled,
+                           RemoveAccountExpectation::kRemoveAll);
 }
 
-TEST_F(PrimaryAccountMutatorTest, ClearPrimaryAccount_SigninOnly) {
-  RunClearPrimaryAccountTestForSigninOnly();
+// Test that revoking sync consent when Mirror account consistency is enabled
+// clears the primary account (except for lacros and Android, where users are
+// allowed to revoke sync consent).
+TEST_F(PrimaryAccountMutatorTest, RevokeSyncConsent_MirrorConsistency) {
+  RunRevokeSyncConsentTest(signin::AccountConsistencyMethod::kMirror,
+#if BUILDFLAG(IS_CHROMEOS_LACROS) || BUILDFLAG(IS_ANDROID)
+                           RemoveAccountExpectation::kKeepAll
+#else
+                           RemoveAccountExpectation::kRemoveAll
+#endif  // BUILDFLAG(IS_CHROMEOS_LACROS) || BUILDFLAG(IS_ANDROID)
+  );
 }
+
+// Test that revoking the sync consent when DICE account consistency is
+// enabled does not clear the primary account.
+TEST_F(PrimaryAccountMutatorTest, RevokeSyncConsent_DiceConsistency) {
+  RunRevokeSyncConsentTest(signin::AccountConsistencyMethod::kDice,
+                           RemoveAccountExpectation::kKeepAll);
+}
+
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)

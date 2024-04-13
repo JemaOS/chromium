@@ -5,12 +5,12 @@
 #include "components/mirroring/service/video_capture_client.h"
 
 #include "base/functional/bind.h"
-#include "base/memory/read_only_shared_memory_region.h"
 #include "base/task/bind_post_task.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "media/base/video_frame.h"
 #include "media/base/video_frame_pool.h"
+#include "media/base/video_util.h"
 #include "media/capture/mojom/video_capture_buffer.mojom.h"
 #include "media/capture/mojom/video_capture_types.mojom.h"
 
@@ -164,9 +164,18 @@ void VideoCaptureClient::OnNewBuffer(
   DCHECK(insert_result.second);
 }
 
-void VideoCaptureClient::OnBufferReady(media::mojom::ReadyBufferPtr buffer) {
+void VideoCaptureClient::OnBufferReady(
+    media::mojom::ReadyBufferPtr buffer,
+    std::vector<media::mojom::ReadyBufferPtr> scaled_buffers) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DVLOG(3) << __func__ << ": buffer_id=" << buffer->buffer_id;
+
+  // Scaled buffers are currently ignored by VideoCaptureClient.
+  for (media::mojom::ReadyBufferPtr& scaled_buffer : scaled_buffers) {
+    video_capture_host_->ReleaseBuffer(DeviceId(), scaled_buffer->buffer_id,
+                                       media::VideoCaptureFeedback());
+  }
+  scaled_buffers.clear();
 
   bool consume_buffer = !frame_deliver_callback_.is_null();
   if (buffer->info->pixel_format != media::PIXEL_FORMAT_NV12 &&
@@ -236,28 +245,23 @@ void VideoCaptureClient::OnBufferReady(media::mojom::ReadyBufferPtr buffer) {
             &VideoCaptureClient::OnClientBufferFinished,
             weak_factory_.GetWeakPtr(), buffer->buffer_id, std::move(mapping)));
   } else {
-    // Duplicate base::ReadOnlySharedMemoryRegion here because there is no
-    // guarantee on lifetime between |client_buffers_| and |frame|.
-    base::ReadOnlySharedMemoryRegion shm_region =
-        buffer_iter->second->get_read_only_shmem_region().Duplicate();
-    base::ReadOnlySharedMemoryMapping mapping = shm_region.Map();
+    base::ReadOnlySharedMemoryMapping mapping =
+        buffer_iter->second->get_read_only_shmem_region().Map();
     const size_t frame_allocation_size = media::VideoFrame::AllocationSize(
         buffer->info->pixel_format, buffer->info->coded_size);
     if (mapping.IsValid() && mapping.size() >= frame_allocation_size) {
+      // TODO(https://crbug.com/1316810): This code should not be casting
+      // const-ness away from ReadOnlySharedMemoryRegion...
       frame = media::VideoFrame::WrapExternalData(
           buffer->info->pixel_format, buffer->info->coded_size,
           buffer->info->visible_rect, buffer->info->visible_rect.size(),
-          mapping.GetMemoryAs<uint8_t>(), frame_allocation_size,
-          buffer->info->timestamp);
-      if (frame) {
-        frame->BackWithOwnedSharedMemory(std::move(shm_region),
-                                         std::move(mapping));
-      }
+          const_cast<uint8_t*>(mapping.GetMemoryAs<uint8_t>()),
+          frame_allocation_size, buffer->info->timestamp);
     }
-    buffer_finished_callback = base::BindPostTaskToCurrentDefault(
-        base::BindOnce(&VideoCaptureClient::OnClientBufferFinished,
-                       weak_factory_.GetWeakPtr(), buffer->buffer_id,
-                       base::ReadOnlySharedMemoryMapping()));
+    buffer_finished_callback =
+        base::BindPostTaskToCurrentDefault(base::BindOnce(
+            &VideoCaptureClient::OnClientBufferFinished,
+            weak_factory_.GetWeakPtr(), buffer->buffer_id, std::move(mapping)));
   }
 
   if (!frame) {
@@ -284,7 +288,7 @@ void VideoCaptureClient::OnBufferReady(media::mojom::ReadyBufferPtr buffer) {
             media::PIXEL_FORMAT_I420, frame->coded_size(),
             frame->visible_rect(), frame->natural_size(), frame->timestamp());
     media::EncoderStatus status =
-        frame_converter_.ConvertAndScale(*frame, *new_frame);
+        media::ConvertAndScaleFrame(*frame, *new_frame, nv12_to_i420_tmp_buf_);
     if (!status.is_ok()) {
       LOG(DFATAL) << "Unable to convert frame to I420.";
       OnStateChanged(media::mojom::VideoCaptureResult::NewErrorCode(
@@ -295,7 +299,8 @@ void VideoCaptureClient::OnBufferReady(media::mojom::ReadyBufferPtr buffer) {
   }
 
   frame->set_metadata(buffer->info->metadata);
-  frame->set_color_space(buffer->info->color_space);
+  if (buffer->info->color_space)
+    frame->set_color_space(*buffer->info->color_space);
 
   frame->set_timestamp(frame->timestamp() + accumulated_time_);
   last_timestamp_ = frame->timestamp();
@@ -312,11 +317,7 @@ void VideoCaptureClient::OnBufferDestroyed(int32_t buffer_id) {
     client_buffers_.erase(buffer_iter);
 }
 
-void VideoCaptureClient::OnFrameDropped(
-    media::VideoCaptureFrameDropReason reason) {}
-
-void VideoCaptureClient::OnNewSubCaptureTargetVersion(
-    uint32_t sub_capture_target_version) {}
+void VideoCaptureClient::OnNewCropVersion(uint32_t crop_version) {}
 
 void VideoCaptureClient::OnClientBufferFinished(int buffer_id,
                                                 MappingKeepAlive mapping) {

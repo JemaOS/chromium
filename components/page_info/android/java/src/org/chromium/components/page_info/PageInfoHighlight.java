@@ -6,19 +6,21 @@ package org.chromium.components.page_info;
 
 import org.chromium.components.content_settings.ContentSettingsType;
 
-/** Class for providing the page info highlight row information. */
+/**
+ * Class for providing the page info highlight row information.
+ */
 public class PageInfoHighlight {
-    private final @ContentSettingsType.EnumType int mHighlightedPermission;
+    private final @ContentSettingsType int mHighlightedPermission;
 
     public static PageInfoHighlight noHighlight() {
         return new PageInfoHighlight(PageInfoController.NO_HIGHLIGHTED_PERMISSION);
     }
 
-    protected PageInfoHighlight(@ContentSettingsType.EnumType int highlightedPermission) {
+    protected PageInfoHighlight(@ContentSettingsType int highlightedPermission) {
         mHighlightedPermission = highlightedPermission;
     }
 
-    public @ContentSettingsType.EnumType int getHighlightedPermission() {
+    public @ContentSettingsType int getHighlightedPermission() {
         return mHighlightedPermission;
     }
 }

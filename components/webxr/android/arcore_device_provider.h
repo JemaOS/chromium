@@ -28,8 +28,7 @@ class ArCoreDeviceProvider : public device::VRDeviceProvider {
   ArCoreDeviceProvider& operator=(const ArCoreDeviceProvider&) = delete;
 
   ~ArCoreDeviceProvider() override;
-  void Initialize(device::VRDeviceProviderClient* client,
-                  content::WebContents* initializing_web_contents) override;
+  void Initialize(device::VRDeviceProviderClient* client) override;
   bool Initialized() override;
 
  private:

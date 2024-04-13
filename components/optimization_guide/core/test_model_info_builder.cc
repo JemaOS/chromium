@@ -37,7 +37,7 @@ TestModelInfoBuilder& TestModelInfoBuilder::SetVersion(int64_t version) {
 }
 
 TestModelInfoBuilder& TestModelInfoBuilder::SetModelMetadata(
-    std::optional<proto::Any> model_metadata) {
+    absl::optional<proto::Any> model_metadata) {
   if (!model_metadata) {
     model_.mutable_model_info()->clear_model_metadata();
     return *this;

@@ -12,7 +12,6 @@
 
 #include "base/containers/circular_deque.h"
 #include "base/files/file.h"
-#include "base/memory/raw_ptr.h"
 #include "base/synchronization/condition_variable.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/simple_thread.h"
@@ -100,7 +99,7 @@ class PnaclTranslateThread {
     CompileThread& operator=(const CompileThread&) = delete;
 
    private:
-    raw_ptr<PnaclTranslateThread> pnacl_translate_thread_;
+    PnaclTranslateThread* pnacl_translate_thread_;
     void Run() override;
   };
 
@@ -113,7 +112,7 @@ class PnaclTranslateThread {
     LinkThread& operator=(const LinkThread&) = delete;
 
    private:
-    raw_ptr<PnaclTranslateThread> pnacl_translate_thread_;
+    PnaclTranslateThread* pnacl_translate_thread_;
     void Run() override;
   };
 
@@ -142,8 +141,8 @@ class PnaclTranslateThread {
   // or otherwise accessing the service_runtime component of the subprocess.
   // There are some accesses to the subprocesses without locks held
   // (invoking srpc_client methods -- in contrast to using the service_runtime).
-  raw_ptr<NaClSubprocess> compiler_subprocess_;
-  raw_ptr<NaClSubprocess> ld_subprocess_;
+  NaClSubprocess* compiler_subprocess_;
+  NaClSubprocess* ld_subprocess_;
   bool compiler_subprocess_active_;
   bool ld_subprocess_active_;
 
@@ -164,13 +163,13 @@ class PnaclTranslateThread {
   int64_t compile_time_;
 
   // Data about the translation files, owned by the coordinator
-  raw_ptr<std::vector<base::File>> obj_files_;
+  std::vector<base::File>* obj_files_;
   int num_threads_;
-  raw_ptr<base::File> nexe_file_;
-  raw_ptr<ErrorInfo> coordinator_error_info_;
-  raw_ptr<PP_PNaClOptions> pnacl_options_;
+  base::File* nexe_file_;
+  ErrorInfo* coordinator_error_info_;
+  PP_PNaClOptions* pnacl_options_;
   std::string architecture_attributes_;
-  raw_ptr<PnaclCoordinator> coordinator_;
+  PnaclCoordinator* coordinator_;
 
   // These IPC::SyncChannels can only be used and freed by the parent thread.
   std::unique_ptr<IPC::SyncChannel> compiler_channel_;

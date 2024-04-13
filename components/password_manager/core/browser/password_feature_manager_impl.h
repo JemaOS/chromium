@@ -23,7 +23,7 @@ class PasswordFeatureManagerImpl : public PasswordFeatureManager {
  public:
   PasswordFeatureManagerImpl(PrefService* pref_service,
                              PrefService* local_state,
-                             syncer::SyncService* sync_service);
+                             const syncer::SyncService* sync_service);
 
   PasswordFeatureManagerImpl(const PasswordFeatureManagerImpl&) = delete;
   PasswordFeatureManagerImpl& operator=(const PasswordFeatureManagerImpl&) =
@@ -42,26 +42,22 @@ class PasswordFeatureManagerImpl : public PasswordFeatureManager {
   bool ShouldShowAccountStorageBubbleUi() const override;
   PasswordForm::Store GetDefaultPasswordStore() const override;
   bool IsDefaultPasswordStoreSet() const override;
-  features_util::PasswordAccountStorageUsageLevel
+  metrics_util::PasswordAccountStorageUsageLevel
   ComputePasswordAccountStorageUsageLevel() const override;
 
 #if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
   void OptInToAccountStorage() override;
-  void OptOutOfAccountStorage() override;
   void OptOutOfAccountStorageAndClearSettings() override;
   bool ShouldOfferOptInAndMoveToAccountStoreAfterSavingLocally() const override;
   void SetDefaultPasswordStore(const PasswordForm::Store& store) override;
-  bool ShouldChangeDefaultPasswordStore() const override;
+  void RecordMoveOfferedToNonOptedInUser() override;
+  int GetMoveOfferedToNonOptedInUserCount() const override;
 #endif  // !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_ANDROID)
-  bool ShouldUpdateGmsCore() override;
-#endif  // BUILDFLAG(IS_ANDROID)
 
  private:
   const raw_ptr<PrefService> pref_service_;
   const raw_ptr<PrefService> local_state_;
-  const raw_ptr<syncer::SyncService> sync_service_;
+  const raw_ptr<const syncer::SyncService> sync_service_;
 };
 
 }  // namespace password_manager

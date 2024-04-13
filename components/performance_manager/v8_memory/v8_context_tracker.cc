@@ -105,7 +105,7 @@ void V8ContextTracker::OnV8ContextCreated(
 
   // Validate the |iframe_attribution_data|.
   {
-    std::optional<bool> result =
+    absl::optional<bool> result =
         ExpectIframeAttributionDataForV8ContextDescription(
             description, process_node->graph());
     if (result) {
@@ -277,7 +277,9 @@ void V8ContextTracker::OnRemoteIframeAttached(
   });
 
   // Posts |on_ui_thread| to the UI sequence.
-  auto rph_id = parent_frame_node->process_node()->GetRenderProcessHostId();
+  auto rph_id = parent_frame_node->process_node()
+                    ->render_process_host_proxy()
+                    .render_process_host_id();
   content::GetUIThreadTaskRunner({})->PostTask(
       FROM_HERE, base::BindOnce(std::move(on_ui_thread), std::move(on_pm_seq),
                                 std::move(data), rph_id));
@@ -499,7 +501,7 @@ void V8ContextTracker::OnRemoteIframeAttachedImpl(
   // committed below it will safely tear itself down.
   auto* process_data = ProcessData::GetOrCreate(frame_node->process_node());
   std::unique_ptr<ExecutionContextData> ec_data;
-  blink::ExecutionContextToken ec_token(frame_node->GetFrameToken());
+  blink::ExecutionContextToken ec_token(frame_node->frame_token());
   auto* raw_ec_data = data_store_->Get(ec_token);
   if (!raw_ec_data) {
     ec_data =

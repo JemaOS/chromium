@@ -4,10 +4,8 @@
 
 module content_settings.mojom;
 
-import "components/content_settings/core/common/content_settings_types.mojom";
 import "components/content_settings/core/common/content_settings.mojom";
 import "services/network/public/mojom/site_for_cookies.mojom";
-import "third_party/blink/public/mojom/tokens/tokens.mojom";
 import "url/mojom/origin.mojom";
 
 // An interface to the content settings manager running in the browser process
@@ -35,7 +33,7 @@ interface ContentSettingsManager {
   // Then these parameters would not need to be passed here.
   [Sync]
   AllowStorageAccess(
-      blink.mojom.LocalFrameToken frame_token,
+      int32 render_frame_id,
       StorageType storage_type,
       url.mojom.Origin origin,
       network.mojom.SiteForCookies site_for_cookies,
@@ -43,6 +41,5 @@ interface ContentSettingsManager {
 
   // Tells the browser that content in the current page was blocked due to the
   // user's content settings.
-  OnContentBlocked(blink.mojom.LocalFrameToken frame_token,
-                   ContentSettingsType type);
+  OnContentBlocked(int32 render_frame_id, ContentSettingsType type);
 };

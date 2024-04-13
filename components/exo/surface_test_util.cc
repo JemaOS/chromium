@@ -6,10 +6,7 @@
 
 namespace exo {
 
-SurfaceObserverForTest::SurfaceObserverForTest(
-    aura::Window::OcclusionState last_occlusion_state)
-    : last_occlusion_state_(last_occlusion_state) {}
-
+SurfaceObserverForTest::SurfaceObserverForTest() = default;
 SurfaceObserverForTest::~SurfaceObserverForTest() = default;
 
 }  // namespace exo

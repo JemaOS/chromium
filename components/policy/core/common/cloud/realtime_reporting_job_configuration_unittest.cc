@@ -4,7 +4,6 @@
 
 #include "components/policy/core/common/cloud/realtime_reporting_job_configuration.h"
 
-#include <optional>
 #include <set>
 #include <vector>
 
@@ -24,6 +23,7 @@
 #include "components/version_info/version_info.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chromeos/ash/components/system/fake_statistics_provider.h"
@@ -53,7 +53,7 @@ class MockCallbackObserver {
                void(DeviceManagementService::Job* job,
                     DeviceManagementStatus code,
                     int response_code,
-                    std::optional<base::Value::Dict>));
+                    absl::optional<base::Value::Dict>));
 };
 
 class RealtimeReportingJobConfigurationTest : public testing::Test {
@@ -72,7 +72,7 @@ class RealtimeReportingJobConfigurationTest : public testing::Test {
     client_.SetDMToken(kDummyToken);
     configuration_ = std::make_unique<RealtimeReportingJobConfiguration>(
         &client_, service_.configuration()->GetRealtimeReportingServerUrl(),
-        /*include_device_info=*/true,
+        /*include_device_info=*/true, /*add_connector_url_params=*/false,
         base::BindOnce(&MockCallbackObserver::OnURLLoadComplete,
                        base::Unretained(&callback_observer_)));
     base::Value::Dict context;
@@ -177,7 +177,7 @@ class RealtimeReportingJobConfigurationTest : public testing::Test {
 };
 
 TEST_F(RealtimeReportingJobConfigurationTest, ValidatePayload) {
-  std::optional<base::Value> payload =
+  absl::optional<base::Value> payload =
       base::JSONReader::Read(configuration_->GetPayload());
   EXPECT_TRUE(payload.has_value());
   const base::Value::Dict& payload_dict = payload->GetDict();
@@ -217,7 +217,7 @@ TEST_F(RealtimeReportingJobConfigurationTest, ValidatePayload) {
     const base::Value::Dict& event = event_val.GetDict();
     const std::string& id = CHECK_DEREF(event.FindString(kEventId));
     EXPECT_EQ(kIds[++i], id);
-    const std::optional<int> type =
+    const absl::optional<int> type =
         event.FindDict(kAppInstallEvent)->FindInt(kEventType);
     ASSERT_TRUE(type.has_value());
     EXPECT_EQ(i, *type);
@@ -239,7 +239,7 @@ TEST_F(RealtimeReportingJobConfigurationTest, OnURLLoadComplete_Success) {
 TEST_F(RealtimeReportingJobConfigurationTest, OnURLLoadComplete_NetError) {
   EXPECT_CALL(callback_observer_,
               OnURLLoadComplete(&job_, DM_STATUS_REQUEST_FAILED, _,
-                                testing::Eq(std::nullopt)));
+                                testing::Eq(absl::nullopt)));
   configuration_->OnURLLoadComplete(&job_, net::ERR_CONNECTION_RESET,
                                     0 /* ignored */, "");
 }
@@ -249,7 +249,7 @@ TEST_F(RealtimeReportingJobConfigurationTest,
   EXPECT_CALL(callback_observer_,
               OnURLLoadComplete(&job_, DM_STATUS_REQUEST_INVALID,
                                 DeviceManagementService::kInvalidArgument,
-                                testing::Eq(std::nullopt)));
+                                testing::Eq(absl::nullopt)));
   configuration_->OnURLLoadComplete(
       &job_, net::OK, DeviceManagementService::kInvalidArgument, "");
 }
@@ -260,7 +260,7 @@ TEST_F(RealtimeReportingJobConfigurationTest,
       callback_observer_,
       OnURLLoadComplete(&job_, DM_STATUS_SERVICE_MANAGEMENT_TOKEN_INVALID,
                         DeviceManagementService::kInvalidAuthCookieOrDMToken,
-                        testing::Eq(std::nullopt)));
+                        testing::Eq(absl::nullopt)));
   configuration_->OnURLLoadComplete(
       &job_, net::OK, DeviceManagementService::kInvalidAuthCookieOrDMToken, "");
 }
@@ -270,7 +270,7 @@ TEST_F(RealtimeReportingJobConfigurationTest, OnURLLoadComplete_NotSupported) {
       callback_observer_,
       OnURLLoadComplete(&job_, DM_STATUS_SERVICE_MANAGEMENT_NOT_SUPPORTED,
                         DeviceManagementService::kDeviceManagementNotAllowed,
-                        testing::Eq(std::nullopt)));
+                        testing::Eq(absl::nullopt)));
   configuration_->OnURLLoadComplete(
       &job_, net::OK, DeviceManagementService::kDeviceManagementNotAllowed, "");
 }
@@ -279,7 +279,7 @@ TEST_F(RealtimeReportingJobConfigurationTest, OnURLLoadComplete_TempError) {
   EXPECT_CALL(callback_observer_,
               OnURLLoadComplete(&job_, DM_STATUS_TEMPORARY_UNAVAILABLE,
                                 DeviceManagementService::kServiceUnavailable,
-                                testing::Eq(std::nullopt)));
+                                testing::Eq(absl::nullopt)));
   configuration_->OnURLLoadComplete(
       &job_, net::OK, DeviceManagementService::kServiceUnavailable, "");
 }
@@ -288,7 +288,7 @@ TEST_F(RealtimeReportingJobConfigurationTest, OnURLLoadComplete_UnknownError) {
   EXPECT_CALL(callback_observer_,
               OnURLLoadComplete(&job_, DM_STATUS_HTTP_STATUS_ERROR,
                                 DeviceManagementService::kInvalidURL,
-                                testing::Eq(std::nullopt)));
+                                testing::Eq(absl::nullopt)));
   configuration_->OnURLLoadComplete(&job_, net::OK,
                                     DeviceManagementService::kInvalidURL, "");
 }
@@ -319,12 +319,6 @@ TEST_F(RealtimeReportingJobConfigurationTest, ShouldRetry_PermanentFailure) {
   EXPECT_EQ(DeviceManagementService::Job::NO_RETRY, should_retry);
 }
 
-TEST_F(RealtimeReportingJobConfigurationTest, ShouldRetry_InvalidResponse) {
-  auto should_retry = configuration_->ShouldRetry(
-      DeviceManagementService::kSuccess, "some error");
-  EXPECT_EQ(DeviceManagementService::Job::NO_RETRY, should_retry);
-}
-
 TEST_F(RealtimeReportingJobConfigurationTest, OnBeforeRetry_HttpFailure) {
   // No change should be made to the payload in this case.
   auto original_payload = configuration_->GetPayload();
@@ -340,20 +334,13 @@ TEST_F(RealtimeReportingJobConfigurationTest, OnBeforeRetry_PartialBatch) {
       CreateResponseString(CreateResponse({kIds[0]}, {kIds[1]}, {kIds[2]}));
   configuration_->OnBeforeRetry(DeviceManagementService::kSuccess,
                                 response_string);
-  std::optional<base::Value> payload =
+  absl::optional<base::Value> payload =
       base::JSONReader::Read(configuration_->GetPayload());
   base::Value::List* events = payload->GetDict().FindList(
       RealtimeReportingJobConfiguration::kEventListKey);
   EXPECT_EQ(1u, events->size());
   auto& event = (*events)[0];
   EXPECT_EQ(kIds[1], *event.GetDict().FindString(kEventId));
-}
-
-TEST_F(RealtimeReportingJobConfigurationTest, OnBeforeRetry_InvalidResponse) {
-  // No change should be made to the payload in this case.
-  auto original_payload = configuration_->GetPayload();
-  configuration_->OnBeforeRetry(DeviceManagementService::kSuccess, "error");
-  EXPECT_EQ(original_payload, configuration_->GetPayload());
 }
 
 }  // namespace policy

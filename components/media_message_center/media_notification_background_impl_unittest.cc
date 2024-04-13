@@ -96,11 +96,11 @@ class MediaNotificationBackgroundImplTest : public views::ViewsTestBase {
     return background_.get();
   }
 
-  std::optional<SkColor> GetBackgroundColor() const {
+  absl::optional<SkColor> GetBackgroundColor() const {
     return background_->background_color_;
   }
 
-  std::optional<SkColor> GetForegroundColor() const {
+  absl::optional<SkColor> GetForegroundColor() const {
     return background_->foreground_color_;
   }
 

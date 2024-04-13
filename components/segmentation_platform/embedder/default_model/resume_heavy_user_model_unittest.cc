@@ -17,26 +17,19 @@ class ResumeHeavyUserModelTest : public DefaultModelTestBase {
 
 TEST_F(ResumeHeavyUserModelTest, InitAndFetchModel) {
   ExpectInitAndFetchModel();
-  ASSERT_TRUE(fetched_metadata_);
 }
 
 TEST_F(ResumeHeavyUserModelTest, ExecuteModelWithInput) {
-  ExpectInitAndFetchModel();
-  ASSERT_TRUE(fetched_metadata_);
-
-  EXPECT_FALSE(ExecuteWithInput(/*inputs=*/{}));
-
-  ModelProvider::Request input = {};
   // Input arguments in order: bookmarks_opened, mv_tiles_clicked,
   // opened_ntp_from_tab_groups, opened_item_from_history
-  ExpectClassifierResults(/*input=*/{0, 0, 0, 0, 0}, {kLegacyNegativeLabel});
-  ExpectClassifierResults(/*input=*/{1, 0, 0, 0, 0}, {kLegacyNegativeLabel});
-  ExpectClassifierResults(
-      /*input=*/{2, 0, 0, 0, 0},
-      {SegmentIdToHistogramVariant(SegmentId::RESUME_HEAVY_USER_SEGMENT)});
-  ExpectClassifierResults(
-      /*input=*/{0, 3, 0, 0, 0},
-      {SegmentIdToHistogramVariant(SegmentId::RESUME_HEAVY_USER_SEGMENT)});
+  ExpectExecutionWithInput(/*inputs=*/{0, 0, 0, 0, 0}, /*expected_error=*/false,
+                           /*expected_result=*/{0});
+  ExpectExecutionWithInput(/*inputs=*/{1, 0, 0, 0, 0}, /*expected_error=*/false,
+                           /*expected_result=*/{0});
+  ExpectExecutionWithInput(/*inputs=*/{2, 0, 0, 0, 0}, /*expected_error=*/false,
+                           /*expected_result=*/{1});
+  ExpectExecutionWithInput(/*inputs=*/{0, 3, 0, 0, 0}, /*expected_error=*/false,
+                           /*expected_result=*/{1});
 }
 
 }  // namespace segmentation_platform

@@ -15,24 +15,17 @@ InvalidatorState FakeInvalidationHandler::GetInvalidatorState() const {
   return state_;
 }
 
-const std::map<Topic, Invalidation>&
-FakeInvalidationHandler::GetReceivedInvalidations() const {
-  return received_invalidations_;
-}
-
-const std::multiset<Topic>& FakeInvalidationHandler::GetSuccessfullySubscribed()
+const TopicInvalidationMap& FakeInvalidationHandler::GetLastInvalidationMap()
     const {
-  return successfully_subscribed_;
-}
-
-void FakeInvalidationHandler::Clear() {
-  received_invalidations_.clear();
-  invalidation_count_ = 0;
-  successfully_subscribed_.clear();
+  return last_invalidation_map_;
 }
 
 int FakeInvalidationHandler::GetInvalidationCount() const {
   return invalidation_count_;
+}
+
+const std::string& FakeInvalidationHandler::GetInvalidatorClientId() const {
+  return client_id_;
 }
 
 void FakeInvalidationHandler::OnInvalidatorStateChange(InvalidatorState state) {
@@ -40,13 +33,9 @@ void FakeInvalidationHandler::OnInvalidatorStateChange(InvalidatorState state) {
 }
 
 void FakeInvalidationHandler::OnIncomingInvalidation(
-    const Invalidation& invalidation) {
-  received_invalidations_.emplace(invalidation.topic(), invalidation);
+    const TopicInvalidationMap& invalidation_map) {
+  last_invalidation_map_ = invalidation_map;
   ++invalidation_count_;
-}
-
-void FakeInvalidationHandler::OnSuccessfullySubscribed(const Topic& topic) {
-  successfully_subscribed_.insert(topic);
 }
 
 std::string FakeInvalidationHandler::GetOwnerName() const {
@@ -55,6 +44,11 @@ std::string FakeInvalidationHandler::GetOwnerName() const {
 
 bool FakeInvalidationHandler::IsPublicTopic(const Topic& topic) const {
   return topic == "PREFERENCE";
+}
+
+void FakeInvalidationHandler::OnInvalidatorClientIdChange(
+    const std::string& client_id) {
+  client_id_ = client_id;
 }
 
 }  // namespace invalidation

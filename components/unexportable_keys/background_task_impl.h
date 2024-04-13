@@ -5,17 +5,11 @@
 #ifndef COMPONENTS_UNEXPORTABLE_KEYS_BACKGROUND_TASK_IMPL_H_
 #define COMPONENTS_UNEXPORTABLE_KEYS_BACKGROUND_TASK_IMPL_H_
 
-#include <optional>
-
 #include "base/functional/callback.h"
 #include "base/location.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
-#include "base/time/time.h"
-#include "base/timer/elapsed_timer.h"
 #include "components/unexportable_keys/background_task.h"
-#include "components/unexportable_keys/background_task_priority.h"
-#include "components/unexportable_keys/background_task_type.h"
 
 namespace unexportable_keys::internal {
 
@@ -32,13 +26,8 @@ class BackgroundTaskImpl : public BackgroundTask {
   // `reply` is invoked on the posting thread with the return result of
   // `task`.
   BackgroundTaskImpl(base::OnceCallback<ReturnType()> task,
-                     base::OnceCallback<void(ReturnType)> reply,
-                     BackgroundTaskPriority priority,
-                     BackgroundTaskType type)
-      : task_(std::move(task)),
-        reply_(std::move(reply)),
-        priority_(priority),
-        type_(type) {
+                     base::OnceCallback<void(ReturnType)> reply)
+      : task_(std::move(task)), reply_(std::move(reply)) {
     DCHECK(task_);
     DCHECK(reply_);
   }
@@ -48,7 +37,6 @@ class BackgroundTaskImpl : public BackgroundTask {
   void Run(scoped_refptr<base::SequencedTaskRunner> background_task_runner,
            base::OnceCallback<void(BackgroundTask* task)> on_complete_callback)
       override {
-    run_timer_ = base::ElapsedTimer();
     background_task_runner->PostTaskAndReplyWithResult(
         FROM_HERE, std::move(task_),
         std::move(reply_).Then(
@@ -65,29 +53,9 @@ class BackgroundTaskImpl : public BackgroundTask {
                                 : BackgroundTask::Status::kPending;
   }
 
-  BackgroundTaskPriority GetPriority() const override { return priority_; }
-
-  BackgroundTaskType GetType() const override { return type_; }
-
-  base::TimeDelta GetElapsedTimeSinceCreation() const override {
-    return creation_timer_.Elapsed();
-  }
-
-  std::optional<base::TimeDelta> GetElapsedTimeSinceRun() const override {
-    if (run_timer_.has_value()) {
-      return run_timer_->Elapsed();
-    }
-    return std::nullopt;
-  }
-
  private:
   base::OnceCallback<ReturnType()> task_;
   base::OnceCallback<void(ReturnType)> reply_;
-
-  const BackgroundTaskPriority priority_;
-  const BackgroundTaskType type_;
-  const base::ElapsedTimer creation_timer_;
-  std::optional<base::ElapsedTimer> run_timer_;
 };
 
 }  // namespace unexportable_keys::internal

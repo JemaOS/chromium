@@ -1,4 +1,3 @@
-buganizer_public: {
-  component_id: 1518445
+monorail {
+  component: "Internals>Exosphere"
 }
-team_email: "chromeos-foundations@google.com"

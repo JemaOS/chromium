@@ -61,7 +61,9 @@ public abstract class UserRecoverableErrorHandler {
      */
     protected abstract void handle(final Context context, final int errorCode);
 
-    /** A handler that does nothing. */
+    /**
+     * A handler that does nothing.
+     */
     public static final class Silent extends UserRecoverableErrorHandler {
         @Override
         protected final void handle(final Context context, final int errorCode) {}
@@ -137,13 +139,19 @@ public abstract class UserRecoverableErrorHandler {
          */
         private final Activity mActivity;
 
-        /** The modal dialog that is shown to the user. */
+        /**
+         * The modal dialog that is shown to the user.
+         */
         private Dialog mDialog;
 
-        /** Whether the dialog can be canceled by the user. */
+        /**
+         * Whether the dialog can be canceled by the user.
+         */
         private final boolean mCancelable;
 
-        /** Last error code from Google Play Services. */
+        /**
+         * Last error code from Google Play Services.
+         */
         private int mErrorCode;
 
         /**
@@ -174,9 +182,8 @@ public abstract class UserRecoverableErrorHandler {
                 cancelDialog();
             }
             if (mDialog == null) {
-                mDialog =
-                        GoogleApiAvailability.getInstance()
-                                .getErrorDialog(mActivity, errorCode, NO_RESPONSE_REQUIRED);
+                mDialog = GoogleApiAvailability.getInstance().getErrorDialog(
+                        mActivity, errorCode, NO_RESPONSE_REQUIRED);
                 mErrorCode = errorCode;
 
                 DialogUserActionRecorder.createAndAttachToDialog(mDialog);
@@ -189,7 +196,9 @@ public abstract class UserRecoverableErrorHandler {
             }
         }
 
-        /** Cancels the dialog. */
+        /**
+         * Cancels the dialog.
+         */
         public void cancelDialog() {
             if (mDialog != null) {
                 mDialog.cancel();
@@ -197,7 +206,9 @@ public abstract class UserRecoverableErrorHandler {
             }
         }
 
-        /** Checks whether dialog is being shown. */
+        /**
+         * Checks whether dialog is being shown.
+         */
         public boolean isShowing() {
             return mDialog != null && mDialog.isShowing();
         }

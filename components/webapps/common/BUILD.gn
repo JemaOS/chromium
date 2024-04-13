@@ -10,7 +10,6 @@ source_set("common") {
     "constants.h",
     "switches.cc",
     "switches.h",
-    "web_app_id.h",
   ]
 }
 

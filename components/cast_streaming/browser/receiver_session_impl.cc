@@ -8,6 +8,7 @@
 #include "components/cast_streaming/browser/cast_message_port_converter.h"
 #include "components/cast_streaming/browser/public/network_context_getter.h"
 #include "components/cast_streaming/browser/public/receiver_config.h"
+#include "components/cast_streaming/browser/receiver_config_conversions.h"
 #include "components/cast_streaming/common/public/features.h"
 #include "media/base/audio_decoder_config.h"
 #include "media/base/video_decoder_config.h"
@@ -17,15 +18,16 @@ namespace cast_streaming {
 
 // static
 std::unique_ptr<ReceiverSession> ReceiverSession::Create(
-    ReceiverConfig av_constraints,
+    const ReceiverConfig& av_constraints,
     ReceiverSession::MessagePortProvider message_port_provider,
     ReceiverSession::Client* client) {
   return std::make_unique<ReceiverSessionImpl>(
-      std::move(av_constraints), std::move(message_port_provider), client);
+      ToOpenscreenConstraints(av_constraints), std::move(message_port_provider),
+      client);
 }
 
 ReceiverSessionImpl::ReceiverSessionImpl(
-    ReceiverConfig av_constraints,
+    openscreen::cast::ReceiverConstraints av_constraints,
     ReceiverSession::MessagePortProvider message_port_provider,
     ReceiverSession::Client* client)
     : message_port_provider_(std::move(message_port_provider)),
@@ -87,8 +89,8 @@ void ReceiverSessionImpl::OnReceiverEnabled() {
 
 void ReceiverSessionImpl::OnSessionInitialization(
     StreamingInitializationInfo initialization_info,
-    std::optional<mojo::ScopedDataPipeConsumerHandle> audio_pipe_consumer,
-    std::optional<mojo::ScopedDataPipeConsumerHandle> video_pipe_consumer) {
+    absl::optional<mojo::ScopedDataPipeConsumerHandle> audio_pipe_consumer,
+    absl::optional<mojo::ScopedDataPipeConsumerHandle> video_pipe_consumer) {
   DVLOG(1) << __func__;
   DCHECK_EQ(!!initialization_info.audio_stream_info, !!audio_pipe_consumer);
   DCHECK_EQ(!!initialization_info.video_stream_info, !!video_pipe_consumer);
@@ -164,8 +166,8 @@ void ReceiverSessionImpl::OnSessionReinitializationPending() {
 
 void ReceiverSessionImpl::OnSessionReinitialization(
     StreamingInitializationInfo initialization_info,
-    std::optional<mojo::ScopedDataPipeConsumerHandle> audio_pipe_consumer,
-    std::optional<mojo::ScopedDataPipeConsumerHandle> video_pipe_consumer) {
+    absl::optional<mojo::ScopedDataPipeConsumerHandle> audio_pipe_consumer,
+    absl::optional<mojo::ScopedDataPipeConsumerHandle> video_pipe_consumer) {
   DVLOG(1) << __func__;
   DCHECK(audio_pipe_consumer || video_pipe_consumer);
   DCHECK_EQ(!!audio_pipe_consumer, !!initialization_info.audio_stream_info);

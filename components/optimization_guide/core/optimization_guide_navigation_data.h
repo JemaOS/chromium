@@ -6,9 +6,7 @@
 #define COMPONENTS_OPTIMIZATION_GUIDE_CORE_OPTIMIZATION_GUIDE_NAVIGATION_DATA_H_
 
 #include <stdint.h>
-
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/containers/flat_map.h"
@@ -18,6 +16,7 @@
 #include "components/optimization_guide/core/optimization_guide_enums.h"
 #include "components/optimization_guide/proto/hints.pb.h"
 #include "components/optimization_guide/proto/models.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 // A representation of optimization guide information related to a navigation.
@@ -77,7 +76,7 @@ class OptimizationGuideNavigationData {
   // The duration between the fetch for a hint for the navigation going out to
   // when it was received by the client if a fetch was initiated for the
   // navigation.
-  std::optional<base::TimeDelta> hints_fetch_latency() const;
+  absl::optional<base::TimeDelta> hints_fetch_latency() const;
   void set_hints_fetch_start(base::TimeTicks hints_fetch_start) {
     hints_fetch_start_ = hints_fetch_start;
   }
@@ -87,7 +86,7 @@ class OptimizationGuideNavigationData {
 
   // The status for whether a hint for the page load was attempted to be fetched
   // from the remote Optimization Guide Service.
-  std::optional<optimization_guide::RaceNavigationFetchAttemptStatus>
+  absl::optional<optimization_guide::RaceNavigationFetchAttemptStatus>
   hints_fetch_attempt_status() const {
     return hints_fetch_attempt_status_;
   }
@@ -131,20 +130,20 @@ class OptimizationGuideNavigationData {
       optimization_type_decisions_;
 
   // The page hint for the navigation.
-  std::optional<std::unique_ptr<optimization_guide::proto::PageHint>>
+  absl::optional<std::unique_ptr<optimization_guide::proto::PageHint>>
       page_hint_;
 
   // The time that the hints fetch for this navigation started. Is only present
   // if a fetch was initiated for this navigation.
-  std::optional<base::TimeTicks> hints_fetch_start_;
+  absl::optional<base::TimeTicks> hints_fetch_start_;
 
   // The time that the hints fetch for the navigation ended. Is only present if
   // a fetch was initiated and successfully completed for this navigation.
-  std::optional<base::TimeTicks> hints_fetch_end_;
+  absl::optional<base::TimeTicks> hints_fetch_end_;
 
   // The status for whether a hint for the page load was attempted to be fetched
   // from the remote Optimization Guide Service.
-  std::optional<optimization_guide::RaceNavigationFetchAttemptStatus>
+  absl::optional<optimization_guide::RaceNavigationFetchAttemptStatus>
       hints_fetch_attempt_status_;
 
   // Used to get |weak_ptr_| to self on the UI thread.

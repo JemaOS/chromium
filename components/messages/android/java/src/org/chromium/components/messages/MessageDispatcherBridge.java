@@ -4,9 +4,8 @@
 
 package org.chromium.components.messages;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.WindowAndroid;
 
@@ -21,11 +20,8 @@ public class MessageDispatcherBridge {
      * activity is being recreated or destroyed; otherwise, return true.
      */
     @CalledByNative
-    private static boolean enqueueMessage(
-            MessageWrapper message,
-            WebContents webContents,
-            @MessageScopeType int scopeType,
-            boolean highPriority) {
+    private static boolean enqueueMessage(MessageWrapper message, WebContents webContents,
+            @MessageScopeType int scopeType, boolean highPriority) {
         MessageDispatcher messageDispatcher =
                 MessageDispatcherProvider.from(webContents.getTopLevelNativeWindow());
         if (messageDispatcher == null) return false;

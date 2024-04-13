@@ -22,10 +22,10 @@ namespace {
 
 // Returns corresponding HKEY according to the RegistryHive, return nullopt if
 // hive is missing or unsupported.
-std::optional<HKEY> ConvertHiveToHKey(
-    const std::optional<device_signals::RegistryHive> hive) {
-  if (hive == std::nullopt) {
-    return std::nullopt;
+absl::optional<HKEY> ConvertHiveToHKey(
+    const absl::optional<device_signals::RegistryHive> hive) {
+  if (hive == absl::nullopt) {
+    return absl::nullopt;
   }
 
   switch (hive.value()) {
@@ -48,8 +48,8 @@ std::vector<device_signals::SettingsItem> GetSettingsItems(
     collected_item.key = option.key;
     collected_item.hive = option.hive;
 
-    std::optional<HKEY> hive_hkey = ConvertHiveToHKey(option.hive);
-    if (hive_hkey == std::nullopt) {
+    absl::optional<HKEY> hive_hkey = ConvertHiveToHKey(option.hive);
+    if (hive_hkey == absl::nullopt) {
       collected_item.presence = device_signals::PresenceValue::kNotFound;
       collected_items.push_back(collected_item);
       continue;

@@ -10,6 +10,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RadioGroup;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.ui.base.ViewUtils;
 
 import java.util.ArrayList;
@@ -48,8 +50,8 @@ import java.util.List;
  * }</pre>
  * </p>
  */
-public final class RadioButtonWithDescriptionLayout extends RadioGroup
-        implements RadioButtonWithDescription.ButtonCheckedStateChangedListener {
+public final class RadioButtonWithDescriptionLayout
+        extends RadioGroup implements RadioButtonWithDescription.ButtonCheckedStateChangedListener {
     private final List<RadioButtonWithDescription> mRadioButtonsWithDescriptions;
     private OnCheckedChangeListener mOnCheckedChangeListener;
 
@@ -155,6 +157,7 @@ public final class RadioButtonWithDescriptionLayout extends RadioGroup
      *
      * @param childIndex Index of the child to select.
      */
+    @VisibleForTesting
     void selectChildAtIndexForTesting(int childIndex) {
         RadioButtonWithDescription b = (RadioButtonWithDescription) getChildAt(childIndex);
         b.setChecked(true);

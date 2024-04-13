@@ -204,15 +204,14 @@ MachineLevelUserCloudPolicyStore::CreateValidator(
   auto validator = std::make_unique<UserCloudPolicyValidator>(
       std::move(policy_fetch_response), background_task_runner());
   validator->ValidatePolicyType(
-      dm_protocol::kChromeMachineLevelUserCloudPolicyType);
+      GetMachineLevelUserCloudPolicyTypeForCurrentOS());
   validator->ValidateDMToken(machine_dm_token_.value(),
                              CloudPolicyValidatorBase::DM_TOKEN_REQUIRED);
   validator->ValidateDeviceId(machine_client_id_,
                               CloudPolicyValidatorBase::DEVICE_ID_REQUIRED);
   if (has_policy()) {
     validator->ValidateTimestamp(
-        base::Time::FromMillisecondsSinceUnixEpoch(policy()->timestamp()),
-        option);
+        base::Time::FromJavaTime(policy()->timestamp()), option);
   }
   validator->ValidatePayload();
   return validator;

@@ -4,6 +4,7 @@
 
 #include "components/payments/core/features.h"
 
+#include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 
 namespace payments {
@@ -25,7 +26,7 @@ BASE_FEATURE(kWebPaymentsJustInTimePaymentApp,
 
 BASE_FEATURE(kAppStoreBilling,
              "AppStoreBilling",
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS_ASH)
              base::FEATURE_ENABLED_BY_DEFAULT
 #else
              base::FEATURE_DISABLED_BY_DEFAULT
@@ -35,6 +36,10 @@ BASE_FEATURE(kAppStoreBilling,
 BASE_FEATURE(kAppStoreBillingDebug,
              "AppStoreBillingDebug",
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPaymentHandlerPopUpSizeWindow,
+             "PaymentHandlerPopUpSizeWindow",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAllowJITInstallationWhenAppIconIsMissing,
              "AllowJITInstallationWhenAppIconIsMissing",
@@ -57,24 +62,10 @@ BASE_FEATURE(kSecurePaymentConfirmationUseCredentialStoreAPIs,
 #endif
 );
 
-#if !BUILDFLAG(IS_ANDROID)
 // The blink-side feature of the same name is disabled by default, and can be
 // enabled directly or via origin trial.
 BASE_FEATURE(kPaymentHandlerMinimalHeaderUX,
              "PaymentHandlerMinimalHeaderUX",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kPaymentHandlerWindowInTaskManager,
-             "PaymentHandlerWindowInTaskManager",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-
-BASE_FEATURE(kPaymentHandlerAlwaysRefreshIcon,
-             "PaymentHandlerAlwaysRefreshIcon",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kPaymentHandlerRequireLinkHeader,
-             "PaymentHandlerRequireLinkHeader",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace features

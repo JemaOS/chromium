@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_DOWNLOAD_PUBLIC_COMMON_DOWNLOAD_RESPONSE_HANDLER_H_
 #define COMPONENTS_DOWNLOAD_PUBLIC_COMMON_DOWNLOAD_RESPONSE_HANDLER_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,6 +20,7 @@
 #include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "services/network/public/mojom/url_loader.mojom.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/origin.h"
 
 namespace download {
@@ -69,7 +69,7 @@ class COMPONENTS_DOWNLOAD_EXPORT DownloadResponseHandler
   void OnReceiveResponse(
       network::mojom::URLResponseHeadPtr head,
       mojo::ScopedDataPipeConsumerHandle body,
-      std::optional<mojo_base::BigBuffer> cached_metadata) override;
+      absl::optional<mojo_base::BigBuffer> cached_metadata) override;
   void OnReceiveRedirect(const net::RedirectInfo& redirect_info,
                          network::mojom::URLResponseHeadPtr head) override;
   void OnUploadProgress(int64_t current_position,
@@ -104,11 +104,11 @@ class COMPONENTS_DOWNLOAD_EXPORT DownloadResponseHandler
   DownloadUrlParameters::RequestHeadersType request_headers_;
   std::string request_origin_;
   DownloadSource download_source_;
-  net::CertStatus cert_status_ = 0;
+  net::CertStatus cert_status_;
   bool has_strong_validators_;
-  std::optional<url::Origin> request_initiator_;
+  absl::optional<url::Origin> request_initiator_;
   ::network::mojom::CredentialsMode credentials_mode_;
-  std::optional<net::IsolationInfo> isolation_info_;
+  absl::optional<net::IsolationInfo> isolation_info_;
   bool is_partial_request_;
   bool completed_;
   bool require_safety_checks_;

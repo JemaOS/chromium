@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <vector>
 
@@ -20,6 +19,7 @@
 #include "components/sessions/core/command_storage_manager.h"
 #include "components/sessions/core/session_command.h"
 #include "components/sessions/core/sessions_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class Clock;
@@ -222,7 +222,7 @@ class SESSIONS_EXPORT CommandStorageBackend
   bool IsEncrypted() const { return !crypto_key_.empty(); }
 
   // Gets data for the last session file.
-  std::optional<SessionInfo> FindLastSessionFile() const;
+  absl::optional<SessionInfo> FindLastSessionFile() const;
 
   // Attempt to delete all sessions besides the current and last. This is a
   // best effort operation.
@@ -243,6 +243,9 @@ class SESSIONS_EXPORT CommandStorageBackend
 
   // Returns true if `path` can be used for the last session.
   bool CanUseFileForLastSession(const base::FilePath& path) const;
+
+  // Logs the state of all session files (if logging is enabled).
+  void LogSessionFiles();
 
   const CommandStorageManager::SessionType type_;
 
@@ -278,7 +281,7 @@ class SESSIONS_EXPORT CommandStorageBackend
   base::Time timestamp_;
 
   // Data for the last session. If unset, fallback to legacy session data.
-  std::optional<SessionInfo> last_session_info_;
+  absl::optional<SessionInfo> last_session_info_;
 
   // Paths of the two most recently written files with a valid marker (the
   // first of which may be the currently open file). When a new file is
@@ -290,8 +293,8 @@ class SESSIONS_EXPORT CommandStorageBackend
   // to disk, we keep one additional file around.
   // `second_to_last_path_with_valid_marker_` maintains the previous valid file
   // with a marker.
-  std::optional<base::FilePath> last_or_current_path_with_valid_marker_;
-  std::optional<base::FilePath> second_to_last_path_with_valid_marker_;
+  absl::optional<base::FilePath> last_or_current_path_with_valid_marker_;
+  absl::optional<base::FilePath> second_to_last_path_with_valid_marker_;
 
   bool force_append_commands_to_fail_for_testing_ = false;
 };

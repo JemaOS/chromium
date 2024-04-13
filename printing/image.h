@@ -8,32 +8,50 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <string>
 #include <vector>
 
 #include "base/check.h"
 #include "ui/gfx/geometry/size.h"
 
+namespace base {
+class FilePath;
+}
+
 namespace printing {
 
+class Metafile;
+
 // Lightweight raw-bitmap management. The image, once initialized, is immutable.
-// The only purpose is testing image contents.
+// The main purpose is testing image contents.
 class Image {
  public:
-  // Creates an image from raw ARGB pixel data, 32 bits per pixel.
-  Image(gfx::Size size, int line_stride, std::vector<unsigned char> buffer);
+  // Creates the image from the metafile.  Deduces bounds based on bounds in
+  // metafile.  If loading fails size().IsEmpty() will be true.
+  explicit Image(const Metafile& metafile);
 
-  Image(const Image& image);
-  Image& operator=(const Image& image) = delete;
+  // Copy constructor.
+  explicit Image(const Image& image);
 
   ~Image();
 
-  bool operator==(const Image& other) const;
-
   const gfx::Size& size() const { return size_; }
 
-  // Returns the 0x0RGB value of the pixel at the given location.
+  // Return a checksum of the image (MD5 over the internal data structure).
+  std::string checksum() const;
+
+  // Save image as PNG.
+  bool SaveToPng(const base::FilePath& filepath) const;
+
+  // Returns % of pixels different
+  double PercentageDifferent(const Image& rhs) const;
+
+  // Returns the 0x0RGB or 0xARGB value of the pixel at the given location.
   uint32_t Color(uint32_t color) const {
-    return color & 0xFFFFFF;  // Strip out alpha channel.
+    if (ignore_alpha_)
+      return color & 0xFFFFFF;  // Strip out A.
+    else
+      return color;
   }
 
   uint32_t pixel_at(int x, int y) const {
@@ -45,15 +63,30 @@ class Image {
   }
 
  private:
+  // Construct from metafile.  This is kept internal since it's ambiguous what
+  // kind of data is used (png, bmp, metafile etc).
+  Image(const void* data, size_t size);
+
+  bool LoadPng(const std::string& compressed);
+
+  // Loads the first page from `metafile`.
+  bool LoadMetafile(const Metafile& metafile);
+
   // Pixel dimensions of the image.
-  const gfx::Size size_;
+  gfx::Size size_;
 
   // Length of a line in bytes.
-  const int row_length_;
+  int row_length_;
 
   // Actual bitmap data in arrays of RGBAs (so when loaded as uint32_t, it's
   // 0xABGR).
-  const std::vector<unsigned char> data_;
+  std::vector<unsigned char> data_;
+
+  // Flag to signal if the comparison functions should ignore the alpha channel.
+  const bool ignore_alpha_;  // Currently always true.
+
+  // Prevent operator= (this function has no implementation)
+  Image& operator=(const Image& image);
 };
 
 }  // namespace printing

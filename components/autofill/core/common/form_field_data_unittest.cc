@@ -18,7 +18,7 @@ void FillCommonFields(FormFieldData* data) {
   data->label = u"label";
   data->name = u"name";
   data->value = u"value";
-  data->form_control_type = FormControlType::kInputPassword;
+  data->form_control_type = "password";
   data->autocomplete_attribute = "off";
   data->max_length = 200;
   data->is_autofilled = true;
@@ -59,7 +59,7 @@ void WriteSection1(const FormFieldData& data, base::Pickle* pickle) {
   pickle->WriteString16(data.label);
   pickle->WriteString16(data.name);
   pickle->WriteString16(data.value);
-  pickle->WriteString(FormControlTypeToString(data.form_control_type));
+  pickle->WriteString(data.form_control_type);
   pickle->WriteString(data.autocomplete_attribute);
   pickle->WriteUInt64(data.max_length);
   pickle->WriteBool(data.is_autofilled);
@@ -426,23 +426,16 @@ TEST(FormFieldDataTest, DeserializeBadData) {
 
 TEST(FormFieldDataTest, IsTextInputElement) {
   struct TestData {
-    FormControlType form_control_type;
+    const char* form_control_type;
     bool expected;
   } test_data[] = {
-      {FormControlType::kInputText, true},
-      {FormControlType::kInputSearch, true},
-      {FormControlType::kInputTelephone, true},
-      {FormControlType::kInputUrl, true},
-      {FormControlType::kInputEmail, true},
-      {FormControlType::kInputPassword, true},
-      {FormControlType::kInputNumber, true},
-      {FormControlType::kSelectOne, false},
-      {FormControlType::kInputCheckbox, false},
-      {FormControlType::kTextArea, false},
+      {"text", true},      {"search", true},         {"tel", true},
+      {"url", true},       {"email", true},          {"password", true},
+      {"number", true},    {"select", false},        {"", false},
+      {"checkbox", false}, {"random_string", false}, {"textarea", false},
   };
 
   for (const auto& test_case : test_data) {
-    SCOPED_TRACE(testing::Message() << test_case.form_control_type);
     FormFieldData data;
     data.form_control_type = test_case.form_control_type;
     EXPECT_EQ(test_case.expected, data.IsTextInputElement());

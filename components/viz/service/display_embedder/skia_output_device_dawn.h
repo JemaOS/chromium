@@ -16,27 +16,17 @@
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/gpu/GrBackendSurface.h"
 #include "ui/gfx/native_widget_types.h"
-
-#if BUILDFLAG(IS_WIN)
 #include "ui/gl/child_window_win.h"
-#endif
-
-#if BUILDFLAG(IS_ANDROID)
-#include "ui/gl/android/scoped_a_native_window.h"
-#endif
-
-namespace gpu {
-class SharedContextState;
-}  // namespace gpu
 
 namespace viz {
+
+class DawnContextProvider;
 
 class SkiaOutputDeviceDawn : public SkiaOutputDevice {
  public:
   SkiaOutputDeviceDawn(
-      scoped_refptr<gpu::SharedContextState> context_state,
+      DawnContextProvider* context_provider,
       gfx::SurfaceOrigin origin,
-      gpu::SurfaceHandle surface_handle,
       gpu::MemoryTracker* memory_tracker,
       DidSwapBufferCompleteCallback did_swap_buffer_complete_callback);
 
@@ -45,11 +35,7 @@ class SkiaOutputDeviceDawn : public SkiaOutputDevice {
 
   ~SkiaOutputDeviceDawn() override;
 
-#if BUILDFLAG(IS_WIN)
-  gpu::SurfaceHandle GetChildSurfaceHandle() const {
-    return child_window_.window();
-  }
-#endif
+  gpu::SurfaceHandle GetChildSurfaceHandle() const;
 
   // SkiaOutputDevice implementation:
   bool Reshape(const SkImageInfo& image_info,
@@ -57,7 +43,7 @@ class SkiaOutputDeviceDawn : public SkiaOutputDevice {
                int sample_count,
                float device_scale_factor,
                gfx::OverlayTransform transform) override;
-  void Present(const std::optional<gfx::Rect>& update_rect,
+  void Present(const absl::optional<gfx::Rect>& update_rect,
                BufferPresentedCallback feedback,
                OutputSurfaceFrame frame) override;
   SkSurface* BeginPaint(
@@ -65,7 +51,7 @@ class SkiaOutputDeviceDawn : public SkiaOutputDevice {
   void EndPaint() override;
 
  private:
-  scoped_refptr<gpu::SharedContextState> context_state_;
+  DawnContextProvider* const context_provider_;
   wgpu::Surface surface_;
   wgpu::SwapChain swap_chain_;
   wgpu::Texture texture_;
@@ -76,19 +62,12 @@ class SkiaOutputDeviceDawn : public SkiaOutputDevice {
   sk_sp<SkColorSpace> sk_color_space_;
   int sample_count_ = 1;
 
-#if BUILDFLAG(IS_WIN)
-  // D3D requires that we use flip model swap chains. Flip swap chains require
-  // that the swap chain be connected with DWM. DWM requires that the rendering
-  // windows are owned by the process that's currently doing the rendering.
-  // gl::ChildWindowWin creates and owns a window which is reparented by the
-  // browser to be a child of its window.
+  // D3D12 requires that we use flip model swap chains. Flip swap chains
+  // require that the swap chain be connected with DWM. DWM requires that
+  // the rendering windows are owned by the process that's currently doing
+  // the rendering. gl::ChildWindowWin creates and owns a window which is
+  // reparented by the browser to be a child of its window.
   gl::ChildWindowWin child_window_;
-#endif
-
-#if BUILDFLAG(IS_ANDROID)
-  // Use ScopedANativeWindow to keep the window alive
-  gl::ScopedANativeWindow android_native_window_;
-#endif
 };
 
 }  // namespace viz

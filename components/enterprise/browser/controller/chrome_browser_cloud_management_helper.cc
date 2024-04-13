@@ -12,7 +12,6 @@
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "components/enterprise/browser/controller/browser_dm_token_storage.h"
-#include "components/policy/core/common/cloud/cloud_policy_client.h"
 #include "components/policy/core/common/cloud/cloud_policy_client_registration_helper.h"
 #include "components/policy/core/common/cloud/cloud_policy_core.h"
 #include "components/policy/core/common/cloud/cloud_policy_manager.h"
@@ -131,8 +130,7 @@ void MachineLevelUserCloudPolicyFetcher::SetupRegistrationAndFetchPolicy(
   DCHECK(policy_manager_->IsClientRegistered());
 
   policy_manager_->core()->service()->RefreshPolicy(
-      base::BindOnce(&OnPolicyFetchCompleted),
-      PolicyFetchReason::kRegistrationChanged);
+      base::BindOnce(&OnPolicyFetchCompleted));
 }
 
 void MachineLevelUserCloudPolicyFetcher::AddClientObserver(

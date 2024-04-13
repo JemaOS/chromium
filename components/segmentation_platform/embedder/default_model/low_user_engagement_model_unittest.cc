@@ -17,32 +17,33 @@ class LowUserEngagementModelTest : public DefaultModelTestBase {
 
 TEST_F(LowUserEngagementModelTest, 2) {
   ExpectInitAndFetchModel();
-  ASSERT_TRUE(fetched_metadata_);
 }
 
 TEST_F(LowUserEngagementModelTest, ExecuteModelWithInput) {
-  ExpectInitAndFetchModel();
-  ASSERT_TRUE(fetched_metadata_);
-
-  EXPECT_FALSE(ExecuteWithInput(/*inputs=*/{}));
-
   ModelProvider::Request input;
+  ExpectExecutionWithInput(input, /*expected_error=*/true,
+                           /*expected_result=*/{0});
 
-  // Low engaged users.
+  input.assign(27, 0);
+  ExpectExecutionWithInput(input, /*expected_error=*/true,
+                           /*expected_result=*/{0});
+
   input.assign(28, 0);
-  ExpectClassifierResults(input, {kChromeLowUserEngagementUmaName});
+  ExpectExecutionWithInput(input, /*expected_error=*/false,
+                           /*expected_result=*/{1});
 
   input.assign(21, 0);
   input.insert(input.end(), 7, 1);
-  ExpectClassifierResults(input, {kChromeLowUserEngagementUmaName});
+  ExpectExecutionWithInput(input, /*expected_error=*/false,
+                           /*expected_result=*/{1});
 
-  // Not low engaged users.
   input.assign(28, 0);
   input[1] = 2;
   input[8] = 3;
   input[15] = 4;
   input[22] = 2;
-  ExpectClassifierResults(input, {kLegacyNegativeLabel});
+  ExpectExecutionWithInput(input, /*expected_error=*/false,
+                           /*expected_result=*/{0});
 }
 
 }  // namespace segmentation_platform

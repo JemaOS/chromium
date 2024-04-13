@@ -6,8 +6,6 @@
 #define COMPONENTS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_SYNC_BRIDGE_H_
 
 #include <memory>
-#include <optional>
-#include <vector>
 
 #include "base/functional/callback_forward.h"
 #include "base/scoped_observation.h"
@@ -18,15 +16,15 @@
 #include "components/sync/model/model_type_change_processor.h"
 #include "components/sync/model/model_type_store.h"
 #include "components/sync/model/model_type_sync_bridge.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+
+class SavedTabGroupModel;
 
 namespace syncer {
 class MutableDataBatch;
 class MetadataBatch;
 class ModelError;
 }  // namespace syncer
-
-namespace tab_groups {
-class SavedTabGroupModel;
 
 // The SavedTabGroupSyncBridge is responsible for synchronizing and resolving
 // conflicts between the data stored in the sync server and what is currently
@@ -48,10 +46,10 @@ class SavedTabGroupSyncBridge : public syncer::ModelTypeSyncBridge,
   // syncer::ModelTypeSyncBridge:
   std::unique_ptr<syncer::MetadataChangeList> CreateMetadataChangeList()
       override;
-  std::optional<syncer::ModelError> MergeFullSyncData(
+  absl::optional<syncer::ModelError> MergeFullSyncData(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_changes) override;
-  std::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_changes) override;
   std::string GetStorageKey(const syncer::EntityData& entity_data) override;
@@ -64,14 +62,8 @@ class SavedTabGroupSyncBridge : public syncer::ModelTypeSyncBridge,
   void SavedTabGroupRemovedLocally(const SavedTabGroup* removed_group) override;
   void SavedTabGroupUpdatedLocally(
       const base::Uuid& group_guid,
-      const std::optional<base::Uuid>& tab_guid = std::nullopt) override;
-  void SavedTabGroupTabsReorderedLocally(const base::Uuid& group_guid) override;
+      const absl::optional<base::Uuid>& tab_guid = absl::nullopt) override;
   void SavedTabGroupReorderedLocally() override;
-
-  const std::vector<sync_pb::SavedTabGroupSpecifics>&
-  GetTabsMissingGroupsForTesting() {
-    return tabs_missing_groups_;
-  }
 
  private:
   // Updates and/or adds the specifics into the ModelTypeStore.
@@ -120,23 +112,23 @@ class SavedTabGroupSyncBridge : public syncer::ModelTypeSyncBridge,
                   syncer::MetadataChangeList* metadata_change_list);
 
   // Loads the data already stored in the ModelTypeStore.
-  void OnStoreCreated(const std::optional<syncer::ModelError>& error,
+  void OnStoreCreated(const absl::optional<syncer::ModelError>& error,
                       std::unique_ptr<syncer::ModelTypeStore> store);
 
   // Loads all sync_pb::SavedTabGroupSpecifics stored in `entries` passing the
   // specifics into OnReadAllMetadata.
   void OnDatabaseLoad(
-      const std::optional<syncer::ModelError>& error,
+      const absl::optional<syncer::ModelError>& error,
       std::unique_ptr<syncer::ModelTypeStore::RecordList> entries);
 
   // React to store failures if a save was not successful.
-  void OnDatabaseSave(const std::optional<syncer::ModelError>& error);
+  void OnDatabaseSave(const absl::optional<syncer::ModelError>& error);
 
   // Calls ModelReadyToSync if there are no errors to report and loads the
   // stored entries into `model_`.
   void OnReadAllMetadata(
       std::unique_ptr<syncer::ModelTypeStore::RecordList> entries,
-      const std::optional<syncer::ModelError>& error,
+      const absl::optional<syncer::ModelError>& error,
       std::unique_ptr<syncer::MetadataBatch> metadata_batch);
 
   // The ModelTypeStore used for local storage.
@@ -156,7 +148,5 @@ class SavedTabGroupSyncBridge : public syncer::ModelTypeSyncBridge,
   // exists at the time of use.
   base::WeakPtrFactory<SavedTabGroupSyncBridge> weak_ptr_factory_{this};
 };
-
-}  // namespace tab_groups
 
 #endif  // COMPONENTS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_SYNC_BRIDGE_H_

@@ -6,8 +6,7 @@
 
 #include <stddef.h>
 
-#include <algorithm>
-
+#include "base/cxx17_backports.h"
 #include "base/logging.h"
 #include "base/run_loop.h"
 #include "base/strings/escape.h"
@@ -684,13 +683,13 @@ TEST(TextEliderTest, FormatUrlForDisplayOmitSchemePathAndTrivialSubdomains) {
       url_formatter::FormatUrlForDisplayOmitSchemePathAndTrivialSubdomains(
           GURL("chrome://version")));
   EXPECT_EQ(
-      u"äpple.de",
+      u"äää.de",
       url_formatter::FormatUrlForDisplayOmitSchemePathAndTrivialSubdomains(
-          GURL("https://äpple.de")));
+          GURL("https://äää.de")));
   EXPECT_EQ(
-      u"xn--pple-koa.com",
+      u"xn--4caaa.com",
       url_formatter::FormatUrlForDisplayOmitSchemePathAndTrivialSubdomains(
-          GURL("https://äpple.com")));
+          GURL("https://äää.com")));
   EXPECT_EQ(
       u"مثال.إختبار",
       url_formatter::FormatUrlForDisplayOmitSchemePathAndTrivialSubdomains(

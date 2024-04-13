@@ -8,12 +8,13 @@
 #include <memory>
 #include <string>
 
+#include "base/compiler_specific.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "components/sync/base/model_type.h"
-#include "components/sync/service/sync_api_component_factory.h"
-#include "components/version_info/channel.h"
+#include "components/sync/driver/sync_api_component_factory.h"
+#include "components/version_info/version_info.h"
 
 namespace syncer {
 class ModelTypeController;
@@ -26,16 +27,8 @@ namespace autofill {
 class AutofillWebDataService;
 }
 
-namespace commerce {
-class ProductSpecificationsService;
-}
-
 namespace password_manager {
 class PasswordStoreInterface;
-}
-
-namespace plus_addresses {
-class PlusAddressWebDataService;
 }
 
 namespace sync_bookmarks {
@@ -45,9 +38,6 @@ class BookmarkSyncService;
 namespace power_bookmarks {
 class PowerBookmarkService;
 }
-namespace supervised_user {
-class SupervisedUserSettingsService;
-}  // namespace supervised_user
 
 namespace browser_sync {
 
@@ -71,55 +61,55 @@ class SyncApiComponentFactoryImpl : public syncer::SyncApiComponentFactory {
       sync_bookmarks::BookmarkSyncService*
           local_or_syncable_bookmark_sync_service,
       sync_bookmarks::BookmarkSyncService* account_bookmark_sync_service,
-      power_bookmarks::PowerBookmarkService* power_bookmark_service,
-      supervised_user::SupervisedUserSettingsService*
-          supervised_user_settings_service,
-      const scoped_refptr<plus_addresses::PlusAddressWebDataService>&
-          plus_address_webdata_service,
-      commerce::ProductSpecificationsService* product_specifications_service);
+      power_bookmarks::PowerBookmarkService* power_bookmark_service);
   SyncApiComponentFactoryImpl(const SyncApiComponentFactoryImpl&) = delete;
   SyncApiComponentFactoryImpl& operator=(const SyncApiComponentFactoryImpl&) =
       delete;
   ~SyncApiComponentFactoryImpl() override;
 
   // Creates and returns enabled datatypes and their controllers.
-  // `disabled_types` allows callers to prevent certain types from being
+  // |disabled_types| allows callers to prevent certain types from being
   // created.
-  syncer::ModelTypeController::TypeVector CreateCommonDataTypeControllers(
+  syncer::DataTypeController::TypeVector CreateCommonDataTypeControllers(
       syncer::ModelTypeSet disabled_types,
       syncer::SyncService* sync_service);
 
   // SyncApiComponentFactory implementation:
   std::unique_ptr<syncer::DataTypeManager> CreateDataTypeManager(
-      const syncer::ModelTypeController::TypeMap* controllers,
+      const syncer::DataTypeController::TypeMap* controllers,
       const syncer::DataTypeEncryptionHandler* encryption_handler,
       syncer::ModelTypeConfigurer* configurer,
       syncer::DataTypeManagerObserver* observer) override;
   std::unique_ptr<syncer::SyncEngine> CreateSyncEngine(
       const std::string& name,
+      invalidation::InvalidationService* invalidator,
       syncer::SyncInvalidationsService* sync_invalidation_service) override;
-  bool HasTransportDataIncludingFirstSync() override;
   void ClearAllTransportData() override;
 
  private:
   // Factory function for ModelTypeControllerDelegate instances for models
-  // living in `ui_thread_` that have their delegate accessible via SyncClient.
+  // living in |ui_thread_| that have their delegate accessible via SyncClient.
   std::unique_ptr<syncer::ModelTypeControllerDelegate>
   CreateForwardingControllerDelegate(syncer::ModelType type);
 
   // Factory function for ModelTypeController instances for wallet-related
-  // datatypes, which live in `db_thread_` and have a delegate accessible via
+  // datatypes, which live in |db_thread_| and have a delegate accessible via
   // AutofillWebDataService.
-  // If `with_transport_mode_support` is true, the controller will support
-  // transport mode, implemented via an independent AutofillWebDataService,
-  // namely `web_data_service_in_memory_`.
   std::unique_ptr<syncer::ModelTypeController> CreateWalletModelTypeController(
       syncer::ModelType type,
       const base::RepeatingCallback<
           base::WeakPtr<syncer::ModelTypeControllerDelegate>(
               autofill::AutofillWebDataService*)>& delegate_from_web_data,
-      syncer::SyncService* sync_service,
-      bool with_transport_mode_support);
+      syncer::SyncService* sync_service);
+  // Same as above, but supporting STORAGE_IN_MEMORY implemented as an
+  // independent AutofillWebDataService, namely |web_data_service_in_memory_|.
+  std::unique_ptr<syncer::ModelTypeController>
+  CreateWalletModelTypeControllerWithInMemorySupport(
+      syncer::ModelType type,
+      const base::RepeatingCallback<
+          base::WeakPtr<syncer::ModelTypeControllerDelegate>(
+              autofill::AutofillWebDataService*)>& delegate_from_web_data,
+      syncer::SyncService* sync_service);
 
   // Client/platform specific members.
   const raw_ptr<BrowserSyncClient> sync_client_;
@@ -141,12 +131,6 @@ class SyncApiComponentFactoryImpl : public syncer::SyncApiComponentFactory {
   const raw_ptr<sync_bookmarks::BookmarkSyncService>
       account_bookmark_sync_service_;
   const raw_ptr<power_bookmarks::PowerBookmarkService> power_bookmark_service_;
-  const raw_ptr<supervised_user::SupervisedUserSettingsService>
-      supervised_user_settings_service_;
-  const scoped_refptr<plus_addresses::PlusAddressWebDataService>
-      plus_address_webdata_service_;
-  const raw_ptr<commerce::ProductSpecificationsService>
-      product_specifications_service_;
 };
 
 }  // namespace browser_sync

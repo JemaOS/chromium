@@ -19,20 +19,19 @@ ClientIdMetadata& ClientIdMetadata::operator=(const ClientIdMetadata&) =
 ClientId MakeClientId(const ClientIdMetadata& metadata) {
   // Here, the 'A' prefix is used so that future versions can easily change the
   // format if necessary.
-  return ClientId(
-      kAutoAsyncNamespace,
-      base::StrCat({"A", base::NumberToString(metadata.android_tab_id)}));
+  return ClientId(kAutoAsyncNamespace,
+                  base::StrCat({"A", std::to_string(metadata.android_tab_id)}));
 }
 
-std::optional<ClientIdMetadata> ExtractMetadata(const ClientId& id) {
+absl::optional<ClientIdMetadata> ExtractMetadata(const ClientId& id) {
   if (id.name_space != kAutoAsyncNamespace)
-    return std::nullopt;
+    return absl::nullopt;
   if (id.id.empty() || id.id[0] != 'A')
-    return std::nullopt;
+    return absl::nullopt;
   ClientIdMetadata metadata;
   if (!base::StringToInt(base::StringPiece(id.id).substr(1),
                          &metadata.android_tab_id))
-    return std::nullopt;
+    return absl::nullopt;
   return metadata;
 }
 

@@ -14,7 +14,9 @@ import org.mockito.InOrder;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 
-/** Test suite for the ApkEngine class. */
+/**
+ * Test suite for the ApkEngine class.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 public class ApkEngineTest {
     private ApkEngine mEngine;

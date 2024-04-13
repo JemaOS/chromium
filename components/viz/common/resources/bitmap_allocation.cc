@@ -13,6 +13,7 @@
 #include "base/memory/read_only_shared_memory_region.h"
 #include "base/process/memory.h"
 #include "build/build_config.h"
+#include "components/viz/common/resources/resource_format_utils.h"
 #include "components/viz/common/resources/resource_sizes.h"
 #include "mojo/public/cpp/system/platform_handle.h"
 #include "ui/gfx/geometry/size.h"
@@ -47,7 +48,8 @@ base::MappedReadOnlyRegion AllocateSharedBitmap(const gfx::Size& size,
   DCHECK(format.IsBitmapFormatSupported())
       << "(format = " << format.ToString() << ")";
   size_t bytes = 0;
-  if (!ResourceSizes::MaybeSizeInBytes(size, format, &bytes)) {
+  if (!ResourceSizes::MaybeSizeInBytes(size, format.resource_format(),
+                                       &bytes)) {
     DLOG(ERROR) << "AllocateMappedBitmap with size that overflows";
     CollectMemoryUsageAndDie(size, format, std::numeric_limits<int>::max());
   }

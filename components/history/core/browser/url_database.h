@@ -100,10 +100,6 @@ class URLDatabase {
   // The caller than adds the URLs it wants to preserve to the temporary table,
   // and then deletes everything else by calling CommitTemporaryURLTable().
   // Returns true on success.
-  //
-  // WARNING: if the temporary table already exists, it is dropped and a new
-  // one created. This is done as the temporary table is only intended to
-  // exist for a short amount of time before it's renamed.
   bool CreateTemporaryURLTable();
 
   // Adds a row to the temporary URL table. This must be called between
@@ -270,8 +266,7 @@ class URLDatabase {
   //
   // is_temporary is false when generating the "regular" URLs table. The expirer
   // sets this to true to generate the temporary table, which will have a
-  // different name but the same schema. See comment in
-  // CreateTemporaryURLTable() for details on temporary creation.
+  // different name but the same schema.
   bool CreateURLTable(bool is_temporary);
 
   // Creates the index over URLs so we can quickly look up based on URL.
@@ -302,9 +297,8 @@ class URLDatabase {
   bool URLTableContainsAutoincrement();
 
   // Convenience to fill a URLRow. Must be in sync with the fields in
-  // kHistoryURLRowFields. Returns true if the data was valid and |*i| was
-  // actually populated.
-  [[nodiscard]] static bool FillURLRow(sql::Statement& s, URLRow* i);
+  // kHistoryURLRowFields.
+  static void FillURLRow(sql::Statement& s, URLRow* i);
 
   // Returns the database for the functions in this interface. The descendant of
   // this class implements these functions to return its objects.

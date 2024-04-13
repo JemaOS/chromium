@@ -7,10 +7,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/containers/cxx20_erase.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/ranges/algorithm.h"
-#include "base/trace_event/trace_event.h"
 #include "components/browser_sync/active_devices_provider_impl.h"
 #include "components/browser_sync/browser_sync_switches.h"
 #include "components/sync/base/model_type.h"
@@ -22,21 +22,21 @@ ActiveDevicesProviderImpl::ActiveDevicesProviderImpl(
     base::Clock* clock)
     : device_info_tracker_(device_info_tracker), clock_(clock) {
   DCHECK(device_info_tracker_);
-  device_info_tracker_observation_.Observe(device_info_tracker_);
+  device_info_tracker_->AddObserver(this);
 }
 
 ActiveDevicesProviderImpl::~ActiveDevicesProviderImpl() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(callback_.is_null());
+  device_info_tracker_->RemoveObserver(this);
 }
 
 syncer::ActiveDevicesInvalidationInfo
 ActiveDevicesProviderImpl::CalculateInvalidationInfo(
     const std::string& local_cache_guid) const {
-  TRACE_EVENT0("ui", "ActiveDevicesProviderImpl::CalculateInvalidationInfo");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  const std::vector<const syncer::DeviceInfo*> active_devices =
+  const std::vector<std::unique_ptr<syncer::DeviceInfo>> active_devices =
       GetActiveDevicesSortedByUpdateTime();
   if (active_devices.empty()) {
     // This may happen if the engine is not initialized yet. In other cases,
@@ -56,7 +56,7 @@ ActiveDevicesProviderImpl::CalculateInvalidationInfo(
   std::map<std::string, syncer::ModelTypeSet>
       fcm_token_and_interested_data_types;
 
-  for (const syncer::DeviceInfo* device : active_devices) {
+  for (const std::unique_ptr<syncer::DeviceInfo>& device : active_devices) {
     if (!local_cache_guid.empty() && device->guid() == local_cache_guid) {
       continue;
     }
@@ -99,9 +99,6 @@ ActiveDevicesProviderImpl::CalculateInvalidationInfo(
           switches::kSyncFCMRegistrationTokensListMaxSize.Get())) {
     all_fcm_registration_tokens.clear();
   }
-  TRACE_EVENT0("ui",
-               "ActiveDevicesProviderImpl::CalculateInvalidationInfo() => "
-               "ActiveDevicesInvalidationInfo::Create");
 
   return syncer::ActiveDevicesInvalidationInfo::Create(
       std::move(all_fcm_registration_tokens), all_interested_data_types,
@@ -125,28 +122,30 @@ void ActiveDevicesProviderImpl::OnDeviceInfoChange() {
   }
 }
 
-std::vector<const syncer::DeviceInfo*>
+std::vector<std::unique_ptr<syncer::DeviceInfo>>
 ActiveDevicesProviderImpl::GetActiveDevicesSortedByUpdateTime() const {
-  std::vector<const syncer::DeviceInfo*> all_devices =
+  std::vector<std::unique_ptr<syncer::DeviceInfo>> all_devices =
       device_info_tracker_->GetAllDeviceInfo();
-
-  if (base::FeatureList::IsEnabled(
+  base::ranges::sort(
+      all_devices, [](const std::unique_ptr<syncer::DeviceInfo>& left_device,
+                      const std::unique_ptr<syncer::DeviceInfo>& right_device) {
+        return left_device->last_updated_timestamp() <
+               right_device->last_updated_timestamp();
+      });
+  if (!base::FeatureList::IsEnabled(
           switches::kSyncFilterOutInactiveDevicesForSingleClient)) {
-    std::erase_if(all_devices, [this](const syncer::DeviceInfo* device) {
-      const base::Time expected_expiration_time =
-          device->last_updated_timestamp() + device->pulse_interval() +
-          switches::kSyncActiveDeviceMargin.Get();
-      // If the device's expiration time hasn't been reached, then
-      // it is considered active device.
-      return expected_expiration_time <= clock_->Now();
-    });
+    return all_devices;
   }
 
-  base::ranges::sort(all_devices, [](const syncer::DeviceInfo* left_device,
-                                     const syncer::DeviceInfo* right_device) {
-    return left_device->last_updated_timestamp() <
-           right_device->last_updated_timestamp();
-  });
+  base::EraseIf(
+      all_devices, [this](const std::unique_ptr<syncer::DeviceInfo>& device) {
+        const base::Time expected_expiration_time =
+            device->last_updated_timestamp() + device->pulse_interval() +
+            switches::kSyncActiveDeviceMargin.Get();
+        // If the device's expiration time hasn't been reached, then
+        // it is considered active device.
+        return expected_expiration_time <= clock_->Now();
+      });
 
   return all_devices;
 }

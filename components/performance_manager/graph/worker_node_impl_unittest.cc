@@ -6,7 +6,6 @@
 
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
-#include "base/memory/raw_ptr.h"
 #include "components/performance_manager/graph/frame_node_impl.h"
 #include "components/performance_manager/graph/page_node_impl.h"
 #include "components/performance_manager/graph/process_node_impl.h"
@@ -55,7 +54,10 @@ TEST_F(WorkerNodeImplTest, ConstProperties) {
       kWorkerType, process.get(), kTestBrowserContextId, kTestWorkerToken);
 
   // Test private interface.
+  EXPECT_EQ(worker_impl->browser_context_id(), kTestBrowserContextId);
+  EXPECT_EQ(worker_impl->worker_type(), kWorkerType);
   EXPECT_EQ(worker_impl->process_node(), process.get());
+  EXPECT_EQ(worker_impl->worker_token(), kTestWorkerToken);
 
   // Test public interface.
   const WorkerNode* worker = worker_impl.get();
@@ -74,11 +76,11 @@ TEST_F(WorkerNodeImplTest, OnFinalResponseURLDetermined) {
                                                 process.get());
 
   // Initially empty.
-  EXPECT_TRUE(worker_impl->GetURL().is_empty());
+  EXPECT_TRUE(worker_impl->url().is_empty());
 
   // Set when OnFinalResponseURLDetermined() is called.
   worker_impl->OnFinalResponseURLDetermined(kTestUrl);
-  EXPECT_EQ(worker_impl->GetURL(), kTestUrl);
+  EXPECT_EQ(worker_impl->url(), kTestUrl);
 }
 
 // Create a worker of each type and register the frame as a client of each.
@@ -198,13 +200,13 @@ TEST_F(WorkerNodeImplTest, PriorityAndReason) {
                                                 process.get());
 
   // Initially the default priority.
-  EXPECT_EQ(worker_impl->GetPriorityAndReason(),
+  EXPECT_EQ(worker_impl->priority_and_reason(),
             PriorityAndReason(base::TaskPriority::LOWEST,
                               WorkerNodeImpl::kDefaultPriorityReason));
 
   worker_impl->SetPriorityAndReason(kTestPriorityAndReason);
 
-  EXPECT_EQ(worker_impl->GetPriorityAndReason(), kTestPriorityAndReason);
+  EXPECT_EQ(worker_impl->priority_and_reason(), kTestPriorityAndReason);
 }
 
 class TestWorkerNodeObserver : public WorkerNodeObserver {
@@ -260,16 +262,12 @@ class TestWorkerNodeObserver : public WorkerNodeObserver {
     return on_final_response_url_determined_called_;
   }
 
-  const base::flat_map<
-      const WorkerNode*,
-      base::flat_set<raw_ptr<const FrameNode, CtnExperimental>>>&
+  const base::flat_map<const WorkerNode*, base::flat_set<const FrameNode*>>&
   client_frames() const {
     return client_frames_;
   }
 
-  const base::flat_map<
-      const WorkerNode*,
-      base::flat_set<raw_ptr<const WorkerNode, CtnExperimental>>>&
+  const base::flat_map<const WorkerNode*, base::flat_set<const WorkerNode*>>&
   client_workers() const {
     return client_workers_;
   }
@@ -281,11 +279,9 @@ class TestWorkerNodeObserver : public WorkerNodeObserver {
  private:
   bool on_final_response_url_determined_called_ = false;
 
-  base::flat_map<const WorkerNode*,
-                 base::flat_set<raw_ptr<const FrameNode, CtnExperimental>>>
+  base::flat_map<const WorkerNode*, base::flat_set<const FrameNode*>>
       client_frames_;
-  base::flat_map<const WorkerNode*,
-                 base::flat_set<raw_ptr<const WorkerNode, CtnExperimental>>>
+  base::flat_map<const WorkerNode*, base::flat_set<const WorkerNode*>>
       client_workers_;
 
   bool on_priority_and_reason_changed_called_ = false;
@@ -316,8 +312,8 @@ TEST_F(WorkerNodeImplTest, Observer_AddWorkerNodes) {
   for (const auto& worker_and_client_frames :
        worker_node_observer.client_frames()) {
     // For each worker, check that |frame| is a client.
-    const base::flat_set<raw_ptr<const FrameNode, CtnExperimental>>&
-        client_frames = worker_and_client_frames.second;
+    const base::flat_set<const FrameNode*>& client_frames =
+        worker_and_client_frames.second;
     EXPECT_TRUE(client_frames.find(frame.get()) != client_frames.end());
   }
 
@@ -353,13 +349,11 @@ TEST_F(WorkerNodeImplTest, Observer_ClientsOfServiceWorkers) {
   EXPECT_EQ(worker_node_observer.client_frames().size(), 3u);
 
   // Check clients of the service worker.
-  const base::flat_set<
-      raw_ptr<const FrameNode, CtnExperimental>>& client_frames =
+  const base::flat_set<const FrameNode*>& client_frames =
       worker_node_observer.client_frames().find(service_worker.get())->second;
   EXPECT_TRUE(client_frames.find(frame.get()) != client_frames.end());
 
-  const base::flat_set<
-      raw_ptr<const WorkerNode, CtnExperimental>>& client_workers =
+  const base::flat_set<const WorkerNode*>& client_workers =
       worker_node_observer.client_workers().find(service_worker.get())->second;
   EXPECT_TRUE(client_workers.find(dedicated_worker.get()) !=
               client_workers.end());
@@ -401,7 +395,7 @@ TEST_F(WorkerNodeImplTest, Observer_OnPriorityAndReasonChanged) {
                                                     "this is a reason!");
   worker->SetPriorityAndReason(kPriorityAndReason);
   EXPECT_TRUE(worker_node_observer.on_priority_and_reason_changed_called());
-  EXPECT_EQ(worker->GetPriorityAndReason(), kPriorityAndReason);
+  EXPECT_EQ(worker->priority_and_reason(), kPriorityAndReason);
 
   graph()->RemoveWorkerNodeObserver(&worker_node_observer);
 }

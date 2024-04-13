@@ -8,7 +8,7 @@ namespace autofill {
 
 // static
 AutofillErrorDialogContext
-AutofillErrorDialogContext::WithVirtualCardPermanentOrTemporaryError(
+AutofillErrorDialogContext::WithPermanentOrTemporaryError(
     bool is_permanent_error) {
   AutofillErrorDialogContext autofill_error_dialog_context;
   autofill_error_dialog_context.type =
@@ -22,18 +22,9 @@ AutofillErrorDialogContext::AutofillErrorDialogContext() = default;
 AutofillErrorDialogContext::AutofillErrorDialogContext(
     const AutofillErrorDialogContext& other) = default;
 
-AutofillErrorDialogContext::AutofillErrorDialogContext(
-    AutofillErrorDialogContext&& other) = default;
-
 AutofillErrorDialogContext& AutofillErrorDialogContext::operator=(
     const AutofillErrorDialogContext&) = default;
 
-AutofillErrorDialogContext& AutofillErrorDialogContext::operator=(
-    AutofillErrorDialogContext&&) = default;
-
 AutofillErrorDialogContext::~AutofillErrorDialogContext() = default;
-
-bool AutofillErrorDialogContext::operator==(
-    const AutofillErrorDialogContext& other_context) const = default;
 
 }  // namespace autofill

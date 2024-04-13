@@ -95,35 +95,35 @@ bool CommerceHeuristicsData::PopulateDataFromComponent(
   return true;
 }
 
-std::optional<std::string> CommerceHeuristicsData::GetMerchantName(
+absl::optional<std::string> CommerceHeuristicsData::GetMerchantName(
     const std::string& domain) {
   return GetCommerceHintHeuristics(kMerchantNameType, domain);
 }
 
-std::optional<std::string> CommerceHeuristicsData::GetMerchantCartURL(
+absl::optional<std::string> CommerceHeuristicsData::GetMerchantCartURL(
     const std::string& domain) {
   return GetCommerceHintHeuristics(kMerchantCartURLType, domain);
 }
 
-std::optional<std::string>
+absl::optional<std::string>
 CommerceHeuristicsData::GetHintHeuristicsJSONForDomain(
     const std::string& domain) {
   if (!hint_heuristics_.contains(domain)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   base::Value::Dict domain_heuristics =
       hint_heuristics_.FindDict(domain)->Clone();
   if (domain_heuristics.empty()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   base::Value::Dict res_dic;
   res_dic.Set(domain, std::move(domain_heuristics));
   std::string res_string;
   base::JSONWriter::Write(res_dic, &res_string);
-  return std::optional<std::string>(res_string);
+  return absl::optional<std::string>(res_string);
 }
 
-std::optional<std::string> CommerceHeuristicsData::GetGlobalHeuristicsJSON() {
+absl::optional<std::string> CommerceHeuristicsData::GetGlobalHeuristicsJSON() {
   return global_heuristics_string_;
 }
 
@@ -194,36 +194,37 @@ std::string CommerceHeuristicsData::GetCartProductExtractionScript() {
   return cart_extraction_script_;
 }
 
-std::optional<base::TimeDelta> CommerceHeuristicsData::GetDiscountFetchDelay() {
+absl::optional<base::TimeDelta>
+CommerceHeuristicsData::GetDiscountFetchDelay() {
   auto delay_value_optional =
       GetCommerceGlobalHeuristics(kDiscountFetchDelayType);
   if (!delay_value_optional.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return base::TimeDeltaFromString(*delay_value_optional);
 }
 
-std::optional<std::string> CommerceHeuristicsData::GetCommerceHintHeuristics(
+absl::optional<std::string> CommerceHeuristicsData::GetCommerceHintHeuristics(
     const std::string& type,
     const std::string& domain) {
   if (!hint_heuristics_.contains(domain)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   const base::Value::Dict* domain_heuristics =
       hint_heuristics_.FindDict(domain);
   if (!domain_heuristics || domain_heuristics->empty() ||
       !domain_heuristics->contains(type)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
-  return std::optional<std::string>(*domain_heuristics->FindString(type));
+  return absl::optional<std::string>(*domain_heuristics->FindString(type));
 }
 
-std::optional<std::string> CommerceHeuristicsData::GetCommerceGlobalHeuristics(
+absl::optional<std::string> CommerceHeuristicsData::GetCommerceGlobalHeuristics(
     const std::string& type) {
   if (!global_heuristics_.contains(type)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
-  return std::optional<std::string>(*global_heuristics_.FindString(type));
+  return absl::optional<std::string>(*global_heuristics_.FindString(type));
 }
 
 const re2::RE2* CommerceHeuristicsData::GetCommerceHintHeuristicsRegex(
@@ -232,7 +233,7 @@ const re2::RE2* CommerceHeuristicsData::GetCommerceHintHeuristicsRegex(
     const std::string domain) {
   if (map.find(domain) != map.end())
     return map.at(domain).get();
-  std::optional<std::string> pattern = GetCommerceHintHeuristics(type, domain);
+  absl::optional<std::string> pattern = GetCommerceHintHeuristics(type, domain);
   if (!pattern.has_value())
     return nullptr;
   re2::RE2::Options options;

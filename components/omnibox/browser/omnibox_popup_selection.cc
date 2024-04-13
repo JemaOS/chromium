@@ -3,15 +3,11 @@
 // found in the LICENSE file.
 
 #include "components/omnibox/browser/omnibox_popup_selection.h"
-
-#include "build/build_config.h"
 #include "components/omnibox/browser/actions/omnibox_action.h"
-#include "components/omnibox/browser/autocomplete_result.h"
-#include "components/search_engines/template_url_service.h"
 
 #include <algorithm>
 
-constexpr bool kIsDesktop = !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS);
+#include "build/build_config.h"
 
 const size_t OmniboxPopupSelection::kNoMatch = static_cast<size_t>(-1);
 
@@ -40,10 +36,6 @@ bool OmniboxPopupSelection::IsChangeToKeyword(
 
 bool OmniboxPopupSelection::IsButtonFocused() const {
   return state != NORMAL && state != KEYWORD_MODE;
-}
-
-bool OmniboxPopupSelection::IsAction() const {
-  return state == FOCUSED_BUTTON_ACTION;
 }
 
 bool OmniboxPopupSelection::IsControlPresentOnMatch(
@@ -89,9 +81,27 @@ bool OmniboxPopupSelection::IsControlPresentOnMatch(
       return true;
     case KEYWORD_MODE:
       return match.associated_keyword != nullptr;
+    case FOCUSED_BUTTON_TAB_SWITCH:
+      // The default action for suggestions from the open tab provider in
+      // keyword mode is to switch to the open tab so no button is necessary.
+      if (OmniboxFieldTrial::IsSiteSearchStarterPackEnabled() &&
+          match.from_keyword &&
+          match.provider->type() == AutocompleteProvider::TYPE_OPEN_TAB) {
+        return false;
+      }
+      return match.has_tab_match.value_or(false);
     case FOCUSED_BUTTON_ACTION: {
       // Actions buttons should not be shown in keyword mode.
-      return !match.from_keyword && action_index < match.actions.size();
+      if (OmniboxFieldTrial::IsSiteSearchStarterPackEnabled() &&
+          match.from_keyword) {
+        return false;
+      }
+      if (action_index >= match.actions.size()) {
+        return false;
+      }
+      // If the action takes over the whole match, don't have a separate Action
+      // control in the tab order (or rendered).
+      return !match.actions[action_index]->TakesOverMatch();
     }
     case FOCUSED_BUTTON_REMOVE_SUGGESTION:
       return match.SupportsDeletion();
@@ -105,7 +115,6 @@ bool OmniboxPopupSelection::IsControlPresentOnMatch(
 OmniboxPopupSelection OmniboxPopupSelection::GetNextSelection(
     const AutocompleteResult& result,
     PrefService* pref_service,
-    TemplateURLService* template_url_service,
     Direction direction,
     Step step) const {
   if (result.empty()) {
@@ -122,8 +131,7 @@ OmniboxPopupSelection OmniboxPopupSelection::GetNextSelection(
   // in practice it's only something like ~10 elements long, and makes the code
   // easy to reason about.
   std::vector<OmniboxPopupSelection> all_available_selections =
-      GetAllAvailableSelectionsSorted(result, pref_service,
-                                      template_url_service, direction, step);
+      GetAllAvailableSelectionsSorted(result, pref_service, direction, step);
 
   if (all_available_selections.empty()) {
     return *this;
@@ -176,7 +184,6 @@ std::vector<OmniboxPopupSelection>
 OmniboxPopupSelection::GetAllAvailableSelectionsSorted(
     const AutocompleteResult& result,
     PrefService* pref_service,
-    TemplateURLService* template_url_service,
     Direction direction,
     Step step) {
   // First enumerate all the accessible states based on `direction` and `step`,
@@ -184,9 +191,8 @@ OmniboxPopupSelection::GetAllAvailableSelectionsSorted(
   // all of these states - just that it's possible to get there, if available.
   std::vector<LineState> all_states;
   if (step == kWholeLine || step == kAllLines) {
+    // In the case of whole-line stepping, only the NORMAL state is accessible.
     all_states.push_back(NORMAL);
-    // Whole line stepping can go straight into keyword mode.
-    all_states.push_back(KEYWORD_MODE);
   } else {
     // Arrow keys should never reach the header controls.
     if (step == kStateOrLine) {
@@ -195,6 +201,7 @@ OmniboxPopupSelection::GetAllAvailableSelectionsSorted(
 
     all_states.push_back(NORMAL);
     all_states.push_back(KEYWORD_MODE);
+    all_states.push_back(FOCUSED_BUTTON_TAB_SWITCH);
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
     all_states.push_back(FOCUSED_BUTTON_ACTION);
 #endif
@@ -205,45 +212,33 @@ OmniboxPopupSelection::GetAllAvailableSelectionsSorted(
 
   // Now, for each accessible line, add all the available line states to a list.
   std::vector<OmniboxPopupSelection> available_selections;
-  for (size_t line_number = 0; line_number < result.size(); ++line_number) {
-    for (LineState line_state : all_states) {
-      if (line_state == FOCUSED_BUTTON_ACTION) {
-        constexpr size_t kMaxActionCount = 8;
-        for (size_t i = 0; i < kMaxActionCount; i++) {
-          OmniboxPopupSelection selection(line_number, line_state, i);
+  {
+    auto add_available_line_states_for_line = [&](size_t line_number) {
+      for (LineState line_state : all_states) {
+        if (line_state == FOCUSED_BUTTON_ACTION) {
+          constexpr size_t kMaxActionCount = 8;
+          for (size_t i = 0; i < kMaxActionCount; i++) {
+            OmniboxPopupSelection selection(line_number, line_state, i);
+            if (selection.IsControlPresentOnMatch(result, pref_service)) {
+              available_selections.push_back(selection);
+            } else {
+              // Break early when there are no more actions. Note, this
+              // implies that a match takeover action should be last
+              // to allow other actions on the match to be included.
+              break;
+            }
+          }
+        } else {
+          OmniboxPopupSelection selection(line_number, line_state);
           if (selection.IsControlPresentOnMatch(result, pref_service)) {
             available_selections.push_back(selection);
-          } else {
-            // Break early when there are no more actions. Note, this
-            // implies that a match takeover action should be last
-            // to allow other actions on the match to be included.
-            break;
           }
-        }
-      } else if (line_state == KEYWORD_MODE && kIsDesktop) {
-        OmniboxPopupSelection selection(line_number, line_state);
-        if (selection.IsControlPresentOnMatch(result, pref_service)) {
-          if (result.match_at(line_number)
-                  .HasInstantKeyword(template_url_service)) {
-            if (available_selections.size() > 0 &&
-                available_selections.back().line == line_number &&
-                available_selections.back().state == LineState::NORMAL) {
-              // Remove the preceding normal state selection so that keyword
-              // mode will be entered immediately when the user arrows down
-              // to this keyword line.
-              available_selections.pop_back();
-            }
-            available_selections.push_back(selection);
-          } else if (step == kStateOrLine) {
-            available_selections.push_back(selection);
-          }
-        }
-      } else {
-        OmniboxPopupSelection selection(line_number, line_state);
-        if (selection.IsControlPresentOnMatch(result, pref_service)) {
-          available_selections.push_back(selection);
         }
       }
+    };
+
+    for (size_t line_number = 0; line_number < result.size(); ++line_number) {
+      add_available_line_states_for_line(line_number);
     }
   }
   DCHECK(

@@ -12,14 +12,11 @@ import("//printing/buildflags/buildflags.gni")
 import("//testing/test.gni")
 if (is_android) {
   import("//build/config/android/rules.gni")
-  import("//third_party/jni_zero/jni_zero.gni")
+} else if (is_ios && use_blink) {
+  import("//build/config/ios/bundle_data_from_filelist.gni")
 }
 
-if (enable_printing_tests) {
-  import("//build/config/ios/bundle_data_from_filelist.gni")
-} else {
-  assert(enable_printing)
-}
+assert(enable_printing)
 
 if (is_win || enable_print_preview) {
   # Windows basic printing or print preview requires pdf enabled.
@@ -72,7 +69,6 @@ component("printing_base") {
   public_deps = [
     "//build:chromeos_buildflags",
     "//printing/buildflags",
-    "//printing/mojom",
   ]
   deps = [
     "//base",
@@ -329,9 +325,23 @@ static_library("test_support") {
     "//skia",
     "//ui/gfx",
   ]
+
+  if (is_android) {
+    sources += [ "image_android.cc" ]
+  }
+
+  if (is_linux || is_chromeos || is_fuchsia) {
+    sources += [ "image_linux.cc" ]
+  }
+  if (is_apple) {
+    sources += [ "image_mac.cc" ]
+  }
+  if (is_win) {
+    sources += [ "image_win.cc" ]
+  }
 }
 
-if (enable_printing_tests) {
+if (is_ios && use_blink) {
   bundle_data_from_filelist("pdf_metafile_cg_mac_unittest_bundle_data") {
     testonly = true
     filelist_name = "test/pdf_metafile_cg_mac_unittest_bundle_data.filelist"
@@ -394,16 +404,12 @@ test("printing_unittests") {
       "test/data/pdf_cg/",
       "../pdf/test/data/",
     ]
-  } else if (enable_printing_tests) {
-    deps += [
-      ":pdf_metafile_cg_mac_unittest_bundle_data",
-      "//pdf:pdf_test_bundle_data",
-    ]
+  } else if (is_ios && use_blink) {
+    deps += [ ":pdf_metafile_cg_mac_unittest_bundle_data" ]
   }
 
   if (is_win) {
     sources += [
-      "backend/win_helper_unittest.cc",
       "backend/xps_utils_win_unittest.cc",
       "emf_win_unittest.cc",
       "printed_page_win_unittest.cc",
@@ -474,12 +480,11 @@ if (is_android) {
   android_library("printing_java") {
     deps = [
       "//base:base_java",
+      "//base:jni_java",
       "//build/android:build_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
-      "//third_party/jni_zero:jni_zero_java",
       "//ui/android:ui_java",
     ]
-    srcjar_deps = [ ":printing_jni_headers" ]
     sources = [
       "android/java/src/org/chromium/printing/PrintDocumentAdapterWrapper.java",
       "android/java/src/org/chromium/printing/PrintManagerDelegate.java",
@@ -489,5 +494,6 @@ if (is_android) {
       "android/java/src/org/chromium/printing/PrintingController.java",
       "android/java/src/org/chromium/printing/PrintingControllerImpl.java",
     ]
+    annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
   }
 }

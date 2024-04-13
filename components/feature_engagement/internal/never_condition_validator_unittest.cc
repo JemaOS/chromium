@@ -11,7 +11,6 @@
 #include "components/feature_engagement/internal/never_availability_model.h"
 #include "components/feature_engagement/internal/noop_display_lock_controller.h"
 #include "components/feature_engagement/internal/proto/feature_event.pb.h"
-#include "components/feature_engagement/internal/test/test_time_provider.h"
 #include "components/feature_engagement/public/configuration.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -51,8 +50,6 @@ class NeverTestEventModel : public EventModel {
 
   void IncrementEvent(const std::string& event_name, uint32_t day) override {}
 
-  void ClearEvent(const std::string& event_name) override {}
-
   void IncrementSnooze(const std::string& event_name,
                        uint32_t day,
                        base::Time time) override {}
@@ -88,7 +85,6 @@ class NeverConditionValidatorTest : public ::testing::Test {
   NeverAvailabilityModel availability_model_;
   NoopDisplayLockController display_lock_controller_;
   NeverConditionValidator validator_;
-  TestTimeProvider time_provider_;
 };
 
 }  // namespace
@@ -97,14 +93,12 @@ TEST_F(NeverConditionValidatorTest, ShouldNeverMeetConditions) {
   EXPECT_FALSE(validator_
                    .MeetsConditions(kNeverTestFeatureFoo, FeatureConfig(), {},
                                     event_model_, availability_model_,
-                                    display_lock_controller_, nullptr,
-                                    time_provider_)
+                                    display_lock_controller_, nullptr, 0u)
                    .NoErrors());
   EXPECT_FALSE(validator_
                    .MeetsConditions(kNeverTestFeatureBar, FeatureConfig(), {},
                                     event_model_, availability_model_,
-                                    display_lock_controller_, nullptr,
-                                    time_provider_)
+                                    display_lock_controller_, nullptr, 0u)
                    .NoErrors());
   EXPECT_FALSE(validator_.GetPendingPriorityNotification().has_value());
 }

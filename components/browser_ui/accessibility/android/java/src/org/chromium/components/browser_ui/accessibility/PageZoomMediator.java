@@ -7,7 +7,7 @@ package org.chromium.components.browser_ui.accessibility;
 import static org.chromium.components.browser_ui.accessibility.PageZoomUtils.PAGE_ZOOM_MAXIMUM_SEEKBAR_VALUE;
 import static org.chromium.components.browser_ui.accessibility.PageZoomUtils.convertZoomFactorToSeekBarValue;
 import static org.chromium.content_public.browser.HostZoomMap.AVAILABLE_ZOOM_FACTORS;
-import static org.chromium.content_public.browser.HostZoomMap.setSystemFontScale;
+import static org.chromium.content_public.browser.HostZoomMap.SYSTEM_FONT_SCALE;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
@@ -32,14 +32,13 @@ public class PageZoomMediator {
 
         mModel.set(PageZoomProperties.DECREASE_ZOOM_CALLBACK, this::handleDecreaseClicked);
         mModel.set(PageZoomProperties.INCREASE_ZOOM_CALLBACK, this::handleIncreaseClicked);
-        mModel.set(PageZoomProperties.RESET_ZOOM_CALLBACK, this::handleResetClicked);
         mModel.set(PageZoomProperties.SEEKBAR_CHANGE_CALLBACK, this::handleSeekBarValueChanged);
         mModel.set(PageZoomProperties.MAXIMUM_SEEK_VALUE, PAGE_ZOOM_MAXIMUM_SEEKBAR_VALUE);
 
         // Update the stored system font scale based on OS-level configuration. |this| will be
         // re-constructed after configuration changes, so this will be up-to-date for this session.
-        setSystemFontScale(
-                ContextUtils.getApplicationContext().getResources().getConfiguration().fontScale);
+        SYSTEM_FONT_SCALE =
+                ContextUtils.getApplicationContext().getResources().getConfiguration().fontScale;
     }
 
     /**
@@ -60,7 +59,9 @@ public class PageZoomMediator {
         return mLatestZoomValue;
     }
 
-    /** Logs UKM for the user changing the zoom level on the page from the slider. */
+    /**
+     * Logs UKM for the user changing the zoom level on the page from the slider.
+     */
     protected void logZoomLevelUKM(double value) {
         PageZoomMetrics.logZoomLevelUKM(mWebContents, value);
     }
@@ -88,12 +89,6 @@ public class PageZoomMediator {
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    void handleResetClicked(Void unused) {
-        // Reset as if the user moved the seekbar to the default zoom value
-        handleSeekBarValueChanged(
-                PageZoomUtils.convertZoomFactorToSeekBarValue(mDefaultZoomFactor));
-    }
-
     void handleSeekBarValueChanged(int newValue) {
         if (PageZoomUtils.shouldSnapSeekBarValueToDefaultZoom(newValue, mDefaultZoomFactor)) {
             newValue = PageZoomUtils.convertZoomFactorToSeekBarValue(mDefaultZoomFactor);
@@ -110,8 +105,7 @@ public class PageZoomMediator {
         double currentZoomFactor = getZoomLevel(mWebContents);
 
         // The seekbar should start at the seek value that corresponds to this zoom factor.
-        mModel.set(
-                PageZoomProperties.CURRENT_SEEK_VALUE,
+        mModel.set(PageZoomProperties.CURRENT_SEEK_VALUE,
                 convertZoomFactorToSeekBarValue(currentZoomFactor));
 
         mDefaultZoomFactor = mModel.get(PageZoomProperties.DEFAULT_ZOOM_FACTOR);
@@ -133,13 +127,11 @@ public class PageZoomMediator {
 
     private void updateButtonStates(double newZoomFactor) {
         // If the new zoom factor is greater than the minimum zoom factor, enable decrease button.
-        mModel.set(
-                PageZoomProperties.DECREASE_ZOOM_ENABLED,
+        mModel.set(PageZoomProperties.DECREASE_ZOOM_ENABLED,
                 newZoomFactor > AVAILABLE_ZOOM_FACTORS[0]);
 
         // If the new zoom factor is less than the maximum zoom factor, enable increase button.
-        mModel.set(
-                PageZoomProperties.INCREASE_ZOOM_ENABLED,
+        mModel.set(PageZoomProperties.INCREASE_ZOOM_ENABLED,
                 newZoomFactor < AVAILABLE_ZOOM_FACTORS[AVAILABLE_ZOOM_FACTORS.length - 1]);
     }
 

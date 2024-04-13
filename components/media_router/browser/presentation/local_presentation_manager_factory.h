@@ -16,9 +16,15 @@ namespace media_router {
 
 class LocalPresentationManager;
 
+// LocalPresentationManager is shared between a Profile and
+// its associated incognito Profiles.
 class LocalPresentationManagerFactory
     : public BrowserContextKeyedServiceFactory {
  public:
+  // If |web_contents| is normal profile, use it as browser context;
+  // If |web_contents| is incognito profile, |GetBrowserContextToUse| will
+  // redirect incognito profile to original profile, and use original one as
+  // browser context.
   static LocalPresentationManager* GetOrCreateForWebContents(
       content::WebContents* web_contents);
   static LocalPresentationManager* GetOrCreateForBrowserContext(
@@ -33,7 +39,7 @@ class LocalPresentationManagerFactory
   ~LocalPresentationManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory interface.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

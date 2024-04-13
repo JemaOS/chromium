@@ -8,9 +8,7 @@
 
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
-#include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
-#include "components/autofill/core/common/autofill_features.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/pref_service_factory.h"
@@ -22,8 +20,8 @@ namespace prefs {
 
 class AutofillPrefsTest : public testing::Test {
  protected:
-  AutofillPrefsTest() = default;
-  ~AutofillPrefsTest() override = default;
+  AutofillPrefsTest() {}
+  ~AutofillPrefsTest() override {}
 
   void SetUp() override { pref_service_ = CreatePrefServiceAndRegisterPrefs(); }
 
@@ -110,7 +108,7 @@ TEST_F(AutofillPrefsTest, WalletSyncTransportPref_UsesHashAccountId) {
   // Make sure that the dictionary keys don't contain the account id.
   const auto& dictionary =
       pref_service()->GetDict(prefs::kAutofillSyncTransportOptIn);
-  EXPECT_EQ(std::nullopt, dictionary.FindInt(account1.ToString()));
+  EXPECT_EQ(absl::nullopt, dictionary.FindInt(account1.ToString()));
 }
 
 // Tests that clearing the AutofillSyncTransportOptIn works as expected.

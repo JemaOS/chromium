@@ -42,7 +42,10 @@ class NfcPermissionContext : public PermissionContextBase {
       const GURL& requesting_origin,
       const GURL& embedding_origin) const override;
 #endif
-  void DecidePermission(PermissionRequestData request_data,
+  void DecidePermission(const PermissionRequestID& id,
+                        const GURL& requesting_origin,
+                        const GURL& embedding_origin,
+                        bool user_gesture,
                         BrowserPermissionCallback callback) override;
   void UpdateTabContext(const PermissionRequestID& id,
                         const GURL& requesting_frame,

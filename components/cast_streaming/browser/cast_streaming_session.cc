@@ -14,7 +14,6 @@
 #include "components/cast_streaming/browser/control/remoting/remoting_decoder_buffer_factory.h"
 #include "components/cast_streaming/browser/frame/mirroring_decoder_buffer_factory.h"
 #include "components/cast_streaming/browser/frame/stream_consumer.h"
-#include "components/cast_streaming/browser/receiver_config_conversions.h"
 #include "components/cast_streaming/common/public/features.h"
 #include "media/base/demuxer_stream.h"
 #include "media/base/media_switches.h"
@@ -47,14 +46,16 @@ constexpr base::TimeDelta kInitTimeout = base::Seconds(5);
 StreamingInitializationInfo CreateMirroringInitializationInfo(
     const openscreen::cast::ReceiverSession* session,
     openscreen::cast::ReceiverSession::ConfiguredReceivers receivers) {
-  std::optional<StreamingInitializationInfo::AudioStreamInfo> audio_stream_info;
+  absl::optional<StreamingInitializationInfo::AudioStreamInfo>
+      audio_stream_info;
   if (receivers.audio_receiver) {
     audio_stream_info.emplace(
         media::cast::ToAudioDecoderConfig(receivers.audio_config),
         receivers.audio_receiver);
   }
 
-  std::optional<StreamingInitializationInfo::VideoStreamInfo> video_stream_info;
+  absl::optional<StreamingInitializationInfo::VideoStreamInfo>
+      video_stream_info;
   if (receivers.video_receiver) {
     video_stream_info.emplace(
         media::cast::ToVideoDecoderConfig(receivers.video_config),
@@ -69,12 +70,12 @@ StreamingInitializationInfo CreateMirroringInitializationInfo(
 
 CastStreamingSession::ReceiverSessionClient::ReceiverSessionClient(
     CastStreamingSession::Client* client,
-    std::optional<RendererControllerConfig> renderer_controls,
-    ReceiverConfig av_constraints,
+    absl::optional<RendererControllerConfig> renderer_controls,
+    openscreen::cast::ReceiverConstraints av_constraints,
     ReceiverSession::MessagePortProvider message_port_provider,
     scoped_refptr<base::SequencedTaskRunner> task_runner)
     : task_runner_(task_runner),
-      environment_(&openscreen::Clock::now, task_runner_),
+      environment_(&openscreen::Clock::now, &task_runner_),
       cast_message_port_converter_(CastMessagePortConverter::Create(
           std::move(message_port_provider),
           base::BindOnce(
@@ -91,15 +92,14 @@ CastStreamingSession::ReceiverSessionClient::ReceiverSessionClient(
 
   receiver_session_ = std::make_unique<openscreen::cast::ReceiverSession>(
       this, &environment_, &cast_message_port_converter_->GetMessagePort(),
-      ToOpenscreenConstraints(av_constraints));
+      std::move(av_constraints));
 
   if (renderer_controls) {
     playback_command_dispatcher_ = std::make_unique<PlaybackCommandDispatcher>(
         task_runner, std::move(renderer_controls.value().control_configuration),
         base::BindRepeating(
             &CastStreamingSession::ReceiverSessionClient::OnFlushUntil,
-            weak_factory_.GetWeakPtr()),
-        std::move(av_constraints.remoting));
+            weak_factory_.GetWeakPtr()));
     playback_command_dispatcher_->RegisterCommandSource(
         std::move(renderer_controls.value().external_renderer_controls));
   }
@@ -116,7 +116,7 @@ void CastStreamingSession::ReceiverSessionClient::GetAudioBuffer(
   if (preloaded_audio_buffer_) {
     DCHECK(preloaded_audio_buffer_.value());
     client_->OnAudioBufferReceived(std::move(preloaded_audio_buffer_.value()));
-    preloaded_audio_buffer_ = std::nullopt;
+    preloaded_audio_buffer_ = absl::nullopt;
     return;
   }
 
@@ -129,7 +129,7 @@ void CastStreamingSession::ReceiverSessionClient::GetVideoBuffer(
   if (preloaded_video_buffer_) {
     DCHECK(preloaded_video_buffer_.value());
     client_->OnVideoBufferReceived(std::move(preloaded_video_buffer_.value()));
-    preloaded_video_buffer_ = std::nullopt;
+    preloaded_video_buffer_ = absl::nullopt;
     return;
   }
 
@@ -174,7 +174,7 @@ void CastStreamingSession::ReceiverSessionClient::OnInitializationTimeout() {
   is_initialized_ = true;
 }
 
-std::optional<mojo::ScopedDataPipeConsumerHandle>
+absl::optional<mojo::ScopedDataPipeConsumerHandle>
 CastStreamingSession::ReceiverSessionClient::InitializeAudioConsumer(
     const StreamingInitializationInfo& initialization_info) {
   DCHECK(initialization_info.audio_stream_info);
@@ -184,7 +184,7 @@ CastStreamingSession::ReceiverSessionClient::InitializeAudioConsumer(
   mojo::ScopedDataPipeConsumerHandle data_pipe_consumer;
   if (!CreateDataPipeForStreamType(media::DemuxerStream::Type::AUDIO,
                                    &data_pipe_producer, &data_pipe_consumer)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   std::unique_ptr<DecoderBufferFactory> decoder_buffer_factory;
@@ -212,7 +212,7 @@ CastStreamingSession::ReceiverSessionClient::InitializeAudioConsumer(
   return data_pipe_consumer;
 }
 
-std::optional<mojo::ScopedDataPipeConsumerHandle>
+absl::optional<mojo::ScopedDataPipeConsumerHandle>
 CastStreamingSession::ReceiverSessionClient::InitializeVideoConsumer(
     const StreamingInitializationInfo& initialization_info) {
   DCHECK(initialization_info.video_stream_info);
@@ -222,7 +222,7 @@ CastStreamingSession::ReceiverSessionClient::InitializeVideoConsumer(
   mojo::ScopedDataPipeConsumerHandle data_pipe_consumer;
   if (!CreateDataPipeForStreamType(media::DemuxerStream::Type::VIDEO,
                                    &data_pipe_producer, &data_pipe_consumer)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   std::unique_ptr<DecoderBufferFactory> decoder_buffer_factory;
@@ -276,7 +276,7 @@ void CastStreamingSession::ReceiverSessionClient::StartStreamingSession(
           switches::kDisableAudioOutput)) {
     LOG(WARNING) << "Disabling audio for this session due to non-support by "
                     "the hosting product instance";
-    initialization_info.audio_stream_info = std::nullopt;
+    initialization_info.audio_stream_info = absl::nullopt;
   }
 
   // This is necessary in case the offer message had no audio and no video
@@ -311,7 +311,7 @@ void CastStreamingSession::ReceiverSessionClient::StartStreamingSession(
   // Set |is_initialized_| now so we can return early on failure.
   is_initialized_ = true;
 
-  std::optional<mojo::ScopedDataPipeConsumerHandle> audio_pipe_consumer_handle;
+  absl::optional<mojo::ScopedDataPipeConsumerHandle> audio_pipe_consumer_handle;
   if (initialization_info.audio_stream_info) {
     audio_pipe_consumer_handle = InitializeAudioConsumer(initialization_info);
     if (audio_pipe_consumer_handle) {
@@ -324,7 +324,7 @@ void CastStreamingSession::ReceiverSessionClient::StartStreamingSession(
     }
   }
 
-  std::optional<mojo::ScopedDataPipeConsumerHandle> video_pipe_consumer_handle;
+  absl::optional<mojo::ScopedDataPipeConsumerHandle> video_pipe_consumer_handle;
   if (initialization_info.video_stream_info) {
     video_pipe_consumer_handle = InitializeVideoConsumer(initialization_info);
     if (video_pipe_consumer_handle) {
@@ -381,8 +381,8 @@ void CastStreamingSession::ReceiverSessionClient::OnReceiversDestroying(
     playback_command_dispatcher_->OnRemotingSessionEnded();
   }
 
-  preloaded_audio_buffer_ = std::nullopt;
-  preloaded_video_buffer_ = std::nullopt;
+  preloaded_audio_buffer_ = absl::nullopt;
+  preloaded_video_buffer_ = absl::nullopt;
 
   switch (reason) {
     case ReceiversDestroyingReason::kEndOfSession:
@@ -463,8 +463,8 @@ CastStreamingSession::~CastStreamingSession() = default;
 
 void CastStreamingSession::Start(
     Client* client,
-    std::optional<RendererControllerConfig> renderer_controls,
-    ReceiverConfig av_constraints,
+    absl::optional<RendererControllerConfig> renderer_controls,
+    openscreen::cast::ReceiverConstraints av_constraints,
     ReceiverSession::MessagePortProvider message_port_provider,
     scoped_refptr<base::SequencedTaskRunner> task_runner) {
   DVLOG(1) << __func__;

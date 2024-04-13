@@ -23,6 +23,8 @@ namespace password_manager {
 namespace {
 
 #if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
+constexpr int kMaxMoveToAccountOffersForNonOptedInUser = 5;
+
 bool IsPrimaryAccountSignIn(const signin::IdentityManager& identity_manager,
                             const std::u16string& username,
                             const std::string& signon_realm) {
@@ -100,7 +102,7 @@ bool PasswordManagerClientHelper::ShouldPromptToEnableAutoSignIn() const {
   return password_bubble_experiment::
              ShouldShowAutoSignInPromptFirstRunExperience(
                  delegate_->GetPrefs()) &&
-         delegate_->IsAutoSignInEnabled() && !delegate_->IsOffTheRecord();
+         delegate_->IsAutoSignInEnabled() && !delegate_->IsIncognito();
 }
 
 bool PasswordManagerClientHelper::ShouldPromptToMovePasswordToAccount(
@@ -110,16 +112,13 @@ bool PasswordManagerClientHelper::ShouldPromptToMovePasswordToAccount(
       delegate_->GetPasswordFeatureManager();
   if (!feature_manager->ShouldShowAccountStorageBubbleUi())
     return false;
-  if (!feature_manager->IsOptedInForAccountStorage()) {
-    return false;
-  }
   if (feature_manager->GetDefaultPasswordStore() ==
       PasswordForm::Store::kProfileStore) {
     return false;
   }
   if (!submitted_manager.IsMovableToAccountStore())
     return false;
-  if (delegate_->IsOffTheRecord())
+  if (delegate_->IsIncognito())
     return false;
   // It's not useful to store the password for the primary account inside
   // that same account.
@@ -129,7 +128,9 @@ bool PasswordManagerClientHelper::ShouldPromptToMovePasswordToAccount(
           submitted_manager.GetPendingCredentials().signon_realm)) {
     return false;
   }
-  return true;
+  return feature_manager->IsOptedInForAccountStorage() ||
+         feature_manager->GetMoveOfferedToNonOptedInUserCount() <
+             kMaxMoveToAccountOffersForNonOptedInUser;
 #else
   // On Android and iOS, prompting to move after using a password isn't
   // implemented.

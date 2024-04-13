@@ -21,13 +21,12 @@
 #include "components/cdm/renderer/external_clear_key_key_system_info.h"
 #include "content/public/renderer/key_system_support.h"
 #include "media/base/audio_codecs.h"
-#include "media/base/cdm_capability.h"
 #include "media/base/content_decryption_module.h"
 #include "media/base/eme_constants.h"
-#include "media/base/key_system_capability.h"
 #include "media/base/key_system_info.h"
 #include "media/base/media_switches.h"
 #include "media/base/video_codecs.h"
+#include "media/cdm/cdm_capability.h"
 #include "media/cdm/clear_key_cdm_common.h"
 #include "media/media_buildflags.h"
 #include "third_party/widevine/cdm/buildflags.h"
@@ -137,6 +136,9 @@ SupportedCodecs GetDolbyVisionCodecs(
       case media::DOLBYVISION_PROFILE0:
         supported_dv_codecs |= media::EME_CODEC_DOLBY_VISION_PROFILE0;
         break;
+      case media::DOLBYVISION_PROFILE4:
+        supported_dv_codecs |= media::EME_CODEC_DOLBY_VISION_PROFILE4;
+        break;
       case media::DOLBYVISION_PROFILE5:
         supported_dv_codecs |= media::EME_CODEC_DOLBY_VISION_PROFILE5;
         break;
@@ -187,19 +189,6 @@ SupportedCodecs GetSupportedCodecs(const media::CdmCapability& capability,
         supported_codecs |= media::EME_CODEC_DTSXP2;
         break;
 #endif  // BUILDFLAG(ENABLE_PLATFORM_DTS_AUDIO)
-#if BUILDFLAG(ENABLE_PLATFORM_AC3_EAC3_AUDIO)
-      case media::AudioCodec::kAC3:
-        supported_codecs |= media::EME_CODEC_AC3;
-        break;
-      case media::AudioCodec::kEAC3:
-        supported_codecs |= media::EME_CODEC_EAC3;
-        break;
-#endif  // BUILDFLAG(ENABLE_PLATFORM_AC3_EAC3_AUDIO)
-#if BUILDFLAG(ENABLE_PLATFORM_AC4_AUDIO)
-      case media::AudioCodec::kAC4:
-        supported_codecs |= media::EME_CODEC_AC4;
-        break;
-#endif  // BUILDFLAG(ENABLE_PLATFORM_AC4_AUDIO)
 #endif  // BUILDFLAG(USE_PROPRIETARY_CODECS)
       default:
         DVLOG(1) << "Unexpected supported codec: " << GetCodecName(codec);
@@ -296,7 +285,7 @@ base::flat_set<CdmSessionType> UpdatePersistentLicenseSupport(
   return updated_session_types;
 }
 
-void AddWidevine(const media::KeySystemCapability& capability,
+void AddWidevine(const media::mojom::KeySystemCapabilityPtr& capability,
                  bool can_persist_data,
                  KeySystemInfos* key_systems) {
 #if BUILDFLAG(IS_ANDROID)
@@ -321,11 +310,11 @@ void AddWidevine(const media::KeySystemCapability& capability,
   base::flat_set<CdmSessionType> session_types;
   base::flat_set<CdmSessionType> hw_secure_session_types;
 
-  if (capability.sw_secure_capability) {
-    codecs = GetSupportedCodecs(capability.sw_secure_capability.value());
-    encryption_schemes = capability.sw_secure_capability->encryption_schemes;
+  if (capability->sw_secure_capability) {
+    codecs = GetSupportedCodecs(capability->sw_secure_capability.value());
+    encryption_schemes = capability->sw_secure_capability->encryption_schemes;
     session_types = UpdatePersistentLicenseSupport(
-        can_persist_data, capability.sw_secure_capability->session_types);
+        can_persist_data, capability->sw_secure_capability->session_types);
     if (!base::Contains(session_types, CdmSessionType::kTemporary)) {
       DVLOG(1) << "Temporary sessions must be supported.";
       return;
@@ -335,25 +324,25 @@ void AddWidevine(const media::KeySystemCapability& capability,
     DVLOG(2) << "Software secure Widevine NOT supported";
   }
 
-  if (capability.hw_secure_capability) {
+  if (capability->hw_secure_capability) {
     // For the default Widevine key system, we support a codec only when it
     // supports clear lead, unless `force_support_clear_lead` is set to true.
     const bool force_support_clear_lead =
         media::kHardwareSecureDecryptionForceSupportClearLead.Get();
     hw_secure_codecs = GetSupportedCodecs(
-        capability.hw_secure_capability.value(), !force_support_clear_lead);
+        capability->hw_secure_capability.value(), !force_support_clear_lead);
 #if BUILDFLAG(IS_WIN)
     // For the experimental Widevine key system, we do not have to filter the
     // hardware secure codecs by whether they support clear lead or not.
     hw_secure_codecs_clear_lead_support_not_required =
-        GetSupportedCodecs(capability.hw_secure_capability.value(),
+        GetSupportedCodecs(capability->hw_secure_capability.value(),
                            /*requires_clear_lead_support=*/false);
 #endif  // BUILDFLAG(IS_WIN)
 
     hw_secure_encryption_schemes =
-        capability.hw_secure_capability->encryption_schemes;
+        capability->hw_secure_capability->encryption_schemes;
     hw_secure_session_types = UpdatePersistentLicenseSupport(
-        can_persist_data, capability.hw_secure_capability->session_types);
+        can_persist_data, capability->hw_secure_capability->session_types);
     if (!base::Contains(hw_secure_session_types, CdmSessionType::kTemporary)) {
       DVLOG(1) << "Temporary sessions must be supported.";
       return;
@@ -462,8 +451,9 @@ void AddWidevine(const media::KeySystemCapability& capability,
 }
 #endif  // BUILDFLAG(ENABLE_WIDEVINE)
 
-void AddExternalClearKey(const media::KeySystemCapability& /*capability*/,
-                         KeySystemInfos* key_systems) {
+void AddExternalClearKey(
+    const media::mojom::KeySystemCapabilityPtr& /*capability*/,
+    KeySystemInfos* key_systems) {
   DVLOG(1) << __func__;
 
   if (!base::FeatureList::IsEnabled(media::kExternalClearKeyForTesting)) {
@@ -477,7 +467,7 @@ void AddExternalClearKey(const media::KeySystemCapability& /*capability*/,
 
 #if BUILDFLAG(IS_WIN)
 void AddMediaFoundationClearKey(
-    const media::KeySystemCapability& /*capability*/,
+    const media::mojom::KeySystemCapabilityPtr& /*capability*/,
     KeySystemInfos* key_systems) {
   DVLOG(1) << __func__;
 
@@ -487,15 +477,12 @@ void AddMediaFoundationClearKey(
   }
 
 #if BUILDFLAG(USE_PROPRIETARY_CODECS)
-  // TODO(crbug.com/1412485): Remove this hard-codeded supported codecs so that
-  // real hardware capabilities can be checked.
   key_systems->push_back(std::make_unique<ExternalClearKeyKeySystemInfo>(
       media::kMediaFoundationClearKeyKeySystem, std::vector<std::string>(),
       // MediaFoundation Clear Key Key System uses Windows Media Foundation's
-      // decoders. H264 ("avc1.64001E") for video and MP4 AAC ("mp4a.40.2") for
-      // audio are always supported. VideoCodec::kH264 is an EME_CODEC_AVC1.
-      // AudioCodec::kAAC is an EME_CODEC_AAC.
-      media::EME_CODEC_AVC1 | media::EME_CODEC_AAC,
+      // decoders and H264 is always supported. VideoCodec::kH264 is an
+      // EME_CODEC_AVC1.
+      media::EME_CODEC_AVC1,
       // On Windows, MediaFoundation Clear Key CDM requires identifier,
       // persistent state and HW secure codecs. We pretent to require these for
       // testing purposes.
@@ -509,10 +496,11 @@ void AddMediaFoundationClearKey(
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_ANDROID)
-void AddAndroidPlatformKeySystem(const std::string& key_system,
-                                 const media::KeySystemCapability& capability,
-                                 bool can_persist_data,
-                                 KeySystemInfos* key_systems) {
+void AddAndroidPlatformKeySystem(
+    const std::string& key_system,
+    const media::mojom::KeySystemCapabilityPtr& capability,
+    bool can_persist_data,
+    KeySystemInfos* key_systems) {
   DCHECK_NE(key_system, kWidevineKeySystem);
 
   // When using MediaDrm, we assume it'll always try to persist some data.
@@ -529,19 +517,19 @@ void AddAndroidPlatformKeySystem(const std::string& key_system,
   base::flat_set<::media::EncryptionScheme> sw_secure_encryption_schemes;
   base::flat_set<::media::EncryptionScheme> hw_secure_encryption_schemes;
 
-  if (capability.sw_secure_capability) {
+  if (capability->sw_secure_capability) {
     sw_secure_codecs =
-        GetSupportedCodecs(capability.sw_secure_capability.value());
+        GetSupportedCodecs(capability->sw_secure_capability.value());
     sw_secure_encryption_schemes =
-        capability.sw_secure_capability->encryption_schemes;
+        capability->sw_secure_capability->encryption_schemes;
     DVLOG(2) << "Software secure " << key_system << " supported";
   }
 
-  if (capability.hw_secure_capability) {
+  if (capability->hw_secure_capability) {
     hw_secure_codecs =
-        GetSupportedCodecs(capability.hw_secure_capability.value());
+        GetSupportedCodecs(capability->hw_secure_capability.value());
     hw_secure_encryption_schemes =
-        capability.hw_secure_capability->encryption_schemes;
+        capability->hw_secure_capability->encryption_schemes;
     DVLOG(2) << "Hardware secure " << key_system << " supported";
   }
 
@@ -554,7 +542,7 @@ void AddAndroidPlatformKeySystem(const std::string& key_system,
 void OnKeySystemSupportUpdated(
     bool can_persist_data,
     media::GetSupportedKeySystemsCB cb,
-    content::KeySystemCapabilities key_system_capabilities) {
+    content::KeySystemCapabilityPtrMap key_system_capabilities) {
   KeySystemInfos key_systems;
   for (const auto& [key_system, capability] : key_system_capabilities) {
 #if BUILDFLAG(ENABLE_WIDEVINE)
@@ -589,10 +577,9 @@ void OnKeySystemSupportUpdated(
 
 }  // namespace
 
-std::unique_ptr<media::KeySystemSupportRegistration>
-GetSupportedKeySystemsUpdates(bool can_persist_data,
-                              media::GetSupportedKeySystemsCB cb) {
-  return content::ObserveKeySystemSupportUpdate(base::BindRepeating(
+void GetSupportedKeySystemsUpdates(bool can_persist_data,
+                                   media::GetSupportedKeySystemsCB cb) {
+  content::ObserveKeySystemSupportUpdate(base::BindRepeating(
       &OnKeySystemSupportUpdated, can_persist_data, std::move(cb)));
 }
 

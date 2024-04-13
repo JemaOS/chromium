@@ -7,8 +7,7 @@ package org.chromium.components.signin.base;
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.components.signin.AccountCapabilitiesConstants;
 import org.chromium.components.signin.AccountManagerDelegate;
 import org.chromium.components.signin.Tribool;
@@ -17,8 +16,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Stores the state associated with supported account capabilities. This class has a native
- * counterpart.
+ * Stores the state associated with supported account capabilities.
+ * This class has a native counterpart.
  */
 public class AccountCapabilities {
     private final Map<String, Boolean> mAccountCapabilities;
@@ -30,8 +29,9 @@ public class AccountCapabilities {
         for (int i = 0; i < capabilityNames.length; i += 1) {
             final String capabilityName = capabilityNames[i];
             assert AccountCapabilitiesConstants.SUPPORTED_ACCOUNT_CAPABILITY_NAMES.contains(
-                            capabilityName)
-                    : "Capability name not supported in Chrome: " + capabilityName;
+                    capabilityName)
+                : "Capability name not supported in Chrome: "
+                    + capabilityName;
             mAccountCapabilities.put(capabilityName, capabilityValues[i]);
         }
     }
@@ -56,15 +56,16 @@ public class AccountCapabilities {
             @AccountManagerDelegate.CapabilityResponse
             int hasCapability = capabilityResponses.get(capabilityName);
             if (hasCapability != AccountManagerDelegate.CapabilityResponse.EXCEPTION) {
-                capabilities.put(
-                        capabilityName,
+                capabilities.put(capabilityName,
                         hasCapability == AccountManagerDelegate.CapabilityResponse.YES);
             }
         }
         return new AccountCapabilities(capabilities);
     }
 
-    /** Please keep the list of capability getters alphabetically sorted. */
+    /**
+     * Please keep the list of capability getters alphabetically sorted.
+     */
 
     /**
      * @return canHaveEmailAddressDisplayed capability value.
@@ -75,12 +76,11 @@ public class AccountCapabilities {
     }
 
     /**
-     * @return canShowHistorySyncOptInsWithoutMinorModeRestrictions capability value.
+     * @return canOfferExtendedSyncPromos capability value.
      */
-    public @Tribool int canShowHistorySyncOptInsWithoutMinorModeRestrictions() {
+    public @Tribool int canOfferExtendedSyncPromos() {
         return getCapabilityByName(
-                AccountCapabilitiesConstants
-                        .CAN_SHOW_HISTORY_SYNC_OPT_INS_WITHOUT_MINOR_MODE_RESTRICTIONS_CAPABILITY_NAME);
+                AccountCapabilitiesConstants.CAN_OFFER_EXTENDED_CHROME_SYNC_PROMOS_CAPABILITY_NAME);
     }
 
     /**
@@ -92,11 +92,11 @@ public class AccountCapabilities {
     }
 
     /**
-     * @return isOptedInToParentalSupervision capability value.
+     * @return canStopParentalSupervision capability value.
      */
-    public @Tribool int isOptedInToParentalSupervision() {
+    public @Tribool int canStopParentalSupervision() {
         return getCapabilityByName(
-                AccountCapabilitiesConstants.IS_OPTED_IN_TO_PARENTAL_SUPERVISION_CAPABILITY_NAME);
+                AccountCapabilitiesConstants.CAN_STOP_PARENTAL_SUPERVISION_CAPABILITY_NAME);
     }
 
     /**
@@ -107,59 +107,11 @@ public class AccountCapabilities {
     }
 
     /**
-     * @return canUseChromeIpProtection capability value.
-     */
-    public @Tribool int canUseChromeIpProtection() {
-        return getCapabilityByName(AccountCapabilitiesConstants.CAN_USE_CHROME_IP_PROTECTION_NAME);
-    }
-
-    /**
-     * @return canUseDevToolsGenerativeAiFeatures capability value.
-     */
-    public @Tribool int canUseDevToolsGenerativeAiFeatures() {
-        return getCapabilityByName(
-                AccountCapabilitiesConstants
-                        .CAN_USE_DEVTOOLS_GENERATIVE_AI_FEATURES_CAPABILITY_NAME);
-    }
-
-    /**
-     * @return canUseEduFeatures capability value.
-     */
-    public @Tribool int canUseEduFeatures() {
-        return getCapabilityByName(
-                AccountCapabilitiesConstants.CAN_USE_EDU_FEATURES_CAPABILITY_NAME);
-    }
-
-    /**
-     * @return canUseMantaService capability value.
-     */
-    public @Tribool int canUseMantaService() {
-        return getCapabilityByName(AccountCapabilitiesConstants.CAN_USE_MANTA_SERVICE_NAME);
-    }
-
-    /**
-     * @return canUseModelExecutionFeatures capability value.
-     */
-    public @Tribool int canUseModelExecutionFeatures() {
-        return getCapabilityByName(
-                AccountCapabilitiesConstants.CAN_USE_MODEL_EXECUTION_FEATURES_NAME);
-    }
-
-    /**
      * @return isAllowedForMachineLearning capability value.
      */
     public @Tribool int isAllowedForMachineLearning() {
         return getCapabilityByName(
                 AccountCapabilitiesConstants.IS_ALLOWED_FOR_MACHINE_LEARNING_CAPABILITY_NAME);
-    }
-
-    /**
-     * @return isSubjectToChromePrivacySandboxRestrictedMeasurementNotice capability value.
-     */
-    public @Tribool int isSubjectToChromePrivacySandboxRestrictedMeasurementNotice() {
-        return getCapabilityByName(
-                AccountCapabilitiesConstants
-                        .IS_SUBJECT_TO_CHROME_PRIVACY_SANDBOX_RESTRICTED_MEASUREMENT_NOTICE);
     }
 
     /**

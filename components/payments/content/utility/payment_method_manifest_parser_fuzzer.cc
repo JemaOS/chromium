@@ -30,7 +30,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::vector<url::Origin> supported_origins;
 
   base::StringPiece json_data(reinterpret_cast<const char*>(data), size);
-  std::optional<base::Value> value = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> value = base::JSONReader::Read(json_data);
   if (!value) {
     return 0;
   }

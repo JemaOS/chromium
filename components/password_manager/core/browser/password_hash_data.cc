@@ -4,8 +4,6 @@
 
 #include "components/password_manager/core/browser/password_hash_data.h"
 
-#include <iterator>
-
 #include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -21,11 +19,12 @@ namespace {
 std::string CreateRandomSalt() {
   constexpr size_t kSyncPasswordSaltLength = 16;
 
-  uint8_t buffer[kSyncPasswordSaltLength];
-  crypto::RandBytes(buffer);
+  char buffer[kSyncPasswordSaltLength];
+  crypto::RandBytes(buffer, kSyncPasswordSaltLength);
   // Explicit std::string constructor with a string length must be used in order
   // to avoid treating '\0' symbols as a string ends.
-  return std::string(std::begin(buffer), std::end(buffer));
+  std::string result(buffer, kSyncPasswordSaltLength);
+  return result;
 }
 
 }  // namespace

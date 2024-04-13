@@ -5,7 +5,6 @@
 #include "components/pdf/browser/pdf_url_loader_request_interceptor.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -18,6 +17,7 @@
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "services/network/public/mojom/url_loader.mojom-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace pdf {
@@ -81,16 +81,8 @@ PdfURLLoaderRequestInterceptor::CreateRequestHandler(
   if (!contents)
     return {};
 
-  // Normally, `content::WebContents::UnsafeFindFrameByFrameTreeNodeId()` should
-  // not be used, since a FrameTreeNode's `RenderFrameHost` may change over its
-  // lifetime. However, the only use for this `RenderFrameHost` is to get its
-  // parent `RenderFrameHost`, which cannot change during the lifetime of the
-  // FrameTreeNode.
-  content::RenderFrameHost* content_frame =
-      contents->UnsafeFindFrameByFrameTreeNodeId(frame_tree_node_id_);
-
-  std::optional<PdfStreamDelegate::StreamInfo> stream =
-      stream_delegate_->GetStreamInfo(content_frame->GetParent());
+  absl::optional<PdfStreamDelegate::StreamInfo> stream =
+      stream_delegate_->GetStreamInfo(contents);
   if (!stream.has_value())
     return {};
 

@@ -32,9 +32,9 @@
 #include "components/subresource_filter/content/browser/subresource_filter_safe_browsing_client.h"
 #include "components/subresource_filter/content/browser/subresource_filter_safe_browsing_client_request.h"
 #include "components/subresource_filter/content/browser/throttle_manager_test_support.h"
+#include "components/subresource_filter/content/browser/verified_ruleset_dealer.h"
 #include "components/subresource_filter/core/browser/subresource_filter_features.h"
 #include "components/subresource_filter/core/browser/subresource_filter_features_test_support.h"
-#include "components/subresource_filter/core/browser/verified_ruleset_dealer.h"
 #include "components/subresource_filter/core/common/activation_decision.h"
 #include "components/subresource_filter/core/common/activation_list.h"
 #include "components/subresource_filter/core/common/test_ruleset_creator.h"
@@ -125,22 +125,22 @@ typedef safe_browsing::SubresourceFilterType SBType;
 const ActivationListTestData kActivationListTestData[] = {
     {kActivationListSocialEngineeringAdsInterstitial,
      ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL,
-     safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_PHISHING,
+     safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
      safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS,
      {}},
     {kActivationListPhishingInterstitial,
      ActivationList::PHISHING_INTERSTITIAL,
-     safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_PHISHING,
+     safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
      safe_browsing::ThreatPatternType::NONE,
      {}},
     {kActivationListSubresourceFilter,
      ActivationList::SUBRESOURCE_FILTER,
-     safe_browsing::SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
+     safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
      safe_browsing::ThreatPatternType::NONE,
      {}},
     {kActivationListSubresourceFilter,
      ActivationList::BETTER_ADS,
-     safe_browsing::SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
+     safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
      safe_browsing::ThreatPatternType::NONE,
      {{SBType::BETTER_ADS, SBLevel::ENFORCE}}},
 };
@@ -326,12 +326,11 @@ class SubresourceFilterSafeBrowsingActivationThrottleTest
               SimulateCommit(navigation_simulator()));
   }
 
-  void ConfigureForMatch(
-      const GURL& url,
-      safe_browsing::SBThreatType pattern_type =
-          safe_browsing::SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
-      const safe_browsing::ThreatMetadata& metadata =
-          safe_browsing::ThreatMetadata()) {
+  void ConfigureForMatch(const GURL& url,
+                         safe_browsing::SBThreatType pattern_type =
+                             safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
+                         const safe_browsing::ThreatMetadata& metadata =
+                             safe_browsing::ThreatMetadata()) {
     fake_safe_browsing_database_->AddBlocklistedUrl(url, pattern_type,
                                                     metadata);
   }
@@ -401,15 +400,14 @@ class SubresourceFilterSafeBrowsingActivationThrottleInfoBarUiTest
   bool presenting_ads_blocked_infobar() {
     auto* infobar_manager = infobars::ContentInfoBarManager::FromWebContents(
         content::RenderViewHostTestHarness::web_contents());
-    if (infobar_manager->infobars().empty()) {
+    if (infobar_manager->infobar_count() == 0)
       return false;
-    }
 
     // No infobars other than the ads blocked infobar should be displayed in the
     // context of these tests.
-    EXPECT_EQ(infobar_manager->infobars().size(), 1u);
-    auto* infobar = infobar_manager->infobars()[0].get();
-    EXPECT_EQ(infobar->GetIdentifier(),
+    EXPECT_EQ(infobar_manager->infobar_count(), 1u);
+    auto* infobar = infobar_manager->infobar_at(0);
+    EXPECT_EQ(infobar->delegate()->GetIdentifier(),
               infobars::InfoBarDelegate::ADS_BLOCKED_INFOBAR_DELEGATE_ANDROID);
 
     return true;
@@ -555,8 +553,7 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
   safe_browsing::ThreatMetadata metadata;
   metadata.threat_pattern_type =
       safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS;
-  ConfigureForMatch(match_url,
-                    safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_PHISHING,
+  ConfigureForMatch(match_url, safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
                     metadata);
   SimulateNavigateAndCommit({match_url}, main_rfh());
   EXPECT_EQ(mojom::ActivationLevel::kDisabled,
@@ -617,11 +614,11 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
 
 TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
        NavigationFails_NoActivation) {
-  EXPECT_EQ(std::optional<mojom::ActivationLevel>(),
+  EXPECT_EQ(absl::optional<mojom::ActivationLevel>(),
             observer()->GetPageActivationForLastCommittedLoad());
   content::NavigationSimulator::NavigateAndFailFromDocument(
       GURL(kURL), net::ERR_TIMED_OUT, main_rfh());
-  EXPECT_EQ(std::optional<mojom::ActivationLevel>(),
+  EXPECT_EQ(absl::optional<mojom::ActivationLevel>(),
             observer()->GetPageActivationForLastCommittedLoad());
 }
 
@@ -638,8 +635,6 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
 }
 
 TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest, ActivationList) {
-  using enum safe_browsing::SBThreatType;
-
   const struct {
     mojom::ActivationLevel expected_activation_level;
     ActivationList activation_list;
@@ -647,51 +642,59 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest, ActivationList) {
     safe_browsing::ThreatPatternType threat_type_metadata;
   } kTestCases[] = {
       {mojom::ActivationLevel::kDisabled, ActivationList::NONE,
-       SB_THREAT_TYPE_URL_PHISHING,
+       safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kDisabled,
-       ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL, SB_THREAT_TYPE_URL_PHISHING,
+       ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL,
+       safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
        safe_browsing::ThreatPatternType::NONE},
       {mojom::ActivationLevel::kDisabled,
-       ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL, SB_THREAT_TYPE_URL_PHISHING,
+       ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL,
+       safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
        safe_browsing::ThreatPatternType::MALWARE_LANDING},
       {mojom::ActivationLevel::kDisabled,
-       ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL, SB_THREAT_TYPE_URL_PHISHING,
+       ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL,
+       safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
        safe_browsing::ThreatPatternType::MALWARE_DISTRIBUTION},
       {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_API_ABUSE,
+       safe_browsing::SB_THREAT_TYPE_API_ABUSE,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_BLOCKLISTED_RESOURCE,
+       safe_browsing::SB_THREAT_TYPE_BLOCKLISTED_RESOURCE,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_URL_BINARY_MALWARE,
+       safe_browsing::SB_THREAT_TYPE_URL_CLIENT_SIDE_MALWARE,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_URL_UNWANTED,
+       safe_browsing::SB_THREAT_TYPE_URL_BINARY_MALWARE,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_URL_MALWARE,
+       safe_browsing::SB_THREAT_TYPE_URL_UNWANTED,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_URL_CLIENT_SIDE_PHISHING,
+       safe_browsing::SB_THREAT_TYPE_URL_MALWARE,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_SAFE,
+       safe_browsing::SB_THREAT_TYPE_URL_CLIENT_SIDE_PHISHING,
+       safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
+      {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
+       safe_browsing::SB_THREAT_TYPE_SAFE,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kEnabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_URL_PHISHING, safe_browsing::ThreatPatternType::NONE},
+       safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
+       safe_browsing::ThreatPatternType::NONE},
       {mojom::ActivationLevel::kEnabled,
-       ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL, SB_THREAT_TYPE_URL_PHISHING,
+       ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL,
+       safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kEnabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_URL_PHISHING,
+       safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
        safe_browsing::ThreatPatternType::SOCIAL_ENGINEERING_ADS},
       {mojom::ActivationLevel::kEnabled, ActivationList::SUBRESOURCE_FILTER,
-       SB_THREAT_TYPE_SUBRESOURCE_FILTER,
+       safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
        safe_browsing::ThreatPatternType::NONE},
       {mojom::ActivationLevel::kDisabled, ActivationList::PHISHING_INTERSTITIAL,
-       SB_THREAT_TYPE_SUBRESOURCE_FILTER,
+       safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
        safe_browsing::ThreatPatternType::NONE},
   };
   const GURL test_url("https://matched_url.com/");
@@ -733,7 +736,7 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest, LogsUkm) {
   const auto& entries =
       test_ukm_recorder.GetEntriesByName(SubresourceFilter::kEntryName);
   EXPECT_EQ(1u, entries.size());
-  for (const ukm::mojom::UkmEntry* entry : entries) {
+  for (const auto* entry : entries) {
     test_ukm_recorder.ExpectEntrySourceHasUrl(entry, url);
     test_ukm_recorder.ExpectEntryMetric(
         entry, SubresourceFilter::kActivationDecisionName,
@@ -752,7 +755,7 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
   const auto& entries =
       test_ukm_recorder.GetEntriesByName(SubresourceFilter::kEntryName);
   EXPECT_EQ(1u, entries.size());
-  for (const ukm::mojom::UkmEntry* entry : entries) {
+  for (const auto* entry : entries) {
     test_ukm_recorder.ExpectEntrySourceHasUrl(entry, url);
     test_ukm_recorder.ExpectEntryMetric(
         entry, SubresourceFilter::kActivationDecisionName,
@@ -773,7 +776,7 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest, LogsUkmDryRun) {
   const auto& entries =
       test_ukm_recorder.GetEntriesByName(SubresourceFilter::kEntryName);
   EXPECT_EQ(1u, entries.size());
-  for (const ukm::mojom::UkmEntry* entry : entries) {
+  for (const auto* entry : entries) {
     test_ukm_recorder.ExpectEntrySourceHasUrl(entry, url);
     test_ukm_recorder.ExpectEntryMetric(
         entry, SubresourceFilter::kActivationDecisionName,
@@ -968,14 +971,29 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
   fake_safe_browsing_database()->SimulateTimeout();
   SimulateStartAndExpectProceed(url);
 
-  // Flush the pending tasks, so the delayed task surely gets posted.
-  task_environment()->RunUntilIdle();
+  // Flush the pending tasks on the IO thread, so the delayed task surely gets
+  // posted.
+  if (base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)) {
+    task_environment()->RunUntilIdle();
+  } else {
+    test_io_task_runner()->RunUntilIdle();
+  }
 
   // Expect one delayed task, and fast forward time.
   base::TimeDelta expected_delay =
       SubresourceFilterSafeBrowsingClientRequest::kCheckURLTimeout;
 
-  task_environment()->FastForwardBy(expected_delay);
+  if (base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)) {
+    // When the safe browsing code runs on the UI thread, can't check
+    // task_environment()->NextMainThreadPendingTaskDelay() since there are many
+    // other tasks posted.
+    // EXPECT_EQ(expected_delay,
+    // task_environment()->NextMainThreadPendingTaskDelay());
+    task_environment()->FastForwardBy(expected_delay);
+  } else {
+    EXPECT_EQ(expected_delay, test_io_task_runner()->NextPendingTaskDelay());
+    test_io_task_runner()->FastForwardBy(expected_delay);
+  }
 
   SimulateCommitAndExpectProceed();
   EXPECT_EQ(mojom::ActivationLevel::kDisabled,
@@ -984,8 +1002,9 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
   tester().ExpectTotalCount(kSafeBrowsingCheckTime, 1);
 }
 
+// Flaky on Win, Chromium and Linux. http://crbug.com/748524
 TEST_P(SubresourceFilterSafeBrowsingActivationThrottleParamTest,
-       ListMatchedOnStart_NoDelay) {
+       DISABLED_ListMatchedOnStart_NoDelay) {
   const ActivationListTestData& test_data = GetParam();
   const GURL url(kURL);
   ConfigureForMatchParam(url);
@@ -1005,8 +1024,9 @@ TEST_P(SubresourceFilterSafeBrowsingActivationThrottleParamTest,
                                  base::Milliseconds(0), 1);
 }
 
+// Flaky on Win, Chromium and Linux. http://crbug.com/748524
 TEST_P(SubresourceFilterSafeBrowsingActivationThrottleParamTest,
-       ListMatchedOnRedirect_NoDelay) {
+       DISABLED_ListMatchedOnRedirect_NoDelay) {
   const ActivationListTestData& test_data = GetParam();
   const GURL url(kURL);
   const GURL redirect_url(kRedirectURL);
@@ -1033,7 +1053,7 @@ TEST_P(SubresourceFilterSafeBrowsingActivationThrottleParamTest,
 struct RedirectSamplesAndResults {
   std::vector<GURL> urls;
   bool expected_activation;
-  std::optional<RedirectPosition> last_enforcement_position;
+  absl::optional<RedirectPosition> last_enforcement_position;
 };
 
 TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
@@ -1055,10 +1075,8 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
   scoped_configuration()->ResetConfiguration({config_p1, config_p2});
 
   // Configure the URLs to match on different lists, phishing is worse.
-  ConfigureForMatch(
-      bad_url, safe_browsing::SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER);
-  ConfigureForMatch(worse_url,
-                    safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_PHISHING);
+  ConfigureForMatch(bad_url, safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER);
+  ConfigureForMatch(worse_url, safe_browsing::SB_THREAT_TYPE_URL_PHISHING);
 
   // Check cases where there are multiple redirects. Activation only triggers
   // on the final url, but redirect position is evaluated based on the worst.
@@ -1067,7 +1085,7 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
       {{bad_url, normal_url, worse_url}, true, RedirectPosition::kLast},
       {{worse_url, normal_url, bad_url}, true, RedirectPosition::kLast},
       {{normal_url, worse_url, bad_url}, true, RedirectPosition::kLast},
-      {{normal_url, normal_url}, false, std::nullopt},
+      {{normal_url, normal_url}, false, absl::nullopt},
       {{normal_url, bad_url, normal_url}, false, RedirectPosition::kMiddle},
       {{worse_url}, true, RedirectPosition::kOnly},
   };
@@ -1090,7 +1108,7 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
     auto entries =
         test_ukm_recorder.GetEntriesByName(SubresourceFilter::kEntryName);
     EXPECT_EQ(1u, entries.size());
-    const auto* entry = entries[0].get();
+    const auto* entry = entries[0];
     if (test_case.last_enforcement_position.has_value()) {
       test_ukm_recorder.ExpectEntryMetric(
           entry, SubresourceFilter::kEnforcementRedirectPositionName,
@@ -1121,9 +1139,8 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleTest,
     metadata.threat_pattern_type = safe_browsing::ThreatPatternType::NONE;
     metadata.subresource_filter_match = safe_browsing::SubresourceFilterMatch(
         {{SBType::ABUSIVE, SBLevel::ENFORCE}});
-    ConfigureForMatch(
-        url, safe_browsing::SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
-        metadata);
+    ConfigureForMatch(url, safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
+                      metadata);
 
     SimulateStartAndExpectProceed(url);
     SimulateCommitAndExpectProceed();
@@ -1146,8 +1163,9 @@ TEST_F(SubresourceFilterSafeBrowsingActivationThrottleInfoBarUiTest,
 #endif
 }
 
+// Disabled due to flaky failures: https://crbug.com/753669.
 TEST_P(SubresourceFilterSafeBrowsingActivationThrottleParamTest,
-       ListMatchedOnStartWithRedirect_NoActivation) {
+       DISABLED_ListMatchedOnStartWithRedirect_NoActivation) {
   const GURL url(kURL);
   const GURL redirect_url(kRedirectURL);
   ConfigureForMatchParam(url);

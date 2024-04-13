@@ -66,8 +66,7 @@ static void JavaLongArrayToBaseTimeVector(
   std::vector<int64_t> time_values;
   base::android::JavaLongArrayToInt64Vector(env, java_values, &time_values);
   for (int64_t time_value : time_values) {
-    out_times->emplace_back(
-        base::Time::FromMillisecondsSinceUnixEpoch(time_value));
+    out_times->emplace_back(base::Time::FromJavaTime(time_value));
   }
 }
 
@@ -77,9 +76,6 @@ static void JavaLongArrayToBaseTimeVector(
 scoped_refptr<InputContext> InputContextAndroid::ToNativeInputContext(
     JNIEnv* env,
     const base::android::JavaRef<jobject>& j_input_context) {
-  if (!j_input_context) {
-    return nullptr;
-  }
   scoped_refptr<InputContext> input_context =
       base::MakeRefCounted<InputContext>();
   Java_InputContext_fillNativeInputContext(

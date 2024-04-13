@@ -33,26 +33,24 @@ class PasswordManagerMetricsRecorder {
  public:
   // Reasons why the password manager failed to do a provisional saving and
   // therefore did not offer the user to save a password.
-  // These values are persisted to logs. Entries should not be renumbered and
-  // numeric values should never be reused.
   enum ProvisionalSaveFailure {
     // Password manager is disabled or user is in incognito mode.
-    SAVING_DISABLED = 0,
+    SAVING_DISABLED,
     // Submitted form contains an empty password.
-    EMPTY_PASSWORD = 1,
+    EMPTY_PASSWORD,
     // No PasswordFormManager exists for this form.
-    NO_MATCHING_FORM = 2,
+    NO_MATCHING_FORM,
     // FormFetcher of PasswordFormManager is still loading.
-    MATCHING_NOT_COMPLETE = 3,
+    MATCHING_NOT_COMPLETE,
     // <unknown purpose>. Obsolete since M48.
-    INVALID_FORM = 4,
+    INVALID_FORM,
     // A Google credential cannot be saved by policy because it is the Chrome
     // Sync credential and therefore acts as a master password that gives access
     // to all other credentials on https://passwords.google.com.
-    SYNC_CREDENTIAL = 5,
+    SYNC_CREDENTIAL,
     // Credentials are not offered to be saved on HTTP pages if a credential is
     // stored for the corresponding HTTPS page.
-    SAVING_ON_HTTP_AFTER_HTTPS = 6,
+    SAVING_ON_HTTP_AFTER_HTTPS,
     MAX_FAILURE_VALUE
   };
 

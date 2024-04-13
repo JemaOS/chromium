@@ -14,7 +14,7 @@ OriginKeyedPermissionActionService::OriginKeyedPermissionActionService() =
 OriginKeyedPermissionActionService::~OriginKeyedPermissionActionService() =
     default;
 
-std::optional<permissions::PermissionActionTime>
+absl::optional<permissions::PermissionActionTime>
 OriginKeyedPermissionActionService::GetLastActionEntry(
     const GURL& origin,
     ContentSettingsType type) {
@@ -25,7 +25,7 @@ OriginKeyedPermissionActionService::GetLastActionEntry(
       return content_settings_it->second;
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void OriginKeyedPermissionActionService::RecordAction(

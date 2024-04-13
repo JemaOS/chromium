@@ -4,25 +4,17 @@
 
 #include "components/permissions/permission_uma_util.h"
 
-#include <cstdint>
 #include <utility>
 
 #include "base/command_line.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/no_destructor.h"
-#include "base/notreached.h"
 #include "base/strings/strcat.h"
-#include "base/time/clock.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "components/content_settings/core/browser/content_settings_uma_util.h"
-#include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_types.h"
-#include "components/content_settings/core/common/features.h"
-#include "components/permissions/constants.h"
 #include "components/permissions/permission_actions_history.h"
 #include "components/permissions/permission_decision_auto_blocker.h"
 #include "components/permissions/permission_request.h"
@@ -33,7 +25,6 @@
 #include "components/permissions/request_type.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
-#include "printing/buildflags/buildflags.h"
 #include "services/metrics/public/cpp/metrics_utils.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
@@ -46,10 +37,6 @@
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/jni_string.h"
 #endif
-
-namespace {
-bool scoped_revocation_reporter_in_scope = false;
-}  // namespace
 
 namespace permissions {
 
@@ -115,33 +102,21 @@ RequestTypeForUma GetUmaValueForRequestType(RequestType request_type) {
 #if !BUILDFLAG(IS_ANDROID)
     case RequestType::kRegisterProtocolHandler:
       return RequestTypeForUma::REGISTER_PROTOCOL_HANDLER;
-#endif
-#if BUILDFLAG(IS_CHROMEOS)
-    case RequestType::kSmartCard:
-      return RequestTypeForUma::PERMISSION_SMART_CARD;
+    case RequestType::kSecurityAttestation:
+      return RequestTypeForUma::PERMISSION_SECURITY_KEY_ATTESTATION;
+    case RequestType::kU2fApiRequest:
+      return RequestTypeForUma::PERMISSION_U2F_API_REQUEST;
 #endif
     case RequestType::kStorageAccess:
       return RequestTypeForUma::PERMISSION_STORAGE_ACCESS;
     case RequestType::kVrSession:
       return RequestTypeForUma::PERMISSION_VR;
-#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(USE_CUPS)
-    case RequestType::kWebPrinting:
-      return RequestTypeForUma::PERMISSION_WEB_PRINTING;
-#endif
 #if !BUILDFLAG(IS_ANDROID)
     case RequestType::kWindowManagement:
       return RequestTypeForUma::PERMISSION_WINDOW_MANAGEMENT;
 #endif
     case RequestType::kTopLevelStorageAccess:
       return RequestTypeForUma::PERMISSION_TOP_LEVEL_STORAGE_ACCESS;
-#if !BUILDFLAG(IS_ANDROID)
-    case RequestType::kFileSystemAccess:
-      return RequestTypeForUma::PERMISSION_FILE_SYSTEM_ACCESS;
-    case RequestType::kCapturedSurfaceControl:
-      return RequestTypeForUma::CAPTURED_SURFACE_CONTROL;
-#endif
-    case RequestType::kIdentityProvider:
-      return RequestTypeForUma::PERMISSION_IDENTITY_PROVIDER;
   }
 }
 
@@ -169,6 +144,8 @@ std::string GetPermissionRequestString(RequestTypeForUma type) {
       return "AudioCapture";
     case RequestTypeForUma::PERMISSION_MEDIASTREAM_CAMERA:
       return "VideoCapture";
+    case RequestTypeForUma::PERMISSION_SECURITY_KEY_ATTESTATION:
+      return "SecurityKeyAttestation";
     case RequestTypeForUma::PERMISSION_PAYMENT_HANDLER:
       return "PaymentHandler";
     case RequestTypeForUma::PERMISSION_NFC:
@@ -191,18 +168,10 @@ std::string GetPermissionRequestString(RequestTypeForUma type) {
       return "LocalFonts";
     case RequestTypeForUma::PERMISSION_IDLE_DETECTION:
       return "IdleDetection";
+    case RequestTypeForUma::PERMISSION_U2F_API_REQUEST:
+      return "U2fApiRequest";
     case RequestTypeForUma::PERMISSION_ACCESSIBILITY_EVENTS:
       return "AccessibilityEvents";
-    case RequestTypeForUma::PERMISSION_FILE_SYSTEM_ACCESS:
-      return "FileSystemAccess";
-    case RequestTypeForUma::CAPTURED_SURFACE_CONTROL:
-      return "CapturedSurfaceControl";
-    case RequestTypeForUma::PERMISSION_SMART_CARD:
-      return "SmartCard";
-    case RequestTypeForUma::PERMISSION_WEB_PRINTING:
-      return "WebPrinting";
-    case RequestTypeForUma::PERMISSION_IDENTITY_PROVIDER:
-      return "IdentityProvider";
 
     case RequestTypeForUma::UNKNOWN:
     case RequestTypeForUma::PERMISSION_FLASH:
@@ -219,7 +188,7 @@ std::string GetPermissionRequestString(RequestTypeForUma type) {
 bool IsCrossOriginSubframe(content::RenderFrameHost* render_frame_host) {
   DCHECK(render_frame_host);
 
-  // Permissions are denied for fenced frames and other inner pages.
+  // Permissions are denied for fenced frames, portal and other inner pages.
   // |GetMainFrame| should be enough to get top level frame.
   auto current_origin = render_frame_host->GetLastCommittedOrigin();
   return !render_frame_host->GetMainFrame()
@@ -275,12 +244,9 @@ PermissionHeaderPolicyForUMA GetTopLevelPermissionHeaderPolicyForUMA(
                    FEATURE_ALLOWLIST_DOES_NOT_MATCH_ORIGIN;
 }
 
-void RecordEngagementMetric(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests,
-    content::WebContents* web_contents,
-    const std::string& action) {
-  CHECK(!requests.empty());
-
+void RecordEngagementMetric(const std::vector<PermissionRequest*>& requests,
+                            content::WebContents* web_contents,
+                            const std::string& action) {
   RequestTypeForUma type =
       GetUmaValueForRequestType(requests[0]->request_type());
   if (requests.size() > 1)
@@ -296,48 +262,17 @@ void RecordEngagementMetric(
   base::UmaHistogramPercentageObsoleteDoNotUse(name, engagement_score);
 }
 
-// Records in a UMA histogram whether we should expect to see an event in UKM,
-// to allow for evaluating if the current constraints on UKM recording work well
-// in practice.
-void RecordUmaForWhetherRevocationUkmWasRecorded(
-    ContentSettingsType permission_type,
-    bool has_source_id) {
-  if (permission_type == ContentSettingsType::NOTIFICATIONS) {
-    base::UmaHistogramBoolean(
-        "Permissions.Revocation.Notifications.DidRecordUkm", has_source_id);
-  }
-}
-
-// Records in a UMA histogram whether we should expect to see an event in UKM,
-// to allow for evaluating if the current constraints on UKM recording work well
-// in practice.
-void RecordUmaForWhetherUsageUkmWasRecorded(ContentSettingsType permission_type,
-                                            bool has_source_id) {
-  if (permission_type == ContentSettingsType::NOTIFICATIONS) {
-    base::UmaHistogramBoolean("Permissions.Usage.Notifications.DidRecordUkm",
-                              has_source_id);
-  }
-}
-
-void RecordUmaForRevocationSourceUI(ContentSettingsType permission_type,
-                                    PermissionSourceUI source_ui) {
-  if (permission_type == ContentSettingsType::NOTIFICATIONS) {
-    base::UmaHistogramEnumeration(
-        "Permissions.Revocation.Notifications.SourceUI", source_ui);
-  }
-}
-
 void RecordPermissionUsageUkm(ContentSettingsType permission_type,
-                              std::optional<ukm::SourceId> source_id) {
-  RecordUmaForWhetherUsageUkmWasRecorded(permission_type,
-                                         source_id.has_value());
+                              absl::optional<ukm::SourceId> source_id) {
   if (!source_id.has_value())
     return;
 
+  size_t num_values = 0;
+
   ukm::builders::PermissionUsage builder(source_id.value());
   builder.SetPermissionType(static_cast<int64_t>(
-      content_settings_uma_util::ContentSettingTypeToHistogramValue(
-          permission_type)));
+      ContentSettingTypeToHistogramValue(permission_type, &num_values)));
+
   builder.Record(ukm::UkmRecorder::Get());
 }
 
@@ -350,26 +285,23 @@ void RecordPermissionActionUkm(
     PermissionSourceUI source_ui,
     base::TimeDelta time_to_decision,
     PermissionPromptDisposition ui_disposition,
-    std::optional<PermissionPromptDispositionReason> ui_reason,
-    std::optional<bool> has_three_consecutive_denies,
-    std::optional<bool> has_previously_revoked_permission,
-    std::optional<PermissionUmaUtil::PredictionGrantLikelihood>
+    absl::optional<PermissionPromptDispositionReason> ui_reason,
+    absl::optional<bool> has_three_consecutive_denies,
+    absl::optional<bool> has_previously_revoked_permission,
+    absl::optional<PermissionUmaUtil::PredictionGrantLikelihood>
         predicted_grant_likelihood,
     PredictionRequestFeatures::ActionCounts
         loud_ui_actions_counts_for_request_type,
     PredictionRequestFeatures::ActionCounts loud_ui_actions_counts,
     PredictionRequestFeatures::ActionCounts actions_counts_for_request_type,
     PredictionRequestFeatures::ActionCounts actions_counts,
-    std::optional<bool> prediction_decision_held_back,
-    std::optional<ukm::SourceId> source_id) {
-  if (action == PermissionAction::REVOKED) {
-    RecordUmaForWhetherRevocationUkmWasRecorded(permission,
-                                                source_id.has_value());
-  }
-
+    absl::optional<bool> prediction_decision_held_back,
+    absl::optional<ukm::SourceId> source_id) {
   // Only record the permission change if the origin is in the history.
   if (!source_id.has_value())
     return;
+
+  size_t num_values = 0;
 
   const int loud_ui_prompts_count_for_request_type =
       loud_ui_actions_counts_for_request_type.total();
@@ -381,8 +313,7 @@ void RecordPermissionActionUkm(
   builder.SetAction(static_cast<int64_t>(action))
       .SetGesture(static_cast<int64_t>(gesture_type))
       .SetPermissionType(static_cast<int64_t>(
-          content_settings_uma_util::ContentSettingTypeToHistogramValue(
-              permission)))
+          ContentSettingTypeToHistogramValue(permission, &num_values)))
       .SetPriorDismissals(std::min(kPriorCountCap, dismiss_count))
       .SetPriorIgnores(std::min(kPriorCountCap, ignore_count))
       .SetSource(static_cast<int64_t>(source_ui))
@@ -485,7 +416,7 @@ void RecordPermissionActionUkm(
 // CrowdDeny versions published before 2020 will be reported as 1.
 // Returns 0 if no version available.
 // Returns 1 if a version has invalid format.
-int ConvertCrowdDenyVersionToInt(const std::optional<base::Version>& version) {
+int ConvertCrowdDenyVersionToInt(const absl::optional<base::Version>& version) {
   if (!version.has_value() || !version.value().IsValid())
     return 0;
 
@@ -650,48 +581,6 @@ void PermissionUmaUtil::PermissionRequested(ContentSettingsType content_type) {
                                 permission, PermissionType::NUM);
 }
 
-void PermissionUmaUtil::RecordActivityIndicator(
-    std::set<ContentSettingsType> permissions,
-    bool blocked,
-    bool blocked_system_level,
-    bool clicked) {
-  DCHECK(!permissions.empty());
-  DCHECK(permissions.contains(ContentSettingsType::MEDIASTREAM_CAMERA) ||
-         permissions.contains(ContentSettingsType::MEDIASTREAM_MIC));
-
-  ActivityIndicatorState state;
-  if (blocked) {
-    if (blocked_system_level) {
-      state = ActivityIndicatorState::kBlockedOnSystemLevel;
-    } else {
-      state = ActivityIndicatorState::kBlockedOnSiteLevel;
-    }
-  } else {
-    state = ActivityIndicatorState::kInUse;
-  }
-
-  std::string indicators_type;
-
-  if (permissions.size() > 1) {
-    indicators_type = "AudioAndVideoCapture";
-  } else if (permissions.contains(ContentSettingsType::MEDIASTREAM_CAMERA)) {
-    indicators_type = "VideoCapture";
-  } else {
-    indicators_type = "AudioCapture";
-  }
-
-  std::string action;
-  if (clicked) {
-    action = "Click";
-  } else {
-    action = "Show";
-  }
-
-  base::UmaHistogramEnumeration(
-      "Permissions.ActivityIndicator.LHS." + indicators_type + "." + action,
-      state);
-}
-
 void PermissionUmaUtil::RecordPermissionRequestedFromFrame(
     ContentSettingsType content_settings_type,
     content::RenderFrameHost* rfh) {
@@ -730,11 +619,11 @@ void PermissionUmaUtil::PermissionRevoked(
                          PermissionRequestGestureType::UNKNOWN,
                          /*time_to_decision=*/base::TimeDelta(),
                          PermissionPromptDisposition::NOT_APPLICABLE,
-                         /*ui_reason=*/std::nullopt, revoked_origin,
+                         /*ui_reason=*/absl::nullopt, revoked_origin,
                          /*web_contents=*/nullptr, browser_context,
                          /*render_frame_host*/ nullptr,
-                         /*predicted_grant_likelihood=*/std::nullopt,
-                         /*prediction_decision_held_back=*/std::nullopt);
+                         /*predicted_grant_likelihood=*/absl::nullopt,
+                         /*prediction_decision_held_back=*/absl::nullopt);
 }
 
 void PermissionUmaUtil::RecordEmbargoPromptSuppression(
@@ -745,28 +634,29 @@ void PermissionUmaUtil::RecordEmbargoPromptSuppression(
 }
 
 void PermissionUmaUtil::RecordEmbargoPromptSuppressionFromSource(
-    content::PermissionStatusSource source) {
+    PermissionStatusSource source) {
   // Explicitly switch to ensure that any new
   // PermissionStatusSource values are dealt with appropriately.
   switch (source) {
-    case content::PermissionStatusSource::MULTIPLE_DISMISSALS:
+    case PermissionStatusSource::MULTIPLE_DISMISSALS:
       PermissionUmaUtil::RecordEmbargoPromptSuppression(
           PermissionEmbargoStatus::REPEATED_DISMISSALS);
       break;
-    case content::PermissionStatusSource::MULTIPLE_IGNORES:
+    case PermissionStatusSource::MULTIPLE_IGNORES:
       PermissionUmaUtil::RecordEmbargoPromptSuppression(
           PermissionEmbargoStatus::REPEATED_IGNORES);
       break;
-    case content::PermissionStatusSource::RECENT_DISPLAY:
+    case PermissionStatusSource::RECENT_DISPLAY:
       PermissionUmaUtil::RecordEmbargoPromptSuppression(
           PermissionEmbargoStatus::RECENT_DISPLAY);
       break;
-    case content::PermissionStatusSource::UNSPECIFIED:
-    case content::PermissionStatusSource::KILL_SWITCH:
-    case content::PermissionStatusSource::INSECURE_ORIGIN:
-    case content::PermissionStatusSource::FEATURE_POLICY:
-    case content::PermissionStatusSource::VIRTUAL_URL_DIFFERENT_ORIGIN:
-    case content::PermissionStatusSource::FENCED_FRAME:
+    case PermissionStatusSource::UNSPECIFIED:
+    case PermissionStatusSource::KILL_SWITCH:
+    case PermissionStatusSource::INSECURE_ORIGIN:
+    case PermissionStatusSource::FEATURE_POLICY:
+    case PermissionStatusSource::VIRTUAL_URL_DIFFERENT_ORIGIN:
+    case PermissionStatusSource::PORTAL:
+    case PermissionStatusSource::FENCED_FRAME:
       // The permission wasn't under embargo, so don't record anything. We may
       // embargo it later.
       break;
@@ -796,7 +686,7 @@ void PermissionUmaUtil::RecordPermissionRecoverySuccessRate(
 }
 
 void PermissionUmaUtil::RecordPermissionPromptAttempt(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests,
+    const std::vector<PermissionRequest*>& requests,
     bool IsLocationBarEditingOrEmpty) {
   DCHECK(!requests.empty());
 
@@ -836,8 +726,7 @@ void PermissionUmaUtil::RecordPermissionPromptAttempt(
 }
 
 void PermissionUmaUtil::PermissionPromptShown(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-        requests) {
+    const std::vector<PermissionRequest*>& requests) {
   DCHECK(!requests.empty());
 
   RequestTypeForUma request_type = RequestTypeForUma::MULTIPLE;
@@ -855,15 +744,15 @@ void PermissionUmaUtil::PermissionPromptShown(
 }
 
 void PermissionUmaUtil::PermissionPromptResolved(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests,
+    const std::vector<PermissionRequest*>& requests,
     content::WebContents* web_contents,
     PermissionAction permission_action,
     base::TimeDelta time_to_decision,
     PermissionPromptDisposition ui_disposition,
-    std::optional<PermissionPromptDispositionReason> ui_reason,
-    std::optional<PredictionGrantLikelihood> predicted_grant_likelihood,
-    std::optional<bool> prediction_decision_held_back,
-    std::optional<permissions::PermissionIgnoredReason> ignored_reason,
+    absl::optional<PermissionPromptDispositionReason> ui_reason,
+    absl::optional<PredictionGrantLikelihood> predicted_grant_likelihood,
+    absl::optional<bool> prediction_decision_held_back,
+    absl::optional<permissions::PermissionIgnoredReason> ignored_reason,
     bool did_show_prompt,
     bool did_click_managed,
     bool did_click_learn_more) {
@@ -1007,7 +896,7 @@ void PermissionUmaUtil::RecordCrowdDenyDelayedPushNotification(
 }
 
 void PermissionUmaUtil::RecordCrowdDenyVersionAtAbuseCheckTime(
-    const std::optional<base::Version>& version) {
+    const absl::optional<base::Version>& version) {
   base::UmaHistogramSparse(
       "Permissions.CrowdDeny.PreloadData.VersionAtAbuseCheckTime",
       ConvertCrowdDenyVersionToInt(version));
@@ -1047,9 +936,7 @@ PermissionUmaUtil::ScopedRevocationReporter::ScopedRevocationReporter(
       content_type_(content_type),
       source_ui_(source_ui) {
   if (!primary_url_.is_valid() ||
-      (!secondary_url_.is_valid() && !secondary_url_.is_empty()) ||
-      !IsRequestablePermissionType(content_type_) ||
-      !PermissionUtil::IsPermission(content_type_)) {
+      (!secondary_url_.is_valid() && !secondary_url_.is_empty())) {
     is_initially_allowed_ = false;
     return;
   }
@@ -1061,8 +948,7 @@ PermissionUmaUtil::ScopedRevocationReporter::ScopedRevocationReporter(
   content_settings::SettingInfo setting_info;
   settings_map->GetWebsiteSetting(primary_url, secondary_url, content_type_,
                                   &setting_info);
-  last_modified_date_ = setting_info.metadata.last_modified();
-  scoped_revocation_reporter_in_scope = true;
+  last_modified_date_ = setting_info.metadata.last_modified;
 }
 
 PermissionUmaUtil::ScopedRevocationReporter::ScopedRevocationReporter(
@@ -1081,13 +967,10 @@ PermissionUmaUtil::ScopedRevocationReporter::ScopedRevocationReporter(
           source_ui) {}
 
 PermissionUmaUtil::ScopedRevocationReporter::~ScopedRevocationReporter() {
-  scoped_revocation_reporter_in_scope = false;
   if (!is_initially_allowed_)
     return;
-  if (!IsRequestablePermissionType(content_type_) ||
-      !PermissionUtil::IsPermission(content_type_)) {
+  if (!IsRequestablePermissionType(content_type_))
     return;
-  }
   HostContentSettingsMap* settings_map =
       PermissionsClient::Get()->GetSettingsMap(browser_context_);
   ContentSetting final_content_setting = settings_map->GetContentSetting(
@@ -1107,17 +990,13 @@ PermissionUmaUtil::ScopedRevocationReporter::~ScopedRevocationReporter() {
   }
 }
 
-bool PermissionUmaUtil::ScopedRevocationReporter::IsInstanceInScope() {
-  return scoped_revocation_reporter_in_scope;
-}
-
 void PermissionUmaUtil::RecordPermissionUsage(
     ContentSettingsType permission_type,
     content::BrowserContext* browser_context,
     content::WebContents* web_contents,
     const GURL& requesting_origin) {
   PermissionsClient::Get()->GetUkmSourceId(
-      permission_type, browser_context, web_contents, requesting_origin,
+      browser_context, web_contents, requesting_origin,
       base::BindOnce(&RecordPermissionUsageUkm, permission_type));
 }
 
@@ -1128,13 +1007,13 @@ void PermissionUmaUtil::RecordPermissionAction(
     PermissionRequestGestureType gesture_type,
     base::TimeDelta time_to_decision,
     PermissionPromptDisposition ui_disposition,
-    std::optional<PermissionPromptDispositionReason> ui_reason,
+    absl::optional<PermissionPromptDispositionReason> ui_reason,
     const GURL& requesting_origin,
     content::WebContents* web_contents,
     content::BrowserContext* browser_context,
     content::RenderFrameHost* render_frame_host,
-    std::optional<PredictionGrantLikelihood> predicted_grant_likelihood,
-    std::optional<bool> prediction_decision_held_back) {
+    absl::optional<PredictionGrantLikelihood> predicted_grant_likelihood,
+    absl::optional<bool> prediction_decision_held_back) {
   DCHECK(PermissionUtil::IsPermission(permission));
   PermissionDecisionAutoBlocker* autoblocker =
       PermissionsClient::Get()->GetPermissionDecisionAutoBlocker(
@@ -1179,12 +1058,8 @@ void PermissionUmaUtil::RecordPermissionAction(
     PermissionActionsHistory::FillInActionCounts(&actions_counts, actions);
   }
 
-  if (action == PermissionAction::REVOKED) {
-    RecordUmaForRevocationSourceUI(permission, source_ui);
-  }
-
   PermissionsClient::Get()->GetUkmSourceId(
-      permission, browser_context, web_contents, requesting_origin,
+      browser_context, web_contents, requesting_origin,
       base::BindOnce(
           &RecordPermissionActionUkm, action, gesture_type, permission,
           dismiss_count, ignore_count, source_ui, time_to_decision,
@@ -1193,7 +1068,7 @@ void PermissionUmaUtil::RecordPermissionAction(
               ? PermissionsClient::Get()
                     ->HadThreeConsecutiveNotificationPermissionDenies(
                         browser_context)
-              : std::nullopt,
+              : absl::nullopt,
           PermissionsClient::Get()->HasPreviouslyAutoRevokedPermission(
               browser_context, requesting_origin, permission),
           predicted_grant_likelihood, loud_ui_actions_counts_per_request_type,
@@ -1278,18 +1153,6 @@ void PermissionUmaUtil::RecordPermissionAction(
       base::UmaHistogramEnumeration("Permissions.Action.AccessibilityEvents",
                                     action, PermissionAction::NUM);
       break;
-    case ContentSettingsType::CAPTURED_SURFACE_CONTROL:
-      base::UmaHistogramEnumeration("Permissions.Action.CapturedSurfaceControl",
-                                    action, PermissionAction::NUM);
-      break;
-    case ContentSettingsType::SMART_CARD_DATA:
-      base::UmaHistogramEnumeration("Permissions.Action.SmartCard", action,
-                                    PermissionAction::NUM);
-      break;
-    case ContentSettingsType::WEB_PRINTING:
-      base::UmaHistogramEnumeration("Permissions.Action.WebPrinting", action,
-                                    PermissionAction::NUM);
-      break;
     // The user is not prompted for these permissions, thus there is no
     // permission action recorded for them.
     default:
@@ -1301,7 +1164,7 @@ void PermissionUmaUtil::RecordPermissionAction(
 
 // static
 void PermissionUmaUtil::RecordPromptDecided(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests,
+    const std::vector<PermissionRequest*>& requests,
     bool accepted,
     bool is_one_time) {
   DCHECK(!requests.empty());
@@ -1336,44 +1199,11 @@ void PermissionUmaUtil::RecordPromptDecided(
 
 void PermissionUmaUtil::RecordTimeElapsedBetweenGrantAndUse(
     ContentSettingsType type,
-    base::TimeDelta delta,
-    content_settings::SettingSource source) {
-  std::string base_histogram = "Permissions.Usage.ElapsedTimeSinceGrant." +
-                               PermissionUtil::GetPermissionString(type);
-  std::string source_suffix;
-  switch (source) {
-    case content_settings::SETTING_SOURCE_NONE:
-      source_suffix = "FromNone";
-      break;
-    case content_settings::SETTING_SOURCE_POLICY:
-      source_suffix = "FromPolicy";
-      break;
-    case content_settings::SETTING_SOURCE_EXTENSION:
-      source_suffix = "FromExtension";
-      break;
-    case content_settings::SETTING_SOURCE_USER:
-      source_suffix = "FromUser";
-      break;
-    case content_settings::SETTING_SOURCE_ALLOWLIST:
-      source_suffix = "FromAllowlist";
-      break;
-    case content_settings::SETTING_SOURCE_SUPERVISED:
-      source_suffix = "FromSupervised";
-      break;
-    case content_settings::SETTING_SOURCE_INSTALLED_WEBAPP:
-      source_suffix = "FromInstalledWebApp";
-      break;
-    case content_settings::SETTING_SOURCE_TPCD_GRANT:
-      source_suffix = "FromSourceTpcdGrant";
-      break;
-  }
-  base::UmaHistogramCustomCounts(base_histogram, delta.InSeconds(), 1,
+    base::TimeDelta delta) {
+  base::UmaHistogramCustomCounts("Permissions.Usage.ElapsedTimeSinceGrant." +
+                                     PermissionUtil::GetPermissionString(type),
+                                 delta.InSeconds(), 1,
                                  base::Days(365).InSeconds(), 100);
-  if (!source_suffix.empty()) {
-    base::UmaHistogramCustomCounts(base_histogram + "." + source_suffix,
-                                   delta.InSeconds(), 1,
-                                   base::Days(365).InSeconds(), 100);
-  }
 }
 
 void PermissionUmaUtil::RecordTimeElapsedBetweenGrantAndRevoke(
@@ -1446,25 +1276,16 @@ void PermissionUmaUtil::RecordPageInfoDialogAccessType(
 }
 
 // static
-std::string PermissionUmaUtil::GetOneTimePermissionEventHistogram(
-    ContentSettingsType type) {
-  // `FILE_SYSTEM_WRITE_GUARD` is not part of `OneTimePermission`,
-  // (i.e. `CanPermissionBeAllowedOnce()`), but it uses its background expiry
-  // flow. As a result, allow logging for this event.
-  DCHECK(permissions::PermissionUtil::CanPermissionBeAllowedOnce(type) ||
-         type == ContentSettingsType::FILE_SYSTEM_WRITE_GUARD);
-
-  std::string permission_type = GetPermissionRequestString(
-      GetUmaValueForRequestType(ContentSettingsTypeToRequestType(type)));
-  return "Permissions.OneTimePermission." + permission_type + ".Event";
-}
-
-// static
 void PermissionUmaUtil::RecordOneTimePermissionEvent(
     ContentSettingsType type,
     OneTimePermissionEvent event) {
-  base::UmaHistogramEnumeration(GetOneTimePermissionEventHistogram(type),
-                                event);
+  DCHECK(permissions::PermissionUtil::CanPermissionBeAllowedOnce(type));
+
+  std::string permission_type = GetPermissionRequestString(
+      GetUmaValueForRequestType(ContentSettingsTypeToRequestType(type)));
+
+  base::UmaHistogramEnumeration(
+      "Permissions.OneTimePermission." + permission_type + ".Event", event);
 }
 
 // static
@@ -1547,9 +1368,6 @@ void PermissionUmaUtil::RecordPageInfoPermissionChange(
                setting_after == ContentSetting::CONTENT_SETTING_DEFAULT) {
       base::UmaHistogramEnumeration(histogram_name,
                                     PermissionChangeAction::RESET_FROM_ALLOWED);
-    } else if (setting_after == ContentSetting::CONTENT_SETTING_ALLOW) {
-      base::UmaHistogramEnumeration(
-          histogram_name, PermissionChangeAction::REMEMBER_CHECKBOX_TOGGLED);
     } else {
       NOTREACHED();
     }
@@ -1585,8 +1403,6 @@ std::string PermissionUmaUtil::GetPromptDispositionString(
       return "AnchoredBubble";
     case PermissionPromptDisposition::CUSTOM_MODAL_DIALOG:
       return "CustomModalDialog";
-    case PermissionPromptDisposition::ELEMENT_ANCHORED_BUBBLE:
-      return "ElementAnchoredBubble";
     case PermissionPromptDisposition::LOCATION_BAR_LEFT_CHIP:
       return "LocationBarLeftChip";
     case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_CHIP:
@@ -1609,8 +1425,6 @@ std::string PermissionUmaUtil::GetPromptDispositionString(
       return "NoneVisible";
     case PermissionPromptDisposition::NOT_APPLICABLE:
       return "NotApplicable";
-    case PermissionPromptDisposition::MAC_OS_PROMPT:
-      return "MacOsPrompt";
   }
 
   NOTREACHED();
@@ -1652,10 +1466,8 @@ bool PermissionUmaUtil::IsPromptDispositionQuiet(
     case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ABUSIVE_CHIP:
     case PermissionPromptDisposition::MINI_INFOBAR:
     case PermissionPromptDisposition::MESSAGE_UI:
-    case PermissionPromptDisposition::MAC_OS_PROMPT:
       return true;
     case PermissionPromptDisposition::ANCHORED_BUBBLE:
-    case PermissionPromptDisposition::ELEMENT_ANCHORED_BUBBLE:
     case PermissionPromptDisposition::MODAL_DIALOG:
     case PermissionPromptDisposition::LOCATION_BAR_LEFT_CHIP:
     case PermissionPromptDisposition::LOCATION_BAR_LEFT_CHIP_AUTO_BUBBLE:
@@ -1671,7 +1483,6 @@ bool PermissionUmaUtil::IsPromptDispositionLoud(
     PermissionPromptDisposition prompt_disposition) {
   switch (prompt_disposition) {
     case PermissionPromptDisposition::ANCHORED_BUBBLE:
-    case PermissionPromptDisposition::ELEMENT_ANCHORED_BUBBLE:
     case PermissionPromptDisposition::MODAL_DIALOG:
     case PermissionPromptDisposition::LOCATION_BAR_LEFT_CHIP:
     case PermissionPromptDisposition::LOCATION_BAR_LEFT_CHIP_AUTO_BUBBLE:
@@ -1685,14 +1496,13 @@ bool PermissionUmaUtil::IsPromptDispositionLoud(
     case PermissionPromptDisposition::NONE_VISIBLE:
     case PermissionPromptDisposition::CUSTOM_MODAL_DIALOG:
     case PermissionPromptDisposition::NOT_APPLICABLE:
-    case PermissionPromptDisposition::MAC_OS_PROMPT:
       return false;
   }
 }
 
 // static
 void PermissionUmaUtil::RecordIgnoreReason(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests,
+    const std::vector<PermissionRequest*>& requests,
     PermissionPromptDisposition prompt_disposition,
     PermissionIgnoredReason reason) {
   RequestTypeForUma request_type = RequestTypeForUma::MULTIPLE;
@@ -1726,24 +1536,6 @@ void PermissionUmaUtil::RecordPermissionsUsageSourceAndPolicyConfiguration(
             {usage_histogram, ".CrossOriginFrame.TopLevelHeaderPolicy"}),
         render_frame_host);
   }
-}
-
-// static
-void PermissionUmaUtil::RecordElementAnchoredBubbleDismiss(
-    const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>& requests,
-    DismissedReason reason) {
-  CHECK(!requests.empty());
-
-  RequestTypeForUma type =
-      GetUmaValueForRequestType(requests[0]->request_type());
-  if (requests.size() > 1) {
-    type = RequestTypeForUma::MULTIPLE;
-  }
-
-  base::UmaHistogramEnumeration("Permissions.Prompt." +
-                                    GetPermissionRequestString(type) +
-                                    ".ElementAnchoredBubble.DismissedReason",
-                                reason);
 }
 
 // static
@@ -1784,83 +1576,6 @@ void PermissionUmaUtil::RecordTopLevelPermissionsHeaderPolicyOnNavigation(
                                                 feature.value()),
         PermissionHeaderPolicyForUMA::NUM);
   }
-}
-
-void PermissionUmaUtil::RecordPermissionRegrantForUnusedSites(
-    const GURL& origin,
-    ContentSettingsType content_settings_type,
-    PermissionSourceUI source_ui,
-    content::BrowserContext* browser_context,
-    base::Time current_time) {
-  auto* hcsm = PermissionsClient::Get()->GetSettingsMap(browser_context);
-  std::optional<uint32_t> days_since_revocation =
-      GetDaysSinceUnusedSitePermissionRevocation(origin, content_settings_type,
-                                                 current_time, hcsm);
-  if (!days_since_revocation.has_value()) {
-    return;
-  }
-  std::string source_ui_string;
-  // We are only interested in permission updates through the UI that go from
-  // Ask to Allow. This can only be done through the permission prompt and the
-  // site settings page.
-  switch (source_ui) {
-    case PermissionSourceUI::PROMPT:
-      source_ui_string = "Prompt";
-      break;
-    case PermissionSourceUI::SITE_SETTINGS:
-      source_ui_string = "Settings";
-      break;
-    default:
-      NOTREACHED();
-  }
-  base::UmaHistogramExactLinear(
-      "Settings.SafetyCheck.UnusedSitePermissionsRegrantDays" +
-          source_ui_string + "." +
-          PermissionUtil::GetPermissionString(content_settings_type),
-      days_since_revocation.value(), 31);
-  base::UmaHistogramExactLinear(
-      "Settings.SafetyCheck.UnusedSitePermissionsRegrantDays" +
-          source_ui_string + ".All",
-      days_since_revocation.value(), 31);
-}
-
-// static
-std::optional<uint32_t>
-PermissionUmaUtil::GetDaysSinceUnusedSitePermissionRevocation(
-    const GURL& origin,
-    ContentSettingsType content_settings_type,
-    base::Time current_time,
-    HostContentSettingsMap* hcsm) {
-  content_settings::SettingInfo info;
-  base::Value stored_value(hcsm->GetWebsiteSetting(
-      origin, origin, ContentSettingsType::REVOKED_UNUSED_SITE_PERMISSIONS,
-      &info));
-  if (!stored_value.is_dict()) {
-    return std::nullopt;
-  }
-  base::Value::List* permission_type_list =
-      stored_value.GetDict().FindList(permissions::kRevokedKey);
-  if (!permission_type_list) {
-    return std::nullopt;
-  }
-  base::Time revoked_time =
-      info.metadata.expiration() -
-      content_settings::features::
-          kSafetyCheckUnusedSitePermissionsRevocationCleanUpThreshold.Get();
-  uint32_t days_since_revoked = (current_time - revoked_time).InDays();
-
-  for (auto& permission_type : *permission_type_list) {
-    auto type_int = permission_type.GetIfInt();
-    if (!type_int.has_value()) {
-      continue;
-    }
-    if (content_settings_type ==
-        static_cast<ContentSettingsType>(type_int.value())) {
-      return days_since_revoked;
-    }
-  }
-
-  return std::nullopt;
 }
 
 }  // namespace permissions

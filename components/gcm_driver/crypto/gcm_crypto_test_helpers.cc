@@ -10,7 +10,7 @@
 #include <string>
 
 #include "base/base64url.h"
-#include "base/containers/span.h"
+#include "base/strings/string_util.h"
 #include "components/gcm_driver/common/gcm_message.h"
 #include "components/gcm_driver/crypto/gcm_message_cryptographer.h"
 #include "components/gcm_driver/crypto/p256_key_util.h"
@@ -36,9 +36,11 @@ bool CreateEncryptedPayloadForTesting(const base::StringPiece& payload,
     return false;
   }
 
+  std::string salt;
+
   // Generate a cryptographically secure random salt for the message.
-  std::string salt(GCMMessageCryptographer::kSaltSize, '\0');
-  crypto::RandBytes(base::as_writable_byte_span(salt));
+  const size_t salt_size = GCMMessageCryptographer::kSaltSize;
+  crypto::RandBytes(base::WriteInto(&salt, salt_size + 1), salt_size);
 
   GCMMessageCryptographer cryptographer(
       GCMMessageCryptographer::Version::DRAFT_03);

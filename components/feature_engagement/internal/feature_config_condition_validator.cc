@@ -5,7 +5,6 @@
 #include "components/feature_engagement/internal/feature_config_condition_validator.h"
 
 #include <algorithm>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,9 +16,9 @@
 #include "components/feature_engagement/internal/display_lock_controller.h"
 #include "components/feature_engagement/internal/event_model.h"
 #include "components/feature_engagement/internal/proto/feature_event.pb.h"
-#include "components/feature_engagement/internal/time_provider.h"
 #include "components/feature_engagement/public/configuration.h"
 #include "components/feature_engagement/public/feature_list.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace feature_engagement {
 
@@ -35,8 +34,7 @@ ConditionValidator::Result FeatureConfigConditionValidator::MeetsConditions(
     const AvailabilityModel& availability_model,
     const DisplayLockController& display_lock_controller,
     const Configuration* configuration,
-    const TimeProvider& time_provider) const {
-  uint32_t current_day = time_provider.GetCurrentDay();
+    uint32_t current_day) const {
   ConditionValidator::Result result(true);
   result.event_model_ready_ok = event_model.IsReady();
   result.currently_showing_ok = !IsBlocked(feature, config, configuration);
@@ -65,7 +63,7 @@ ConditionValidator::Result FeatureConfigConditionValidator::MeetsConditions(
   result.snooze_expiration_ok =
       !event_model.IsSnoozeDismissed(config.trigger.name) &&
       (event_model.GetLastSnoozeTimestamp(config.trigger.name) <
-       time_provider.Now() - base::Days(config.snooze_params.snooze_interval));
+       base::Time::Now() - base::Days(config.snooze_params.snooze_interval));
 
   result.priority_notification_ok =
       !pending_priority_notification_.has_value() ||
@@ -148,18 +146,14 @@ bool FeatureConfigConditionValidator::EventConfigMeetsConditions(
 }
 
 void FeatureConfigConditionValidator::SetPriorityNotification(
-    const std::optional<std::string>& feature) {
+    const absl::optional<std::string>& feature) {
   DCHECK(!pending_priority_notification_.has_value() || !feature.has_value());
   pending_priority_notification_ = feature;
 }
 
-std::optional<std::string>
+absl::optional<std::string>
 FeatureConfigConditionValidator::GetPendingPriorityNotification() {
   return pending_priority_notification_;
-}
-
-void FeatureConfigConditionValidator::ResetSession() {
-  times_shown_for_feature_.clear();
 }
 
 bool FeatureConfigConditionValidator::AvailabilityMeetsConditions(
@@ -170,7 +164,7 @@ bool FeatureConfigConditionValidator::AvailabilityMeetsConditions(
   if (comparator.type == ANY)
     return true;
 
-  std::optional<uint32_t> availability_day =
+  absl::optional<uint32_t> availability_day =
       availability_model.GetAvailability(feature);
   if (!availability_day.has_value())
     return false;

@@ -12,6 +12,7 @@
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/check_op.h"
+#include "base/feature_list.h"
 #include "base/json/json_reader.h"
 #include "base/notreached.h"
 #include "base/ranges/algorithm.h"
@@ -19,6 +20,7 @@
 #include "base/strings/string_split.h"
 #include "base/values.h"
 #include "components/policy/android/jni_headers/PolicyConverter_jni.h"
+#include "components/policy/core/common/features.h"
 #include "components/policy/core/common/policy_bundle.h"
 #include "components/policy/core/common/policy_map.h"
 #include "components/policy/core/common/policy_namespace.h"
@@ -37,7 +39,7 @@ namespace {
 // "foo,bar" and "foo, bar" are equivalent. This is best effort and intended to
 // cover common cases applicable to the majority of policies. Use JSON encoding
 // to handle corner cases not covered by this.
-std::optional<base::Value> SplitCommaSeparatedList(
+absl::optional<base::Value> SplitCommaSeparatedList(
     const std::string& str_value) {
   DCHECK(!str_value.empty());
 
@@ -125,7 +127,7 @@ base::Value::List PolicyConverter::ConvertJavaStringArrayToListValue(
 }
 
 // static
-std::optional<base::Value> PolicyConverter::ConvertValueToSchema(
+absl::optional<base::Value> PolicyConverter::ConvertValueToSchema(
     base::Value value,
     const Schema& schema) {
   if (!schema.valid())
@@ -190,9 +192,9 @@ std::optional<base::Value> PolicyConverter::ConvertValueToSchema(
         // Do not try to convert empty string to list/dictionaries, since most
         // likely the value was not simply not set by the UEM.
         if (str_value.empty()) {
-          return std::nullopt;
+          return absl::nullopt;
         }
-        std::optional<base::Value> decoded_value = base::JSONReader::Read(
+        absl::optional<base::Value> decoded_value = base::JSONReader::Read(
             str_value, base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS);
         if (decoded_value) {
           return decoded_value;
@@ -207,19 +209,25 @@ std::optional<base::Value> PolicyConverter::ConvertValueToSchema(
         // Do not try to convert empty string to list/dictionaries, since most
         // likely the value was not simply not set by the UEM.
         if (str_value.empty()) {
-          return std::nullopt;
+          return absl::nullopt;
         }
-        std::optional<base::Value> decoded_value = base::JSONReader::Read(
+        absl::optional<base::Value> decoded_value = base::JSONReader::Read(
             str_value, base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS);
-        return decoded_value ? std::move(decoded_value)
-                             : SplitCommaSeparatedList(str_value);
+        if (decoded_value) {
+          return decoded_value;
+        }
+        if (base::FeatureList::IsEnabled(
+                ::policy::features::
+                    kListPoliciesAcceptCommaSeparatedStringsAndroid)) {
+          return SplitCommaSeparatedList(str_value);
+        }
       }
       return value;
     }
   }
 
   NOTREACHED();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void PolicyConverter::SetPolicyValueForTesting(const std::string& key,
@@ -231,7 +239,7 @@ void PolicyConverter::SetPolicyValue(const std::string& key,
                                      base::Value value) {
   const Schema schema = policy_schema_->GetKnownProperty(key);
   const PolicyNamespace ns(POLICY_DOMAIN_CHROME, std::string());
-  std::optional<base::Value> converted_value =
+  absl::optional<base::Value> converted_value =
       ConvertValueToSchema(std::move(value), schema);
   if (converted_value) {
     // Do not set list/dictionary policies that are sent as empty strings from

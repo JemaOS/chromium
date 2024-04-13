@@ -4,6 +4,7 @@ include_rules = [
 specific_include_rules = {
   "legacy_dom_storage_database": [
     "+sql",
+    "+third_party/sqlite",
   ],
   "local_storage_impl\.cc": [
     "+sql",

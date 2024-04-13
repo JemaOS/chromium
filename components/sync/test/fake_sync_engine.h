@@ -25,7 +25,8 @@ namespace syncer {
 // get through initialization. It often returns null pointers or nonsense
 // values; it is not intended to be used in tests that depend on SyncEngine
 // behavior.
-class FakeSyncEngine final : public SyncEngine {
+class FakeSyncEngine : public SyncEngine,
+                       public base::SupportsWeakPtr<FakeSyncEngine> {
  public:
   static constexpr char kTestBirthday[] = "1";
 
@@ -42,13 +43,9 @@ class FakeSyncEngine final : public SyncEngine {
     return started_handling_invalidations_;
   }
 
-  void SetPollIntervalElapsed(bool elapsed);
-
   // Manual completion of Initialize(), required if auto-completion was disabled
   // in the constructor.
   void TriggerInitializationCompletion(bool success);
-
-  void SetDetailedStatus(const SyncStatus& status);
 
   // Immediately calls params.host->OnEngineInitialized.
   void Initialize(InitParams params) override;
@@ -93,10 +90,9 @@ class FakeSyncEngine final : public SyncEngine {
                        std::unique_ptr<DataTypeActivationResponse>) override;
   void DisconnectDataType(ModelType type) override;
 
-  const SyncStatus& GetDetailedStatus() const override;
+  void SetProxyTabsDatatypeEnabled(bool enabled) override;
 
-  void GetTypesWithUnsyncedData(
-      base::OnceCallback<void(ModelTypeSet)> cb) const override;
+  const SyncStatus& GetDetailedStatus() const override;
 
   void HasUnsyncedItemsForTest(
       base::OnceCallback<void(bool)> cb) const override;
@@ -108,27 +104,19 @@ class FakeSyncEngine final : public SyncEngine {
 
   void OnCookieJarChanged(bool account_mismatch,
                           base::OnceClosure callback) override;
-  bool IsNextPollTimeInThePast() const override;
+  void SetInvalidationsForSessionsEnabled(bool enabled) override;
   void GetNigoriNodeForDebugging(AllNodesCallback callback) override;
-  void RecordNigoriMemoryUsageAndCountsHistograms() override;
-
-  base::WeakPtr<FakeSyncEngine> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
 
  private:
   const bool allow_init_completion_;
   const bool is_first_time_sync_configure_;
   const base::RepeatingClosure sync_transport_data_cleared_cb_;
-  // AcrossTasksDanglingUntriaged because it is assigned a
-  // AcrossTasksDanglingUntriaged pointer.
-  raw_ptr<SyncEngineHost, AcrossTasksDanglingUntriaged> host_ = nullptr;
+  // DanglingUntriaged because it is assigned a DanglingUntriaged pointer.
+  raw_ptr<SyncEngineHost, DanglingUntriaged> host_ = nullptr;
   bool initialized_ = false;
-  SyncStatus sync_status_;
+  const SyncStatus default_sync_status_;
   CoreAccountId authenticated_account_id_;
   bool started_handling_invalidations_ = false;
-  bool is_next_poll_time_in_the_past_ = false;
-  base::WeakPtrFactory<FakeSyncEngine> weak_ptr_factory_{this};
 };
 
 }  // namespace syncer

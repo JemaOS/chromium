@@ -7,7 +7,6 @@
 
 #include <list>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -23,6 +22,7 @@
 #include "components/sessions/core/sessions_export.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/gfx/geometry/rect.h"
@@ -129,10 +129,10 @@ class SESSIONS_EXPORT TabRestoreService : public KeyedService {
     SerializedUserAgentOverride user_agent_override;
 
     // The group the tab belonged to, if any.
-    std::optional<tab_groups::TabGroupId> group;
+    absl::optional<tab_groups::TabGroupId> group;
 
     // The group metadata for the tab, if any.
-    std::optional<tab_groups::TabGroupVisualData> group_visual_data;
+    absl::optional<tab_groups::TabGroupVisualData> group_visual_data;
   };
 
   // Represents a previously open window.
@@ -205,8 +205,8 @@ class SESSIONS_EXPORT TabRestoreService : public KeyedService {
   // Creates a Tab to represent |live_tab| and notifies observers the list of
   // entries has changed. If successful, returns the unique SessionID associated
   // with the Tab.
-  virtual std::optional<SessionID> CreateHistoricalTab(LiveTab* live_tab,
-                                                       int index) = 0;
+  virtual absl::optional<SessionID> CreateHistoricalTab(LiveTab* live_tab,
+                                                        int index) = 0;
 
   // Creates a Group to represent a tab group with ID |id|, containing group
   // metadata and all tabs within the group.
@@ -248,8 +248,8 @@ class SESSIONS_EXPORT TabRestoreService : public KeyedService {
   virtual std::vector<LiveTab*> RestoreMostRecentEntry(
       LiveTabContext* context) = 0;
 
-  // Removes the Entry with id |id|. The entry could be a Tab, Group, or Window.
-  virtual void RemoveEntryById(SessionID id) = 0;
+  // Removes the Entry with id |id| if it is a Tab entry.
+  virtual void RemoveTabEntryById(SessionID id) = 0;
 
   // Restores an entry by id. If there is no entry with an id matching |id|,
   // this does nothing. If |context| is NULL, this creates a new window for the

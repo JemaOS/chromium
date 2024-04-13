@@ -58,10 +58,10 @@ class SimpleProtocolHandlerRegistryFactory
   ~SimpleProtocolHandlerRegistryFactory() override = default;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 
 }  // namespace custom_handlers
 
-#endif  // COMPONENTS_CUSTOM_HANDLERS_SIMPLE_PROTOCOL_HANDLER_REGISTRY_FACTORY_H_
+#endif  // COMPONENTS_CUSTOM_HANDLERS_SIMPLE_PROTOCOL_HANDLER_REGISTRY_FACTORY_H

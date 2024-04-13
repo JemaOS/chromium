@@ -19,13 +19,12 @@
 
 namespace send_tab_to_self {
 
-SendTabToSelfSyncService::SendTabToSelfSyncService() : pref_service_(nullptr) {}
+SendTabToSelfSyncService::SendTabToSelfSyncService() = default;
 
 SendTabToSelfSyncService::SendTabToSelfSyncService(
     version_info::Channel channel,
     syncer::OnceModelTypeStoreFactory create_store_callback,
     history::HistoryService* history_service,
-    PrefService* pref_service,
     syncer::DeviceInfoTracker* device_info_tracker)
     : bridge_(std::make_unique<send_tab_to_self::SendTabToSelfBridge>(
           std::make_unique<syncer::ClientTagBasedModelTypeProcessor>(
@@ -34,32 +33,9 @@ SendTabToSelfSyncService::SendTabToSelfSyncService(
           base::DefaultClock::GetInstance(),
           std::move(create_store_callback),
           history_service,
-          device_info_tracker)),
-      pref_service_(pref_service) {}
+          device_info_tracker)) {}
 
 SendTabToSelfSyncService::~SendTabToSelfSyncService() = default;
-
-void SendTabToSelfSyncService::OnSyncServiceInitialized(
-    syncer::SyncService* sync_service) {
-  sync_service_ = sync_service;
-  sync_service_->AddObserver(this);
-}
-
-std::optional<EntryPointDisplayReason>
-SendTabToSelfSyncService::GetEntryPointDisplayReason(const GURL& url_to_share) {
-  // `sync_service_` can be null in any of these cases. In all of them the
-  // handling is correct because sync is not available (Yet? Anymore?).
-  //   a) OnSyncServiceInitialized() didn't get called yet.
-  //   b) OnSyncShutdown() already got called.
-  //   c) This is a test that didn't fake the SyncService.
-  //   d) Sync got disabled by command-line flag.
-  // `bridge_` might be null for fake subclasses that invoked the default
-  // constructor.
-  // TODO(crbug.com/1473353): Split interface out of this class and CHECK for
-  // SendTabToSelfModel in the method below.
-  return internal::GetEntryPointDisplayReason(url_to_share, sync_service_,
-                                              bridge_.get(), pref_service_);
-}
 
 SendTabToSelfModel* SendTabToSelfSyncService::GetSendTabToSelfModel() {
   return bridge_.get();
@@ -68,11 +44,6 @@ SendTabToSelfModel* SendTabToSelfSyncService::GetSendTabToSelfModel() {
 base::WeakPtr<syncer::ModelTypeControllerDelegate>
 SendTabToSelfSyncService::GetControllerDelegate() {
   return bridge_->change_processor()->GetControllerDelegate();
-}
-
-void SendTabToSelfSyncService::OnSyncShutdown(syncer::SyncService*) {
-  sync_service_->RemoveObserver(this);
-  sync_service_ = nullptr;
 }
 
 }  // namespace send_tab_to_self

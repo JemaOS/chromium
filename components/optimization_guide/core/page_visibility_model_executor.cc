@@ -5,7 +5,6 @@
 #include "components/optimization_guide/core/page_visibility_model_executor.h"
 
 #include "base/trace_event/trace_event.h"
-#include "base/types/expected.h"
 #include "components/optimization_guide/core/model_util.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/core/page_visibility_op_resolver.h"
@@ -21,13 +20,13 @@ PageVisibilityModelExecutor::PageVisibilityModelExecutor()
                        .value_or(-1)) {}
 PageVisibilityModelExecutor::~PageVisibilityModelExecutor() = default;
 
-std::optional<std::vector<tflite::task::core::Category>>
+absl::optional<std::vector<tflite::task::core::Category>>
 PageVisibilityModelExecutor::Execute(ModelExecutionTask* execution_task,
                                      ExecutionStatus* out_status,
                                      const std::string& input) {
   if (input.empty()) {
     *out_status = ExecutionStatus::kErrorEmptyOrInvalidInput;
-    return std::nullopt;
+    return absl::nullopt;
   }
   TRACE_EVENT2("browser", "PageVisibilityModelExecutor::Execute",
                "optimization_target",
@@ -41,20 +40,20 @@ PageVisibilityModelExecutor::Execute(ModelExecutionTask* execution_task,
           ->ClassifyText(input);
   if (absl::IsCancelled(status_or_result.status())) {
     *out_status = ExecutionStatus::kErrorCancelled;
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (!status_or_result.ok()) {
     *out_status = ExecutionStatus::kErrorUnknown;
-    return std::nullopt;
+    return absl::nullopt;
   }
   *out_status = ExecutionStatus::kSuccess;
   return *status_or_result;
 }
 
-base::expected<std::unique_ptr<PageVisibilityModelExecutor::ModelExecutionTask>,
-               ExecutionStatus>
+std::unique_ptr<PageVisibilityModelExecutor::ModelExecutionTask>
 PageVisibilityModelExecutor::BuildModelExecutionTask(
-    base::MemoryMappedFile* model_file) {
+    base::MemoryMappedFile* model_file,
+    ExecutionStatus* out_status) {
   tflite::task::text::NLClassifierOptions options;
   *options.mutable_base_options()
        ->mutable_model_file()
@@ -73,9 +72,10 @@ PageVisibilityModelExecutor::BuildModelExecutionTask(
           std::move(options), std::make_unique<PageVisibilityOpResolver>());
   if (maybe_nl_classifier.ok())
     return std::move(maybe_nl_classifier.value());
+  *out_status = ExecutionStatus::kErrorModelFileNotValid;
   DLOG(ERROR) << "Unable to load NL model: "
               << maybe_nl_classifier.status().ToString();
-  return base::unexpected(ExecutionStatus::kErrorModelFileNotValid);
+  return nullptr;
 }
 
 }  // namespace optimization_guide

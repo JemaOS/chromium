@@ -8,14 +8,12 @@
 #include <utility>
 #include <vector>
 
+#include "base/big_endian.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/logging.h"
-#include "base/numerics/byte_conversions.h"
-#include "base/numerics/safe_conversions.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "components/sync/model/data_type_activation_request.h"
 #include "components/sync/model/entity_change.h"
@@ -49,9 +47,8 @@ std::string GetStorageKeyFromSpecifics(const UserConsentSpecifics& specifics) {
   // which allows leveldb to append new writes, which it is best at.
   // TODO(skym): Until we force |event_time_usec| to never conflict, this has
   // the potential for errors.
-  std::string key(8u, char{0});
-  base::as_writable_byte_span(key).copy_from(base::numerics::U64ToBigEndian(
-      base::checked_cast<uint64_t>(specifics.client_consent_time_usec())));
+  std::string key(8, 0);
+  base::WriteBigEndian(&key[0], specifics.client_consent_time_usec());
   return key;
 }
 
@@ -77,9 +74,8 @@ ConsentSyncBridgeImpl::ConsentSyncBridgeImpl(
 }
 
 ConsentSyncBridgeImpl::~ConsentSyncBridgeImpl() {
-  if (!deferred_consents_while_initializing_.empty()) {
+  if (!deferred_consents_while_initializing_.empty())
     LOG(ERROR) << "Non-empty event queue at shutdown!";
-  }
 }
 
 std::unique_ptr<MetadataChangeList>
@@ -87,7 +83,7 @@ ConsentSyncBridgeImpl::CreateMetadataChangeList() {
   return WriteBatch::CreateMetadataChangeList();
 }
 
-std::optional<ModelError> ConsentSyncBridgeImpl::MergeFullSyncData(
+absl::optional<ModelError> ConsentSyncBridgeImpl::MergeFullSyncData(
     std::unique_ptr<MetadataChangeList> metadata_change_list,
     EntityChangeList entity_data) {
   DCHECK(entity_data.empty());
@@ -98,7 +94,7 @@ std::optional<ModelError> ConsentSyncBridgeImpl::MergeFullSyncData(
                                      std::move(entity_data));
 }
 
-std::optional<ModelError> ConsentSyncBridgeImpl::ApplyIncrementalSyncChanges(
+absl::optional<ModelError> ConsentSyncBridgeImpl::ApplyIncrementalSyncChanges(
     std::unique_ptr<MetadataChangeList> metadata_change_list,
     EntityChangeList entity_changes) {
   std::unique_ptr<WriteBatch> batch = store_->CreateWriteBatch();
@@ -166,7 +162,7 @@ void ConsentSyncBridgeImpl::ReadAllDataAndResubmit() {
 }
 
 void ConsentSyncBridgeImpl::OnReadAllDataToResubmit(
-    const std::optional<ModelError>& error,
+    const absl::optional<ModelError>& error,
     std::unique_ptr<RecordList> data_records) {
   if (change_processor()->TrackedAccountId().empty()) {
     // Meanwhile the sync has been disabled. We will try next time.
@@ -250,7 +246,7 @@ void ConsentSyncBridgeImpl::ProcessQueuedEvents() {
 }
 
 void ConsentSyncBridgeImpl::OnStoreCreated(
-    const std::optional<ModelError>& error,
+    const absl::optional<ModelError>& error,
     std::unique_ptr<ModelTypeStore> store) {
   if (error) {
     change_processor()->ReportError(*error);
@@ -264,9 +260,8 @@ void ConsentSyncBridgeImpl::OnStoreCreated(
 }
 
 void ConsentSyncBridgeImpl::OnReadAllMetadata(
-    const std::optional<ModelError>& error,
+    const absl::optional<ModelError>& error,
     std::unique_ptr<MetadataBatch> metadata_batch) {
-  TRACE_EVENT0("ui", "ConsentSyncBridgeImpl::OnReadAllMetadata");
   if (error) {
     change_processor()->ReportError(*error);
   } else {
@@ -282,7 +277,7 @@ void ConsentSyncBridgeImpl::OnReadAllMetadata(
   }
 }
 
-void ConsentSyncBridgeImpl::OnCommit(const std::optional<ModelError>& error) {
+void ConsentSyncBridgeImpl::OnCommit(const absl::optional<ModelError>& error) {
   if (error) {
     change_processor()->ReportError(*error);
   }
@@ -290,7 +285,7 @@ void ConsentSyncBridgeImpl::OnCommit(const std::optional<ModelError>& error) {
 
 void ConsentSyncBridgeImpl::OnReadData(
     DataCallback callback,
-    const std::optional<ModelError>& error,
+    const absl::optional<ModelError>& error,
     std::unique_ptr<RecordList> data_records,
     std::unique_ptr<IdList> missing_id_list) {
   OnReadAllData(std::move(callback), error, std::move(data_records));
@@ -298,7 +293,7 @@ void ConsentSyncBridgeImpl::OnReadData(
 
 void ConsentSyncBridgeImpl::OnReadAllData(
     DataCallback callback,
-    const std::optional<ModelError>& error,
+    const absl::optional<ModelError>& error,
     std::unique_ptr<RecordList> data_records) {
   if (error) {
     change_processor()->ReportError(*error);

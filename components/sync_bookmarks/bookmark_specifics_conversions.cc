@@ -21,15 +21,14 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/trace_event.h"
 #include "base/uuid.h"
+#include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_node.h"
-#include "components/bookmarks/browser/bookmark_uuids.h"
 #include "components/bookmarks/common/bookmark_metrics.h"
 #include "components/favicon/core/favicon_service.h"
 #include "components/sync/base/unique_position.h"
 #include "components/sync/protocol/bookmark_specifics.pb.h"
 #include "components/sync/protocol/entity_data.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
-#include "components/sync_bookmarks/bookmark_model_view.h"
 #include "components/sync_bookmarks/switches.h"
 #include "ui/gfx/favicon_size.h"
 #include "url/gurl.h"
@@ -215,7 +214,7 @@ std::u16string NodeTitleFromSpecifics(
   return base::UTF8ToUTF16(node_title);
 }
 
-void MoveAllChildren(BookmarkModelView* model,
+void MoveAllChildren(bookmarks::BookmarkModel* model,
                      const bookmarks::BookmarkNode* old_parent,
                      const bookmarks::BookmarkNode* new_parent) {
   DCHECK(old_parent && old_parent->is_folder());
@@ -276,7 +275,7 @@ bool IsBookmarkEntityReuploadNeeded(
 
 sync_pb::EntitySpecifics CreateSpecificsFromBookmarkNode(
     const bookmarks::BookmarkNode* node,
-    BookmarkModelView* model,
+    bookmarks::BookmarkModel* model,
     const sync_pb::UniquePosition& unique_position,
     bool force_favicon_load) {
   sync_pb::EntitySpecifics specifics;
@@ -347,7 +346,7 @@ const bookmarks::BookmarkNode* CreateBookmarkNodeFromSpecifics(
     const sync_pb::BookmarkSpecifics& specifics,
     const bookmarks::BookmarkNode* parent,
     size_t index,
-    BookmarkModelView* model,
+    bookmarks::BookmarkModel* model,
     favicon::FaviconService* favicon_service) {
   DCHECK(parent);
   DCHECK(model);
@@ -387,7 +386,7 @@ const bookmarks::BookmarkNode* CreateBookmarkNodeFromSpecifics(
                 // Use FromDeltaSinceWindowsEpoch because last_used_time_us has
                 // always used the Windows epoch.
                 base::Microseconds(last_used_time_us));
-        model->UpdateLastUsedTime(node, last_used_time, /*just_opened=*/false);
+        model->UpdateLastUsedTime(node, last_used_time);
       }
       SetBookmarkFaviconFromSpecifics(specifics, node, favicon_service);
       return node;
@@ -404,7 +403,7 @@ const bookmarks::BookmarkNode* CreateBookmarkNodeFromSpecifics(
 void UpdateBookmarkNodeFromSpecifics(
     const sync_pb::BookmarkSpecifics& specifics,
     const bookmarks::BookmarkNode* node,
-    BookmarkModelView* model,
+    bookmarks::BookmarkModel* model,
     favicon::FaviconService* favicon_service) {
   DCHECK(node);
   DCHECK(model);
@@ -415,11 +414,13 @@ void UpdateBookmarkNodeFromSpecifics(
   base::Uuid guid = base::Uuid::ParseLowercase(specifics.guid());
   DCHECK(!guid.is_valid() || guid == node->uuid());
 
-  model->SetTitle(node, NodeTitleFromSpecifics(specifics));
+  model->SetTitle(node, NodeTitleFromSpecifics(specifics),
+                  bookmarks::metrics::BookmarkEditSource::kOther);
   model->SetNodeMetaInfoMap(node, GetBookmarkMetaInfo(specifics));
 
   if (!node->is_folder()) {
-    model->SetURL(node, GURL(specifics.url()));
+    model->SetURL(node, GURL(specifics.url()),
+                  bookmarks::metrics::BookmarkEditSource::kOther);
     SetBookmarkFaviconFromSpecifics(specifics, node, favicon_service);
 
     if (specifics.has_last_used_time_us()) {
@@ -428,7 +429,7 @@ void UpdateBookmarkNodeFromSpecifics(
           // Use FromDeltaSinceWindowsEpoch because last_used_time_us has
           // always used the Windows epoch.
           base::Microseconds(last_used_time_us));
-      model->UpdateLastUsedTime(node, last_used_time, /*just_opened=*/false);
+      model->UpdateLastUsedTime(node, last_used_time);
     }
   }
 }
@@ -453,7 +454,7 @@ sync_pb::BookmarkSpecifics::Type GetProtoTypeFromBookmarkNode(
 const bookmarks::BookmarkNode* ReplaceBookmarkNodeUuid(
     const bookmarks::BookmarkNode* node,
     const base::Uuid& guid,
-    BookmarkModelView* model) {
+    bookmarks::BookmarkModel* model) {
   DCHECK(guid.is_valid());
 
   if (node->uuid() == guid) {
@@ -474,7 +475,7 @@ const bookmarks::BookmarkNode* ReplaceBookmarkNodeUuid(
                       node->date_added(), guid);
   }
 
-  model->Remove(node);
+  model->Remove(node, bookmarks::metrics::BookmarkEditSource::kOther);
 
   return new_node;
 }
@@ -493,7 +494,7 @@ bool IsValidBookmarkSpecifics(const sync_pb::BookmarkSpecifics& specifics) {
     LogInvalidSpecifics(InvalidBookmarkSpecificsError::kInvalidGUID);
     is_valid = false;
   } else if (guid.AsLowercaseString() ==
-             bookmarks::kBannedUuidDueToPastSyncBug) {
+             bookmarks::BookmarkNode::kBannedUuidDueToPastSyncBug) {
     DLOG(ERROR) << "Invalid bookmark: banned UUID in specifics.";
     LogInvalidSpecifics(InvalidBookmarkSpecificsError::kBannedGUID);
     is_valid = false;
@@ -547,7 +548,7 @@ bool IsValidBookmarkSpecifics(const sync_pb::BookmarkSpecifics& specifics) {
   }
 
   // Verify all keys in meta_info are unique.
-  std::unordered_set<base::StringPiece> keys;
+  std::unordered_set<base::StringPiece, base::StringPieceHash> keys;
   for (const sync_pb::MetaInfo& meta_info : specifics.meta_info()) {
     if (!keys.insert(meta_info.key()).second) {
       DLOG(ERROR) << "Invalid bookmark: keys in meta_info aren't unique.";

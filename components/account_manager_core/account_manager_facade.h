@@ -13,7 +13,7 @@
 #include "base/observer_list_types.h"
 #include "build/chromeos_buildflags.h"
 #include "components/account_manager_core/account.h"
-#include "components/account_manager_core/account_upsertion_result.h"
+#include "components/account_manager_core/account_addition_result.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 
 class OAuth2AccessTokenFetcher;
@@ -94,14 +94,8 @@ class COMPONENT_EXPORT(ACCOUNT_MANAGER_CORE) AccountManagerFacade {
     kChromeSyncPromoAddAccount = 15,
     // Chrome Settings > Turn on Sync.
     kChromeSettingsTurnOnSyncButton = 16,
-    // Launched from ChromeOS Projector App for re-authentication.
-    kChromeOSProjectorAppReauth = 17,
-    // Chrome Menu -> Turn on Sync
-    kChromeMenuTurnOnSync = 18,
-    // Sign-in promo with a new account.
-    kChromeSigninPromoAddAccount = 19,
 
-    kMaxValue = kChromeSigninPromoAddAccount
+    kMaxValue = kChromeSettingsTurnOnSyncButton
   };
 
   AccountManagerFacade();
@@ -133,20 +127,16 @@ class COMPONENT_EXPORT(ACCOUNT_MANAGER_CORE) AccountManagerFacade {
 
   // Launches account addition dialog and calls the `callback` with the result.
   // If `result` is `kSuccess`, the added account will be passed to the
-  // callback. Otherwise `account` will be set to `std::nullopt`.
+  // callback. Otherwise `account` will be set to `absl::nullopt`.
   virtual void ShowAddAccountDialog(
       AccountAdditionSource source,
-      base::OnceCallback<void(const AccountUpsertionResult& result)>
+      base::OnceCallback<void(const AccountAdditionResult& result)>
           callback) = 0;
 
   // Launches account reauthentication dialog for provided `email`.
-  // Note: the added/reauthenticated account may not match the account provided
-  // in the `email` field if user decided to edit the email inside the dialog.
-  virtual void ShowReauthAccountDialog(
-      AccountAdditionSource source,
-      const std::string& email,
-      base::OnceCallback<void(const AccountUpsertionResult& result)>
-          callback) = 0;
+  virtual void ShowReauthAccountDialog(AccountAdditionSource source,
+                                       const std::string& email,
+                                       base::OnceClosure callback) = 0;
 
   // Launches OS Settings > Accounts.
   virtual void ShowManageAccountsSettings() = 0;

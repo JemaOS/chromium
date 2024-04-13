@@ -11,13 +11,11 @@
 
 #include "base/functional/callback_forward.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/raw_ptr.h"
 #include "components/account_id/account_id.h"
 #include "components/user_manager/user_image/user_image.h"
+#include "components/user_manager/user_info.h"
 #include "components/user_manager/user_manager_export.h"
 #include "components/user_manager/user_type.h"
-
-class PrefService;
 
 namespace ash {
 class ChromeUserManagerImpl;
@@ -52,7 +50,7 @@ class FakeUserManager;
 //   Displayed emails are for use in UI only, anywhere else users must be
 // referred to by |GetAccountId()|. Internal details of AccountId should not
 // be relied on unless you have special knowledge of the account type.
-class USER_MANAGER_EXPORT User {
+class USER_MANAGER_EXPORT User : public UserInfo {
  public:
   // User OAuth token status according to the last check.
   // Please note that enum values 1 and 2 were used for OAuth1 status and are
@@ -82,56 +80,60 @@ class USER_MANAGER_EXPORT User {
   // Returns true if user represents any type of the kiosk.
   static bool TypeIsKiosk(UserType user_type);
 
+  explicit User(const AccountId& account_id);
+
   User(const User&) = delete;
   User& operator=(const User&) = delete;
 
-  ~User();
+  ~User() override;
 
-  std::string GetDisplayEmail() const;
-  std::u16string GetDisplayName() const;
-  std::u16string GetGivenName() const;
-  const gfx::ImageSkia& GetImage() const;
-  const AccountId& GetAccountId() const;
+  // UserInfo
+  std::string GetDisplayEmail() const override;
+  std::u16string GetDisplayName() const override;
+  std::u16string GetGivenName() const override;
+  const gfx::ImageSkia& GetImage() const override;
+  const AccountId& GetAccountId() const override;
 
   // Returns the user type.
-  UserType GetType() const { return type_; }
+  virtual UserType GetType() const = 0;
 
   // Will LOG(FATAL) unless overridden.
-  void UpdateType(UserType new_type);
+  virtual void UpdateType(UserType user_type);
 
   // Returns true if user has gaia account. True for users of types
-  // UserType::kRegular and UserType::kChild.
-  bool HasGaiaAccount() const;
+  // USER_TYPE_REGULAR and USER_TYPE_CHILD.
+  virtual bool HasGaiaAccount() const;
 
   // Returns true if it's Active Directory user.
-  bool IsActiveDirectoryUser() const;
+  virtual bool IsActiveDirectoryUser() const;
+
+  virtual bool IsFlintAccountUser() const;
+  virtual bool IsJemaAccountUser() const;
+  virtual bool IsJemaExtendAccountUser() const;
 
   // Returns true if user is child.
-  bool IsChild() const;
+  virtual bool IsChild() const;
+
+  // True if user image can be synced.
+  virtual bool CanSyncImage() const;
 
   // The displayed (non-canonical) user email.
-  std::string display_email() const;
+  virtual std::string display_email() const;
 
   // True if the user is affiliated to the device. Returns false if the
   // affiliation is not known. Use IsAffiliatedAsync if it's possible the call
   // is done before affiliation is established.
-  bool IsAffiliated() const;
+  virtual bool IsAffiliated() const;
 
   // Runs the callback immediately if the affiliation is known, otherwise later
   // when the affiliation is established.
   void IsAffiliatedAsync(base::OnceCallback<void(bool)> is_affiliated_callback);
 
   // True if the user is a device local account user.
-  bool IsDeviceLocalAccount() const;
+  virtual bool IsDeviceLocalAccount() const;
 
   // True if the user is a kiosk.
   bool IsKioskType() const;
-
-  // Returns PrefService of the Profile corresponding this User.
-  // If Profile and its PrefService is not yet ready, or it is already
-  // destroyed, this API returns nullptr.
-  PrefService* GetProfilePrefs() { return profile_prefs_.get(); }
-  const PrefService* GetProfilePrefs() const { return profile_prefs_.get(); }
 
   // The displayed user name.
   std::u16string display_name() const { return display_name_; }
@@ -142,12 +144,6 @@ class USER_MANAGER_EXPORT User {
   // Returns the account name part of the email. Use the display form of the
   // email if available and use_display_name == true. Otherwise use canonical.
   std::string GetAccountName(bool use_display_email) const;
-
-  // True if the user's session can be locked (i.e. the user has a password with
-  // which to unlock the session).
-  // This depends on Profile preference, and if it's not yet ready, this
-  // returns false as fallback.
-  bool CanLock() const;
 
   // Whether the user has a default image.
   bool HasDefaultImage() const;
@@ -185,8 +181,12 @@ class USER_MANAGER_EXPORT User {
   // user's next sign-in.
   bool force_online_signin() const { return force_online_signin_; }
 
+  // True if the user's session can be locked (i.e. the user has a password with
+  // which to unlock the session).
+  bool can_lock() const;
+
   // Returns empty string when home dir hasn't been mounted yet.
-  const std::string& username_hash() const;
+  std::string username_hash() const;
 
   // True if current user is logged in.
   bool is_logged_in() const;
@@ -210,7 +210,7 @@ class USER_MANAGER_EXPORT User {
   }
 
   static User* CreateRegularUserForTesting(const AccountId& account_id) {
-    User* user = CreateRegularUser(account_id, UserType::kRegular);
+    User* user = CreateRegularUser(account_id, USER_TYPE_REGULAR);
     user->SetImage(std::unique_ptr<UserImage>(new UserImage), 0);
     return user;
   }
@@ -241,8 +241,6 @@ class USER_MANAGER_EXPORT User {
   static User* CreateWebKioskAppUser(const AccountId& web_kiosk_account_id);
   static User* CreatePublicAccountUser(const AccountId& account_id,
                                        bool is_using_saml = false);
-
-  User(const AccountId& account_id, UserType type);
 
   const std::string* GetAccountLocale() const { return account_locale_.get(); }
 
@@ -290,17 +288,16 @@ class USER_MANAGER_EXPORT User {
 
   void set_is_logged_in(bool is_logged_in) { is_logged_in_ = is_logged_in; }
 
+  void set_can_lock(bool can_lock) { can_lock_ = can_lock; }
+
   void set_is_active(bool is_active) { is_active_ = is_active; }
 
   void SetProfileIsCreated();
 
-  void SetProfilePrefs(PrefService* prefs) { profile_prefs_ = prefs; }
-
-  void SetAffiliation(bool is_affiliated);
+  virtual void SetAffiliation(bool is_affiliated);
 
  private:
   AccountId account_id_;
-  UserType type_;
   std::u16string display_name_;
   std::u16string given_name_;
   // User email for display, which may include capitals and non-significant
@@ -332,6 +329,9 @@ class USER_MANAGER_EXPORT User {
   // True if current user image is being loaded from file.
   bool image_is_loading_ = false;
 
+  // True if user is able to lock screen.
+  bool can_lock_ = false;
+
   // True if user is currently logged in in current session.
   bool is_logged_in_ = false;
 
@@ -341,11 +341,8 @@ class USER_MANAGER_EXPORT User {
   // True if user Profile is created
   bool profile_is_created_ = false;
 
-  // Owned by Profile.
-  raw_ptr<PrefService> profile_prefs_ = nullptr;
-
   // True if the user is affiliated to the device.
-  std::optional<bool> is_affiliated_;
+  absl::optional<bool> is_affiliated_;
 
   std::vector<base::OnceClosure> on_profile_created_observers_;
   std::vector<base::OnceCallback<void(bool is_affiliated)>>
@@ -353,7 +350,7 @@ class USER_MANAGER_EXPORT User {
 };
 
 // List of known users.
-using UserList = std::vector<raw_ptr<User, VectorExperimental>>;
+using UserList = std::vector<User*>;
 
 }  // namespace user_manager
 

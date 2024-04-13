@@ -12,6 +12,7 @@
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
+#include "base/trace_event/trace_conversion_helper.h"
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/traced_value.h"
 #include "components/subresource_filter/content/browser/activation_state_computing_navigation_throttle.h"
@@ -181,7 +182,7 @@ void ContentSubresourceFilterThrottleManager::ReadyToCommitInFrameNavigation(
   content::RenderFrameHost* frame_host =
       navigation_handle->GetRenderFrameHost();
 
-  std::optional<blink::FrameAdEvidence> ad_evidence_for_navigation;
+  absl::optional<blink::FrameAdEvidence> ad_evidence_for_navigation;
 
   // Update the ad status of a frame given the new navigation. This may tag or
   // untag a frame as an ad.
@@ -408,7 +409,7 @@ ContentSubresourceFilterThrottleManager::FilterForFinishedNavigation(
   DCHECK(frame_host);
 
   std::unique_ptr<AsyncDocumentSubresourceFilter> filter;
-  std::optional<mojom::ActivationState> activation_to_inherit;
+  absl::optional<mojom::ActivationState> activation_to_inherit;
   did_inherit_opener_activation = false;
 
   if (navigation_handle->HasCommitted() && throttle) {
@@ -610,12 +611,12 @@ bool ContentSubresourceFilterThrottleManager::IsRenderFrameHostTaggedAsAd(
   return IsFrameTaggedAsAd(frame_host->GetFrameTreeNodeId());
 }
 
-std::optional<LoadPolicy>
+absl::optional<LoadPolicy>
 ContentSubresourceFilterThrottleManager::LoadPolicyForLastCommittedNavigation(
     int frame_tree_node_id) const {
   auto it = navigation_load_policies_.find(frame_tree_node_id);
   if (it == navigation_load_policies_.end())
-    return std::nullopt;
+    return absl::nullopt;
   return it->second;
 }
 
@@ -648,8 +649,7 @@ ContentSubresourceFilterThrottleManager::
       GetParentFrameFilter(navigation_handle);
   return parent_filter
              ? std::make_unique<ChildFrameNavigationFilteringThrottle>(
-                   navigation_handle, parent_filter,
-                   EnsureFrameAdEvidence(navigation_handle))
+                   navigation_handle, parent_filter)
              : nullptr;
 }
 
@@ -690,12 +690,12 @@ ContentSubresourceFilterThrottleManager::GetParentFrameFilter(
       child_frame_navigation->GetParentFrameOrOuterDocument());
 }
 
-const std::optional<subresource_filter::mojom::ActivationState>
+const absl::optional<subresource_filter::mojom::ActivationState>
 ContentSubresourceFilterThrottleManager::GetFrameActivationState(
     content::RenderFrameHost* frame_host) {
   if (AsyncDocumentSubresourceFilter* filter = GetFrameFilter(frame_host))
     return filter->activation_state();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 AsyncDocumentSubresourceFilter*
@@ -811,13 +811,13 @@ void ContentSubresourceFilterThrottleManager::SetIsAdFrameForTesting(
   }
 }
 
-std::optional<blink::FrameAdEvidence>
+absl::optional<blink::FrameAdEvidence>
 ContentSubresourceFilterThrottleManager::GetAdEvidenceForFrame(
     content::RenderFrameHost* render_frame_host) {
   auto tracked_ad_evidence_it =
       tracked_ad_evidence_.find(render_frame_host->GetFrameTreeNodeId());
   if (tracked_ad_evidence_it == tracked_ad_evidence_.end())
-    return std::nullopt;
+    return absl::nullopt;
   return tracked_ad_evidence_it->second;
 }
 

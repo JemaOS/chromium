@@ -1,6 +1,3 @@
-monorail: {
+monorail {
   component: "Internals>Network>Cookies"
-}
-buganizer_public: {
-  component_id: 1456343
 }

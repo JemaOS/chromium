@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-source_set("permissions_common") {
+# TODO(crbug.com/1327384): Make `permissions_common` source_set.
+component("permissions_common") {
   sources = [
     "constants.cc",
     "constants.h",
@@ -15,9 +16,7 @@ source_set("permissions_common") {
   deps = [
     "//base",
     "//build:chromeos_buildflags",
-    "//components/content_settings/core/common",
   ]
-  public_deps = [ "//printing/buildflags" ]
 }
 
 source_set("permissions") {
@@ -38,8 +37,6 @@ source_set("permissions") {
     "contexts/clipboard_sanitized_write_permission_context.h",
     "contexts/geolocation_permission_context.cc",
     "contexts/geolocation_permission_context.h",
-    "contexts/keyboard_lock_permission_context.cc",
-    "contexts/keyboard_lock_permission_context.h",
     "contexts/local_fonts_permission_context.cc",
     "contexts/local_fonts_permission_context.h",
     "contexts/midi_permission_context.cc",
@@ -50,18 +47,16 @@ source_set("permissions") {
     "contexts/nfc_permission_context.h",
     "contexts/payment_handler_permission_context.cc",
     "contexts/payment_handler_permission_context.h",
-    "contexts/pointer_lock_permission_context.cc",
-    "contexts/pointer_lock_permission_context.h",
     "contexts/sensor_permission_context.cc",
     "contexts/sensor_permission_context.h",
-    "contexts/speaker_selection_permission_context.cc",
-    "contexts/speaker_selection_permission_context.h",
     "contexts/wake_lock_permission_context.cc",
     "contexts/wake_lock_permission_context.h",
     "contexts/webxr_permission_context.cc",
     "contexts/webxr_permission_context.h",
     "contexts/window_management_permission_context.cc",
     "contexts/window_management_permission_context.h",
+    "notification_permission_review_service.cc",
+    "notification_permission_review_service.h",
     "notifications_engagement_service.cc",
     "notifications_engagement_service.h",
     "object_permission_context_base.cc",
@@ -78,8 +73,6 @@ source_set("permissions") {
     "permission_context_base.h",
     "permission_decision_auto_blocker.cc",
     "permission_decision_auto_blocker.h",
-    "permission_hats_trigger_helper.cc",
-    "permission_hats_trigger_helper.h",
     "permission_manager.cc",
     "permission_manager.h",
     "permission_prompt.h",
@@ -87,14 +80,14 @@ source_set("permissions") {
     "permission_recovery_success_rate_tracker.h",
     "permission_request.cc",
     "permission_request.h",
-    "permission_request_data.cc",
-    "permission_request_data.h",
     "permission_request_id.cc",
     "permission_request_id.h",
     "permission_request_manager.cc",
     "permission_request_manager.h",
     "permission_request_queue.cc",
     "permission_request_queue.h",
+    "permission_result.cc",
+    "permission_result.h",
     "permission_ui_selector.cc",
     "permission_ui_selector.h",
     "permission_uma_util.cc",
@@ -111,6 +104,8 @@ source_set("permissions") {
     "request_type.h",
     "switches.cc",
     "switches.h",
+    "unused_site_permissions_service.cc",
+    "unused_site_permissions_service.h",
   ]
   deps = [
     "//base",
@@ -118,7 +113,6 @@ source_set("permissions") {
     "//components/back_forward_cache",
     "//components/content_settings/browser",
     "//components/content_settings/core/browser",
-    "//components/favicon/core:core",
     "//components/keyed_service/content",
     "//components/permissions/prediction_service",
     "//components/permissions/vector_icons",
@@ -138,18 +132,16 @@ source_set("permissions") {
     "//services/metrics/public/cpp:ukm_builders",
     "//sql",
     "//third_party/blink/public/common",
+    "//third_party/sqlite",
     "//ui/base",
-    "//ui/strings:ui_strings_grit",
     "//url",
+    "//jemaos/switches",
   ]
   if (is_mac || is_chromeos) {
     sources += [
       "contexts/geolocation_permission_context_system.cc",
       "contexts/geolocation_permission_context_system.h",
     ]
-  }
-  if (!is_android) {
-    deps += [ "//components/guest_view/browser" ]
   }
   if (is_android) {
     sources += [
@@ -172,8 +164,8 @@ source_set("permissions") {
       "android/permission_prompt/permission_prompt_android_factory.cc",
       "android/permission_prompt/permission_prompt_infobar.cc",
       "android/permission_prompt/permission_prompt_infobar.h",
-      "android/permissions_android_feature_map.cc",
-      "android/permissions_android_feature_map.h",
+      "android/permissions_android_feature_list.cc",
+      "android/permissions_android_feature_list.h",
       "android/permissions_reprompt_controller_android.cc",
       "android/permissions_reprompt_controller_android.h",
       "contexts/geolocation_permission_context_android.cc",
@@ -182,19 +174,15 @@ source_set("permissions") {
       "contexts/nfc_permission_context_android.h",
     ]
     deps += [
-      "//components/favicon_base:favicon_base",
       "//components/infobars/core",
       "//components/location/android:location_settings_dialog_enums_java",
       "//components/location/android:settings",
       "//components/messages/android:android",
-      "//components/permissions/android:core_jni",
       "//components/permissions/android:jni_headers",
       "//components/permissions/android:native",
       "//components/prefs",
       "//components/resources:android_resources",
       "//components/security_state/core:core",
-      "//components/strings:components_strings_grit",
-      "//third_party/jni_zero",
       "//ui/android",
     ]
   } else {
@@ -207,13 +195,12 @@ source_set("permissions") {
       "bluetooth_scanning_prompt_controller.h",
       "bluetooth_scanning_prompt_desktop.cc",
       "bluetooth_scanning_prompt_desktop.h",
+      "permission_hats_trigger_helper.cc",
+      "permission_hats_trigger_helper.h",
       "permission_prompt_impl.cc",
     ]
   }
-
   public_deps = [ ":permissions_common" ]
-
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
 }
 
 source_set("test_support") {
@@ -249,7 +236,6 @@ source_set("test_support") {
     ":permissions",
     "//base",
     "//components/content_settings/core/browser",
-    "//components/privacy_sandbox:tracking_protection_settings",
     "//components/strings:components_strings_grit",
     "//components/sync_preferences:test_support",
     "//components/ukm/content",
@@ -276,7 +262,6 @@ source_set("unit_tests") {
     "contexts/nfc_permission_context_unittest.cc",
     "contexts/wake_lock_permission_context_unittest.cc",
     "object_permission_context_base_unittest.cc",
-    "pepc_initiated_permission_request_unittest.cc",
     "permission_actions_history_unittest.cc",
     "permission_auditing_database_unittest.cc",
     "permission_auditing_service_unittest.cc",
@@ -291,6 +276,7 @@ source_set("unit_tests") {
     sources += [
       "bluetooth_chooser_controller_unittest.cc",
       "bluetooth_scanning_prompt_controller_unittest.cc",
+      "unused_site_permissions_service_unittest.cc",
     ]
   }
   if (is_android) {
@@ -324,6 +310,7 @@ source_set("unit_tests") {
     "//sql",
     "//sql:test_support",
     "//testing/gtest",
+    "//third_party/sqlite",
     "//url",
   ]
   if (is_android) {

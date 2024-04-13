@@ -99,11 +99,11 @@ struct HasValue {
   }
 };
 
-HasValue<std::optional<bool>, bool, &Value::Dict::FindBoolByDottedPath>
+HasValue<absl::optional<bool>, bool, &Value::Dict::FindBoolByDottedPath>
     HasBooleanValue;
-HasValue<std::optional<double>, double, &Value::Dict::FindDoubleByDottedPath>
+HasValue<absl::optional<double>, double, &Value::Dict::FindDoubleByDottedPath>
     HasDoubleValue;
-HasValue<std::optional<int>, int, &Value::Dict::FindIntByDottedPath>
+HasValue<absl::optional<int>, int, &Value::Dict::FindIntByDottedPath>
     HasIntegerValue;
 HasValue<const std::string*, std::string, &Value::Dict::FindStringByDottedPath>
     HasStringValue;

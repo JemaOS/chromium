@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/containers/flat_map.h"
@@ -20,6 +19,7 @@
 #include "components/viz/service/viz_service_export.h"
 #include "gpu/command_buffer/common/mailbox.h"
 #include "gpu/command_buffer/common/sync_token.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/size.h"
 
 namespace viz {
@@ -43,10 +43,13 @@ class VIZ_SERVICE_EXPORT TransferableResourceTracker {
 
     ResourceFrame& operator=(ResourceFrame&& other);
 
+    // The cached resource for the root content.
+    PositionedResource root;
+
     // The cached resource for each shared element. The entries here are
     // optional since copy request for an element may fail or a
     // [src_element, dst_element] has a null src_element.
-    std::vector<std::optional<PositionedResource>> shared;
+    std::vector<absl::optional<PositionedResource>> shared;
 
     // A map from renderer generated ViewTransitionElementResourceId to the
     // corresponding cached resource. The resources are the same as |shared|
@@ -89,12 +92,17 @@ class VIZ_SERVICE_EXPORT TransferableResourceTracker {
  private:
   friend class TransferableResourceTrackerTest;
 
+  ResourceId GetNextAvailableResourceId();
+
   PositionedResource ImportResource(
       SurfaceSavedFrame::OutputCopyResult output_copy);
 
   static_assert(std::is_same<decltype(kInvalidResourceId.GetUnsafeValue()),
                              uint32_t>::value,
                 "ResourceId underlying type should be uint32_t");
+
+  const uint32_t starting_id_;
+  uint32_t next_id_;
 
   const raw_ptr<SharedBitmapManager> shared_bitmap_manager_;
 
@@ -111,9 +119,8 @@ class VIZ_SERVICE_EXPORT TransferableResourceTracker {
 
     TransferableResource resource;
     ResourceReleaseCallback release_callback;
+    int ref_count = 0;
   };
-
-  ReservedResourceIdTracker id_tracker_;
 
   std::map<ResourceId, TransferableResourceHolder> managed_resources_;
 };

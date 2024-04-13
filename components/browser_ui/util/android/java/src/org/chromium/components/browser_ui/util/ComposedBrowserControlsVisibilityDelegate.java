@@ -10,7 +10,9 @@ import org.chromium.cc.input.BrowserControlsState;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Delegate for the visibility of browser controls that combines the results of other delegates. */
+/**
+ * Delegate for the visibility of browser controls that combines the results of other delegates.
+ */
 public class ComposedBrowserControlsVisibilityDelegate extends BrowserControlsVisibilityDelegate {
     private final List<BrowserControlsVisibilityDelegate> mDelegates;
     private final Callback<Integer> mConstraintsUpdatedCallback;
@@ -55,7 +57,8 @@ public class ComposedBrowserControlsVisibilityDelegate extends BrowserControlsVi
     private @BrowserControlsState int calculateVisibilityConstraints() {
         boolean shouldBeShown = false;
         for (int i = 0; i < mDelegates.size(); i++) {
-            @BrowserControlsState int delegateConstraints = mDelegates.get(i).get();
+            @BrowserControlsState
+            int delegateConstraints = mDelegates.get(i).get();
             if (delegateConstraints == BrowserControlsState.HIDDEN) {
                 return BrowserControlsState.HIDDEN;
             }

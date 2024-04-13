@@ -91,12 +91,12 @@ class ContentTranslateDriver : public TranslateDriver,
                      const std::string& source_lang,
                      const std::string& target_lang) override;
   void RevertTranslation(int page_seq_no) override;
-  bool IsIncognito() const override;
+  bool IsIncognito() override;
   const std::string& GetContentsMimeType() override;
-  const GURL& GetLastCommittedURL() const override;
+  const GURL& GetLastCommittedURL() override;
   const GURL& GetVisibleURL() override;
   ukm::SourceId GetUkmSourceId() override;
-  bool HasCurrentPage() const override;
+  bool HasCurrentPage() override;
   void OpenUrlInNewTab(const GURL& url) override;
 
   // content::WebContentsObserver implementation.
@@ -116,13 +116,24 @@ class ContentTranslateDriver : public TranslateDriver,
   void RegisterPage(
       mojo::PendingRemote<translate::mojom::TranslateAgent> translate_agent,
       const translate::LanguageDetectionDetails& details,
-      bool page_level_translation_criteria_met) override;
+      bool page_level_translation_critiera_met) override;
 
   // translate::mojom::ContentTranslateDriver implementation:
   void GetLanguageDetectionModel(
       GetLanguageDetectionModelCallback callback) override;
 
  protected:
+  const base::ObserverList<TranslationObserver, true>& translation_observers()
+      const {
+    return translation_observers_;
+  }
+
+  TranslateManager* translate_manager() const { return translate_manager_; }
+
+  language::UrlLanguageHistogram* language_histogram() const {
+    return language_histogram_;
+  }
+
   bool IsAutoHrefTranslateAllOriginsEnabled() const;
 
  private:
@@ -140,15 +151,9 @@ class ContentTranslateDriver : public TranslateDriver,
       GetLanguageDetectionModelCallback callback,
       bool is_available);
 
-  raw_ptr<TranslateManager, DanglingUntriaged> translate_manager_;
+  base::raw_ptr<TranslateManager, DanglingUntriaged> translate_manager_;
 
   base::ObserverList<TranslationObserver, true> translation_observers_;
-
-  // Whether the associated browser context is off the record.
-  bool is_otr_context_;
-
-  // The last committed URL of the primary main frame of the contents.
-  GURL last_committed_url_;
 
   // Max number of attempts before checking if a page has been reloaded.
   int max_reload_check_attempts_;

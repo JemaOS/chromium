@@ -12,38 +12,41 @@
 #include <utility>
 #include <vector>
 
-#include "base/feature_list.h"
+#include "base/base64.h"
 #include "base/functional/bind.h"
+#include "base/i18n/case_conversion.h"
 #include "base/logging.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-#include "components/affiliations/core/browser/affiliation_utils.h"
 #include "components/autofill/core/browser/autofill_client.h"
 #include "components/autofill/core/browser/autofill_driver.h"
 #include "components/autofill/core/browser/ui/popup_item_ids.h"
 #include "components/autofill/core/browser/ui/suggestion.h"
 #include "components/autofill/core/common/autofill_constants.h"
 #include "components/autofill/core/common/autofill_data_validation.h"
+#include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_util.h"
 #include "components/autofill/core/common/password_form_fill_data.h"
 #include "components/autofill/core/common/password_generation_util.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/favicon/core/favicon_util.h"
+#include "components/password_manager/core/browser/affiliation/affiliation_utils.h"
 #include "components/password_manager/core/browser/password_feature_manager.h"
 #include "components/password_manager/core/browser/password_manager_client.h"
 #include "components/password_manager/core/browser/password_manager_driver.h"
 #include "components/password_manager/core/browser/password_manager_metrics_recorder.h"
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
-#include "components/password_manager/core/browser/password_manual_fallback_flow.h"
+#include "components/password_manager/core/browser/password_manager_util.h"
 #include "components/password_manager/core/browser/password_ui_utils.h"
-#include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
 #include "components/password_manager/core/browser/webauthn_credentials_delegate.h"
+#include "components/password_manager/core/common/password_manager_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/strings/grit/components_strings.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "url/gurl.h"
 
@@ -54,18 +57,35 @@ namespace {
 using autofill::password_generation::PasswordGenerationType;
 using IsLoading = autofill::Suggestion::IsLoading;
 
-// Entry showing the empty state (i.e. no passwords found in account-storage).
-autofill::Suggestion CreateAccountStorageEmptyEntry() {
-  autofill::Suggestion suggestion(
-      l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_NO_ACCOUNT_STORE_MATCHES));
-  suggestion.popup_item_id =
-      autofill::PopupItemId::kPasswordAccountStorageEmpty;
-  suggestion.icon = autofill::Suggestion::Icon::kEmpty;
-  return suggestion;
+constexpr char16_t kPasswordReplacementChar = 0x2022;
+
+// Returns |username| unless it is empty. For an empty |username| returns a
+// localised string saying this username is empty. Use this for displaying the
+// usernames to the user. |replaced| is set to true iff |username| is empty.
+std::u16string ReplaceEmptyUsername(const std::u16string& username,
+                                    bool* replaced) {
+  *replaced = username.empty();
+  if (username.empty())
+    return l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_EMPTY_LOGIN);
+  return username;
 }
 
-// If `suggestion` was made for an empty username, then return the empty
-// string, otherwise return `suggestion`.
+// Returns the prettified version of |signon_realm| to be displayed on the UI.
+std::u16string GetHumanReadableRealm(const std::string& signon_realm) {
+  // For Android application realms, remove the hash component. Otherwise, make
+  // no changes.
+  FacetURI maybe_facet_uri(FacetURI::FromPotentiallyInvalidSpec(signon_realm));
+  if (maybe_facet_uri.IsValidAndroidFacetURI())
+    return base::UTF8ToUTF16("android://" +
+                             maybe_facet_uri.android_package_name() + "/");
+  GURL realm(signon_realm);
+  if (realm.is_valid())
+    return base::UTF8ToUTF16(realm.host());
+  return base::UTF8ToUTF16(signon_realm);
+}
+
+// If |suggestion| was made for an empty username, then return the empty
+// string, otherwise return |suggestion|.
 std::u16string GetUsernameFromSuggestion(const std::u16string& suggestion) {
   return suggestion ==
                  l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_EMPTY_LOGIN)
@@ -73,40 +93,255 @@ std::u16string GetUsernameFromSuggestion(const std::u16string& suggestion) {
              : suggestion;
 }
 
+// Returns a string representing the icon of either the account store or the
+// local password store.
+std::string CreateStoreIcon(bool for_account_store) {
+  return for_account_store ? "google" : std::string();
+}
+
+// If |field_suggestion| matches |field_content|, creates a Suggestion out of it
+// and appends to |suggestions|.
+void AppendSuggestionIfMatching(
+    const std::u16string& field_suggestion,
+    const std::u16string& field_contents,
+    const gfx::Image& custom_icon,
+    const std::string& signon_realm,
+    bool show_all,
+    bool is_password_field,
+    bool from_account_store,
+    size_t password_length,
+    std::vector<autofill::Suggestion>* suggestions) {
+  std::u16string lower_suggestion = base::i18n::ToLower(field_suggestion);
+  std::u16string lower_contents = base::i18n::ToLower(field_contents);
+  if (show_all || autofill::FieldIsSuggestionSubstringStartingOnTokenBoundary(
+                      lower_suggestion, lower_contents, true)) {
+    bool replaced_username;
+    autofill::Suggestion suggestion(
+        ReplaceEmptyUsername(field_suggestion, &replaced_username));
+    suggestion.main_text.is_primary =
+        autofill::Suggestion::Text::IsPrimary(!replaced_username);
+    suggestion.labels = {
+        {autofill::Suggestion::Text(GetHumanReadableRealm(signon_realm))}};
+    suggestion.additional_label =
+        std::u16string(password_length, kPasswordReplacementChar);
+    suggestion.voice_over = l10n_util::GetStringFUTF16(
+        IDS_PASSWORD_MANAGER_PASSWORD_FOR_ACCOUNT, suggestion.main_text.value);
+    if (!suggestion.labels.empty()) {
+      // The domainname is only shown for passwords with a common eTLD+1
+      // but different subdomain.
+      DCHECK_EQ(suggestion.labels.size(), 1U);
+      DCHECK_EQ(suggestion.labels[0].size(), 1U);
+      *suggestion.voice_over += u", ";
+      *suggestion.voice_over += suggestion.labels[0][0].value;
+    }
+    if (from_account_store) {
+      suggestion.frontend_id =
+          is_password_field
+              ? autofill::POPUP_ITEM_ID_ACCOUNT_STORAGE_PASSWORD_ENTRY
+              : autofill::POPUP_ITEM_ID_ACCOUNT_STORAGE_USERNAME_ENTRY;
+    } else {
+      suggestion.frontend_id = is_password_field
+                                   ? autofill::POPUP_ITEM_ID_PASSWORD_ENTRY
+                                   : autofill::POPUP_ITEM_ID_USERNAME_ENTRY;
+    }
+    suggestion.match =
+        show_all || base::StartsWith(lower_suggestion, lower_contents,
+                                     base::CompareCase::SENSITIVE)
+            ? autofill::Suggestion::PREFIX_MATCH
+            : autofill::Suggestion::SUBSTRING_MATCH;
+    suggestion.custom_icon = custom_icon;
+    // The UI code will pick up an icon from the resources based on the string.
+    suggestion.icon = "globeIcon";
+    suggestion.trailing_icon = CreateStoreIcon(from_account_store);
+    suggestions->push_back(suggestion);
+  }
+}
+
+// This function attempts to fill |suggestions| from |fill_data| based on
+// |current_username| that is the current value of the field. Unless |show_all|
+// is true, it only picks suggestions allowed by
+// FieldIsSuggestionSubstringStartingOnTokenBoundary. It can pick either a
+// substring or a prefix based on the flag.
+void GetSuggestions(const autofill::PasswordFormFillData& fill_data,
+                    const std::u16string& current_username,
+                    const gfx::Image& custom_icon,
+                    bool show_all,
+                    bool is_password_field,
+                    std::vector<autofill::Suggestion>* suggestions) {
+  AppendSuggestionIfMatching(
+      fill_data.preferred_login.username_value, current_username, custom_icon,
+      fill_data.preferred_login.realm, show_all, is_password_field,
+      fill_data.preferred_login.uses_account_store,
+      fill_data.preferred_login.password_value.size(), suggestions);
+
+  int prefered_match = suggestions->size();
+
+  for (const auto& login : fill_data.additional_logins) {
+    AppendSuggestionIfMatching(login.username_value, current_username,
+                               custom_icon, login.realm, show_all,
+                               is_password_field, login.uses_account_store,
+                               login.password_value.size(), suggestions);
+  }
+
+  std::sort(suggestions->begin() + prefered_match, suggestions->end(),
+            [](const autofill::Suggestion& a, const autofill::Suggestion& b) {
+              return a.main_text.value < b.main_text.value;
+            });
+
+  // Prefix matches should precede other token matches.
+  if (!show_all && autofill::IsFeatureSubstringMatchEnabled()) {
+    // Using stable sort in order to preserve sorting by 'value'
+    std::stable_sort(
+        suggestions->begin(), suggestions->end(),
+        [](const autofill::Suggestion& a, const autofill::Suggestion& b) {
+          return a.match < b.match;
+        });
+  }
+}
+
+void MaybeAppendManagePasswordsEntry(
+    std::vector<autofill::Suggestion>* suggestions) {
+  bool has_no_fillable_suggestions = base::ranges::none_of(
+      *suggestions,
+      [](int id) {
+        return id == autofill::POPUP_ITEM_ID_USERNAME_ENTRY ||
+               id == autofill::POPUP_ITEM_ID_PASSWORD_ENTRY ||
+               id == autofill::POPUP_ITEM_ID_ACCOUNT_STORAGE_USERNAME_ENTRY ||
+               id == autofill::POPUP_ITEM_ID_ACCOUNT_STORAGE_PASSWORD_ENTRY ||
+               id == autofill::POPUP_ITEM_ID_GENERATE_PASSWORD_ENTRY ||
+               id == autofill::POPUP_ITEM_ID_WEBAUTHN_CREDENTIAL;
+      },
+      &autofill::Suggestion::frontend_id);
+  if (has_no_fillable_suggestions)
+    return;
+
+  bool has_webauthn_credential = base::ranges::any_of(
+      *suggestions,
+      [](int id) { return id == autofill::POPUP_ITEM_ID_WEBAUTHN_CREDENTIAL; },
+      &autofill::Suggestion::frontend_id);
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Add a separator before the manage option unless there are no suggestions
+  // yet.
+  // TODO(crbug.com/1274134): Clean up once improvements are launched.
+  if (!suggestions->empty()) {
+    suggestions->emplace_back(autofill::POPUP_ITEM_ID_SEPARATOR);
+  }
+#endif
+
+  autofill::Suggestion suggestion(l10n_util::GetStringUTF16(
+      has_webauthn_credential
+          ? IDS_PASSWORD_MANAGER_MANAGE_PASSWORDS_AND_PASSKEYS
+          : IDS_PASSWORD_MANAGER_MANAGE_PASSWORDS));
+  suggestion.frontend_id = autofill::POPUP_ITEM_ID_ALL_SAVED_PASSWORDS_ENTRY;
+  if (base::FeatureList::IsEnabled(
+          password_manager::features::kEnablePasswordsAccountStorage)) {
+    // The UI code will pick up an icon from the resources based on the string.
+    suggestion.icon = "settingsIcon";
+  }
+  // The UI code will pick up an icon from the resources based on the string.
+  suggestion.trailing_icon = "googlePasswordManager";
+  suggestions->push_back(std::move(suggestion));
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+autofill::Suggestion CreateWebAuthnEntry() {
+  autofill::Suggestion suggestion(
+      l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_USE_DEVICE_PASSKEY));
+  suggestion.icon = "device";
+  suggestion.frontend_id =
+      autofill::POPUP_ITEM_ID_WEBAUTHN_SIGN_IN_WITH_ANOTHER_DEVICE;
+  return suggestion;
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+autofill::Suggestion CreateGenerationEntry() {
+  autofill::Suggestion suggestion(
+      l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_GENERATE_PASSWORD));
+  // The UI code will pick up an icon from the resources based on the string.
+  suggestion.icon = "keyIcon";
+  suggestion.frontend_id = autofill::POPUP_ITEM_ID_GENERATE_PASSWORD_ENTRY;
+  return suggestion;
+}
+
+// Entry for opting in to password account storage and then filling.
+autofill::Suggestion CreateEntryToOptInToAccountStorageThenFill() {
+  autofill::Suggestion suggestion(
+      l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_OPT_INTO_ACCOUNT_STORE));
+  suggestion.frontend_id =
+      autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN;
+  suggestion.icon = "google";
+  return suggestion;
+}
+
+// Entry for opting in to password account storage and then generating password.
+autofill::Suggestion CreateEntryToOptInToAccountStorageThenGenerate() {
+  autofill::Suggestion suggestion(
+      l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_GENERATE_PASSWORD));
+  suggestion.frontend_id =
+      autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE;
+  suggestion.icon = "keyIcon";
+  return suggestion;
+}
+
+// Entry for sigining in again which unlocks the password account storage.
+autofill::Suggestion CreateEntryToReSignin() {
+  autofill::Suggestion suggestion(
+      l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_RE_SIGNIN_ACCOUNT_STORE));
+  suggestion.frontend_id =
+      autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_RE_SIGNIN;
+  suggestion.icon = "google";
+  return suggestion;
+}
+
+// Entry showing the empty state (i.e. no passwords found in account-storage).
+autofill::Suggestion CreateAccountStorageEmptyEntry() {
+  autofill::Suggestion suggestion(
+      l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_NO_ACCOUNT_STORE_MATCHES));
+  suggestion.frontend_id =
+      autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_EMPTY;
+  suggestion.icon = "empty";
+  return suggestion;
+}
+
 bool ContainsOtherThanManagePasswords(
     base::span<const autofill::Suggestion> suggestions) {
   return base::ranges::any_of(suggestions, [](const auto& s) {
-    return s.popup_item_id != autofill::PopupItemId::kAllSavedPasswordsEntry;
+    return s.frontend_id != autofill::POPUP_ITEM_ID_ALL_SAVED_PASSWORDS_ENTRY;
+  });
+}
+
+bool AreSuggestionForPasswordField(
+    base::span<const autofill::Suggestion> suggestions) {
+  return base::ranges::any_of(suggestions, [](const auto& suggestion) {
+    return suggestion.frontend_id == autofill::POPUP_ITEM_ID_PASSWORD_ENTRY;
   });
 }
 
 bool HasLoadingSuggestion(base::span<const autofill::Suggestion> suggestions,
                           autofill::PopupItemId item_id) {
   return base::ranges::any_of(suggestions, [&item_id](const auto& suggestion) {
-    return suggestion.popup_item_id == item_id && suggestion.is_loading;
+    return suggestion.frontend_id == item_id && suggestion.is_loading;
   });
 }
 
-std::string GetBackendId(const autofill::Suggestion& suggestion) {
-  return absl::holds_alternative<autofill::Suggestion::BackendId>(
-             suggestion.payload)
-             ? suggestion.GetBackendId<autofill::Suggestion::Guid>().value()
-             : std::string();
-}
-
 std::vector<autofill::Suggestion> SetUnlockLoadingState(
-    std::vector<autofill::Suggestion> suggestions,
+    base::span<const autofill::Suggestion> suggestions,
     autofill::PopupItemId unlock_item,
     IsLoading is_loading) {
-  DCHECK(unlock_item == autofill::PopupItemId::kPasswordAccountStorageOptIn ||
-         unlock_item ==
-             autofill::PopupItemId::kPasswordAccountStorageReSignin ||
-         unlock_item ==
-             autofill::PopupItemId::kPasswordAccountStorageOptInAndGenerate);
-  auto unlock_iter = base::ranges::find(suggestions, unlock_item,
-                                        &autofill::Suggestion::popup_item_id);
+  DCHECK(
+      unlock_item == autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN ||
+      unlock_item ==
+          autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_RE_SIGNIN ||
+      unlock_item ==
+          autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE);
+  std::vector<autofill::Suggestion> new_suggestions;
+  new_suggestions.reserve(suggestions.size());
+  base::ranges::copy(suggestions, std::back_inserter(new_suggestions));
+  auto unlock_iter = base::ranges::find(new_suggestions, unlock_item,
+                                        &autofill::Suggestion::frontend_id);
   unlock_iter->is_loading = is_loading;
-  return suggestions;
+  return new_suggestions;
 }
 
 void LogAccountStoredPasswordsCountInFillDataAfterUnlock(
@@ -132,86 +367,84 @@ PasswordAutofillManager::PasswordAutofillManager(
     PasswordManagerDriver* password_manager_driver,
     autofill::AutofillClient* autofill_client,
     PasswordManagerClient* password_client)
-    : suggestion_generator_(password_manager_driver, password_client),
-      password_manager_driver_(password_manager_driver),
+    : password_manager_driver_(password_manager_driver),
       autofill_client_(autofill_client),
       password_client_(password_client) {}
 
 PasswordAutofillManager::~PasswordAutofillManager() {
   CancelBiometricReauthIfOngoing();
-}
 
-absl::variant<autofill::AutofillDriver*, PasswordManagerDriver*>
-PasswordAutofillManager::GetDriver() {
-  return password_manager_driver_.get();
+  if (deletion_callback_)
+    std::move(deletion_callback_).Run();
 }
 
 void PasswordAutofillManager::OnPopupShown() {}
 
 void PasswordAutofillManager::OnPopupHidden() {}
 
+void PasswordAutofillManager::OnPopupSuppressed() {}
+
 void PasswordAutofillManager::DidSelectSuggestion(
-    const autofill::Suggestion& suggestion) {
+    const std::u16string& value,
+    int frontend_id,
+    const autofill::Suggestion::BackendId& backend_id) {
   ClearPreviewedForm();
-  if (suggestion.popup_item_id ==
-          autofill::PopupItemId::kAllSavedPasswordsEntry ||
-      suggestion.popup_item_id ==
-          autofill::PopupItemId::kPasswordAccountStorageEmpty ||
-      suggestion.popup_item_id ==
-          autofill::PopupItemId::kGeneratePasswordEntry ||
-      suggestion.popup_item_id ==
-          autofill::PopupItemId::kPasswordAccountStorageOptIn ||
-      suggestion.popup_item_id ==
-          autofill::PopupItemId::kPasswordAccountStorageReSignin ||
-      suggestion.popup_item_id ==
-          autofill::PopupItemId::kPasswordAccountStorageOptInAndGenerate ||
-      suggestion.popup_item_id ==
-          autofill::PopupItemId::kWebauthnSignInWithAnotherDevice) {
+  if (frontend_id == autofill::POPUP_ITEM_ID_ALL_SAVED_PASSWORDS_ENTRY ||
+      frontend_id == autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_EMPTY ||
+      frontend_id == autofill::POPUP_ITEM_ID_GENERATE_PASSWORD_ENTRY ||
+      frontend_id == autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN ||
+      frontend_id ==
+          autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_RE_SIGNIN ||
+      frontend_id ==
+          autofill::
+              POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE ||
+      frontend_id ==
+          autofill::POPUP_ITEM_ID_WEBAUTHN_SIGN_IN_WITH_ANOTHER_DEVICE) {
     return;
   }
 
-  PreviewSuggestion(GetUsernameFromSuggestion(suggestion.main_text.value),
-                    suggestion.popup_item_id);
+  PreviewSuggestion(GetUsernameFromSuggestion(value), frontend_id);
 }
 
 void PasswordAutofillManager::OnUnlockItemAccepted(
     autofill::PopupItemId unlock_item) {
   using metrics_util::PasswordDropdownSelectedOption;
-  DCHECK(unlock_item == autofill::PopupItemId::kPasswordAccountStorageOptIn ||
-         unlock_item ==
-             autofill::PopupItemId::kPasswordAccountStorageOptInAndGenerate);
+  DCHECK(
+      unlock_item == autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN ||
+      unlock_item ==
+          autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE);
 
   UpdatePopup(SetUnlockLoadingState(autofill_client_->GetPopupSuggestions(),
                                     unlock_item, IsLoading(true)));
   signin_metrics::ReauthAccessPoint reauth_access_point =
-      unlock_item == autofill::PopupItemId::kPasswordAccountStorageOptIn
+      unlock_item == autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN
           ? signin_metrics::ReauthAccessPoint::kAutofillDropdown
           : signin_metrics::ReauthAccessPoint::kGeneratePasswordDropdown;
   password_client_->TriggerReauthForPrimaryAccount(
       reauth_access_point,
       base::BindOnce(&PasswordAutofillManager::OnUnlockReauthCompleted,
-                     weak_ptr_factory_.GetWeakPtr(), unlock_item));
+                     weak_ptr_factory_.GetWeakPtr(), unlock_item,
+                     autofill_client_->GetReopenPopupArgs()));
 }
 
 void PasswordAutofillManager::DidAcceptSuggestion(
     const autofill::Suggestion& suggestion,
-    const SuggestionPosition& position) {
+    int position) {
   using metrics_util::PasswordDropdownSelectedOption;
-  bool should_hide_popup = true;
-  switch (suggestion.popup_item_id) {
-    case autofill::PopupItemId::kGeneratePasswordEntry:
+  switch (suggestion.frontend_id) {
+    case autofill::POPUP_ITEM_ID_GENERATE_PASSWORD_ENTRY:
       password_client_->GeneratePassword(PasswordGenerationType::kAutomatic);
       metrics_util::LogPasswordDropdownItemSelected(
           PasswordDropdownSelectedOption::kGenerate,
-          password_client_->IsOffTheRecord());
+          password_client_->IsIncognito());
       break;
-    case autofill::PopupItemId::kAllSavedPasswordsEntry:
-    case autofill::PopupItemId::kPasswordAccountStorageEmpty:
+    case autofill::POPUP_ITEM_ID_ALL_SAVED_PASSWORDS_ENTRY:
+    case autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_EMPTY:
       password_client_->NavigateToManagePasswordsPage(
           ManagePasswordsReferrer::kPasswordDropdown);
       metrics_util::LogPasswordDropdownItemSelected(
           PasswordDropdownSelectedOption::kShowAll,
-          password_client_->IsOffTheRecord());
+          password_client_->IsIncognito());
 
       if (password_client_->GetMetricsRecorder()) {
         using UserAction = password_manager::PasswordManagerMetricsRecorder::
@@ -220,38 +453,42 @@ void PasswordAutofillManager::DidAcceptSuggestion(
             UserAction::kShowAllPasswordsWhileSomeAreSuggested);
       }
       break;
-    case autofill::PopupItemId::kPasswordAccountStorageReSignin:
+    case autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_RE_SIGNIN:
       password_client_->TriggerSignIn(
           signin_metrics::AccessPoint::ACCESS_POINT_AUTOFILL_DROPDOWN);
       metrics_util::LogPasswordDropdownItemSelected(
           PasswordDropdownSelectedOption::kResigninToUnlockAccountStore,
-          password_client_->IsOffTheRecord());
+          password_client_->IsIncognito());
       break;
-    case autofill::PopupItemId::kPasswordAccountStorageOptIn:
-    case autofill::PopupItemId::kPasswordAccountStorageOptInAndGenerate:
-      OnUnlockItemAccepted(suggestion.popup_item_id);
+    case autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN:
+    case autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE:
+      OnUnlockItemAccepted(
+          static_cast<autofill::PopupItemId>(suggestion.frontend_id));
       metrics_util::LogPasswordDropdownItemSelected(
-          suggestion.popup_item_id ==
-                  autofill::PopupItemId::kPasswordAccountStorageOptIn
+          suggestion.frontend_id ==
+                  autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN
               ? PasswordDropdownSelectedOption::kUnlockAccountStorePasswords
               : PasswordDropdownSelectedOption::kUnlockAccountStoreGeneration,
-          password_client_->IsOffTheRecord());
+          password_client_->IsIncognito());
       break;
-    case autofill::PopupItemId::kWebauthnCredential:
+    case autofill::POPUP_ITEM_ID_WEBAUTHN_CREDENTIAL:
       metrics_util::LogPasswordDropdownItemSelected(
           PasswordDropdownSelectedOption::kWebAuthn,
-          password_client_->IsOffTheRecord());
-      should_hide_popup = false;
+          password_client_->IsIncognito());
       password_client_
           ->GetWebAuthnCredentialsDelegateForDriver(password_manager_driver_)
-          ->SelectPasskey(GetBackendId(suggestion),
-                          base::BindOnce(&PasswordAutofillManager::HidePopup,
-                                         weak_ptr_factory_.GetWeakPtr()));
+          ->SelectPasskey(
+              absl::holds_alternative<autofill::Suggestion::BackendId>(
+                  suggestion.payload)
+                  ? absl::get<autofill::Suggestion::BackendId>(
+                        suggestion.payload)
+                        .value()
+                  : std::string());
       break;
-    case autofill::PopupItemId::kWebauthnSignInWithAnotherDevice:
+    case autofill::POPUP_ITEM_ID_WEBAUTHN_SIGN_IN_WITH_ANOTHER_DEVICE:
       metrics_util::LogPasswordDropdownItemSelected(
           PasswordDropdownSelectedOption::kWebAuthnSignInWithAnotherDevice,
-          password_client_->IsOffTheRecord());
+          password_client_->IsIncognito());
       password_client_
           ->GetWebAuthnCredentialsDelegateForDriver(password_manager_driver_)
           ->LaunchWebAuthnFlow();
@@ -259,57 +496,63 @@ void PasswordAutofillManager::DidAcceptSuggestion(
     default:
       metrics_util::LogPasswordDropdownItemSelected(
           PasswordDropdownSelectedOption::kPassword,
-          password_client_->IsOffTheRecord());
+          password_client_->IsIncognito());
 
       CancelBiometricReauthIfOngoing();
-      std::unique_ptr<device_reauth::DeviceAuthenticator> authenticator =
+      scoped_refptr<device_reauth::DeviceAuthenticator> authenticator =
           password_client_->GetDeviceAuthenticator();
       // Note: this is currently only implemented on Android, Mac and Windows.
       // For other platforms, the `authenticator` will be null.
-      if (!password_client_->CanUseBiometricAuthForFilling(
-              authenticator.get())) {
+      if (!password_manager_util::CanUseBiometricAuth(authenticator.get(),
+                                                      password_client_)) {
         bool success = FillSuggestion(
             GetUsernameFromSuggestion(suggestion.main_text.value),
-            suggestion.popup_item_id);
+            suggestion.frontend_id);
         DCHECK(success);
       } else {
         authenticator_ = std::move(authenticator);
-
-        std::u16string message;
-        auto on_reath_complete = base::BindOnce(
-            &PasswordAutofillManager::OnBiometricReauthCompleted,
-            weak_ptr_factory_.GetWeakPtr(), suggestion.main_text.value,
-            suggestion.popup_item_id);
-
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_ANDROID)
+        authenticator_->Authenticate(
+            device_reauth::DeviceAuthRequester::kAutofillSuggestion,
+            base::BindOnce(&PasswordAutofillManager::OnBiometricReauthCompleted,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           suggestion.main_text.value, suggestion.frontend_id),
+            /*use_last_valid_auth=*/true);
+#elif BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         const std::u16string origin =
             base::UTF8ToUTF16(GetShownOrigin(url::Origin::Create(
                 password_manager_driver_->GetLastCommittedURL())));
-        message = l10n_util::GetStringFUTF16(
-            IDS_PASSWORD_MANAGER_FILLING_REAUTH, origin);
-#endif
+
+        auto on_reath_complete =
+            base::BindOnce(&PasswordAutofillManager::OnBiometricReauthCompleted,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           suggestion.main_text.value, suggestion.frontend_id);
+
         authenticator_->AuthenticateWithMessage(
-            message, metrics_util::TimeCallback(
-                         std::move(on_reath_complete),
-                         "PasswordManager.PasswordFilling.AuthenticationTime"));
+            l10n_util::GetStringFUTF16(IDS_PASSWORD_MANAGER_FILLING_REAUTH,
+                                       origin),
+            metrics_util::TimeCallback(
+                std::move(on_reath_complete),
+                "PasswordManager.PasswordFilling.AuthenticationTime"));
+#endif
       }
       break;
   }
 
-  if (should_hide_popup) {
-    autofill_client_->HideAutofillPopup(
-        autofill::PopupHidingReason::kAcceptSuggestion);
-  }
+  autofill_client_->HideAutofillPopup(
+      autofill::PopupHidingReason::kAcceptSuggestion);
 }
 
-void PasswordAutofillManager::DidPerformButtonActionForSuggestion(
-    const autofill::Suggestion&) {
-  // Button actions do currently not exist for password entries.
-  NOTREACHED();
+bool PasswordAutofillManager::GetDeletionConfirmationText(
+    const std::u16string& value,
+    int frontend_id,
+    std::u16string* title,
+    std::u16string* body) {
+  return false;
 }
 
-bool PasswordAutofillManager::RemoveSuggestion(
-    const autofill::Suggestion& suggestion) {
+bool PasswordAutofillManager::RemoveSuggestion(const std::u16string& value,
+                                               int frontend_id) {
   // Password suggestions cannot be deleted this way.
   // See http://crbug.com/329038#c15
   return false;
@@ -319,9 +562,26 @@ void PasswordAutofillManager::ClearPreviewedForm() {
   password_manager_driver_->ClearPreviewedForm();
 }
 
-autofill::FillingProduct PasswordAutofillManager::GetMainFillingProduct()
-    const {
-  return autofill::FillingProduct::kPassword;
+autofill::PopupType PasswordAutofillManager::GetPopupType() const {
+  return autofill::PopupType::kPasswords;
+}
+
+absl::variant<autofill::AutofillDriver*, PasswordManagerDriver*>
+PasswordAutofillManager::GetDriver() {
+  return password_manager_driver_.get();
+}
+
+int32_t PasswordAutofillManager::GetWebContentsPopupControllerAxId() const {
+  // TODO: Needs to be implemented when we step up accessibility features in the
+  // future.
+  // See http://crbug.com/991253
+  NOTIMPLEMENTED_LOG_ONCE();
+  return 0;
+}
+
+void PasswordAutofillManager::RegisterDeletionCallback(
+    base::OnceClosure deletion_callback) {
+  deletion_callback_ = std::move(deletion_callback);
 }
 
 void PasswordAutofillManager::OnAddPasswordFillData(
@@ -348,22 +608,23 @@ void PasswordAutofillManager::OnAddPasswordFillData(
   // Only log account-stored passwords if the unlock just happened.
   if (HasLoadingSuggestion(
           autofill_client_->GetPopupSuggestions(),
-          autofill::PopupItemId::kPasswordAccountStorageOptIn)) {
+          autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN)) {
     LogAccountStoredPasswordsCountInFillDataAfterUnlock(fill_data);
   }
-  UpdatePopup(suggestion_generator_.GetSuggestionsForDomain(
-      fill_data, page_favicon_, std::u16string(),
-      OffersGeneration(false), ShowPasswordSuggestions(true),
-      ShowWebAuthnCredentials(false)));
+  UpdatePopup(BuildSuggestions(std::u16string(),
+                               ForPasswordField(AreSuggestionForPasswordField(
+                                   autofill_client_->GetPopupSuggestions())),
+                               ShowAllPasswords(true), OffersGeneration(false),
+                               ShowPasswordSuggestions(true),
+                               ShowWebAuthnCredentials(false)));
 }
 
 void PasswordAutofillManager::OnNoCredentialsFound() {
   if (!autofill_client_ ||
       !HasLoadingSuggestion(
           autofill_client_->GetPopupSuggestions(),
-          autofill::PopupItemId::kPasswordAccountStorageOptIn)) {
+          autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN))
     return;
-  }
   metrics_util::LogPasswordsCountFromAccountStoreAfterUnlock(
       /*account_store_passwords_count=*/0);
   UpdatePopup({CreateAccountStorageEmptyEntry()});
@@ -379,46 +640,28 @@ void PasswordAutofillManager::DeleteFillData() {
 }
 
 void PasswordAutofillManager::OnShowPasswordSuggestions(
-    autofill::FieldRendererId element_id,
-    autofill::AutofillSuggestionTriggerSource trigger_source,
     base::i18n::TextDirection text_direction,
     const std::u16string& typed_username,
-    ShowWebAuthnCredentials show_webauthn_credentials,
+    int options,
     const gfx::RectF& bounds) {
-  if (autofill::IsAutofillManuallyTriggered(trigger_source)) {
-    if (!manual_fallback_flow_) {
-      manual_fallback_flow_ = std::make_unique<PasswordManualFallbackFlow>(
-          password_manager_driver_, autofill_client_, password_client_,
-          password_client_->GetPasswordManager()->GetPasswordFormCache(),
-          std::make_unique<SavedPasswordsPresenter>(
-              password_client_->GetAffiliationService(),
-              password_client_->GetProfilePasswordStore(),
-              password_client_->GetAccountPasswordStore()));
-    }
-    manual_fallback_flow_->RunFlow(element_id, bounds, text_direction);
-    return;
-  }
-  bool autofill_available =
-      ShowPopup(bounds, text_direction,
-                suggestion_generator_.GetSuggestionsForDomain(
-                    fill_data_.get(), page_favicon_, typed_username,
-                    OffersGeneration(false), ShowPasswordSuggestions(true),
-                    show_webauthn_credentials));
-
-  password_manager_driver_->SetSuggestionAvailability(
-      element_id,
-      autofill_available
-          ? autofill::mojom::AutofillSuggestionAvailability::kAutofillAvailable
-          : autofill::mojom::AutofillSuggestionAvailability::kNoSuggestions);
+  ShowPopup(
+      bounds, text_direction,
+      BuildSuggestions(typed_username,
+                       ForPasswordField(options & autofill::IS_PASSWORD_FIELD),
+                       ShowAllPasswords(options & autofill::SHOW_ALL),
+                       OffersGeneration(false), ShowPasswordSuggestions(true),
+                       ShowWebAuthnCredentials(
+                           options & autofill::ACCEPTS_WEBAUTHN_CREDENTIALS)));
 }
 
 bool PasswordAutofillManager::MaybeShowPasswordSuggestions(
     const gfx::RectF& bounds,
     base::i18n::TextDirection text_direction) {
-  return ShowPopup(bounds, text_direction,
-                   suggestion_generator_.GetSuggestionsForDomain(
-                       fill_data_.get(), page_favicon_, std::u16string(),
-                       OffersGeneration(false), ShowPasswordSuggestions(true),
+  return ShowPopup(
+      bounds, text_direction,
+      BuildSuggestions(std::u16string(), ForPasswordField(true),
+                       ShowAllPasswords(true), OffersGeneration(false),
+                       ShowPasswordSuggestions(true),
                        ShowWebAuthnCredentials(false)));
 }
 
@@ -426,10 +669,10 @@ bool PasswordAutofillManager::MaybeShowPasswordSuggestionsWithGeneration(
     const gfx::RectF& bounds,
     base::i18n::TextDirection text_direction,
     bool show_password_suggestions) {
-  return ShowPopup(bounds, text_direction,
-                   suggestion_generator_.GetSuggestionsForDomain(
-                       fill_data_.get(), page_favicon_, std::u16string(),
-                       OffersGeneration(true),
+  return ShowPopup(
+      bounds, text_direction,
+      BuildSuggestions(std::u16string(), ForPasswordField(true),
+                       ShowAllPasswords(true), OffersGeneration(true),
                        ShowPasswordSuggestions(show_password_suggestions),
                        ShowWebAuthnCredentials(false)));
 }
@@ -439,44 +682,123 @@ void PasswordAutofillManager::DidNavigateMainFrame() {
   CancelBiometricReauthIfOngoing();
   favicon_tracker_.TryCancelAll();
   page_favicon_ = gfx::Image();
-  manual_fallback_flow_.reset();
 }
 
 bool PasswordAutofillManager::FillSuggestionForTest(
     const std::u16string& username) {
-  return FillSuggestion(username, autofill::PopupItemId::kPasswordEntry);
+  return FillSuggestion(username, autofill::POPUP_ITEM_ID_PASSWORD_ENTRY);
 }
 
 bool PasswordAutofillManager::PreviewSuggestionForTest(
     const std::u16string& username) {
-  return PreviewSuggestion(username, autofill::PopupItemId::kPasswordEntry);
-}
-
-void PasswordAutofillManager::SetManualFallbackFlowForTest(
-    std::unique_ptr<PasswordSuggestionFlow> manual_fallback_flow) {
-  manual_fallback_flow_.swap(manual_fallback_flow);
+  return PreviewSuggestion(username, autofill::POPUP_ITEM_ID_PASSWORD_ENTRY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // PasswordAutofillManager, private:
+
+std::vector<autofill::Suggestion> PasswordAutofillManager::BuildSuggestions(
+    const std::u16string& username_filter,
+    ForPasswordField for_password_field,
+    ShowAllPasswords show_all_passwords,
+    OffersGeneration offers_generation,
+    ShowPasswordSuggestions show_password_suggestions,
+    ShowWebAuthnCredentials show_webauthn_credentials) {
+  std::vector<autofill::Suggestion> suggestions;
+  bool show_account_storage_optin =
+      password_client_ && password_client_->GetPasswordFeatureManager()
+                              ->ShouldShowAccountStorageOptIn();
+  bool show_account_storage_resignin =
+      password_client_ && password_client_->GetPasswordFeatureManager()
+                              ->ShouldShowAccountStorageReSignin(
+                                  password_client_->GetLastCommittedURL());
+
+  // Add WebAuthn credentials suitable for an ongoing request if available.
+  WebAuthnCredentialsDelegate* delegate =
+      password_client_->GetWebAuthnCredentialsDelegateForDriver(
+          password_manager_driver_);
+  // |uses_passkeys| is used on desktop only to offer a way to sign in with a
+  // passkey on another device. On Android this is always false. It also will
+  // not be set on iOS since |show_webauthn_credentials| is always false.
+  bool uses_passkeys = false;
+  if (show_webauthn_credentials && delegate &&
+      delegate->GetPasskeys().has_value()) {
+#if !BUILDFLAG(IS_ANDROID)
+    uses_passkeys = true;
+#endif
+    base::ranges::transform(
+        *delegate->GetPasskeys(), std::back_inserter(suggestions),
+        [this](const auto& passkey) {
+          autofill::Suggestion suggestion(ToUsernameString(passkey.username()));
+          suggestion.icon = "globeIcon";
+          suggestion.frontend_id = autofill::POPUP_ITEM_ID_WEBAUTHN_CREDENTIAL;
+          suggestion.custom_icon = page_favicon_;
+          suggestion.payload = autofill::Suggestion::BackendId(
+              base::Base64Encode(passkey.credential_id()));
+          suggestion.labels = {{autofill::Suggestion::Text(
+              l10n_util::GetStringUTF16(passkey.GetAuthenticatorLabel()))}};
+          return suggestion;
+        });
+  }
+
+  if (!fill_data_ && !show_account_storage_optin &&
+      !show_account_storage_resignin && !uses_passkeys && suggestions.empty()) {
+    // Probably the credential was deleted in the mean time.
+    return suggestions;
+  }
+
+  // Add password suggestions if they exist and were requested.
+  if (show_password_suggestions && fill_data_) {
+    GetSuggestions(*fill_data_, username_filter, page_favicon_,
+                   show_all_passwords.value(), for_password_field.value(),
+                   &suggestions);
+  }
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Add "Sign in with another device" button.
+  if (uses_passkeys) {
+    suggestions.push_back(CreateWebAuthnEntry());
+  }
+#endif
+
+  // Add password generation entry, if available.
+  if (offers_generation) {
+    suggestions.push_back(show_account_storage_optin
+                              ? CreateEntryToOptInToAccountStorageThenGenerate()
+                              : CreateGenerationEntry());
+  }
+
+  // Add button to opt into using the account storage for passwords and then
+  // suggest.
+  if (show_account_storage_optin)
+    suggestions.push_back(CreateEntryToOptInToAccountStorageThenFill());
+
+  // Add button to sign-in which unlocks the previously used account store.
+  if (show_account_storage_resignin)
+    suggestions.push_back(CreateEntryToReSignin());
+
+  // Add "Manage all passwords" link to settings.
+  MaybeAppendManagePasswordsEntry(&suggestions);
+
+  return suggestions;
+}
 
 void PasswordAutofillManager::LogMetricsForSuggestions(
     const std::vector<autofill::Suggestion>& suggestions) const {
   metrics_util::PasswordDropdownState dropdown_state =
       metrics_util::PasswordDropdownState::kStandard;
   for (const auto& suggestion : suggestions) {
-    switch (suggestion.popup_item_id) {
-      case autofill::PopupItemId::kGeneratePasswordEntry:
+    switch (suggestion.frontend_id) {
+      case autofill::POPUP_ITEM_ID_GENERATE_PASSWORD_ENTRY:
         // TODO(crbug.com/1062709): Revisit metrics for the "opt in and
         // generate" button.
-      case autofill::PopupItemId::kPasswordAccountStorageOptInAndGenerate:
+      case autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE:
         dropdown_state = metrics_util::PasswordDropdownState::kStandardGenerate;
-        break;
-      default:
         break;
     }
   }
-  metrics_util::LogPasswordDropdownShown(dropdown_state);
+  metrics_util::LogPasswordDropdownShown(dropdown_state,
+                                         password_client_->IsIncognito());
 }
 
 bool PasswordAutofillManager::ShowPopup(
@@ -491,18 +813,16 @@ bool PasswordAutofillManager::ShowPopup(
     return false;
   }
   LogMetricsForSuggestions(suggestions);
-  // TODO(crbug.com/991253): Set the right `form_control_ax_id`.
-  last_popup_open_args_ = autofill::AutofillClient::PopupOpenArgs(
+  autofill::AutofillClient::PopupOpenArgs open_args(
       bounds, text_direction, suggestions,
-      autofill::AutofillSuggestionTriggerSource::kPasswordManager,
-      /*form_control_ax_id=*/0);
-  autofill_client_->ShowAutofillPopup(last_popup_open_args_,
+      autofill::AutoselectFirstSuggestion(false));
+  autofill_client_->ShowAutofillPopup(open_args,
                                       weak_ptr_factory_.GetWeakPtr());
   return true;
 }
 
 void PasswordAutofillManager::UpdatePopup(
-    std::vector<autofill::Suggestion> suggestions) {
+    const std::vector<autofill::Suggestion>& suggestions) {
   if (!password_manager_driver_->CanShowAutofillUi())
     return;
   if (!ContainsOtherThanManagePasswords(suggestions)) {
@@ -510,24 +830,19 @@ void PasswordAutofillManager::UpdatePopup(
         autofill::PopupHidingReason::kNoSuggestions);
     return;
   }
-  autofill_client_->UpdatePopup(
-      suggestions, autofill::FillingProduct::kPassword,
-      autofill::AutofillSuggestionTriggerSource::kPasswordManager);
-  last_popup_open_args_.suggestions = std::move(suggestions);
+  autofill_client_->UpdatePopup(suggestions, autofill::PopupType::kPasswords);
 }
 
-bool PasswordAutofillManager::FillSuggestion(
-    const std::u16string& username,
-    autofill::PopupItemId popup_item_id) {
+bool PasswordAutofillManager::FillSuggestion(const std::u16string& username,
+                                             int item_id) {
   autofill::PasswordAndMetadata password_and_meta_data;
   if (fill_data_ &&
-      GetPasswordAndMetadataForUsername(username, popup_item_id, *fill_data_,
+      GetPasswordAndMetadataForUsername(username, item_id, *fill_data_,
                                         &password_and_meta_data)) {
     bool is_android_credential =
-        affiliations::FacetURI::FromPotentiallyInvalidSpec(
-            password_and_meta_data.realm)
+        FacetURI::FromPotentiallyInvalidSpec(password_and_meta_data.realm)
             .IsValidAndroidFacetURI();
-    metrics_util::LogFilledPasswordFromAndroidApp(is_android_credential);
+    metrics_util::LogFilledCredentialIsFromAndroidApp(is_android_credential);
     password_manager_driver_->FillSuggestion(
         username, password_and_meta_data.password_value);
     return true;
@@ -535,10 +850,9 @@ bool PasswordAutofillManager::FillSuggestion(
   return false;
 }
 
-bool PasswordAutofillManager::PreviewSuggestion(
-    const std::u16string& username,
-    autofill::PopupItemId popup_item_id) {
-  if (popup_item_id == autofill::PopupItemId::kWebauthnCredential) {
+bool PasswordAutofillManager::PreviewSuggestion(const std::u16string& username,
+                                                int item_id) {
+  if (item_id == autofill::POPUP_ITEM_ID_WEBAUTHN_CREDENTIAL) {
     password_manager_driver_->PreviewSuggestion(username, /*password=*/u"");
     return true;
   }
@@ -548,7 +862,7 @@ bool PasswordAutofillManager::PreviewSuggestion(
   }
   autofill::PasswordAndMetadata password_and_meta_data;
   if (fill_data_ &&
-      GetPasswordAndMetadataForUsername(username, popup_item_id, *fill_data_,
+      GetPasswordAndMetadataForUsername(username, item_id, *fill_data_,
                                         &password_and_meta_data)) {
     password_manager_driver_->PreviewSuggestion(
         username, password_and_meta_data.password_value);
@@ -559,15 +873,16 @@ bool PasswordAutofillManager::PreviewSuggestion(
 
 bool PasswordAutofillManager::GetPasswordAndMetadataForUsername(
     const std::u16string& current_username,
-    autofill::PopupItemId popup_item_id,
+    int item_id,
     const autofill::PasswordFormFillData& fill_data,
     autofill::PasswordAndMetadata* password_and_meta_data) {
   // TODO(dubroy): When password access requires some kind of authentication
-  // (e.g. Keychain access on Mac OS), use `password_manager_client_` here to
+  // (e.g. Keychain access on Mac OS), use |password_manager_client_| here to
   // fetch the actual password. See crbug.com/178358 for more context.
 
   bool item_uses_account_store =
-      popup_item_id == autofill::PopupItemId::kAccountStoragePasswordEntry;
+      item_id == autofill::POPUP_ITEM_ID_ACCOUNT_STORAGE_USERNAME_ENTRY ||
+      item_id == autofill::POPUP_ITEM_ID_ACCOUNT_STORAGE_PASSWORD_ENTRY;
 
   // Look for any suitable matches to current field text.
   if (fill_data.preferred_login.username_value == current_username &&
@@ -615,50 +930,43 @@ void PasswordAutofillManager::OnFaviconReady(
 
 void PasswordAutofillManager::OnUnlockReauthCompleted(
     autofill::PopupItemId unlock_item,
+    autofill::AutofillClient::PopupOpenArgs reopen_args,
     PasswordManagerClient::ReauthSucceeded reauth_succeeded) {
-  autofill_client_->ShowAutofillPopup(last_popup_open_args_,
+  autofill_client_->ShowAutofillPopup(reopen_args,
                                       weak_ptr_factory_.GetWeakPtr());
   autofill_client_->PinPopupView();
   if (reauth_succeeded) {
     if (unlock_item ==
-        autofill::PopupItemId::kPasswordAccountStorageOptInAndGenerate) {
+        autofill::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE) {
       password_client_->GeneratePassword(PasswordGenerationType::kAutomatic);
       autofill_client_->HideAutofillPopup(
           autofill::PopupHidingReason::kAcceptSuggestion);
     }
     return;
   }
-  UpdatePopup(
-      SetUnlockLoadingState(std::move(last_popup_open_args_).suggestions,
-                            unlock_item, IsLoading(false)));
-  // Resets the popup arguments until the next ShowPopup() call.
-  last_popup_open_args_ = {};
+  UpdatePopup(SetUnlockLoadingState(reopen_args.suggestions, unlock_item,
+                                    IsLoading(false)));
 }
 
 void PasswordAutofillManager::OnBiometricReauthCompleted(
     const std::u16string& value,
-    autofill::PopupItemId popup_item_id,
+    int frontend_id,
     bool auth_succeeded) {
   authenticator_.reset();
   base::UmaHistogramBoolean(
       "PasswordManager.PasswordFilling.AuthenticationResult", auth_succeeded);
   if (!auth_succeeded)
     return;
-  bool success =
-      FillSuggestion(GetUsernameFromSuggestion(value), popup_item_id);
+  bool success = FillSuggestion(GetUsernameFromSuggestion(value), frontend_id);
   DCHECK(success);
 }
 
 void PasswordAutofillManager::CancelBiometricReauthIfOngoing() {
   if (!authenticator_)
     return;
-  authenticator_->Cancel();
+  authenticator_->Cancel(
+      device_reauth::DeviceAuthRequester::kAutofillSuggestion);
   authenticator_.reset();
-}
-
-void PasswordAutofillManager::HidePopup() {
-  autofill_client_->HideAutofillPopup(
-      autofill::PopupHidingReason::kAcceptSuggestion);
 }
 
 }  //  namespace password_manager

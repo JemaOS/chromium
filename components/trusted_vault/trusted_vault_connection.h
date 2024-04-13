@@ -6,12 +6,10 @@
 #define COMPONENTS_TRUSTED_VAULT_TRUSTED_VAULT_CONNECTION_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/functional/callback.h"
-#include "base/types/strong_alias.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 struct CoreAccountInfo;
 
@@ -78,58 +76,7 @@ enum class TrustedVaultRecoverabilityStatus {
   kMaxValue = kError,
 };
 
-// The result of calling
-// DownloadAuthenticationFactorsRegistrationState.
-struct DownloadAuthenticationFactorsRegistrationStateResult {
-  DownloadAuthenticationFactorsRegistrationStateResult();
-  DownloadAuthenticationFactorsRegistrationStateResult(
-      DownloadAuthenticationFactorsRegistrationStateResult&&);
-  DownloadAuthenticationFactorsRegistrationStateResult& operator=(
-      DownloadAuthenticationFactorsRegistrationStateResult&&);
-  ~DownloadAuthenticationFactorsRegistrationStateResult();
-
-  // These values are persisted in histograms. Entries should not be renumbered
-  // and numeric values should never be reused.
-  enum class State {
-    // The state of the security domain could not be determined.
-    kError = 0,
-    // The security domain is empty and thus doesn't have any secrets.
-    kEmpty = 1,
-    // The security domain is non-empty, but has virtual devices that are valid
-    // for recovery.
-    kRecoverable = 2,
-    // The security domain is non-empty, but has no virtual devices that can be
-    // used for recovery.
-    kIrrecoverable = 3,
-    kMaxValue = kIrrecoverable,
-  };
-  State state = State::kError;
-
-  // If there are members in the domain then this will contain the current key
-  // version.
-  std::optional<int> key_version;
-
-  // If a Google Password Manager PIN is a member of the domain, and is usable
-  // for retrieval, then this will contain its metadata.
-  std::optional<std::string> serialized_wrapped_pin;
-};
-
-// Authentication factor types:
-using PhysicalDevice =
-    base::StrongAlias<class PhysicalDeviceTag, absl::monostate>;
-using LockScreenKnowledgeFactor =
-    base::StrongAlias<class VirtualDeviceTag, absl::monostate>;
-// UnspecifiedAuthenticationFactorType carries a type hint for the backend.
-using UnspecifiedAuthenticationFactorType =
-    base::StrongAlias<class UnspecifiedAuthenticationFactorTypeTag, int>;
-// GPM PINs carry a bytestring of opaque metadata.
-using GpmPin = base::StrongAlias<class GpmPinTag, std::string>;
-
-using AuthenticationFactorType =
-    absl::variant<PhysicalDevice,
-                  LockScreenKnowledgeFactor,
-                  UnspecifiedAuthenticationFactorType,
-                  GpmPin>;
+enum class AuthenticationFactorType { kPhysicalDevice, kUnspecified };
 
 struct TrustedVaultKeyAndVersion {
   TrustedVaultKeyAndVersion(const std::vector<uint8_t>& key, int version);
@@ -145,21 +92,20 @@ struct TrustedVaultKeyAndVersion {
 // vault backend sequence.
 class TrustedVaultConnection {
  public:
-  // The result of attempting to add a member to the security domain. If the
-  // status is successful then `key_version` carries the current version of
-  // the security domain, otherwise it's zero.
   using RegisterAuthenticationFactorCallback =
-      base::OnceCallback<void(TrustedVaultRegistrationStatus,
-                              /*key_version=*/int)>;
+      base::OnceCallback<void(TrustedVaultRegistrationStatus)>;
+  // If registration request was successful without local keys, it means only
+  // constant key exists server-side and it's exposed as
+  // |vault_key_and_version|.
+  using RegisterDeviceWithoutKeysCallback = base::OnceCallback<void(
+      TrustedVaultRegistrationStatus,
+      const TrustedVaultKeyAndVersion& /*vault_key_and_version*/)>;
   using DownloadNewKeysCallback =
       base::OnceCallback<void(TrustedVaultDownloadKeysStatus,
                               const std::vector<std::vector<uint8_t>>& /*keys*/,
                               int /*last_key_version*/)>;
   using IsRecoverabilityDegradedCallback =
       base::OnceCallback<void(TrustedVaultRecoverabilityStatus)>;
-  using DownloadAuthenticationFactorsRegistrationStateCallback =
-      base::OnceCallback<void(
-          DownloadAuthenticationFactorsRegistrationStateResult)>;
 
   // Used to control ongoing request lifetime, destroying Request object causes
   // request cancellation.
@@ -189,6 +135,7 @@ class TrustedVaultConnection {
       int last_trusted_vault_key_version,
       const SecureBoxPublicKey& authentication_factor_public_key,
       AuthenticationFactorType authentication_factor_type,
+      absl::optional<int> authentication_factor_type_hint,
       RegisterAuthenticationFactorCallback callback) = 0;
 
   // Special version of the above for the case where the caller has no local
@@ -197,7 +144,7 @@ class TrustedVaultConnection {
   [[nodiscard]] virtual std::unique_ptr<Request> RegisterDeviceWithoutKeys(
       const CoreAccountInfo& account_info,
       const SecureBoxPublicKey& device_public_key,
-      RegisterAuthenticationFactorCallback callback) = 0;
+      RegisterDeviceWithoutKeysCallback callback) = 0;
 
   // Asynchronously attempts to download new vault keys (e.g. keys with version
   // greater than the on in |last_trusted_vault_key_and_version|) from the
@@ -216,14 +163,6 @@ class TrustedVaultConnection {
   DownloadIsRecoverabilityDegraded(
       const CoreAccountInfo& account_info,
       IsRecoverabilityDegradedCallback callback) = 0;
-
-  // Enumerates the members of the security domain and determines the
-  // recoverability of the security domain. (See the values of
-  // `DownloadAuthenticationFactorsRegistrationStateResult`.)
-  [[nodiscard]] virtual std::unique_ptr<Request>
-  DownloadAuthenticationFactorsRegistrationState(
-      const CoreAccountInfo& account_info,
-      DownloadAuthenticationFactorsRegistrationStateCallback callback) = 0;
 };
 
 }  // namespace trusted_vault

@@ -66,7 +66,7 @@ void OnMachineStatisticsLoaded(LocalDeviceNameInfo* name_info_ptr,
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // |full_hardware_class| is set on Chrome OS devices if the user has UMA
   // enabled. Otherwise |full_hardware_class| is set to an empty string.
-  if (const std::optional<base::StringPiece> full_hardware_class =
+  if (const absl::optional<base::StringPiece> full_hardware_class =
           ash::system::StatisticsProvider::GetInstance()->GetMachineStatistic(
               ash::system::kHardwareClassKey)) {
     name_info_ptr->full_hardware_class =
@@ -85,14 +85,9 @@ sync_pb::SyncEnums::DeviceType GetLocalDeviceType() {
 #elif BUILDFLAG(IS_LINUX)
   return sync_pb::SyncEnums_DeviceType_TYPE_LINUX;
 #elif BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  switch (ui::GetDeviceFormFactor()) {
-    case ui::DEVICE_FORM_FACTOR_TABLET:
-      return sync_pb::SyncEnums_DeviceType_TYPE_TABLET;
-    case ui::DEVICE_FORM_FACTOR_PHONE:
-      return sync_pb::SyncEnums_DeviceType_TYPE_PHONE;
-    default:
-      return sync_pb::SyncEnums_DeviceType_TYPE_OTHER;
-  }
+  return ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET
+             ? sync_pb::SyncEnums_DeviceType_TYPE_TABLET
+             : sync_pb::SyncEnums_DeviceType_TYPE_PHONE;
 #elif BUILDFLAG(IS_MAC)
   return sync_pb::SyncEnums_DeviceType_TYPE_MAC;
 #elif BUILDFLAG(IS_WIN)

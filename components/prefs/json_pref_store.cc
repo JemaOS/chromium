@@ -31,6 +31,7 @@
 #include "base/time/default_clock.h"
 #include "base/values.h"
 #include "components/prefs/pref_filter.h"
+#include "components/prefs/prefs_features.h"
 
 // Result returned from internal read tasks.
 struct JsonPrefStore::ReadResult {
@@ -59,6 +60,13 @@ bool BackupPrefsFile(const base::FilePath& path) {
   const bool bad_existed = base::PathExists(bad);
   base::Move(path, bad);
   return bad_existed;
+}
+
+bool PrefStoreBackgroundSerializationEnabledOrFeatureListUnavailable() {
+  // TODO(crbug.com/1364606#c12): Ensure that this is not invoked before
+  // FeatureList initialization.
+  return !base::FeatureList::GetInstance() ||
+         base::FeatureList::IsEnabled(kPrefStoreBackgroundSerialization);
 }
 
 PersistentPrefStore::PrefReadError HandleReadErrors(
@@ -120,12 +128,12 @@ const char* GetHistogramSuffix(const base::FilePath& path) {
                      &spaceless_basename);
   static constexpr std::array<const char*, 3> kAllowList{
       "Secure_Preferences", "Preferences", "Local_State"};
-  auto it = base::ranges::find(kAllowList, spaceless_basename);
+  const char* const* it = base::ranges::find(kAllowList, spaceless_basename);
   return it != kAllowList.end() ? *it : "";
 }
 
-std::optional<std::string> DoSerialize(base::ValueView value,
-                                       const base::FilePath& path) {
+absl::optional<std::string> DoSerialize(base::ValueView value,
+                                        const base::FilePath& path) {
   std::string output;
   if (!base::JSONWriter::Write(value, &output)) {
     // Failed to serialize prefs file. Backup the existing prefs file and
@@ -287,8 +295,7 @@ void JsonPrefStore::ReadPrefsAsync(ReadErrorDelegate* error_delegate) {
   // Weakly binds the read task so that it doesn't kick in during shutdown.
   file_task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE, base::BindOnce(&ReadPrefsFromDisk, path_),
-      base::BindOnce(&JsonPrefStore::OnFileRead,
-                     weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&JsonPrefStore::OnFileRead, AsWeakPtr()));
 }
 
 void JsonPrefStore::CommitPendingWrite(
@@ -395,7 +402,7 @@ void JsonPrefStore::RegisterOnNextSuccessfulWriteReply(
             &PostWriteCallback, base::OnceCallback<void(bool success)>(),
             base::BindOnce(
                 &JsonPrefStore::RunOrScheduleNextSuccessfulWriteCallback,
-                weak_ptr_factory_.GetWeakPtr()),
+                AsWeakPtr()),
             base::SequencedTaskRunner::GetCurrentDefault()));
   }
 }
@@ -412,7 +419,7 @@ void JsonPrefStore::RegisterOnNextWriteSynchronousCallbacks(
           &PostWriteCallback, std::move(callbacks.second),
           base::BindOnce(
               &JsonPrefStore::RunOrScheduleNextSuccessfulWriteCallback,
-              weak_ptr_factory_.GetWeakPtr()),
+              AsWeakPtr()),
           base::SequencedTaskRunner::GetCurrentDefault()));
 }
 
@@ -466,8 +473,7 @@ void JsonPrefStore::OnFileRead(std::unique_ptr<ReadResult> read_result) {
   if (pref_filter_) {
     filtering_in_progress_ = true;
     PrefFilter::PostFilterOnLoadCallback post_filter_on_load_callback(
-        base::BindOnce(&JsonPrefStore::FinalizeFileRead,
-                       weak_ptr_factory_.GetWeakPtr(),
+        base::BindOnce(&JsonPrefStore::FinalizeFileRead, AsWeakPtr(),
                        initialization_successful));
     pref_filter_->FilterOnLoad(std::move(post_filter_on_load_callback),
                                std::move(unfiltered_prefs));
@@ -482,7 +488,7 @@ JsonPrefStore::~JsonPrefStore() {
   CommitPendingWrite();
 }
 
-std::optional<std::string> JsonPrefStore::SerializeData() {
+absl::optional<std::string> JsonPrefStore::SerializeData() {
   PerformPreserializationTasks();
   return DoSerialize(prefs_, path_);
 }
@@ -526,9 +532,10 @@ void JsonPrefStore::ScheduleWrite(uint32_t flags) {
   if (read_only_)
     return;
 
-  if (flags & LOSSY_PREF_WRITE_FLAG) {
+  if (flags & LOSSY_PREF_WRITE_FLAG)
     pending_lossy_write_ = true;
-  } else {
+  else if (PrefStoreBackgroundSerializationEnabledOrFeatureListUnavailable())
     writer_.ScheduleWriteWithBackgroundDataSerializer(this);
-  }
+  else
+    writer_.ScheduleWrite(this);
 }

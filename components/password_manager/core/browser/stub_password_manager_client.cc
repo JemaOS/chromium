@@ -10,7 +10,6 @@
 #include "components/password_manager/core/browser/credentials_filter.h"
 #include "components/password_manager/core/browser/password_form_manager_for_ui.h"
 #include "components/version_info/channel.h"
-#include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 
 namespace password_manager {
@@ -60,11 +59,8 @@ void StubPasswordManagerClient::NotifySuccessfulLoginWithExistingPassword(
 
 void StubPasswordManagerClient::NotifyStorePasswordCalled() {}
 
-void StubPasswordManagerClient::NotifyKeychainError() {}
-
 void StubPasswordManagerClient::AutomaticPasswordSave(
-    std::unique_ptr<PasswordFormManagerForUI> saved_manager,
-    bool is_update_confirmation) {}
+    std::unique_ptr<PasswordFormManagerForUI> saved_manager) {}
 
 PrefService* StubPasswordManagerClient::GetPrefs() const {
   return nullptr;
@@ -75,11 +71,6 @@ PrefService* StubPasswordManagerClient::GetLocalStatePrefs() const {
 }
 
 const syncer::SyncService* StubPasswordManagerClient::GetSyncService() const {
-  return nullptr;
-}
-
-affiliations::AffiliationService*
-StubPasswordManagerClient::GetAffiliationService() {
   return nullptr;
 }
 
@@ -96,6 +87,11 @@ PasswordStoreInterface* StubPasswordManagerClient::GetAccountPasswordStore()
 PasswordReuseManager* StubPasswordManagerClient::GetPasswordReuseManager()
     const {
   return nullptr;
+}
+
+MockPasswordChangeSuccessTracker*
+StubPasswordManagerClient::GetPasswordChangeSuccessTracker() {
+  return &password_change_success_tracker_;
 }
 
 const GURL& StubPasswordManagerClient::GetLastCommittedURL() const {
@@ -168,6 +164,10 @@ bool StubPasswordManagerClient::IsIsolationForPasswordSitesEnabled() const {
 
 bool StubPasswordManagerClient::IsNewTabPage() const {
   return false;
+}
+
+FieldInfoManager* StubPasswordManagerClient::GetFieldInfoManager() const {
+  return nullptr;
 }
 
 version_info::Channel StubPasswordManagerClient::GetChannel() const {

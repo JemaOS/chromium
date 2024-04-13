@@ -52,6 +52,7 @@ class HttpBridge : public HttpPostProvider {
   void SetPostPayload(const char* content_type,
                       int content_length,
                       const char* content) override;
+  void SetAllowBatching(bool allow_batching) override;
   bool MakeSynchronousPost(int* net_error_code, int* http_status_code) override;
   void Abort() override;
 
@@ -109,6 +110,11 @@ class HttpBridge : public HttpPostProvider {
   std::string request_content_;
   std::string extra_headers_;
 
+  // When true `fetch_state_.url_loader` is configured so that it can be
+  // batched in the network layer. See the comment in
+  // network::SimpleURLLoader::SetAllowBatching().
+  bool allow_batching_ = false;
+
   // A waitable event we use to provide blocking semantics to
   // MakeSynchronousPost. We block the Sync thread while the IO thread processes
   // the network request.
@@ -130,13 +136,13 @@ class HttpBridge : public HttpPostProvider {
     base::Time end_time;
 
     // Used to support 'Abort' functionality.
-    bool aborted = false;
+    bool aborted;
 
     // Cached response data.
-    bool request_completed = false;
-    bool request_succeeded = false;
-    int http_status_code = -1;
-    int net_error_code = -1;
+    bool request_completed;
+    bool request_succeeded;
+    int http_status_code;
+    int net_error_code;
     std::string response_content;
     scoped_refptr<net::HttpResponseHeaders> response_headers;
 

@@ -140,8 +140,8 @@ std::string SyncError::ToString() const {
 
 void SyncError::PrintLogError() const {
   logging::LogSeverity logSeverity = (GetSeverity() == SYNC_ERROR_SEVERITY_INFO)
-                                         ? logging::LOGGING_VERBOSE
-                                         : logging::LOGGING_ERROR;
+                                         ? logging::LOG_VERBOSE
+                                         : logging::LOG_ERROR;
 
   LAZY_STREAM(logging::LogMessage(location_->file_name(),
                                   location_->line_number(), logSeverity)

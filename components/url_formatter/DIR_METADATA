@@ -1,6 +1,3 @@
-monorail: {
+monorail {
   component: "UI>Security>UrlFormatting"
-}
-buganizer_public: {
-  component_id: 1457492
 }

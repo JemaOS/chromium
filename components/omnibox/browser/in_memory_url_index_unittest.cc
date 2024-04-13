@@ -35,7 +35,6 @@
 #include "components/omnibox/browser/omnibox_triggered_feature_service.h"
 #include "components/omnibox/browser/url_index_private_data.h"
 #include "components/search_engines/template_url_service.h"
-#include "components/url_formatter/url_formatter.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 // The test version of the history url database table ('url') is contained in
@@ -120,6 +119,10 @@ class InMemoryURLIndexTest : public testing::Test {
   URLIndexPrivateData* GetPrivateData() const;
   base::CancelableTaskTracker* GetPrivateDataTracker() const;
   void ClearPrivateData();
+  void set_history_dir(const base::FilePath& dir_path);
+  bool GetCacheFilePath(base::FilePath* file_path) const;
+  void PostRestoreFromCacheFileTask();
+  void PostSaveToCacheFileTask();
   const SchemeSet& scheme_allowlist();
 
   // Pass-through functions to simplify our friendship with URLIndexPrivateData.
@@ -205,7 +208,7 @@ void InMemoryURLIndexTest::SetUp() {
         // Execute the contents of a golden file to populate the [urls] and
         // [visits] tables.
         base::FilePath golden_path;
-        base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &golden_path);
+        base::PathService::Get(base::DIR_SOURCE_ROOT, &golden_path);
         golden_path = golden_path.AppendASCII("components/test/data/omnibox");
         golden_path = golden_path.Append(TestDBName());
         ASSERT_TRUE(base::PathExists(golden_path));
@@ -428,7 +431,7 @@ TEST_F(LimitedInMemoryURLIndexTest, Initialization) {
   // history_info_map_ should have the same number of items as were filtered.
   EXPECT_EQ(1U, private_data.history_info_map_.size());
   EXPECT_EQ(35U, private_data.char_word_map_.size());
-  EXPECT_EQ(19U, private_data.word_map_.size());
+  EXPECT_EQ(17U, private_data.word_map_.size());
 }
 
 TEST_F(InMemoryURLIndexTest, HiddenURLRowsAreIgnored) {
@@ -532,29 +535,6 @@ TEST_F(InMemoryURLIndexTest, Retrieval) {
   EXPECT_EQ(34, matches[0].url_info.id());
   EXPECT_EQ("http://fubarfubarandfubar.com/", matches[0].url_info.url().spec());
   EXPECT_EQ(u"Situation Normal -- FUBARED", matches[0].url_info.title());
-}
-
-// Regression test for crbug.com/1494484. Exercises a URL that is valid but may
-// become invalid if handled with url_formatter::FormatUrl().
-TEST_F(InMemoryURLIndexTest,
-       RetrievalWithInternationalizedDomainNameWithInvalidCodePoint) {
-  const GURL url("https://xn--b4ab3a0a.xn--b4aew.com/");
-
-  ASSERT_TRUE(url.is_valid());
-  ASSERT_FALSE(GURL(url_formatter::FormatUrl(
-                        url, url_formatter::kFormatUrlOmitUsernamePassword,
-                        base::UnescapeRule::NONE, nullptr, nullptr, nullptr))
-                   .is_valid());
-
-  history::URLID new_row_id = 87654321;  // Arbitrarily chosen large new row id.
-  history::URLRow new_row = history::URLRow(url, new_row_id++);
-  new_row.set_last_visit(base::Time::Now());
-
-  EXPECT_TRUE(UpdateURL(new_row));
-  EXPECT_EQ(
-      1U, HistoryItemsForTerms(u"\u04a5\u049b\u049d", std::u16string::npos, "",
-                               kProviderMaxMatches)
-              .size());
 }
 
 TEST_F(InMemoryURLIndexTest, CursorPositionRetrieval) {
@@ -980,7 +960,7 @@ TEST_F(InMemoryURLIndexTest, ExpireRow) {
   // notification, then ensure that the row has been deleted.
   history::URLRows deleted_rows;
   deleted_rows.push_back(matches[0].url_info);
-  url_index_->OnHistoryDeletions(
+  url_index_->OnURLsDeleted(
       nullptr, history::DeletionInfo::ForUrls(deleted_rows, std::set<GURL>()));
   EXPECT_TRUE(HistoryItemsForTerms(u"DrudgeReport", std::u16string::npos, "",
                                    kProviderMaxMatches)

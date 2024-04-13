@@ -17,6 +17,11 @@
 // Called when the PersonalDataManager changed in some way.
 - (void)onPersonalDataChanged;
 
+@optional
+
+// Called when there is insufficient data to fill a form.
+- (void)onInsufficientFormData;
+
 @end
 
 namespace autofill {
@@ -37,6 +42,7 @@ class PersonalDataManagerObserverBridge : public PersonalDataManagerObserver {
 
   // PersonalDataManagerObserver implementation.
   void OnPersonalDataChanged() override;
+  void OnInsufficientFormData() override;
 
  private:
   __weak id<PersonalDataManagerObserver> delegate_;

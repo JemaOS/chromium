@@ -11,7 +11,7 @@ namespace segmentation_platform {
 
 // Model provider for contextual page actions model that includes a default
 // model and metadata.
-class ContextualPageActionsModel : public DefaultModelProvider {
+class ContextualPageActionsModel : public ModelProvider {
  public:
   ContextualPageActionsModel();
   ~ContextualPageActionsModel() override = default;
@@ -21,11 +21,11 @@ class ContextualPageActionsModel : public DefaultModelProvider {
       delete;
 
   // ModelProvider implementation.
-  std::unique_ptr<ModelConfig> GetModelConfig() override;
+  void InitAndFetchModel(
+      const ModelUpdatedCallback& model_updated_callback) override;
   void ExecuteModelWithInput(const ModelProvider::Request& inputs,
                              ExecutionCallback callback) override;
-
-  static const int64_t kShareOutputCollectionDelayInSec = 300;
+  bool ModelAvailable() override;
 };
 
 }  // namespace segmentation_platform

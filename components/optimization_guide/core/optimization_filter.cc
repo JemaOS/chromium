@@ -10,7 +10,6 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "crypto/sha2.h"
-#include "url/gurl.h"
 
 namespace optimization_guide {
 
@@ -26,12 +25,7 @@ bool MatchesRegexp(const GURL& url, const RegexpList& regexps) {
   if (!url.is_valid())
     return false;
 
-  GURL::Replacements replace_url_auth;
-  replace_url_auth.ClearUsername();
-  replace_url_auth.ClearPassword();
-  std::string clean_url =
-      base::ToLowerASCII(url.ReplaceComponents(replace_url_auth).spec());
-
+  std::string clean_url = base::ToLowerASCII(url.GetAsReferrer().spec());
   for (auto& regexp : regexps) {
     if (!regexp->ok()) {
       continue;
@@ -49,7 +43,8 @@ bool MatchesRegexp(const GURL& url, const RegexpList& regexps) {
 std::string SHA256(base::StringPiece input) {
   uint8_t result[crypto::kSHA256Length];
   crypto::SHA256HashString(input, result, std::size(result));
-  return base::HexEncode(result);
+  std::string sha256hex = base::HexEncode(result, std::size(result));
+  return sha256hex;
 }
 
 }  // namespace

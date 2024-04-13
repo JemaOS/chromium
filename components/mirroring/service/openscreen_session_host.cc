@@ -33,7 +33,7 @@
 #include "build/chromeos_buildflags.h"
 #include "components/mirroring/service/captured_audio_input.h"
 #include "components/mirroring/service/mirroring_features.h"
-#include "components/mirroring/service/rpc_dispatcher_impl.h"
+#include "components/mirroring/service/udp_socket_client.h"
 #include "components/mirroring/service/video_capture_client.h"
 #include "components/openscreen_platform/network_context.h"
 #include "components/openscreen_platform/network_util.h"
@@ -50,7 +50,6 @@
 #include "media/cast/sender/video_sender.h"
 #include "media/gpu/gpu_video_accelerator_util.h"
 #include "media/mojo/clients/mojo_video_encode_accelerator.h"
-#include "media/mojo/clients/mojo_video_encoder_metrics_provider.h"
 #include "media/video/video_encode_accelerator.h"
 #include "mojo/public/cpp/system/platform_handle.h"
 #include "net/base/ip_endpoint.h"
@@ -168,29 +167,6 @@ void UpdateConfigUsingSessionParameters(
   }
 }
 
-void UpdateAudioConfigMaxBitrate(FrameSenderConfig& audio_config) {
-  CHECK(audio_config.is_audio());
-
-  // Taken from the legacy Session implementation.
-  // TODO(https://crbug.com/1316434): this matches legacy behavior, but
-  // testing should be done as part of migration to this class to determine
-  // what the right long term behavior is.
-  //
-  // Note on "AUTO" bitrate calculation: This is based on libopus source
-  // at the time of this writing. Internally, it uses the following math:
-  //
-  //   packet_overhead_bps = 60 bits * num_packets_in_one_second
-  //   approx_encoded_signal_bps = frequency * channels
-  //   estimated_bps = packet_overhead_bps + approx_encoded_signal_bps
-  //
-  // For 100 packets/sec at 48 kHz and 2 channels, this is 102kbps.
-  if (audio_config.max_bitrate == 0) {
-    audio_config.max_bitrate =
-        (60 * audio_config.max_frame_rate +
-         audio_config.rtp_timebase * audio_config.channels);
-  }
-}
-
 const std::string ToString(const media::VideoCaptureParams& params) {
   return base::StringPrintf(
       "requested_format = %s, buffer_type = %d, resolution_policy = %d",
@@ -199,7 +175,8 @@ const std::string ToString(const media::VideoCaptureParams& params) {
       static_cast<int>(params.resolution_change_policy));
 }
 
-void RecordRemotePlaybackSessionLoadTime(std::optional<base::Time> start_time) {
+void RecordRemotePlaybackSessionLoadTime(
+    absl::optional<base::Time> start_time) {
   if (!start_time) {
     return;
   }
@@ -244,7 +221,6 @@ class OpenscreenSessionHost::AudioCapturingCallback final
   // Called on audio thread.
   void Capture(const media::AudioBus* audio_bus,
                base::TimeTicks audio_capture_time,
-               const media::AudioGlitchInfo& glitch_info,
                double volume,
                bool key_pressed) override {
     // TODO(crbug.com/1015467): Don't copy the audio data. Instead, send
@@ -314,7 +290,7 @@ OpenscreenSessionHost::OpenscreenSessionHost(
   // The Open Screen environment should not be set up until after the network
   // context is set up.
   openscreen_environment_ = std::make_unique<openscreen::cast::Environment>(
-      openscreen::Clock::now, *openscreen_task_runner_,
+      openscreen::Clock::now, openscreen_task_runner_.get(),
       openscreen::IPEndpoint::kAnyV4());
 
   if (session_params->type != mojom::SessionType::AUDIO_ONLY &&
@@ -333,11 +309,6 @@ OpenscreenSessionHost::OpenscreenSessionHost(
           .message_port = &message_port_,
           .message_source_id = session_params_.source_id,
           .message_destination_id = session_params_.destination_id});
-
-  if (session_params_.enable_rtcp_reporting) {
-    stats_client_ = std::make_unique<OpenscreenStatsClient>();
-    session_->SetStatsClient(stats_client_.get());
-  }
 
   // Use of `Unretained` is safe here since we own the update timer.
   bandwidth_update_timer_.Start(
@@ -379,7 +350,7 @@ void OpenscreenSessionHost::OnNegotiated(
   if (state_ == State::kStopped)
     return;
 
-  std::optional<FrameSenderConfig> audio_config;
+  absl::optional<FrameSenderConfig> audio_config;
   if (last_offered_audio_config_ && senders.audio_sender) {
     base::UmaHistogramEnumeration(
         "CastStreaming.Sender.Audio.NegotiatedCodec",
@@ -389,7 +360,7 @@ void OpenscreenSessionHost::OnNegotiated(
     audio_config = last_offered_audio_config_;
   }
 
-  std::optional<FrameSenderConfig> video_config;
+  absl::optional<FrameSenderConfig> video_config;
   if (senders.video_sender) {
     base::UmaHistogramEnumeration(
         "CastStreaming.Sender.Video.NegotiatedCodec",
@@ -471,9 +442,9 @@ void OpenscreenSessionHost::OnNegotiated(
     audio_capturing_callback_ = std::make_unique<AudioCapturingCallback>(
         base::BindPostTaskToCurrentDefault(base::BindRepeating(
             &AudioRtpStream::InsertAudio, audio_stream_->AsWeakPtr())),
-        base::BindPostTaskToCurrentDefault(base::BindOnce(
-            &OpenscreenSessionHost::ReportAndLogError,
-            weak_factory_.GetWeakPtr(), SessionError::AUDIO_CAPTURE_ERROR)));
+        base::BindOnce(&OpenscreenSessionHost::ReportAndLogError,
+                       weak_factory_.GetWeakPtr(),
+                       SessionError::AUDIO_CAPTURE_ERROR));
     audio_input_device_ = new media::AudioInputDevice(
         std::make_unique<CapturedAudioInput>(base::BindRepeating(
             &OpenscreenSessionHost::CreateAudioStream, base::Unretained(this))),
@@ -489,10 +460,6 @@ void OpenscreenSessionHost::OnNegotiated(
   }
 
   if (senders.video_sender) {
-    mojo::PendingRemote<media::mojom::VideoEncoderMetricsProvider>
-        metrics_provider_pending_remote;
-    resource_provider_->GetVideoEncoderMetricsProvider(
-        metrics_provider_pending_remote.InitWithNewPipeAndPassReceiver());
     auto video_sender = std::make_unique<media::cast::VideoSender>(
         cast_environment_, *video_config,
         base::BindRepeating(&OpenscreenSessionHost::OnEncoderStatusChange,
@@ -501,10 +468,6 @@ void OpenscreenSessionHost::OnNegotiated(
             &OpenscreenSessionHost::CreateVideoEncodeAccelerator,
             weak_factory_.GetWeakPtr()),
         std::move(senders.video_sender),
-        base::MakeRefCounted<media::MojoVideoEncoderMetricsProviderFactory>(
-            media::mojom::VideoEncoderUseCase::kCastMirroring,
-            std::move(metrics_provider_pending_remote))
-            ->CreateVideoEncoderMetricsProvider(),
         base::BindRepeating(&OpenscreenSessionHost::SetTargetPlayoutDelay,
                             weak_factory_.GetWeakPtr()),
         base::BindRepeating(&OpenscreenSessionHost::ProcessFeedback,
@@ -847,8 +810,8 @@ void OpenscreenSessionHost::StopSession() {
 
 void OpenscreenSessionHost::SetConstraints(
     const Recommendations& recommendations,
-    std::optional<FrameSenderConfig>& audio_config,
-    std::optional<FrameSenderConfig>& video_config) {
+    absl::optional<FrameSenderConfig>& audio_config,
+    absl::optional<FrameSenderConfig>& video_config) {
   const auto& audio = recommendations.audio;
   const auto& video = recommendations.video;
 
@@ -991,9 +954,9 @@ int OpenscreenSessionHost::GetSuggestedVideoBitrate(int min_bitrate,
 }
 
 void OpenscreenSessionHost::UpdateBandwidthEstimate() {
-  const int bandwidth_estimate = forced_bandwidth_estimate_for_testing_ > 0
-                                     ? forced_bandwidth_estimate_for_testing_
-                                     : session_->GetEstimatedNetworkBandwidth();
+  int bandwidth_estimate = forced_bandwidth_estimate_for_testing_ > 0
+                               ? forced_bandwidth_estimate_for_testing_
+                               : session_->GetEstimatedNetworkBandwidth();
 
   // Nothing to do yet.
   if (bandwidth_estimate <= 0) {
@@ -1039,7 +1002,7 @@ void OpenscreenSessionHost::Negotiate() {
 }
 
 void OpenscreenSessionHost::NegotiateMirroring() {
-  last_offered_audio_config_ = std::nullopt;
+  last_offered_audio_config_ = absl::nullopt;
   last_offered_video_configs_.clear();
   std::vector<openscreen::cast::AudioCaptureConfig> audio_configs;
   std::vector<openscreen::cast::VideoCaptureConfig> video_configs;
@@ -1049,7 +1012,6 @@ void OpenscreenSessionHost::NegotiateMirroring() {
         RtpPayloadType::AUDIO_OPUS, Codec::kAudioOpus);
     UpdateConfigUsingSessionParameters(session_params_,
                                        *last_offered_audio_config_);
-    UpdateAudioConfigMaxBitrate(*last_offered_audio_config_);
     audio_configs.push_back(
         ToOpenscreenAudioConfig(*last_offered_audio_config_));
   }
@@ -1118,9 +1080,7 @@ void OpenscreenSessionHost::NegotiateMirroring() {
 void OpenscreenSessionHost::NegotiateRemoting() {
   FrameSenderConfig audio_config = MirrorSettings::GetDefaultAudioConfig(
       RtpPayloadType::REMOTE_AUDIO, Codec::kAudioRemote);
-  UpdateAudioConfigMaxBitrate(audio_config);
   UpdateConfigUsingSessionParameters(session_params_, audio_config);
-
   FrameSenderConfig video_config = MirrorSettings::GetDefaultVideoConfig(
       RtpPayloadType::REMOTE_VIDEO, Codec::kVideoRemote);
   UpdateConfigUsingSessionParameters(session_params_, video_config);
@@ -1139,7 +1099,7 @@ void OpenscreenSessionHost::NegotiateRemoting() {
 void OpenscreenSessionHost::InitMediaRemoter(
     const openscreen::cast::RemotingCapabilities& capabilities) {
   rpc_dispatcher_ =
-      std::make_unique<RpcDispatcherImpl>(session_->session_messenger());
+      std::make_unique<OpenscreenRpcDispatcher>(session_->session_messenger());
   media_remoter_ = std::make_unique<MediaRemoter>(
       *this,
       ToRemotingSinkMetadata(capabilities,
@@ -1157,15 +1117,6 @@ void OpenscreenSessionHost::OnRemotingStartTimeout() {
 
 network::mojom::NetworkContext* OpenscreenSessionHost::GetNetworkContext() {
   return network_context_.get();
-}
-
-base::Value::Dict OpenscreenSessionHost::GetMirroringStats() const {
-  return stats_client_ ? stats_client_->GetStats() : base::Value::Dict();
-}
-
-void OpenscreenSessionHost::SetSenderStatsForTest(
-    const openscreen::cast::SenderStats& test_stats) {
-  stats_client_->OnStatisticsUpdated(test_stats);
 }
 
 }  // namespace mirroring

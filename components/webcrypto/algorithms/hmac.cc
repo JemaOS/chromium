@@ -297,8 +297,9 @@ class HmacImplementation : public AlgorithmImplementation {
                                     key);
   }
 
-  Status GetKeyLength(const blink::WebCryptoAlgorithm& key_length_algorithm,
-                      std::optional<unsigned int>* length_bits) const override {
+  Status GetKeyLength(
+      const blink::WebCryptoAlgorithm& key_length_algorithm,
+      absl::optional<unsigned int>* length_bits) const override {
     const blink::WebCryptoHmacImportParams* params =
         key_length_algorithm.HmacImportParams();
 

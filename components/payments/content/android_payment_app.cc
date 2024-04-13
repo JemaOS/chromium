@@ -24,8 +24,7 @@ AndroidPaymentApp::AndroidPaymentApp(
     const std::string& payment_request_id,
     std::unique_ptr<AndroidAppDescription> description,
     base::WeakPtr<AndroidAppCommunication> communication,
-    content::GlobalRenderFrameHostId frame_routing_id,
-    const std::optional<base::UnguessableToken>& twa_instance_identifier)
+    content::GlobalRenderFrameHostId frame_routing_id)
     : PaymentApp(/*icon_resource_id=*/0, PaymentApp::Type::NATIVE_MOBILE_APP),
       stringified_method_data_(std::move(stringified_method_data)),
       top_level_origin_(top_level_origin),
@@ -35,8 +34,7 @@ AndroidPaymentApp::AndroidPaymentApp(
       communication_(communication),
       frame_routing_id_(frame_routing_id),
       payment_app_token_(base::UnguessableToken::Create()),
-      payment_app_open_(false),
-      twa_instance_identifier_(twa_instance_identifier) {
+      payment_app_open_(false) {
   DCHECK(!payment_method_names.empty());
   DCHECK_EQ(payment_method_names.size(), stringified_method_data_->size());
   DCHECK_EQ(*payment_method_names.begin(),
@@ -74,7 +72,6 @@ void AndroidPaymentApp::InvokePaymentApp(base::WeakPtr<Delegate> delegate) {
       description_->package, description_->activities.front()->name,
       *stringified_method_data_, top_level_origin_, payment_request_origin_,
       payment_request_id_, payment_app_token_, web_contents,
-      twa_instance_identifier_,
       base::BindOnce(&AndroidPaymentApp::OnPaymentAppResponse,
                      weak_ptr_factory_.GetWeakPtr(), delegate));
 }
@@ -160,10 +157,10 @@ void AndroidPaymentApp::OnPaymentDetailsNotUpdated() {}
 
 void AndroidPaymentApp::AbortPaymentApp(
     base::OnceCallback<void(bool)> abort_callback) {
-  if (!communication_ || !payment_app_open_) {
-    std::move(abort_callback).Run(false);
+  // Browser is closing or no payment app active, so no need to invoke a
+  // callback.
+  if (!communication_ || !payment_app_open_)
     return;
-  }
 
   payment_app_open_ = false;
 
@@ -176,9 +173,9 @@ bool AndroidPaymentApp::IsPreferred() const {
   // available is the trusted web application (TWA) that launched this instance
   // of Chrome with a TWA specific payment method, so this app should be
   // preferred.
-#if !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
   NOTREACHED();
-#endif  // BUILDFLAG(IS_CHROMEOS)
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   DCHECK_EQ(1U, GetAppMethodNames().size());
   DCHECK_EQ(methods::kGooglePlayBilling, *GetAppMethodNames().begin());
   return true;
@@ -186,7 +183,7 @@ bool AndroidPaymentApp::IsPreferred() const {
 
 void AndroidPaymentApp::OnPaymentAppResponse(
     base::WeakPtr<Delegate> delegate,
-    const std::optional<std::string>& error_message,
+    const absl::optional<std::string>& error_message,
     bool is_activity_result_ok,
     const std::string& payment_method_identifier,
     const std::string& stringified_details) {

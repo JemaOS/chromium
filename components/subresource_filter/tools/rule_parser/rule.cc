@@ -94,6 +94,7 @@ url_pattern_index::proto::UrlRule UrlRule::ToProtobuf() const {
       break;
     default:
       LOG(FATAL);
+      break;
   }
 
   if (type_mask & kAllElementTypes)

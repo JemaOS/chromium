@@ -5,7 +5,6 @@
 #include "components/web_package/signed_web_bundles/signed_web_bundle_id.h"
 
 #include <array>
-#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -13,9 +12,9 @@
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_piece.h"
 #include "base/test/bind.h"
-#include "base/test/gmock_expected_support.h"
 #include "components/web_package/signed_web_bundles/ed25519_public_key.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace web_package {
 
@@ -45,7 +44,7 @@ class SignedWebBundleIdValidTest
     : public ::testing::TestWithParam<
           std::tuple<std::string,
                      SignedWebBundleId::Type,
-                     std::optional<Ed25519PublicKey>>> {
+                     absl::optional<Ed25519PublicKey>>> {
  public:
   SignedWebBundleIdValidTest()
       : raw_id_(std::get<0>(GetParam())),
@@ -55,13 +54,13 @@ class SignedWebBundleIdValidTest
  protected:
   std::string raw_id_;
   SignedWebBundleId::Type type_;
-  std::optional<Ed25519PublicKey> public_key_;
+  absl::optional<Ed25519PublicKey> public_key_;
 };
 
 TEST_P(SignedWebBundleIdValidTest, ParseValidIDs) {
-  EXPECT_THAT(SignedWebBundleId::Create(raw_id_),
-              base::test::ValueIs(
-                  ::testing::Property(&SignedWebBundleId::type, type_)));
+  const auto parsed_id = SignedWebBundleId::Create(raw_id_);
+  EXPECT_TRUE(parsed_id.has_value());
+  EXPECT_EQ(parsed_id->type(), type_);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -71,7 +70,7 @@ INSTANTIATE_TEST_SUITE_P(
         // Development-only key suffix
         std::make_tuple(kDevelopmentSignedWebBundleId,
                         SignedWebBundleId::Type::kDevelopment,
-                        std::nullopt),
+                        absl::nullopt),
         // Ed25519 key suffix
         std::make_tuple(
             kEd25519SignedWebBundleId,
@@ -153,9 +152,9 @@ TEST(SignedWebBundleIdTest, CreateRandomForDevelopmentDefaultGenerator) {
 
 TEST(SignedWebBundleIdTest, CreateRandomForDevelopmentCustomGenerator) {
   auto custom_callback =
-      base::BindLambdaForTesting([](base::span<uint8_t> buffer) -> void {
-        DCHECK_EQ(buffer.size(), kDevelopmentBytes.size());
-        base::ranges::copy(kDevelopmentBytes, buffer.begin());
+      base::BindLambdaForTesting([](void* ptr, size_t len) -> void {
+        DCHECK_EQ(len, kDevelopmentBytes.size());
+        base::ranges::copy(kDevelopmentBytes, static_cast<uint8_t*>(ptr));
       });
 
   SignedWebBundleId id =

@@ -15,21 +15,30 @@ import android.util.SparseArray;
 import android.view.View;
 import android.view.autofill.AutofillValue;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features;
 
 import java.util.Arrays;
 
-/** Unit test for {@link AutofillRequest}. */
+/**
+ * Unit test for {@link AutofillRequest}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
+@Features.DisableFeatures(
+        {AndroidAutofillFeatures.ANDROID_AUTOFILL_VIEW_STRUCTURE_WITH_FORM_HIERARCHY_LAYER_NAME})
 public class AutofillRequestTest {
-    private static final int FORM_SESSION_ID = 123;
     private static final String FORM_DOMAIN = "https://example.com";
     private static final String FORM_NAME = "sample-form-name";
+
+    @Rule
+    public TestRule mFeaturesProcessorRule = new Features.JUnitProcessor();
 
     private static FormFieldDataBuilder createTextFieldBuilder() {
         FormFieldDataBuilder builder = new FormFieldDataBuilder();
@@ -60,21 +69,21 @@ public class AutofillRequestTest {
         return builder;
     }
 
-    private static AutofillRequest createRequest(int sessionId, FormFieldData... fields) {
-        FormData formData = new FormData(sessionId, FORM_NAME, FORM_DOMAIN, Arrays.asList(fields));
+    private static AutofillRequest createRequest(FormFieldData... fields) {
+        FormData formData = new FormData(FORM_NAME, FORM_DOMAIN, Arrays.asList(fields));
 
-        return new AutofillRequest(formData, null, /* hasServerPrediction= */ false);
+        return new AutofillRequest(formData, null, /*hasServerPrediction=*/false);
     }
 
     private static AutofillRequest createSampleRequest() {
         FormFieldDataBuilder fieldBuilder1 = new FormFieldDataBuilder();
         FormFieldDataBuilder fieldBuilder2 = new FormFieldDataBuilder();
-        return createRequest(FORM_SESSION_ID, fieldBuilder1.build(), fieldBuilder2.build());
+        return createRequest(fieldBuilder1.build(), fieldBuilder2.build());
     }
 
     private static TestViewStructure fillStructureForRequest(AutofillRequest request) {
         TestViewStructure structure = new TestViewStructure();
-        request.getForm().fillViewStructure(structure);
+        request.fillViewStructure(structure);
         return structure;
     }
 
@@ -99,6 +108,28 @@ public class AutofillRequestTest {
         assertEquals(2, structure.getChildCount());
     }
 
+    @Features.
+    EnableFeatures({AndroidAutofillFeatures
+                            .ANDROID_AUTOFILL_VIEW_STRUCTURE_WITH_FORM_HIERARCHY_LAYER_NAME})
+    @Test
+    // Tests that there is an additional hierarchy level if the feature
+    // ANDROID_AUTOFILL_VIEW_STRUCTURE_WITH_FORM_HIERARCHY_LAYER is enabled, i.e. the form
+    // is a child node of the ViewStructure filled by the AutofillRequest.
+    public void
+    testFormInformationIsInSeparateNode() {
+        TestViewStructure structure = fillStructureForRequest(createSampleRequest());
+
+        assertEquals(1, structure.getChildCount());
+        TestViewStructure childForm = structure.getChild(0);
+
+        assertEquals(FORM_DOMAIN, childForm.getWebDomain());
+        TestViewStructure.TestHtmlInfo htmlInfoForm = childForm.getHtmlInfo();
+        assertEquals("form", htmlInfoForm.getTag());
+        assertEquals(FORM_NAME, htmlInfoForm.getAttribute("name"));
+
+        assertEquals(2, childForm.getChildCount());
+    }
+
     @Test
     // Tests that the form field level data (bounds, visibility, labels, etc.) apart from the
     // control type is set correctly
@@ -115,8 +146,7 @@ public class AutofillRequestTest {
         fieldBuilder.mServerType = "USERNAME";
         fieldBuilder.mComputedType = "USERNAME";
 
-        TestViewStructure structure =
-                fillStructureForRequest(createRequest(FORM_SESSION_ID, fieldBuilder.build()));
+        TestViewStructure structure = fillStructureForRequest(createRequest(fieldBuilder.build()));
 
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -139,8 +169,7 @@ public class AutofillRequestTest {
     // Tests that the control-type specific data of a text field is set correctly.
     public void testControlTypeSpecificInformationIsSetForTextFields() {
         FormFieldDataBuilder fieldBuilder = createTextFieldBuilder();
-        TestViewStructure structure =
-                fillStructureForRequest(createRequest(FORM_SESSION_ID, fieldBuilder.build()));
+        TestViewStructure structure = fillStructureForRequest(createRequest(fieldBuilder.build()));
 
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -148,8 +177,7 @@ public class AutofillRequestTest {
         // The default type is a text field.
         assertEquals(View.AUTOFILL_TYPE_TEXT, child.getAutofillType());
         assertEquals(AutofillValue.forText(fieldBuilder.mValue), child.getAutofillValue());
-        assertEquals(
-                Integer.toString(fieldBuilder.mMaxLength),
+        assertEquals(Integer.toString(fieldBuilder.mMaxLength),
                 child.getHtmlInfo().getAttribute("maxlength"));
     }
 
@@ -157,8 +185,7 @@ public class AutofillRequestTest {
     // Tests that the control-type specific data of a data list field is set correctly.
     public void testControlTypeSpecificInformationIsSetForDatalistFields() {
         FormFieldDataBuilder fieldBuilder = createDatalistFieldBuilder();
-        TestViewStructure structure =
-                fillStructureForRequest(createRequest(FORM_SESSION_ID, fieldBuilder.build()));
+        TestViewStructure structure = fillStructureForRequest(createRequest(fieldBuilder.build()));
 
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -175,8 +202,7 @@ public class AutofillRequestTest {
     // Tests that the control-type specific data of a checkbox field is set correctly.
     public void testControlTypeSpecificInformationIsSetForCheckboxFields() {
         FormFieldDataBuilder fieldBuilder = createCheckboxFieldBuilder();
-        TestViewStructure structure =
-                fillStructureForRequest(createRequest(FORM_SESSION_ID, fieldBuilder.build()));
+        TestViewStructure structure = fillStructureForRequest(createRequest(fieldBuilder.build()));
 
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -189,8 +215,7 @@ public class AutofillRequestTest {
     // Tests that the control-type specific data of a list field is set correctly.
     public void testControlTypeSpecificInformationIsSetForListFields() {
         FormFieldDataBuilder fieldBuilder = createListFieldBuilder();
-        TestViewStructure structure =
-                fillStructureForRequest(createRequest(FORM_SESSION_ID, fieldBuilder.build()));
+        TestViewStructure structure = fillStructureForRequest(createRequest(fieldBuilder.build()));
 
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -200,7 +225,7 @@ public class AutofillRequestTest {
         assertEquals(AutofillValue.forList(1), child.getAutofillValue());
 
         fieldBuilder.mValue = "value3";
-        structure = fillStructureForRequest(createRequest(FORM_SESSION_ID, fieldBuilder.build()));
+        structure = fillStructureForRequest(createRequest(fieldBuilder.build()));
         assertEquals(1, structure.getChildCount());
         child = structure.getChild(0);
         assertEquals(View.AUTOFILL_TYPE_LIST, child.getAutofillType());
@@ -212,7 +237,7 @@ public class AutofillRequestTest {
     // Tests that autofill() updates the underlying FormFieldData for a text field.
     public void testAutofillUpdatesTextField() {
         FormFieldDataBuilder fieldBuilder = createTextFieldBuilder();
-        AutofillRequest request = createRequest(FORM_SESSION_ID, fieldBuilder.build());
+        AutofillRequest request = createRequest(fieldBuilder.build());
         TestViewStructure structure = fillStructureForRequest(request);
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -230,7 +255,7 @@ public class AutofillRequestTest {
     // Tests that autofill() updates the underlying FormFieldData for a datalist field.
     public void testAutofillUpdatesDatalistField() {
         FormFieldDataBuilder fieldBuilder = createDatalistFieldBuilder();
-        AutofillRequest request = createRequest(FORM_SESSION_ID, fieldBuilder.build());
+        AutofillRequest request = createRequest(fieldBuilder.build());
         TestViewStructure structure = fillStructureForRequest(request);
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -248,7 +273,7 @@ public class AutofillRequestTest {
     // Tests that autofill() updates the underlying FormFieldData for a checkbox field.
     public void testAutofillUpdatesCheckboxField() {
         FormFieldDataBuilder fieldBuilder = createCheckboxFieldBuilder();
-        AutofillRequest request = createRequest(FORM_SESSION_ID, fieldBuilder.build());
+        AutofillRequest request = createRequest(fieldBuilder.build());
         TestViewStructure structure = fillStructureForRequest(request);
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -266,7 +291,7 @@ public class AutofillRequestTest {
     // Tests that autofill() updates the underlying FormFieldData for a list field.
     public void testAutofillUpdatesListField() {
         FormFieldDataBuilder fieldBuilder = createListFieldBuilder();
-        AutofillRequest request = createRequest(FORM_SESSION_ID, fieldBuilder.build());
+        AutofillRequest request = createRequest(fieldBuilder.build());
         TestViewStructure structure = fillStructureForRequest(request);
         assertEquals(1, structure.getChildCount());
         TestViewStructure child = structure.getChild(0);
@@ -292,13 +317,12 @@ public class AutofillRequestTest {
     // Tests that autofill() returns false if the session id does not match that of the
     // AutofillRequest.
     public void testAutofillDoesNotFillDifferentForm() {
-        AutofillRequest request1 = createRequest(FORM_SESSION_ID, createTextFieldBuilder().build());
+        AutofillRequest request1 = createRequest(createTextFieldBuilder().build());
         TestViewStructure structure1 = fillStructureForRequest(request1);
         assertEquals(1, structure1.getChildCount());
 
-        // Create a separate request with a different session id.
-        AutofillRequest request2 =
-                createRequest(FORM_SESSION_ID + 1, createTextFieldBuilder().build());
+        // Create a separate request to simulate a different session id.
+        AutofillRequest request2 = createRequest(createTextFieldBuilder().build());
 
         // Use the id from the old request for the autofill call.
         SparseArray<AutofillValue> valuesToFill = new SparseArray<AutofillValue>();
@@ -311,7 +335,7 @@ public class AutofillRequestTest {
     // Tests that autofill() returns false if the session id does not match that of the
     // AutofillRequest.
     public void testAutofillDoesNotFillUnknownField() {
-        AutofillRequest request = createRequest(FORM_SESSION_ID, createTextFieldBuilder().build());
+        AutofillRequest request = createRequest(createTextFieldBuilder().build());
         TestViewStructure structure = fillStructureForRequest(request);
         assertEquals(1, structure.getChildCount());
 

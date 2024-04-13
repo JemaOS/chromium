@@ -4,9 +4,9 @@
 
 #include "components/dom_distiller/core/distilled_page_prefs_android.h"
 
-#include "components/dom_distiller/core/android/jni_headers/DistilledPagePrefs_jni.h"
 #include "components/dom_distiller/core/distilled_page_prefs.h"
 #include "components/dom_distiller/core/dom_distiller_service.h"
+#include "components/dom_distiller/core/jni_headers/DistilledPagePrefs_jni.h"
 
 using base::android::JavaParamRef;
 
@@ -98,19 +98,19 @@ void DistilledPagePrefsObserverAndroid::DestroyObserverAndroid(JNIEnv* env) {
 
 void DistilledPagePrefsObserverAndroid::OnChangeFontFamily(
     mojom::FontFamily new_font_family) {
-  JNIEnv* env = jni_zero::AttachCurrentThread();
+  JNIEnv* env = base::android::AttachCurrentThread();
   Java_DistilledPagePrefsObserverWrapper_onChangeFontFamily(
       env, java_ref_, (int)new_font_family);
 }
 
 void DistilledPagePrefsObserverAndroid::OnChangeTheme(mojom::Theme new_theme) {
-  JNIEnv* env = jni_zero::AttachCurrentThread();
+  JNIEnv* env = base::android::AttachCurrentThread();
   Java_DistilledPagePrefsObserverWrapper_onChangeTheme(env, java_ref_,
                                                        (int)new_theme);
 }
 
 void DistilledPagePrefsObserverAndroid::OnChangeFontScaling(float scaling) {
-  JNIEnv* env = jni_zero::AttachCurrentThread();
+  JNIEnv* env = base::android::AttachCurrentThread();
   Java_DistilledPagePrefsObserverWrapper_onChangeFontScaling(env, java_ref_,
                                                              scaling);
 }

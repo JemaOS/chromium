@@ -49,51 +49,18 @@ enum SuggestionGroupVisibility {
 };
 
 // Histograms being recorded when visibility of suggestion group IDs change.
-inline constexpr char kGroupIdToggledOffHistogram[] =
-    "Omnibox.GroupId.ToggledOff";
-inline constexpr char kGroupIdToggledOnHistogram[] =
-    "Omnibox.GroupId.ToggledOn";
+extern const char kGroupIdToggledOffHistogram[];
+extern const char kGroupIdToggledOnHistogram[];
 
 // Alphabetical list of preference names specific to the omnibox component.
-// Keep alphabetized, and document each.
-
-// A client-side toggle for document (Drive) suggestions.
-// Also gated by a feature and server-side Admin Panel controls.
-inline constexpr char kDocumentSuggestEnabled[] = "documentsuggest.enabled";
-
-// Enum specifying the active behavior for the intranet redirect detector.
-// The browser pref kDNSInterceptionChecksEnabled also impacts the redirector.
-// Values are defined in omnibox::IntranetRedirectorBehavior.
-inline constexpr char kIntranetRedirectBehavior[] =
-    "browser.intranet_redirect_behavior";
-
-// Boolean that controls whether scoped search mode can be triggered by <space>.
-inline constexpr char kKeywordSpaceTriggeringEnabled[] =
-    "omnibox.keyword_space_triggering_enabled";
-
-// Boolean that specifies whether user has successfully used the instant
-// keyword mode feature.
-inline constexpr char kOmniboxInstantKeywordUsed[] =
-    "omnibox.instant_keyword_used";
-
-// A dictionary of visibility preferences for suggestion groups. The key is the
-// suggestion group ID serialized as a string, and the value is
-// SuggestionGroupVisibility serialized as an integer.
-inline constexpr char kSuggestionGroupVisibility[] =
-    "omnibox.suggestionGroupVisibility";
-
-// Boolean that specifies whether to always show full URLs in the omnibox.
-inline constexpr char kPreventUrlElisionsInOmnibox[] =
-    "omnibox.prevent_url_elisions";
-
-// A cache of NTP zero suggest results using a JSON dictionary serialized into a
-// string.
-inline constexpr char kZeroSuggestCachedResults[] = "zerosuggest.cachedresults";
-
-// A cache of SRP/Web zero suggest results using a JSON dictionary serialized
-// into a string keyed off the page URL.
-inline constexpr char kZeroSuggestCachedResultsWithURL[] =
-    "zerosuggest.cachedresults_with_url";
+// Keep alphabetized, and document each in the .cc file.
+extern const char kDocumentSuggestEnabled[];
+extern const char kIntranetRedirectBehavior[];
+extern const char kKeywordSpaceTriggeringEnabled[];
+extern const char kSuggestionGroupVisibility[];
+extern const char kPreventUrlElisionsInOmnibox[];
+extern const char kZeroSuggestCachedResults[];
+extern const char kZeroSuggestCachedResultsWithURL[];
 
 void RegisterProfilePrefs(PrefRegistrySimple* registry);
 
@@ -101,7 +68,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry);
 // If |suggestion_group_id| has never been manually hidden or shown by the user,
 // this method returns SuggestionGroupVisibility::DEFAULT.
 //
-// Warning: UI code should use OmniboxController::IsSuggestionGroupHidden()
+// Warning: UI code should use AutocompleteResult::IsSuggestionGroupHidden()
 // instead, which passes the server-provided group ID to this method and takes
 // the server-provided hint on default visibility of the group into account.
 SuggestionGroupVisibility GetUserPreferenceForSuggestionGroupVisibility(
@@ -111,7 +78,7 @@ SuggestionGroupVisibility GetUserPreferenceForSuggestionGroupVisibility(
 // Sets the stored visibility preference for |suggestion_group_id| to
 // |visibility|.
 //
-// Warning: UI code should use OmniboxController::SetSuggestionGroupHidden()
+// Warning: UI code should use AutocompleteResult::SetSuggestionGroupHidden()
 // instead, which passes the server-provided group ID to this method.
 void SetUserPreferenceForSuggestionGroupVisibility(
     PrefService* prefs,

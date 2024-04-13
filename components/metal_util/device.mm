@@ -7,26 +7,30 @@
 #import <Metal/Metal.h>
 
 #include "base/logging.h"
+#include "base/mac/scoped_nsobject.h"
 
 namespace metal {
 
-id<MTLDevice> GetDefaultDevice() {
+MTLDevicePtr CreateDefaultDevice() {
   // First attempt to find a low power device to use.
+  base::scoped_nsprotocol<id<MTLDevice>> device_to_use;
 #if BUILDFLAG(IS_MAC)
-  for (id<MTLDevice> device in MTLCopyAllDevices()) {
-    if (device.lowPower) {
-      return device;
+  base::scoped_nsobject<NSArray<id<MTLDevice>>> devices(MTLCopyAllDevices());
+  for (id<MTLDevice> device in devices.get()) {
+    if ([device isLowPower]) {
+      device_to_use.reset(device, base::scoped_policy::RETAIN);
+      break;
     }
   }
 #endif
   // Failing that, use the system default device.
-  id<MTLDevice> system_default = MTLCreateSystemDefaultDevice();
-  if (!system_default) {
+  if (!device_to_use)
+    device_to_use.reset(MTLCreateSystemDefaultDevice());
+  if (!device_to_use) {
     DLOG(ERROR) << "Failed to find MTLDevice.";
-    return nil;
+    return nullptr;
   }
-
-  return system_default;
+  return device_to_use.release();
 }
 
 }  // namespace metal

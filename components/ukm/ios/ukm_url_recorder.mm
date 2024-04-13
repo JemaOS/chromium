@@ -15,6 +15,10 @@
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "url/gurl.h"
 
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
+
 namespace ukm {
 
 namespace internal {
@@ -108,7 +112,6 @@ void SourceUrlRecorderWebStateObserver::DidFinishNavigation(
 
   DCHECK(!navigation_context->IsSameDocument());
 
-  const auto previous_last_committed_source_id = last_committed_source_id_;
   if (navigation_context->HasCommitted()) {
     last_committed_source_id_ = ConvertToSourceId(
         navigation_context->GetNavigationId(), SourceIdType::NAVIGATION_ID);
@@ -121,13 +124,6 @@ void SourceUrlRecorderWebStateObserver::DidFinishNavigation(
   if (navigation_context->IsDownload())
     return;
 
-  if (last_committed_source_id_ == previous_last_committed_source_id) {
-    // When the user is going back to a historical entry via action
-    // "MobileToolbarBack", we've observed that NavigationContext is sometimes
-    // (likely incorrectly) reused. In this case, the URL is already recorded,
-    // so skip the URL recording. See b/40075835.
-    return;
-  }
   MaybeRecordUrl(navigation_context, initial_url);
 }
 

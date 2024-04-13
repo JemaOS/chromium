@@ -13,17 +13,16 @@ namespace internal {
 
 std::string FormatStackTrace(const base::debug::StackTrace& trace,
                              size_t max_length) {
-  base::span<const void* const> addresses = trace.addresses();
+  size_t count = 0;
+  const void* const* addresses = trace.Addresses(&count);
 
   std::string value;
-  for (const void* address : addresses) {
-    std::string address_as_string =
-        base::StringPrintf("0x%" PRIx64, reinterpret_cast<uint64_t>(address));
-    if (value.size() + address_as_string.size() > max_length) {
+  for (size_t i = 0; i < count; ++i) {
+    std::string address = base::StringPrintf(
+        "0x%" PRIx64, reinterpret_cast<uint64_t>(addresses[i]));
+    if (value.size() + address.size() > max_length)
       break;
-    }
-    value += address_as_string;
-    value += ' ';
+    value += address + " ";
   }
 
   if (!value.empty() && value.back() == ' ') {

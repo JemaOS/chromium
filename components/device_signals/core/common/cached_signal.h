@@ -5,9 +5,8 @@
 #ifndef COMPONENTS_DEVICE_SIGNALS_CORE_COMMON_CACHED_SIGNAL_H_
 #define COMPONENTS_DEVICE_SIGNALS_CORE_COMMON_CACHED_SIGNAL_H_
 
-#include <optional>
-
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace device_signals {
 
@@ -19,9 +18,9 @@ class CachedSignal {
   CachedSignal& operator=(const CachedSignal&) = delete;
   ~CachedSignal() = default;
 
-  const std::optional<T>& Get() {
+  const absl::optional<T>& Get() {
     if (base::TimeTicks::Now() - timestamp_ >= expiry_period_) {
-      cached_value_ = std::nullopt;
+      cached_value_ = absl::nullopt;
     }
     return cached_value_;
   }
@@ -34,7 +33,7 @@ class CachedSignal {
  private:
   const base::TimeDelta expiry_period_;
 
-  std::optional<T> cached_value_ = std::nullopt;
+  absl::optional<T> cached_value_ = absl::nullopt;
   base::TimeTicks timestamp_;
 };
 

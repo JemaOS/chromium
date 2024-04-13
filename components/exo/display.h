@@ -45,8 +45,6 @@ class XdgShellSurface;
 class Display {
  public:
   Display();
-  explicit Display(
-      std::unique_ptr<DataExchangeDelegate> data_exchange_delegate);
 
   Display(
       std::unique_ptr<NotificationSurfaceManager> notification_surface_manager,
@@ -88,6 +86,7 @@ class Display {
   std::unique_ptr<ClientControlledShellSurface>
   CreateOrGetClientControlledShellSurface(Surface* surface,
                                           int container,
+                                          double default_device_scale_factor,
                                           bool default_scale_cancellation,
                                           bool supports_floated_state);
 
@@ -99,11 +98,13 @@ class Display {
   // Creates a input method surface for a surface.
   std::unique_ptr<InputMethodSurface> CreateInputMethodSurface(
       Surface* surface,
+      double default_device_scale_factor,
       bool default_scale_cancellation);
 
   // Creates a toast surface for a surface.
   std::unique_ptr<ToastSurface> CreateToastSurface(
       Surface* surface,
+      double default_device_scale_factor,
       bool default_scale_cancellation);
 
   // Creates a sub-surface for an existing surface. The sub-surface will be

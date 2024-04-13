@@ -5,9 +5,12 @@
 #ifndef COMPONENTS_BROWSER_UI_UTIL_ANDROID_URL_CONSTANTS_H_
 #define COMPONENTS_BROWSER_UI_UTIL_ANDROID_URL_CONSTANTS_H_
 
-namespace browser_ui {
+#include "build/build_config.h"
 
+namespace browser_ui {
+#if BUILDFLAG(IS_ANDROID)
 extern const char kChromeUINativeScheme[];
+#endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace browser_ui
 

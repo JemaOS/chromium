@@ -9,13 +9,10 @@
 
 #include <functional>
 #include <limits>
-#include <map>
 
 #include "base/check_op.h"
-#include "base/containers/contains.h"
 #include "base/containers/flat_set.h"
 #include "base/types/id_type.h"
-#include "components/viz/common/viz_common_export.h"
 
 namespace viz {
 
@@ -25,12 +22,11 @@ struct ResourceIdTypeMarker {};
 // ResourceIdGenerator below, since it will skip generating reserved ids.
 using ResourceId = base::IdTypeU32<ResourceIdTypeMarker>;
 using ResourceIdSet = base::flat_set<ResourceId>;
-inline constexpr ResourceId kInvalidResourceId(0);
-inline constexpr uint32_t kNumReservedResourceIds = 3000u;
-inline constexpr ResourceId kVizReservedRangeStartId(
-    std::numeric_limits<uint32_t>::max() - kNumReservedResourceIds);
+constexpr ResourceId kInvalidResourceId(0);
+constexpr ResourceId kVizReservedRangeStartId(
+    std::numeric_limits<uint32_t>::max() - 3000u);
 
-class VIZ_COMMON_EXPORT ResourceIdGenerator {
+class ResourceIdGenerator {
  public:
   explicit ResourceIdGenerator(uint32_t start_id)
       : start_id_(start_id), next_id_(start_id) {
@@ -56,35 +52,10 @@ class VIZ_COMMON_EXPORT ResourceIdGenerator {
   uint32_t next_id_ = 1u;
 };
 
-struct VIZ_COMMON_EXPORT ResourceIdHasher {
+struct ResourceIdHasher {
   size_t operator()(const ResourceId& resource_id) const {
     return std::hash<uint32_t>()(resource_id.GetUnsafeValue());
   }
-};
-
-// ReservedResourceIdTracker is used for keeping track of refcounts on viz
-// reserved resources and allocating unused resource IDs. Since the resource ID
-// space for reserved resources is much smaller than the client resource ID
-// space, we keep track of which resource IDs are used individually, so we can
-// allocate resource IDs that are no longer used and avoid reusing IDs that are
-// still in use.
-class VIZ_COMMON_EXPORT ReservedResourceIdTracker {
- public:
-  ReservedResourceIdTracker();
-  ~ReservedResourceIdTracker();
-
-  [[nodiscard]] ResourceId AllocId(int initial_ref_count);
-  void RefId(ResourceId id, int count);
-
-  // Unrefs the given `id`. Returns true if there are no more refs to this
-  // resource id.
-  bool UnrefId(ResourceId id, int count);
-
-  void set_next_id_for_test(uint32_t next_id) { next_id_ = next_id; }
-
- private:
-  uint32_t next_id_ = kVizReservedRangeStartId.GetUnsafeValue();
-  std::map<ResourceId, int> id_ref_counts_;
 };
 
 }  // namespace viz

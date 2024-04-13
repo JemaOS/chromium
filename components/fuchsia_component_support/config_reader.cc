@@ -47,10 +47,11 @@ base::Value::Dict ReadConfigFile(const base::FilePath& path) {
   return std::move(parsed->GetDict());
 }
 
-std::optional<base::Value::Dict> ReadConfigsFromDir(const base::FilePath& dir) {
+absl::optional<base::Value::Dict> ReadConfigsFromDir(
+    const base::FilePath& dir) {
   base::FileEnumerator configs(dir, false, base::FileEnumerator::FILES,
                                "*.json");
-  std::optional<base::Value::Dict> config;
+  absl::optional<base::Value::Dict> config;
   for (base::FilePath path; !(path = configs.Next()).empty();) {
     base::Value::Dict path_config = ReadConfigFile(path);
     if (config) {
@@ -66,16 +67,16 @@ std::optional<base::Value::Dict> ReadConfigsFromDir(const base::FilePath& dir) {
 
 }  // namespace
 
-const std::optional<base::Value::Dict>& LoadPackageConfig() {
+const absl::optional<base::Value::Dict>& LoadPackageConfig() {
   // Package configurations do not change at run-time, so read the configuration
   // on the first call and cache the result.
-  static base::NoDestructor<std::optional<base::Value::Dict>> config(
+  static base::NoDestructor<absl::optional<base::Value::Dict>> config(
       ReadConfigsFromDir(base::FilePath("/config/data")));
 
   return *config;
 }
 
-std::optional<base::Value::Dict> LoadConfigFromDirForTest(  // IN-TEST
+absl::optional<base::Value::Dict> LoadConfigFromDirForTest(  // IN-TEST
     const base::FilePath& dir) {
   return ReadConfigsFromDir(dir);
 }

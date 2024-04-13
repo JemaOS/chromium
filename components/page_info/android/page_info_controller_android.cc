@@ -10,7 +10,6 @@
 #include "base/android/jni_string.h"
 #include "base/command_line.h"
 #include "base/containers/contains.h"
-#include "base/feature_list.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_types.h"
@@ -19,7 +18,6 @@
 #include "components/page_info/core/features.h"
 #include "components/page_info/page_info.h"
 #include "components/page_info/page_info_ui.h"
-#include "components/permissions/features.h"
 #include "components/security_state/core/security_state.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_controller.h"
@@ -83,7 +81,7 @@ void PageInfoControllerAndroid::RecordPageInfoAction(
     const JavaParamRef<jobject>& obj,
     jint action) {
   presenter_->RecordPageInfoAction(
-      static_cast<page_info::PageInfoAction>(action));
+      static_cast<PageInfo::PageInfoAction>(action));
 }
 
 void PageInfoControllerAndroid::UpdatePermissions(
@@ -102,6 +100,11 @@ void PageInfoControllerAndroid::SetIdentityInfo(
       env, controller_jobject_,
       ConvertUTF16ToJavaString(env, security_description->summary),
       ConvertUTF16ToJavaString(env, security_description->details));
+}
+
+void PageInfoControllerAndroid::SetCookieInfo(
+    const CookieInfoList& cookie_info_list) {
+  NOTIMPLEMENTED();
 }
 
 void PageInfoControllerAndroid::SetPageFeatureInfo(
@@ -147,14 +150,13 @@ void PageInfoControllerAndroid::SetPermissionInfo(
     permissions_to_display.push_back(
         ContentSettingsType::FEDERATED_IDENTITY_API);
   }
-    permissions_to_display.push_back(ContentSettingsType::STORAGE_ACCESS);
 
   std::map<ContentSettingsType, ContentSetting>
       user_specified_settings_to_display;
 
   for (const auto& permission : permission_info_list) {
     if (base::Contains(permissions_to_display, permission.type)) {
-      std::optional<ContentSetting> setting_to_display =
+      absl::optional<ContentSetting> setting_to_display =
           GetSettingToDisplay(permission);
       if (setting_to_display) {
         user_specified_settings_to_display[permission.type] =
@@ -194,7 +196,7 @@ void PageInfoControllerAndroid::SetPermissionInfo(
   Java_PageInfoController_updatePermissionDisplay(env, controller_jobject_);
 }
 
-std::optional<ContentSetting> PageInfoControllerAndroid::GetSettingToDisplay(
+absl::optional<ContentSetting> PageInfoControllerAndroid::GetSettingToDisplay(
     const PageInfo::PermissionInfo& permission) {
   // All permissions should be displayed if they are non-default.
   if (permission.setting != CONTENT_SETTING_DEFAULT &&
@@ -225,7 +227,7 @@ std::optional<ContentSetting> PageInfoControllerAndroid::GetSettingToDisplay(
   // factory-default after we add the functionality to populate the permissions
   // subpage directly from the permissions returned from this controller.
 
-  return std::nullopt;
+  return absl::optional<ContentSetting>();
 }
 
 void PageInfoControllerAndroid::SetAdPersonalizationInfo(

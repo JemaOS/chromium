@@ -37,19 +37,9 @@ class PdfURLLoaderRequestInterceptorTest
     resource_request_.url = GURL(FakePdfStreamDelegate::kDefaultOriginalUrl);
   }
 
-  void SetUp() override {
-    content::RenderViewHostTestHarness::SetUp();
-
-    content::RenderFrameHostTester* tester =
-        content::RenderFrameHostTester::For(main_rfh());
-    tester->InitializeRenderFrameIfNeeded();
-    child_frame_tree_node_id_ =
-        tester->AppendChild("PDF content frame")->GetFrameTreeNodeId();
-  }
-
   std::unique_ptr<PdfURLLoaderRequestInterceptor> CreateInterceptor() {
     return std::make_unique<PdfURLLoaderRequestInterceptor>(
-        child_frame_tree_node_id_, std::move(stream_delegate_));
+        main_rfh()->GetFrameTreeNodeId(), std::move(stream_delegate_));
   }
 
   std::unique_ptr<FakePdfStreamDelegate> stream_delegate_ =
@@ -58,7 +48,6 @@ class PdfURLLoaderRequestInterceptorTest
   network::ResourceRequest resource_request_;
   base::MockCallback<content::URLLoaderRequestInterceptor::LoaderCallback>
       loader_callback_;
-  int child_frame_tree_node_id_;
 };
 
 void RunRequestHandler(
@@ -81,7 +70,7 @@ void RunRequestHandler(
 
 TEST_F(PdfURLLoaderRequestInterceptorTest, MaybeCreateInterceptor) {
   EXPECT_TRUE(PdfURLLoaderRequestInterceptor::MaybeCreateInterceptor(
-      child_frame_tree_node_id_, std::move(stream_delegate_)));
+      main_rfh()->GetFrameTreeNodeId(), std::move(stream_delegate_)));
 }
 
 TEST_F(PdfURLLoaderRequestInterceptorTest, MaybeCreateLoader) {

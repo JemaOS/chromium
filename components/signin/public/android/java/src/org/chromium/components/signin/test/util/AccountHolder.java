@@ -9,12 +9,13 @@ import android.accounts.Account;
 import androidx.annotation.Nullable;
 
 import org.chromium.components.signin.AccessTokenData;
-import org.chromium.components.signin.base.AccountCapabilities;
-import org.chromium.components.signin.base.AccountInfo;
-import org.chromium.components.signin.base.CoreAccountInfo;
+import org.chromium.components.signin.AccountUtils;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class is used by the {@link FakeAccountManagerDelegate} and
@@ -22,21 +23,19 @@ import java.util.Map;
  * account, such as its password and set of granted auth tokens.
  */
 public class AccountHolder {
-    private final AccountInfo mAccountInfo;
+    private final Account mAccount;
     private final Map<String, AccessTokenData> mAuthTokens;
+    private final Set<String> mFeatures;
 
-    public AccountHolder(AccountInfo accountInfo) {
-        assert accountInfo != null : "account shouldn't be null!";
-        mAccountInfo = accountInfo;
+    private AccountHolder(Account account) {
+        assert account != null : "account shouldn't be null!";
+        mAccount = account;
         mAuthTokens = new HashMap<>();
+        mFeatures = new HashSet<>();
     }
 
     public Account getAccount() {
-        return CoreAccountInfo.getAndroidAccountFrom(mAccountInfo);
-    }
-
-    public AccountInfo getAccountInfo() {
-        return mAccountInfo;
+        return mAccount;
     }
 
     @Nullable
@@ -70,23 +69,41 @@ public class AccountHolder {
         }
     }
 
+    boolean hasFeature(String feature) {
+        return mFeatures.contains(feature);
+    }
+
     @Override
     public int hashCode() {
-        return mAccountInfo.hashCode();
+        return mAccount.hashCode();
     }
 
     @Override
     public boolean equals(Object that) {
         return that instanceof AccountHolder
-                && mAccountInfo.equals(((AccountHolder) that).mAccountInfo);
+                && mAccount.equals(((AccountHolder) that).getAccount());
     }
 
-    public AccountCapabilities getAccountCapabilities() {
-        return mAccountInfo.getAccountCapabilities();
+    /**
+     * Creates an {@link AccountHolder} from email.
+     */
+    public static AccountHolder createFromEmail(String email) {
+        return createFromAccount(AccountUtils.createAccountFromName(email));
     }
 
-    /** Manually replace the previously set capabilities with given accountCapabilities */
-    public void setAccountCapabilities(AccountCapabilities accountCapabilities) {
-        mAccountInfo.setAccountCapabilities(accountCapabilities);
+    /**
+     * Creates an {@link AccountHolder} from {@link Account}.
+     */
+    public static AccountHolder createFromAccount(Account account) {
+        return new AccountHolder(account);
+    }
+
+    /**
+     * Creates an {@link AccountHolder} from email and features.
+     */
+    public static AccountHolder createFromEmailAndFeatures(String email, String... features) {
+        final AccountHolder accountHolder = createFromEmail(email);
+        Collections.addAll(accountHolder.mFeatures, features);
+        return accountHolder;
     }
 }

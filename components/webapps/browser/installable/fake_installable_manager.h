@@ -10,7 +10,6 @@
 #include "base/memory/weak_ptr.h"
 #include "components/webapps/browser/installable/installable_logging.h"
 #include "components/webapps/browser/installable/installable_manager.h"
-#include "components/webapps/common/web_page_metadata.mojom.h"
 #include "third_party/blink/public/mojom/manifest/manifest.mojom-forward.h"
 #include "url/gurl.h"
 
@@ -47,7 +46,6 @@ class FakeInstallableManager : public InstallableManager {
  private:
   GURL manifest_url_;
   blink::mojom::ManifestPtr manifest_;
-  mojom::WebPageMetadataPtr web_page_metadata_;
   std::unique_ptr<InstallableData> data_;
 
   base::WeakPtrFactory<FakeInstallableManager> weak_factory_{this};

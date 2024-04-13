@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "components/sync/service/model_type_controller.h"
+#include "components/sync/driver/model_type_controller.h"
 
 namespace sync_bookmarks {
 
@@ -24,6 +24,9 @@ class BookmarkModelTypeController : public syncer::ModelTypeController {
       delete;
 
   ~BookmarkModelTypeController() override;
+
+  // DataTypeController overrides.
+  bool ShouldRunInTransportOnlyMode() const override;
 };
 
 }  // namespace sync_bookmarks

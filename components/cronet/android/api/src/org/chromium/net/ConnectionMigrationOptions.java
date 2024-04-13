@@ -10,31 +10,42 @@ import androidx.annotation.RequiresOptIn;
 /**
  * A class configuring Cronet's connection migration functionality.
  *
- * <p>Connection migration stops open connections to servers from being destroyed when the client
- * device switches its L4 connectivity (typically the IP address as a result of using a different
- * network). This is particularly common with mobile devices losing wifi connectivity and switching
- * to cellular data, or vice versa (a.k.a. the parking lot problem). QUIC uses connection
- * identifiers which are independent of the underlying transport layer to make this possible. If the
- * client connects to a new network and wants to preserve the existing connection, they can do so by
- * using a connection identifier the server knows to be a continuation of the existing connection.
+ * <p>Connection migration stops open connections to servers from being destroyed when the
+ * client device switches its L4 connectivity (typically the IP address as a result of using
+ * a different network). This is particularly common with mobile devices losing
+ * wifi connectivity and switching to cellular data, or vice versa (a.k.a. the parking lot
+ * problem). QUIC uses connection identifiers which are independent of the underlying
+ * transport layer to make this possible. If the client connects to a new network and wants
+ * to preserve the existing connection, they can do so by using a connection identifier the server
+ * knows to be a continuation of the existing connection.
  *
  * <p>The features are only available for QUIC connections and the server needs to support
  * connection migration.
  *
- * @see <a href="https://www.rfc-editor.org/rfc/rfc9000.html#section-9">Connection Migration
- *     specification</a>
+ * @see <a href="https://www.rfc-editor.org/rfc/rfc9000.html#section-9">Connection
+ *     Migration specification</a>
  */
-public final class ConnectionMigrationOptions {
-    @Nullable private final Boolean mEnableDefaultNetworkMigration;
-    @Nullable private final Boolean mEnablePathDegradationMigration;
-    @Nullable private final Boolean mAllowServerMigration;
-    @Nullable private final Boolean mMigrateIdleConnections;
-    @Nullable private final Long mIdleMigrationPeriodSeconds;
-    @Nullable private final Boolean mRetryPreHandshakeErrorsOnAlternateNetwork;
-    @Nullable private final Boolean mAllowNonDefaultNetworkUsage;
-    @Nullable private final Long mMaxTimeOnNonDefaultNetworkSeconds;
-    @Nullable private final Integer mMaxWriteErrorEagerMigrationsCount;
-    @Nullable private final Integer mMaxPathDegradingEagerMigrationsCount;
+public class ConnectionMigrationOptions {
+    @Nullable
+    private final Boolean mEnableDefaultNetworkMigration;
+    @Nullable
+    private final Boolean mEnablePathDegradationMigration;
+    @Nullable
+    private final Boolean mAllowServerMigration;
+    @Nullable
+    private final Boolean mMigrateIdleConnections;
+    @Nullable
+    private final Long mIdleMigrationPeriodSeconds;
+    @Nullable
+    private final Boolean mRetryPreHandshakeErrorsOnAlternateNetwork;
+    @Nullable
+    private final Boolean mAllowNonDefaultNetworkUsage;
+    @Nullable
+    private final Long mMaxTimeOnNonDefaultNetworkSeconds;
+    @Nullable
+    private final Integer mMaxWriteErrorEagerMigrationsCount;
+    @Nullable
+    private final Integer mMaxPathDegradingEagerMigrationsCount;
 
     @Nullable
     public Boolean getEnableDefaultNetworkMigration() {
@@ -86,7 +97,7 @@ public final class ConnectionMigrationOptions {
         return mMaxPathDegradingEagerMigrationsCount;
     }
 
-    private ConnectionMigrationOptions(Builder builder) {
+    public ConnectionMigrationOptions(Builder builder) {
         this.mEnableDefaultNetworkMigration = builder.mEnableDefaultNetworkConnectionMigration;
         this.mEnablePathDegradationMigration = builder.mEnablePathDegradationMigration;
         this.mAllowServerMigration = builder.mAllowServerMigration;
@@ -100,20 +111,32 @@ public final class ConnectionMigrationOptions {
         this.mMaxPathDegradingEagerMigrationsCount = builder.mMaxPathDegradingEagerMigrationsCount;
     }
 
-    /** Builder for {@link ConnectionMigrationOptions}. */
+    /**
+     * Builder for {@link ConnectionMigrationOptions}.
+     */
     public static class Builder {
-        @Nullable private Boolean mEnableDefaultNetworkConnectionMigration;
-        @Nullable private Boolean mEnablePathDegradationMigration;
-        @Nullable private Boolean mAllowServerMigration;
-        @Nullable private Boolean mMigrateIdleConnections;
-        @Nullable private Long mIdleConnectionMigrationPeriodSeconds;
-        @Nullable private Boolean mRetryPreHandshakeErrorsOnAlternateNetwork;
-        @Nullable private Boolean mAllowNonDefaultNetworkUsage;
-        @Nullable private Long mMaxTimeOnNonDefaultNetworkSeconds;
-        @Nullable private Integer mMaxWriteErrorEagerMigrationsCount;
-        @Nullable private Integer mMaxPathDegradingEagerMigrationsCount;
+        @Nullable
+        private Boolean mEnableDefaultNetworkConnectionMigration;
+        @Nullable
+        private Boolean mEnablePathDegradationMigration;
+        @Nullable
+        private Boolean mAllowServerMigration;
+        @Nullable
+        private Boolean mMigrateIdleConnections;
+        @Nullable
+        private Long mIdleConnectionMigrationPeriodSeconds;
+        @Nullable
+        private Boolean mRetryPreHandshakeErrorsOnAlternateNetwork;
+        @Nullable
+        private Boolean mAllowNonDefaultNetworkUsage;
+        @Nullable
+        private Long mMaxTimeOnNonDefaultNetworkSeconds;
+        @Nullable
+        private Integer mMaxWriteErrorEagerMigrationsCount;
+        @Nullable
+        private Integer mMaxPathDegradingEagerMigrationsCount;
 
-        private Builder() {}
+        Builder() {}
 
         /**
          * Enables the possibility of migrating connections on default network change. If enabled,
@@ -288,19 +311,6 @@ public final class ConnectionMigrationOptions {
         return new Builder();
     }
 
-    /**
-     * An annotation for APIs which are not considered stable yet.
-     *
-     * <p>Experimental APIs are subject to change, breakage, or removal at any time and may not be
-     * production ready.
-     *
-     * <p>It's highly recommended to reach out to Cronet maintainers
-     * (<code>net-dev@chromium.org</code>) before using one of the APIs annotated as experimental
-     * outside of debugging and proof-of-concept code.
-     *
-     * <p>By using an Experimental API, applications acknowledge that they are doing so at their own
-     * risk.
-     */
     @RequiresOptIn
     public @interface Experimental {}
 }

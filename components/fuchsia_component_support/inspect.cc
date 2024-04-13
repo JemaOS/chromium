@@ -4,7 +4,7 @@
 
 #include "components/fuchsia_component_support/inspect.h"
 
-#include <lib/inspect/cpp/inspect.h>
+#include <lib/sys/inspect/cpp/component.h>
 
 #include "components/version_info/version_info.h"
 
@@ -15,12 +15,14 @@ const char kVersion[] = "version";
 const char kLastChange[] = "last_change_revision";
 }  // namespace
 
-void PublishVersionInfoToInspect(inspect::Node* parent) {
+void PublishVersionInfoToInspect(sys::ComponentInspector* inspector) {
   // These values are managed by the inspector, since they won't be updated over
   // the lifetime of the component.
   // TODO(https://crbug.com/1077428): Add release channel.
-  parent->RecordString(kVersion, std::string(version_info::GetVersionNumber()));
-  parent->RecordString(kLastChange, std::string(version_info::GetLastChange()));
+  inspector->root().CreateString(kVersion, version_info::GetVersionNumber(),
+                                 inspector);
+  inspector->root().CreateString(kLastChange, version_info::GetLastChange(),
+                                 inspector);
 }
 
 }  // namespace fuchsia_component_support

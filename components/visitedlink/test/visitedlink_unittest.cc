@@ -37,6 +37,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 using content::BrowserThread;
@@ -733,8 +734,8 @@ class VisitedLinkRenderProcessHostFactory
   void DeleteRenderProcessHosts() { processes_.clear(); }
 
  private:
-  raw_ptr<content::RenderProcessHostCreationObserver, DanglingUntriaged>
-      creation_observer_ = nullptr;
+  raw_ptr<content::RenderProcessHostCreationObserver> creation_observer_ =
+      nullptr;
 
   std::list<std::unique_ptr<VisitRelayingRenderProcessHost>> processes_;
   std::unique_ptr<VisitCountingContext> context_;

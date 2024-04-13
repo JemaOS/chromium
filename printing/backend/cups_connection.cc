@@ -68,10 +68,19 @@ QueueStatus::~QueueStatus() = default;
 
 class CupsConnectionImpl : public CupsConnection {
  public:
-  CupsConnectionImpl() = default;
+  CupsConnectionImpl(const GURL& print_server_url,
+                     http_encryption_t encryption,
+                     bool blocking)
+      : print_server_url_(print_server_url),
+        cups_encryption_(encryption),
+        blocking_(false),
+        cups_http_(nullptr) {}
 
-  CupsConnectionImpl(const CupsConnectionImpl&) = delete;
-  CupsConnectionImpl& operator=(const CupsConnectionImpl&) = delete;
+  CupsConnectionImpl(CupsConnectionImpl&& connection)
+      : print_server_url_(connection.print_server_url_),
+        cups_encryption_(connection.cups_encryption_),
+        blocking_(connection.blocking_),
+        cups_http_(std::move(connection.cups_http_)) {}
 
   ~CupsConnectionImpl() override {
 #if BUILDFLAG(IS_CHROMEOS)
@@ -173,6 +182,8 @@ class CupsConnectionImpl : public CupsConnection {
                                       printer_status);
   }
 
+  std::string server_name() const override { return print_server_url_.host(); }
+
   int last_error() const override { return cupsLastError(); }
   std::string last_error_message() const override {
     return cupsLastErrorString();
@@ -196,17 +207,36 @@ class CupsConnectionImpl : public CupsConnection {
     }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-    cups_http_.reset(httpConnect2(cupsServer(), ippPort(), nullptr, AF_UNSPEC,
-                                  HTTP_ENCRYPT_NEVER, /*blocking=*/0,
+    std::string host;
+    int port;
+
+    if (!print_server_url_.is_empty()) {
+      host = print_server_url_.host();
+      port = print_server_url_.IntPort();
+    } else {
+      host = cupsServer();
+      port = ippPort();
+    }
+
+    cups_http_.reset(httpConnect2(host.c_str(), port, nullptr, AF_UNSPEC,
+                                  cups_encryption_, blocking_ ? 1 : 0,
                                   kCupsTimeoutMs, nullptr));
     return !!cups_http_;
   }
 
+  GURL print_server_url_;
+  http_encryption_t cups_encryption_;
+  bool blocking_;
+
   ScopedHttpPtr cups_http_;
 };
 
-std::unique_ptr<CupsConnection> CupsConnection::Create() {
-  return std::make_unique<CupsConnectionImpl>();
+std::unique_ptr<CupsConnection> CupsConnection::Create(
+    const GURL& print_server_url,
+    http_encryption_t encryption,
+    bool blocking) {
+  return std::make_unique<CupsConnectionImpl>(print_server_url, encryption,
+                                              blocking);
 }
 
 }  // namespace printing

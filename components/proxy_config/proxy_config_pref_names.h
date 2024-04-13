@@ -5,15 +5,15 @@
 #ifndef COMPONENTS_PROXY_CONFIG_PROXY_CONFIG_PREF_NAMES_H_
 #define COMPONENTS_PROXY_CONFIG_PROXY_CONFIG_PREF_NAMES_H_
 
-namespace proxy_config::prefs {
+#include "components/proxy_config/proxy_config_export.h"
 
-// Preference to store proxy settings.
-inline constexpr char kProxy[] = "proxy";
+namespace proxy_config {
+namespace prefs {
 
-// A boolean pref that controls whether proxy settings from shared network
-// settings (accordingly from device policy) are applied or ignored.
-inline constexpr char kUseSharedProxies[] = "settings.use_shared_proxies";
+PROXY_CONFIG_EXPORT extern const char kProxy[];
+PROXY_CONFIG_EXPORT extern const char kUseSharedProxies[];
 
-}  // namespace proxy_config::prefs
+}  // namespace prefs
+}  // namespace proxy_config
 
 #endif  // COMPONENTS_PROXY_CONFIG_PROXY_CONFIG_PREF_NAMES_H_

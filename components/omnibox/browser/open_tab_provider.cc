@@ -95,7 +95,8 @@ OpenTabProvider::~OpenTabProvider() = default;
 void OpenTabProvider::Start(const AutocompleteInput& input,
                             bool minimal_changes) {
   matches_.clear();
-  if (input.IsZeroSuggest() || input.text().empty()) {
+  if (input.focus_type() != metrics::OmniboxFocusType::INTERACTION_DEFAULT ||
+      input.text().empty()) {
     return;
   }
 
@@ -136,7 +137,8 @@ void OpenTabProvider::Start(const AutocompleteInput& input,
   // If there were no open tab results found, and we're in keyword mode,
   // generate a NULL_RESULT_MESSAGE suggestion to keep the user in keyword mode
   // and display a no results message.
-  if (adjusted_input.InKeywordMode() && matches_.empty() && template_url) {
+  if (OmniboxFieldTrial::IsSiteSearchStarterPackEnabled() &&
+      InKeywordMode(adjusted_input) && matches_.empty()) {
     matches_.push_back(
         CreateNullResultMessageMatch(adjusted_input, template_url));
   }
@@ -190,7 +192,7 @@ AutocompleteMatch OpenTabProvider::CreateOpenTabMatch(
       description_terms, match.description.size(), ACMatchClassification::MATCH,
       ACMatchClassification::NONE);
 
-  if (input.InKeywordMode()) {
+  if (InKeywordMode(input)) {
     match.from_keyword = true;
   }
 

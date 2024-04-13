@@ -5,7 +5,6 @@
 #include "components/segmentation_platform/internal/segmentation_ukm_helper.h"
 
 #include <cmath>
-#include <optional>
 
 #include "base/bit_cast.h"
 #include "base/strings/string_number_conversions.h"
@@ -13,14 +12,12 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_clock.h"
 #include "base/test/task_environment.h"
-#include "base/time/time.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/segmentation_platform/internal/constants.h"
 #include "components/segmentation_platform/internal/selection/segmentation_result_prefs.h"
 #include "components/segmentation_platform/public/config.h"
 #include "components/segmentation_platform/public/features.h"
 #include "components/segmentation_platform/public/local_state_helper.h"
-#include "components/segmentation_platform/public/proto/prediction_result.pb.h"
 #include "components/segmentation_platform/public/proto/segmentation_platform.pb.h"
 #include "components/segmentation_platform/public/segmentation_platform_service.h"
 #include "components/ukm/test_ukm_recorder.h"
@@ -49,15 +46,10 @@ void CompareEncodeDecodeDifference(float tensor) {
       kRoundingError);
 }
 
-std::optional<proto::PredictionResult> GetPredictionResult(
-    std::optional<base::Time> prediction_time = std::nullopt) {
+absl::optional<proto::PredictionResult> GetPredictionResult() {
   proto::PredictionResult result;
   result.add_result(0.5);
   result.add_result(0.4);
-  if (prediction_time.has_value()) {
-    result.set_timestamp_us(
-        prediction_time->ToDeltaSinceWindowsEpoch().InMicroseconds());
-  }
   return result;
 }
 
@@ -95,7 +87,7 @@ class SegmentationUkmHelperTest : public testing::Test {
                         const std::vector<int64_t>& values) {
     const auto& entries = test_recorder_.GetEntriesByName(entry_name);
     EXPECT_EQ(1u, entries.size());
-    for (const ukm::mojom::UkmEntry* entry : entries) {
+    for (const auto* entry : entries) {
       const size_t keys_size = keys.size();
       EXPECT_EQ(keys_size, values.size());
       for (size_t i = 0; i < keys_size; ++i) {
@@ -174,8 +166,7 @@ TEST_F(SegmentationUkmHelperTest, TestTrainingDataCollectionReporting) {
   selected_segment.selection_time = base::Time::Now() - base::Seconds(10);
   SegmentationUkmHelper::GetInstance()->RecordTrainingData(
       proto::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, 101, input_tensors,
-      outputs, output_indexes,
-      GetPredictionResult(selected_segment.selection_time), selected_segment);
+      outputs, output_indexes, GetPredictionResult(), selected_segment);
   ExpectUkmMetrics(Segmentation_ModelExecution::kEntryName,
                    {Segmentation_ModelExecution::kOptimizationTargetName,
                     Segmentation_ModelExecution::kModelVersionName,
@@ -204,11 +195,11 @@ TEST_F(SegmentationUkmHelperTest, TestDefaultAllowedList) {
   proto::SegmentInfo segment_info =
       CreateTestSegmentInfo(proto::OPTIMIZATION_TARGET_UNKNOWN, false);
   EXPECT_FALSE(
-      SegmentationUkmHelper::GetInstance()->IsUploadRequested(segment_info));
+      SegmentationUkmHelper::GetInstance()->CanUploadTensors(segment_info));
   segment_info = CreateTestSegmentInfo(
       proto::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, false);
   EXPECT_TRUE(
-      SegmentationUkmHelper::GetInstance()->IsUploadRequested(segment_info));
+      SegmentationUkmHelper::GetInstance()->CanUploadTensors(segment_info));
 }
 
 // Tests that tensor uploading if default allowed list is disabled.
@@ -219,7 +210,7 @@ TEST_F(SegmentationUkmHelperTest, TestDisallowDefaultAllowedList) {
   proto::SegmentInfo segment_info = CreateTestSegmentInfo(
       proto::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, false);
   EXPECT_FALSE(
-      SegmentationUkmHelper::GetInstance()->IsUploadRequested(segment_info));
+      SegmentationUkmHelper::GetInstance()->CanUploadTensors(segment_info));
 }
 
 // Tests that tensor uploading is enabled through metadata.
@@ -227,7 +218,7 @@ TEST_F(SegmentationUkmHelperTest, TestUploadTensorsAllowedFromMetadata) {
   proto::SegmentInfo segment_info = CreateTestSegmentInfo(
       proto::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, true);
   EXPECT_TRUE(
-      SegmentationUkmHelper::GetInstance()->IsUploadRequested(segment_info));
+      SegmentationUkmHelper::GetInstance()->CanUploadTensors(segment_info));
 }
 
 // Tests that float encoding works properly.
@@ -279,21 +270,21 @@ TEST_F(SegmentationUkmHelperTest, OutputsValidation) {
   ukm::SourceId source_id =
       SegmentationUkmHelper::GetInstance()->RecordTrainingData(
           proto::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, 101, input_tensors,
-          outputs, output_indexes, GetPredictionResult(), std::nullopt);
+          outputs, output_indexes, GetPredictionResult(), absl::nullopt);
   ASSERT_EQ(source_id, ukm::kInvalidSourceId);
 
   // output_indexes value too large.
   output_indexes = {100, 1000};
   source_id = SegmentationUkmHelper::GetInstance()->RecordTrainingData(
       proto::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, 101, input_tensors,
-      outputs, output_indexes, GetPredictionResult(), std::nullopt);
+      outputs, output_indexes, GetPredictionResult(), absl::nullopt);
   ASSERT_EQ(source_id, ukm::kInvalidSourceId);
 
   // Valid outputs.
   output_indexes = {3, 0};
   source_id = SegmentationUkmHelper::GetInstance()->RecordTrainingData(
       proto::OPTIMIZATION_TARGET_SEGMENTATION_NEW_TAB, 101, input_tensors,
-      outputs, output_indexes, GetPredictionResult(), std::nullopt);
+      outputs, output_indexes, GetPredictionResult(), absl::nullopt);
   ASSERT_NE(source_id, ukm::kInvalidSourceId);
 }
 

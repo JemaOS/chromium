@@ -45,7 +45,8 @@ class AppsIconCoalescerTest : public testing::Test {
 
    private:
     std::unique_ptr<Releaser> LoadIconFromIconKey(
-        const std::string& id,
+        apps::AppType app_type,
+        const std::string& app_id,
         const apps::IconKey& icon_key,
         apps::IconType icon_type,
         int32_t size_hint_in_dip,
@@ -56,7 +57,7 @@ class AppsIconCoalescerTest : public testing::Test {
         num_load_calls_complete_++;
         std::move(callback).Run(NewIconValuePtr());
       } else {
-        pending_callbacks_.insert(std::make_pair(id, std::move(callback)));
+        pending_callbacks_.insert(std::make_pair(app_id, std::move(callback)));
       }
       num_pending_releases_++;
       return std::make_unique<IconLoader::Releaser>(
@@ -89,7 +90,7 @@ class AppsIconCoalescerTest : public testing::Test {
                           int* counter,
                           int delta) {
     return loader->LoadIcon(
-        app_id, apps::IconType::kUncompressed,
+        apps::AppType::kWeb, app_id, apps::IconType::kUncompressed,
         /*size_hint_in_dip=*/1, /*allow_placeholder_icon=*/false,
         base::BindOnce([](int* counter, int delta,
                           apps::IconValuePtr icon) { *counter += delta; },

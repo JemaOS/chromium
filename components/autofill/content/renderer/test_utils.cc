@@ -4,17 +4,19 @@
 
 #include "components/autofill/content/renderer/test_utils.h"
 
-#include "base/strings/strcat.h"
 #include "content/public/renderer/render_frame.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/web/web_document.h"
 #include "third_party/blink/public/web/web_element.h"
+#include "third_party/blink/public/web/web_form_control_element.h"
+#include "third_party/blink/public/web/web_form_element.h"
 #include "third_party/blink/public/web/web_local_frame.h"
-#include "third_party/blink/public/web/web_node.h"
 #include "third_party/blink/public/web/web_remote_frame.h"
 
 using blink::WebDocument;
 using blink::WebElement;
+using blink::WebFormControlElement;
+using blink::WebFormElement;
 using blink::WebString;
 
 namespace autofill {
@@ -22,24 +24,27 @@ namespace autofill {
 using AllowNull = base::StrongAlias<struct AllowNullTag, bool>;
 
 WebElement GetElementById(const WebDocument& doc,
-                          std::string_view id,
+                          base::StringPiece id,
                           AllowNull allow_null) {
   WebElement e = doc.GetElementById(WebString::FromASCII(std::string(id)));
   CHECK(allow_null || !e.IsNull());
   return e;
 }
 
-blink::WebElement GetElementById(const blink::WebNode& node,
-                                 std::string_view id,
-                                 AllowNull allow_null) {
-  WebElement e =
-      node.QuerySelector(WebString::FromASCII(base::StrCat({"#", id})));
-  CHECK(allow_null || !e.IsNull());
-  return e;
+WebFormControlElement GetFormControlElementById(const WebDocument& doc,
+                                                base::StringPiece id,
+                                                AllowNull allow_null) {
+  return GetElementById(doc, id, allow_null).To<WebFormControlElement>();
+}
+
+WebFormElement GetFormElementById(const WebDocument& doc,
+                                  base::StringPiece id,
+                                  AllowNull allow_null) {
+  return GetElementById(doc, id, allow_null).To<WebFormElement>();
 }
 
 content::RenderFrame* GetIframeById(const WebDocument& doc,
-                                    std::string_view id,
+                                    base::StringPiece id,
                                     AllowNull allow_null) {
   WebElement iframe = GetElementById(doc, id, allow_null);
   CHECK(allow_null || iframe.HasHTMLTagName("iframe"));
@@ -50,7 +55,7 @@ content::RenderFrame* GetIframeById(const WebDocument& doc,
 }
 
 FrameToken GetFrameToken(const blink::WebDocument& doc,
-                         std::string_view id,
+                         base::StringPiece id,
                          AllowNull allow_null) {
   WebElement iframe = GetElementById(doc, id, allow_null);
   CHECK(allow_null || iframe.HasHTMLTagName("iframe"));

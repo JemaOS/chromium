@@ -62,12 +62,6 @@ void JourneyLoggerAndroid::SetOptOutOffered(
   journey_logger_.SetOptOutOffered();
 }
 
-void JourneyLoggerAndroid::SetActivationlessShow(
-    JNIEnv* env,
-    const base::android::JavaParamRef<jobject>& jcaller) {
-  journey_logger_.SetActivationlessShow();
-}
-
 void JourneyLoggerAndroid::SetSkippedShow(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& jcaller) {
@@ -160,8 +154,12 @@ void JourneyLoggerAndroid::SetAborted(
 
 void JourneyLoggerAndroid::SetNotShown(
     JNIEnv* env,
-    const base::android::JavaParamRef<jobject>& jcaller) {
-  journey_logger_.SetNotShown();
+    const base::android::JavaParamRef<jobject>& jcaller,
+    jint jreason) {
+  DCHECK_GE(jreason, 0);
+  DCHECK_LT(jreason, JourneyLogger::NotShownReason::NOT_SHOWN_REASON_MAX);
+  journey_logger_.SetNotShown(
+      static_cast<JourneyLogger::NotShownReason>(jreason));
 }
 
 void JourneyLoggerAndroid::SetNoMatchingCredentialsShown(

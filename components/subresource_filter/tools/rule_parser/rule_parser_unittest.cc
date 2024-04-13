@@ -5,7 +5,6 @@
 #include "components/subresource_filter/tools/rule_parser/rule_parser.h"
 
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/strings/string_piece.h"
@@ -18,7 +17,7 @@ namespace subresource_filter {
 
 namespace {
 
-void ParseAndExpectUrlRule(std::string_view line,
+void ParseAndExpectUrlRule(base::StringPiece line,
                            const UrlRule& expected_rule) {
   UrlRule canonicalized_rule = expected_rule;
   canonicalized_rule.Canonicalize();
@@ -34,7 +33,7 @@ void ParseAndExpectUrlRule(std::string_view line,
   EXPECT_EQ(canonicalized_rule, parser.url_rule());
 }
 
-void ParseAndExpectCssRule(std::string_view line,
+void ParseAndExpectCssRule(base::StringPiece line,
                            const CssRule& expected_rule) {
   CssRule canonicalized_rule = expected_rule;
   canonicalized_rule.Canonicalize();

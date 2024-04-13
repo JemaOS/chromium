@@ -7,8 +7,6 @@
 
 #include "build/build_config.h"
 
-#include <string>
-
 // Handles the mocking of OSCrypt, such that it does not reach system level
 // services.
 class OSCryptMocker {
@@ -18,10 +16,6 @@ class OSCryptMocker {
 
   // Inject mocking into OSCrypt.
   static void SetUp();
-
-  // Obtain the raw encryption key from OSCrypt. This is used to e.g. initialize
-  // the mock key in another process.
-  static std::string GetRawEncryptionKey();
 
 #if BUILDFLAG(IS_APPLE)
   // Pretend that backend for storing keys is unavailable.

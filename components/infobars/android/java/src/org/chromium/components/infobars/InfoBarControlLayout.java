@@ -76,12 +76,8 @@ public final class InfoBarControlLayout extends ViewGroup {
             if (convertView instanceof TextView) {
                 view = (TextView) convertView;
             } else {
-                view =
-                        (TextView)
-                                inflateLayout(
-                                        getContext(),
-                                        R.layout.infobar_control_spinner_drop_down,
-                                        parent);
+                view = (TextView) inflateLayout(
+                        getContext(), R.layout.infobar_control_spinner_drop_down, parent);
             }
 
             view.setText(getItem(position).toString());
@@ -94,12 +90,8 @@ public final class InfoBarControlLayout extends ViewGroup {
             if (convertView instanceof DualControlLayout) {
                 view = (DualControlLayout) convertView;
             } else {
-                view =
-                        (DualControlLayout)
-                                inflateLayout(
-                                        getContext(),
-                                        R.layout.infobar_control_spinner_view,
-                                        parent);
+                view = (DualControlLayout) inflateLayout(
+                        getContext(), R.layout.infobar_control_spinner_view, parent);
             }
 
             // Set up the spinner label.  The text it displays won't change.
@@ -135,13 +127,17 @@ public final class InfoBarControlLayout extends ViewGroup {
             return mMinWidthRequiredForValues;
         }
 
-        /** Explicitly sets the minimum width required to display all of the values. */
+        /**
+         * Explicitly sets the minimum width required to display all of the values.
+         */
         void setMinWidthRequiredForValues(int requiredWidth) {
             mMinWidthRequiredForValues = requiredWidth;
         }
     }
 
-    /** Extends the regular LayoutParams by determining where a control should be located. */
+    /**
+     * Extends the regular LayoutParams by determining where a control should be located.
+     */
     @VisibleForTesting
     static final class ControlLayoutParams extends LayoutParams {
         public int start;
@@ -163,7 +159,9 @@ public final class InfoBarControlLayout extends ViewGroup {
     private final int mMarginBetweenRows;
     private final int mMarginBetweenColumns;
 
-    /** Do not call this method directly; use {@link InfoBarLayout#addControlLayout()}. */
+    /**
+     * Do not call this method directly; use {@link InfoBarLayout#addControlLayout()}.
+     */
     public InfoBarControlLayout(Context context) {
         this(context, null);
     }
@@ -180,10 +178,9 @@ public final class InfoBarControlLayout extends ViewGroup {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int fullWidth =
-                MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED
-                        ? Integer.MAX_VALUE
-                        : MeasureSpec.getSize(widthMeasureSpec);
+        int fullWidth = MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED
+                ? Integer.MAX_VALUE
+                : MeasureSpec.getSize(widthMeasureSpec);
         int columnWidth = Math.max(0, (fullWidth - mMarginBetweenColumns) / 2);
 
         int atMostFullWidthSpec = MeasureSpec.makeMeasureSpec(fullWidth, MeasureSpec.AT_MOST);
@@ -261,8 +258,7 @@ public final class InfoBarControlLayout extends ViewGroup {
 
         // Compute the ViewGroup's height, accounting for the final row's height.
         layoutHeight += currentRowHeight;
-        setMeasuredDimension(
-                resolveSize(fullWidth, widthMeasureSpec),
+        setMeasuredDimension(resolveSize(fullWidth, widthMeasureSpec),
                 resolveSize(layoutHeight, heightMeasureSpec));
     }
 
@@ -333,9 +329,8 @@ public final class InfoBarControlLayout extends ViewGroup {
      * @param titleMessage     Message to display on Infobar title.
      */
     public View addIconTitle(int iconResourceId, CharSequence titleMessage) {
-        LinearLayout layout =
-                (LinearLayout)
-                        inflateLayout(getContext(), R.layout.infobar_control_icon_with_title, this);
+        LinearLayout layout = (LinearLayout) inflateLayout(
+                getContext(), R.layout.infobar_control_icon_with_title, this);
         addView(layout, new ControlLayoutParams());
 
         ImageView iconView = (ImageView) layout.findViewById(R.id.control_title_icon);
@@ -343,8 +338,7 @@ public final class InfoBarControlLayout extends ViewGroup {
 
         TextView titleView = (TextView) layout.findViewById(R.id.control_title);
         titleView.setText(titleMessage);
-        titleView.setTextSize(
-                TypedValue.COMPLEX_UNIT_PX,
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_PX,
                 getContext().getResources().getDimension(R.dimen.infobar_text_size));
 
         return layout;
@@ -363,16 +357,9 @@ public final class InfoBarControlLayout extends ViewGroup {
      * @param primaryMessage   Message to display for the toggle.
      * @param secondaryMessage Additional descriptive text for the toggle.  May be null.
      */
-    public View addIcon(
-            int iconResourceId,
-            int iconColorId,
-            CharSequence primaryMessage,
+    public View addIcon(int iconResourceId, int iconColorId, CharSequence primaryMessage,
             CharSequence secondaryMessage) {
-        return addIcon(
-                iconResourceId,
-                iconColorId,
-                primaryMessage,
-                secondaryMessage,
+        return addIcon(iconResourceId, iconColorId, primaryMessage, secondaryMessage,
                 R.dimen.infobar_text_size);
     }
 
@@ -391,16 +378,10 @@ public final class InfoBarControlLayout extends ViewGroup {
      * @param resourceId       Size of resource id to be applied to primaryMessage
      *                         and secondaryMessage.
      */
-    public View addIcon(
-            int iconResourceId,
-            int iconColorId,
-            CharSequence primaryMessage,
-            CharSequence secondaryMessage,
-            int resourceId) {
-        LinearLayout layout =
-                (LinearLayout)
-                        inflateLayout(
-                                getContext(), R.layout.infobar_control_icon_with_description, this);
+    public View addIcon(int iconResourceId, int iconColorId, CharSequence primaryMessage,
+            CharSequence secondaryMessage, int resourceId) {
+        LinearLayout layout = (LinearLayout) inflateLayout(
+                getContext(), R.layout.infobar_control_icon_with_description, this);
         addView(layout, new ControlLayoutParams());
 
         ImageView iconView = (ImageView) layout.findViewById(R.id.control_icon);
@@ -421,8 +402,7 @@ public final class InfoBarControlLayout extends ViewGroup {
             layout.removeView(secondaryView);
         } else {
             secondaryView.setText(secondaryMessage);
-            secondaryView.setTextSize(
-                    TypedValue.COMPLEX_UNIT_PX,
+            secondaryView.setTextSize(TypedValue.COMPLEX_UNIT_PX,
                     getContext().getResources().getDimension(resourceId));
         }
 
@@ -444,16 +424,10 @@ public final class InfoBarControlLayout extends ViewGroup {
      * @param resourceId       Size of resource id to be applied to primaryMessage
      *                         and secondaryMessage.
      */
-    public View addIcon(
-            Bitmap iconBitmap,
-            int iconColorId,
-            CharSequence primaryMessage,
-            CharSequence secondaryMessage,
-            int resourceId) {
-        LinearLayout layout =
-                (LinearLayout)
-                        inflateLayout(
-                                getContext(), R.layout.infobar_control_icon_with_description, this);
+    public View addIcon(Bitmap iconBitmap, int iconColorId, CharSequence primaryMessage,
+            CharSequence secondaryMessage, int resourceId) {
+        LinearLayout layout = (LinearLayout) inflateLayout(
+                getContext(), R.layout.infobar_control_icon_with_description, this);
         addView(layout, new ControlLayoutParams());
 
         ImageView iconView = (ImageView) layout.findViewById(R.id.control_icon);
@@ -474,8 +448,7 @@ public final class InfoBarControlLayout extends ViewGroup {
             layout.removeView(secondaryView);
         } else {
             secondaryView.setText(secondaryMessage);
-            secondaryView.setTextSize(
-                    TypedValue.COMPLEX_UNIT_PX,
+            secondaryView.setTextSize(TypedValue.COMPLEX_UNIT_PX,
                     getContext().getResources().getDimension(resourceId));
         }
 
@@ -496,12 +469,8 @@ public final class InfoBarControlLayout extends ViewGroup {
      * @param toggleId       ID to use for the toggle.
      * @param isChecked      Whether the toggle should start off checked.
      */
-    public View addSwitch(
-            int iconResourceId,
-            int iconColorId,
-            CharSequence toggleMessage,
-            int toggleId,
-            boolean isChecked) {
+    public View addSwitch(int iconResourceId, int iconColorId, CharSequence toggleMessage,
+            int toggleId, boolean isChecked) {
         LinearLayout switchLayout =
                 (LinearLayout) inflateLayout(getContext(), R.layout.infobar_control_toggle, this);
         addView(switchLayout, new ControlLayoutParams());
@@ -544,7 +513,9 @@ public final class InfoBarControlLayout extends ViewGroup {
         return radioLayout;
     }
 
-    /** Creates a standard spinner and adds it to the layout. */
+    /**
+     * Creates a standard spinner and adds it to the layout.
+     */
     public <T> Spinner addSpinner(int spinnerId, ArrayAdapter<T> arrayAdapter) {
         Spinner spinner =
                 (Spinner) inflateLayout(getContext(), R.layout.infobar_control_spinner, this);
@@ -554,7 +525,9 @@ public final class InfoBarControlLayout extends ViewGroup {
         return spinner;
     }
 
-    /** Creates and adds a full-width control with additional text describing what an InfoBar is for. */
+    /**
+     * Creates and adds a full-width control with additional text describing what an InfoBar is for.
+     */
     public View addDescription(CharSequence message) {
         return addDescription(message, ResourcesCompat.ID_NULL);
     }
@@ -598,7 +571,9 @@ public final class InfoBarControlLayout extends ViewGroup {
         return messageView;
     }
 
-    /** @return The {@link ControlLayoutParams} for the given child. */
+    /**
+     * @return The {@link ControlLayoutParams} for the given child.
+     */
     @VisibleForTesting
     static ControlLayoutParams getControlLayoutParams(View child) {
         return (ControlLayoutParams) child.getLayoutParams();

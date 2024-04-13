@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,7 +21,7 @@ namespace segmentation_platform {
 namespace {
 
 // List of sub-segments for Power segment.
-enum class PowerUserBin {
+enum class PowerUserSubsegment {
   kUnknown = 0,
 
   kNone = 1,
@@ -151,17 +151,17 @@ constexpr std::array<MetadataWriter::UMAFeature, 27> kPowerUserUMAFeatures = {
 
 // Any updates to these strings need to also update the field trials allowlist
 // in go/segmentation-field-trials-map.
-std::string PowerUserBinToString(PowerUserBin power_group) {
+std::string PowerUserSubsegmentToString(PowerUserSubsegment power_group) {
   switch (power_group) {
-    case PowerUserBin::kUnknown:
+    case PowerUserSubsegment::kUnknown:
       return "Unknown";
-    case PowerUserBin::kNone:
+    case PowerUserSubsegment::kNone:
       return "None";
-    case PowerUserBin::kLow:
+    case PowerUserSubsegment::kLow:
       return "Low";
-    case PowerUserBin::kMedium:
+    case PowerUserSubsegment::kMedium:
       return "Medium";
-    case PowerUserBin::kHigh:
+    case PowerUserSubsegment::kHigh:
       return "High";
   }
 }
@@ -179,44 +179,45 @@ std::unique_ptr<Config> PowerUserSegment::GetConfig() {
   config->segmentation_uma_name = kPowerUserUmaName;
   config->AddSegmentId(SegmentId::POWER_USER_SEGMENT,
                        std::make_unique<PowerUserSegment>());
-  config->auto_execute_and_cache = true;
+  config->segment_selection_ttl = base::Days(7);
+  config->unknown_selection_ttl = base::Days(7);
+  config->is_boolean_segment = true;
+
   return config;
 }
 
-PowerUserSegment::PowerUserSegment()
-    : DefaultModelProvider(kPowerUserSegmentId) {}
+PowerUserSegment::PowerUserSegment() : ModelProvider(kPowerUserSegmentId) {}
 
-std::unique_ptr<DefaultModelProvider::ModelConfig>
-PowerUserSegment::GetModelConfig() {
+absl::optional<std::string> PowerUserSegment::GetSubsegmentName(
+    int subsegment_rank) {
+  DCHECK(RANK(PowerUserSubsegment::kUnknown) <= subsegment_rank &&
+         subsegment_rank <= RANK(PowerUserSubsegment::kMaxValue));
+  PowerUserSubsegment subgroup =
+      static_cast<PowerUserSubsegment>(subsegment_rank);
+  return PowerUserSubsegmentToString(subgroup);
+}
+
+void PowerUserSegment::InitAndFetchModel(
+    const ModelUpdatedCallback& model_updated_callback) {
   proto::SegmentationModelMetadata chrome_start_metadata;
   MetadataWriter writer(&chrome_start_metadata);
   writer.SetDefaultSegmentationMetadataConfig(
       kPowerUserMinSignalCollectionLength, kPowerUserSignalStorageLength);
 
-  static_assert(static_cast<int>(PowerUserBin::kMaxValue) == 4,
-                "Please update output config when updating the bins");
-  writer.AddOutputConfigForBinnedClassifier(
-      {
-          {RANK(PowerUserBin::kNone),
-           PowerUserBinToString(PowerUserBin::kNone)},
-          {RANK(PowerUserBin::kLow), PowerUserBinToString(PowerUserBin::kLow)},
-          {RANK(PowerUserBin::kMedium),
-           PowerUserBinToString(PowerUserBin::kMedium)},
-          {RANK(PowerUserBin::kHigh),
-           PowerUserBinToString(PowerUserBin::kHigh)},
-      },
-      "Unknown");
-  writer.AddPredictedResultTTLInOutputConfig(
-      /*top_label_to_ttl_list=*/{}, /*default_ttl=*/7,
-      /*time_unit=*/proto::TimeUnit::DAY);
+  // Set discrete mapping.
+  writer.AddBooleanSegmentDiscreteMappingWithSubsegments(
+      kPowerUserKey, RANK(PowerUserSubsegment::kMedium),
+      RANK(PowerUserSubsegment::kMaxValue));
 
   // Set features.
   writer.AddUmaFeatures(kPowerUserUMAFeatures.data(),
                         kPowerUserUMAFeatures.size());
 
   constexpr int kModelVersion = 1;
-  return std::make_unique<ModelConfig>(std::move(chrome_start_metadata),
-                                       kModelVersion);
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindRepeating(model_updated_callback, kPowerUserSegmentId,
+                          std::move(chrome_start_metadata), kModelVersion));
 }
 
 static void AddToScoreIf(bool usage, int& score) {
@@ -230,11 +231,11 @@ void PowerUserSegment::ExecuteModelWithInput(
   // Invalid inputs.
   if (inputs.size() != kPowerUserUMAFeatures.size()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+        FROM_HERE, base::BindOnce(std::move(callback), absl::nullopt));
     return;
   }
 
-  PowerUserBin segment = PowerUserBin::kNone;
+  PowerUserSubsegment segment = PowerUserSubsegment::kNone;
 
   int score = 0;
 
@@ -264,19 +265,23 @@ void PowerUserSegment::ExecuteModelWithInput(
 
   // Max score is 19.
   if (score >= 10) {
-    segment = PowerUserBin::kHigh;
+    segment = PowerUserSubsegment::kHigh;
   } else if (score >= 7) {
-    segment = PowerUserBin::kMedium;
+    segment = PowerUserSubsegment::kMedium;
   } else if (score >= 3) {
-    segment = PowerUserBin::kLow;
+    segment = PowerUserSubsegment::kLow;
   } else {
-    segment = PowerUserBin::kNone;
+    segment = PowerUserSubsegment::kNone;
   }
 
   float result = RANK(segment);
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(std::move(callback), ModelProvider::Response(1, result)));
+}
+
+bool PowerUserSegment::ModelAvailable() {
+  return true;
 }
 
 }  // namespace segmentation_platform

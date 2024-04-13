@@ -3,24 +3,8 @@
 // found in the LICENSE file.
 
 #include "components/segmentation_platform/public/result.h"
-#include <sstream>
 
 namespace segmentation_platform {
-
-namespace {
-
-std::string StatusToString(PredictionStatus status) {
-  switch (status) {
-    case PredictionStatus::kNotReady:
-      return "Not ready";
-    case PredictionStatus::kFailed:
-      return "Failed";
-    case PredictionStatus::kSucceeded:
-      return "Succeeded";
-  }
-}
-
-}  // namespace
 
 ClassificationResult::ClassificationResult(PredictionStatus status)
     : status(status) {}
@@ -33,55 +17,13 @@ ClassificationResult::ClassificationResult(const ClassificationResult&) =
 ClassificationResult& ClassificationResult::operator=(
     const ClassificationResult&) = default;
 
-std::string ClassificationResult::ToDebugString() const {
-  std::stringstream debug_string;
-  debug_string << "Status: " << StatusToString(status);
+RegressionResult::RegressionResult(PredictionStatus status) : status(status) {}
 
-  for (unsigned i = 0; i < ordered_labels.size(); ++i) {
-    debug_string << " output " << i << ": " << ordered_labels.at(i);
-  }
+RegressionResult::~RegressionResult() = default;
 
-  return debug_string.str();
-}
+RegressionResult::RegressionResult(const RegressionResult&) = default;
 
-AnnotatedNumericResult::AnnotatedNumericResult(PredictionStatus status)
-    : status(status) {}
-
-AnnotatedNumericResult::~AnnotatedNumericResult() = default;
-
-AnnotatedNumericResult::AnnotatedNumericResult(const AnnotatedNumericResult&) =
+RegressionResult& RegressionResult::operator=(const RegressionResult&) =
     default;
-
-AnnotatedNumericResult& AnnotatedNumericResult::operator=(
-    const AnnotatedNumericResult&) = default;
-
-std::optional<float> AnnotatedNumericResult::GetResultForLabel(
-    base::StringPiece label) const {
-  if (status != PredictionStatus::kSucceeded ||
-      !result.output_config().predictor().has_generic_predictor()) {
-    return std::nullopt;
-  }
-
-  const auto& labels =
-      result.output_config().predictor().generic_predictor().output_labels();
-  DCHECK_EQ(result.result_size(), labels.size());
-  for (int index = 0; index < labels.size(); ++index) {
-    if (labels.at(index) == label) {
-      return result.result().at(index);
-    }
-  }
-  return std::nullopt;
-}
-
-std::string AnnotatedNumericResult::ToDebugString() const {
-  std::stringstream debug_string;
-  debug_string << "Status: " << StatusToString(status);
-
-  for (int i = 0; i < result.result_size(); ++i) {
-    debug_string << " output " << i << ": " << result.result(i);
-  }
-
-  return debug_string.str();
-}
 
 }  // namespace segmentation_platform

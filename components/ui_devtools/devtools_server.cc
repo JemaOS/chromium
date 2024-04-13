@@ -17,7 +17,6 @@
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/task/thread_pool.h"
 #include "base/values.h"
 #include "components/ui_devtools/switches.h"
@@ -186,7 +185,7 @@ void UiDevToolsServer::SetOnSessionEnded(base::OnceClosure callback) const {
 void UiDevToolsServer::MakeServer(
     mojo::PendingRemote<network::mojom::TCPServerSocket> server_socket,
     int result,
-    const std::optional<net::IPEndPoint>& local_addr) {
+    const absl::optional<net::IPEndPoint>& local_addr) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(devtools_server_sequence_);
   if (result == net::OK) {
     server_ = std::make_unique<network::server::HttpServer>(
@@ -256,13 +255,8 @@ void UiDevToolsServer::OnClose(int connection_id) {
   client->Disconnect();
   connections_.erase(it);
 
-  if (connections_.empty() && on_session_ended_) {
-    // The call stack might have callbacks which still have the pointer of
-    // `this` and `on_session_ended_` may destroy this. Ensure
-    // `on_session_ended_` is called in a dedicated task.
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, std::move(on_session_ended_));
-  }
+  if (connections_.empty() && on_session_ended_)
+    std::move(on_session_ended_).Run();
 }
 
 }  // namespace ui_devtools

@@ -6,7 +6,6 @@
 #define COMPONENTS_FEATURE_ENGAGEMENT_PUBLIC_EVENT_CONSTANTS_H_
 
 #include "build/build_config.h"
-#include "components/feature_engagement/public/feature_constants.h"
 
 namespace feature_engagement {
 
@@ -33,16 +32,26 @@ extern const char kBookmarkStarMenuOpened[];
 // Customize chrome was opened.
 extern const char kCustomizeChromeOpened[];
 
+// All conditions for reopen closed tab IPH were met. Since this IPH needs to
+// track user events (opening/closing tabs, focusing the omnibox, etc) on the
+// second level, it must be done manually.
+extern const char kReopenTabConditionsMet[];
+// The user reopened a previously closed tab.
+extern const char kTabReopened[];
+
 // A tab with playing media was sent to the background.
 extern const char kMediaBackgrounded[];
 
 // The user opened the Global Media Controls dialog.
 extern const char kGlobalMediaControlsOpened[];
 
-// A side panel has been pinned.
-extern const char kSidePanelPinned[];
-// A side panel has been opened from the app menu.
-extern const char kSidePanelFromMenuShown[];
+// All the events declared below are the string names of deferred onboarding
+// events for the Focus Mode feature.
+
+// The user has opened a Focus Mode window.
+extern const char kFocusModeOpened[];
+// All conditions for show Focus Mode IPH were met.
+extern const char kFocusModeConditionsMet[];
 
 // The side search panel was automatically triggered.
 extern const char kSideSearchAutoTriggered[];
@@ -62,9 +71,6 @@ extern const char kWebUITabStripOpened[];
 // The PWA was installed by the user.
 extern const char kDesktopPwaInstalled[];
 
-// A module's actions were clicked on the NewTabPage.
-extern const char kDesktopNTPModuleUsed[];
-
 // The user entered the special "focus help bubble" accelerator.
 extern const char kFocusHelpBubbleAcceleratorPressed[];
 
@@ -76,16 +82,10 @@ extern const char kFocusHelpBubbleAcceleratorPromoRead[];
 extern const char kBatterySaverDialogShown[];
 
 // The user has opened the high efficiency page action chip
-extern const char kMemorySaverDialogShown[];
+extern const char kHighEfficiencyDialogShown[];
 
-// Extensions menu is opened when any extension has access to the current site.
-extern const char kExtensionsMenuOpenedWhileExtensionHasAccess[];
-
-// Th user clicked the extensions request access button in the toolbar.
-extern const char kExtensionsRequestAccessButtonClicked[];
-
-// The user has opened the cookie controls bubble.
-extern const char kCookieControlsBubbleShown[];
+// The user clicked on the performance menu item
+extern const char kPerformanceMenuItemActivated[];
 
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
@@ -131,18 +131,6 @@ extern const char kPriceNotificationsUsed[];
 // The user has been shown a default browser promo.
 extern const char kDefaultBrowserPromoShown[];
 
-// The user tapped Remind Me Later on a default browser promo.
-extern const char kDefaultBrowserPromoRemindMeLater[];
-
-// The Password Manager widget promo was triggered.
-extern const char kPasswordManagerWidgetPromoTriggered[];
-
-// The Password Manager widget was used.
-extern const char kPasswordManagerWidgetPromoUsed[];
-
-// The Password Manager widget promo was closed.
-extern const char kPasswordManagerWidgetPromoClosed[];
-
 // The user has taken an action that is a criterion towards becoming eligible to
 // be shown the blue dot default browser promo.
 extern const char kBlueDotPromoCriterionMet[];
@@ -175,74 +163,8 @@ extern const char kBlueDotPromoOverflowMenuDismissed[];
 // row.
 extern const char kBlueDotPromoSettingsDismissed[];
 
-// The user snoozed the Credential Provider Extension Promo.
+// The user snoozed the Credential Provider Extension Promo
 extern const char kCredentialProviderExtensionPromoSnoozed[];
-
-// The user tapped Remind Me Later on the Docking Promo.
-extern const char kDockingPromoRemindMeLater[];
-
-// The user opened an url from omnibox.
-extern const char kOpenUrlFromOmnibox[];
-
-// The new tab toolbar item is used.
-extern const char kNewTabToolbarItemUsed[];
-
-// The tab grid toolbar item is used.
-extern const char kTabGridToolbarItemUsed[];
-
-// The history item on overflow menu is used.
-extern const char kHistoryOnOverflowMenuUsed[];
-
-// The share item on the toolbar is used.
-extern const char kShareToolbarItemUsed[];
-
-// The user has triggered the Lens button in the Omnibox keyboard.
-extern const char kLensButtonKeyboardUsed[];
-
-// The omnibox position choice promo has been shown.
-extern const char kOmniboxPositionPromoShown[];
-
-// The user has triggered Parcel Tracking.
-extern const char kParcelTrackingTriggered[];
-
-// The user has tracked a parcel.
-extern const char kParcelTracked[];
-
-// The user has more than one gesture to refresh a page in iOS. This includes
-// but not limited to re-typing the URL in omnibox and refreshing from context
-// menu.
-extern const char kIOSMultiGestureRefreshUsed[];
-
-// The user has used the pull-to-refresh feature in iOS.
-extern const char kIOSPullToRefreshUsed[];
-
-// The user has tapped "incognito" on the page control in the tab grid.
-extern const char kIOSIncognitoPageControlTapped[];
-
-// The user has swiped right from regular tab grid to the incognito tab grid.
-extern const char kIOSSwipeRightForIncognitoUsed[];
-
-// The user has tapped the toolbar backward/forward button to navigate on a tab.
-extern const char kIOSBackForwardButtonTapped[];
-
-// The user has swiped from the edge to navigate backward or forward on a tab.
-extern const char kIOSSwipeBackForwardUsed[];
-
-// The user has tapped on an adjacent tab in the tab grid.
-extern const char kIOSTabGridAdjacentTabTapped[];
-
-// The user has swipped the toolbar to go to an adjacent tab.
-extern const char kIOSSwipeToolbarToChangeTabUsed[];
-
-// The user has opened the Overflow Menu customization screen.
-extern const char kIOSOverflowMenuCustomizationUsed[];
-
-// The user has used ann Overflow Menu item where customizing the menu could
-// have helped.
-extern const char kIOSOverflowMenuOffscreenItemUsed[];
-
-// The Default Browser FRE promo was shown to the user.
-extern const char kIOSDefaultBrowserFREShown[];
 
 #endif  // BUILDFLAG(IS_IOS)
 

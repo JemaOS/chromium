@@ -4,15 +4,13 @@
 
 #include "components/power_metrics/m1_sensors_mac.h"
 
-#include <CoreFoundation/CoreFoundation.h>
 #import <Foundation/Foundation.h>
 #import <IOKit/hid/IOHIDDeviceKeys.h>
 #import <IOKit/hidsystem/IOHIDServiceClient.h>
 
 #include <utility>
 
-#include "base/apple/bridging.h"
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
 #include "base/memory/ptr_util.h"
 #include "components/power_metrics/m1_sensors_internal_types_mac.h"
 
@@ -32,13 +30,13 @@ namespace power_metrics {
 
 namespace {
 
-std::optional<double> GetEventFloatValue(IOHIDServiceClientRef service,
-                                         int64_t event_type) {
-  base::apple::ScopedCFTypeRef<CFTypeRef> event(
+absl::optional<double> GetEventFloatValue(IOHIDServiceClientRef service,
+                                          int64_t event_type) {
+  base::ScopedCFTypeRef<CFTypeRef> event(
       IOHIDServiceClientCopyEvent(service, event_type, 0, 0));
   if (!event)
-    return std::nullopt;
-  return IOHIDEventGetFloatValue(event.get(), IOHIDEventFieldBase(event_type));
+    return absl::nullopt;
+  return IOHIDEventGetFloatValue(event, IOHIDEventFieldBase(event_type));
 }
 
 }  // namespace
@@ -52,25 +50,24 @@ M1SensorsReader::~M1SensorsReader() = default;
 
 // static
 std::unique_ptr<M1SensorsReader> M1SensorsReader::Create() {
-  base::apple::ScopedCFTypeRef<IOHIDEventSystemClientRef> system(
+  base::ScopedCFTypeRef<IOHIDEventSystemClientRef> system(
       IOHIDEventSystemClientCreate(kCFAllocatorDefault));
 
-  if (!system) {
+  if (system == nil)
     return nullptr;
-  }
 
   NSDictionary* filter = @{
-    @kIOHIDPrimaryUsagePageKey : @(kHIDPage_AppleVendor),
-    @kIOHIDPrimaryUsageKey : @(kHIDUsage_AppleVendor_TemperatureSensor),
+    @kIOHIDPrimaryUsagePageKey : [NSNumber numberWithInt:kHIDPage_AppleVendor],
+    @kIOHIDPrimaryUsageKey :
+        [NSNumber numberWithInt:kHIDUsage_AppleVendor_TemperatureSensor],
   };
-  IOHIDEventSystemClientSetMatching(system.get(),
-                                    base::apple::NSToCFPtrCast(filter));
+  IOHIDEventSystemClientSetMatching(system, base::mac::NSToCFCast(filter));
 
   return base::WrapUnique(new M1SensorsReader(std::move(system)));
 }
 
 M1SensorsReader::TemperaturesCelsius M1SensorsReader::ReadTemperatures() {
-  base::apple::ScopedCFTypeRef<CFArrayRef> services(
+  base::ScopedCFTypeRef<CFArrayRef> services(
       IOHIDEventSystemClientCopyServices(system_.get()));
 
   // There are multiple temperature sensors on P-Cores and E-Cores. Count and
@@ -80,19 +77,18 @@ M1SensorsReader::TemperaturesCelsius M1SensorsReader::ReadTemperatures() {
   double sum_p_core_temp = 0;
   double sum_e_core_temp = 0;
 
-  for (CFIndex i = 0; i < CFArrayGetCount(services.get()); ++i) {
-    IOHIDServiceClientRef service =
-        (IOHIDServiceClientRef)CFArrayGetValueAtIndex(services.get(), i);
+  for (id service_obj in base::mac::CFToNSCast(services.get())) {
+    IOHIDServiceClientRef service = (IOHIDServiceClientRef)service_obj;
 
-    base::apple::ScopedCFTypeRef<CFStringRef> product(
-        base::apple::CFCast<CFStringRef>(
+    base::ScopedCFTypeRef<CFStringRef> product_cf(
+        base::mac::CFCast<CFStringRef>(
             IOHIDServiceClientCopyProperty(service, CFSTR(kIOHIDProductKey))));
-    if (!product) {
+    if (product_cf == nil)
       continue;
-    }
 
-    if (CFStringHasPrefix(product.get(), CFSTR("pACC MTR Temp Sensor"))) {
-      std::optional<double> temp =
+    if ([base::mac::CFToNSCast(product_cf.get())
+            hasPrefix:@"pACC MTR Temp Sensor"]) {
+      absl::optional<double> temp =
           GetEventFloatValue(service, kIOHIDEventTypeTemperature);
       if (temp.has_value()) {
         num_p_core_temp += 1;
@@ -100,8 +96,9 @@ M1SensorsReader::TemperaturesCelsius M1SensorsReader::ReadTemperatures() {
       }
     }
 
-    if (CFStringHasPrefix(product.get(), CFSTR("eACC MTR Temp Sensor"))) {
-      std::optional<double> temp =
+    if ([base::mac::CFToNSCast(product_cf.get())
+            hasPrefix:@"eACC MTR Temp Sensor"]) {
+      absl::optional<double> temp =
           GetEventFloatValue(service, kIOHIDEventTypeTemperature);
       if (temp.has_value()) {
         num_e_core_temp += 1;
@@ -120,7 +117,7 @@ M1SensorsReader::TemperaturesCelsius M1SensorsReader::ReadTemperatures() {
 }
 
 M1SensorsReader::M1SensorsReader(
-    base::apple::ScopedCFTypeRef<IOHIDEventSystemClientRef> system)
+    base::ScopedCFTypeRef<IOHIDEventSystemClientRef> system)
     : system_(std::move(system)) {}
 
 }  // namespace power_metrics

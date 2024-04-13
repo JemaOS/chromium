@@ -8,7 +8,9 @@ import android.content.Context;
 
 import org.chromium.ui.base.WindowAndroid;
 
-/** A factory for producing a {@link PwaBottomSheetController}. */
+/**
+ * A factory for producing a {@link PwaBottomSheetController}.
+ */
 public class PwaBottomSheetControllerFactory {
     public static PwaBottomSheetController createPwaBottomSheetController(Context context) {
         return new PwaBottomSheetController(context);

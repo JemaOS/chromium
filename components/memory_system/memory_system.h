@@ -6,7 +6,8 @@
 #define COMPONENTS_MEMORY_SYSTEM_MEMORY_SYSTEM_H_
 
 #include <memory>
-#include <optional>
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace memory_system {
 
@@ -24,10 +25,10 @@ class MemorySystem {
   // Initialize the memory system with the given parameters. If an empty
   // optional is given for a component, it will not be initialized.
   void Initialize(
-      const std::optional<GwpAsanParameters>& gwp_asan_parameters,
-      const std::optional<ProfilingClientParameters>&
+      const absl::optional<GwpAsanParameters>& gwp_asan_parameters,
+      const absl::optional<ProfilingClientParameters>&
           profiling_client_parameters,
-      const std::optional<DispatcherParameters>& dispatcher_parameters);
+      const absl::optional<DispatcherParameters>& dispatcher_parameters);
 
  private:
   struct Impl;

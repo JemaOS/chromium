@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_PERFORMANCE_MANAGER_PUBLIC_V8_MEMORY_V8_DETAILED_MEMORY_H_
 #define COMPONENTS_PERFORMANCE_MANAGER_PUBLIC_V8_MEMORY_V8_DETAILED_MEMORY_H_
 
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
@@ -16,6 +15,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "base/types/pass_key.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace performance_manager {
 
@@ -152,7 +152,7 @@ class V8DetailedMemoryExecutionContextData {
 
   // Returns the number of bytes used by canvas elements for this frame at the
   // last measurement. It is empty if the frame has no canvas elements.
-  std::optional<uint64_t> canvas_bytes_used() const {
+  absl::optional<uint64_t> canvas_bytes_used() const {
     return canvas_bytes_used_;
   }
 
@@ -163,9 +163,9 @@ class V8DetailedMemoryExecutionContextData {
   // TODO(906991): Remove this once PlzDedicatedWorker ships. Until then
   // the browser does not know URLs of dedicated workers, so we pass them
   // together with the measurement result and store in ExecutionContext data.
-  std::optional<std::string> url() const { return url_; }
+  absl::optional<std::string> url() const { return url_; }
 
-  void set_url(std::optional<std::string> url) { url_ = std::move(url); }
+  void set_url(absl::optional<std::string> url) { url_ = std::move(url); }
 
   // Returns frame data for the given node, or nullptr if no measurement has
   // been taken. The returned pointer must only be accessed on the graph
@@ -186,8 +186,8 @@ class V8DetailedMemoryExecutionContextData {
       const WorkerNode* node);
 
   uint64_t v8_bytes_used_ = 0;
-  std::optional<uint64_t> canvas_bytes_used_;
-  std::optional<std::string> url_;
+  absl::optional<uint64_t> canvas_bytes_used_;
+  absl::optional<std::string> url_;
 };
 
 class V8DetailedMemoryProcessData {
@@ -357,7 +357,7 @@ class V8DetailedMemoryRequest {
       base::PassKey<V8DetailedMemoryRequestAnySeq>,
       const base::TimeDelta& min_time_between_requests,
       MeasurementMode mode,
-      std::optional<base::WeakPtr<ProcessNode>> process_to_measure,
+      absl::optional<base::WeakPtr<ProcessNode>> process_to_measure,
       base::WeakPtr<V8DetailedMemoryRequestAnySeq> off_sequence_request);
 
   // Private constructor for V8DetailedMemoryRequestOneShot. Sets
@@ -381,7 +381,7 @@ class V8DetailedMemoryRequest {
 
  private:
   void StartMeasurementFromOffSequence(
-      std::optional<base::WeakPtr<ProcessNode>> process_to_measure,
+      absl::optional<base::WeakPtr<ProcessNode>> process_to_measure,
       Graph* graph);
   void StartMeasurementImpl(Graph* graph, const ProcessNode* process_node);
 
@@ -485,8 +485,7 @@ class V8DetailedMemoryRequestOneShot final : public V8DetailedMemoryObserver {
   void OnOwnerUnregistered();
 
 #if DCHECK_IS_ON()
-  raw_ptr<const ProcessNode, AcrossTasksDanglingUntriaged> process_
-      GUARDED_BY_CONTEXT(sequence_checker_);
+  raw_ptr<const ProcessNode> process_ GUARDED_BY_CONTEXT(sequence_checker_);
 #endif
 
   MeasurementCallback callback_ GUARDED_BY_CONTEXT(sequence_checker_);

@@ -33,7 +33,6 @@ import org.chromium.base.IntentUtils;
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.UnownedUserData;
-import org.chromium.base.UnownedUserDataHost;
 import org.chromium.base.UnownedUserDataKey;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.components.browser_ui.share.ShareParams.TargetChosenCallback;
@@ -42,16 +41,13 @@ import org.chromium.ui.base.WindowAndroid.IntentCallback;
 
 import java.lang.ref.WeakReference;
 
-/** A helper class that helps to start an intent to share titles and URLs. */
+/**
+ * A helper class that helps to start an intent to share titles and URLs.
+ */
 public class ShareHelper {
     private static final String TAG = "AndroidShare";
-
     /** The task ID of the activity that triggered the share action. */
     private static final String EXTRA_TASK_ID = "org.chromium.chrome.extra.TASK_ID";
-
-    /** The string identifier used as a key to mark the clean up intent. */
-    private static final String EXTRA_CLEAN_SHARE_SHEET =
-            "org.chromium.chrome.extra.CLEAN_SHARE_SHEET";
 
     /** The string identifier used as a key to set the extra stream's alt text */
     private static final String EXTRA_STREAM_ALT_TEXT = "android.intent.extra.STREAM_ALT_TEXT";
@@ -60,11 +56,8 @@ public class ShareHelper {
 
     // These values are recorded as histogram values. Entries should not be
     // renumbered and numeric values should never be reused.
-    @IntDef({
-        ShareSourceAndroid.ANDROID_SHARE_SHEET,
-        ShareSourceAndroid.CHROME_SHARE_SHEET,
-        ShareSourceAndroid.DIRECT_SHARE
-    })
+    @IntDef({ShareSourceAndroid.ANDROID_SHARE_SHEET, ShareSourceAndroid.CHROME_SHARE_SHEET,
+            ShareSourceAndroid.DIRECT_SHARE})
     public @interface ShareSourceAndroid {
         // This share is going via the Android share sheet.
         int ANDROID_SHARE_SHEET = 0;
@@ -121,17 +114,6 @@ public class ShareHelper {
     }
 
     /**
-     * Whether the intent is a send back clean up intent. This is an workaround for Chrome to clean
-     * the top share sheet activity.
-     * @param intent newIntent received by Chrome activity.
-     * @return Whether the intent can be ignored.
-     */
-    public static boolean isCleanerIntent(Intent intent) {
-        if (!IntentUtils.isTrustedIntentFromSelf(intent)) return false;
-        return IntentUtils.safeGetBooleanExtra(intent, EXTRA_CLEAN_SHARE_SHEET, false);
-    }
-
-    /**
      * Fire the intent to share content with the target app.
      *
      * @param window The current window.
@@ -151,12 +133,15 @@ public class ShareHelper {
         }
     }
 
-    /** BroadcastReceiver to record the chosen component when sharing an Intent. */
-    public static class TargetChosenReceiver extends BroadcastReceiver
-            implements IntentCallback, UnownedUserData {
+    /**
+     * BroadcastReceiver to record the chosen component when sharing an Intent.
+     */
+    public static class TargetChosenReceiver
+            extends BroadcastReceiver implements IntentCallback, UnownedUserData {
         private static final UnownedUserDataKey<TargetChosenReceiver> TARGET_CHOSEN_RECEIVER_KEY =
                 new UnownedUserDataKey<>(TargetChosenReceiver.class);
-        @Nullable private TargetChosenCallback mCallback;
+        @Nullable
+        private TargetChosenCallback mCallback;
         private WeakReference<Context> mAttachedContext;
         private WeakReference<WindowAndroid> mAttachedWindow;
         private String mReceiverAction;
@@ -178,16 +163,11 @@ public class ShareHelper {
             Activity activity = window.getActivity().get();
             assert activity != null;
             final String packageName = activity.getPackageName();
-            mReceiverAction =
-                    packageName
-                            + "/"
-                            + TargetChosenReceiver.class.getName()
-                            + activity.getTaskId()
-                            + "_ACTION";
+            mReceiverAction = packageName + "/" + TargetChosenReceiver.class.getName()
+                    + activity.getTaskId() + "_ACTION";
 
-            TargetChosenReceiver prevReceiver =
-                    TARGET_CHOSEN_RECEIVER_KEY.retrieveDataFromHost(
-                            window.getUnownedUserDataHost());
+            TargetChosenReceiver prevReceiver = TARGET_CHOSEN_RECEIVER_KEY.retrieveDataFromHost(
+                    window.getUnownedUserDataHost());
             if (prevReceiver != null) {
                 Log.e(TAG, "Another BroadcastReceiver already exists in the window.");
                 // In case where the receiver is not unregistered correctly, cancel the callback
@@ -210,15 +190,10 @@ public class ShareHelper {
             Intent intent = createSendBackIntentWithFilteredAction();
             Activity activity = window.getActivity().get();
             final PendingIntent pendingIntent =
-                    PendingIntent.getBroadcast(
-                            activity,
-                            activity.getTaskId(),
-                            intent,
-                            PendingIntent.FLAG_CANCEL_CURRENT
-                                    | PendingIntent.FLAG_ONE_SHOT
+                    PendingIntent.getBroadcast(activity, activity.getTaskId(), intent,
+                            PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_ONE_SHOT
                                     | IntentUtils.getPendingIntentMutabilityFlag(true));
-            return Intent.createChooser(
-                    sharingIntent,
+            return Intent.createChooser(sharingIntent,
                     activity.getString(R.string.share_link_chooser_title),
                     pendingIntent.getIntentSender());
         }
@@ -278,30 +253,6 @@ public class ShareHelper {
             }
         }
 
-        @Override
-        public void onDetachedFromHost(UnownedUserDataHost host) {
-            // Remove the weak reference to the context and window when it is removed from the
-            // attaching window.
-            if (mAttachedContext.get() != null) {
-                Log.i(TAG, "Dispatch cleaning intent to close the share sheet.");
-                // Issue a cleaner intent so the share sheet is cleared. This is a workaround to
-                // close the top ChooserActivity when share isn't completed.
-                Intent cleanerIntent = createCleanupIntent();
-                mAttachedContext.get().startActivity(cleanerIntent);
-            }
-            cancel();
-        }
-
-        protected Intent createCleanupIntent() {
-            Intent cleanerIntent = new Intent();
-            cleanerIntent.setClass(mAttachedContext.get(), mAttachedContext.get().getClass());
-            cleanerIntent.putExtra(EXTRA_CLEAN_SHARE_SHEET, true);
-            cleanerIntent.setFlags(
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            IntentUtils.addTrustedIntentExtras(cleanerIntent);
-            return cleanerIntent;
-        }
-
         private boolean isUntrustedIntent(Intent intent) {
             return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
                     && !IntentUtils.isTrustedIntentFromSelf(intent);
@@ -337,15 +288,12 @@ public class ShareHelper {
         final String action =
                 isMultipleFileShare ? Intent.ACTION_SEND_MULTIPLE : Intent.ACTION_SEND;
         Intent intent = new Intent(action);
-        intent.addFlags(
-                Intent.FLAG_ACTIVITY_NEW_DOCUMENT
-                        | Intent.FLAG_ACTIVITY_FORWARD_RESULT
-                        | Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP
-                        | Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT | Intent.FLAG_ACTIVITY_FORWARD_RESULT
+                | Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(EXTRA_TASK_ID, params.getWindow().getActivity().get().getTaskId());
 
         Uri imageUri = params.getImageUriToShare();
-        if (imageUri != null && !isMultipleFileShare) {
+        if (imageUri != null) {
             intent.putExtra(Intent.EXTRA_STREAM, imageUri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
@@ -387,10 +335,10 @@ public class ShareHelper {
                 }
             } else {
                 intent.setType("text/plain");
-                intent.putExtra(Intent.EXTRA_TITLE, params.getTitle());
                 // For text sharing, only set the preview title when preview image is provided. This
                 // is meant to avoid confusion about the content being shared.
                 if (params.getPreviewImageUri() != null) {
+                    intent.putExtra(Intent.EXTRA_TITLE, params.getTitle());
                     intent.setClipData(ClipData.newRawUri("", params.getPreviewImageUri()));
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 }

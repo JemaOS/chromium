@@ -14,12 +14,13 @@ features:
   per_profile: true
 owners:
 - mpetrisor@google.com
+- eariassoto@google.com
 - imprivata-eng@google.com
 schema:
   minimum: 1
   maximum: 9999
   type: integer
-supported_on:
-- chrome_os:116-
+future_on:
+- chrome_os
 tags: []
 type: int

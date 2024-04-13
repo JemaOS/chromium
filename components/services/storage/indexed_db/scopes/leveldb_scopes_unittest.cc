@@ -38,7 +38,8 @@ TEST_F(LevelDBScopesStartupTest, CleanupOnRecovery) {
 
   leveldb::Status s = scopes.Initialize();
   EXPECT_TRUE(s.ok());
-  scopes.StartRecoveryAndCleanupTasks();
+  scopes.StartRecoveryAndCleanupTasks(
+      LevelDBScopes::TaskRunnerMode::kNewCleanupAndRevertSequences);
 
   // Wait until cleanup task runs.
   base::RunLoop loop;
@@ -104,7 +105,8 @@ TEST_F(LevelDBScopesStartupTest, RevertWithLocksOnRecoveryWithNoCleanup) {
       {CreateSimpleExclusiveLock()}, locks_receiver.AsWeakPtr(),
       base::BindLambdaForTesting([&]() { lock_grabbed = true; }));
 
-  scopes.StartRecoveryAndCleanupTasks();
+  scopes.StartRecoveryAndCleanupTasks(
+      LevelDBScopes::TaskRunnerMode::kNewCleanupAndRevertSequences);
 
   EXPECT_FALSE(lock_grabbed);
 

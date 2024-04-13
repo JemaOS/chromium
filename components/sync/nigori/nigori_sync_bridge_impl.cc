@@ -8,15 +8,16 @@
 
 #include "base/base64.h"
 #include "base/feature_list.h"
+#include "base/functional/bind.h"
+#include "base/json/json_string_value_serializer.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
 #include "base/observer_list.h"
-#include "components/sync/base/features.h"
+#include "components/os_crypt/sync/os_crypt.h"
 #include "components/sync/base/passphrase_enums.h"
 #include "components/sync/base/time.h"
-#include "components/sync/engine/nigori/cross_user_sharing_public_key.h"
 #include "components/sync/engine/nigori/nigori.h"
 #include "components/sync/nigori/keystore_keys_cryptographer.h"
 #include "components/sync/nigori/nigori_storage.h"
@@ -48,7 +49,7 @@ enum class KeyDerivationMethodStateForMetrics {
 };
 
 KeyDerivationMethodStateForMetrics GetKeyDerivationMethodStateForMetrics(
-    const std::optional<KeyDerivationParams>& key_derivation_params) {
+    const absl::optional<KeyDerivationParams>& key_derivation_params) {
   if (!key_derivation_params.has_value()) {
     return KeyDerivationMethodStateForMetrics::NOT_SET;
   }
@@ -76,7 +77,7 @@ std::string GetScryptSaltFromSpecifics(
 
 KeyDerivationParams GetKeyDerivationParamsFromSpecifics(
     const sync_pb::NigoriSpecifics& specifics) {
-  std::optional<KeyDerivationMethod> key_derivation_method =
+  absl::optional<KeyDerivationMethod> key_derivation_method =
       ProtoKeyDerivationMethodToEnum(
           specifics.custom_passphrase_key_derivation_method());
   // Guaranteed by validations (e.g. SpecificsHasValidKeyDerivationParams()).
@@ -107,7 +108,7 @@ std::vector<std::string> Base64EncodeKeys(
 }
 
 bool SpecificsHasValidKeyDerivationParams(const NigoriSpecifics& specifics) {
-  std::optional<KeyDerivationMethod> key_derivation_method =
+  absl::optional<KeyDerivationMethod> key_derivation_method =
       ProtoKeyDerivationMethodToEnum(
           specifics.custom_passphrase_key_derivation_method());
   if (!key_derivation_method) {
@@ -226,23 +227,6 @@ bool IsValidEncryptedTypesTransition(bool old_encrypt_everything,
   return specifics.encrypt_everything() || !old_encrypt_everything;
 }
 
-bool IsValidLocalData(const sync_pb::NigoriLocalData& local_data) {
-  if (local_data.model_type_state().initial_sync_state() !=
-      sync_pb::ModelTypeState_InitialSyncState_INITIAL_SYNC_DONE) {
-    // |local_data| should not be stored before initial sync is done.
-    return false;
-  }
-  // More validations is to be added here (e.g. for crbug.com/40681149).
-  return true;
-}
-
-std::optional<CrossUserSharingPublicKey> PublicKeyFromProto(
-    const sync_pb::CrossUserSharingPublicKey& public_key) {
-  std::vector<uint8_t> key(public_key.x25519_public_key().begin(),
-                           public_key.x25519_public_key().end());
-  return CrossUserSharingPublicKey::CreateByImport(key);
-}
-
 }  // namespace
 
 class NigoriSyncBridgeImpl::BroadcastingObserver
@@ -315,8 +299,7 @@ class NigoriSyncBridgeImpl::BroadcastingObserver
   // TODO(crbug/922900): consider using checked ObserverList once
   // SyncEncryptionHandlerImpl is no longer needed or consider refactoring old
   // implementation to use checked ObserverList as well.
-  base::ObserverList<SyncEncryptionHandler::Observer>::
-      UncheckedAndDanglingUntriaged observers_;
+  base::ObserverList<SyncEncryptionHandler::Observer>::Unchecked observers_;
 };
 
 NigoriSyncBridgeImpl::NigoriSyncBridgeImpl(
@@ -325,9 +308,9 @@ NigoriSyncBridgeImpl::NigoriSyncBridgeImpl(
     : processor_(std::move(processor)),
       storage_(std::move(storage)),
       broadcasting_observer_(std::make_unique<BroadcastingObserver>()) {
-  std::optional<sync_pb::NigoriLocalData> deserialized_data =
+  absl::optional<sync_pb::NigoriLocalData> deserialized_data =
       storage_->RestoreData();
-  if (!deserialized_data || !IsValidLocalData(*deserialized_data)) {
+  if (!deserialized_data) {
     // We either have no Nigori node stored locally or it was corrupted.
     processor_->ModelReadyToSync(this, NigoriMetadataBatch());
     return;
@@ -349,12 +332,6 @@ NigoriSyncBridgeImpl::NigoriSyncBridgeImpl(
     DCHECK(!state_.keystore_keys_cryptographer->IsEmpty());
     QueuePendingLocalCommit(
         PendingLocalNigoriCommit::ForKeystoreInitialization());
-  }
-
-  if (state_.NeedsGenerateCrossUserSharingKeyPair()) {
-    QueuePendingLocalCommit(
-        PendingLocalNigoriCommit::
-            ForCrossUserSharingPublicPrivateKeyInitializer());
   }
 
   // Keystore key rotation might be not performed, but required.
@@ -460,7 +437,7 @@ void NigoriSyncBridgeImpl::SetExplicitPassphraseDecryptionKey(
   NigoriKeyBag tmp_key_bag = NigoriKeyBag::CreateEmpty();
   const std::string new_key_name = tmp_key_bag.AddKey(std::move(key));
 
-  std::optional<ModelError> error = TryDecryptPendingKeysWith(tmp_key_bag);
+  absl::optional<ModelError> error = TryDecryptPendingKeysWith(tmp_key_bag);
   if (error.has_value()) {
     processor_->ReportError(*error);
     return;
@@ -508,7 +485,7 @@ void NigoriSyncBridgeImpl::AddTrustedVaultDecryptionKeys(
         GetKeyDerivationParamsForPendingKeys(), encoded_key));
   }
 
-  std::optional<ModelError> error = TryDecryptPendingKeysWith(tmp_key_bag);
+  absl::optional<ModelError> error = TryDecryptPendingKeysWith(tmp_key_bag);
   if (error.has_value()) {
     processor_->ReportError(*error);
     return;
@@ -577,7 +554,7 @@ bool NigoriSyncBridgeImpl::SetKeystoreKeys(
     // keystore mode.
     DCHECK_EQ(state_.passphrase_type, NigoriSpecifics::KEYSTORE_PASSPHRASE);
 
-    std::optional<ModelError> error =
+    absl::optional<ModelError> error =
         TryDecryptPendingKeysWith(BuildDecryptionKeyBagForRemoteKeybag());
     if (error.has_value()) {
       processor_->ReportError(*error);
@@ -598,8 +575,8 @@ bool NigoriSyncBridgeImpl::SetKeystoreKeys(
   return true;
 }
 
-std::optional<ModelError> NigoriSyncBridgeImpl::MergeFullSyncData(
-    std::optional<EntityData> data) {
+absl::optional<ModelError> NigoriSyncBridgeImpl::MergeFullSyncData(
+    absl::optional<EntityData> data) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!data) {
     return ModelError(FROM_HERE,
@@ -612,8 +589,6 @@ std::optional<ModelError> NigoriSyncBridgeImpl::MergeFullSyncData(
   if (specifics.passphrase_type() != NigoriSpecifics::IMPLICIT_PASSPHRASE ||
       !specifics.encryption_keybag().blob().empty()) {
     // We received regular Nigori.
-    // TODO(crbug.com/1445056): consider generating a new public-private key
-    // pair after the initial sync.
     return UpdateLocalState(data->specifics.nigori());
   }
   // Ensure we have |keystore_keys| during the initial download, requested to
@@ -633,11 +608,11 @@ std::optional<ModelError> NigoriSyncBridgeImpl::MergeFullSyncData(
   // keystore Nigori.
   QueuePendingLocalCommit(
       PendingLocalNigoriCommit::ForKeystoreInitialization());
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<ModelError> NigoriSyncBridgeImpl::ApplyIncrementalSyncChanges(
-    std::optional<EntityData> data) {
+absl::optional<ModelError> NigoriSyncBridgeImpl::ApplyIncrementalSyncChanges(
+    absl::optional<EntityData> data) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (data) {
@@ -660,10 +635,10 @@ std::optional<ModelError> NigoriSyncBridgeImpl::ApplyIncrementalSyncChanges(
   // Receiving empty |data| means metadata-only change (e.g. no remote updates,
   // or local commit completion), so we need to persist its state.
   storage_->StoreData(SerializeAsNigoriLocalData());
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<ModelError> NigoriSyncBridgeImpl::UpdateLocalState(
+absl::optional<ModelError> NigoriSyncBridgeImpl::UpdateLocalState(
     const NigoriSpecifics& specifics) {
   if (!IsValidNigoriSpecifics(specifics)) {
     return ModelError(FROM_HERE, "NigoriSpecifics is not valid.");
@@ -707,7 +682,7 @@ std::optional<ModelError> NigoriSyncBridgeImpl::UpdateLocalState(
         GetKeyDerivationParamsFromSpecifics(specifics);
   }
 
-  std::optional<sync_pb::NigoriKey> keystore_decryptor_key;
+  absl::optional<sync_pb::NigoriKey> keystore_decryptor_key;
   if (state_.passphrase_type == NigoriSpecifics::KEYSTORE_PASSPHRASE) {
     state_.pending_keystore_decryptor_token =
         specifics.keystore_decryptor_token();
@@ -726,16 +701,7 @@ std::optional<ModelError> NigoriSyncBridgeImpl::UpdateLocalState(
   state_.pending_keys = specifics.encryption_keybag();
   state_.cryptographer->ClearDefaultEncryptionKey();
 
-  if (base::FeatureList::IsEnabled(kSharingOfferKeyPairRead) &&
-      specifics.has_cross_user_sharing_public_key()) {
-    // Remote update wins over local state.
-    state_.cross_user_sharing_public_key =
-        PublicKeyFromProto(specifics.cross_user_sharing_public_key());
-    state_.cross_user_sharing_key_pair_version =
-        specifics.cross_user_sharing_public_key().version();
-  }
-
-  std::optional<ModelError> error =
+  absl::optional<ModelError> error =
       TryDecryptPendingKeysWith(decryption_key_bag_for_remote_update);
   if (error.has_value()) {
     return error;
@@ -769,7 +735,7 @@ std::optional<ModelError> NigoriSyncBridgeImpl::UpdateLocalState(
 
   storage_->StoreData(SerializeAsNigoriLocalData());
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 NigoriKeyBag NigoriSyncBridgeImpl::BuildDecryptionKeyBagForRemoteKeybag()
@@ -804,28 +770,26 @@ NigoriKeyBag NigoriSyncBridgeImpl::BuildDecryptionKeyBagForRemoteKeybag()
   return decryption_key_bag;
 }
 
-std::optional<ModelError> NigoriSyncBridgeImpl::TryDecryptPendingKeysWith(
+absl::optional<ModelError> NigoriSyncBridgeImpl::TryDecryptPendingKeysWith(
     const NigoriKeyBag& key_bag) {
   DCHECK(state_.pending_keys.has_value());
   DCHECK(state_.cryptographer->GetDefaultEncryptionKeyName().empty());
 
   std::string decrypted_pending_keys_str;
   if (!key_bag.Decrypt(*state_.pending_keys, &decrypted_pending_keys_str)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
-  sync_pb::EncryptionKeys decrypted_pending_keys;
+  sync_pb::NigoriKeyBag decrypted_pending_keys;
   if (!decrypted_pending_keys.ParseFromString(decrypted_pending_keys_str)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const std::string new_default_key_name = state_.pending_keys->key_name();
   DCHECK(key_bag.HasKey(new_default_key_name));
 
-  NigoriKeyBag new_key_bag = NigoriKeyBag::CreateEmpty();
-  for (auto key : decrypted_pending_keys.key()) {
-    new_key_bag.AddKeyFromProto(key);
-  }
+  NigoriKeyBag new_key_bag =
+      NigoriKeyBag::CreateFromProto(decrypted_pending_keys);
 
   if (!new_key_bag.HasKey(new_default_key_name)) {
     // Protocol violation.
@@ -840,47 +804,16 @@ std::optional<ModelError> NigoriSyncBridgeImpl::TryDecryptPendingKeysWith(
                       "Received keybag is missing the last trusted vault key.");
   }
 
-  if (base::FeatureList::IsEnabled(kSharingOfferKeyPairRead)) {
-    CrossUserSharingKeys new_cross_user_sharing_keys =
-        CrossUserSharingKeys::CreateEmpty();
-    for (auto key_pair :
-         decrypted_pending_keys.cross_user_sharing_private_key()) {
-      new_cross_user_sharing_keys.AddKeyPairFromProto(key_pair);
-    }
-
-    if (state_.cross_user_sharing_key_pair_version.has_value() &&
-        !new_cross_user_sharing_keys.HasKeyPair(
-            state_.cross_user_sharing_key_pair_version.value())) {
-      // TODO(crbug/1474918): Record metric to capture this state.
-      DLOG(ERROR) << "Received keybag is missing the last "
-                  << "cross-user-sharing private key.";
-      // Reset keys so that on next startup they would be recreated and
-      // committed to the server.
-      // TODO(crbug/1474918): Clear obsolete key-pairs from cryptographer.
-      state_.cross_user_sharing_key_pair_version = std::nullopt;
-      state_.cross_user_sharing_public_key = std::nullopt;
-    } else if (state_.cross_user_sharing_key_pair_version.has_value()) {
-      // Use the keys from the server and replace any pre-existing ones (so in
-      // case of conflict the server wins). One of cases when this can happen is
-      // when one of older clients is upgraded to a newer version and generated
-      // a new key pair because it wasn't aware of the previous key pair.
-      state_.cryptographer->ReplaceCrossUserSharingKeys(
-          std::move(new_cross_user_sharing_keys));
-      state_.cryptographer->SelectDefaultCrossUserSharingKey(
-          state_.cross_user_sharing_key_pair_version.value());
-    }
-  }
-
   // Reset |last_default_trusted_vault_key_name| as |state_| might go out of
   // TRUSTED_VAULT passphrase type. The callers are responsible to set it again
   // if needed.
-  state_.last_default_trusted_vault_key_name = std::nullopt;
+  state_.last_default_trusted_vault_key_name = absl::nullopt;
   state_.cryptographer->EmplaceKeysFrom(new_key_bag);
   state_.cryptographer->SelectDefaultEncryptionKey(new_default_key_name);
   state_.pending_keys.reset();
   state_.pending_keystore_decryptor_token.reset();
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::unique_ptr<EntityData> NigoriSyncBridgeImpl::GetData() {
@@ -925,12 +858,10 @@ void NigoriSyncBridgeImpl::ApplyDisableSyncChanges() {
   state_.encrypt_everything = false;
   state_.custom_passphrase_time = base::Time();
   state_.keystore_migration_time = base::Time();
-  state_.custom_passphrase_key_derivation_params = std::nullopt;
-  state_.last_default_trusted_vault_key_name = std::nullopt;
+  state_.custom_passphrase_key_derivation_params = absl::nullopt;
+  state_.last_default_trusted_vault_key_name = absl::nullopt;
   state_.trusted_vault_debug_info =
       sync_pb::NigoriSpecifics::TrustedVaultDebugInfo();
-  state_.cross_user_sharing_public_key = std::nullopt;
-  state_.cross_user_sharing_key_pair_version = std::nullopt;
 
   broadcasting_observer_->OnCryptographerStateChanged(
       state_.cryptographer.get(),
@@ -1036,7 +967,7 @@ void NigoriSyncBridgeImpl::MaybeTriggerKeystoreReencryption() {
 
 void NigoriSyncBridgeImpl::QueuePendingLocalCommit(
     std::unique_ptr<PendingLocalNigoriCommit> local_commit) {
-  CHECK(processor_->IsTrackingMetadata());
+  DCHECK(processor_->IsTrackingMetadata());
 
   pending_local_commit_queue_.push_back(std::move(local_commit));
 

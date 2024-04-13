@@ -15,16 +15,16 @@
 #include "components/feed/core/v2/public/types.h"
 
 namespace feed {
-class SurfaceRenderer;
+
+class FeedStreamSurface;
 
 // The set of surfaces attached to a StreamType.
 class StreamSurfaceSet {
  public:
   // Entry in the surface set. Holds the surface and information about it.
   struct Entry {
-    SurfaceId surface_id = {};
-    // The surface renderer.
-    raw_ptr<SurfaceRenderer, DanglingUntriaged> renderer;
+    // The surface.
+    raw_ptr<FeedStreamSurface, DanglingUntriaged> surface;
     // Whether or not the feed content was ever reported as viewed.
     bool feed_viewed = false;
   };
@@ -33,20 +33,17 @@ class StreamSurfaceSet {
    public:
     ~Observer() override = default;
     virtual void SurfaceAdded(
-        SurfaceId surface_id,
-        SurfaceRenderer* renderer,
+        FeedStreamSurface* surface,
         feedwire::DiscoverLaunchResult loading_not_allowed_reason) = 0;
-    virtual void SurfaceRemoved(SurfaceId surface_id) = 0;
+    virtual void SurfaceRemoved(FeedStreamSurface* surface) = 0;
   };
 
   explicit StreamSurfaceSet(const StreamType& stream_type);
   ~StreamSurfaceSet();
 
-  void SurfaceAdded(SurfaceId surface_id,
-                    SurfaceRenderer* renderer,
+  void SurfaceAdded(FeedStreamSurface* surface,
                     feedwire::DiscoverLaunchResult loading_not_allowed_reason);
-  void SurfaceRemoved(SurfaceId surface_id);
-  bool SurfacePresent(SurfaceId surface_id);
+  void SurfaceRemoved(FeedStreamSurface* surface);
   void FeedViewed(SurfaceId surface_id);
 
   void AddObserver(Observer* observer);

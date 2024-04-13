@@ -5,7 +5,7 @@
 #include "components/feed/core/v2/stream_surface_set.h"
 
 #include "base/observer_list.h"
-#include "components/feed/core/v2/feed_stream_surface.h"
+#include "components/feed/core/v2/public/feed_stream_surface.h"
 
 namespace feed {
 
@@ -23,39 +23,27 @@ void StreamSurfaceSet::RemoveObserver(Observer* observer) {
 }
 
 void StreamSurfaceSet::SurfaceAdded(
-    SurfaceId surface_id,
-    SurfaceRenderer* renderer,
+    FeedStreamSurface* surface,
     feedwire::DiscoverLaunchResult loading_not_allowed_reason) {
   Entry entry;
-  entry.surface_id = surface_id;
-  entry.renderer = renderer;
+  entry.surface = surface;
   surfaces_.push_back(entry);
 
-  for (auto& observer : observers_) {
-    observer.SurfaceAdded(surface_id, renderer, loading_not_allowed_reason);
-  }
+  for (auto& observer : observers_)
+    observer.SurfaceAdded(surface, loading_not_allowed_reason);
 }
 
-void StreamSurfaceSet::SurfaceRemoved(SurfaceId surface_id) {
+void StreamSurfaceSet::SurfaceRemoved(FeedStreamSurface* surface) {
   for (size_t i = 0; i < surfaces_.size(); ++i) {
-    if (surfaces_[i].surface_id == surface_id) {
+    if (surfaces_[i].surface == surface) {
       surfaces_.erase(surfaces_.begin() + i);
       break;
     }
   }
 
   for (auto& observer : observers_) {
-    observer.SurfaceRemoved(surface_id);
+    observer.SurfaceRemoved(surface);
   }
-}
-
-bool StreamSurfaceSet::SurfacePresent(SurfaceId surface_id) {
-  for (auto& surface : surfaces_) {
-    if (surface.surface_id == surface_id) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void StreamSurfaceSet::FeedViewed(SurfaceId surface_id) {
@@ -75,9 +63,8 @@ bool StreamSurfaceSet::HasSurfaceShowingContent() const {
 
 StreamSurfaceSet::Entry* StreamSurfaceSet::FindSurface(SurfaceId surface_id) {
   for (Entry& entry : *this) {
-    if (entry.surface_id == surface_id) {
+    if (entry.surface->GetSurfaceId() == surface_id)
       return &entry;
-    }
   }
   return nullptr;
 }

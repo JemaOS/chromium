@@ -35,8 +35,7 @@ constexpr int kPixelsPerInch = 96;
 constexpr int kDefaultMacDpi = 72;
 #endif  // BUILDFLAG(IS_MAC)
 
-// DPI used for Save to PDF. Also used as the default DPI in various use cases
-// where there is no specified DPI.
+// Dpi used to save to PDF or Cloud Print.
 constexpr int kDefaultPdfDpi = 300;
 
 // LETTER: 8.5 x 11 inches

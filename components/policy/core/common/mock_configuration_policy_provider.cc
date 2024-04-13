@@ -17,7 +17,7 @@ using testing::Invoke;
 
 namespace policy {
 
-MockConfigurationPolicyProvider::MockConfigurationPolicyProvider() = default;
+MockConfigurationPolicyProvider::MockConfigurationPolicyProvider() {}
 
 MockConfigurationPolicyProvider::~MockConfigurationPolicyProvider() {
 #if BUILDFLAG(IS_ANDROID)
@@ -31,7 +31,13 @@ void MockConfigurationPolicyProvider::UpdateChromePolicy(
   bundle.Get(PolicyNamespace(POLICY_DOMAIN_CHROME, std::string())) =
       policy.Clone();
   UpdatePolicy(std::move(bundle));
-  WaitForPoliciesUpdated(POLICY_DOMAIN_CHROME);
+  bool spin_run_loop = base::CurrentThread::IsSet();
+#if BUILDFLAG(IS_IOS)
+  // On iOS, the UI message loop does not support RunUntilIdle().
+  spin_run_loop &= !base::CurrentUIThread::IsSet();
+#endif  // BUILDFLAG(IS_IOS)
+  if (spin_run_loop)
+    base::RunLoop().RunUntilIdle();
 }
 
 void MockConfigurationPolicyProvider::UpdateExtensionPolicy(
@@ -41,72 +47,21 @@ void MockConfigurationPolicyProvider::UpdateExtensionPolicy(
   bundle.Get(PolicyNamespace(POLICY_DOMAIN_EXTENSIONS, extension_id)) =
       policy.Clone();
   UpdatePolicy(std::move(bundle));
-  WaitForPoliciesUpdated(POLICY_DOMAIN_EXTENSIONS);
+  if (base::CurrentThread::IsSet())
+    base::RunLoop().RunUntilIdle();
 }
 
 void MockConfigurationPolicyProvider::SetAutoRefresh() {
-  EXPECT_CALL(*this, RefreshPolicies(testing::_))
-      .WillRepeatedly(Invoke(
-          this, &MockConfigurationPolicyProvider::RefreshWithSamePolicies));
+  EXPECT_CALL(*this, RefreshPolicies()).WillRepeatedly(
+      Invoke(this, &MockConfigurationPolicyProvider::RefreshWithSamePolicies));
 }
 
 void MockConfigurationPolicyProvider::RefreshWithSamePolicies() {
   UpdatePolicy(policies().Clone());
 }
 
-void MockConfigurationPolicyProvider::OnPolicyUpdated(
-    const policy::PolicyNamespace& ns,
-    const policy::PolicyMap& previous,
-    const policy::PolicyMap& current) {
-  policy_service_->RemoveObserver(ns.domain, this);
-  if (ns.domain == POLICY_DOMAIN_CHROME) {
-    CHECK(chrome_policies_updated_callback_);
-    std::move(chrome_policies_updated_callback_).Run();
-  }
-  if (ns.domain == POLICY_DOMAIN_EXTENSIONS) {
-    CHECK(extension_policies_updated_callback_);
-    std::move(extension_policies_updated_callback_).Run();
-  }
-}
+MockConfigurationPolicyObserver::MockConfigurationPolicyObserver() {}
 
-void MockConfigurationPolicyProvider::WaitForPoliciesUpdated(
-    policy::PolicyDomain domain) {
-  if (!policy_service_) {
-    bool spin_run_loop = base::CurrentThread::IsSet();
-#if BUILDFLAG(IS_IOS)
-    // On iOS, the UI message loop does not support RunUntilIdle().
-    spin_run_loop &= !base::CurrentUIThread::IsSet();
-#endif  // BUILDFLAG(IS_IOS)
-    if (spin_run_loop) {
-      base::RunLoop().RunUntilIdle();
-    }
-    return;
-  }
-
-  CHECK(!chrome_policies_updated_callback_);
-  CHECK(!extension_policies_updated_callback_);
-  base::RunLoop loop;
-  if (domain == POLICY_DOMAIN_CHROME) {
-    chrome_policies_updated_callback_ = loop.QuitClosure();
-  } else if (domain == POLICY_DOMAIN_EXTENSIONS) {
-    extension_policies_updated_callback_ = loop.QuitClosure();
-  } else {
-    NOTREACHED();
-  }
-
-  policy_service_->AddObserver(domain, this);
-  loop.Run();
-}
-
-void MockConfigurationPolicyProvider::SetupPolicyServiceForPolicyUpdates(
-    policy::PolicyService* policy_service) {
-  CHECK(!chrome_policies_updated_callback_);
-  CHECK(!extension_policies_updated_callback_);
-  policy_service_ = policy_service;
-}
-
-MockConfigurationPolicyObserver::MockConfigurationPolicyObserver() = default;
-
-MockConfigurationPolicyObserver::~MockConfigurationPolicyObserver() = default;
+MockConfigurationPolicyObserver::~MockConfigurationPolicyObserver() {}
 
 }  // namespace policy

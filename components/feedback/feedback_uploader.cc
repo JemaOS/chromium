@@ -19,6 +19,7 @@
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "jemaos/switches/services/services_constants.h"
 
 namespace feedback {
 
@@ -38,8 +39,8 @@ enum class FeedbackReportSendingResult {
 constexpr base::FilePath::CharType kFeedbackReportPath[] =
     FILE_PATH_LITERAL("Feedback Reports");
 
-constexpr char kFeedbackPostUrl[] =
-    "https://www.google.com/tools/feedback/chrome/__submit";
+// constexpr char kFeedbackPostUrl[] =
+//     "https://www.google.com/tools/feedback/chrome/__submit";
 
 constexpr char kProtoBufMimeType[] = "application/x-protobuf";
 
@@ -63,7 +64,7 @@ GURL GetFeedbackPostGURL() {
       *base::CommandLine::ForCurrentProcess();
   return GURL(command_line.HasSwitch(switches::kFeedbackServer)
                   ? command_line.GetSwitchValueASCII(switches::kFeedbackServer)
-                  : kFeedbackPostUrl);
+                  : jemaos::constants::kJemaOSFeedbackPostUrl);
 }
 
 // Creates a new SingleThreadTaskRunner that is used to run feedback blocking
@@ -104,11 +105,10 @@ void FeedbackUploader::SetMinimumRetryDelayForTesting(base::TimeDelta delay) {
 }
 
 void FeedbackUploader::QueueReport(std::unique_ptr<std::string> data,
-                                   bool has_email,
-                                   int product_id) {
+                                   bool has_email) {
   reports_queue_.emplace(base::MakeRefCounted<FeedbackReport>(
       feedback_reports_path_, base::Time::Now(), std::move(data), task_runner_,
-      has_email, product_id));
+      has_email));
   UpdateUploadTimer();
 }
 
@@ -207,18 +207,6 @@ void FeedbackUploader::DispatchReport() {
             "information' prevents sending logs as well), the screenshot, or "
             "even his/her email address."
           destination: GOOGLE_OWNED_SERVICE
-          internal {
-            contacts {
-              email: "cros-feedback-app@google.com"
-            }
-          }
-          user_data {
-            type: ARBITRARY_DATA
-            type: EMAIL
-            type: IMAGE
-            type: USER_CONTENT
-          }
-          last_reviewed: "2023-08-14"
         }
         policy {
           cookies_allowed: NO
@@ -237,13 +225,11 @@ void FeedbackUploader::DispatchReport() {
   resource_request->method = "POST";
 
   // Tell feedback server about the variation state of this install.
-  if (report_being_dispatched_->should_include_variations()) {
-    variations::AppendVariationsHeaderUnknownSignedIn(
-        feedback_post_url_,
-        is_off_the_record_ ? variations::InIncognito::kYes
-                           : variations::InIncognito::kNo,
-        resource_request.get());
-  }
+  variations::AppendVariationsHeaderUnknownSignedIn(
+      feedback_post_url_,
+      is_off_the_record_ ? variations::InIncognito::kYes
+                         : variations::InIncognito::kNo,
+      resource_request.get());
 
   if (report_being_dispatched_->has_email()) {
     AppendExtraHeadersToUploadRequest(resource_request.get());

@@ -23,12 +23,11 @@
 
 namespace openscreen {
 
-class TaskRunner;
-
 std::unique_ptr<TlsConnectionFactory> TlsConnectionFactory::CreateFactory(
     Client* client,
-    TaskRunner& task_runner) {
-  return std::make_unique<openscreen_platform::TlsConnectionFactory>(client);
+    TaskRunner* task_runner) {
+  return std::make_unique<openscreen_platform::TlsConnectionFactory>(
+      client, task_runner);
 }
 
 }  // namespace openscreen
@@ -90,7 +89,7 @@ void TlsConnectionFactory::Connect(const IPEndpoint& remote_address,
       request.tcp_socket.BindNewPipeAndPassReceiver();
 
   network_context->CreateTCPConnectedSocket(
-      std::nullopt /* local_addr */, address_list,
+      absl::nullopt /* local_addr */, address_list,
       nullptr /* tcp_connected_socket_options */,
       net::MutableNetworkTrafficAnnotationTag(kTrafficAnnotation),
       std::move(receiver), mojo::NullRemote(), /* observer */
@@ -109,8 +108,9 @@ void TlsConnectionFactory::Listen(const IPEndpoint& local_address,
 }
 
 TlsConnectionFactory::TlsConnectionFactory(
-    openscreen::TlsConnectionFactory::Client* client)
-    : client_(client) {}
+    openscreen::TlsConnectionFactory::Client* client,
+    openscreen::TaskRunner* task_runner)
+    : client_(client), task_runner_(task_runner) {}
 
 TlsConnectionFactory::TcpConnectRequest::TcpConnectRequest(
     openscreen::TlsConnectOptions options_in,
@@ -146,8 +146,8 @@ TlsConnectionFactory::TlsUpgradeRequest::~TlsUpgradeRequest() = default;
 void TlsConnectionFactory::OnTcpConnect(
     TcpConnectRequest request,
     int32_t net_result,
-    const std::optional<net::IPEndPoint>& local_address,
-    const std::optional<net::IPEndPoint>& remote_address,
+    const absl::optional<net::IPEndPoint>& local_address,
+    const absl::optional<net::IPEndPoint>& remote_address,
     mojo::ScopedDataPipeConsumerHandle receive_stream,
     mojo::ScopedDataPipeProducerHandle send_stream) {
   // We only care about net_result, since local_address doesn't matter,
@@ -194,16 +194,16 @@ void TlsConnectionFactory::OnTlsUpgrade(
     int32_t net_result,
     mojo::ScopedDataPipeConsumerHandle receive_stream,
     mojo::ScopedDataPipeProducerHandle send_stream,
-    const std::optional<net::SSLInfo>& ssl_info) {
+    const absl::optional<net::SSLInfo>& ssl_info) {
   if (net_result != net::OK) {
     client_->OnConnectionFailed(this, request.remote_address);
     return;
   }
 
   auto tls_connection = std::make_unique<TlsClientConnection>(
-      request.local_address, request.remote_address, std::move(receive_stream),
-      std::move(send_stream), std::move(request.tcp_socket),
-      std::move(request.tls_socket));
+      task_runner_, request.local_address, request.remote_address,
+      std::move(receive_stream), std::move(send_stream),
+      std::move(request.tcp_socket), std::move(request.tls_socket));
 
   CRYPTO_BUFFER* der_buffer = ssl_info.value().unverified_cert->cert_buffer();
   const uint8_t* data = CRYPTO_BUFFER_data(der_buffer);

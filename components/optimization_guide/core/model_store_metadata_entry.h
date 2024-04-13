@@ -5,12 +5,12 @@
 #ifndef COMPONENTS_OPTIMIZATION_GUIDE_CORE_MODEL_STORE_METADATA_ENTRY_H_
 #define COMPONENTS_OPTIMIZATION_GUIDE_CORE_MODEL_STORE_METADATA_ENTRY_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
 #include "components/optimization_guide/proto/models.pb.h"
 #include "components/prefs/scoped_user_pref_update.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class FilePath;
@@ -29,24 +29,20 @@ class ModelStoreMetadataEntryUpdater;
 class ModelStoreMetadataEntry {
  public:
   // Returns the metadata entry in the store if it exists.
-  static std::optional<ModelStoreMetadataEntry> GetModelMetadataEntryIfExists(
+  static absl::optional<ModelStoreMetadataEntry> GetModelMetadataEntryIfExists(
       PrefService* local_state,
       proto::OptimizationTarget optimization_target,
       const proto::ModelCacheKey& model_cache_key);
-
-  // Returns the valid model dirs in the model store base dir, that were in sync
-  // with the `local_state`.
-  static std::set<base::FilePath> GetValidModelDirs(PrefService* local_state);
 
   ModelStoreMetadataEntry& operator=(const ModelStoreMetadataEntry&) = delete;
   ~ModelStoreMetadataEntry();
 
   // Gets the model base dir where the model files, its additional files
   // and the model info files are stored.
-  std::optional<base::FilePath> GetModelBaseDir() const;
+  absl::optional<base::FilePath> GetModelBaseDir() const;
 
   // Gets the model version.
-  std::optional<int64_t> GetVersion() const;
+  absl::optional<int64_t> GetVersion() const;
 
   // Gets the expiry time.
   base::Time GetExpiryTime() const;
@@ -62,7 +58,9 @@ class ModelStoreMetadataEntry {
   void SetMetadataEntry(const base::Value::Dict* metadata_entry);
 
   // The root metadata entry for this model.
-  raw_ptr<const base::Value::Dict> metadata_entry_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #union
+  RAW_PTR_EXCLUSION const base::Value::Dict* metadata_entry_;
 };
 
 // The pref updater for ModelStoreMetadataEntry.

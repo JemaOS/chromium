@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "components/webcrypto/algorithms/ed25519.h"
-
 #include <string.h>
 
-#include <string_view>
+#include "components/webcrypto/algorithms/ed25519.h"
 
 #include "components/webcrypto/algorithms/asymmetric_key_util.h"
 #include "components/webcrypto/algorithms/util.h"
@@ -66,7 +64,7 @@ Status CreateWebCryptoEd25519PublicKey(
 
 // Reads a fixed length base64url-decoded bytes from a JWK.
 Status ReadBytes(const JwkReader& jwk,
-                 std::string_view member_name,
+                 base::StringPiece member_name,
                  size_t expected_length,
                  std::vector<uint8_t>* out) {
   std::vector<uint8_t> bytes;
@@ -126,7 +124,7 @@ Status Ed25519Implementation::GenerateKey(
   // multiplication, but there aren't EVP APIs to avoid it without a lot of
   // boilerplate.
   blink::WebCryptoKey private_key;
-  status = CreateWebCryptoEd25519PrivateKey(base::make_span(privkey).first(32u),
+  status = CreateWebCryptoEd25519PrivateKey(base::make_span(privkey).first(32),
                                             key_algorithm, extractable,
                                             private_usages, &private_key);
   if (status.IsError())

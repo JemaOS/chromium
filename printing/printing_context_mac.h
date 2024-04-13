@@ -6,11 +6,10 @@
 #define PRINTING_PRINTING_CONTEXT_MAC_H_
 
 #include <ApplicationServices/ApplicationServices.h>
-
 #include <string>
-#include <string_view>
 
-#include "base/memory/raw_ptr_exclusion.h"
+#include "base/mac/scoped_nsobject.h"
+#include "base/strings/string_piece.h"
 #include "printing/mojom/print.mojom.h"
 #include "printing/print_job_constants.h"
 #include "printing/printing_context.h"
@@ -21,7 +20,7 @@ namespace printing {
 
 class COMPONENT_EXPORT(PRINTING) PrintingContextMac : public PrintingContext {
  public:
-  PrintingContextMac(Delegate* delegate, ProcessBehavior process_behavior);
+  explicit PrintingContextMac(Delegate* delegate);
   PrintingContextMac(const PrintingContextMac&) = delete;
   PrintingContextMac& operator=(const PrintingContextMac&) = delete;
   ~PrintingContextMac() override;
@@ -98,7 +97,7 @@ class COMPONENT_EXPORT(PRINTING) PrintingContextMac : public PrintingContext {
 
   // Sets key-value pair in PMPrintSettings.
   // Returns true is the pair is set.
-  bool SetKeyValue(std::string_view key, std::string_view value);
+  bool SetKeyValue(base::StringPiece key, base::StringPiece value);
 
   // Starts a new page.
   mojom::ResultCode NewPage();
@@ -107,13 +106,11 @@ class COMPONENT_EXPORT(PRINTING) PrintingContextMac : public PrintingContext {
   mojom::ResultCode PageDone();
 
   // The native print info object.
-  NSPrintInfo* __strong print_info_;
+  base::scoped_nsobject<NSPrintInfo> print_info_;
 
   // The current page's context; only valid between NewPage and PageDone call
   // pairs.
-  // This field is not a raw_ptr<> because it was filtered by the rewriter
-  // for: #addr-of
-  RAW_PTR_EXCLUSION CGContextRef context_ = nullptr;
+  CGContext* context_;
 };
 
 }  // namespace printing

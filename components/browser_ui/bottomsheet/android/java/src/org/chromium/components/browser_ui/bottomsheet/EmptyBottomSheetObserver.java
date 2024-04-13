@@ -6,7 +6,9 @@ package org.chromium.components.browser_ui.bottomsheet;
 
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
 
-/** An empty base implementation of the {@link BottomSheetObserver} interface. */
+/**
+ * An empty base implementation of the {@link BottomSheetObserver} interface.
+ */
 public class EmptyBottomSheetObserver implements BottomSheetObserver {
     @Override
     public void onSheetOpened(@StateChangeReason int reason) {}

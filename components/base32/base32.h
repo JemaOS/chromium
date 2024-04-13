@@ -6,9 +6,7 @@
 #define COMPONENTS_BASE32_BASE32_H_
 
 #include <string>
-#include <vector>
 
-#include "base/containers/span.h"
 #include "base/strings/string_piece.h"
 
 namespace base32 {
@@ -28,12 +26,12 @@ enum class Base32EncodePolicy {
 // The |policy| defines whether padding should be included or omitted from the
 // encoded output.
 std::string Base32Encode(
-    base::span<const uint8_t> input,
+    base::StringPiece input,
     Base32EncodePolicy policy = Base32EncodePolicy::INCLUDE_PADDING);
 
-// Decodes the |input| string piece from base32. Returns an empty vector on
+// Decodes the |input| string piece from base32. Returns an empty string on
 // error, including if |input| is empty.
-std::vector<uint8_t> Base32Decode(base::StringPiece input);
+std::string Base32Decode(base::StringPiece input);
 
 }  // namespace base32
 

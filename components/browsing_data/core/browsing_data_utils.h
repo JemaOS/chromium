@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_BROWSING_DATA_CORE_BROWSING_DATA_UTILS_H_
 #define COMPONENTS_BROWSING_DATA_CORE_BROWSING_DATA_UTILS_H_
 
-#include <optional>
 #include <string>
 
 #include "base/time/time.h"
@@ -13,6 +12,7 @@
 #include "components/browsing_data/core/clear_browsing_data_tab.h"
 #include "components/browsing_data/core/counters/browsing_data_counter.h"
 #include "net/cookies/cookie_constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace browsing_data {
 
@@ -23,15 +23,16 @@ namespace browsing_data {
 enum class BrowsingDataType {
   HISTORY,
   CACHE,
-  SITE_DATA,
+  COOKIES,
   PASSWORDS,
   FORM_DATA,
   SITE_SETTINGS,
+  // Only for Android:
+  BOOKMARKS,
   // Only for Desktop:
   DOWNLOADS,
   HOSTED_APPS_DATA,
-  TABS,
-  MAX_VALUE = TABS,
+  NUM_TYPES
 };
 
 // Time period ranges available when doing browsing data removals.
@@ -52,23 +53,19 @@ enum class TimePeriod {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 //
-// Must be kept in sync with the DeleteBrowsingDataAction in enums.xml.
+// Must be kept in sync with the ClearBrowsingDataAction in enums.xml.
 //
 // A Java counterpart will be generated for this enum.
-// GENERATED_JAVA_ENUM_PACKAGE: org.chromium.components.browsing_data
-//
-// Note: Make sure to keep in sync with DeleteBrowsingDataAction defined in
-//   chrome/browser/resources/settings/site_settings/metrics_browser_proxy.ts
-enum class DeleteBrowsingDataAction {
+// GENERATED_JAVA_ENUM_PACKAGE: org.chromium.chrome.browser.browsing_data
+enum class ClearBrowsingDataAction {
   kClearBrowsingDataDialog = 0,
   kClearBrowsingDataOnExit = 1,
   kIncognitoCloseTabs = 2,
   kCookiesInUseDialog = 3,
   kSitesSettingsPage = 4,
-  kHistoryPageEntries = 5,
-  kQuickDelete = 6,
-  kPageInfoResetPermissions = 7,
-  kMaxValue = kPageInfoResetPermissions,
+  kHistoryPage = 5,
+  kQuickDeleteLast15Minutes = 6,
+  kMaxValue = kQuickDeleteLast15Minutes,
 };
 
 // Calculate the begin time for the deletion range specified by |time_period|.
@@ -83,8 +80,8 @@ void RecordDeletionForPeriod(TimePeriod time_period);
 // Records the UMA action of a change of the clear browsing data time period.
 void RecordTimePeriodChange(TimePeriod period);
 
-// Record Delete Browsing Data Action specified by |cbd_action|.
-void RecordDeleteBrowsingDataAction(DeleteBrowsingDataAction cbd_action);
+// Record Clear Browsing Data Action specified by |cbd_action|.
+void RecordClearBrowsingDataAction(ClearBrowsingDataAction cbd_action);
 
 // Constructs the text to be displayed by a counter from the given |result|.
 // Currently this can only be used for counters for which the Result is
@@ -104,7 +101,7 @@ bool GetDeletionPreferenceFromDataType(
     std::string* out_pref);
 
 // Returns a BrowsingDataType if a type matching |pref_name| is found.
-std::optional<BrowsingDataType> GetDataTypeFromDeletionPreference(
+absl::optional<BrowsingDataType> GetDataTypeFromDeletionPreference(
     const std::string& pref_name);
 
 bool IsHttpsCookieSourceScheme(net::CookieSourceScheme cookie_source_scheme);

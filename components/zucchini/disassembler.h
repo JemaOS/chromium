@@ -19,7 +19,7 @@ namespace zucchini {
 // A vacuous ReferenceReader that produces no references.
 class EmptyReferenceReader : public ReferenceReader {
  public:
-  std::optional<Reference> GetNext() override;
+  absl::optional<Reference> GetNext() override;
 };
 
 // A vacuous EmptyReferenceWriter that does not write.

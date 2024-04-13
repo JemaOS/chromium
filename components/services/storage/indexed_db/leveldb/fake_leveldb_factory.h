@@ -12,6 +12,7 @@
 #include "base/files/file_path.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/sequence_checker.h"
+#include "components/services/storage/indexed_db/leveldb/leveldb_factory.h"
 #include "third_party/leveldatabase/env_chromium.h"
 #include "third_party/leveldatabase/src/include/leveldb/comparator.h"
 #include "third_party/leveldatabase/src/include/leveldb/db.h"
@@ -20,9 +21,14 @@
 namespace content {
 class LevelDBState;
 
-class FakeLevelDBFactory {
+// Used for unittests, this factory will only create in-memory leveldb
+// databases, and will optionally allow the user to override the next
+// LevelDBState returned with |EnqueueNextLevelDBState|.
+class FakeLevelDBFactory : public DefaultLevelDBFactory {
  public:
-  FakeLevelDBFactory() = delete;
+  FakeLevelDBFactory(leveldb_env::Options database_options,
+                     const std::string& in_memory_db_name);
+  ~FakeLevelDBFactory() override;
 
   struct FlakePoint {
     int calls_before_flake;
@@ -45,6 +51,33 @@ class FakeLevelDBFactory {
   static std::pair<std::unique_ptr<leveldb::DB>,
                    base::OnceCallback<void(leveldb::Status)>>
   CreateBreakableDB(std::unique_ptr<leveldb::DB> db);
+
+  void EnqueueNextOpenDBResult(std::unique_ptr<leveldb::DB>,
+                               leveldb::Status status);
+
+  std::tuple<std::unique_ptr<leveldb::DB>, leveldb::Status> OpenDB(
+      const std::string& name,
+      bool create_if_missing,
+      size_t write_buffer_size) override;
+
+  void EnqueueNextOpenLevelDBStateResult(scoped_refptr<LevelDBState> state,
+                                         leveldb::Status status,
+                                         bool is_disk_full);
+
+  std::tuple<scoped_refptr<LevelDBState>, leveldb::Status, bool /*disk_full*/>
+  OpenLevelDBState(const base::FilePath& file_name,
+                   bool create_if_missing,
+                   size_t write_buffer_size) override;
+
+ private:
+  SEQUENCE_CHECKER(sequence_checker_);
+
+  std::queue<std::tuple<std::unique_ptr<leveldb::DB>, leveldb::Status>>
+      next_dbs_;
+  std::queue<std::tuple<scoped_refptr<LevelDBState>,
+                        leveldb::Status,
+                        bool /*disk_full*/>>
+      next_leveldb_states_;
 };
 
 }  // namespace content

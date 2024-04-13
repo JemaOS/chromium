@@ -7,9 +7,7 @@
 #include <algorithm>
 #include <string>
 
-#include "base/containers/span.h"
 #include "base/logging.h"
-#include "base/memory/raw_ptr.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/pickle.h"
 #include "base/strings/utf_string_conversions.h"
@@ -131,7 +129,7 @@ BookmarkNodeData::BookmarkNodeData(const BookmarkNode* node) {
 }
 
 BookmarkNodeData::BookmarkNodeData(
-    const std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>& nodes) {
+    const std::vector<const BookmarkNode*>& nodes) {
   ReadFromVector(nodes);
 }
 
@@ -150,7 +148,7 @@ bool BookmarkNodeData::ClipboardContainsBookmarks() {
 #endif
 
 bool BookmarkNodeData::ReadFromVector(
-    const std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>& nodes) {
+    const std::vector<const BookmarkNode*>& nodes) {
   Clear();
 
   if (nodes.empty())
@@ -230,7 +228,7 @@ bool BookmarkNodeData::ReadFromClipboard(ui::ClipboardBuffer buffer) {
                       /* data_dst = */ nullptr, &data);
 
   if (!data.empty()) {
-    base::Pickle pickle = base::Pickle::WithData(base::as_byte_span(data));
+    base::Pickle pickle(data.data(), static_cast<int>(data.size()));
     if (ReadFromPickle(&pickle))
       return true;
   }
@@ -291,10 +289,10 @@ bool BookmarkNodeData::ReadFromPickle(base::Pickle* pickle) {
 
 #endif  // BUILDFLAG(IS_APPLE)
 
-std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>
-BookmarkNodeData::GetNodes(BookmarkModel* model,
-                           const base::FilePath& profile_path) const {
-  std::vector<raw_ptr<const BookmarkNode, VectorExperimental>> nodes;
+std::vector<const BookmarkNode*> BookmarkNodeData::GetNodes(
+    BookmarkModel* model,
+    const base::FilePath& profile_path) const {
+  std::vector<const BookmarkNode*> nodes;
 
   if (!IsFromProfilePath(profile_path))
     return nodes;
@@ -313,8 +311,7 @@ BookmarkNodeData::GetNodes(BookmarkModel* model,
 const BookmarkNode* BookmarkNodeData::GetFirstNode(
     BookmarkModel* model,
     const base::FilePath& profile_path) const {
-  std::vector<raw_ptr<const BookmarkNode, VectorExperimental>> nodes =
-      GetNodes(model, profile_path);
+  std::vector<const BookmarkNode*> nodes = GetNodes(model, profile_path);
   return nodes.size() == 1 ? nodes[0] : nullptr;
 }
 

@@ -5,9 +5,11 @@
 #ifndef COMPONENTS_INVALIDATION_PUBLIC_ACK_HANDLE_H_
 #define COMPONENTS_INVALIDATION_PUBLIC_ACK_HANDLE_H_
 
+#include <memory>
 #include <string>
 
 #include "base/time/time.h"
+#include "base/values.h"
 #include "components/invalidation/public/invalidation_export.h"
 
 namespace invalidation {
@@ -16,14 +18,24 @@ namespace invalidation {
 // invalidation ack handles to avoid unnecessary dependencies.
 class INVALIDATION_EXPORT AckHandle {
  public:
-  AckHandle();
+  static AckHandle CreateUnique();
+  static AckHandle InvalidAckHandle();
+
+  bool Equals(const AckHandle& other) const;
+
+  base::Value::Dict ToValue() const;
+  bool ResetFromValue(const base::Value::Dict& value);
+
+  bool IsValid() const;
+
+  // Explicitly copyable and assignable for STL containers.
   AckHandle(const AckHandle& other);
   AckHandle& operator=(const AckHandle& other);
   ~AckHandle();
 
-  bool Equals(const AckHandle& other) const;
-
  private:
+  AckHandle(const std::string& state, base::Time timestamp);
+
   std::string state_;
   base::Time timestamp_;
 };

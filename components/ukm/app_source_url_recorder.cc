@@ -20,80 +20,53 @@ SourceId AssignNewAppId() {
 SourceId AppSourceUrlRecorder::GetSourceIdForChromeApp(
     const std::string& app_id) {
   DCHECK(!app_id.empty());
-  return GetSourceIdForUrl(GetURLForChromeApp(app_id), AppType::kChromeApp);
-}
-
-GURL AppSourceUrlRecorder::GetURLForChromeApp(const std::string& app_id) {
-  return GURL("app://" + app_id);
+  GURL url("app://" + app_id);
+  return GetSourceIdForUrl(url, AppType::kChromeApp);
 }
 
 SourceId AppSourceUrlRecorder::GetSourceIdForChromeExtension(
     const std::string& id) {
-  return GetSourceIdForUrl(GetURLForChromeExtension(id), AppType::kExtension);
-}
-
-GURL AppSourceUrlRecorder::GetURLForChromeExtension(const std::string& id) {
-  return GURL("chrome-extension://" + id);
+  GURL url("chrome-extension://" + id);
+  return GetSourceIdForUrl(url, AppType::kExtension);
 }
 
 SourceId AppSourceUrlRecorder::GetSourceIdForArcPackageName(
     const std::string& package_name) {
   DCHECK(!package_name.empty());
-  return GetSourceIdForUrl(GetURLForArcPackageName(package_name),
-                           AppType::kArc);
-}
-
-GURL AppSourceUrlRecorder::GetURLForArcPackageName(
-    const std::string& package_name) {
-  return GURL("app://" + package_name);
+  GURL url("app://" + package_name);
+  return GetSourceIdForUrl(url, AppType::kArc);
 }
 
 SourceId AppSourceUrlRecorder::GetSourceIdForArc(
     const std::string& package_name) {
-  return GetSourceIdForUrl(GetURLForArc(package_name), AppType::kArc);
-}
-
-GURL AppSourceUrlRecorder::GetURLForArc(const std::string& package_name) {
   const std::string package_name_hash =
       crx_file::id_util::GenerateId(package_name);
-  return GURL("app://play/" + package_name_hash);
+  GURL url("app://play/" + package_name_hash);
+  return GetSourceIdForUrl(url, AppType::kArc);
 }
 
 SourceId AppSourceUrlRecorder::GetSourceIdForPWA(const GURL& url) {
   return GetSourceIdForUrl(url, AppType::kPWA);
 }
 
-GURL AppSourceUrlRecorder::GetURLForPWA(const GURL& url) {
-  return url;
-}
-
 SourceId AppSourceUrlRecorder::GetSourceIdForBorealis(const std::string& app) {
-  return GetSourceIdForUrl(GetURLForBorealis(app), AppType::kBorealis);
-}
-
-GURL AppSourceUrlRecorder::GetURLForBorealis(const std::string& app) {
-  return GURL("app://borealis/" + app);
+  GURL url("app://borealis/" + app);
+  return GetSourceIdForUrl(url, AppType::kBorealis);
 }
 
 SourceId AppSourceUrlRecorder::GetSourceIdForCrostini(
     const std::string& desktop_id,
     const std::string& app_name) {
-  return GetSourceIdForUrl(GetURLForCrostini(desktop_id, app_name),
-                           AppType::kCrostini);
-}
-
-GURL AppSourceUrlRecorder::GetURLForCrostini(const std::string& desktop_id,
-                                             const std::string& app_name) {
-  return GURL("app://" + desktop_id + "/" + app_name);
+  GURL url("app://" + desktop_id + "/" + app_name);
+  return GetSourceIdForUrl(url, AppType::kCrostini);
 }
 
 SourceId AppSourceUrlRecorder::GetSourceIdForUrl(const GURL& url,
                                                  AppType app_type) {
   ukm::DelegatingUkmRecorder* const recorder =
       ukm::DelegatingUkmRecorder::Get();
-  if (!recorder) {
+  if (!recorder)
     return kInvalidSourceId;
-  }
 
   const SourceId source_id = AssignNewAppId();
   if (base::FeatureList::IsEnabled(kUkmAppLogging)) {
@@ -111,9 +84,8 @@ void AppSourceUrlRecorder::MarkSourceForDeletion(SourceId source_id) {
 
   ukm::DelegatingUkmRecorder* const recorder =
       ukm::DelegatingUkmRecorder::Get();
-  if (recorder) {
+  if (recorder)
     recorder->MarkSourceForDeletion(source_id);
-  }
 }
 
 }  // namespace ukm

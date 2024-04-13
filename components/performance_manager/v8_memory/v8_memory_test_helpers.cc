@@ -81,18 +81,18 @@ void V8MemoryTestBase::DelayedReplyWithData(
 
 void V8MemoryTestBase::ExpectQuery(
     MockV8DetailedMemoryReporter* mock_reporter,
-    base::OnceCallback<
+    base::RepeatingCallback<
         void(MockV8DetailedMemoryReporter::GetV8MemoryUsageCallback callback)>
         responder,
     ExpectedMode expected_mode) {
   EXPECT_CALL(*mock_reporter, GetV8MemoryUsage(expected_mode, _))
-      .WillOnce([this, responder = std::move(responder)](
-                    ExpectedMode mode,
-                    MockV8DetailedMemoryReporter::GetV8MemoryUsageCallback
-                        callback) mutable {
-        this->last_query_time_ = base::TimeTicks::Now();
-        std::move(responder).Run(std::move(callback));
-      });
+      .WillOnce(
+          [this, responder](
+              ExpectedMode mode,
+              MockV8DetailedMemoryReporter::GetV8MemoryUsageCallback callback) {
+            this->last_query_time_ = base::TimeTicks::Now();
+            responder.Run(std::move(callback));
+          });
 }
 
 void V8MemoryTestBase::ExpectQueryAndReply(
@@ -100,8 +100,8 @@ void V8MemoryTestBase::ExpectQueryAndReply(
     blink::mojom::PerProcessV8MemoryUsagePtr data,
     ExpectedMode expected_mode) {
   ExpectQuery(mock_reporter,
-              base::BindOnce(&V8MemoryTestBase::ReplyWithData,
-                             base::Unretained(this), std::move(data)),
+              base::BindRepeating(&V8MemoryTestBase::ReplyWithData,
+                                  base::Unretained(this), base::Passed(&data)),
               expected_mode);
 }
 
@@ -110,10 +110,11 @@ void V8MemoryTestBase::ExpectQueryAndDelayReply(
     const base::TimeDelta& delay,
     blink::mojom::PerProcessV8MemoryUsagePtr data,
     ExpectedMode expected_mode) {
-  ExpectQuery(mock_reporter,
-              base::BindOnce(&V8MemoryTestBase::DelayedReplyWithData,
-                             base::Unretained(this), delay, std::move(data)),
-              expected_mode);
+  ExpectQuery(
+      mock_reporter,
+      base::BindRepeating(&V8MemoryTestBase::DelayedReplyWithData,
+                          base::Unretained(this), delay, base::Passed(&data)),
+      expected_mode);
 }
 
 void V8MemoryTestBase::ExpectBindReceiver(
@@ -242,14 +243,14 @@ int WebMemoryTestHarness::GetNextUniqueId() {
 }
 
 FrameNodeImpl* WebMemoryTestHarness::AddFrameNodeImpl(
-    std::optional<std::string> url,
+    absl::optional<std::string> url,
     int browsing_instance_id,
     Bytes memory_usage,
     FrameNodeImpl* parent,
     FrameNodeImpl* opener,
     ProcessNodeImpl* process,
-    std::optional<std::string> id_attribute,
-    std::optional<std::string> src_attribute,
+    absl::optional<std::string> id_attribute,
+    absl::optional<std::string> src_attribute,
     Bytes canvas_memory_usage) {
   // If there's an opener, the new frame is also a new page.
   auto* page = pages_.front().get();
@@ -262,8 +263,7 @@ FrameNodeImpl* WebMemoryTestHarness::AddFrameNodeImpl(
   int frame_routing_id = GetNextUniqueId();
   auto frame_token = blink::LocalFrameToken();
   auto frame = CreateNode<FrameNodeImpl>(
-      process, page, parent, /*outer_document_for_fenced_frame=*/nullptr,
-      frame_routing_id, frame_token,
+      process, page, parent, frame_routing_id, frame_token,
       content::BrowsingInstanceId(browsing_instance_id));
   if (url) {
     frame->OnNavigationCommitted(GURL(*url), /*same document*/ true);

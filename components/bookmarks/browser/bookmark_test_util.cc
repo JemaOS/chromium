@@ -46,11 +46,7 @@ void PrintTo(const BookmarkNode& node, std::ostream* os) {
 }
 
 void PrintTo(const BookmarkNode* node, std::ostream* os) {
-  if (node) {
-    PrintTo(*node, os);
-  } else {
-    *os << "null";
-  }
+  PrintTo(*node, os);
 }
 
 }  // namespace bookmarks

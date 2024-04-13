@@ -10,13 +10,7 @@
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/values.h"
-#include "build/chromeos_buildflags.h"
 #include "components/prefs/pref_change_registrar.h"
-#include "components/search_engines/choice_made_location.h"
-
-namespace search_engines {
-class SearchEngineChoiceService;
-}
 
 namespace user_prefs {
 class PrefRegistrySyncable;
@@ -30,14 +24,7 @@ struct TemplateURLData;
 // search engine selection to and from prefs.
 class DefaultSearchManager {
  public:
-  // A dictionary to hold all data related to the Default Search Engine.
-  // Eventually, this should replace all the data stored in the
-  // default_search_provider.* prefs.
-  static constexpr char kDefaultSearchProviderDataPrefName[] =
-      "default_search_provider_data.template_url_data";
-
-  static constexpr char kDefaultSearchProviderChoiceLocationPrefName[] =
-      "default_search_provider_data.choice_location";
+  static const char kDefaultSearchProviderDataPrefName[];
 
   static const char kID[];
   static const char kShortName[];
@@ -78,7 +65,6 @@ class DefaultSearchManager {
   static const char kCreatedByPolicy[];
   static const char kDisabledByPolicy[];
   static const char kCreatedFromPlayAPI[];
-  static const char kFeaturedByPolicy[];
   static const char kPreconnectToSearchUrl[];
   static const char kPrefetchLikelyNavigations[];
   static const char kIsActive[];
@@ -104,15 +90,8 @@ class DefaultSearchManager {
   using ObserverCallback =
       base::RepeatingCallback<void(const TemplateURLData*, Source)>;
 
-  DefaultSearchManager(
-      PrefService* pref_service,
-      search_engines::SearchEngineChoiceService* search_engine_choice_service,
-      const ObserverCallback& change_observer
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-      ,
-      bool for_lacros_main_profile
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-  );
+  DefaultSearchManager(PrefService* pref_service,
+                       const ObserverCallback& change_observer);
 
   DefaultSearchManager(const DefaultSearchManager&) = delete;
   DefaultSearchManager& operator=(const DefaultSearchManager&) = delete;
@@ -144,21 +123,11 @@ class DefaultSearchManager {
   // Gets the source of the current Default Search Engine value.
   Source GetDefaultSearchEngineSource() const;
 
-  // Returns the choice made location for the case when the user selected the
-  // default search engine:
-  // * Returns choice made location if the source is of the search engine is
-  //   `Source::FROM_USER`
-  // * Returns `ChoiceMadeLocation::kOther` in all other cases.
-  search_engines::ChoiceMadeLocation
-  GetChoiceMadeLocationForUserSelectedDefaultSearchEngine() const;
-
   // Returns a pointer to the fallback engine.
   const TemplateURLData* GetFallbackSearchEngine() const;
 
   // Write default search provider data to |pref_service_|.
-  void SetUserSelectedDefaultSearchEngine(
-      const TemplateURLData& data,
-      search_engines::ChoiceMadeLocation choice_location);
+  void SetUserSelectedDefaultSearchEngine(const TemplateURLData& data);
 
   // Clear the user's default search provider choice from |pref_service_|. Does
   // not explicitly disable Default Search. The new default search
@@ -194,10 +163,7 @@ class DefaultSearchManager {
   // Invokes |change_observer_| if it is not NULL.
   void NotifyObserver();
 
-  const raw_ptr<PrefService> pref_service_;
-  const raw_ptr<search_engines::SearchEngineChoiceService>
-      search_engine_choice_service_ = nullptr;
-
+  raw_ptr<PrefService> pref_service_;
   const ObserverCallback change_observer_;
   PrefChangeRegistrar pref_change_registrar_;
 
@@ -220,11 +186,6 @@ class DefaultSearchManager {
 
   // True if the default search is currently recommended by policy.
   bool default_search_recommended_by_policy_ = false;
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  // True if this instance is used for the Lacros primary profile.
-  bool for_lacros_main_profile_ = false;
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 };
 
 #endif  // COMPONENTS_SEARCH_ENGINES_DEFAULT_SEARCH_MANAGER_H_

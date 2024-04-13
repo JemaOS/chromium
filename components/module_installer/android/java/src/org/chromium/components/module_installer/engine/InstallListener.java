@@ -4,7 +4,9 @@
 
 package org.chromium.components.module_installer.engine;
 
-/** Broadcast listener for dynamic feature module installs. */
+/**
+ * Broadcast listener for dynamic feature module installs.
+ */
 public interface InstallListener {
     /**
      * Called when the install has completed.

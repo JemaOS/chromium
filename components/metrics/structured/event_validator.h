@@ -6,13 +6,14 @@
 #define COMPONENTS_METRICS_STRUCTURED_EVENT_VALIDATOR_H_
 
 #include <cstdint>
-#include <optional>
 #include <string>
 
 #include "components/metrics/structured/enums.h"
 #include "components/metrics/structured/event.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
-namespace metrics::structured {
+namespace metrics {
+namespace structured {
 
 // Interface to be implemented by codegen for every event to validate
 // messages received by the structured metric service.
@@ -33,31 +34,20 @@ class EventValidator {
   // Returns the event validator if |metric_name| is a valid metric for this
   // event. This method is virtual because a static constexpr map will be
   // defined within each event validator implementation.
-  std::optional<MetricMetadata> GetMetricMetadata(
-      const std::string& metric_name) const;
-
-  std::optional<base::StringPiece> GetMetricName(
-      uint64_t metric_name_hash) const;
+  virtual absl::optional<MetricMetadata> GetMetricMetadata(
+      const std::string& metric_name) const = 0;
 
   uint64_t event_hash() const;
-  bool can_force_record() const;
 
  protected:
   // Should not be constructed directly.
-  explicit EventValidator(uint64_t event_hash, bool force_record);
-
-  std::unordered_map<base::StringPiece, EventValidator::MetricMetadata>
-      metric_metadata_;
-
-  std::unordered_map<uint64_t, base::StringPiece> metrics_name_map_;
+  explicit EventValidator(uint64_t event_hash);
 
  private:
   uint64_t event_hash_;
-  // Flag for whether an event can be recorded, not uploaded, before a user has
-  // been able to opt-in.
-  bool force_record_;
 };
 
-}  // namespace metrics::structured
+}  // namespace structured
+}  // namespace metrics
 
 #endif  // COMPONENTS_METRICS_STRUCTURED_EVENT_VALIDATOR_H_

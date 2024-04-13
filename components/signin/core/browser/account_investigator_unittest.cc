@@ -250,8 +250,7 @@ TEST_F(AccountInvestigatorTest, SharedCookieJarReportWithAccount) {
   identity_test_env()->SetPrimaryAccount("1@mail.com",
                                          signin::ConsentLevel::kSync);
   base::Time now = base::Time::Now();
-  pref_service()->SetDouble(prefs::kGaiaCookieChangedTime,
-                            now.InSecondsFSinceUnixEpoch());
+  pref_service()->SetDouble(prefs::kGaiaCookieChangedTime, now.ToDoubleT());
   const AccountRelation expected_relation(
       AccountRelation::ONE_OF_SIGNED_IN_MATCH_ANY_SIGNED_OUT);
   const HistogramTester histogram_tester;

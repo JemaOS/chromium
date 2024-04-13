@@ -16,26 +16,31 @@ class MockMerchantPromoCodeManager : public MerchantPromoCodeManager {
   MockMerchantPromoCodeManager();
   ~MockMerchantPromoCodeManager() override;
 
-  MOCK_METHOD(bool,
-              OnGetSingleFieldSuggestions,
-              (const FormFieldData& field,
-               const AutofillClient& client,
-               SingleFieldFormFiller::OnSuggestionsReturnedCallback callback,
-               const SuggestionsContext& context),
-              (override));
+  MOCK_METHOD(
+      bool,
+      OnGetSingleFieldSuggestions,
+      (AutoselectFirstSuggestion autoselect_first_suggestion,
+       const FormFieldData& field,
+       const AutofillClient& client,
+       base::WeakPtr<MerchantPromoCodeManager::SuggestionsHandler> handler,
+       const SuggestionsContext& context),
+      (override));
   MOCK_METHOD(void,
               OnWillSubmitFormWithFields,
               (const std::vector<FormFieldData>& fields,
                bool is_autocomplete_enabled),
               (override));
-  MOCK_METHOD(void, CancelPendingQueries, (), (override));
+  MOCK_METHOD(void,
+              CancelPendingQueries,
+              (const MerchantPromoCodeManager::SuggestionsHandler*),
+              (override));
   MOCK_METHOD(void,
               OnRemoveCurrentSingleFieldSuggestion,
-              (const std::u16string&, const std::u16string&, PopupItemId),
+              (const std::u16string&, const std::u16string&, int),
               (override));
   MOCK_METHOD(void,
               OnSingleFieldSuggestionSelected,
-              (const std::u16string&, PopupItemId),
+              (const std::u16string&, int),
               (override));
 };
 

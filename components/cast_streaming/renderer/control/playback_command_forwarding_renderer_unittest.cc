@@ -4,7 +4,6 @@
 
 #include "components/cast_streaming/renderer/control/playback_command_forwarding_renderer.h"
 
-#include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "components/cast_streaming/common/public/mojom/renderer_controller.mojom.h"
@@ -78,9 +77,7 @@ class PlaybackCommandForwardingRendererTest : public testing::Test {
             remote_client_.InitWithNewEndpointAndPassReceiver());
   }
 
-  ~PlaybackCommandForwardingRendererTest() override {
-    mock_renderer_ = nullptr;
-  }
+  ~PlaybackCommandForwardingRendererTest() override = default;
 
  protected:
   void CallInitialize() {
@@ -112,7 +109,7 @@ class PlaybackCommandForwardingRendererTest : public testing::Test {
   mojo::Remote<media::mojom::Renderer> remote_;
   mojo::PendingAssociatedRemote<media::mojom::RendererClient> remote_client_;
 
-  raw_ptr<media::MockRenderer, DanglingUntriaged> mock_renderer_;
+  media::MockRenderer* mock_renderer_;
   testing::StrictMock<media::MockMediaResource> mock_media_resource_;
   testing::StrictMock<media::MockRendererClient> mock_renderer_client_;
   std::unique_ptr<PlaybackCommandForwardingRenderer> renderer_;
@@ -171,7 +168,7 @@ TEST_F(PlaybackCommandForwardingRendererTest, RendererClientCallbacksCalled) {
 
   EXPECT_CALL(*mojo_renderer_client_, InitializeCallback(true));
   remote_->Initialize(
-      std::move(remote_client_), std::nullopt, nullptr,
+      std::move(remote_client_), absl::nullopt, nullptr,
       base::BindOnce(&MockMojoRendererClient::InitializeCallback,
                      base::Unretained(mojo_renderer_client_.get())));
   task_environment_.RunUntilIdle();
@@ -258,7 +255,7 @@ TEST_F(PlaybackCommandForwardingRendererTest, RendererClientCallbacksCalled) {
   testing::Mock::VerifyAndClearExpectations(mojo_renderer_client_.get());
   testing::Mock::VerifyAndClearExpectations(&mock_renderer_client_);
 
-  const std::optional<int> frame_rate = 123;
+  const absl::optional<int> frame_rate = 123;
   EXPECT_CALL(mock_renderer_client_, OnVideoFrameRateChange(frame_rate));
   renderer_client()->OnVideoFrameRateChange(frame_rate);
   task_environment_.RunUntilIdle();

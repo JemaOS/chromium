@@ -7,14 +7,13 @@
 
 #include <stdint.h>
 
-#include <optional>
-
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "components/page_load_metrics/browser/observers/ad_metrics/frame_data_utils.h"
 #include "components/page_load_metrics/browser/page_load_metrics_observer.h"
 #include "components/page_load_metrics/common/page_load_metrics.mojom-forward.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/size.h"
 #include "url/origin.h"
 
@@ -122,7 +121,7 @@ enum class MediaStatus {
 // typically used to capture an ad creative. It stores frame-specific
 // information (such as size, activation status, and origin), which is typically
 // specific to the top frame in the tree.
-class FrameTreeData final {
+class FrameTreeData : public base::SupportsWeakPtr<FrameTreeData> {
  public:
   using FrameTreeNodeId = PageLoadMetricsObserver::FrameTreeNodeId;
 
@@ -191,18 +190,13 @@ class FrameTreeData final {
     return creative_origin_status_;
   }
 
-  std::optional<base::TimeDelta> first_eligible_to_paint() const {
+  absl::optional<base::TimeDelta> first_eligible_to_paint() const {
     return first_eligible_to_paint_;
   }
 
-  std::optional<base::TimeDelta> earliest_first_contentful_paint() const {
+  absl::optional<base::TimeDelta> earliest_first_contentful_paint() const {
     return earliest_first_contentful_paint_;
   }
-
-  std::optional<base::TimeDelta> earliest_fcp_since_top_nav_start() const {
-    return earliest_fcp_since_top_nav_start_;
-  }
-
   // Sets the size of the frame and updates its visibility state.
   void SetFrameSize(gfx::Size frame_size_);
 
@@ -235,14 +229,11 @@ class FrameTreeData final {
     creative_origin_status_ = creative_origin_status;
   }
 
-  void SetFirstEligibleToPaint(std::optional<base::TimeDelta> time_stamp);
+  void SetFirstEligibleToPaint(absl::optional<base::TimeDelta> time_stamp);
 
   // Returns whether a new FCP is set.
   bool SetEarliestFirstContentfulPaint(
-      std::optional<base::TimeDelta> time_stamp);
-
-  void SetEarliestFirstContentfulPaintSinceTopNavStart(
-      base::TimeDelta time_since_top_nav_start);
+      absl::optional<base::TimeDelta> time_stamp);
 
   HeavyAdStatus heavy_ad_status_with_noise() const {
     return heavy_ad_status_with_noise_;
@@ -262,10 +253,6 @@ class FrameTreeData final {
   // Accessor for the peak windowed cpu usage of the frame tree.
   int peak_windowed_cpu_percent() const {
     return peak_cpu_.peak_windowed_percent();
-  }
-
-  base::WeakPtr<FrameTreeData> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
   }
 
  private:
@@ -317,15 +304,11 @@ class FrameTreeData final {
   // as being eligible to paint, or null if all frames are currently
   // render-throttled and there hasn't been a first paint. Note that this
   // timestamp and the implied throttling status are best-effort.
-  std::optional<base::TimeDelta> first_eligible_to_paint_;
+  absl::optional<base::TimeDelta> first_eligible_to_paint_;
 
   // The smallest FCP seen for any any frame in this ad frame tree, if a
   // frame has painted.
-  std::optional<base::TimeDelta> earliest_first_contentful_paint_;
-
-  // The smallest FCP time seen for any frame in this ad frame tree less the
-  // time from top-frame navigation start.
-  std::optional<base::TimeDelta> earliest_fcp_since_top_nav_start_;
+  absl::optional<base::TimeDelta> earliest_first_contentful_paint_;
 
   // Indicates whether or not this frame met the criteria for the heavy ad
   // intervention with additional additive noise for the
@@ -362,9 +345,6 @@ class FrameTreeData final {
 
   // Memory usage by v8 in this ad frame tree.
   MemoryUsageAggregator memory_usage_;
-
-  // Owns weak pointers to the instance.
-  base::WeakPtrFactory<FrameTreeData> weak_ptr_factory_{this};
 };
 
 }  // namespace page_load_metrics

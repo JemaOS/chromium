@@ -12,7 +12,6 @@
 #include "base/metrics/user_metrics.h"
 #include "base/observer_list.h"
 #include "base/time/time.h"
-#include "components/segmentation_platform/internal/database/ukm_database.h"
 
 namespace segmentation_platform {
 
@@ -34,9 +33,7 @@ class UserActionSignalHandler {
     Observer() = default;
   };
 
-  UserActionSignalHandler(const std::string& profile_id,
-                          SignalDatabase* signal_database,
-                          UkmDatabase* ukm_db);
+  explicit UserActionSignalHandler(SignalDatabase* signal_database);
   virtual ~UserActionSignalHandler();
 
   // Disallow copy/assign.
@@ -62,11 +59,8 @@ class UserActionSignalHandler {
                        base::TimeTicks action_time,
                        bool success);
 
-  const std::string profile_id_;
-
   // The database storing relevant user actions.
-  const raw_ptr<SignalDatabase> db_;
-  const raw_ptr<UkmDatabase> ukm_db_;
+  raw_ptr<SignalDatabase> db_;
 
   // The callback registered with user metrics module that gets invoked for
   // every user action.

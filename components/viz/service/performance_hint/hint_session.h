@@ -20,23 +20,13 @@ namespace viz {
 
 class VIZ_SERVICE_EXPORT HintSession {
  public:
-  enum class BoostType {
-    kDefault,
-    kScrollBoost,
-    kWakeUpBoost,
-  };
-
   virtual ~HintSession() = default;
 
   virtual void UpdateTargetDuration(base::TimeDelta target_duration) = 0;
 
   // `actual_duration` is compared to `target_duration` in `CreateSession` to
   // determine the performance of a frame.
-  // 'preferable_boost_type' is a hint which mode to use. There is no guarantee
-  // that this mode will be used immediately or will be used at all.
-  virtual void ReportCpuCompletionTime(base::TimeDelta actual_duration,
-                                       base::TimeTicks draw_start,
-                                       BoostType preferable_boost_type) = 0;
+  virtual void ReportCpuCompletionTime(base::TimeDelta actual_duration) = 0;
 };
 
 class VIZ_SERVICE_EXPORT HintSessionFactory {

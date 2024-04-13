@@ -21,6 +21,7 @@
 #include "build/chromeos_buildflags.h"
 #include "gpu/ipc/common/gpu_memory_buffer_support.h"
 #include "gpu/ipc/common/surface_handle.h"
+#include "gpu/ipc/host/gpu_memory_buffer_support.h"
 #include "media/media_buildflags.h"
 #include "services/viz/privileged/mojom/gl/gpu_service.mojom.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -151,12 +152,6 @@ class TestGpuService : public mojom::GpuService {
           jea_receiver) override {}
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
-#if !BUILDFLAG(IS_CHROMEOS)
-  void BindWebNNContextProvider(
-      mojo::PendingReceiver<webnn::mojom::WebNNContextProvider> receiver,
-      int32_t client_id) override {}
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-
 #if BUILDFLAG(IS_WIN)
   void RegisterDCOMPSurfaceHandle(
       mojo::PlatformHandle surface_handle,
@@ -189,10 +184,6 @@ class TestGpuService : public mojom::GpuService {
                            CopyGpuMemoryBufferCallback callback) override {
     std::move(callback).Run(false);
   }
-
-  void BindClientGmbInterface(
-      mojo::PendingReceiver<gpu::mojom::ClientGmbInterface> receiver,
-      int client_id) override {}
 
   void GetVideoMemoryUsageStats(
       GetVideoMemoryUsageStatsCallback callback) override {}
@@ -244,8 +235,7 @@ class TestGpuService : public mojom::GpuService {
       WriteClangProfilingProfileCallback callback) override {}
 #endif
 
-  void GetDawnInfo(bool collect_metrics,
-                   GetDawnInfoCallback callback) override {}
+  void GetDawnInfo(GetDawnInfoCallback callback) override {}
 
   void Crash() override {}
 
@@ -318,8 +308,8 @@ class HostGpuMemoryBufferManagerTest : public ::testing::Test {
     if (native_pixmap_supported)
       return true;
 
-    DCHECK(gpu::GpuMemoryBufferSupport::GetNativeGpuMemoryBufferConfigurations()
-               .empty());
+    gpu::GpuMemoryBufferSupport support;
+    DCHECK(gpu::GetNativeGpuMemoryBufferConfigurations(&support).empty());
     return false;
   }
 

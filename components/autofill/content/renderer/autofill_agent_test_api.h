@@ -5,33 +5,23 @@
 #ifndef COMPONENTS_AUTOFILL_CONTENT_RENDERER_AUTOFILL_AGENT_TEST_API_H_
 #define COMPONENTS_AUTOFILL_CONTENT_RENDERER_AUTOFILL_AGENT_TEST_API_H_
 
-#include "base/memory/raw_ref.h"
 #include "components/autofill/content/renderer/autofill_agent.h"
 
 namespace autofill {
 
 class AutofillAgentTestApi {
  public:
-  explicit AutofillAgentTestApi(AutofillAgent* agent) : agent_(*agent) {}
-
-  bool is_dom_content_loaded() const { return agent_->is_dom_content_loaded_; }
-
-  FormTracker& form_tracker() { return *agent_->form_tracker_; }
-  void set_form_tracker(std::unique_ptr<FormTracker> form_tracker) {
-    agent_->form_tracker_ = std::move(form_tracker);
+  explicit AutofillAgentTestApi(AutofillAgent* agent) : agent_(agent) {
+    DCHECK(agent_);
   }
 
-  std::optional<FormData> provisionally_saved_form() {
-    return agent_->provisionally_saved_form();
+  void DidAddOrRemoveFormRelatedElementsDynamically() {
+    agent_->DidAddOrRemoveFormRelatedElementsDynamically();
   }
 
  private:
-  const raw_ref<AutofillAgent> agent_;
+  AutofillAgent* agent_;  // Not null.
 };
-
-inline AutofillAgentTestApi test_api(AutofillAgent& agent) {
-  return AutofillAgentTestApi(&agent);
-}
 
 }  // namespace autofill
 

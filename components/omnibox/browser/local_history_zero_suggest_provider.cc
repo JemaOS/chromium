@@ -8,9 +8,9 @@
 #include <cmath>
 #include <set>
 #include <string>
-#include <vector>
 
 #include "base/check.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/i18n/case_conversion.h"
@@ -157,7 +157,7 @@ void LocalHistoryZeroSuggestProvider::DeleteMatch(
       &history_task_tracker_);
 
   // Immediately update the list of matches to reflect the match was deleted.
-  std::erase_if(matches_, [&](const auto& item) {
+  base::EraseIf(matches_, [&](const auto& item) {
     return match.contents == item.contents;
   });
 }
@@ -215,7 +215,6 @@ void LocalHistoryZeroSuggestProvider::QueryURLDatabase(
     SearchSuggestionParser::SuggestResult suggestion(
         /*suggestion=*/result->normalized_term,
         AutocompleteMatchType::SEARCH_HISTORY,
-        /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME,
         /*subtypes=*/{}, /*from_keyword=*/false, relevance--,
         /*relevance_from_server=*/false,
         /*input_text=*/base::ASCIIToUTF16(std::string()));

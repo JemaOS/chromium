@@ -22,7 +22,7 @@ using SLType = InducedSuffixSort::SLType;
 
 }  // namespace
 
-using ustring = std::vector<unsigned char>;
+using ustring = std::basic_string<unsigned char>;
 
 constexpr uint16_t kNumChar = 256;
 

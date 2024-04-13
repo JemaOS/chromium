@@ -12,7 +12,7 @@ namespace browsing_data_model_test_util {
 // For testing purposes, it's useful to have a non-view version of a
 // BrowsingDataEntry, so they can be put in vectors etc.
 struct BrowsingDataEntry {
-  BrowsingDataEntry(const BrowsingDataModel::DataOwner& data_owner,
+  BrowsingDataEntry(const std::string& primary_host,
                     BrowsingDataModel::DataKey data_key,
                     BrowsingDataModel::DataDetails data_details);
   explicit BrowsingDataEntry(
@@ -21,9 +21,7 @@ struct BrowsingDataEntry {
   BrowsingDataEntry(const BrowsingDataEntry& other);
   bool operator==(const BrowsingDataEntry& other) const;
 
-  std::string ToDebugString() const;
-
-  BrowsingDataModel::DataOwner data_owner;
+  std::string primary_host;
   BrowsingDataModel::DataKey data_key;
   BrowsingDataModel::DataDetails data_details;
 };
@@ -35,8 +33,8 @@ void ValidateBrowsingDataEntries(
     const std::vector<BrowsingDataEntry>& expected_entries);
 
 // Check that the entries returned by `model` are matching `expected_entries`,
-// i.e. lists are equal and storage size is more than 0.
-void ValidateBrowsingDataEntriesNonZeroUsage(
+// i.e. lists are equal without considering storage size.
+void ValidateBrowsingDataEntriesIgnoreUsage(
     BrowsingDataModel* model,
     const std::vector<BrowsingDataEntry>& expected_entries);
 

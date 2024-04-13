@@ -27,14 +27,19 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Tests for {@link ChromeTransitionDrawable} class. */
+/**
+ * Tests for {@link ChromeTransitionDrawable} class.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class ChromeTransitionDrawableTest {
-    @Rule public MockitoRule mockitoRule = MockitoJUnit.rule();
+    @Rule
+    public MockitoRule mockitoRule = MockitoJUnit.rule();
 
-    @Mock private Drawable mInitialDrawable;
-    @Mock private Drawable mFinalDrawable;
+    @Mock
+    private Drawable mInitialDrawable;
+    @Mock
+    private Drawable mFinalDrawable;
 
     private ChromeTransitionDrawable mTransitionDrawable;
     private int mInitialDrawableAlpha;
@@ -44,18 +49,16 @@ public class ChromeTransitionDrawableTest {
     public void setUp() {
         doReturn(mInitialDrawable).when(mInitialDrawable).mutate();
         doReturn(mFinalDrawable).when(mFinalDrawable).mutate();
-        doAnswer(
-                        invocation -> {
-                            mInitialDrawableAlpha = invocation.getArgument(0);
-                            return null;
-                        })
+        doAnswer(invocation -> {
+            mInitialDrawableAlpha = invocation.getArgument(0);
+            return null;
+        })
                 .when(mInitialDrawable)
                 .setAlpha(anyInt());
-        doAnswer(
-                        invocation -> {
-                            mFinalDrawableAlpha = invocation.getArgument(0);
-                            return null;
-                        })
+        doAnswer(invocation -> {
+            mFinalDrawableAlpha = invocation.getArgument(0);
+            return null;
+        })
                 .when(mFinalDrawable)
                 .setAlpha(anyInt());
         mInitialDrawableAlpha = 255;
@@ -67,10 +70,8 @@ public class ChromeTransitionDrawableTest {
     @Test
     public void testTransition() {
         AtomicBoolean endActionRan = new AtomicBoolean(false);
-        mTransitionDrawable
-                .startTransition()
-                .setDuration(100)
-                .withEndAction(() -> endActionRan.set(true));
+        mTransitionDrawable.startTransition().setDuration(100).withEndAction(
+                () -> endActionRan.set(true));
         assertEquals(255, mInitialDrawableAlpha);
         assertEquals(0, mFinalDrawableAlpha);
 
@@ -114,10 +115,8 @@ public class ChromeTransitionDrawableTest {
     public void testTransitionNoCrossfade() {
         mTransitionDrawable.setCrossFadeEnabled(false);
         AtomicBoolean endActionRan = new AtomicBoolean(false);
-        mTransitionDrawable
-                .startTransition()
-                .setDuration(100)
-                .withEndAction(() -> endActionRan.set(true));
+        mTransitionDrawable.startTransition().setDuration(100).withEndAction(
+                () -> endActionRan.set(true));
         assertEquals(255, mInitialDrawableAlpha);
         assertEquals(0, mFinalDrawableAlpha);
 
@@ -172,10 +171,8 @@ public class ChromeTransitionDrawableTest {
     @Test
     public void testReverseTransition() {
         AtomicBoolean endActionRan = new AtomicBoolean(false);
-        mTransitionDrawable
-                .startTransition()
-                .setDuration(100)
-                .withEndAction(() -> endActionRan.set(true));
+        mTransitionDrawable.startTransition().setDuration(100).withEndAction(
+                () -> endActionRan.set(true));
         assertEquals(255, mInitialDrawableAlpha);
         assertEquals(0, mFinalDrawableAlpha);
 
@@ -199,10 +196,8 @@ public class ChromeTransitionDrawableTest {
         AtomicBoolean endActionRan = new AtomicBoolean(false);
         AtomicBoolean endActionRan2 = new AtomicBoolean(false);
 
-        mTransitionDrawable
-                .startTransition()
-                .setDuration(100)
-                .withEndAction(() -> endActionRan.set(true));
+        mTransitionDrawable.startTransition().setDuration(100).withEndAction(
+                () -> endActionRan.set(true));
         ShadowLooper.runMainLooperOneTask();
 
         mTransitionDrawable.reverseTransition().withEndAction(() -> endActionRan2.set(true));

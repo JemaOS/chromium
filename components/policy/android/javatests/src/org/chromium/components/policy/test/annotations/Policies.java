@@ -117,10 +117,9 @@ public final class Policies {
 
     @VisibleForTesting
     static Map<String, PolicyData> getPolicies(AnnotatedElement element) {
-        AnnotatedElement parent =
-                (element instanceof Method)
-                        ? ((Method) element).getDeclaringClass()
-                        : ((Class<?>) element).getSuperclass();
+        AnnotatedElement parent = (element instanceof Method)
+                ? ((Method) element).getDeclaringClass()
+                : ((Class<?>) element).getSuperclass();
         Map<String, PolicyData> flags =
                 (parent == null) ? new HashMap<String, PolicyData>() : getPolicies(parent);
 
@@ -129,10 +128,8 @@ public final class Policies {
         }
 
         if (element.isAnnotationPresent(Policies.Remove.class)) {
-            flags.keySet()
-                    .removeAll(
-                            fromItems(element.getAnnotation(Policies.Remove.class).value())
-                                    .keySet());
+            flags.keySet().removeAll(
+                    fromItems(element.getAnnotation(Policies.Remove.class).value()).keySet());
         }
 
         return flags;

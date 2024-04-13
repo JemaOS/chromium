@@ -23,8 +23,7 @@ ActivationStateComputingNavigationThrottle::CreateForRoot(
     content::NavigationHandle* navigation_handle) {
   DCHECK(IsInSubresourceFilterRoot(navigation_handle));
   return base::WrapUnique(new ActivationStateComputingNavigationThrottle(
-      navigation_handle, /*parent_activation_state=*/std::nullopt,
-      /*ruleset_handle*/ nullptr));
+      navigation_handle, absl::optional<mojom::ActivationState>(), nullptr));
 }
 
 // static
@@ -44,11 +43,11 @@ ActivationStateComputingNavigationThrottle::CreateForChild(
 ActivationStateComputingNavigationThrottle::
     ActivationStateComputingNavigationThrottle(
         content::NavigationHandle* navigation_handle,
-        const std::optional<mojom::ActivationState> parent_activation_state,
+        const absl::optional<mojom::ActivationState> parent_activation_state,
         VerifiedRuleset::Handle* ruleset_handle)
     : content::NavigationThrottle(navigation_handle),
       parent_activation_state_(parent_activation_state),
-      ruleset_handle_(ruleset_handle ? ruleset_handle->AsWeakPtr() : nullptr) {}
+      ruleset_handle_(ruleset_handle) {}
 
 ActivationStateComputingNavigationThrottle::
     ~ActivationStateComputingNavigationThrottle() = default;
@@ -61,8 +60,7 @@ void ActivationStateComputingNavigationThrottle::
   DCHECK_NE(mojom::ActivationLevel::kDisabled,
             page_activation_state.activation_level);
   parent_activation_state_ = page_activation_state;
-  DCHECK(ruleset_handle);
-  ruleset_handle_ = ruleset_handle->AsWeakPtr();
+  ruleset_handle_ = ruleset_handle;
 }
 
 content::NavigationThrottle::ThrottleCheckResult
@@ -130,7 +128,7 @@ void ActivationStateComputingNavigationThrottle::CheckActivationState() {
   // method. This is by design of the AsyncDocumentSubresourceFilter, which
   // will drop the message via weak pointer semantics.
   async_filter_ = std::make_unique<AsyncDocumentSubresourceFilter>(
-      ruleset_handle_.get(), std::move(params),
+      ruleset_handle_, std::move(params),
       base::BindOnce(&ActivationStateComputingNavigationThrottle::
                          OnActivationStateComputed,
                      weak_ptr_factory_.GetWeakPtr()));

@@ -31,10 +31,6 @@ extern const char kSafeBrowsingEnabledHistogramName[];
 // Command-line flag for caching an artificial PhishGuard unsafe verdict.
 extern const char kArtificialCachedPhishGuardVerdictFlag[];
 
-// Command-line flag for caching an artificial unsafe verdict for hash-prefix
-// real-time lookups.
-extern const char kArtificialCachedHashPrefixRealTimeVerdictFlag[];
-
 // Countries that has no endpoint for Safe Browsing.
 const std::vector<std::string> GetExcludedCountries();
 
@@ -47,20 +43,6 @@ enum class CredentialPhishedStatus {
   kSiteMarkedAsLegitimate = 1,
   kMaxValue = kSiteMarkedAsLegitimate,
 };
-
-// Product Specific (String) Data field name for the URL that triggered the
-// warning.
-extern const char kFlaggedUrl[];
-
-// Product Specific (String) Data field name for the main frame URL.
-extern const char kMainFrameUrl[];
-
-// Product Specific (String) Data field name for the referrer URL.
-extern const char kReferrerUrl[];
-
-// Product Specific (String) Data field name for user activity.
-extern const char kUserActivityWithUrls[];
-
-}  // namespace safe_browsing
+}
 
 #endif  // COMPONENTS_SAFE_BROWSING_CORE_COMMON_SAFEBROWSING_CONSTANTS_H_

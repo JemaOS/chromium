@@ -137,7 +137,8 @@ class PowerBookmarkService : public KeyedService,
   void RemoveDataProvider(PowerBookmarkDataProvider* data_provider);
 
   // BaseBookmarkModelObserver implementation.
-  void BookmarkNodeAdded(const bookmarks::BookmarkNode* parent,
+  void BookmarkNodeAdded(bookmarks::BookmarkModel* model,
+                         const bookmarks::BookmarkNode* parent,
                          size_t index,
                          bool newly_added) override;
   void BookmarkModelChanged() override {}
@@ -151,8 +152,7 @@ class PowerBookmarkService : public KeyedService,
   scoped_refptr<base::SequencedTaskRunner> backend_task_runner_;
 
   base::ObserverList<PowerBookmarkObserver>::Unchecked observers_;
-  std::vector<raw_ptr<PowerBookmarkDataProvider, VectorExperimental>>
-      data_providers_;
+  std::vector<PowerBookmarkDataProvider*> data_providers_;
 
   SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<PowerBookmarkService> weak_ptr_factory_{this};

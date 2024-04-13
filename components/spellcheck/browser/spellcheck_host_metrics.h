@@ -44,10 +44,17 @@ class SpellCheckHostMetrics {
   SpellCheckHostMetrics();
   ~SpellCheckHostMetrics();
 
+  // Collects the number of words in the custom dictionary, which is
+  // to be uploaded via UMA.
+  static void RecordCustomWordCountStats(size_t count);
+
   // Collects status of spellchecking enabling state, which is
-  // to be uploaded via UMA. Intended to be called only for regular
-  // profiles (not system, guest, incognito, etc.).
+  // to be uploaded via UMA
   void RecordEnabledStats(bool enabled);
+
+  // Collects a histogram for dictionary corruption rate
+  // to be uploaded via UMA
+  void RecordDictionaryCorruptionStats(bool corrupted);
 
   // Collects status of spellchecking enabling state, which is
   // to be uploaded via UMA
@@ -61,8 +68,7 @@ class SpellCheckHostMetrics {
   // attempt to be uploaded via UMA
   void RecordSuggestionStats(int delta);
 
-  // Records if spelling service is enabled or disabled. Intended to be called
-  // only for regular profiles (not system, guest, incognito, etc.).
+  // Records if spelling service is enabled or disabled.
   void RecordSpellingServiceStats(bool enabled);
 
 #if BUILDFLAG(IS_WIN)

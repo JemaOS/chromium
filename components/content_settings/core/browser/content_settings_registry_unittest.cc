@@ -5,12 +5,10 @@
 #include <string>
 
 #include "base/values.h"
-#include "build/blink_buildflags.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "components/content_settings/core/browser/content_settings_info.h"
 #include "components/content_settings/core/browser/content_settings_registry.h"
-#include "components/content_settings/core/browser/content_settings_uma_util.h"
 #include "components/content_settings/core/browser/website_settings_info.h"
 #include "components/content_settings/core/browser/website_settings_registry.h"
 #include "components/content_settings/core/common/content_settings.h"
@@ -42,12 +40,12 @@ class ContentSettingsRegistryTest : public testing::Test {
 };
 
 TEST_F(ContentSettingsRegistryTest, GetPlatformDependent) {
-#if !BUILDFLAG(USE_BLINK)
+#if BUILDFLAG(IS_IOS)
   // Javascript shouldn't be registered on iOS.
   EXPECT_FALSE(registry()->Get(ContentSettingsType::JAVASCRIPT));
 #endif
 
-#if (BUILDFLAG(IS_IOS) && !BUILDFLAG(USE_BLINK)) || BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_IOS) || BUILDFLAG(IS_ANDROID)
   // Images shouldn't be registered on mobile.
   EXPECT_FALSE(registry()->Get(ContentSettingsType::IMAGES));
 #endif
@@ -70,10 +68,7 @@ TEST_F(ContentSettingsRegistryTest, Properties) {
       registry()->Get(ContentSettingsType::COOKIES);
   ASSERT_TRUE(info);
 
-  EXPECT_THAT(info->allowlisted_primary_schemes(),
-              ElementsAre("chrome", "devtools"));
-  EXPECT_THAT(info->third_party_cookie_allowed_secondary_schemes(),
-              ElementsAre("devtools", "chrome-extension"));
+  EXPECT_THAT(info->allowlisted_schemes(), ElementsAre("chrome", "devtools"));
 
   // Check the other properties are populated correctly.
   EXPECT_TRUE(info->IsSettingValid(CONTENT_SETTING_SESSION_ONLY));
@@ -105,7 +100,7 @@ TEST_F(ContentSettingsRegistryTest, Properties) {
             website_settings_info);
 
   // Check that PRIVATE_NETWORK_GUARD is registered correctly.
-#if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_IOS)
   info = registry()->Get(ContentSettingsType::PRIVATE_NETWORK_GUARD);
   ASSERT_TRUE(info);
 
@@ -146,10 +141,8 @@ TEST_F(ContentSettingsRegistryTest, Inheritance) {
       ContentSettingsType::ADS,
       ContentSettingsType::DURABLE_STORAGE,
       ContentSettingsType::LEGACY_COOKIE_ACCESS,
-      ContentSettingsType::INSECURE_PRIVATE_NETWORK,
+      ContentSettingsType::INSECURE_LOCAL_NETWORK,
       ContentSettingsType::REQUEST_DESKTOP_SITE,
-      ContentSettingsType::KEYBOARD_LOCK,
-      ContentSettingsType::POINTER_LOCK,
   };
 
   for (const ContentSettingsInfo* info : *registry()) {
@@ -178,11 +171,16 @@ TEST_F(ContentSettingsRegistryTest, IsDefaultSettingValid) {
       registry()->Get(ContentSettingsType::COOKIES);
   EXPECT_TRUE(info->IsDefaultSettingValid(CONTENT_SETTING_ALLOW));
 
+#if !BUILDFLAG(IS_IOS)
   info = registry()->Get(ContentSettingsType::MEDIASTREAM_MIC);
   EXPECT_FALSE(info->IsDefaultSettingValid(CONTENT_SETTING_ALLOW));
 
   info = registry()->Get(ContentSettingsType::MEDIASTREAM_CAMERA);
   EXPECT_FALSE(info->IsDefaultSettingValid(CONTENT_SETTING_ALLOW));
+
+  info = registry()->Get(ContentSettingsType::PRIVATE_NETWORK_GUARD);
+  EXPECT_FALSE(info->IsDefaultSettingValid(CONTENT_SETTING_ALLOW));
+#endif
 
 #if BUILDFLAG(IS_CHROMEOS)
   info = registry()->Get(ContentSettingsType::PROTECTED_MEDIA_IDENTIFIER);
@@ -191,9 +189,6 @@ TEST_F(ContentSettingsRegistryTest, IsDefaultSettingValid) {
 
 #if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
   info = registry()->Get(ContentSettingsType::FILE_SYSTEM_WRITE_GUARD);
-  EXPECT_FALSE(info->IsDefaultSettingValid(CONTENT_SETTING_ALLOW));
-
-  info = registry()->Get(ContentSettingsType::PRIVATE_NETWORK_GUARD);
   EXPECT_FALSE(info->IsDefaultSettingValid(CONTENT_SETTING_ALLOW));
 #endif
 }
@@ -217,10 +212,10 @@ TEST_F(ContentSettingsRegistryTest, GetInitialDefaultSetting) {
       registry()->Get(ContentSettingsType::POPUPS);
   EXPECT_EQ(CONTENT_SETTING_BLOCK, popups->GetInitialDefaultSetting());
 
-  const ContentSettingsInfo* insecure_private_network =
-      registry()->Get(ContentSettingsType::INSECURE_PRIVATE_NETWORK);
+  const ContentSettingsInfo* insecure_local_network =
+      registry()->Get(ContentSettingsType::INSECURE_LOCAL_NETWORK);
   EXPECT_EQ(CONTENT_SETTING_BLOCK,
-            insecure_private_network->GetInitialDefaultSetting());
+            insecure_local_network->GetInitialDefaultSetting());
 
   const ContentSettingsInfo* federated_identity =
       registry()->Get(ContentSettingsType::FEDERATED_IDENTITY_API);
@@ -231,20 +226,6 @@ TEST_F(ContentSettingsRegistryTest, GetInitialDefaultSetting) {
       ContentSettingsType::FEDERATED_IDENTITY_AUTO_REAUTHN_PERMISSION);
   EXPECT_EQ(CONTENT_SETTING_ALLOW,
             federated_identity_auto_reauthn->GetInitialDefaultSetting());
-}
-
-TEST_F(ContentSettingsRegistryTest, SettingsHaveAHistogramMapping) {
-  size_t count = 0;
-  std::set<int> values;
-  for (const WebsiteSettingsInfo* info : *website_settings_registry()) {
-    int value = content_settings_uma_util::ContentSettingTypeToHistogramValue(
-        info->type());
-    EXPECT_GT(value, 0);
-    count++;
-    values.insert(value);
-  }
-  // Validate that values are unique.
-  EXPECT_EQ(count, values.size());
 }
 
 }  // namespace content_settings

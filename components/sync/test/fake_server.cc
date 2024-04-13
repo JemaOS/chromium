@@ -17,11 +17,9 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/test/test_file_util.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
 #include "base/values.h"
-#include "components/sync/base/model_type.h"
 #include "components/sync/protocol/data_type_progress_marker.pb.h"
 #include "components/sync/protocol/proto_value_conversions.h"
 #include "components/sync/protocol/sync_entity.pb.h"
@@ -36,19 +34,40 @@ using syncer::ModelTypeSet;
 
 namespace fake_server {
 
-FakeServer::FakeServer(const base::FilePath& loopback_server_dir) {
-  CHECK(!loopback_server_dir.empty());
-  // Needed by syncer::LoopbackServer.
+FakeServer::FakeServer()
+    : commit_error_type_(sync_pb::SyncEnums::SUCCESS),
+      error_type_(sync_pb::SyncEnums::SUCCESS),
+      alternate_triggered_errors_(false),
+      request_counter_(0),
+      disallow_sending_encryption_keys_(false) {
   base::ScopedAllowBlockingForTesting allow_blocking;
+  loopback_server_storage_ = std::make_unique<base::ScopedTempDir>();
+  if (!loopback_server_storage_->CreateUniqueTempDir()) {
+    NOTREACHED() << "Creating temp dir failed.";
+  }
   loopback_server_ = std::make_unique<syncer::LoopbackServer>(
-      loopback_server_dir.AppendASCII("profile.pb"));
+      loopback_server_storage_->GetPath().AppendASCII("profile.pb"));
   loopback_server_->set_observer_for_tests(this);
 }
 
-FakeServer::FakeServer()
-    : FakeServer(base::CreateUniqueTempDirectoryScopedToTest()) {}
+FakeServer::FakeServer(const base::FilePath& user_data_dir)
+    : commit_error_type_(sync_pb::SyncEnums::SUCCESS),
+      error_type_(sync_pb::SyncEnums::SUCCESS),
+      alternate_triggered_errors_(false),
+      request_counter_(0),
+      disallow_sending_encryption_keys_(false) {
+  base::ScopedAllowBlockingForTesting allow_blocking;
+  base::FilePath loopback_server_path =
+      user_data_dir.AppendASCII("FakeSyncServer");
+  loopback_server_ = std::make_unique<syncer::LoopbackServer>(
+      loopback_server_path.AppendASCII("profile.pb"));
+  loopback_server_->set_observer_for_tests(this);
+}
 
-FakeServer::~FakeServer() = default;
+FakeServer::~FakeServer() {
+  base::ScopedAllowBlockingForTesting allow_blocking;
+  loopback_server_storage_.reset();
+}
 
 namespace {
 
@@ -300,21 +319,6 @@ net::HttpStatusCode FakeServer::HandleParsedCommand(
       PopulateFullUpdateTypeResults(offer_entities_, *offer_marker,
                                     response->mutable_get_updates());
     }
-
-    for (sync_pb::DataTypeProgressMarker& progress_marker :
-         *response->mutable_get_updates()->mutable_new_progress_marker()) {
-      ModelType type = syncer::GetModelTypeFromSpecificsFieldNumber(
-          progress_marker.data_type_id());
-      if (!syncer::SharedTypes().Has(type)) {
-        continue;
-      }
-      sync_pb::GarbageCollectionDirective::CollaborationGarbageCollection*
-          collaboration_gc = progress_marker.mutable_gc_directive()
-                                 ->mutable_collaboration_gc();
-      for (const std::string& collaboration_id : collaborations_) {
-        collaboration_gc->add_active_collaboration_ids(collaboration_id);
-      }
-    }
   }
 
   if (http_status_code == net::HTTP_OK &&
@@ -359,10 +363,6 @@ bool FakeServer::GetLastGetUpdatesMessage(
 void FakeServer::OverrideResponseType(
     LoopbackServer::ResponseTypeProvider response_type_override) {
   loopback_server_->OverrideResponseType(std::move(response_type_override));
-}
-
-void FakeServer::FlushToDisk() {
-  loopback_server_->FlushToDisk();
 }
 
 base::Value::Dict FakeServer::GetEntitiesAsDictForTesting() {
@@ -414,7 +414,8 @@ void FakeServer::InjectEntity(std::unique_ptr<LoopbackServerEntity> entity) {
   loopback_server_->SaveEntity(std::move(entity));
 
   // Notify observers so invalidations are mimic-ed.
-  OnCommit(/*committed_model_types=*/{model_type});
+  OnCommit(/*committer_invalidator_client_id=*/std::string(),
+           /*committed_model_types=*/{model_type});
 }
 
 base::Time FakeServer::SetWalletData(
@@ -440,7 +441,8 @@ base::Time FakeServer::SetWalletData(
     entity.set_version(version);
   }
 
-  OnCommit(/*committed_model_types=*/{syncer::AUTOFILL_WALLET_DATA});
+  OnCommit(/*committer_invalidator_client_id=*/std::string(),
+           /*committed_model_types=*/{syncer::AUTOFILL_WALLET_DATA});
 
   return now;
 }
@@ -468,7 +470,8 @@ base::Time FakeServer::SetOfferData(
     entity.set_version(version);
   }
 
-  OnCommit(/*committed_model_types=*/{syncer::AUTOFILL_WALLET_OFFER});
+  OnCommit(/*committer_id=*/std::string(),
+           /*committed_model_types=*/{syncer::AUTOFILL_WALLET_OFFER});
 
   return now;
 }
@@ -483,16 +486,13 @@ bool FakeServer::ModifyEntitySpecifics(
     const std::string& id,
     const sync_pb::EntitySpecifics& updated_specifics) {
   OnWillCommit();
-
-  {
-    base::ScopedAllowBlockingForTesting allow_blocking;
-    if (!loopback_server_->ModifyEntitySpecifics(id, updated_specifics)) {
-      return false;
-    }
+  if (!loopback_server_->ModifyEntitySpecifics(id, updated_specifics)) {
+    return false;
   }
 
   // Notify observers so invalidations are mimic-ed.
   OnCommit(
+      /*committer_invalidator_client_id=*/std::string(),
       /*committed_model_types=*/{GetModelTypeFromSpecifics(updated_specifics)});
 
   return true;
@@ -503,16 +503,14 @@ bool FakeServer::ModifyBookmarkEntity(
     const std::string& parent_id,
     const sync_pb::EntitySpecifics& updated_specifics) {
   OnWillCommit();
-  {
-    base::ScopedAllowBlockingForTesting allow_blocking;
-    if (!loopback_server_->ModifyBookmarkEntity(id, parent_id,
-                                                updated_specifics)) {
-      return false;
-    }
+  if (!loopback_server_->ModifyBookmarkEntity(id, parent_id,
+                                              updated_specifics)) {
+    return false;
   }
 
   // Notify observers so invalidations are mimic-ed.
-  OnCommit(/*committed_model_types=*/{syncer::BOOKMARKS});
+  OnCommit(/*committer_invalidator_client_id=*/std::string(),
+           /*committed_model_types=*/{syncer::BOOKMARKS});
 
   return true;
 }
@@ -527,7 +525,8 @@ void FakeServer::ClearServerData() {
   }
 
   // Notify observers so invalidations are mimic-ed.
-  OnCommit(/*committed_model_types=*/{syncer::NIGORI});
+  OnCommit(/*committer_invalidator_client_id=*/std::string(),
+           /*committed_model_types=*/{syncer::NIGORI});
 }
 
 void FakeServer::DeleteAllEntitiesForModelType(ModelType model_type) {
@@ -544,7 +543,7 @@ void FakeServer::SetHttpError(net::HttpStatusCode http_status_code) {
 
 void FakeServer::ClearHttpError() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  http_error_status_code_ = std::nullopt;
+  http_error_status_code_ = absl::nullopt;
 }
 
 void FakeServer::SetClientCommand(
@@ -635,9 +634,10 @@ void FakeServer::RemoveObserver(Observer* observer) {
   observers_.RemoveObserver(observer);
 }
 
-void FakeServer::OnCommit(syncer::ModelTypeSet committed_model_types) {
+void FakeServer::OnCommit(const std::string& committer_invalidator_client_id,
+                          syncer::ModelTypeSet committed_model_types) {
   for (Observer& observer : observers_)
-    observer.OnCommit(committed_model_types);
+    observer.OnCommit(committer_invalidator_client_id, committed_model_types);
 }
 
 void FakeServer::OnHistoryCommit(const std::string& url) {
@@ -664,16 +664,6 @@ void FakeServer::TriggerMigrationDoneError(syncer::ModelTypeSet types) {
   loopback_server_->TriggerMigrationForTesting(types);
 }
 
-void FakeServer::AddCollaboration(const std::string& collaboration_id) {
-  collaborations_.push_back(collaboration_id);
-  // TODO(b/325917757): update collaboration data type.
-}
-
-void FakeServer::RemoveCollaboration(const std::string& collaboration_id) {
-  std::erase(collaborations_, collaboration_id);
-  // TODO(b/325917757): update collaboration data type.
-}
-
 const std::set<std::string>& FakeServer::GetCommittedHistoryURLs() const {
   return committed_history_urls_;
 }
@@ -693,13 +683,6 @@ void FakeServer::LogForTestFailure(const base::Location& location,
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kDisableFakeServerFailureOutput)) {
     return;
-  }
-  if (gtest_scoped_traces_.empty()) {
-    gtest_scoped_traces_.push_back(std::make_unique<testing::ScopedTrace>(
-        location.file_name(), location.line_number(),
-        base::StringPrintf(
-            "Add --%s to hide verbose logs from the fake server.",
-            switches::kDisableFakeServerFailureOutput)));
   }
   gtest_scoped_traces_.push_back(std::make_unique<testing::ScopedTrace>(
       location.file_name(), location.line_number(),

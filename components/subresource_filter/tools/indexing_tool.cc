@@ -46,7 +46,7 @@ bool IndexAndWriteRuleset(const base::FilePath& unindexed_path,
 
   indexer.Finish();
 
-  base::WriteFile(indexed_path, indexer.data());
+  base::WriteFile(indexed_path, base::make_span(indexer));
 
   if (out_checksum)
     *out_checksum = indexer.GetChecksum();
@@ -57,7 +57,7 @@ bool IndexAndWriteRuleset(const base::FilePath& unindexed_path,
 void WriteVersionMetadata(const base::FilePath& path,
                           const std::string& content_version,
                           int checksum) {
-  static constexpr char kVersionFormat[] = R"({
+  const char* version_format = R"({
   "subresource_filter": {
     "ruleset_version": {
       "content": "%s",
@@ -67,7 +67,7 @@ void WriteVersionMetadata(const base::FilePath& path,
   }
 })";
   std::string version = base::StringPrintf(
-      kVersionFormat, content_version.c_str(),
+      version_format, content_version.c_str(),
       subresource_filter::RulesetIndexer::kIndexedFormatVersion, checksum);
   base::WriteFile(path, version);
 }

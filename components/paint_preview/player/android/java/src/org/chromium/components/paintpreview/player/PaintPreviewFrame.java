@@ -6,6 +6,8 @@ package org.chromium.components.paintpreview.player;
 
 import android.graphics.Rect;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.base.UnguessableToken;
 
 import java.util.Arrays;
@@ -29,12 +31,8 @@ class PaintPreviewFrame {
     private int mInitialScrollX;
     private int mInitialScrollY;
 
-    PaintPreviewFrame(
-            UnguessableToken guid,
-            int contentWidth,
-            int contentHeight,
-            int initialScrollX,
-            int initialScrollY) {
+    PaintPreviewFrame(UnguessableToken guid, int contentWidth, int contentHeight,
+            int initialScrollX, int initialScrollY) {
         mGuid = guid;
         mContentWidth = contentWidth;
         mContentHeight = contentHeight;
@@ -42,13 +40,8 @@ class PaintPreviewFrame {
         mInitialScrollY = initialScrollY;
     }
 
-    private PaintPreviewFrame(
-            UnguessableToken guid,
-            int contentWidth,
-            int contentHeight,
-            int initialScrollX,
-            int initialScrollY,
-            PaintPreviewFrame[] subFrames,
+    private PaintPreviewFrame(UnguessableToken guid, int contentWidth, int contentHeight,
+            int initialScrollX, int initialScrollY, PaintPreviewFrame[] subFrames,
             Rect[] subFrameClips) {
         mGuid = guid;
         mContentWidth = contentWidth;
@@ -153,21 +146,11 @@ class PaintPreviewFrame {
         return sb.toString();
     }
 
-    static PaintPreviewFrame createInstanceForTest(
-            UnguessableToken guid,
-            int contentWidth,
-            int contentHeight,
-            int initialScrollX,
-            int initialScrollY,
-            PaintPreviewFrame[] subFrames,
-            Rect[] subFrameClips) {
-        return new PaintPreviewFrame(
-                guid,
-                contentWidth,
-                contentHeight,
-                initialScrollX,
-                initialScrollY,
-                subFrames,
-                subFrameClips);
+    @VisibleForTesting
+    static PaintPreviewFrame createInstanceForTest(UnguessableToken guid, int contentWidth,
+            int contentHeight, int initialScrollX, int initialScrollY,
+            PaintPreviewFrame[] subFrames, Rect[] subFrameClips) {
+        return new PaintPreviewFrame(guid, contentWidth, contentHeight, initialScrollX,
+                initialScrollY, subFrames, subFrameClips);
     }
 }

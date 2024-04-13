@@ -26,7 +26,6 @@
 #include <vector>
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "components/safe_browsing/content/renderer/phishing_classifier/scorer.h"
@@ -43,35 +42,20 @@ class FeatureMap;
 class PhishingDOMFeatureExtractor;
 class PhishingTermFeatureExtractor;
 class PhishingUrlFeatureExtractor;
-class PhishingVisualFeatureExtractor;
 class Scorer;
 
 class PhishingClassifier {
  public:
-  enum class Result {
-    kSuccess = 0,
-    kInvalidScore = 1,
-    kInvalidURLFormatRequest = 2,
-    kInvalidDocumentLoader = 3,
-    kURLFeatureExtractionFailed = 4,
-    kDOMExtractionFailed = 5,
-    kTermExtractionFailed = 6,
-    kVisualExtractionFailed = 7,
-  };
-
   // Callback to be run when phishing classification finishes. The verdict
   // is a ClientPhishingRequest which contains the verdict computed by the
   // classifier as well as the extracted features.  If the verdict.is_phishing()
   // is true, the page is considered phishy by the client-side model,
   // and the browser should ping back to get a final verdict.  The
-  // verdict.client_score() is set to -1 if the classification failed. If the
-  // client_score() is not -1, the Result will be kSuccess,
-  // and one of other results otherwise.
-  typedef base::OnceCallback<void(const ClientPhishingRequest& /* verdict */,
-                                  Result /*result*/)>
+  // verdict.client_score() is set to kInvalidScore if classification failed.
+  typedef base::OnceCallback<void(const ClientPhishingRequest& /* verdict */)>
       DoneCallback;
 
-  static const int kClassifierFailed;
+  static const float kInvalidScore;
 
   // Creates a new PhishingClassifier object that will operate on
   // |render_view|. Note that the classifier will not be 'ready' until
@@ -152,27 +136,25 @@ class PhishingClassifier {
                                std::vector<double> result);
 
   // Helper method to run the DoneCallback and clear the state.
-  void RunCallback(const ClientPhishingRequest& verdict,
-                   Result phishing_classifier_result);
+  void RunCallback(const ClientPhishingRequest& verdict);
 
   // Helper to run the DoneCallback when feature extraction has failed.
   // This always signals a non-phishy verdict for the page, with
   // |kInvalidScore|.
-  void RunFailureCallback(Result failure_event);
+  void RunFailureCallback();
 
   // Clears the current state of the PhishingClassifier.
   void Clear();
 
-  raw_ptr<content::RenderFrame, DanglingUntriaged> render_frame_;  // owns us
+  content::RenderFrame* render_frame_;  // owns us
   std::unique_ptr<PhishingUrlFeatureExtractor> url_extractor_;
   std::unique_ptr<PhishingDOMFeatureExtractor> dom_extractor_;
   std::unique_ptr<PhishingTermFeatureExtractor> term_extractor_;
-  std::unique_ptr<PhishingVisualFeatureExtractor> visual_extractor_;
 
   // State for any in-progress extraction.
   std::unique_ptr<FeatureMap> features_;
   std::unique_ptr<std::set<uint32_t>> shingle_hashes_;
-  raw_ptr<const std::u16string> page_text_;  // owned by the caller
+  const std::u16string* page_text_;  // owned by the caller
   std::unique_ptr<SkBitmap> bitmap_;
   std::unique_ptr<VisualFeatures> visual_features_;
   DoneCallback done_callback_;

@@ -34,7 +34,6 @@
 #include "components/variations/proto/study.pb.h"
 #include "components/variations/study_filtering.h"
 #include "components/variations/variations_associated_data.h"
-#include "components/variations/variations_layers.h"
 #include "components/variations/variations_test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -164,7 +163,6 @@ class TestOverrideStringCallback {
 class ChromeEnvironment {
  public:
   bool HasHighEntropy() { return true; }
-  bool HasLimitedEntropy() { return true; }
 
   void CreateTrialsFromSeed(
       const VariationsSeed& seed,
@@ -176,14 +174,11 @@ class ChromeEnvironment {
     MockEntropyProviders entropy_providers({
         .low_entropy = kAlwaysUseLastGroup,
         .high_entropy = kAlwaysUseFirstGroup,
-        .limited_entropy = kAlwaysUseFirstGroup,
     });
-
-    VariationsLayers layers(seed, entropy_providers);
     // This should mimic the call through SetUpFieldTrials from
     // components/variations/service/variations_service.cc
     VariationsSeedProcessor().CreateTrialsFromSeed(
-        seed, *client_state, callback, entropy_providers, layers, feature_list);
+        seed, *client_state, callback, entropy_providers, feature_list);
   }
 };
 
@@ -192,7 +187,6 @@ class ChromeEnvironment {
 class WebViewEnvironment {
  public:
   bool HasHighEntropy() { return false; }
-  bool HasLimitedEntropy() { return false; }
 
   void CreateTrialsFromSeed(
       const VariationsSeed& seed,
@@ -204,12 +198,10 @@ class WebViewEnvironment {
     MockEntropyProviders entropy_providers({
         .low_entropy = kAlwaysUseLastGroup,
     });
-
-    VariationsLayers layers(seed, entropy_providers);
     // This should mimic the call through SetUpFieldTrials from
     // android_webview/browser/aw_feature_list_creator.cc
     VariationsSeedProcessor().CreateTrialsFromSeed(
-        seed, *client_state, callback, entropy_providers, layers, feature_list);
+        seed, *client_state, callback, entropy_providers, feature_list);
   }
 };
 
@@ -660,7 +652,7 @@ TYPED_TEST(VariationsSeedProcessorTest, FeatureAssociationAndForcing) {
   const char kForcedOffGroup[] = "ForcedOff";
 
   struct {
-    const raw_ref<const base::Feature> feature;
+    const raw_ref<const base::Feature, ExperimentalAsh> feature;
     const char* enable_features_command_line;
     const char* disable_features_command_line;
     OneHundredPercentGroup one_hundred_percent_group;
@@ -672,51 +664,51 @@ TYPED_TEST(VariationsSeedProcessorTest, FeatureAssociationAndForcing) {
       // Check what happens without and command-line forcing flags - that the
       // |one_hundred_percent_group| gets correctly selected and does the right
       // thing w.r.t. to affecting the feature / activating the trial.
-      {ToRawRef(kFeatureOffByDefault), "", "", DEFAULT_GROUP, kDefaultGroup,
+      {raw_ref(kFeatureOffByDefault), "", "", DEFAULT_GROUP, kDefaultGroup,
        false, true},
-      {ToRawRef(kFeatureOffByDefault), "", "", ENABLE_GROUP, kEnabledGroup,
-       true, true},
-      {ToRawRef(kFeatureOffByDefault), "", "", DISABLE_GROUP, kDisabledGroup,
+      {raw_ref(kFeatureOffByDefault), "", "", ENABLE_GROUP, kEnabledGroup, true,
+       true},
+      {raw_ref(kFeatureOffByDefault), "", "", DISABLE_GROUP, kDisabledGroup,
        false, true},
 
       // Do the same as above, but for kFeatureOnByDefault feature.
-      {ToRawRef(kFeatureOnByDefault), "", "", DEFAULT_GROUP, kDefaultGroup,
-       true, true},
-      {ToRawRef(kFeatureOnByDefault), "", "", ENABLE_GROUP, kEnabledGroup, true,
+      {raw_ref(kFeatureOnByDefault), "", "", DEFAULT_GROUP, kDefaultGroup, true,
        true},
-      {ToRawRef(kFeatureOnByDefault), "", "", DISABLE_GROUP, kDisabledGroup,
+      {raw_ref(kFeatureOnByDefault), "", "", ENABLE_GROUP, kEnabledGroup, true,
+       true},
+      {raw_ref(kFeatureOnByDefault), "", "", DISABLE_GROUP, kDisabledGroup,
        false, true},
 
       // Test forcing each feature on and off through the command-line and that
       // the correct associated experiment gets chosen.
-      {ToRawRef(kFeatureOffByDefault), kFeatureOffByDefault.name, "",
+      {raw_ref(kFeatureOffByDefault), kFeatureOffByDefault.name, "",
        DEFAULT_GROUP, kForcedOnGroup, true, true},
-      {ToRawRef(kFeatureOffByDefault), "", kFeatureOffByDefault.name,
+      {raw_ref(kFeatureOffByDefault), "", kFeatureOffByDefault.name,
        DEFAULT_GROUP, kForcedOffGroup, false, true},
-      {ToRawRef(kFeatureOnByDefault), kFeatureOnByDefault.name, "",
+      {raw_ref(kFeatureOnByDefault), kFeatureOnByDefault.name, "",
        DEFAULT_GROUP, kForcedOnGroup, true, true},
-      {ToRawRef(kFeatureOnByDefault), "", kFeatureOnByDefault.name,
+      {raw_ref(kFeatureOnByDefault), "", kFeatureOnByDefault.name,
        DEFAULT_GROUP, kForcedOffGroup, false, true},
 
       // Check that even if a feature should be enabled or disabled based on the
       // the experiment probability weights, the forcing flag association still
       // takes precedence. This is 4 cases as above, but with different values
       // for |one_hundred_percent_group|.
-      {ToRawRef(kFeatureOffByDefault), kFeatureOffByDefault.name, "",
+      {raw_ref(kFeatureOffByDefault), kFeatureOffByDefault.name, "",
        ENABLE_GROUP, kForcedOnGroup, true, true},
-      {ToRawRef(kFeatureOffByDefault), "", kFeatureOffByDefault.name,
+      {raw_ref(kFeatureOffByDefault), "", kFeatureOffByDefault.name,
        ENABLE_GROUP, kForcedOffGroup, false, true},
-      {ToRawRef(kFeatureOnByDefault), kFeatureOnByDefault.name, "",
-       ENABLE_GROUP, kForcedOnGroup, true, true},
-      {ToRawRef(kFeatureOnByDefault), "", kFeatureOnByDefault.name,
-       ENABLE_GROUP, kForcedOffGroup, false, true},
-      {ToRawRef(kFeatureOffByDefault), kFeatureOffByDefault.name, "",
+      {raw_ref(kFeatureOnByDefault), kFeatureOnByDefault.name, "", ENABLE_GROUP,
+       kForcedOnGroup, true, true},
+      {raw_ref(kFeatureOnByDefault), "", kFeatureOnByDefault.name, ENABLE_GROUP,
+       kForcedOffGroup, false, true},
+      {raw_ref(kFeatureOffByDefault), kFeatureOffByDefault.name, "",
        DISABLE_GROUP, kForcedOnGroup, true, true},
-      {ToRawRef(kFeatureOffByDefault), "", kFeatureOffByDefault.name,
+      {raw_ref(kFeatureOffByDefault), "", kFeatureOffByDefault.name,
        DISABLE_GROUP, kForcedOffGroup, false, true},
-      {ToRawRef(kFeatureOnByDefault), kFeatureOnByDefault.name, "",
+      {raw_ref(kFeatureOnByDefault), kFeatureOnByDefault.name, "",
        DISABLE_GROUP, kForcedOnGroup, true, true},
-      {ToRawRef(kFeatureOnByDefault), "", kFeatureOnByDefault.name,
+      {raw_ref(kFeatureOnByDefault), "", kFeatureOnByDefault.name,
        DISABLE_GROUP, kForcedOffGroup, false, true},
   };
 
@@ -733,8 +725,9 @@ TYPED_TEST(VariationsSeedProcessorTest, FeatureAssociationAndForcing) {
     base_scoped_feature_list.Init();
 
     std::unique_ptr<base::FeatureList> feature_list(new base::FeatureList);
-    feature_list->InitFromCommandLine(test_case.enable_features_command_line,
-                                      test_case.disable_features_command_line);
+    feature_list->InitializeFromCommandLine(
+        test_case.enable_features_command_line,
+        test_case.disable_features_command_line);
 
     VariationsSeed seed;
     Study* study = seed.add_study();
@@ -911,41 +904,6 @@ TYPED_TEST(VariationsSeedProcessorTest, LowEntropyStudyTest) {
   // Since an experiment in study2 has google_web_experiment_id set, it will use
   // the low entropy provider, which selects the default group.
   EXPECT_EQ(kDefaultName, base::FieldTrialList::FindFullName(kTrial2Name));
-}
-
-TYPED_TEST(VariationsSeedProcessorTest, LimitedEntropyStudyTest) {
-  VariationsSeed seed;
-  Layer* layer = seed.add_layers();
-  layer->set_id(42);
-  layer->set_num_slots(100);
-  layer->set_entropy_mode(Layer::LIMITED);
-  Layer::LayerMember* member = layer->add_members();
-  member->set_id(82);
-  Layer::LayerMember::SlotRange* slot = member->add_slots();
-  slot->set_start(0);
-  slot->set_end(99);
-
-  Study* study = seed.add_study();
-  study->set_name("MyStudy");
-  study->set_consistency(Study::PERMANENT);
-  study->set_default_experiment_name("Default");
-  AddExperiment("Group1", 50, study);
-  AddExperiment(study->default_experiment_name(), 50, study);
-  LayerMemberReference* layer_member_reference = study->mutable_layer();
-  layer_member_reference->set_layer_id(layer->id());
-  layer_member_reference->set_layer_member_id(member->id());
-
-  this->CreateTrialsFromSeed(seed);
-
-  if (this->env.HasLimitedEntropy()) {
-    // Expect the first group to be selected when using the limited entropy
-    // provider from the setup (`kAlwaysUseFirstGroup`).
-    EXPECT_EQ("Group1", base::FieldTrialList::FindFullName(study->name()));
-  } else {
-    // The study should be dropped on clients without a limited entropy
-    // provider.
-    EXPECT_FALSE(base::FieldTrialList::IsTrialActive(study->name()));
-  }
 }
 
 TYPED_TEST(VariationsSeedProcessorTest, StudyWithInvalidLayer) {

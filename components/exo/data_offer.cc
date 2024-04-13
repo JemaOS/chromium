@@ -4,7 +4,6 @@
 
 #include "components/exo/data_offer.h"
 
-#include <iterator>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -24,7 +23,6 @@
 #include "components/exo/data_exchange_delegate.h"
 #include "components/exo/data_offer_delegate.h"
 #include "components/exo/data_offer_observer.h"
-#include "components/exo/security_delegate.h"
 #include "net/base/filename_util.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
@@ -39,7 +37,10 @@ namespace exo {
 namespace {
 
 constexpr char kTextMimeTypeUtf16[] = "text/plain;charset=utf-16";
+constexpr char kTextHtmlMimeTypeUtf8[] = "text/html;charset=utf-8";
 constexpr char kTextHtmlMimeTypeUtf16[] = "text/html;charset=utf-16";
+constexpr char kTextRtfMimeType[] = "text/rtf";
+constexpr char kImagePngMimeType[] = "image/png";
 
 constexpr char kUTF8[] = "utf8";
 constexpr char kUTF16[] = "utf16";
@@ -91,7 +92,7 @@ void ReadDataTransferEndpointFromClipboard(
     const std::string& charset,
     const ui::DataTransferEndpoint data_dst,
     DataOffer::SendDataCallback callback) {
-  std::optional<ui::DataTransferEndpoint> data_src =
+  const ui::DataTransferEndpoint* data_src =
       ui::Clipboard::GetForCurrentThread()->GetSource(
           ui::ClipboardBuffer::kCopyPaste);
 
@@ -252,48 +253,42 @@ void DataOffer::SetDropData(DataExchangeDelegate* data_exchange_delegate,
   // We accept the filenames pickle from FilesApp, or
   // OSExchangeData::GetFilenames().
   std::vector<ui::FileInfo> filenames;
-  if (std::optional<base::Pickle> pickle =
-          data.GetPickledData(ui::ClipboardFormatType::WebCustomDataType());
-      pickle.has_value()) {
+  base::Pickle pickle;
+  if (data.GetPickledData(ui::ClipboardFormatType::WebCustomDataType(),
+                          &pickle)) {
     filenames = data_exchange_delegate->ParseFileSystemSources(data.GetSource(),
-                                                               pickle.value());
+                                                               pickle);
   }
-
   if (filenames.empty() && data.HasFile()) {
-    if (std::optional<std::vector<ui::FileInfo>> file_info =
-            data.GetFilenames();
-        file_info.has_value()) {
-      std::ranges::move(file_info.value(), std::back_inserter(filenames));
-    }
+    data.GetFilenames(&filenames);
   }
-
   if (!filenames.empty()) {
     data_callbacks_.emplace(
         uri_list_mime_type,
-        base::BindOnce(&SecurityDelegate::SendFileInfo,
-                       base::Unretained(delegate_->GetSecurityDelegate()),
-                       endpoint_type, std::move(filenames)));
+        base::BindOnce(&DataExchangeDelegate::SendFileInfo,
+                       base::Unretained(data_exchange_delegate), endpoint_type,
+                       std::move(filenames)));
     delegate_->OnOffer(uri_list_mime_type);
     return;
   }
 
-  if (std::optional<base::Pickle> pickle =
-          data.GetPickledData(GetClipboardFormatType());
-      pickle.has_value() &&
-      data_exchange_delegate->HasUrlsInPickle(pickle.value())) {
+  if (data.GetPickledData(GetClipboardFormatType(), &pickle) &&
+      data_exchange_delegate->HasUrlsInPickle(pickle)) {
     data_callbacks_.emplace(
         uri_list_mime_type,
-        base::BindOnce(&SecurityDelegate::SendPickle,
-                       base::Unretained(delegate_->GetSecurityDelegate()),
-                       endpoint_type, pickle.value()));
+        base::BindOnce(&DataExchangeDelegate::SendPickle,
+                       base::Unretained(data_exchange_delegate), endpoint_type,
+                       pickle));
     delegate_->OnOffer(uri_list_mime_type);
     return;
   }
 
-  if (std::optional<ui::OSExchangeDataProvider::FileContentsInfo>
-          file_contents = data.provider().GetFileContents();
-      file_contents.has_value()) {
-    std::string filename = file_contents->filename.value();
+  base::FilePath file_contents_filename;
+  std::string file_contents;
+  if (data.provider().HasFileContents() &&
+      data.provider().GetFileContents(&file_contents_filename,
+                                      &file_contents)) {
+    std::string filename = file_contents_filename.value();
     base::ReplaceChars(filename, "\\", "\\\\", &filename);
     base::ReplaceChars(filename, "\"", "\\\"", &filename);
     const std::string mime_type =
@@ -303,22 +298,21 @@ void DataOffer::SetDropData(DataExchangeDelegate* data_exchange_delegate,
            DataOffer::SendDataCallback callback) {
           std::move(callback).Run(std::move(contents));
         },
-        base::MakeRefCounted<base::RefCountedString>(
-            std::move(file_contents->file_contents)));
+        base::MakeRefCounted<base::RefCountedString>(std::move(file_contents)));
 
     data_callbacks_.emplace(mime_type, std::move(callback));
     delegate_->OnOffer(mime_type);
   }
 
-  if (std::optional<std::u16string> string_content = data.GetString();
-      string_content.has_value()) {
+  std::u16string string_content;
+  if (data.HasString() && data.GetString(&string_content)) {
     const std::string utf8_mime_type = std::string(ui::kMimeTypeTextUtf8);
     data_callbacks_.emplace(
-        utf8_mime_type, AsyncEncodeAsRefCountedString(*string_content, kUTF8));
+        utf8_mime_type, AsyncEncodeAsRefCountedString(string_content, kUTF8));
     delegate_->OnOffer(utf8_mime_type);
     const std::string utf16_mime_type = std::string(kTextMimeTypeUtf16);
-    data_callbacks_.emplace(utf16_mime_type, AsyncEncodeAsRefCountedString(
-                                                 *string_content, kUTF16));
+    data_callbacks_.emplace(
+        utf16_mime_type, AsyncEncodeAsRefCountedString(string_content, kUTF16));
     delegate_->OnOffer(utf16_mime_type);
     const std::string text_plain_mime_type = std::string(ui::kMimeTypeText);
     // The MIME type standard says that new text/ subtypes should default to a
@@ -326,23 +320,22 @@ void DataOffer::SetDropData(DataExchangeDelegate* data_exchange_delegate,
     // the default. Nonetheless, we use UTF8 here because it is a superset of
     // ASCII and the defacto standard text encoding.
     data_callbacks_.emplace(text_plain_mime_type, AsyncEncodeAsRefCountedString(
-                                                      *string_content, kUTF8));
+                                                      string_content, kUTF8));
     delegate_->OnOffer(text_plain_mime_type);
   }
 
-  if (std::optional<ui::OSExchangeData::HtmlInfo> html_content = data.GetHtml();
-      html_content.has_value()) {
-    const std::string utf8_html_mime_type = std::string(ui::kMimeTypeHTMLUtf8);
-    data_callbacks_.emplace(
-        utf8_html_mime_type,
-        AsyncEncodeAsRefCountedString(html_content->html, kUTF8));
+  std::u16string html_content;
+  GURL url_content;
+  if (data.HasHtml() && data.GetHtml(&html_content, &url_content)) {
+    const std::string utf8_html_mime_type = std::string(kTextHtmlMimeTypeUtf8);
+    data_callbacks_.emplace(utf8_html_mime_type,
+                            AsyncEncodeAsRefCountedString(html_content, kUTF8));
     delegate_->OnOffer(utf8_html_mime_type);
 
     const std::string utf16_html_mime_type =
         std::string(kTextHtmlMimeTypeUtf16);
-    data_callbacks_.emplace(
-        utf16_html_mime_type,
-        AsyncEncodeAsRefCountedString(html_content->html, kUTF16));
+    data_callbacks_.emplace(utf16_html_mime_type, AsyncEncodeAsRefCountedString(
+                                                      html_content, kUTF16));
     delegate_->OnOffer(utf16_html_mime_type);
   }
 }
@@ -380,36 +373,39 @@ void DataOffer::SetClipboardData(DataExchangeDelegate* data_exchange_delegate,
   }
   if (data.IsFormatAvailable(ui::ClipboardFormatType::HtmlType(),
                              ui::ClipboardBuffer::kCopyPaste, &data_dst)) {
-    delegate_->OnOffer(std::string(ui::kMimeTypeHTMLUtf8));
+    delegate_->OnOffer(std::string(kTextHtmlMimeTypeUtf8));
     data_callbacks_.emplace(
-        std::string(ui::kMimeTypeHTMLUtf8),
+        std::string(kTextHtmlMimeTypeUtf8),
         base::BindOnce(&ReadHTMLFromClipboard, std::string(kUTF8), data_dst));
     delegate_->OnOffer(std::string(kTextHtmlMimeTypeUtf16));
     data_callbacks_.emplace(
         std::string(kTextHtmlMimeTypeUtf16),
         base::BindOnce(&ReadHTMLFromClipboard, std::string(kUTF16), data_dst));
-    delegate_->OnOffer(std::string(ui::kMimeTypeHTML));
-    data_callbacks_.emplace(
-        std::string(ui::kMimeTypeHTML),
-        base::BindOnce(&ReadHTMLFromClipboard, std::string(kUTF8), data_dst));
   }
   if (data.IsFormatAvailable(ui::ClipboardFormatType::RtfType(),
                              ui::ClipboardBuffer::kCopyPaste, &data_dst)) {
-    delegate_->OnOffer(std::string(ui::kMimeTypeRTF));
-    data_callbacks_.emplace(std::string(ui::kMimeTypeRTF),
+    delegate_->OnOffer(std::string(kTextRtfMimeType));
+    data_callbacks_.emplace(std::string(kTextRtfMimeType),
                             base::BindOnce(&ReadRTFFromClipboard, data_dst));
   }
   if (data.IsFormatAvailable(ui::ClipboardFormatType::BitmapType(),
                              ui::ClipboardBuffer::kCopyPaste, &data_dst)) {
-    delegate_->OnOffer(std::string(ui::kMimeTypePNG));
-    data_callbacks_.emplace(std::string(ui::kMimeTypePNG),
+    delegate_->OnOffer(std::string(kImagePngMimeType));
+    data_callbacks_.emplace(std::string(kImagePngMimeType),
                             base::BindOnce(&ReadPNGFromClipboard, data_dst));
   }
 
-  // For clipboard, FilesApp filenames pickle is already converted to files
-  // in VolumeManager::OnClipboardDataChanged().
+  // We accept the filenames pickle from FilesApp, or text/uri-list from apps.
   std::vector<ui::FileInfo> filenames;
-  if (data.IsFormatAvailable(ui::ClipboardFormatType::FilenamesType(),
+  std::string buf;
+  data.ReadData(ui::ClipboardFormatType::WebCustomDataType(), &data_dst, &buf);
+  if (!buf.empty()) {
+    base::Pickle pickle(buf.data(), static_cast<int>(buf.size()));
+    filenames = data_exchange_delegate->ParseFileSystemSources(
+        data.GetSource(ui::ClipboardBuffer::kCopyPaste), pickle);
+  }
+  if (filenames.empty() &&
+      data.IsFormatAvailable(ui::ClipboardFormatType::FilenamesType(),
                              ui::ClipboardBuffer::kCopyPaste, &data_dst)) {
     data.ReadFilenames(ui::ClipboardBuffer::kCopyPaste, &data_dst, &filenames);
   }
@@ -417,9 +413,9 @@ void DataOffer::SetClipboardData(DataExchangeDelegate* data_exchange_delegate,
     delegate_->OnOffer(std::string(ui::kMimeTypeURIList));
     data_callbacks_.emplace(
         std::string(ui::kMimeTypeURIList),
-        base::BindOnce(&SecurityDelegate::SendFileInfo,
-                       base::Unretained(delegate_->GetSecurityDelegate()),
-                       endpoint_type, std::move(filenames)));
+        base::BindOnce(&DataExchangeDelegate::SendFileInfo,
+                       base::Unretained(data_exchange_delegate), endpoint_type,
+                       std::move(filenames)));
   }
 }
 

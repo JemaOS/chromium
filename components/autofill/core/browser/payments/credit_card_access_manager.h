@@ -6,14 +6,15 @@
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_PAYMENTS_CREDIT_CARD_ACCESS_MANAGER_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "base/functional/callback_forward.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
+#include "base/task/cancelable_task_tracker.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "components/autofill/core/browser/autofill_client.h"
@@ -22,11 +23,7 @@
 #include "components/autofill/core/browser/metrics/form_events/credit_card_form_event_logger.h"
 #include "components/autofill/core/browser/payments/credit_card_cvc_authenticator.h"
 #include "components/autofill/core/browser/payments/credit_card_otp_authenticator.h"
-#include "components/autofill/core/browser/payments/credit_card_risk_based_authenticator.h"
-#include "components/autofill/core/browser/payments/mandatory_reauth_manager.h"
-#include "components/autofill/core/browser/payments/payments_autofill_client.h"
-#include "components/autofill/core/browser/payments/payments_network_interface.h"
-#include "components/autofill/core/browser/payments/payments_window_manager.h"
+#include "components/autofill/core/browser/payments/payments_client.h"
 #include "components/autofill/core/browser/payments/wait_for_signal_or_timeout.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 
@@ -38,6 +35,10 @@ namespace autofill {
 
 class BrowserAutofillManager;
 enum class WebauthnDialogCallbackType;
+
+namespace autofill_metrics {
+class AutofillMetricsBaseTest;
+}
 
 // Flow type denotes which card unmask authentication method was used.
 // TODO(crbug/1300959): Deprecate kCvcThenFido, kCvcFallbackFromFido, and
@@ -56,12 +57,7 @@ enum class UnmaskAuthFlowType {
   kOtp = 5,
   // FIDO authentication failed and fell back to OTP authentication.
   kOtpFallbackFromFido = 6,
-  // VCN 3DS was the only challenge option returned.
-  kThreeDomainSecure = 7,
-  // VCN 3DS was one of the challenge options returned in the challenge
-  // selection dialog, and user selected the 3DS challenge option.
-  kThreeDomainSecureConsentAlreadyGiven = 8,
-  kMaxValue = kThreeDomainSecureConsentAlreadyGiven,
+  kMaxValue = kOtpFallbackFromFido,
 };
 
 // TODO(crbug.com/1249665): Remove this. This was added and never used.
@@ -77,7 +73,6 @@ enum class CreditCardFetchResult {
   kMaxValue = kPermanentError,
 };
 
-// TODO(crbug.com/1473481): Remove CVC from CachedServerCardInfo.
 struct CachedServerCardInfo {
  public:
   // An unmasked CreditCard.
@@ -91,18 +86,19 @@ struct CachedServerCardInfo {
 
 // Manages logic for accessing credit cards either stored locally or stored
 // with Google Payments. Owned by BrowserAutofillManager.
-class CreditCardAccessManager
-    : public CreditCardCvcAuthenticator::Requester,
+class CreditCardAccessManager : public CreditCardCvcAuthenticator::Requester,
 #if !BUILDFLAG(IS_IOS)
-      public CreditCardFidoAuthenticator::Requester,
+                                public CreditCardFidoAuthenticator::Requester,
 #endif
-      public CreditCardOtpAuthenticator::Requester,
-      public CreditCardRiskBasedAuthenticator::Requester {
+                                public CreditCardOtpAuthenticator::Requester {
  public:
-  using OnCreditCardFetchedCallback =
-      base::OnceCallback<void(CreditCardFetchResult, const CreditCard*)>;
-  using OtpAuthenticationResponse =
-      CreditCardOtpAuthenticator::OtpAuthenticationResponse;
+  class Accessor {
+   public:
+    virtual ~Accessor() = default;
+    virtual void OnCreditCardFetched(CreditCardFetchResult result,
+                                     const CreditCard* credit_card,
+                                     const std::u16string& cvc) = 0;
+  };
 
   CreditCardAccessManager(AutofillDriver* driver,
                           AutofillClient* client,
@@ -117,21 +113,23 @@ class CreditCardAccessManager
 
   // Logs information about current credit card data.
   void UpdateCreditCardFormEventLogger();
+  // Returns true when deletion is allowed. Only local cards can be deleted.
+  bool DeleteCard(const CreditCard* card);
+  // Returns true if the |card| is deletable. Fills out
+  // |title| and |body| with relevant user-facing text.
+  bool GetDeletionConfirmationText(const CreditCard* card,
+                                   std::u16string* title,
+                                   std::u16string* body);
 
   // Returns false only if some form of authentication is still in progress.
   bool ShouldClearPreviewedForm();
 
   // Makes a call to Google Payments to retrieve authentication details.
-  virtual void PrepareToFetchCreditCard();
+  void PrepareToFetchCreditCard();
 
-  // `on_credit_card_fetched` is run once `card` is fetched.
-  virtual void FetchCreditCard(
-      const CreditCard* card,
-      OnCreditCardFetchedCallback on_credit_card_fetched);
-
-  // Checks whether we should offer risk-based authentication for masked server
-  // card retrieval.
-  bool IsMaskedServerCardRiskBasedAuthAvailable() const;
+  // Calls |accessor->OnCreditCardFetched()| once credit card is fetched.
+  virtual void FetchCreditCard(const CreditCard* card,
+                               base::WeakPtr<Accessor> accessor);
 
   // If |opt_in| = true, opts the user into using FIDO authentication for card
   // unmasking. Otherwise, opts the user out. If |creation_options| is set,
@@ -172,17 +170,82 @@ class CreditCardAccessManager
       const CreditCardOtpAuthenticator::OtpAuthenticationResponse& response)
       override;
 
-  // CreditCardRiskBasedAuthenticator::Requester:
-  void OnRiskBasedAuthenticationResponseReceived(
-      const CreditCardRiskBasedAuthenticator::RiskBasedAuthenticationResponse&
-          response) override;
-  void OnVirtualCardRiskBasedAuthenticationResponseReceived(
-      AutofillClient::PaymentsRpcResult result,
-      const payments::PaymentsNetworkInterface::UnmaskResponseDetails&
-          response_details) override;
+  void SetUnmaskDetailsRequestInProgressForTesting(
+      bool unmask_details_request_in_progress) {
+    unmask_details_request_in_progress_ = unmask_details_request_in_progress;
+  }
+
+  bool ShouldOfferFidoOptInDialogForTesting(
+      const CreditCardCvcAuthenticator::CvcAuthenticationResponse& response) {
+    return ShouldOfferFidoOptInDialog(response);
+  }
+
+#if BUILDFLAG(IS_ANDROID)
+  bool ShouldOfferFidoAuthForTesting() { return ShouldOfferFidoAuth(); }
+#endif
 
  private:
-  friend class CreditCardAccessManagerTestApi;
+  // TODO(crbug.com/1249665): Remove FRIEND and change everything to _ForTesting
+  // or public.
+  FRIEND_TEST_ALL_PREFIXES(CreditCardAccessManagerBrowserTest,
+                           NavigateFromPage_UnmaskedCardCacheResets);
+  FRIEND_TEST_ALL_PREFIXES(CreditCardAccessManagerTest,
+                           PreflightCallRateLimited);
+  FRIEND_TEST_ALL_PREFIXES(CreditCardAccessManagerTest,
+                           UnmaskAuthFlowEvent_AlsoLogsVirtualCardSubhistogram);
+  FRIEND_TEST_ALL_PREFIXES(CreditCardAccessManagerTest,
+                           RiskBasedVirtualCardUnmasking_Success);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_AuthenticationRequired_OtpOnly);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_AuthenticationRequired_FidoAndOtp_PrefersFido);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_AuthenticationRequired_FidoAndOtp_FidoNotOptedIn);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_AuthenticationRequired_FidoOnly);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_AuthenticationRequired_FidoAndOtp_FidoFailedFallBackToOtp);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_AuthenticationRequired_FidoOnly_FidoNotOptedIn);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_CreditCardAccessManagerReset_TriggersOtpAuthenticatorResetOnFlowCancelled);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_Failure_MerchantOptedOut);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_Failure_NoOptionReturned);
+  FRIEND_TEST_ALL_PREFIXES(
+      CreditCardAccessManagerTest,
+      RiskBasedVirtualCardUnmasking_Failure_VirtualCardRetrievalError);
+  FRIEND_TEST_ALL_PREFIXES(CreditCardAccessManagerTest,
+                           RiskBasedVirtualCardUnmasking_FlowCancelled);
+  friend class autofill_metrics::AutofillMetricsBaseTest;
+  friend class CreditCardAccessManagerTest;
+
+#if !BUILDFLAG(IS_IOS)
+  void set_fido_authenticator_for_testing(
+      std::unique_ptr<CreditCardFidoAuthenticator> fido_authenticator) {
+    fido_authenticator_ = std::move(fido_authenticator);
+  }
+#endif
+
+#if defined(UNIT_TEST)
+  // Mocks that a virtual card was selected, so unit tests that don't run the
+  // actual Autofill suggestions dropdown UI can still follow their remaining
+  // steps under the guise of doing it for a virtual card.
+  void set_virtual_card_suggestion_selected_on_form_event_logger_for_testing() {
+    form_event_logger_->set_latest_selected_card_was_virtual_card_for_testing(
+        /*latest_selected_card_was_virtual_card=*/true);
+  }
+#endif
 
   // Returns whether or not unmasked card cache is empty. Exposed for testing.
   bool UnmaskedCardCacheIsEmpty();
@@ -194,22 +257,17 @@ class CreditCardAccessManager
   // request will be sent to Google Payments.
   void GetUnmaskDetailsIfUserIsVerifiable(bool is_user_verifiable);
 
-  // Log success metrics based on `unmask_auth_flow_type` if user passed
-  // authentication, as well as fill the form.
-  void LogMetricsAndFillFormForServerUnmaskFlows(
-      UnmaskAuthFlowType unmask_auth_flow_type);
-
   // Sets |unmask_details_|. May be ignored if response is too late and user is
   // not opted-in for FIDO auth, or if user does not select a card.
   void OnDidGetUnmaskDetails(
       AutofillClient::PaymentsRpcResult result,
-      payments::PaymentsNetworkInterface::UnmaskDetails& unmask_details);
+      payments::PaymentsClient::UnmaskDetails& unmask_details);
 
-  // Determines what type of authentication is required. `fido_auth_enabled`
+  // Determines what type of authentication is required. |fido_auth_enabled|
   // suggests whether the server has offered FIDO auth as an option.
-  void StartAuthenticationFlow(bool fido_auth_enabled);
-  void StartAuthenticationFlowForVirtualCard(bool fido_auth_enabled);
-  void StartAuthenticationFlowForMaskedServerCard(bool fido_auth_enabled);
+  void GetAuthenticationType(bool fido_auth_enabled);
+  void GetAuthenticationTypeForVirtualCard(bool fido_auth_enabled);
+  void GetAuthenticationTypeForMaskedServerCard(bool fido_auth_enabled);
 
   // Starts the authentication process and delegates the task to authenticators
   // based on the `unmask_auth_flow_type`. Also logs authentication type if
@@ -294,11 +352,14 @@ class CreditCardAccessManager
   // Helper function to fetch local or full server cards.
   void FetchLocalOrFullServerCard();
 
-  // Checks if Mandatory Re-auth is needed after the card has been returned. If
-  // needed, starts the device authentication flow before filling the form.
-  // Otherwise, directly fills the form.
-  void OnNonInteractiveAuthenticationSuccess(
-      CreditCard::RecordType record_type);
+  // Callback function invoked when risk data is fetched.
+  void OnDidGetUnmaskRiskData(const std::string& risk_data);
+
+  // Callback function invoked when an unmask response for a virtual card has
+  // been received.
+  void OnVirtualCardUnmaskResponseReceived(
+      AutofillClient::PaymentsRpcResult result,
+      payments::PaymentsClient::UnmaskResponseDetails& response_details);
 
   // Invoked when CreditCardAccessManager stops waiting for UnmaskDetails to
   // return. If OnDidGetUnmaskDetails() has been invoked,
@@ -340,33 +401,27 @@ class CreditCardAccessManager
 
   // Starts the device authentication flow during a payments autofill form fill.
   // `OnDeviceAuthenticationResponseForFilling()` will be invoked when we
-  // receive a response from the device authentication.
-  // `on_credit_card_fetched_callback_` will be used to handle the response of
-  // the authentication, and possibly fill the card into the form. `card` is the
-  // card that needs to be filled. This function should only be called on
-  // platforms where DeviceAuthenticator is present.
-  // TODO(crbug.com/1447084): Move authentication logic for re-auth into
-  // MandatoryReauthManager.
-  void StartDeviceAuthenticationForFilling(const CreditCard* card);
+  // receive a response from the device authentication. `accessor` will be used
+  // to handle the response of the authentication, and possibly fill the card
+  // into the form. `card` is the card that needs to be filled. `cvc` is the CVC
+  // of the card that needs to be filled, and can be empty if we are autofilling
+  // a card that does not have a CVC saved (for example, a local card). This
+  // function should only be called on platforms where DeviceAuthenticator is
+  // present.
+  void StartDeviceAuthenticationForFilling(base::WeakPtr<Accessor> accessor,
+                                           const CreditCard* card,
+                                           const std::u16string& cvc);
 
   // Callback function invoked when we receive a response from a mandatory
   // re-auth authentication in a flow where we might fill the card after the
-  // response. If it is successful, we will fill `card` into the form using
-  // `accessor`, otherwise we will handle the error. `successful_auth` is true
-  // if the authentication was successful, false otherwise. Pass
-  // `authenticate_method` for logging purpose.
-  // TODO(crbug.com/1447084): Move authentication logic for re-auth into
-  // MandatoryReauthManager.
+  // response. If it is successful, we will fill `card` and `cvc` into the form
+  // using `accessor`, otherwise we will handle the error. `successful_auth` is
+  // true if the authentication waas successful, false otherwise.
   void OnDeviceAuthenticationResponseForFilling(
-      payments::MandatoryReauthAuthenticationMethod authentication_method,
+      base::WeakPtr<Accessor> accessor,
       const CreditCard* card,
+      const std::u16string& cvc,
       bool successful_auth);
-
-  // Notifies the class that triggered card unmasking that the unmasking flow
-  // has completed. This method is run after a VCN 3DS authentication has
-  // completed.
-  void OnVcn3dsAuthenticationComplete(
-      payments::PaymentsWindowManager::Vcn3dsAuthenticationResponse response);
 
   // The current form of authentication in progress.
   UnmaskAuthFlowType unmask_auth_flow_type_ = UnmaskAuthFlowType::kNone;
@@ -381,26 +436,28 @@ class CreditCardAccessManager
   // The associated autofill client. Weak reference.
   const raw_ptr<AutofillClient> client_;
 
-  // Interface to make HTTP-based requests to Google Payments.
-  const raw_ptr<payments::PaymentsNetworkInterface> payments_network_interface_;
+  // Client to interact with Payments servers.
+  raw_ptr<payments::PaymentsClient> payments_client_;
 
   // The personal data manager, used to save and load personal data to/from the
   // web database.
   // Weak reference.
-  const raw_ptr<PersonalDataManager> personal_data_manager_;
+  // May be NULL. NULL indicates OTR.
+  raw_ptr<PersonalDataManager> personal_data_manager_;
 
   // For logging metrics.
-  const raw_ptr<autofill_metrics::CreditCardFormEventLogger> form_event_logger_;
+  raw_ptr<autofill_metrics::CreditCardFormEventLogger, DanglingUntriaged>
+      form_event_logger_;
 
   // Timestamp used for preflight call metrics.
-  std::optional<base::TimeTicks> preflight_call_timestamp_;
+  absl::optional<base::TimeTicks> preflight_call_timestamp_;
 
   // Timestamp used for user-perceived latency metrics.
-  std::optional<base::TimeTicks>
+  absl::optional<base::TimeTicks>
       card_selected_without_unmask_details_timestamp_;
 
   // Timestamp for when fido_authenticator_->IsUserVerifiable() is called.
-  std::optional<base::TimeTicks> is_user_verifiable_called_timestamp_;
+  absl::optional<base::TimeTicks> is_user_verifiable_called_timestamp_;
 
 #if !BUILDFLAG(IS_IOS)
   std::unique_ptr<CreditCardFidoAuthenticator> fido_authenticator_;
@@ -412,18 +469,14 @@ class CreditCardAccessManager
   // Struct to store necessary information to start an authentication. It is
   // populated before an authentication is offered. It includes suggested
   // authentication methods and other information to facilitate card unmasking.
-  payments::PaymentsNetworkInterface::UnmaskDetails unmask_details_;
+  payments::PaymentsClient::UnmaskDetails unmask_details_;
 
   // Structs to store information passed to and fetched from the server for
   // virtual card unmasking.
-  payments::PaymentsNetworkInterface::UnmaskRequestDetails
+  payments::PaymentsClient::UnmaskRequestDetails
       virtual_card_unmask_request_details_;
-  payments::PaymentsNetworkInterface::UnmaskResponseDetails
+  payments::PaymentsClient::UnmaskResponseDetails
       virtual_card_unmask_response_details_;
-
-  // Struct to store response returned by CreditCardRiskBasedAuthenticator.
-  CreditCardRiskBasedAuthenticator::RiskBasedAuthenticationResponse
-      risk_based_authentication_response_;
 
   // Resets when PrepareToFetchCreditCard() is called, if not already reset.
   // Signaled when OnDidGetUnmaskDetails() is called or after timeout.
@@ -438,25 +491,24 @@ class CreditCardAccessManager
   bool can_fetch_unmask_details_ = true;
 
   // The credit card being accessed.
-  // It will be set when user preview or select the card. Before authentication,
-  // the card is the masked server card which is retrieved from webdatabase.
-  // After FIDO, CVC, OTP authentication, it will be override by a new card
-  // constructed by the server response.
   std::unique_ptr<CreditCard> card_;
+
+  // When authorizing a new card, the CVC will be temporarily stored after the
+  // first CVC check, and then will be used to fill the form after FIDO
+  // authentication is complete.
+  std::u16string cvc_ = std::u16string();
 
   // Set to true only if user has a verifying platform authenticator.
   // e.g. Touch/Face ID, Windows Hello, Android fingerprint, etc., is available
   // and enabled.
-  std::optional<bool> is_user_verifiable_;
+  absl::optional<bool> is_user_verifiable_;
 
   // True only if currently waiting on unmask details. This avoids making
   // unnecessary calls to payments.
   bool unmask_details_request_in_progress_ = false;
 
-  // Callback to notify the caller of the access manager when fetching the
-  // card has finished. Only has a meaningful value when an authentication is in
-  // progress.
-  OnCreditCardFetchedCallback on_credit_card_fetched_callback_;
+  // The object attempting to access a card.
+  base::WeakPtr<Accessor> accessor_;
 
   // Used only in virtual card authentication to differentiate between
   // authentication methods. Set when a challenge option is selected, and we are

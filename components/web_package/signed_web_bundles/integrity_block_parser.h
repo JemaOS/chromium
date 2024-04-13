@@ -5,18 +5,17 @@
 #ifndef COMPONENTS_WEB_PACKAGE_SIGNED_WEB_BUNDLES_INTEGRITY_BLOCK_PARSER_H_
 #define COMPONENTS_WEB_PACKAGE_SIGNED_WEB_BUNDLES_INTEGRITY_BLOCK_PARSER_H_
 
-#include <optional>
-
 #include "components/web_package/web_bundle_parser.h"
-#include "third_party/abseil-cpp/absl/base/attributes.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace web_package {
 
-class IntegrityBlockParser : public WebBundleParser::WebBundleSectionParser {
+// A parser for a signed bundle's metadata. This class owns itself and will self
+// destruct after calling the ParseIntergrityBlockCallback.
+class IntegrityBlockParser : WebBundleParser::SharedBundleDataSource::Observer {
  public:
-  explicit IntegrityBlockParser(
-      mojo::Remote<mojom::BundleDataSource>& data_source
-          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+  IntegrityBlockParser(
+      scoped_refptr<WebBundleParser::SharedBundleDataSource> data_source,
       WebBundleParser::ParseIntegrityBlockCallback callback);
 
   IntegrityBlockParser(const IntegrityBlockParser&) = delete;
@@ -24,9 +23,7 @@ class IntegrityBlockParser : public WebBundleParser::WebBundleSectionParser {
 
   ~IntegrityBlockParser() override;
 
-  void StartParsing(
-      WebBundleParser::WebBundleSectionParser::ParsingCompleteCallback callback)
-      override;
+  void Start();
 
   // CBOR of the bytes present at the start of the Signed Web Bundle, including
   // the magic string "🖋📦".
@@ -51,10 +48,10 @@ class IntegrityBlockParser : public WebBundleParser::WebBundleSectionParser {
 
  private:
   void ParseMagicBytesAndVersion(
-      const std::optional<std::vector<uint8_t>>& data);
+      const absl::optional<std::vector<uint8_t>>& data);
 
   void ParseSignatureStack(uint64_t offset_in_stream,
-                           const std::optional<std::vector<uint8_t>>& data);
+                           const absl::optional<std::vector<uint8_t>>& data);
 
   void ReadSignatureStackEntry(const uint64_t offset_in_stream,
                                const uint64_t signature_stack_entries_left);
@@ -62,48 +59,50 @@ class IntegrityBlockParser : public WebBundleParser::WebBundleSectionParser {
   void ParseSignatureStackEntry(
       uint64_t offset_in_stream,
       const uint64_t signature_stack_entries_left,
-      const std::optional<std::vector<uint8_t>>& data);
+      const absl::optional<std::vector<uint8_t>>& data);
 
   void ParseSignatureStackEntryAttributesHeader(
       uint64_t offset_in_stream,
       const uint64_t signature_stack_entries_left,
       mojom::BundleIntegrityBlockSignatureStackEntryPtr signature_stack_entry,
-      const std::optional<std::vector<uint8_t>>& data);
+      const absl::optional<std::vector<uint8_t>>& data);
 
   void ParseSignatureStackEntryAttributesPublicKeyKey(
       uint64_t offset_in_stream,
       const uint64_t signature_stack_entries_left,
       mojom::BundleIntegrityBlockSignatureStackEntryPtr signature_stack_entry,
-      const std::optional<std::vector<uint8_t>>& data);
+      const absl::optional<std::vector<uint8_t>>& data);
 
   void ReadSignatureStackEntryAttributesPublicKeyValue(
       uint64_t offset_in_stream,
       const uint64_t signature_stack_entries_left,
       mojom::BundleIntegrityBlockSignatureStackEntryPtr signature_stack_entry,
-      const std::optional<std::vector<uint8_t>>& public_key);
+      const absl::optional<std::vector<uint8_t>>& public_key);
 
   void ParseSignatureStackEntrySignatureHeader(
       uint64_t offset_in_stream,
       const uint64_t signature_stack_entries_left,
       mojom::BundleIntegrityBlockSignatureStackEntryPtr signature_stack_entry,
-      const std::optional<std::vector<uint8_t>>& data);
+      const absl::optional<std::vector<uint8_t>>& data);
 
   void ParseSignatureStackEntrySignature(
       uint64_t offset_in_stream,
       uint64_t signature_stack_entries_left,
       mojom::BundleIntegrityBlockSignatureStackEntryPtr signature_stack_entry,
-      const std::optional<std::vector<uint8_t>>& signature);
+      const absl::optional<std::vector<uint8_t>>& signature);
 
-  void RunSuccessCallback(const uint64_t offset_in_stream);
+  void RunSuccessCallbackAndDestroy(const uint64_t offset_in_stream);
 
-  void RunErrorCallback(const std::string& message,
-                        mojom::BundleParseErrorType error_type =
-                            mojom::BundleParseErrorType::kFormatError);
+  void RunErrorCallbackAndDestroy(
+      const std::string& message,
+      mojom::BundleParseErrorType error_type =
+          mojom::BundleParseErrorType::kFormatError);
 
-  const raw_ref<mojo::Remote<mojom::BundleDataSource>> data_source_;
-  WebBundleParser::ParseIntegrityBlockCallback result_callback_;
-  WebBundleParser::WebBundleSectionParser::ParsingCompleteCallback
-      complete_callback_;
+  // Implements SharedBundleDataSource::Observer.
+  void OnDisconnect() override;
+
+  scoped_refptr<WebBundleParser::SharedBundleDataSource> data_source_;
+  WebBundleParser::ParseIntegrityBlockCallback callback_;
 
   std::vector<mojom::BundleIntegrityBlockSignatureStackEntryPtr>
       signature_stack_;

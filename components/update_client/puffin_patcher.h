@@ -19,10 +19,14 @@
 #define COMPONENTS_UPDATE_CLIENT_PUFFIN_PATCHER_H_
 
 #include "base/files/file.h"
-#include "base/functional/callback.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/ref_counted.h"
 #include "base/sequence_checker.h"
-#include "components/update_client/update_client_errors.h"
+#include "components/update_client/component_unpacker.h"
+
+namespace base {
+class File;
+}
 
 namespace update_client {
 

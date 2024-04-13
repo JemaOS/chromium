@@ -24,14 +24,8 @@ public class CreateRouteRequestInfo {
     public final int nativeRequestId;
     public final MediaRouter.RouteInfo routeInfo;
 
-    public CreateRouteRequestInfo(
-            MediaSource source,
-            MediaSink sink,
-            String presentationId,
-            String origin,
-            int tabId,
-            boolean isOffTheRecord,
-            int nativeRequestId,
+    public CreateRouteRequestInfo(MediaSource source, MediaSink sink, String presentationId,
+            String origin, int tabId, boolean isOffTheRecord, int nativeRequestId,
             MediaRouter.RouteInfo routeInfo) {
         this.routeId = new MediaRoute(sink.getId(), source.getSourceId(), presentationId).id;
         this.mSource = source;

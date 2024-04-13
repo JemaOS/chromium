@@ -9,7 +9,6 @@
 #include <string>
 
 #include "base/callback_list.h"
-#include "base/cancelable_callback.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
@@ -55,10 +54,8 @@ class POLICY_EXPORT UserPolicySigninServiceBase
   // The callback invoked once policy registration is complete. Passed
   // |dm_token| and |client_id| parameters are empty if policy registration
   // failed.
-  typedef base::OnceCallback<void(
-      const std::string& dm_token,
-      const std::string& client_id,
-      const std::vector<std::string>& user_affiliation_ids)>
+  typedef base::OnceCallback<void(const std::string& dm_token,
+                                  const std::string& client_id)>
       PolicyRegistrationCallback;
 
   // The callback invoked once policy fetch is complete. Passed boolean
@@ -87,7 +84,6 @@ class POLICY_EXPORT UserPolicySigninServiceBase
       const AccountId& account_id,
       const std::string& dm_token,
       const std::string& client_id,
-      const std::vector<std::string>& user_affiliation_ids,
       scoped_refptr<network::SharedURLLoaderFactory> profile_url_loader_factory,
       PolicyFetchCallback callback);
 
@@ -120,11 +116,13 @@ class POLICY_EXPORT UserPolicySigninServiceBase
       const CoreAccountId& account_id,
       PolicyRegistrationCallback callback);
 
-  // Set CloudPolicyClient::DeviceDMTokenCallback for policy fetch request.
-  // Function is for testing purpose only to avoid setup affiliated id and
-  // dm token for both user and device.
-  void SetDeviceDMTokenCallbackForTesting(
-      CloudPolicyClient::DeviceDMTokenCallback callback);
+  // Creates a CloudPolicyClient. Used in situations where
+  // callers want to create a DMToken without actually initializing the
+  // profile's policy infrastructure (for example, during signin when we
+  // want to check if the user's domain requires policy).
+  static std::unique_ptr<CloudPolicyClient> CreateCloudPolicyClient(
+      DeviceManagementService* device_management_service,
+      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory);
 
  protected:
   // Invoked to initialize the cloud policy service for |account_id|, which is
@@ -180,13 +178,6 @@ class POLICY_EXPORT UserPolicySigninServiceBase
   // device_management service.
   virtual void RegisterCloudPolicyService();
 
-  // Returns a callback that can be used to retrieve device dm token when user
-  // is affiliated.
-  virtual CloudPolicyClient::DeviceDMTokenCallback
-  GetDeviceDMTokenIfAffiliatedCallback();
-
-  virtual std::string GetProfileId() = 0;
-
   // Convenience helpers to get the associated CloudPolicyManager and
   // IdentityManager.
   CloudPolicyManager* policy_manager() { return policy_manager_; }
@@ -202,9 +193,6 @@ class POLICY_EXPORT UserPolicySigninServiceBase
     return system_url_loader_factory_;
   }
 
-  CloudPolicyClient::DeviceDMTokenCallback
-      device_dm_token_callback_for_testing_;
-
  private:
   // A getter for `policy_fetch_callbacks_` that constructs a new instance if
   // it's null.
@@ -214,12 +202,6 @@ class POLICY_EXPORT UserPolicySigninServiceBase
   // or NULL if |username| shouldn't register for policy management.
   std::unique_ptr<CloudPolicyClient> CreateClientForRegistrationOnly(
       const std::string& username);
-
-  // Returns a CloudPolicyClient for policy fetch, reporting and many other
-  // purposes. It attaches a callback to the client to retrieve device DM token
-  // which is uploaded for policy fetch request.
-  std::unique_ptr<CloudPolicyClient> CreateClientForNonRegistration(
-      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory);
 
   // Returns false if cloud policy is disabled or if the passed |email_address|
   // is definitely not from a hosted domain (according to the list in
@@ -258,10 +240,6 @@ class POLICY_EXPORT UserPolicySigninServiceBase
   // `RegisterForPolicyWithAccountId()`.
   std::unique_ptr<CloudPolicyClientRegistrationHelper>
       registration_helper_for_temporary_client_;
-
-  // Callback to start the delayed registration. Cancelled when the service is
-  // shut down.
-  base::CancelableOnceCallback<void()> registration_callback_;
 
   base::WeakPtrFactory<UserPolicySigninServiceBase> weak_factory_{this};
 

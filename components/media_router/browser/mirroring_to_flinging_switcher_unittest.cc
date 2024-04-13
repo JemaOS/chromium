@@ -68,7 +68,7 @@ class TestWebContentsPresentationManager
       const RouteRequestResult& result) override {}
 
  private:
-  std::optional<content::PresentationRequest> default_presentation_request_;
+  absl::optional<content::PresentationRequest> default_presentation_request_;
   base::WeakPtrFactory<TestWebContentsPresentationManager> weak_factory_{this};
 };
 
@@ -104,7 +104,7 @@ class MirroringToFlingingSwitcherTest : public testing::Test {
   content::BrowserTaskEnvironment task_environment_;
   content::TestBrowserContext browser_context_;
   TestMediaRouterFactory media_router_factory_;
-  raw_ptr<MockMediaRouter, DanglingUntriaged> media_router_ = nullptr;
+  raw_ptr<MockMediaRouter> media_router_ = nullptr;
   std::unique_ptr<content::WebContents> web_contents_;
   std::unique_ptr<TestWebContentsPresentationManager> presentation_manager_;
 };
@@ -128,10 +128,12 @@ TEST_F(MirroringToFlingingSwitcherTest, SwitchToFlinging) {
   const auto source_id =
       MediaSource::ForPresentationUrl(presentation_request.presentation_urls[0])
           .id();
-  EXPECT_CALL(*media_router_,
-              JoinRouteInternal(source_id, kAutoJoinPresentationId,
-                                presentation_request.frame_origin,
-                                web_contents_.get(), _, base::TimeDelta()));
+  bool incognito = web_contents_->GetBrowserContext()->IsOffTheRecord();
+  EXPECT_CALL(
+      *media_router_,
+      JoinRouteInternal(source_id, kAutoJoinPresentationId,
+                        presentation_request.frame_origin, web_contents_.get(),
+                        _, base::TimeDelta(), incognito));
 
   // Switch to flinging request is expected to be sent.
   SwitchToFlingingIfPossible(GetNewTabSource());

@@ -13,6 +13,9 @@
 #include "components/segmentation_platform/public/model_provider.h"
 #include "components/segmentation_platform/public/proto/segmentation_platform.pb.h"
 
+namespace optimization_guide {
+class OptimizationGuideSegmentationModelProvider;
+}  // namespace optimization_guide
 
 namespace segmentation_platform {
 

@@ -16,9 +16,11 @@
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
+#include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/task/cancelable_task_tracker.h"
 #include "base/threading/thread_checker.h"
+#include "base/time/time.h"
 #include "base/trace_event/memory_dump_provider.h"
 #include "components/history/core/browser/history_db_task.h"
 #include "components/history/core/browser/history_service.h"
@@ -37,7 +39,7 @@ class SequencedTaskRunner;
 }
 
 namespace bookmarks {
-class CoreBookmarkModel;
+class BookmarkModel;
 }
 
 namespace history {
@@ -70,10 +72,11 @@ typedef std::set<std::string> SchemeSet;
 // multi-char16 instance.
 class InMemoryURLIndex : public KeyedService,
                          public history::HistoryServiceObserver,
+                         public base::SupportsWeakPtr<InMemoryURLIndex>,
                          public base::trace_event::MemoryDumpProvider {
  public:
   // `history_service` may be null during unit testing.
-  InMemoryURLIndex(bookmarks::CoreBookmarkModel* bookmark_model,
+  InMemoryURLIndex(bookmarks::BookmarkModel* bookmark_model,
                    history::HistoryService* history_service,
                    TemplateURLService* template_url_service,
                    const base::FilePath& history_dir,
@@ -134,11 +137,14 @@ class InMemoryURLIndex : public KeyedService,
     void DoneRunOnMainThread() override;
 
    private:
-    raw_ptr<InMemoryURLIndex, AcrossTasksDanglingUntriaged>
+    raw_ptr<InMemoryURLIndex, DanglingUntriaged>
         index_;                   // Call back to this index at completion.
     SchemeSet scheme_allowlist_;  // Schemes to be indexed.
     bool succeeded_ = false;      // Indicates if the rebuild was successful.
     scoped_refptr<URLIndexPrivateData> data_;  // The rebuilt private data.
+    // When the task was first requested from the main thread. This is the same
+    // time as when this task object is constructed.
+    const base::TimeTicks task_creation_time_;
   };
 
   // Clears the in-memory cache entirely. Called when History is cleared.
@@ -166,8 +172,8 @@ class InMemoryURLIndex : public KeyedService,
                     const history::VisitRow& new_visit) override;
   void OnURLsModified(history::HistoryService* history_service,
                       const history::URLRows& changed_urls) override;
-  void OnHistoryDeletions(history::HistoryService* history_service,
-                          const history::DeletionInfo& deletion_info) override;
+  void OnURLsDeleted(history::HistoryService* history_service,
+                     const history::DeletionInfo& deletion_info) override;
 
   // MemoryDumpProvider:
   bool OnMemoryDump(
@@ -187,7 +193,7 @@ class InMemoryURLIndex : public KeyedService,
   const SchemeSet& scheme_allowlist() { return scheme_allowlist_; }
 
   // The BookmarkModel; may be null when testing.
-  raw_ptr<bookmarks::CoreBookmarkModel> bookmark_model_;
+  raw_ptr<bookmarks::BookmarkModel> bookmark_model_;
 
   // The HistoryService; may be null when testing.
   raw_ptr<history::HistoryService> history_service_;

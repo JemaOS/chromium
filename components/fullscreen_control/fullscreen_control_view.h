@@ -16,9 +16,8 @@
 // button with a "X" icon in the middle).
 // |callback| will be called when the user taps the button.
 class FullscreenControlView : public views::View {
-  METADATA_HEADER(FullscreenControlView, views::View)
-
  public:
+  METADATA_HEADER(FullscreenControlView);
   explicit FullscreenControlView(views::Button::PressedCallback callback);
   FullscreenControlView(const FullscreenControlView&) = delete;
   FullscreenControlView& operator=(const FullscreenControlView&) = delete;

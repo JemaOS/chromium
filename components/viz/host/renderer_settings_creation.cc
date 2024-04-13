@@ -52,6 +52,12 @@ RendererSettings CreateRendererSettings() {
   renderer_settings.partial_swap_enabled =
       !command_line->HasSwitch(switches::kUIDisablePartialSwap);
 
+#if BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX)
+  // Simple frame rate throttling only works on macOS and Linux
+  renderer_settings.apply_simple_frame_rate_throttling =
+      features::IsSimpleFrameRateThrottlingEnabled();
+#endif
+
 #if BUILDFLAG(IS_APPLE)
   renderer_settings.release_overlay_resources_after_gpu_query = true;
   renderer_settings.auto_resize_output_surface = false;
@@ -68,16 +74,6 @@ RendererSettings CreateRendererSettings() {
                         kMinSlowDownScaleFactor, kMaxSlowDownScaleFactor,
                         &renderer_settings.slow_down_compositing_scale_factor);
   }
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  constexpr int kMinDrawQuadSplitLimit = 1;
-  constexpr int kMaxDrawQuadSplitLimit = 15;
-  if (command_line->HasSwitch(switches::kDrawQuadSplitLimit)) {
-    GetSwitchValueAsInt(command_line, switches::kDrawQuadSplitLimit,
-                        kMinDrawQuadSplitLimit, kMaxDrawQuadSplitLimit,
-                        &renderer_settings.quad_split_limit);
-  }
-#endif
 
 #if BUILDFLAG(IS_OZONE)
   if (command_line->HasSwitch(switches::kEnableHardwareOverlays)) {

@@ -99,9 +99,7 @@ KeyedService* KeyedServiceFactory::GetServiceForContext(void* context,
 KeyedService* KeyedServiceFactory::Associate(
     void* context,
     std::unique_ptr<KeyedService> service) {
-  // If `context` is already in `mapping_`, then something has gone wrong in
-  // initializing services.
-  CHECK(!base::Contains(mapping_, context));
+  DCHECK(!base::Contains(mapping_, context));
   // Only count non-null services
   if (service)
     GetKeyedServicesCount()[context]++;

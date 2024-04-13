@@ -8,8 +8,5 @@ source_set("common") {
     "omnibox_features.h",
     "omnibox_focus_state.h",
   ]
-  deps = [
-    "//base",
-    "//ui/base:features",
-  ]
+  deps = [ "//base" ]
 }

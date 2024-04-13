@@ -22,7 +22,6 @@
 #include "components/sync/protocol/data_type_progress_marker.pb.h"
 #include "components/sync/protocol/sync.pb.h"
 #include "components/sync/protocol/sync_entity.pb.h"
-#include "net/http/http_status_code.h"
 #include "third_party/protobuf/src/google/protobuf/repeated_field.h"
 
 namespace syncer {
@@ -50,20 +49,19 @@ std::vector<std::vector<uint8_t>> ExtractKeystoreKeys(
   return keystore_keys;
 }
 
-// Populates keystore encryption keys to KeystoreKeysHandler, returns true on
-// success and false otherwise.
-bool HandleGetEncryptionKeyResponse(
+SyncerError HandleGetEncryptionKeyResponse(
     const sync_pb::ClientToServerResponse& update_response,
     SyncCycleContext* context) {
+  bool success = false;
   if (update_response.get_updates().encryption_keys_size() == 0) {
     LOG(ERROR) << "Failed to receive encryption key from server.";
-    return false;
+    return SyncerError(SyncerError::SERVER_RESPONSE_VALIDATION_FAILED);
   }
 
   std::vector<std::vector<uint8_t>> keystore_keys =
       ExtractKeystoreKeys(update_response);
 
-  bool success =
+  success =
       context->model_type_registry()->keystore_keys_handler()->SetKeystoreKeys(
           keystore_keys);
 
@@ -71,7 +69,9 @@ bool HandleGetEncryptionKeyResponse(
            << update_response.get_updates().encryption_keys_size()
            << "encryption keys. Nigori keystore key " << (success ? "" : "not ")
            << "updated.";
-  return success;
+  return (success
+              ? SyncerError(SyncerError::SYNCER_OK)
+              : SyncerError(SyncerError::SERVER_RESPONSE_VALIDATION_FAILED));
 }
 
 // Given a GetUpdates response, iterates over all the returned items and
@@ -163,6 +163,10 @@ void InitDownloadUpdatesContext(SyncCycle* cycle,
   // (e.g. Bookmark URLs but not their containing folders).
   get_updates->set_fetch_folders(true);
 
+  // This is a deprecated field that should be cleaned up after server's
+  // behavior is updated.
+  get_updates->set_create_mobile_bookmarks_folder(true);
+
   bool need_encryption_key = ShouldRequestEncryptionKey(cycle->context());
   get_updates->set_need_encryption_key(need_encryption_key);
 
@@ -181,8 +185,6 @@ GetUpdatesProcessor::~GetUpdatesProcessor() = default;
 SyncerError GetUpdatesProcessor::DownloadUpdates(ModelTypeSet* request_types,
                                                  SyncCycle* cycle) {
   TRACE_EVENT0("sync", "DownloadUpdates");
-
-  has_more_updates_to_download_ = false;
 
   sync_pb::ClientToServerMessage message;
   InitDownloadUpdatesContext(cycle, &message);
@@ -249,7 +251,7 @@ SyncerError GetUpdatesProcessor::ExecuteDownloadUpdates(
     request_types->RemoveAll(partial_failure_data_types);
   }
 
-  if (result.type() != SyncerError::Type::kSuccess) {
+  if (result.value() != SyncerError::SYNCER_OK) {
     GetUpdatesResponseEvent response_event(base::Time::Now(), update_response,
                                            result);
     cycle->SendProtocolEvent(response_event);
@@ -258,11 +260,10 @@ SyncerError GetUpdatesProcessor::ExecuteDownloadUpdates(
     // appear every 60 minutes, and then sync services will refresh the
     // authorization. Therefore SYNC_AUTH_ERROR is excluded here to reduce the
     // ERROR messages in the log.
-    if (result.type() != SyncerError::Type::kHttpError ||
-        result.GetHttpErrorOrDie() != net::HTTP_UNAUTHORIZED) {
+    if (result.value() != SyncerError::SYNC_AUTH_ERROR) {
       LOG(ERROR) << "PostClientToServerMessage() failed during GetUpdates "
                     "with error "
-                 << result.ToString();
+                 << result.value();
     }
 
     return result;
@@ -279,8 +280,8 @@ SyncerError GetUpdatesProcessor::ExecuteDownloadUpdates(
 
   if (need_encryption_key ||
       update_response.get_updates().encryption_keys_size() > 0) {
-    status->set_last_get_key_failed(
-        !HandleGetEncryptionKeyResponse(update_response, cycle->context()));
+    status->set_last_get_key_result(
+        HandleGetEncryptionKeyResponse(update_response, cycle->context()));
   }
 
   SyncerError process_result =
@@ -305,7 +306,7 @@ SyncerError GetUpdatesProcessor::ProcessResponse(
   // The changes remaining field is used to prevent the client from looping.  If
   // that field is being set incorrectly, we're in big trouble.
   if (!gu_response.has_changes_remaining()) {
-    return SyncerError::ProtocolViolationError();
+    return SyncerError(SyncerError::SERVER_RESPONSE_VALIDATION_FAILED);
   }
 
   TypeSyncEntityMap updates_by_type;
@@ -317,7 +318,7 @@ SyncerError GetUpdatesProcessor::ProcessResponse(
                                  &progress_index_by_type);
   if (gu_types.Size() != progress_index_by_type.size()) {
     NOTREACHED() << "Missing progress markers in GetUpdates response.";
-    return SyncerError::ProtocolViolationError();
+    return SyncerError(SyncerError::SERVER_RESPONSE_VALIDATION_FAILED);
   }
 
   TypeToIndexMap context_by_type;
@@ -352,8 +353,9 @@ SyncerError GetUpdatesProcessor::ProcessResponse(
   DCHECK(progress_marker_iter == progress_index_by_type.end() &&
          updates_iter == updates_by_type.end());
 
-  has_more_updates_to_download_ = gu_response.changes_remaining() != 0;
-  return SyncerError::Success();
+  return gu_response.changes_remaining() == 0
+             ? SyncerError(SyncerError::SYNCER_OK)
+             : SyncerError(SyncerError::SERVER_MORE_TO_DOWNLOAD);
 }
 
 void GetUpdatesProcessor::ApplyUpdates(const ModelTypeSet& gu_types,
@@ -363,10 +365,6 @@ void GetUpdatesProcessor::ApplyUpdates(const ModelTypeSet& gu_types,
       update_handler->ApplyUpdates(status_controller, /*cycle_done=*/true);
     }
   }
-}
-
-bool GetUpdatesProcessor::HasMoreUpdatesToDownload() const {
-  return has_more_updates_to_download_;
 }
 
 }  // namespace syncer

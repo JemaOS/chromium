@@ -4,10 +4,10 @@
 
 #include "components/attribution_reporting/suitable_origin.h"
 
-#include <optional>
-
+#include "base/strings/string_piece.h"
 #include "net/base/schemeful_site.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -50,7 +50,7 @@ TEST(SuitableOriginTest, Create) {
               SuitableOrigin::IsSuitable(test_case.origin))
         << test_case.origin;
 
-    std::optional<SuitableOrigin> actual =
+    absl::optional<SuitableOrigin> actual =
         SuitableOrigin::Create(test_case.origin);
 
     EXPECT_EQ(test_case.expected_suitable, actual.has_value())
@@ -65,18 +65,18 @@ TEST(SuitableOriginTest, Create) {
 
 TEST(SuitableOriginTest, Deserialize_Serialize) {
   const struct {
-    std::string_view str;
-    std::optional<url::Origin> expected;
+    base::StringPiece str;
+    absl::optional<url::Origin> expected;
     const char* expected_serialization;
   } kTestCases[] = {
       {
           "",
-          std::nullopt,
+          absl::nullopt,
           nullptr,
       },
       {
           "http://a.test",
-          std::nullopt,
+          absl::nullopt,
           nullptr,
       },
       {
@@ -96,18 +96,18 @@ TEST(SuitableOriginTest, Deserialize_Serialize) {
       },
       {
           "ws://a.test",
-          std::nullopt,
+          absl::nullopt,
           nullptr,
       },
       {
           "wss://a.test",
-          std::nullopt,
+          absl::nullopt,
           nullptr,
       },
   };
 
   for (const auto& test_case : kTestCases) {
-    std::optional<SuitableOrigin> actual =
+    absl::optional<SuitableOrigin> actual =
         SuitableOrigin::Deserialize(test_case.str);
 
     EXPECT_EQ(test_case.expected.has_value(), actual.has_value())
@@ -121,21 +121,13 @@ TEST(SuitableOriginTest, Deserialize_Serialize) {
   }
 }
 
-TEST(SuitableOriginTest, Comparison) {
+TEST(SuitableOriginTest, OperatorLt) {
   const auto origin_a = SuitableOrigin::Deserialize("https://a.test");
   const auto origin_b = SuitableOrigin::Deserialize("https://b.test");
 
-  EXPECT_LT(origin_a, origin_b);
-  EXPECT_GT(origin_b, origin_a);
-
-  EXPECT_LE(origin_a, origin_b);
-  EXPECT_LE(origin_a, origin_a);
-
-  EXPECT_GE(origin_b, origin_a);
-  EXPECT_GE(origin_b, origin_b);
-
-  EXPECT_EQ(origin_a, origin_a);
-  EXPECT_NE(origin_a, origin_b);
+  EXPECT_TRUE(origin_a < origin_b);
+  EXPECT_FALSE(origin_b < origin_a);
+  EXPECT_FALSE(origin_a < origin_a);
 }
 
 TEST(SuitableOriginTest, IsSitePotentiallySuitable) {

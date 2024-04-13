@@ -8,7 +8,6 @@
 
 #include <map>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "base/command_line.h"
@@ -20,7 +19,6 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "base/types/expected_macros.h"
 #include "base/values.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
@@ -153,7 +151,7 @@ PopularSites::SitesVector ParseSiteList(const base::Value::List& list) {
       large_icon_url = *ptr;
 
     TileTitleSource title_source = TileTitleSource::UNKNOWN;
-    std::optional<int> title_source_int = item.FindInt("title_source");
+    absl::optional<int> title_source_int = item.FindInt("title_source");
     if (!title_source_int) {
       // Only v6 and later have "title_source". Earlier versions use title tags.
       title_source = TileTitleSource::TITLE_TAG;
@@ -164,11 +162,11 @@ PopularSites::SitesVector ParseSiteList(const base::Value::List& list) {
 
     sites.emplace_back(title, GURL(url), GURL(favicon_url),
                        GURL(large_icon_url), title_source);
-    std::optional<int> default_icon_resource =
+    absl::optional<int> default_icon_resource =
         item.FindInt("default_icon_resource");
     if (default_icon_resource)
       sites.back().default_icon_resource = *default_icon_resource;
-    std::optional<bool> baked_in = item.FindBool("baked_in");
+    absl::optional<bool> baked_in = item.FindBool("baked_in");
     if (baked_in.has_value())
       sites.back().baked_in = baked_in.value();
   }
@@ -232,12 +230,12 @@ void SetDefaultResourceForSite(size_t index,
 #endif
 
 // Creates the list of popular sites based on a snapshot available for mobile.
-base::Value::List DefaultPopularSites(std::optional<std::string> country) {
+base::Value DefaultPopularSites(absl::optional<std::string> country) {
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-  return base::Value::List();
+  return base::Value(base::Value::Type::LIST);
 #else
   if (!base::FeatureList::IsEnabled(kPopularSitesBakedInContentFeature))
-    return base::Value::List();
+    return base::Value(base::Value::Type::LIST);
 
   int popular_sites_json = IDR_DEFAULT_POPULAR_SITES_JSON;
 
@@ -247,13 +245,11 @@ base::Value::List DefaultPopularSites(std::optional<std::string> country) {
   }
 #endif
 
-  std::optional<base::Value> sites = base::JSONReader::Read(
+  absl::optional<base::Value> sites = base::JSONReader::Read(
       ui::ResourceBundle::GetSharedInstance().LoadDataResourceString(
           popular_sites_json));
-  base::Value::List& sites_list = sites->GetList();
-  for (base::Value& site : sites_list) {
+  for (base::Value& site : sites->GetList())
     site.GetDict().Set("baked_in", true);
-  }
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   static constexpr int default_popular_sites_icons[] = {
@@ -283,10 +279,10 @@ base::Value::List DefaultPopularSites(std::optional<std::string> country) {
 
   size_t index = 0;
   for (int icon_resource : icon_list) {
-    SetDefaultResourceForSite(index++, icon_resource, sites_list);
+    SetDefaultResourceForSite(index++, icon_resource, sites->GetList());
   }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  return std::move(sites_list);
+  return std::move(sites.value());
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 }
 
@@ -307,7 +303,7 @@ PopularSites::Site::Site(const std::u16string& title,
 
 PopularSites::Site::Site(const Site& other) = default;
 
-PopularSites::Site::~Site() = default;
+PopularSites::Site::~Site() {}
 
 PopularSitesImpl::PopularSitesImpl(
     PrefService* prefs,
@@ -323,7 +319,7 @@ PopularSitesImpl::PopularSitesImpl(
           ParseSites(prefs->GetList(prefs::kPopularSitesJsonPref),
                      prefs_->GetInteger(prefs::kPopularSitesVersionPref))) {}
 
-PopularSitesImpl::~PopularSitesImpl() = default;
+PopularSitesImpl::~PopularSitesImpl() {}
 
 bool PopularSitesImpl::MaybeStartFetch(bool force_download,
                                        FinishedCallback callback) {
@@ -472,13 +468,13 @@ void PopularSitesImpl::RegisterProfilePrefs(
     country_code_estimate = GetDeviceCountryCode();
   }
 
-  std::optional<std::string> country(country_code_estimate);
+  absl::optional<std::string> country(country_code_estimate);
 
   user_prefs->RegisterListPref(prefs::kPopularSitesJsonPref,
                                DefaultPopularSites(country));
 #else
   user_prefs->RegisterListPref(prefs::kPopularSitesJsonPref,
-                               DefaultPopularSites(std::nullopt));
+                               DefaultPopularSites(absl::nullopt));
 #endif
   int version;
   base::StringToInt(kPopularSitesDefaultVersion, &version);
@@ -535,11 +531,13 @@ void PopularSitesImpl::OnSimpleLoaderComplete(
 
 void PopularSitesImpl::OnJsonParsed(
     data_decoder::DataDecoder::ValueOrError result) {
-  ASSIGN_OR_RETURN(base::Value list, std::move(result), [&](std::string error) {
-    DLOG(WARNING) << "JSON parsing failed: " << std::move(error);
+  if (!result.has_value()) {
+    DLOG(WARNING) << "JSON parsing failed: " << result.error();
     OnDownloadFailed();
-  });
+    return;
+  }
 
+  base::Value list = std::move(*result);
   if (!list.is_list()) {
     DLOG(WARNING) << "JSON is not a list";
     OnDownloadFailed();

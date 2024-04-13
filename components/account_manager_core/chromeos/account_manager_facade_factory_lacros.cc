@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/memory/raw_ptr.h"
 #include "components/account_manager_core/chromeos/account_manager_facade_factory.h"
 
 #include <limits>
@@ -23,8 +22,7 @@ mojo::Remote<crosapi::mojom::AccountManager> GetAccountManagerRemote() {
 
   auto* lacros_chrome_service_impl = chromeos::LacrosService::Get();
   DCHECK(lacros_chrome_service_impl);
-  if (!lacros_chrome_service_impl
-           ->IsSupported<crosapi::mojom::AccountManager>()) {
+  if (!lacros_chrome_service_impl->IsAccountManagerAvailable()) {
     LOG(WARNING) << "Connected to an older version of ash. Account "
                     "consistency will not be available";
     return remote;
@@ -78,10 +76,10 @@ class AccountManagerFacadeFactoryLacros {
   void Reset() {
     // AccountManagerFacade depends on AccountManagerMojoService.
     account_manager_facade_.reset();
-    account_manager_ui_ = nullptr;
     // AccountManagerMojoService depends on AccountManager.
     account_manager_mojo_service_.reset();
     ash_account_manager_.reset();
+    account_manager_ui_ = nullptr;
   }
 
  private:
@@ -97,7 +95,7 @@ class AccountManagerFacadeFactoryLacros {
           std::make_unique<account_manager::AccountManagerFacadeImpl>(
               std::move(remote),
               /*remote_version=*/std::numeric_limits<uint32_t>::max(),
-              /*account_manager_for_tests=*/ash_account_manager_->GetWeakPtr());
+              /*account_manager_for_tests=*/ash_account_manager_.get());
       return;
     }
 
@@ -105,8 +103,8 @@ class AccountManagerFacadeFactoryLacros {
         std::make_unique<account_manager::AccountManagerFacadeImpl>(
             GetAccountManagerRemote(),
             /*remote_version=*/
-            chromeos::LacrosService::Get()
-                ->GetInterfaceVersion<crosapi::mojom::AccountManager>(),
+            chromeos::LacrosService::Get()->GetInterfaceVersion(
+                crosapi::mojom::AccountManager::Uuid_),
             /*account_manager_for_tests=*/nullptr);
   }
 
@@ -118,7 +116,7 @@ class AccountManagerFacadeFactoryLacros {
   std::unique_ptr<crosapi::AccountManagerMojoService>
       account_manager_mojo_service_;
   // Owned by `account_manager_mojo_service_`:
-  raw_ptr<account_manager::AccountManagerUI> account_manager_ui_ = nullptr;
+  account_manager::AccountManagerUI* account_manager_ui_ = nullptr;
 };
 
 AccountManagerFacadeFactoryLacros* GetAccountManagerFacadeFactoryLacros() {

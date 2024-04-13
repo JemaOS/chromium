@@ -5,18 +5,18 @@
 #ifndef COMPONENTS_USER_MANAGER_KNOWN_USER_H_
 #define COMPONENTS_USER_MANAGER_KNOWN_USER_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "base/version.h"
 #include "components/user_manager/common_types.h"
 #include "components/user_manager/user_manager_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class AccountId;
 enum class AccountType;
@@ -54,7 +54,7 @@ class USER_MANAGER_EXPORT KnownUser final {
   // clears the |path| in properties.
   void SetPath(const AccountId& account_id,
                const std::string& path,
-               std::optional<base::Value> opt_value);
+               absl::optional<base::Value> opt_value);
 
   // Returns `nullptr` if value is not found or not a string.
   const std::string* FindStringPath(const AccountId& account_id,
@@ -71,8 +71,8 @@ class USER_MANAGER_EXPORT KnownUser final {
                      const std::string& path,
                      const std::string& in_value);
 
-  std::optional<bool> FindBoolPath(const AccountId& account_id,
-                                   base::StringPiece path) const;
+  absl::optional<bool> FindBoolPath(const AccountId& account_id,
+                                    base::StringPiece path) const;
 
   // Returns true if |account_id| preference by |path| does exist,
   // fills in |out_value|. Otherwise returns false.
@@ -85,10 +85,10 @@ class USER_MANAGER_EXPORT KnownUser final {
                       const std::string& path,
                       const bool in_value);
 
-  // Return std::nullopt if the value is not found or doesn't have the int
+  // Return absl::nullopt if the value is not found or doesn't have the int
   // type.
-  std::optional<int> FindIntPath(const AccountId& account_id,
-                                 base::StringPiece path) const;
+  absl::optional<int> FindIntPath(const AccountId& account_id,
+                                  base::StringPiece path) const;
 
   // Returns true if |account_id| preference by |path| does exist,
   // fills in |out_value|. Otherwise returns false.
@@ -121,7 +121,7 @@ class USER_MANAGER_EXPORT KnownUser final {
   // This is a temporary call while migrating to AccountId.
   AccountId GetAccountId(const std::string& user_email,
                          const std::string& id,
-                         const AccountType& account_type) const;
+                         const AccountType& account_type);
 
   AccountId GetAccountIdByCryptohomeId(const CryptohomeId& cryptohome_id);
 
@@ -138,10 +138,14 @@ class USER_MANAGER_EXPORT KnownUser final {
   // Find GAIA ID for user with `account_id`, returns `nullptr` if not found.
   const std::string* FindGaiaID(const AccountId& account_id);
 
+  const std::string* FindJemaID(const AccountId& account_id);
+
+  bool FindJemaID(const AccountId& account_id, std::string* out_value);
+
   // Setter and getter for DeviceId known user string preference.
   void SetDeviceId(const AccountId& account_id, const std::string& device_id);
 
-  std::string GetDeviceId(const AccountId& account_id) const;
+  std::string GetDeviceId(const AccountId& account_id);
 
   // Setter and getter for GAPSCookie known user string preference.
   void SetGAPSCookie(const AccountId& account_id,
@@ -181,8 +185,8 @@ class USER_MANAGER_EXPORT KnownUser final {
   void UpdateReauthReason(const AccountId& account_id, const int reauth_reason);
 
   // Returns the reason why the user with |account_id| has to go through the
-  // re-auth flow. Returns std::nullopt if value is not set.
-  std::optional<int> FindReauthReason(const AccountId& account_id) const;
+  // re-auth flow. Returns absl::nullopt if value is not set.
+  absl::optional<int> FindReauthReason(const AccountId& account_id) const;
 
   // Setter and getter for the information about challenge-response keys that
   // can be used by this user to authenticate. The getter returns a null value
@@ -198,9 +202,9 @@ class USER_MANAGER_EXPORT KnownUser final {
   base::Time GetLastOnlineSignin(const AccountId& account_id);
 
   void SetOfflineSigninLimit(const AccountId& account_id,
-                             std::optional<base::TimeDelta> time_limit);
+                             absl::optional<base::TimeDelta> time_limit);
 
-  std::optional<base::TimeDelta> GetOfflineSigninLimit(
+  absl::optional<base::TimeDelta> GetOfflineSigninLimit(
       const AccountId& account_id);
 
   void SetIsEnterpriseManaged(const AccountId& account_id,
@@ -230,10 +234,6 @@ class USER_MANAGER_EXPORT KnownUser final {
   void PinAutosubmitSetBackfillNotNeeded(const AccountId& account_id);
   void PinAutosubmitSetBackfillNeededForTests(const AccountId& account_id);
 
-  base::Value::Dict GetAuthFactorCache(const AccountId& account_id);
-  void SetAuthFactorCache(const AccountId& account_id,
-                          const base::Value::Dict cache);
-
   // Setter and getter for password sync token used for syncing SAML passwords
   // across multiple user devices.
   void SetPasswordSyncToken(const AccountId& account_id,
@@ -249,8 +249,8 @@ class USER_MANAGER_EXPORT KnownUser final {
   // the onboarding flow.
   void SetOnboardingCompletedVersion(
       const AccountId& account_id,
-      const std::optional<base::Version> version);
-  std::optional<base::Version> GetOnboardingCompletedVersion(
+      const absl::optional<base::Version> version);
+  absl::optional<base::Version> GetOnboardingCompletedVersion(
       const AccountId& account_id);
   void RemoveOnboardingCompletedVersionForTests(const AccountId& account_id);
 
@@ -262,12 +262,6 @@ class USER_MANAGER_EXPORT KnownUser final {
   void RemovePendingOnboardingScreen(const AccountId& account_id);
 
   std::string GetPendingOnboardingScreen(const AccountId& account_id);
-
-  // Records whether Lacros is enabled for the user.
-  void SetLacrosEnabled(const AccountId& account_id, bool enabled);
-  // Returns true if at least one user has Lacros enabled, false otherwise.
-  // It defaults to false for users for which there's no information.
-  bool GetLacrosEnabledForAnyUser();
 
   bool UserExists(const AccountId& account_id);
 
@@ -300,7 +294,7 @@ class USER_MANAGER_EXPORT KnownUser final {
   // Removes all obsolete prefs from all users.
   void CleanObsoletePrefs();
 
-  const raw_ptr<PrefService> local_state_;
+  const base::raw_ptr<PrefService> local_state_;
 };
 
 }  // namespace user_manager

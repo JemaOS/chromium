@@ -47,4 +47,4 @@ class ImageServiceHandler : public mojom::PageImageServiceHandler {
 
 }  // namespace page_image_service
 
-#endif  // COMPONENTS_PAGE_IMAGE_SERVICE_IMAGE_SERVICE_HANDLER_H_
+#endif  // CHROME_BROWSER_COMPONENTS_PAGE_IMAGE_SERVICE_IMAGE_SERVICE_HANDLER_H_

@@ -12,7 +12,6 @@
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/mock_callback.h"
-#include "components/user_education/common/events.h"
 #include "components/user_education/common/feature_promo_specification.h"
 #include "components/user_education/common/help_bubble.h"
 #include "components/user_education/common/help_bubble_params.h"
@@ -78,8 +77,8 @@ class HelpBubbleViewTest : public views::ViewsTestBase {
 
   HelpBubbleView* CreateHelpBubbleView(
       HelpBubbleParams params,
-      std::optional<gfx::Rect> bounds = std::nullopt,
-      std::optional<views::View*> view = std::nullopt) {
+      absl::optional<gfx::Rect> bounds = absl::nullopt,
+      absl::optional<views::View*> view = absl::nullopt) {
     internal::HelpBubbleAnchorParams anchor_params;
     anchor_params.view = view.value_or(view_);
     anchor_params.rect = bounds;
@@ -104,7 +103,7 @@ class HelpBubbleViewTest : public views::ViewsTestBase {
   }
 
   test::TestHelpBubbleDelegate test_delegate_;
-  raw_ptr<views::View, DanglingUntriaged> view_;
+  base::raw_ptr<views::View> view_;
   std::unique_ptr<views::Widget> widget_;
 };
 
@@ -162,9 +161,9 @@ TEST_F(HelpBubbleViewTest, StableButtonOrder) {
   button3.is_default = false;
   params.buttons.push_back(std::move(button3));
 
-  auto* bubble = new HelpBubbleView(
-      &test_delegate_, internal::HelpBubbleAnchorParams{view_.get()},
-      std::move(params));
+  auto* bubble = new HelpBubbleView(&test_delegate_,
+                                    internal::HelpBubbleAnchorParams{view_},
+                                    std::move(params));
   EXPECT_EQ(kButton1Text, bubble->GetNonDefaultButtonForTesting(0)->GetText());
   EXPECT_EQ(kButton2Text, bubble->GetDefaultButtonForTesting()->GetText());
   EXPECT_EQ(kButton3Text, bubble->GetNonDefaultButtonForTesting(1)->GetText());
@@ -260,7 +259,8 @@ TEST_F(HelpBubbleViewTest, ScrollAnchorViewToVisible) {
   HelpBubbleParams params;
   params.body_text = u"To X, do Y";
   params.arrow = HelpBubbleArrow::kTopRight;
-  CreateHelpBubbleView(std::move(params), /*bounds=*/std::nullopt, anchor_view);
+  CreateHelpBubbleView(std::move(params), /*bounds=*/absl::nullopt,
+                       anchor_view);
 
   // Expect that `anchor_view` is now visible.
   EXPECT_TRUE(scroll_view->GetBoundsInScreen().Contains(

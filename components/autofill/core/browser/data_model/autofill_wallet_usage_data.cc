@@ -28,6 +28,10 @@ bool operator==(const VirtualCardUsageData& a, const VirtualCardUsageData& b) {
   return *a.usage_data_id() == *b.usage_data_id();
 }
 
+bool operator!=(const VirtualCardUsageData& a, const VirtualCardUsageData& b) {
+  return *a.usage_data_id() != *b.usage_data_id();
+}
+
 // static
 AutofillWalletUsageData AutofillWalletUsageData::ForVirtualCard(
     const VirtualCardUsageData& virtual_card_usage_data) {

@@ -4,7 +4,7 @@
 #include "components/optimization_guide/core/tflite_op_resolver.h"
 
 #include "components/optimization_guide/core/optimization_guide_features.h"
-#include "third_party/tflite/buildflags.h"
+#include "components/optimization_guide/machine_learning_tflite_buildflags.h"
 #include "third_party/tflite/src/tensorflow/lite/c/common.h"
 #include "third_party/tflite/src/tensorflow/lite/kernels/builtin_op_kernels.h"
 #include "third_party/tflite/src/tensorflow/lite/schema/schema_generated.h"
@@ -381,10 +381,6 @@ TFLiteOpResolver::TFLiteOpResolver() {
              tflite::ops::builtin::Register_GELU(),
              /* min_version = */ 1,
              /* max_version = */ 2);
-  AddBuiltin(tflite::BuiltinOperator_RANDOM_STANDARD_NORMAL,
-             tflite::ops::builtin::Register_RANDOM_STANDARD_NORMAL());
-  AddBuiltin(tflite::BuiltinOperator_RANDOM_UNIFORM,
-             tflite::ops::builtin::Register_RANDOM_UNIFORM());
 
 #if BUILDFLAG(BUILD_TFLITE_WITH_XNNPACK)
   if (features::TFLiteXNNPACKDelegateEnabled()) {

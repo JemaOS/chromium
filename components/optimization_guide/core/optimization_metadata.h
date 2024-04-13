@@ -5,11 +5,10 @@
 #ifndef COMPONENTS_OPTIMIZATION_GUIDE_CORE_OPTIMIZATION_METADATA_H_
 #define COMPONENTS_OPTIMIZATION_GUIDE_CORE_OPTIMIZATION_METADATA_H_
 
-#include <optional>
-
 #include "base/logging.h"
 #include "components/optimization_guide/core/optimization_guide_util.h"
 #include "components/optimization_guide/proto/hints.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace optimization_guide {
 
@@ -27,12 +26,12 @@ class OptimizationMetadata {
       class T,
       class = typename std::enable_if<
           std::is_convertible<T*, google::protobuf::MessageLite*>{}>::type>
-  std::optional<T> ParsedMetadata() const {
+  absl::optional<T> ParsedMetadata() const {
     if (!any_metadata_)
-      return std::nullopt;
+      return absl::nullopt;
     return ParsedAnyMetadata<T>(*any_metadata_);
   }
-  const std::optional<proto::Any>& any_metadata() const {
+  const absl::optional<proto::Any>& any_metadata() const {
     return any_metadata_;
   }
   void set_any_metadata(const proto::Any& any_metadata) {
@@ -42,7 +41,7 @@ class OptimizationMetadata {
   // used for testing purposes.
   void SetAnyMetadataForTesting(const google::protobuf::MessageLite& metadata);
 
-  const std::optional<proto::LoadingPredictorMetadata>&
+  const absl::optional<proto::LoadingPredictorMetadata>&
   loading_predictor_metadata() const {
     return loading_predictor_metadata_;
   }
@@ -61,10 +60,10 @@ class OptimizationMetadata {
   //
   // Optimization types that are not specifically specified below will have
   // metadata populated with this field.
-  std::optional<proto::Any> any_metadata_;
+  absl::optional<proto::Any> any_metadata_;
 
   // Only applicable for the LOADING_PREDICTOR optimization type.
-  std::optional<proto::LoadingPredictorMetadata> loading_predictor_metadata_;
+  absl::optional<proto::LoadingPredictorMetadata> loading_predictor_metadata_;
 };
 
 }  // namespace optimization_guide

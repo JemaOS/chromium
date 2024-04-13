@@ -11,6 +11,7 @@
 #include "components/grit/components_resources.h"
 #include "components/safe_browsing/android/proto/realtimeallowlist.pb.h"
 #include "components/safe_browsing/core/browser/db/v4_protocol_manager_util.h"
+#include "components/safe_browsing/core/common/features.h"
 #include "ui/base/resource/resource_bundle.h"
 
 namespace safe_browsing {
@@ -40,6 +41,8 @@ struct RealTimeUrlChecksAllowlistSingletonTrait
     : public base::DefaultSingletonTraits<RealTimeUrlChecksAllowlist> {
   static RealTimeUrlChecksAllowlist* New() {
     RealTimeUrlChecksAllowlist* instance = new RealTimeUrlChecksAllowlist();
+    DCHECK(
+        base::FeatureList::IsEnabled(kComponentUpdaterAndroidProtegoAllowlist));
     instance->PopulateFromResourceBundle();
     return instance;
   }

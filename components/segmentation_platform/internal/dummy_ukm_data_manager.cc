@@ -12,9 +12,7 @@ DummyUkmDataManager::DummyUkmDataManager() = default;
 DummyUkmDataManager::~DummyUkmDataManager() = default;
 
 void DummyUkmDataManager::Initialize(const base::FilePath& database_path,
-                                     bool in_memory) {}
-
-void DummyUkmDataManager::StartObservation(UkmObserver* ukm_observer) {}
+                                     UkmObserver* ukm_observer) {}
 
 bool DummyUkmDataManager::IsUkmEngineEnabled() {
   return false;
@@ -32,10 +30,6 @@ UrlSignalHandler* DummyUkmDataManager::GetOrCreateUrlHandler() {
 UkmDatabase* DummyUkmDataManager::GetUkmDatabase() {
   NOTREACHED();
   return nullptr;
-}
-
-bool DummyUkmDataManager::HasUkmDatabase() {
-  return false;
 }
 
 void DummyUkmDataManager::OnEntryAdded(ukm::mojom::UkmEntryPtr entry) {}

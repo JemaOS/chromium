@@ -8,9 +8,9 @@
 
 #include "base/values.h"
 
-namespace update_client::protocol_request {
+namespace update_client {
 
-const char kProtocolVersion[] = "3.1";
+namespace protocol_request {
 
 OS::OS() = default;
 OS::OS(OS&&) = default;
@@ -49,4 +49,6 @@ Request::Request(Request&&) = default;
 Request& Request::operator=(Request&&) = default;
 Request::~Request() = default;
 
-}  // namespace update_client::protocol_request
+}  // namespace protocol_request
+
+}  // namespace update_client

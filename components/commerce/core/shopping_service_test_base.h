@@ -12,11 +12,9 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/values.h"
-#include "components/commerce/core/commerce_info_cache.h"
 #include "components/commerce/core/shopping_service.h"
-#include "components/commerce/core/web_extractor.h"
 #include "components/commerce/core/web_wrapper.h"
-#include "components/optimization_guide/core/optimization_guide_decider.h"
+#include "components/optimization_guide/core/new_optimization_guide_decider.h"
 #include "components/optimization_guide/core/optimization_guide_decision.h"
 #include "components/optimization_guide/core/optimization_metadata.h"
 #include "components/optimization_guide/proto/hints.pb.h"
@@ -29,7 +27,6 @@ using optimization_guide::OptimizationGuideDecisionCallback;
 using optimization_guide::OptimizationMetadata;
 using optimization_guide::proto::OptimizationType;
 using optimization_guide::proto::RequestContext;
-using optimization_guide::proto::RequestContextMetadata;
 
 class TestingPrefServiceSimple;
 
@@ -51,12 +48,10 @@ class TestSyncService;
 
 namespace commerce {
 
-extern const uint64_t kInvalidDiscountId;
-
 // A mock Optimization Guide decider that allows us to specify the response for
 // a particular URL.
 class MockOptGuideDecider
-    : public optimization_guide::OptimizationGuideDecider {
+    : public optimization_guide::NewOptimizationGuideDecider {
  public:
   MockOptGuideDecider();
   MockOptGuideDecider(const MockOptGuideDecider&) = delete;
@@ -80,8 +75,7 @@ class MockOptGuideDecider
       const std::vector<GURL>& urls,
       const base::flat_set<OptimizationType>& optimization_types,
       RequestContext request_context,
-      OnDemandOptimizationGuideDecisionRepeatingCallback callback,
-      RequestContextMetadata* request_context_metadata = nullptr) override;
+      OnDemandOptimizationGuideDecisionRepeatingCallback callback) override;
 
   void AddOnDemandShoppingResponse(const GURL& url,
                                    const OptimizationGuideDecision decision,
@@ -99,8 +93,7 @@ class MockOptGuideDecider
       const uint64_t product_cluster_id,
       const std::string& country_code,
       const int64_t amount_micros = 0,
-      const std::string& currency_code = "USD",
-      const std::string& gpc_title = "example_gpc_title");
+      const std::string& currency_code = "USD");
 
   void AddPriceUpdateToPriceTrackingResponse(OptimizationMetadata* out_meta,
                                              const std::string& currency_code,
@@ -114,58 +107,27 @@ class MockOptGuideDecider
       const bool has_return_policy,
       const bool contains_sensitive_content);
 
-  OptimizationMetadata BuildPriceInsightsResponse(
-      const uint64_t product_cluster_id,
-      const std::string& price_range_currency_code,
-      const int64_t low_typical_price_micros,
-      const int64_t high_typical_price_micros,
-      const std::string& price_history_currency_code,
-      const std::string& attributes,
-      const std::vector<std::tuple<std::string, int64_t>>& history_prices,
-      const std::string& jackpot_url,
-      const PriceBucket& price_bucket,
-      const bool has_multiple_catalogs);
-
-  OptimizationMetadata BuildDiscountsResponse(
-      const std::vector<DiscountInfo>& infos);
-
-  // Update the class private member `default_shopping_page_` which decides
-  // whether the MockOptGuideDecider will decide all pages as shopping pages.
-  void SetDefaultShoppingPage(bool default_shopping_page);
-
  private:
-  std::optional<GURL> response_url_;
-  std::optional<OptimizationType> optimization_type_;
-  std::optional<OptimizationGuideDecision> optimization_decision_;
-  std::optional<OptimizationMetadata> optimization_data_;
+  absl::optional<GURL> response_url_;
+  absl::optional<OptimizationType> optimization_type_;
+  absl::optional<OptimizationGuideDecision> optimization_decision_;
+  absl::optional<OptimizationMetadata> optimization_data_;
 
   // Shopping responses for the on-demand API.
   std::unordered_map<std::string,
                      optimization_guide::OptimizationGuideDecisionWithMetadata>
       on_demand_shopping_responses_;
-  bool default_shopping_page_ = true;
 };
 
 // A mock WebWrapper where returned values can be manually set.
 class MockWebWrapper : public WebWrapper {
  public:
   MockWebWrapper(const GURL& last_committed_url, bool is_off_the_record);
-
-  // `result` specified the result of the subsequent javascript execution. This
-  // object does not take ownership of the provided pointer.
-  MockWebWrapper(const GURL& last_committed_url,
-                 bool is_off_the_record,
-                 base::Value* result);
-
   MockWebWrapper(const MockWebWrapper&) = delete;
   MockWebWrapper operator=(const MockWebWrapper&) = delete;
-
   ~MockWebWrapper() override;
 
   const GURL& GetLastCommittedURL() override;
-
-  bool IsFirstLoadForNavigationFinished() override;
-  void SetIsFirstLoadForNavigationFinished(bool finished);
 
   bool IsOffTheRecord() override;
 
@@ -173,28 +135,15 @@ class MockWebWrapper : public WebWrapper {
       const std::u16string& script,
       base::OnceCallback<void(const base::Value)> callback) override;
 
-  ukm::SourceId GetPageUkmSourceId() override;
-
-  base::Value* GetMockExtractionResult();
+  // Set the result of some javascript execution. This object does not take
+  // ownership of the provided pointer.
+  void SetMockJavaScriptResult(base::Value* result);
 
  private:
-  const GURL last_committed_url_;
-  const bool is_off_the_record_;
-  bool is_first_load_finished_{true};
-  const raw_ptr<base::Value> mock_js_result_;
-};
+  GURL last_committed_url_;
+  bool is_off_the_record_;
 
-class TestWebExtractor : public WebExtractor {
- public:
-  TestWebExtractor();
-  TestWebExtractor(const TestWebExtractor&) = delete;
-  TestWebExtractor operator=(const TestWebExtractor&) = delete;
-
-  ~TestWebExtractor() override;
-
-  void ExtractMetaInfo(
-      WebWrapper* web_wrapper,
-      base::OnceCallback<void(const base::Value)> callback) override;
+  raw_ptr<base::Value> mock_js_result_;
 };
 
 class ShoppingServiceTestBase : public testing::Test {
@@ -204,8 +153,6 @@ class ShoppingServiceTestBase : public testing::Test {
   ShoppingServiceTestBase operator=(const ShoppingServiceTestBase&) = delete;
   ~ShoppingServiceTestBase() override;
 
-  void SetUp() override;
-
   void TestBody() override;
 
   void TearDown() override;
@@ -214,14 +161,9 @@ class ShoppingServiceTestBase : public testing::Test {
   void DidNavigatePrimaryMainFrame(WebWrapper* web);
   void DidFinishLoad(WebWrapper* web);
   void DidNavigateAway(WebWrapper* web, const GURL& url);
-  void WebWrapperCreated(WebWrapper* web);
   void WebWrapperDestroyed(WebWrapper* web);
   static void MergeProductInfoData(ProductInfo* info,
                                    const base::Value::Dict& on_page_data_map);
-
-  // Skip the delay for running the on-page local extraction for product info
-  // and wait until the task completes.
-  void SimulateProductInfoLocalExtractionTaskFinished();
 
   // Get the count of the number of tabs a particular URL is open in from the
   // product info cache.
@@ -230,19 +172,13 @@ class ShoppingServiceTestBase : public testing::Test {
   // Get the item in the product info cache if it exists.
   const ProductInfo* GetFromProductInfoCache(const GURL& url);
 
-  // Gets a handle to the cache.
-  CommerceInfoCache& GetCache();
-
  protected:
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  base::test::TaskEnvironment task_environment_;
 
   // Used primarily for decoding JSON for the mock javascript execution.
   data_decoder::test::InProcessDataDecoder in_process_data_decoder_;
 
-  std::unique_ptr<bookmarks::BookmarkModel> local_or_syncable_bookmark_model_;
-
-  std::unique_ptr<bookmarks::BookmarkModel> account_bookmark_model_;
+  std::unique_ptr<bookmarks::BookmarkModel> bookmark_model_;
 
   std::unique_ptr<MockOptGuideDecider> opt_guide_;
 

@@ -158,13 +158,6 @@ fetching new policy or logging in.
 A [Help Center article](https://support.google.com/chrome/a/answer/6326250)
 warns admins of the implications of mis-using this policy for Chrome OS.
 
-* **AllowCellularHotspot**
-    * (optional, defaults to true) - **boolean**
-    * When this field is present and set to true, chromebook users will be allowed to
-      turn on hotspot on their devices. If there is an active hotspot and this field
-      is set to false, hotspot will be turned off and a notification will be
-      displayed to the user.
-
 * **AllowCellularSimLock**
     * (optional, defaults to true) - **boolean**
     * When this field is present and set to false, a SIM cannot be PIM Locked on
@@ -202,28 +195,6 @@ warns admins of the implications of mis-using this policy for Chrome OS.
       enabled and a network scan shows a new policy managed network, the device
       will automatically switch to the managed network.
 
-* **AllowAPNModification**
-    * (optional, defaults to true) - **boolean**
-    * Only relevant when the admin does not specify APNs for a SIM. Note that
-      users cannot modify any admin assigned APNs. When this field is present
-      and set to false, users won't have the capabilities to add, modify, and
-      use their own custom APNs for cellular networks that do not have an APN
-      specified by the admin. When this field is unset or set to true, users
-      will have the aforementioned capabilities for an eSIM with no
-      AdminAssignedAPNIds, and for any pSIM if there are no PSIMAssignedAPNIds.
-
-* **AllowTextMessages**
-    * (optional, defaults to Unset) - **string**
-    * When this field is present and set to Allow text message notifications
-     will be shown. When this field is set to Suppress, no text message
-     notifications will be shown and text messages will be dropped forever.
-     When this field is Unset, text messages notifications will be shown by
-     default and will allow user configuration for suppressing text messages.
-     * Allowed values are:
-        * *Allow*
-        * *Suppress*
-        * *Unset*
-
 * **BlacklistedHexSSIDs** <!--- nocheck -->
     * DEPRECATED, use **BlockedHexSSIDs** instead.<br/>
     * (optional) - **array of string**
@@ -249,35 +220,6 @@ warns admins of the implications of mis-using this policy for Chrome OS.
     * Adding *VPN* to the list will disable all VPN types. Android VPN
       connections may still be established successfully but will be
       closed shortly after that by the Chrome OS connection manager.
-
-* **PSIMAdminAssignedAPNs**
-    * (optional) - [array of APN](#APN-type)
-    * Setting this field directly will have no effect, as it will be
-      automatically constructed from the provided *PSIMAdminAssignedAPNIds*,
-      each mapping to a unique APN in the the top-level *AdminAPNList*.
-      For all pSIMs, *CustomAPNList* will set to *PSIMAdminAssignedAPNs*.
-
-* **PSIMAdminAssignedAPNIds**
-    * (optional) - **array of string**
-    * List of custom APN configuration IDs added by the admin that map to APNs
-      that will be applied to all available pSIMs. *PSIMAdminAssignedAPNs* will
-      be automatically constructed from the provided *PSIMAdminAssignedAPNIds*,
-      each mapping to a unique APN in the the top-level *AdminAPNList*.
-
-* **RecommendedValuesAreEphemeral**
-    * (optional, defaults to false) - **boolean**
-    * When this field is set to true, settings of device-wide policy-provided
-      network configurations marked as "Recommended" will be regarded as
-      ephemeral. These settings will be reverted to the policy-recommended (or
-      default) value on reboot (startup), logout, and when the device has been
-      idle.
-
-* **UserCreatedNetworkConfigurationsAreEphemeral**
-    * (optional, defaults to false) - **boolean**
-    * When this field is set to true, device-wide network configurations created
-      by the user will be regarded as ephemeral.  These network configurations
-      will be deleted on reboot (startup), logout, and when the device has been
-      idle.
 
 ## Network Configuration
 
@@ -443,19 +385,6 @@ Field **NetworkConfigurations** is an array of
       system to determine which network to connect to when multiple configured
       networks are available (or may be ignored).
 
-* **CheckCaptivePortal**
-    * (optional, defaults to *False*) - **string**
-    * Indicates whether captive portal detection is configured for this
-    * network. The configurations are:
-        * *False*: Captive portal detection is disabled
-        * *True*: Captive portal detection is enabled
-        * *HTTPOnly*: Captive portal detection is enabled
-          and the portal detector will only use HTTP web
-          probes.
-    * Allowed values are:
-        * *False*,
-        * *True*,
-        * *HTTPOnly*
 
 ## Ethernet networks
 
@@ -577,26 +506,10 @@ field **WiFi** must be set to an object of type [WiFi](#WiFi-type).
           shouldn't associate with any AP. `"00:00:00:00:00:00"` shouldn't be a
           part of any other list of values, otherwise it may cause an error.
 
-* **BSSIDRequested**
-    * (optional) - **string**
-    * BSSID that the AP should connect to. BSSIDs
-      should be formatted as colon-separated octets (e.g.
-      `"00:01:02:03:04:05"`).
-    * If the AP cannot connect to the requested BSSID, then it will not fallback
-      to another BSSID and will remain unconnected.
-    * If **BSSIDRequested** is empty and **BSSIDAllowlist** is not, then the
-      WiFi network will follow the values in **BSSIDAllowlist**
-    * If **BSSIDAllowlist** is empty and **BSSIDRequested** is not, then the
-      WiFi network will follow the value in **BSSIDRequested**
-    * If **BSSIDRequested** and **BSSIDAllowlist** have a disjoint set of
-      values, then the WiFi network will not connect.
-    * If **BSSIDRequested** is also in **BSSIDAllowlist**, then the network will
-      follow the value in **BSSIDRequested**
-
 * **EAP**
-    * (required if [**Security**](#wifi-security) is: *WEP-8021X*, *WPA-EAP* or
-      any value with *-Enterprise* suffix; otherwise ignored)
-    * EAP settings - [EAP](#EAP-type).
+    * (required if **Security** is
+        *WEP-8021X* or *WPA-EAP*, otherwise ignored) - [EAP](#EAP-type)
+    * EAP settings.
 
 * **HexSSID**
     * (optional if **SSID** is set, if so defaults to a hex representation of
@@ -608,60 +521,21 @@ field **WiFi** must be set to an object of type [WiFi](#WiFi-type).
     * Indicating if the SSID will be broadcast.
 
 * **Passphrase**
-    * (required if [**Security**](#wifi-security) is neither *None* nor any
-      value indicating that EAP is used for key derivation: *WEP-8021X*,
-      *WPA-EAP*, or any value with *-Enterprise* suffix; otherwise ignored)
-      - **string**
-    * Describes the passphrase for WEP/WPA/WPA2/WPA3
+    * (required if **Security** is
+        *WEP-PSK* or *WPA-PSK*, otherwise ignored) - **string**
+    * Describes the passphrase for WEP/WPA/WPA2
       connections. If *WEP-PSK* is used, the passphrase
       must be of the format 0x&lt;hex-number&gt;, where &lt;hex-number&gt; is
       40, 104, 128, or 232 bits.
 
-* **Security** <a name="wifi-security"></a>
+* **Security**
     * (required) - **string**
-    * Type of security that should be used for the WiFi network:
-        * *None*: Class of networks where no preconfigured security data is
-          needed (e.g. *Passphrase*).  This includes both open networks and
-          networks using OWE to configure encryption (either pure or
-          transitional).
-        * *WEP-PSK*: (deprecated, use WPA based security) Wired Equivalent
-          Privacy.
-        * *WEP-8021X*: (deprecated, use WPA based security) Dynamic WEP - WEP
-          using EAP to dynamically change keys.
-        * *WPA-PSK*: Class of networks using WPA (in any version) for security
-          and using key derivation based on a pre-shared key (*Passphrase*).
-          This class includes both WPA, WPA2 and WPA3 as well as all possible
-          transitional modes (e.g. WPA-WPA2).
-        * *WPA-EAP*: Similar to WPA-PSK but instead of having a pre-shared key
-          it uses EAP to derive the master session key (key <!-- nocheck -->
-          hierarchy used for encryption/integrity checks is derived from it
-          instead of the **Passphrase** as is in the case of *WPA-PSK*).
-        * *WPA2*: WPA-PSK network allowing only WPA2.
-        * *WPA2-WPA3*: WPA-PSK network allowing either WPA2 or WPA3.
-        * *WPA3*: WPA-PSK network allowing only WPA3.
-        * *WPA2-Enterprise*: WPA-EAP network allowing only WPA2.
-        * *WPA2-WPA3-Enterprise*: WPA-EAP network allowing either WPA2 or WPA3.
-        * *WPA3-Enterprise*: WPA-EAP network allowing only WPA3.
-        * *WPA3-Enterprise_192*: WPA-EAP network allowing only WPA3 192-bit
-          mode.  Currently not supported by ChromeOS.
-      Note: The transitional modes (e.g. WPA2-WPA3) are applicable either for
-      the case when given BSS is configured in transitional mode or when the ESS
-      is comprised of BSSes that have mixed configuration (some using WPA2
-      and some using WPA3).
-
     * Allowed values are:
         * *None*
         * *WEP-PSK*
         * *WEP-8021X*
         * *WPA-PSK*
         * *WPA-EAP*
-        * *WPA2*
-        * *WPA2-WPA3*
-        * *WPA3*
-        * *WPA2-Enterprise*
-        * *WPA2-WPA3-Enterprise*
-        * *WPA3-Enterprise*
-        * *WPA3-Enterprise_192*
 
 * **SSID**
     * (optional if **HexSSID** is set, otherwise ignored) - **string**
@@ -758,6 +632,13 @@ field **VPN** must be set to an object of type [VPN](#VPN-type).
       deprecated *ServerCARef*) must be set.
     * *EAP* is only valid if **IKEVersion** is 2.
 
+* **ClientCertProvisioningProfileId**
+    * (required if **ClientCertType** is *ProvisioningProfileId*, otherwise
+      ignored) - **string**
+    * Id of the client certificate to be used. On Chrome OS, this corresponds
+      to the "cert_profile_id" field in the RequiredClientCertificateForUser or
+      RequiredClientCertificateForDevice policy.
+
 * **ClientCertPKCS11Id**
     * (required if **ClientCertType** is *PKCS11Id*, otherwise ignored) -
     * PKCS#11 identifier in the format slot:key_id.
@@ -766,13 +647,6 @@ field **VPN** must be set to an object of type [VPN](#VPN-type).
     * (required if **ClientCertType** is *Pattern*, otherwise ignored) -
       [CertificatePattern](#CertificatePattern-type)
     * Pattern describing the client certificate.
-
-* **ClientCertProvisioningProfileId**
-    * (required if **ClientCertType** is *ProvisioningProfileId*, otherwise
-      ignored) - **string**
-    * Id of the client certificate to be used. On Chrome OS, this corresponds
-      to the "cert_profile_id" field in the RequiredClientCertificateForUser or
-      RequiredClientCertificateForDevice policy.
 
 * **ClientCertRef**
     * (required if **ClientCertType** is *Ref*, otherwise ignored) - **string**
@@ -784,8 +658,8 @@ field **VPN** must be set to an object of type [VPN](#VPN-type).
     * Allowed values are
       * *PKCS11Id*
       * *Pattern*
-      * *ProvisioningProfileId*
       * *Ref*
+      * *ProvisioningProfileId*
     * *Ref*, *Pattern* and *ProvisioningProfileId* indicate that the associated
       property should be used to identify the client certificate.
     * *PKCS11Id* is used when representing a certificate in a local store and is
@@ -957,13 +831,6 @@ L2TP over IPsec with pre-shared key:
       [CertificatePattern](#CertificatePattern-type)
     * Pattern to use to find the client certificate.
 
-* **ClientCertProvisioningProfileId**
-    * (required if **ClientCertType** is *ProvisioningProfileId*, otherwise
-      ignored) - **string**
-    * Id of the client certificate to be used. On Chrome OS, this corresponds
-      to the "cert_profile_id" field in the RequiredClientCertificateForUser or
-      RequiredClientCertificateForDevice policy.
-
 * **ClientCertRef**
     * (required if **ClientCertType** is *Ref*, otherwise ignored) - **string**
     * Reference to client certificate stored in certificate section.
@@ -973,11 +840,10 @@ L2TP over IPsec with pre-shared key:
     * Allowed values are
       * *PKCS11Id*
       * *Pattern*
-      * *ProvisioningProfileId*
       * *Ref*
       * *None*
-    * *Ref*, *Pattern* and *ProvisioningProfileId* indicate that the associated
-      property should be used to identify the client certificate.
+    * *Ref* and *Pattern* indicate that the associated property should be used
+      to identify the client certificate.
     * *PKCS11Id* is used when representing a certificate in a local store and is
       only valid when describing a local configuration.
     * *None* indicates that the server is configured to not require client
@@ -1409,12 +1275,6 @@ type exists to configure the authentication.
       presented to the outer protocol. This value is subject to string
       expansions. If not specified, use empty string.
 
-* **ClientCertKeyPairAlias**
-    * (required if **ClientCertType** is *KeyPairAlias*, otherwise ignored) -
-      **string**
-    * Key pair alias specifies the client certificate stored in Android keychain
-      and allowed for Wi-Fi authentication.
-
 * **ClientCertPKCS11Id**
     * (required if **ClientCertType** is *PKCS11Id*, otherwise ignored) -
     * PKCS#11 identifier in the format slot:key_id.
@@ -1424,13 +1284,6 @@ type exists to configure the authentication.
       [CertificatePattern](#CertificatePattern-type)
     * Pattern to use to find the client certificate.
 
-* **ClientCertProvisioningProfileId**
-    * (required if **ClientCertType** is *ProvisioningProfileId*, otherwise
-      ignored) - **string**
-    * Id of the client certificate to be used. On Chrome OS, this corresponds
-      to the "cert_profile_id" field in the RequiredClientCertificateForUser or
-      RequiredClientCertificateForDevice policy.
-
 * **ClientCertRef**
     * (required if **ClientCertType** is *Ref*, otherwise ignored) - **string**
     * Reference to client certificate stored in certificate section.
@@ -1438,14 +1291,12 @@ type exists to configure the authentication.
 * **ClientCertType**
     * (optional) - **string**
     * Allowed values are:
-        * *KeyPairAlias* (Android only)
         * *PKCS11Id*
         * *Pattern*
-        * *ProvisioningProfileId*
         * *Ref*
         * *None*
-    * *KeyPairAlias*, *Pattern*, *ProvisioningProfileId* and *Ref* indicate that
-      the associated property should be used to identify the client certificate.
+    * *Ref* and *Pattern* indicate that the associated property should be used
+      to identify the client certificate.
     * *PKCS11Id* is used when representing a certificate in a local store and is
       only valid when describing a local configuration.
     * *None* indicates that the server is configured to not require client
@@ -1527,8 +1378,8 @@ type exists to configure the authentication.
       contain in order to connect.
 
 * **SubjectAlternativeNameMatch**
-    * (optional) - [array of AlternativeSubjectName](#AlternativeSubjectName-type)
-    * A list of alternative subject names to be matched against the alternative
+	* (optional) - [array of AlternativeSubjectName](#AlternativeSubjectName-type)
+	* A list of alternative subject names to be matched against the alternative
       subject name of an authentication server certificate.
 
 * **DomainSuffixMatch**
@@ -1572,15 +1423,15 @@ type exists to configure the authentication.
 ### AlternativeSubjectName type
 
 * **Type**
-    * (required) - **string**
-    * Type of the alternative subject name.
-    * Allowed values are:
-        * *EMAIL*
-        * *DNS*
-        * *URI*
+	* (required) - **string**
+	* Type of the alternative subject name.
+	* Allowed values are:
+		* *EMAIL*
+		* *DNS*
+		* *URI*
 * **Value**
-    * (required) - **string**
-    * Value of the alternative subject name.
+	 * (required) - **string**
+	 * Value of the alternative subject name.
 
 ## Cellular Networks
 
@@ -1605,14 +1456,6 @@ ONC configuration of of **Cellular** networks is not yet supported.
     * (optional) - **string**
     * Activation type.
 
-* **AdminAssignedAPNIds**
-    * (optional) - **array of string**
-    * List of custom APN configuration IDs added by the admin that map to APNs
-      that will be applied to the eSIM this cellular network configuration maps
-      to. *CustomAPNList* will be automatically constructed from the provided
-      *AdminAssignedAPNIds*, each mapping to a unique APN in the the top-level
-      *AdminAPNList*.
-
 * **AllowRoaming**
     * (optional) - **boolean**
     * Whether cellular data connections are allowed when the device is roaming.
@@ -1634,10 +1477,8 @@ ONC configuration of of **Cellular** networks is not yet supported.
 
 * **CustomAPNList**
     * (optional) - [array of APN](#APN-type)
-    * List of custom APN configurations, added by either the user, or set
-      automatically with a list of APNs in the top-level *AdminAPNList*
-      that either map to a non-empty *AdminAssignedAPNIds* for an eSIM, or
-      to a non-empty *PSIMAdminAssignedAPNIds* for all pSIMs.
+    * List of custom APN configurations, added by either the user or enterprise
+      admin.
 
 * **EID**
     * (optional, read-only, provided only for eSIM networks) - **string**
@@ -1783,29 +1624,42 @@ ONC configuration of of **Cellular** networks is not yet supported.
 
 * **SMDPAddress**
     * (optional, read-only) - **string**
-    * The activation code containing the address of the SM-DP+ server that
-      should be used to download and install an eSIM profile for this network.
-      This field is mutually exclusive with SMDSAddress. While this field has
-      "address" in its name for backwards compatibility, its value is expected
-      to be formatted according to the GSMA specification. Policies that do not
-      conform to the GSMA specification will fail. Learn more about the
-      specification at
-      https://www.gsma.com/newsroom/wp-content/uploads/SGP.22_v2.2.pdf.
-
-* **SMDSAddress**
-    * (optional, read-only) - **string**
-    * The activation code containing the address of the SM-DS server that should
-      be used to download and install an eSIM profile for this network. This
-      field is mutually exclusive with SMDPAddress. While this field has
-      "address" in its name for backwards compatibility, its value is expected
-      to be formatted according to the GSMA specification. Policies that do not
-      conform to the GSMA specification will fail. Learn more about the
-      specification at
-      https://www.gsma.com/newsroom/wp-content/uploads/SGP.22_v2.2.pdf.
+    * When set with the address of an SMDP+ server, indicates that eSIM profile
+      for this network should be downloaded and installed using this address.
 
 * **SupportNetworkScan**
     * (optional, read-only) - **boolean**
     * True if the cellular network supports scanning.
+
+### APN type
+
+* **AccessPointName**
+    * (required) - **string**
+    * The access point name used when making connections.
+
+* **Name**
+    * (optional) - **string**
+    * Description of the APN.
+
+* **LocalizedName**
+    * (optional) - **string**
+    * Localized description of the APN.
+
+* **Username**
+    * (optional) - **string**
+    * Username for making connections if required.
+
+* **Password**
+    * (optional) - **string**
+    * Password for making connections if required.
+
+* **Authentication**
+    * (optional) - **string**
+    * Type of authentication protocol for sending username and password.
+
+* **Language**
+    * (optional, rquired if **LocalizedName** is provided) - **string**
+      Two letter language code for Localizedname if provided.
 
 ### FoundNetwork type
 
@@ -1920,68 +1774,6 @@ a phone.
 This format will eventually also cover configuration of Bluetooth and WiFi
 Direct network technologies, however they are currently not supported.
 
-## APNs
-
-Each of the following is an array of [APN](#APN-type) type objects:
-  * Top-level field **AdminAPNList**
-  * **PSIMAdminAssignedAPNs** field of **GlobalNetworkConfiguration**
-  * **APNList** field of [Cellular Networks](#Cellular-networks)
-  * **CustomAPNList** field of [Cellular Networks](#Cellular-networks)
-
-The **APN**,**LastConnectedAttachApnProperty**, **LastConnectedDefaultApnProperty**,
-and **LastGoodAPN** fields of [Cellular](#Cellular-networks) are [APN](#Apn-type)
-types.
-
-Note that each APN contained in the top-level field **AdminAPNList** may be
-referenced by its **Id**. For example, **PSIMAdminAssignedAPNIds**
-and **AdminAssignedAPNIds** are each an array of [APN](#Apn-type) **Id**s
-that reference APNs contained in **AdminAPNList**.
-
-### APN type
-
-* **AccessPointName**
-    * (required) - **string**
-    * The access point name used when making connections.
-
-* **Name**
-    * (optional) - **string**
-    * Description of the APN.
-
-* **LocalizedName**
-    * (optional) - **string**
-    * Localized description of the APN.
-
-* **Username**
-    * (optional) - **string**
-    * Username for making connections if required.
-
-* **Password**
-    * (optional) - **string**
-    * Password for making connections if required.
-
-* **Authentication**
-    * (optional) - **string**
-    * Type of authentication protocol for sending username and password.
-      Possible values are "", "PAP", or "CHAP".
-
-* **Language**
-    * (optional, required if **LocalizedName** is provided) - **string**
-    * Two letter language code for Localizedname if provided.
-
-* **Id**
-    * (optional) - **string**
-    * A unique identifier for this APN. Must be a non-empty string.
-
-* **IpType**
-    * (optional) - **string**
-    * The IP type of the APN. Possible values are "", "IPv4", "IPv6", or
-      "IPv4orIPv6". If none is provided or the provided string is empty,
-      the IP type is automatic.
-
-* **ApnTypes**
-    * (optional) - **array of string**
-    * The type(s) of the APN. Possible values are "Default"
-      and or "Attach".
 
 ## Certificates
 
@@ -2443,7 +2235,7 @@ If a policy configuration exists, the following rules apply:
     it is considered 'Recommended'. If a UserSetting or SharedSetting value
     exists, it can be selected as the Effective value.
 
-### Managed ONC Dictionary format ("augmented")
+### Dictionary format
 
 Managed ONC dictionaries contain the keys described under
 [Network Configuration](#Network-Configuration), however the values are

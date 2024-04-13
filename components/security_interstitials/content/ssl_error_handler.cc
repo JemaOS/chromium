@@ -32,6 +32,7 @@
 #include "components/security_interstitials/content/security_blocking_page_factory.h"
 #include "components/security_interstitials/content/security_interstitial_page.h"
 #include "components/security_interstitials/content/ssl_blocking_page.h"
+#include "components/security_interstitials/content/ssl_cert_reporter.h"
 #include "components/security_interstitials/content/ssl_error_assistant.h"
 #include "components/security_interstitials/core/ssl_error_options_mask.h"
 #include "components/security_interstitials/core/ssl_error_ui.h"
@@ -40,6 +41,8 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_source.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
@@ -189,7 +192,7 @@ class ConfigSingleton {
 
   // Returns a DynamicInterstitialInfo that matches with |ssl_info|. If is no
   // match, return null.
-  std::optional<DynamicInterstitialInfo> MatchDynamicInterstitial(
+  absl::optional<DynamicInterstitialInfo> MatchDynamicInterstitial(
       const net::SSLInfo& ssl_info,
       bool is_overridable);
 
@@ -333,7 +336,7 @@ const std::string ConfigSingleton::MatchKnownMITMSoftware(
   return ssl_error_assistant_->MatchKnownMITMSoftware(cert);
 }
 
-std::optional<DynamicInterstitialInfo>
+absl::optional<DynamicInterstitialInfo>
 ConfigSingleton::MatchDynamicInterstitial(const net::SSLInfo& ssl_info,
                                           bool is_overridable) {
   return ssl_error_assistant_->MatchDynamicInterstitial(ssl_info,
@@ -349,6 +352,7 @@ class SSLErrorHandlerDelegateImpl : public SSLErrorHandler::Delegate {
       int cert_error,
       int options_mask,
       const GURL& request_url,
+      std::unique_ptr<SSLCertReporter> ssl_cert_reporter,
       captive_portal::CaptivePortalService* captive_portal_service,
       std::unique_ptr<SecurityBlockingPageFactory> blocking_page_factory,
       SSLErrorHandler::OnBlockingPageShownCallback
@@ -360,6 +364,7 @@ class SSLErrorHandlerDelegateImpl : public SSLErrorHandler::Delegate {
         cert_error_(cert_error),
         options_mask_(options_mask),
         request_url_(request_url),
+        ssl_cert_reporter_(std::move(ssl_cert_reporter)),
 #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
         captive_portal_service_(captive_portal_service),
 #endif
@@ -404,6 +409,7 @@ class SSLErrorHandlerDelegateImpl : public SSLErrorHandler::Delegate {
   const int options_mask_;
   const GURL request_url_;
   std::unique_ptr<CommonNameMismatchHandler> common_name_mismatch_handler_;
+  std::unique_ptr<SSLCertReporter> ssl_cert_reporter_;
 #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
   raw_ptr<captive_portal::CaptivePortalService> captive_portal_service_;
 #endif
@@ -470,21 +476,24 @@ void SSLErrorHandlerDelegateImpl::ShowCaptivePortalInterstitial(
     const GURL& landing_url) {
   // Show captive portal blocking page. The interstitial owns the blocking page.
   OnBlockingPageReady(blocking_page_factory_->CreateCaptivePortalBlockingPage(
-      web_contents_, request_url_, landing_url, ssl_info_, cert_error_));
+      web_contents_, request_url_, landing_url, std::move(ssl_cert_reporter_),
+      ssl_info_, cert_error_));
 }
 
 void SSLErrorHandlerDelegateImpl::ShowMITMSoftwareInterstitial(
     const std::string& mitm_software_name) {
   // Show MITM software blocking page. The interstitial owns the blocking page.
   OnBlockingPageReady(blocking_page_factory_->CreateMITMSoftwareBlockingPage(
-      web_contents_, cert_error_, request_url_, ssl_info_, mitm_software_name));
+      web_contents_, cert_error_, request_url_, std::move(ssl_cert_reporter_),
+      ssl_info_, mitm_software_name));
 }
 
 void SSLErrorHandlerDelegateImpl::ShowSSLInterstitial(const GURL& support_url) {
   // Show SSL blocking page. The interstitial owns the blocking page.
   OnBlockingPageReady(blocking_page_factory_->CreateSSLPage(
       web_contents_, cert_error_, ssl_info_, request_url_, options_mask_,
-      base::Time::NowFromSystemTime(), support_url));
+      base::Time::NowFromSystemTime(), support_url,
+      std::move(ssl_cert_reporter_)));
 }
 
 void SSLErrorHandlerDelegateImpl::ShowBadClockInterstitial(
@@ -492,14 +501,16 @@ void SSLErrorHandlerDelegateImpl::ShowBadClockInterstitial(
     ssl_errors::ClockState clock_state) {
   // Show bad clock page. The interstitial owns the blocking page.
   OnBlockingPageReady(blocking_page_factory_->CreateBadClockBlockingPage(
-      web_contents_, cert_error_, ssl_info_, request_url_, now, clock_state));
+      web_contents_, cert_error_, ssl_info_, request_url_, now, clock_state,
+      std::move(ssl_cert_reporter_)));
 }
 
 void SSLErrorHandlerDelegateImpl::ShowBlockedInterceptionInterstitial() {
   // Show interception blocking page. The interstitial owns the blocking page.
   OnBlockingPageReady(
       blocking_page_factory_->CreateBlockedInterceptionBlockingPage(
-          web_contents_, cert_error_, request_url_, ssl_info_));
+          web_contents_, cert_error_, request_url_,
+          std::move(ssl_cert_reporter_), ssl_info_));
 }
 
 void SSLErrorHandlerDelegateImpl::ReportNetworkConnectivity(
@@ -542,6 +553,7 @@ void SSLErrorHandler::HandleSSLError(
     int cert_error,
     const net::SSLInfo& ssl_info,
     const GURL& request_url,
+    std::unique_ptr<SSLCertReporter> ssl_cert_reporter,
     base::OnceCallback<
         void(std::unique_ptr<security_interstitials::SecurityInterstitialPage>)>
         blocking_page_ready_callback,
@@ -560,7 +572,8 @@ void SSLErrorHandler::HandleSSLError(
       std::unique_ptr<SSLErrorHandler::Delegate>(
           new SSLErrorHandlerDelegateImpl(
               web_contents, ssl_info, web_contents->GetBrowserContext(),
-              cert_error, options_mask, request_url, captive_portal_service,
+              cert_error, options_mask, request_url,
+              std::move(ssl_cert_reporter), captive_portal_service,
               std::move(blocking_page_factory),
               g_config.Pointer()->on_blocking_page_shown_callback(),
               std::move(blocking_page_ready_callback))),
@@ -669,7 +682,7 @@ void SSLErrorHandler::StartHandlingError() {
     return;
   }
 
-  std::optional<DynamicInterstitialInfo> dynamic_interstitial =
+  absl::optional<DynamicInterstitialInfo> dynamic_interstitial =
       g_config.Pointer()->MatchDynamicInterstitial(
           ssl_info_, delegate_->IsErrorOverridable());
   if (dynamic_interstitial) {

@@ -6,7 +6,6 @@
 
 #include <limits>
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/base_paths.h"
@@ -14,20 +13,22 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/test/gmock_expected_support.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "components/cbor/values.h"
 #include "components/web_package/mojom/web_bundle_parser.mojom.h"
+#include "components/web_package/shared_file.h"
 #include "components/web_package/signed_web_bundles/ed25519_public_key.h"
 #include "components/web_package/signed_web_bundles/signed_web_bundle_integrity_block.h"
 #include "components/web_package/test_support/signed_web_bundles/web_bundle_signer.h"
 #include "components/web_package/web_bundle_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace web_package {
 
@@ -111,7 +112,7 @@ mojom::BundleIntegrityBlockSignatureStackEntryPtr MakeSignatureStackEntry(
 class SignedWebBundleSignatureVerifierGoToolTest
     : public ::testing::TestWithParam<std::tuple<
           std::pair<base::FilePath,
-                    std::optional<SignedWebBundleSignatureVerifier::Error>>,
+                    absl::optional<SignedWebBundleSignatureVerifier::Error>>,
           uint64_t>> {
  protected:
   base::FilePath GetTestFilePath(const base::FilePath& path) {
@@ -132,7 +133,8 @@ class SignedWebBundleSignatureVerifierGoToolTest
 TEST_P(SignedWebBundleSignatureVerifierGoToolTest, VerifySimpleWebBundle) {
   auto file_path = GetTestFilePath(std::get<0>(GetParam()).first);
 
-  base::test::TestFuture<std::optional<SignedWebBundleSignatureVerifier::Error>>
+  base::test::TestFuture<
+      absl::optional<SignedWebBundleSignatureVerifier::Error>>
       future;
 
   std::vector<mojom::BundleIntegrityBlockSignatureStackEntryPtr>
@@ -145,17 +147,18 @@ TEST_P(SignedWebBundleSignatureVerifierGoToolTest, VerifySimpleWebBundle) {
   raw_integrity_block->size = 135;
   raw_integrity_block->signature_stack = std::move(raw_signature_stack);
 
-  ASSERT_OK_AND_ASSIGN(
-      auto integrity_block,
-      SignedWebBundleIntegrityBlock::Create(std::move(raw_integrity_block)));
+  auto integrity_block =
+      SignedWebBundleIntegrityBlock::Create(std::move(raw_integrity_block));
+  ASSERT_TRUE(integrity_block.has_value()) << integrity_block.error();
 
-  auto file =
-      base::File(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
-  ASSERT_TRUE(file.IsValid());
+  auto shared_file =
+      base::MakeRefCounted<SharedFile>(std::make_unique<base::File>(
+          file_path, base::File::FLAG_OPEN | base::File::FLAG_READ));
+  ASSERT_TRUE((*shared_file)->IsValid());
 
   SignedWebBundleSignatureVerifier signature_verifier(std::get<1>(GetParam()));
-  signature_verifier.VerifySignatures(
-      std::move(file), std::move(integrity_block), future.GetCallback());
+  signature_verifier.VerifySignatures(shared_file, std::move(*integrity_block),
+                                      future.GetCallback());
 
   auto error = future.Take();
   auto expected_error = std::get<0>(GetParam()).second;
@@ -175,7 +178,7 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(
             std::make_pair(
                 base::FilePath(FILE_PATH_LITERAL("simple_b2_signed.swbn")),
-                std::nullopt),
+                absl::nullopt),
             std::make_pair(
                 base::FilePath(
                     FILE_PATH_LITERAL("simple_b2_signed_tampered.swbn")),
@@ -208,7 +211,7 @@ INSTANTIATE_TEST_SUITE_P(
 class SignedWebBundleSignatureVerifierTest
     : public ::testing::TestWithParam<
           std::pair<std::vector<WebBundleSigner::KeyPair>,
-                    std::optional<SignedWebBundleSignatureVerifier::Error>>> {
+                    absl::optional<SignedWebBundleSignatureVerifier::Error>>> {
  protected:
   void SetUp() override { EXPECT_TRUE(temp_dir.CreateUniqueTempDir()); }
 
@@ -238,17 +241,18 @@ class SignedWebBundleSignatureVerifierTest
     return signed_web_bundle_path;
   }
 
-  base::File MakeWebBundleFile(const base::FilePath& signed_web_bundle_path) {
-    auto file = base::File(signed_web_bundle_path,
-                           base::File::FLAG_OPEN | base::File::FLAG_READ);
-    EXPECT_TRUE(file.IsValid())
-        << base::File::ErrorToString(file.error_details());
-    return file;
+  scoped_refptr<SharedFile> MakeSharedFile(
+      const base::FilePath& signed_web_bundle_path) {
+    auto file = std::make_unique<base::File>(
+        signed_web_bundle_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+    EXPECT_TRUE(file->IsValid())
+        << base::File::ErrorToString(file->error_details());
+    return base::MakeRefCounted<SharedFile>(std::move(file));
   }
 
-  base::expected<SignedWebBundleIntegrityBlock, std::string>
-  CreateParsedIntegrityBlock(const cbor::Value& integrity_block,
-                             size_t integrity_block_size) {
+  SignedWebBundleIntegrityBlock CreateParsedIntegrityBlock(
+      const cbor::Value& integrity_block,
+      size_t integrity_block_size) {
     std::vector<mojom::BundleIntegrityBlockSignatureStackEntryPtr>
         raw_signature_stack;
     for (const auto& signature_stack_entry :
@@ -270,8 +274,11 @@ class SignedWebBundleSignatureVerifierTest
     raw_integrity_block->size = integrity_block_size;
     raw_integrity_block->signature_stack = std::move(raw_signature_stack);
 
-    return SignedWebBundleIntegrityBlock::Create(
-        std::move(raw_integrity_block));
+    auto parsed_integrity_block =
+        SignedWebBundleIntegrityBlock::Create(std::move(raw_integrity_block));
+    EXPECT_TRUE(parsed_integrity_block.has_value())
+        << parsed_integrity_block.error();
+    return std::move(*parsed_integrity_block);
   }
 
  private:
@@ -284,16 +291,16 @@ TEST_P(SignedWebBundleSignatureVerifierTest, VerifySignatures) {
       CreateSignedWebBundle(std::get<0>(GetParam()));
   base::FilePath signed_web_bundle_path =
       WriteSignedWebBundleToDisk(signed_web_bundle);
-  auto file = MakeWebBundleFile(signed_web_bundle_path);
-  ASSERT_OK_AND_ASSIGN(
-      auto parsed_integrity_block,
-      CreateParsedIntegrityBlock(integrity_block, integrity_block_size));
+  auto shared_file = MakeSharedFile(signed_web_bundle_path);
+  auto parsed_integrity_block =
+      CreateParsedIntegrityBlock(integrity_block, integrity_block_size);
 
-  base::test::TestFuture<std::optional<SignedWebBundleSignatureVerifier::Error>>
+  base::test::TestFuture<
+      absl::optional<SignedWebBundleSignatureVerifier::Error>>
       future;
   SignedWebBundleSignatureVerifier signature_verifier;
   signature_verifier.VerifySignatures(
-      std::move(file), std::move(parsed_integrity_block), future.GetCallback());
+      shared_file, std::move(parsed_integrity_block), future.GetCallback());
 
   auto error = future.Take();
   auto expected_error = std::get<1>(GetParam());
@@ -312,7 +319,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         // one signature
         std::make_pair(std::vector{WebBundleSigner::KeyPair::CreateRandom()},
-                       std::nullopt),
+                       absl::nullopt),
         std::make_pair(
             std::vector{WebBundleSigner::KeyPair::CreateRandom(
                 /*produce_invalid_signature=*/true)},

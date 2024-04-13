@@ -15,7 +15,9 @@ MockTranslateDriver::MockTranslateDriver()
       on_is_page_translated_changed_called_(false),
       on_translate_enabled_changed_called_(false),
       translate_page_is_called_(false),
-      language_state_(this) {}
+      language_state_(this),
+      last_committed_url_(GURL::EmptyGURL()),
+      visible_url_(GURL::EmptyGURL()) {}
 
 MockTranslateDriver::~MockTranslateDriver() = default;
 
@@ -43,7 +45,7 @@ bool MockTranslateDriver::IsLinkNavigation() {
   return false;
 }
 
-bool MockTranslateDriver::IsIncognito() const {
+bool MockTranslateDriver::IsIncognito() {
   return is_incognito_;
 }
 
@@ -51,7 +53,7 @@ const std::string& MockTranslateDriver::GetContentsMimeType() {
   return page_mime_type_;
 }
 
-const GURL& MockTranslateDriver::GetLastCommittedURL() const {
+const GURL&  MockTranslateDriver::GetLastCommittedURL() {
   return last_committed_url_;
 }
 
@@ -67,7 +69,7 @@ LanguageState& MockTranslateDriver::GetLanguageState() {
   return language_state_;
 }
 
-bool MockTranslateDriver::HasCurrentPage() const {
+bool MockTranslateDriver::HasCurrentPage() {
   return true;
 }
 

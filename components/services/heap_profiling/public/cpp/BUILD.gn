@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import("//base/allocator/allocator.gni")
-import("//build/config/features.gni")
 
 static_library("cpp") {
   sources = [
@@ -35,7 +34,7 @@ static_library("cpp") {
     ]
   }
 
-  if (use_blink) {
+  if (!is_ios) {
     sources += [
       "heap_profiling_trace_source.cc",
       "heap_profiling_trace_source.h",
@@ -59,7 +58,7 @@ source_set("unit_tests") {
     sources += [ "merge_samples_unittests.cc" ]
   }
 
-  if (use_blink) {
+  if (!is_ios) {
     sources += [ "heap_profiling_trace_source_unittest.cc" ]
     deps += [
       "//services/tracing:test_utils",

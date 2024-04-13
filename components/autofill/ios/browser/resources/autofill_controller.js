@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import * as fill_constants from '//components/autofill/ios/form_util/resources/fill_constants.js';
-import {isTextAreaElement} from '//components/autofill/ios/form_util/resources/fill_element_inference_util.js';
-
 /**
  * @fileoverview Installs Autofill management functions on the __gCrWeb object.
  *
@@ -63,18 +60,32 @@ __gCrWeb.autofill.lastAutoFilledElement = null;
 __gCrWeb.autofill.styleInjected = false;
 
 /**
+ * Sets the delay between fields when autofilling forms.
+ *
+ * @param {number} delay The new delay in milliseconds.
+ */
+__gCrWeb.autofill.setDelay = function(delay) {
+  __gCrWeb.autofill.delayBetweenFieldFillingMs = delay;
+};
+
+/**
  * Determines whether the form is interesting enough to send to the browser for
  * further operations.
  *
+ * Unlike the C++ version, this version takes a required field count param,
+ * instead of using a hard coded value.
+ *
  * It is based on the logic in
- *     bool IsFormInteresting(const FormData& form);
+ *     bool IsFormInteresting(const FormData& form,
+ *                            size_t num_editable_elements);
  * in chromium/src/components/autofill/content/renderer/form_cache.cc
  *
  * @param {AutofillFormData} form Form to examine.
  * @param {number} numEditableElements number of editable elements.
+ * @param {number} numFieldsRequired number of fields required.
  * @return {boolean} Whether the form is sufficiently interesting.
  */
-function isFormInteresting_(form, numEditableElements) {
+function isFormInteresting_(form, numEditableElements, numFieldsRequired) {
   if (form.fields.length === 0) {
     return false;
   }
@@ -91,7 +102,7 @@ function isFormInteresting_(form, numEditableElements) {
   // If there are no autocomplete attributes, the form needs to have at least
   // the required number of editable fields for the prediction routines to be a
   // candidate for autofill.
-  return numEditableElements >= 1;
+  return numEditableElements >= numFieldsRequired;
 }
 
 /**
@@ -127,15 +138,17 @@ function scanFormControlElements_(controlElements) {
  * extraction results. This is just a wrapper around extractNewForms() to JSON
  * encode the forms, for convenience.
  *
+ * @param {number} requiredFields The minimum number of fields forms must have
+ *     to be extracted.
  * @param {bool} restrictUnownedFieldsToFormlessCheckout whether forms made of
  *     unowned fields (i.e., not within a <form> tag) should be restricted to
  *     those that appear to be in a checkout flow.
  * @return {string} A JSON encoded an array of the forms data.
  */
 __gCrWeb.autofill['extractForms'] = function(
-    restrictUnownedFieldsToFormlessCheckout) {
+    requiredFields, restrictUnownedFieldsToFormlessCheckout) {
   const forms = __gCrWeb.autofill.extractNewForms(
-      restrictUnownedFieldsToFormlessCheckout);
+      requiredFields, restrictUnownedFieldsToFormlessCheckout);
   return __gCrWeb.stringify(forms);
 };
 
@@ -147,34 +160,13 @@ __gCrWeb.autofill['extractForms'] = function(
  */
 __gCrWeb.autofill['fillActiveFormField'] = function(data) {
   const activeElement = document.activeElement;
-  const fieldID = data['renderer_id'];
+  const fieldID = data['unique_renderer_id'];
   if (typeof fieldID === 'undefined' ||
       fieldID.toString() !== __gCrWeb.fill.getUniqueID(activeElement)) {
     return false;
   }
   __gCrWeb.autofill.lastAutoFilledElement = activeElement;
   return __gCrWeb.autofill.fillFormField(data, activeElement);
-};
-
-/**
- * Fills data into the form field identified by `data['renderer_id']`.
- * This is similar to `fillActiveFormField`, but does not require that the
- * target field be `document.activeElement`.
- *
- * @param {AutofillFormFieldData} data The data to fill in.
- * @return {boolean} Whether the field was filled successfully.
- */
-__gCrWeb.autofill['fillSpecificFormField'] = function(data) {
-  const fieldID = data['renderer_id'];
-  if (typeof fieldID === 'undefined') {
-    return false;
-  }
-  const field = __gCrWeb.fill.getElementByUniqueID(fieldID);
-  if (!field) {
-    return false;
-  }
-  __gCrWeb.autofill.lastAutoFilledElement = field;
-  return __gCrWeb.autofill.fillFormField(data, field);
 };
 
 // Remove Autofill styling when control element is edited by the user.
@@ -194,7 +186,7 @@ function controlElementInputListener_(evt) {
  *
  * @param {!FormData} data Autofill data to fill in.
  * @param {number} forceFillFieldID Identified field will always be
- *     filled even if non-empty. May be RENDERER_ID_NOT_SET.
+ *     filled even if non-empty. May be __gCrWeb.fill.RENDERER_ID_NOT_SET.
  * @return {string} JSON encoded list of renderer IDs of filled elements.
  */
 __gCrWeb.autofill['fillForm'] = function(data, forceFillFieldID) {
@@ -334,7 +326,8 @@ __gCrWeb.autofill['clearAutofilledFields'] = function(
     }
 
     let value = null;
-    if (__gCrWeb.fill.isTextInput(element) || isTextAreaElement(element)) {
+    if (__gCrWeb.fill.isTextInput(element) ||
+        __gCrWeb.fill.isTextAreaElement(element)) {
       value = '';
     } else if (__gCrWeb.fill.isSelectElement(element)) {
       // Reset to the first index.
@@ -376,13 +369,18 @@ __gCrWeb.autofill['clearAutofilledFields'] = function(
  * Initial values of select and checkable elements are not recorded at the
  * moment.
  *
+ * This version still takes the minimumRequiredFields parameters. Whereas the
+ * C++ version does not.
+ *
+ * @param {number} minimumRequiredFields The minimum number of fields a form
+ *     should contain for autofill.
  * @param {bool} restrictUnownedFieldsToFormlessCheckout whether forms made of
  *     unowned fields (i.e., not within a <form> tag) should be restricted to
  *     those that appear to be in a checkout flow.
  * @return {Array<AutofillFormData>} The extracted forms.
  */
 __gCrWeb.autofill.extractNewForms = function(
-    restrictUnownedFieldsToFormlessCheckout) {
+    minimumRequiredFields, restrictUnownedFieldsToFormlessCheckout) {
   const forms = [];
   // Protect against custom implementation of Array.toJSON in host pages.
   (function() {
@@ -393,7 +391,7 @@ __gCrWeb.autofill.extractNewForms = function(
   const webForms = document.forms;
 
   const extractMask =
-      fill_constants.EXTRACT_MASK_VALUE | fill_constants.EXTRACT_MASK_OPTIONS;
+      __gCrWeb.fill.EXTRACT_MASK_VALUE | __gCrWeb.fill.EXTRACT_MASK_OPTIONS;
   let numFieldsSeen = 0;
   for (let formIndex = 0; formIndex < webForms.length; ++formIndex) {
     /** @type {HTMLFormElement} */
@@ -413,16 +411,16 @@ __gCrWeb.autofill.extractNewForms = function(
     }
 
     numFieldsSeen += form['fields'].length;
-    if (numFieldsSeen > fill_constants.MAX_EXTRACTABLE_FIELDS) {
+    if (numFieldsSeen > __gCrWeb.fill.MAX_PARSEABLE_FIELDS) {
       break;
     }
 
-    if (isFormInteresting_(form, numEditableElements)) {
+    if (isFormInteresting_(form, numEditableElements, minimumRequiredFields)) {
       forms.push(form);
     }
   }
 
-  // Look for more extractable fields outside of forms.
+  // Look for more parseable fields outside of forms.
   const fieldsets = [];
   const unownedControlElements =
       __gCrWeb.fill.getUnownedAutofillableFormFieldElements(
@@ -437,9 +435,9 @@ __gCrWeb.autofill.extractNewForms = function(
             restrictUnownedFieldsToFormlessCheckout, unownedForm);
     if (hasUnownedForm) {
       numFieldsSeen += unownedForm['fields'].length;
-      if (numFieldsSeen <= fill_constants.MAX_EXTRACTABLE_FIELDS) {
-        const interesting =
-            isFormInteresting_(unownedForm, numEditableUnownedElements);
+      if (numFieldsSeen <= __gCrWeb.fill.MAX_PARSEABLE_FIELDS) {
+        const interesting = isFormInteresting_(
+            unownedForm, numEditableUnownedElements, minimumRequiredFields);
         if (interesting) {
           forms.push(unownedForm);
         }
@@ -473,7 +471,8 @@ __gCrWeb.autofill.fillFormField = function(data, field) {
   }
 
   let filled = false;
-  if (__gCrWeb.fill.isTextInput(field) || isTextAreaElement(field)) {
+  if (__gCrWeb.fill.isTextInput(field) ||
+      __gCrWeb.fill.isTextAreaElement(field)) {
     let sanitizedValue = data['value'];
 
     if (__gCrWeb.fill.isTextInput(field)) {
@@ -481,7 +480,7 @@ __gCrWeb.autofill.fillFormField = function(data, field) {
       // maxlength value is used.
       let maxLength = data['max_length'];
       if (maxLength < 0) {
-        maxLength = fill_constants.MAX_DATA_LENGTH;
+        maxLength = __gCrWeb.fill.MAX_DATA_LENGTH;
       }
       sanitizedValue = data['value'].substr(0, maxLength);
     }

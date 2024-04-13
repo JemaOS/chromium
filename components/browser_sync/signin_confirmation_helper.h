@@ -57,7 +57,7 @@ class SigninConfirmationHelper {
   const scoped_refptr<base::SequencedTaskRunner> origin_sequence_;
 
   // Pointer to the history service.
-  const raw_ptr<history::HistoryService> history_service_;
+  raw_ptr<history::HistoryService> history_service_;
 
   // Used for async tasks.
   base::CancelableTaskTracker task_tracker_;

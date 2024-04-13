@@ -4,8 +4,6 @@
 
 #include "components/os_crypt/async/browser/os_crypt_async.h"
 
-#include <optional>
-
 #include "base/memory/ptr_util.h"
 #include "base/run_loop.h"
 #include "base/test/bind.h"
@@ -19,6 +17,7 @@
 #include "components/os_crypt/sync/os_crypt_mocker.h"
 #include "crypto/hkdf.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace os_crypt_async {
 
@@ -29,7 +28,7 @@ class OSCryptAsyncTest : public ::testing::Test {
 
   Encryptor GetInstanceSync(OSCryptAsync& factory) {
     base::RunLoop run_loop;
-    std::optional<Encryptor> encryptor;
+    absl::optional<Encryptor> encryptor;
     auto sub = factory.GetInstance(base::BindLambdaForTesting(
         [&](Encryptor encryptor_param, bool success) {
           EXPECT_TRUE(success);
@@ -85,7 +84,7 @@ TEST_F(OSCryptAsyncTest, EncryptHeader) {
 }
 
 TEST_F(OSCryptAsyncTest, TwoProvidersBothEnabled) {
-  std::optional<std::vector<uint8_t>> ciphertext;
+  absl::optional<std::vector<uint8_t>> ciphertext;
   {
     const std::string kFooProviderName("FOO");
     ProviderList providers;
@@ -127,7 +126,7 @@ TEST_F(OSCryptAsyncTest, TwoProvidersBothEnabled) {
 }
 
 TEST_F(OSCryptAsyncTest, TwoProvidersOneEnabled) {
-  std::optional<std::vector<uint8_t>> ciphertext;
+  absl::optional<std::vector<uint8_t>> ciphertext;
   {
     const std::string kBarProviderName("BAR");
     ProviderList providers;
@@ -275,7 +274,7 @@ TEST_F(OSCryptAsyncTest, TestEncryptorInterface) {
 class FailingKeyProvider : public TestKeyProvider {
  private:
   void GetKey(KeyCallback callback) override {
-    std::move(callback).Run("", std::nullopt);
+    std::move(callback).Run("", absl::nullopt);
   }
 };
 

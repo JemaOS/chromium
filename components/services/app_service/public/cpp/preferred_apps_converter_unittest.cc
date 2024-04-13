@@ -50,25 +50,25 @@ TEST_F(PreferredAppsConverterTest, ConvertSimpleEntry) {
         (*converted_intent_filter)[i].GetDict();
     auto& condition_values = condition->condition_values;
     const base::Value::List* converted_condition_values =
-        converted_condition.FindList(apps_util::kConditionValuesKey);
+        converted_condition.FindList(apps::kConditionValuesKey);
 
     EXPECT_EQ(static_cast<int>(condition->condition_type),
-              converted_condition.FindInt(apps_util::kConditionTypeKey));
+              converted_condition.FindInt(apps::kConditionTypeKey));
     ASSERT_EQ(1u, converted_condition_values->size());
     EXPECT_EQ(condition_values[0]->value,
               *(*converted_condition_values)[0].GetDict().FindString(
-                  apps_util::kValueKey));
+                  apps::kValueKey));
     EXPECT_EQ(static_cast<int>(condition_values[0]->match_type),
               (*converted_condition_values)[0].GetDict().FindInt(
-                  apps_util::kMatchTypeKey));
+                  apps::kMatchTypeKey));
   }
 
   preferred_apps.Init();
-  EXPECT_EQ(std::nullopt, preferred_apps.FindPreferredAppForUrl(filter_url));
+  EXPECT_EQ(absl::nullopt, preferred_apps.FindPreferredAppForUrl(filter_url));
   preferred_apps.Init(apps::ParseValueToPreferredApps(converted_value));
   EXPECT_EQ(kAppId1, preferred_apps.FindPreferredAppForUrl(filter_url));
   GURL url_wrong_host = GURL("https://www.hahaha.com/");
-  EXPECT_EQ(std::nullopt,
+  EXPECT_EQ(absl::nullopt,
             preferred_apps.FindPreferredAppForUrl(url_wrong_host));
 }
 
@@ -101,7 +101,7 @@ TEST_F(PreferredAppsConverterTest, ConvertUpgradedSimpleEntryJson) {
       "      \"condition_type\": 1,"
       "      \"condition_values\": [ {"
       "         \"match_type\": 1,"
-      "         \"value\": \"www.google.com:443\""
+      "         \"value\": \"www.google.com\""
       "      } ]"
       "   }, {"
       "      \"condition_type\": 2,"
@@ -112,14 +112,10 @@ TEST_F(PreferredAppsConverterTest, ConvertUpgradedSimpleEntryJson) {
       "   } ]"
       "} ],"
       "\"version\": 1}";
-  std::optional<base::Value> expected_output =
+  absl::optional<base::Value> expected_output =
       base::JSONReader::Read(expected_output_string);
   ASSERT_TRUE(expected_output);
   EXPECT_EQ(expected_output.value(), converted_value);
-
-  // Make sure this round trips.
-  EXPECT_TRUE(IsEqual(apps::ParseValueToPreferredApps(converted_value),
-                      preferred_apps.GetReference()));
 }
 
 // Test parse simple entry from json string (old format).
@@ -146,14 +142,13 @@ TEST_F(PreferredAppsConverterTest, ParseSimpleEntryJson) {
       "      } ]"
       "   } ]"
       "} ]";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_string);
+  absl::optional<base::Value> test_value = base::JSONReader::Read(test_string);
   ASSERT_TRUE(test_value);
   auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
   EXPECT_FALSE(apps::IsUpgradedForSharing(test_value.value()));
 
   GURL filter_url = GURL("https://www.google.com/abc");
-  auto intent_filter = apps_util::MakeIntentFilterForUrlScope(
-      filter_url, /*omit_port_for_testing=*/true);
+  auto intent_filter = apps_util::MakeIntentFilterForUrlScope(filter_url);
   intent_filter->conditions.erase(intent_filter->conditions.begin());
   apps::PreferredAppsList preferred_apps;
   preferred_apps.Init();
@@ -183,7 +178,7 @@ TEST_F(PreferredAppsConverterTest, ParseUpgradedSimpleEntryJson) {
       "      \"condition_type\": 1,"
       "      \"condition_values\": [ {"
       "         \"match_type\": 0,"
-      "         \"value\": \"www.google.com:443\""
+      "         \"value\": \"www.google.com\""
       "      } ]"
       "   }, {"
       "      \"condition_type\": 2,"
@@ -194,7 +189,7 @@ TEST_F(PreferredAppsConverterTest, ParseUpgradedSimpleEntryJson) {
       "   } ]"
       "} ],"
       "\"version\": 1}";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_string);
+  absl::optional<base::Value> test_value = base::JSONReader::Read(test_string);
   ASSERT_TRUE(test_value);
   auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
   EXPECT_TRUE(apps::IsUpgradedForSharing(test_value.value()));
@@ -208,51 +203,6 @@ TEST_F(PreferredAppsConverterTest, ParseUpgradedSimpleEntryJson) {
   auto& expected_entry = preferred_apps.GetReference();
 
   EXPECT_TRUE(IsEqual(expected_entry, parsed_entry));
-}
-
-// Test parsing an entry from before URL scopes had port numbers.
-TEST_F(PreferredAppsConverterTest, ParseEmptyPortEntryJson) {
-  const char test_string[] =
-      "{\"preferred_apps\": [ {\"app_id\": \"abcdefg\","
-      "   \"intent_filter\": [ {"
-      "      \"condition_type\": 3,"
-      "      \"condition_values\": [ {"
-      "         \"match_type\": 0,"
-      "         \"value\": \"view\""
-      "      } ]"
-      "   }, {"
-      "      \"condition_type\": 0,"
-      "      \"condition_values\": [ {"
-      "         \"match_type\": 0,"
-      "         \"value\": \"https\""
-      "      } ]"
-      "   }, {"
-      "      \"condition_type\": 1,"
-      "      \"condition_values\": [ {"
-      "         \"match_type\": 0,"
-      "         \"value\": \"www.google.com\""
-      "      } ]"
-      "   }, {"
-      "      \"condition_type\": 2,"
-      "      \"condition_values\": [ {"
-      "         \"match_type\": 2,"
-      "         \"value\": \"/abc\""
-      "      } ]"
-      "   } ]"
-      "} ],"
-      "\"version\": 1}";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_string);
-  ASSERT_TRUE(test_value);
-  auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
-
-  apps::PreferredAppsList preferred_apps_list;
-  preferred_apps_list.Init();
-  preferred_apps_list.AddPreferredApp(
-      kAppId1,
-      apps_util::MakeIntentFilterForUrlScope(GURL("https://www.google.com/abc"),
-                                             /*omit_port_for_testing=*/true));
-
-  EXPECT_TRUE(IsEqual(parsed_entry, preferred_apps_list.GetReference()));
 }
 
 TEST_F(PreferredAppsConverterTest, ParseJsonWithInvalidAppId) {
@@ -279,7 +229,7 @@ TEST_F(PreferredAppsConverterTest, ParseJsonWithInvalidAppId) {
       "      } ]"
       "   } ]"
       "} ]";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_key);
+  absl::optional<base::Value> test_value = base::JSONReader::Read(test_key);
   ASSERT_TRUE(test_value);
   auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
   EXPECT_TRUE(parsed_entry.empty());
@@ -337,7 +287,7 @@ TEST_F(PreferredAppsConverterTest, ParseJsonWithInvalidIntentFilter) {
       "      } ]"
       "   } ]"
       "} ]";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_key);
+  absl::optional<base::Value> test_value = base::JSONReader::Read(test_key);
   ASSERT_TRUE(test_value);
   auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
   EXPECT_TRUE(parsed_entry.empty());
@@ -377,7 +327,7 @@ TEST_F(PreferredAppsConverterTest, ParseJsonWithInvalidConditionType) {
       "      } ]"
       "   } ]"
       "} ]";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_key);
+  absl::optional<base::Value> test_value = base::JSONReader::Read(test_key);
   ASSERT_TRUE(test_value);
   auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
   EXPECT_TRUE(parsed_entry.empty());
@@ -435,7 +385,7 @@ TEST_F(PreferredAppsConverterTest, ParseJsonWithInvalidValues) {
       "      } ]"
       "   } ]"
       "} ]";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_key);
+  absl::optional<base::Value> test_value = base::JSONReader::Read(test_key);
   ASSERT_TRUE(test_value);
   auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
   EXPECT_TRUE(parsed_entry.empty());
@@ -490,7 +440,7 @@ TEST_F(PreferredAppsConverterTest, ParseJsonWithInvalidMatchType) {
       "      } ]"
       "   } ]"
       "} ]";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_key);
+  absl::optional<base::Value> test_value = base::JSONReader::Read(test_key);
   ASSERT_TRUE(test_value);
   auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
   EXPECT_TRUE(parsed_entry.empty());
@@ -548,7 +498,7 @@ TEST_F(PreferredAppsConverterTest, ParseJsonWithInvalidValue) {
       "      } ]"
       "   } ]"
       "} ]";
-  std::optional<base::Value> test_value = base::JSONReader::Read(test_key);
+  absl::optional<base::Value> test_value = base::JSONReader::Read(test_key);
   ASSERT_TRUE(test_value);
   auto parsed_entry = apps::ParseValueToPreferredApps(test_value.value());
   EXPECT_TRUE(parsed_entry.empty());

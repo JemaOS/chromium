@@ -217,7 +217,7 @@ void SSLErrorUI::HandleCommand(SecurityInterstitialCommand command) {
       GURL::Replacements replacements;
       // This has to be stored in a separate variable, otherwise asan throws a
       // use-after-scope error
-      std::string cert_error_string = base::NumberToString(cert_error_);
+      std::string cert_error_string = std::to_string(cert_error_);
       replacements.SetRefStr(cert_error_string);
       // If |support_url_| is invalid, use the default help center url.
       controller_->OpenUrlInNewForegroundTab(
@@ -250,9 +250,7 @@ void SSLErrorUI::HandleCommand(SecurityInterstitialCommand command) {
     case CMD_OPEN_DATE_SETTINGS:
     case CMD_OPEN_DIAGNOSTIC:
     case CMD_OPEN_LOGIN:
-    case CMD_REPORT_PHISHING_ERROR:
-    case CMD_CLOSE_INTERSTITIAL_WITHOUT_UI:
-    case CMD_REQUEST_SITE_ACCESS_PERMISSION: {
+    case CMD_REPORT_PHISHING_ERROR: {
       // Not supported by the SSL error page.
       NOTREACHED() << "Unsupported command: " << command;
       break;

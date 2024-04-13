@@ -16,7 +16,7 @@ AutofillPolicyHandler::AutofillPolicyHandler()
     : policy::TypeCheckingPolicyHandler(policy::key::kAutoFillEnabled,
                                         base::Value::Type::BOOLEAN) {}
 
-AutofillPolicyHandler::~AutofillPolicyHandler() = default;
+AutofillPolicyHandler::~AutofillPolicyHandler() {}
 
 void AutofillPolicyHandler::ApplyPolicySettings(
     const policy::PolicyMap& policies,

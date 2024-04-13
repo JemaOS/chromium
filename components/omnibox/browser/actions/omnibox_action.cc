@@ -14,10 +14,6 @@
 #if defined(SUPPORT_PEDALS_VECTOR_ICONS)
 #include "components/omnibox/browser/vector_icons.h"  // nogncheck
 #endif
-#if BUILDFLAG(IS_ANDROID)
-#include "base/android/jni_android.h"
-#include "components/omnibox/browser/jni_headers/OmniboxAction_jni.h"
-#endif
 
 OmniboxAction::LabelStrings::LabelStrings(int id_hint,
                                           int id_suggestion_contents,
@@ -43,7 +39,8 @@ OmniboxAction::LabelStrings::LabelStrings(const LabelStrings&) = default;
 
 OmniboxAction::LabelStrings::~LabelStrings() = default;
 
-namespace base::trace_event {
+namespace base {
+namespace trace_event {
 size_t EstimateMemoryUsage(const OmniboxAction::LabelStrings& self) {
   size_t total = 0;
   total += base::trace_event::EstimateMemoryUsage(self.hint);
@@ -52,7 +49,8 @@ size_t EstimateMemoryUsage(const OmniboxAction::LabelStrings& self) {
   total += base::trace_event::EstimateMemoryUsage(self.accessibility_hint);
   return total;
 }
-}  // namespace base::trace_event
+}  // namespace trace_event
+}  // namespace base
 
 // =============================================================================
 
@@ -76,18 +74,12 @@ OmniboxAction::ExecutionContext::~ExecutionContext() = default;
 
 // =============================================================================
 
-OmniboxAction::OmniboxAction(LabelStrings strings, GURL url)
-    : strings_(strings), url_(url) {}
+OmniboxAction::OmniboxAction(LabelStrings strings,
+                             GURL url,
+                             bool takes_over_match)
+    : strings_(strings), url_(url), takes_over_match_(takes_over_match) {}
 
-OmniboxAction::~OmniboxAction() {
-#if BUILDFLAG(IS_ANDROID)
-  if (j_omnibox_action_) {
-    Java_OmniboxAction_destroy(base::android::AttachCurrentThread(),
-                               j_omnibox_action_);
-    j_omnibox_action_.Reset();
-  }
-#endif
-}
+OmniboxAction::~OmniboxAction() = default;
 
 const OmniboxAction::LabelStrings& OmniboxAction::GetLabelStrings() const {
   return strings_;
@@ -104,12 +96,14 @@ bool OmniboxAction::IsReadyToTrigger(
   return true;
 }
 
+bool OmniboxAction::TakesOverMatch() const {
+  return takes_over_match_;
+}
+
 #if defined(SUPPORT_PEDALS_VECTOR_ICONS)
 const gfx::VectorIcon& OmniboxAction::GetVectorIcon() const {
   // TODO(tommycli): Replace with real icon.
-  return OmniboxFieldTrial::IsChromeRefreshActionChipIconsEnabled()
-             ? omnibox::kProductChromeRefreshIcon
-             : omnibox::kPedalIcon;
+  return omnibox::kPedalIcon;
 }
 #endif
 
@@ -143,8 +137,7 @@ void OmniboxAction::OpenURL(OmniboxAction::ExecutionContext& context,
       .Run(url, nullptr, context.disposition_, ui::PAGE_TRANSITION_GENERATED,
            /*match_type=*/AutocompleteMatchType::URL_WHAT_YOU_TYPED,
            context.match_selection_timestamp_,
-           /*destination_url_entered_without_scheme=*/false,
-           /*destination_url_entered_with_http_scheme=*/false, u"",
+           /*destination_url_entered_without_scheme=*/false, u"",
            AutocompleteMatch(), AutocompleteMatch(),
            IDNA2008DeviationCharacter::kNone);
 }

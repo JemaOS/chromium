@@ -19,8 +19,8 @@ items:
 - caption: Prevent <ph name="BOREALIS_NAME">Borealis</ph> from running on a device
   value: false
 owners:
-- philpearson@google.com
-- davidriley@google.com
+- hollingum@google.com
+- dca@google.com
 schema:
   type: boolean
 supported_on:

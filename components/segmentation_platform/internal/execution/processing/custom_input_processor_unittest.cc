@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "base/functional/bind.h"
-#include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/simple_test_clock.h"
@@ -31,7 +30,7 @@ class MockInputDelegate : public InputDelegate {
  public:
   MOCK_METHOD3(Process,
                void(const proto::CustomInput& input,
-                    FeatureProcessorState& feature_processor_state,
+                    const FeatureProcessorState& feature_processor_state,
                     ProcessedCallback callback));
 };
 
@@ -78,14 +77,16 @@ class CustomInputProcessorTest : public testing::Test {
       base::flat_map<int, Data>&& data,
       bool expected_error,
       const base::flat_map<int, QueryProcessor::Tensor>& expected_result) {
-    feature_processor_state_ = std::make_unique<FeatureProcessorState>();
-    ExpectProcessedCustomInput(std::move(data), *feature_processor_state_,
+    std::unique_ptr<FeatureProcessorState> feature_processor_state =
+        std::make_unique<FeatureProcessorState>();
+    ExpectProcessedCustomInput(std::move(data),
+                               std::move(feature_processor_state),
                                expected_error, expected_result);
   }
 
   void ExpectProcessedCustomInput(
       base::flat_map<int, Data>&& data,
-      FeatureProcessorState& feature_processor_state,
+      std::unique_ptr<FeatureProcessorState> feature_processor_state,
       bool expected_error,
       const base::flat_map<int, QueryProcessor::Tensor>& expected_result) {
     std::unique_ptr<CustomInputProcessor> custom_input_processor =
@@ -94,11 +95,11 @@ class CustomInputProcessorTest : public testing::Test {
 
     base::RunLoop loop;
     custom_input_processor->Process(
-        feature_processor_state,
+        std::move(feature_processor_state),
         base::BindOnce(
             &CustomInputProcessorTest::OnProcessingFinishedCallback<int>,
             base::Unretained(this), loop.QuitClosure(), expected_error,
-            expected_result, feature_processor_state.GetWeakPtr()));
+            expected_result));
     loop.Run();
   }
 
@@ -110,12 +111,12 @@ class CustomInputProcessorTest : public testing::Test {
           expected_result) {
     base::RunLoop loop;
     custom_input_processor_sql_->ProcessIndexType<IndexType>(
-        data, *feature_processor_state_,
+        data, std::move(feature_processor_state_),
         std::make_unique<base::flat_map<IndexType, Tensor>>(),
         base::BindOnce(
             &CustomInputProcessorTest::OnProcessingFinishedCallback<IndexType>,
             base::Unretained(this), loop.QuitClosure(), expected_error,
-            expected_result, feature_processor_state_->GetWeakPtr()));
+            expected_result));
     loop.Run();
   }
 
@@ -124,7 +125,7 @@ class CustomInputProcessorTest : public testing::Test {
       base::RepeatingClosure closure,
       bool expected_error,
       const base::flat_map<IndexType, QueryProcessor::Tensor>& expected_result,
-      base::WeakPtr<FeatureProcessorState> feature_processor_state,
+      std::unique_ptr<FeatureProcessorState> feature_processor_state,
       base::flat_map<IndexType, QueryProcessor::Tensor> result) {
     EXPECT_EQ(expected_error, feature_processor_state->error());
     EXPECT_EQ(expected_result, result);
@@ -223,7 +224,8 @@ TEST_F(CustomInputProcessorTest, FromInputContext) {
   expected_result[0] = {ProcessedValue(0.6f)};
 
   // Process the custom inputs and verify using expected result.
-  ExpectProcessedCustomInput(std::move(data), *feature_processor_state,
+  ExpectProcessedCustomInput(std::move(data),
+                             std::move(feature_processor_state),
                              /*expected_error=*/false, expected_result);
 }
 
@@ -250,7 +252,8 @@ TEST_F(CustomInputProcessorTest,
   expected_result[0] = {ProcessedValue(0.6f)};
 
   // Process the custom inputs and verify using expected result.
-  ExpectProcessedCustomInput(std::move(data), *feature_processor_state,
+  ExpectProcessedCustomInput(std::move(data),
+                             std::move(feature_processor_state),
                              /*expected_error=*/false, expected_result);
 }
 

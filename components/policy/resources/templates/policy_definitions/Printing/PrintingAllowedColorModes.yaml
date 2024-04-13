@@ -17,8 +17,7 @@ items:
   name: monochrome
   value: monochrome
 owners:
-- ust@google.com
-- chromeos-commercial-printing@google.com
+- srad@google.com
 - pawliczek@chromium.org
 schema:
   enum:

@@ -4,27 +4,23 @@
 
 #include "components/web_package/web_bundle_parser.h"
 
-#include <memory>
-#include <optional>
-
-#include "base/check.h"
 #include "base/containers/span.h"
-#include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/weak_ptr.h"
-#include "base/notreached.h"
 #include "base/numerics/checked_math.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "components/cbor/reader.h"
 #include "components/web_package/input_reader.h"
-#include "components/web_package/mojom/web_bundle_parser.mojom.h"
 #include "components/web_package/signed_web_bundles/integrity_block_parser.h"
 #include "components/web_package/web_bundle_utils.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/http/http_util.h"
+#include "url/url_constants.h"
 
 namespace web_package {
 
@@ -95,24 +91,21 @@ bool IsMetadataSection(const std::string& name) {
 // Parses a `section-lengths` CBOR item.
 // https://www.ietf.org/archive/id/draft-ietf-wpack-bundled-responses-01.html#name-bundle-sections
 //   section-lengths = [* (section-name: tstr, length: uint) ]
-std::optional<SectionLengths> ParseSectionLengths(
+absl::optional<SectionLengths> ParseSectionLengths(
     base::span<const uint8_t> data) {
   cbor::Reader::DecoderError error;
-  std::optional<cbor::Value> value = cbor::Reader::Read(data, &error);
-  if (!value.has_value() || !value->is_array()) {
-    return std::nullopt;
-  }
+  absl::optional<cbor::Value> value = cbor::Reader::Read(data, &error);
+  if (!value.has_value() || !value->is_array())
+    return absl::nullopt;
 
   const cbor::Value::ArrayValue& array = value->GetArray();
-  if (array.size() % 2 != 0) {
-    return std::nullopt;
-  }
+  if (array.size() % 2 != 0)
+    return absl::nullopt;
 
   SectionLengths result;
   for (size_t i = 0; i < array.size(); i += 2) {
-    if (!array[i].is_string() || !array[i + 1].is_unsigned()) {
-      return std::nullopt;
-    }
+    if (!array[i].is_string() || !array[i + 1].is_unsigned())
+      return absl::nullopt;
     result.emplace_back(array[i].GetString(), array[i + 1].GetUnsigned());
   }
   return result;
@@ -125,28 +118,25 @@ struct ParsedHeaders {
 
 // https://www.ietf.org/archive/id/draft-ietf-wpack-bundled-responses-01.html#name-responses
 //   headers = {* bstr => bstr}
-std::optional<ParsedHeaders> ConvertCBORValueToHeaders(
+absl::optional<ParsedHeaders> ConvertCBORValueToHeaders(
     const cbor::Value& headers_value) {
   // |headers_value| of headers must be a map.
-  if (!headers_value.is_map()) {
-    return std::nullopt;
-  }
+  if (!headers_value.is_map())
+    return absl::nullopt;
 
   ParsedHeaders result;
 
   for (const auto& item : headers_value.GetMap()) {
-    if (!item.first.is_bytestring() || !item.second.is_bytestring()) {
-      return std::nullopt;
-    }
+    if (!item.first.is_bytestring() || !item.second.is_bytestring())
+      return absl::nullopt;
     base::StringPiece name = item.first.GetBytestringAsString();
     base::StringPiece value = item.second.GetBytestringAsString();
 
     // If name contains any upper-case or non-ASCII characters, return an error.
     // This matches the requirement in Section 8.1.2 of [RFC7540].
     if (!base::IsStringASCII(name) ||
-        base::ranges::any_of(name, base::IsAsciiUpper<char>)) {
-      return std::nullopt;
-    }
+        base::ranges::any_of(name, base::IsAsciiUpper<char>))
+      return absl::nullopt;
 
     if (!name.empty() && name[0] == ':') {
       // pseudos[name] must not exist, because CBOR maps cannot contain
@@ -159,9 +149,8 @@ std::optional<ParsedHeaders> ConvertCBORValueToHeaders(
 
     // Both name and value must be valid.
     if (!net::HttpUtil::IsValidHeaderName(name) ||
-        !net::HttpUtil::IsValidHeaderValue(value)) {
-      return std::nullopt;
-    }
+        !net::HttpUtil::IsValidHeaderValue(value))
+      return absl::nullopt;
 
     // headers[name] must not exist, because CBOR maps cannot contain duplicate
     // keys. This is ensured by cbor::Reader.
@@ -177,77 +166,54 @@ std::optional<ParsedHeaders> ConvertCBORValueToHeaders(
 GURL ParseExchangeURL(base::StringPiece str, const GURL& base_url) {
   DCHECK(base_url.is_empty() || base_url.is_valid());
 
-  if (!base::IsStringUTF8(str)) {
+  if (!base::IsStringUTF8(str))
     return GURL();
-  }
 
   GURL url = base_url.is_valid() ? base_url.Resolve(str) : GURL(str);
-  if (!url.is_valid()) {
+  if (!url.is_valid())
     return GURL();
-  }
 
   // Exchange URL must not have a fragment or credentials.
-  if (url.has_ref() || url.has_username() || url.has_password()) {
+  if (url.has_ref() || url.has_username() || url.has_password())
     return GURL();
-  }
 
   return url;
 }
 
 }  // namespace
 
-// A parser for bundle's metadata.
+// A parser for bundle's metadata. This class owns itself and will self destruct
+// after calling the ParseMetadataCallback.
 class WebBundleParser::MetadataParser
-    : public WebBundleParser::WebBundleSectionParser {
+    : WebBundleParser::SharedBundleDataSource::Observer {
  public:
-  MetadataParser(mojo::Remote<mojom::BundleDataSource>& data_source
-                     ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                 GURL base_url,
-                 std::optional<uint64_t> offset,
+  MetadataParser(scoped_refptr<SharedBundleDataSource> data_source,
+                 const GURL& base_url,
                  ParseMetadataCallback callback)
       : data_source_(data_source),
-        base_url_(std::move(base_url)),
-        start_reading_offset_(std::move(offset)),
-        result_callback_(std::move(callback)) {
+        base_url_(base_url),
+        callback_(std::move(callback)) {
     DCHECK(base_url_.is_empty() || base_url_.is_valid());
+    data_source_->AddObserver(this);
   }
 
   MetadataParser(const MetadataParser&) = delete;
   MetadataParser& operator=(const MetadataParser&) = delete;
 
-  ~MetadataParser() override {
-    if (!complete_callback_.is_null()) {
-      RunErrorCallback("Data source disconnected.",
-                       mojom::BundleParseErrorType::kParserInternalError);
-    }
-  }
+  ~MetadataParser() override { data_source_->RemoveObserver(this); }
 
   // Starts parsing of the web bundle. If the data source is backed by a
   // random-access, read the trailing `length` field at the end of the web
   // bundle file and start from that offset.
   // https://www.ietf.org/archive/id/draft-ietf-wpack-bundled-responses-01.html#name-trailing-length
-  // If offset is provided, it starts parsing of the web bundle at the specified
-  // offset, ignoring the `length` field of the web bundle.
-  void StartParsing(
-      WebBundleParser::WebBundleSectionParser::ParsingCompleteCallback callback)
-      override {
-    CHECK(!result_callback_.is_null());
-    complete_callback_ = std::move(callback);
-
-    // If no offset is specified, then where we start parsing the Web Bundle
-    // metadata depends on whether or not it is loaded in a random-access
-    // context. If random-access into the Web Bundle is possible, then we use
-    // the `length` field at its end to determine the start of the Web Bundle.
-    // If random-access into the Web Bundle is not possible, then we simply
-    // start at the top.
-    if (start_reading_offset_.has_value()) {
-      ReadMagicBytes(start_reading_offset_.value());
-    } else {
-      data_source_->get()->IsRandomAccessContext(
-          base::BindOnce(&MetadataParser::OnIsRandomAccessContext,
-                         weak_factory_.GetWeakPtr()));
-    }
+  void Start() {
+    data_source_->IsRandomAccessContext(base::BindOnce(
+        &MetadataParser::OnIsRandomAccessContext, weak_factory_.GetWeakPtr()));
   }
+
+  // Starts parsing of the web bundle at the specified offset, ignoring the
+  // `length` field of the web bundle.
+  void StartAtOffset(const uint64_t offset) { ReadMagicBytes(offset); }
 
  private:
   void OnIsRandomAccessContext(const bool is_random_access_context) {
@@ -258,32 +224,32 @@ class WebBundleParser::MetadataParser
       ReadMagicBytes(0);
     } else {
       // Otherwise read the length of the file (not the web bundle).
-      data_source_->get()->Length(base::BindOnce(
-          &MetadataParser::OnFileLengthRead, weak_factory_.GetWeakPtr()));
+      data_source_->Length(base::BindOnce(&MetadataParser::OnFileLengthRead,
+                                          weak_factory_.GetWeakPtr()));
     }
   }
   void OnFileLengthRead(const int64_t file_length) {
     if (file_length < 0) {
-      RunErrorCallback("Error reading bundle length.");
+      RunErrorCallbackAndDestroy("Error reading bundle length.");
       return;
     }
     if (static_cast<uint64_t>(file_length) < kTrailingLengthNumBytes) {
-      RunErrorCallback("Error reading bundle length.");
+      RunErrorCallbackAndDestroy("Error reading bundle length.");
       return;
     }
 
     // Read the last 8 bytes of the file that correspond to the trailing length
     // field of the web bundle.
-    data_source_->get()->Read(
-        file_length - kTrailingLengthNumBytes, kTrailingLengthNumBytes,
-        base::BindOnce(&MetadataParser::ParseWebBundleLength,
-                       weak_factory_.GetWeakPtr(), file_length));
+    data_source_->Read(file_length - kTrailingLengthNumBytes,
+                       kTrailingLengthNumBytes,
+                       base::BindOnce(&MetadataParser::ParseWebBundleLength,
+                                      weak_factory_.GetWeakPtr(), file_length));
   }
 
   void ParseWebBundleLength(const uint64_t file_length,
-                            const std::optional<std::vector<uint8_t>>& data) {
+                            const absl::optional<std::vector<uint8_t>>& data) {
     if (!data.has_value()) {
-      RunErrorCallback("Error reading bundle length.");
+      RunErrorCallbackAndDestroy("Error reading bundle length.");
       return;
     }
 
@@ -296,12 +262,12 @@ class WebBundleParser::MetadataParser
     InputReader input(*data);
     uint64_t web_bundle_length;
     if (!input.ReadBigEndian(&web_bundle_length)) {
-      RunErrorCallback("Error reading bundle length.");
+      RunErrorCallbackAndDestroy("Error reading bundle length.");
       return;
     }
 
     if (web_bundle_length > file_length) {
-      RunErrorCallback("Invalid bundle length.");
+      RunErrorCallbackAndDestroy("Invalid bundle length.");
       return;
     }
     const uint64_t web_bundle_offset = file_length - web_bundle_length;
@@ -314,7 +280,7 @@ class WebBundleParser::MetadataParser
     const uint64_t length = 1 + sizeof(kBundleMagicBytes) +
                             sizeof(kVersionB2MagicBytes) +
                             kMaxCBORItemHeaderSize;
-    data_source_->get()->Read(
+    data_source_->Read(
         offset_in_stream, length,
         base::BindOnce(&MetadataParser::ParseMagicBytes,
                        weak_factory_.GetWeakPtr(), offset_in_stream));
@@ -322,9 +288,9 @@ class WebBundleParser::MetadataParser
 
   // https://www.ietf.org/archive/id/draft-ietf-wpack-bundled-responses-01.html#name-top-level-structure
   void ParseMagicBytes(uint64_t offset_in_stream,
-                       const std::optional<std::vector<uint8_t>>& data) {
+                       const absl::optional<std::vector<uint8_t>>& data) {
     if (!data) {
-      RunErrorCallback("Error reading bundle magic bytes.");
+      RunErrorCallbackAndDestroy("Error reading bundle magic bytes.");
       return;
     }
 
@@ -334,28 +300,28 @@ class WebBundleParser::MetadataParser
     // (5).
     const auto array_size = input.ReadByte();
     if (!array_size) {
-      RunErrorCallback("Missing CBOR array size byte.");
+      RunErrorCallbackAndDestroy("Missing CBOR array size byte.");
       return;
     }
 
     // Let kBundleB1HeadByte pass this check, to report custom error message for
     // b1 bundles.
     if (*array_size != kBundleHeadByte && *array_size != kBundleB1HeadByte) {
-      RunErrorCallback("Wrong magic bytes.");
+      RunErrorCallbackAndDestroy("Wrong magic bytes.");
       return;
     }
 
     // Check the magic bytes "48 F0 9F 8C 90 F0 9F 93 A6".
     const auto magic = input.ReadBytes(sizeof(kBundleMagicBytes));
     if (!magic || !base::ranges::equal(*magic, kBundleMagicBytes)) {
-      RunErrorCallback("Wrong magic bytes.");
+      RunErrorCallbackAndDestroy("Wrong magic bytes.");
       return;
     }
 
     // Let version be the result of reading 5 bytes from stream.
     const auto version = input.ReadBytes(sizeof(kVersionB2MagicBytes));
     if (!version) {
-      RunErrorCallback("Cannot read version bytes.");
+      RunErrorCallbackAndDestroy("Cannot read version bytes.");
       return;
     }
     if (!base::ranges::equal(*version, kVersionB2MagicBytes)) {
@@ -369,18 +335,20 @@ class WebBundleParser::MetadataParser
             "Version error: bundle format does not correspond to the specifed "
             "version. Currently supported version is: 'b2'";
       }
-      RunErrorCallback(message, mojom::BundleParseErrorType::kVersionError);
+      RunErrorCallbackAndDestroy(message,
+                                 mojom::BundleParseErrorType::kVersionError);
       return;
     }
     if (*array_size != kBundleHeadByte) {
-      RunErrorCallback("Wrong CBOR array size of the top-level structure");
+      RunErrorCallbackAndDestroy(
+          "Wrong CBOR array size of the top-level structure");
       return;
     }
 
     const auto section_lengths_length =
         input.ReadCBORHeader(CBORType::kByteString);
     if (!section_lengths_length) {
-      RunErrorCallback("Cannot parse the size of section-lengths.");
+      RunErrorCallbackAndDestroy("Cannot parse the size of section-lengths.");
       return;
     }
 
@@ -390,7 +358,7 @@ class WebBundleParser::MetadataParser
     // (8*1024) bytes long, and parsers MUST NOT load any data from a
     // section-lengths item longer than this."
     if (*section_lengths_length >= kMaxSectionLengthsCBORSize) {
-      RunErrorCallback(
+      RunErrorCallbackAndDestroy(
           "The section-lengths CBOR must be smaller than 8192 bytes.");
       return;
     }
@@ -400,7 +368,7 @@ class WebBundleParser::MetadataParser
     const uint64_t length = *section_lengths_length + kMaxCBORItemHeaderSize;
 
     offset_in_stream += input.CurrentOffset();
-    data_source_->get()->Read(
+    data_source_->Read(
         offset_in_stream, length,
         base::BindOnce(&MetadataParser::ParseBundleHeader,
                        weak_factory_.GetWeakPtr(), offset_in_stream,
@@ -409,9 +377,9 @@ class WebBundleParser::MetadataParser
 
   void ParseBundleHeader(uint64_t offset_in_stream,
                          uint64_t section_lengths_length,
-                         const std::optional<std::vector<uint8_t>>& data) {
+                         const absl::optional<std::vector<uint8_t>>& data) {
     if (!data) {
-      RunErrorCallback("Error reading bundle header.");
+      RunErrorCallbackAndDestroy("Error reading bundle header.");
       return;
     }
     InputReader input(*data);
@@ -425,14 +393,14 @@ class WebBundleParser::MetadataParser
     // ]
     const auto section_lengths_bytes = input.ReadBytes(section_lengths_length);
     if (!section_lengths_bytes) {
-      RunErrorCallback("Cannot read section-lengths.");
+      RunErrorCallbackAndDestroy("Cannot read section-lengths.");
       return;
     }
     // https://www.ietf.org/archive/id/draft-ietf-wpack-bundled-responses-01.html#name-bundle-sections
     //   section-lengths = [* (section-name: tstr, length: uint) ]
     const auto section_lengths = ParseSectionLengths(*section_lengths_bytes);
     if (!section_lengths) {
-      RunErrorCallback("Cannot parse section-lengths.");
+      RunErrorCallbackAndDestroy("Cannot parse section-lengths.");
       return;
     }
 
@@ -445,7 +413,7 @@ class WebBundleParser::MetadataParser
     // ]
     const auto num_sections = input.ReadCBORHeader(CBORType::kArray);
     if (!num_sections) {
-      RunErrorCallback("Cannot parse the number of sections.");
+      RunErrorCallbackAndDestroy("Cannot parse the number of sections.");
       return;
     }
 
@@ -453,7 +421,7 @@ class WebBundleParser::MetadataParser
     // array MUST be exactly half the length of the section-lengths array, and
     // parsers MUST NOT load any data if that is not the case."
     if (*num_sections != section_lengths->size()) {
-      RunErrorCallback("Unexpected number of sections.");
+      RunErrorCallbackAndDestroy("Unexpected number of sections.");
       return;
     }
 
@@ -469,13 +437,14 @@ class WebBundleParser::MetadataParser
                            name, std::make_pair(current_offset, length)))
                        .second;
       if (!added) {
-        RunErrorCallback("Duplicated section.");
+        RunErrorCallbackAndDestroy("Duplicated section.");
         return;
       }
 
       if (!base::CheckAdd(current_offset, length)
                .AssignIfValid(&current_offset)) {
-        RunErrorCallback("Integer overflow calculating section offsets.");
+        RunErrorCallbackAndDestroy(
+            "Integer overflow calculating section offsets.");
         return;
       }
     }
@@ -485,7 +454,8 @@ class WebBundleParser::MetadataParser
     // case."
     if (section_lengths->empty() ||
         section_lengths->back().first != kResponsesSection) {
-      RunErrorCallback("Responses section is not the last in section-lengths.");
+      RunErrorCallbackAndDestroy(
+          "Responses section is not the last in section-lengths.");
       return;
     }
 
@@ -500,67 +470,63 @@ class WebBundleParser::MetadataParser
   void ReadMetadataSections(SectionOffsets::const_iterator section_iter) {
     for (; section_iter != section_offsets_.end(); ++section_iter) {
       const auto& name = section_iter->first;
-      if (!IsMetadataSection(name)) {
+      if (!IsMetadataSection(name))
         continue;
-      }
       const uint64_t section_offset = section_iter->second.first;
       const uint64_t section_length = section_iter->second.second;
       if (section_length > kMaxMetadataSectionSize) {
-        RunErrorCallback(
+        RunErrorCallbackAndDestroy(
             "Metadata sections larger than 1MB are not supported.");
         return;
       }
 
-      data_source_->get()->Read(
-          section_offset, section_length,
-          base::BindOnce(&MetadataParser::ParseMetadataSection,
-                         weak_factory_.GetWeakPtr(), section_iter,
-                         section_length));
+      data_source_->Read(section_offset, section_length,
+                         base::BindOnce(&MetadataParser::ParseMetadataSection,
+                                        weak_factory_.GetWeakPtr(),
+                                        section_iter, section_length));
       // This loop will be resumed by ParseMetadataSection().
       return;
     }
 
     // The bundle MUST contain the "index" and "responses" sections.
     if (metadata_->requests.empty()) {
-      RunErrorCallback("Bundle must have an index section.");
+      RunErrorCallbackAndDestroy("Bundle must have an index section.");
       return;
     }
 
-    RunSuccessCallback();
+    RunSuccessCallbackAndDestroy();
   }
 
   void ParseMetadataSection(SectionOffsets::const_iterator section_iter,
                             uint64_t expected_data_length,
-                            const std::optional<std::vector<uint8_t>>& data) {
+                            const absl::optional<std::vector<uint8_t>>& data) {
     if (!data || data->size() != expected_data_length) {
-      RunErrorCallback("Error reading section content.");
+      RunErrorCallbackAndDestroy("Error reading section content.");
       return;
     }
 
     // Parse the section contents as a CBOR item.
     cbor::Reader::DecoderError error;
-    std::optional<cbor::Value> section_value =
+    absl::optional<cbor::Value> section_value =
         cbor::Reader::Read(*data, &error);
     if (!section_value) {
-      RunErrorCallback(std::string("Error parsing section contents as CBOR: ") +
-                       cbor::Reader::ErrorCodeToString(error));
+      RunErrorCallbackAndDestroy(
+          std::string("Error parsing section contents as CBOR: ") +
+          cbor::Reader::ErrorCodeToString(error));
       return;
     }
 
     const auto& name = section_iter->first;
     // Note: Parse*Section() delete |this| on failure.
     if (name == kIndexSection) {
-      if (!ParseIndexSection(*section_value)) {
+      if (!ParseIndexSection(*section_value))
         return;
-      }
     } else if (name == kCriticalSection) {
-      if (!ParseCriticalSection(*section_value)) {
+      if (!ParseCriticalSection(*section_value))
         return;
-      }
     } else if (name == kPrimarySection) {
-      if (!ParsePrimarySection(*section_value)) {
+      if (!ParsePrimarySection(*section_value))
         return;
-      }
     } else {
       NOTREACHED();
     }
@@ -575,7 +541,7 @@ class WebBundleParser::MetadataParser
   bool ParseIndexSection(const cbor::Value& section_value) {
     // |section_value| of index section must be a map.
     if (!section_value.is_map()) {
-      RunErrorCallback("Index section must be a map.");
+      RunErrorCallbackAndDestroy("Index section must be a map.");
       return false;
     }
 
@@ -589,11 +555,11 @@ class WebBundleParser::MetadataParser
     // For each (url, responses) entry in the index map.
     for (const auto& item : section_value.GetMap()) {
       if (!item.first.is_string()) {
-        RunErrorCallback("Index section: key must be a string.");
+        RunErrorCallbackAndDestroy("Index section: key must be a string.");
         return false;
       }
       if (!item.second.is_array()) {
-        RunErrorCallback("Index section: value must be an array.");
+        RunErrorCallbackAndDestroy("Index section: value must be an array.");
         return false;
       }
       const std::string& url = item.first.GetString();
@@ -604,22 +570,21 @@ class WebBundleParser::MetadataParser
       if (!parsed_url.is_valid()) {
         std::string message = base::StringPrintf(
             "Index section: exchange URL \"%s\" is not valid.", url.c_str());
-        if (base_url_.is_empty()) {
+        if (base_url_.is_empty())
           message += " (Relative URLs are not allowed in this context.)";
-        }
-        RunErrorCallback(message);
+        RunErrorCallbackAndDestroy(message);
         return false;
       }
 
       if (responses_array.size() != 2) {
-        RunErrorCallback(
+        RunErrorCallbackAndDestroy(
             "Index section: the size of a response array per URL should be "
             "exactly 2.");
         return false;
       }
       if (!responses_array[0].is_unsigned() ||
           !responses_array[1].is_unsigned()) {
-        RunErrorCallback(
+        RunErrorCallbackAndDestroy(
             "Index section: offset and length values must be unsigned.");
         return false;
       }
@@ -629,7 +594,7 @@ class WebBundleParser::MetadataParser
       uint64_t response_end;
       if (!base::CheckAdd(offset, length).AssignIfValid(&response_end) ||
           response_end > responses_section_length) {
-        RunErrorCallback("Index section: response out of range.");
+        RunErrorCallbackAndDestroy("Index section: response out of range.");
         return false;
       }
       uint64_t offset_within_stream = responses_section_offset + offset;
@@ -647,20 +612,21 @@ class WebBundleParser::MetadataParser
   //   critical = [*tstr]
   bool ParseCriticalSection(const cbor::Value& section_value) {
     if (!section_value.is_array()) {
-      RunErrorCallback("Critical section must be an array.");
+      RunErrorCallbackAndDestroy("Critical section must be an array.");
       return false;
     }
     // "If the client has not implemented a section named by one of the items in
     // this list, the client MUST fail to parse the bundle as a whole."
     for (const cbor::Value& elem : section_value.GetArray()) {
       if (!elem.is_string()) {
-        RunErrorCallback("Non-string element in the critical section.");
+        RunErrorCallbackAndDestroy(
+            "Non-string element in the critical section.");
         return false;
       }
       const auto& section_name = elem.GetString();
       if (!IsMetadataSection(section_name) &&
           section_name != kResponsesSection) {
-        RunErrorCallback("Unknown critical section.");
+        RunErrorCallbackAndDestroy("Unknown critical section.");
         return false;
       }
     }
@@ -671,95 +637,88 @@ class WebBundleParser::MetadataParser
   //  primary = whatwg-url
   bool ParsePrimarySection(const cbor::Value& section_value) {
     if (!section_value.is_string()) {
-      RunErrorCallback("Primary section must be a string.");
+      RunErrorCallbackAndDestroy("Primary section must be a string.");
       return false;
     }
 
     GURL parsed_url = ParseExchangeURL(section_value.GetString(), base_url_);
 
     if (!parsed_url.is_valid()) {
-      RunErrorCallback("Primary URL is not a valid exchange URL.");
+      RunErrorCallbackAndDestroy("Primary URL is not a valid exchange URL.");
       return false;
     }
     metadata_->primary_url = std::move(parsed_url);
     return true;
   }
 
-  void RunSuccessCallback() {
-    std::move(complete_callback_)
-        .Run(base::BindOnce(std::move(result_callback_), std::move(metadata_),
-                            nullptr));
+  void RunSuccessCallbackAndDestroy() {
+    std::move(callback_).Run(std::move(metadata_), nullptr);
+    delete this;
   }
 
-  void RunErrorCallback(const std::string& message,
-                        mojom::BundleParseErrorType error_type =
-                            mojom::BundleParseErrorType::kFormatError) {
+  void RunErrorCallbackAndDestroy(
+      const std::string& message,
+      mojom::BundleParseErrorType error_type =
+          mojom::BundleParseErrorType::kFormatError) {
     DLOG(ERROR) << "Parsing web bundle error: " << message;
     mojom::BundleMetadataParseErrorPtr err =
         mojom::BundleMetadataParseError::New(error_type, message);
-    std::move(complete_callback_)
-        .Run(base::BindOnce(std::move(result_callback_), nullptr,
-                            std::move(err)));
+    std::move(callback_).Run(nullptr, std::move(err));
+    delete this;
   }
 
-  const raw_ref<mojo::Remote<mojom::BundleDataSource>> data_source_;
+  // Implements SharedBundleDataSource::Observer.
+  void OnDisconnect() override {
+    RunErrorCallbackAndDestroy(
+        "Data source disconnected.",
+        mojom::BundleParseErrorType::kParserInternalError);
+  }
+
+  scoped_refptr<SharedBundleDataSource> data_source_;
   const GURL base_url_;
-  std::optional<uint64_t> start_reading_offset_;
-  ParseMetadataCallback result_callback_;
-  ParsingCompleteCallback complete_callback_;
+  ParseMetadataCallback callback_;
   SectionOffsets section_offsets_;
   mojom::BundleMetadataPtr metadata_;
   base::WeakPtrFactory<MetadataParser> weak_factory_{this};
 };
 
-// A parser for reading single item from the responses section.
+// A parser for reading single item from the responses section. This class owns
+// itself and will self destruct after calling the ParseResponseCallback.
 class WebBundleParser::ResponseParser
-    : public WebBundleParser::WebBundleSectionParser {
+    : public WebBundleParser::SharedBundleDataSource::Observer {
  public:
-  ResponseParser(mojo::Remote<mojom::BundleDataSource>& data_source
-                     ABSL_ATTRIBUTE_LIFETIME_BOUND,
+  ResponseParser(scoped_refptr<SharedBundleDataSource> data_source,
                  uint64_t response_offset,
                  uint64_t response_length,
                  WebBundleParser::ParseResponseCallback callback)
       : data_source_(data_source),
         response_offset_(response_offset),
         response_length_(response_length),
-        result_callback_(std::move(callback)) {}
+        callback_(std::move(callback)) {
+    data_source_->AddObserver(this);
+  }
 
   ResponseParser(const ResponseParser&) = delete;
   ResponseParser& operator=(const ResponseParser&) = delete;
 
-  ~ResponseParser() override {
-    if (!complete_callback_.is_null()) {
-      RunErrorCallback("Data source disconnected.",
-                       mojom::BundleParseErrorType::kParserInternalError);
-    }
-  }
+  ~ResponseParser() override { data_source_->RemoveObserver(this); }
 
-  void StartParsing(
-      WebBundleParser::WebBundleSectionParser::ParsingCompleteCallback callback)
-      override {
-    CHECK(!result_callback_.is_null());
-    complete_callback_ = std::move(callback);
-    StartWithBufferSize(kInitialBufferSizeForResponse);
+  void Start(uint64_t buffer_size = kInitialBufferSizeForResponse) {
+    const uint64_t length = std::min(response_length_, buffer_size);
+    data_source_->Read(response_offset_, length,
+                       base::BindOnce(&ResponseParser::ParseResponseHeader,
+                                      weak_factory_.GetWeakPtr(), length));
   }
 
  private:
-  void StartWithBufferSize(uint64_t buffer_size) {
-    const uint64_t length = std::min(response_length_, buffer_size);
-    data_source_->get()->Read(
-        response_offset_, length,
-        base::BindOnce(&ResponseParser::ParseResponseHeader,
-                       weak_factory_.GetWeakPtr(), length));
-  }
   // https://www.ietf.org/archive/id/draft-ietf-wpack-bundled-responses-01.html#name-responses
   //   responses = [*response]
   //   response = [headers: bstr .cbor headers, payload: bstr]
   //   headers = {* bstr => bstr}
   void ParseResponseHeader(uint64_t expected_data_length,
-                           const std::optional<std::vector<uint8_t>>& data) {
+                           const absl::optional<std::vector<uint8_t>>& data) {
     if (!data || data->size() != expected_data_length) {
-      RunErrorCallback("Error reading response header.");
+      RunErrorCallbackAndDestroy("Error reading response header.");
       return;
     }
     InputReader input(*data);
@@ -767,13 +726,13 @@ class WebBundleParser::ResponseParser
     // |response| must be an array of length 2 (headers and payload).
     auto num_elements = input.ReadCBORHeader(CBORType::kArray);
     if (!num_elements || *num_elements != 2) {
-      RunErrorCallback("Array size of response must be 2.");
+      RunErrorCallbackAndDestroy("Array size of response must be 2.");
       return;
     }
 
     auto header_length = input.ReadCBORHeader(CBORType::kByteString);
     if (!header_length) {
-      RunErrorCallback("Cannot parse response header length.");
+      RunErrorCallbackAndDestroy("Cannot parse response header length.");
       return;
     }
 
@@ -781,7 +740,7 @@ class WebBundleParser::ResponseParser
     // 524288 (512*1024) bytes, and recipients MUST fail to load a response with
     // longer headers"
     if (*header_length >= kMaxResponseHeaderLength) {
-      RunErrorCallback("Response header is too big.");
+      RunErrorCallbackAndDestroy("Response header is too big.");
       return;
     }
 
@@ -793,27 +752,27 @@ class WebBundleParser::ResponseParser
     if (data->size() < required_buffer_size) {
       DVLOG(1) << "Re-reading response header with a buffer of size "
                << required_buffer_size;
-      StartWithBufferSize(required_buffer_size);
+      Start(required_buffer_size);
       return;
     }
 
     // Parse headers.
     auto headers_bytes = input.ReadBytes(*header_length);
     if (!headers_bytes) {
-      RunErrorCallback("Cannot read response headers.");
+      RunErrorCallbackAndDestroy("Cannot read response headers.");
       return;
     }
     cbor::Reader::DecoderError error;
-    std::optional<cbor::Value> headers_value =
+    absl::optional<cbor::Value> headers_value =
         cbor::Reader::Read(*headers_bytes, &error);
     if (!headers_value) {
-      RunErrorCallback("Cannot parse response headers.");
+      RunErrorCallbackAndDestroy("Cannot parse response headers.");
       return;
     }
 
     auto parsed_headers = ConvertCBORValueToHeaders(*headers_value);
     if (!parsed_headers) {
-      RunErrorCallback("Cannot parse response headers.");
+      RunErrorCallbackAndDestroy("Cannot parse response headers.");
       return;
     }
 
@@ -823,7 +782,7 @@ class WebBundleParser::ResponseParser
     const auto pseudo_status = parsed_headers->pseudos.find(":status");
     if (parsed_headers->pseudos.size() != 1 ||
         pseudo_status == parsed_headers->pseudos.end()) {
-      RunErrorCallback(
+      RunErrorCallbackAndDestroy(
           "Response headers map must have exactly one pseudo-header, :status.");
       return;
     }
@@ -832,14 +791,14 @@ class WebBundleParser::ResponseParser
     if (status_str.size() != 3 ||
         !base::ranges::all_of(status_str, base::IsAsciiDigit<char>) ||
         !base::StringToInt(status_str, &status)) {
-      RunErrorCallback(":status must be 3 ASCII decimal digits.");
+      RunErrorCallbackAndDestroy(":status must be 3 ASCII decimal digits.");
       return;
     }
 
     // Parse payload.
     auto payload_length = input.ReadCBORHeader(CBORType::kByteString);
     if (!payload_length) {
-      RunErrorCallback("Cannot parse response payload length.");
+      RunErrorCallbackAndDestroy("Cannot parse response payload length.");
       return;
     }
 
@@ -847,12 +806,13 @@ class WebBundleParser::ResponseParser
     // Content-Type header (Section 8.3 of [I-D.ietf-httpbis-semantics])."
     if (*payload_length > 0 &&
         !parsed_headers->headers.contains("content-type")) {
-      RunErrorCallback("Non-empty response must have a content-type header.");
+      RunErrorCallbackAndDestroy(
+          "Non-empty response must have a content-type header.");
       return;
     }
 
     if (input.CurrentOffset() + *payload_length != response_length_) {
-      RunErrorCallback("Unexpected payload length.");
+      RunErrorCallbackAndDestroy("Unexpected payload length.");
       return;
     }
 
@@ -861,131 +821,127 @@ class WebBundleParser::ResponseParser
     response->response_headers = std::move(parsed_headers->headers);
     response->payload_offset = response_offset_ + input.CurrentOffset();
     response->payload_length = *payload_length;
-    RunSuccessCallback(std::move(response));
+    RunSuccessCallbackAndDestroy(std::move(response));
   }
 
-  void RunSuccessCallback(mojom::BundleResponsePtr response) {
-    std::move(complete_callback_)
-        .Run(base::BindOnce(std::move(result_callback_), std::move(response),
-                            nullptr));
+  void RunSuccessCallbackAndDestroy(mojom::BundleResponsePtr response) {
+    std::move(callback_).Run(std::move(response), nullptr);
+    delete this;
   }
 
-  void RunErrorCallback(const std::string& message,
-                        mojom::BundleParseErrorType error_type =
-                            mojom::BundleParseErrorType::kFormatError) {
-    std::move(complete_callback_)
-        .Run(base::BindOnce(
-            std::move(result_callback_), nullptr,
-            mojom::BundleResponseParseError::New(error_type, message)));
+  void RunErrorCallbackAndDestroy(
+      const std::string& message,
+      mojom::BundleParseErrorType error_type =
+          mojom::BundleParseErrorType::kFormatError) {
+    std::move(callback_).Run(
+        nullptr, mojom::BundleResponseParseError::New(error_type, message));
+    delete this;
   }
 
-  const raw_ref<mojo::Remote<mojom::BundleDataSource>> data_source_;
+  // Implements SharedBundleDataSource::Observer.
+  void OnDisconnect() override {
+    RunErrorCallbackAndDestroy(
+        "Data source disconnected.",
+        mojom::BundleParseErrorType::kParserInternalError);
+  }
+
+  scoped_refptr<SharedBundleDataSource> data_source_;
   uint64_t response_offset_;
   uint64_t response_length_;
-  ParseResponseCallback result_callback_;
-  WebBundleParser::WebBundleSectionParser::ParsingCompleteCallback
-      complete_callback_;
+  ParseResponseCallback callback_;
 
   base::WeakPtrFactory<ResponseParser> weak_factory_{this};
 };
 
-WebBundleParser::WebBundleParser(
-    mojo::PendingRemote<mojom::BundleDataSource> data_source,
-    GURL base_url)
-    : base_url_(std::move(base_url)), data_source_(std::move(data_source)) {
-  data_source_.set_disconnect_handler(
-      base::BindOnce(&WebBundleParser::OnDisconnect, base::Unretained(this)));
-  DCHECK(base_url_.is_empty() || base_url_.is_valid());
+WebBundleParser::SharedBundleDataSource::SharedBundleDataSource(
+    mojo::PendingRemote<mojom::BundleDataSource> pending_data_source)
+    : data_source_(std::move(pending_data_source)) {
+  data_source_.set_disconnect_handler(base::BindOnce(
+      &SharedBundleDataSource::OnDisconnect, base::Unretained(this)));
 }
 
-WebBundleParser::~WebBundleParser() {
-  // Explicitly delete active parsers to avoid potential problems
-  // with deletion of them in |active_parsers_|'s dtor and consequently
-  // referring to |active_parsers_| in OnParsingComplete().
-  //
-  // Avoid using container clear method directly on the member variable
-  // since parser destructor can call back to this class OnParsingComplete
-  // method via the complete_callback_. OnParsingComplete would in such
-  // case call erase method on the same container trying to remove an object
-  // from whose destructor it has been called. C++ and //base containers
-  // generally don't support re-entrancy so this would result in undefined
-  // behavior.
-  auto parsers = std::exchange(active_parsers_, {});
-  parsers.clear();
+void WebBundleParser::SharedBundleDataSource::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
 }
+
+void WebBundleParser::SharedBundleDataSource::RemoveObserver(
+    Observer* observer) {
+  observers_.RemoveObserver(observer);
+}
+
+WebBundleParser::SharedBundleDataSource::~SharedBundleDataSource() = default;
+
+void WebBundleParser::SharedBundleDataSource::OnDisconnect() {
+  // |observer->OnDisconnect()| below may remove the last external reference to
+  // |this|.
+  scoped_refptr<SharedBundleDataSource> keep_alive(this);
+  for (Observer& observer : observers_)
+    observer.OnDisconnect();
+}
+
+void WebBundleParser::SharedBundleDataSource::Read(
+    uint64_t offset,
+    uint64_t length,
+    mojom::BundleDataSource::ReadCallback callback) {
+  data_source_->Read(offset, length, std::move(callback));
+}
+
+void WebBundleParser::SharedBundleDataSource::Length(
+    mojom::BundleDataSource::LengthCallback callback) {
+  data_source_->Length(std::move(callback));
+}
+
+void WebBundleParser::SharedBundleDataSource::IsRandomAccessContext(
+    mojom::BundleDataSource::IsRandomAccessContextCallback callback) {
+  data_source_->IsRandomAccessContext(std::move(callback));
+}
+
+WebBundleParser::WebBundleParser(
+    mojo::PendingReceiver<mojom::WebBundleParser> receiver,
+    mojo::PendingRemote<mojom::BundleDataSource> data_source,
+    const GURL& base_url)
+    : receiver_(this, std::move(receiver)),
+      data_source_(
+          base::MakeRefCounted<SharedBundleDataSource>(std::move(data_source))),
+      base_url_(base_url) {
+  DCHECK(base_url_.is_empty() || base_url_.is_valid());
+  receiver_.set_disconnect_handler(base::BindOnce(
+      &base::DeletePointer<WebBundleParser>, base::Unretained(this)));
+}
+
+WebBundleParser::~WebBundleParser() = default;
 
 void WebBundleParser::ParseIntegrityBlock(
     ParseIntegrityBlockCallback callback) {
-  if (CheckIfClosed()) {
-    return;
-  }
-
-  std::unique_ptr<WebBundleSectionParser> parser =
-      std::make_unique<web_package::IntegrityBlockParser>(data_source_,
-                                                          std::move(callback));
-  ActivateParser(std::move(parser));
+  IntegrityBlockParser* parser =
+      new IntegrityBlockParser(data_source_, std::move(callback));
+  parser->Start();
 }
 
-void WebBundleParser::ParseMetadata(std::optional<uint64_t> offset,
+void WebBundleParser::ParseMetadata(int64_t offset,
                                     ParseMetadataCallback callback) {
-  if (CheckIfClosed()) {
-    return;
+  MetadataParser* parser =
+      new MetadataParser(data_source_, base_url_, std::move(callback));
+  if (offset >= 0) {
+    parser->StartAtOffset(offset);
+  } else {
+    DCHECK_EQ(offset, -1);
+    // If no offset is specified, then where we start parsing the web bundle
+    // metadata depends on whether or not it is loaded in a random-access
+    // context. If random-access into the web bundle is possible, then we use
+    // the `length` field at its end to determine the start of the web bundle.
+    // If random-access into the web bundle is not possible, then we simply
+    // start at the top.
+    parser->Start();
   }
-
-  std::unique_ptr<WebBundleSectionParser> parser =
-      std::make_unique<MetadataParser>(data_source_, base_url_,
-                                       std::move(offset), std::move(callback));
-  ActivateParser(std::move(parser));
 }
 
 void WebBundleParser::ParseResponse(uint64_t response_offset,
                                     uint64_t response_length,
                                     ParseResponseCallback callback) {
-  if (CheckIfClosed()) {
-    return;
-  }
-
-  std::unique_ptr<WebBundleSectionParser> parser =
-      std::make_unique<ResponseParser>(data_source_, response_offset,
-                                       response_length, std::move(callback));
-  ActivateParser(std::move(parser));
-}
-
-void WebBundleParser::ActivateParser(
-    std::unique_ptr<WebBundleSectionParser> parser) {
-  auto* parser_ptr = parser.get();
-  active_parsers_.insert(std::move(parser));
-  parser_ptr->StartParsing(base::BindOnce(&WebBundleParser::OnParsingComplete,
-                                          base::Unretained(this), parser_ptr));
-}
-
-void WebBundleParser::OnParsingComplete(WebBundleSectionParser* parser,
-                                        base::OnceClosure result_callback) {
-  std::move(result_callback).Run();
-  active_parsers_.erase(parser);
-}
-
-void WebBundleParser::OnDisconnect() {
-  active_parsers_.clear();
-}
-
-void WebBundleParser::Close(CloseCallback parser_closed_callback) {
-  is_closed_ = true;
-  active_parsers_.clear();
-  data_source_->Close(base::BindOnce(&WebBundleParser::OnDataSourceClosed,
-                                     base::Unretained(this),
-                                     std::move(parser_closed_callback)));
-}
-
-void WebBundleParser::OnDataSourceClosed(CloseCallback parser_closed_callback) {
-  std::move(parser_closed_callback).Run();
-}
-
-bool WebBundleParser::CheckIfClosed() {
-  if (is_closed_) {
-    mojo::ReportBadMessage("Attempt to access the closed web bundle parser");
-  }
-  return is_closed_;
+  ResponseParser* parser = new ResponseParser(
+      data_source_, response_offset, response_length, std::move(callback));
+  parser->Start();
 }
 
 }  // namespace web_package

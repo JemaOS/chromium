@@ -23,15 +23,9 @@ void* UserDataKey() {
 }  // namespace
 
 // static
-bool UserPrefs::IsInitialized(base::SupportsUserData* context) {
-  CHECK(context);
-  return context->GetUserData(UserDataKey()) != nullptr;
-}
-
-// static
 PrefService* UserPrefs::Get(base::SupportsUserData* context) {
   DCHECK(context);
-  DCHECK(IsInitialized(context));
+  DCHECK(context->GetUserData(UserDataKey()));
   return static_cast<UserPrefs*>(
       context->GetUserData(UserDataKey()))->prefs_;
 }

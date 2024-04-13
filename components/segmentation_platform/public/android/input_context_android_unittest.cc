@@ -37,30 +37,30 @@ TEST_F(InputContextAndroidTest, FromJavaParams) {
   const base::android::ScopedJavaLocalRef<jobject> java_gurl =
       url::GURLAndroid::FromNativeGURL(jni_env, test_url);
 
-  const std::vector<std::string> bool_keys({"boolean_argument"});
+  std::vector<const std::string> bool_keys({"boolean_argument"});
   bool bool_values[]{true};
 
-  const std::vector<std::string> int_keys(
+  std::vector<const std::string> int_keys(
       {"int_argument", "negative_int", "large_int"});
   int int_values[]{1234, -4, INT_MAX};
 
-  const std::vector<std::string> float_keys({"float_argument"});
+  std::vector<const std::string> float_keys({"float_argument"});
   float float_values[]{13.37f};
 
-  const std::vector<std::string> double_keys({"double_argument"});
+  std::vector<const std::string> double_keys({"double_argument"});
   double double_values[]{100.3};
 
-  const std::vector<std::string> string_keys(
+  std::vector<const std::string> string_keys(
       {"string_argument", "second_string", "third_string"});
-  const std::vector<std::string> string_values({"Hello, World!", "Foo", "bar"});
+  std::vector<const std::string> string_values({"Hello, World!", "Foo", "bar"});
 
-  const std::vector<std::string> time_keys({"time_argument"});
-  int64_t time_values[]{time.InMillisecondsSinceUnixEpoch()};
+  std::vector<const std::string> time_keys({"time_argument"});
+  int64_t time_values[]{time.ToJavaTime()};
 
-  const std::vector<std::string> int64_keys({"int64_argument"});
+  std::vector<const std::string> int64_keys({"int64_argument"});
   int64_t int64_values[]{123456};
 
-  const std::vector<std::string> url_keys({"url_argument"});
+  std::vector<const std::string> url_keys({"url_argument"});
   std::vector<base::android::ScopedJavaLocalRef<jobject>> url_values(
       {java_gurl});
 
@@ -155,11 +155,10 @@ TEST_F(InputContextAndroidTest, FromJavaParams) {
       native_input_context->metadata_args.find("third_string")->second.str_val);
 
   ASSERT_TRUE(native_input_context->metadata_args.contains("time_argument"));
-  // InMillisecondsSinceUnixEpoch is a lossy operation, so we must compare java
-  // times.
-  ASSERT_EQ(time.InMillisecondsSinceUnixEpoch(),
+  // ToJavaTime is a lossy operation, so we must compare java times.
+  ASSERT_EQ(time.ToJavaTime(),
             native_input_context->metadata_args.find("time_argument")
-                ->second.time_val.InMillisecondsSinceUnixEpoch());
+                ->second.time_val.ToJavaTime());
 
   ASSERT_TRUE(native_input_context->metadata_args.contains("int64_argument"));
   ASSERT_EQ(123456, native_input_context->metadata_args.find("int64_argument")

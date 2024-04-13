@@ -15,9 +15,12 @@
 #include "testing/gtest_mac.h"
 #include "testing/platform_test.h"
 
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
+
 using previous_session_info_constants::
     kPreviousSessionInfoConnectedSceneSessionIDs;
-using previous_session_info_constants::kPreviousSessionInfoInactiveTabCount;
 using previous_session_info_constants::kPreviousSessionInfoMemoryFootprint;
 using previous_session_info_constants::kPreviousSessionInfoOTRTabCount;
 using previous_session_info_constants::kPreviousSessionInfoParamsPrefix;
@@ -27,7 +30,6 @@ using previous_session_info_constants::kPreviousSessionInfoTabCount;
 namespace {
 
 const NSInteger kTabCount = 15;
-const NSInteger kInactiveTabCount = 30;
 
 // Key in the UserDefaults for a boolean value keeping track of memory warnings.
 NSString* const kDidSeeMemoryWarningShortlyBeforeTerminating =
@@ -630,33 +632,6 @@ TEST_F(PreviousSessionInfoTest, TabCountRecording) {
 
   EXPECT_NSEQ(@(kTabCount), [NSUserDefaults.standardUserDefaults
                                 objectForKey:kPreviousSessionInfoTabCount]);
-}
-
-// Tests inactiveTabCount property.
-TEST_F(PreviousSessionInfoTest, InactiveTabCount) {
-  [PreviousSessionInfo resetSharedInstanceForTesting];
-  [NSUserDefaults.standardUserDefaults
-      setInteger:kInactiveTabCount
-          forKey:kPreviousSessionInfoInactiveTabCount];
-
-  [[PreviousSessionInfo sharedInstance] beginRecordingCurrentSession];
-  EXPECT_EQ(kInactiveTabCount,
-            [PreviousSessionInfo sharedInstance].inactiveTabCount);
-}
-
-// Tests inactive tab count gets written to NSUserDefaults.
-TEST_F(PreviousSessionInfoTest, InactiveTabCountRecording) {
-  [PreviousSessionInfo resetSharedInstanceForTesting];
-  [NSUserDefaults.standardUserDefaults
-      removeObjectForKey:kPreviousSessionInfoInactiveTabCount];
-
-  [[PreviousSessionInfo sharedInstance] beginRecordingCurrentSession];
-  [[PreviousSessionInfo sharedInstance]
-      updateCurrentSessionInactiveTabCount:kInactiveTabCount];
-
-  EXPECT_NSEQ(@(kInactiveTabCount),
-              [NSUserDefaults.standardUserDefaults
-                  objectForKey:kPreviousSessionInfoInactiveTabCount]);
 }
 
 // Tests OTRTabCount property.

@@ -11,8 +11,6 @@ class PrefService;
 
 namespace embedder_support {
 
-class OriginTrialsSettingsStorage;
-
 // Read the configuration from `manifest` and set values in `local_state`.
 // If an individual configuration value is missing, reset values in
 // `local_state`.
@@ -22,9 +20,7 @@ void ReadOriginTrialsConfigAndPopulateLocalState(PrefService* local_state,
 // Append the stored Origin Trial configuration overrides to the current process
 // command line, if the command line does not already contain these values. This
 // should be done early during browser startup.
-void SetupOriginTrialsCommandLineAndSettings(
-    PrefService* local_state,
-    OriginTrialsSettingsStorage* settings_storage);
+void SetupOriginTrialsCommandLine(PrefService* local_state);
 
 }  // namespace embedder_support
 

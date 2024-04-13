@@ -24,6 +24,7 @@ extern const char kEventResize[];
 
 // Parameters/properties on events.
 extern const char kCode[];
+extern const char kID[];
 extern const char kIsTopLevel[];
 extern const char kNewWidth[];
 extern const char kNewHeight[];
@@ -34,6 +35,7 @@ extern const char kUrl[];
 extern const char kUserGesture[];
 
 // Initialization parameters.
+extern const char kParameterApi[];
 extern const char kParameterInstanceId[];
 
 // Other.

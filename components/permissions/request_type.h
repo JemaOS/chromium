@@ -5,12 +5,11 @@
 #ifndef COMPONENTS_PERMISSIONS_REQUEST_TYPE_H_
 #define COMPONENTS_PERMISSIONS_REQUEST_TYPE_H_
 
-#include <optional>
-
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "components/content_settings/core/common/content_settings_types.h"
-#include "printing/buildflags/buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+
+enum class ContentSettingsType;
 
 namespace gfx {
 struct VectorIcon;
@@ -27,21 +26,14 @@ enum class RequestType {
   kCameraPanTiltZoom,
 #endif
   kCameraStream,
-#if !BUILDFLAG(IS_ANDROID)
-  kCapturedSurfaceControl,
-#endif
   kClipboard,
   kTopLevelStorageAccess,
   kDiskQuota,
 #if !BUILDFLAG(IS_ANDROID)
-  kFileSystemAccess,
-#endif
-  kGeolocation,
-  kIdentityProvider,
-  kIdleDetection,
-#if !BUILDFLAG(IS_ANDROID)
   kLocalFonts,
 #endif
+  kGeolocation,
+  kIdleDetection,
   kMicStream,
   kMidiSysex,
   kMultipleDownloads,
@@ -54,15 +46,13 @@ enum class RequestType {
 #endif
 #if !BUILDFLAG(IS_ANDROID)
   kRegisterProtocolHandler,
-#endif
-#if BUILDFLAG(IS_CHROMEOS)
-  kSmartCard,
+  kSecurityAttestation,
 #endif
   kStorageAccess,
-  kVrSession,
-#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(USE_CUPS)
-  kWebPrinting,
+#if !BUILDFLAG(IS_ANDROID)
+  kU2fApiRequest,
 #endif
+  kVrSession,
 #if !BUILDFLAG(IS_ANDROID)
   kWindowManagement,
   kMaxValue = kWindowManagement
@@ -81,13 +71,10 @@ typedef const gfx::VectorIcon& IconId;
 
 bool IsRequestablePermissionType(ContentSettingsType content_settings_type);
 
-std::optional<RequestType> ContentSettingsTypeToRequestTypeIfExists(
-    ContentSettingsType content_settings_type);
-
 RequestType ContentSettingsTypeToRequestType(
     ContentSettingsType content_settings_type);
 
-std::optional<ContentSettingsType> RequestTypeToContentSettingsType(
+absl::optional<ContentSettingsType> RequestTypeToContentSettingsType(
     RequestType request_type);
 
 // Returns whether confirmation chips can be displayed

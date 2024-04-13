@@ -24,13 +24,11 @@ namespace feature_engagement {
 // static
 std::unique_ptr<Tracker> CreateTestTracker() {
   auto configuration = std::make_unique<ChromeVariationsConfiguration>();
-  configuration->LoadConfigs(Tracker::GetDefaultConfigurationProviders(),
-                             GetAllFeatures(), GetAllGroups());
+  configuration->ParseConfigs(GetAllFeatures(), GetAllGroups());
 
   auto storage_validator =
       std::make_unique<FeatureConfigEventStorageValidator>();
-  storage_validator->InitializeFeatures(GetAllFeatures(), GetAllGroups(),
-                                        *configuration);
+  storage_validator->InitializeFeatures(GetAllFeatures(), *configuration);
 
   auto raw_event_model = std::make_unique<EventModelImpl>(
       std::make_unique<InMemoryEventStore>(), std::move(storage_validator));
@@ -42,7 +40,7 @@ std::unique_ptr<Tracker> CreateTestTracker() {
       std::move(event_model), std::make_unique<NeverAvailabilityModel>(),
       std::move(configuration), std::make_unique<NoopDisplayLockController>(),
       std::make_unique<FeatureConfigConditionValidator>(),
-      std::make_unique<SystemTimeProvider>(), nullptr, nullptr);
+      std::make_unique<SystemTimeProvider>(), nullptr);
 }
 
 }  // namespace feature_engagement

@@ -182,6 +182,7 @@ class NetworkQualitiesPrefDelegateImpl
 
   base::Value::Dict GetDictionaryValue() override {
     DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+    UMA_HISTOGRAM_EXACT_LINEAR("NQE.Prefs.ReadCount", 1, 2);
     return pref_service_->GetDict(kNetworkQualitiesPref).Clone();
   }
 
@@ -189,6 +190,7 @@ class NetworkQualitiesPrefDelegateImpl
   // Schedules the writing of the lossy prefs.
   void SchedulePendingLossyWrites() {
     DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+    UMA_HISTOGRAM_EXACT_LINEAR("NQE.Prefs.WriteCount", 1, 2);
     pref_service_->SchedulePendingLossyWrites();
     lossy_prefs_writing_task_posted_ = false;
   }

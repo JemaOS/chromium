@@ -6,7 +6,9 @@ package org.chromium.components.media_router;
 
 import androidx.mediarouter.media.MediaRouteSelector;
 
-/** Abstracts parsing the Cast application id and other parameters from the source URN. */
+/**
+ * Abstracts parsing the Cast application id and other parameters from the source URN.
+ */
 public interface MediaSource {
     /**
      * Returns a new {@link MediaRouteSelector} to use for Cast device filtering for this
@@ -16,9 +18,13 @@ public interface MediaSource {
      */
     public MediaRouteSelector buildRouteSelector();
 
-    /** @return the Cast application id corresponding to the source. */
+    /**
+     * @return the Cast application id corresponding to the source.
+     */
     public String getApplicationId();
 
-    /** @return the id identifying the media source */
+    /**
+     * @return the id identifying the media source
+     */
     public String getSourceId();
 }

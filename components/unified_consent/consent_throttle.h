@@ -10,6 +10,7 @@
 #include "base/functional/callback.h"
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
+#include "base/timer/elapsed_timer.h"
 #include "base/timer/timer.h"
 #include "components/unified_consent/url_keyed_data_collection_consent_helper.h"
 
@@ -37,7 +38,7 @@ class ConsentThrottle : public UrlKeyedDataCollectionConsentHelper::Observer {
       base::TimeDelta timeout = base::Seconds(5));
   ConsentThrottle(const ConsentThrottle&) = delete;
   ConsentThrottle& operator=(const ConsentThrottle&) = delete;
-  virtual ~ConsentThrottle();
+  ~ConsentThrottle();
 
   // UrlKeyedDataCollectionConsentHelper::Observer:
   void OnUrlKeyedDataCollectionConsentStateChanged(
@@ -72,4 +73,4 @@ class ConsentThrottle : public UrlKeyedDataCollectionConsentHelper::Observer {
 
 }  // namespace unified_consent
 
-#endif  // COMPONENTS_UNIFIED_CONSENT_CONSENT_THROTTLE_H_
+#endif  // CHROME_BROWSER_COMPONENTS_UNIFIED_CONSENT_CONSENT_THROTTLE_H_

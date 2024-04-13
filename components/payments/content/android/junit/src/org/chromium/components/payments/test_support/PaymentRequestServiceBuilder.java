@@ -56,26 +56,20 @@ public class PaymentRequestServiceBuilder implements Delegate {
     private PaymentRequestSpec mSpec;
     private SecurePaymentConfirmationRequest mSecurePaymentConfirmationRequest;
 
-    public static PaymentRequestServiceBuilder defaultBuilder(
-            Runnable onClosedListener,
-            PaymentRequestClient client,
-            PaymentAppService appService,
-            BrowserPaymentRequest browserPaymentRequest,
-            JourneyLogger journeyLogger) {
+    public static PaymentRequestServiceBuilder defaultBuilder(Runnable onClosedListener,
+            PaymentRequestClient client, PaymentAppService appService,
+            BrowserPaymentRequest browserPaymentRequest, JourneyLogger journeyLogger) {
         return new PaymentRequestServiceBuilder(
                 onClosedListener, client, appService, browserPaymentRequest, journeyLogger);
     }
 
-    public PaymentRequestServiceBuilder(
-            Runnable onClosedListener,
-            PaymentRequestClient client,
-            PaymentAppService appService,
-            BrowserPaymentRequest browserPaymentRequest,
+    public PaymentRequestServiceBuilder(Runnable onClosedListener, PaymentRequestClient client,
+            PaymentAppService appService, BrowserPaymentRequest browserPaymentRequest,
             JourneyLogger journeyLogger) {
         mWebContents = Mockito.mock(WebContents.class);
-        setTopLevelOrigin(JUnitTestGURLs.URL_1);
+        setTopLevelOrigin(JUnitTestGURLs.getGURL(JUnitTestGURLs.URL_1));
         mRenderFrameHost = Mockito.mock(RenderFrameHost.class);
-        setFrameOrigin(JUnitTestGURLs.URL_2);
+        setFrameOrigin(JUnitTestGURLs.getGURL(JUnitTestGURLs.URL_2));
         Origin origin = Mockito.mock(Origin.class);
         Mockito.doReturn(origin).when(mRenderFrameHost).getLastCommittedOrigin();
         mJourneyLogger = journeyLogger;
@@ -172,10 +166,8 @@ public class PaymentRequestServiceBuilder implements Delegate {
     }
 
     @Override
-    public PaymentRequestSpec createPaymentRequestSpec(
-            PaymentOptions paymentOptions,
-            PaymentDetails details,
-            Collection<PaymentMethodData> values,
+    public PaymentRequestSpec createPaymentRequestSpec(PaymentOptions paymentOptions,
+            PaymentDetails details, Collection<PaymentMethodData> values,
             String defaultLocaleString) {
         return mSpec;
     }
@@ -298,13 +290,8 @@ public class PaymentRequestServiceBuilder implements Delegate {
     }
 
     public PaymentRequestService build() {
-        PaymentRequestService service =
-                new PaymentRequestService(
-                        mRenderFrameHost,
-                        mClient,
-                        mOnClosedListener,
-                        /* delegate= */ this,
-                        () -> null);
+        PaymentRequestService service = new PaymentRequestService(
+                mRenderFrameHost, mClient, mOnClosedListener, /*delegate=*/this, () -> null);
         boolean success = service.init(mMethodData, mDetails, mOptions);
         return success ? service : null;
     }

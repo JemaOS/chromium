@@ -15,7 +15,7 @@ namespace autofill {
 TEST(LabelProcessingUtil, GetParseableNameStringPieces) {
   std::vector<base::StringPiece16> labels{u"City", u"Street & House Number",
                                           u"", u"Zip"};
-  auto expectation = std::make_optional(
+  auto expectation = absl::make_optional(
       std::vector<std::u16string>{u"City", u"Street", u"House Number", u"Zip"});
   EXPECT_EQ(GetParseableLabels(labels), expectation);
 
@@ -27,7 +27,7 @@ TEST(LabelProcessingUtil, GetParseableNameStringPieces) {
 TEST(LabelProcessingUtil, GetParseableNameStringPieces_ThreeComponents) {
   EXPECT_EQ(GetParseableLabels(
                 {u"City", u"Street & House Number & Floor", u"", u"", u"Zip"}),
-            std::make_optional(std::vector<std::u16string>{
+            absl::make_optional(std::vector<std::u16string>{
                 u"City", u"Street", u"House Number", u"Floor", u"Zip"}));
 }
 
@@ -35,19 +35,19 @@ TEST(LabelProcessingUtil, GetParseableNameStringPieces_TooManyComponents) {
   EXPECT_EQ(
       GetParseableLabels({u"City", u"Street & House Number & Floor & Stairs",
                           u"", u"", u"", u"Zip"}),
-      std::nullopt);
+      absl::nullopt);
 }
 
 TEST(LabelProcessingUtil, GetParseableNameStringPieces_UnmachtingComponents) {
   EXPECT_EQ(GetParseableLabels(
                 {u"City", u"Street & House Number & Floor", u"", u"Zip"}),
-            std::nullopt);
+            absl::nullopt);
 }
 
 TEST(LabelProcessingUtil, GetParseableNameStringPieces_SplitableLabelAtEnd) {
   EXPECT_EQ(GetParseableLabels(
                 {u"City", u"", u"Zip", u"Street & House Number & Floor"}),
-            std::nullopt);
+            absl::nullopt);
 }
 
 TEST(LabelProcessingUtil, GetParseableNameStringPieces_TooLongLabel) {
@@ -56,7 +56,7 @@ TEST(LabelProcessingUtil, GetParseableNameStringPieces_TooLongLabel) {
                                 u"additional text that exceeds 40 "
                                 u"characters by far",
                                 u"", u"Zip"}),
-            std::nullopt);
+            absl::nullopt);
 }
 
 }  // namespace autofill

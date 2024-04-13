@@ -5,8 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <string_view>
-
 #include "base/base64url.h"
 #include "base/containers/span.h"
 #include "components/webcrypto/algorithm_dispatch.h"
@@ -34,8 +32,8 @@ std::string Base64EncodeUrlSafe(const std::vector<uint8_t>& input) {
   // https://tools.ietf.org/html/draft-ietf-jose-json-web-signature-36#section-2
   std::string base64url_encoded;
   base::Base64UrlEncode(
-      std::string_view(reinterpret_cast<const char*>(input.data()),
-                       input.size()),
+      base::StringPiece(reinterpret_cast<const char*>(input.data()),
+                        input.size()),
       base::Base64UrlEncodePolicy::OMIT_PADDING, &base64url_encoded);
   return base64url_encoded;
 }

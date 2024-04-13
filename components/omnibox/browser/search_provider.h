@@ -196,7 +196,7 @@ class SearchProvider : public BaseSearchProvider,
 
   // Called back from SimpleURLLoader.
   void OnURLLoadComplete(const network::SimpleURLLoader* source,
-                         const int response_code,
+                         const bool response_received,
                          std::unique_ptr<std::string> response_body);
 
   // Stops the suggest query.

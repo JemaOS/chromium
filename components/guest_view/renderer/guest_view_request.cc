@@ -7,19 +7,35 @@
 #include <tuple>
 #include <utility>
 
+#include "base/no_destructor.h"
+#include "components/guest_view/common/guest_view.mojom.h"
 #include "components/guest_view/renderer/guest_view_container.h"
-#include "content/public/renderer/render_frame.h"
+#include "content/public/renderer/render_thread.h"
 #include "ipc/ipc_sync_channel.h"
-#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "v8/include/v8-context.h"
 #include "v8/include/v8-function.h"
 #include "v8/include/v8-microtask-queue.h"
 
 namespace guest_view {
 
+namespace {
+
+mojom::GuestViewHost* GetGuestViewHost() {
+  static base::NoDestructor<mojo::AssociatedRemote<mojom::GuestViewHost>>
+      guest_view_host;
+  if (!*guest_view_host) {
+    content::RenderThread::Get()->GetChannel()->GetRemoteAssociatedInterface(
+        guest_view_host.get());
+  }
+
+  return guest_view_host->get();
+}
+
+}  // namespace
+
 GuestViewAttachRequest::GuestViewAttachRequest(
     guest_view::GuestViewContainer* container,
-    content::RenderFrame* render_frame,
+    int render_frame_routing_id,
     int guest_instance_id,
     base::Value::Dict params,
     v8::Local<v8::Function> callback,
@@ -27,16 +43,16 @@ GuestViewAttachRequest::GuestViewAttachRequest(
     : container_(container),
       callback_(isolate, callback),
       isolate_(isolate),
+      render_frame_routing_id_(render_frame_routing_id),
       guest_instance_id_(guest_instance_id),
-      params_(std::move(params)) {
-  render_frame->GetRemoteAssociatedInterfaces()->GetInterface(&remote_);
-}
+      params_(std::move(params)) {}
 
 GuestViewAttachRequest::~GuestViewAttachRequest() = default;
 
 void GuestViewAttachRequest::PerformRequest() {
-  remote_->AttachToEmbedderFrame(
-      container_->element_instance_id(), guest_instance_id_, params_.Clone(),
+  GetGuestViewHost()->AttachToEmbedderFrame(
+      render_frame_routing_id_, container_->element_instance_id(),
+      guest_instance_id_, params_.Clone(),
       base::BindOnce(&GuestViewAttachRequest::OnAcknowledged,
                      weak_ptr_factory_.GetWeakPtr()));
 }

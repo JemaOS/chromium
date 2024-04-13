@@ -8,7 +8,6 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -37,6 +36,7 @@
 #include "components/reporting/util/refcounted_closure_list.h"
 #include "components/reporting/util/status.h"
 #include "components/reporting/util/statusor.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -199,18 +199,18 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     // |expect_readonly| must match to is_readonly() (when set to false,
     // the file is expected to be writeable; this only happens when scanning
     // files restarting the queue).
-    StatusOr<std::string_view> Read(uint32_t pos,
-                                    uint32_t size,
-                                    size_t max_buffer_size,
-                                    bool expect_readonly = true);
+    StatusOr<base::StringPiece> Read(uint32_t pos,
+                                     uint32_t size,
+                                     size_t max_buffer_size,
+                                     bool expect_readonly = true);
 
     // Appends data to the file.
-    StatusOr<uint32_t> Append(std::string_view data);
+    StatusOr<uint32_t> Append(base::StringPiece data);
 
     bool is_opened() const { return handle_.get() != nullptr; }
     bool is_readonly() const {
       DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-      CHECK(is_opened());
+      DCHECK(is_opened());
       return is_readonly_.value();
     }
     uint64_t size() const { return size_; }
@@ -237,7 +237,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
     // Flag (valid for opened file only): true if file was opened for reading
     // only, false otherwise.
-    std::optional<bool> is_readonly_ GUARDED_BY_CONTEXT(sequence_checker_);
+    absl::optional<bool> is_readonly_ GUARDED_BY_CONTEXT(sequence_checker_);
 
     const base::FilePath filename_;  // relative to the StorageQueue directory
     uint64_t size_ = 0;  // tracked internally rather than by filesystem
@@ -274,7 +274,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   Status Init();
 
   // Retrieves last record digest (does not exist at a generation start).
-  std::optional<std::string> GetLastRecordDigest() const;
+  absl::optional<std::string> GetLastRecordDigest() const;
 
   // Helper method for Init(): process single data file.
   // Return sequencing_id from <prefix>.<sequencing_id> file name, or Status
@@ -315,7 +315,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // asynchronously deletes all other files with lower sequencing id
   // (multiple Writes can see the same files and attempt to delete them, and
   // that is not an error).
-  Status WriteMetadata(std::string_view current_record_digest);
+  Status WriteMetadata(base::StringPiece current_record_digest);
 
   // Helper method for RestoreMetadata(): loads and verifies metadata file
   // contents. If accepted, adds the file to the set.
@@ -340,8 +340,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Helper method for Write(): composes record header and writes it to the
   // file, followed by data. Stores record digest in the queue, increments
   // next sequencing id.
-  Status WriteHeaderAndBlock(std::string_view data,
-                             std::string_view current_record_digest,
+  Status WriteHeaderAndBlock(base::StringPiece data,
+                             base::StringPiece current_record_digest,
                              scoped_refptr<SingleFile> file);
 
   // Helper method for Upload: if the last file is not empty (has at least one
@@ -438,7 +438,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // Digest of the last written record (loaded at queue initialization, absent
   // if the new generation has just started, and no records where stored yet).
-  std::optional<std::string> last_record_digest_;
+  absl::optional<std::string> last_record_digest_;
 
   // Queue of the write context instances in the order of creation, sequencing
   // ids and record digests. Context is always removed from this queue before
@@ -467,7 +467,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // If first_unconfirmed_sequencing_id_ < first_sequencing_id_,
   // [first_unconfirmed_sequencing_id_, first_sequencing_id_) is a gap
   // that cannot be filled in and is uploaded as such.
-  std::optional<int64_t> first_unconfirmed_sequencing_id_;
+  absl::optional<int64_t> first_unconfirmed_sequencing_id_;
 
   // Ordered map of the files by ascending sequencing id.
   std::map<int64_t, scoped_refptr<SingleFile>> files_;

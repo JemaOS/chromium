@@ -17,7 +17,6 @@
 #include "components/viz/common/quads/compositor_render_pass_draw_quad.h"
 #include "components/viz/common/resources/resource_id.h"
 #include "components/viz/service/display/shared_bitmap_manager.h"
-#include "components/viz/service/frame_sinks/surface_resource_holder.h"
 #include "components/viz/service/surfaces/surface_saved_frame.h"
 #include "components/viz/service/transitions/transferable_resource_tracker.h"
 #include "components/viz/service/viz_service_export.h"
@@ -37,8 +36,7 @@ struct TransferableResource;
 //
 // This class is owned by CompositorFrameSinkSupport but can be moved between
 // CompositorFrameSinkSupports for transitions between 2 renderer CC instances.
-class VIZ_SERVICE_EXPORT SurfaceAnimationManager
-    : public ReservedResourceDelegate {
+class VIZ_SERVICE_EXPORT SurfaceAnimationManager {
  public:
   using TransitionDirectiveCompleteCallback =
       base::OnceCallback<void(const CompositorFrameTransitionDirective&)>;
@@ -49,16 +47,13 @@ class VIZ_SERVICE_EXPORT SurfaceAnimationManager
       SharedBitmapManager* shared_bitmap_manager,
       TransitionDirectiveCompleteCallback sequence_id_finished_callback);
 
-  ~SurfaceAnimationManager() override;
+  ~SurfaceAnimationManager();
 
   void Animate();
 
-  // ReservedResourceDelegate:
-  void ReceiveFromChild(
-      const std::vector<TransferableResource>& resources) override;
-  void RefResources(
-      const std::vector<TransferableResource>& resources) override;
-  void UnrefResources(const std::vector<ReturnedResource>& resources) override;
+  // Resource ref count management.
+  void RefResources(const std::vector<TransferableResource>& resources);
+  void UnrefResources(const std::vector<ReturnedResource>& resources);
 
   // Replaced ViewTransitionElementResourceIds with corresponding ResourceIds if
   // necessary.
@@ -81,7 +76,7 @@ class VIZ_SERVICE_EXPORT SurfaceAnimationManager
   bool FilterSharedElementsWithRenderPassOrResource(
       std::vector<TransferableResource>* resource_list,
       const base::flat_map<ViewTransitionElementResourceId,
-                           CompositorRenderPass*>* element_id_to_pass,
+                           const CompositorRenderPass*>* element_id_to_pass,
       const DrawQuad& quad,
       CompositorRenderPass& copy_pass);
 
@@ -91,7 +86,7 @@ class VIZ_SERVICE_EXPORT SurfaceAnimationManager
   std::unique_ptr<SurfaceSavedFrame> saved_frame_;
   base::flat_set<ViewTransitionElementResourceId> empty_resource_ids_;
 
-  std::optional<TransferableResourceTracker::ResourceFrame> saved_textures_;
+  absl::optional<TransferableResourceTracker::ResourceFrame> saved_textures_;
 };
 
 }  // namespace viz

@@ -19,6 +19,7 @@ class SequencedTaskRunner;
 
 namespace update_client {
 
+// TODO(sorin): consider reducing the number of the installer mocks.
 // A TestInstaller is an installer that does nothing for installation except
 // increment a counter.
 class TestInstaller : public CrxInstaller {

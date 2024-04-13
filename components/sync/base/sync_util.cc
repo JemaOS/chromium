@@ -6,15 +6,17 @@
 
 #include "base/command_line.h"
 #include "base/logging.h"
-#include "base/strings/strcat.h"
 #include "base/strings/stringize_macros.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "components/sync/base/command_line_switches.h"
-#include "components/version_info/version_info.h"
 #include "google_apis/gaia/gaia_config.h"
 #include "ui/base/device_form_factor.h"
 #include "url/gurl.h"
+// ---***JEMAOS BEGIN***---
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/switches/account/account_constants.h"
+// ---***JEMAOS END***---
 
 namespace {
 
@@ -56,14 +58,18 @@ namespace internal {
 
 std::string FormatUserAgentForSync(const std::string& system,
                                    version_info::Channel channel) {
-  constexpr base::StringPiece kProduct = STRINGIZE(SYNC_USER_AGENT_PRODUCT);
-  return base::StrCat(
-      {kProduct, " ", system, version_info::GetVersionNumber(), " (",
-       version_info::GetLastChange(), ")",
-       version_info::IsOfficialBuild()
-           ? base::StrCat(
-                 {" channel(", version_info::GetChannelString(channel), ")"})
-           : std::string("-devel")});
+  std::string product = STRINGIZE(SYNC_USER_AGENT_PRODUCT);
+  std::string user_agent;
+  user_agent = product + " ";
+  user_agent += system;
+  user_agent += version_info::GetVersionNumber();
+  user_agent += " (" + version_info::GetLastChange() + ")";
+  if (!version_info::IsOfficialBuild()) {
+    user_agent += "-devel";
+  } else {
+    user_agent += " channel(" + version_info::GetChannelString(channel) + ")";
+  }
+  return user_agent;
 }
 
 }  // namespace internal
@@ -74,6 +80,30 @@ GURL GetSyncServiceURL(const base::CommandLine& command_line,
   // 1. Explicitly specified --sync-url
   // 2. Specified as part of the --gaia-config
   // 3. Default URL (different for Stable/Beta vs. Dev/Canary/unbranded)
+  // ---***JEMAOS BEGIN***---
+  if (jemaos::switches::IsJemaAccountEnabled()) {
+    GURL result(jemaos::constants::kJemaOSSyncDevServerUrl);
+    if (channel == version_info::Channel::STABLE ||
+        channel == version_info::Channel::BETA) {
+      result = GURL(jemaos::constants::kJemaOSSyncServerUrl);
+    }
+    if (command_line.HasSwitch(jemaos::switches::kJemaOSSyncServiceURL)) {
+      std::string value(
+          command_line.GetSwitchValueASCII(jemaos::switches::kJemaOSSyncServiceURL));
+      if (!value.empty()) {
+        GURL custom_sync_url(value);
+        if (custom_sync_url.is_valid()) {
+          result = custom_sync_url;
+        } else {
+          LOG(WARNING) << "The following JemaOS sync URL specified at the command-line "
+            << "is invalid: " << value;
+        }
+      }
+    }
+    return result;
+  }
+  // ---***JEMAOS END***---
+  GURL result(internal::kSyncDevServerUrl);
 
   // 1. Get the sync server URL from the --sync-url command-line param, if
   // specified.

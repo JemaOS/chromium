@@ -28,8 +28,8 @@ class TestScreenInfoMetricsProvider : public ScreenInfoMetricsProvider {
   ~TestScreenInfoMetricsProvider() override {}
 
  private:
-  std::optional<gfx::Size> GetScreenSize() const override {
-    return std::make_optional(gfx::Size(kScreenWidth, kScreenHeight));
+  absl::optional<gfx::Size> GetScreenSize() const override {
+    return absl::make_optional(gfx::Size(kScreenWidth, kScreenHeight));
   }
 
   float GetScreenDeviceScaleFactor() const override {

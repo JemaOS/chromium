@@ -30,7 +30,7 @@ PartialTranslateManager::~PartialTranslateManager() = default;
 
 void PartialTranslateManager::StartPartialTranslate(
     content::WebContents* web_contents,
-    const PartialTranslateRequest& request,
+    PartialTranslateRequest request,
     PartialTranslateCallback callback) {
   // Invalidate any ongoing request.
   weak_ptr_factory_.InvalidateWeakPtrs();
@@ -53,7 +53,7 @@ std::unique_ptr<ContextualSearchContext> PartialTranslateManager::MakeContext(
   // Country and base URL are not needed for Partial Translate requests.
   context->SetResolveProperties(/*home_country=*/"",
                                 /*may_send_base_page_url=*/false);
-  context->SetBasePageUrl(GURL());
+  context->SetBasePageUrl(GURL::EmptyGURL());
 
   context->SetSelectionSurroundings(0, request.selection_text.length(),
                                     request.selection_text);

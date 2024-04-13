@@ -44,8 +44,7 @@ struct QueryFields {
 
 class VectorIterator {
  public:
-  explicit VectorIterator(
-      std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>* nodes);
+  explicit VectorIterator(std::vector<const BookmarkNode*>* nodes);
   VectorIterator(const VectorIterator& other) = delete;
   VectorIterator& operator=(const VectorIterator& other) = delete;
   ~VectorIterator();
@@ -53,9 +52,8 @@ class VectorIterator {
   const BookmarkNode* Next();
 
  private:
-  raw_ptr<std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>> nodes_;
-  std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>::iterator
-      current_;
+  raw_ptr<std::vector<const BookmarkNode*>> nodes_;
+  std::vector<const BookmarkNode*>::iterator current_;
 };
 
 // Clones bookmark node, adding newly created nodes to |parent| starting at
@@ -72,11 +70,10 @@ void CloneBookmarkNode(BookmarkModel* model,
 // removed after copied to the clipboard. The nodes are copied in such a way
 // that if pasted again copies are made. Pass the calling context through as
 // `source`.
-void CopyToClipboard(
-    BookmarkModel* model,
-    const std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>& nodes,
-    bool remove_nodes,
-    metrics::BookmarkEditSource source);
+void CopyToClipboard(BookmarkModel* model,
+                     const std::vector<const BookmarkNode*>& nodes,
+                     bool remove_nodes,
+                     metrics::BookmarkEditSource source);
 
 // Pastes from the clipboard. The new nodes are added to |parent|, unless
 // |parent| is null in which case this does nothing. The nodes are inserted
@@ -102,21 +99,13 @@ void GetMostRecentlyAddedEntries(BookmarkModel* model,
 // Returns true if |n1| was added more recently than |n2|.
 bool MoreRecentlyAdded(const BookmarkNode* n1, const BookmarkNode* n2);
 
-// Returns the most recently used bookmarks. This does not return folders,
-// only nodes of type url. Note: If the bookmarks have the same used time, this
-// will return the more recent added bookmarks. Normally, this happens when the
-// bookmarks are never used.
-void GetMostRecentlyUsedEntries(BookmarkModel* model,
-                                size_t count,
-                                std::vector<const BookmarkNode*>* nodes);
-
 // Returns up to |max_count| bookmarks from |model| whose url or title contain
 // the text |query.word_phrase_query| and exactly match |query.url| and
 // |query.title|, for all of the preceding fields that are not NULL.
-std::vector<const BookmarkNode*> GetBookmarksMatchingProperties(
-    BookmarkModel* model,
-    const QueryFields& query,
-    size_t max_count);
+void GetBookmarksMatchingProperties(BookmarkModel* model,
+                                    const QueryFields& query,
+                                    size_t max_count,
+                                    std::vector<const BookmarkNode*>* nodes);
 
 // Parses the provided query and returns a vector of query words.
 std::vector<std::u16string> ParseBookmarkQuery(
@@ -140,8 +129,7 @@ void RegisterManagedBookmarksPrefs(PrefRegistrySimple* registry);
 // added nodes should be added at.
 const BookmarkNode* GetParentForNewNodes(
     const BookmarkNode* parent,
-    const std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>&
-        selection,
+    const std::vector<const BookmarkNode*>& selection,
     size_t* index);
 
 // Deletes the bookmark folders for the given list of |ids|.
@@ -175,8 +163,6 @@ void RemoveAllBookmarks(BookmarkModel* model, const GURL& url);
 // unescaping, an input string of "a&p" would no longer match this URL.  Note
 // that the resulting unescaped URL may not be directly navigable (which is
 // why it was escaped to begin with).
-//
-// |url| must be a valid URL.
 std::u16string CleanUpUrlForMatching(
     const GURL& gurl,
     base::OffsetAdjuster::Adjustments* adjustments);
@@ -185,11 +171,10 @@ std::u16string CleanUpUrlForMatching(
 // is overly-long.
 std::u16string CleanUpTitleForMatching(const std::u16string& title);
 
-// Returns true if all the |nodes| can be edited by the user, which means they
-// aren't enterprise-managed, as BookmarkClient::IsNodeManaged().
-bool CanAllBeEditedByUser(
-    BookmarkClient* client,
-    const std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>& nodes);
+// Returns true if all the |nodes| can be edited by the user,
+// as determined by BookmarkClient::CanBeEditedByUser().
+bool CanAllBeEditedByUser(BookmarkClient* client,
+                          const std::vector<const BookmarkNode*>& nodes);
 
 // Returns true if |url| has a bookmark in the |model| that can be edited
 // by the user.
@@ -198,19 +183,20 @@ bool IsBookmarkedByUser(BookmarkModel* model, const GURL& url);
 // Returns the node with |id|, or NULL if there is no node with |id|.
 const BookmarkNode* GetBookmarkNodeByID(const BookmarkModel* model, int64_t id);
 
+// Returns the node with |uuid|, or NULL if there is no node with |uuid|.
+const BookmarkNode* GetBookmarkNodeByUuid(const BookmarkModel* model,
+                                          const base::Uuid& uuid);
+
 // Returns true if |node| is a descendant of |root|.
 bool IsDescendantOf(const BookmarkNode* node, const BookmarkNode* root);
 
 // Returns true if any node in |list| is a descendant of |root|.
-bool HasDescendantsOf(
-    const std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>& list,
-    const BookmarkNode* root);
+bool HasDescendantsOf(const std::vector<const BookmarkNode*>& list,
+                      const BookmarkNode* root);
 
 // Returns the parent to add new nodes to, never returns null (as long as
-// the model is loaded). If |url| is non-empty, features will have the
-// opportunity to suggest contextually relevant folders.
-const BookmarkNode* GetParentForNewNodes(BookmarkModel* model,
-                                         const GURL& url = GURL());
+// the model is loaded).
+const BookmarkNode* GetParentForNewNodes(BookmarkModel* model);
 
 }  // namespace bookmarks
 

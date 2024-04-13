@@ -6,7 +6,6 @@
 
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
 #include "components/sync_sessions/sync_sessions_client.h"
 #include "components/sync_sessions/synced_session_tracker.h"
@@ -24,7 +23,7 @@ OpenTabsUIDelegateImpl::OpenTabsUIDelegateImpl(
 OpenTabsUIDelegateImpl::~OpenTabsUIDelegateImpl() = default;
 
 bool OpenTabsUIDelegateImpl::GetAllForeignSessions(
-    std::vector<raw_ptr<const SyncedSession, VectorExperimental>>* sessions) {
+    std::vector<const SyncedSession*>* sessions) {
   *sessions = session_tracker_->LookupAllForeignSessions(
       SyncedSessionTracker::PRESENTABLE);
   base::ranges::sort(
@@ -33,9 +32,10 @@ bool OpenTabsUIDelegateImpl::GetAllForeignSessions(
   return !sessions->empty();
 }
 
-std::vector<const sessions::SessionWindow*>
-OpenTabsUIDelegateImpl::GetForeignSession(const std::string& tag) {
-  return session_tracker_->LookupSessionWindows(tag);
+bool OpenTabsUIDelegateImpl::GetForeignSession(
+    const std::string& tag,
+    std::vector<const sessions::SessionWindow*>* windows) {
+  return session_tracker_->LookupSessionWindows(tag, windows);
 }
 
 bool OpenTabsUIDelegateImpl::GetForeignTab(const std::string& tag,
@@ -48,9 +48,8 @@ bool OpenTabsUIDelegateImpl::GetForeignTab(const std::string& tag,
 bool OpenTabsUIDelegateImpl::GetForeignSessionTabs(
     const std::string& tag,
     std::vector<const sessions::SessionTab*>* tabs) {
-  std::vector<const sessions::SessionWindow*> windows =
-      session_tracker_->LookupSessionWindows(tag);
-  if (windows.empty()) {
+  std::vector<const sessions::SessionWindow*> windows;
+  if (!session_tracker_->LookupSessionWindows(tag, &windows)) {
     return false;
   }
 

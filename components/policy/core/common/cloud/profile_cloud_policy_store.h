@@ -33,8 +33,7 @@ class POLICY_EXPORT ProfileCloudPolicyStore : public DesktopCloudPolicyStore {
   ProfileCloudPolicyStore(
       const base::FilePath& policy_path,
       const base::FilePath& key_path,
-      scoped_refptr<base::SequencedTaskRunner> background_task_runner,
-      bool is_dasherless = false);
+      scoped_refptr<base::SequencedTaskRunner> background_task_runner);
 
   ProfileCloudPolicyStore(const ProfileCloudPolicyStore&) = delete;
   ProfileCloudPolicyStore& operator=(const ProfileCloudPolicyStore&) = delete;
@@ -43,8 +42,7 @@ class POLICY_EXPORT ProfileCloudPolicyStore : public DesktopCloudPolicyStore {
   // Creates a ProfileCloudPolicyStore instance.
   static std::unique_ptr<ProfileCloudPolicyStore> Create(
       const base::FilePath& profile_dir,
-      scoped_refptr<base::SequencedTaskRunner> background_task_runner,
-      bool is_dasherless = false);
+      scoped_refptr<base::SequencedTaskRunner> background_task_runner);
 
   // override UserCloudPolicyStoreBase
   std::unique_ptr<UserCloudPolicyValidator> CreateValidator(
@@ -58,8 +56,6 @@ class POLICY_EXPORT ProfileCloudPolicyStore : public DesktopCloudPolicyStore {
       std::unique_ptr<enterprise_management::PolicySigningKey> key,
       bool validate_in_background,
       UserCloudPolicyValidator::CompletionCallback callback) override;
-
-  bool is_dasherless_;
 };
 
 }  // namespace policy

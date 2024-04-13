@@ -10,8 +10,8 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "components/affiliations/core/browser/affiliation_utils.h"
-#include "components/password_manager/core/browser/form_parsing/form_data_parser.h"
+#include "components/password_manager/core/browser/affiliation/affiliation_utils.h"
+#include "components/password_manager/core/browser/form_parsing/form_parser.h"
 #include "components/password_manager/core/browser/import/csv_field_parser.h"
 
 #include "url/gurl.h"
@@ -77,7 +77,7 @@ CSVPassword::CSVPassword(const ColumnMap& map, base::StringPiece row) {
     switch (meaning_it->second) {
       case Label::kOrigin: {
         GURL gurl = GURL(field);
-        if (!gurl.is_valid()) {
+        if (!gurl.is_valid() || !base::IsStringASCII(field)) {
           url_ = base::unexpected(ConvertUTF8(field));
         } else {
           url_ = gurl;
@@ -102,6 +102,12 @@ CSVPassword::CSVPassword(CSVPassword&&) = default;
 CSVPassword& CSVPassword::operator=(const CSVPassword&) = default;
 CSVPassword& CSVPassword::operator=(CSVPassword&&) = default;
 CSVPassword::~CSVPassword() = default;
+
+bool operator==(const CSVPassword& lhs, const CSVPassword& rhs) {
+  return lhs.GetParseStatus() == rhs.GetParseStatus() &&
+         lhs.GetPassword() == rhs.GetPassword() &&
+         lhs.GetUsername() == rhs.GetUsername() && lhs.GetURL() == rhs.GetURL();
+}
 
 CSVPassword::Status CSVPassword::GetParseStatus() const {
   return status_;

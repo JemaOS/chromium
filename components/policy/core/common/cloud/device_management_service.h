@@ -9,7 +9,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,6 +21,7 @@
 #include "components/policy/core/common/cloud/dm_auth.h"
 #include "components/policy/policy_export.h"
 #include "services/network/public/cpp/simple_url_loader.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class SequencedTaskRunner;
@@ -96,7 +96,7 @@ class POLICY_EXPORT DeviceManagementService {
   // possible because some aren't ready during startup. http://crbug.com/302798
   class POLICY_EXPORT Configuration {
    public:
-    virtual ~Configuration() = default;
+    virtual ~Configuration() {}
 
     // Server at which to contact the service (DMServer).
     virtual std::string GetDMServerUrl() const = 0;
@@ -144,7 +144,7 @@ class POLICY_EXPORT DeviceManagementService {
       RETRY_WITH_DELAY
     };
 
-    virtual ~Job() = default;
+    virtual ~Job() {}
   };
 
   class JobImpl;
@@ -185,7 +185,7 @@ class POLICY_EXPORT DeviceManagementService {
     // facilitate reading of logs.)
     // TYPE_INVALID is used only in tests so that they can EXPECT the correct
     // job type has been used.  Otherwise, tests would need to initially set
-    // the type to something like TYPE_AUTO_ENROLLMENT, and then it would not
+    // the type to somehing like TYPE_AUTO_ENROLLMENT, and then it would not
     // be possible to EXPECT the job type in auto enrollment tests.
     enum JobType {
       TYPE_INVALID = -1,
@@ -222,7 +222,6 @@ class POLICY_EXPORT DeviceManagementService {
       TYPE_UPLOAD_EUICC_INFO = 29,
       TYPE_BROWSER_UPLOAD_PUBLIC_KEY = 30,
       TYPE_CHROME_PROFILE_REPORT = 31,
-      TYPE_OIDC_REGISTRATION = 32,
     };
 
     // The set of HTTP query parameters of the request.
@@ -231,7 +230,7 @@ class POLICY_EXPORT DeviceManagementService {
     // Convert the job type into a string.
     static std::string GetJobTypeAsString(JobType type);
 
-    virtual ~JobConfiguration() = default;
+    virtual ~JobConfiguration() {}
 
     virtual JobType GetType() = 0;
 
@@ -254,9 +253,6 @@ class POLICY_EXPORT DeviceManagementService {
         bool bypass_proxy,
         int last_error) = 0;
 
-    // Returns whether UMA histograms should be recorded. If this is false
-    // then GetUmaName() is invalid.
-    virtual bool ShouldRecordUma() const = 0;
     // Returns the the UMA histogram to record stats about the network request.
     virtual std::string GetUmaName() = 0;
 
@@ -282,7 +278,7 @@ class POLICY_EXPORT DeviceManagementService {
                                    int response_code,
                                    const std::string& response_body) = 0;
 
-    virtual std::optional<base::TimeDelta> GetTimeoutDuration() = 0;
+    virtual absl::optional<base::TimeDelta> GetTimeoutDuration() = 0;
   };
 
   explicit DeviceManagementService(
@@ -306,6 +302,8 @@ class POLICY_EXPORT DeviceManagementService {
   // Sets the retry delay to a shorter time to prevent browser tests from
   // timing out.
   static void SetRetryDelayForTesting(long retryDelayMs);
+
+  void ResetConfiguration(std::unique_ptr<Configuration> configuration);
 
  protected:
   // Creates a new Job without starting it.
@@ -370,16 +368,15 @@ class POLICY_EXPORT JobConfigurationBase
   std::unique_ptr<network::ResourceRequest> GetResourceRequest(
       bool bypass_proxy,
       int last_error) override;
-  bool ShouldRecordUma() const override;
   DeviceManagementService::Job::RetryMethod ShouldRetry(
       int response_code,
       const std::string& response_body) override;
-  std::optional<base::TimeDelta> GetTimeoutDuration() override;
+  absl::optional<base::TimeDelta> GetTimeoutDuration() override;
 
  protected:
   JobConfigurationBase(JobType type,
                        DMAuth auth_data,
-                       std::optional<std::string> oauth_token,
+                       absl::optional<std::string> oauth_token,
                        scoped_refptr<network::SharedURLLoaderFactory> factory);
   ~JobConfigurationBase() override;
 
@@ -393,7 +390,7 @@ class POLICY_EXPORT JobConfigurationBase
   virtual GURL GetURL(int last_error) const = 0;
 
   // Timeout for job request
-  std::optional<base::TimeDelta> timeout_;
+  absl::optional<base::TimeDelta> timeout_;
 
  private:
   JobType type_;
@@ -405,7 +402,7 @@ class POLICY_EXPORT JobConfigurationBase
 
   // OAuth token that will be passed as a query parameter. Both |auth_data_|
   // and |oauth_token_| can be specified for one request.
-  std::optional<std::string> oauth_token_;
+  absl::optional<std::string> oauth_token_;
 
   // Query parameters for the network request.
   ParameterMap query_params_;

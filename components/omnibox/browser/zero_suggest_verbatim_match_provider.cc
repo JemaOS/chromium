@@ -9,18 +9,13 @@
 #include "components/omnibox/browser/autocomplete_provider_client.h"
 #include "components/omnibox/browser/autocomplete_provider_listener.h"
 #include "components/omnibox/browser/verbatim_match.h"
-#include "components/omnibox/common/omnibox_features.h"
-#include "components/search_engines/template_url_service.h"
 #include "components/url_formatter/url_formatter.h"
 
 namespace {
 // Verbatim Match is placed in a dedicated SECTION_MOBILE_VERBATIM.
-// While there are no other occupants of this section, the Relevance score
-// remains important, because the Verbatim Match may get de-duplicated to other,
-// higher ranking suggestions listed later on the list.
-// Keep the relevance high to ensure matching suggestions listed later are
-// merged to the Verbatim Match, not the other way around.
-const int kVerbatimMatchRelevanceScore = 1602;
+// There are no other occupants of this section, making the Relevance score
+// unimportant.
+const int kVerbatimMatchRelevanceScore = 2;
 
 // Returns whether specific context is eligible for a verbatim match.
 // Only offer verbatim match on a site visit and SRP (no NTP etc).
@@ -51,9 +46,8 @@ void ZeroSuggestVerbatimMatchProvider::Start(const AutocompleteInput& input,
 
   // Only offer verbatim match after the user just focused the Omnibox on NTP,
   // SRP, or existing website view, or if the input field is empty.
-  if (!input.IsZeroSuggest()) {
+  if (input.focus_type() == metrics::OmniboxFocusType::INTERACTION_DEFAULT)
     return;
-  }
 
   // For consistency with other zero-prefix providers.
   const auto& page_url = input.current_url();
@@ -91,23 +85,11 @@ void ZeroSuggestVerbatimMatchProvider::Start(const AutocompleteInput& input,
       ACMatchClassification::MATCH | ACMatchClassification::URL,
       ACMatchClassification::URL);
 
-  // If the URL suggestion comes from the default search engine, extract the
-  // original search query and place it in fill_into_edit, to permit re-use of
-  // the query for manual refinement.
-  if (base::FeatureList::IsEnabled(
-          omnibox::kSearchReadyOmniboxAllowQueryEdit)) {
-    auto* const url_service = client_->GetTemplateURLService();
-    if (url_service->IsSearchResultsPageFromDefaultSearchProvider(
-            match.destination_url)) {
-      auto* const dse = url_service->GetDefaultSearchProvider();
-      if (dse->url_ref().SupportsReplacement(
-              url_service->search_terms_data())) {
-        dse->ExtractSearchTermsFromURL(match.destination_url,
-                                       url_service->search_terms_data(),
-                                       &match.fill_into_edit);
-      }
-    }
-  }
+  // In the case of native pages, the classifier may replace the URL with an
+  // empty content, resulting with a verbatim match that does not point
+  // anywhere.
+  if (!match.destination_url.is_valid())
+    return;
 
   match.provider = this;
   matches_.push_back(std::move(match));

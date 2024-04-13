@@ -19,8 +19,8 @@ class CloudPolicyCore;
 
 // The following constants identify top-level keys in the dictionary returned by
 // and are specific to MachineLevelUserCloudPolicyStatusProvider.
-inline constexpr char kDeviceIdKey[] = "deviceId";
-inline constexpr char kMachineKey[] = "machine";
+POLICY_EXPORT extern const char kDeviceIdKey[];
+POLICY_EXPORT extern const char kMachineKey[];
 
 struct POLICY_EXPORT MachineLevelUserCloudPolicyContext {
   std::string enrollmentToken;

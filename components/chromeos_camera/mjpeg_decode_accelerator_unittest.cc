@@ -11,14 +11,12 @@
 
 #include <memory>
 #include <numeric>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "base/at_exit.h"
 #include "base/command_line.h"
-#include "base/containers/span.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
 #include "base/functional/bind.h"
@@ -57,6 +55,7 @@
 #include "media/parsers/jpeg_parser.h"
 #include "mojo/core/embedder/embedder.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/libyuv/include/libyuv.h"
 #include "ui/gfx/buffer_types.h"
 #include "ui/gfx/codec/jpeg_codec.h"
@@ -105,8 +104,9 @@ struct ParsedJpegImage {
         << file_path;
 
     media::JpegParseResult parse_result;
-    LOG_ASSERT(
-        ParseJpegPicture(base::as_byte_span(image->data_str), &parse_result));
+    LOG_ASSERT(ParseJpegPicture(
+        reinterpret_cast<const uint8_t*>(image->data_str.data()),
+        image->data_str.size(), &parse_result));
 
     image->InitializeSizes(parse_result.frame_header.visible_width,
                            parse_result.frame_header.visible_height);
@@ -315,7 +315,7 @@ MjpegDecodeAcceleratorTestEnvironment::CreateDmaBufVideoFrame(
   DCHECK(gpu_memory_buffer_manager_);
 
   // Create a GpuMemoryBuffer and get a NativePixmapHandle from it.
-  const std::optional<gfx::BufferFormat> gfx_format =
+  const absl::optional<gfx::BufferFormat> gfx_format =
       media::VideoPixelFormatToGfxBufferFormat(format);
   if (!gfx_format) {
     LOG(ERROR) << "Unsupported pixel format: " << format;
@@ -363,11 +363,9 @@ MjpegDecodeAcceleratorTestEnvironment::CreateDmaBufVideoFrame(
                         base::checked_cast<size_t>(plane.size));
     dmabuf_fds.push_back(std::move(plane.fd));
   }
-  const std::optional<media::VideoFrameLayout> layout =
-      media::VideoFrameLayout::CreateWithPlanes(
-          format, coded_size, std::move(planes),
-          media::VideoFrameLayout::kBufferAddressAlignment,
-          gmb_handle.native_pixmap_handle.modifier);
+  const absl::optional<media::VideoFrameLayout> layout =
+      media::VideoFrameLayout::CreateWithPlanes(format, coded_size,
+                                                std::move(planes));
   if (!layout) {
     LOG(ERROR) << "Failed to create VideoFrameLayout";
     return nullptr;
@@ -460,7 +458,7 @@ MjpegDecodeAcceleratorTestEnvironment::GetSupportedDmaBufFormats() {
   };
   std::vector<media::VideoPixelFormat> supported_formats;
   for (const media::VideoPixelFormat format : kPreferredFormats) {
-    const std::optional<gfx::BufferFormat> gfx_format =
+    const absl::optional<gfx::BufferFormat> gfx_format =
         media::VideoPixelFormatToGfxBufferFormat(format);
     if (gfx_format && gpu_memory_buffer_manager_->IsFormatAndUsageSupported(
                           *gfx_format, kBufferUsage))
@@ -483,7 +481,7 @@ enum ClientState {
 };
 
 struct DecodeTask {
-  raw_ptr<const ParsedJpegImage> image;
+  raw_ptr<const ParsedJpegImage, ExperimentalAsh> image;
   gfx::Size target_size;
 
   DecodeTask(const ParsedJpegImage* im)
@@ -544,7 +542,7 @@ class JpegClient : public MjpegDecodeAccelerator::Client {
   double GetMeanAbsoluteDifference();
 
   // JpegClient doesn't own |tasks_|.
-  const raw_ref<const std::vector<DecodeTask>> tasks_;
+  const raw_ref<const std::vector<DecodeTask>, ExperimentalAsh> tasks_;
 
   ClientState state_;
 
@@ -1352,7 +1350,8 @@ int main(int argc, char** argv) {
       continue;
     if (it->first == "h" || it->first == "help")
       continue;
-    LOG(FATAL) << "Unexpected switch: " << it->first << ":" << it->second;
+    LOG_ASSERT(false) << "Unexpected switch: " << it->first << ":"
+                      << it->second;
   }
 #if BUILDFLAG(USE_VAAPI)
   media::VaapiWrapper::PreSandboxInitialization();

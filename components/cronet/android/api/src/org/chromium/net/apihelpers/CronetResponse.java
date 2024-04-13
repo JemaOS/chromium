@@ -17,10 +17,13 @@ import java.util.Objects;
  * @param <T> the response body type
  */
 public class CronetResponse<T> {
-    /** The headers and other metadata of the response. */
+    /**
+     * The headers and other metadata of the response.
+     */
     private final UrlResponseInfo mUrlResponseInfo;
-
-    /** The full body of the response, after performing a user-defined deserialization. */
+    /**
+     * The full body of the response, after performing a user-defined deserialization.
+     */
     private final @Nullable T mResponseBody;
 
     CronetResponse(UrlResponseInfo urlResponseInfo, @Nullable T responseBody) {
@@ -28,12 +31,16 @@ public class CronetResponse<T> {
         this.mResponseBody = responseBody;
     }
 
-    /** Returns the headers and other metadata of the response. */
+    /**
+     * Returns the headers and other metadata of the response.
+     */
     public UrlResponseInfo getUrlResponseInfo() {
         return mUrlResponseInfo;
     }
 
-    /** Returns the full body of the response, after performing a user-defined deserialization. */
+    /**
+     * Returns the full body of the response, after performing a user-defined deserialization.
+     */
     public @Nullable T getResponseBody() {
         return mResponseBody;
     }

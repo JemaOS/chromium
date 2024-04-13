@@ -9,8 +9,8 @@
 
 #include "base/memory/raw_ptr.h"
 #include "components/prefs/pref_change_registrar.h"
-#include "components/sync/service/model_type_controller.h"
-#include "components/sync/service/sync_service_observer.h"
+#include "components/sync/driver/model_type_controller.h"
+#include "components/sync/driver/sync_service_observer.h"
 
 class PrefService;
 
@@ -30,6 +30,12 @@ class AutofillWalletModelTypeController : public syncer::ModelTypeController,
       syncer::ModelType type,
       std::unique_ptr<syncer::ModelTypeControllerDelegate>
           delegate_for_full_sync_mode,
+      PrefService* pref_service,
+      syncer::SyncService* sync_service);
+  AutofillWalletModelTypeController(
+      syncer::ModelType type,
+      std::unique_ptr<syncer::ModelTypeControllerDelegate>
+          delegate_for_full_sync_mode,
       std::unique_ptr<syncer::ModelTypeControllerDelegate>
           delegate_for_transport_mode,
       PrefService* pref_service,
@@ -42,9 +48,10 @@ class AutofillWalletModelTypeController : public syncer::ModelTypeController,
 
   ~AutofillWalletModelTypeController() override;
 
-  // ModelTypeController overrides.
+  // DataTypeController overrides.
   void Stop(syncer::SyncStopMetadataFate fate, StopCallback callback) override;
   PreconditionState GetPreconditionState() const override;
+  bool ShouldRunInTransportOnlyMode() const override;
 
   // syncer::SyncServiceObserver implementation.
   void OnStateChanged(syncer::SyncService* sync) override;

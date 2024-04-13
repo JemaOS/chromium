@@ -20,7 +20,7 @@ items:
   value: false
 owners:
 - sinhak@chromium.org
-- emaamari@google.com
+- anastasiian@chromium.org
 schema:
   type: boolean
 supported_on:

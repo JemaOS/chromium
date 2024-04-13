@@ -4,10 +4,11 @@
 #include "components/autofill/core/common/html_field_types.h"
 
 #include "base/notreached.h"
+#include "base/strings/string_piece.h"
 
 namespace autofill {
 
-std::string_view FieldTypeToStringView(HtmlFieldType type) {
+base::StringPiece FieldTypeToStringPiece(HtmlFieldType type) {
   switch (type) {
     case HtmlFieldType::kUnspecified:
       return "HTML_TYPE_UNSPECIFIED";
@@ -43,6 +44,8 @@ std::string_view FieldTypeToStringView(HtmlFieldType type) {
       return "HTML_TYPE_COUNTRY_NAME";
     case HtmlFieldType::kPostalCode:
       return "HTML_TYPE_POSTAL_CODE";
+    case HtmlFieldType::kFullAddress:
+      return "HTML_TYPE_FULL_ADDRESS";
     case HtmlFieldType::kCreditCardNameFull:
       return "HTML_TYPE_CREDIT_CARD_NAME_FULL";
     case HtmlFieldType::kCreditCardNameFirst:
@@ -115,11 +118,7 @@ std::string_view FieldTypeToStringView(HtmlFieldType type) {
   return "";
 }
 
-std::string FieldTypeToString(HtmlFieldType type) {
-  return std::string(FieldTypeToStringView(type));
-}
-
-std::string_view HtmlFieldModeToStringView(HtmlFieldMode mode) {
+base::StringPiece HtmlFieldModeToStringPiece(HtmlFieldMode mode) {
   switch (mode) {
     case HtmlFieldMode::kNone:
       return "";
@@ -130,10 +129,6 @@ std::string_view HtmlFieldModeToStringView(HtmlFieldMode mode) {
   }
   NOTREACHED();
   return "";
-}
-
-std::string HtmlFieldModeToString(HtmlFieldMode mode) {
-  return std::string(HtmlFieldModeToStringView(mode));
 }
 
 }  // namespace autofill

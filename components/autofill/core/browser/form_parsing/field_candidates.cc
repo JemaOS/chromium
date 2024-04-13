@@ -12,7 +12,7 @@
 
 namespace autofill {
 
-FieldCandidate::FieldCandidate(FieldType field_type, float field_score)
+FieldCandidate::FieldCandidate(ServerFieldType field_type, float field_score)
     : type(field_type), score(field_score) {}
 
 FieldCandidates::FieldCandidates() = default;
@@ -22,16 +22,16 @@ FieldCandidates& FieldCandidates::operator=(FieldCandidates&& other) = default;
 
 FieldCandidates::~FieldCandidates() = default;
 
-void FieldCandidates::AddFieldCandidate(FieldType type, float score) {
+void FieldCandidates::AddFieldCandidate(ServerFieldType type, float score) {
   field_candidates_.emplace_back(type, score);
 }
 
 // We currently select a type with the maximum score sum.
-FieldType FieldCandidates::BestHeuristicType() const {
+ServerFieldType FieldCandidates::BestHeuristicType() const {
   if (field_candidates_.empty())
     return UNKNOWN_TYPE;
 
-  // Scores for each type. The index is their FieldType enum value.
+  // Scores for each type. The index is their ServerFieldType enum value.
   std::array<float, MAX_VALID_FIELD_TYPE> type_scores;
   type_scores.fill(0.0f);
 
@@ -41,10 +41,10 @@ FieldType FieldCandidates::BestHeuristicType() const {
     type_scores[field_candidate.type] += field_candidate.score;
   }
 
-  const auto best_type_iter = base::ranges::max_element(type_scores);
-  const size_t index = std::distance(type_scores.begin(), best_type_iter);
+  const auto* best_type_iter = base::ranges::max_element(type_scores);
+  const size_t index = std::distance(type_scores.cbegin(), best_type_iter);
 
-  return ToSafeFieldType(index, NO_SERVER_DATA);
+  return ToSafeServerFieldType(index, NO_SERVER_DATA);
 }
 
 }  // namespace autofill

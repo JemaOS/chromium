@@ -5,12 +5,11 @@
 #ifndef COMPONENTS_SERVICES_APP_SERVICE_PUBLIC_CPP_BROWSER_APP_INSTANCE_UPDATE_H_
 #define COMPONENTS_SERVICES_APP_SERVICE_PUBLIC_CPP_BROWSER_APP_INSTANCE_UPDATE_H_
 
-#include "base/component_export.h"
 #include "base/unguessable_token.h"
 
 namespace apps {
 
-struct COMPONENT_EXPORT(APP_TYPES) BrowserAppInstanceUpdate {
+struct BrowserAppInstanceUpdate {
   enum class Type {
     kAppTab,
     kAppWindow,

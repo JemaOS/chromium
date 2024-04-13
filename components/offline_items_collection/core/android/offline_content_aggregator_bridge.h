@@ -63,7 +63,8 @@ class OfflineContentAggregatorBridge : public OfflineContentProvider::Observer,
   void ResumeDownload(JNIEnv* env,
                       const base::android::JavaParamRef<jobject>& jobj,
                       const base::android::JavaParamRef<jstring>& j_namespace,
-                      const base::android::JavaParamRef<jstring>& j_id);
+                      const base::android::JavaParamRef<jstring>& j_id,
+                      jboolean j_has_user_gesture);
   void GetItemById(JNIEnv* env,
                    const base::android::JavaParamRef<jobject>& jobj,
                    const base::android::JavaParamRef<jstring>& j_namespace,
@@ -99,7 +100,7 @@ class OfflineContentAggregatorBridge : public OfflineContentProvider::Observer,
       const OfflineContentProvider::OfflineItemList& items) override;
   void OnItemRemoved(const ContentId& id) override;
   void OnItemUpdated(const OfflineItem& item,
-                     const std::optional<UpdateDelta>& update_delta) override;
+                     const absl::optional<UpdateDelta>& update_delta) override;
   void OnContentProviderGoingDown() override;
 
   // A reference to the Java counterpart of this class.  See

@@ -6,10 +6,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
 #include <memory>
-#include <string_view>
 
+#include "base/strings/string_piece.h"
 #include "components/client_update_protocol/ecdsa.h"
 
 namespace client_update_protocol {
@@ -26,8 +25,8 @@ constexpr uint8_t kKeyPubBytes[] = {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider fdp(data, size);
-  std::string_view public_key = {reinterpret_cast<const char*>(kKeyPubBytes),
-                                 sizeof(kKeyPubBytes)};
+  base::StringPiece public_key = {reinterpret_cast<const char*>(kKeyPubBytes),
+                                  sizeof(kKeyPubBytes)};
   std::unique_ptr<client_update_protocol::Ecdsa> cup =
       client_update_protocol::Ecdsa::Create(6, public_key);
   cup->SignRequest(fdp.ConsumeRandomLengthString());

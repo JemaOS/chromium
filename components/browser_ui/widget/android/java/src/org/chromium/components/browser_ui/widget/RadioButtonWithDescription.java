@@ -59,7 +59,9 @@ import java.util.List;
  * </p>
  */
 public class RadioButtonWithDescription extends RelativeLayout implements OnClickListener {
-    /** Interface to listen to radio button changes. */
+    /**
+     * Interface to listen to radio button changes.
+     */
     public interface ButtonCheckedStateChangedListener {
         /**
          * Invoked when a {@link RadioButtonWithDescription} is selected.
@@ -82,7 +84,9 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
     // An id that indicates the layout doesn't exist.
     private static final int NO_LAYOUT_ID = -1;
 
-    /** Constructor for inflating via XML. */
+    /**
+     * Constructor for inflating via XML.
+     */
     public RadioButtonWithDescription(Context context, AttributeSet attrs) {
         super(context, attrs);
         LayoutInflater.from(context).inflate(getLayoutResource(), this, true);
@@ -93,17 +97,12 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
 
         setMinimumHeight(getResources().getDimensionPixelSize(R.dimen.min_touch_target_size));
 
-        final int lateralPadding =
-                getResources()
-                        .getDimensionPixelSize(
-                                R.dimen.radio_button_with_description_lateral_padding);
-        final int verticalPadding =
-                getResources()
-                        .getDimensionPixelSize(
-                                R.dimen.radio_button_with_description_vertical_padding);
+        final int lateralPadding = getResources().getDimensionPixelSize(
+                R.dimen.radio_button_with_description_lateral_padding);
+        final int verticalPadding = getResources().getDimensionPixelSize(
+                R.dimen.radio_button_with_description_vertical_padding);
         // allow override
-        setPaddingRelative(
-                getPaddingStart() == 0 ? lateralPadding : getPaddingStart(),
+        setPaddingRelative(getPaddingStart() == 0 ? lateralPadding : getPaddingStart(),
                 getPaddingTop() == 0 ? verticalPadding : getPaddingTop(),
                 getPaddingEnd() == 0 ? lateralPadding : getPaddingEnd(),
                 getPaddingBottom() == 0 ? verticalPadding : getPaddingBottom());
@@ -111,9 +110,8 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
         // Set the background if not specified in xml
         if (getBackground() == null) {
             TypedValue background = new TypedValue();
-            getContext()
-                    .getTheme()
-                    .resolveAttribute(android.R.attr.selectableItemBackground, background, true);
+            getContext().getTheme().resolveAttribute(
+                    android.R.attr.selectableItemBackground, background, true);
             if (getEndStubLayoutResourceId() != NO_LAYOUT_ID) {
                 // If the end view stub is replaced with a custom view, only set background in the
                 // button container, so the end view is not highlighted when the button is clicked.
@@ -121,11 +119,8 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
                 radioContainer.setBackgroundResource(background.resourceId);
                 // Move the start padding into radio container, so it can be highlighted.
                 int paddingStart = getPaddingStart();
-                radioContainer.setPaddingRelative(
-                        paddingStart,
-                        radioContainer.getPaddingTop(),
-                        radioContainer.getPaddingEnd(),
-                        radioContainer.getPaddingBottom());
+                radioContainer.setPaddingRelative(paddingStart, radioContainer.getPaddingTop(),
+                        radioContainer.getPaddingEnd(), radioContainer.getPaddingBottom());
                 setPaddingRelative(0, getPaddingTop(), getPaddingEnd(), getPaddingBottom());
             } else {
                 setBackgroundResource(background.resourceId);
@@ -139,7 +134,9 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
         setFocusable(true);
     }
 
-    /** Set the view elements that included in xml internally. */
+    /**
+     * Set the view elements that included in xml internally.
+     */
     protected void setViewsInternal() {
         mRadioButton = getRadioButtonView();
         mIcon = getIcon();
@@ -154,27 +151,37 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
         }
     }
 
-    /** @return The layout resource id used for inflating this {@link RadioButtonWithDescription}. */
+    /**
+     * @return The layout resource id used for inflating this {@link RadioButtonWithDescription}.
+     */
     protected int getLayoutResource() {
         return R.layout.radio_button_with_description;
     }
 
-    /** @return RadioButton View inside this {@link RadioButtonWithDescription}. */
+    /**
+     * @return RadioButton View inside this {@link RadioButtonWithDescription}.
+     */
     protected RadioButton getRadioButtonView() {
         return (RadioButton) findViewById(R.id.radio_button);
     }
 
-    /** @return ChromeImageView inside this {@link RadioButtonWithDescription}. */
+    /**
+     * @return ChromeImageView inside this {@link RadioButtonWithDescription}.
+     */
     protected ChromeImageView getIcon() {
         return (ChromeImageView) findViewById(R.id.icon);
     }
 
-    /** @return TextView displayed as primary inside this {@link RadioButtonWithDescription}. */
+    /**
+     * @return TextView displayed as primary inside this {@link RadioButtonWithDescription}.
+     */
     protected TextView getPrimaryTextView() {
         return (TextView) findViewById(R.id.primary);
     }
 
-    /** @return TextView displayed as description inside this {@link RadioButtonWithDescription}. */
+    /**
+     * @return TextView displayed as description inside this {@link RadioButtonWithDescription}.
+     */
     protected TextView getDescriptionTextView() {
         return (TextView) findViewById(R.id.description);
     }
@@ -192,15 +199,11 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
      * @param attrs AttributeSet that will be applied to current view.
      */
     protected void applyAttributes(AttributeSet attrs) {
-        TypedArray a =
-                getContext()
-                        .getTheme()
-                        .obtainStyledAttributes(
-                                attrs, R.styleable.RadioButtonWithDescription, 0, 0);
+        TypedArray a = getContext().getTheme().obtainStyledAttributes(
+                attrs, R.styleable.RadioButtonWithDescription, 0, 0);
 
-        Drawable iconDrawable =
-                UiUtils.getDrawable(
-                        getContext(), a, R.styleable.RadioButtonWithDescription_iconSrc);
+        Drawable iconDrawable = UiUtils.getDrawable(
+                getContext(), a, R.styleable.RadioButtonWithDescription_iconSrc);
 
         if (iconDrawable != null) {
             mIcon.setImageDrawable(iconDrawable);
@@ -231,17 +234,23 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
         }
     }
 
-    /** Sets the text shown in the primary section. */
+    /**
+     * Sets the text shown in the primary section.
+     */
     public void setPrimaryText(CharSequence text) {
         mPrimary.setText(text);
     }
 
-    /** @return The text shown in the primary section. */
+    /**
+     * @return The text shown in the primary section.
+     */
     public CharSequence getPrimaryText() {
         return mPrimary.getText();
     }
 
-    /** Sets the text shown in the description section. */
+    /**
+     * Sets the text shown in the description section.
+     */
     public void setDescriptionText(CharSequence text) {
         mDescription.setText(text);
 
@@ -254,12 +263,16 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
         }
     }
 
-    /** @return The text shown in the description section. */
+    /**
+     * @return The text shown in the description section.
+     */
     public CharSequence getDescriptionText() {
         return mDescription.getText();
     }
 
-    /** Returns true if checked. */
+    /**
+     * Returns true if checked.
+     */
     public boolean isChecked() {
         return mRadioButton.isChecked();
     }
@@ -321,9 +334,8 @@ public class RadioButtonWithDescription extends RelativeLayout implements OnClic
         mRadioButton.setEnabled(enabled);
         if (mIcon != null) {
             TypedValue disabledAlpha = new TypedValue();
-            getContext()
-                    .getResources()
-                    .getValue(R.dimen.default_disabled_alpha, disabledAlpha, true);
+            getContext().getResources().getValue(
+                    R.dimen.default_disabled_alpha, disabledAlpha, true);
             mIcon.setAlpha(enabled ? 1.0f : disabledAlpha.getFloat());
         }
     }

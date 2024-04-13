@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_NACL_RENDERER_PLUGIN_PNACL_RESOURCES_H_
 #define COMPONENTS_NACL_RENDERER_PLUGIN_PNACL_RESOURCES_H_
 
-#include "base/memory/raw_ptr.h"
 #include "components/nacl/renderer/ppb_nacl_private.h"
 #include "ppapi/cpp/completion_callback.h"
 
@@ -51,7 +50,7 @@ class PnaclResources {
 
  private:
   // The plugin requesting the resource loading.
-  raw_ptr<Plugin> plugin_;
+  Plugin* plugin_;
   bool use_subzero_;
 
   PnaclResourceEntry resources_[NUM_TYPES + 1];

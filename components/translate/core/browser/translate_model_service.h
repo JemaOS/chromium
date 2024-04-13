@@ -6,7 +6,6 @@
 #define COMPONENTS_TRANSLATE_CORE_BROWSER_TRANSLATE_MODEL_SERVICE_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/files/file.h"
@@ -18,6 +17,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/optimization_guide/core/optimization_target_model_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace optimization_guide {
 class OptimizationGuideModelProvider;
@@ -48,8 +48,7 @@ class TranslateModelService
   // optimization_guide::OptimizationTargetModelObserver implementation:
   void OnModelUpdated(
       optimization_guide::proto::OptimizationTarget optimization_target,
-      base::optional_ref<const optimization_guide::ModelInfo> model_info)
-      override;
+      const optimization_guide::ModelInfo& model_info) override;
 
   // Returns the language detection model file, should only be called when the
   // is model file is already available. See the |NotifyOnModelFileAvailable|
@@ -69,12 +68,6 @@ class TranslateModelService
   void NotifyOnModelFileAvailable(NotifyModelAvailableCallback callback);
 
  private:
-  // Unloads the model in background task.
-  void UnloadModelFile();
-
-  // Notifies the model update to observers, and clears the observer list.
-  void NotifyModelUpdatesAndClear(bool is_model_available);
-
   void OnModelFileLoaded(base::File model_file);
 
   // Optimization Guide Service that provides model files for this service.
@@ -85,7 +78,7 @@ class TranslateModelService
   // The file that contains the language detection model. Available when the
   // file path has been provided by the Optimization Guide and has been
   // successfully loaded.
-  std::optional<base::File> language_detection_model_file_;
+  absl::optional<base::File> language_detection_model_file_;
 
   // The set of callbacks associated with requests for the language detection
   // model. The callback notifies requesters than the model file is now

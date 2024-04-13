@@ -57,14 +57,15 @@ public class ColorPickerAdvanced extends LinearLayout implements OnSeekBarChange
         init();
     }
 
-    /** Initializes all the views and variables in the advanced view. */
+    /**
+     * Initializes all the views and variables in the advanced view.
+     */
     private void init() {
         setOrientation(LinearLayout.VERTICAL);
 
         mHueDetails = createAndAddNewGradient(R.string.color_picker_hue, HUE_SEEK_BAR_MAX, this);
-        mSaturationDetails =
-                createAndAddNewGradient(
-                        R.string.color_picker_saturation, SATURATION_SEEK_BAR_MAX, this);
+        mSaturationDetails = createAndAddNewGradient(
+                R.string.color_picker_saturation, SATURATION_SEEK_BAR_MAX, this);
         mValueDetails =
                 createAndAddNewGradient(R.string.color_picker_value, VALUE_SEEK_BAR_MAX, this);
         refreshGradientComponents();
@@ -100,7 +101,9 @@ public class ColorPickerAdvanced extends LinearLayout implements OnSeekBarChange
         mOnColorChangedListener = onColorChangedListener;
     }
 
-    /** @return The color the user has currently chosen. */
+    /**
+     * @return The color the user has currently chosen.
+     */
     public int getColor() {
         return mCurrentColor;
     }
@@ -116,7 +119,9 @@ public class ColorPickerAdvanced extends LinearLayout implements OnSeekBarChange
         refreshGradientComponents();
     }
 
-    /** Notifies the listener, if there is one, of a change in the selected color. */
+    /**
+     * Notifies the listener, if there is one, of a change in the selected color.
+     */
     private void notifyColorChanged() {
         if (mOnColorChangedListener != null) {
             mOnColorChangedListener.onColorChanged(getColor());
@@ -204,7 +209,9 @@ public class ColorPickerAdvanced extends LinearLayout implements OnSeekBarChange
         mValueDetails.setGradientColors(newColors);
     }
 
-    /** Updates all the gradient displays to show the currently selected color. */
+    /**
+     * Updates all the gradient displays to show the currently selected color.
+     */
     private void refreshGradientComponents() {
         // Round and bound the saturation value.
         int saturationValue = Math.round(mCurrentHsvValues[1] * 100.0f);

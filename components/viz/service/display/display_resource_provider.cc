@@ -18,7 +18,7 @@
 #include "components/viz/common/resources/resource_sizes.h"
 #include "gpu/command_buffer/common/mailbox.h"
 #include "gpu/command_buffer/common/shared_image_trace_utils.h"
-#include "gpu/command_buffer/service/shared_image/shared_image_format_service_utils.h"
+#include "gpu/command_buffer/service/shared_image/shared_image_format_utils.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gl/trace_util.h"
 
@@ -171,22 +171,20 @@ gfx::BufferFormat DisplayResourceProvider::GetBufferFormat(ResourceId id) {
   return gpu::ToBufferFormat(resource->transferable.format);
 }
 
-SharedImageFormat DisplayResourceProvider::GetSharedImageFormat(ResourceId id) {
-  ChildResource* resource = GetResource(id);
-  return resource->transferable.format;
-}
-
-const gfx::ColorSpace& DisplayResourceProvider::GetColorSpace(ResourceId id) {
+const gfx::ColorSpace& DisplayResourceProvider::GetOverlayColorSpace(
+    ResourceId id) {
   ChildResource* resource = GetResource(id);
   return resource->transferable.color_space;
 }
 
-bool DisplayResourceProvider::GetNeedsDetiling(ResourceId id) {
+gfx::ColorSpace DisplayResourceProvider::GetSamplerColorSpace(ResourceId id) {
   ChildResource* resource = GetResource(id);
-  return resource->transferable.needs_detiling;
+  return resource->transferable.color_space_when_sampled.value_or(
+      resource->transferable.color_space);
 }
 
-const gfx::HDRMetadata& DisplayResourceProvider::GetHDRMetadata(ResourceId id) {
+const absl::optional<gfx::HDRMetadata>& DisplayResourceProvider::GetHDRMetadata(
+    ResourceId id) {
   ChildResource* resource = GetResource(id);
   return resource->transferable.hdr_metadata;
 }
@@ -242,9 +240,7 @@ void DisplayResourceProvider::ReceiveFromChild(
 
     ResourceId local_id = resource_id_generator_.GenerateNextId();
     DCHECK(!transferable_resource.is_software ||
-           transferable_resource.mailbox_holder.mailbox.IsSharedImage() ||
-           (!transferable_resource.mailbox_holder.mailbox.IsSharedImage() &&
-            transferable_resource.format.IsBitmapFormatSupported()));
+           transferable_resource.format.IsBitmapFormatSupported());
     resources_.emplace(local_id,
                        ChildResource(child_id, transferable_resource));
     child_info.child_to_parent_map[transferable_resource.id] = local_id;

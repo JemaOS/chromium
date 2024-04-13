@@ -26,10 +26,7 @@ enum class CastCertificateStatus {
   kRestrictionsFailed,
   kMissingCerts,
   kUnexpectedFailed,
-  kInvalidFallbackCRL,
-  kCertificateRevokedByFallbackCRL,
-  kCertificateAcceptedByFallbackCRL,
-  kMaxValue = kCertificateAcceptedByFallbackCRL,
+  kMaxValue = kUnexpectedFailed,
 };
 
 // Must match with histogram enum CastNonce.

@@ -84,7 +84,7 @@ ValueStore::ReadResult LeveldbValueStore::Get(
   base::Value::Dict settings;
 
   for (const std::string& key : keys) {
-    std::optional<base::Value> setting;
+    absl::optional<base::Value> setting;
     status.Merge(Read(key, &setting));
     if (!status.ok())
       return ReadResult(std::move(status));
@@ -105,7 +105,7 @@ ValueStore::ReadResult LeveldbValueStore::Get() {
   std::unique_ptr<leveldb::Iterator> it(db()->NewIterator(read_options()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     std::string key = it->key().ToString();
-    std::optional<base::Value> value = base::JSONReader::Read(
+    absl::optional<base::Value> value = base::JSONReader::Read(
         StringPiece(it->value().data(), it->value().size()));
     if (!value) {
       return ReadResult(Status(CORRUPTION,
@@ -177,13 +177,13 @@ ValueStore::WriteResult LeveldbValueStore::Remove(
   ValueStoreChangeList changes;
 
   for (const std::string& key : keys) {
-    std::optional<base::Value> old_value;
+    absl::optional<base::Value> old_value;
     status.Merge(Read(key, &old_value));
     if (!status.ok())
       return WriteResult(std::move(status));
 
     if (old_value) {
-      changes.emplace_back(key, std::move(old_value), std::nullopt);
+      changes.emplace_back(key, std::move(old_value), absl::nullopt);
       batch.Delete(key);
     }
   }
@@ -207,8 +207,8 @@ ValueStore::WriteResult LeveldbValueStore::Clear() {
   base::Value::Dict& whole_db = read_result.settings();
   while (!whole_db.empty()) {
     std::string next_key = whole_db.begin()->first;
-    std::optional<base::Value> next_value = whole_db.Extract(next_key);
-    changes.emplace_back(next_key, std::move(*next_value), std::nullopt);
+    absl::optional<base::Value> next_value = whole_db.Extract(next_key);
+    changes.emplace_back(next_key, std::move(*next_value), absl::nullopt);
   }
 
   DeleteDbFile();
@@ -256,7 +256,7 @@ ValueStore::Status LeveldbValueStore::AddToBatch(
   bool write_new_value = true;
 
   if (!(options & NO_GENERATE_CHANGES)) {
-    std::optional<base::Value> old_value;
+    absl::optional<base::Value> old_value;
     Status status = Read(key, &old_value);
     if (!status.ok())
       return status;

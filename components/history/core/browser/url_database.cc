@@ -13,7 +13,6 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "components/crash/core/common/crash_key.h"
 #include "components/database_utils/upper_bound_string.h"
 #include "components/database_utils/url_converter.h"
 #include "components/history/core/browser/keyword_search_term.h"
@@ -36,12 +35,9 @@ URLDatabase::URLEnumeratorBase::~URLEnumeratorBase() = default;
 URLDatabase::URLEnumerator::URLEnumerator() = default;
 
 bool URLDatabase::URLEnumerator::GetNextURL(URLRow* r) {
-  CHECK(r);
-  while (statement_.Step()) {
-    if (FillURLRow(statement_, r)) {
-      CHECK(r->url().is_valid());
-      return true;
-    }
+  if (statement_.Step()) {
+    FillURLRow(statement_, r);
+    return true;
   }
   return false;
 }
@@ -52,22 +48,17 @@ URLDatabase::URLDatabase()
 
 URLDatabase::~URLDatabase() = default;
 
-bool URLDatabase::FillURLRow(sql::Statement& s, URLRow* i) {
+// Convenience to fill a URLRow. Must be in sync with the fields in
+// kURLRowFields.
+void URLDatabase::FillURLRow(sql::Statement& s, URLRow* i) {
   DCHECK(i);
-
-  GURL url(s.ColumnString(1));
-  if (!url.is_valid()) {
-    return false;
-  }
-
   i->set_id(s.ColumnInt64(0));
-  i->set_url(url);
+  i->set_url(GURL(s.ColumnString(1)));
   i->set_title(s.ColumnString16(2));
   i->set_visit_count(s.ColumnInt(3));
   i->set_typed_count(s.ColumnInt(4));
   i->set_last_visit(s.ColumnTime(5));
   i->set_hidden(s.ColumnInt(6) != 0);
-  return true;
 }
 
 bool URLDatabase::MigrateKeywordsSearchTermsLowerTermColumn() {
@@ -129,7 +120,8 @@ bool URLDatabase::GetURLRow(URLID url_id, URLRow* info) {
   statement.BindInt64(0, url_id);
 
   if (statement.Step()) {
-    return FillURLRow(statement, info);
+    FillURLRow(statement, info);
+    return true;
   }
   return false;
 }
@@ -140,14 +132,11 @@ URLID URLDatabase::GetRowForURL(const GURL& url, URLRow* info) {
   std::string url_string = database_utils::GurlToDatabaseUrl(url);
   statement.BindString(0, url_string);
 
-  if (!statement.Step()) {
-    return 0;  // No data.
-  }
+  if (!statement.Step())
+    return 0;  // no data
 
-  if (info && !FillURLRow(statement, info)) {
-    return 0;  // Invalid URL row.
-  }
-
+  if (info)
+    FillURLRow(statement, info);
   return statement.ColumnInt64(0);
 }
 
@@ -356,9 +345,9 @@ bool URLDatabase::AutocompleteForPrefix(const std::string& prefix,
 
   while (statement.Step()) {
     URLRow info;
-    if (FillURLRow(statement, &info)) {
+    FillURLRow(statement, &info);
+    if (info.url().is_valid())
       results->push_back(info);
-    }
   }
   return !results->empty();
 }
@@ -389,8 +378,6 @@ bool URLDatabase::FindShortestURLFromBase(const std::string& base,
                                           int min_typed,
                                           bool allow_base,
                                           URLRow* info) {
-  DCHECK(info);
-
   // Select URLs that start with `base` and are prefixes of `url`.  All parts
   // of this query except the substr() call can be done using the index.  We
   // could do this query with a couple of LIKE or GLOB statements as well, but
@@ -400,26 +387,21 @@ bool URLDatabase::FindShortestURLFromBase(const std::string& base,
   sql.append(kURLRowFields);
   sql.append(" FROM urls WHERE url ");
   sql.append(allow_base ? ">=" : ">");
-  // Avoid limiting to 1 read to guard against the hypothetical case that a
-  // URL stored in the database is invalid, which requires moving on to the
-  // next best.
-  sql.append(
-      " ? AND url < :end AND url = substr(:end, 1, length(url)) "
-      "AND hidden = 0 AND visit_count >= ? AND typed_count >= ? "
-      "ORDER BY url");
+  sql.append(" ? AND url < :end AND url = substr(:end, 1, length(url)) "
+             "AND hidden = 0 AND visit_count >= ? AND typed_count >= ? "
+             "ORDER BY url LIMIT 1");
   sql::Statement statement(GetDB().GetUniqueStatement(sql.c_str()));
   statement.BindString(0, base);
   statement.BindString(1, url);   // :end
   statement.BindInt(2, min_visits);
   statement.BindInt(3, min_typed);
 
-  while (statement.Step()) {
-    if (FillURLRow(statement, info)) {
-      return true;
-    }
-  }
+  if (!statement.Step())
+    return false;
 
-  return false;
+  DCHECK(info);
+  FillURLRow(statement, info);
+  return true;
 }
 
 URLRows URLDatabase::GetTextMatches(const std::u16string& query) {
@@ -454,9 +436,9 @@ URLRows URLDatabase::GetTextMatchesWithAlgorithm(
 
     if (query_parser::QueryParser::DoesQueryMatch(query_words, query_nodes)) {
       URLResult info;
-      if (FillURLRow(statement, &info)) {
+      FillURLRow(statement, &info);
+      if (info.url().is_valid())
         results.push_back(info);
-      }
     }
   }
   return results;
@@ -697,15 +679,8 @@ bool URLDatabase::DropStarredIDFromURLs() {
 
 bool URLDatabase::CreateURLTable(bool is_temporary) {
   const char* name = is_temporary ? "temp_urls" : "urls";
-  if (GetDB().DoesTableExist(name)) {
-    if (!is_temporary) {
-      return true;
-    }
-    if (!GetDB().Execute("DROP TABLE temp_urls")) {
-      NOTREACHED() << GetDB().GetErrorMessage();
-      return false;
-    }
-  }
+  if (GetDB().DoesTableExist(name))
+    return true;
 
   // Note: revise implementation for InsertOrUpdateURLRowByID() if you add any
   // new constraints to the schema.
@@ -751,15 +726,7 @@ bool URLDatabase::RecreateURLTableWithAllContents() {
           "last_visit_time, hidden) "
           "SELECT id, url, title, visit_count, typed_count, last_visit_time, "
           "hidden FROM urls")) {
-    const char* error_message = GetDB().GetErrorMessage();
-    if (error_message) {
-      // TODO(crbug.com/40901889): used in understanding why this is happening.
-      // Remove once bug is fixed.
-      static crash_reporter::CrashKeyString<256> error_message_crash_key(
-          "recreate_url_table_description");
-      error_message_crash_key.Set(error_message);
-    }
-    NOTREACHED() << error_message;
+    NOTREACHED() << GetDB().GetErrorMessage();
     return false;
   }
 

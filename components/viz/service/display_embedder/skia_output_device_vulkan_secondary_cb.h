@@ -29,7 +29,7 @@ class SkiaOutputDeviceVulkanSecondaryCB final : public SkiaOutputDevice {
                int sample_count,
                float device_scale_factor,
                gfx::OverlayTransform transform) override;
-  void Present(const std::optional<gfx::Rect>& update_rect,
+  void Present(const absl::optional<gfx::Rect>& update_rect,
                BufferPresentedCallback feedback,
                OutputSurfaceFrame frame) override;
   SkSurface* BeginPaint(
@@ -46,7 +46,7 @@ class SkiaOutputDeviceVulkanSecondaryCB final : public SkiaOutputDevice {
             const GrBackendSemaphore wait_semaphores[],
             bool delete_semaphores_after_wait) override;
   bool Draw(SkSurface* sk_surface,
-            sk_sp<const GrDeferredDisplayList> ddl) override;
+            sk_sp<const SkDeferredDisplayList> ddl) override;
 
  private:
   const raw_ptr<VulkanContextProvider> context_provider_;

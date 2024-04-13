@@ -35,7 +35,9 @@ void PopulateShortcutsBackendWithTestData(
     TestShortcutData* db,
     size_t db_size);
 
+namespace history {
 class ShortcutsDatabase;
+}  // namespace history
 
 // This class manages the shortcut provider backend - access to database on the
 // db thread, etc.
@@ -116,6 +118,8 @@ class ShortcutsBackend : public RefcountedKeyedService,
       scoped_refptr<ShortcutsBackend> backend,
       TestShortcutData* db,
       size_t db_size);
+  FRIEND_TEST_ALL_PREFIXES(ShortcutsBackendTest, EntitySuggestionTest);
+  FRIEND_TEST_ALL_PREFIXES(ShortcutsBackendTest, MatchCoreDescriptionTest);
 
   enum CurrentState {
     NOT_INITIALIZED,  // Backend created but not initialized.
@@ -137,8 +141,8 @@ class ShortcutsBackend : public RefcountedKeyedService,
   void ShutdownOnUIThread() override;
 
   // history::HistoryServiceObserver:
-  void OnHistoryDeletions(history::HistoryService* history_service,
-                          const history::DeletionInfo& deletion_info) override;
+  void OnURLsDeleted(history::HistoryService* history_service,
+                     const history::DeletionInfo& deletion_info) override;
 
   // Internal initialization of the back-end. Posted by Init() to the DB thread.
   // On completion posts InitCompleted() back to UI thread.
@@ -164,7 +168,7 @@ class ShortcutsBackend : public RefcountedKeyedService,
   // Deletes all of the shortcuts.
   bool DeleteAllShortcuts();
 
-  raw_ptr<TemplateURLService> template_url_service_;
+  raw_ptr<TemplateURLService, DanglingUntriaged> template_url_service_;
   std::unique_ptr<SearchTermsData> search_terms_data_;
 
   CurrentState current_state_;

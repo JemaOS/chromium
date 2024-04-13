@@ -40,11 +40,11 @@ class EncryptionModuleInterface
   // the encrypted string and encryption information. EncryptedRecord then can
   // be further updated by the caller.
   void EncryptRecord(
-      std::string_view record,
+      base::StringPiece record,
       base::OnceCallback<void(StatusOr<EncryptedRecord>)> cb) const;
 
   // Records current public asymmetric key. Makes a not about last update time.
-  void UpdateAsymmetricKey(std::string_view new_public_key,
+  void UpdateAsymmetricKey(base::StringPiece new_public_key,
                            PublicKeyId new_public_key_id,
                            base::OnceCallback<void(Status)> response_cb);
 
@@ -69,12 +69,12 @@ class EncryptionModuleInterface
 
   // Implements EncryptRecord for the actual module.
   virtual void EncryptRecordImpl(
-      std::string_view record,
+      base::StringPiece record,
       base::OnceCallback<void(StatusOr<EncryptedRecord>)> cb) const = 0;
 
   // Implements UpdateAsymmetricKey for the actual module.
   virtual void UpdateAsymmetricKeyImpl(
-      std::string_view new_public_key,
+      base::StringPiece new_public_key,
       PublicKeyId new_public_key_id,
       base::OnceCallback<void(Status)> response_cb) = 0;
 

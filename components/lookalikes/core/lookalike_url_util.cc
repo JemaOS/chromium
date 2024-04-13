@@ -23,7 +23,7 @@
 #include "components/lookalikes/core/safety_tips_config.h"
 #include "components/security_interstitials/core/pref_names.h"
 #include "components/url_formatter/spoof_checks/common_words/common_words_util.h"
-#include "components/url_formatter/spoof_checks/top_domains/top_bucket_domains.h"
+#include "components/url_formatter/spoof_checks/top_domains/top500_domains.h"
 #include "components/url_formatter/spoof_checks/top_domains/top_domain_util.h"
 #include "components/url_formatter/url_formatter.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
@@ -37,7 +37,7 @@ using lookalikes::IsEditDistanceAtMostOne;
 using lookalikes::LookalikeTargetAllowlistChecker;
 using lookalikes::LookalikeUrlMatchType;
 using lookalikes::NavigationSuggestionEvent;
-using lookalikes::TopBucketDomainsParams;
+using lookalikes::Top500DomainsParams;
 
 namespace {
 
@@ -71,10 +71,10 @@ const char kTargetEmbeddingSeparators[] = "-.";
 // treat them as public for the purposes of lookalike checks.
 const char* kPrivateRegistriesTreatedAsPublic[] = {"com.de", "com.se"};
 
-TopBucketDomainsParams* GetTopDomainParams() {
-  static TopBucketDomainsParams params{
-      top_bucket_domains::kTopBucketEditDistanceSkeletons,
-      top_bucket_domains::kNumTopBucketEditDistanceSkeletons};
+Top500DomainsParams* GetTopDomainParams() {
+  static Top500DomainsParams params{
+      top500_domains::kTop500EditDistanceSkeletons,
+      top500_domains::kNumTop500EditDistanceSkeletons};
   return &params;
 }
 
@@ -165,8 +165,8 @@ constexpr std::pair<const char*, const char*> kBrandNamesForCSQ[] = {
 // using the format_url binary (components/url_formatter/tools/format_url.cc)
 const char* kSkeletonsOfPopularKeywordsForCSQ[] = {
     // Security
-    "account",  "activate", "adrnin",   "coin",   "crypto",  "login", "logout",
-    "password", "secure",   "security", "signin", "signout", "wallet"};
+    "account",  "activate", "adrnin",   "login",  "logout",
+    "password", "secure",   "security", "signin", "signout"};
 
 // Minimum length of brand to be checked for Combo Squatting.
 const size_t kMinBrandNameLengthForComboSquatting = 4;
@@ -212,17 +212,17 @@ std::string GetMatchingSiteEngagementDomain(
 // done in lexicographic order on the top 500 suitable domains, instead of in
 // order by popularity. This means that the resulting "similar" domain may not
 // be the most popular domain that matches.
-bool GetSimilarDomainFromTopBucket(
+bool GetSimilarDomainFromTop500(
     const DomainInfo& navigated_domain,
     const LookalikeTargetAllowlistChecker& target_allowlisted,
     std::string* matched_domain,
     LookalikeUrlMatchType* match_type) {
-  TopBucketDomainsParams* top_bucket_domain_params = GetTopDomainParams();
+  Top500DomainsParams* top_500_domain_params = GetTopDomainParams();
   for (const std::string& navigated_skeleton : navigated_domain.skeletons) {
-    for (size_t i = 0;
-         i < top_bucket_domain_params->num_edit_distance_skeletons; i++) {
+    for (size_t i = 0; i < top_500_domain_params->num_edit_distance_skeletons;
+         i++) {
       const char* const top_domain_skeleton =
-          top_bucket_domain_params->edit_distance_skeletons[i];
+          top_500_domain_params->edit_distance_skeletons[i];
       DCHECK(strlen(top_domain_skeleton));
       // Check edit distance on skeletons.
       if (IsEditDistanceAtMostOne(base::UTF8ToUTF16(navigated_skeleton),
@@ -401,7 +401,7 @@ bool IsETLDPlusOneOrTrivialSubdomain(const DomainInfo& host) {
 }
 
 // Returns if |etld_plus_one| shares the skeleton of an eTLD+1 with an engaged
-// site or a top bucket domain. |embedded_target| is set to matching eTLD+1.
+// site or a top 500 domain. |embedded_target| is set to matching eTLD+1.
 bool DoesETLDPlus1MatchTopDomainOrEngagedSite(
     const DomainInfo& domain,
     const std::vector<DomainInfo>& engaged_sites,
@@ -422,7 +422,7 @@ bool DoesETLDPlus1MatchTopDomainOrEngagedSite(
     const url_formatter::TopDomainEntry top_domain =
         url_formatter::LookupSkeletonInTopDomains(
             skeleton, url_formatter::SkeletonType::kFull);
-    if (!top_domain.domain.empty() && top_domain.is_top_bucket) {
+    if (!top_domain.domain.empty() && top_domain.is_top_500) {
       *embedded_target = top_domain.domain;
       return true;
     }
@@ -980,10 +980,9 @@ bool GetMatchingDomain(
       DCHECK_NE(navigated_domain.domain_and_registry,
                 navigated_domain.idn_result.matching_top_domain.domain);
       *matched_domain = navigated_domain.idn_result.matching_top_domain.domain;
-      *match_type =
-          navigated_domain.idn_result.matching_top_domain.is_top_bucket
-              ? LookalikeUrlMatchType::kSkeletonMatchTop500
-              : LookalikeUrlMatchType::kSkeletonMatchTop5k;
+      *match_type = navigated_domain.idn_result.matching_top_domain.is_top_500
+                        ? LookalikeUrlMatchType::kSkeletonMatchTop500
+                        : LookalikeUrlMatchType::kSkeletonMatchTop5k;
       return true;
     }
   }
@@ -1001,8 +1000,8 @@ bool GetMatchingDomain(
 
     // Finally, try to find a top domain within an edit distance or character
     // swap of one.
-    if (GetSimilarDomainFromTopBucket(navigated_domain, in_target_allowlist,
-                                      matched_domain, match_type)) {
+    if (GetSimilarDomainFromTop500(navigated_domain, in_target_allowlist,
+                                   matched_domain, match_type)) {
       DCHECK_NE(navigated_domain.domain_and_registry, *matched_domain);
       DCHECK(!matched_domain->empty());
       return true;
@@ -1355,14 +1354,14 @@ bool HasOneCharacterSwap(const std::u16string& str1,
   return has_swap;
 }
 
-void SetTopBucketDomainsParamsForTesting(const TopBucketDomainsParams& params) {
+void SetTop500DomainsParamsForTesting(const Top500DomainsParams& params) {
   *GetTopDomainParams() = params;
 }
 
-void ResetTopBucketDomainsParamsForTesting() {
-  TopBucketDomainsParams* params = GetTopDomainParams();
-  *params = {top_bucket_domains::kTopBucketEditDistanceSkeletons,
-             top_bucket_domains::kNumTopBucketEditDistanceSkeletons};
+void ResetTop500DomainsParamsForTesting() {
+  Top500DomainsParams* params = GetTopDomainParams();
+  *params = {top500_domains::kTop500EditDistanceSkeletons,
+             top500_domains::kNumTop500EditDistanceSkeletons};
 }
 
 bool IsHeuristicEnabledForHostname(

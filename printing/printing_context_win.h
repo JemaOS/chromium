@@ -20,7 +20,7 @@ class PrintSettings;
 
 class COMPONENT_EXPORT(PRINTING) PrintingContextWin : public PrintingContext {
  public:
-  PrintingContextWin(Delegate* delegate, ProcessBehavior process_behavior);
+  explicit PrintingContextWin(Delegate* delegate);
   PrintingContextWin(const PrintingContextWin&) = delete;
   PrintingContextWin& operator=(const PrintingContextWin&) = delete;
   ~PrintingContextWin() override;

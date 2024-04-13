@@ -12,6 +12,10 @@ enum AccountType {
   ACCOUNT_TYPE_UNSPECIFIED = 0;  // Proto best practice for enums.
   ACCOUNT_TYPE_GAIA = 1;
   ACCOUNT_TYPE_ACTIVE_DIRECTORY = 2;
+  //---***JEMAOS BEGIN***---
+  ACCOUNT_TYPE_FLINT = 3;
+  ACCOUNT_TYPE_JEMA = 4;
+  //---***JEMAOS END***---
 }
 
 message Account {

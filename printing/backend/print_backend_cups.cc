@@ -11,7 +11,6 @@
 #include <pthread.h>
 
 #include <string>
-#include <string_view>
 
 #include "base/files/file_util.h"
 #include "base/logging.h"
@@ -19,7 +18,9 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_piece.h"
 #include "base/synchronization/lock.h"
+#include "base/values.h"
 #include "build/build_config.h"
 #include "printing/backend/cups_helper.h"
 #include "printing/backend/print_backend_consts.h"
@@ -29,6 +30,7 @@
 #if BUILDFLAG(IS_MAC)
 #include "base/feature_list.h"
 #include "printing/backend/cups_connection.h"
+#include "printing/backend/cups_ipp_utils.h"
 #include "printing/backend/print_backend_cups_ipp.h"
 #include "printing/printing_features.h"
 #endif  // BUILDFLAG(IS_MAC)
@@ -110,13 +112,6 @@ mojom::ResultCode PrintBackendCUPS::PrinterBasicInfoFromCUPS(
   // "printer-make-and-model" specifies the printer description.
   if (info)
     printer_info->display_name = info;
-
-  // It is possible to create a printer with a blank display name, so just
-  // use the printer name in such a case.
-  if (printer_info->display_name.empty()) {
-    printer_info->display_name = printer.name;
-  }
-
   if (drv_info)
     printer_info->printer_description = drv_info;
 #else
@@ -132,11 +127,15 @@ mojom::ResultCode PrintBackendCUPS::PrinterBasicInfoFromCUPS(
 // static
 std::string PrintBackendCUPS::PrinterDriverInfoFromCUPS(
     const cups_dest_t& printer) {
-  // std::string_view will correctly handle nullptrs from cupsGetOption(),
+  // base::StringPiece will correctly handle nullptrs from cupsGetOption(),
   // whereas std::string will not. Thus do not directly assign to `result`.
-  std::string_view info(
+  base::StringPiece info(
       cupsGetOption(kDriverNameTagName, printer.num_options, printer.options));
   return std::string(info);
+}
+
+void PrintBackendCUPS::DestinationDeleter::operator()(cups_dest_t* dest) const {
+  cupsFreeDests(1, dest);
 }
 
 mojom::ResultCode PrintBackendCUPS::EnumeratePrinters(
@@ -276,14 +275,14 @@ std::string PrintBackendCUPS::GetPrinterCapabilities(
   return content;
 }
 
-std::vector<std::string> PrintBackendCUPS::GetPrinterDriverInfo(
+std::string PrintBackendCUPS::GetPrinterDriverInfo(
     const std::string& printer_name) {
-  std::vector<std::string> result;
+  std::string result;
 
   ScopedDestination dest = GetNamedDest(printer_name);
   if (dest) {
     DCHECK_EQ(printer_name, dest->name);
-    result.emplace_back(PrinterDriverInfoFromCUPS(*dest));
+    result = PrinterDriverInfoFromCUPS(*dest);
   }
 
   return result;
@@ -295,14 +294,35 @@ bool PrintBackendCUPS::IsValidPrinter(const std::string& printer_name) {
 
 #if !BUILDFLAG(IS_CHROMEOS)
 scoped_refptr<PrintBackend> PrintBackend::CreateInstanceImpl(
+    const base::Value::Dict* print_backend_settings,
     const std::string& locale) {
 #if BUILDFLAG(IS_MAC)
   if (base::FeatureList::IsEnabled(features::kCupsIppPrintingBackend)) {
-    return base::MakeRefCounted<PrintBackendCupsIpp>(CupsConnection::Create());
+    return base::MakeRefCounted<PrintBackendCupsIpp>(
+        CreateConnection(print_backend_settings));
   }
 #endif  // BUILDFLAG(IS_MAC)
+  std::string print_server_url_str;
+  bool cups_blocking = false;
+  int encryption = HTTP_ENCRYPT_NEVER;
+  if (print_backend_settings) {
+    const std::string* url_from_settings =
+        print_backend_settings->FindString(kCUPSPrintServerURL);
+    if (url_from_settings)
+      print_server_url_str = *url_from_settings;
+
+    const std::string* blocking_from_settings =
+        print_backend_settings->FindString(kCUPSBlocking);
+    if (blocking_from_settings)
+      cups_blocking = *blocking_from_settings == kValueTrue;
+
+    encryption = print_backend_settings->FindInt(kCUPSEncryption)
+                     .value_or(HTTP_ENCRYPT_NEVER);
+  }
+  GURL print_server_url(print_server_url_str);
   return base::MakeRefCounted<PrintBackendCUPS>(
-      GURL(), HTTP_ENCRYPT_NEVER, /*cups_blocking=*/false, locale);
+      print_server_url, static_cast<http_encryption_t>(encryption),
+      cups_blocking, locale);
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
@@ -366,7 +386,7 @@ base::FilePath PrintBackendCUPS::GetPPD(const char* name) {
   return ppd_path;
 }
 
-ScopedDestination PrintBackendCUPS::GetNamedDest(
+PrintBackendCUPS::ScopedDestination PrintBackendCUPS::GetNamedDest(
     const std::string& printer_name) {
   cups_dest_t* dest;
   if (print_server_url_.is_empty()) {

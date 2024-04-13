@@ -5,9 +5,9 @@
 #include "components/reporting/resources/resource_manager.h"
 
 #include <atomic>
-#include <cstdint>
-#include <optional>
 #include <utility>
+
+#include <cstdint>
 
 #include "base/logging.h"
 #include "base/memory/ref_counted.h"
@@ -17,6 +17,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -39,7 +40,7 @@ bool ResourceManager::Reserve(uint64_t size) {
 }
 
 void ResourceManager::Discard(uint64_t size) {
-  CHECK_LE(size, used_.load());
+  DCHECK_LE(size, used_.load());
   used_.fetch_sub(size);
 
   sequenced_task_runner_->PostTask(
@@ -117,7 +118,7 @@ ScopedReservation::ScopedReservation(
 
 ScopedReservation::ScopedReservation(ScopedReservation&& other) noexcept
     : resource_manager_(other.resource_manager_),
-      size_(std::exchange(other.size_, std::nullopt)) {}
+      size_(std::exchange(other.size_, absl::nullopt)) {}
 
 bool ScopedReservation::reserved() const {
   return size_.has_value();
@@ -134,24 +135,24 @@ bool ScopedReservation::Reduce(uint64_t new_size) {
   if (new_size > 0) {
     size_ = new_size;
   } else {
-    size_ = std::nullopt;
+    size_ = absl::nullopt;
   }
   return true;
 }
 
 void ScopedReservation::HandOver(ScopedReservation& other) {
   if (resource_manager_.get()) {
-    CHECK_EQ(resource_manager_.get(), other.resource_manager_.get())
+    DCHECK_EQ(resource_manager_.get(), other.resource_manager_.get())
         << "Reservations are not related";
   } else {
-    CHECK(!reserved()) << "Unattached reservation may not have size";
+    DCHECK(!reserved()) << "Unattached reservation may not have size";
     resource_manager_ = other.resource_manager_;
   }
   if (!other.reserved()) {
     return;  // Nothing changes.
   }
   const uint64_t old_size = (reserved() ? size_.value() : 0uL);
-  size_ = old_size + std::exchange(other.size_, std::nullopt).value();
+  size_ = old_size + std::exchange(other.size_, absl::nullopt).value();
 }
 
 ScopedReservation::~ScopedReservation() {

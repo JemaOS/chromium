@@ -41,6 +41,8 @@ class VirtualCardUsageData {
 
   friend bool operator==(const VirtualCardUsageData& a,
                          const VirtualCardUsageData& b);
+  friend bool operator!=(const VirtualCardUsageData& a,
+                         const VirtualCardUsageData& b);
 
   InstrumentId instrument_id() const { return instrument_id_; }
 
@@ -50,7 +52,7 @@ class VirtualCardUsageData {
     return virtual_card_last_four_;
   }
 
-  const url::Origin& merchant_origin() const { return merchant_origin_; }
+  url::Origin merchant_origin() const { return merchant_origin_; }
 
  private:
   UsageDataId usage_data_id_;

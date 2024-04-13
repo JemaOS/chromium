@@ -6,11 +6,10 @@
 #define COMPONENTS_BACKGROUND_TASK_SCHEDULER_TASK_INFO_H_
 
 #include <stdint.h>
-
-#include <optional>
 #include <string>
 
 #include "components/background_task_scheduler/task_ids.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace background_task {
 
@@ -65,8 +64,8 @@ struct TaskInfo {
   bool update_current = false;
   std::string extras;
 
-  std::optional<PeriodicInfo> periodic_info;
-  std::optional<OneOffInfo> one_off_info;
+  absl::optional<PeriodicInfo> periodic_info;
+  absl::optional<OneOffInfo> one_off_info;
 };
 
 }  // namespace background_task

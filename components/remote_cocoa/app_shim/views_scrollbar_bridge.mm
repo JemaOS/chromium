@@ -4,9 +4,6 @@
 
 #import "components/remote_cocoa/app_shim/views_scrollbar_bridge.h"
 
-#include "base/check.h"
-#include "base/memory/raw_ptr.h"
-
 @interface ViewsScrollbarBridge ()
 
 // Called when we receive a NSPreferredScrollerStyleDidChangeNotification.
@@ -14,14 +11,12 @@
 
 @end
 
-@implementation ViewsScrollbarBridge {
-  raw_ptr<ViewsScrollbarBridgeDelegate> _delegate;  // Weak. Owns this.
-}
+@implementation ViewsScrollbarBridge
 
 - (instancetype)initWithDelegate:(ViewsScrollbarBridgeDelegate*)delegate {
   if ((self = [super init])) {
     _delegate = delegate;
-    [NSNotificationCenter.defaultCenter
+    [[NSNotificationCenter defaultCenter]
         addObserver:self
            selector:@selector(onScrollerStyleChanged:)
                name:NSPreferredScrollerStyleDidChangeNotification
@@ -32,11 +27,12 @@
 
 - (void)dealloc {
   DCHECK(!_delegate);
+  [super dealloc];
 }
 
 - (void)clearDelegate {
   _delegate = nullptr;
-  [NSNotificationCenter.defaultCenter removeObserver:self];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)onScrollerStyleChanged:(NSNotification*)notification {
@@ -44,8 +40,8 @@
     _delegate->OnScrollerStyleChanged();
 }
 
-+ (NSScrollerStyle)preferredScrollerStyle {
-  return NSScroller.preferredScrollerStyle;
++ (NSScrollerStyle)getPreferredScrollerStyle {
+  return [NSScroller preferredScrollerStyle];
 }
 
 @end

@@ -4,7 +4,6 @@
 
 #include "components/services/unzip/public/cpp/unzip.h"
 
-#include <string_view>
 #include <utility>
 
 #include "base/base_paths.h"
@@ -23,9 +22,9 @@
 namespace unzip {
 namespace {
 
-base::FilePath GetArchivePath(std::string_view archive_name) {
+base::FilePath GetArchivePath(const base::StringPiece archive_name) {
   base::FilePath path;
-  EXPECT_TRUE(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &path));
+  EXPECT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &path));
   return path.AppendASCII("components")
       .AppendASCII("test")
       .AppendASCII("data")
@@ -268,7 +267,7 @@ TEST_F(UnzipTest, DetectEncodingUtf8) {
 
 // See https://crbug.com/1287893
 TEST_F(UnzipTest, DetectEncodingSjis) {
-  for (const std::string_view name : {
+  for (const base::StringPiece name : {
            "SJIS 00.zip",
            "SJIS 01.zip",
            "SJIS 02.zip",

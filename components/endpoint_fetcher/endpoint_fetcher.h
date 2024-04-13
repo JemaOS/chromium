@@ -5,22 +5,17 @@
 #ifndef COMPONENTS_ENDPOINT_FETCHER_ENDPOINT_FETCHER_H_
 #define COMPONENTS_ENDPOINT_FETCHER_ENDPOINT_FETCHER_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
-#include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/primary_account_access_token_fetcher.h"
 #include "components/signin/public/identity_manager/scope_set.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "services/data_decoder/public/cpp/json_sanitizer.h"
-
-namespace base {
-class TimeDelta;
-}  // namespace base
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace network {
 struct ResourceRequest;
@@ -44,7 +39,7 @@ enum class FetchErrorType {
 struct EndpointResponse {
   std::string response;
   int http_status_code{-1};
-  std::optional<FetchErrorType> error_type;
+  absl::optional<FetchErrorType> error_type;
 };
 
 using EndpointFetcherCallback =
@@ -72,11 +67,10 @@ class EndpointFetcher {
       const std::string& http_method,
       const std::string& content_type,
       const std::vector<std::string>& scopes,
-      const base::TimeDelta& timeout,
+      int64_t timeout_ms,
       const std::string& post_data,
       const net::NetworkTrafficAnnotationTag& annotation_tag,
-      signin::IdentityManager* identity_manager,
-      signin::ConsentLevel consent_level);
+      signin::IdentityManager* const identity_manager);
 
   // Constructor if Chrome API Key is used for authentication
   EndpointFetcher(
@@ -84,7 +78,7 @@ class EndpointFetcher {
       const GURL& url,
       const std::string& http_method,
       const std::string& content_type,
-      const base::TimeDelta& timeout,
+      int64_t timeout_ms,
       const std::string& post_data,
       const std::vector<std::string>& headers,
       const net::NetworkTrafficAnnotationTag& annotation_tag,
@@ -104,25 +98,24 @@ class EndpointFetcher {
       const std::string& http_method,
       const std::string& content_type,
       const std::vector<std::string>& scopes,
-      const base::TimeDelta& timeout,
+      int64_t timeout_ms,
       const std::string& post_data,
       const net::NetworkTrafficAnnotationTag& annotation_tag,
       const scoped_refptr<network::SharedURLLoaderFactory>& url_loader_factory,
-      signin::IdentityManager* identity_manager,
-      signin::ConsentLevel consent_level);
+      signin::IdentityManager* const identity_manager);
 
   // This Constructor can be used in a background thread.
   EndpointFetcher(
       const GURL& url,
       const std::string& http_method,
       const std::string& content_type,
-      const base::TimeDelta& timeout,
+      int64_t timeout_ms,
       const std::string& post_data,
       const std::vector<std::string>& headers,
       const std::vector<std::string>& cors_exempt_headers,
       const net::NetworkTrafficAnnotationTag& annotation_tag,
       const scoped_refptr<network::SharedURLLoaderFactory>& url_loader_factory,
-      bool is_oauth_fetch);
+      const bool is_oauth_fetch);
 
   EndpointFetcher(const EndpointFetcher& endpoint_fetcher) = delete;
 
@@ -161,7 +154,7 @@ class EndpointFetcher {
   const GURL url_;
   const std::string http_method_;
   const std::string content_type_;
-  base::TimeDelta timeout_;
+  int64_t timeout_ms_;
   const std::string post_data_;
   const std::vector<std::string> headers_;
   const std::vector<std::string> cors_exempt_headers_;
@@ -170,13 +163,7 @@ class EndpointFetcher {
 
   // Members set in constructor
   const scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
-  // `identity_manager_` can be null if it is not needed for authentication (in
-  // this case, callers should invoke `PerformRequest` directly).
-  const raw_ptr<signin::IdentityManager, AcrossTasksDanglingUntriaged>
-      identity_manager_;
-  // `consent_level_` is used together with `identity_manager_`, so it can be
-  // null if `identity_manager_` is null.
-  const std::optional<signin::ConsentLevel> consent_level_;
+  const raw_ptr<signin::IdentityManager, DanglingUntriaged> identity_manager_;
   bool sanitize_response_;
   bool is_stable_channel_;
 

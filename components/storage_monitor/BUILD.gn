@@ -52,9 +52,6 @@ static_library("storage_monitor") {
       "Foundation.framework",
       "ImageCaptureCore.framework",
     ]
-    weak_frameworks = [
-      "UniformTypeIdentifiers.framework",  # macOS 11
-    ]
   } else if (is_chromeos_ash) {
     # For Chrome OS, |is_linux| is also true. Put this in an else-if block above
     # the |is_linux| else-if block, so they do not clash.
@@ -167,9 +164,6 @@ source_set("unit_tests") {
     sources += [
       "image_capture_device_manager_unittest.mm",
       "storage_monitor_mac_unittest.mm",
-    ]
-    weak_frameworks = [
-      "UniformTypeIdentifiers.framework",  # macOS 11
     ]
   }
 

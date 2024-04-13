@@ -11,9 +11,8 @@
 #include "gin/handle.h"
 #include "gin/object_template_builder.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
-#include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
+#include "third_party/blink/public/web/blink.h"
 #include "third_party/blink/public/web/web_local_frame.h"
-#include "v8/include/v8-context.h"
 #include "v8/include/v8-microtask-queue.h"
 
 namespace security_interstitials {
@@ -23,10 +22,10 @@ gin::WrapperInfo SecurityInterstitialPageController::kWrapperInfo = {
 
 void SecurityInterstitialPageController::Install(
     content::RenderFrame* render_frame) {
-  blink::WebLocalFrame* web_frame = render_frame->GetWebFrame();
-  v8::Isolate* isolate = web_frame->GetAgentGroupScheduler()->Isolate();
+  v8::Isolate* isolate = blink::MainThreadIsolate();
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = web_frame->MainWorldScriptContext();
+  v8::Local<v8::Context> context =
+      render_frame->GetWebFrame()->MainWorldScriptContext();
   if (context.IsEmpty())
     return;
 

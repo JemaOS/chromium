@@ -29,7 +29,7 @@
 #include "components/translate/core/browser/translate_prefs.h"
 #include "components/translate/core/browser/translate_ui_delegate.h"
 #include "components/translate/core/browser/translate_ui_languages_manager.h"
-#include "components/translate/core/common/translate_metrics.h"
+#include "components/translate/core/common/translate_constants.h"
 #include "components/translate/core/common/translate_util.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -105,10 +105,10 @@ class TestTranslateDriver : public testing::MockTranslateDriver {
   ~TestTranslateDriver() override;
 
   MOCK_METHOD(void, RevertTranslation, (int), (override));
-  MOCK_METHOD(bool, IsIncognito, (), (const override));
-  MOCK_METHOD(bool, HasCurrentPage, (), (const override));
+  MOCK_METHOD(bool, IsIncognito, (), (override));
+  MOCK_METHOD(bool, HasCurrentPage, (), (override));
 
-  const GURL& GetLastCommittedURL() const override { return url_; }
+  const GURL& GetLastCommittedURL() override { return url_; }
   void SetLastCommittedURL(GURL url) { url_ = std::move(url); }
 
  private:
@@ -1255,7 +1255,9 @@ TEST_F(TranslateMessageTest, TranslationIgnored) {
   EXPECT_EQ(100, translate_prefs_->GetTranslationAcceptedCount("fr"));
   EXPECT_EQ(100, translate_prefs_->GetTranslationDeniedCount("fr"));
 
-  EXPECT_EQ(1, translate_prefs_->GetTranslationIgnoredCount("fr"));
+  // TODO(crbug.com/1408277): Change this back to 1 after re-enabling the
+  // counting of ignored cases.
+  EXPECT_EQ(0, translate_prefs_->GetTranslationIgnoredCount("fr"));
 }
 
 TEST_F(TranslateMessageTest, TranslationNotIgnoredBecauseOverflowMenuOpened) {

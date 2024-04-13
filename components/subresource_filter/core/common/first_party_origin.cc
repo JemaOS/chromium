@@ -4,8 +4,6 @@
 
 #include "components/subresource_filter/core/common/first_party_origin.h"
 
-#include <string_view>
-
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 
 namespace subresource_filter {
@@ -26,7 +24,7 @@ FirstPartyOrigin::FirstPartyOrigin(url::Origin document_origin)
 bool FirstPartyOrigin::IsThirdParty(const GURL& url) const {
   if (document_origin_.opaque())
     return true;
-  std::string_view host_piece = url.host_piece();
+  base::StringPiece host_piece = url.host_piece();
   if (!last_checked_host_.empty() && host_piece == last_checked_host_)
     return last_checked_host_was_third_party_;
 

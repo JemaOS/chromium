@@ -229,7 +229,7 @@ void GeoLanguageProvider::SetGeoLanguages(
   }
   prefs_->SetList(kCachedGeoLanguagesPref, std::move(cache_list));
   prefs_->SetDouble(kTimeOfLastGeoLanguagesUpdatePref,
-                    base::Time::Now().InSecondsFSinceUnixEpoch());
+                    base::Time::Now().ToDoubleT());
 }
 
 }  // namespace language

@@ -6,7 +6,6 @@
 
 #import <MediaPlayer/MediaPlayer.h>
 
-#include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "components/system_media_controls/mac/remote_command_center_delegate.h"
 
@@ -18,10 +17,7 @@
 
 @end
 
-@implementation RemoteCommandCenterDelegateCocoa {
-  raw_ptr<system_media_controls::internal::RemoteCommandCenterDelegate>
-      _delegate;
-}
+@implementation RemoteCommandCenterDelegateCocoa
 
 - (instancetype)initWithDelegate:
     (system_media_controls::internal::RemoteCommandCenterDelegate*)delegate {

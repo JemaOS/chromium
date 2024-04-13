@@ -56,10 +56,6 @@ void HttpAuthManagerImpl::SetObserverAndDeliverCredentials(
   if (observer_)
     observer_->OnLoginModelDestroying();
   observer_ = observer;
-
-  if (!client_->IsFillingEnabled(observed_form.url)) {
-    return;
-  }
   // Initialize the form manager.
   form_manager_ = std::make_unique<PasswordFormManager>(
       client_, PasswordFormDigest(observed_form), nullptr /* form_fetcher */,

@@ -54,7 +54,7 @@ FakeGCMDriverForInstanceID::FakeGCMDriverForInstanceID(
     return;
   }
 
-  std::optional<base::Value> data = base::JSONReader::Read(encoded_data);
+  absl::optional<base::Value> data = base::JSONReader::Read(encoded_data);
   DCHECK(data.has_value() && data->is_dict())
       << "Failed to read data from stored FCM tokens file";
 

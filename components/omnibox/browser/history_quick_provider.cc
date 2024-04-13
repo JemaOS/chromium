@@ -55,10 +55,13 @@ void HistoryQuickProvider::Start(const AutocompleteInput& input,
                                  bool minimal_changes) {
   TRACE_EVENT0("omnibox", "HistoryQuickProvider::Start");
   matches_.clear();
-  if (disabled_ || input.IsZeroSuggest() ||
-      input.type() == metrics::OmniboxInputType::EMPTY) {
+  if (disabled_ ||
+      input.focus_type() != metrics::OmniboxFocusType::INTERACTION_DEFAULT)
     return;
-  }
+
+  // Don't bother with INVALID.
+  if ((input.type() == metrics::OmniboxInputType::EMPTY))
+    return;
 
   // Remove the keyword from input if we're in keyword mode for a starter pack
   // engine.
@@ -88,7 +91,7 @@ void HistoryQuickProvider::DoAutocomplete() {
   // In keyword mode, it's possible we only provide results from one or two
   // autocomplete provider(s), so it's sometimes necessary to show more results
   // than provider_max_matches_.
-  size_t max_matches = autocomplete_input_.InKeywordMode()
+  size_t max_matches = InKeywordMode(autocomplete_input_)
                            ? provider_max_matches_in_keyword_mode_
                            : provider_max_matches_;
 
@@ -119,20 +122,12 @@ void HistoryQuickProvider::DoAutocomplete() {
 
   add_matches(matches);
 
-  // If ML scoring is enabled, mark all "extra" matches as `culled_by_provider`.
-  // If ML scoring is disabled, this is effectively a no-op as the matches will
-  // already be resized in the above call to `HistoryItemsForTerms()`.
-  ResizeMatches(
-      max_matches,
-      OmniboxFieldTrial::IsMlUrlScoringUnlimitedNumCandidatesEnabled());
-
   // Add suggestions from the user's highly visited domains bypassing
   // `provider_max_matches_`.
 
   // In keyword mode, already have enough matches.
-  if (autocomplete_input_.InKeywordMode()) {
+  if (InKeywordMode(autocomplete_input_))
     return;
-  }
 
   static const size_t domain_suggestions_min_char =
       OmniboxFieldTrial::kDomainSuggestionsMinInputLength.Get();
@@ -176,7 +171,7 @@ void HistoryQuickProvider::DoAutocomplete() {
   }
 }
 
-std::optional<int> HistoryQuickProvider::MaxMatchScore() {
+absl::optional<int> HistoryQuickProvider::MaxMatchScore() {
   // Figure out if HistoryURL provider has a URL-what-you-typed match
   // that ought to go first and what its score will be.
   bool will_have_url_what_you_typed_match_first = false;
@@ -263,8 +258,8 @@ std::optional<int> HistoryQuickProvider::MaxMatchScore() {
     }
   }
   return will_have_url_what_you_typed_match_first
-             ? std::optional<int>{url_what_you_typed_match_score - 1}
-             : std::nullopt;
+             ? absl::optional<int>{url_what_you_typed_match_score - 1}
+             : absl::nullopt;
 }
 
 AutocompleteMatch HistoryQuickProvider::QuickMatchToACMatch(
@@ -338,7 +333,7 @@ AutocompleteMatch HistoryQuickProvider::QuickMatchToACMatch(
         ACMatchClassification::URL);
   }
 
-  match.description = AutocompleteMatch::SanitizeString(info.title());
+  match.description = info.title();
   auto description_terms =
       FindTermMatches(autocomplete_input_.text(), match.description);
   match.description_class = ClassifyTermMatches(
@@ -362,11 +357,11 @@ AutocompleteMatch HistoryQuickProvider::QuickMatchToACMatch(
     match.transition = ui::PAGE_TRANSITION_KEYWORD;
   }
 
-  if (autocomplete_input_.InKeywordMode()) {
+  if (InKeywordMode(autocomplete_input_)) {
     match.from_keyword = true;
   }
 
-  if (OmniboxFieldTrial::IsPopulatingUrlScoringSignalsEnabled() &&
+  if (OmniboxFieldTrial::IsLogUrlScoringSignalsEnabled() &&
       AutocompleteScoringSignalsAnnotator::IsEligibleMatch(match)) {
     // Propagate scoring signals to AC Match for ML Model training data.
     // `allowed_to_be_default_match` is set in this function, after the ACMatch

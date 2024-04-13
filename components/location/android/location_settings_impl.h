@@ -20,7 +20,6 @@ class LocationSettingsImpl : public LocationSettings {
 
   // LocationSettings implementation:
   bool HasAndroidLocationPermission() override;
-  bool HasAndroidFineLocationPermission() override;
   bool CanPromptForAndroidLocationPermission(
       ui::WindowAndroid* window) override;
   bool IsSystemLocationSettingEnabled() override;

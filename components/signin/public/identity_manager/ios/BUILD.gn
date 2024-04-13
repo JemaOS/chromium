@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 source_set("ios") {
+  configs += [ "//build/config/compiler:enable_arc" ]
+
   sources = [
     "device_accounts_provider.cc",
     "device_accounts_provider.h",
@@ -15,6 +17,8 @@ source_set("ios") {
 }
 
 source_set("test_support") {
+  configs += [ "//build/config/compiler:enable_arc" ]
+
   testonly = true
 
   sources = [

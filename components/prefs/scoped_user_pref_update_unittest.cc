@@ -79,8 +79,9 @@ TEST_F(ScopedUserPrefUpdateTest, ScopedDictPrefUpdateNeverTouchAnything) {
 }
 
 TEST_F(ScopedUserPrefUpdateTest, ScopedDictPrefUpdateWithDefaults) {
-  auto defaults =
-      base::Value::Dict().Set("firstkey", "value").Set("secondkey", "value");
+  base::Value::Dict defaults;
+  defaults.Set("firstkey", "value");
+  defaults.Set("secondkey", "value");
 
   std::string pref_name = "mypref";
   prefs_.registry()->RegisterDictionaryPref(pref_name, std::move(defaults));

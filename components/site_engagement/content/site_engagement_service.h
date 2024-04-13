@@ -29,6 +29,11 @@ namespace webapps {
 FORWARD_DECLARE_TEST(AppBannerManagerBrowserTest, WebAppBannerNeedsEngagement);
 }
 
+namespace settings {
+FORWARD_DECLARE_TEST(SiteSettingsHandlerTest,
+                     PopulateNotificationPermissionReviewData);
+}
+
 namespace content {
 class BrowserContext;
 class WebContents;
@@ -41,7 +46,6 @@ class WebAppEngagementBrowserTest;
 class GURL;
 class HostContentSettingsMap;
 class PrefRegistrySimple;
-class NotificationPermissionReviewServiceTest;
 
 namespace site_engagement {
 
@@ -194,7 +198,6 @@ class SiteEngagementService : public KeyedService,
   friend class SiteEngagementObserver;
   friend class SiteEngagementServiceTest;
   friend class web_app::WebAppEngagementBrowserTest;
-  friend class ::NotificationPermissionReviewServiceTest;
   FRIEND_TEST_ALL_PREFIXES(SiteEngagementServiceTest, CheckHistograms);
   FRIEND_TEST_ALL_PREFIXES(SiteEngagementServiceTest, CleanupEngagementScores);
   FRIEND_TEST_ALL_PREFIXES(SiteEngagementServiceTest,
@@ -214,6 +217,8 @@ class SiteEngagementService : public KeyedService,
                            WebAppBannerNeedsEngagement);
   FRIEND_TEST_ALL_PREFIXES(AppBannerSettingsHelperTest, SiteEngagementTrigger);
   FRIEND_TEST_ALL_PREFIXES(HostedAppPWAOnlyTest, EngagementHistogram);
+  FRIEND_TEST_ALL_PREFIXES(settings::SiteSettingsHandlerTest,
+                           PopulateNotificationPermissionReviewData);
 
 #if BUILDFLAG(IS_ANDROID)
   // Shim class to expose the service to Java.
@@ -297,8 +302,7 @@ class SiteEngagementService : public KeyedService,
   void AddObserver(SiteEngagementObserver* observer);
   void RemoveObserver(SiteEngagementObserver* observer);
 
-  raw_ptr<content::BrowserContext, AcrossTasksDanglingUntriaged>
-      browser_context_;
+  raw_ptr<content::BrowserContext> browser_context_;
 
   // The clock used to vend times.
   raw_ptr<base::Clock> clock_;

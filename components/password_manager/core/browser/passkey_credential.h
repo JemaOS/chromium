@@ -6,18 +6,8 @@
 #define COMPONENTS_PASSWORD_MANAGER_CORE_BROWSER_PASSKEY_CREDENTIAL_H_
 
 #include <stdint.h>
-
-#include <optional>
 #include <string>
 #include <vector>
-
-#include "base/containers/span.h"
-#include "base/types/strong_alias.h"
-#include "build/build_config.h"
-
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-#include "components/sync/protocol/webauthn_credential_specifics.pb.h"
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 namespace password_manager {
 
@@ -29,29 +19,15 @@ class PasskeyCredential {
     kAndroidPhone,
     kTouchId,
     kWindowsHello,
-    kICloudKeychain,
-    kGooglePasswordManager,
     kOther,
   };
 
-  using RpId = base::StrongAlias<class RpIdTag, std::string>;
-  using CredentialId =
-      base::StrongAlias<class CredentialIdTag, std::vector<uint8_t>>;
-  using UserId = base::StrongAlias<class UserIdTag, std::vector<uint8_t>>;
-  using Username = base::StrongAlias<class UsernameTag, std::string>;
-  using DisplayName = base::StrongAlias<class DisplayNameTag, std::string>;
-
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-  static std::vector<PasskeyCredential> FromCredentialSpecifics(
-      base::span<const sync_pb::WebauthnCredentialSpecifics> passkeys);
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
   PasskeyCredential(Source source,
-                    RpId rp_id,
-                    CredentialId credential_id,
-                    UserId user_id,
-                    Username username = Username(""),
-                    DisplayName display_name = DisplayName(""));
+                    std::string rp_id,
+                    std::vector<uint8_t> credential_id,
+                    std::vector<uint8_t> user_id,
+                    std::string username = "",
+                    std::string display_name = "");
   ~PasskeyCredential();
 
   PasskeyCredential(const PasskeyCredential&);
@@ -60,15 +36,9 @@ class PasskeyCredential {
   PasskeyCredential(PasskeyCredential&&);
   PasskeyCredential& operator=(PasskeyCredential&&);
 
-  // Returns the user-friendly label for the authenticator this credential
+  // Returns the l10n ID for the name of the authenticator this credential
   // belongs to.
-  std::u16string GetAuthenticatorLabel() const;
-
-  // Sets an authenticator label for this passkey. If no label is set, a generic
-  // device name will be returned by GetAuthenticatorLabel().
-  void set_authenticator_label(const std::u16string& authenticator_label) {
-    authenticator_label_ = authenticator_label;
-  }
+  int GetAuthenticatorLabel() const;
 
   Source source() const { return source_; }
   const std::string& rp_id() const { return rp_id_; }
@@ -103,10 +73,6 @@ class PasskeyCredential {
   // The user's display name.
   // https://w3c.github.io/webauthn/#dom-publickeycredentialuserentity-displayname
   std::string display_name_;
-
-  // An optional label for the authenticator. If this is not set, a generic
-  // device name will be returned by GetAuthenticatorLabel().
-  std::optional<std::u16string> authenticator_label_;
 };
 
 bool operator==(const PasskeyCredential& lhs, const PasskeyCredential& rhs);

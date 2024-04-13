@@ -87,9 +87,6 @@ class DigitalAssetLinksHandlerTest : public ::testing::Test {
   void OnRelationshipCheckComplete(RelationshipCheckResult result) {
     ++num_invocations_;
     result_ = result;
-    if (run_loop_) {
-      run_loop_->Quit();
-    }
   }
 
  protected:
@@ -111,21 +108,21 @@ class DigitalAssetLinksHandlerTest : public ::testing::Test {
             static_cast<net::HttpStatusCode>(response_code));
     response_head->headers =
         base::MakeRefCounted<net::HttpResponseHeaders>(status_line);
-    int expected_num_invocations = num_invocations_ + 1;
     test_url_loader_factory_.AddResponse(
         request_url_, std::move(response_head), "",
         network::URLLoaderCompletionStatus(error));
-    WaitForNumInvocations(expected_num_invocations);
+
+    base::RunLoop().RunUntilIdle();
   }
 
   void AddResponse(const std::string& response) {
     request_url_ =
         test_url_loader_factory_.pending_requests()->at(0).request.url;
 
-    int expected_num_invocations = num_invocations_ + 1;
     test_url_loader_factory_.AddResponse(request_url_.spec(), response,
                                          net::HTTP_OK);
-    WaitForNumInvocations(expected_num_invocations);
+
+    base::RunLoop().RunUntilIdle();
   }
 
   url::Origin GetTestingOrigin() const {
@@ -133,24 +130,14 @@ class DigitalAssetLinksHandlerTest : public ::testing::Test {
   }
 
   int num_invocations_;
-  std::unique_ptr<base::RunLoop> run_loop_;
   RelationshipCheckResult result_;
   GURL request_url_;
 
  private:
-  void WaitForNumInvocations(int expected_num_invocations) {
-    while (num_invocations_ != expected_num_invocations) {
-      run_loop_ = std::make_unique<base::RunLoop>();
-      run_loop_->Run();
-      run_loop_.reset();
-    }
-  }
-
   content::BrowserTaskEnvironment task_environment_;
   data_decoder::test::InProcessDataDecoder in_process_data_decoder_;
   network::TestURLLoaderFactory test_url_loader_factory_;
 };
-
 }  // namespace
 
 TEST_F(DigitalAssetLinksHandlerTest, CorrectAssetLinksUrl) {

@@ -34,7 +34,8 @@ typedef base::OnceCallback<void(int, scoped_refptr<net::DrainableIOBuffer>)>
 class PnaclTranslationCacheEntry;
 extern const int kMaxMemCacheSize;
 
-class PnaclTranslationCache final {
+class PnaclTranslationCache
+    : public base::SupportsWeakPtr<PnaclTranslationCache> {
  public:
   PnaclTranslationCache();
 
@@ -99,7 +100,6 @@ class PnaclTranslationCache final {
   CompletionOnceCallback init_callback_;
   bool in_memory_;
   std::map<void*, scoped_refptr<PnaclTranslationCacheEntry> > open_entries_;
-  base::WeakPtrFactory<PnaclTranslationCache> weak_ptr_factory_{this};
 };
 
 }  // namespace pnacl

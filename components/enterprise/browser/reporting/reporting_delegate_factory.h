@@ -9,7 +9,6 @@
 
 #include "components/enterprise/browser/reporting/browser_report_generator.h"
 #include "components/enterprise/browser/reporting/profile_report_generator.h"
-#include "components/enterprise/browser/reporting/real_time_report_controller.h"
 #include "components/enterprise/browser/reporting/real_time_report_generator.h"
 #include "components/enterprise/browser/reporting/report_generator.h"
 #include "components/enterprise/browser/reporting/report_scheduler.h"
@@ -25,22 +24,19 @@ class ReportingDelegateFactory {
   virtual ~ReportingDelegateFactory() = default;
 
   virtual std::unique_ptr<BrowserReportGenerator::Delegate>
-  GetBrowserReportGeneratorDelegate() const = 0;
+  GetBrowserReportGeneratorDelegate() = 0;
 
   virtual std::unique_ptr<ProfileReportGenerator::Delegate>
-  GetProfileReportGeneratorDelegate() const = 0;
+  GetProfileReportGeneratorDelegate() = 0;
 
   virtual std::unique_ptr<ReportGenerator::Delegate>
-  GetReportGeneratorDelegate() const = 0;
+  GetReportGeneratorDelegate() = 0;
 
   virtual std::unique_ptr<ReportScheduler::Delegate>
-  GetReportSchedulerDelegate() const = 0;
+  GetReportSchedulerDelegate() = 0;
 
   virtual std::unique_ptr<RealTimeReportGenerator::Delegate>
-  GetRealTimeReportGeneratorDelegate() const = 0;
-
-  virtual std::unique_ptr<RealTimeReportController::Delegate>
-  GetRealTimeReportControllerDelegate() const = 0;
+  GetRealTimeReportGeneratorDelegate() = 0;
 };
 
 }  // namespace enterprise_reporting

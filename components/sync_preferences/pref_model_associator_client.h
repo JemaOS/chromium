@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include "base/memory/ref_counted.h"
 #include "base/values.h"
 
 namespace sync_preferences {
@@ -17,12 +16,21 @@ class SyncablePrefsDatabase;
 // This class allows the embedder to configure the PrefModelAssociator to
 // have a different behaviour when receiving preference synchronisations
 // events from the server.
-class PrefModelAssociatorClient
-    : public base::RefCounted<PrefModelAssociatorClient> {
+class PrefModelAssociatorClient {
  public:
   PrefModelAssociatorClient(const PrefModelAssociatorClient&) = delete;
   PrefModelAssociatorClient& operator=(const PrefModelAssociatorClient&) =
       delete;
+
+  // Returns true if the preference named |pref_name| is a list preference
+  // whose server value is merged with local value during synchronisation.
+  virtual bool IsMergeableListPreference(
+      const std::string& pref_name) const = 0;
+
+  // Returns true if the preference named |pref_name| is a dictionary preference
+  // whose server value is merged with local value during synchronisation.
+  virtual bool IsMergeableDictionaryPreference(
+      const std::string& pref_name) const = 0;
 
   // Returns the merged value if the client wants to apply a custom merging
   // strategy to the preference named |pref_name| with local value |local_value|
@@ -38,9 +46,8 @@ class PrefModelAssociatorClient
   virtual const SyncablePrefsDatabase& GetSyncablePrefsDatabase() const = 0;
 
  protected:
-  friend class base::RefCounted<PrefModelAssociatorClient>;
-  PrefModelAssociatorClient() = default;
-  virtual ~PrefModelAssociatorClient() = default;
+  PrefModelAssociatorClient() {}
+  virtual ~PrefModelAssociatorClient() {}
 };
 
 }  // namespace sync_preferences

@@ -48,7 +48,8 @@ class BackgroundLongTaskScheduler {
   BackgroundLongTaskScheduler& operator=(const BackgroundLongTaskScheduler&) =
       delete;
 
-  void PostTask(std::unique_ptr<BackgroundTask> task);
+  void PostTask(std::unique_ptr<BackgroundTask> task,
+                BackgroundTaskPriority priority);
 
  private:
   // Type representing a single task queue with a specific priority.

@@ -12,14 +12,9 @@
     </message>
   </if>
 
-  <if expr="not is_ios">
-    <message name="IDS_AUTOFILL_UNDO_MENU_ITEM" desc="The entry in the suggestions dropdown that undoes the last filling operation on a field.">
-      Undo autofill
-    </message>
-  </if>
-  <if expr="is_ios">
-    <message name="IDS_AUTOFILL_UNDO_MENU_ITEM" desc="iOS: The entry in the suggestions keyboard accessory that undoes the last filling operation on a field. Title-cased.">
-      Undo Autofill
+  <if expr="is_android or is_ios">
+    <message name="IDS_AUTOFILL_CLEAR_LOCAL_COPY_BUTTON" desc="The label of the button that clears the local copy of a Wallet Credit Card." formatter_data="android_java">
+      Clear copy
     </message>
   </if>
 
@@ -28,6 +23,9 @@
   </message>
   <message name="IDS_AUTOFILL_WARNING_MIXED_FORM" desc="Warning text shown when autofill is disabled due to a form on a secure site being submitted over an insecure connection.">
     This form is not secure. Autofill has been turned off.
+  </message>
+  <message name="IDS_AUTOFILL_CREDIT_CARD_SIGNIN_PROMO" desc="Promo text shown alongside credit card suggestions to get people to sign in.">
+    To use cards from your Google Account, sign in to Chrome
   </message>
   <if expr="_google_chrome">
     <message name="IDS_AUTOFILL_DELETE_AUTOCOMPLETE_SUGGESTION_CONFIRMATION_BODY" desc="Text in a dialog to confirm that the user wants to delete an autocomplete form history suggestion.">
@@ -53,9 +51,6 @@
   </if>
   <message name="IDS_AUTOFILL_DELETE_AUTOCOMPLETE_SUGGESTION_TOOLTIP" desc="Tooltip shown when hovering over a small button with a trash-can logo next to an Autocomplete entry in the Autofill popup.">
     Delete entry
-  </message>
-  <message name="IDS_AUTOFILL_AUTOCOMPLETE_ENTRY_DELETED_A11Y_HINT" desc="Voice over text that is read out when the delete button next to an Autocomplete entry is selected.">
-    Entry <ph name="ENTRY_VOICEOVER">$1<ex>Jane Doe</ex></ph> has been deleted
   </message>
   <message name="IDS_AUTOFILL_DELETE_AUTOCOMPLETE_SUGGESTION_A11Y_HINT" desc="Voice over text that is read out when the delete button next to an Autocomplete entry is selected.">
     Delete entry <ph name="ENTRY_VOICEOVER">$1<ex>Jane Doe</ex></ph>
@@ -103,87 +98,20 @@
     , '''
   </message>
 
-  <!-- TODO(crbug.com/1451267): Make translatable once strings are finalized. -->
-  <message name="IDS_AUTOFILL_ADDRESS_TEST_DATA" desc="The text displayed as a secondary label in the test addresses devtools suggestion." translateable="false">
-    Address test data
-  </message>
-
-  <message name="IDS_AUTOFILL_TEST_ADDRESS_SELECTED_A11Y_HINT" desc="Voice over text that is read out when a test address is accepted from the subpopup." translateable="false">
-    Test address from <ph name="ENTRY_VOICEOVER">$1<ex>United states</ex></ph> selected.
-  </message>
-
   <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_FILLED_FORM" desc="Screen reader announcement indicating that current form was autofilled.">
     The form was filled in
-  </message>
-  <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_EXPANDABLE_ONLY_ENTRY" desc="Screen reader announcement used for non-expandable Autofill popup entries.">
-    You are currently on a menu
-  </message>
-  <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_VIRTUAL_CARD_MANUAL_FALLBACK_ENTRY" desc="Screen reader announcement used for virtual credit card suggestions that do not fill the web form.">
-    Dialog with credit card details was shown
-  </message>
-
-  <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_EDIT_ADDRESS_PROFILE_POPUP_OPTION_SELECTED" desc="Screen reader announcement indicating that edit autofill profile option was selected.">
-    The edit address option was selected
-  </message>
-
-  <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_DELETE_ADDRESS_PROFILE_POPUP_OPTION_SELECTED" desc="Screen reader announcement indicating that delete autofill profile option was selected.">
-    The delete address option was selected
   </message>
 
   <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_CLEARED_FORM" desc="Screen reader announcement indicating that current form autofilled values were cleared.">
     The autofilled info was cleared from the form
   </message>
 
-  <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_FILL_ADDRESS_GROUP_POPUP_OPTION_SELECTED" desc="Screen reader announcement indicating that filling address fields option was selected.">
-    The fill address option was selected
-  </message>
-
-  <message name="IDS_AUTOFILL_FILL_ADDRESS_GROUP_POPUP_OPTION_SELECTED" desc="The text displayed at one of the autofill submenus options allowing the users to fill all address related fields at once." meaning="Fills all address related fields">
-    Fill address
-  </message>
-
-  <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_FILL_NAME_GROUP_POPUP_OPTION_SELECTED" desc="Screen reader announcement indicating that filling name fields option was selected.">
-    The fill full name option was selected
-  </message>
-
-  <message name="IDS_AUTOFILL_FILL_NAME_GROUP_POPUP_OPTION_SELECTED" desc="The text displayed at one of the autofill submenus options allowing the users to fill all name related fields at once." meaning="Fills all name related fields">
-    Fill full name
-  </message>
-
-  <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_FILL_EVERYTHING_FROM_ADDRESS_PROFILE_POPUP_OPTION_SELECTED" desc="Screen reader announcement indicating that the fill everything option was selected.">
-    The fill everything option was selected
-  </message>
-
   <message name="IDS_AUTOFILL_HIDE_SUGGESTIONS" desc="The text displayed at the Autofill popup to allow the user to hide the suggestions menu." meaning="Hides the suggestion list.">
     Hide suggestions
   </message>
 
-  <message name="IDS_AUTOFILL_EDIT_ADDRESS_PROFILE_POPUP_OPTION_SELECTED" desc="The text displayed at the bottom of the Autofill sub meny to open the edit address profile dialog." meaning="Entry point to address profile deletion.">
-    Edit address
-  </message>
-
-  <message name="IDS_AUTOFILL_DELETE_ADDRESS_PROFILE_POPUP_OPTION_SELECTED" desc="The text displayed at the bottom of the Autofill sub menu to open the delete address profile dialog." meaning="Entry point to address profile deletion.">
-    Delete address
-  </message>
-
-  <message name="IDS_AUTOFILL_HOUSE_NUMBER_SUGGESTION_SECONDARY_TEXT_OPTION_SELECTED" desc="The secondary text displayed on a house number suggestion was selected." meaning="The label for the house number field type store by autofill has been selected in the subpopup.">
-    House number option selected
-  </message>
-
-  <message name="IDS_AUTOFILL_STREET_NAME_SUGGESTION_SECONDARY_TEXT_OPTION_SELECTED" desc="The secondary text displayed on a street name suggestion was selected." meaning="The label for the street namefield type store by autofill has been selected in the subpopup.">
-    Street name option selected
-  </message>
-
-  <message name="IDS_AUTOFILL_HOUSE_NUMBER_SUGGESTION_SECONDARY_TEXT" desc="The secondary text displayed on a house number suggestion." meaning="The label for the house number field type store by autofill.">
-    House number
-  </message>
-
-  <message name="IDS_AUTOFILL_STREET_NAME_SUGGESTION_SECONDARY_TEXT" desc="The secondary text displayed on a street name suggestion." meaning="The label for the street namefield type store by autofill.">
-    Street name
-  </message>
-
-  <message name="IDS_AUTOFILL_FILL_EVERYTHING_FROM_ADDRESS_PROFILE_POPUP_OPTION_SELECTED" desc="The text displayed at the footer of the Autofill sub menu to fill everything from the address profile." meaning="Fill every available information from the address profile.">
-    Fill everything
+  <message name="IDS_AUTOFILL_MANAGE" desc="The text displayed at the bottom of the Autofill popup to allow the user to manage their Autofill preferences for addresses, credit cards, and passwords. Imperative. When the user clicks on it, opens the Autofill settings page." meaning="Manage addresses, credit cards and passwords in the user profile that can be used by Chrome Autofill.">
+    Manage...
   </message>
 
   <if expr="not use_titlecase">
@@ -240,13 +168,6 @@
 
   <message name="IDS_AUTOFILL_IPH_EXTERNAL_ACCOUNT_PROFILE_SUGGESTION" desc="IPH bubble for a suggestion item with an account profile that was created somewhere outside Chrome (e.g. Google Pay)." formatter_data="android_java">
     You can now use addresses from your Google Account
-  </message>
-  <!-- TODO(b/320633229): Revisit string and mark it as translatable.-->
-  <message name="IDS_AUTOFILL_IPH_MANUAL_FALLBACK" desc="IPH bubble for triggering autofill from the context menu." translateable="false">
-    Right click to fill your saved info in any online form with less typing
-  </message>
-  <message name="IDS_AUTOFILL_IPH_MANUAL_FALLBACK_SCREENREADER" is_accessibility_with_no_ui="true" desc="Screenreader text for the IPH bubble for triggering autofill from the context menu.">
-    Right click to fill in your saved info in any online form with less typing
   </message>
 
   <!-- Autofill suggestion label separator -->
@@ -324,9 +245,6 @@
   <message name="IDS_AUTOFILL_LOCAL_ADDRESS_ICON_A11Y_LABEL" desc="The a11y label for the 'no-cloud' address icon in Settings.">
     Address is available only on this device
   </message>
-  <message name="IDS_AUTOFILL_SYNC_TOGGLE_LABEL" desc="The Sync Autofill toggle label on the Autofill Settings page.">
-    Use and save Addresses from your Google Account
-  </message>
   <if expr="not is_ios">
     <then>
       <message name="IDS_AUTOFILL_ADDRESSES_SETTINGS_TITLE" desc="Title for the Autofill settings page that allows user to manage their list of saved addresses and Autofill preferences for addresses. Sentence-Cased." formatter_data="android_java">
@@ -399,34 +317,16 @@
       </message>
     </else>
   </if>
-  <if expr="is_android">
-    <!-- TODO(crbug.com/1469795): Use finalized string.-->
-    <message translateable="false" name="IDS_AUTOFILL_THIRD_PARTY_FILLING_DEFAULT" desc="Title of the option to use the default Chrome autofill experience." formatter_data="android_java">
-      Default
-    </message>
-    <!-- TODO(crbug.com/1469795): Use finalized string.-->
-    <message translateable="false" name="IDS_AUTOFILL_THIRD_PARTY_FILLING_OPT_IN" desc="Title of the option to use third-party autofill in Chrome." formatter_data="android_java">
-      Use other providers
-    </message>
-    <!-- TODO(crbug.com/1469795): Use finalized string.-->
-    <message translateable="false" name="IDS_AUTOFILL_THIRD_PARTY_FILLING_DEFAULT_DESCRIPTION" desc="Description shown on the option to use the default Chrome autofill experience." formatter_data="android_java">
-      Use Google Password Manager and Chrome Autofill to save and fill passwords, passkeys, payment methods, and addresses
-    </message>
-    <!-- TODO(crbug.com/1469795): Use finalized string.-->
-    <message translateable="false" name="IDS_AUTOFILL_THIRD_PARTY_FILLING_OPT_IN_DESCRIPTION" desc="Description shown on the option enabling the use of third-party autofill in Chrome." formatter_data="android_java">
-      Use password managers and autofill services that are turned on in Android Settings
-    </message>
-  </if>
 
   <!-- Autofill/Wallet integration preferences -->
   <if expr="not is_ios">
     <then>
-      <message name="IDS_SYNC_DATATYPE_PAYMENTS" desc="Label for the checkbox that controls the Autofill/Payments integration feature used for Autofill Home. 'Google Pay' should not be translated as it is the product name. Sentence-Cased.">
+      <message name="IDS_AUTOFILL_ENABLE_PAYMENTS_INTEGRATION_CHECKBOX_LABEL" desc="Label for the checkbox that controls the Autofill/Payments integration feature used for Autofill Home. 'Google Pay' should not be translated as it is the product name. Sentence-Cased.">
         Payment methods, offers, and addresses using Google Pay
       </message>
     </then>
     <else>
-      <message name="IDS_SYNC_DATATYPE_PAYMENTS" desc="Label for the checkbox that controls the Autofill/Payments integration feature used for Autofill Home. 'Google Pay' should not be translated as it is the product name. Title-Cased.">
+      <message name="IDS_AUTOFILL_ENABLE_PAYMENTS_INTEGRATION_CHECKBOX_LABEL" desc="Label for the checkbox that controls the Autofill/Payments integration feature used for Autofill Home. 'Google Pay' should not be translated as it is the product name. Title-Cased.">
         Payment Methods, Offers, and Addresses Using Google Pay
       </message>
     </else>
@@ -575,15 +475,6 @@
     <message name="IDS_AUTOFILL_UPDATE_ADDRESS_PROMPT_TITLE" desc="Title shown at the top of prompt that offers the user to update an existing address.">
       Update address?
     </message>
-    <message name="IDS_AUTOFILL_ADD_NEW_ADDRESS_PROMPT_TITLE" desc="The 'Add new address' bubble title.">
-      Fill your address with less typing
-    </message>
-    <message name="IDS_AUTOFILL_ADD_NEW_ADDRESS_INTO_CHROME_PROMPT_BODY_TEXT" desc="The 'Add new address' bubble body text if the address will be saved in Chrome (locally or syncable among Chromes on different devices).">
-      You don't have any addresses saved. Add an address to use it in Chrome.
-    </message>
-    <message name="IDS_AUTOFILL_ADD_NEW_ADDRESS_INTO_ACCOUNT_PROMPT_BODY_TEXT" desc="The 'Add new address' bubble body text if the address will be save in the user's Google account.">
-      You don't have any addresses saved. Add an address to use it across Google products.
-    </message>
     <message name="IDS_AUTOFILL_UPDATE_ADDRESS_PROMPT_CANCEL_BUTTON_LABEL" desc="Label of the Cancel button in the prompt that offers the user to update an existing address.">
       No thanks
     </message>
@@ -599,29 +490,8 @@
     <message name="IDS_AUTOFILL_EDIT_ADDRESS_DIALOG_OK_BUTTON_LABEL_UPDATE" desc="Label of the OK button in the dialog that edits the address before using it to update an existing address.">
       Update
     </message>
-    <message name="IDS_AUTOFILL_ADD_NEW_ADDRESS_DIALOG_OK_BUTTON_LABEL" desc="Label of the OK button in the dialog that promts the user to add a new address.">
-      Add address
-    </message>
     <message name="IDS_AUTOFILL_EDIT_ADDRESS_DIALOG_CANCEL_BUTTON_LABEL" desc="Label of the Cancel button in the dialog that edits an address before saving it.">
       Cancel
     </message>
-    <message name="IDS_AUTOFILL_EXPANDABLE_SUGGESTION_FILL_ADDRESS_A11Y_ADDON" desc="Autofill desktop popup: call to action message part for expandable address suggestions.">
-      Fill address
-    </message>
-    <message name="IDS_AUTOFILL_EXPANDABLE_SUGGESTION_EXPAND_SHORTCUT" desc="Autofill desktop popup: the shortcut used to focus the expanding control and effectively open the sub-menu, used in IDS_AUTOFILL_EXPANDABLE_SUGGESTION_SUBMENU_HINT.">
-      right key
-    </message>
-    <message name="IDS_AUTOFILL_EXPANDABLE_SUGGESTION_EXPAND_SHORTCUT_RTL" desc="Autofill desktop popup: the shortcut used to focus the expanding control and effectively open the sub-menu, used in IDS_AUTOFILL_EXPANDABLE_SUGGESTION_SUBMENU_HINT, for RTL languages.">
-      left key
-    </message>
-    <message name="IDS_AUTOFILL_EXPANDABLE_SUGGESTION_SUBMENU_HINT" desc="Autofill desktop popup: additional screen reader info to let the user know that the suggestion can be expanded into a sub-menu.">
-      Submenu available, use <ph name="SHORTCUT">$1<ex>right key</ex></ph> to navigate to additional options.
-    </message>
   </if>
-
-  <!-- Autofill Address Edit Dialog -->
-  <!-- Common on all platforms -->
-  <message name="IDS_AUTOFILL_ADDRESS_EDIT_DIALOG_HISPANIC_MUNICIPIO" desc="The label shown in address edit dialogs representing a municipio (Spanish) / município (Portuguese) in an address, see https://en.wikipedia.org/wiki/Municipio. This is a subdivision of a state and currently introduced for Mexico.">
-    Municipality
-  </message>
 </grit-part>

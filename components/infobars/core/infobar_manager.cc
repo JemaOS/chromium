@@ -6,41 +6,12 @@
 
 #include <utility>
 
-#include "base/command_line.h"
 #include "base/observer_list.h"
 #include "base/ranges/algorithm.h"
-#include "build/branding_buildflags.h"
 #include "components/infobars/core/infobar.h"
-#include "ui/gfx/switches.h"
-
-#if BUILDFLAG(CHROME_FOR_TESTING)
-#include "components/infobars/core/infobars_switches.h"
-#endif
 
 namespace infobars {
 
-namespace {
-
-bool ShouldEnableInfoBars() {
-  // In headless mode info bars are not visible and cause unexpected layout
-  // changes which are often very confusing for headless users.
-  const base::CommandLine* command_line =
-      base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(::switches::kHeadless)) {
-    return false;
-  }
-
-#if BUILDFLAG(CHROME_FOR_TESTING)
-  // Chrome for Testing users are allowed to disable info bars with a switch.
-  if (command_line->HasSwitch(switches::kDisableInfoBars)) {
-    return false;
-  }
-#endif
-
-  return true;
-}
-
-}  // namespace
 
 // InfoBarManager::Observer ---------------------------------------------------
 
@@ -64,22 +35,20 @@ void InfoBarManager::Observer::OnManagerShuttingDown(InfoBarManager* manager) {
 
 // InfoBarManager --------------------------------------------------------------
 
-InfoBar* InfoBarManager::AddInfoBar(std::unique_ptr<InfoBar> new_infobar,
+InfoBar* InfoBarManager::AddInfoBar(std::unique_ptr<InfoBar> infobar,
                                     bool replace_existing) {
-  DCHECK(new_infobar);
-  if (!infobars_enabled_) {
-    return nullptr;
-  }
+  DCHECK(infobar);
 
-  for (infobars::InfoBar* infobar : infobars_) {
-    if (infobar->delegate()->EqualsDelegate(new_infobar->delegate())) {
-      DCHECK_NE(infobar->delegate(), new_infobar->delegate());
-      return replace_existing ? ReplaceInfoBar(infobar, std::move(new_infobar))
+  for (InfoBars::const_iterator i(infobars_.begin()); i != infobars_.end();
+       ++i) {
+    if ((*i)->delegate()->EqualsDelegate(infobar->delegate())) {
+      DCHECK_NE((*i)->delegate(), infobar->delegate());
+      return replace_existing ? ReplaceInfoBar(*i, std::move(infobar))
                               : nullptr;
     }
   }
 
-  InfoBar* infobar_ptr = new_infobar.release();
+  InfoBar* infobar_ptr = infobar.release();
   infobars_.push_back(infobar_ptr);
   infobar_ptr->SetOwner(this);
 
@@ -101,10 +70,6 @@ void InfoBarManager::RemoveAllInfoBars(bool animate) {
 InfoBar* InfoBarManager::ReplaceInfoBar(InfoBar* old_infobar,
                                         std::unique_ptr<InfoBar> new_infobar) {
   DCHECK(old_infobar);
-  if (!infobars_enabled_) {
-    // Deletes the infobar.
-    return AddInfoBar(std::move(new_infobar));
-  }
   DCHECK(new_infobar);
 
   auto i = base::ranges::find(infobars_, old_infobar);
@@ -133,7 +98,7 @@ void InfoBarManager::RemoveObserver(Observer* obs) {
   observer_list_.RemoveObserver(obs);
 }
 
-InfoBarManager::InfoBarManager() : infobars_enabled_(ShouldEnableInfoBars()) {}
+InfoBarManager::InfoBarManager() = default;
 
 InfoBarManager::~InfoBarManager() = default;
 
@@ -159,7 +124,6 @@ void InfoBarManager::OnNavigation(
 
 void InfoBarManager::RemoveInfoBarInternal(InfoBar* infobar, bool animate) {
   DCHECK(infobar);
-  DCHECK(infobars_enabled_);
 
   auto i = base::ranges::find(infobars_, infobar);
   // TODO(crbug.com/): Temporarily a CHECK instead of a DCHECK CHECK() in order

@@ -4,19 +4,16 @@
 
 #include "components/omnibox/browser/search_suggestion_parser.h"
 
-#include <optional>
-
 #include "base/base64.h"
-#include "base/feature_list.h"
 #include "base/json/json_reader.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/test_scheme_classifier.h"
-#include "components/omnibox/common/omnibox_features.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/omnibox_proto/entity_info.pb.h"
 
 namespace {
@@ -25,14 +22,18 @@ std::string SerializeAndEncodeEntityInfo(
     const omnibox::EntityInfo& entity_info) {
   std::string serialized_entity_info;
   entity_info.SerializeToString(&serialized_entity_info);
-  return base::Base64Encode(serialized_entity_info);
+  std::string encoded_entity_info;
+  base::Base64Encode(serialized_entity_info, &encoded_entity_info);
+  return encoded_entity_info;
 }
 
 std::string SerializeAndEncodeGroupsInfo(
     const omnibox::GroupsInfo& groups_info) {
   std::string serialized_groups_info;
   groups_info.SerializeToString(&serialized_groups_info);
-  return base::Base64Encode(serialized_groups_info);
+  std::string encoded_groups_info;
+  base::Base64Encode(serialized_groups_info, &encoded_groups_info);
+  return encoded_groups_info;
 }
 
 // (Rudimentary) mechanism comparing two protobuf MessageLite objects.
@@ -53,23 +54,24 @@ bool ProtosAreEqual(const google::protobuf::MessageLite& actual,
 
 TEST(SearchSuggestionParserTest, DeserializeNonListJsonIsInvalid) {
   std::string json_data = "{}";
-  std::optional<base::Value::List> result =
+  absl::optional<base::Value::List> result =
       SearchSuggestionParser::DeserializeJsonData(json_data);
   ASSERT_FALSE(result);
 }
 
 TEST(SearchSuggestionParserTest, DeserializeMalformedJsonIsInvalid) {
   std::string json_data = "} malformed json {";
-  std::optional<base::Value::List> result =
+  absl::optional<base::Value::List> result =
       SearchSuggestionParser::DeserializeJsonData(json_data);
   ASSERT_FALSE(result);
 }
 
 TEST(SearchSuggestionParserTest, DeserializeJsonData) {
   std::string json_data = R"([{"one": 1}])";
-  std::optional<base::Value> manifest_value = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> manifest_value =
+      base::JSONReader::Read(json_data);
   ASSERT_TRUE(manifest_value);
-  std::optional<base::Value::List> result =
+  absl::optional<base::Value::List> result =
       SearchSuggestionParser::DeserializeJsonData(json_data);
   ASSERT_TRUE(result);
   ASSERT_EQ(*manifest_value, *result);
@@ -81,7 +83,7 @@ TEST(SearchSuggestionParserTest, DeserializeWithXssiGuard) {
   std::string json_data = R"([non-json [prefix [{"one": 1}])";
   // Parsing succeeds at:                      ^
 
-  std::optional<base::Value::List> result =
+  absl::optional<base::Value::List> result =
       SearchSuggestionParser::DeserializeJsonData(json_data);
   ASSERT_TRUE(result);
 
@@ -95,7 +97,7 @@ TEST(SearchSuggestionParserTest, DeserializeWithTrailingComma) {
   // The comma in this string makes this badly formed JSON, but we explicitly
   // allow for this error in the JSON data.
   std::string json_data = R"([{"one": 1},])";
-  std::optional<base::Value::List> result =
+  absl::optional<base::Value::List> result =
       SearchSuggestionParser::DeserializeJsonData(json_data);
   ASSERT_TRUE(result);
 }
@@ -122,7 +124,7 @@ TEST(SearchSuggestionParserTest, ParseEmptyValueIsInvalid) {
 
 TEST(SearchSuggestionParserTest, ParseNonSuggestionValueIsInvalid) {
   std::string json_data = R"([{"one": 1}])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   AutocompleteInput input;
@@ -170,7 +172,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestResults) {
           {"2":"0:54","4":10003}
           ]
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -235,7 +237,7 @@ TEST(SearchSuggestionParserTest, ParsePrerenderSuggestion) {
           "pre": 1
         }
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -271,7 +273,7 @@ TEST(SearchSuggestionParserTest, ParseBothPrefetchAndPrerenderSuggestion) {
           "pre": 1
         }
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -298,8 +300,8 @@ TEST(SearchSuggestionParserTest, ParseBothPrefetchAndPrerenderSuggestion) {
 
 TEST(SearchSuggestionParserTest, SuggestClassification) {
   SearchSuggestionParser::SuggestResult result(
-      u"foobar", AutocompleteMatchType::SEARCH_SUGGEST, omnibox::TYPE_QUERY, {},
-      false, 400, true, std::u16string());
+      u"foobar", AutocompleteMatchType::SEARCH_SUGGEST, {}, false, 400, true,
+      std::u16string());
   AutocompleteMatch::ValidateClassifications(result.match_contents(),
                                              result.match_contents_class());
 
@@ -342,8 +344,8 @@ TEST(SearchSuggestionParserTest, NavigationClassification) {
   TestSchemeClassifier scheme_classifier;
   SearchSuggestionParser::NavigationResult result(
       scheme_classifier, GURL("https://news.google.com/"),
-      AutocompleteMatchType::Type::NAVSUGGEST, omnibox::TYPE_NAVIGATION, {},
-      std::u16string(), std::string(), false, 400, true, u"google");
+      AutocompleteMatchType::Type::NAVSUGGEST, {}, std::u16string(),
+      std::string(), false, 400, true, u"google");
   AutocompleteMatch::ValidateClassifications(result.match_contents(),
                                              result.match_contents_class());
   const ACMatchClassifications kBoldMiddle = {
@@ -416,7 +418,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestionGroupInfo) {
         "google:suggestrelevance": [607, 606, 605, 604],
         "google:suggesttype": ["QUERY", "PERSONALIZED_QUERY", "QUERY", "QUERY"]
       }])";
-    std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+    absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
     ASSERT_TRUE(root_val);
     ASSERT_TRUE(root_val.value().is_list());
 
@@ -447,7 +449,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestionGroupInfo) {
 
     ASSERT_EQ(u"los angeles", results.suggest_results[0].suggestion());
     // This suggestion does not belong to a group.
-    ASSERT_EQ(std::nullopt, results.suggest_results[0].suggestion_group_id());
+    ASSERT_EQ(absl::nullopt, results.suggest_results[0].suggestion_group_id());
 
     ASSERT_EQ(u"san diego", results.suggest_results[1].suggestion());
     ASSERT_EQ(omnibox::GROUP_PREVIOUS_SEARCH_RELATED_ENTITY_CHIPS,
@@ -512,7 +514,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestionGroupInfo) {
         "google:suggestrelevance": [607, 606, 605, 604, 603],
         "google:suggesttype": ["QUERY", "QUERY", "QUERY", "QUERY", "QUERY"]
       }])";
-    std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+    absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
     ASSERT_TRUE(root_val);
     ASSERT_TRUE(root_val.value().is_list());
 
@@ -549,7 +551,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestionGroupInfo) {
 
     ASSERT_EQ(u"los angeles", results.suggest_results[0].suggestion());
     // This suggestion does not belong to a group.
-    ASSERT_EQ(std::nullopt, results.suggest_results[0].suggestion_group_id());
+    ASSERT_EQ(absl::nullopt, results.suggest_results[0].suggestion_group_id());
 
     ASSERT_EQ(u"san diego", results.suggest_results[1].suggestion());
     ASSERT_EQ(omnibox::GROUP_TRENDS,
@@ -633,7 +635,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestionEntityInfo) {
         "google:verbatimrelevance": 851
       }])";
 
-    std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+    absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
     ASSERT_TRUE(root_val);
     ASSERT_TRUE(root_val.value().is_list());
 
@@ -694,7 +696,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestionEntityInfo) {
         "google:verbatimrelevance": 851
       }])";
 
-    std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+    absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
     ASSERT_TRUE(root_val);
     ASSERT_TRUE(root_val.value().is_list());
 
@@ -724,68 +726,6 @@ TEST(SearchSuggestionParserTest, ParseSuggestionEntityInfo) {
   }
 }
 
-TEST(SearchSuggestionParserTest, ParseValidTypes) {
-  std::string json_data = R"([
-      "",
-      ["one", "two", "three", "four", "five"],
-      ["", "", "", "", ""],
-      [],
-      {
-        "google:clientdata": { "bpc": false, "tlw": false },
-        "google:suggestsubtypes": [[], [], [], [], []],
-        "google:suggestrelevance": [607, 606, 605, 604, 603, 602],
-        "google:suggesttype": ["QUERY", "ENTITY", "CATEGORICAL_QUERY", 1, "UNKNOWN"]
-      }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
-  ASSERT_TRUE(root_val);
-  ASSERT_TRUE(root_val.value().is_list());
-  TestSchemeClassifier scheme_classifier;
-  AutocompleteInput input(u"", metrics::OmniboxEventProto::NTP_REALBOX,
-                          scheme_classifier);
-  SearchSuggestionParser::Results results;
-  ASSERT_TRUE(SearchSuggestionParser::ParseSuggestResults(
-      root_val->GetList(), input, scheme_classifier,
-      /*default_result_relevance=*/400,
-      /*is_keyword_result=*/false, &results));
-
-  ASSERT_EQ(5u, results.suggest_results.size());
-  {
-    const auto& suggestion_result = results.suggest_results[0];
-    ASSERT_EQ(u"one", suggestion_result.suggestion());
-    ASSERT_EQ(AutocompleteMatchType::SEARCH_SUGGEST, suggestion_result.type());
-    ASSERT_EQ(omnibox::TYPE_QUERY, suggestion_result.suggest_type());
-  }
-  {
-    const auto& suggestion_result = results.suggest_results[1];
-    ASSERT_EQ(u"two", suggestion_result.suggestion());
-    ASSERT_EQ(AutocompleteMatchType::SEARCH_SUGGEST_ENTITY,
-              suggestion_result.type());
-    ASSERT_EQ(omnibox::TYPE_ENTITY, suggestion_result.suggest_type());
-  }
-  {
-    const auto& suggestion_result = results.suggest_results[2];
-    ASSERT_EQ(u"three", suggestion_result.suggestion());
-    ASSERT_EQ(base::FeatureList::IsEnabled(omnibox::kCategoricalSuggestions)
-                  ? AutocompleteMatchType::SEARCH_SUGGEST_ENTITY
-                  : AutocompleteMatchType::SEARCH_SUGGEST,
-              suggestion_result.type());
-    ASSERT_EQ(omnibox::TYPE_CATEGORICAL_QUERY,
-              suggestion_result.suggest_type());
-  }
-  {
-    const auto& suggestion_result = results.suggest_results[3];
-    ASSERT_EQ(u"four", suggestion_result.suggestion());
-    ASSERT_EQ(AutocompleteMatchType::SEARCH_SUGGEST, suggestion_result.type());
-    ASSERT_EQ(omnibox::TYPE_QUERY, suggestion_result.suggest_type());
-  }
-  {
-    const auto& suggestion_result = results.suggest_results[4];
-    ASSERT_EQ(u"five", suggestion_result.suggestion());
-    ASSERT_EQ(AutocompleteMatchType::SEARCH_SUGGEST, suggestion_result.type());
-    ASSERT_EQ(omnibox::TYPE_QUERY, suggestion_result.suggest_type());
-  }
-}
-
 TEST(SearchSuggestionParserTest, ParseValidSubtypes) {
   std::string json_data = R"([
       "",
@@ -798,7 +738,7 @@ TEST(SearchSuggestionParserTest, ParseValidSubtypes) {
         "google:suggestrelevance": [607, 606, 605, 604],
         "google:suggesttype": ["QUERY", "QUERY", "QUERY", "QUERY"]
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -845,7 +785,7 @@ TEST(SearchSuggestionParserTest, IgnoresExcessiveSubtypeEntries) {
         "google:suggestrelevance": [607, 606],
         "google:suggesttype": ["QUERY", "QUERY"]
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -874,7 +814,7 @@ TEST(SearchSuggestionParserTest, IgnoresMissingSubtypeEntries) {
         "google:suggestrelevance": [607, 606],
         "google:suggesttype": ["QUERY", "QUERY"]
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -905,7 +845,7 @@ TEST(SearchSuggestionParserTest, IgnoresUnexpectedSubtypeValues) {
         "google:suggestrelevance": [607, 606, 605, 604, 603],
         "google:suggesttype": ["QUERY", "QUERY", "QUERY", "QUERY", "QUERY"]
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -937,7 +877,7 @@ TEST(SearchSuggestionParserTest, IgnoresSubtypesIfNotAList) {
         "google:suggestrelevance": [607, 606],
         "google:suggesttype": ["QUERY", "QUERY"]
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -966,7 +906,7 @@ TEST(SearchSuggestionParserTest, SubtypesWithEmptyArraysAreValid) {
         "google:suggestrelevance": [607, 606],
         "google:suggesttype": ["QUERY", "QUERY"]
       }])";
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -993,7 +933,7 @@ TEST(SearchSuggestionParserTest, FuzzTestCaseFailsGracefully) {
   // input that is byte-for-byte identical with https://crbug.com/1255312 data.
   json_data[6] = 0;
 
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
   TestSchemeClassifier scheme_classifier;
@@ -1027,7 +967,7 @@ TEST(SearchSuggestionParserTest, BadAnswersFailGracefully) {
   };
   // clang-format on
   for (std::string json_data : cases) {
-    std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+    absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
     ASSERT_TRUE(root_val);
     ASSERT_TRUE(root_val.value().is_list());
     TestSchemeClassifier scheme_classifier;
@@ -1093,7 +1033,7 @@ TEST(SearchSuggestionParserTest, ParseCalculatorSuggestion) {
     }
   ])";
 
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
 
@@ -1116,10 +1056,10 @@ TEST(SearchSuggestionParserTest, ParseCalculatorSuggestion) {
   // |match_contents|, and |annotation| fields.
 #if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
   ASSERT_EQ(u"2", results.suggest_results[1].suggestion());
-  ASSERT_EQ(u"", results.suggest_results[1].annotation());
+  ASSERT_EQ(u"2", results.suggest_results[1].annotation());
   ASSERT_TRUE(ProtosAreEqual(results.suggest_results[1].entity_info(),
                              omnibox::EntityInfo::default_instance()));
-  ASSERT_EQ(u"1 + 1 = 2", results.suggest_results[1].match_contents());
+  ASSERT_EQ(u"1 + 1", results.suggest_results[1].match_contents());
 #else
   ASSERT_EQ(u"2", results.suggest_results[1].suggestion());
   ASSERT_EQ(u"", results.suggest_results[1].annotation());
@@ -1184,7 +1124,7 @@ TEST(SearchSuggestionParserTest, ParseTailSuggestion) {
     }
   ])";
 
-  std::optional<base::Value> root_val = base::JSONReader::Read(json_data);
+  absl::optional<base::Value> root_val = base::JSONReader::Read(json_data);
   ASSERT_TRUE(root_val);
   ASSERT_TRUE(root_val.value().is_list());
 

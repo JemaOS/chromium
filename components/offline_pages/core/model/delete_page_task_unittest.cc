@@ -5,7 +5,6 @@
 #include "components/offline_pages/core/model/delete_page_task.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,6 +20,7 @@
 #include "components/offline_pages/core/offline_clock.h"
 #include "components/offline_pages/core/offline_page_types.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace offline_pages {
@@ -47,7 +47,7 @@ class DeletePageTaskTest : public ModelTaskTestBase {
   DeletePageTask::DeletePageTaskCallback delete_page_callback();
 
   base::HistogramTester* histogram_tester() { return histogram_tester_.get(); }
-  const std::optional<DeletePageResult>& last_delete_page_result() {
+  const absl::optional<DeletePageResult>& last_delete_page_result() {
     return last_delete_page_result_;
   }
   const std::vector<OfflinePageItem>& last_deleted_page_items() {
@@ -57,9 +57,8 @@ class DeletePageTaskTest : public ModelTaskTestBase {
  private:
   std::unique_ptr<base::HistogramTester> histogram_tester_;
 
-  std::optional<DeletePageResult> last_delete_page_result_;
+  absl::optional<DeletePageResult> last_delete_page_result_;
   std::vector<OfflinePageItem> last_deleted_page_items_;
-  base::WeakPtrFactory<DeletePageTaskTest> weak_ptr_factory_{this};
 };
 
 void DeletePageTaskTest::SetUp() {
@@ -77,7 +76,7 @@ void DeletePageTaskTest::OnDeletePageDone(
 DeletePageTask::DeletePageTaskCallback
 DeletePageTaskTest::delete_page_callback() {
   return base::BindOnce(&DeletePageTaskTest::OnDeletePageDone,
-                        weak_ptr_factory_.GetWeakPtr());
+                        base::AsWeakPtr(this));
 }
 
 bool DeletePageTaskTest::CheckPageDeleted(const OfflinePageItem& page) {

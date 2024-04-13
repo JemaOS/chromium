@@ -20,8 +20,6 @@
 #include "components/omnibox/browser/autocomplete_result.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/omnibox_log.h"
-#include "services/metrics/public/cpp/ukm_builders.h"
-#include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
 #include "third_party/metrics_proto/omnibox_input_type.pb.h"
 
@@ -112,10 +110,6 @@ ClientSummarizedResultType GetClientSummarizedResultType(
            ClientSummarizedResultType::kUrl},
           {OmniboxEventProto::Suggestion::STARTER_PACK,
            ClientSummarizedResultType::kUrl},
-          {OmniboxEventProto::Suggestion::TAB_SWITCH,
-           ClientSummarizedResultType::kUrl},
-          {OmniboxEventProto::Suggestion::PEDAL,
-           ClientSummarizedResultType::kUrl},
       });
 
   const auto it = kResultTypesToClientSummarizedResultTypes->find(type);
@@ -165,7 +159,7 @@ void OmniboxMetricsProvider::RecordOmniboxOpenedURL(const OmniboxLog& log) {
   omnibox_event->set_typed_length(log.text.length());
   omnibox_event->set_just_deleted_text(log.just_deleted_text);
   omnibox_event->set_num_typed_terms(static_cast<int>(terms.size()));
-  omnibox_event->set_selected_index(log.selection.line);
+  omnibox_event->set_selected_index(log.selected_index);
   omnibox_event->set_selected_tab_match(log.disposition ==
                                         WindowOpenDisposition::SWITCH_TO_TAB);
   if (log.completed_length != std::u16string::npos)
@@ -192,40 +186,31 @@ void OmniboxMetricsProvider::RecordOmniboxOpenedURL(const OmniboxLog& log) {
   omnibox_event->set_is_popup_open(log.is_popup_open && !log.is_paste_and_go);
   omnibox_event->set_is_paste_and_go(log.is_paste_and_go);
 
-  if (log.steady_state_omnibox_position !=
-      metrics::OmniboxEventProto::UNKNOWN_POSITION) {
-    omnibox_event->set_steady_state_omnibox_position(
-        log.steady_state_omnibox_position);
-  }
-
-  for (size_t i = 0; i < log.result->size(); i++) {
-    const AutocompleteMatch& match = log.result->match_at(i);
+  for (auto i(log.result->begin()); i != log.result->end(); ++i) {
     OmniboxEventProto::Suggestion* suggestion = omnibox_event->add_suggestion();
-
-    const int action_index = log.selection.line == i && log.selection.IsAction()
-                                 ? log.selection.action_index
-                                 : -1;
-    suggestion->set_provider(match.GetOmniboxEventProviderType(action_index));
-    suggestion->set_result_type(match.GetOmniboxEventResultType(action_index));
-    suggestion->set_relevance(match.relevance);
-    if (match.typed_count != -1) {
-      suggestion->set_typed_count(match.typed_count);
+    if (i->provider) {
+      const auto provider_type = i->provider->AsOmniboxEventProviderType();
+      suggestion->set_provider(provider_type);
     }
+    suggestion->set_result_type(i->AsOmniboxEventResultType());
+    suggestion->set_relevance(i->relevance);
+    if (i->typed_count != -1)
+      suggestion->set_typed_count(i->typed_count);
 
     // TODO(https://crbug.com/1103056): send the entire set of subtypes.
-    if (!match.subtypes.empty()) {
-      suggestion->set_result_subtype_identifier(*match.subtypes.begin());
+    if (!i->subtypes.empty()) {
+      suggestion->set_result_subtype_identifier(*i->subtypes.begin());
     }
 
-    suggestion->set_has_tab_match(match.has_tab_match.value_or(false));
-    suggestion->set_is_keyword_suggestion(match.from_keyword);
+    suggestion->set_has_tab_match(i->has_tab_match.value_or(false));
+    suggestion->set_is_keyword_suggestion(i->from_keyword);
 
     // Scoring signals are not logged for search suggestions or in incognito
     // mode.
-    if (OmniboxFieldTrial::IsReportingUrlScoringSignalsEnabled() &&
-        !AutocompleteMatch::IsSearchType(match.type) && !log.is_incognito &&
-        match.scoring_signals) {
-      suggestion->mutable_scoring_signals()->CopyFrom(*match.scoring_signals);
+    if (OmniboxFieldTrial::IsLogUrlScoringSignalsEnabled() &&
+        !AutocompleteMatch::IsSearchType(i->type) && !log.is_incognito &&
+        i->scoring_signals) {
+      suggestion->mutable_scoring_signals()->CopyFrom(*i->scoring_signals);
     }
   }
   for (const auto& info : log.providers_info) {
@@ -247,23 +232,15 @@ void OmniboxMetricsProvider::RecordOmniboxOpenedURL(const OmniboxLog& log) {
 
 void OmniboxMetricsProvider::RecordOmniboxOpenedURLClientSummarizedResultType(
     const OmniboxLog& log) {
-  if (log.selection.line < 0 || log.selection.line >= log.result->size()) {
+  if (log.selected_index < 0 || log.selected_index >= log.result->size())
     return;
-  }
 
-  auto autocomplete_match = log.result->match_at(log.selection.line);
-  auto omnibox_event_result_type = autocomplete_match.GetOmniboxEventResultType(
-      log.selection.IsAction() ? log.selection.action_index : -1);
+  auto autocomplete_match = log.result->match_at(log.selected_index);
+  auto omnibox_event_result_type =
+      autocomplete_match.AsOmniboxEventResultType();
   auto client_summarized_result_type =
       GetClientSummarizedResultType(omnibox_event_result_type);
-  // Log UMA histogram.
   base::UmaHistogramEnumeration(
       "Omnibox.SuggestionUsed.ClientSummarizedResultType",
       client_summarized_result_type);
-  // Log UKM event.
-  if (log.ukm_source_id != ukm::kInvalidSourceId) {
-    ukm::builders::Omnibox_SuggestionUsed(log.ukm_source_id)
-        .SetResultType(static_cast<int64_t>(client_summarized_result_type))
-        .Record(ukm::UkmRecorder::Get());
-  }
 }

@@ -8,9 +8,11 @@ import android.graphics.Rect;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
+import org.chromium.base.annotations.CalledByNative;
 
-/** The class is Java's representative of components/content_capture/browser/content_capture_frame.h */
+/**
+ * The class is Java's representative of components/content_capture/browser/content_capture_frame.h
+ */
 public class ContentCaptureFrame extends ContentCaptureDataBase {
     private final String mUrl;
     private final String mTitle;
@@ -18,27 +20,13 @@ public class ContentCaptureFrame extends ContentCaptureDataBase {
 
     @CalledByNative
     @VisibleForTesting
-    public static ContentCaptureFrame createContentCaptureFrame(
-            long id,
-            String value,
-            int x,
-            int y,
-            int width,
-            int height,
-            String title,
-            String favicon) {
+    public static ContentCaptureFrame createContentCaptureFrame(long id, String value, int x, int y,
+            int width, int height, String title, String favicon) {
         return new ContentCaptureFrame(id, value, x, y, width, height, title, favicon);
     }
 
-    private ContentCaptureFrame(
-            long id,
-            String value,
-            int x,
-            int y,
-            int width,
-            int height,
-            String title,
-            String favicon) {
+    private ContentCaptureFrame(long id, String value, int x, int y, int width, int height,
+            String title, String favicon) {
         super(id, new Rect(x, y, x + width, y + height));
         mUrl = value;
         mTitle = title;

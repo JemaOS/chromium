@@ -58,11 +58,11 @@ class VIZ_SERVICE_EXPORT OutputPresenterGL : public OutputPresenter {
       const OutputPresenter::OverlayPlaneCandidate& overlay_plane_candidate,
       ScopedOverlayAccess* access,
       std::unique_ptr<gfx::GpuFence> acquire_fence) final;
+  bool SupportsGpuVSync() const final;
+  void SetGpuVSyncEnabled(bool enabled) final;
   void SetVSyncDisplayID(int64_t display_id) final;
-
 #if BUILDFLAG(IS_APPLE)
   void SetCALayerErrorCode(gfx::CALayerResult ca_layer_error_code) final;
-  void SetMaxPendingSwaps(int max_pending_swaps) final;
 #endif
 
  private:

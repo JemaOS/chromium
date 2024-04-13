@@ -15,45 +15,6 @@
 
 namespace commerce {
 
-std::optional<CommerceSubscriptionProto> GetCommerceSubscriptionProto(
-    const CommerceSubscription& subscription) {
-  SubscriptionTypeProto subscription_type = commerce_subscription_db::
-      CommerceSubscriptionContentProto_SubscriptionType_TYPE_UNSPECIFIED;
-  bool type_parse_succeeded = commerce_subscription_db::
-      CommerceSubscriptionContentProto_SubscriptionType_Parse(
-          SubscriptionTypeToString(subscription.type), &subscription_type);
-
-  TrackingIdTypeProto tracking_id_type = commerce_subscription_db::
-      CommerceSubscriptionContentProto_TrackingIdType_IDENTIFIER_TYPE_UNSPECIFIED;
-  bool id_type_parse_succeeded = commerce_subscription_db::
-      CommerceSubscriptionContentProto_TrackingIdType_Parse(
-          SubscriptionIdTypeToString(subscription.id_type), &tracking_id_type);
-
-  SubscriptionManagementTypeProto management_type = commerce_subscription_db::
-      CommerceSubscriptionContentProto_SubscriptionManagementType_MANAGE_TYPE_UNSPECIFIED;
-  bool management_type_parse_succeeded = commerce_subscription_db::
-      CommerceSubscriptionContentProto_SubscriptionManagementType_Parse(
-          SubscriptionManagementTypeToString(subscription.management_type),
-          &management_type);
-
-  // TODO(crbug.com/1348024): Record metrics for failed parse.
-  if (!type_parse_succeeded || !id_type_parse_succeeded ||
-      !management_type_parse_succeeded) {
-    VLOG(1) << "Fail to get proto type";
-    return std::nullopt;
-  }
-
-  const std::string& key = GetStorageKeyForSubscription(subscription);
-  CommerceSubscriptionProto proto;
-  proto.set_key(key);
-  proto.set_tracking_id(subscription.id);
-  proto.set_subscription_type(subscription_type);
-  proto.set_tracking_id_type(tracking_id_type);
-  proto.set_management_type(management_type);
-  proto.set_timestamp(subscription.timestamp);
-  return proto;
-}
-
 SubscriptionsStorage::SubscriptionsStorage(
     SessionProtoStorage<CommerceSubscriptionProto>* subscription_proto_db)
     : proto_db_(subscription_proto_db) {
@@ -143,22 +104,50 @@ void SubscriptionsStorage::DeleteAll() {
 }
 
 void SubscriptionsStorage::SaveSubscription(
-    const CommerceSubscription& subscription,
+    CommerceSubscription subscription,
     base::OnceCallback<void(bool)> callback) {
-  auto proto = GetCommerceSubscriptionProto(subscription);
+  // Get proto types from the object.
+  SubscriptionTypeProto subscription_type = commerce_subscription_db::
+      CommerceSubscriptionContentProto_SubscriptionType_TYPE_UNSPECIFIED;
+  bool type_parse_succeeded = commerce_subscription_db::
+      CommerceSubscriptionContentProto_SubscriptionType_Parse(
+          SubscriptionTypeToString(subscription.type), &subscription_type);
+
+  TrackingIdTypeProto tracking_id_type = commerce_subscription_db::
+      CommerceSubscriptionContentProto_TrackingIdType_IDENTIFIER_TYPE_UNSPECIFIED;
+  bool id_type_parse_succeeded = commerce_subscription_db::
+      CommerceSubscriptionContentProto_TrackingIdType_Parse(
+          SubscriptionIdTypeToString(subscription.id_type), &tracking_id_type);
+
+  SubscriptionManagementTypeProto management_type = commerce_subscription_db::
+      CommerceSubscriptionContentProto_SubscriptionManagementType_MANAGE_TYPE_UNSPECIFIED;
+  bool management_type_parse_succeeded = commerce_subscription_db::
+      CommerceSubscriptionContentProto_SubscriptionManagementType_Parse(
+          SubscriptionManagementTypeToString(subscription.management_type),
+          &management_type);
 
   // TODO(crbug.com/1348024): Record metrics for failed parse.
-  if (!proto.has_value()) {
+  if (!type_parse_succeeded || !id_type_parse_succeeded ||
+      !management_type_parse_succeeded) {
+    VLOG(1) << "Fail to get proto type";
     std::move(callback).Run(false);
     return;
   }
 
-  proto_db_->InsertContent(GetStorageKeyForSubscription(subscription),
-                           proto.value(), std::move(callback));
+  const std::string& key = GetStorageKeyForSubscription(subscription);
+  CommerceSubscriptionProto proto;
+  proto.set_key(key);
+  proto.set_tracking_id(subscription.id);
+  proto.set_subscription_type(subscription_type);
+  proto.set_tracking_id_type(tracking_id_type);
+  proto.set_management_type(management_type);
+  proto.set_timestamp(subscription.timestamp);
+
+  proto_db_->InsertContent(key, proto, std::move(callback));
 }
 
 void SubscriptionsStorage::DeleteSubscription(
-    const CommerceSubscription& subscription,
+    CommerceSubscription subscription,
     base::OnceCallback<void(bool)> callback) {
   proto_db_->DeleteOneEntry(GetStorageKeyForSubscription(subscription),
                             std::move(callback));
@@ -258,14 +247,23 @@ void SubscriptionsStorage::PerformUpdateStorage(
   auto local_map = SubscriptionsListToMap(std::move(local_subscriptions));
   std::vector<CommerceSubscription> added_subscriptions;
   std::vector<CommerceSubscription> removed_subscriptions;
-  auto updated_entries = std::make_unique<
-      std::vector<std::pair<std::string, CommerceSubscriptionProto>>>();
-  auto removed_keys = std::make_unique<std::vector<std::string>>();
 
+  bool all_succeeded = true;
   for (auto& kv : local_map) {
     if (remote_map.find(kv.first) == remote_map.end()) {
-      removed_keys->emplace_back(GetStorageKeyForSubscription(kv.second));
-      removed_subscriptions.emplace_back(kv.second);
+      removed_subscriptions.push_back(kv.second);
+      std::string key = GetStorageKeyForSubscription(kv.second);
+      DeleteSubscription(
+          std::move(kv.second),
+          base::BindOnce(
+              [](base::WeakPtr<SubscriptionsStorage> storage, std::string key,
+                 bool* all_succeeded, bool succeeded) {
+                *all_succeeded = (*all_succeeded) && succeeded;
+                if (storage && succeeded) {
+                  storage->subscriptions_cache_.erase(key);
+                }
+              },
+              weak_ptr_factory_.GetWeakPtr(), key, &all_succeeded));
     }
   }
   for (auto& kv : remote_map) {
@@ -279,40 +277,31 @@ void SubscriptionsStorage::PerformUpdateStorage(
       if (local_it->second.timestamp == kv.second.timestamp) {
         continue;
       }
+      DeleteSubscription(std::move(local_it->second),
+                         base::BindOnce(
+                             [](bool* all_succeeded, bool succeeded) {
+                               *all_succeeded = (*all_succeeded) && succeeded;
+                             },
+                             &all_succeeded));
     }
-    auto subscription_proto = GetCommerceSubscriptionProto(kv.second);
-    if (!subscription_proto.has_value()) {
-      continue;
-    }
-    added_subscriptions.emplace_back(kv.second);
-    updated_entries->emplace_back(GetStorageKeyForSubscription(kv.second),
-                                  subscription_proto.value());
+    added_subscriptions.push_back(kv.second);
+    std::string key_to_insert = GetStorageKeyForSubscription(kv.second);
+    SaveSubscription(
+        std::move(kv.second),
+        base::BindOnce(
+            [](base::WeakPtr<SubscriptionsStorage> storage, std::string key,
+               bool* all_succeeded, bool succeeded) {
+              *all_succeeded = (*all_succeeded) && succeeded;
+              if (storage && succeeded) {
+                storage->subscriptions_cache_.insert(key);
+              }
+            },
+            weak_ptr_factory_.GetWeakPtr(), key_to_insert, &all_succeeded));
   }
-
-  proto_db_->UpdateEntries(
-      std::move(updated_entries), std::move(removed_keys),
-      base::BindOnce(
-          [](base::WeakPtr<SubscriptionsStorage> storage,
-             std::vector<CommerceSubscription> added_subs,
-             std::vector<CommerceSubscription> removed_subs,
-             StorageUpdateCallback update_callback, bool succeeded) {
-            if (storage && succeeded) {
-              for (auto& subscription : added_subs) {
-                storage->subscriptions_cache_.insert(
-                    GetStorageKeyForSubscription(subscription));
-              }
-              for (auto& subscription : removed_subs) {
-                storage->subscriptions_cache_.erase(
-                    GetStorageKeyForSubscription(subscription));
-              }
-            }
-            std::move(update_callback)
-                .Run(succeeded ? SubscriptionsRequestStatus::kSuccess
-                               : SubscriptionsRequestStatus::kStorageError,
-                     std::move(added_subs), std::move(removed_subs));
-          },
-          weak_ptr_factory_.GetWeakPtr(), std::move(added_subscriptions),
-          std::move(removed_subscriptions), std::move(callback)));
+  std::move(callback).Run(
+      all_succeeded ? SubscriptionsRequestStatus::kSuccess
+                    : SubscriptionsRequestStatus::kStorageError,
+      std::move(added_subscriptions), std::move(removed_subscriptions));
 }
 
 void SubscriptionsStorage::IsSubscribed(

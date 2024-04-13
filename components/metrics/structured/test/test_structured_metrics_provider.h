@@ -10,7 +10,6 @@
 #include "components/metrics/structured/event.h"
 #include "components/metrics/structured/recorder.h"
 #include "components/metrics/structured/structured_metrics_provider.h"
-#include "components/metrics/structured/structured_metrics_recorder.h"
 
 namespace metrics::structured {
 
@@ -18,21 +17,20 @@ class EventsProto;
 
 // TestStructuredMetricsProvider is a wrapper of StructuredMetricsProvider to
 // be used for testing.
+
 class TestStructuredMetricsProvider : public Recorder::RecorderImpl {
  public:
   TestStructuredMetricsProvider();
-  explicit TestStructuredMetricsProvider(
-      std::unique_ptr<StructuredMetricsRecorder> recorder);
   ~TestStructuredMetricsProvider() override;
   TestStructuredMetricsProvider(const TestStructuredMetricsProvider&) = delete;
   TestStructuredMetricsProvider& operator=(
       const TestStructuredMetricsProvider&) = delete;
 
-  const EventsProto& ReadEvents() const;
+  const std::unique_ptr<PersistentProto<EventsProto>>& ReadEvents();
 
   // Returns pointer to the first event with the hash |project_name_hash| and
-  // |event_name_hash|. If no event is found, returns std::nullopt.
-  std::optional<const StructuredEventProto*> FindEvent(
+  // |event_name_hash|. If no event is found, returns absl::nullopt.
+  absl::optional<const StructuredEventProto*> FindEvent(
       uint64_t project_name_hash,
       uint64_t event_name_hash);
 
@@ -45,9 +43,6 @@ class TestStructuredMetricsProvider : public Recorder::RecorderImpl {
   void EnableRecording();
   void DisableRecording();
 
-  // Waits until the recorder is fully initialized.
-  void WaitUntilReady();
-
   // Sets a callback that will be called after the event is flushed to
   // persistence.
   void SetOnEventsRecordClosure(
@@ -55,11 +50,14 @@ class TestStructuredMetricsProvider : public Recorder::RecorderImpl {
 
  private:
   // Recorder::RecorderImpl:
+  void OnProfileAdded(const base::FilePath& profile_path) override;
   void OnEventRecord(const Event& event) override;
-
-  std::unique_ptr<StructuredMetricsRecorder> structured_metrics_recorder_;
+  void OnReportingStateChanged(bool enabled) override;
+  absl::optional<int> LastKeyRotation(uint64_t project_name_hash) override;
 
   std::unique_ptr<StructuredMetricsProvider> structured_metrics_provider_;
+
+  std::unique_ptr<MetricsProvider> system_profile_provider_;
 
   base::ScopedTempDir temp_dir_;
 

@@ -9,21 +9,17 @@
 
 #include <array>
 
-#include "base/containers/span.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
-#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 
 namespace power_metrics {
 
 namespace {
-
-constexpr const char* kPowerEventPath = "/sys/bus/event_source/devices/power";
 
 // Existing metrics that can be read via perf event.
 constexpr std::array<const char*, 5> kMetrics{
@@ -62,9 +58,9 @@ bool ReadDoubleFromFile(base::FilePath path, double* output) {
 // value of less than 1. Here, we only consider cpu0. See details in
 // https://man7.org/linux/man-pages/man2/perf_event_open.2.html.
 base::ScopedFD OpenPerfEvent(perf_event_attr* perf_attr) {
-  base::ScopedFD perf_fd(syscall(__NR_perf_event_open, perf_attr, /*pid=*/-1,
+  base::ScopedFD perf_fd{syscall(__NR_perf_event_open, perf_attr, /*pid=*/-1,
                                  /*cpu=*/0, /*group_fd=*/-1,
-                                 static_cast<int>(PERF_FLAG_FD_CLOEXEC)));
+                                 PERF_FLAG_FD_CLOEXEC)};
   return perf_fd;
 }
 
@@ -107,18 +103,18 @@ EnergyMetricsProviderLinux::Create() {
   return base::WrapUnique(new EnergyMetricsProviderLinux());
 }
 
-std::optional<EnergyMetricsProvider::EnergyMetrics>
+absl::optional<EnergyMetricsProvider::EnergyMetrics>
 EnergyMetricsProviderLinux::CaptureMetrics() {
   if (!Initialize()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   EnergyMetrics energy_metrics = {0};
   for (const auto& event : events_) {
     uint64_t absolute_energy;
-    if (!base::ReadFromFD(
-            event.fd.get(),
-            base::as_writable_chars(base::make_span(&absolute_energy, 1u)))) {
+    if (!base::ReadFromFD(event.fd.get(),
+                          reinterpret_cast<char*>(&absolute_energy),
+                          sizeof(absolute_energy))) {
       LOG(ERROR) << "Failed to read absolute energy of " << event.metric_type;
       continue;
     }
@@ -138,12 +134,6 @@ bool EnergyMetricsProviderLinux::Initialize() {
 
   is_initialized_ = true;
 
-  // Check if there are available power-related events on local platform.
-  if (!base::PathExists(base::FilePath(kPowerEventPath))) {
-    LOG(WARNING) << "No available power event";
-    return false;
-  }
-
   // Check if perf_event_paranoid is set to 0 as required.
   uint64_t perf_event_paranoid;
   if (!ReadUint64FromFile(
@@ -161,7 +151,7 @@ bool EnergyMetricsProviderLinux::Initialize() {
   // type for perf_event_attr from /sys/bus/event_source/devices/power/type.
   uint64_t attr_type;
   if (!ReadUint64FromFile(
-          base::FilePath(base::StrCat({kPowerEventPath, "/type"})),
+          base::FilePath("/sys/bus/event_source/devices/power/type"),
           &attr_type)) {
     LOG(WARNING) << "Failed to get perf event type";
     return false;
@@ -170,9 +160,11 @@ bool EnergyMetricsProviderLinux::Initialize() {
   // For each metric, get their file descriptors.
   for (auto* const metric : kMetrics) {
     base::FilePath config_path =
-        base::FilePath(base::StrCat({kPowerEventPath, "/events/", metric}));
-    base::FilePath scale_path = base::FilePath(
-        base::StrCat({kPowerEventPath, "/events/", metric, ".scale"}));
+        base::FilePath("/sys/bus/event_source/devices/power/events")
+            .Append(FILE_PATH_LITERAL(metric));
+    base::FilePath scale_path =
+        base::FilePath("/sys/bus/event_source/devices/power/events")
+            .Append(FILE_PATH_LITERAL(metric + std::string(".scale")));
     // Some energy metrics may be unavailable on different platforms, so the
     // corresponding file path does not exist, which is normal.
     if (!base::PathExists(config_path) || !base::PathExists(scale_path)) {

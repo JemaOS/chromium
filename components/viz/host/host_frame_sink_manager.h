@@ -6,7 +6,6 @@
 #define COMPONENTS_VIZ_HOST_HOST_FRAME_SINK_MANAGER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -31,6 +30,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
 #include "services/viz/public/mojom/compositing/frame_sink_bundle.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class SingleThreadTaskRunner;
@@ -78,18 +78,12 @@ class VIZ_HOST_EXPORT HostFrameSinkManager
   // on |frame_sink_manager_remote_| is lost.
   void SetConnectionLostCallback(base::RepeatingClosure callback);
 
-  // Registers `frame_sink_id` so that a client can submit CompositorFrames
+  // Registers |frame_sink_id| so that a client can submit CompositorFrames
   // using it. This must be called before creating a CompositorFrameSink or
   // registering FrameSinkId hierarchy.
   //
-  // A subsequent call with a new `client` for the same `frame_sink_id` will
-  // bind the id to the new `client` immediately. InvalidateFrameSinkId must
-  // only be called for the new bound `client`. All callbacks, including
-  // existing pending ones, are dispatched to the new `client`.
-  //
-  // When the `client` is done submitting CompositorFrames to `frame_sink_id`
-  // InvalidateFrameSink() should be called. It is invalid to register this
-  // `frame_sink_id` with another client after invalidation.
+  // When the client is done submitting CompositorFrames to |frame_sink_id| then
+  // InvalidateFrameSink() should be called.
   void RegisterFrameSinkId(const FrameSinkId& frame_sink_id,
                            HostFrameSinkClient* client,
                            ReportFirstSurfaceActivation report_activation);
@@ -98,12 +92,16 @@ class VIZ_HOST_EXPORT HostFrameSinkManager
   // InvalidateFrameSinkId() has not been called.
   bool IsFrameSinkIdRegistered(const FrameSinkId& frame_sink_id) const;
 
-  // Invalidates `frame_sink_id` when the client is done submitting
-  // CompositorFrames. If there is a CompositorFrameSink for `frame_sink_id`
+  // Invalidates |frame_sink_id| when the client is done submitting
+  // CompositorFrames. If there is a CompositorFrameSink for |frame_sink_id|
   // then it will be destroyed and the message pipe to the client will be
   // closed.
-  void InvalidateFrameSinkId(const FrameSinkId& frame_sink_id,
-                             HostFrameSinkClient* client);
+  //
+  // It's expected, but not enforced, that RegisterFrameSinkId() will never be
+  // called for |frame_sink_id| again. This is to avoid problems with re-entrant
+  // code. If the same client wants to submit CompositorFrames later a new
+  // FrameSinkId should be allocated.
+  void InvalidateFrameSinkId(const FrameSinkId& frame_sink_id);
 
   // |debug_label| is used when printing out the surface hierarchy so we know
   // which clients are contributing which surfaces.
@@ -197,13 +195,8 @@ class VIZ_HOST_EXPORT HostFrameSinkManager
   // least the given LocalSurfaceId (|surface_id.local_frame_id()|). If the
   // LocalSurfaceId is lower than the given id, then the request is queued up to
   // be executed later.
-  //
-  // When `capture_exact_surface_id` is true, the snapshot will only be
-  // taken for the surface whose ID is an exact match to `surface_id`. This is
-  // useful to take a snapshot of an old `Surface` post-navigation.
   void RequestCopyOfOutput(const SurfaceId& surface_id,
-                           std::unique_ptr<CopyOutputRequest> request,
-                           bool capture_exact_surface_id = false);
+                           std::unique_ptr<CopyOutputRequest> request);
 
   void Throttle(const std::vector<FrameSinkId>& ids, base::TimeDelta interval);
   void StartThrottlingAllFrameSinks(base::TimeDelta interval);
@@ -238,9 +231,6 @@ class VIZ_HOST_EXPORT HostFrameSinkManager
   // Ends the frame counting in Viz thread and returns data to the client.
   void StopFrameCountingForTest(
       mojom::FrameSinkManager::StopFrameCountingForTestCallback callback);
-
-  void ClearUnclaimedViewTransitionResources(const NavigationId& navigation_id);
-  bool HasUnclaimedViewTransitionResourcesForTest();
 
   const DebugRendererSettings& debug_renderer_settings() const {
     return debug_renderer_settings_;
@@ -296,7 +286,7 @@ class VIZ_HOST_EXPORT HostFrameSinkManager
 
   void CreateFrameSink(
       const FrameSinkId& frame_sink_id,
-      std::optional<FrameSinkBundleId> bundle_id,
+      absl::optional<FrameSinkBundleId> bundle_id,
       mojo::PendingReceiver<mojom::CompositorFrameSink> receiver,
       mojo::PendingRemote<mojom::CompositorFrameSinkClient> client);
 
@@ -315,11 +305,6 @@ class VIZ_HOST_EXPORT HostFrameSinkManager
   void OnAggregatedHitTestRegionListUpdated(
       const FrameSinkId& frame_sink_id,
       const std::vector<AggregatedHitTestRegion>& hit_test_data) override;
-#if BUILDFLAG(IS_ANDROID)
-  void VerifyThreadIdsDoNotBelongToHost(
-      const std::vector<int32_t>& thread_ids,
-      VerifyThreadIdsDoNotBelongToHostCallback callback) override;
-#endif
 
   // Connections to/from FrameSinkManagerImpl.
   mojo::Remote<mojom::FrameSinkManager> frame_sink_manager_remote_;

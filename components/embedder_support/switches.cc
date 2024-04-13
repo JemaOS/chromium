@@ -15,9 +15,6 @@ const char kDisablePopupBlocking[] = "disable-popup-blocking";
 // Enable auto-reload of error pages.
 const char kEnableAutoReload[] = "enable-auto-reload";
 
-// Enable headless mode.
-const char kHeadless[] = "headless";
-
 // Contains a list of feature names for which origin trial experiments should
 // be disabled. Names should be separated by "|" characters.
 const char kOriginTrialDisabledFeatures[] = "origin-trial-disabled-features";

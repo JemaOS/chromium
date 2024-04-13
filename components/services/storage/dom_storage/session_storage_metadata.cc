@@ -4,10 +4,9 @@
 
 #include "components/services/storage/dom_storage/session_storage_metadata.h"
 
-#include <string_view>
-
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "components/services/storage/dom_storage/async_dom_storage_database.h"
 #include "third_party/blink/public/common/dom_storage/session_storage_namespace_id.h"
@@ -47,13 +46,13 @@ constexpr const size_t kPrefixBeforeStorageKeyLength =
     kNamespacePrefixLength + blink::kSessionStorageNamespaceIdLength +
     kNamespaceStorageKeySeperatorLength;
 
-std::string_view Uint8VectorToStringView(const std::vector<uint8_t>& bytes) {
-  return std::string_view(reinterpret_cast<const char*>(bytes.data()),
-                          bytes.size());
+base::StringPiece Uint8VectorToStringPiece(const std::vector<uint8_t>& bytes) {
+  return base::StringPiece(reinterpret_cast<const char*>(bytes.data()),
+                           bytes.size());
 }
 
 bool ValueToNumber(const std::vector<uint8_t>& value, int64_t* out) {
-  return base::StringToInt64(Uint8VectorToStringView(value), out);
+  return base::StringToInt64(Uint8VectorToStringPiece(value), out);
 }
 
 std::vector<uint8_t> NumberToValue(int64_t map_number) {
@@ -104,7 +103,7 @@ SessionStorageMetadata::SetupNewDatabase() {
 }
 
 bool SessionStorageMetadata::ParseDatabaseVersion(
-    std::optional<std::vector<uint8_t>> value,
+    absl::optional<std::vector<uint8_t>> value,
     std::vector<AsyncDomStorageDatabase::BatchDatabaseTask>* upgrade_tasks) {
   if (!value) {
     initial_database_version_from_disk_ = 0;
@@ -146,7 +145,7 @@ bool SessionStorageMetadata::ParseNamespaces(
   for (const DomStorageDatabase::KeyValuePair& key_value : values) {
     size_t key_size = key_value.key.size();
 
-    std::string_view key_as_string = Uint8VectorToStringView(key_value.key);
+    base::StringPiece key_as_string = Uint8VectorToStringPiece(key_value.key);
 
     if (key_size < kNamespacePrefixLength) {
       LOG(ERROR) << "Key size is less than prefix length: " << key_as_string;
@@ -156,9 +155,9 @@ bool SessionStorageMetadata::ParseNamespaces(
 
     // The key must start with 'namespace-'.
     if (!base::StartsWith(key_as_string,
-                          std::string_view(reinterpret_cast<const char*>(
-                                               kNamespacePrefixBytes),
-                                           kNamespacePrefixLength))) {
+                          base::StringPiece(reinterpret_cast<const char*>(
+                                                kNamespacePrefixBytes),
+                                            kNamespacePrefixLength))) {
       LOG(ERROR) << "Key must start with 'namespace-': " << key_as_string;
       error = true;
       break;
@@ -181,24 +180,24 @@ bool SessionStorageMetadata::ParseNamespaces(
     if (key_size == kPrefixBeforeStorageKeyLength)
       continue;
 
-    std::string_view namespace_id = key_as_string.substr(
+    base::StringPiece namespace_id = key_as_string.substr(
         kNamespacePrefixLength, blink::kSessionStorageNamespaceIdLength);
 
-    std::string_view storage_key_str =
+    base::StringPiece storage_key_str =
         key_as_string.substr(kPrefixBeforeStorageKeyLength);
 
     int64_t map_number;
     if (!ValueToNumber(key_value.value, &map_number)) {
       error = true;
       LOG(ERROR) << "Could not parse map number "
-                 << Uint8VectorToStringView(key_value.value);
+                 << Uint8VectorToStringPiece(key_value.value);
       break;
     }
 
     if (map_number >= next_map_id_from_namespaces_)
       next_map_id_from_namespaces_ = map_number + 1;
 
-    std::optional<blink::StorageKey> storage_key =
+    absl::optional<blink::StorageKey> storage_key =
         blink::StorageKey::Deserialize(storage_key_str);
     if (!storage_key) {
       LOG(ERROR) << "Invalid StorageKey " << storage_key_str;

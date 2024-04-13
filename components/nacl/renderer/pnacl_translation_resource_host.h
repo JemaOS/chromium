@@ -10,7 +10,6 @@
 #include <map>
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "ipc/ipc_platform_file.h"
 #include "ipc/message_filter.h"
 #include "ppapi/c/pp_bool.h"
@@ -75,7 +74,7 @@ class PnaclTranslationResourceHost : public IPC::MessageFilter {
   scoped_refptr<base::SingleThreadTaskRunner> io_task_runner_;
 
   // Should be accessed on the io thread.
-  raw_ptr<IPC::Sender> sender_;
+  IPC::Sender* sender_;
   CacheRequestInfoMap pending_cache_requests_;
 };
 

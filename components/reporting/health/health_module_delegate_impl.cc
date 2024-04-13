@@ -6,9 +6,7 @@
 
 #include <utility>
 
-#include "base/logging.h"
 #include "components/reporting/util/file.h"
-#include "components/reporting/util/status.h"
 
 namespace reporting {
 
@@ -19,7 +17,7 @@ const size_t kRepeatedPtrFieldOverhead = 2;
 HealthModuleDelegateImpl::HealthModuleDelegateImpl(
     const base::FilePath& directory,
     size_t max_history_storage,
-    std::string_view file_base_name)
+    base::StringPiece file_base_name)
     : directory_(directory),
       file_base_name_(file_base_name),
       max_history_storage_(max_history_storage) {}

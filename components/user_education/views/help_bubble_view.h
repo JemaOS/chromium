@@ -7,20 +7,23 @@
 
 #include <cstddef>
 #include <memory>
-#include <optional>
 #include <vector>
 
-#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "components/user_education/common/help_bubble_params.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/views/bubble/bubble_border.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/controls/button/label_button.h"
+
+namespace ui {
+class MouseEvent;
+}  // namespace ui
 
 namespace views {
 class ImageView;
@@ -34,8 +37,6 @@ class HelpBubbleDelegate;
 
 namespace internal {
 
-class MenuEventMonitor;
-
 // Describes how a help bubble should be anchored to a Views element, beyond
 // what is specified by the HelpBubbleParams. Should only be instantiated by
 // classes derived from HelpBubbleFactory (or in tests).
@@ -45,7 +46,7 @@ struct HelpBubbleAnchorParams {
 
   // This is an optional override of the anchor rect in screen coordinates.
   // If unspecified, the bubble is anchored as normal to `view`.
-  std::optional<gfx::Rect> rect;
+  absl::optional<gfx::Rect> rect;
 
   // Whether or not a visible arrow should be shown.
   bool show_arrow = true;
@@ -57,15 +58,12 @@ struct HelpBubbleAnchorParams {
 // in-product help which educates users about certain Chrome features in
 // a deferred context.
 class HelpBubbleView : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(HelpBubbleView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(HelpBubbleView);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kHelpBubbleElementIdForTesting);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kDefaultButtonIdForTesting);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kFirstNonDefaultButtonIdForTesting);
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kCloseButtonIdForTesting);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kBodyTextIdForTesting);
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kTitleTextIdForTesting);
 
   HelpBubbleView(const HelpBubbleDelegate* delegate,
                  const internal::HelpBubbleAnchorParams& anchor,
@@ -86,39 +84,34 @@ class HelpBubbleView : public views::BubbleDialogDelegateView {
 
  protected:
   // BubbleDialogDelegateView:
+  bool OnMousePressed(const ui::MouseEvent& event) override;
   std::u16string GetAccessibleWindowTitle() const override;
   void OnWidgetActivationChanged(views::Widget* widget, bool active) override;
   void OnThemeChanged() override;
   gfx::Size CalculatePreferredSize() const override;
   gfx::Rect GetAnchorRect() const override;
-  void OnBeforeBubbleWidgetInit(views::Widget::InitParams* params,
-                                views::Widget* widget) const override;
 
  private:
   FRIEND_TEST_ALL_PREFIXES(HelpBubbleViewTimeoutTest,
                            RespectsProvidedTimeoutAfterActivate);
   friend class HelpBubbleViewsTest;
-  friend class internal::MenuEventMonitor;
-
-  class AnchorViewObserver;
 
   void MaybeStartAutoCloseTimer();
 
   void OnTimeout();
 
-  const raw_ptr<const HelpBubbleDelegate> delegate_;
+  const base::raw_ptr<const HelpBubbleDelegate> delegate_;
 
   // If set, overrides the anchor bounds within the anchor view.
-  std::optional<gfx::Rect> local_anchor_bounds_;
+  absl::optional<gfx::Rect> local_anchor_bounds_;
 
-  raw_ptr<views::ImageView> icon_view_ = nullptr;
-  std::vector<raw_ptr<views::Label, VectorExperimental>> labels_;
+  base::raw_ptr<views::ImageView> icon_view_ = nullptr;
+  std::vector<views::Label*> labels_;
 
   // If the bubble has buttons, it must be focusable.
-  std::vector<raw_ptr<views::MdTextButton, VectorExperimental>>
-      non_default_buttons_;
-  raw_ptr<views::MdTextButton> default_button_ = nullptr;
-  raw_ptr<views::Button> close_button_ = nullptr;
+  std::vector<views::MdTextButton*> non_default_buttons_;
+  base::raw_ptr<views::MdTextButton> default_button_ = nullptr;
+  base::raw_ptr<views::Button> close_button_ = nullptr;
 
   // This is the base accessible name of the window.
   std::u16string accessible_name_;
@@ -133,14 +126,6 @@ class HelpBubbleView : public views::BubbleDialogDelegateView {
   // Prevents the widget we're anchored to from disappearing when it loses
   // focus, even if it's marked as close_on_deactivate.
   std::unique_ptr<CloseOnDeactivatePin> anchor_pin_;
-
-  // Sniffs events intended for a menu to ensure that for bubbles anchored to
-  // menus, hover, click, and tap events are still registered.
-  std::unique_ptr<internal::MenuEventMonitor> menu_event_monitor_;
-
-  // Observes the anchor view. Dismisses the help bubble if it loses visibility.
-  // Useful when our anchor element is not the anchor view.
-  std::unique_ptr<AnchorViewObserver> anchor_observer_;
 
   // Auto close timeout. If the value is 0 (default), the bubble never times
   // out.

@@ -18,7 +18,6 @@ public class ContentId {
     public String id;
 
     public ContentId() {}
-
     public ContentId(String namespace, String id) {
         assert namespace == null || !namespace.contains(",");
         this.namespace = namespace != null ? namespace : "";

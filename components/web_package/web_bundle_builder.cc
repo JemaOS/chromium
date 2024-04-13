@@ -8,7 +8,7 @@
 
 #include <ostream>
 
-#include "base/numerics/byte_conversions.h"
+#include "base/big_endian.h"
 
 namespace web_package {
 
@@ -20,9 +20,8 @@ cbor::Value CreateByteString(base::StringPiece s) {
 
 cbor::Value CreateHeaderMap(const WebBundleBuilder::Headers& headers) {
   cbor::Value::MapValue map;
-  for (const auto& pair : headers) {
+  for (const auto& pair : headers)
     map.insert({CreateByteString(pair.first), CreateByteString(pair.second)});
-  }
   return cbor::Value(std::move(map));
 }
 
@@ -141,9 +140,10 @@ std::vector<uint8_t> WebBundleBuilder::CreateTopLevel() {
   toplevel_array.emplace_back(cbor::Value::BinaryValue(8, 0));
 
   std::vector<uint8_t> bundle = Encode(cbor::Value(toplevel_array));
+  char encoded[8];
+  base::WriteBigEndian(encoded, static_cast<uint64_t>(bundle.size()));
   // Overwrite the dummy bytestring with the actual size.
-  base::span(bundle).last(8u).copy_from(
-      base::numerics::U64ToBigEndian(bundle.size()));
+  memcpy(bundle.data() + bundle.size() - 8, encoded, 8);
   return bundle;
 }
 

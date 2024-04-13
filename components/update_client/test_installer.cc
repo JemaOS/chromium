@@ -31,9 +31,8 @@ TestInstaller::~TestInstaller() {
   // The unpack path is deleted unconditionally by the component state code,
   // which is driving this installer. Therefore, the unpack path must not
   // exist when this object is destroyed.
-  if (!unpack_path_.empty()) {
+  if (!unpack_path_.empty())
     EXPECT_FALSE(base::DirectoryExists(unpack_path_));
-  }
 }
 
 void TestInstaller::OnUpdateError(int error) {
@@ -97,7 +96,7 @@ void VersionedTestInstaller::Install(
     std::unique_ptr<InstallParams> /*install_params*/,
     ProgressCallback progress_callback,
     Callback callback) {
-  std::optional<base::Value::Dict> manifest =
+  absl::optional<base::Value::Dict> manifest =
       update_client::ReadManifest(unpack_path);
   if (!manifest) {
     return;

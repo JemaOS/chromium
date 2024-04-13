@@ -22,7 +22,7 @@ namespace cronet {
 class HostCachePersistenceManagerTest : public testing::Test {
  protected:
   void SetUp() override {
-    cache_ = std::make_unique<net::HostCache>(/*max_entries=*/1000);
+    cache_ = net::HostCache::CreateDefaultCache();
     pref_service_ = std::make_unique<TestingPrefServiceSimple>();
     pref_service_->registry()->RegisterListPref(kPrefName);
   }

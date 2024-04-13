@@ -96,10 +96,7 @@ class SafeBrowsingTriggeredPopupBlockerTestBase
                 &SafeBrowsingTriggeredPopupBlockerTestBase::CreateThrottle,
                 base::Unretained(this)));
   }
-  void TearDown() override {
-    popup_blocker_ = nullptr;
-    content::RenderViewHostTestHarness::TearDown();
-  }
+
   FakeSafeBrowsingDatabaseManager* fake_safe_browsing_database() {
     return fake_safe_browsing_database_.get();
   }
@@ -117,8 +114,7 @@ class SafeBrowsingTriggeredPopupBlockerTestBase
     metadata.subresource_filter_match
         [safe_browsing::SubresourceFilterType::ABUSIVE] = level;
     fake_safe_browsing_database()->AddBlocklistedUrl(
-        url, safe_browsing::SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER,
-        metadata);
+        url, safe_browsing::SB_THREAT_TYPE_SUBRESOURCE_FILTER, metadata);
   }
 
   void MarkUrlAsAbusiveEnforce(const GURL& url) {

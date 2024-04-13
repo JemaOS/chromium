@@ -5,8 +5,6 @@
 #ifndef COMPONENTS_REPORTING_STORAGE_TEST_STORAGE_MODULE_H_
 #define COMPONENTS_REPORTING_STORAGE_TEST_STORAGE_MODULE_H_
 
-#include <optional>
-
 #include "base/functional/callback.h"
 #include "base/strings/string_piece.h"
 #include "components/reporting/proto/synced/record.pb.h"
@@ -14,6 +12,7 @@
 #include "components/reporting/storage/storage_module_interface.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 namespace test {
@@ -45,8 +44,8 @@ class TestStorageModuleStrict : public StorageModuleInterface {
                              Record record,
                              EnqueueCallback callback);
 
-  std::optional<Record> record_;
-  std::optional<Priority> priority_;
+  absl::optional<Record> record_;
+  absl::optional<Priority> priority_;
 };
 
 // Most of the time no need to log uninterested calls to |AddRecord|.

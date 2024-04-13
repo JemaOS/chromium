@@ -103,7 +103,7 @@ void DownloadResponseHandler::OnReceiveEarlyHints(
 void DownloadResponseHandler::OnReceiveResponse(
     network::mojom::URLResponseHeadPtr head,
     mojo::ScopedDataPipeConsumerHandle body,
-    std::optional<mojo_base::BigBuffer> cached_metadata) {
+    absl::optional<mojo_base::BigBuffer> cached_metadata) {
   create_info_ = CreateDownloadCreateInfo(*head);
   cert_status_ = head->cert_status;
 

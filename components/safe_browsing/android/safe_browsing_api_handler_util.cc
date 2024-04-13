@@ -24,6 +24,25 @@ namespace {
 const char kJsonKeyMatches[] = "matches";
 const char kJsonKeyThreatType[] = "threat_type";
 
+// Do not reorder or delete.  Make sure changes are reflected in
+// SB2RemoteCallThreatSubType.
+enum UmaThreatSubType {
+  UMA_THREAT_SUB_TYPE_NOT_SET = 0,
+  UMA_THREAT_SUB_TYPE_POTENTIALLY_HALMFUL_APP_LANDING = 1,
+  UMA_THREAT_SUB_TYPE_POTENTIALLY_HALMFUL_APP_DISTRIBUTION = 2,
+  UMA_THREAT_SUB_TYPE_UNKNOWN = 3,
+  UMA_THREAT_SUB_TYPE_SOCIAL_ENGINEERING_ADS = 4,
+  UMA_THREAT_SUB_TYPE_SOCIAL_ENGINEERING_LANDING = 5,
+  UMA_THREAT_SUB_TYPE_PHISHING = 6,
+
+  // DEPRECATED.
+  UMA_THREAT_SUB_TYPE_BETTER_ADS = 7,
+  UMA_THREAT_SUB_TYPE_ABUSIVE = 8,
+  UMA_THREAT_SUB_TYPE_ALL_ADS = 9,
+
+  UMA_THREAT_SUB_TYPE_MAX_VALUE
+};
+
 // Parse the optional "UserPopulation" key from the metadata.
 // Returns empty string if none was found.
 std::string ParseUserPopulation(const base::Value::Dict& match) {
@@ -57,40 +76,40 @@ SubresourceFilterMatch ParseSubresourceFilterMatch(
 
 // Returns the severity level for a given SafeBrowsing list. The lowest value is
 // 0, which represents the most severe list.
-int GetThreatSeverity(SafetyNetJavaThreatType threat_type) {
+int GetThreatSeverity(JavaThreatTypes threat_type) {
   switch (threat_type) {
-    case SafetyNetJavaThreatType::POTENTIALLY_HARMFUL_APPLICATION:
+    case JAVA_THREAT_TYPE_POTENTIALLY_HARMFUL_APPLICATION:
       return 0;
-    case SafetyNetJavaThreatType::SOCIAL_ENGINEERING:
+    case JAVA_THREAT_TYPE_SOCIAL_ENGINEERING:
       return 1;
-    case SafetyNetJavaThreatType::UNWANTED_SOFTWARE:
+    case JAVA_THREAT_TYPE_UNWANTED_SOFTWARE:
       return 2;
-    case SafetyNetJavaThreatType::SUBRESOURCE_FILTER:
+    case JAVA_THREAT_TYPE_SUBRESOURCE_FILTER:
       return 3;
-    case SafetyNetJavaThreatType::BILLING:
+    case JAVA_THREAT_TYPE_BILLING:
       return 4;
-    case SafetyNetJavaThreatType::CSD_ALLOWLIST:
+    case JAVA_THREAT_TYPE_CSD_ALLOWLIST:
       return 5;
-    case SafetyNetJavaThreatType::MAX_VALUE:
+    case JAVA_THREAT_TYPE_HIGH_CONFIDENCE_ALLOWLIST:
+      return 6;
+    case JAVA_THREAT_TYPE_MAX_VALUE:
       return std::numeric_limits<int>::max();
   }
-  NOTREACHED() << "Unhandled threat_type: " << static_cast<int>(threat_type);
+  NOTREACHED() << "Unhandled threat_type: " << threat_type;
   return std::numeric_limits<int>::max();
 }
 
-SBThreatType SafetyNetJavaToSBThreatType(
-    SafetyNetJavaThreatType java_threat_num) {
-  using enum SBThreatType;
+SBThreatType JavaToSBThreatType(int java_threat_num) {
   switch (java_threat_num) {
-    case SafetyNetJavaThreatType::POTENTIALLY_HARMFUL_APPLICATION:
+    case JAVA_THREAT_TYPE_POTENTIALLY_HARMFUL_APPLICATION:
       return SB_THREAT_TYPE_URL_MALWARE;
-    case SafetyNetJavaThreatType::UNWANTED_SOFTWARE:
+    case JAVA_THREAT_TYPE_UNWANTED_SOFTWARE:
       return SB_THREAT_TYPE_URL_UNWANTED;
-    case SafetyNetJavaThreatType::SOCIAL_ENGINEERING:
+    case JAVA_THREAT_TYPE_SOCIAL_ENGINEERING:
       return SB_THREAT_TYPE_URL_PHISHING;
-    case SafetyNetJavaThreatType::SUBRESOURCE_FILTER:
+    case JAVA_THREAT_TYPE_SUBRESOURCE_FILTER:
       return SB_THREAT_TYPE_SUBRESOURCE_FILTER;
-    case SafetyNetJavaThreatType::BILLING:
+    case JAVA_THREAT_TYPE_BILLING:
       return SB_THREAT_TYPE_BILLING;
     default:
       // Unknown threat type
@@ -110,32 +129,30 @@ SBThreatType SafetyNetJavaToSBThreatType(
 UmaRemoteCallResult ParseJsonFromGMSCore(const std::string& metadata_str,
                                          SBThreatType* worst_sb_threat_type,
                                          ThreatMetadata* metadata) {
-  *worst_sb_threat_type =
-      SBThreatType::SB_THREAT_TYPE_SAFE;        // Default to safe.
+  *worst_sb_threat_type = SB_THREAT_TYPE_SAFE;  // Default to safe.
   *metadata = ThreatMetadata();                 // Default values.
 
   if (metadata_str.empty())
-    return UmaRemoteCallResult::JSON_EMPTY;
+    return UMA_STATUS_JSON_EMPTY;
 
   // Pick out the "matches" list.
-  std::optional<base::Value> value = base::JSONReader::Read(metadata_str);
+  absl::optional<base::Value> value = base::JSONReader::Read(metadata_str);
   const base::Value::List* matches = nullptr;
   {
     if (!value.has_value())
-      return UmaRemoteCallResult::JSON_FAILED_TO_PARSE;
+      return UMA_STATUS_JSON_FAILED_TO_PARSE;
 
     base::Value::Dict* dict = value->GetIfDict();
     if (!dict)
-      return UmaRemoteCallResult::JSON_FAILED_TO_PARSE;
+      return UMA_STATUS_JSON_FAILED_TO_PARSE;
 
     matches = dict->FindList(kJsonKeyMatches);
     if (!matches)
-      return UmaRemoteCallResult::JSON_FAILED_TO_PARSE;
+      return UMA_STATUS_JSON_FAILED_TO_PARSE;
   }
 
   // Go through each matched threat type and pick the most severe.
-  SafetyNetJavaThreatType worst_threat_type =
-      SafetyNetJavaThreatType::MAX_VALUE;
+  JavaThreatTypes worst_threat_type = JAVA_THREAT_TYPE_MAX_VALUE;
   const base::Value::Dict* worst_match = nullptr;
   for (const base::Value& match_value : *matches) {
     const base::Value::Dict* match = match_value.GetIfDict();
@@ -151,10 +168,9 @@ UmaRemoteCallResult ParseJsonFromGMSCore(const std::string& metadata_str,
       continue;  // Skip malformed list entries.
     }
 
-    SafetyNetJavaThreatType threat_type =
-        static_cast<SafetyNetJavaThreatType>(threat_type_num);
-    if (threat_type > SafetyNetJavaThreatType::MAX_VALUE) {
-      threat_type = SafetyNetJavaThreatType::MAX_VALUE;
+    JavaThreatTypes threat_type = static_cast<JavaThreatTypes>(threat_type_num);
+    if (threat_type > JAVA_THREAT_TYPE_MAX_VALUE) {
+      threat_type = JAVA_THREAT_TYPE_MAX_VALUE;
     }
     if (GetThreatSeverity(threat_type) < GetThreatSeverity(worst_threat_type)) {
       worst_threat_type = threat_type;
@@ -162,62 +178,18 @@ UmaRemoteCallResult ParseJsonFromGMSCore(const std::string& metadata_str,
     }
   }
 
-  *worst_sb_threat_type = SafetyNetJavaToSBThreatType(worst_threat_type);
-  if (*worst_sb_threat_type == SBThreatType::SB_THREAT_TYPE_SAFE ||
-      !worst_match) {
-    return UmaRemoteCallResult::JSON_UNKNOWN_THREAT;
-  }
+  *worst_sb_threat_type = JavaToSBThreatType(worst_threat_type);
+  if (*worst_sb_threat_type == SB_THREAT_TYPE_SAFE || !worst_match)
+    return UMA_STATUS_JSON_UNKNOWN_THREAT;
 
   // Fill in the metadata
   metadata->population_id = ParseUserPopulation(*worst_match);
-  if (*worst_sb_threat_type ==
-      SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER) {
+  if (*worst_sb_threat_type == SB_THREAT_TYPE_SUBRESOURCE_FILTER) {
     metadata->subresource_filter_match =
         ParseSubresourceFilterMatch(*worst_match);
   }
 
-  return UmaRemoteCallResult::MATCH;  // success
-}
-
-ThreatMetadata GetThreatMetadataFromSafeBrowsingApi(
-    SafeBrowsingJavaThreatType threat_type,
-    const std::vector<int>& threat_attributes) {
-  bool is_relevant_threat_type = false;
-  SubresourceFilterType type;
-  switch (threat_type) {
-    case SafeBrowsingJavaThreatType::ABUSIVE_EXPERIENCE_VIOLATION:
-      is_relevant_threat_type = true;
-      type = SubresourceFilterType::ABUSIVE;
-      break;
-    case SafeBrowsingJavaThreatType::BETTER_ADS_VIOLATION:
-      is_relevant_threat_type = true;
-      type = SubresourceFilterType::BETTER_ADS;
-      break;
-    case SafeBrowsingJavaThreatType::NO_THREAT:
-    case SafeBrowsingJavaThreatType::SOCIAL_ENGINEERING:
-    case SafeBrowsingJavaThreatType::UNWANTED_SOFTWARE:
-    case SafeBrowsingJavaThreatType::POTENTIALLY_HARMFUL_APPLICATION:
-    case SafeBrowsingJavaThreatType::BILLING:
-      break;
-  }
-  if (!is_relevant_threat_type) {
-    return ThreatMetadata();
-  }
-  // Filter level is default to ENFORCE.
-  SubresourceFilterLevel level = SubresourceFilterLevel::ENFORCE;
-  for (int threat_attribute : threat_attributes) {
-    if (threat_attribute ==
-        static_cast<int>(SafeBrowsingJavaThreatAttribute::CANARY)) {
-      level = SubresourceFilterLevel::WARN;
-      break;
-    }
-  }
-
-  SubresourceFilterMatch subresource_filter_match;
-  subresource_filter_match[type] = level;
-  ThreatMetadata threat_metadata;
-  threat_metadata.subresource_filter_match = subresource_filter_match;
-  return threat_metadata;
+  return UMA_STATUS_MATCH;  // success
 }
 
 }  // namespace safe_browsing

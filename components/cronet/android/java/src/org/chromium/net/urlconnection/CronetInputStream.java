@@ -109,7 +109,9 @@ class CronetInputStream extends InputStream {
         }
     }
 
-    /** Returns whether {@link #mBuffer} has unread data. */
+    /**
+     * Returns whether {@link #mBuffer} has unread data.
+     */
     private boolean hasUnreadData() {
         return mBuffer != null && mBuffer.hasRemaining();
     }

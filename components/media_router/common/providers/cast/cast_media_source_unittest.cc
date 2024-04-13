@@ -10,7 +10,6 @@
 #include "third_party/openscreen/src/cast/common/public/cast_streaming_app_ids.h"
 
 using cast_channel::CastDeviceCapability;
-using cast_channel::CastDeviceCapabilitySet;
 using cast_channel::ReceiverAppType;
 
 namespace media_router {
@@ -35,8 +34,10 @@ TEST(CastMediaSourceTest, FromCastURLWithDefaults) {
   ASSERT_EQ(1u, source->app_infos().size());
   const CastAppInfo& app_info = source->app_infos()[0];
   EXPECT_EQ("ABCDEFAB", app_info.app_id);
-  EXPECT_TRUE(app_info.required_capabilities.Empty());
-  EXPECT_EQ(std::nullopt, source->target_playout_delay());
+  EXPECT_TRUE(app_info.required_capabilities.empty());
+  const auto& broadcast_request = source->broadcast_request();
+  EXPECT_FALSE(broadcast_request);
+  EXPECT_EQ(absl::nullopt, source->target_playout_delay());
   EXPECT_EQ(true, source->site_requested_audio_capture());
   EXPECT_EQ(cast_channel::VirtualConnectionType::kStrong,
             source->connection_type());
@@ -46,6 +47,8 @@ TEST(CastMediaSourceTest, FromCastURLWithDefaults) {
 TEST(CastMediaSourceTest, FromCastURL) {
   MediaSource::Id source_id(
       "cast:ABCDEFAB?capabilities=video_out,audio_out"
+      "&broadcastNamespace=namespace"
+      "&broadcastMessage=message%25"
       "&clientId=12345"
       "&launchTimeout=30000"
       "&autoJoinPolicy=tab_and_origin_scoped"
@@ -62,9 +65,13 @@ TEST(CastMediaSourceTest, FromCastURL) {
   ASSERT_EQ(1u, source->app_infos().size());
   const CastAppInfo& app_info = source->app_infos()[0];
   EXPECT_EQ("ABCDEFAB", app_info.app_id);
-  EXPECT_EQ((CastDeviceCapabilitySet{CastDeviceCapability::kVideoOut,
-                                     CastDeviceCapability::kAudioOut}),
+  EXPECT_EQ((BitwiseOr<CastDeviceCapability>{CastDeviceCapability::VIDEO_OUT,
+                                             CastDeviceCapability::AUDIO_OUT}),
             app_info.required_capabilities);
+  const auto& broadcast_request = source->broadcast_request();
+  ASSERT_TRUE(broadcast_request);
+  EXPECT_EQ("namespace", broadcast_request->broadcast_namespace);
+  EXPECT_EQ("message%", broadcast_request->message);
   EXPECT_EQ("12345", source->client_id());
   EXPECT_EQ(base::Milliseconds(30000), source->launch_timeout());
   EXPECT_EQ(AutoJoinPolicy::kTabAndOriginScoped, source->auto_join_policy());
@@ -83,6 +90,8 @@ TEST(CastMediaSourceTest, FromLegacyCastURL) {
       "https://google.com/cast"
       "#__castAppId__=ABCDEFAB(video_out,audio_out)"
       "/__castAppId__=otherAppId"
+      "/__castBroadcastNamespace__=namespace"
+      "/__castBroadcastMessage__=message%25"
       "/__castClientId__=12345"
       "/__castLaunchTimeout__=30000"
       "/__castAutoJoinPolicy__=origin_scoped"
@@ -94,10 +103,14 @@ TEST(CastMediaSourceTest, FromLegacyCastURL) {
   ASSERT_EQ(2u, source->app_infos().size());
   const CastAppInfo& app_info = source->app_infos()[0];
   EXPECT_EQ("ABCDEFAB", app_info.app_id);
-  EXPECT_EQ((CastDeviceCapabilitySet{CastDeviceCapability::kVideoOut,
-                                     CastDeviceCapability::kAudioOut}),
+  EXPECT_EQ((BitwiseOr<CastDeviceCapability>{CastDeviceCapability::VIDEO_OUT,
+                                             CastDeviceCapability::AUDIO_OUT}),
             app_info.required_capabilities);
   EXPECT_EQ("otherAppId", source->app_infos()[1].app_id);
+  const auto& broadcast_request = source->broadcast_request();
+  ASSERT_TRUE(broadcast_request);
+  EXPECT_EQ("namespace", broadcast_request->broadcast_namespace);
+  EXPECT_EQ("message%", broadcast_request->message);
   EXPECT_EQ("12345", source->client_id());
   EXPECT_EQ(base::Milliseconds(30000), source->launch_timeout());
   EXPECT_EQ(AutoJoinPolicy::kOriginScoped, source->auto_join_policy());
@@ -147,7 +160,7 @@ TEST(CastMediaSourceTest, FromMirroringURN) {
   AssertDefaultCastMediaSource(source.get());
 }
 
-TEST(CastMediaSourceTest, FromDesktopUrnWithoutAudio) {
+TEST(CastMediaSourceTest, FromDesktopUrn) {
   MediaSource::Id source_id("urn:x-org.chromium.media:source:desktop:foo");
   std::unique_ptr<CastMediaSource> source =
       CastMediaSource::FromMediaSourceId(source_id);
@@ -156,21 +169,6 @@ TEST(CastMediaSourceTest, FromDesktopUrnWithoutAudio) {
   ASSERT_EQ(1u, source->app_infos().size());
   EXPECT_EQ(openscreen::cast::GetCastStreamingAudioVideoAppId(),
             source->app_infos()[0].app_id);
-  AssertDefaultCastMediaSource(source.get());
-}
-
-TEST(CastMediaSourceTest, FromDesktopUrnWithAudio) {
-  MediaSource::Id source_id(
-      "urn:x-org.chromium.media:source:desktop:foo?with_audio=true");
-  std::unique_ptr<CastMediaSource> source =
-      CastMediaSource::FromMediaSourceId(source_id);
-  ASSERT_TRUE(source);
-  EXPECT_EQ(source_id, source->source_id());
-  ASSERT_EQ(2u, source->app_infos().size());
-  EXPECT_EQ(openscreen::cast::GetCastStreamingAudioVideoAppId(),
-            source->app_infos()[0].app_id);
-  EXPECT_EQ(openscreen::cast::GetCastStreamingAudioOnlyAppId(),
-            source->app_infos()[1].app_id);
   AssertDefaultCastMediaSource(source.get());
 }
 

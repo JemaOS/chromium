@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_DOWNLOAD_INTERNAL_BACKGROUND_SERVICE_DRIVER_ENTRY_H_
 #define COMPONENTS_DOWNLOAD_INTERNAL_BACKGROUND_SERVICE_DRIVER_ENTRY_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,6 +13,7 @@
 #include "base/time/time.h"
 #include "build/blink_buildflags.h"
 #include "build/build_config.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(USE_BLINK)
@@ -77,7 +77,7 @@ struct DriverEntry {
 #if BUILDFLAG(USE_BLINK)
   // The blob data handle that contains download data.
   // Will be available after the download is completed in incognito mode.
-  std::optional<storage::BlobDataHandle> blob_handle;
+  absl::optional<storage::BlobDataHandle> blob_handle;
 #endif
 
   // Time the download was marked as complete, base::Time() if the download is

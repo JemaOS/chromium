@@ -15,7 +15,7 @@
       <div slot="tab" id="csbrr">Client Safe Browsing Report Requests</h1></div>
       <div slot="tab" id="cpr">Client Phishing Requests</h1></div>
       <div slot="tab" id="password-protection">Password Protection</h1></div>
-      <div slot="tab" id="urt-lookup">URT Lookup</div>
+      <div slot="tab" id="rt-lookup">RT Lookup</div>
       <div slot="tab" id="referrer-chain">Referrer Chain</div>
       <div slot="tab" id="log">Log Messages</div>
 <if expr="not is_android">
@@ -24,7 +24,6 @@
       <div slot="tab" id="hash-cache">Hash Cache</div>
       <div slot="tab" id="download-protection">Download Protection</div>
       <div slot="tab" id="deep-scan">Deep Scans</div>
-      <div slot="tab" id="hprt-lookup">HPRT Lookup</div>
 </if>
       <div slot="panel">
         <h2>Experiments</h2>
@@ -81,8 +80,8 @@
         <table id="pg-ping-list" class="request-response"></table>
       </div>
       <div slot="panel">
-        <h2>URT Lookup Pings</h2>
-        <table id="urt-lookup-ping-list" class="request-response"></table>
+        <h2>RT Lookup Pings</h2>
+        <table id="rt-lookup-ping-list" class="request-response"></table>
       </div>
       <div slot="panel">
         <h2>Referrer Chain</h2>
@@ -136,55 +135,10 @@
         <div class="content">
           <p id="received-client-download-response-list"></p>
         </div>
-        <h2>Download TailoredVerdict override</h2>
-        <div class="content">
-          <p id="tailored-verdict-override-content"></p>
-        </div>
-        <div class="content">
-          <form id="tailored-verdict-override-form">
-            <fieldset>
-              <legend>TailoredVerdictType</legend>
-              <label>
-                <input type="radio" name="tailored_verdict_type"
-                    value="VERDICT_TYPE_UNSPECIFIED">
-                VERDICT_TYPE_UNSPECIFIED
-              </label>
-              <label>
-                <input type="radio" name="tailored_verdict_type"
-                    value="COOKIE_THEFT">
-                COOKIE_THEFT
-              </label>
-              <label>
-                <input type="radio" name="tailored_verdict_type"
-                    value="SUSPICIOUS_ARCHIVE">
-                SUSPICIOUS_ARCHIVE
-              </label>
-            </fieldset>
-            <fieldset>
-              <legend>ExperimentalWarningAdjustment</legend>
-              <label>
-                <input type="checkbox" name="adjustments"
-                    value="ADJUSTMENT_UNSPECIFIED">
-                ADJUSTMENT_UNSPECIFIED
-              </label>
-              <label>
-                <input type="checkbox" name="adjustments"
-                    value="ACCOUNT_INFO_STRING">
-                ACCOUNT_INFO_STRING
-              </label>
-            </fieldset>
-            <button type="submit">Submit override</button>
-            <button id="tailored-verdict-override-clear">Clear override</button>
-          </form>
-        </div>
       </div>
       <div slot="panel">
         <h2>Deep Scans</h2>
         <table id="deep-scan-list" class="request-response"></table>
-      </div>
-      <div slot="panel">
-        <h2>HPRT Lookup Pings</h2>
-        <table id="hprt-lookup-ping-list" class="request-response"></table>
       </div>
 </if>
     </cr-tab-box>

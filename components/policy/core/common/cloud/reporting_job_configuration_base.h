@@ -6,15 +6,14 @@
 #define COMPONENTS_POLICY_CORE_COMMON_CLOUD_REPORTING_JOB_CONFIGURATION_BASE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
 
 #include "base/functional/callback.h"
 #include "base/values.h"
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
 #include "components/policy/core/common/cloud/device_management_service.h"
 #include "components/policy/policy_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 
@@ -45,7 +44,7 @@ class POLICY_EXPORT ReportingJobConfigurationBase
       base::OnceCallback<void(DeviceManagementService::Job* job,
                               DeviceManagementStatus status,
                               int response_code,
-                              std::optional<base::Value::Dict>)>;
+                              absl::optional<base::Value::Dict>)>;
 
   // Builds a Device dictionary for uploading information about the device to
   // the server.
@@ -65,7 +64,7 @@ class POLICY_EXPORT ReportingJobConfigurationBase
     static std::string GetNamePath();
 
    private:
-    static std::string GetStringPath(std::string_view leaf_name);
+    static std::string GetStringPath(base::StringPiece leaf_name);
 
     // Keys used in Device dictionary.
     static const char kDMToken[];
@@ -90,7 +89,7 @@ class POLICY_EXPORT ReportingJobConfigurationBase
     static std::string GetChromeVersionPath();
 
    private:
-    static std::string GetStringPath(std::string_view leaf_name);
+    static std::string GetStringPath(base::StringPiece leaf_name);
 
     // Keys used in Browser dictionary.
     static const char kBrowserId[];
@@ -159,7 +158,7 @@ class POLICY_EXPORT ReportingJobConfigurationBase
   // being generated can be seen with the ::reporting::GetContext function. Once
   // |GetPayload| is called, |context_| will be merged into the payload and
   // reset.
-  std::optional<base::Value::Dict> context_;
+  absl::optional<base::Value::Dict> context_;
 
   UploadCompleteCallback callback_;
 

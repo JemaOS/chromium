@@ -55,7 +55,7 @@ CompositorViewImpl::CompositorViewImpl(JNIEnv* env,
       current_surface_format_(kPixelFormatUnknown) {
   compositor_.reset(content::Compositor::Create(this, window_android));
   root_layer_->SetIsDrawable(true);
-  std::optional<SkColor> background_color =
+  absl::optional<SkColor> background_color =
       ui::JavaColorToOptionalSkColor(java_background_color);
   // TODO(crbug/1308932): Remove FromColor and make all SkColor4f.
   root_layer_->SetBackgroundColor(

@@ -16,16 +16,13 @@ namespace favicon {
 class FaviconService;
 class LargeIconService;
 
-// Where the icon sent in the response is coming from. These values are
-// persisted to logs. Entries should not be renumbered and numeric values should
-// never be reused. Update tools/metrics/histograms/metadata/sync/enums.xml
-// accordingly.
+// Where the icon sent in the response is coming from. Used for metrics.
 enum class FaviconAvailability {
   // Icon recovered from local storage (but may originally come from server).
   kLocal = 0,
   // DEPRECATED: No icon is retrieved using sync in this layer anymore.
   // Icon recovered using sync.
-  // kDeprecatedSync = 1,
+  kDeprecatedSync = 1,
   // Icon not found.
   kNotAvailable = 2,
   kMaxValue = kNotAvailable,

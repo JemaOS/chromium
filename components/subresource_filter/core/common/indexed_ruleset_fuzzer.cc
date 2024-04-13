@@ -64,11 +64,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
 
   CHECK(subresource_filter::IndexedRulesetMatcher::Verify(
-      indexer.data(), indexer.GetChecksum()));
+      indexer.data(), indexer.size(), indexer.GetChecksum()));
 
   // Lastly, read into the indexed ruleset by matching the URL from the
   // beginning of the fuzzed data.
-  subresource_filter::IndexedRulesetMatcher matcher(indexer.data());
+  subresource_filter::IndexedRulesetMatcher matcher(indexer.data(),
+                                                    indexer.size());
   // TODO(csharrison): Consider fuzzing things like the parent origin, the
   // activation type, and the element type.
   matcher.ShouldDisableFilteringForDocument(

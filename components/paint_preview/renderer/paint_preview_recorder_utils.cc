@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/trace_event/common/trace_event_common.h"
 #include "base/trace_event/trace_event.h"
 #include "cc/paint/paint_image.h"
@@ -60,12 +59,12 @@ class OpConverterAndTracker {
   const cc::PaintOp* ConvertAndTrack(const cc::PaintOp& op) {
     converted_op_.emplace<absl::monostate>();
     switch (op.GetType()) {
-      case cc::PaintOpType::kDrawTextBlob: {
+      case cc::PaintOpType::DrawTextBlob: {
         const auto& text_blob_op = static_cast<const cc::DrawTextBlobOp&>(op);
         tracker_->AddGlyphs(text_blob_op.blob.get());
         break;
       }
-      case cc::PaintOpType::kAnnotate: {
+      case cc::PaintOpType::Annotate: {
         const auto& annotate_op = static_cast<const cc::AnnotateOp&>(op);
         tracker_->AnnotateLink(GURL(std::string(reinterpret_cast<const char*>(
                                                     annotate_op.data->data()),
@@ -74,53 +73,53 @@ class OpConverterAndTracker {
         // Delete the op. We no longer need it.
         return nullptr;
       }
-      case cc::PaintOpType::kCustomData: {
+      case cc::PaintOpType::CustomData: {
         const auto& custom_op = static_cast<const cc::CustomDataOp&>(op);
         tracker_->TransformClipForFrame(custom_op.id);
         break;
       }
-      case cc::PaintOpType::kSave: {
+      case cc::PaintOpType::Save: {
         tracker_->Save();
         break;
       }
-      case cc::PaintOpType::kSaveLayer: {
+      case cc::PaintOpType::SaveLayer: {
         tracker_->Save();
         break;
       }
-      case cc::PaintOpType::kSaveLayerAlpha: {
+      case cc::PaintOpType::SaveLayerAlpha: {
         tracker_->Save();
         break;
       }
-      case cc::PaintOpType::kRestore: {
+      case cc::PaintOpType::Restore: {
         tracker_->Restore();
         break;
       }
-      case cc::PaintOpType::kSetMatrix: {
+      case cc::PaintOpType::SetMatrix: {
         const auto& matrix_op = static_cast<const cc::SetMatrixOp&>(op);
         tracker_->SetMatrix(matrix_op.matrix.asM33());
         break;
       }
-      case cc::PaintOpType::kConcat: {
+      case cc::PaintOpType::Concat: {
         const auto& concat_op = static_cast<const cc::ConcatOp&>(op);
         tracker_->Concat(concat_op.matrix.asM33());
         break;
       }
-      case cc::PaintOpType::kScale: {
+      case cc::PaintOpType::Scale: {
         const auto& scale_op = static_cast<const cc::ScaleOp&>(op);
         tracker_->Scale(scale_op.sx, scale_op.sy);
         break;
       }
-      case cc::PaintOpType::kRotate: {
+      case cc::PaintOpType::Rotate: {
         const auto& rotate_op = static_cast<const cc::RotateOp&>(op);
         tracker_->Rotate(rotate_op.degrees);
         break;
       }
-      case cc::PaintOpType::kTranslate: {
+      case cc::PaintOpType::Translate: {
         const auto& translate_op = static_cast<const cc::TranslateOp&>(op);
         tracker_->Translate(translate_op.dx, translate_op.dy);
         break;
       }
-      case cc::PaintOpType::kDrawImage: {
+      case cc::PaintOpType::DrawImage: {
         const auto& image_op = static_cast<const cc::DrawImageOp&>(op);
         if (image_op.image.IsTextureBacked()) {
           converted_op_.emplace<cc::DrawImageOp>(
@@ -130,7 +129,7 @@ class OpConverterAndTracker {
         }
         break;
       }
-      case cc::PaintOpType::kDrawImageRect: {
+      case cc::PaintOpType::DrawImageRect: {
         const auto& image_op = static_cast<const cc::DrawImageRectOp&>(op);
         if (image_op.image.IsTextureBacked()) {
           converted_op_.emplace<cc::DrawImageRectOp>(
@@ -147,7 +146,7 @@ class OpConverterAndTracker {
   }
 
  private:
-  raw_ptr<PaintPreviewTracker> tracker_;
+  PaintPreviewTracker* tracker_;
   absl::variant<absl::monostate, cc::DrawImageOp, cc::DrawImageRectOp>
       converted_op_;
 };
@@ -159,17 +158,17 @@ sk_sp<const SkPicture> PaintRecordToSkPicture(const cc::PaintRecord& recording,
                                               const gfx::Rect& bounds) {
   // base::Unretained is safe as |tracker| outlives the usage of
   // |custom_callback|.
-  cc::PlaybackCallbacks callbacks;
-  callbacks.custom_callback =
+  cc::PlaybackParams::CustomDataRasterCallback custom_callback =
       base::BindRepeating(&PaintPreviewTracker::CustomDataToSkPictureCallback,
                           base::Unretained(tracker));
   OpConverterAndTracker converter_and_tracker(tracker);
-  callbacks.convert_op_callback =
+  cc::PlaybackParams::ConvertOpCallback convert_op_callback =
       base::BindRepeating(&OpConverterAndTracker::ConvertAndTrack,
                           base::Unretained(&converter_and_tracker));
 
   auto skp = recording.ToSkPicture(
-      SkRect::MakeWH(bounds.width(), bounds.height()), nullptr, callbacks);
+      SkRect::MakeWH(bounds.width(), bounds.height()), nullptr,
+      std::move(custom_callback), std::move(convert_op_callback));
 
   if (!skp || skp->cullRect().width() == 0 || skp->cullRect().height() == 0)
     return nullptr;

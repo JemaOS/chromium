@@ -18,7 +18,7 @@ class FilePath;
 }
 
 namespace policy {
-class CloudPolicyManager;
+class MachineLevelUserCloudPolicyManager;
 }
 
 namespace enterprise_reporting {
@@ -54,10 +54,10 @@ class ProfileReportGenerator {
 
     // Returns a new platform-specific policy conversions client.
     virtual std::unique_ptr<policy::PolicyConversionsClient>
-    MakePolicyConversionsClient(bool is_machine_scope) = 0;
+    MakePolicyConversionsClient() = 0;
     // Get a pointer to the current platform's cloud policy manager.
-    virtual policy::CloudPolicyManager* GetCloudPolicyManager(
-        bool is_machine_scope) = 0;
+    virtual policy::MachineLevelUserCloudPolicyManager*
+    GetCloudPolicyManager() = 0;
   };
 
   explicit ProfileReportGenerator(ReportingDelegateFactory* delegate_factory);
@@ -67,7 +67,6 @@ class ProfileReportGenerator {
 
   void set_extensions_enabled(bool enabled);
   void set_policies_enabled(bool enabled);
-  void set_is_machine_scope(bool is_machine);
 
   // Generates a report for the profile associated with |path| and |name| if
   // it's activated, and returns the report. The report is null if it can't be
@@ -88,7 +87,6 @@ class ProfileReportGenerator {
 
   bool extensions_enabled_ = true;
   bool policies_enabled_ = true;
-  bool is_machine_scope_ = true;
 
   std::unique_ptr<enterprise_management::ChromeUserProfileInfo> report_;
 };

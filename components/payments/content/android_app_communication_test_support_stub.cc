@@ -6,7 +6,6 @@
 
 #include <utility>
 
-#include "components/payments/core/native_error_strings.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_browser_context.h"
 
@@ -51,10 +50,6 @@ class AndroidAppCommunicationTestSupportStub
   void ExpectNoAbortPaymentApp() override {}
 
   content::BrowserContext* context() override { return &context_; }
-
-  std::string GetNoInstanceExpectedErrorString() override {
-    return errors::kUnableToInvokeAndroidPaymentApps;
-  }
 
  private:
   content::BrowserTaskEnvironment environment_;

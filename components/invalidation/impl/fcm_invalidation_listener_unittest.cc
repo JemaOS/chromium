@@ -4,7 +4,6 @@
 
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -14,16 +13,12 @@
 #include "base/test/task_environment.h"
 #include "components/invalidation/impl/fcm_invalidation_listener.h"
 #include "components/invalidation/impl/per_user_topic_subscription_manager.h"
-#include "components/invalidation/impl/status.h"
-#include "components/invalidation/public/invalidation.h"
 #include "components/invalidation/public/invalidation_util.h"
 #include "components/invalidation/public/invalidator_state.h"
+#include "components/invalidation/public/topic_invalidation_map.h"
 #include "services/data_decoder/public/cpp/test_support/in_process_data_decoder.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
-using testing::IsEmpty;
-using testing::UnorderedElementsAre;
 
 namespace invalidation {
 
@@ -39,6 +34,10 @@ class TestFCMSyncNetworkChannel : public FCMSyncNetworkChannel {
  public:
   void StartListening() override {}
   void StopListening() override {}
+
+  void RequestDetailedStatus(
+      const base::RepeatingCallback<void(base::Value::Dict)>& callback)
+      override {}
 
   using FCMSyncNetworkChannel::DeliverIncomingMessage;
   using FCMSyncNetworkChannel::DeliverToken;
@@ -82,23 +81,31 @@ class FakeDelegate : public FCMInvalidationListener::Delegate {
     }
   }
 
-  InvalidatorState GetInvalidatorState() const { return state_; }
-
-  const std::set<Topic>& GetSuccessfullySubscribedTopics() const {
-    return successfully_subscribed_topics_;
+  bool IsUnknownVersion(const Topic& topic) const {
+    auto it = invalidations_.find(topic);
+    if (it == invalidations_.end()) {
+      ADD_FAILURE() << "No invalidations for topic " << topic;
+      return false;
+    } else {
+      return it->second.back().is_unknown_version();
+    }
   }
 
+  InvalidatorState GetInvalidatorState() const { return state_; }
+
   // FCMInvalidationListener::Delegate implementation.
-  void OnInvalidate(const Invalidation& invalidation) override {
-    invalidations_[invalidation.topic()].push_back(invalidation);
+  void OnInvalidate(const TopicInvalidationMap& invalidation_map) override {
+    TopicSet topics = invalidation_map.GetTopics();
+    for (const auto& topic : topics) {
+      const SingleTopicInvalidationSet& incoming =
+          invalidation_map.ForTopic(topic);
+      List& list = invalidations_[topic];
+      list.insert(list.end(), incoming.begin(), incoming.end());
+    }
   }
 
   void OnInvalidatorStateChange(InvalidatorState state) override {
     state_ = state;
-  }
-
-  void OnSuccessfullySubscribed(const Topic& topic) override {
-    successfully_subscribed_topics_.insert(topic);
   }
 
  private:
@@ -109,7 +116,6 @@ class FakeDelegate : public FCMInvalidationListener::Delegate {
   Map invalidations_;
   InvalidatorState state_;
   DropMap dropped_invalidations_map_;
-  std::set<Topic> successfully_subscribed_topics_;
 };
 
 class MockSubscriptionManager : public PerUserTopicSubscriptionManager {
@@ -124,17 +130,10 @@ class MockSubscriptionManager : public PerUserTopicSubscriptionManager {
   }
   ~MockSubscriptionManager() override = default;
   MOCK_METHOD2(UpdateSubscribedTopics,
-               void(const TopicMap& topics, const std::string& token));
+               void(const Topics& topics, const std::string& token));
   MOCK_METHOD0(Init, void());
   MOCK_CONST_METHOD1(LookupSubscribedPublicTopicByPrivateTopic,
-                     std::optional<Topic>(const std::string& private_topic));
-  void NotifySubscriptionRequestFinished(
-      Topic topic,
-      PerUserTopicSubscriptionManager::RequestType request_type,
-      Status code) {
-    PerUserTopicSubscriptionManager::NotifySubscriptionRequestFinished(
-        topic, request_type, code);
-  }
+                     absl::optional<Topic>(const std::string& private_topic));
 };
 
 class FCMInvalidationListenerTest : public testing::Test {
@@ -151,7 +150,7 @@ class FCMInvalidationListenerTest : public testing::Test {
   void SetUp() override {
     StartListener();
 
-    TopicMap initial_topics;
+    Topics initial_topics;
     initial_topics.emplace(kBookmarksTopic_, TopicMetadata{false});
     initial_topics.emplace(kPreferencesTopic_, TopicMetadata{true});
     listener_.UpdateInterestedTopics(initial_topics);
@@ -178,12 +177,12 @@ class FCMInvalidationListenerTest : public testing::Test {
     return fake_delegate_.GetVersion(topic);
   }
 
-  InvalidatorState GetInvalidatorState() {
-    return fake_delegate_.GetInvalidatorState();
+  bool IsUnknownVersion(const Topic& topic) const {
+    return fake_delegate_.IsUnknownVersion(topic);
   }
 
-  const std::set<Topic>& GetSuccessfullySubscribedTopics() {
-    return fake_delegate_.GetSuccessfullySubscribedTopics();
+  InvalidatorState GetInvalidatorState() {
+    return fake_delegate_.GetInvalidatorState();
   }
 
   void FireInvalidate(const Topic& topic,
@@ -191,14 +190,6 @@ class FCMInvalidationListenerTest : public testing::Test {
                       const std::string& payload) {
     fcm_sync_network_channel_->DeliverIncomingMessage(payload, topic, topic,
                                                       version);
-  }
-
-  void NotifySubscriptionRequestFinished(
-      Topic topic,
-      PerUserTopicSubscriptionManager::RequestType request_type,
-      Status code) {
-    subscription_manager_->NotifySubscriptionRequestFinished(
-        topic, request_type, code);
   }
 
   void EnableNotifications() {
@@ -219,9 +210,8 @@ class FCMInvalidationListenerTest : public testing::Test {
  private:
   base::test::SingleThreadTaskEnvironment task_environment_;
   data_decoder::test::InProcessDataDecoder in_process_data_decoder_;
-  raw_ptr<TestFCMSyncNetworkChannel, DanglingUntriaged>
-      fcm_sync_network_channel_;
-  raw_ptr<MockSubscriptionManager, DanglingUntriaged> subscription_manager_;
+  raw_ptr<TestFCMSyncNetworkChannel> fcm_sync_network_channel_;
+  raw_ptr<MockSubscriptionManager> subscription_manager_;
 
  protected:
   // Tests need to access these directly.
@@ -241,6 +231,7 @@ TEST_F(FCMInvalidationListenerTest, InvalidateNoPayload) {
   FireInvalidate(topic, kVersion1, std::string());
 
   ASSERT_EQ(1U, GetInvalidationCount(topic));
+  ASSERT_FALSE(IsUnknownVersion(topic));
   EXPECT_EQ(kVersion1, GetVersion(topic));
   EXPECT_EQ("", GetPayload(topic));
 }
@@ -254,6 +245,7 @@ TEST_F(FCMInvalidationListenerTest, InvalidateEmptyPayload) {
   FireInvalidate(topic, kVersion1, std::string());
 
   ASSERT_EQ(1U, GetInvalidationCount(topic));
+  ASSERT_FALSE(IsUnknownVersion(topic));
   EXPECT_EQ(kVersion1, GetVersion(topic));
   EXPECT_EQ("", GetPayload(topic));
 }
@@ -266,6 +258,7 @@ TEST_F(FCMInvalidationListenerTest, InvalidateWithPayload) {
   FireInvalidate(topic, kVersion1, kPayload1);
 
   ASSERT_EQ(1U, GetInvalidationCount(topic));
+  ASSERT_FALSE(IsUnknownVersion(topic));
   EXPECT_EQ(kVersion1, GetVersion(topic));
   EXPECT_EQ(kPayload1, GetPayload(topic));
 }
@@ -279,6 +272,7 @@ TEST_F(FCMInvalidationListenerTest, ManyInvalidations_NoDrop) {
     FireInvalidate(topic, i, kPayload1);
   }
   ASSERT_EQ(static_cast<size_t>(kRepeatCount), GetInvalidationCount(topic));
+  ASSERT_FALSE(IsUnknownVersion(topic));
   EXPECT_EQ(kPayload1, GetPayload(topic));
   EXPECT_EQ(initial_version + kRepeatCount - 1, GetVersion(topic));
 }
@@ -288,7 +282,7 @@ TEST_F(FCMInvalidationListenerTest, ManyInvalidations_NoDrop) {
 TEST_F(FCMInvalidationListenerTest, InvalidateBeforeRegistration_Simple) {
   const Topic kUnregisteredId = "unregistered";
   const Topic& topic = kUnregisteredId;
-  TopicMap topics;
+  Topics topics;
   topics.emplace(topic, TopicMetadata{false});
 
   EXPECT_EQ(0U, GetInvalidationCount(topic));
@@ -301,38 +295,33 @@ TEST_F(FCMInvalidationListenerTest, InvalidateBeforeRegistration_Simple) {
   listener_.UpdateInterestedTopics(topics);
 
   ASSERT_EQ(1U, GetInvalidationCount(topic));
+  ASSERT_FALSE(IsUnknownVersion(topic));
   EXPECT_EQ(kVersion1, GetVersion(topic));
   EXPECT_EQ(kPayload1, GetPayload(topic));
 }
 
-// Fire a couple of invalidations before any topic registers. For each topic,
-// all but the invalidation with the highest version number will be dropped.
+// Fire ten invalidations before an topics registers.  Some invalidations will
+// be dropped an replaced with an unknown version invalidation.
 TEST_F(FCMInvalidationListenerTest, InvalidateBeforeRegistration_Drop) {
-  const int kRepeatCount = 10;
-  const Topic kTopicA = "unregistered topic a";
-  const Topic kTopicB = "unregistered topic b";
-  TopicMap topics;
-  topics.emplace(kTopicA, TopicMetadata{false});
-  topics.emplace(kTopicB, TopicMetadata{false});
+  const int kRepeatCount =
+      UnackedInvalidationSet::kMaxBufferedInvalidations + 1;
+  const Topic kUnregisteredId("unregistered");
+  const Topic& topic = kUnregisteredId;
+  Topics topics;
+  topics.emplace(topic, TopicMetadata{false});
 
-  EXPECT_EQ(0U, GetInvalidationCount(kTopicA));
-  EXPECT_EQ(0U, GetInvalidationCount(kTopicB));
+  EXPECT_EQ(0U, GetInvalidationCount(topic));
 
-  const int64_t initial_version = kVersion1;
-  const int64_t max_version = initial_version + kRepeatCount;
-  for (int64_t i = initial_version; i <= initial_version + kRepeatCount; ++i) {
-    FireInvalidate(kTopicA, i, kPayload1);
-    FireInvalidate(kTopicB, i, kPayload1);
+  int64_t initial_version = kVersion1;
+  for (int64_t i = initial_version; i < initial_version + kRepeatCount; ++i) {
+    FireInvalidate(topic, i, kPayload1);
   }
 
   EnableNotifications();
   listener_.UpdateInterestedTopics(topics);
 
-  EXPECT_EQ(1U, GetInvalidationCount(kTopicA));
-  EXPECT_EQ(max_version, GetVersion(kTopicA));
-
-  EXPECT_EQ(1U, GetInvalidationCount(kTopicB));
-  EXPECT_EQ(max_version, GetVersion(kTopicB));
+  ASSERT_EQ(UnackedInvalidationSet::kMaxBufferedInvalidations,
+            GetInvalidationCount(topic));
 }
 
 // Fire an invalidation, then fire another one with a lower version.  Both
@@ -343,12 +332,14 @@ TEST_F(FCMInvalidationListenerTest, InvalidateVersion) {
   FireInvalidate(topic, kVersion2, kPayload2);
 
   ASSERT_EQ(1U, GetInvalidationCount(topic));
+  ASSERT_FALSE(IsUnknownVersion(topic));
   EXPECT_EQ(kVersion2, GetVersion(topic));
   EXPECT_EQ(kPayload2, GetPayload(topic));
 
   FireInvalidate(topic, kVersion1, kPayload1);
 
   ASSERT_EQ(2U, GetInvalidationCount(topic));
+  ASSERT_FALSE(IsUnknownVersion(topic));
 
   EXPECT_EQ(kVersion1, GetVersion(topic));
   EXPECT_EQ(kPayload1, GetPayload(topic));
@@ -358,6 +349,7 @@ TEST_F(FCMInvalidationListenerTest, InvalidateVersion) {
 TEST_F(FCMInvalidationListenerTest, InvalidateMultipleIds) {
   FireInvalidate(kBookmarksTopic_, 3, std::string());
   ASSERT_EQ(1U, GetInvalidationCount(kBookmarksTopic_));
+  ASSERT_FALSE(IsUnknownVersion(kBookmarksTopic_));
   EXPECT_EQ(3, GetVersion(kBookmarksTopic_));
   EXPECT_EQ("", GetPayload(kBookmarksTopic_));
 
@@ -366,16 +358,15 @@ TEST_F(FCMInvalidationListenerTest, InvalidateMultipleIds) {
   ASSERT_EQ(0U, GetInvalidationCount(kExtensionsTopic_));
 }
 
-TEST_F(FCMInvalidationListenerTest, EmitSuccessfullySubscribedNotification) {
-  const Topic& topic = kPreferencesTopic_;
+// Disable notifications, then enable them.
+TEST_F(FCMInvalidationListenerTest, ReEnableNotifications) {
+  DisableNotifications(FcmChannelState::NO_INSTANCE_ID_TOKEN);
 
-  EXPECT_THAT(GetSuccessfullySubscribedTopics(), IsEmpty());
+  EXPECT_EQ(TRANSIENT_INVALIDATION_ERROR, GetInvalidatorState());
 
-  NotifySubscriptionRequestFinished(
-      topic, PerUserTopicSubscriptionManager::RequestType::kSubscribe,
-      Status(StatusCode::SUCCESS, /*message=*/std::string()));
+  EnableNotifications();
 
-  EXPECT_THAT(GetSuccessfullySubscribedTopics(), UnorderedElementsAre(topic));
+  EXPECT_EQ(INVALIDATIONS_ENABLED, GetInvalidatorState());
 }
 
 }  // namespace

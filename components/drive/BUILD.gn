@@ -12,6 +12,7 @@ static_library("drive") {
     "drive_notification_manager.cc",
     "drive_notification_manager.h",
     "drive_notification_observer.h",
+    "drive_pref_names.cc",
     "drive_pref_names.h",
     "drive_uploader.cc",
     "drive_uploader.h",

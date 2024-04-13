@@ -21,7 +21,9 @@ import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 
-/** Tests for {@link RoundedCornerOutlineProvider}. */
+/**
+ * Tests for {@link RoundedCornerOutlineProvider}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class RoundedCornerOutlineProviderUnitTest {
@@ -94,17 +96,6 @@ public class RoundedCornerOutlineProviderUnitTest {
     public void verifyRespectsPaddings() {
         mView.setPaddingRelative(15, 10, 25, 20);
         mProvider.getOutline(mView, mOutline);
-
-        // Default: no clipping padded area.
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(0, 0, VIEW_WIDTH, VIEW_HEIGHT), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
-
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
-        mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
         Assert.assertEquals(new Rect(15, 10, VIEW_WIDTH - 25, VIEW_HEIGHT - 20), mRect);
         Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
@@ -115,22 +106,10 @@ public class RoundedCornerOutlineProviderUnitTest {
     @SmallTest
     public void verifyRespectsPaddingsInRTLMode() {
         mView.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        Assert.assertEquals(
-                "layout direction not supported",
-                View.LAYOUT_DIRECTION_RTL,
+        Assert.assertEquals("layout direction not supported", View.LAYOUT_DIRECTION_RTL,
                 mView.getLayoutDirection());
 
         mView.setPaddingRelative(15, 10, 25, 20);
-
-        // Default: no clipping padded area.
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(0, 0, VIEW_WIDTH, VIEW_HEIGHT), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
-
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
         mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
         Assert.assertEquals(new Rect(25, 10, VIEW_WIDTH - 15, VIEW_HEIGHT - 20), mRect);
@@ -143,16 +122,6 @@ public class RoundedCornerOutlineProviderUnitTest {
     public void verifyViewOriginDoesNotImpactOutline() {
         mView.layout(10, 15, 10 + VIEW_WIDTH, 15 + VIEW_HEIGHT);
         mView.setPaddingRelative(15, 10, 25, 20);
-
-        // Default: no clipping padded area.
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(0, 0, VIEW_WIDTH, VIEW_HEIGHT), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
-
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
         mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
         Assert.assertEquals(new Rect(15, 10, VIEW_WIDTH - 25, VIEW_HEIGHT - 20), mRect);
@@ -165,20 +134,11 @@ public class RoundedCornerOutlineProviderUnitTest {
     public void verifyLeftEdgeExclusion() {
         mView.layout(10, 15, 10 + VIEW_WIDTH, 15 + VIEW_HEIGHT);
         mView.setPaddingRelative(15, 10, 25, 20);
-        mProvider.setRoundingEdges(
-                /* left= */ false, /* top= */ true, /* right= */ true, /* bottom= */ true);
+        mProvider.setRoundingEdges(/*left=*/false, /*top=*/true, /*right=*/true, /*bottom=*/true);
 
-        // Default: no clipping padded area.
         mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(-RADIUS, 0, VIEW_WIDTH, VIEW_HEIGHT), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
 
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
         Assert.assertEquals(new Rect(15 - RADIUS, 10, VIEW_WIDTH - 25, VIEW_HEIGHT - 20), mRect);
         Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
         Assert.assertTrue(mOutline.canClip());
@@ -189,20 +149,11 @@ public class RoundedCornerOutlineProviderUnitTest {
     public void verifyTopEdgeExclusion() {
         mView.layout(10, 15, 10 + VIEW_WIDTH, 15 + VIEW_HEIGHT);
         mView.setPaddingRelative(15, 10, 25, 20);
-        mProvider.setRoundingEdges(
-                /* left= */ true, /* top= */ false, /* right= */ true, /* bottom= */ true);
+        mProvider.setRoundingEdges(/*left=*/true, /*top=*/false, /*right=*/true, /*bottom=*/true);
 
-        // Default: no clipping padded area.
         mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(0, -RADIUS, VIEW_WIDTH, VIEW_HEIGHT), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
 
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
         Assert.assertEquals(new Rect(15, 10 - RADIUS, VIEW_WIDTH - 25, VIEW_HEIGHT - 20), mRect);
         Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
         Assert.assertTrue(mOutline.canClip());
@@ -213,20 +164,11 @@ public class RoundedCornerOutlineProviderUnitTest {
     public void verifyRightEdgeExclusion() {
         mView.layout(10, 15, 10 + VIEW_WIDTH, 15 + VIEW_HEIGHT);
         mView.setPaddingRelative(15, 10, 25, 20);
-        mProvider.setRoundingEdges(
-                /* left= */ true, /* top= */ true, /* right= */ false, /* bottom= */ true);
+        mProvider.setRoundingEdges(/*left=*/true, /*top=*/true, /*right=*/false, /*bottom=*/true);
 
-        // Default: no clipping padded area.
         mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(0, 0, VIEW_WIDTH + RADIUS, VIEW_HEIGHT), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
 
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
         Assert.assertEquals(new Rect(15, 10, VIEW_WIDTH - 25 + RADIUS, VIEW_HEIGHT - 20), mRect);
         Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
         Assert.assertTrue(mOutline.canClip());
@@ -237,20 +179,11 @@ public class RoundedCornerOutlineProviderUnitTest {
     public void verifyBottomEdgeExclusion() {
         mView.layout(10, 15, 10 + VIEW_WIDTH, 15 + VIEW_HEIGHT);
         mView.setPaddingRelative(15, 10, 25, 20);
-        mProvider.setRoundingEdges(
-                /* left= */ true, /* top= */ true, /* right= */ true, /* bottom= */ false);
+        mProvider.setRoundingEdges(/*left=*/true, /*top=*/true, /*right=*/true, /*bottom=*/false);
 
-        // Default: no clipping padded area.
         mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(0, 0, VIEW_WIDTH, VIEW_HEIGHT + RADIUS), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
 
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
         Assert.assertEquals(new Rect(15, 10, VIEW_WIDTH - 25, VIEW_HEIGHT - 20 + RADIUS), mRect);
         Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
         Assert.assertTrue(mOutline.canClip());
@@ -263,20 +196,11 @@ public class RoundedCornerOutlineProviderUnitTest {
         mView.setPaddingRelative(15, 10, 25, 20);
         // Disable rounding near the right and bottom edges.
         // The effect is that only top-left edge is rounded.
-        mProvider.setRoundingEdges(
-                /* left= */ true, /* top= */ true, /* right= */ false, /* bottom= */ false);
+        mProvider.setRoundingEdges(/*left=*/true, /*top=*/true, /*right=*/false, /*bottom=*/false);
 
-        // Default: no clipping padded area.
         mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(0, 0, VIEW_WIDTH + RADIUS, VIEW_HEIGHT + RADIUS), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
 
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
         Assert.assertEquals(
                 new Rect(15, 10, VIEW_WIDTH - 25 + RADIUS, VIEW_HEIGHT - 20 + RADIUS), mRect);
         Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
@@ -290,20 +214,11 @@ public class RoundedCornerOutlineProviderUnitTest {
         mView.setPaddingRelative(15, 10, 25, 20);
         // Disable rounding near the top and bottom edges.
         // The effect is that rounding is effectively disabled.
-        mProvider.setRoundingEdges(
-                /* left= */ true, /* top= */ false, /* right= */ true, /* bottom= */ false);
+        mProvider.setRoundingEdges(/*left=*/true, /*top=*/false, /*right=*/true, /*bottom=*/false);
 
-        // Default: no clipping padded area.
         mProvider.getOutline(mView, mOutline);
         mOutline.getRect(mRect);
-        Assert.assertEquals(new Rect(0, -RADIUS, VIEW_WIDTH, VIEW_HEIGHT + RADIUS), mRect);
-        Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);
-        Assert.assertTrue(mOutline.canClip());
 
-        // Variant: clip padded area.
-        mProvider.setClipPaddedArea(true);
-        mProvider.getOutline(mView, mOutline);
-        mOutline.getRect(mRect);
         Assert.assertEquals(
                 new Rect(15, 10 - RADIUS, VIEW_WIDTH - 25, VIEW_HEIGHT - 20 + RADIUS), mRect);
         Assert.assertEquals(RADIUS, mOutline.getRadius(), 0.001);

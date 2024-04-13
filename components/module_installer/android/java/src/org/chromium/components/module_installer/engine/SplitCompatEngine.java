@@ -22,7 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Install engine that uses Play Core and SplitCompat to install modules. */
+/**
+ * Install engine that uses Play Core and SplitCompat to install modules.
+ */
 class SplitCompatEngine implements InstallEngine {
     private final SplitCompatEngineFacade mFacade;
     private final SplitInstallStateUpdatedListener mUpdateListener = getStatusUpdateListener();
@@ -71,20 +73,15 @@ class SplitCompatEngine implements InstallEngine {
 
         SplitInstallRequest request = mFacade.createSplitInstallRequest(moduleName);
 
-        mFacade.getSplitManager()
-                .startInstall(request)
-                .addOnFailureListener(
-                        ex -> {
-                            int errorCode =
-                                    ex instanceof SplitInstallException
-                                            ? ((SplitInstallException) ex).getErrorCode()
-                                            : mFacade.getLogger().getUnknownRequestErrorCode();
-
-                            // TODO(fredmello): look into potential issues with mixing split error
-                            // code with our logger codes - fix accordingly.
-                            mFacade.getLogger().logRequestFailure(moduleName, errorCode);
-                            notifyListeners(moduleName, false);
-                        });
+        mFacade.getSplitManager().startInstall(request).addOnFailureListener(ex -> {
+            // TODO(fredmello): look into potential issues with mixing split error code
+            // with our logger codes - fix accordingly.
+            mFacade.getLogger().logRequestFailure(moduleName,
+                    ex instanceof SplitInstallException
+                            ? ((SplitInstallException) ex).getErrorCode()
+                            : mFacade.getLogger().getUnknownRequestErrorCode());
+            notifyListeners(moduleName, false);
+        });
 
         mFacade.getLogger().logRequestStart(moduleName);
     }

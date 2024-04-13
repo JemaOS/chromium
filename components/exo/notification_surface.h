@@ -54,7 +54,8 @@ class NotificationSurface : public SurfaceTreeHost,
                                       aura::Window* new_root) override;
 
  private:
-  const raw_ptr<NotificationSurfaceManager> manager_;  // Not owned.
+  const raw_ptr<NotificationSurfaceManager, ExperimentalAsh>
+      manager_;  // Not owned.
   const std::string notification_key_;
 
   bool added_to_manager_ = false;

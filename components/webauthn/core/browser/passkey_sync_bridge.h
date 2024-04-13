@@ -10,20 +10,16 @@
 
 #include "base/containers/flat_set.h"
 #include "base/memory/weak_ptr.h"
-#include "base/observer_list.h"
 #include "components/sync/model/model_type_store.h"
 #include "components/sync/model/model_type_sync_bridge.h"
 #include "components/sync/protocol/webauthn_credential_specifics.pb.h"
 #include "components/webauthn/core/browser/passkey_model.h"
-#include "components/webauthn/core/browser/passkey_model_change.h"
 
 namespace syncer {
 struct EntityData;
 class MetadataChangeList;
 class ModelError;
 }  // namespace syncer
-
-namespace webauthn {
 
 // Sync bridge implementation for WEBAUTHN_CREDENTIAL model type.
 class PasskeySyncBridge : public syncer::ModelTypeSyncBridge,
@@ -37,10 +33,10 @@ class PasskeySyncBridge : public syncer::ModelTypeSyncBridge,
   // syncer::ModelTypeSyncBridge:
   std::unique_ptr<syncer::MetadataChangeList> CreateMetadataChangeList()
       override;
-  std::optional<syncer::ModelError> MergeFullSyncData(
+  absl::optional<syncer::ModelError> MergeFullSyncData(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_data) override;
-  std::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_changes) override;
   void GetData(StorageKeyList storage_keys, DataCallback callback) override;
@@ -52,46 +48,26 @@ class PasskeySyncBridge : public syncer::ModelTypeSyncBridge,
                                    delete_metadata_change_list) override;
 
   // PasskeyModel:
-  void AddObserver(Observer* observer) override;
-  void RemoveObserver(Observer* observer) override;
   base::WeakPtr<syncer::ModelTypeControllerDelegate>
   GetModelTypeControllerDelegate() override;
   base::flat_set<std::string> GetAllSyncIds() const override;
   std::vector<sync_pb::WebauthnCredentialSpecifics> GetAllPasskeys()
       const override;
-  std::optional<sync_pb::WebauthnCredentialSpecifics> GetPasskeyByCredentialId(
-      const std::string& rp_id,
-      const std::string& credential_id) const override;
-  std::vector<sync_pb::WebauthnCredentialSpecifics>
-  GetPasskeysForRelyingPartyId(const std::string& rp_id) const override;
-  bool DeletePasskey(const std::string& credential_id) override;
-  bool UpdatePasskey(const std::string& credential_id,
-                     PasskeyUpdate change) override;
-  sync_pb::WebauthnCredentialSpecifics CreatePasskey(
-      std::string_view rp_id,
-      const UserEntity& user_entity,
-      base::span<const uint8_t> trusted_vault_key,
-      int32_t trusted_vault_key_version,
-      std::vector<uint8_t>* public_key_spki_der_out) override;
-  void CreatePasskey(sync_pb::WebauthnCredentialSpecifics& passkey) override;
   std::string AddNewPasskeyForTesting(
       sync_pb::WebauthnCredentialSpecifics passkey) override;
+  bool DeletePasskeyForTesting(std::string sync_id) override;
 
  private:
-  void OnCreateStore(const std::optional<syncer::ModelError>& error,
+  void OnCreateStore(const absl::optional<syncer::ModelError>& error,
                      std::unique_ptr<syncer::ModelTypeStore> store);
   void OnStoreReadAllData(
-      const std::optional<syncer::ModelError>& error,
+      const absl::optional<syncer::ModelError>& error,
       std::unique_ptr<syncer::ModelTypeStore::RecordList> entries);
   void OnStoreReadAllMetadata(
       std::unique_ptr<syncer::ModelTypeStore::RecordList> entries,
-      const std::optional<syncer::ModelError>& error,
+      const absl::optional<syncer::ModelError>& error,
       std::unique_ptr<syncer::MetadataBatch> metadata_batch);
-  void OnStoreCommitWriteBatch(const std::optional<syncer::ModelError>& error);
-  void NotifyPasskeysChanged(const std::vector<PasskeyModelChange>& changes);
-  void AddPasskeyInternal(sync_pb::WebauthnCredentialSpecifics specifics);
-  void AddShadowedCredentialIdsToNewPasskey(
-      sync_pb::WebauthnCredentialSpecifics& passkey);
+  void OnStoreCommitWriteBatch(const absl::optional<syncer::ModelError>& error);
 
   // Local view of the stored data. Indexes specifics protos by storage key.
   std::map<std::string, sync_pb::WebauthnCredentialSpecifics> data_;
@@ -99,11 +75,7 @@ class PasskeySyncBridge : public syncer::ModelTypeSyncBridge,
   // Passkeys are stored locally in leveldb.
   std::unique_ptr<syncer::ModelTypeStore> store_;
 
-  base::ObserverList<Observer> observers_;
-
   base::WeakPtrFactory<PasskeySyncBridge> weak_ptr_factory_{this};
 };
-
-}  // namespace webauthn
 
 #endif  // COMPONENTS_WEBAUTHN_CORE_BROWSER_PASSKEY_SYNC_BRIDGE_H_

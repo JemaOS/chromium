@@ -4,7 +4,6 @@
 
 #include "components/breadcrumbs/core/application_breadcrumbs_not_user_action.inc"
 
-#include <algorithm>
 #include <string>
 #include <vector>
 

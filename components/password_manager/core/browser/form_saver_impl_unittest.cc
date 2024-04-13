@@ -10,15 +10,14 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/task_environment.h"
 #include "components/autofill/core/common/unique_ids.h"
+#include "components/password_manager/core/browser/mock_password_store_interface.h"
 #include "components/password_manager/core/browser/password_form.h"
 #include "components/password_manager/core/browser/password_manager_util.h"
-#include "components/password_manager/core/browser/password_store/mock_password_store_interface.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
@@ -44,14 +43,11 @@ PasswordForm CreateObserved() {
 
 // Creates a dummy pending (for saving) form with some basic arbitrary values
 // and |username| and |password| values as specified.
-PasswordForm CreatePending(
-    base::StringPiece16 username,
-    base::StringPiece16 password,
-    PasswordForm::MatchType match_type = PasswordForm::MatchType::kExact) {
+PasswordForm CreatePending(base::StringPiece16 username,
+                           base::StringPiece16 password) {
   PasswordForm form = CreateObserved();
   form.username_value = std::u16string(username);
   form.password_value = std::u16string(password);
-  form.match_type = match_type;
   return form;
 }
 
@@ -93,16 +89,14 @@ class FormSaverImplSaveTest
       public ::testing::WithParamInterface<SaveOperation> {
  protected:
   // Either saves, updates or replaces |pending| according to the test param.
-  void SaveCredential(
-      PasswordForm pending,
-      const std::vector<raw_ptr<const PasswordForm, VectorExperimental>>&
-          matches,
-      const std::u16string& old_password);
+  void SaveCredential(PasswordForm pending,
+                      const std::vector<const PasswordForm*>& matches,
+                      const std::u16string& old_password);
 };
 
 void FormSaverImplSaveTest::SaveCredential(
     PasswordForm pending,
-    const std::vector<raw_ptr<const PasswordForm, VectorExperimental>>& matches,
+    const std::vector<const PasswordForm*>& matches,
     const std::u16string& old_password) {
   PasswordForm expected = pending;
   switch (GetParam()) {
@@ -161,8 +155,8 @@ TEST_P(FormSaverImplSaveTest, Write_AndDeleteEmptyUsernameCredentials) {
 
   PasswordForm no_username = pending;
   no_username.username_value.clear();
-  const std::vector<raw_ptr<const PasswordForm, VectorExperimental>> matches = {
-      &non_empty_username, &no_username};
+  const std::vector<const PasswordForm*> matches = {&non_empty_username,
+                                                    &no_username};
 
   EXPECT_CALL(*mock_store_, RemoveLogin(no_username));
   SaveCredential(pending, matches, std::u16string());
@@ -205,9 +199,8 @@ TEST_P(FormSaverImplSaveTest, Write_AndDoNotDeleteEmptyUsernamePSLCredentials) {
   PasswordForm stored = pending;
   PasswordForm no_username_psl = pending;
   no_username_psl.username_value.clear();
-  no_username_psl.match_type = PasswordForm::MatchType::kPSL;
-  const std::vector<raw_ptr<const PasswordForm, VectorExperimental>> matches = {
-      &stored, &no_username_psl};
+  no_username_psl.is_public_suffix_match = true;
+  const std::vector<const PasswordForm*> matches = {&stored, &no_username_psl};
 
   EXPECT_CALL(*mock_store_, RemoveLogin(_)).Times(0);
   SaveCredential(pending, matches, std::u16string());
@@ -247,10 +240,10 @@ TEST_P(FormSaverImplSaveTest, Write_AndUpdatePasswordValuesOnPSLMatch) {
   constexpr char16_t kOldPassword[] = u"old_password";
   constexpr char16_t kNewPassword[] = u"new_password";
 
-  PasswordForm duplicate =
-      CreatePending(u"nameofuser", kOldPassword, PasswordForm::MatchType::kPSL);
+  PasswordForm duplicate = CreatePending(u"nameofuser", kOldPassword);
   duplicate.url = GURL("https://www.example.in");
   duplicate.signon_realm = duplicate.url.spec();
+  duplicate.is_public_suffix_match = true;
 
   PasswordForm expected_update = duplicate;
   expected_update.password_value = kNewPassword;
@@ -274,7 +267,7 @@ TEST_P(FormSaverImplSaveTest, Write_AndUpdatePasswordValues_IgnoreNonMatches) {
 
   PasswordForm empty_username = pending;
   empty_username.username_value.clear();
-  const std::vector<raw_ptr<const PasswordForm, VectorExperimental>> matches = {
+  const std::vector<const PasswordForm*> matches = {
       &different_username, &different_password, &empty_username};
 
   pending.password_value = kNewPassword;
@@ -288,7 +281,7 @@ TEST_P(FormSaverImplSaveTest, FormDataSanitized) {
   PasswordForm pending = CreatePending(u"nameofuser", u"wordToP4a55");
   FormFieldData field;
   field.name = u"name";
-  field.form_control_type = autofill::FormControlType::kInputPassword;
+  field.form_control_type = "password";
   field.value = u"value";
   field.label = u"label";
   field.placeholder = u"placeholder";
@@ -316,8 +309,7 @@ TEST_P(FormSaverImplSaveTest, FormDataSanitized) {
   ASSERT_EQ(1u, saved.form_data.fields.size());
   const FormFieldData& saved_field = saved.form_data.fields[0];
   EXPECT_EQ(u"name", saved_field.name);
-  EXPECT_EQ(autofill::FormControlType::kInputPassword,
-            saved_field.form_control_type);
+  EXPECT_EQ("password", saved_field.form_control_type);
   EXPECT_TRUE(saved_field.value.empty());
   EXPECT_TRUE(saved_field.label.empty());
   EXPECT_TRUE(saved_field.placeholder.empty());

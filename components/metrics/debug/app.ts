@@ -4,13 +4,12 @@
 
 import 'chrome://resources/cr_elements/cr_tab_box/cr_tab_box.js';
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {addWebUiListener} from 'chrome://resources/js/cr.js';
 import {CustomElement} from 'chrome://resources/js/custom_element.js';
 
 import {getTemplate} from './app.html.js';
-import type {KeyValue, Log, LogData, MetricsInternalsBrowserProxy} from './browser_proxy.js';
-import {MetricsInternalsBrowserProxyImpl} from './browser_proxy.js';
+import {KeyValue, Log, LogData, MetricsInternalsBrowserProxy, MetricsInternalsBrowserProxyImpl} from './browser_proxy.js';
 import {getEventsPeekString, logEventToString, sizeToString, timestampToString, umaLogTypeToString} from './log_utils.js';
 
 /**

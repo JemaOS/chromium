@@ -32,9 +32,7 @@ enum Code {
   kStatusPatchWriteError = 5,
   kStatusInvalidOldImage = 6,
   kStatusInvalidNewImage = 7,
-  kStatusDiskFull = 8,
-  kStatusIoError = 9,
-  kStatusFatal = 10,
+  kStatusFatal = 8,
 };
 
 }  // namespace status

@@ -7,7 +7,6 @@
 
 #include <stddef.h>
 
-#include <optional>
 #include <vector>
 
 #include "base/cancelable_callback.h"
@@ -18,6 +17,7 @@
 #include "components/favicon/core/favicon_driver_observer.h"
 #include "components/favicon/core/favicon_url.h"
 #include "components/favicon_base/favicon_callback.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/favicon_size.h"
 #include "ui/gfx/image/image.h"
 #include "url/gurl.h"
@@ -357,7 +357,7 @@ class FaviconHandler {
 
   // The prioritized favicon candidates from the page back from the renderer.
   // Populated by OnGotFinalIconURLCandidates().
-  std::optional<std::vector<FaviconCandidate>> final_candidates_;
+  absl::optional<std::vector<FaviconCandidate>> final_candidates_;
 
   // The icon URL and the icon type of the favicon in the most recent
   // FaviconDriver::OnFaviconAvailable() notification.

@@ -4,8 +4,6 @@
 
 #include "components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.h"
 
-#include <memory>
-
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/task/single_thread_task_runner.h"
@@ -34,8 +32,13 @@ namespace {
 #if defined(USE_V4L2_MJPEG_DECODE_ACCELERATOR)
 std::unique_ptr<MjpegDecodeAccelerator> CreateV4L2MjpegDecodeAccelerator(
     scoped_refptr<base::SingleThreadTaskRunner> io_task_runner) {
-  return std::make_unique<media::V4L2MjpegDecodeAccelerator>(
-      new media::V4L2Device(), std::move(io_task_runner));
+  std::unique_ptr<MjpegDecodeAccelerator> decoder;
+  scoped_refptr<media::V4L2Device> device = media::V4L2Device::Create();
+  if (device) {
+    decoder.reset(new media::V4L2MjpegDecodeAccelerator(
+        device, std::move(io_task_runner)));
+  }
+  return decoder;
 }
 #endif
 

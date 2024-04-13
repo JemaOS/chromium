@@ -6,11 +6,12 @@
 
 #include "base/metrics/field_trial.h"
 #include "base/metrics/histogram_macros.h"
-#include "components/no_state_prefetch/common/no_state_prefetch_url_loader_throttle.h"
+#include "components/no_state_prefetch/common/prerender_url_loader_throttle.h"
 #include "content/public/renderer/render_frame.h"
 #include "content/public/renderer/render_thread.h"
 #include "third_party/blink/public/common/browser_interface_broker_proxy.h"
-#include "third_party/blink/public/web/web_local_frame.h"
+#include "third_party/blink/public/web/web_frame.h"
+#include "third_party/blink/public/web/web_view.h"
 
 namespace prerender {
 
@@ -26,19 +27,9 @@ NoStatePrefetchHelper::~NoStatePrefetchHelper() = default;
 
 // static
 std::unique_ptr<blink::URLLoaderThrottle>
-NoStatePrefetchHelper::MaybeCreateThrottle(
-    const blink::LocalFrameToken& frame_token) {
-  // Currently NoStatePrefetchHelper doesn't work on the background thread.
-  if (!content::RenderThread::IsMainThread()) {
-    return nullptr;
-  }
-  blink::WebLocalFrame* web_frame =
-      blink::WebLocalFrame::FromFrameToken(frame_token);
-  if (!web_frame) {
-    return nullptr;
-  }
+NoStatePrefetchHelper::MaybeCreateThrottle(int render_frame_id) {
   content::RenderFrame* render_frame =
-      content::RenderFrame::FromWebFrame(web_frame);
+      content::RenderFrame::FromRoutingID(render_frame_id);
   auto* helper =
       render_frame
           ? NoStatePrefetchHelper::Get(render_frame->GetMainRenderFrame())
@@ -50,8 +41,8 @@ NoStatePrefetchHelper::MaybeCreateThrottle(
   render_frame->GetBrowserInterfaceBroker()->GetInterface(
       canceler.InitWithNewPipeAndPassReceiver());
 
-  auto throttle =
-      std::make_unique<NoStatePrefetchURLLoaderThrottle>(std::move(canceler));
+  auto throttle = std::make_unique<PrerenderURLLoaderThrottle>(
+      helper->histogram_prefix(), std::move(canceler));
   helper->AddThrottle(*throttle);
   return throttle;
 }
@@ -72,8 +63,7 @@ void NoStatePrefetchHelper::OnDestruct() {
   delete this;
 }
 
-void NoStatePrefetchHelper::AddThrottle(
-    NoStatePrefetchURLLoaderThrottle& throttle) {
+void NoStatePrefetchHelper::AddThrottle(PrerenderURLLoaderThrottle& throttle) {
   // Keep track of how many pending throttles we have, as we want to defer
   // sending the "prefetch finished" signal until they are destroyed. This is
   // important since that signal tells the browser that it can tear down this

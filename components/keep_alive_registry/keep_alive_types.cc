@@ -20,8 +20,6 @@ std::ostream& operator<<(std::ostream& out, const KeepAliveOrigin& origin) {
       return out << "BROWSER_PROCESS_LACROS";
     case KeepAliveOrigin::SESSION_RESTORE:
       return out << "SESSION_RESTORE";
-    case KeepAliveOrigin::HEADLESS_COMMAND:
-      return out << "HEADLESS_COMMAND";
     case KeepAliveOrigin::APP_LAUNCH:
       return out << "APP_LAUNCH";
     case KeepAliveOrigin::BACKGROUND_MODE_MANAGER:
@@ -84,14 +82,8 @@ std::ostream& operator<<(std::ostream& out, const KeepAliveOrigin& origin) {
       return out << "APP_GET_INFO";
     case KeepAliveOrigin::WEB_APP_LAUNCH:
       return out << "WEB_APP_LAUNCH";
-    case KeepAliveOrigin::ISOLATED_WEB_APP_INSTALL:
-      return out << "ISOLATED_WEB_APP_INSTALL";
-    case KeepAliveOrigin::ISOLATED_WEB_APP_UPDATE:
-      return out << "ISOLATED_WEB_APP_UPDATE";
     case KeepAliveOrigin::SESSION_DATA_DELETER:
       return out << "SESSION_DATA_DELETER";
-    case KeepAliveOrigin::UMA_LOG:
-      return out << "UMA_LOG";
   }
 
   NOTREACHED();

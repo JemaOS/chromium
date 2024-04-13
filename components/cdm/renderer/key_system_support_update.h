@@ -6,7 +6,6 @@
 #define COMPONENTS_CDM_RENDERER_KEY_SYSTEM_SUPPORT_UPDATE_H_
 
 #include "media/base/key_system_info.h"
-#include "media/base/key_systems_support_registration.h"
 
 namespace cdm {
 
@@ -15,9 +14,8 @@ namespace cdm {
 // incognito mode). `cb` is called with the list of available key systems, and
 // may be called multiple times if the list changes (e.g. a new key system
 // becomes available).
-std::unique_ptr<media::KeySystemSupportRegistration>
-GetSupportedKeySystemsUpdates(bool can_persist_data,
-                              media::GetSupportedKeySystemsCB cb);
+void GetSupportedKeySystemsUpdates(bool can_persist_data,
+                                   media::GetSupportedKeySystemsCB cb);
 
 }  // namespace cdm
 

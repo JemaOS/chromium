@@ -105,17 +105,10 @@ std::unique_ptr<PerformanceManagerImpl> PerformanceManagerImpl::Create(
   std::unique_ptr<PerformanceManagerImpl> instance =
       base::WrapUnique(new PerformanceManagerImpl());
 
-  if (base::FeatureList::IsEnabled(features::kRunOnMainThread)) {
-    // Invoke `OnStartImpl()` synchronously instead of via a posted task, so
-    // that any call to `CallOnGraphImpl()` that follows can access
-    // `g_performance_manager->ui_task_runner_`.
-    instance->OnStartImpl(std::move(on_start));
-  } else {
-    GetTaskRunner()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&PerformanceManagerImpl::OnStartImpl,
-                       base::Unretained(instance.get()), std::move(on_start)));
-  }
+  GetTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&PerformanceManagerImpl::OnStartImpl,
+                     base::Unretained(instance.get()), std::move(on_start)));
 
   return instance;
 }
@@ -133,17 +126,14 @@ std::unique_ptr<FrameNodeImpl> PerformanceManagerImpl::CreateFrameNode(
     ProcessNodeImpl* process_node,
     PageNodeImpl* page_node,
     FrameNodeImpl* parent_frame_node,
-    FrameNodeImpl* outer_document_for_fenced_frame,
     int render_frame_id,
     const blink::LocalFrameToken& frame_token,
     content::BrowsingInstanceId browsing_instance_id,
     content::SiteInstanceId site_instance_id,
-    bool is_current,
     FrameNodeCreationCallback creation_callback) {
   return CreateNodeImpl<FrameNodeImpl>(
       std::move(creation_callback), process_node, page_node, parent_frame_node,
-      outer_document_for_fenced_frame, render_frame_id, frame_token,
-      browsing_instance_id, site_instance_id, is_current);
+      render_frame_id, frame_token, browsing_instance_id, site_instance_id);
 }
 
 // static
@@ -151,12 +141,13 @@ std::unique_ptr<PageNodeImpl> PerformanceManagerImpl::CreatePageNode(
     const WebContentsProxy& contents_proxy,
     const std::string& browser_context_id,
     const GURL& visible_url,
-    PagePropertyFlags initial_property_flags,
+    bool is_visible,
+    bool is_audible,
     base::TimeTicks visibility_change_time,
     PageNode::PageState page_state) {
   return CreateNodeImpl<PageNodeImpl>(base::OnceCallback<void(PageNodeImpl*)>(),
                                       contents_proxy, browser_context_id,
-                                      visible_url, initial_property_flags,
+                                      visible_url, is_visible, is_audible,
                                       visibility_change_time, page_state);
 }
 
@@ -169,11 +160,10 @@ std::unique_ptr<ProcessNodeImpl> PerformanceManagerImpl::CreateProcessNode(
 
 // static
 std::unique_ptr<ProcessNodeImpl> PerformanceManagerImpl::CreateProcessNode(
-    RenderProcessHostProxy render_process_host_proxy,
-    base::TaskPriority priority) {
+    RenderProcessHostProxy render_process_host_proxy) {
   return CreateNodeImpl<ProcessNodeImpl>(
       base::OnceCallback<void(ProcessNodeImpl*)>(),
-      std::move(render_process_host_proxy), priority);
+      std::move(render_process_host_proxy));
 }
 
 // static

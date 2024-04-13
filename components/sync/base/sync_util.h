@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "components/version_info/channel.h"
+#include "components/version_info/version_info.h"
 
 class GURL;
 

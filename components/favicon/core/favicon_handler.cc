@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/containers/contains.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
@@ -27,6 +28,10 @@
 
 namespace favicon {
 namespace {
+
+BASE_FEATURE(kFaviconsHandleSizesAny,
+             "FaviconsHandleSizesAny",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 const int kLargestIconSize = 192;
 
@@ -126,7 +131,8 @@ FaviconHandler::FaviconCandidate::FromFaviconURL(
   candidate.icon_url = favicon_url.icon_url;
   candidate.icon_type = favicon_url.icon_type;
 
-  if (HasAnySize(favicon_url.icon_sizes)) {
+  if (HasAnySize(favicon_url.icon_sizes) &&
+      base::FeatureList::IsEnabled(kFaviconsHandleSizesAny)) {
     // For candidates which has the keyword "any" as part of their size
     // information, assign a score of 1.
     candidate.score = 1.0f;
@@ -315,8 +321,12 @@ void FaviconHandler::NotifyFaviconUpdated(const GURL& icon_url,
   if (image.IsEmpty())
     return;
 
+  gfx::Image image_with_adjusted_colorspace = image;
+  favicon_base::SetFaviconColorSpace(&image_with_adjusted_colorspace);
+
   delegate_->OnFaviconUpdated(last_page_url_, handler_type_, icon_url,
-                              icon_url != notification_icon_url_, image);
+                              icon_url != notification_icon_url_,
+                              image_with_adjusted_colorspace);
 
   notification_icon_url_ = icon_url;
   notification_icon_type_ = icon_type;

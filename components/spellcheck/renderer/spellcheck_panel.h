@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_SPELLCHECK_RENDERER_SPELLCHECK_PANEL_H_
 #define COMPONENTS_SPELLCHECK_RENDERER_SPELLCHECK_PANEL_H_
 
-#include "base/memory/raw_ptr.h"
 #include "components/spellcheck/common/spellcheck_panel.mojom.h"
 #include "components/spellcheck/spellcheck_buildflags.h"
 #include "content/public/renderer/render_frame_observer.h"
@@ -62,7 +61,7 @@ class SpellCheckPanel : public content::RenderFrameObserver,
   // True if the browser is showing the spelling panel.
   bool spelling_panel_visible_;
 
-  raw_ptr<service_manager::LocalInterfaceProvider> embedder_provider_;
+  service_manager::LocalInterfaceProvider* embedder_provider_;
 };
 
 #endif  // COMPONENTS_SPELLCHECK_RENDERER_SPELLCHECK_PANEL_H_

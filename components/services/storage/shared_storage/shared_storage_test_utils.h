@@ -18,7 +18,6 @@
 #include "components/services/storage/shared_storage/shared_storage_database.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
-#include "net/base/schemeful_site.h"
 #include "url/origin.h"
 
 namespace base {
@@ -82,12 +81,8 @@ class TestDatabaseOperationReceiver {
     std::vector<std::u16string> params;
     explicit DBOperation(Type type);
     DBOperation(Type type, url::Origin origin);
-    DBOperation(Type type, net::SchemefulSite site);
     DBOperation(Type type,
                 url::Origin origin,
-                std::vector<std::u16string> params);
-    DBOperation(Type type,
-                net::SchemefulSite site,
                 std::vector<std::u16string> params);
     DBOperation(Type type, std::vector<std::u16string> params);
     DBOperation(const DBOperation&);

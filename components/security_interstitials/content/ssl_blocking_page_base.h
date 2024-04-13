@@ -5,6 +5,8 @@
 #ifndef COMPONENTS_SECURITY_INTERSTITIALS_CONTENT_SSL_BLOCKING_PAGE_BASE_H_
 #define COMPONENTS_SECURITY_INTERSTITIALS_CONTENT_SSL_BLOCKING_PAGE_BASE_H_
 
+#include "components/security_interstitials/content/cert_report_helper.h"
+#include "components/security_interstitials/content/certificate_error_report.h"
 #include "components/security_interstitials/content/security_interstitial_page.h"
 
 namespace base {
@@ -15,6 +17,8 @@ namespace net {
 class SSLInfo;
 }  // namespace net
 
+class SSLCertReporter;
+
 // This is the base class for blocking pages representing SSL certificate
 // errors.
 class SSLBlockingPageBase
@@ -22,8 +26,10 @@ class SSLBlockingPageBase
  public:
   SSLBlockingPageBase(
       content::WebContents* web_contents,
+      CertificateErrorReport::InterstitialReason interstitial_reason,
       const net::SSLInfo& ssl_info,
       const GURL& request_url,
+      std::unique_ptr<SSLCertReporter> ssl_cert_reporter,
       bool overridable,
       const base::Time& time_triggered,
       bool can_show_enhanced_protection_message,
@@ -39,11 +45,13 @@ class SSLBlockingPageBase
   // security_interstitials::SecurityInterstitialPage:
   void OnInterstitialClosing() override;
 
- protected:
-  void PopulateEnhancedProtectionMessage(base::Value::Dict& load_time_data);
-  bool ShouldShowEnhancedProtectionMessage();
+  CertReportHelper* cert_report_helper() { return cert_report_helper_.get(); }
 
-  bool can_show_enhanced_protection_message_ = false;
+  void SetSSLCertReporterForTesting(
+      std::unique_ptr<SSLCertReporter> ssl_cert_reporter);
+
+ private:
+  const std::unique_ptr<CertReportHelper> cert_report_helper_;
 };
 
 #endif  // COMPONENTS_SECURITY_INTERSTITIALS_CONTENT_SSL_BLOCKING_PAGE_BASE_H_

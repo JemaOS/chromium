@@ -26,13 +26,19 @@ public class ConnectionRetry<T> implements NetworkChangeNotifier.ConnectionTypeO
      * @param <T> Return type of the AuthTask.
      */
     public interface AuthTask<T> {
-        /** Runs the AuthTask. */
+        /**
+         * Runs the AuthTask.
+         */
         T run() throws AuthException;
 
-        /** Called with the result when the AuthTask succeeded. */
+        /**
+         * Called with the result when the AuthTask succeeded.
+         */
         default void onSuccess(T result) {}
 
-        /** Called with the result when the AuthTask failed. */
+        /**
+         * Called with the result when the AuthTask failed.
+         */
         default void onFailure(boolean isTransientError) {}
     }
 
@@ -43,7 +49,9 @@ public class ConnectionRetry<T> implements NetworkChangeNotifier.ConnectionTypeO
     private final AtomicInteger mNumTries;
     private final AtomicBoolean mIsTransientError;
 
-    /** Run the given {@link AuthTask} with {@link #MAX_TRIES} times. */
+    /**
+     * Run the given {@link AuthTask} with {@link #MAX_TRIES} times.
+     */
     public static <T> void runAuthTask(AuthTask<T> authTask) {
         new ConnectionRetry<>(authTask).attempt();
     }
@@ -73,13 +81,11 @@ public class ConnectionRetry<T> implements NetworkChangeNotifier.ConnectionTypeO
                 }
                 return null;
             }
-
             @Override
             public void onPostExecute(T result) {
                 if (result != null) {
                     mAuthTask.onSuccess(result);
-                } else if (!mIsTransientError.get()
-                        || mNumTries.incrementAndGet() >= MAX_TRIES
+                } else if (!mIsTransientError.get() || mNumTries.incrementAndGet() >= MAX_TRIES
                         || !NetworkChangeNotifier.isInitialized()) {
                     // Permanent error, ran out of tries, or we can't listen for network
                     // change events; give up.

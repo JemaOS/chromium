@@ -33,20 +33,16 @@ function sendCommand(cmd) {
       case 'requestUrlAccessLocal':
         supervisedUserErrorPageController.requestUrlAccessLocal();
         break;
+      case 'feedback':
+        supervisedUserErrorPageController.feedback();
+        break;
     }
     return;
   }
-  // <if expr="is_ios">
-  // Send commands for iOS committed interstitials.
-  /** @suppress {undefinedVars|missingProperties} */ (function() {
-    window.webkit.messageHandlers['SupervisedUserInterstitialMessage']
-        .postMessage({'command': cmd.toString()});
-  })();
-  // </if>
 }
 
 function makeImageSet(url1x, url2x) {
-  return 'image-set(url(' + url1x + ') 1x, url(' + url2x + ') 2x)';
+  return '-webkit-image-set(url(' + url1x + ') 1x, url(' + url2x + ') 2x)';
 }
 
 /** Perform all initialization that can be done at DOMContentLoaded time. */
@@ -57,6 +53,8 @@ function initialize() {
   const custodianName = loadTimeData.getString('custodianName');
   localWebApprovalsEnabled =
       loadTimeData.getBoolean('isLocalWebApprovalsEnabled');
+  const localWebApprovalsPreferred =
+      loadTimeData.getBoolean('isLocalWebApprovalsPreferred');
 
   if (custodianName && allowAccessRequests) {
     $('custodians-information').hidden = false;
@@ -82,29 +80,25 @@ function initialize() {
     }
   }
 
-  const showBanner = loadTimeData.getBoolean('showBanner');
-  if (!showBanner) {
-    $('banner').style.display = 'none';
-  }
-
   const alreadyRequestedAccessRemote =
       loadTimeData.getBoolean('alreadySentRemoteRequest');
   if (alreadyRequestedAccessRemote) {
     const isMainFrame = loadTimeData.getBoolean('isMainFrame');
-    // Generates the `waiting for permission` page. Safe to exit here
-    // early and skip the rest of the IU setup for approval manipulations.
     requestCreated(true, isMainFrame);
     return;
   }
 
-  // The rest of the method sets up the functionality for
-  // approval manipulations.
   if (allowAccessRequests) {
     $('remote-approvals-button').hidden = false;
     if (localWebApprovalsEnabled) {
       $('local-approvals-button').hidden = false;
-      $('local-approvals-button').classList.add('primary-button');
-      $('remote-approvals-button').classList.add('secondary-button');
+      if (localWebApprovalsPreferred) {
+        $('local-approvals-button').classList.add('primary-button');
+        $('remote-approvals-button').classList.add('secondary-button');
+      } else {
+        $('remote-approvals-button').classList.add('primary-button');
+        $('local-approvals-button').classList.add('secondary-button');
+      }
     }
     $('remote-approvals-button').onclick = function(event) {
       $('remote-approvals-button').disabled = true;
@@ -117,6 +111,7 @@ function initialize() {
     $('remote-approvals-button').hidden = true;
   }
 
+  $('feedback').hidden = true;
   $('details-button-container').hidden = true;
 
   // Set up handlers for displaying/hiding the details.
@@ -158,10 +153,7 @@ function requestCreated(isSuccessful, isMainFrame) {
   $('block-page-header').hidden = true;
   $('block-page-message').hidden = true;
   $('hide-details-link').hidden = true;
-  // Hide block reason from the waiting screen.
   $('block-reason').style.display = 'none';
-  $('block-reason-show-details-link').style.display = 'none';
-  $('block-reason-hide-details-link').style.display = 'none';
   if (localWebApprovalsEnabled) {
     $('local-approvals-button').hidden = false;
   }

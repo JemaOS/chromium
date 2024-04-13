@@ -41,12 +41,8 @@
 #include "third_party/skia/include/core/SkSurface.h"
 #include "third_party/skia/include/gpu/GrBackendSurface.h"
 #include "third_party/skia/include/gpu/GrDirectContext.h"
-#include "third_party/skia/include/gpu/ganesh/SkSurfaceGanesh.h"
-#include "third_party/skia/include/gpu/ganesh/gl/GrGLBackendSurface.h"
-#include "third_party/skia/include/gpu/ganesh/gl/GrGLDirectContext.h"
 #include "third_party/skia/include/gpu/gl/GrGLAssembleInterface.h"
 #include "third_party/skia/include/gpu/gl/GrGLInterface.h"
-#include "third_party/skia/include/gpu/gl/GrGLTypes.h"
 #include "ui/gfx/geometry/size_conversions.h"
 #include "ui/gl/gl_bindings.h"
 #include "ui/gl/gl_enums.h"
@@ -109,7 +105,6 @@ namespace {
 
 // Buffer format.
 const int32_t kShmFormat = WL_SHM_FORMAT_ARGB8888;
-const int32_t kShmFormatVulkan = WL_SHM_FORMAT_ABGR8888;
 const SkColorType kColorType = kBGRA_8888_SkColorType;
 #if defined(USE_GBM)
 const GLenum kSizedInternalFormat = GL_BGRA8_EXT;
@@ -169,7 +164,7 @@ std::unique_ptr<ScopedVkInstance> CreateVkInstance() {
       .applicationVersion = 0,
       .pEngineName = nullptr,
       .engineVersion = 0,
-      .apiVersion = VK_MAKE_VERSION(1, 1, 0),
+      .apiVersion = VK_MAKE_VERSION(1, 0, 0),
   };
   VkInstanceCreateInfo create_info{
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -212,20 +207,11 @@ std::unique_ptr<ScopedVkDevice> CreateVkDevice(VkInstance vk_instance,
       .queueCount = 1,
       .pQueuePriorities = &priority,
   };
-  const char* required_extensions[] = {
-      "VK_KHR_external_memory_fd",
-  };
-  const char* validation_layers[] = {"VK_LAYER_KHRONOS_validation"};
   VkDeviceCreateInfo device_create_info{
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &device_queue_create_info,
-      .enabledLayerCount = 1,
-      .ppEnabledLayerNames = validation_layers,
-      .enabledExtensionCount = 1,
-      .ppEnabledExtensionNames = required_extensions,
   };
-
   std::unique_ptr<ScopedVkDevice> vk_device(new ScopedVkDevice());
   result = vkCreateDevice(physical_device, &device_create_info, nullptr,
                           ScopedVkDevice::Receiver(*vk_device).get());
@@ -504,23 +490,18 @@ bool ClientBase::Init(const InitParams& params) {
     make_current_ = std::make_unique<ui::ScopedMakeCurrent>(gl_context_.get(),
                                                             gl_surface_.get());
 
-    // Prefer Android native fence, it is used by ExplicitSynchronizationClient.
-    // If not, use an EGL sync.  When EGL_ANGLE_global_fence_sync is available,
-    // it should be preferred as Chrome assumes EGL syncs synchronize with
-    // submissions from all previous contexts.
+    if (egl_display_->ext->b_EGL_ARM_implicit_external_sync) {
+      egl_sync_type_ = EGL_SYNC_FENCE_KHR;
+    }
     if (egl_display_->ext->b_EGL_ANDROID_native_fence_sync) {
       egl_sync_type_ = EGL_SYNC_NATIVE_FENCE_ANDROID;
-    } else if (egl_display_->ext->b_EGL_ANGLE_global_fence_sync) {
-      egl_sync_type_ = EGL_SYNC_GLOBAL_FENCE_ANGLE;
-    } else if (egl_display_->ext->b_EGL_ARM_implicit_external_sync) {
-      egl_sync_type_ = EGL_SYNC_FENCE_KHR;
     }
 
     sk_sp<const GrGLInterface> native_interface = GrGLMakeAssembledInterface(
         nullptr,
         [](void* ctx, const char name[]) { return eglGetProcAddress(name); });
     DCHECK(native_interface);
-    gr_context_ = GrDirectContexts::MakeGL(std::move(native_interface));
+    gr_context_ = GrDirectContext::MakeGL(std::move(native_interface));
     DCHECK(gr_context_);
 
 #if defined(USE_VULKAN)
@@ -586,14 +567,12 @@ bool ClientBase::Init(const InitParams& params) {
           CastToClientBase(data)->HandleScale(data, wl_output, factor);
         }};
 
-    wl_output_add_listener(globals_.outputs.back().get(), &kOutputListener,
-                           this);
+    wl_output_add_listener(globals_.output.get(), &kOutputListener, this);
   } else {
     for (size_t i = 0; i < params.num_buffers; ++i) {
       auto buffer =
           CreateBuffer(size_, params.drm_format, params.bo_usage,
-                       /*add_buffer_listener=*/!params.use_release_fences,
-                       params.use_vulkan);
+                       /*add_buffer_listener=*/!params.use_release_fences);
       if (!buffer) {
         LOG(ERROR) << "Failed to create buffer";
         return false;
@@ -641,29 +620,65 @@ bool ClientBase::Init(const InitParams& params) {
       wl_shell_surface_set_toplevel(shell_surface.get());
     }
   } else {
-    xdg_surface_.reset(xdg_wm_base_get_xdg_surface(globals_.xdg_wm_base.get(),
-                                                   surface_.get()));
-    if (!xdg_surface_) {
-      LOG(ERROR) << "Can't get xdg surface";
-      return false;
+    if (!globals_.xdg_wm_base) {
+      // use zxdg
+      if (!globals_.xdg_shell_v6) {
+        LOG(ERROR) << "Can't find xdg_shell or zxdg_shell_v6 interface";
+        return false;
+      }
+
+      zxdg_surface_.reset(zxdg_shell_v6_get_xdg_surface(
+          globals_.xdg_shell_v6.get(), surface_.get()));
+      if (!zxdg_surface_) {
+        LOG(ERROR) << "Can't get zxdg surface";
+        return false;
+      }
+      static const zxdg_surface_v6_listener zxdg_surface_v6_listener = {
+          [](void* data, struct zxdg_surface_v6* zxdg_surface_v6,
+             uint32_t layout_mode) {
+            zxdg_surface_v6_ack_configure(zxdg_surface_v6, layout_mode);
+          },
+      };
+      zxdg_surface_v6_add_listener(zxdg_surface_.get(),
+                                   &zxdg_surface_v6_listener, this);
+      zxdg_toplevel_.reset(zxdg_surface_v6_get_toplevel(zxdg_surface_.get()));
+      if (!zxdg_toplevel_) {
+        LOG(ERROR) << "Can't get zxdg toplevel";
+        return false;
+      }
+      static const zxdg_toplevel_v6_listener zxdg_toplevel_v6_listener = {
+          [](void* data, struct zxdg_toplevel_v6* zxdg_toplevel_v6,
+             int32_t width, int32_t height, struct wl_array* states) {},
+          [](void* data, struct zxdg_toplevel_v6* zxdg_toplevel_v6) {}};
+      zxdg_toplevel_v6_add_listener(zxdg_toplevel_.get(),
+                                    &zxdg_toplevel_v6_listener, this);
+    } else {
+      // use xdg
+      xdg_surface_.reset(xdg_wm_base_get_xdg_surface(globals_.xdg_wm_base.get(),
+                                                     surface_.get()));
+      if (!xdg_surface_) {
+        LOG(ERROR) << "Can't get xdg surface";
+        return false;
+      }
+      static const xdg_surface_listener xdg_surface_listener = {
+          [](void* data, struct xdg_surface* xdg_surface,
+             uint32_t layout_mode) {
+            xdg_surface_ack_configure(xdg_surface, layout_mode);
+          },
+      };
+      xdg_surface_add_listener(xdg_surface_.get(), &xdg_surface_listener, this);
+      xdg_toplevel_.reset(xdg_surface_get_toplevel(xdg_surface_.get()));
+      if (!xdg_toplevel_) {
+        LOG(ERROR) << "Can't get xdg toplevel";
+        return false;
+      }
+      static const xdg_toplevel_listener xdg_toplevel_listener = {
+          [](void* data, struct xdg_toplevel* xdg_toplevel, int32_t width,
+             int32_t height, struct wl_array* states) {},
+          [](void* data, struct xdg_toplevel* xdg_toplevel) {}};
+      xdg_toplevel_add_listener(xdg_toplevel_.get(), &xdg_toplevel_listener,
+                                this);
     }
-    static const xdg_surface_listener xdg_surface_listener = {
-        [](void* data, struct xdg_surface* xdg_surface, uint32_t layout_mode) {
-          xdg_surface_ack_configure(xdg_surface, layout_mode);
-        },
-    };
-    xdg_surface_add_listener(xdg_surface_.get(), &xdg_surface_listener, this);
-    xdg_toplevel_.reset(xdg_surface_get_toplevel(xdg_surface_.get()));
-    if (!xdg_toplevel_) {
-      LOG(ERROR) << "Can't get xdg toplevel";
-      return false;
-    }
-    static const xdg_toplevel_listener xdg_toplevel_listener = {
-        [](void* data, struct xdg_toplevel* xdg_toplevel, int32_t width,
-           int32_t height, struct wl_array* states) {},
-        [](void* data, struct xdg_toplevel* xdg_toplevel) {}};
-    xdg_toplevel_add_listener(xdg_toplevel_.get(), &xdg_toplevel_listener,
-                              this);
 
     if (fullscreen_) {
       LOG(ERROR) << "full screen not supported yet.";
@@ -851,8 +866,7 @@ std::unique_ptr<ClientBase::Buffer> ClientBase::CreateBuffer(
     const gfx::Size& size,
     int32_t drm_format,
     int32_t bo_usage,
-    bool add_buffer_listener,
-    bool use_vulkan) {
+    bool add_buffer_listener) {
   std::unique_ptr<Buffer> buffer;
 #if defined(USE_GBM)
   if (device_) {
@@ -935,18 +949,16 @@ std::unique_ptr<ClientBase::Buffer> ClientBase::CreateBuffer(
           buffer->shared_memory_mapping.size()));
     }
 
-    int32_t format = use_vulkan ? kShmFormatVulkan : kShmFormat;
-
     buffer->buffer.reset(static_cast<wl_buffer*>(
         wl_shm_pool_create_buffer(buffer->shm_pool.get(), 0, size.width(),
-                                  size.height(), stride, format)));
+                                  size.height(), stride, kShmFormat)));
     if (!buffer->buffer) {
       LOG(ERROR) << "Can't create buffer";
       return nullptr;
     }
 
     SkSurfaceProps props = skia::LegacyDisplayGlobals::GetSkSurfaceProps();
-    buffer->sk_surface = SkSurfaces::WrapPixels(
+    buffer->sk_surface = SkSurface::MakeRasterDirect(
         SkImageInfo::Make(size.width(), size.height(), kColorType,
                           kOpaque_SkAlphaType),
         mapped_data, stride, &props);
@@ -958,106 +970,6 @@ std::unique_ptr<ClientBase::Buffer> ClientBase::CreateBuffer(
                            buffer.get());
   }
   return buffer;
-}
-
-VkResult BindImageBo(VkDevice dev,
-                     VkImage image,
-                     struct gbm_bo* bo,
-                     VkDeviceMemory* mems) {
-  VkResult result = VK_ERROR_UNKNOWN;
-  PFN_vkGetMemoryFdPropertiesKHR bs_vkGetMemoryFdPropertiesKHR =
-      reinterpret_cast<PFN_vkGetMemoryFdPropertiesKHR>(
-          vkGetDeviceProcAddr(dev, "vkGetMemoryFdPropertiesKHR"));
-  if (bs_vkGetMemoryFdPropertiesKHR == NULL) {
-    LOG(ERROR) << "vkGetDeviceProcAddr(\"vkGetMemoryFdPropertiesKHR\") failed";
-    return result;
-  }
-
-  int prime_fd = gbm_bo_get_fd(bo);
-  if (prime_fd < 0) {
-    LOG(ERROR) << "failed to get prime fd for gbm_bo";
-    return result;
-  }
-
-  VkMemoryFdPropertiesKHR fd_props = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR,
-  };
-  bs_vkGetMemoryFdPropertiesKHR(
-      dev, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, prime_fd, &fd_props);
-
-  VkMemoryRequirements mem_reqs = {};
-  vkGetImageMemoryRequirements(dev, image, &mem_reqs);
-
-  const uint32_t memory_type_bits =
-      fd_props.memoryTypeBits & mem_reqs.memoryTypeBits;
-  if (!memory_type_bits) {
-    LOG(ERROR) << "no valid memory type";
-    close(prime_fd);
-    return result;
-  }
-
-  const VkMemoryDedicatedAllocateInfo memory_dedicated_info = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
-      .image = image,
-  };
-  const VkImportMemoryFdInfoKHR memory_fd_info = {
-      .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
-      .pNext = &memory_dedicated_info,
-      .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
-      .fd = prime_fd,
-  };
-  VkMemoryAllocateInfo memInfo{
-      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-      .pNext = &memory_fd_info,
-      .allocationSize = mem_reqs.size,
-
-      // Simply choose the first available memory type.  We
-      // need neither performance nor mmap, so all memory
-      // types are equally good.
-      .memoryTypeIndex = static_cast<uint32_t>(ffs(memory_type_bits)) - 1,
-  };
-
-  result = vkAllocateMemory(dev, &memInfo,
-                            /*pAllocator*/ NULL, mems);
-  if (result != VK_SUCCESS) {
-    LOG(ERROR) << "memory not allocated properly";
-    return result;
-  }
-
-  result = vkBindImageMemory(dev, image, mems[0], 0);
-  if (result != VK_SUCCESS) {
-    LOG(ERROR) << "failed to bind memory";
-    return result;
-  }
-
-  return result;
-}
-
-VkResult CreateVkImage(VkDevice dev,
-                       struct gbm_bo* bo,
-                       VkFormat format,
-                       VkImage* image) {
-  // TODO(crbug.com/1002071): Pass the stride of the imported buffer to
-  // vkCreateImage once the extension is supported on Intel.
-  VkExternalMemoryImageCreateInfo memImInfo{
-      .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
-      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
-  };
-  VkImageCreateInfo memInfo{
-      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .pNext = &memImInfo,
-      .imageType = VK_IMAGE_TYPE_2D,
-      .format = format,
-      .extent = (VkExtent3D){gbm_bo_get_width(bo), gbm_bo_get_height(bo), 1},
-      .mipLevels = 1,
-      .arrayLayers = 1,
-      .samples = static_cast<VkSampleCountFlagBits>(1),
-      .tiling = VK_IMAGE_TILING_LINEAR,
-      .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-  };
-  return vkCreateImage(dev, &memInfo,
-                       /*pAllocator*/ NULL, image);
 }
 
 std::unique_ptr<ClientBase::Buffer> ClientBase::CreateDrmBuffer(
@@ -1147,42 +1059,68 @@ std::unique_ptr<ClientBase::Buffer> ClientBase::CreateDrmBuffer(
     texture_info.fID = buffer->texture->get();
     texture_info.fTarget = GL_TEXTURE_2D;
     texture_info.fFormat = kSizedInternalFormat;
-    auto backend_texture = GrBackendTextures::MakeGL(
-        size.width(), size.height(), skgpu::Mipmapped::kNo, texture_info);
-    buffer->sk_surface = SkSurfaces::WrapBackendTexture(
+    GrBackendTexture backend_texture(size.width(), size.height(),
+                                     GrMipMapped::kNo, texture_info);
+    buffer->sk_surface = SkSurface::MakeFromBackendTexture(
         gr_context_.get(), backend_texture, kTopLeft_GrSurfaceOrigin,
         /* sampleCnt */ 0, kColorType, /* colorSpace */ nullptr,
         /* props */ nullptr);
     DCHECK(buffer->sk_surface);
 
 #if defined(USE_VULKAN)
-    if (!vk_implementation_) {
+    if (!vk_implementation_)
       return buffer;
-    }
+    // TODO(dcastagna): remove this hack as soon as the extension
+    // "VK_EXT_external_memory_dma_buf" is available.
+#define VK_STRUCTURE_TYPE_DMA_BUF_IMAGE_CREATE_INFO_INTEL 1024
+    typedef struct VkDmaBufImageCreateInfo_ {
+      VkStructureType
+          sType;  // Must be VK_STRUCTURE_TYPE_DMA_BUF_IMAGE_CREATE_INFO_INTEL
+      raw_ptr<const void, ExperimentalAsh> pNext;  // Pointer to next structure.
+      int fd;
+      VkFormat format;
+      VkExtent3D extent;  // Depth must be 1
+      uint32_t strideInBytes;
+    } VkDmaBufImageCreateInfo;
+    typedef VkResult(VKAPI_PTR * PFN_vkCreateDmaBufImageINTEL)(
+        VkDevice device, const VkDmaBufImageCreateInfo* pCreateInfo,
+        const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMem,
+        VkImage* pImage);
 
+    PFN_vkCreateDmaBufImageINTEL create_dma_buf_image_intel =
+        reinterpret_cast<PFN_vkCreateDmaBufImageINTEL>(
+            vkGetDeviceProcAddr(vk_device_->get(), "vkCreateDmaBufImageINTEL"));
+    if (!create_dma_buf_image_intel) {
+      LOG(ERROR) << "Vulkan wayland clients work only where "
+                    "vkCreateDmaBufImageINTEL is available.";
+      return nullptr;
+    }
     base::ScopedFD vk_image_fd(gbm_bo_get_plane_fd(buffer->bo.get(), 0));
     CHECK(vk_image_fd.is_valid());
+
+    VkDmaBufImageCreateInfo dma_buf_image_create_info{
+        .sType = static_cast<VkStructureType>(
+            VK_STRUCTURE_TYPE_DMA_BUF_IMAGE_CREATE_INFO_INTEL),
+        .fd = vk_image_fd.release(),
+        .format = VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+        .extent = (VkExtent3D){static_cast<uint32_t>(size.width()),
+                               static_cast<uint32_t>(size.height()), 1},
+        .strideInBytes = gbm_bo_get_stride(buffer->bo.get()),
+    };
 
     buffer->vk_memory.reset(
         new ScopedVkDeviceMemory(VK_NULL_HANDLE, {vk_device_->get()}));
     buffer->vk_image.reset(
         new ScopedVkImage(VK_NULL_HANDLE, {vk_device_->get()}));
-    VkResult result = CreateVkImage(
-        vk_device_->get(), buffer->bo.get(), VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+    VkResult result = create_dma_buf_image_intel(
+        vk_device_->get(), &dma_buf_image_create_info, nullptr,
+        ScopedVkDeviceMemory::Receiver(*buffer->vk_memory).get(),
         ScopedVkImage::Receiver(*buffer->vk_image).get());
+
     if (result != VK_SUCCESS) {
-      LOG(ERROR) << "Failed to create a Vulkan image.";
+      LOG(ERROR) << "Failed to create a Vulkan image from a dmabuf.";
       return buffer;
     }
-
-    result = BindImageBo(
-        vk_device_->get(), buffer->vk_image->get(), buffer->bo.get(),
-        ScopedVkDeviceMemory::Receiver(*buffer->vk_memory).get());
-    if (result != VK_SUCCESS) {
-      LOG(ERROR) << "Failed to bind a dmabuf to the Vulkan image.";
-      return buffer;
-    }
-
     VkImageViewCreateInfo vk_image_view_create_info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = buffer->vk_image->get(),
@@ -1267,15 +1205,7 @@ void ClientBase::SetupAuraShellIfAvailable() {
       [](void* data, struct zaura_shell* zaura_shell,
          int32_t active_desk_index) {},
       [](void* data, struct zaura_shell* zaura_shell,
-         struct wl_surface* gained_active, struct wl_surface* lost_active) {},
-      [](void* data, struct zaura_shell* zaura_shell) {},
-      [](void* data, struct zaura_shell* zaura_shell) {},
-      [](void* data, struct zaura_shell* zaura_shell,
-         const char* compositor_version) {},
-      [](void* data, struct zaura_shell* zaura_shell) {},
-      [](void* data, struct zaura_shell* zaura_shell,
-         uint32_t upper_left_radius, uint32_t upper_right_radius,
-         uint32_t lower_right_radius, uint32_t lower_left_radius) {}};
+         struct wl_surface* gained_active, struct wl_surface* lost_active) {}};
   zaura_shell_add_listener(globals_.aura_shell.get(), &kAuraShellListener,
                            this);
 
@@ -1305,13 +1235,10 @@ void ClientBase::SetupAuraShellIfAvailable() {
          uint32_t display_id_lo) {},
   };
 
-  while (globals_.aura_outputs.size() < globals_.outputs.size()) {
-    size_t offset = globals_.aura_outputs.size();
-    std::unique_ptr<zaura_output> aura_output(zaura_shell_get_aura_output(
-        globals_.aura_shell.get(), globals_.outputs[offset].get()));
-    zaura_output_add_listener(aura_output.get(), &kAuraOutputListener, this);
-    globals_.aura_outputs.emplace_back(std::move(aura_output));
-  }
+  std::unique_ptr<zaura_output> aura_output(zaura_shell_get_aura_output(
+      globals_.aura_shell.get(), globals_.output.get()));
+  zaura_output_add_listener(aura_output.get(), &kAuraOutputListener, this);
+  globals_.aura_output = std::move(aura_output);
 }
 
 void ClientBase::SetupPointerStylus() {

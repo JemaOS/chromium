@@ -43,8 +43,6 @@ class FakeMetricReportQueue : public MetricReportQueue {
 
   bool IsEmpty() const;
 
-  Destination GetDestination() const override;
-
  private:
   void Flush() override;
 

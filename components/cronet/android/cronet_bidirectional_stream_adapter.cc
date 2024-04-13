@@ -232,11 +232,12 @@ jboolean CronetBidirectionalStreamAdapter::WritevData(
     jint limit;
     env->GetIntArrayRegion(pending_write_data->jwrite_buffer_limit_list.obj(),
                            i, 1, &limit);
-    auto write_buffer = base::MakeRefCounted<net::WrappedIOBuffer>(
-        base::make_span(static_cast<char*>(data), static_cast<size_t>(limit))
-            .subspan(pos));
+    DCHECK_LE(pos, limit);
+    scoped_refptr<net::WrappedIOBuffer> write_buffer =
+        base::MakeRefCounted<net::WrappedIOBuffer>(static_cast<char*>(data) +
+                                                   pos);
     pending_write_data->write_buffer_list.push_back(write_buffer);
-    pending_write_data->write_buffer_len_list.push_back(write_buffer->size());
+    pending_write_data->write_buffer_len_list.push_back(limit - pos);
   }
 
   context_->PostTaskToNetworkThread(

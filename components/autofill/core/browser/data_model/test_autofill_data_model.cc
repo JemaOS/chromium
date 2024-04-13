@@ -6,26 +6,30 @@
 
 namespace autofill {
 
-TestAutofillDataModel::TestAutofillDataModel() = default;
+TestAutofillDataModel::TestAutofillDataModel(const std::string& guid,
+                                             const std::string& origin)
+    : AutofillDataModel(guid, origin) {}
 
-TestAutofillDataModel::TestAutofillDataModel(size_t use_count,
-                                             base::Time use_date) {
+TestAutofillDataModel::TestAutofillDataModel(const std::string& guid,
+                                             size_t use_count,
+                                             base::Time use_date)
+    : AutofillDataModel(guid, std::string()) {
   set_use_count(use_count);
   set_use_date(use_date);
 }
 
 TestAutofillDataModel::~TestAutofillDataModel() = default;
 
-std::u16string TestAutofillDataModel::GetRawInfo(FieldType type) const {
+std::u16string TestAutofillDataModel::GetRawInfo(ServerFieldType type) const {
   return std::u16string();
 }
 
 void TestAutofillDataModel::SetRawInfoWithVerificationStatus(
-    FieldType type,
+    ServerFieldType type,
     const std::u16string& value,
     VerificationStatus status) {}
 
 void TestAutofillDataModel::GetSupportedTypes(
-    FieldTypeSet* supported_types) const {}
+    ServerFieldTypeSet* supported_types) const {}
 
 }  // namespace autofill

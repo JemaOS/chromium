@@ -9,11 +9,8 @@
 #include "base/files/file.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
-#include "base/memory/raw_ptr.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/thread_pool.h"
-#include "base/timer/elapsed_timer.h"
 #include "components/services/font/public/cpp/mapped_font_file.h"
 #include "pdf/buildflags.h"
 
@@ -45,9 +42,6 @@ bool FontServiceThread::MatchFamilyName(
     SkFontStyle* out_style) {
   DCHECK(!task_runner_->RunsTasksInCurrentSequence());
   bool out_valid = false;
-
-  base::ElapsedTimer timer;
-
   // This proxies to the other thread, which proxies to mojo. Only on the reply
   // from mojo do we return from this.
   base::WaitableEvent done_event;
@@ -57,9 +51,6 @@ bool FontServiceThread::MatchFamilyName(
                      family_name, requested_style, &out_valid,
                      out_font_identity, out_family_name, out_style));
   done_event.Wait();
-
-  base::UmaHistogramMicrosecondsTimes(
-      "Blink.Fonts.FontServiceThread.MatchFamilyNameTime", timer.Elapsed());
 
   return out_valid;
 }
@@ -143,8 +134,6 @@ scoped_refptr<MappedFontFile> FontServiceThread::OpenStream(
     const SkFontConfigInterface::FontIdentity& identity) {
   DCHECK(!task_runner_->RunsTasksInCurrentSequence());
 
-  base::ElapsedTimer timer;
-
   base::File stream_file;
   // This proxies to the other thread, which proxies to mojo. Only on the
   // reply from mojo do we return from this.
@@ -153,9 +142,6 @@ scoped_refptr<MappedFontFile> FontServiceThread::OpenStream(
       FROM_HERE, base::BindOnce(&FontServiceThread::OpenStreamImpl, this,
                                 &done_event, &stream_file, identity.fID));
   done_event.Wait();
-
-  base::UmaHistogramMicrosecondsTimes(
-      "Blink.Fonts.FontServiceThread.OpenStreamTime", timer.Elapsed());
 
   if (!stream_file.IsValid()) {
     // The font-service may have been killed.
@@ -421,7 +407,7 @@ void FontServiceThread::OnMatchFontWithFallbackComplete(
 #endif  // BUILDFLAG(ENABLE_PDF)
 
 void FontServiceThread::OnFontServiceDisconnected() {
-  std::set<raw_ptr<base::WaitableEvent, SetExperimental>> events;
+  std::set<base::WaitableEvent*> events;
   events.swap(pending_waitable_events_);
   for (base::WaitableEvent* event : events)
     event->Signal();

@@ -11,7 +11,9 @@ import java.util.ArrayList;
  * interested frame to root.
  */
 public class FrameSession extends ArrayList<ContentCaptureFrame> {
-    /** @param length is reserved frame list length. */
+    /**
+     * @param length is reserved frame list length.
+     */
     public FrameSession(int length) {
         super(length);
     }

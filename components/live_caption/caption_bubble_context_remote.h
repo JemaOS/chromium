@@ -38,7 +38,6 @@ class CaptionBubbleContextRemote : public CaptionBubbleContext {
   bool IsActivatable() const override;
   std::unique_ptr<CaptionBubbleSessionObserver>
   GetCaptionBubbleSessionObserver() override;
-  OpenCaptionSettingsCallback GetOpenCaptionSettingsCallback() override;
 
   // Triggers the end-of-session callback if there is an active caption bubble
   // session observer.

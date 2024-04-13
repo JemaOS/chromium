@@ -20,7 +20,6 @@
 #include "components/unexportable_keys/unexportable_key_id.h"
 #include "components/unexportable_keys/unexportable_key_service.h"
 #include "crypto/signature_verifier.h"
-#include "crypto/unexportable_key.h"
 
 namespace unexportable_keys {
 
@@ -40,8 +39,7 @@ class UnexportableKeyServiceImpl : public UnexportableKeyService {
   // Returns whether the current platform has a support for unexportable signing
   // keys. If this returns false, all service methods will return
   // `ServiceError::kNoKeyProvider`.
-  static bool IsUnexportableKeyProviderSupported(
-      crypto::UnexportableKeyProvider::Config config);
+  static bool IsUnexportableKeyProviderSupported();
 
   // UnexportableKeyService:
   void GenerateSigningKeySlowlyAsync(
@@ -98,7 +96,7 @@ class UnexportableKeyServiceImpl : public UnexportableKeyService {
       ServiceErrorOr<scoped_refptr<RefCountedUnexportableSigningKey>>
           key_or_error);
 
-  const raw_ref<UnexportableKeyTaskManager, DanglingUntriaged> task_manager_;
+  const raw_ref<UnexportableKeyTaskManager> task_manager_;
 
   // Helps mapping multiple `FromWrappedSigningKeySlowlyAsync()` requests with
   // the same wrapped key into the same key ID.

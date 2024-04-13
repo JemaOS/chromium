@@ -20,7 +20,7 @@ class MockAlternativeStateNameMapUpdater
       PersonalDataManager* personal_data_manager);
 
   // PersonalDataManagerObserver
-  void OnPersonalDataChanged() override;
+  void OnPersonalDataFinishedProfileTasks() override;
 
   base::OnceClosure callback_;
 };

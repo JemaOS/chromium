@@ -4,12 +4,11 @@
 
 #include "components/page_load_metrics/browser/observers/ad_metrics/page_ad_density_tracker.h"
 
-#include <optional>
-
 #include "base/logging.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/numerics/checked_math.h"
 #include "base/time/default_tick_clock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace page_load_metrics {
 
@@ -122,9 +121,9 @@ class BoundedSegmentLength {
 
   // Calculate the combined length of segments in the active set of segments by
   // iterating over the sorted set of segment events.
-  std::optional<int> Length() {
+  absl::optional<int> Length() {
     base::CheckedNumeric<int> length = 0;
-    std::optional<int> last_event_pos;
+    absl::optional<int> last_event_pos;
     int num_active = 0;
     for (const auto& segment_event : active_segments_) {
       if (!last_event_pos) {
@@ -143,7 +142,7 @@ class BoundedSegmentLength {
       }
     }
 
-    std::optional<int> total_length;
+    absl::optional<int> total_length;
     if (length.IsValid())
       total_length = length.ValueOrDie();
 
@@ -364,7 +363,7 @@ PageAdDensityTracker::CalculateDensityWithin(const gfx::Rect& bounding_rect) {
       /*bound_start=*/bounding_rect.x(),
       /*bound_end=*/bounding_rect.x() + bounding_rect.width());
 
-  std::optional<int> last_y;
+  absl::optional<int> last_y;
   base::CheckedNumeric<int> total_area = 0;
   base::CheckedNumeric<int> total_height = 0;
   for (const auto& rect_event : rect_events_) {
@@ -383,7 +382,7 @@ PageAdDensityTracker::CalculateDensityWithin(const gfx::Rect& bounding_rect) {
     DCHECK_LE(current_y, last_y.value());
 
     // If the segment length value is invalid, skip this ad density calculation.
-    std::optional<int> horizontal_segment_length =
+    absl::optional<int> horizontal_segment_length =
         horizontal_segment_length_tracker.Length();
     if (!horizontal_segment_length)
       return {};

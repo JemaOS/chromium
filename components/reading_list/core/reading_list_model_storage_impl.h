@@ -58,14 +58,14 @@ class ReadingListModelStorageImpl : public ReadingListModelStorage {
   void BeginTransaction();
   void CommitTransaction();
   // Callbacks needed for the database handling.
-  void OnStoreCreated(const std::optional<syncer::ModelError>& error,
+  void OnStoreCreated(const absl::optional<syncer::ModelError>& error,
                       std::unique_ptr<syncer::ModelTypeStore> store);
   void OnDatabaseLoad(
-      const std::optional<syncer::ModelError>& error,
+      const absl::optional<syncer::ModelError>& error,
       std::unique_ptr<syncer::ModelTypeStore::RecordList> entries);
-  void OnDatabaseSave(const std::optional<syncer::ModelError>& error);
+  void OnDatabaseSave(const absl::optional<syncer::ModelError>& error);
   void OnReadAllMetadata(ReadingListEntries loaded_entries,
-                         const std::optional<syncer::ModelError>& error,
+                         const absl::optional<syncer::ModelError>& error,
                          std::unique_ptr<syncer::MetadataBatch> metadata_batch);
 
   bool loaded_ = false;

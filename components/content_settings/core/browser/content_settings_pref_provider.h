@@ -13,7 +13,6 @@
 #include "base/memory/raw_ptr.h"
 #include "components/content_settings/core/browser/content_settings_utils.h"
 #include "components/content_settings/core/browser/user_modifiable_provider.h"
-#include "components/content_settings/core/common/content_settings_partition_key.h"
 #include "components/prefs/pref_change_registrar.h"
 
 class PrefService;
@@ -49,45 +48,23 @@ class PrefProvider : public UserModifiableProvider {
   // UserModifiableProvider implementations.
   std::unique_ptr<RuleIterator> GetRuleIterator(
       ContentSettingsType content_type,
-      bool off_the_record,
-      const PartitionKey& partition_key) const override;
-
-  std::unique_ptr<Rule> GetRule(
-      const GURL& primary_url,
-      const GURL& secondary_url,
-      ContentSettingsType content_type,
-      bool off_the_record,
-      const PartitionKey& partition_key) const override;
-
+      bool off_the_record) const override;
   bool SetWebsiteSetting(const ContentSettingsPattern& primary_pattern,
                          const ContentSettingsPattern& secondary_pattern,
                          ContentSettingsType content_type,
                          base::Value&& value,
-                         const ContentSettingConstraints& constraints,
-                         const PartitionKey& partition_key) override;
-  void ClearAllContentSettingsRules(ContentSettingsType content_type,
-                                    const PartitionKey& partition_key) override;
+                         const ContentSettingConstraints& constraints) override;
+  void ClearAllContentSettingsRules(ContentSettingsType content_type) override;
   void ShutdownOnUIThread() override;
-  bool UpdateLastUsedTime(const GURL& primary_url,
-                          const GURL& secondary_url,
-                          ContentSettingsType content_type,
-                          const base::Time time,
-                          const PartitionKey& partition_key) override;
   bool ResetLastVisitTime(const ContentSettingsPattern& primary_pattern,
                           const ContentSettingsPattern& secondary_pattern,
-                          ContentSettingsType content_type,
-                          const PartitionKey& partition_key) override;
+                          ContentSettingsType content_type) override;
   bool UpdateLastVisitTime(const ContentSettingsPattern& primary_pattern,
                            const ContentSettingsPattern& secondary_pattern,
-                           ContentSettingsType content_type,
-                           const PartitionKey& partition_key) override;
-  std::optional<base::TimeDelta> RenewContentSetting(
-      const GURL& primary_url,
-      const GURL& secondary_url,
-      ContentSettingsType content_type,
-      std::optional<ContentSetting> setting_to_match,
-      const PartitionKey& partition_key) override;
+                           ContentSettingsType content_type) override;
   void SetClockForTesting(base::Clock* clock) override;
+
+  void ClearPrefs();
 
   ContentSettingsPref* GetPref(ContentSettingsType type) const;
 
@@ -96,23 +73,12 @@ class PrefProvider : public UserModifiableProvider {
 
   void Notify(const ContentSettingsPattern& primary_pattern,
               const ContentSettingsPattern& secondary_pattern,
-              ContentSettingsType content_type,
-              const PartitionKey* partition_key);
+              ContentSettingsType content_type);
 
   bool SetLastVisitTime(const ContentSettingsPattern& primary_pattern,
                         const ContentSettingsPattern& secondary_pattern,
                         ContentSettingsType content_type,
-                        const base::Time time,
-                        const PartitionKey& partition_key);
-
-  // Finds the first setting whose Rule satisfies `is_match`, and performs some
-  // update. `perform_update` may modify the Rule in-place, and should return
-  // true if any modifications were made.  Returns whether or not any setting
-  // was updated.
-  bool UpdateSetting(ContentSettingsType content_type,
-                     base::FunctionRef<bool(const Rule&)> is_match,
-                     base::FunctionRef<bool(Rule&)> perform_update,
-                     const PartitionKey& partition_key);
+                        const base::Time time);
 
   // Clean up the obsolete preferences from the user's profile.
   void DiscardOrMigrateObsoletePreferences();

@@ -15,8 +15,6 @@ buildflag_header("buildflags") {
 
 component("soda") {
   sources = [
-    "soda_features.cc",
-    "soda_features.h",
     "soda_installer.cc",
     "soda_installer.h",
   ]
@@ -25,7 +23,6 @@ component("soda") {
 
   deps = [
     ":constants",
-    ":utils",
     "//base",
     "//build:chromeos_buildflags",
     "//components/live_caption:constants",
@@ -46,10 +43,6 @@ component("soda") {
       "//ui/base",
     ]
   }
-
-  if (is_chromeos_lacros) {
-    deps += [ "//chromeos/startup:startup" ]
-  }
 }
 
 source_set("constants") {
@@ -62,29 +55,11 @@ source_set("constants") {
 
   deps = [
     "//base",
-    "//components/component_updater:component_updater_paths",
+    "//components/component_updater",
     "//components/crx_file",
     "//components/strings/",
-    "//media",
     "//ui/base",
   ]
-}
-
-source_set("utils") {
-  sources = [
-    "soda_util.cc",
-    "soda_util.h",
-  ]
-
-  deps = [ "//base" ]
-
-  if (is_chromeos_ash) {
-    deps += [ "//ash/constants:constants" ]
-  }
-
-  if (is_chromeos_lacros) {
-    deps += [ "//chromeos/startup:startup" ]
-  }
 }
 
 source_set("unit_tests") {

@@ -43,12 +43,11 @@ class ProfileOAuth2TokenServiceDelegateTest : public testing::Test {
 TEST_F(ProfileOAuth2TokenServiceDelegateTest, InvalidateTokensForMultilogin) {
   // Check that OnAuthErrorChanged is not fired from
   // InvalidateTokensForMultilogin and refresh tokens are not set in error.
-  EXPECT_CALL(observer_,
-              OnAuthErrorChanged(
-                  ::testing::_,
-                  GoogleServiceAuthError::FromInvalidGaiaCredentialsReason(
-                      GoogleServiceAuthError::InvalidGaiaCredentialsReason::
-                          CREDENTIALS_REJECTED_BY_SERVER)))
+  EXPECT_CALL(
+      observer_,
+      OnAuthErrorChanged(::testing::_,
+                         GoogleServiceAuthError(
+                             GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS)))
       .Times(0);
 
   const CoreAccountId account_id1 = CoreAccountId::FromGaiaId("account_id1");
@@ -65,7 +64,6 @@ TEST_F(ProfileOAuth2TokenServiceDelegateTest, InvalidateTokensForMultilogin) {
             GoogleServiceAuthError::NONE);
 }
 
-// Contains all non-deprecated Google service auth error states.
 const GoogleServiceAuthError::State table[] = {
     GoogleServiceAuthError::NONE,
     GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS,
@@ -76,7 +74,6 @@ const GoogleServiceAuthError::State table[] = {
     GoogleServiceAuthError::UNEXPECTED_SERVICE_RESPONSE,
     GoogleServiceAuthError::SERVICE_ERROR,
     GoogleServiceAuthError::SCOPE_LIMITED_UNRECOVERABLE_ERROR,
-    GoogleServiceAuthError::CHALLENGE_RESPONSE_REQUIRED,
 };
 
 TEST_F(ProfileOAuth2TokenServiceDelegateTest, UpdateAuthError_PersistenErrors) {

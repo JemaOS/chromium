@@ -12,7 +12,6 @@
 #include "components/segmentation_platform/internal/metadata/metadata_writer.h"
 #include "components/segmentation_platform/public/config.h"
 #include "components/segmentation_platform/public/constants.h"
-#include "components/segmentation_platform/public/features.h"
 #include "components/segmentation_platform/public/model_provider.h"
 #include "components/segmentation_platform/public/proto/model_metadata.pb.h"
 
@@ -57,25 +56,21 @@ constexpr int64_t kDeviceSwitcherMinSignalCollectionLength = 0;
 
 // static
 std::unique_ptr<Config> DeviceSwitcherModel::GetConfig() {
-  if (!base::FeatureList::IsEnabled(
-          features::kSegmentationPlatformDeviceSwitcher)) {
-    return nullptr;
-  }
   auto config = std::make_unique<Config>();
   config->segmentation_key = kDeviceSwitcherKey;
   config->segmentation_uma_name = kDeviceSwitcherUmaName;
   config->AddSegmentId(kDeviceSwitcherModelId,
                        std::make_unique<DeviceSwitcherModel>());
   config->is_boolean_segment = false;
-  config->auto_execute_and_cache = false;
+  config->on_demand_execution = true;
   return config;
 }
 
 DeviceSwitcherModel::DeviceSwitcherModel()
-    : DefaultModelProvider(kDeviceSwitcherModelId) {}
+    : ModelProvider(kDeviceSwitcherModelId) {}
 
-std::unique_ptr<DefaultModelProvider::ModelConfig>
-DeviceSwitcherModel::GetModelConfig() {
+void DeviceSwitcherModel::InitAndFetchModel(
+    const ModelUpdatedCallback& model_updated_callback) {
   proto::SegmentationModelMetadata metadata;
   MetadataWriter writer(&metadata);
   writer.SetDefaultSegmentationMetadataConfig(
@@ -91,11 +86,14 @@ DeviceSwitcherModel::GetModelConfig() {
   (*sync_input->mutable_additional_args())["wait_for_device_info_in_seconds"] =
       "60";
 
-  writer.AddOutputConfigForMultiClassClassifier(kOutputLabels,
-                                                kOutputLabels.size(), 0.1);
+  writer.AddOutputConfigForMultiClassClassifier(
+      kOutputLabels.begin(), kOutputLabels.size(), kOutputLabels.size(), 0.1);
 
   constexpr int kModelVersion = 1;
-  return std::make_unique<ModelConfig>(std::move(metadata), kModelVersion);
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindRepeating(model_updated_callback, kDeviceSwitcherModelId,
+                          std::move(metadata), kModelVersion));
 }
 
 void DeviceSwitcherModel::ExecuteModelWithInput(
@@ -104,7 +102,7 @@ void DeviceSwitcherModel::ExecuteModelWithInput(
   // The custom input added should return 10 float values.
   if (inputs.size() != 10) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+        FROM_HERE, base::BindOnce(std::move(callback), absl::nullopt));
     return;
   }
 
@@ -134,6 +132,10 @@ void DeviceSwitcherModel::ExecuteModelWithInput(
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), std::move(result)));
+}
+
+bool DeviceSwitcherModel::ModelAvailable() {
+  return true;
 }
 
 }  // namespace segmentation_platform

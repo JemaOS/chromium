@@ -15,7 +15,7 @@ bool TestTFLiteModelExecutor::Preprocess(
       .ok();
 }
 
-std::optional<std::vector<float>> TestTFLiteModelExecutor::Postprocess(
+absl::optional<std::vector<float>> TestTFLiteModelExecutor::Postprocess(
     const std::vector<const TfLiteTensor*>& output_tensors) {
   std::vector<float> data;
   absl::Status status =

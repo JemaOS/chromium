@@ -91,7 +91,8 @@ leveldb::Status TransactionalLevelDBIterator::SeekToLast() {
   return WrappedIteratorStatus();
 }
 
-leveldb::Status TransactionalLevelDBIterator::Seek(std::string_view target) {
+leveldb::Status TransactionalLevelDBIterator::Seek(
+    const base::StringPiece& target) {
   DCHECK(db_);
   CheckState();
 
@@ -153,17 +154,17 @@ leveldb::Status TransactionalLevelDBIterator::Prev() {
   return WrappedIteratorStatus();
 }
 
-std::string_view TransactionalLevelDBIterator::Key() const {
+base::StringPiece TransactionalLevelDBIterator::Key() const {
   DCHECK(db_);
   DCHECK(IsValid());
   CheckState();
 
   if (IsEvicted())
     return key_before_eviction_;
-  return leveldb_env::MakeStringView(iterator_->key());
+  return leveldb_env::MakeStringPiece(iterator_->key());
 }
 
-std::string_view TransactionalLevelDBIterator::Value() const {
+base::StringPiece TransactionalLevelDBIterator::Value() const {
   DCHECK(db_);
   DCHECK(IsValid());
   CheckState();
@@ -175,7 +176,7 @@ std::string_view TransactionalLevelDBIterator::Value() const {
   db_->OnIteratorUsed(non_const);
   if (IsEvicted())
     return value_before_eviction_;
-  return leveldb_env::MakeStringView(iterator_->value());
+  return leveldb_env::MakeStringPiece(iterator_->value());
 }
 
 void TransactionalLevelDBIterator::EvictLevelDBIterator() {

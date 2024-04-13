@@ -49,8 +49,10 @@ import java.util.function.Function;
 final class ReflectiveThreadStrictModeInterceptor implements ThreadStrictModeInterceptor {
     private static final String TAG = "ThreadStrictMode";
 
-    @NonNull private final List<Function<Violation, Integer>> mWhitelistEntries;
-    @Nullable private final Consumer mCustomPenalty;
+    @NonNull
+    private final List<Function<Violation, Integer>> mWhitelistEntries;
+    @Nullable
+    private final Consumer mCustomPenalty;
 
     ReflectiveThreadStrictModeInterceptor(
             @NonNull List<Function<Violation, Integer>> whitelistEntries,
@@ -77,26 +79,23 @@ final class ReflectiveThreadStrictModeInterceptor implements ThreadStrictModeInt
             throw new RuntimeException(null, e);
         }
         violationsBeingTimed.get().clear();
-        violationsBeingTimed.set(
-                new ArrayList<Object>() {
-                    @Override
-                    public boolean add(Object o) {
-                        int violationType = getViolationType(o);
-                        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-                        Violation violation =
-                                new Violation(
-                                        violationType,
-                                        Arrays.copyOf(stackTrace, stackTrace.length));
-                        if (violationType != Violation.DETECT_FAILED
-                                && violation.isInWhitelist(mWhitelistEntries)) {
-                            return true;
-                        }
-                        if (mCustomPenalty != null) {
-                            mCustomPenalty.accept(violation);
-                        }
-                        return super.add(o);
-                    }
-                });
+        violationsBeingTimed.set(new ArrayList<Object>() {
+            @Override
+            public boolean add(Object o) {
+                int violationType = getViolationType(o);
+                StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+                Violation violation =
+                        new Violation(violationType, Arrays.copyOf(stackTrace, stackTrace.length));
+                if (violationType != Violation.DETECT_FAILED
+                        && violation.isInWhitelist(mWhitelistEntries)) {
+                    return true;
+                }
+                if (mCustomPenalty != null) {
+                    mCustomPenalty.accept(violation);
+                }
+                return super.add(o);
+            }
+        });
     }
 
     @SuppressWarnings({"unchecked"})
@@ -136,10 +135,8 @@ final class ReflectiveThreadStrictModeInterceptor implements ThreadStrictModeInt
             Method parseViolationFromMessage =
                     StrictMode.class.getDeclaredMethod("parseViolationFromMessage", String.class);
             parseViolationFromMessage.setAccessible(true);
-            int mask =
-                    (int)
-                            parseViolationFromMessage.invoke(
-                                    /* static= */ null, crashInfo.exceptionMessage);
+            int mask = (int) parseViolationFromMessage.invoke(
+                    null /* static */, crashInfo.exceptionMessage);
             return mask & Violation.DETECT_ALL_KNOWN;
         } catch (Exception e) {
             Log.e(TAG, "Unable to get violation.", e);
@@ -147,7 +144,9 @@ final class ReflectiveThreadStrictModeInterceptor implements ThreadStrictModeInt
         }
     }
 
-    /** Computes the violation type based on the class of the passed-in violation. */
+    /**
+     * Computes the violation type based on the class of the passed-in violation.
+     */
     @RequiresApi(29)
     private static int computeViolationTypeAndroid10(Class<?> violationClass) {
         if (DiskReadViolation.class.isAssignableFrom(violationClass)) {

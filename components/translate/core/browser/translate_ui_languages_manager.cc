@@ -32,7 +32,6 @@ namespace translate {
 
 TranslateUILanguagesManager::TranslateUILanguagesManager(
     const base::WeakPtr<TranslateManager>& translate_manager,
-    const std::vector<std::string>& language_codes,
     const std::string& source_language,
     const std::string& target_language)
     : translate_manager_(translate_manager),
@@ -43,14 +42,20 @@ TranslateUILanguagesManager::TranslateUILanguagesManager(
   std::string locale =
       TranslateDownloadManager::GetInstance()->application_locale();
 
-  // Reserve additional space for unknown language option.
+  std::vector<std::string> language_codes;
+  TranslateDownloadManager::GetSupportedLanguages(
+      prefs_->IsTranslateAllowedByPolicy(), &language_codes);
+  // Reserve additional space for unknown language option. This is currently
+  // supported on all platforms and under experimentation on iOS.
   std::vector<std::string>::size_type languages_size = language_codes.size();
-  languages_size += 1;
+  if (translate::IsForceTranslateEnabled()) {
+    languages_size += 1;
+  }
   languages_.reserve(languages_size);
 
   // Preparing for the alphabetical order in the locale.
   std::unique_ptr<icu::Collator> collator = CreateCollator(locale);
-  for (const std::string& language_code : language_codes) {
+  for (std::string& language_code : language_codes) {
     std::u16string language_name =
         l10n_util::GetDisplayNameForLocale(language_code, locale, true);
     languages_.emplace_back(std::move(language_code), std::move(language_name));
@@ -83,9 +88,12 @@ TranslateUILanguagesManager::TranslateUILanguagesManager(
         return lhs.first < rhs.first;
       });
 
-  languages_.emplace_back(kUnknownLanguageCode,
-                          GetUnknownLanguageDisplayName());
-  std::rotate(languages_.rbegin(), languages_.rbegin() + 1, languages_.rend());
+  if (translate::IsForceTranslateEnabled()) {
+    languages_.emplace_back(kUnknownLanguageCode,
+                            GetUnknownLanguageDisplayName());
+    std::rotate(languages_.rbegin(), languages_.rbegin() + 1,
+                languages_.rend());
+  }
 
   for (std::vector<LanguageNamePair>::const_iterator iter = languages_.begin();
        iter != languages_.end(); ++iter) {

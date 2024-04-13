@@ -7,15 +7,13 @@
 
 #include <array>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "base/time/time.h"
-#include "base/types/strong_alias.h"
 #include "components/sync/base/model_type.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace sync_pb {
 enum SharingSpecificFields_EnabledFeatures : int;
@@ -66,14 +64,6 @@ class DeviceInfo {
   };
 
   struct PhoneAsASecurityKeyInfo {
-    // NotReady indicates that more time is needed to calculate the
-    // PhoneAsASecurityKeyInfo.
-    using NotReady = base::StrongAlias<class NotReadyTag, absl::monostate>;
-    // NoSupport indicates that phone-as-a-security-key cannot be supported.
-    using NoSupport = base::StrongAlias<class NoSupportTag, absl::monostate>;
-    using StatusOrInfo =
-        absl::variant<NotReady, NoSupport, PhoneAsASecurityKeyInfo>;
-
     PhoneAsASecurityKeyInfo();
     PhoneAsASecurityKeyInfo(const PhoneAsASecurityKeyInfo& other);
     PhoneAsASecurityKeyInfo(PhoneAsASecurityKeyInfo&& other);
@@ -137,8 +127,8 @@ class DeviceInfo {
              base::Time last_updated_timestamp,
              base::TimeDelta pulse_interval,
              bool send_tab_to_self_receiving_enabled,
-             const std::optional<SharingInfo>& sharing_info,
-             const std::optional<PhoneAsASecurityKeyInfo>& paask_info,
+             const absl::optional<SharingInfo>& sharing_info,
+             const absl::optional<PhoneAsASecurityKeyInfo>& paask_info,
              const std::string& fcm_registration_token,
              const ModelTypeSet& interested_data_types);
 
@@ -203,9 +193,9 @@ class DeviceInfo {
   bool send_tab_to_self_receiving_enabled() const;
 
   // Returns Sharing related info of the device.
-  const std::optional<SharingInfo>& sharing_info() const;
+  const absl::optional<SharingInfo>& sharing_info() const;
 
-  const std::optional<PhoneAsASecurityKeyInfo>& paask_info() const;
+  const absl::optional<PhoneAsASecurityKeyInfo>& paask_info() const;
 
   // Returns the FCM registration token for sync invalidations.
   const std::string& fcm_registration_token() const;
@@ -223,9 +213,9 @@ class DeviceInfo {
 
   void set_send_tab_to_self_receiving_enabled(bool new_value);
 
-  void set_sharing_info(const std::optional<SharingInfo>& sharing_info);
+  void set_sharing_info(const absl::optional<SharingInfo>& sharing_info);
 
-  void set_paask_info(std::optional<PhoneAsASecurityKeyInfo>&& paask_info);
+  void set_paask_info(PhoneAsASecurityKeyInfo&& paask_info);
 
   void set_client_name(const std::string& client_name);
 
@@ -268,9 +258,9 @@ class DeviceInfo {
 
   bool send_tab_to_self_receiving_enabled_;
 
-  std::optional<SharingInfo> sharing_info_;
+  absl::optional<SharingInfo> sharing_info_;
 
-  std::optional<PhoneAsASecurityKeyInfo> paask_info_;
+  absl::optional<PhoneAsASecurityKeyInfo> paask_info_;
 
   // An FCM registration token obtained by sync invalidations service.
   std::string fcm_registration_token_;

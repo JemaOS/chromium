@@ -22,18 +22,24 @@ import org.chromium.components.signin.base.CoreAccountInfo;
 
 import java.util.List;
 
-/** Interface for {@link AccountManagerFacadeImpl}. */
+/**
+ * Interface for {@link AccountManagerFacadeImpl}.
+ */
 public interface AccountManagerFacade {
-    // TODO(crbug.com/1258563): consider refactoring this interface to use Promises.
-    /** Listener for whether the account is a child one. */
+    /**
+     * Listener for whether the account is a child one.
+     */
     interface ChildAccountStatusListener {
         /**
          * The method is called when the status of the account (whether it is a child one) is ready.
          *
          * @param isChild If account is a child account.
-         * @param childAccount The child account if isChild != false; null otherwise.
+         * @param childAccount The child account if isChild != false; null
+         *         otherwise.
+         *
+         * TODO(crbug.com/1258563): consider refactoring this interface to use Promises.
          */
-        void onStatusReady(boolean isChild, @Nullable CoreAccountInfo childAccount);
+        void onStatusReady(boolean isChild, @Nullable Account childAccount);
     }
 
     /**
@@ -51,6 +57,19 @@ public interface AccountManagerFacade {
     void removeObserver(AccountsChangeObserver observer);
 
     /**
+     * Retrieves accounts on device after filtering them through account restriction patterns.
+     * The {@link Promise} will be fulfilled once the accounts cache will be populated.
+     * If an error occurs while getting account list, the returned {@link Promise} will wrap an
+     * empty array.
+     *
+     * Since a different {@link Promise} will be returned every time the accounts get updated,
+     * this makes the {@link Promise} a bad candidate for end users to cache locally unless
+     * the end users are awaiting the current list of accounts only.
+     */
+    @MainThread
+    Promise<List<Account>> getAccounts();
+
+    /**
      * Retrieves corresponding {@link CoreAccountInfo}s for filtered accounts.
      * The {@link Promise} will be fulfilled once the accounts cache is populated and gaia ids are
      * fetched. If an error occurs while getting account list, the returned {@link Promise} will
@@ -63,20 +82,21 @@ public interface AccountManagerFacade {
     @MainThread
     Promise<List<CoreAccountInfo>> getCoreAccountInfos();
 
-    /** @return Whether or not there is an account authenticator for Google accounts. */
+    /**
+     * @return Whether or not there is an account authenticator for Google accounts.
+     */
     @AnyThread
     boolean hasGoogleAccountAuthenticator();
 
     /**
      * Synchronously gets an OAuth2 access token. May return a cached version, use
      * {@link #invalidateAccessToken} to invalidate a token in the cache.
-     * @param coreAccountInfo The {@link CoreAccountInfo} for which the token is requested.
+     * @param account The {@link Account} for which the token is requested.
      * @param scope OAuth2 scope for which the requested token should be valid.
      * @return The OAuth2 access token as an AccessTokenData with a string and an expiration time.
      */
     @WorkerThread
-    AccessTokenData getAccessToken(CoreAccountInfo coreAccountInfo, String scope)
-            throws AuthException;
+    AccessTokenData getAccessToken(Account account, String scope) throws AuthException;
 
     /**
      * Removes an OAuth2 access token from the cache with retries asynchronously.
@@ -89,20 +109,19 @@ public interface AccountManagerFacade {
     /**
      * Checks the child account status of the given account.
      *
-     * @param coreAccountInfo The CoreAccountInfo to check the child account status.
-     * @param listener The listener is called when the status of the account (whether it is a child
-     *     one) is ready.
+     * @param account The account to check the child account status.
+     * @param listener The listener is called when the status of the account
+     *                 (whether it is a child one) is ready.
      */
     @MainThread
-    void checkChildAccountStatus(
-            CoreAccountInfo coreAccountInfo, ChildAccountStatusListener listener);
+    void checkChildAccountStatus(Account account, ChildAccountStatusListener listener);
 
     /**
-     * @param coreAccountInfo The {@link CoreAccountInfo} used to look up capabilities.
+     * @param account The account used to look up capabilities.
      * @return account capabilities for the given account.
      */
     @MainThread
-    Promise<AccountCapabilities> getAccountCapabilities(CoreAccountInfo coreAccountInfo);
+    Promise<AccountCapabilities> getAccountCapabilities(Account account);
 
     /**
      * Creates an intent that will ask the user to add a new account to the device. See
@@ -140,14 +159,10 @@ public interface AccountManagerFacade {
      *
      * @param account The {@link Account} to confirm the credentials for.
      * @param activity The {@link Activity} context to use for launching a new authenticator-defined
-     *     sub-Activity to prompt the user to confirm the account's password.
+     *                 sub-Activity to prompt the user to confirm the account's password.
      * @param callback The callback to indicate whether the user successfully confirmed their
-     *     knowledge of the account's credentials.
+     *                 knowledge of the account's credentials.
      */
     @AnyThread
     void confirmCredentials(Account account, Activity activity, Callback<Bundle> callback);
-
-    /** Whether fetching the list of accounts from the device eventually succeeded. */
-    // TODO(crbug.com/330304719): Handle this with exceptions rather than a boolean.
-    boolean didAccountFetchSucceed();
 }

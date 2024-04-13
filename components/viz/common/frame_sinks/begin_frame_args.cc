@@ -8,7 +8,7 @@
 
 #include "base/trace_event/interned_args_helper.h"
 #include "base/trace_event/traced_value.h"
-#include "base/tracing/protos/chrome_track_event.pbzero.h"
+#include "third_party/perfetto/protos/perfetto/trace/track_event/chrome_compositor_scheduler_state.pbzero.h"
 #include "third_party/perfetto/protos/perfetto/trace/track_event/source_location.pbzero.h"
 
 namespace viz {
@@ -27,9 +27,9 @@ const char* BeginFrameArgs::TypeToString(BeginFrameArgsType type) {
 }
 
 namespace {
-perfetto::protos::pbzero::BeginFrameArgsV2::BeginFrameArgsType
+perfetto::protos::pbzero::BeginFrameArgs::BeginFrameArgsType
 TypeToProtozeroEnum(BeginFrameArgs::BeginFrameArgsType type) {
-  using pbzeroType = perfetto::protos::pbzero::BeginFrameArgsV2;
+  using pbzeroType = perfetto::protos::pbzero::BeginFrameArgs;
   switch (type) {
     case BeginFrameArgs::INVALID:
       return pbzeroType::BEGIN_FRAME_ARGS_TYPE_INVALID;
@@ -54,6 +54,20 @@ BeginFrameId& BeginFrameId::operator=(const BeginFrameId& id) = default;
 
 BeginFrameId::BeginFrameId(uint64_t source_id, uint64_t sequence_number)
     : source_id(source_id), sequence_number(sequence_number) {}
+
+bool BeginFrameId::operator<(const BeginFrameId& other) const {
+  if (source_id == other.source_id)
+    return (sequence_number < other.sequence_number);
+  return (source_id < other.source_id);
+}
+
+bool BeginFrameId::operator==(const BeginFrameId& other) const {
+  return (source_id == other.source_id &&
+          sequence_number == other.sequence_number);
+}
+bool BeginFrameId::operator!=(const BeginFrameId& other) const {
+  return !(*this == other);
+}
 
 bool BeginFrameId::IsNextInSequenceTo(const BeginFrameId& previous) const {
   return (source_id == previous.source_id &&
@@ -171,11 +185,13 @@ void BeginFrameArgs::AsValueInto(base::trace_event::TracedValue* state) const {
 
 void BeginFrameArgs::AsProtozeroInto(
     perfetto::EventContext& ctx,
-    perfetto::protos::pbzero::BeginFrameArgsV2* state) const {
+    perfetto::protos::pbzero::BeginFrameArgs* state) const {
   state->set_type(TypeToProtozeroEnum(type));
   state->set_source_id(frame_id.source_id);
   state->set_sequence_number(frame_id.sequence_number);
-  state->set_frames_throttled_since_last(frames_throttled_since_last);
+  // TODO(yjliu) add frames_throttled_since_last to third_party
+  // chrome_compositor_scheduler_state.proto
+  // state->set_frames_throttled_since_last(frames_throttled_since_last);
   state->set_frame_time_us(frame_time.since_origin().InMicroseconds());
   state->set_deadline_us(deadline.since_origin().InMicroseconds());
   state->set_interval_delta_us(interval.InMicroseconds());

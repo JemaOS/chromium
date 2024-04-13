@@ -5,11 +5,10 @@
 #ifndef COMPONENTS_AUTOFILL_IOS_BROWSER_AUTOFILL_UTIL_H_
 #define COMPONENTS_AUTOFILL_IOS_BROWSER_AUTOFILL_UTIL_H_
 
-#import <optional>
-#import <vector>
+#include <vector>
 
-#import "base/unguessable_token.h"
-#import "base/values.h"
+#include "base/values.h"
+
 #import "ios/web/public/js_messaging/web_frame.h"
 
 class GURL;
@@ -20,10 +19,10 @@ class WebState;
 
 namespace autofill {
 
+class FieldRendererId;
 struct FormData;
 struct FormFieldData;
 class FieldDataManager;
-struct FrameTokenWithPredecessor;
 
 // Checks if current context is secure from an autofill standpoint.
 bool IsContextSecureForWebState(web::WebState* web_state);
@@ -31,12 +30,6 @@ bool IsContextSecureForWebState(web::WebState* web_state);
 // Tries to parse a JSON string into base::Value. Returns nullptr if parsing is
 // unsuccessful.
 std::unique_ptr<base::Value> ParseJson(NSString* json_string);
-
-// Local and remote frame IDs generated in JavaScript are equivalent to
-// base::UnguessableToken (128 bits, cryptographically random). Returns a
-// base::UnguessableToken equivalent to the given JS-generated ID.
-std::optional<base::UnguessableToken> DeserializeJavaScriptFrameId(
-    const std::string& frame_id);
 
 // Processes the JSON form data extracted from the page into the format expected
 // by BrowserAutofillManager and fills it in |forms_data|.
@@ -54,10 +47,10 @@ bool ExtractFormsData(NSString* form_json,
 
 // Converts |form| into |form_data|.
 // Returns false if a form can not be extracted.
-// Returns false if |filtered| == true and |form["name"]| !=
-// |formName|. Returns false if |form["origin"]| !=
-// |form_frame_origin|. Returns true if the conversion succeeds.
-bool ExtractFormData(const base::Value::Dict& form,
+// Returns false if |filtered| == true and |form["name"]| != |formName|.
+// Returns false if |form["origin"]| != |form_frame_origin|.
+// Returns true if the conversion succeeds.
+bool ExtractFormData(const base::Value& form,
                      bool filtered,
                      const std::u16string& form_name,
                      const GURL& main_frame_url,
@@ -71,12 +64,6 @@ bool ExtractFormData(const base::Value::Dict& form,
 bool ExtractFormFieldData(const base::Value::Dict& field,
                           const FieldDataManager& field_data_manager,
                           FormFieldData* field_data);
-
-// Extracts a single child frame's data from the JSON dictionary into a
-// FrameTokenWithPredecessor object. Returns false if the data could not be
-// extracted.
-bool ExtractRemoteFrameToken(const base::Value::Dict& frame_data,
-                             FrameTokenWithPredecessor* token_with_predecessor);
 
 typedef base::OnceCallback<void(const base::Value*)> JavaScriptResultCallback;
 
@@ -94,36 +81,12 @@ JavaScriptResultCallback CreateBoolCallback(base::OnceCallback<void(BOOL)>);
 // If |callback| is not null, it will be called when the result of the
 // command is received, or immediately if the command cannot be executed.
 void ExecuteJavaScriptFunction(const std::string& name,
-                               const base::Value::List& parameters,
+                               const std::vector<base::Value>& parameters,
                                web::WebFrame* frame,
                                JavaScriptResultCallback callback);
 
-// Extracts a vector of 32 bits numeric renderer IDs from the JS returned json
-// string.
-// - IDType: Identifier type must be constructable from uint32_t.
-template <typename IDType>
-std::optional<std::vector<IDType>> ExtractIDs(NSString* json_string) {
-  std::unique_ptr<base::Value> ids_value = ParseJson(json_string);
-
-  if (!ids_value || !ids_value->is_list()) {
-    return std::nullopt;
-  }
-
-  std::vector<IDType> ids;
-
-  for (const auto& unique_id : ids_value->GetList()) {
-    if (!unique_id.is_string()) {
-      return std::nullopt;
-    }
-    uint32_t id_num = 0;
-    if (!base::StringToUint(unique_id.GetString(), &id_num)) {
-      return std::nullopt;
-    }
-    ids.push_back(IDType(id_num));
-  }
-
-  return ids;
-}
+// Extracts a vector of numeric renderer IDs from the JS returned json string.
+bool ExtractIDs(NSString* json_string, std::vector<FieldRendererId>* ids);
 
 // Extracts a map of filled renderer IDs and values from the JS returned json
 // string.

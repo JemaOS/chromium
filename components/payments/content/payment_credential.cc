@@ -13,12 +13,20 @@
 #include "components/payments/core/features.h"
 #include "components/payments/core/secure_payment_confirmation_credential.h"
 #include "content/public/browser/navigation_handle.h"
-#include "content/public/browser/secure_payment_confirmation_utils.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-shared.h"
 
 namespace payments {
+
+// static
+bool PaymentCredential::IsFrameAllowedToUseSecurePaymentConfirmation(
+    content::RenderFrameHost* rfh) {
+  return rfh && rfh->IsActive() &&
+         rfh->IsFeatureEnabled(
+             blink::mojom::PermissionsPolicyFeature::kPayment) &&
+         base::FeatureList::IsEnabled(::features::kSecurePaymentConfirmation);
+}
 
 PaymentCredential::PaymentCredential(
     content::RenderFrameHost& render_frame_host,
@@ -78,14 +86,13 @@ void PaymentCredential::OnWebDataServiceRequestDone(
   Reset();
 
   std::move(callback).Run(
-      result && static_cast<WDResult<bool>*>(result.get())->GetValue()
+      static_cast<WDResult<bool>*>(result.get())->GetValue()
           ? mojom::PaymentCredentialStorageStatus::SUCCESS
           : mojom::PaymentCredentialStorageStatus::FAILED_TO_STORE_CREDENTIAL);
 }
 
 bool PaymentCredential::IsCurrentStateValid() const {
-  if (!content::IsFrameAllowedToUseSecurePaymentConfirmation(
-          &render_frame_host()) ||
+  if (!IsFrameAllowedToUseSecurePaymentConfirmation(&render_frame_host()) ||
       !web_data_service_) {
     return false;
   }

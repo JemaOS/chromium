@@ -24,10 +24,6 @@
 #include "third_party/blink/public/common/use_counter/use_counter_feature.h"
 #include "url/gurl.h"
 
-namespace blink {
-struct JavaScriptFrameworkDetectionResult;
-}  // namespace blink
-
 namespace page_load_metrics {
 
 // Information related to whether an associated action, such as a navigation or
@@ -126,8 +122,6 @@ class PageLoadMetricsObserver : public PageLoadMetricsObserverInterface {
   ObservePolicy OnStart(content::NavigationHandle* navigation_handle,
                         const GURL& currently_committed_url,
                         bool started_in_foreground) override;
-  ObservePolicy OnPreviewStart(content::NavigationHandle* navigation_handle,
-                               const GURL& currently_committed_url) override;
   ObservePolicy OnRedirect(
       content::NavigationHandle* navigation_handle) override;
   ObservePolicy OnCommit(content::NavigationHandle* navigation_handle) override;
@@ -148,14 +142,14 @@ class PageLoadMetricsObserver : public PageLoadMetricsObserverInterface {
       content::NavigationHandle* navigation_handle) override {}
   ObservePolicy ShouldObserveMimeType(
       const std::string& mime_type) const override;
-  ObservePolicy ShouldObserveScheme(const GURL& url) const override;
   void OnTimingUpdate(content::RenderFrameHost* subframe_rfh,
                       const mojom::PageLoadTiming& timing) override {}
-  void OnSoftNavigationUpdated(const mojom::SoftNavigationMetrics&) override {}
+  void OnSoftNavigationCountUpdated() override {}
   void OnInputTimingUpdate(
       content::RenderFrameHost* subframe_rfh,
       const mojom::InputTiming& input_timing_delta) override {}
-  void OnPageInputTimingUpdate(uint64_t num_interactions) override {}
+  void OnPageInputTimingUpdate(uint64_t num_interactions,
+                               uint64_t num_input_events) override {}
   void OnPageRenderDataUpdate(const mojom::FrameRenderDataUpdate& render_data,
                               bool is_main_frame) override {}
   void OnSubFrameRenderDataUpdate(
@@ -188,9 +182,6 @@ class PageLoadMetricsObserver : public PageLoadMetricsObserverInterface {
   void OnFirstInputInPage(const mojom::PageLoadTiming& timing) override {}
   void OnLoadingBehaviorObserved(content::RenderFrameHost* rfh,
                                  int behavior_flags) override {}
-  void OnJavaScriptFrameworksObserved(
-      content::RenderFrameHost* rfh,
-      const blink::JavaScriptFrameworkDetectionResult&) override {}
   void OnFeaturesUsageObserved(
       content::RenderFrameHost* rfh,
       const std::vector<blink::UseCounterFeature>& features) override {}
@@ -225,36 +216,28 @@ class PageLoadMetricsObserver : public PageLoadMetricsObserverInterface {
   void OnRenderFrameDeleted(
       content::RenderFrameHost* render_frame_host) override {}
   void OnSubFrameDeleted(int frame_tree_node_id) override {}
-  void OnCookiesRead(
-      const GURL& url,
-      const GURL& first_party_url,
-      bool blocked_by_policy,
-      bool is_ad_tagged,
-      const net::CookieSettingOverrides& cookie_setting_overrides,
-      bool is_partitioned_access) override {}
-  void OnCookieChange(
-      const GURL& url,
-      const GURL& first_party_url,
-      const net::CanonicalCookie& cookie,
-      bool blocked_by_policy,
-      bool is_ad_tagged,
-      const net::CookieSettingOverrides& cookie_setting_overrides,
-      bool is_partitioned_access) override {}
+  void OnCookiesRead(const GURL& url,
+                     const GURL& first_party_url,
+                     const net::CookieList& cookie_list,
+                     bool blocked_by_policy) override {}
+  void OnCookieChange(const GURL& url,
+                      const GURL& first_party_url,
+                      const net::CanonicalCookie& cookie,
+                      bool blocked_by_policy) override {}
   void OnStorageAccessed(const GURL& url,
                          const GURL& first_party_url,
                          bool blocked_by_policy,
                          StorageType access_type) override {}
   void OnPrefetchLikely() override {}
+  void DidActivatePortal(base::TimeTicks activation_time) override {}
   void DidActivatePrerenderedPage(
       content::NavigationHandle* navigation_handle) override {}
-  void DidActivatePreviewedPage(base::TimeTicks activation_time) override {}
   void OnV8MemoryChanged(
       const std::vector<MemoryUpdate>& memory_updates) override {}
   void OnSharedStorageWorkletHostCreated() override {}
 
  private:
-  raw_ptr<PageLoadMetricsObserverDelegate, DanglingUntriaged> delegate_ =
-      nullptr;
+  raw_ptr<PageLoadMetricsObserverDelegate> delegate_ = nullptr;
 };
 
 }  // namespace page_load_metrics

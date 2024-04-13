@@ -22,12 +22,14 @@ namespace internal {
 // Transport Controls.
 class SystemMediaControlsWin : public SystemMediaControls {
  public:
-  SystemMediaControlsWin(int window);
+  SystemMediaControlsWin();
 
   SystemMediaControlsWin(const SystemMediaControlsWin&) = delete;
   SystemMediaControlsWin& operator=(const SystemMediaControlsWin&) = delete;
 
   ~SystemMediaControlsWin() override;
+
+  static SystemMediaControlsWin* GetInstance();
 
   // Connects to the SystemMediaTransportControls. Returns true if connection
   // is successful. If already connected, does nothing and returns true.
@@ -52,17 +54,18 @@ class SystemMediaControlsWin : public SystemMediaControls {
   void ClearThumbnail() override;
   void ClearMetadata() override;
   void UpdateDisplay() override;
-  bool GetVisibilityForTesting() const override;
 
  private:
-  HRESULT ButtonPressed(
+  static HRESULT ButtonPressed(
       ABI::Windows::Media::ISystemMediaTransportControls* sender,
       ABI::Windows::Media::ISystemMediaTransportControlsButtonPressedEventArgs*
           args);
 
-  HRESULT PlaybackPositionChangeRequested(
+  static HRESULT PlaybackPositionChangeRequested(
       ABI::Windows::Media::ISystemMediaTransportControls* sender,
       ABI::Windows::Media::IPlaybackPositionChangeRequestedEventArgs* args);
+
+  static SystemMediaControlsWin* instance_;
 
   // Called by ButtonPressed when the particular key is pressed.
   void OnPlay();
@@ -77,11 +80,6 @@ class SystemMediaControlsWin : public SystemMediaControls {
   // Converts PlaybackStatus values to SMTC-friendly values.
   ABI::Windows::Media::MediaPlaybackStatus GetSmtcPlaybackStatus(
       PlaybackStatus status);
-
-  // Test only helper. Called from everywhere `put_IsEnabled` is called (except
-  // `SetEnabled` as that's only used for timing out the controls when the
-  // screen is locked)
-  void OnEnabledStatusChangedForTesting();
 
   // Control and keep track of the metadata.
   Microsoft::WRL::ComPtr<ABI::Windows::Media::ISystemMediaTransportControls>
@@ -116,15 +114,7 @@ class SystemMediaControlsWin : public SystemMediaControls {
   // True if we've successfully connected to the SystemMediaTransportControls.
   bool initialized_ = false;
 
-  // True if this instance is for controlling a web app's media session.
-  const bool is_for_web_app_;
-
-  // Web app's window handle to pass to Windows OS. Will be invalid (-1) for non
-  // web apps.
-  const HWND web_app_window_;
-
   base::ObserverList<SystemMediaControlsObserver> observers_;
-  base::WeakPtrFactory<SystemMediaControlsWin> weak_factory_{this};
 };
 
 }  // namespace internal

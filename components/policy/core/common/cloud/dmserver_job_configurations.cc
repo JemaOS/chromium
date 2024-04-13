@@ -5,15 +5,19 @@
 #include "components/policy/core/common/cloud/dmserver_job_configurations.h"
 
 #include "base/containers/contains.h"
+#include "base/feature_list.h"
 #include "base/strings/string_number_conversions.h"
 #include "components/policy/core/common/cloud/cloud_policy_client.h"
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
 #include "components/policy/core/common/cloud/device_management_service.h"
+#include "components/policy/core/common/features.h"
 #include "components/policy/core/common/policy_logger.h"
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "net/base/url_util.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "url/gurl.h"
+#include "chromeos/ash/components/system/statistics_provider.h"
+#include "jemaos/switches/account/account_switches.h"
 
 namespace em = enterprise_management;
 
@@ -31,8 +35,6 @@ const char* JobTypeToRequestType(
       return dm_protocol::kValueRequestAutoEnrollment;
     case DeviceManagementService::JobConfiguration::TYPE_REGISTRATION:
       return dm_protocol::kValueRequestRegister;
-    case DeviceManagementService::JobConfiguration::TYPE_OIDC_REGISTRATION:
-      return dm_protocol::kValueRequestRegisterProfile;
     case DeviceManagementService::JobConfiguration::TYPE_POLICY_FETCH:
       return dm_protocol::kValueRequestPolicy;
     case DeviceManagementService::JobConfiguration::TYPE_API_AUTH_CODE_FETCH:
@@ -108,91 +110,19 @@ const char* JobTypeToRequestType(
   return "";
 }
 
+std::string GetJemaOsLicenseId() {
+  ash::system::StatisticsProvider* provider =
+      ash::system::StatisticsProvider::GetInstance();
+  std::string jemaos_license_id = "";
+  const absl::optional<base::StringPiece> str =
+    provider->GetMachineStatistic(ash::system::kJemaOsLicenseIdKey);
+  if (str) {
+    jemaos_license_id = std::string(str.value());
+  }
+  return jemaos_license_id;
+}
+
 }  // namespace
-
-// static
-DMServerJobConfiguration::CreateParams
-DMServerJobConfiguration::CreateParams::WithClient(JobType type,
-                                                   CloudPolicyClient* client) {
-  DMServerJobConfiguration::CreateParams params;
-  params.type = type;
-  params.service = client->service();
-  params.client_id = client->client_id();
-  params.factory = client->GetURLLoaderFactory();
-  return params;
-}
-
-DMServerJobConfiguration::CreateParams::CreateParams(
-    DMServerJobConfiguration::CreateParams&&) = default;
-DMServerJobConfiguration::CreateParams&
-DMServerJobConfiguration::CreateParams::operator=(
-    DMServerJobConfiguration::CreateParams&&) = default;
-
-// static
-DMServerJobConfiguration::CreateParams
-DMServerJobConfiguration::CreateParams::WithoutClient(
-    JobType type,
-    DeviceManagementService* service,
-    const std::string& client_id,
-    scoped_refptr<network::SharedURLLoaderFactory> factory) {
-  DMServerJobConfiguration::CreateParams params;
-  params.type = type;
-  params.service = service;
-  params.client_id = client_id;
-  params.factory = factory;
-  return params;
-}
-
-// static
-DMServerJobConfiguration::CreateParams
-DMServerJobConfiguration::CreateParams::WithParams(
-    DeviceManagementService* service,
-    JobType type,
-    const std::string& client_id,
-    bool critical,
-    DMAuth auth_data,
-    std::optional<std::string> oauth_token,
-    scoped_refptr<network::SharedURLLoaderFactory> factory,
-    Callback callback) {
-  DMServerJobConfiguration::CreateParams params;
-  params.type = type;
-  params.service = service;
-  params.client_id = client_id;
-  params.critical = critical;
-  params.auth_data = std::move(auth_data);
-  params.oauth_token = std::move(oauth_token);
-  params.factory = factory;
-  params.callback = std::move(callback);
-  return params;
-}
-
-DMServerJobConfiguration::CreateParams::CreateParams() = default;
-DMServerJobConfiguration::CreateParams::~CreateParams() = default;
-
-DMServerJobConfiguration::DMServerJobConfiguration(CreateParams params)
-    : JobConfigurationBase(params.type,
-                           std::move(params.auth_data),
-                           std::move(params.oauth_token),
-                           params.factory),
-      server_url_(params.service->configuration()->GetDMServerUrl()),
-      callback_(std::move(params.callback)) {
-  AddParameter(dm_protocol::kParamRequest, JobTypeToRequestType(params.type));
-  AddParameter(dm_protocol::kParamDeviceType, dm_protocol::kValueDeviceType);
-  AddParameter(dm_protocol::kParamAppType, dm_protocol::kValueAppType);
-  AddParameter(dm_protocol::kParamAgent,
-               params.service->configuration()->GetAgentParameter());
-  AddParameter(dm_protocol::kParamPlatform,
-               params.service->configuration()->GetPlatformParameter());
-  AddParameter(dm_protocol::kParamDeviceID, params.client_id);
-
-  if (params.profile_id) {
-    AddParameter(dm_protocol::kParamProfileID, *params.profile_id);
-  }
-
-  if (params.critical) {
-    AddParameter(dm_protocol::kParamCritical, "true");
-  }
-}
 
 DMServerJobConfiguration::DMServerJobConfiguration(
     DeviceManagementService* service,
@@ -200,34 +130,46 @@ DMServerJobConfiguration::DMServerJobConfiguration(
     const std::string& client_id,
     bool critical,
     DMAuth auth_data,
-    std::optional<std::string>&& oauth_token,
+    absl::optional<std::string> oauth_token,
     scoped_refptr<network::SharedURLLoaderFactory> factory,
     Callback callback)
-    : DMServerJobConfiguration(CreateParams::WithParams(service,
-                                                        type,
-                                                        client_id,
-                                                        critical,
-                                                        std::move(auth_data),
-                                                        std::move(oauth_token),
-                                                        factory,
-                                                        std::move(callback))) {}
+    : JobConfigurationBase(type, std::move(auth_data), oauth_token, factory),
+      server_url_(service->configuration()->GetDMServerUrl()),
+      callback_(std::move(callback)) {
+  DCHECK(!callback_.is_null());
+  AddParameter(dm_protocol::kParamRequest, JobTypeToRequestType(type));
+  AddParameter(dm_protocol::kParamDeviceType, dm_protocol::kValueDeviceType);
+  AddParameter(dm_protocol::kParamAppType, dm_protocol::kValueAppType);
+  AddParameter(dm_protocol::kParamAgent,
+               service->configuration()->GetAgentParameter());
+  AddParameter(dm_protocol::kParamPlatform,
+               service->configuration()->GetPlatformParameter());
+  AddParameter(dm_protocol::kParamDeviceID, client_id);
+
+
+  if (jemaos::switches::IsJemaDMServerUrl(server_url_)) {
+    AddParameter(dm_protocol::kParamJemaOsLicenseId, GetJemaOsLicenseId());
+  }
+
+  if (critical)
+    AddParameter(dm_protocol::kParamCritical, "true");
+}
 
 DMServerJobConfiguration::DMServerJobConfiguration(
     JobType type,
     CloudPolicyClient* client,
     bool critical,
     DMAuth auth_data,
-    std::optional<std::string>&& oauth_token,
+    absl::optional<std::string> oauth_token,
     Callback callback)
-    : DMServerJobConfiguration(
-          CreateParams::WithParams(client->service(),
-                                   type,
-                                   client->client_id(),
-                                   critical,
-                                   std::move(auth_data),
-                                   std::move(oauth_token),
-                                   client->GetURLLoaderFactory(),
-                                   std::move(callback))) {}
+    : DMServerJobConfiguration(client->service(),
+                               type,
+                               client->client_id(),
+                               critical,
+                               std::move(auth_data),
+                               oauth_token,
+                               client->GetURLLoaderFactory(),
+                               std::move(callback)) {}
 
 DMServerJobConfiguration::~DMServerJobConfiguration() {}
 
@@ -262,6 +204,18 @@ DMServerJobConfiguration::MapNetErrorAndResponseToDMStatus(
       return DM_STATUS_TEMPORARY_UNAVAILABLE;
     case DeviceManagementService::kDeviceNotFound: {
 #if !BUILDFLAG(IS_CHROMEOS)
+      if (!base::FeatureList::IsEnabled(features::kDmTokenDeletion))
+        return DM_STATUS_SERVICE_DEVICE_NOT_FOUND;
+
+      // If the DMToken deletion feature is enabled and forced, the DM status
+      // corresponding to DMToken deletion will be returned regardless of
+      // whether DMServer signals for deletion or invalidation. This is a
+      // temporary feature intended for testing purposes only.
+      if (base::GetFieldTrialParamByFeatureAsBool(features::kDmTokenDeletion,
+                                                  /*param_name=*/"forced",
+                                                  /*default_value=*/false))
+        return DM_STATUS_SERVICE_DEVICE_NEEDS_RESET;
+
       // The `kDeviceNotFound` response code can correspond to different DM
       // statuses depending on the contents of the response body.
       em::DeviceManagementResponse response;
@@ -338,10 +292,8 @@ void DMServerJobConfiguration::OnURLLoadComplete(
     }
   }
 
-  if (callback_) {
-    std::move(callback_).Run(
-        DMServerJobResult{job, net_error, code, std::move(response)});
-  }
+  std::move(callback_).Run(
+      DMServerJobResult{job, net_error, code, std::move(response)});
 }
 
 GURL DMServerJobConfiguration::GetURL(int last_error) const {
@@ -362,8 +314,18 @@ GURL DMServerJobConfiguration::GetURL(int last_error) const {
   return url;
 }
 
-RegistrationJobConfiguration::RegistrationJobConfiguration(CreateParams params)
-    : DMServerJobConfiguration(std::move(params)) {}
+RegistrationJobConfiguration::RegistrationJobConfiguration(
+    JobType type,
+    CloudPolicyClient* client,
+    DMAuth auth_data,
+    absl::optional<std::string> oauth_token,
+    Callback callback)
+    : DMServerJobConfiguration(type,
+                               client,
+                               /*critical=*/false,
+                               std::move(auth_data),
+                               oauth_token,
+                               std::move(callback)) {}
 
 void RegistrationJobConfiguration::SetTimeoutDuration(base::TimeDelta timeout) {
   timeout_ = timeout;

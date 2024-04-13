@@ -21,13 +21,14 @@ const base::FeatureParam<std::string> kAllowlistParam{
 
 }  // namespace
 
-void EnableExpiryChecker(base::span<const uint32_t> expired_histograms_hashes) {
+void EnableExpiryChecker(const uint32_t* expired_histograms_hashes,
+                         size_t num_expired_histograms) {
   DCHECK(base::FeatureList::GetInstance());
   if (base::FeatureList::IsEnabled(kExpiredHistogramLogicFeature)) {
     std::string allowlist = kAllowlistParam.Get();
     base::StatisticsRecorder::SetRecordChecker(
-        std::make_unique<ExpiredHistogramsChecker>(expired_histograms_hashes,
-                                                   allowlist));
+        std::make_unique<ExpiredHistogramsChecker>(
+            expired_histograms_hashes, num_expired_histograms, allowlist));
   }
 }
 

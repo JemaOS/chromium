@@ -7,28 +7,24 @@
 
 #include <stdint.h>
 
-#include <optional>
-#include <string_view>
 #include <vector>
 
 #include "base/component_export.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/types/expected.h"
 #include "base/values.h"
-#include "components/attribution_reporting/aggregatable_trigger_config.h"
+#include "components/aggregation_service/aggregation_service.mojom.h"
+#include "components/attribution_reporting/aggregatable_values.h"
 #include "components/attribution_reporting/filters.h"
-#include "components/attribution_reporting/suitable_origin.h"
 #include "components/attribution_reporting/trigger_registration_error.mojom-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace attribution_reporting {
 
 class AggregatableTriggerData;
-class AggregatableValues;
 
 struct AggregatableDedupKey;
 struct EventTriggerData;
-
-COMPONENT_EXPORT(ATTRIBUTION_REPORTING)
-void RecordTriggerRegistrationError(mojom::TriggerRegistrationError);
 
 struct COMPONENT_EXPORT(ATTRIBUTION_REPORTING) TriggerRegistration {
   // Doesn't log metric on parsing failures.
@@ -37,9 +33,20 @@ struct COMPONENT_EXPORT(ATTRIBUTION_REPORTING) TriggerRegistration {
 
   // Logs metric on parsing failures.
   static base::expected<TriggerRegistration, mojom::TriggerRegistrationError>
-  Parse(std::string_view json);
+  Parse(base::StringPiece json);
 
   TriggerRegistration();
+
+  TriggerRegistration(
+      FilterPair,
+      absl::optional<uint64_t> debug_key,
+      std::vector<AggregatableDedupKey> aggregatable_dedup_keys,
+      std::vector<EventTriggerData> event_triggers,
+      std::vector<AggregatableTriggerData> aggregatable_trigger_data,
+      AggregatableValues aggregatable_values,
+      bool debug_reporting,
+      aggregation_service::mojom::AggregationCoordinator
+          aggregation_coordinator);
 
   ~TriggerRegistration();
 
@@ -51,18 +58,15 @@ struct COMPONENT_EXPORT(ATTRIBUTION_REPORTING) TriggerRegistration {
 
   base::Value::Dict ToJson() const;
 
-  friend bool operator==(const TriggerRegistration&,
-                         const TriggerRegistration&) = default;
-
   FilterPair filters;
-  std::optional<uint64_t> debug_key;
+  absl::optional<uint64_t> debug_key;
   std::vector<AggregatableDedupKey> aggregatable_dedup_keys;
   std::vector<EventTriggerData> event_triggers;
   std::vector<AggregatableTriggerData> aggregatable_trigger_data;
-  std::vector<AggregatableValues> aggregatable_values;
+  AggregatableValues aggregatable_values;
   bool debug_reporting = false;
-  std::optional<SuitableOrigin> aggregation_coordinator_origin;
-  AggregatableTriggerConfig aggregatable_trigger_config;
+  aggregation_service::mojom::AggregationCoordinator aggregation_coordinator =
+      aggregation_service::mojom::AggregationCoordinator::kDefault;
 };
 
 }  // namespace attribution_reporting

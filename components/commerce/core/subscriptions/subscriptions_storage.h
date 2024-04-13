@@ -105,10 +105,10 @@ class SubscriptionsStorage {
   SubscriptionsStorage();
 
  private:
-  void SaveSubscription(const CommerceSubscription& subscription,
+  void SaveSubscription(CommerceSubscription subscription,
                         base::OnceCallback<void(bool)> callback);
 
-  void DeleteSubscription(const CommerceSubscription& subscription,
+  void DeleteSubscription(CommerceSubscription subscription,
                           base::OnceCallback<void(bool)> callback);
 
   CommerceSubscription GetSubscriptionFromProto(

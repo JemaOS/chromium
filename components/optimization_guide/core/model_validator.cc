@@ -20,21 +20,21 @@ ModelValidatorHandler::ModelValidatorHandler(
           model_provider,
           background_task_runner,
           std::make_unique<ModelValidatorExecutor>(),
-          /*model_inference_timeout=*/std::nullopt,
+          /*model_inference_timeout=*/absl::nullopt,
           proto::OPTIMIZATION_TARGET_MODEL_VALIDATION,
-          /*model_metadata=*/std::nullopt) {}
+          /*model_metadata=*/absl::nullopt) {}
 
 ModelValidatorHandler::~ModelValidatorHandler() = default;
 
 void ModelValidatorHandler::OnModelExecutionComplete(
-    const std::optional<float>& output) {
+    const absl::optional<float>& output) {
   // Delete |this| since the model load completed successfully or failed.
   delete this;
 }
 
 void ModelValidatorHandler::OnModelUpdated(
     optimization_guide::proto::OptimizationTarget optimization_target,
-    base::optional_ref<const optimization_guide::ModelInfo> model_info) {
+    const optimization_guide::ModelInfo& model_info) {
   // First invoke parent to update internal status.
   optimization_guide::ModelHandler<
       float, const std::vector<float>&>::OnModelUpdated(optimization_target,
@@ -62,14 +62,14 @@ bool ModelValidatorExecutor::Preprocess(
   return false;
 }
 
-std::optional<float> ModelValidatorExecutor::Postprocess(
+absl::optional<float> ModelValidatorExecutor::Postprocess(
     const std::vector<const TfLiteTensor*>& output_tensors) {
   std::vector<float> data;
   absl::Status status =
       tflite::task::core::PopulateVector<float>(output_tensors[0], &data);
   if (!status.ok()) {
     NOTREACHED();
-    return std::nullopt;
+    return absl::nullopt;
   }
   return data[0];
 }

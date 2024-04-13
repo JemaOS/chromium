@@ -4,7 +4,10 @@
 
 #include "components/omnibox/browser/autocomplete_grouper_groups.h"
 
+#include <memory>
+
 #include "base/containers/contains.h"
+#include "base/ranges/algorithm.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 
 Group::Group(size_t limit,
@@ -42,9 +45,4 @@ void Group::Add(const AutocompleteMatch& match) {
   count_++;
   DCHECK_EQ(count_, matches_.size());
   group_id_limits_and_counts_[match.suggestion_group_id.value()].count++;
-}
-
-void Group::GroupMatchesBySearchVsUrl() {
-  base::ranges::stable_sort(matches_.begin(), matches_.end(), {},
-                            [](const auto& m) { return m->GetSortingOrder(); });
 }

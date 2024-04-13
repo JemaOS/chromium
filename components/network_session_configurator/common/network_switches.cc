@@ -31,7 +31,8 @@ void CopyNetworkSwitches(const base::CommandLine& src_command_line,
 #undef NETWORK_SWITCH
   };
 
-  dest_command_line->CopySwitchesFrom(src_command_line, kSwitchNames);
+  dest_command_line->CopySwitchesFrom(src_command_line, kSwitchNames,
+                                      std::size(kSwitchNames));
 }
 
 }  // namespace network_session_configurator

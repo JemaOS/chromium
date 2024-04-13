@@ -33,7 +33,7 @@ class MockEndpointFetcher : public EndpointFetcher {
   void SetFetchResponse(
       std::string response_string,
       int http_status_code = net::HTTP_OK,
-      std::optional<FetchErrorType> error_type = std::nullopt);
+      absl::optional<FetchErrorType> error_type = absl::nullopt);
 };
 
 #endif  // COMPONENTS_ENDPOINT_FETCHER_MOCK_ENDPOINT_FETCHER_H_

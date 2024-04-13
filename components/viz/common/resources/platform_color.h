@@ -5,6 +5,7 @@
 #ifndef COMPONENTS_VIZ_COMMON_RESOURCES_PLATFORM_COLOR_H_
 #define COMPONENTS_VIZ_COMMON_RESOURCES_PLATFORM_COLOR_H_
 
+#include "components/viz/common/resources/resource_format.h"
 #include "components/viz/common/resources/shared_image_format.h"
 #include "gpu/command_buffer/common/capabilities.h"
 #include "third_party/skia/include/core/SkTypes.h"
@@ -39,6 +40,16 @@ class PlatformColor {
   static SharedImageFormat BestSupportedRenderBufferFormat(
       const gpu::Capabilities& caps) {
     return BestSupportedFormat(caps.render_buffer_format_bgra8888);
+  }
+
+  // Versions of the above that return ResourceFormat.
+  static ResourceFormat BestSupportedTextureResourceFormat(
+      const gpu::Capabilities& caps) {
+    return BestSupportedTextureFormat(caps).resource_format();
+  }
+  static ResourceFormat BestSupportedRenderBufferResourceFormat(
+      const gpu::Capabilities& caps) {
+    return BestSupportedRenderBufferFormat(caps).resource_format();
   }
 };
 

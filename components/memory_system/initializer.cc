@@ -28,11 +28,9 @@ Initializer& Initializer::SetDispatcherParameters(
     DispatcherParameters::PoissonAllocationSamplerInclusion
         poisson_allocation_sampler_inclusion,
     DispatcherParameters::AllocationTraceRecorderInclusion
-        allocation_trace_recorder_inclusion,
-    base::StringPiece process_type) {
+        allocation_trace_recorder_inclusion) {
   dispatcher_parameters_.emplace(poisson_allocation_sampler_inclusion,
-                                 allocation_trace_recorder_inclusion,
-                                 process_type);
+                                 allocation_trace_recorder_inclusion);
   return *this;
 }
 

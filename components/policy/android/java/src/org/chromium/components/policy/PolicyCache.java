@@ -15,7 +15,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import org.chromium.base.ContextUtils;
-import org.chromium.base.ResettersForTesting;
 import org.chromium.base.StrictModeContext;
 import org.chromium.base.ThreadUtils;
 
@@ -29,9 +28,10 @@ import java.util.Map;
  * available during launch stage even before native library is ready.
  */
 public class PolicyCache {
-    @VisibleForTesting static final String POLICY_PREF = "Components.Policy";
+    @VisibleForTesting
+    static final String POLICY_PREF = "Components.Policy";
 
-    private static PolicyCache sInstance;
+    private static PolicyCache sPolicyCache;
 
     public enum Type {
         Integer,
@@ -79,13 +79,8 @@ public class PolicyCache {
     }
 
     public static PolicyCache get() {
-        var ret = sInstance;
-        if (ret == null) {
-            ret = new PolicyCache();
-            sInstance = ret;
-            ResettersForTesting.register(() -> sInstance = null);
-        }
-        return ret;
+        if (sPolicyCache == null) sPolicyCache = new PolicyCache();
+        return sPolicyCache;
     }
 
     /**
@@ -166,7 +161,9 @@ public class PolicyCache {
         }
     }
 
-    /** @return All cached policies. */
+    /**
+     * @return All cached policies.
+     */
     public Map<String, ?> getAllPolicies() {
         SharedPreferences sharedPreferences = getSharedPreferences();
         if (sharedPreferences == null) return null;
@@ -194,58 +191,48 @@ public class PolicyCache {
         for (Pair<String, Type> policy : policyNames) {
             String policyName = policy.first;
             switch (policy.second) {
-                case Integer:
-                    {
-                        Integer value = policyMap.getIntValue(policyName);
-                        if (value != null) {
-                            sharedPreferencesEditor.putInt(policyName, value.intValue());
-                        }
-                        break;
+                case Integer: {
+                    Integer value = policyMap.getIntValue(policyName);
+                    if (value != null) {
+                        sharedPreferencesEditor.putInt(policyName, value.intValue());
                     }
-                case Boolean:
-                    {
-                        Boolean value = policyMap.getBooleanValue(policyName);
-                        if (value != null) {
-                            sharedPreferencesEditor.putBoolean(policyName, value.booleanValue());
-                        }
-                        break;
+                    break;
+                }
+                case Boolean: {
+                    Boolean value = policyMap.getBooleanValue(policyName);
+                    if (value != null) {
+                        sharedPreferencesEditor.putBoolean(policyName, value.booleanValue());
                     }
-                case String:
-                    {
-                        String value = policyMap.getStringValue(policyName);
-                        if (value != null) {
-                            sharedPreferencesEditor.putString(policyName, value);
-                        }
-                        break;
+                    break;
+                }
+                case String: {
+                    String value = policyMap.getStringValue(policyName);
+                    if (value != null) {
+                        sharedPreferencesEditor.putString(policyName, value);
                     }
-                    // List and Dict policy values are stored in the native library
-                    // as base::Value and converted to JSON string to passed through
-                    // the JNI. It's stored to the SharedPreferences as String and
-                    // will be converted to JSON object when being read.
-                case List:
-                    {
-                        String value = policyMap.getListValueAsString(policyName);
-                        if (value != null) {
-                            sharedPreferencesEditor.putString(policyName, value);
-                        }
-                        break;
+                    break;
+                }
+                // List and Dict policy values are stored in the native library
+                // as base::Value and converted to JSON string to passed through
+                // the JNI. It's stored to the SharedPreferences as String and
+                // will be converted to JSON object when being read.
+                case List: {
+                    String value = policyMap.getListValueAsString(policyName);
+                    if (value != null) {
+                        sharedPreferencesEditor.putString(policyName, value);
                     }
-                case Dict:
-                    {
-                        String value = policyMap.getDictValueAsString(policyName);
-                        if (value != null) {
-                            sharedPreferencesEditor.putString(policyName, value);
-                        }
-                        break;
+                    break;
+                }
+                case Dict: {
+                    String value = policyMap.getDictValueAsString(policyName);
+                    if (value != null) {
+                        sharedPreferencesEditor.putString(policyName, value);
                     }
+                    break;
+                }
             }
         }
-
-        // Update sharedPreferences. The first round of updating during launch
-        // will use the main thread.
-        try (StrictModeContext ignored = StrictModeContext.allowDiskWrites()) {
-            sharedPreferencesEditor.apply();
-        }
+        sharedPreferencesEditor.apply();
 
         // Policy Service is up and there is no need to get policy from here anymore.
         enableWriteOnlyMode();
@@ -263,6 +250,12 @@ public class PolicyCache {
         mReadable = false;
     }
 
+    @VisibleForTesting
+    static void resetForTesting() {
+        sPolicyCache = null;
+    }
+
+    @VisibleForTesting
     public void setReadableForTesting(boolean readable) {
         mReadable = readable;
     }

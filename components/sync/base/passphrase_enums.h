@@ -5,9 +5,8 @@
 #ifndef COMPONENTS_SYNC_BASE_PASSPHRASE_ENUMS_H_
 #define COMPONENTS_SYNC_BASE_PASSPHRASE_ENUMS_H_
 
-#include <optional>
-
 #include "components/sync/protocol/nigori_specifics.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace syncer {
 
@@ -18,9 +17,8 @@ namespace syncer {
 // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.components.sync
 enum class PassphraseType {
   // GAIA-based passphrase (deprecated).
-  // TODO(crbug.com/1201684,crbug.com/1466401): Some codepaths use this value as
-  // a synonym for an unknown passphrase type. Rename to reflect this or use
-  // std::optional<>.
+  // TODO(crbug.com/1201684): Some codepaths use this value as a synonym for
+  // an unknown passphrase type. Rename to reflect this or use absl::optional<>.
   kImplicitPassphrase = 0,
   // Keystore passphrase.
   kKeystorePassphrase = 1,
@@ -44,11 +42,11 @@ bool IsExplicitPassphrase(PassphraseType type);
 sync_pb::NigoriSpecifics::PassphraseType ProtoPassphraseInt32ToProtoEnum(
     ::google::protobuf::int32 type);
 
-// Returns std::nullopt if |type| represents an unknown value, likely coming
+// Returns absl::nullopt if |type| represents an unknown value, likely coming
 // from a future version of the browser. Note however that if the field is not
 // populated, it defaults to IMPLICIT_PASSPHRASE for backwards compatibility
 // reasons.
-std::optional<PassphraseType> ProtoPassphraseInt32ToEnum(
+absl::optional<PassphraseType> ProtoPassphraseInt32ToEnum(
     ::google::protobuf::int32 type);
 
 sync_pb::NigoriSpecifics::PassphraseType EnumPassphraseTypeToProto(
@@ -66,7 +64,7 @@ enum class KeyDerivationMethod {
 // is unknown (indicates protocol violation or value coming from newer version)
 // and PBKDF2_HMAC_SHA1_1003 if value is unspecified (indicates value coming
 // from older version, that is not aware of the field).
-std::optional<KeyDerivationMethod> ProtoKeyDerivationMethodToEnum(
+absl::optional<KeyDerivationMethod> ProtoKeyDerivationMethodToEnum(
     ::google::protobuf::int32 method);
 
 sync_pb::NigoriSpecifics::KeyDerivationMethod EnumKeyDerivationMethodToProto(

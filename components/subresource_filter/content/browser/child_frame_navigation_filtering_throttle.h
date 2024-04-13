@@ -12,7 +12,6 @@
 #include "components/subresource_filter/content/browser/async_document_subresource_filter.h"
 #include "components/subresource_filter/core/common/load_policy.h"
 #include "content/public/browser/navigation_throttle.h"
-#include "third_party/blink/public/common/frame/frame_ad_evidence.h"
 
 namespace features {
 BASE_DECLARE_FEATURE(kSendCnameAliasesToSubresourceFilterFromBrowser);
@@ -25,6 +24,16 @@ class NavigationHandle;
 namespace subresource_filter {
 
 class AsyncDocumentSubresourceFilter;
+
+// Struct for keeping variables used in recording CNAME alias metrics bundled
+// together.
+struct CnameAliasMetricInfo {
+  int list_length = 0;
+  int was_ad_tagged_based_on_alias_count = 0;
+  int was_blocked_based_on_alias_count = 0;
+  int invalid_count = 0;
+  int redundant_count = 0;
+};
 
 // NavigationThrottle responsible for filtering child frame (subframes and
 // fenced frame main frames) document loads, which are considered subresource
@@ -45,8 +54,7 @@ class ChildFrameNavigationFilteringThrottle
  public:
   ChildFrameNavigationFilteringThrottle(
       content::NavigationHandle* handle,
-      AsyncDocumentSubresourceFilter* parent_frame_filter,
-      blink::FrameAdEvidence ad_evidence);
+      AsyncDocumentSubresourceFilter* parent_frame_filter);
 
   ChildFrameNavigationFilteringThrottle(
       const ChildFrameNavigationFilteringThrottle&) = delete;
@@ -86,8 +94,7 @@ class ChildFrameNavigationFilteringThrottle
   void ResumeNavigation();
 
   // Must outlive this class.
-  raw_ptr<AsyncDocumentSubresourceFilter, DanglingUntriaged>
-      parent_frame_filter_;
+  raw_ptr<AsyncDocumentSubresourceFilter> parent_frame_filter_;
 
   int pending_load_policy_calculations_ = 0;
   DeferStage defer_stage_ = DeferStage::kNotDeferring;
@@ -95,11 +102,10 @@ class ChildFrameNavigationFilteringThrottle
   base::TimeDelta total_defer_time_;
 
   const bool alias_check_enabled_;
+  CnameAliasMetricInfo alias_info_;
 
   // Set to the least restrictive load policy by default.
   LoadPolicy load_policy_ = LoadPolicy::EXPLICITLY_ALLOW;
-
-  blink::FrameAdEvidence ad_evidence_;
 
   base::WeakPtrFactory<ChildFrameNavigationFilteringThrottle> weak_ptr_factory_{
       this};

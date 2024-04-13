@@ -324,6 +324,7 @@ const GoogleConfigParams kGoogleConfigs[] = {
     {"google.net", true, false, false},
     {"google.org", true, false, false},
     {"google.stackdriver.com", true, false, false},
+    {"googleadapis.com", true, false, false},
     {"googleadservices.com", true, false, false},
     {"googleadsserving.cn", true, false, false},
     {"googlealumni.com", true, false, false},

@@ -64,14 +64,14 @@ Status AlgorithmImplementation::GenerateKey(
 Status AlgorithmImplementation::DeriveBits(
     const blink::WebCryptoAlgorithm& algorithm,
     const blink::WebCryptoKey& base_key,
-    std::optional<unsigned int> length_bits,
+    absl::optional<unsigned int> length_bits,
     std::vector<uint8_t>* derived_bytes) const {
   return Status::ErrorUnsupported();
 }
 
 Status AlgorithmImplementation::GetKeyLength(
     const blink::WebCryptoAlgorithm& key_length_algorithm,
-    std::optional<unsigned int>* length_bits) const {
+    absl::optional<unsigned int>* length_bits) const {
   return Status::ErrorUnsupported();
 }
 

@@ -39,8 +39,7 @@ found in the LICENSE file.
             android:layout_gravity="end"
             android:gravity="center_vertical"
             app:tint="@color/default_icon_color_tint_list"
-            android:importantForAccessibility="yes"
-            android:contentDescription="@string/translate_menu_item_enabled" />
+            android:importantForAccessibility="no" />
 
     </LinearLayout>
 

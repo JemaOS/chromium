@@ -18,7 +18,6 @@
 #include "net/url_request/url_request_job.h"
 
 using base::android::AppendJavaStringArrayToStringVector;
-using base::android::ConvertJavaStringToUTF8;
 using base::android::ScopedJavaLocalRef;
 
 namespace embedder_support {

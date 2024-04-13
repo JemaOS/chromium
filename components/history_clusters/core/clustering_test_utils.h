@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_HISTORY_CLUSTERS_CORE_CLUSTERING_TEST_UTILS_H_
 #define COMPONENTS_HISTORY_CLUSTERS_CORE_CLUSTERING_TEST_UTILS_H_
 
-#include <cstdint>
 #include <ostream>
 #include <vector>
 
@@ -57,17 +56,11 @@ history::AnnotatedVisit CreateDefaultAnnotatedVisit(
 // will use the URL contained in the AnnotatedVisit.
 history::ClusterVisit CreateClusterVisit(
     const history::AnnotatedVisit& annotated_visit,
-    std::optional<GURL> normalized_url = std::nullopt,
-    float score = 1.0,
-    history::ClusterVisit::InteractionState interaction_state =
-        history::ClusterVisit::InteractionState::kDefault);
+    absl::optional<GURL> normalized_url = absl::nullopt,
+    float score = 1.0);
 
 history::DuplicateClusterVisit ClusterVisitToDuplicateClusterVisit(
     history::ClusterVisit cluster_visit);
-
-// Creates a Cluster from |cluster_visits|.
-history::Cluster CreateCluster(
-    std::vector<history::ClusterVisit>& cluster_visits);
 
 }  // namespace history_clusters::testing
 

@@ -78,14 +78,14 @@ void RenameItemCallback(ScopedJavaGlobalRef<jobject> j_callback,
 void RunGetAllItemsCallback(const base::android::JavaRef<jobject>& j_callback,
                             const std::vector<OfflineItem>& items) {
   JNIEnv* env = AttachCurrentThread();
-  base::android::RunObjectCallbackAndroid(
+  RunObjectCallbackAndroid(
       j_callback, OfflineItemBridge::CreateOfflineItemList(env, items));
 }
 
 void RunGetItemByIdCallback(const base::android::JavaRef<jobject>& j_callback,
-                            const std::optional<OfflineItem>& item) {
+                            const absl::optional<OfflineItem>& item) {
   JNIEnv* env = AttachCurrentThread();
-  base::android::RunObjectCallbackAndroid(
+  RunObjectCallbackAndroid(
       j_callback, item.has_value()
                       ? OfflineItemBridge::CreateOfflineItem(env, item.value())
                       : nullptr);
@@ -173,9 +173,11 @@ void OfflineContentAggregatorBridge::ResumeDownload(
     JNIEnv* env,
     const JavaParamRef<jobject>& jobj,
     const JavaParamRef<jstring>& j_namespace,
-    const JavaParamRef<jstring>& j_id) {
+    const JavaParamRef<jstring>& j_id,
+    jboolean j_has_user_gesture) {
   provider_->ResumeDownload(JNI_OfflineContentAggregatorBridge_CreateContentId(
-      env, j_namespace, j_id));
+                                env, j_namespace, j_id),
+                            j_has_user_gesture);
 }
 
 void OfflineContentAggregatorBridge::GetItemById(
@@ -269,7 +271,7 @@ void OfflineContentAggregatorBridge::OnItemRemoved(const ContentId& id) {
 
 void OfflineContentAggregatorBridge::OnItemUpdated(
     const OfflineItem& item,
-    const std::optional<UpdateDelta>& update_delta) {
+    const absl::optional<UpdateDelta>& update_delta) {
   if (java_ref_.is_null())
     return;
 

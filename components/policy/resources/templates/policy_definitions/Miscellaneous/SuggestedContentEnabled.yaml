@@ -17,6 +17,7 @@ items:
 - caption: Disable suggested content
   value: false
 owners:
+- wrong@chromium.org
 - chrome-knowledge-eng@google.com
 schema:
   type: boolean

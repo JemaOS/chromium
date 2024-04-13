@@ -12,17 +12,11 @@ GuestViewManagerDelegate::GuestViewManagerDelegate() {
 GuestViewManagerDelegate::~GuestViewManagerDelegate() {
 }
 
-bool GuestViewManagerDelegate::IsGuestAvailableToContext(
-    const GuestViewBase* guest) const {
+bool GuestViewManagerDelegate::IsGuestAvailableToContext(GuestViewBase* guest) {
   return false;
 }
 
-bool GuestViewManagerDelegate::IsOwnedByExtension(const GuestViewBase* guest) {
-  return false;
-}
-
-bool GuestViewManagerDelegate::IsOwnedByControlledFrameEmbedder(
-    const GuestViewBase* guest) {
+bool GuestViewManagerDelegate::IsOwnedByExtension(GuestViewBase* guest) {
   return false;
 }
 

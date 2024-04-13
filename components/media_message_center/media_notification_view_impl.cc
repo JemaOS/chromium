@@ -4,10 +4,7 @@
 
 #include "components/media_message_center/media_notification_view_impl.h"
 
-#include <vector>
-
 #include "base/containers/contains.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_macros.h"
 #include "components/media_message_center/media_notification_background_ash_impl.h"
 #include "components/media_message_center/media_notification_background_impl.h"
@@ -32,7 +29,6 @@
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/view_class_properties.h"
-#include "ui/views/view_utils.h"
 
 namespace media_message_center {
 
@@ -78,6 +74,11 @@ constexpr auto kCrOSMainRowInsetsWithArtwork =
 constexpr auto kCrOSMainRowInsetsWithoutArtwork =
     gfx::Insets::TLBR(12, 8, 16, 16);
 
+void RecordMetadataHistogram(MediaNotificationViewImpl::Metadata metadata) {
+  UMA_HISTOGRAM_ENUMERATION(MediaNotificationViewImpl::kMetadataHistogramName,
+                            metadata);
+}
+
 size_t GetMaxNumActions(bool expanded) {
   return expanded ? kMediaNotificationExpandedActionsCount
                   : kMediaNotificationActionsCount;
@@ -96,6 +97,14 @@ void UpdateAppIconVisibility(message_center::NotificationHeaderView* header_row,
 
 }  // namespace
 
+// static
+const char MediaNotificationViewImpl::kArtworkHistogramName[] =
+    "Media.Notification.ArtworkPresent";
+
+// static
+const char MediaNotificationViewImpl::kMetadataHistogramName[] =
+    "Media.Notification.MetadataPresent";
+
 MediaNotificationViewImpl::MediaNotificationViewImpl(
     MediaNotificationContainer* container,
     base::WeakPtr<MediaNotificationItem> item,
@@ -103,7 +112,7 @@ MediaNotificationViewImpl::MediaNotificationViewImpl(
     const std::u16string& default_app_name,
     int notification_width,
     bool should_show_icon,
-    std::optional<NotificationTheme> theme)
+    absl::optional<NotificationTheme> theme)
     : container_(container),
       item_(std::move(item)),
       default_app_name_(default_app_name),
@@ -275,32 +284,28 @@ MediaNotificationViewImpl::MediaNotificationViewImpl(
                      message_center::kNotificationCornerRadius);
   UpdateViewForExpandedState();
 
-  if (header_row_) {
+  if (header_row_)
     header_row_->SetExpandButtonEnabled(GetExpandable());
-  }
 
-  if (item_) {
+  if (item_)
     item_->SetView(this);
-  }
 }
 
 MediaNotificationViewImpl::~MediaNotificationViewImpl() {
-  if (item_) {
+  if (item_)
     item_->SetView(nullptr);
-  }
 }
 
 void MediaNotificationViewImpl::SetExpanded(bool expanded) {
-  if (expanded_ == expanded) {
+  if (expanded_ == expanded)
     return;
-  }
 
   expanded_ = expanded;
 
   UpdateViewForExpandedState();
 
   PreferredSizeChanged();
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
@@ -315,20 +320,17 @@ void MediaNotificationViewImpl::UpdateCornerRadius(int top_radius,
 void MediaNotificationViewImpl::SetForcedExpandedState(
     bool* forced_expanded_state) {
   if (forced_expanded_state) {
-    if (forced_expanded_state_ == *forced_expanded_state) {
+    if (forced_expanded_state_ == *forced_expanded_state)
       return;
-    }
     forced_expanded_state_ = *forced_expanded_state;
   } else {
-    if (!forced_expanded_state_.has_value()) {
+    if (!forced_expanded_state_.has_value())
       return;
-    }
-    forced_expanded_state_ = std::nullopt;
+    forced_expanded_state_ = absl::nullopt;
   }
 
-  if (header_row_) {
+  if (header_row_)
     header_row_->SetExpandButtonEnabled(GetExpandable());
-  }
   UpdateViewForExpandedState();
 }
 
@@ -371,7 +373,7 @@ void MediaNotificationViewImpl::UpdateWithMediaSessionInfo(
   container_->OnMediaSessionInfoChanged(session_info);
 
   PreferredSizeChanged();
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
@@ -381,7 +383,6 @@ void MediaNotificationViewImpl::UpdateWithMediaMetadata(
       metadata.source_title.empty() ? default_app_name_ : metadata.source_title;
 
   if (header_row_) {
-    header_row_->SetAppNameElideBehavior(gfx::ELIDE_HEAD);
     header_row_->SetAppName(app_name);
     header_row_->SetSummaryText(metadata.album);
   } else {
@@ -399,6 +400,7 @@ void MediaNotificationViewImpl::UpdateWithMediaMetadata(
     title_label_->SetFocusBehavior(FocusBehavior::NEVER);
   } else {
     title_label_->SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+    RecordMetadataHistogram(Metadata::kTitle);
   }
 
   // The artist label should only be a11y-focusable when there is text to be
@@ -407,13 +409,19 @@ void MediaNotificationViewImpl::UpdateWithMediaMetadata(
     artist_label_->SetFocusBehavior(FocusBehavior::NEVER);
   } else {
     artist_label_->SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+    RecordMetadataHistogram(Metadata::kArtist);
   }
+
+  if (!metadata.album.empty())
+    RecordMetadataHistogram(Metadata::kAlbum);
+
+  RecordMetadataHistogram(Metadata::kCount);
 
   container_->OnMediaSessionMetadataChanged(metadata);
 
   MaybeShowOrHideArtistLabel();
   PreferredSizeChanged();
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
@@ -421,13 +429,12 @@ void MediaNotificationViewImpl::UpdateWithMediaActions(
     const base::flat_set<media_session::mojom::MediaSessionAction>& actions) {
   enabled_actions_ = actions;
 
-  if (header_row_) {
+  if (header_row_)
     header_row_->SetExpandButtonEnabled(GetExpandable());
-  }
   UpdateViewForExpandedState();
 
   PreferredSizeChanged();
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
@@ -438,42 +445,42 @@ void MediaNotificationViewImpl::UpdateWithMediaArtwork(
   has_artwork_ = !image.isNull();
   UpdateViewForExpandedState();
 
-  if (GetWidget()) {
+  UMA_HISTOGRAM_BOOLEAN(kArtworkHistogramName, has_artwork_);
+
+  if (GetWidget())
     UpdateForegroundColor();
-  }
 
   container_->OnMediaArtworkChanged(image);
 
   MaybeShowOrHideArtistLabel();
   PreferredSizeChanged();
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
 void MediaNotificationViewImpl::UpdateWithFavicon(const gfx::ImageSkia& icon) {
   GetMediaNotificationBackground()->UpdateFavicon(icon);
 
-  if (GetWidget()) {
+  if (GetWidget())
     UpdateForegroundColor();
-  }
   SchedulePaint();
 }
 
 void MediaNotificationViewImpl::UpdateWithVectorIcon(
     const gfx::VectorIcon* vector_icon) {
-  if (!header_row_) {
+  if (!header_row_)
     return;
-  }
 
   vector_header_icon_ = vector_icon;
   UpdateAppIconVisibility(header_row_, vector_header_icon_ != nullptr);
-  if (GetWidget()) {
+  if (GetWidget())
     UpdateForegroundColor();
-  }
 }
 
-void MediaNotificationViewImpl::UpdateDeviceSelectorVisibility(bool visible) {
-  GetMediaNotificationBackground()->UpdateDeviceSelectorVisibility(visible);
+void MediaNotificationViewImpl::UpdateDeviceSelectorAvailability(
+    bool availability) {
+  GetMediaNotificationBackground()->UpdateDeviceSelectorAvailability(
+      availability);
 }
 
 void MediaNotificationViewImpl::OnThemeChanged() {
@@ -500,7 +507,7 @@ void MediaNotificationViewImpl::UpdateActionButtonsVisibility() {
       GetTopVisibleActions(enabled_actions_, ignored_actions,
                            GetMaxNumActions(GetActuallyExpanded()));
 
-  for (views::View* view : GetButtons()) {
+  for (auto* view : GetButtons()) {
     views::Button* action_button = views::Button::AsButton(view);
     bool should_show =
         base::Contains(visible_actions, GetActionFromButtonTag(*action_button));
@@ -508,16 +515,14 @@ void MediaNotificationViewImpl::UpdateActionButtonsVisibility() {
 
     action_button->SetVisible(should_show);
 
-    if (should_invalidate) {
+    if (should_invalidate)
       action_button->InvalidateLayout();
-    }
 
     if (action_button == picture_in_picture_button_) {
       pip_button_separator_view_->SetVisible(should_show);
 
-      if (should_invalidate) {
+      if (should_invalidate)
         pip_button_separator_view_->InvalidateLayout();
-      }
     }
   }
 
@@ -574,16 +579,15 @@ void MediaNotificationViewImpl::UpdateViewForExpandedState() {
         ->SetFlexForView(title_artist_row_, 1);
   }
 
-  main_row_->DeprecatedLayoutImmediately();
+  main_row_->Layout();
 
   if (GetMediaNotificationBackground()->UpdateArtworkMaxWidthPct(
           expanded ? kMediaImageMaxWidthExpandedPct : kMediaImageMaxWidthPct)) {
     SchedulePaint();
   }
 
-  if (header_row_) {
+  if (header_row_)
     header_row_->SetExpanded(expanded);
-  }
   container_->OnExpanded(expanded);
 
   UpdateActionButtonsVisibility();
@@ -668,9 +672,8 @@ MediaNotificationViewImpl::GetMediaNotificationBackground() {
 }
 
 bool MediaNotificationViewImpl::GetExpandable() const {
-  if (forced_expanded_state_.has_value()) {
+  if (forced_expanded_state_.has_value())
     return false;
-  }
 
   base::flat_set<MediaSessionAction> ignored_actions = {
       GetPlayPauseIgnoredAction(GetActionFromButtonTag(*play_pause_button_)),
@@ -685,9 +688,8 @@ bool MediaNotificationViewImpl::GetExpandable() const {
 }
 
 bool MediaNotificationViewImpl::GetActuallyExpanded() const {
-  if (forced_expanded_state_.has_value()) {
+  if (forced_expanded_state_.has_value())
     return forced_expanded_state_.value();
-  }
   return expanded_ && GetExpandable();
 }
 
@@ -757,9 +759,8 @@ void MediaNotificationViewImpl::UpdateForegroundColor() {
   // Update action buttons.
   for (views::View* child : playback_button_container_->children()) {
     // Skip the play pause button since it is a special case.
-    if (child == play_pause_button_) {
+    if (child == play_pause_button_)
       continue;
-    }
 
     views::ImageButton* button = static_cast<views::ImageButton*>(child);
 
@@ -781,27 +782,30 @@ void MediaNotificationViewImpl::ButtonPressed(views::Button* button) {
 }
 
 void MediaNotificationViewImpl::MaybeShowOrHideArtistLabel() {
-  if (!is_cros_) {
+  if (!is_cros_)
     return;
-  }
 
   artist_label_->SetVisible(!artist_label_->GetText().empty() || has_artwork_);
 }
 
-std::vector<raw_ptr<views::View, VectorExperimental>>
-MediaNotificationViewImpl::GetButtons() {
+std::vector<views::View*> MediaNotificationViewImpl::GetButtons() {
   auto buttons = button_row_->children();
   buttons.insert(buttons.cbegin(),
                  playback_button_container_->children().cbegin(),
                  playback_button_container_->children().cend());
-  std::erase_if(buttons, [](views::View* view) {
-    return !(views::IsViewClass<views::ImageButton>(view) ||
-             views::IsViewClass<views::ToggleImageButton>(view));
-  });
+  buttons.erase(
+      std::remove_if(buttons.begin(), buttons.end(),
+                     [](views::View* view) {
+                       return !(view->GetClassName() ==
+                                    views::ImageButton::kViewClassName ||
+                                view->GetClassName() ==
+                                    views::ToggleImageButton::kViewClassName);
+                     }),
+      buttons.end());
   return buttons;
 }
 
-BEGIN_METADATA(MediaNotificationViewImpl)
+BEGIN_METADATA(MediaNotificationViewImpl, views::View)
 ADD_READONLY_PROPERTY_METADATA(bool, Expandable)
 ADD_READONLY_PROPERTY_METADATA(bool, ActuallyExpanded)
 END_METADATA

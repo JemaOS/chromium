@@ -19,10 +19,8 @@ class MockUkmDataManager : public UkmDataManager {
 
   MOCK_METHOD(void,
               Initialize,
-              (const base::FilePath& database_path, bool),
+              (const base::FilePath& database_path, UkmObserver*),
               (override));
-
-  MOCK_METHOD(void, StartObservation, (UkmObserver*), (override));
 
   MOCK_METHOD(bool, IsUkmEngineEnabled, (), (override));
 
@@ -33,8 +31,6 @@ class MockUkmDataManager : public UkmDataManager {
   MOCK_METHOD(UrlSignalHandler*, GetOrCreateUrlHandler, (), (override));
 
   MOCK_METHOD(UkmDatabase*, GetUkmDatabase, (), (override));
-
-  MOCK_METHOD(bool, HasUkmDatabase, (), (override));
 
   MOCK_METHOD(void, OnEntryAdded, (ukm::mojom::UkmEntryPtr), (override));
 

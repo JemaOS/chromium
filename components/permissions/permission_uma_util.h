@@ -5,18 +5,17 @@
 #ifndef COMPONENTS_PERMISSIONS_PERMISSION_UMA_UTIL_H_
 #define COMPONENTS_PERMISSIONS_PERMISSION_UMA_UTIL_H_
 
-#include <optional>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "base/version.h"
-#include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/permissions/permission_request.h"
+#include "components/permissions/permission_result.h"
 #include "components/permissions/prediction_service/prediction_service_messages.pb.h"
 #include "components/permissions/request_type.h"
-#include "content/public/browser/permission_result.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-forward.h"
 
 namespace blink {
@@ -37,22 +36,12 @@ enum class PermissionRequestGestureType;
 enum class PermissionAction;
 class PermissionRequest;
 
-enum class ActivityIndicatorState {
-  kInUse = 0,
-  kBlockedOnSiteLevel = 1,
-  kBlockedOnSystemLevel = 2,
-
-  // Always keep at the end.
-  kMaxValue = kBlockedOnSystemLevel
-};
-
 // Used for UMA to record the types of permission prompts shown.
 // When updating, you also need to update:
 //   1) The PermissionRequestType enum in tools/metrics/histograms/enums.xml.
 //   2) The PermissionRequestTypes suffix list in
-//      tools/metrics/histograms/metadata/histogram_suffixes_list.xml.
-//   3) GetPermissionRequestString function in
-//      components/permissions/permission_uma_util.cc
+//      tools/metrics/histograms/histograms.xml.
+//   3) GetPermissionRequestString below.
 //
 // The usual rules of updating UMA values applies to this enum:
 // - don't remove values
@@ -76,7 +65,7 @@ enum class RequestTypeForUma {
   PERMISSION_ACCESSIBILITY_EVENTS = 15,
   // PERMISSION_CLIPBOARD_READ = 16, // Replaced by
   // PERMISSION_CLIPBOARD_READ_WRITE in M81.
-  // PERMISSION_SECURITY_KEY_ATTESTATION = 17,
+  PERMISSION_SECURITY_KEY_ATTESTATION = 17,
   PERMISSION_PAYMENT_HANDLER = 18,
   PERMISSION_NFC = 19,
   PERMISSION_CLIPBOARD_READ_WRITE = 20,
@@ -88,19 +77,13 @@ enum class RequestTypeForUma {
   PERMISSION_LOCAL_FONTS = 26,
   PERMISSION_IDLE_DETECTION = 27,
   PERMISSION_FILE_HANDLING = 28,
-  // PERMISSION_U2F_API_REQUEST = 29,
+  PERMISSION_U2F_API_REQUEST = 29,
   PERMISSION_TOP_LEVEL_STORAGE_ACCESS = 30,
-  // PERMISSION_MIDI = 31,
-  PERMISSION_FILE_SYSTEM_ACCESS = 32,
-  CAPTURED_SURFACE_CONTROL = 33,
-  PERMISSION_SMART_CARD = 34,
-  PERMISSION_WEB_PRINTING = 35,
-  PERMISSION_IDENTITY_PROVIDER = 36,
   // NUM must be the last value in the enum.
   NUM
 };
 
-// Any new values should be inserted immediately prior to kMaxValue.
+// Any new values should be inserted immediately prior to NUM.
 enum class PermissionSourceUI {
   // Permission prompt.
   PROMPT = 0,
@@ -129,16 +112,8 @@ enum class PermissionSourceUI {
   // Permission settings changes as part of the abusive origins revocation.
   AUTO_REVOCATION = 6,
 
-  // Permission changes due to automatic revocations of permissions from unused
-  // sites, as part of Safety Hub.
-  SAFETY_HUB_AUTO_REVOCATION = 7,
-
-  // The permission status changed, but we're unsure from what source.
-  // This is likely ANDROID_SETTINGS above though.
-  UNIDENTIFIED = 8,
-
   // Always keep this at the end.
-  kMaxValue = UNIDENTIFIED,
+  NUM,
 };
 
 // Any new values should be inserted immediately prior to NUM.
@@ -243,13 +218,6 @@ enum class PermissionPromptDisposition {
   // Only used on desktop, a chip on the left-hand side of the location bar that
   // automatically shows a bubble.
   LOCATION_BAR_LEFT_CHIP_AUTO_BUBBLE = 12,
-
-  // Only used on desktop, a bubble shown near the embedded permission element,
-  // after the user clicks on the element.
-  ELEMENT_ANCHORED_BUBBLE = 13,
-
-  // Only used on macOS, a native OS provided permission prompt.
-  MAC_OS_PROMPT = 14,
 };
 
 // The reason why the permission prompt disposition was used. Enum used in UKMs,
@@ -284,17 +252,6 @@ enum class AdaptiveTriggers {
   THREE_CONSECUTIVE_DENIES = 0x01,
 };
 
-enum class DismissedReason {
-  // The prompt was dismissed through the [x] button.
-  DISMISSED_X_BUTTON = 0,
-
-  // The prompt was dismissed through the user clicking on the scrim (area
-  // around the prompt).
-  DISMISSED_SCRIM = 1,
-
-  kMaxValue = DISMISSED_SCRIM
-};
-
 // These values are logged to UMA. Entries should not be renumbered and
 // numeric values should never be reused. Please keep in sync with
 // "OneTimePermissionEvent" in tools/metrics/histograms/enums.xml.
@@ -307,20 +264,14 @@ enum class OneTimePermissionEvent {
 
   // Recorded when a one time grant expires because all tabs are either closed
   // or discarded.
+
   ALL_TABS_CLOSED_OR_DISCARDED = 2,
 
   // Recorded when a one time grant expires because the permission was unused in
   // the background.
   EXPIRED_IN_BACKGROUND = 3,
 
-  // Revoked because of the maximum one time permission lifetime
-  // `kOneTimePermissionMaximumLifetime`
-  EXPIRED_AFTER_MAXIMUM_LIFETIME = 4,
-
-  // Recorded when a one time grant expires because the device was suspended.
-  EXPIRED_ON_SUSPEND = 5,
-
-  kMaxValue = EXPIRED_ON_SUSPEND
+  kMaxValue = EXPIRED_IN_BACKGROUND
 };
 
 enum class PermissionAutoRevocationHistory {
@@ -422,13 +373,8 @@ enum class PermissionChangeAction {
   // CONTENT_SETTING_DEFAULT.
   RESET_FROM_DENIED = 3,
 
-  // For one time grantable permissions, the user can toggle a remember checkbox
-  // in the secondary page info page which toggles grants between permanent
-  // grant and one time grant.
-  REMEMBER_CHECKBOX_TOGGLED = 4,
-
   // Always keep at the end.
-  kMaxValue = REMEMBER_CHECKBOX_TOGGLED
+  kMaxValue = RESET_FROM_DENIED
 };
 
 // The reason the permission action `PermissionAction::IGNORED` was triggered.
@@ -506,11 +452,6 @@ class PermissionUmaUtil {
 
   static void PermissionRequested(ContentSettingsType permission);
 
-  static void RecordActivityIndicator(std::set<ContentSettingsType> permissions,
-                                      bool blocked,
-                                      bool blocked_system_level,
-                                      bool clicked);
-
   static void RecordPermissionRequestedFromFrame(
       ContentSettingsType content_settings_type,
       content::RenderFrameHost* rfh);
@@ -529,7 +470,7 @@ class PermissionUmaUtil {
       PermissionEmbargoStatus embargo_status);
 
   static void RecordEmbargoPromptSuppressionFromSource(
-      content::PermissionStatusSource source);
+      PermissionStatusSource source);
 
   static void RecordEmbargoStatus(PermissionEmbargoStatus embargo_status);
 
@@ -541,8 +482,7 @@ class PermissionUmaUtil {
 
   // Recorded when a permission prompt creation is in progress.
   static void RecordPermissionPromptAttempt(
-      const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-          requests,
+      const std::vector<PermissionRequest*>& requests,
       bool IsLocationBarEditingOrEmpty);
 
   // UMA specifically for when permission prompts are shown. This should be
@@ -555,20 +495,18 @@ class PermissionUmaUtil {
   //   granted+denied+dismissed+ignored is not equal to requested), so it is
   //   unclear from those metrics alone how many prompts are seen by users.
   static void PermissionPromptShown(
-      const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-          requests);
+      const std::vector<PermissionRequest*>& requests);
 
   static void PermissionPromptResolved(
-      const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-          requests,
+      const std::vector<PermissionRequest*>& requests,
       content::WebContents* web_contents,
       PermissionAction permission_action,
       base::TimeDelta time_to_decision,
       PermissionPromptDisposition ui_disposition,
-      std::optional<PermissionPromptDispositionReason> ui_reason,
-      std::optional<PredictionGrantLikelihood> predicted_grant_likelihood,
-      std::optional<bool> prediction_decision_held_back,
-      std::optional<permissions::PermissionIgnoredReason> ignored_reason,
+      absl::optional<PermissionPromptDispositionReason> ui_reason,
+      absl::optional<PredictionGrantLikelihood> predicted_grant_likelihood,
+      absl::optional<bool> prediction_decision_held_back,
+      absl::optional<permissions::PermissionIgnoredReason> ignored_reason,
       bool did_show_prompt,
       bool did_click_manage,
       bool did_click_learn_more);
@@ -578,12 +516,7 @@ class PermissionUmaUtil {
   static void RecordCrowdDenyDelayedPushNotification(base::TimeDelta delay);
 
   static void RecordCrowdDenyVersionAtAbuseCheckTime(
-      const std::optional<base::Version>& version);
-
-  static void RecordElementAnchoredBubbleDismiss(
-      const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-          requests,
-      DismissedReason reason);
+      const absl::optional<base::Version>& version);
 
   // Record UMAs related to the Android "Missing permissions" infobar.
   static void RecordMissingPermissionInfobarShouldShow(
@@ -598,10 +531,8 @@ class PermissionUmaUtil {
                                     content::WebContents* web_contents,
                                     const GURL& requesting_origin);
 
-  static void RecordTimeElapsedBetweenGrantAndUse(
-      ContentSettingsType type,
-      base::TimeDelta delta,
-      content_settings::SettingSource source);
+  static void RecordTimeElapsedBetweenGrantAndUse(ContentSettingsType type,
+                                                  base::TimeDelta delta);
 
   static void RecordTimeElapsedBetweenGrantAndRevoke(ContentSettingsType type,
                                                      base::TimeDelta delta);
@@ -625,9 +556,6 @@ class PermissionUmaUtil {
 
   static void RecordPageInfoDialogAccessType(
       PageInfoDialogAccessType access_type);
-
-  static std::string GetOneTimePermissionEventHistogram(
-      ContentSettingsType type);
 
   static void RecordOneTimePermissionEvent(ContentSettingsType type,
                                            OneTimePermissionEvent event);
@@ -660,8 +588,7 @@ class PermissionUmaUtil {
       PermissionPromptDisposition prompt_disposition);
 
   static void RecordIgnoreReason(
-      const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-          requests,
+      const std::vector<PermissionRequest*>& requests,
       PermissionPromptDisposition prompt_disposition,
       PermissionIgnoredReason reason);
 
@@ -677,21 +604,6 @@ class PermissionUmaUtil {
 
   static void RecordTopLevelPermissionsHeaderPolicyOnNavigation(
       content::RenderFrameHost* render_frame_host);
-
-  // Logs a metric that captures how long since revocation, due to a site being
-  // considered unused, the user regrants a revoked permission.
-  static void RecordPermissionRegrantForUnusedSites(
-      const GURL& origin,
-      ContentSettingsType request_type,
-      PermissionSourceUI source_ui,
-      content::BrowserContext* browser_context,
-      base::Time current_time);
-
-  static std::optional<uint32_t> GetDaysSinceUnusedSitePermissionRevocation(
-      const GURL& origin,
-      ContentSettingsType content_settings_type,
-      base::Time current_time,
-      HostContentSettingsMap* hcsm);
 
   // A scoped class that will check the current resolved content setting on
   // construction and report a revocation metric accordingly if the revocation
@@ -711,9 +623,6 @@ class PermissionUmaUtil {
                              PermissionSourceUI source_ui);
 
     ~ScopedRevocationReporter();
-
-    // Returns true if a ScopedRevocationReporter instance is in scope.
-    static bool IsInstanceInScope();
 
    private:
     raw_ptr<content::BrowserContext> browser_context_;
@@ -739,13 +648,13 @@ class PermissionUmaUtil {
       PermissionRequestGestureType gesture_type,
       base::TimeDelta time_to_decision,
       PermissionPromptDisposition ui_disposition,
-      std::optional<PermissionPromptDispositionReason> ui_reason,
+      absl::optional<PermissionPromptDispositionReason> ui_reason,
       const GURL& requesting_origin,
       content::WebContents* web_contents,
       content::BrowserContext* browser_context,
       content::RenderFrameHost* render_frame_host,
-      std::optional<PredictionGrantLikelihood> predicted_grant_likelihood,
-      std::optional<bool> prediction_decision_held_back);
+      absl::optional<PredictionGrantLikelihood> predicted_grant_likelihood,
+      absl::optional<bool> prediction_decision_held_back);
 
   // Records |count| total prior actions for a prompt of type |permission|
   // for a single origin using |prefix| for the metric.
@@ -754,8 +663,7 @@ class PermissionUmaUtil {
                                                int count);
 
   static void RecordPromptDecided(
-      const std::vector<raw_ptr<PermissionRequest, VectorExperimental>>&
-          requests,
+      const std::vector<PermissionRequest*>& requests,
       bool accepted,
       bool is_one_time);
 };

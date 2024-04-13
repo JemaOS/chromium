@@ -9,7 +9,6 @@
 #include "base/base64.h"
 #include "base/containers/contains.h"
 #include "base/feature_list.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/no_destructor.h"
 #include "base/observer_list.h"
@@ -157,7 +156,7 @@ VariationsIdsProvider::GetVariationsVectorForWebPropertiesKeys() {
 }
 
 void VariationsIdsProvider::SetLowEntropySourceValue(
-    std::optional<int> low_entropy_source_value) {
+    absl::optional<int> low_entropy_source_value) {
   // The low entropy source value is an integer that is between 0 and 7999,
   // inclusive. See components/metrics/metrics_state_manager.cc for the logic to
   // generate it.
@@ -276,11 +275,11 @@ void VariationsIdsProvider::DestroyInstanceForTesting() {
 }
 
 void VariationsIdsProvider::OnFieldTrialGroupFinalized(
-    const base::FieldTrial& trial,
+    const std::string& trial_name,
     const std::string& group_name) {
   base::AutoLock scoped_lock(lock_);
   const size_t old_size = variation_ids_set_.size();
-  CacheVariationsId(trial.trial_name(), group_name);
+  CacheVariationsId(trial_name, group_name);
   if (variation_ids_set_.size() != old_size)
     UpdateVariationIDsHeaderValue();
 }
@@ -442,7 +441,10 @@ std::string VariationsIdsProvider::GenerateBase64EncodedProto(
 
   std::string serialized;
   proto.SerializeToString(&serialized);
-  return base::Base64Encode(serialized);
+
+  std::string hashed;
+  base::Base64Encode(serialized, &hashed);
+  return hashed;
 }
 
 bool VariationsIdsProvider::AddVariationIdsToSet(
@@ -533,9 +535,7 @@ VariationsIdsProvider::GetAllVariationIds() {
   // The entropy source value is used for retrospective A/A tests to validate
   // that there's no existing bias between two randomized groups of clients for
   // a later A/B study.
-  base::UmaHistogramBoolean("Variations.Headers.HasLowEntropySourceValue",
-                            low_entropy_source_value_.has_value());
-  if (low_entropy_source_value_.has_value()) {
+  if (low_entropy_source_value_) {
     int source_value = low_entropy_source_value_.value() +
                        kLowEntropySourceVariationIdRangeMin;
     DCHECK_GE(source_value, kLowEntropySourceVariationIdRangeMin);

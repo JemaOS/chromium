@@ -10,7 +10,7 @@
 #include "base/metrics/field_trial.h"
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
@@ -27,16 +27,14 @@
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
 variations::VariationID kVariationID = 123;
 
-void OnDocumentSuggestionsRequestAvailable(network::ResourceRequest* request) {}
-
 void OnDocumentSuggestionsLoaderAvailable(
-    std::unique_ptr<network::SimpleURLLoader> loader,
-    const std::string& request_body) {}
+    std::unique_ptr<network::SimpleURLLoader> loader) {}
 
 void OnURLLoadComplete(const network::SimpleURLLoader* source,
                        std::unique_ptr<std::string> response_body) {}
@@ -54,7 +52,7 @@ class DocumentSuggestionsServiceTest : public testing::Test {
             shared_url_loader_factory_)) {
     // Set up identity manager.
     identity_test_env_.SetPrimaryAccount("foo@gmail.com",
-                                         signin::ConsentLevel::kSignin);
+                                         signin::ConsentLevel::kSync);
     identity_test_env_.SetRefreshTokenForPrimaryAccount();
     identity_test_env_.SetAutomaticIssueOfAccessTokens(true);
 
@@ -90,25 +88,7 @@ TEST_F(DocumentSuggestionsServiceTest, VariationHeaders) {
       }));
 
   document_suggestions_service_->CreateDocumentSuggestionsRequest(
-      u"", false, base::BindOnce(OnDocumentSuggestionsRequestAvailable),
-      base::BindOnce(OnDocumentSuggestionsLoaderAvailable),
-      base::BindOnce(OnURLLoadComplete));
-
-  base::RunLoop().RunUntilIdle();
-}
-
-TEST_F(DocumentSuggestionsServiceTest, EnsureCookies) {
-  test_url_loader_factory_.SetInterceptor(
-      base::BindLambdaForTesting([](const network::ResourceRequest& request) {
-        EXPECT_TRUE(
-            request.site_for_cookies.IsEquivalent(net::SiteForCookies::FromUrl(
-                GURL("https://cloudsearch.googleapis.com"))))
-            << request.site_for_cookies.ToDebugString();
-      }));
-
-  document_suggestions_service_->CreateDocumentSuggestionsRequest(
-      u"", false, base::BindOnce(OnDocumentSuggestionsRequestAvailable),
-      base::BindOnce(OnDocumentSuggestionsLoaderAvailable),
+      u"", false, base::BindOnce(OnDocumentSuggestionsLoaderAvailable),
       base::BindOnce(OnURLLoadComplete));
 
   base::RunLoop().RunUntilIdle();

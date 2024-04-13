@@ -6,16 +6,14 @@
 #define COMPONENTS_METRICS_STRUCTURED_PROJECT_VALIDATOR_H_
 
 #include <cstdint>
-#include <optional>
 #include <string>
 
 #include "components/metrics/structured/enums.h"
 #include "components/metrics/structured/event_validator.h"
-#include "third_party/metrics_proto/structured_data.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
-namespace metrics::structured {
-
-using EventType = StructuredEventProto_EventType;
+namespace metrics {
+namespace structured {
 
 // Interface to be implemented by codegen for every project to validate
 // messages received by the structured metric service.
@@ -29,9 +27,8 @@ class ProjectValidator {
 
   // Returns the event validator if |event_name| is a valid event for this
   // project.
-  const EventValidator* GetEventValidator(base::StringPiece event_name) const;
-
-  std::optional<base::StringPiece> GetEventName(uint64_t event_name_hash) const;
+  virtual absl::optional<const EventValidator*> GetEventValidator(
+      const std::string& event_name) const = 0;
 
   uint64_t project_hash() const { return project_hash_; }
   IdType id_type() const { return id_type_; }
@@ -47,11 +44,6 @@ class ProjectValidator {
                    EventType event_type,
                    int key_rotation_period);
 
-  std::unordered_map<base::StringPiece, std::unique_ptr<EventValidator>>
-      event_validators_;
-
-  std::unordered_map<uint64_t, base::StringPiece> event_name_map_;
-
  private:
   const uint64_t project_hash_;
   const IdType id_type_;
@@ -60,6 +52,7 @@ class ProjectValidator {
   const int key_rotation_period_;
 };
 
-}  // namespace metrics::structured
+}  // namespace structured
+}  // namespace metrics
 
 #endif  // COMPONENTS_METRICS_STRUCTURED_PROJECT_VALIDATOR_H_

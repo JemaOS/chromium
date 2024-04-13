@@ -11,7 +11,9 @@ import org.chromium.content_public.browser.BrowserContextHandle;
 
 import java.io.Serializable;
 
-/** Storage information for a given host URL. */
+/**
+ * Storage information for a given host URL.
+ */
 public class StorageInfo implements Serializable {
     private final String mHost;
     private final int mType;
@@ -30,8 +32,8 @@ public class StorageInfo implements Serializable {
 
     public void clear(
             BrowserContextHandle browserContextHandle, StorageInfoClearedCallback callback) {
-        WebsitePreferenceBridgeJni.get()
-                .clearStorageData(browserContextHandle, mHost, mType, callback);
+        WebsitePreferenceBridgeJni.get().clearStorageData(
+                browserContextHandle, mHost, mType, callback);
     }
 
     public long getSize() {

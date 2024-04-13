@@ -137,11 +137,4 @@ testing::Matcher<const DrawQuad*> HasLayerNamespaceId(
                                            testing::Eq(layer_namespace_id)));
 }
 
-testing::Matcher<const DrawQuad*> HasMaskFilterInfo(
-    const gfx::MaskFilterInfo& mask_filter_info) {
-  return HasSharedQuadState(testing::Field("mask_filter_info",
-                                           &SharedQuadState::mask_filter_info,
-                                           testing::Eq(mask_filter_info)));
-}
-
 }  // namespace viz

@@ -32,14 +32,13 @@ public class FirstDrawDetectorTest {
     public void testFirstDraw() throws Exception {
         mActivityTestRule.launchActivity(null);
         final CountDownLatch firstDrawEvent = new CountDownLatch(1);
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    BlankUiTestActivity activity = mActivityTestRule.getActivity();
-                    View view = new FrameLayout(activity);
-                    activity.setContentView(view);
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            BlankUiTestActivity activity = mActivityTestRule.getActivity();
+            View view = new FrameLayout(activity);
+            activity.setContentView(view);
 
-                    FirstDrawDetector.waitForFirstDraw(view, () -> firstDrawEvent.countDown());
-                });
+            FirstDrawDetector.waitForFirstDraw(view, () -> firstDrawEvent.countDown());
+        });
         firstDrawEvent.await();
     }
 }

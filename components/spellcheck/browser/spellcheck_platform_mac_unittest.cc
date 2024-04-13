@@ -25,7 +25,9 @@ class SpellcheckPlatformMacTest: public testing::Test {
                                  base::Unretained(this))),
         callback_finished_(false) {}
 
-  void WaitForCallback() { loop_.Run(); }
+  void WaitForCallback() {
+    content::RunMessageLoop();
+  }
 
   std::vector<SpellCheckResult> results_;
   spellcheck_platform::TextCheckCompleteCallback callback_;
@@ -35,7 +37,7 @@ class SpellcheckPlatformMacTest: public testing::Test {
   void QuitMessageLoop() {
     ASSERT_TRUE(
         task_environment_.GetMainThreadTaskRunner()->BelongsToCurrentThread());
-    loop_.Quit();
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
   }
 
   void CompletionCallback(const std::vector<SpellCheckResult>& results) {
@@ -49,7 +51,6 @@ class SpellcheckPlatformMacTest: public testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::SingleThreadTaskEnvironment::MainThreadType::UI};
   spellcheck_platform::ScopedEnglishLanguageForTest scoped_language_;
-  base::RunLoop loop_;
 };
 
 // Tests that words are properly ignored. Currently only enabled on OS X as it

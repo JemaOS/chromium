@@ -32,7 +32,6 @@ UserAndDeviceReporting:
   - ReportDeviceSystemInfo
   - ReportDevicePrintJobs
   - ReportDeviceLoginLogout
-  - DeviceReportRuntimeCounters
   - ReportUploadFrequency
   - ReportArcStatusEnabled
   - HeartbeatEnabled

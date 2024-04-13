@@ -39,7 +39,8 @@ class ShoppingPowerBookmarkDataProviderTest : public testing::Test {
     shopping_service_ = std::make_unique<MockShoppingService>();
 
     data_provider_ = std::make_unique<ShoppingPowerBookmarkDataProvider>(
-        power_bookmark_service_.get(), shopping_service_.get());
+        bookmark_model_.get(), power_bookmark_service_.get(),
+        shopping_service_.get());
   }
 
   base::test::TaskEnvironment task_environment_;

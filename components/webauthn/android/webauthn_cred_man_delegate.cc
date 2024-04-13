@@ -4,21 +4,19 @@
 
 #include "components/webauthn/android/webauthn_cred_man_delegate.h"
 
+#include <memory>
 #include <utility>
-
-#include "base/android/jni_android.h"
 #include "base/functional/callback.h"
-#include "components/webauthn/android/cred_man_support.h"
-#include "components/webauthn/android/jni_headers/CredManSupportProvider_jni.h"
+#include "base/logging.h"
+#include "base/memory/raw_ptr.h"
+#include "base/notreached.h"
+#include "base/supports_user_data.h"
 #include "content/public/browser/web_contents.h"
 
 namespace content {
+class RenderFrameHost;
 class WebContents;
 }  // namespace content
-
-namespace webauthn {
-
-using webauthn::CredManSupport;
 
 WebAuthnCredManDelegate::WebAuthnCredManDelegate(
     content::WebContents* web_contents) {}
@@ -26,74 +24,34 @@ WebAuthnCredManDelegate::WebAuthnCredManDelegate(
 WebAuthnCredManDelegate::~WebAuthnCredManDelegate() = default;
 
 void WebAuthnCredManDelegate::OnCredManConditionalRequestPending(
-    bool has_passkeys,
-    base::RepeatingCallback<void(bool)> full_assertion_request) {
-  has_passkeys_ = has_passkeys ? kHasPasskeys : kNoPasskeys;
-  show_cred_man_ui_callback_ = std::move(full_assertion_request);
+    content::RenderFrameHost* render_frame_host,
+    bool has_results,
+    base::RepeatingClosure full_assertion_request) {
+  has_results_ = has_results;
+  full_assertion_request_ = std::move(full_assertion_request);
 }
 
-void WebAuthnCredManDelegate::OnCredManUiClosed(bool success) {
-  if (!request_completion_callback_.is_null()) {
-    request_completion_callback_.Run(success);
-  }
+void WebAuthnCredManDelegate::TriggerFullRequest() {
+  std::move(full_assertion_request_).Run();
 }
 
-void WebAuthnCredManDelegate::TriggerCredManUi(
-    RequestPasswords request_passwords) {
-  if (show_cred_man_ui_callback_.is_null()) {
-    return;
-  }
-  show_cred_man_ui_callback_.Run(request_passwords.value() &&
-                                 !filling_callback_.is_null());
-}
-
-WebAuthnCredManDelegate::State WebAuthnCredManDelegate::HasPasskeys() {
-  return has_passkeys_;
-}
-
-void WebAuthnCredManDelegate::CleanUpConditionalRequest() {
-  show_cred_man_ui_callback_.Reset();
-  has_passkeys_ = kNotReady;
-}
-
-void WebAuthnCredManDelegate::SetRequestCompletionCallback(
-    base::RepeatingCallback<void(bool)> callback) {
-  request_completion_callback_ = std::move(callback);
-}
-
-void WebAuthnCredManDelegate::SetFillingCallback(
-    base::OnceCallback<void(const std::u16string&, const std::u16string&)>
-        filling_callback) {
-  filling_callback_ = std::move(filling_callback);
-}
-
-void WebAuthnCredManDelegate::FillUsernameAndPassword(
-    const std::u16string& username,
-    const std::u16string& password) {
-  std::move(filling_callback_).Run(username, password);
+bool WebAuthnCredManDelegate::HasResults() {
+  return has_results_;
 }
 
 // static
-WebAuthnCredManDelegate::CredManEnabledMode
-WebAuthnCredManDelegate::CredManMode() {
-  if (!cred_man_support_.has_value()) {
-    cred_man_support_ = Java_CredManSupportProvider_getCredManSupport(
-        base::android::AttachCurrentThread());
+WebAuthnCredManDelegate* WebAuthnCredManDelegate::GetRequestDelegate(
+    content::WebContents* web_contents) {
+  static constexpr char kWebAuthnCredManDelegateKey[] = "WebAuthnCredManKey";
+  auto* delegate = static_cast<WebAuthnCredManDelegate*>(
+      web_contents->GetUserData(kWebAuthnCredManDelegateKey));
+  if (!delegate) {
+    auto new_user_data =
+        std::make_unique<WebAuthnCredManDelegate>(web_contents);
+    delegate = new_user_data.get();
+    web_contents->SetUserData(kWebAuthnCredManDelegateKey,
+                              std::move(new_user_data));
   }
-  switch (cred_man_support_.value()) {
-    case CredManSupport::NOT_EVALUATED:
-      NOTREACHED_NORETURN();
-    case CredManSupport::DISABLED:
-    case CredManSupport::IF_REQUIRED:
-      return CredManEnabledMode::kNotEnabled;
-    case CredManSupport::FULL_UNLESS_INAPPLICABLE:
-      return CredManEnabledMode::kAllCredMan;
-    case CredManSupport::PARALLEL_WITH_FIDO_2:
-      return CredManEnabledMode::kNonGpmPasskeys;
-  }
-  return CredManEnabledMode::kNotEnabled;
+
+  return delegate;
 }
-
-std::optional<int> WebAuthnCredManDelegate::cred_man_support_ = std::nullopt;
-
-}  // namespace webauthn

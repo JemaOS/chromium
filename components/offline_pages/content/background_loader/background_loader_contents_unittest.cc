@@ -116,12 +116,12 @@ TEST_F(BackgroundLoaderContentsTest, SuppressDialogs) {
 }
 
 TEST_F(BackgroundLoaderContentsTest, DoesNotFocusAfterCrash) {
-  ASSERT_FALSE(contents()->ShouldFocusPageAfterCrash(nullptr));
+  ASSERT_FALSE(contents()->ShouldFocusPageAfterCrash());
 }
 
 TEST_F(BackgroundLoaderContentsTest, CannotDownloadNoDelegate) {
   contents()->CanDownload(
-      GURL(), std::string(),
+      GURL::EmptyGURL(), std::string(),
       base::BindOnce(&BackgroundLoaderContentsTest::DownloadCallback,
                      base::Unretained(this)));
   WaitForSignal();
@@ -132,7 +132,7 @@ TEST_F(BackgroundLoaderContentsTest, CannotDownloadNoDelegate) {
 TEST_F(BackgroundLoaderContentsTest, CanDownload_DelegateCalledWhenSet) {
   SetDelegate();
   contents()->CanDownload(
-      GURL(), std::string(),
+      GURL::EmptyGURL(), std::string(),
       base::BindOnce(&BackgroundLoaderContentsTest::DownloadCallback,
                      base::Unretained(this)));
   WaitForSignal();
@@ -145,7 +145,7 @@ TEST_F(BackgroundLoaderContentsTest, ShouldNotCreateWebContents) {
       nullptr /* source_site_instance */,
       content::mojom::WindowContainerType::NORMAL /* window_container_type */,
       GURL() /* opener_url */, "foo" /* frame_name */,
-      GURL() /* target_url */));
+      GURL::EmptyGURL() /* target_url */));
 }
 
 TEST_F(BackgroundLoaderContentsTest, ShouldNotAddNewContents) {
@@ -163,10 +163,11 @@ TEST_F(BackgroundLoaderContentsTest, ShouldNotAddNewContents) {
 TEST_F(BackgroundLoaderContentsTest, DoesNotGiveMediaAccessPermission) {
   content::MediaStreamRequest request(
       0 /* render_process_id */, 0 /* render_frame_id */,
-      0 /* page_request_id */, url::Origin::Create(GURL()) /* url_origin */,
+      0 /* page_request_id */, GURL::EmptyGURL() /* security_origin */,
       false /* user_gesture */,
       blink::MediaStreamRequestType::MEDIA_DEVICE_ACCESS /* request_type */,
-      {} /* requested_audio_device_ids */, {} /* requested_video_device_ids */,
+      std::string() /* requested_audio_device_id */,
+      std::string() /* requested_video_device_id */,
       blink::mojom::MediaStreamType::GUM_TAB_AUDIO_CAPTURE /* audio_type */,
       blink::mojom::MediaStreamType::GUM_TAB_VIDEO_CAPTURE /* video_type */,
       false /* disable_local_echo */,
@@ -187,7 +188,7 @@ TEST_F(BackgroundLoaderContentsTest, DoesNotGiveMediaAccessPermission) {
 
 TEST_F(BackgroundLoaderContentsTest, CheckMediaAccessPermissionFalse) {
   ASSERT_FALSE(contents()->CheckMediaAccessPermission(
-      nullptr /* contents */, url::Origin() /* security_origin */,
+      nullptr /* contents */, GURL::EmptyGURL() /* security_origin */,
       blink::mojom::MediaStreamType::GUM_TAB_VIDEO_CAPTURE /* type */));
 }
 

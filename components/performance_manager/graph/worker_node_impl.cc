@@ -4,10 +4,8 @@
 
 #include "components/performance_manager/graph/worker_node_impl.h"
 
-#include "base/memory/raw_ptr.h"
 #include "components/performance_manager/graph/frame_node_impl.h"
 #include "components/performance_manager/graph/process_node_impl.h"
-#include "content/public/browser/browser_thread.h"
 
 namespace performance_manager {
 
@@ -25,13 +23,7 @@ WorkerNodeImpl::WorkerNodeImpl(const std::string& browser_context_id,
       worker_type_(worker_type),
       process_node_(process_node),
       worker_token_(worker_token) {
-  // Nodes are created on the UI thread, then accessed on the PM sequence.
-  // `weak_this_` can be returned from GetWeakPtrOnUIThread() and dereferenced
-  // on the PM sequence.
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   DETACH_FROM_SEQUENCE(sequence_checker_);
-  weak_this_ = weak_factory_.GetWeakPtr();
-
   DCHECK(process_node);
 }
 
@@ -41,46 +33,6 @@ WorkerNodeImpl::~WorkerNodeImpl() {
   DCHECK(client_workers_.empty());
   DCHECK(child_workers_.empty());
   DCHECK(!execution_context_);
-}
-
-WorkerNode::WorkerType WorkerNodeImpl::GetWorkerType() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return worker_type_;
-}
-
-const std::string& WorkerNodeImpl::GetBrowserContextID() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return browser_context_id_;
-}
-
-const blink::WorkerToken& WorkerNodeImpl::GetWorkerToken() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return worker_token_;
-}
-
-resource_attribution::WorkerContext WorkerNodeImpl::GetResourceContext() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return resource_attribution::WorkerContext::FromWorkerNode(this);
-}
-
-const GURL& WorkerNodeImpl::GetURL() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return url_;
-}
-
-const PriorityAndReason& WorkerNodeImpl::GetPriorityAndReason() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return priority_and_reason_.value();
-}
-
-uint64_t WorkerNodeImpl::GetResidentSetKbEstimate() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return resident_set_kb_estimate_;
-}
-
-uint64_t WorkerNodeImpl::GetPrivateFootprintKbEstimate() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return private_footprint_kb_estimate_;
 }
 
 void WorkerNodeImpl::AddClientFrame(FrameNodeImpl* frame_node) {
@@ -113,7 +65,7 @@ void WorkerNodeImpl::AddClientWorker(WorkerNodeImpl* worker_node) {
     case WorkerType::kDedicated:
       // Nested dedicated workers are only available from other dedicated
       // workers in Chrome.
-      DCHECK_EQ(worker_node->GetWorkerType(), WorkerType::kDedicated);
+      DCHECK_EQ(worker_node->worker_type(), WorkerType::kDedicated);
       break;
     case WorkerType::kShared:
       // Nested shared workers are not available in Chrome.
@@ -121,7 +73,7 @@ void WorkerNodeImpl::AddClientWorker(WorkerNodeImpl* worker_node) {
       break;
     case WorkerType::kService:
       // A service worker may not control another service worker.
-      DCHECK_NE(worker_node->GetWorkerType(), WorkerType::kService);
+      DCHECK_NE(worker_node->worker_type(), WorkerType::kService);
       break;
   }
 
@@ -171,46 +123,63 @@ void WorkerNodeImpl::OnFinalResponseURLDetermined(const GURL& url) {
     observer->OnFinalResponseURLDetermined(this);
 }
 
+const std::string& WorkerNodeImpl::browser_context_id() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return browser_context_id_;
+}
+
+WorkerNode::WorkerType WorkerNodeImpl::worker_type() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return worker_type_;
+}
+
 ProcessNodeImpl* WorkerNodeImpl::process_node() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return process_node_;
 }
 
-const base::flat_set<raw_ptr<FrameNodeImpl, CtnExperimental>>&
-WorkerNodeImpl::client_frames() const {
+const GURL& WorkerNodeImpl::url() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return url_;
+}
+
+const blink::WorkerToken& WorkerNodeImpl::worker_token() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return worker_token_;
+}
+
+const base::flat_set<FrameNodeImpl*>& WorkerNodeImpl::client_frames() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return client_frames_;
 }
 
-const base::flat_set<raw_ptr<WorkerNodeImpl, CtnExperimental>>&
-WorkerNodeImpl::client_workers() const {
+const base::flat_set<WorkerNodeImpl*>& WorkerNodeImpl::client_workers() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return client_workers_;
 }
 
-const base::flat_set<raw_ptr<WorkerNodeImpl, CtnExperimental>>&
-WorkerNodeImpl::child_workers() const {
+const base::flat_set<WorkerNodeImpl*>& WorkerNodeImpl::child_workers() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return child_workers_;
 }
 
-base::WeakPtr<WorkerNodeImpl> WorkerNodeImpl::GetWeakPtrOnUIThread() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  return weak_this_;
+const PriorityAndReason& WorkerNodeImpl::priority_and_reason() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return priority_and_reason_.value();
 }
 
-base::WeakPtr<WorkerNodeImpl> WorkerNodeImpl::GetWeakPtr() {
+uint64_t WorkerNodeImpl::resident_set_kb_estimate() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return weak_factory_.GetWeakPtr();
+  return resident_set_kb_estimate_;
+}
+
+uint64_t WorkerNodeImpl::private_footprint_kb_estimate() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return private_footprint_kb_estimate_;
 }
 
 void WorkerNodeImpl::OnJoiningGraph() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  // Make sure all weak pointers, even `weak_this_` that was created on the UI
-  // thread in the constructor, can only be dereferenced on the graph sequence.
-  weak_factory_.BindToCurrentSequence(
-      base::subtle::BindWeakPtrFactoryPassKey());
 
   process_node_->AddWorker(this);
 }
@@ -226,60 +195,56 @@ void WorkerNodeImpl::RemoveNodeAttachedData() {
   execution_context_.reset();
 }
 
+WorkerNode::WorkerType WorkerNodeImpl::GetWorkerType() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return worker_type();
+}
+
+const std::string& WorkerNodeImpl::GetBrowserContextID() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return browser_context_id();
+}
+
 const ProcessNode* WorkerNodeImpl::GetProcessNode() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return process_node();
 }
 
+const GURL& WorkerNodeImpl::GetURL() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return url();
+}
+
+const blink::WorkerToken& WorkerNodeImpl::GetWorkerToken() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return worker_token();
+}
+
 const base::flat_set<const FrameNode*> WorkerNodeImpl::GetClientFrames() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::flat_set<const FrameNode*> client_frames;
-  for (FrameNodeImpl* client : client_frames_) {
+  for (auto* client : client_frames_)
     client_frames.insert(static_cast<const FrameNode*>(client));
-  }
   DCHECK_EQ(client_frames.size(), client_frames_.size());
   return client_frames;
-}
-
-bool WorkerNodeImpl::VisitClientFrames(const FrameNodeVisitor& visitor) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  for (FrameNodeImpl* node : client_frames_) {
-    if (!visitor(node)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 const base::flat_set<const WorkerNode*> WorkerNodeImpl::GetClientWorkers()
     const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::flat_set<const WorkerNode*> client_workers;
-  for (WorkerNodeImpl* client : client_workers_) {
+  for (auto* client : client_workers_)
     client_workers.insert(static_cast<const WorkerNode*>(client));
-  }
   DCHECK_EQ(client_workers.size(), client_workers_.size());
   return client_workers;
-}
-
-bool WorkerNodeImpl::VisitClientWorkers(
-    const WorkerNodeVisitor& visitor) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  for (WorkerNodeImpl* node : client_workers_) {
-    if (!visitor(node)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 const base::flat_set<const WorkerNode*> WorkerNodeImpl::GetChildWorkers()
     const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::flat_set<const WorkerNode*> child_workers;
-  for (WorkerNodeImpl* child : child_workers_) {
+  for (auto* child : child_workers_)
     child_workers.insert(static_cast<const WorkerNode*>(child));
-  }
   DCHECK_EQ(child_workers.size(), child_workers_.size());
   return child_workers;
 }
@@ -287,13 +252,25 @@ const base::flat_set<const WorkerNode*> WorkerNodeImpl::GetChildWorkers()
 bool WorkerNodeImpl::VisitChildDedicatedWorkers(
     const WorkerNodeVisitor& visitor) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  for (WorkerNodeImpl* worker_node_impl : child_workers_) {
+  for (auto* worker_node_impl : child_workers_) {
     const WorkerNode* node = worker_node_impl;
     if (node->GetWorkerType() == WorkerType::kDedicated && !visitor(node)) {
       return false;
     }
   }
   return true;
+}
+
+const PriorityAndReason& WorkerNodeImpl::GetPriorityAndReason() const {
+  return priority_and_reason();
+}
+
+uint64_t WorkerNodeImpl::GetResidentSetKbEstimate() const {
+  return resident_set_kb_estimate();
+}
+
+uint64_t WorkerNodeImpl::GetPrivateFootprintKbEstimate() const {
+  return private_footprint_kb_estimate();
 }
 
 void WorkerNodeImpl::AddChildWorker(WorkerNodeImpl* worker_node) {

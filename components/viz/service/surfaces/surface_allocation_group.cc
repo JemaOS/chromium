@@ -4,10 +4,8 @@
 
 #include "components/viz/service/surfaces/surface_allocation_group.h"
 
-#include <numeric>
 #include <utility>
 
-#include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
 #include "components/viz/service/surfaces/surface.h"
 #include "components/viz/service/surfaces/surface_manager.h"
@@ -193,7 +191,7 @@ void SurfaceAllocationGroup::AckLastestActiveUnAckedFrame() {
     lastest_active->SendAckToClient();
 }
 
-std::vector<raw_ptr<Surface, VectorExperimental>>::const_iterator
+std::vector<Surface*>::const_iterator
 SurfaceAllocationGroup::FindLatestSurfaceUpTo(
     const SurfaceId& surface_id) const {
   DCHECK_EQ(submitter_, surface_id.frame_sink_id());
@@ -213,7 +211,7 @@ SurfaceAllocationGroup::FindLatestSurfaceUpTo(
   int begin = 0;
   int end = surfaces_.size();
   while (end - begin > 1) {
-    int avg = std::midpoint(begin, end);
+    int avg = (begin + end) / 2;
     if (!surface_id.IsSameOrNewerThan(surfaces_[avg]->surface_id()))
       end = avg;
     else
@@ -224,7 +222,7 @@ SurfaceAllocationGroup::FindLatestSurfaceUpTo(
   return surfaces_.begin() + begin;
 }
 
-std::vector<raw_ptr<Surface, VectorExperimental>>::const_iterator
+std::vector<Surface*>::const_iterator
 SurfaceAllocationGroup::FindLatestActiveSurfaceUpTo(
     const SurfaceId& surface_id) const {
   // Start from the last older or equal surface and keep iterating back until we

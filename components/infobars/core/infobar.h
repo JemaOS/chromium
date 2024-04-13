@@ -78,10 +78,6 @@ class InfoBar : public gfx::AnimationDelegate {
   const gfx::SlideAnimation& animation() const { return animation_; }
   int computed_height() const { return height_; }
 
-  InfoBarDelegate::InfoBarIdentifier GetIdentifier() const {
-    return delegate_->GetIdentifier();
-  }
-
  protected:
   // gfx::AnimationDelegate:
   void AnimationProgressed(const gfx::Animation* animation) override;

@@ -12,8 +12,6 @@ import static org.mockito.Mockito.verify;
 
 import android.graphics.Bitmap;
 
-import jp.tomorrowkey.android.gifplayer.BaseGifImage;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -31,7 +29,11 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.components.embedder_support.simple_factory_key.SimpleFactoryKeyHandle;
 import org.chromium.url.JUnitTestGURLs;
 
-/** Test for ImageFetcherBridge.java. */
+import jp.tomorrowkey.android.gifplayer.BaseGifImage;
+
+/**
+ * Test for ImageFetcherBridge.java.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class ImageFetcherBridgeTest {
@@ -39,12 +41,17 @@ public class ImageFetcherBridgeTest {
     private static final int HEIGHT_PX = 20;
     private static final int EXPIRATION_INTERVAL_MINS = 60;
 
-    @Rule public ExpectedException mExpectedException = ExpectedException.none();
+    @Rule
+    public ExpectedException mExpectedException = ExpectedException.none();
 
-    @Mock ImageFetcherBridge.Natives mNatives;
-    @Mock SimpleFactoryKeyHandle mSimpleFactoryKeyHandle;
-    @Mock Callback<Bitmap> mBitmapCallback;
-    @Mock Callback<BaseGifImage> mGifCallback;
+    @Mock
+    ImageFetcherBridge.Natives mNatives;
+    @Mock
+    SimpleFactoryKeyHandle mSimpleFactoryKeyHandle;
+    @Mock
+    Callback<Bitmap> mBitmapCallback;
+    @Mock
+    Callback<BaseGifImage> mGifCallback;
 
     ImageFetcherBridge mBridge;
 
@@ -60,21 +67,13 @@ public class ImageFetcherBridgeTest {
     public void testFetchImage() {
         ArgumentCaptor<Callback<Bitmap>> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
         final Bitmap bitmap = Bitmap.createBitmap(WIDTH_PX, HEIGHT_PX, Bitmap.Config.ARGB_8888);
-        doAnswer(
-                        (InvocationOnMock invocation) -> {
-                            callbackCaptor.getValue().onResult(bitmap);
-                            return null;
-                        })
+        doAnswer((InvocationOnMock invocation) -> {
+            callbackCaptor.getValue().onResult(bitmap);
+            return null;
+        })
                 .when(mNatives)
-                .fetchImage(
-                        eq(mSimpleFactoryKeyHandle),
-                        anyInt(),
-                        anyString(),
-                        anyString(),
-                        eq(WIDTH_PX),
-                        eq(HEIGHT_PX),
-                        eq(0),
-                        callbackCaptor.capture());
+                .fetchImage(eq(mSimpleFactoryKeyHandle), anyInt(), anyString(), anyString(),
+                        eq(WIDTH_PX), eq(HEIGHT_PX), eq(0), callbackCaptor.capture());
 
         mBridge.fetchImage(
                 -1, ImageFetcher.Params.create("", "", WIDTH_PX, HEIGHT_PX), mBitmapCallback);
@@ -85,30 +84,19 @@ public class ImageFetcherBridgeTest {
     public void testFetchImageWithExpirationInterval() {
         ArgumentCaptor<Callback<Bitmap>> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
         final Bitmap bitmap = Bitmap.createBitmap(WIDTH_PX, HEIGHT_PX, Bitmap.Config.ARGB_8888);
-        doAnswer(
-                        (InvocationOnMock invocation) -> {
-                            callbackCaptor.getValue().onResult(bitmap);
-                            return null;
-                        })
+        doAnswer((InvocationOnMock invocation) -> {
+            callbackCaptor.getValue().onResult(bitmap);
+            return null;
+        })
                 .when(mNatives)
-                .fetchImage(
-                        eq(mSimpleFactoryKeyHandle),
-                        anyInt(),
-                        anyString(),
-                        anyString(),
-                        eq(WIDTH_PX),
-                        eq(HEIGHT_PX),
-                        eq(EXPIRATION_INTERVAL_MINS),
+                .fetchImage(eq(mSimpleFactoryKeyHandle), anyInt(), anyString(), anyString(),
+                        eq(WIDTH_PX), eq(HEIGHT_PX), eq(EXPIRATION_INTERVAL_MINS),
                         callbackCaptor.capture());
 
-        mBridge.fetchImage(
-                -1,
+        mBridge.fetchImage(-1,
                 ImageFetcher.Params.createWithExpirationInterval(
-                        JUnitTestGURLs.EXAMPLE_URL,
-                        "clientname",
-                        WIDTH_PX,
-                        HEIGHT_PX,
-                        EXPIRATION_INTERVAL_MINS),
+                        JUnitTestGURLs.getGURL(JUnitTestGURLs.EXAMPLE_URL), "clientname", WIDTH_PX,
+                        HEIGHT_PX, EXPIRATION_INTERVAL_MINS),
                 mBitmapCallback);
         verify(mBitmapCallback).onResult(bitmap);
     }
@@ -120,25 +108,15 @@ public class ImageFetcherBridgeTest {
 
         ArgumentCaptor<Callback<Bitmap>> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
         final Bitmap bitmap = Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888);
-        doAnswer(
-                        (InvocationOnMock invocation) -> {
-                            callbackCaptor.getValue().onResult(bitmap);
-                            return null;
-                        })
+        doAnswer((InvocationOnMock invocation) -> {
+            callbackCaptor.getValue().onResult(bitmap);
+            return null;
+        })
                 .when(mNatives)
-                .fetchImage(
-                        eq(mSimpleFactoryKeyHandle),
-                        anyInt(),
-                        anyString(),
-                        anyString(),
-                        eq(desiredWidth),
-                        eq(desiredHeight),
-                        eq(0),
-                        callbackCaptor.capture());
+                .fetchImage(eq(mSimpleFactoryKeyHandle), anyInt(), anyString(), anyString(),
+                        eq(desiredWidth), eq(desiredHeight), eq(0), callbackCaptor.capture());
 
-        mBridge.fetchImage(
-                -1,
-                ImageFetcher.Params.create("", "", desiredWidth, desiredHeight),
+        mBridge.fetchImage(-1, ImageFetcher.Params.create("", "", desiredWidth, desiredHeight),
                 mBitmapCallback);
         ArgumentCaptor<Bitmap> bitmapCaptor = ArgumentCaptor.forClass(Bitmap.class);
         verify(mBitmapCallback).onResult(bitmapCaptor.capture());
@@ -153,19 +131,13 @@ public class ImageFetcherBridgeTest {
     @Test
     public void testFetchGif() {
         ArgumentCaptor<Callback<byte[]>> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-        doAnswer(
-                        (InvocationOnMock invocation) -> {
-                            callbackCaptor.getValue().onResult(new byte[] {1, 2, 3});
-                            return null;
-                        })
+        doAnswer((InvocationOnMock invocation) -> {
+            callbackCaptor.getValue().onResult(new byte[] {1, 2, 3});
+            return null;
+        })
                 .when(mNatives)
-                .fetchImageData(
-                        eq(mSimpleFactoryKeyHandle),
-                        anyInt(),
-                        anyString(),
-                        anyString(),
-                        eq(0),
-                        callbackCaptor.capture());
+                .fetchImageData(eq(mSimpleFactoryKeyHandle), anyInt(), anyString(), anyString(),
+                        eq(0), callbackCaptor.capture());
 
         mBridge.fetchGif(-1, ImageFetcher.Params.create("", ""), mGifCallback);
         ArgumentCaptor<BaseGifImage> gifCaptor = ArgumentCaptor.forClass(BaseGifImage.class);
@@ -177,19 +149,13 @@ public class ImageFetcherBridgeTest {
     @Test
     public void testFetchGif_imageDataNull() {
         ArgumentCaptor<Callback<byte[]>> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-        doAnswer(
-                        (InvocationOnMock invocation) -> {
-                            callbackCaptor.getValue().onResult(new byte[] {});
-                            return null;
-                        })
+        doAnswer((InvocationOnMock invocation) -> {
+            callbackCaptor.getValue().onResult(new byte[] {});
+            return null;
+        })
                 .when(mNatives)
-                .fetchImageData(
-                        eq(mSimpleFactoryKeyHandle),
-                        anyInt(),
-                        anyString(),
-                        anyString(),
-                        eq(0),
-                        callbackCaptor.capture());
+                .fetchImageData(eq(mSimpleFactoryKeyHandle), anyInt(), anyString(), anyString(),
+                        eq(0), callbackCaptor.capture());
 
         mBridge.fetchGif(-1, ImageFetcher.Params.create("", ""), mGifCallback);
         verify(mGifCallback).onResult(null);

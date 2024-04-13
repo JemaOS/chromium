@@ -29,6 +29,12 @@ void FakeGCMDriver::ValidateRegistration(
       FROM_HERE, base::BindOnce(std::move(callback), true /* is_valid */));
 }
 
+void FakeGCMDriver::OnSignedIn() {
+}
+
+void FakeGCMDriver::OnSignedOut() {
+}
+
 void FakeGCMDriver::AddConnectionObserver(GCMConnectionObserver* observer) {
 }
 

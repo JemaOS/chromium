@@ -11,6 +11,7 @@
 #include "base/functional/callback.h"
 #include "base/time/time.h"
 #include "components/security_interstitials/content/ssl_blocking_page_base.h"
+#include "components/security_interstitials/content/ssl_cert_reporter.h"
 #include "components/ssl_errors/error_classification.h"
 #include "content/public/browser/certificate_request_result_type.h"
 #include "net/ssl/ssl_info.h"
@@ -42,6 +43,7 @@ class BadClockBlockingPage : public SSLBlockingPageBase {
       const base::Time& time_triggered,
       bool can_show_enhanced_protection_message,
       ssl_errors::ClockState clock_state,
+      std::unique_ptr<SSLCertReporter> ssl_cert_reporter,
       std::unique_ptr<
           security_interstitials::SecurityInterstitialControllerClient>
           controller_client);

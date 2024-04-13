@@ -5,8 +5,7 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_SINGLE_FIELD_FORM_FILL_ROUTER_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_SINGLE_FIELD_FORM_FILL_ROUTER_H_
 
-#include "base/memory/raw_ptr.h"
-#include "base/memory/raw_ref.h"
+#include "base/memory/weak_ptr.h"
 #include "components/autofill/core/browser/autocomplete_history_manager.h"
 #include "components/autofill/core/browser/iban_manager.h"
 #include "components/autofill/core/browser/merchant_promo_code_manager.h"
@@ -27,7 +26,7 @@ class SingleFieldFormFillRouter : public SingleFieldFormFiller {
  public:
   explicit SingleFieldFormFillRouter(
       AutocompleteHistoryManager* autocomplete_history_manager,
-      IbanManager* iban_manager,
+      IBANManager* iban_manager,
       MerchantPromoCodeManager* merchant_promo_code_manager);
   ~SingleFieldFormFillRouter() override;
   SingleFieldFormFillRouter(const SingleFieldFormFillRouter&) = delete;
@@ -47,35 +46,31 @@ class SingleFieldFormFillRouter : public SingleFieldFormFiller {
 
   // SingleFieldFormFiller overrides:
   [[nodiscard]] bool OnGetSingleFieldSuggestions(
+      AutoselectFirstSuggestion autoselect_first_suggestion,
       const FormFieldData& field,
       const AutofillClient& client,
-      OnSuggestionsReturnedCallback on_suggestions_returned,
+      base::WeakPtr<SingleFieldFormFiller::SuggestionsHandler> handler,
       const SuggestionsContext& context) override;
   void OnWillSubmitFormWithFields(const std::vector<FormFieldData>& fields,
                                   bool is_autocomplete_enabled) override;
-  void CancelPendingQueries() override;
+  void CancelPendingQueries(
+      const SingleFieldFormFiller::SuggestionsHandler* handler) override;
   void OnRemoveCurrentSingleFieldSuggestion(const std::u16string& field_name,
                                             const std::u16string& value,
-                                            PopupItemId popup_item_id) override;
+                                            int frontend_id) override;
   void OnSingleFieldSuggestionSelected(const std::u16string& value,
-                                       PopupItemId popup_item_id) override;
+                                       int frontend_id) override;
 
  private:
-  // Handles autocompleting single fields. The `AutocompleteHistoryManager` is
-  // a KeyedService that outlives the `SingleFieldFormFillRouter`.
-  // TODO(crbug.com/1501199): Once WebView doesn't have an
-  // AutocompleteHistoryManager anymore, this should become a raw_ptr instead.
-  raw_ref<AutocompleteHistoryManager> autocomplete_history_manager_;
+  // Handles autocompleting single fields.
+  base::WeakPtr<AutocompleteHistoryManager> autocomplete_history_manager_;
 
-  // Handles autofilling IBAN fields. Can be null on unsupported platforms, but
-  // otherwise outlives the `SingleFieldFormFillRouter`, since it is a
-  // KeyedService.
-  raw_ptr<IbanManager> iban_manager_;
+  // Handles autofilling IBAN fields (can be null for unsupported platforms).
+  base::WeakPtr<IBANManager> iban_manager_;
 
-  // Handles autofilling merchant promo code fields. Can be null on unsupported
-  // platforms, but otherwise outlives the `SingleFieldFormFillRouter`, since it
-  // is a KeyedService.
-  raw_ptr<MerchantPromoCodeManager> merchant_promo_code_manager_;
+  // Handles autofilling merchant promo code fields (can be null for unsupported
+  // platforms).
+  base::WeakPtr<MerchantPromoCodeManager> merchant_promo_code_manager_;
 };
 
 }  // namespace autofill

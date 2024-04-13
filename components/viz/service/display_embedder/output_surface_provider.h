@@ -39,9 +39,6 @@ class OutputSurfaceProvider {
       DisplayCompositorMemoryAndTaskController* gpu_dependency,
       const RendererSettings& renderer_settings,
       const DebugRendererSettings* debug_settings) = 0;
-
-  virtual gpu::SharedImageManager* GetSharedImageManager() = 0;
-  virtual gpu::SyncPointManager* GetSyncPointManager() = 0;
 };
 
 }  // namespace viz

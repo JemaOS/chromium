@@ -5,11 +5,8 @@
 #ifndef COMPONENTS_SYNC_TEST_SYNC_CLIENT_MOCK_H_
 #define COMPONENTS_SYNC_TEST_SYNC_CLIENT_MOCK_H_
 
-#include <map>
-
 #include "base/files/file_path.h"
-#include "components/sync/service/local_data_description.h"
-#include "components/sync/service/sync_client.h"
+#include "components/sync/driver/sync_client.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
 namespace syncer {
@@ -26,18 +23,19 @@ class SyncClientMock : public SyncClient {
   MOCK_METHOD(PrefService*, GetPrefService, (), (override));
   MOCK_METHOD(signin::IdentityManager*, GetIdentityManager, (), (override));
   MOCK_METHOD(base::FilePath, GetLocalSyncBackendFolder, (), (override));
-  MOCK_METHOD(ModelTypeController::TypeVector,
+  MOCK_METHOD(DataTypeController::TypeVector,
               CreateDataTypeControllers,
               (SyncService * sync_service),
+              (override));
+  MOCK_METHOD(invalidation::InvalidationService*,
+              GetInvalidationService,
+              (),
               (override));
   MOCK_METHOD(syncer::SyncInvalidationsService*,
               GetSyncInvalidationsService,
               (),
               (override));
-  MOCK_METHOD(trusted_vault::TrustedVaultClient*,
-              GetTrustedVaultClient,
-              (),
-              (override));
+  MOCK_METHOD(TrustedVaultClient*, GetTrustedVaultClient, (), (override));
   MOCK_METHOD(scoped_refptr<ExtensionsActivity>,
               GetExtensionsActivity,
               (),
@@ -46,24 +44,11 @@ class SyncClientMock : public SyncClient {
               GetSyncApiComponentFactory,
               (),
               (override));
-  MOCK_METHOD(bool, IsCustomPassphraseAllowed, (), (override));
+  MOCK_METHOD(SyncTypePreferenceProvider*,
+              GetPreferenceProvider,
+              (),
+              (override));
   MOCK_METHOD(void, OnLocalSyncTransportDataCleared, (), (override));
-  MOCK_METHOD(bool, IsPasswordSyncAllowed, (), (override));
-  MOCK_METHOD(void,
-              SetPasswordSyncAllowedChangeCb,
-              (const base::RepeatingClosure&),
-              (override));
-  MOCK_METHOD(
-      void,
-      GetLocalDataDescriptions,
-      (ModelTypeSet types,
-       base::OnceCallback<void(std::map<ModelType, LocalDataDescription>)>
-           callback),
-      (override));
-  MOCK_METHOD(void,
-              TriggerLocalDataMigration,
-              (ModelTypeSet types),
-              (override));
 };
 
 }  // namespace syncer

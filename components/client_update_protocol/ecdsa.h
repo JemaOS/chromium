@@ -9,8 +9,9 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <vector>
+
+#include "base/strings/string_piece.h"
 
 namespace client_update_protocol {
 
@@ -44,7 +45,7 @@ class Ecdsa {
   // DER-encoded ASN.1 SubjectPublicKeyInfo containing an ECDSA public key.
   // Returns a NULL pointer on failure.
   static std::unique_ptr<Ecdsa> Create(int key_version,
-                                       const std::string_view& public_key);
+                                       const base::StringPiece& public_key);
 
   // Generates freshness/authentication data for an outgoing ping.
   // |request_body| contains the body of the ping in UTF-8.  On return,
@@ -54,7 +55,7 @@ class Ecdsa {
   // This method will store internal state in this instance used by calls to
   // ValidateResponse(); if you need to have multiple pings in flight,
   // initialize a separate CUP-ECDSA instance for each one.
-  void SignRequest(const std::string_view& request_body,
+  void SignRequest(const base::StringPiece& request_body,
                    std::string* query_params);
 
   // Generates freshness/authentication data for an outgoing ping.
@@ -64,7 +65,7 @@ class Ecdsa {
   // This method will store internal state in this instance used by calls to
   // ValidateResponse(); if you need to have multiple pings in flight,
   // initialize a separate CUP-ECDSA instance for each one.
-  RequestParameters SignRequest(const std::string_view& request_body);
+  RequestParameters SignRequest(const base::StringPiece& request_body);
 
   // Validates a response given to a ping previously signed with
   // SignRequest(). |response_body| contains the body of the response in
@@ -72,8 +73,8 @@ class Ecdsa {
   // hash. Returns true if the response is valid and the observed request hash
   // matches the sent hash.  This method uses internal state that is set by a
   // prior SignRequest() call.
-  bool ValidateResponse(const std::string_view& response_body,
-                        const std::string_view& signature);
+  bool ValidateResponse(const base::StringPiece& response_body,
+                        const base::StringPiece& signature);
 
   // Sets the key and nonce that were used to generate a signature that is baked
   // into a unit test. Note this function encodes |nonce| in decimal, while
@@ -81,7 +82,7 @@ class Ecdsa {
   void OverrideNonceForTesting(int key_version, uint32_t nonce);
 
  private:
-  Ecdsa(int key_version, const std::string_view& public_key);
+  Ecdsa(int key_version, const base::StringPiece& public_key);
 
   // The server keeps multiple signing keys; a version must be sent so that
   // the correct signing key is used to sign the assembled message.

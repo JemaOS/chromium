@@ -10,13 +10,14 @@
 #include <vector>
 
 #include "base/command_line.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/files/file_path.h"
 #include "base/process/memory.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/platform_thread.h"
 #include "components/gwp_asan/buildflags/buildflags.h"
-#include "components/stability_report/user_stream_data_source_win.h"
+#include "components/stability_report/user_stream_data_source.h"
 #include "third_party/crashpad/crashpad/client/crashpad_info.h"
 #include "third_party/crashpad/crashpad/client/simple_string_dictionary.h"
 #include "third_party/crashpad/crashpad/handler/handler_main.h"
@@ -60,7 +61,7 @@ int RunAsCrashpadHandler(const base::CommandLine& command_line,
       L"--" + base::UTF8ToWide(process_type_switch) + L"=";
   const std::wstring user_data_dir_arg_prefix =
       L"--" + base::UTF8ToWide(user_data_dir_switch) + L"=";
-  std::erase_if(argv, [&process_type_arg_prefix,
+  base::EraseIf(argv, [&process_type_arg_prefix,
                        &user_data_dir_arg_prefix](const std::wstring& str) {
     return base::StartsWith(str, process_type_arg_prefix,
                             base::CompareCase::SENSITIVE) ||
@@ -80,9 +81,8 @@ int RunAsCrashpadHandler(const base::CommandLine& command_line,
   argv.clear();
 
   crashpad::UserStreamDataSources user_stream_data_sources;
-
   user_stream_data_sources.push_back(
-      std::make_unique<stability_report::UserStreamDataSourceWin>());
+      std::make_unique<stability_report::UserStreamDataSource>());
 
 #if BUILDFLAG(ENABLE_GWP_ASAN)
   user_stream_data_sources.push_back(

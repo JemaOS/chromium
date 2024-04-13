@@ -4,7 +4,6 @@
 
 #include "components/policy/core/common/cloud/user_cloud_policy_manager.h"
 
-#include <memory>
 #include <string>
 #include <utility>
 
@@ -42,17 +41,17 @@ const base::FilePath::CharType kComponentsDir[] =
 namespace policy {
 
 UserCloudPolicyManager::UserCloudPolicyManager(
-    std::unique_ptr<UserCloudPolicyStore> user_store,
+    std::unique_ptr<UserCloudPolicyStore> store,
     const base::FilePath& component_policy_cache_path,
     std::unique_ptr<CloudExternalDataManager> external_data_manager,
     const scoped_refptr<base::SequencedTaskRunner>& task_runner,
     network::NetworkConnectionTrackerGetter network_connection_tracker_getter)
     : CloudPolicyManager(dm_protocol::kChromeUserPolicyType,
                          std::string(),
-                         std::move(user_store),
+                         store.get(),
                          task_runner,
                          network_connection_tracker_getter),
-      user_store_(static_cast<UserCloudPolicyStore*>(store())),
+      store_(std::move(store)),
       component_policy_cache_path_(component_policy_cache_path),
       external_data_manager_(std::move(external_data_manager)) {}
 
@@ -88,19 +87,12 @@ void UserCloudPolicyManager::Shutdown() {
 }
 
 void UserCloudPolicyManager::SetSigninAccountId(const AccountId& account_id) {
-  if (account_id.is_valid()) {
-    // Start the recorder as it is assumed that there is now a valid managed
-    // account.
-    StartRecordingMetric();
-  }
-
-  user_store_->SetSigninAccountId(account_id);
+  store_->SetSigninAccountId(account_id);
 }
 
-void UserCloudPolicyManager::SetPoliciesRequired(bool required,
-                                                 PolicyFetchReason reason) {
+void UserCloudPolicyManager::SetPoliciesRequired(bool required) {
   policies_required_ = required;
-  RefreshPolicies(reason);
+  RefreshPolicies();
 }
 
 bool UserCloudPolicyManager::ArePoliciesRequired() const {
@@ -136,11 +128,11 @@ void UserCloudPolicyManager::DisconnectAndRemovePolicy() {
   // component policies are also empty at CheckAndPublishPolicy().
   ClearAndDestroyComponentCloudPolicyService();
 
-  // When the |user_store_| is cleared, it informs the |external_data_manager_|
-  // that all external data references have been removed, causing the
+  // When the |store_| is cleared, it informs the |external_data_manager_| that
+  // all external data references have been removed, causing the
   // |external_data_manager_| to clear its cache as well.
-  user_store_->Clear();
-  SetPoliciesRequired(false, PolicyFetchReason::kUnspecified);
+  store_->Clear();
+  SetPoliciesRequired(false);
 }
 
 void UserCloudPolicyManager::GetChromePolicy(PolicyMap* policy_map) {
@@ -171,11 +163,6 @@ bool UserCloudPolicyManager::IsFirstPolicyLoadComplete(
     PolicyDomain domain) const {
   return !policies_required_ ||
          CloudPolicyManager::IsFirstPolicyLoadComplete(domain);
-}
-
-void UserCloudPolicyManager::StartRecordingMetric() {
-  // Starts a recording session by creating the recorder.
-  metrics_recorder_ = std::make_unique<UserPolicyMetricsRecorder>(this);
 }
 
 }  // namespace policy

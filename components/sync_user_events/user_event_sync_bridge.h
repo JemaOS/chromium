@@ -9,7 +9,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +18,7 @@
 #include "components/sync/model/model_type_store.h"
 #include "components/sync/model/model_type_sync_bridge.h"
 #include "components/sync_user_events/global_id_mapper.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace syncer {
 
@@ -36,10 +36,10 @@ class UserEventSyncBridge : public ModelTypeSyncBridge {
 
   // ModelTypeSyncBridge implementation.
   std::unique_ptr<MetadataChangeList> CreateMetadataChangeList() override;
-  std::optional<ModelError> MergeFullSyncData(
+  absl::optional<ModelError> MergeFullSyncData(
       std::unique_ptr<MetadataChangeList> metadata_change_list,
       EntityChangeList entity_data) override;
-  std::optional<ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<MetadataChangeList> metadata_change_list,
       EntityChangeList entity_changes) override;
   void GetData(StorageKeyList storage_keys, DataCallback callback) override;
@@ -59,17 +59,17 @@ class UserEventSyncBridge : public ModelTypeSyncBridge {
   void RecordUserEventImpl(
       std::unique_ptr<sync_pb::UserEventSpecifics> specifics);
 
-  void OnStoreCreated(const std::optional<ModelError>& error,
+  void OnStoreCreated(const absl::optional<ModelError>& error,
                       std::unique_ptr<ModelTypeStore> store);
-  void OnReadAllMetadata(const std::optional<ModelError>& error,
+  void OnReadAllMetadata(const absl::optional<ModelError>& error,
                          std::unique_ptr<MetadataBatch> metadata_batch);
-  void OnCommit(const std::optional<ModelError>& error);
+  void OnCommit(const absl::optional<ModelError>& error);
   void OnReadData(DataCallback callback,
-                  const std::optional<ModelError>& error,
+                  const absl::optional<ModelError>& error,
                   std::unique_ptr<ModelTypeStore::RecordList> data_records,
                   std::unique_ptr<ModelTypeStore::IdList> missing_id_list);
   void OnReadAllData(DataCallback callback,
-                     const std::optional<ModelError>& error,
+                     const absl::optional<ModelError>& error,
                      std::unique_ptr<ModelTypeStore::RecordList> data_records);
 
   void HandleGlobalIdChange(int64_t old_global_id, int64_t new_global_id);
@@ -82,7 +82,7 @@ class UserEventSyncBridge : public ModelTypeSyncBridge {
   std::multimap<int64_t, sync_pb::UserEventSpecifics>
       in_flight_nav_linked_events_;
 
-  const raw_ptr<GlobalIdMapper> global_id_mapper_;
+  raw_ptr<GlobalIdMapper> global_id_mapper_;
 
   base::WeakPtrFactory<UserEventSyncBridge> weak_ptr_factory_{this};
 };

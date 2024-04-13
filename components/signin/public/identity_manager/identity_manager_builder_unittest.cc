@@ -41,11 +41,10 @@ class MockAccountCapabilitiesFetcherFactory
   MockAccountCapabilitiesFetcherFactory() = default;
   ~MockAccountCapabilitiesFetcherFactory() override = default;
 
-  MOCK_METHOD3(
+  MOCK_METHOD2(
       CreateAccountCapabilitiesFetcher,
       std::unique_ptr<AccountCapabilitiesFetcher>(
           const CoreAccountInfo& account_info,
-          AccountCapabilitiesFetcher::FetchPriority fetch_priority,
           AccountCapabilitiesFetcher::OnCompleteCallback on_complete_callback));
 };
 

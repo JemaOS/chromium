@@ -36,7 +36,6 @@ public class ClassLoaderContextWrapperFactory {
 
     @SuppressWarnings("StaticFieldLeak")
     private static Context sLightModeResourceOverrideContext;
-
     @SuppressWarnings("StaticFieldLeak")
     private static Context sDarkModeResourceOverrideContext;
 
@@ -153,9 +152,8 @@ public class ClassLoaderContextWrapperFactory {
             int uiMode = getBaseContext().getResources().getConfiguration().uiMode;
             boolean darkModeEnabled =
                     (uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-            return darkModeEnabled
-                    ? sDarkModeResourceOverrideContext
-                    : sLightModeResourceOverrideContext;
+            return darkModeEnabled ? sDarkModeResourceOverrideContext
+                                   : sLightModeResourceOverrideContext;
         }
 
         private Context getResourceContext() {

@@ -36,33 +36,11 @@ enum class BookmarkEditSource {
   kMaxValue = kOther,
 };
 
-// An enum class to add storage state as a suffix to metrics.
-enum class StorageStateForUma {
-  // Account storage.
-  kAccount,
-  // Local storage that is not being synced at the time the metric is
-  // recorded.
-  kLocalOnly,
-  // Local storage that is being synced at the time the metric is recorded.
-  kSyncEnabled,
-};
-
-// An enum class representing the two JSON files for storing bookmarks, used for
-// suffixing metrics.
-enum class StorageFileForUma {
-  // Represents `kLocalOrSyncableBookmarksFileName`.
-  kLocalOrSyncable,
-  // Represents `kAccountBookmarksFileName`.
-  kAccount,
-};
-
 // Records when a bookmark is added by the user.
-void RecordUrlBookmarkAdded(BookmarkFolderTypeForUMA parent,
-                            StorageStateForUma storage_state);
+void RecordUrlBookmarkAdded(BookmarkFolderTypeForUMA parent);
 
 // Records when a bookmark folder is added by the user.
-void RecordBookmarkFolderAdded(BookmarkFolderTypeForUMA parent,
-                               StorageStateForUma storage_state);
+void RecordBookmarkFolderAdded(BookmarkFolderTypeForUMA parent);
 
 // Records when a bookmark is removed.
 void RecordBookmarkRemoved(BookmarkEditSource source);
@@ -70,8 +48,7 @@ void RecordBookmarkRemoved(BookmarkEditSource source);
 // Records when a bookmark is opened by the user.
 void RecordBookmarkOpened(base::Time now,
                           base::Time date_last_used,
-                          base::Time date_added,
-                          StorageStateForUma storage_state);
+                          base::Time date_added);
 
 // Records when a bookmark or bookmark folder is moved to a different parent
 // folder.
@@ -103,11 +80,6 @@ void RecordCloneBookmarkNode(int num_cloned);
 
 // Records the approximate average node size at startup.
 void RecordAverageNodeSizeAtStartup(size_t size_in_bytes);
-
-// Records whether or not node IDs were reassigned as a result of loading the
-// JSON file representing local-or-syncable bookmarks.
-void RecordIdsReassignedOnProfileLoad(StorageFileForUma storage_file,
-                                      bool ids_reassigned);
 
 }  // namespace metrics
 

@@ -12,11 +12,10 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
-#include "base/apple/bridging.h"
-#include "base/apple/foundation_util.h"
-#include "base/apple/scoped_cftyperef.h"
 #include "base/files/file_path.h"
+#include "base/mac/foundation_util.h"
 #include "base/mac/mac_util.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "base/mac/scoped_ioobject.h"
 
 namespace metrics {
@@ -35,32 +34,31 @@ bool DriveMetricsProvider::HasSeekPenalty(const base::FilePath& path,
   std::string bsd_name("/dev/");
   bsd_name.append(dev_name);
 
-  base::apple::ScopedCFTypeRef<DASessionRef> session(
+  base::ScopedCFTypeRef<DASessionRef> session(
       DASessionCreate(kCFAllocatorDefault));
   if (!session)
     return false;
 
-  base::apple::ScopedCFTypeRef<DADiskRef> disk(DADiskCreateFromBSDName(
-      kCFAllocatorDefault, session.get(), bsd_name.c_str()));
+  base::ScopedCFTypeRef<DADiskRef> disk(
+      DADiskCreateFromBSDName(kCFAllocatorDefault, session, bsd_name.c_str()));
   if (!disk)
     return false;
 
-  base::mac::ScopedIOObject<io_object_t> io_media(
-      DADiskCopyIOMedia(disk.get()));
-  base::apple::ScopedCFTypeRef<CFDictionaryRef> characteristics(
+  base::mac::ScopedIOObject<io_object_t> io_media(DADiskCopyIOMedia(disk));
+  base::ScopedCFTypeRef<CFDictionaryRef> characteristics(
       static_cast<CFDictionaryRef>(IORegistryEntrySearchCFProperty(
-          io_media.get(), kIOServicePlane,
-          CFSTR(kIOPropertyDeviceCharacteristicsKey), kCFAllocatorDefault,
+          io_media, kIOServicePlane, CFSTR(kIOPropertyDeviceCharacteristicsKey),
+          kCFAllocatorDefault,
           kIORegistryIterateRecursively | kIORegistryIterateParents)));
   if (!characteristics)
     return false;
 
-  CFStringRef type_ref = base::apple::GetValueFromDictionary<CFStringRef>(
-      characteristics.get(), CFSTR(kIOPropertyMediumTypeKey));
+  CFStringRef type_ref = base::mac::GetValueFromDictionary<CFStringRef>(
+      characteristics, CFSTR(kIOPropertyMediumTypeKey));
   if (!type_ref)
     return false;
 
-  NSString* type = base::apple::CFToNSPtrCast(type_ref);
+  NSString* type = base::mac::CFToNSCast(type_ref);
   if ([type isEqualToString:@kIOPropertyMediumTypeRotationalKey]) {
     *has_seek_penalty = true;
     return true;

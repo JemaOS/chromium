@@ -23,7 +23,9 @@ namespace viz {
 
 TransferableResourceTracker::TransferableResourceTracker(
     SharedBitmapManager* shared_bitmap_manager)
-    : shared_bitmap_manager_(shared_bitmap_manager) {}
+    : starting_id_(kVizReservedRangeStartId.GetUnsafeValue()),
+      next_id_(kVizReservedRangeStartId.GetUnsafeValue()),
+      shared_bitmap_manager_(shared_bitmap_manager) {}
 
 TransferableResourceTracker::~TransferableResourceTracker() = default;
 
@@ -35,11 +37,13 @@ TransferableResourceTracker::ImportResources(
   // valid.
   CHECK(saved_frame->IsValid());
 
-  std::optional<SurfaceSavedFrame::FrameResult> frame_copy =
+  absl::optional<SurfaceSavedFrame::FrameResult> frame_copy =
       saved_frame->TakeResult();
   const auto& directive = saved_frame->directive();
 
   ResourceFrame resource_frame;
+  resource_frame.root = ImportResource(std::move(frame_copy->root_result));
+
   resource_frame.shared.resize(frame_copy->shared_results.size());
   for (size_t i = 0; i < frame_copy->shared_results.size(); ++i) {
     auto& shared_result = frame_copy->shared_results[i];
@@ -78,9 +82,7 @@ TransferableResourceTracker::ImportResource(
     shared_bitmap_manager_->LocalAllocatedSharedBitmap(
         std::move(output_copy.bitmap), id);
     resource = TransferableResource::MakeSoftware(
-        id, gpu::SyncToken(), output_copy.draw_data.size,
-        SinglePlaneFormat::kRGBA_8888,
-        TransferableResource::ResourceSource::kSharedElementTransition);
+        id, output_copy.draw_data.size, SinglePlaneFormat::kRGBA_8888);
 
     // Remove the bitmap from shared bitmap manager when no longer in use.
     release_callback = base::BindOnce(
@@ -95,8 +97,7 @@ TransferableResourceTracker::ImportResource(
     resource = TransferableResource::MakeGpu(
         output_copy.mailbox, GL_TEXTURE_2D, output_copy.sync_token,
         output_copy.draw_data.size, SinglePlaneFormat::kRGBA_8888,
-        /*is_overlay_candidate=*/false,
-        TransferableResource::ResourceSource::kSharedElementTransition);
+        /*is_overlay_candidate=*/false);
     resource.color_space = output_copy.color_space;
 
     // Run the SingleReleaseCallback when no longer in use.
@@ -110,7 +111,7 @@ TransferableResourceTracker::ImportResource(
     }
   }
 
-  resource.id = id_tracker_.AllocId(/*initial_ref_count=*/1);
+  resource.id = GetNextAvailableResourceId();
   DCHECK(!base::Contains(managed_resources_, resource.id));
   managed_resources_.emplace(
       resource.id,
@@ -123,6 +124,7 @@ TransferableResourceTracker::ImportResource(
 }
 
 void TransferableResourceTracker::ReturnFrame(const ResourceFrame& frame) {
+  UnrefResource(frame.root.resource.id, /*count=*/1);
   for (const auto& shared : frame.shared) {
     if (shared.has_value())
       UnrefResource(shared->resource.id, /*count=*/1);
@@ -131,15 +133,39 @@ void TransferableResourceTracker::ReturnFrame(const ResourceFrame& frame) {
 
 void TransferableResourceTracker::RefResource(ResourceId id) {
   DCHECK(base::Contains(managed_resources_, id));
-  id_tracker_.RefId(id, /*count=*/1);
+  ++managed_resources_[id].ref_count;
 }
 
 void TransferableResourceTracker::UnrefResource(ResourceId id, int count) {
   DCHECK(base::Contains(managed_resources_, id));
-
-  if (id_tracker_.UnrefId(id, count)) {
+  DCHECK_LE(count, managed_resources_[id].ref_count);
+  managed_resources_[id].ref_count -= count;
+  if (managed_resources_[id].ref_count == 0)
     managed_resources_.erase(id);
+}
+
+ResourceId TransferableResourceTracker::GetNextAvailableResourceId() {
+  uint32_t result = next_id_;
+
+  // Since we're working with a limit range of resources, it is a lot more
+  // likely that we will loop back to the starting id after running out of
+  // resource ids. This loop ensures that `next_id_` is set to a value that is
+  // not `result` and is also available in that it's currently tracked by
+  // `managed_resources_`. Note that if we end up looping twice, we fail with a
+  // CHECK since we don't have any available resources for this request.
+  bool looped = false;
+  while (next_id_ == result ||
+         base::Contains(managed_resources_, ResourceId(next_id_))) {
+    if (next_id_ == std::numeric_limits<uint32_t>::max()) {
+      CHECK(!looped);
+      next_id_ = starting_id_;
+      looped = true;
+    } else {
+      ++next_id_;
+    }
   }
+  DCHECK_GE(result, kVizReservedRangeStartId.GetUnsafeValue());
+  return ResourceId(result);
 }
 
 TransferableResourceTracker::TransferableResourceHolder::
@@ -149,7 +175,9 @@ TransferableResourceTracker::TransferableResourceHolder::
 TransferableResourceTracker::TransferableResourceHolder::
     TransferableResourceHolder(const TransferableResource& resource,
                                ResourceReleaseCallback release_callback)
-    : resource(resource), release_callback(std::move(release_callback)) {}
+    : resource(resource),
+      release_callback(std::move(release_callback)),
+      ref_count(1u) {}
 
 TransferableResourceTracker::TransferableResourceHolder::
     ~TransferableResourceHolder() {

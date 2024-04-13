@@ -8,7 +8,6 @@
 #include <string>
 
 #include "base/types/strong_alias.h"
-#include "url/gurl.h"
 
 namespace autofill {
 
@@ -24,9 +23,7 @@ enum class CardUnmaskChallengeOptionType {
   kCvc = 2,
   // Email OTP authentication.
   kEmailOtp = 3,
-  // 3DS authentication.
-  kThreeDomainSecure = 4,
-  kMaxValue = kThreeDomainSecure,
+  kMaxValue = kEmailOtp,
 };
 
 // Indicates the position of the CVC, for example the front or back of the
@@ -70,9 +67,6 @@ struct CardUnmaskChallengeOption {
   // The user-facing text providing additional information for the challenge
   // option, such as the masked phone number that will receive an SMS, etc.
   std::u16string challenge_info = std::u16string();
-
-  // Used for challenge options that need to open a URL when initiated.
-  GURL url_to_open;
 
   // The predetermined length of the input of the challenge.
   size_t challenge_input_length = 0U;

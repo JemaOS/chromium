@@ -8,12 +8,12 @@
 #include <memory>
 
 #include "components/sync/base/sync_mode.h"
-#include "components/sync/service/model_type_controller.h"
+#include "components/sync/driver/model_type_controller.h"
 #include "components/sync/test/fake_model_type_controller_delegate.h"
 
 namespace syncer {
 
-// Fake ModelTypeController implementation based on ModelTypeController that
+// Fake DataTypeController implementation based on ModelTypeController that
 // simulates the state machine of a typical asynchronous data type.
 class FakeDataTypeController : public ModelTypeController {
  public:

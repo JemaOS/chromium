@@ -32,6 +32,7 @@
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
 #include "base/values.h"
+#include "components/cronet/android/buildflags.h"
 #include "components/cronet/android/cronet_jni_headers/CronetUrlRequestContext_jni.h"
 #include "components/cronet/android/cronet_library_loader.h"
 #include "components/cronet/cronet_prefs_manager.h"
@@ -57,6 +58,10 @@
 #include "net/url_request/url_request_context_builder.h"
 #include "net/url_request/url_request_interceptor.h"
 
+#if BUILDFLAG(INTEGRATED_MODE)
+#include "components/cronet/android/cronet_integrated_mode_state.h"
+#endif
+
 using base::android::JavaParamRef;
 using base::android::ScopedJavaLocalRef;
 
@@ -65,8 +70,14 @@ namespace cronet {
 CronetContextAdapter::CronetContextAdapter(
     std::unique_ptr<URLRequestContextConfig> context_config) {
   // Create context and pass ownership of |this| (self) to the context.
-  context_ = new CronetContext(std::move(context_config),
-                               base::WrapUnique<CronetContextAdapter>(this));
+  std::unique_ptr<CronetContextAdapter> self(this);
+#if BUILDFLAG(INTEGRATED_MODE)
+  // Create CronetContext running in integrated network task runner.
+  context_ = new CronetContext(std::move(context_config), std::move(self),
+                               GetIntegratedModeNetworkTaskRunner());
+#else
+  context_ = new CronetContext(std::move(context_config), std::move(self));
+#endif
 }
 
 CronetContextAdapter::~CronetContextAdapter() = default;
@@ -205,10 +216,10 @@ void CronetContextAdapter::StopNetLog(JNIEnv* env,
   context_->StopNetLog();
 }
 
-void CronetContextAdapter::FlushWritePropertiesForTesting(
+bool CronetContextAdapter::GetEnableTelemetry(
     JNIEnv* env,
-    const base::android::JavaParamRef<jobject>& jcaller) {
-  context_->FlushWritePropertiesForTesting();  // IN-TEST
+    const JavaParamRef<jobject>& jcaller) {
+  return context_->enable_telemetry() ? JNI_TRUE : JNI_FALSE;
 }
 
 int CronetContextAdapter::default_load_flags() const {
@@ -224,8 +235,7 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
 
   std::vector<uint8_t> serializedProto;
 
-  base::android::JavaByteArrayToByteVector(env, javaSerializedProto,
-                                           &serializedProto);
+  JavaByteArrayToByteVector(env, javaSerializedProto, &serializedProto);
 
   if (!configOptions.ParseFromArray(serializedProto.data(),
                                     serializedProtoLength)) {
@@ -234,8 +244,9 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
 
   std::unique_ptr<URLRequestContextConfig> url_request_context_config =
       URLRequestContextConfig::CreateURLRequestContextConfig(
-          configOptions.quic_enabled(), configOptions.http2_enabled(),
-          configOptions.brotli_enabled(),
+          configOptions.quic_enabled(),
+          configOptions.quic_default_user_agent_id(),
+          configOptions.http2_enabled(), configOptions.brotli_enabled(),
           static_cast<URLRequestContextConfig::HttpCacheType>(
               configOptions.http_cache_mode()),
           configOptions.http_cache_max_size(), configOptions.disable_cache(),
@@ -248,8 +259,8 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
           configOptions.bypass_public_key_pinning_for_local_trust_anchors(),
           configOptions.network_thread_priority() >= -20 &&
                   configOptions.network_thread_priority() <= 19
-              ? std::optional<double>(configOptions.network_thread_priority())
-              : std::optional<double>());
+              ? absl::optional<double>(configOptions.network_thread_priority())
+              : absl::optional<double>());
   return reinterpret_cast<jlong>(url_request_context_config.release());
 }
 
@@ -319,12 +330,20 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextAdapter(
   return reinterpret_cast<jlong>(context_adapter);
 }
 
+static jint JNI_CronetUrlRequestContext_SetMinLogLevel(JNIEnv* env,
+                                                       jint jlog_level) {
+  jint old_log_level = static_cast<jint>(logging::GetMinLogLevel());
+  // MinLogLevel is global, shared by all URLRequestContexts.
+  logging::SetMinLogLevel(static_cast<int>(jlog_level));
+  return old_log_level;
+}
+
 static ScopedJavaLocalRef<jbyteArray>
 JNI_CronetUrlRequestContext_GetHistogramDeltas(JNIEnv* env) {
   std::vector<uint8_t> data;
   if (!metrics::HistogramManager::GetInstance()->GetDeltas(&data))
     return ScopedJavaLocalRef<jbyteArray>();
-  return base::android::ToJavaByteArray(env, data);
+  return base::android::ToJavaByteArray(env, data.data(), data.size());
 }
 
 }  // namespace cronet

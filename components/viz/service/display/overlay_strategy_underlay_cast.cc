@@ -56,13 +56,10 @@ void OverlayStrategyUnderlayCast::Propose(
   QuadList& quad_list = render_pass->quad_list;
   OverlayCandidate candidate;
   auto overlay_iter = quad_list.end();
-
-  OverlayCandidateFactory::OverlayContext context;
-  context.supports_mask_filter = true;
   OverlayCandidateFactory candidate_factory = OverlayCandidateFactory(
       render_pass, resource_provider, surface_damage_rect_list,
       &output_color_matrix, GetPrimaryPlaneDisplayRect(primary_plane),
-      &render_pass_filters, context);
+      &render_pass_filters);
 
   // Original code did reverse iteration.
   // Here we do forward but find the last one. which should be the same thing.
@@ -86,7 +83,7 @@ void OverlayStrategyUnderlayCast::Propose(
   }
 
   if (overlay_iter != quad_list.end()) {
-    candidates->emplace_back(overlay_iter, candidate, this);
+    candidates->push_back({overlay_iter, candidate, this});
   }
 }
 
@@ -108,14 +105,10 @@ bool OverlayStrategyUnderlayCast::Attempt(
   QuadList& quad_list = render_pass->quad_list;
   bool found_underlay = false;
   gfx::Rect content_rect;
-
-  OverlayCandidateFactory::OverlayContext context;
-  context.supports_mask_filter = true;
-
   OverlayCandidateFactory candidate_factory = OverlayCandidateFactory(
       render_pass, resource_provider, surface_damage_rect_list,
       &output_color_matrix, GetPrimaryPlaneDisplayRect(primary_plane),
-      &render_pass_filters, context);
+      &render_pass_filters);
 
   for (const auto* quad : base::Reversed(quad_list)) {
     if (OverlayCandidate::IsInvisibleQuad(quad))

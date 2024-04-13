@@ -16,8 +16,6 @@
 #include "base/task/thread_pool.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
-#include "base/types/expected.h"
-#include "base/types/expected_macros.h"
 #include "components/reporting/encryption/decryption.h"
 #include "components/reporting/encryption/primitives.h"
 #include "components/reporting/encryption/testing_primitives.h"
@@ -30,8 +28,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 using ::testing::Eq;
-using ::testing::Property;
-using ::testing::StrEq;
+using ::testing::Ne;
 
 namespace reporting {
 namespace {
@@ -42,23 +39,24 @@ class EncryptionTest : public ::testing::Test {
 
   void SetUp() override {
     auto encryptor_result = Encryptor::Create();
-    ASSERT_TRUE(encryptor_result.has_value()) << encryptor_result.error();
-    encryptor_ = std::move(encryptor_result.value());
+    ASSERT_OK(encryptor_result.status()) << encryptor_result.status();
+    encryptor_ = std::move(encryptor_result.ValueOrDie());
 
     auto decryptor_result = test::Decryptor::Create();
-    ASSERT_TRUE(decryptor_result.has_value()) << decryptor_result.error();
-    decryptor_ = std::move(decryptor_result.value());
+    ASSERT_OK(decryptor_result.status()) << decryptor_result.status();
+    decryptor_ = std::move(decryptor_result.ValueOrDie());
   }
 
-  StatusOr<EncryptedRecord> EncryptSync(std::string_view data) {
+  StatusOr<EncryptedRecord> EncryptSync(base::StringPiece data) {
     test::TestEvent<StatusOr<Encryptor::Handle*>> open_encrypt;
     encryptor_->OpenRecord(open_encrypt.cb());
-    ASSIGN_OR_RETURN(Encryptor::Handle* const enc_handle,
-                     open_encrypt.result());
+    auto open_encrypt_result = open_encrypt.result();
+    RETURN_IF_ERROR(open_encrypt_result.status());
+    Encryptor::Handle* const enc_handle = open_encrypt_result.ValueOrDie();
 
     test::TestEvent<Status> add_encrypt;
     enc_handle->AddToRecord(data, add_encrypt.cb());
-    RETURN_IF_ERROR_STATUS(base::unexpected(add_encrypt.result()));
+    RETURN_IF_ERROR(add_encrypt.result());
 
     EncryptedRecord encrypted;
     test::TestEvent<Status> close_encrypt;
@@ -66,15 +64,15 @@ class EncryptionTest : public ::testing::Test {
         [](EncryptedRecord* encrypted,
            base::OnceCallback<void(Status)> close_cb,
            StatusOr<EncryptedRecord> result) {
-          if (!result.has_value()) {
-            std::move(close_cb).Run(result.error());
+          if (!result.ok()) {
+            std::move(close_cb).Run(result.status());
             return;
           }
-          *encrypted = result.value();
+          *encrypted = result.ValueOrDie();
           std::move(close_cb).Run(Status::StatusOK());
         },
         base::Unretained(&encrypted), close_encrypt.cb()));
-    RETURN_IF_ERROR_STATUS(base::unexpected(close_encrypt.result()));
+    RETURN_IF_ERROR(close_encrypt.result());
     return encrypted;
   }
 
@@ -83,34 +81,36 @@ class EncryptionTest : public ::testing::Test {
           encrypted) {
     test::TestEvent<StatusOr<test::Decryptor::Handle*>> open_decrypt;
     decryptor_->OpenRecord(encrypted.first, open_decrypt.cb());
-    ASSIGN_OR_RETURN(test::Decryptor::Handle* const dec_handle,
-                     open_decrypt.result());
+    auto open_decrypt_result = open_decrypt.result();
+    RETURN_IF_ERROR(open_decrypt_result.status());
+    test::Decryptor::Handle* const dec_handle =
+        open_decrypt_result.ValueOrDie();
 
     test::TestEvent<Status> add_decrypt;
     dec_handle->AddToRecord(encrypted.second, add_decrypt.cb());
-    RETURN_IF_ERROR_STATUS(base::unexpected(add_decrypt.result()));
+    RETURN_IF_ERROR(add_decrypt.result());
 
     std::string decrypted_string;
     test::TestEvent<Status> close_decrypt;
     dec_handle->CloseRecord(base::BindOnce(
         [](std::string* decrypted_string,
            base::OnceCallback<void(Status)> close_cb,
-           StatusOr<std::string_view> result) {
-          if (!result.has_value()) {
-            std::move(close_cb).Run(result.error());
+           StatusOr<base::StringPiece> result) {
+          if (!result.ok()) {
+            std::move(close_cb).Run(result.status());
             return;
           }
-          *decrypted_string = std::string(result.value());
+          *decrypted_string = std::string(result.ValueOrDie());
           std::move(close_cb).Run(Status::StatusOK());
         },
         base::Unretained(&decrypted_string), close_decrypt.cb()));
-    RETURN_IF_ERROR_STATUS(base::unexpected(close_decrypt.result()));
+    RETURN_IF_ERROR(close_decrypt.result());
     return decrypted_string;
   }
 
   StatusOr<std::string> DecryptMatchingSecret(
       Encryptor::PublicKeyId public_key_id,
-      std::string_view encrypted_key) {
+      base::StringPiece encrypted_key) {
     // Retrieve private key that matches public key hash.
     test::TestEvent<StatusOr<std::string>> retrieve_private_key;
     decryptor_->RetrieveMatchingPrivateKey(public_key_id,
@@ -143,7 +143,7 @@ class EncryptionTest : public ::testing::Test {
     encryptor_->UpdateAsymmetricKey(
         std::string(reinterpret_cast<const char*>(public_value), kKeySize),
         new_public_key_id, set_public_key.cb());
-    RETURN_IF_ERROR_STATUS(set_public_key.result());
+    RETURN_IF_ERROR(set_public_key.result());
     return Status::StatusOK();
   }
 
@@ -163,22 +163,21 @@ TEST_F(EncryptionTest, EncryptAndDecrypt) {
 
   // Encrypt the test string using the last public value.
   const auto encrypted_result = EncryptSync(kTestString);
-  ASSERT_TRUE(encrypted_result.has_value()) << encrypted_result.error();
+  ASSERT_OK(encrypted_result.status()) << encrypted_result.status();
 
   // Decrypt shared secret with private asymmetric key.
   auto decrypt_secret_result = DecryptMatchingSecret(
-      encrypted_result.value().encryption_info().public_key_id(),
-      encrypted_result.value().encryption_info().encryption_key());
-  ASSERT_TRUE(decrypt_secret_result.has_value())
-      << decrypt_secret_result.error();
+      encrypted_result.ValueOrDie().encryption_info().public_key_id(),
+      encrypted_result.ValueOrDie().encryption_info().encryption_key());
+  ASSERT_OK(decrypt_secret_result.status()) << decrypt_secret_result.status();
 
   // Decrypt back.
   const auto decrypted_result = DecryptSync(
-      std::make_pair(decrypt_secret_result.value(),
-                     encrypted_result.value().encrypted_wrapped_record()));
-  ASSERT_TRUE(decrypted_result.has_value()) << decrypted_result.error();
+      std::make_pair(decrypt_secret_result.ValueOrDie(),
+                     encrypted_result.ValueOrDie().encrypted_wrapped_record()));
+  ASSERT_OK(decrypted_result.status()) << decrypted_result.status();
 
-  EXPECT_THAT(decrypted_result.value(), StrEq(kTestString));
+  EXPECT_THAT(decrypted_result.ValueOrDie(), ::testing::StrEq(kTestString));
 }
 
 TEST_F(EncryptionTest, NoPublicKey) {
@@ -186,9 +185,7 @@ TEST_F(EncryptionTest, NoPublicKey) {
 
   // Attempt to encrypt the test string.
   const auto encrypted_result = EncryptSync(kTestString);
-  EXPECT_THAT(encrypted_result,
-              Property(&StatusOr<EncryptedRecord>::error,
-                       Property(&Status::error_code, Eq(error::NOT_FOUND))));
+  EXPECT_EQ(encrypted_result.status().error_code(), error::NOT_FOUND);
 }
 
 TEST_F(EncryptionTest, EncryptAndDecryptMultiple) {
@@ -204,8 +201,8 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultiple) {
   for (const char* test_string :
        {kTestStrings[0], kTestStrings[1], kTestStrings[2]}) {
     const auto encrypted_result = EncryptSync(test_string);
-    ASSERT_TRUE(encrypted_result.has_value()) << encrypted_result.error();
-    encrypted_records.emplace_back(encrypted_result.value());
+    ASSERT_OK(encrypted_result.status()) << encrypted_result.status();
+    encrypted_records.emplace_back(encrypted_result.ValueOrDie());
   }
 
   // 3. Register second key pair.
@@ -214,8 +211,8 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultiple) {
   // 4. Encrypt 2 test strings.
   for (const char* test_string : {kTestStrings[3], kTestStrings[4]}) {
     const auto encrypted_result = EncryptSync(test_string);
-    ASSERT_TRUE(encrypted_result.has_value()) << encrypted_result.error();
-    encrypted_records.emplace_back(encrypted_result.value());
+    ASSERT_OK(encrypted_result.status()) << encrypted_result.status();
+    encrypted_records.emplace_back(encrypted_result.ValueOrDie());
   }
 
   // 3. Register third key pair.
@@ -224,8 +221,8 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultiple) {
   // 4. Encrypt one more test strings.
   for (const char* test_string : {kTestStrings[5]}) {
     const auto encrypted_result = EncryptSync(test_string);
-    ASSERT_TRUE(encrypted_result.has_value()) << encrypted_result.error();
-    encrypted_records.emplace_back(encrypted_result.value());
+    ASSERT_OK(encrypted_result.status()) << encrypted_result.status();
+    encrypted_records.emplace_back(encrypted_result.ValueOrDie());
   }
 
   // For every encrypted record:
@@ -234,17 +231,17 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultiple) {
     auto decrypt_secret_result = DecryptMatchingSecret(
         encrypted_records[i].encryption_info().public_key_id(),
         encrypted_records[i].encryption_info().encryption_key());
-    ASSERT_TRUE(decrypt_secret_result.has_value())
-        << decrypt_secret_result.error();
+    ASSERT_OK(decrypt_secret_result.status()) << decrypt_secret_result.status();
 
     // Decrypt back.
     const auto decrypted_result = DecryptSync(
-        std::make_pair(decrypt_secret_result.value(),
+        std::make_pair(decrypt_secret_result.ValueOrDie(),
                        encrypted_records[i].encrypted_wrapped_record()));
-    ASSERT_TRUE(decrypted_result.has_value()) << decrypted_result.error();
+    ASSERT_OK(decrypted_result.status()) << decrypted_result.status();
 
     // Verify match.
-    EXPECT_THAT(decrypted_result.value(), StrEq(kTestStrings[i]));
+    EXPECT_THAT(decrypted_result.ValueOrDie(),
+                ::testing::StrEq(kTestStrings[i]));
   }
 }
 
@@ -253,8 +250,8 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
   class SingleEncryptionContext {
    public:
     SingleEncryptionContext(
-        std::string_view test_string,
-        std::string_view public_key,
+        base::StringPiece test_string,
+        base::StringPiece public_key,
         Encryptor::PublicKeyId public_key_id,
         scoped_refptr<Encryptor> encryptor,
         base::OnceCallback<void(StatusOr<EncryptedRecord>)> response)
@@ -269,7 +266,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
         delete;
 
     ~SingleEncryptionContext() {
-      CHECK(!response_) << "Self-destruct without prior response";
+      DCHECK(!response_) << "Self-destruct without prior response";
     }
 
     void Start() {
@@ -289,7 +286,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
           base::BindOnce(
               [](SingleEncryptionContext* self, Status status) {
                 if (!status.ok()) {
-                  self->Respond(base::unexpected(status));
+                  self->Respond(status);
                   return;
                 }
                 base::ThreadPool::PostTask(
@@ -303,15 +300,15 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
       encryptor_->OpenRecord(base::BindOnce(
           [](SingleEncryptionContext* self,
              StatusOr<Encryptor::Handle*> handle_result) {
-            if (!handle_result.has_value()) {
-              self->Respond(base::unexpected(handle_result.error()));
+            if (!handle_result.ok()) {
+              self->Respond(handle_result.status());
               return;
             }
             base::ThreadPool::PostTask(
                 FROM_HERE,
                 base::BindOnce(&SingleEncryptionContext::AddToRecord,
                                base::Unretained(self),
-                               base::Unretained(handle_result.value())));
+                               base::Unretained(handle_result.ValueOrDie())));
           },
           base::Unretained(this)));
     }
@@ -322,7 +319,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
               [](SingleEncryptionContext* self, Encryptor::Handle* handle,
                  Status status) {
                 if (!status.ok()) {
-                  self->Respond(base::unexpected(status));
+                  self->Respond(status);
                   return;
                 }
                 base::ThreadPool::PostTask(
@@ -356,7 +353,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
     SingleDecryptionContext(
         const EncryptedRecord& encrypted_record,
         scoped_refptr<test::Decryptor> decryptor,
-        base::OnceCallback<void(StatusOr<std::string_view>)> response)
+        base::OnceCallback<void(StatusOr<base::StringPiece>)> response)
         : encrypted_record_(encrypted_record),
           decryptor_(decryptor),
           response_(std::move(response)) {}
@@ -366,7 +363,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
         delete;
 
     ~SingleDecryptionContext() {
-      CHECK(!response_) << "Self-destruct without prior response";
+      DCHECK(!response_) << "Self-destruct without prior response";
     }
 
     void Start() {
@@ -377,7 +374,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
     }
 
    private:
-    void Respond(StatusOr<std::string_view> result) {
+    void Respond(StatusOr<base::StringPiece> result) {
       std::move(response_).Run(result);
       delete this;
     }
@@ -389,48 +386,50 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
           base::BindOnce(
               [](SingleDecryptionContext* self,
                  StatusOr<std::string> private_key_result) {
-                if (!private_key_result.has_value()) {
-                  self->Respond(base::unexpected(private_key_result.error()));
+                if (!private_key_result.ok()) {
+                  self->Respond(private_key_result.status());
                   return;
                 }
                 base::ThreadPool::PostTask(
                     FROM_HERE,
                     base::BindOnce(
                         &SingleDecryptionContext::DecryptSharedSecret,
-                        base::Unretained(self), private_key_result.value()));
+                        base::Unretained(self),
+                        private_key_result.ValueOrDie()));
               },
               base::Unretained(this)));
     }
 
-    void DecryptSharedSecret(std::string_view private_key) {
+    void DecryptSharedSecret(base::StringPiece private_key) {
       // Decrypt shared secret from private key and peer public key.
       auto shared_secret_result = decryptor_->DecryptSecret(
           private_key, encrypted_record_.encryption_info().encryption_key());
-      if (!shared_secret_result.has_value()) {
-        Respond(base::unexpected(shared_secret_result.error()));
+      if (!shared_secret_result.ok()) {
+        Respond(shared_secret_result.status());
         return;
       }
       base::ThreadPool::PostTask(
-          FROM_HERE,
-          base::BindOnce(&SingleDecryptionContext::OpenRecord,
-                         base::Unretained(this), shared_secret_result.value()));
+          FROM_HERE, base::BindOnce(&SingleDecryptionContext::OpenRecord,
+                                    base::Unretained(this),
+                                    shared_secret_result.ValueOrDie()));
     }
 
-    void OpenRecord(std::string_view shared_secret) {
+    void OpenRecord(base::StringPiece shared_secret) {
       decryptor_->OpenRecord(
           shared_secret,
           base::BindOnce(
               [](SingleDecryptionContext* self,
                  StatusOr<test::Decryptor::Handle*> handle_result) {
-                if (!handle_result.has_value()) {
-                  self->Respond(base::unexpected(handle_result.error()));
+                if (!handle_result.ok()) {
+                  self->Respond(handle_result.status());
                   return;
                 }
                 base::ThreadPool::PostTask(
                     FROM_HERE,
-                    base::BindOnce(&SingleDecryptionContext::AddToRecord,
-                                   base::Unretained(self),
-                                   base::Unretained(handle_result.value())));
+                    base::BindOnce(
+                        &SingleDecryptionContext::AddToRecord,
+                        base::Unretained(self),
+                        base::Unretained(handle_result.ValueOrDie())));
               },
               base::Unretained(this)));
     }
@@ -442,7 +441,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
               [](SingleDecryptionContext* self, test::Decryptor::Handle* handle,
                  Status status) {
                 if (!status.ok()) {
-                  self->Respond(base::unexpected(status));
+                  self->Respond(status);
                   return;
                 }
                 base::ThreadPool::PostTask(
@@ -457,7 +456,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
     void CloseRecord(test::Decryptor::Handle* handle) {
       handle->CloseRecord(base::BindOnce(
           [](SingleDecryptionContext* self,
-             StatusOr<std::string_view> decryption_result) {
+             StatusOr<base::StringPiece> decryption_result) {
             self->Respond(decryption_result);
           },
           base::Unretained(this)));
@@ -466,7 +465,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
    private:
     const EncryptedRecord encrypted_record_;
     const scoped_refptr<test::Decryptor> decryptor_;
-    base::OnceCallback<void(StatusOr<std::string_view>)> response_;
+    base::OnceCallback<void(StatusOr<base::StringPiece>)> response_;
   };
 
   constexpr std::array<const char*, 6> kTestStrings = {
@@ -494,8 +493,8 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
     base::ThreadPool::PostTask(
         FROM_HERE,
         base::BindOnce(
-            [](std::string_view private_key_string,
-               std::string_view public_key_string,
+            [](base::StringPiece private_key_string,
+               base::StringPiece public_key_string,
                scoped_refptr<test::Decryptor> decryptor,
                base::OnceCallback<void(StatusOr<Encryptor::PublicKeyId>)>
                    done_cb) {
@@ -508,8 +507,8 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
   // Verify registration success.
   for (auto& record_result : record_results) {
     const auto result = record_result.result();
-    ASSERT_TRUE(result.has_value()) << result.error();
-    public_value_ids.push_back(result.value());
+    ASSERT_OK(result.status()) << result.status();
+    public_value_ids.push_back(result.ValueOrDie());
   }
 
   // Encrypt all records in parallel.
@@ -530,20 +529,20 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
   for (size_t i = 0; i < results.size(); ++i) {
     // Verify encryption success.
     const auto result = results[i].result();
-    ASSERT_TRUE(result.has_value()) << result.error();
+    ASSERT_OK(result.status()) << result.status();
     // Decrypt and compare encrypted_record.
     (new SingleDecryptionContext(
-         result.value(), decryptor_,
+         result.ValueOrDie(), decryptor_,
          base::BindOnce(
              [](base::OnceCallback<void(StatusOr<std::string>)>
                     decryption_result,
-                StatusOr<std::string_view> result) {
-               if (!result.has_value()) {
-                 std::move(decryption_result)
-                     .Run(base::unexpected(result.error()));
+                StatusOr<base::StringPiece> result) {
+               if (!result.ok()) {
+                 std::move(decryption_result).Run(result.status());
                  return;
                }
-               std::move(decryption_result).Run(std::string(result.value()));
+               std::move(decryption_result)
+                   .Run(std::string(result.ValueOrDie()));
              },
              decryption_results[i].cb())))
         ->Start();
@@ -552,9 +551,10 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
   // Verify decryption results.
   for (size_t i = 0; i < decryption_results.size(); ++i) {
     const auto decryption_result = decryption_results[i].result();
-    ASSERT_TRUE(decryption_result.has_value()) << decryption_result.error();
+    ASSERT_OK(decryption_result.status()) << decryption_result.status();
     // Verify data match.
-    EXPECT_THAT(decryption_result.value(), StrEq(kTestStrings[i]));
+    EXPECT_THAT(decryption_result.ValueOrDie(),
+                ::testing::StrEq(kTestStrings[i]));
   }
 }
 

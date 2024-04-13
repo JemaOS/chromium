@@ -5,9 +5,9 @@
 #include "components/viz/service/display_embedder/output_device_backing.h"
 
 #include <algorithm>
-#include <vector>
 
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/debug/alias.h"
 #include "base/logging.h"
 #include "base/memory/unsafe_shared_memory_region.h"
@@ -25,10 +25,8 @@ constexpr size_t kMaxBitmapSizeBytes = 4 * (16384 * 8192);
 // bytes. If |viewport_size| is not a valid size then this will return false.
 bool GetViewportSizeInBytes(const gfx::Size& viewport_size, size_t* out_bytes) {
   size_t bytes;
-  if (!ResourceSizes::MaybeSizeInBytes(viewport_size,
-                                       SinglePlaneFormat::kRGBA_8888, &bytes)) {
+  if (!ResourceSizes::MaybeSizeInBytes(viewport_size, RGBA_8888, &bytes))
     return false;
-  }
   if (bytes > kMaxBitmapSizeBytes)
     return false;
   *out_bytes = bytes;
@@ -50,9 +48,8 @@ void OutputDeviceBacking::ClientResized() {
 
   // Otherwise we need to allocate a new shared memory region and clients
   // should re-request it.
-  for (OutputDeviceBacking::Client* client : clients_) {
+  for (auto* client : clients_)
     client->ReleaseCanvas();
-  }
 
   region_ = {};
   created_shm_bytes_ = 0;
@@ -64,7 +61,7 @@ void OutputDeviceBacking::RegisterClient(Client* client) {
 
 void OutputDeviceBacking::UnregisterClient(Client* client) {
   DCHECK(base::Contains(clients_, client));
-  std::erase(clients_, client);
+  base::Erase(clients_, client);
   ClientResized();
 }
 
@@ -99,7 +96,7 @@ base::UnsafeSharedMemoryRegion* OutputDeviceBacking::GetSharedMemoryRegion(
 size_t OutputDeviceBacking::GetMaxViewportBytes() {
   // Minimum byte size is 1 because creating a 0-byte-long SharedMemory fails.
   size_t max_bytes = 1;
-  for (OutputDeviceBacking::Client* client : clients_) {
+  for (auto* client : clients_) {
     size_t current_bytes;
     if (!GetViewportSizeInBytes(client->GetViewportPixelSize(), &current_bytes))
       continue;

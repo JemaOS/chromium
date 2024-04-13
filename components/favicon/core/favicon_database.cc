@@ -7,11 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <algorithm>
-#include <bit>
 #include <string>
 #include <tuple>
 #include <utility>
 
+#include "base/bits.h"
 #include "base/debug/alias.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
@@ -28,10 +28,11 @@
 #include "sql/recovery.h"
 #include "sql/statement.h"
 #include "sql/transaction.h"
+#include "third_party/sqlite/sqlite3.h"
 #include "url/origin.h"
 
 #if BUILDFLAG(IS_APPLE)
-#include "base/apple/backup_util.h"
+#include "base/mac/backup_util.h"
 #endif
 
 namespace favicon {
@@ -188,18 +189,22 @@ bool InitIndices(sql::Database* db) {
 }
 
 void DatabaseErrorCallback(sql::Database* db,
+                           const base::FilePath& db_path,
                            int extended_error,
                            sql::Statement* stmt) {
   // TODO(shess): Assert that this is running on a safe thread.
   // AFAICT, should be the history thread, but at this level I can't
   // see how to reach that.
 
-  // Attempt to recover a corrupt database, if it is eligible to be recovered.
-  if (sql::Recovery::RecoverIfPossible(
-          db, extended_error,
-          sql::Recovery::Strategy::kRecoverWithMetaVersionOrRaze)) {
-    // Recovery was attempted. The database handle has been poisoned and the
-    // error callback has been reset.
+  // Attempt to recover corrupt databases.
+  if (sql::Recovery::ShouldRecover(extended_error)) {
+    // NOTE(shess): This approach is valid as of version 8.  When bumping the
+    // version, it will PROBABLY remain valid, but consider whether any schema
+    // changes might break automated recovery.
+    DCHECK_EQ(8, kCurrentVersionNumber);
+
+    // Prevent reentrant calls.
+    db->reset_error_callback();
 
     // TODO(shess): Is it possible/likely to have broken foreign-key
     // issues with the tables?
@@ -211,7 +216,15 @@ void DatabaseErrorCallback(sql::Database* db,
     // and sequence the statements, as it is basically a form of garbage
     // collection.
 
-    // Signal the test-expectation framework that the error was handled.
+    // After this call, the |db| handle is poisoned so that future calls will
+    // return errors until the handle is re-opened.
+    sql::Recovery::RecoverDatabaseWithMetaVersion(db, db_path);
+
+    // The DLOG(FATAL) below is intended to draw immediate attention to errors
+    // in newly-written code.  Database corruption is generally a result of OS
+    // or hardware issues, not coding errors at the client level, so displaying
+    // the error would probably lead to confusion.  The ignored call signals the
+    // test-expectation framework that the error was handled.
     std::ignore = sql::Database::IsExpectedSqliteError(extended_error);
     return;
   }
@@ -236,7 +249,11 @@ bool FaviconDatabase::IconMappingEnumerator::GetNextIconMapping(
 }
 
 FaviconDatabase::FaviconDatabase()
-    : db_({// Favicons db only stores favicons, so we don't need that big a page
+    : db_({// Run the database in exclusive mode. Nobody else should be
+           // accessing the database while we're running, and this will give
+           // somewhat improved perf.
+           .exclusive_locking = true,
+           // Favicons db only stores favicons, so we don't need that big a page
            // size or cache.
            .page_size = 2048,
            .cache_size = 32}) {}
@@ -727,11 +744,11 @@ bool FaviconDatabase::GetIconMappingsForPageURL(
   return result;
 }
 
-std::optional<GURL> FaviconDatabase::FindFirstPageURLForHost(
+absl::optional<GURL> FaviconDatabase::FindFirstPageURLForHost(
     const GURL& url,
     const favicon_base::IconTypeSet& required_icon_types) {
   if (url.host().empty())
-    return std::nullopt;
+    return absl::nullopt;
 
   sql::Statement statement(
       db_.GetCachedStatement(SQL_FROM_HERE,
@@ -760,9 +777,9 @@ std::optional<GURL> FaviconDatabase::FindFirstPageURLForHost(
         FaviconDatabase::FromPersistedIconType(statement.ColumnInt(1));
 
     if (required_icon_types.count(icon_type) != 0)
-      return std::make_optional(GURL(statement.ColumnString(0)));
+      return absl::make_optional(GURL(statement.ColumnString(0)));
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 IconMappingID FaviconDatabase::AddIconMapping(const GURL& page_url,
@@ -986,7 +1003,7 @@ favicon_base::IconType FaviconDatabase::FromPersistedIconType(int icon_type) {
   if (icon_type == 0)
     return favicon_base::IconType::kInvalid;
 
-  int val = std::bit_width<uint32_t>(icon_type);
+  int val = 1 + base::bits::Log2Floor(icon_type);
   if (val > static_cast<int>(favicon_base::IconType::kMax))
     return favicon_base::IconType::kInvalid;
 
@@ -996,12 +1013,9 @@ favicon_base::IconType FaviconDatabase::FromPersistedIconType(int icon_type) {
 sql::InitStatus FaviconDatabase::OpenDatabase(sql::Database* db,
                                               const base::FilePath& db_name) {
   db->set_histogram_tag("Thumbnail");
+  db->set_error_callback(
+      base::BindRepeating(&DatabaseErrorCallback, db, db_name));
 
-  // `OpenDatabase()` may be called repeatedly on the same `db`. Ensure that we
-  // don't attempt to overwrite an existing error callback.
-  if (!db_.has_error_callback()) {
-    db->set_error_callback(base::BindRepeating(&DatabaseErrorCallback, db));
-  }
   if (!db->Open(db_name))
     return sql::INIT_FAILURE;
   db->Preload();
@@ -1016,11 +1030,9 @@ sql::InitStatus FaviconDatabase::InitImpl(const base::FilePath& db_name) {
 
   // Clear databases which are too old to process.
   DCHECK_LT(kDeprecatedVersionNumber, kCurrentVersionNumber);
-  if (!sql::MetaTable::RazeIfIncompatible(
-          &db_, /*lowest_supported_version=*/kDeprecatedVersionNumber + 1,
-          kCurrentVersionNumber)) {
-    return sql::INIT_FAILURE;
-  }
+  sql::MetaTable::RazeIfIncompatible(
+      &db_, /*lowest_supported_version=*/kDeprecatedVersionNumber + 1,
+      kCurrentVersionNumber);
 
   // TODO(shess): Sqlite.Version.Thumbnail shows versions 22, 23, and
   // 25.  Future versions are not destroyed because that could lead to
@@ -1037,7 +1049,7 @@ sql::InitStatus FaviconDatabase::InitImpl(const base::FilePath& db_name) {
 
 #if BUILDFLAG(IS_APPLE)
   // Exclude the favicons file from backups.
-  base::apple::SetBackupExclusion(db_name);
+  base::mac::SetBackupExclusion(db_name);
 #endif
 
   // thumbnails table has been obsolete for a long time, remove any detritus.

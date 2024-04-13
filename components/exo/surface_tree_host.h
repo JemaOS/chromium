@@ -11,45 +11,33 @@
 #include "base/containers/queue.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/scoped_observation.h"
+#include "components/exo/layer_tree_frame_sink_holder.h"
 #include "components/exo/surface.h"
 #include "components/exo/surface_delegate.h"
 #include "components/viz/common/gpu/context_lost_observer.h"
-#include "components/viz/common/quads/compositor_frame.h"
-#include "components/viz/common/surfaces/frame_sink_id.h"
-#include "ui/display/manager/display_manager_observer.h"
+#include "components/viz/common/quads/compositor_frame_metadata.h"
+#include "ui/display/display_observer.h"
 #include "ui/display/types/display_constants.h"
-#include "ui/gfx/geometry/rect_f.h"
-#include "ui/gfx/geometry/rounded_corners_f.h"
+#include "ui/gfx/geometry/rect.h"
 
 namespace aura {
 class Window;
 }  // namespace aura
 
 namespace viz {
-class RasterContextProvider;
+class ContextProvider;
 }
 
 namespace exo {
 class LayerTreeFrameSinkHolder;
 
-// Notifies viz that exo doesn't want to throttle sending
-// `DidReceiveCompositorFrameAck` and `ReclaimResources`. We don't want exo to
-// merge those into OnBeginFrame as that makes clients of exo to throttle as
-// well given frame callbacks as well as buffers are sent/released in a late
-// manner.
-BASE_DECLARE_FEATURE(kExoDisableBeginFrameAcks);
-
 // This class provides functionality for hosting a surface tree. The surface
 // tree is hosted in the |host_window_|.
 class SurfaceTreeHost : public SurfaceDelegate,
-                        public display::DisplayManagerObserver,
-                        public ui::LayerOwner::Observer,
+                        public display::DisplayObserver,
                         public viz::ContextLostObserver {
  public:
   explicit SurfaceTreeHost(const std::string& window_name);
-  SurfaceTreeHost(const std::string& window_name,
-                  std::unique_ptr<aura::Window> host_window);
 
   SurfaceTreeHost(const SurfaceTreeHost&) = delete;
   SurfaceTreeHost& operator=(const SurfaceTreeHost&) = delete;
@@ -86,9 +74,7 @@ class SurfaceTreeHost : public SurfaceDelegate,
   Surface* root_surface() { return root_surface_; }
   const Surface* root_surface() const { return root_surface_; }
 
-  const gfx::Point& root_surface_origin_pixel() const {
-    return root_surface_origin_pixel_;
-  }
+  const gfx::Point& root_surface_origin() const { return root_surface_origin_; }
 
   LayerTreeFrameSinkHolder* layer_tree_frame_sink_holder() {
     return layer_tree_frame_sink_holder_.get();
@@ -107,9 +93,6 @@ class SurfaceTreeHost : public SurfaceDelegate,
   }
 
   uint32_t GenerateNextFrameToken() { return ++next_token_; }
-
-  // Returns the primary SurfaceId.
-  viz::SurfaceId GetSurfaceId() const;
 
   // SurfaceDelegate:
   void OnSurfaceCommit() override;
@@ -135,8 +118,7 @@ class SurfaceTreeHost : public SurfaceDelegate,
   void UnsetCanGoBack() override {}
   void SetPip() override {}
   void UnsetPip() override {}
-  void SetFloatToLocation(
-      chromeos::FloatStartLocation float_start_location) override {}
+  void SetFloat() override {}
   void SetAspectRatio(const gfx::SizeF& aspect_ratio) override {}
   void MoveToDesk(int desk_index) override {}
   void SetVisibleOnAllWorkspaces() override {}
@@ -144,12 +126,11 @@ class SurfaceTreeHost : public SurfaceDelegate,
   void Pin(bool trusted) override {}
   void Unpin() override {}
   void SetSystemModal(bool system_modal) override {}
-  void SetTopInset(int height) override {}
   SecurityDelegate* GetSecurityDelegate() override;
 
-  // display::DisplayManagerObserver:
-  void OnDidProcessDisplayChanges(
-      const DisplayConfigurationChange& configuration_change) override;
+  // display::DisplayObserver:
+  void OnDisplayMetricsChanged(const display::Display& display,
+                               uint32_t changed_metrics) override;
 
   // viz::ContextLostObserver:
   void OnContextLost() override;
@@ -161,30 +142,6 @@ class SurfaceTreeHost : public SurfaceDelegate,
   void SetSecurityDelegate(SecurityDelegate* security_delegate);
 
   void SubmitCompositorFrameForTesting(viz::CompositorFrame frame);
-
-  using LayerTreeFrameSinkHolderFactory =
-      base::RepeatingCallback<std::unique_ptr<LayerTreeFrameSinkHolder>()>;
-
-  // It should only be used at initialization time before any frames are
-  // submitted.
-  void SetLayerTreeFrameSinkHolderFactoryForTesting(
-      LayerTreeFrameSinkHolderFactory frame_sink_holder_factory);
-
-  // Creates a LayerTreeFrameSink for the |host_window_|.
-  std::unique_ptr<cc::mojo_embedder::AsyncLayerTreeFrameSink>
-  CreateLayerTreeFrameSink();
-
-  // Overridden from ui::LayerOwner::Observer
-  void OnLayerRecreated(ui::Layer* old_layer) override;
-
-  // Applies rounded_corner_bounds (bounds + radii_in_dps) to the surface tree.
-  // `rounded_corner_bounds` should be in the coordinate space of the
-  void ApplyRoundedCornersToSurfaceTree(
-      const gfx::RectF& bounds,
-      const gfx::RoundedCornersF& radii_in_dps);
-
-  scoped_refptr<viz::RasterContextProvider> SetRasterContextProviderForTesting(
-      scoped_refptr<viz::RasterContextProvider> context_provider_test);
 
  protected:
   void UpdateDisplayOnTree();
@@ -201,106 +158,33 @@ class SurfaceTreeHost : public SurfaceDelegate,
   // need to be released back to the client.
   void SubmitEmptyCompositorFrame();
 
-  // Updates the host window's (or the closest representative surface layer's)
-  // size to cover exo surfaces that must be visible and not clipped.
-  // It also updates `root_surface_origin_` accordingly to the origin.
-  void UpdateSurfaceLayerSizeAndRootSurfaceOrigin();
-
-  // Updates the host layer's opacity. This has to be called after root
-  // surface's resource is updated.
-  void UpdateHostLayerOpacity();
+  // Update the host window's size to cover sufaces that must be visible and
+  // not clipped.
+  virtual void UpdateHostWindowBounds();
 
   bool client_submits_surfaces_in_pixel_coordinates() const {
     return client_submits_surfaces_in_pixel_coordinates_;
   }
 
-  bool bounds_is_dirty() const { return bounds_is_dirty_; }
-
-  void set_bounds_is_dirty(bool bounds_is_dirty) {
-    bounds_is_dirty_ = bounds_is_dirty;
-  }
-
   // If the client has submitted a scale factor, we use that. Otherwise we use
   // the host window's layer's scale factor.
-  virtual float GetScaleFactor() const;
-  virtual float GetPendingScaleFactor() const;
-
-  bool HasDoubleBufferedPendingScaleFactor() const;
-
-  // Sets the appropriate transform for the given scale factor.
-  // NOTE: This should only be done if the client submits in pixel coordinates.
-  void SetScaleFactorTransform(float scale_factor);
-
-  // Once a configure is acknowledged, accept the parent portion of the
-  // local_surface_id from the |host_window_|.
-  void UpdateLocalSurfaceIdFromParent(
-      const viz::LocalSurfaceId& parent_local_surface_id);
-
-  // Changes the local_surface_id as the viz::Surface property will change.
-  void AllocateLocalSurfaceId();
-
-  // If local_surface_id is newer than `GetCommitTargetLayer()`, update the
-  // surface ranges to produce different SurfaceDrawQuads.
-  virtual void MaybeActivateSurface();
-
-  // The local_surface_id that the `layer_tree_frame_sink_holder_` is submitting
-  // with.
-  const viz::LocalSurfaceId& GetCurrentLocalSurfaceId() const;
-
-  // Returns the ui::Layer that hosts client's surface commits, i.e.
-  // commit_target_layer. Its property can be controlled by the client.
-  // When an animation causes the host_window->layer to be cloned, before the
-  // client acks the config event for that request, the old_layer prior to the
-  // cloning should be the commit_target_layer.
-  //
-  // On SurfaceTreeHost implementations that don't have async config/ack flow,
-  // this returns host_window()->layer().
-  //
-  // Note: due to animation cancelling, the commit_target_layer can be
-  // destroyed with the cancelled animation, so this method may return nullptr.
-  virtual ui::Layer* GetCommitTargetLayer();
-  virtual const ui::Layer* GetCommitTargetLayer() const;
-
-  int64_t output_display_id() const { return output_display_id_; }
-
-  // The FrameSinkId associated with this.
-  viz::FrameSinkId frame_sink_id_;
+  float GetScaleFactor();
 
  private:
-  void InitHostWindow(const std::string& window_name);
-
   viz::CompositorFrame PrepareToSubmitCompositorFrame();
 
   void HandleContextLost();
 
   void CleanUpCallbacks();
 
-  float CalculateScaleFactor(const std::optional<float>& scale_factor) const;
-
-  // Applies `rounded_corner_bounds` to the `surface` and propagates the bounds
-  // to its subsurfaces. `rounded_corner_bounds` should be in the local
-  // coordinates of the `surface`.
-  void ApplyAndPropagateRoundedCornersToSurfaceTree(
-      Surface* surface,
-      const gfx::RRectF& rounded_corners_bounds);
-
-  std::unique_ptr<LayerTreeFrameSinkHolder> CreateLayerTreeFrameSinkHolder();
-
-  std::unique_ptr<viz::ChildLocalSurfaceIdAllocator>
-      child_local_surface_id_allocator_;
-
-  raw_ptr<Surface> root_surface_ = nullptr;
+  raw_ptr<Surface, ExperimentalAsh> root_surface_ = nullptr;
 
   // Position of root surface relative to topmost, leftmost sub-surface. The
   // host window should be translated by the negation of this vector.
-  // The coordinates is Pixel.
-  gfx::Point root_surface_origin_pixel_;
+  gfx::Point root_surface_origin_;
 
-  // The coordinates is DP.
   std::unique_ptr<aura::Window> host_window_;
-
   std::unique_ptr<LayerTreeFrameSinkHolder> layer_tree_frame_sink_holder_;
-  LayerTreeFrameSinkHolderFactory frame_sink_holder_factory_;
 
   // This queue contains lists the callbacks to notify the client when it is a
   // good time to start producing a new frame. Each list corresponds to a
@@ -318,30 +202,25 @@ class SurfaceTreeHost : public SurfaceDelegate,
 
   // When a client calls set_scale_factor they're actually setting the scale
   // factor for all future commits.
-  std::optional<float> pending_scale_factor_;
+  absl::optional<float> pending_scale_factor_;
 
   // This is the client-set scale factor that is being used for the current
   // buffer.
-  std::optional<float> scale_factor_;
+  absl::optional<float> scale_factor_;
 
   viz::FrameTokenGenerator next_token_;
 
-  scoped_refptr<viz::RasterContextProvider> context_provider_;
+  scoped_refptr<viz::ContextProvider> context_provider_;
 
-  base::ScopedObservation<display::DisplayManager,
-                          display::DisplayManagerObserver>
-      display_manager_observation_{this};
+  display::ScopedDisplayObserver display_observer_{this};
 
-  // The display id for the output the surface is entered onto.
-  int64_t output_display_id_ = display::kInvalidDisplayId;
+  int64_t display_id_ = display::kInvalidDisplayId;
 
   bool client_submits_surfaces_in_pixel_coordinates_ = false;
 
-  raw_ptr<SecurityDelegate> security_delegate_ = nullptr;
+  raw_ptr<SecurityDelegate, ExperimentalAsh> security_delegate_ = nullptr;
 
   std::set<gpu::SyncToken> prev_frame_verified_tokens_;
-
-  bool bounds_is_dirty_ = true;
 
   base::WeakPtrFactory<SurfaceTreeHost> weak_ptr_factory_{this};
 };

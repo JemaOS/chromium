@@ -4,7 +4,6 @@
 
 #include "components/metrics/demographics/user_demographics.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/check.h"
@@ -13,25 +12,57 @@
 #include "build/build_config.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace metrics {
 
+// Root dictionary pref to store the user's birth year and gender that are
+// provided by the sync server. This is a read-only syncable priority pref on
+// all platforms except ChromeOS Ash, where it is a syncable OS-level priority
+// pref.
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
+const char kSyncDemographicsPrefName[] = "sync.demographics";
 constexpr auto kSyncDemographicsPrefFlags =
     user_prefs::PrefRegistrySyncable::SYNCABLE_PRIORITY_PREF;
 #else
+const char kSyncOsDemographicsPrefName[] = "sync.os_demographics";
 constexpr auto kSyncOsDemographicsPrefFlags =
     user_prefs::PrefRegistrySyncable::SYNCABLE_OS_PRIORITY_PREF;
 // TODO(crbug/1367338): Make this non-syncable (on Ash only) after full rollout
 // of the syncable os priority pref; then delete it locally from Ash devices.
+const char kSyncDemographicsPrefName[] = "sync.demographics";
 constexpr auto kSyncDemographicsPrefFlags =
     user_prefs::PrefRegistrySyncable::SYNCABLE_PRIORITY_PREF;
 #endif
 
+// Stores a "secret" offset that is used to randomize the birth year for metrics
+// reporting. This value should not be logged to UMA directly; instead, it
+// should be summed with the kSyncDemographicsBirthYear. This value is generated
+// locally on the client the first time a user begins to merge birth year data
+// into their UMA reports.
+const char kUserDemographicsBirthYearOffsetPrefName[] =
+    "demographics_birth_year_offset";
 constexpr auto kUserDemographicsBirthYearOffsetPrefFlags =
     PrefRegistry::NO_REGISTRATION_FLAGS;
+// TODO(crbug/1367338): Delete after 2023/09
+const char kDeprecatedDemographicsBirthYearOffsetPrefName[] =
+    "sync.demographics_birth_year_offset";
 constexpr auto kDeprecatedDemographicsBirthYearOffsetPrefFlags =
     PrefRegistry::NO_REGISTRATION_FLAGS;
+
+// This pref value is subordinate to the kSyncDemographics dictionary pref and
+// is synced to the client. It stores the self-reported birth year of the
+// syncing user. as provided by the sync server. This value should not be logged
+// to UMA directly; instead, it should be summed with the
+// kSyncDemographicsBirthYearNoiseOffset.
+const char kSyncDemographicsBirthYearPath[] = "birth_year";
+
+// This pref value is subordinate to the kSyncDemographics dictionary pref and
+// is synced to the client. It stores the self-reported gender of the syncing
+// user, as provided by the sync server. The gender is encoded using the Gender
+// enum defined in UserDemographicsProto
+// (see third_party/metrics_proto/user_demographics.proto).
+const char kSyncDemographicsGenderPath[] = "gender";
 
 namespace {
 
@@ -119,26 +150,26 @@ bool HasEligibleBirthYear(base::Time now, int user_birth_year, int offset) {
 // Gets the synced user's birth year from synced prefs, see doc of
 // DemographicMetricsProvider in demographic_metrics_provider.h for more
 // details.
-std::optional<int> GetUserBirthYear(const base::Value::Dict& demographics) {
+absl::optional<int> GetUserBirthYear(const base::Value::Dict& demographics) {
   return demographics.FindInt(kSyncDemographicsBirthYearPath);
 }
 
 // Gets the synced user's gender from synced prefs, see doc of
 // DemographicMetricsProvider in demographic_metrics_provider.h for more
 // details.
-std::optional<UserDemographicsProto_Gender> GetUserGender(
+absl::optional<UserDemographicsProto_Gender> GetUserGender(
     const base::Value::Dict& demographics) {
-  const std::optional<int> gender_int =
+  const absl::optional<int> gender_int =
       demographics.FindInt(kSyncDemographicsGenderPath);
 
   // Verify that the gender is unset.
   if (!gender_int)
-    return std::nullopt;
+    return absl::nullopt;
 
   // Verify that the gender number is a valid UserDemographicsProto_Gender
   // encoding.
   if (!UserDemographicsProto_Gender_IsValid(*gender_int))
-    return std::nullopt;
+    return absl::nullopt;
 
   const auto gender = UserDemographicsProto_Gender(*gender_int);
 
@@ -146,7 +177,7 @@ std::optional<UserDemographicsProto_Gender> GetUserGender(
   // anonymity.
   if (gender != UserDemographicsProto::GENDER_FEMALE &&
       gender != UserDemographicsProto::GENDER_MALE) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return gender;
@@ -238,14 +269,14 @@ UserDemographicsResult GetUserNoisedBirthYearAndGenderFromPrefs(
   const base::Value::Dict& demographics = GetDemographicsDict(profile_prefs);
 
   // Get the user's birth year.
-  std::optional<int> birth_year = GetUserBirthYear(demographics);
+  absl::optional<int> birth_year = GetUserBirthYear(demographics);
   if (!birth_year.has_value()) {
     return UserDemographicsResult::ForStatus(
         UserDemographicsStatus::kIneligibleDemographicsData);
   }
 
   // Get the user's gender.
-  std::optional<UserDemographicsProto_Gender> gender =
+  absl::optional<UserDemographicsProto_Gender> gender =
       GetUserGender(demographics);
   if (!gender.has_value()) {
     return UserDemographicsResult::ForStatus(

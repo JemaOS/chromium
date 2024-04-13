@@ -9,12 +9,14 @@
 #include <vector>
 
 #include "base/time/time.h"
-#include "components/viz/common/navigation_id.h"
+#include "base/unguessable_token.h"
 #include "components/viz/common/quads/compositor_render_pass.h"
 #include "components/viz/common/view_transition_element_resource_id.h"
 #include "components/viz/common/viz_common_export.h"
 
 namespace viz {
+
+using NavigationID = base::UnguessableToken;
 
 // This is a transition directive that can be associated with a compositor
 // frame. The intent is to be able to animate a compositor frame into the right
@@ -65,14 +67,14 @@ class VIZ_COMMON_EXPORT CompositorFrameTransitionDirective {
   CompositorFrameTransitionDirective();
 
   static CompositorFrameTransitionDirective CreateSave(
-      NavigationId navigation_id,
+      NavigationID navigation_id,
       uint32_t sequence_id,
       std::vector<SharedElement> shared_elements);
   static CompositorFrameTransitionDirective CreateAnimate(
-      NavigationId navigation_id,
+      NavigationID navigation_id,
       uint32_t sequence_id);
   static CompositorFrameTransitionDirective CreateRelease(
-      NavigationId navigation_id,
+      NavigationID navigation_id,
       uint32_t sequence_id);
 
   CompositorFrameTransitionDirective(const CompositorFrameTransitionDirective&);
@@ -89,7 +91,7 @@ class VIZ_COMMON_EXPORT CompositorFrameTransitionDirective {
   // The type of this directive.
   Type type() const { return type_; }
 
-  NavigationId navigation_id() const { return navigation_id_; }
+  NavigationID navigation_id() const { return navigation_id_; }
 
   // Shared elements.
   const std::vector<SharedElement>& shared_elements() const {
@@ -98,12 +100,12 @@ class VIZ_COMMON_EXPORT CompositorFrameTransitionDirective {
 
  private:
   CompositorFrameTransitionDirective(
-      NavigationId navigation_id,
+      NavigationID navigation_id,
       uint32_t sequence_id,
       Type type,
       std::vector<SharedElement> shared_elements = {});
 
-  NavigationId navigation_id_;
+  NavigationID navigation_id_;
 
   uint32_t sequence_id_ = 0;
 

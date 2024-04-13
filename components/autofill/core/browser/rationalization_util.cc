@@ -51,7 +51,7 @@ void RationalizePhoneNumberFields(
       if (!field->is_focusable)
         continue;
     }
-    FieldType current_field_type = field->Type().GetStorableType();
+    ServerFieldType current_field_type = field->Type().GetStorableType();
     switch (current_field_type) {
       case PHONE_HOME_NUMBER:
         found_number_field = field;
@@ -146,7 +146,7 @@ void RationalizePhoneNumberFields(
   for (auto it = fields_in_section.begin(); it != fields_in_section.end();
        ++it) {
     AutofillField* field = *it;
-    FieldType current_field_type = field->Type().GetStorableType();
+    ServerFieldType current_field_type = field->Type().GetStorableType();
     switch (current_field_type) {
       case PHONE_HOME_NUMBER:
       case PHONE_HOME_NUMBER_PREFIX:

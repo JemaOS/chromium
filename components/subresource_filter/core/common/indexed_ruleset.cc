@@ -5,7 +5,6 @@
 #include "components/subresource_filter/core/common/indexed_ruleset.h"
 
 #include "base/check.h"
-#include "base/hash/hash.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/trace_event/trace_event.h"
 #include "components/subresource_filter/core/common/first_party_origin.h"
@@ -22,21 +21,23 @@ using EmbedderConditionsMatcher =
     url_pattern_index::UrlPatternIndexMatcher::EmbedderConditionsMatcher;
 
 // A helper function to get the checksum on a data buffer.
-int LocalGetChecksum(base::span<const uint8_t> data) {
-  uint32_t hash = base::PersistentHash(data);
+int LocalGetChecksum(const uint8_t* data, size_t size) {
+  uint32_t hash = base::PersistentHash(data, size);
 
   // Strip off the sign bit since this needs to be persisted in preferences
   // which don't support unsigned ints.
   return static_cast<int>(hash & 0x7fffffff);
 }
 
-VerifyStatus GetVerifyStatus(base::span<const uint8_t> buffer,
+VerifyStatus GetVerifyStatus(const uint8_t* buffer,
+                             size_t size,
                              int expected_checksum) {
   // TODO(ericrobinson): Remove the verifier once we've updated the ruleset at
   // least once.  The verifier detects a subset of the errors detected by the
   // checksum, and is unneeded once expected_checksum is consistently nonzero.
-  flatbuffers::Verifier verifier(buffer.data(), buffer.size());
-  if (expected_checksum != 0 && expected_checksum != LocalGetChecksum(buffer)) {
+  flatbuffers::Verifier verifier(buffer, size);
+  if (expected_checksum != 0 &&
+      expected_checksum != LocalGetChecksum(buffer, size)) {
     return flat::VerifyIndexedRulesetBuffer(verifier)
                ? VerifyStatus::kChecksumFailVerifierPass
                : VerifyStatus::kChecksumFailVerifierFail;
@@ -100,19 +101,20 @@ void RulesetIndexer::Finish() {
 }
 
 int RulesetIndexer::GetChecksum() const {
-  return LocalGetChecksum(data());
+  return LocalGetChecksum(data(), size());
 }
 
 // IndexedRulesetMatcher -------------------------------------------------------
 
 // static
-bool IndexedRulesetMatcher::Verify(base::span<const uint8_t> buffer,
+bool IndexedRulesetMatcher::Verify(const uint8_t* buffer,
+                                   size_t size,
                                    int expected_checksum) {
   TRACE_EVENT_BEGIN1(TRACE_DISABLED_BY_DEFAULT("loading"),
-                     "IndexedRulesetMatcher::Verify", "size", buffer.size());
+                     "IndexedRulesetMatcher::Verify", "size", size);
   SCOPED_UMA_HISTOGRAM_TIMER(
       "SubresourceFilter.IndexRuleset.Verify2.WallDuration");
-  VerifyStatus status = GetVerifyStatus(buffer, expected_checksum);
+  VerifyStatus status = GetVerifyStatus(buffer, size, expected_checksum);
   UMA_HISTOGRAM_ENUMERATION("SubresourceFilter.IndexRuleset.Verify.Status",
                             status);
   TRACE_EVENT_END1(TRACE_DISABLED_BY_DEFAULT("loading"),
@@ -122,8 +124,8 @@ bool IndexedRulesetMatcher::Verify(base::span<const uint8_t> buffer,
          status == VerifyStatus::kPassChecksumZero;
 }
 
-IndexedRulesetMatcher::IndexedRulesetMatcher(base::span<const uint8_t> buffer)
-    : root_(flat::GetIndexedRuleset(buffer.data())),
+IndexedRulesetMatcher::IndexedRulesetMatcher(const uint8_t* buffer, size_t size)
+    : root_(flat::GetIndexedRuleset(buffer)),
       blocklist_(root_->blocklist_index()),
       allowlist_(root_->allowlist_index()),
       deactivation_(root_->deactivation_index()) {}

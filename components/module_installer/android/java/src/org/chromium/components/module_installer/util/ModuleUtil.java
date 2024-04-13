@@ -7,7 +7,9 @@ package org.chromium.components.module_installer.util;
 import org.chromium.base.BundleUtils;
 import org.chromium.components.module_installer.logger.SplitAvailabilityLogger;
 
-/** Utilitary class (proxy) exposing DFM functionality to the broader application. */
+/**
+ * Utilitary class (proxy) exposing DFM functionality to the broader application.
+ */
 public class ModuleUtil {
     /**
      * Records the execution time (ms) taken by the module installer framework.
@@ -21,7 +23,9 @@ public class ModuleUtil {
         Timer.recordStartupTime();
     }
 
-    /** Updates the CrashKey report containing modules currently present. */
+    /**
+     * Updates the CrashKey report containing modules currently present.
+     */
     public static void updateCrashKeys() {
         if (!BundleUtils.isBundle()) return;
 
@@ -30,7 +34,9 @@ public class ModuleUtil {
         }
     }
 
-    /** Initializes the PlayCore SplitCompat framework. */
+    /**
+     * Initializes the PlayCore SplitCompat framework.
+     */
     public static void initApplication() {
         if (!BundleUtils.isBundle()) return;
 
@@ -41,7 +47,9 @@ public class ModuleUtil {
         }
     }
 
-    /** Notifies the ActiviyObserver when modules are installed. */
+    /**
+     * Notifies the ActiviyObserver when modules are installed.
+     */
     public static void notifyModuleInstalled() {
         if (!BundleUtils.isBundle()) return;
 

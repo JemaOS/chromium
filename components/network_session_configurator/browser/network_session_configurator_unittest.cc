@@ -27,11 +27,16 @@
 #include "net/url_request/url_request_context_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
+#if BUILDFLAG(IS_MAC)
+#include "base/mac/mac_util.h"
+#endif
+
 namespace network_session_configurator {
 
 class NetworkSessionConfiguratorTest : public testing::Test {
  public:
-  NetworkSessionConfiguratorTest() {
+  NetworkSessionConfiguratorTest()
+      : quic_user_agent_id_("Chrome/52.0.2709.0 Linux x86_64") {
     scoped_feature_list_.Init();
     variations::testing::ClearAllVariationParams();
   }
@@ -39,7 +44,8 @@ class NetworkSessionConfiguratorTest : public testing::Test {
   void ParseCommandLineAndFieldTrials(const base::CommandLine& command_line) {
     network_session_configurator::ParseCommandLineAndFieldTrials(
         command_line,
-        /*is_quic_force_disabled=*/false, &params_, &quic_params_);
+        /*is_quic_force_disabled=*/false, quic_user_agent_id_, &params_,
+        &quic_params_);
   }
 
   void ParseFieldTrials() {
@@ -47,6 +53,7 @@ class NetworkSessionConfiguratorTest : public testing::Test {
         base::CommandLine(base::CommandLine::NO_PROGRAM));
   }
 
+  std::string quic_user_agent_id_;
   base::test::ScopedFeatureList scoped_feature_list_;
   net::HttpNetworkSessionParams params_;
   net::QuicParams quic_params_;
@@ -71,6 +78,7 @@ TEST_F(NetworkSessionConfiguratorTest, Defaults) {
   EXPECT_EQ(1250u, quic_params_.max_packet_length);
   EXPECT_EQ(quic::QuicTagVector(), quic_params_.connection_options);
   EXPECT_EQ(quic::QuicTagVector(), quic_params_.client_connection_options);
+  EXPECT_FALSE(params_.enable_server_push_cancellation);
   EXPECT_FALSE(quic_params_.close_sessions_on_ip_change);
   EXPECT_FALSE(quic_params_.goaway_sessions_on_ip_change);
   EXPECT_EQ(net::kIdleConnectionTimeout, quic_params_.idle_connection_timeout);
@@ -81,11 +89,7 @@ TEST_F(NetworkSessionConfiguratorTest, Defaults) {
   EXPECT_EQ(base::Seconds(quic::kInitialIdleTimeoutSecs),
             quic_params_.max_idle_time_before_crypto_handshake);
   EXPECT_FALSE(quic_params_.estimate_initial_rtt);
-#if BUILDFLAG(IS_ANDROID)
-  EXPECT_TRUE(quic_params_.migrate_sessions_on_network_change_v2);
-#else  // !BUILDFLAG(IS_ANDROID)
   EXPECT_FALSE(quic_params_.migrate_sessions_on_network_change_v2);
-#endif
   EXPECT_FALSE(quic_params_.migrate_sessions_early_v2);
   EXPECT_FALSE(quic_params_.retry_on_alternate_network_before_handshake);
   EXPECT_FALSE(quic_params_.migrate_idle_sessions);
@@ -95,16 +99,16 @@ TEST_F(NetworkSessionConfiguratorTest, Defaults) {
   EXPECT_TRUE(quic_params_.retransmittable_on_wire_timeout.is_zero());
   EXPECT_FALSE(quic_params_.disable_tls_zero_rtt);
   EXPECT_TRUE(quic_params_.allow_port_migration);
-  EXPECT_EQ(0, quic_params_.multi_port_probing_interval);
 
   EXPECT_EQ(net::DefaultSupportedQuicVersions(),
             quic_params_.supported_versions);
+  EXPECT_FALSE(params_.enable_quic_proxies_for_https_urls);
+  EXPECT_EQ("Chrome/52.0.2709.0 Linux x86_64", quic_params_.user_agent_id);
   EXPECT_EQ(0u, quic_params_.origins_to_force_quic_on.size());
   EXPECT_FALSE(
       quic_params_.initial_delay_for_broken_alternative_service.has_value());
   EXPECT_FALSE(quic_params_.exponential_backoff_on_initial_delay.has_value());
   EXPECT_FALSE(quic_params_.delay_main_job_with_available_spdy_session);
-  EXPECT_FALSE(quic_params_.use_new_alps_codepoint);
 }
 
 TEST_F(NetworkSessionConfiguratorTest, Http2FieldTrialGroupNameDoesNotMatter) {
@@ -195,6 +199,17 @@ TEST_F(NetworkSessionConfiguratorTest, EnableQuicForDataReductionProxy) {
   ParseFieldTrials();
 
   EXPECT_TRUE(params_.enable_quic);
+}
+
+TEST_F(NetworkSessionConfiguratorTest, EnableQuicProxiesForHttpsUrls) {
+  std::map<std::string, std::string> field_trial_params;
+  field_trial_params["enable_quic_proxies_for_https_urls"] = "true";
+  base::AssociateFieldTrialParams("QUIC", "Enabled", field_trial_params);
+  base::FieldTrialList::CreateFieldTrial("QUIC", "Enabled");
+
+  ParseFieldTrials();
+
+  EXPECT_TRUE(params_.enable_quic_proxies_for_https_urls);
 }
 
 TEST_F(NetworkSessionConfiguratorTest, DisableRetryWithoutAltSvcOnQuicErrors) {
@@ -396,6 +411,17 @@ TEST_F(NetworkSessionConfiguratorTest,
             quic_params_.max_idle_time_before_crypto_handshake);
 }
 
+TEST_F(NetworkSessionConfiguratorTest, EnableServerPushCancellation) {
+  std::map<std::string, std::string> field_trial_params;
+  field_trial_params["enable_server_push_cancellation"] = "true";
+  base::AssociateFieldTrialParams("QUIC", "Enabled", field_trial_params);
+  base::FieldTrialList::CreateFieldTrial("QUIC", "Enabled");
+
+  ParseFieldTrials();
+
+  EXPECT_TRUE(params_.enable_server_push_cancellation);
+}
+
 TEST_F(NetworkSessionConfiguratorTest, QuicEstimateInitialRtt) {
   std::map<std::string, std::string> field_trial_params;
   field_trial_params["estimate_initial_rtt"] = "true";
@@ -509,18 +535,6 @@ TEST_F(NetworkSessionConfiguratorTest,
   ParseFieldTrials();
 
   EXPECT_FALSE(quic_params_.allow_port_migration);
-}
-
-TEST_F(NetworkSessionConfiguratorTest,
-       ConfigureMultiPortProbingIntervalFromFieldTrialParams) {
-  std::map<std::string, std::string> field_trial_params;
-  field_trial_params["multi_port_probing_interval"] = "10";
-  base::AssociateFieldTrialParams("QUIC", "Enabled", field_trial_params);
-  base::FieldTrialList::CreateFieldTrial("QUIC", "Enabled");
-
-  ParseFieldTrials();
-
-  EXPECT_EQ(10, quic_params_.multi_port_probing_interval);
 }
 
 TEST_F(NetworkSessionConfiguratorTest,
@@ -780,10 +794,15 @@ TEST_F(NetworkSessionConfiguratorTest, HostRules) {
 }
 
 TEST_F(NetworkSessionConfiguratorTest, DefaultCacheBackend) {
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
-    BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
   EXPECT_EQ(net::URLRequestContextBuilder::HttpCacheParams::DISK_SIMPLE,
             ChooseCacheType());
+#elif BUILDFLAG(IS_MAC)
+  EXPECT_EQ(
+      base::mac::IsAtLeastOS10_14()
+          ? net::URLRequestContextBuilder::HttpCacheParams::DISK_SIMPLE
+          : net::URLRequestContextBuilder::HttpCacheParams::DISK_BLOCKFILE,
+      ChooseCacheType());
 #else
   EXPECT_EQ(net::URLRequestContextBuilder::HttpCacheParams::DISK_BLOCKFILE,
             ChooseCacheType());
@@ -1012,69 +1031,6 @@ TEST_P(NetworkSessionConfiguratorWithQuicVersionTest,
   ParseFieldTrials();
   quic::ParsedQuicVersionVector expected_versions = {good_version};
   EXPECT_EQ(expected_versions, quic_params_.supported_versions);
-}
-
-class NetworkSessionConfiguratorWithNewAlpsCodepointTest
-    : public NetworkSessionConfiguratorTest,
-      public ::testing::WithParamInterface<std::tuple<bool, bool>> {
- public:
-  NetworkSessionConfiguratorWithNewAlpsCodepointTest()
-      : use_new_alps_codepoint_feature_setting_(std::get<0>(GetParam())),
-        use_new_alps_codepoint_field_trial_setting_(std::get<1>(GetParam())) {
-    if (use_new_alps_codepoint_feature_setting_) {
-      feature_list_.InitAndEnableFeature(
-          net::features::kUseNewAlpsCodepointQUIC);
-    } else {
-      feature_list_.InitAndDisableFeature(
-          net::features::kUseNewAlpsCodepointQUIC);
-    }
-  }
-  ~NetworkSessionConfiguratorWithNewAlpsCodepointTest() override = default;
-
-  bool use_new_alps_codepoint_feature_setting() {
-    return use_new_alps_codepoint_feature_setting_;
-  }
-
-  bool use_new_alps_codepoint_field_trial_setting() {
-    return use_new_alps_codepoint_field_trial_setting_;
-  }
-
- private:
-  const bool use_new_alps_codepoint_feature_setting_;
-  const bool use_new_alps_codepoint_field_trial_setting_;
-  base::test::ScopedFeatureList feature_list_;
-};
-
-INSTANTIATE_TEST_SUITE_P(NewAlpsCodepoint,
-                         NetworkSessionConfiguratorWithNewAlpsCodepointTest,
-                         ::testing::Combine(::testing::Bool(),
-                                            ::testing::Bool()));
-
-TEST_P(NetworkSessionConfiguratorWithNewAlpsCodepointTest, NoFieldTrialParams) {
-  std::map<std::string, std::string> field_trial_params;
-  base::AssociateFieldTrialParams("QUIC", "Enabled", field_trial_params);
-  base::FieldTrialList::CreateFieldTrial("QUIC", "Enabled");
-
-  ParseFieldTrials();
-
-  // If no field trail params overrides, use feature setting.
-  EXPECT_EQ(use_new_alps_codepoint_feature_setting(),
-            quic_params_.use_new_alps_codepoint);
-}
-
-TEST_P(NetworkSessionConfiguratorWithNewAlpsCodepointTest,
-       FromFieldTrialParams) {
-  std::map<std::string, std::string> field_trial_params;
-  field_trial_params["use_new_alps_codepoint"] =
-      use_new_alps_codepoint_field_trial_setting() ? "true" : "false";
-  base::AssociateFieldTrialParams("QUIC", "Enabled", field_trial_params);
-  base::FieldTrialList::CreateFieldTrial("QUIC", "Enabled");
-
-  ParseFieldTrials();
-
-  // If field trail params have value, it should override the feature setting.
-  EXPECT_EQ(use_new_alps_codepoint_field_trial_setting(),
-            quic_params_.use_new_alps_codepoint);
 }
 
 }  // namespace network_session_configurator

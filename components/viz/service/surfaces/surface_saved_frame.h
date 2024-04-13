@@ -6,7 +6,6 @@
 #define COMPONENTS_VIZ_SERVICE_SURFACES_SURFACE_SAVED_FRAME_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/containers/flat_map.h"
@@ -17,6 +16,7 @@
 #include "components/viz/common/quads/compositor_render_pass.h"
 #include "components/viz/common/resources/release_callback.h"
 #include "components/viz/service/viz_service_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace viz {
 
@@ -29,10 +29,16 @@ class VIZ_SERVICE_EXPORT SurfaceSavedFrame {
 
   struct RenderPassDrawData {
     RenderPassDrawData();
-    explicit RenderPassDrawData(const CompositorRenderPass& render_pass);
+    RenderPassDrawData(const CompositorRenderPass& render_pass, float opacity);
 
     // This represents the size of the copied texture.
     gfx::Size size;
+    // This is a transform that takes `rect` into a root render pass space. Note
+    // that this makes this result dependent on the structure of the compositor
+    // frame render pass list used to request the copy output.
+    gfx::Transform target_transform;
+    // Opacity accumulated from the original frame.
+    float opacity = 1.f;
   };
 
   struct OutputCopyResult {
@@ -68,7 +74,8 @@ class VIZ_SERVICE_EXPORT SurfaceSavedFrame {
 
     FrameResult& operator=(FrameResult&& other);
 
-    std::vector<std::optional<OutputCopyResult>> shared_results;
+    OutputCopyResult root_result;
+    std::vector<absl::optional<OutputCopyResult>> shared_results;
     base::flat_set<ViewTransitionElementResourceId> empty_resource_ids;
   };
 
@@ -85,7 +92,7 @@ class VIZ_SERVICE_EXPORT SurfaceSavedFrame {
   // frame.
   void RequestCopyOfOutput(Surface* surface);
 
-  [[nodiscard]] std::optional<FrameResult> TakeResult();
+  [[nodiscard]] absl::optional<FrameResult> TakeResult();
 
   // For testing functionality that ensures that we have a valid frame.
   void CompleteSavedFrameForTesting();
@@ -93,11 +100,14 @@ class VIZ_SERVICE_EXPORT SurfaceSavedFrame {
   base::flat_set<ViewTransitionElementResourceId> GetEmptyResourceIds() const;
 
  private:
+  enum class ResultType { kRoot, kShared };
+
   std::unique_ptr<CopyOutputRequest> CreateCopyRequestIfNeeded(
       const CompositorRenderPass& render_pass,
       const CompositorRenderPassList& render_pass_list) const;
 
-  void NotifyCopyOfOutputComplete(size_t shared_index,
+  void NotifyCopyOfOutputComplete(ResultType type,
+                                  size_t shared_index,
                                   const RenderPassDrawData& info,
                                   std::unique_ptr<CopyOutputResult> result);
 
@@ -134,7 +144,7 @@ class VIZ_SERVICE_EXPORT SurfaceSavedFrame {
   CompositorFrameTransitionDirective directive_;
   TransitionDirectiveCompleteCallback directive_finished_callback_;
 
-  std::optional<FrameResult> frame_result_;
+  absl::optional<FrameResult> frame_result_;
 
   // This is the number of copy requests we requested. We decrement this value
   // anytime we get a result back. When it reaches 0, we notify that this frame

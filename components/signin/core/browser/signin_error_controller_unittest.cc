@@ -14,7 +14,6 @@
 #include "build/chromeos_buildflags.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/signin/public/identity_manager/primary_account_mutator.h"
-#include "google_apis/gaia/google_service_auth_error.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -160,7 +159,6 @@ TEST(SigninErrorControllerTest, AuthStatusEnumerateAllErrors) {
       GoogleServiceAuthError::UNEXPECTED_SERVICE_RESPONSE,
       GoogleServiceAuthError::SERVICE_ERROR,
       GoogleServiceAuthError::SCOPE_LIMITED_UNRECOVERABLE_ERROR,
-      GoogleServiceAuthError::CHALLENGE_RESPONSE_REQUIRED,
   };
   static_assert(
       std::size(table) == GoogleServiceAuthError::NUM_STATES -
@@ -252,7 +250,7 @@ TEST(SigninErrorControllerTest,
 
   AccountInfo primary_account_info =
       identity_test_env.MakePrimaryAccountAvailable(
-          kPrimaryAccountEmail, signin::ConsentLevel::kSignin);
+          kPrimaryAccountEmail, signin::ConsentLevel::kSync);
   CoreAccountId secondary_account_id =
       identity_test_env.MakeAccountAvailable(kTestEmail).account_id;
   SigninErrorController error_controller(
@@ -300,7 +298,7 @@ TEST(SigninErrorControllerTest, PrimaryAccountErrorsAreSticky) {
 
   AccountInfo primary_account_info =
       identity_test_env.MakePrimaryAccountAvailable(
-          kPrimaryAccountEmail, signin::ConsentLevel::kSignin);
+          kPrimaryAccountEmail, signin::ConsentLevel::kSync);
   CoreAccountId secondary_account_id =
       identity_test_env.MakeAccountAvailable(kTestEmail).account_id;
   SigninErrorController error_controller(

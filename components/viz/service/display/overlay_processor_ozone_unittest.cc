@@ -78,7 +78,7 @@ class FakeNativePixmap : public gfx::NativePixmap {
       std::vector<gfx::GpuFence> release_fences) override {
     return false;
   }
-  gfx::NativePixmapHandle ExportHandle() const override {
+  gfx::NativePixmapHandle ExportHandle() override {
     return gfx::NativePixmapHandle();
   }
 
@@ -92,9 +92,6 @@ class MockSharedImageInterface : public TestSharedImageInterface {
  public:
   MOCK_METHOD1(GetNativePixmap,
                scoped_refptr<gfx::NativePixmap>(const gpu::Mailbox& mailbox));
-
- protected:
-  ~MockSharedImageInterface() override = default;
 };
 
 }  // namespace
@@ -121,8 +118,8 @@ TEST(OverlayProcessorOzoneTest, PrimaryPlaneSizeAndFormatMatches) {
 
   // Initialize a MockSharedImageInterface that returns a NativePixmap with
   // matching params to the primary plane.
-  scoped_refptr<MockSharedImageInterface> sii =
-      base::MakeRefCounted<MockSharedImageInterface>();
+  std::unique_ptr<MockSharedImageInterface> sii =
+      std::make_unique<MockSharedImageInterface>();
   scoped_refptr<gfx::NativePixmap> primary_plane_pixmap =
       base::MakeRefCounted<FakeNativePixmap>(size,
                                              gfx::BufferFormat::BGRA_8888);
@@ -161,8 +158,8 @@ TEST(OverlayProcessorOzoneTest, PrimaryPlaneFormatMismatch) {
 
   // Initialize a MockSharedImageInterface that returns a NativePixmap with
   // a different buffer format than that of the primary plane.
-  scoped_refptr<MockSharedImageInterface> sii =
-      base::MakeRefCounted<MockSharedImageInterface>();
+  std::unique_ptr<MockSharedImageInterface> sii =
+      std::make_unique<MockSharedImageInterface>();
   scoped_refptr<gfx::NativePixmap> primary_plane_pixmap =
       base::MakeRefCounted<FakeNativePixmap>(size, gfx::BufferFormat::R_8);
   EXPECT_CALL(*sii, GetNativePixmap(_)).WillOnce(Return(primary_plane_pixmap));
@@ -195,8 +192,8 @@ TEST(OverlayProcessorOzoneTest, ColorSpaceMismatch) {
 
   // Initialize a MockSharedImageInterface that returns a NativePixmap with
   // matching params to the primary plane.
-  scoped_refptr<MockSharedImageInterface> sii =
-      base::MakeRefCounted<::testing::NiceMock<MockSharedImageInterface>>();
+  std::unique_ptr<MockSharedImageInterface> sii =
+      std::make_unique<::testing::NiceMock<MockSharedImageInterface>>();
   scoped_refptr<gfx::NativePixmap> primary_plane_pixmap =
       base::MakeRefCounted<FakeNativePixmap>(size,
                                              gfx::BufferFormat::BGRA_8888);
@@ -224,10 +221,17 @@ TEST(OverlayProcessorOzoneTest, ColorSpaceMismatch) {
 
   candidates[0] = candidate;
 
+  // In Chrome OS, we don't allow the promotion of the candidate if the
+  // content is HDR. On other platforms, we do allow color space mismatches as
+  // long as the ContentColorUsage is the same as the primary plane's
   primary_plane.color_space = gfx::ColorSpace::CreateHDR10();
   candidates[0].color_space = gfx::ColorSpace::CreateHLG();
   processor.CheckOverlaySupport(&primary_plane, &candidates);
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  EXPECT_FALSE(candidates.at(0).overlay_handled);
+#else
   EXPECT_TRUE(candidates.at(0).overlay_handled);
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
   candidates[0] = candidate;
 

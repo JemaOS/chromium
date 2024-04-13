@@ -10,12 +10,12 @@
 #include <algorithm>
 #include <sstream>
 
-#include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "base/numerics/ostream_operators.h"
 #include "base/numerics/safe_math.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_util.h"
 #include "base/sys_byteorder.h"
 #include "crypto/hkdf.h"
 #include "third_party/boringssl/src/include/openssl/aead.h"
@@ -122,7 +122,7 @@ class WebPushEncryptionDraft03
     std::string record;
     record.reserve(sizeof(uint16_t) + plaintext.size());
     record.append(sizeof(uint16_t), '\x00');
-    record.append(plaintext);
+    record.append(plaintext.data(), plaintext.size());
     return record;
   }
 
@@ -233,7 +233,7 @@ class WebPushEncryptionDraft08
   std::string CreateRecord(const base::StringPiece& plaintext) override {
     std::string record;
     record.reserve(plaintext.size() + sizeof(uint8_t));
-    record.append(plaintext);
+    record.append(plaintext.data(), plaintext.size());
     record.append(sizeof(uint8_t), '\x02');
     return record;
   }
@@ -385,7 +385,7 @@ bool GCMMessageCryptographer::Decrypt(
     return false;
   }
 
-  *plaintext = decrypted_record;
+  plaintext->assign(decrypted_record.data(), decrypted_record.size());
   return true;
 }
 
@@ -409,17 +409,21 @@ bool GCMMessageCryptographer::TransformRecord(Direction direction,
   if (direction == Direction::ENCRYPT)
     maximum_output_length += kAuthenticationTagBytes;
 
+  // WriteInto requires the buffer to finish with a NULL-byte.
+  maximum_output_length += 1;
+
   size_t output_length = 0;
-  output->resize(maximum_output_length.ValueOrDie());
+  uint8_t* raw_output = reinterpret_cast<uint8_t*>(
+      base::WriteInto(output, maximum_output_length.ValueOrDie()));
 
   EVP_AEAD_CTX_TransformFunction* transform_function =
       direction == Direction::ENCRYPT ? EVP_AEAD_CTX_seal : EVP_AEAD_CTX_open;
 
   if (!transform_function(
-          &context, reinterpret_cast<uint8_t*>(output->data()), &output_length,
-          output->size(), reinterpret_cast<const uint8_t*>(nonce.data()),
-          nonce.size(), reinterpret_cast<const uint8_t*>(input.data()),
-          input.size(), nullptr, 0)) {
+          &context, raw_output, &output_length, output->size(),
+          reinterpret_cast<const uint8_t*>(nonce.data()), nonce.size(),
+          reinterpret_cast<const uint8_t*>(input.data()), input.size(),
+          nullptr, 0)) {
     EVP_AEAD_CTX_cleanup(&context);
     return false;
   }

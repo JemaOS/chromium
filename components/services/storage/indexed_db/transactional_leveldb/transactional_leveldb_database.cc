@@ -16,9 +16,9 @@
 #include "base/compiler_specific.h"
 #include "base/files/file.h"
 #include "base/memory/ptr_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/system/sys_info.h"
@@ -39,16 +39,28 @@
 #include "third_party/leveldatabase/src/include/leveldb/db.h"
 #include "third_party/leveldatabase/src/include/leveldb/slice.h"
 
+using base::StringPiece;
 using leveldb_env::DBTracker;
 
 namespace content {
 
 namespace {
 
-// As `TransactionLevelDBDatabase` is only used for internal transactions such
-// as DB initialization and via `LevelDBDirectTransaction`, this constant
-// doesn't apply to web API IndexedDB "readwrite" transactions.
+// Forcing flushes to disk at the end of a transaction guarantees that the
+// data hit disk, but drastically impacts throughput when the filesystem is
+// busy with background compactions. Not syncing trades off reliability for
+// performance. Note that background compactions which move data from the
+// log to SSTs are always done with reliable writes.
+//
+// Sync writes are necessary on Windows for quota calculations; POSIX
+// calculates file sizes correctly even when not synced to disk.
+#if BUILDFLAG(IS_WIN)
 const bool kSyncWrites = true;
+#else
+// TODO(dgrogan): Either remove the #if block or change this back to false.
+// See http://crbug.com/338385.
+const bool kSyncWrites = true;
+#endif
 
 }  // namespace
 
@@ -90,7 +102,7 @@ TransactionalLevelDBDatabase::~TransactionalLevelDBDatabase() {
       this);
 }
 
-leveldb::Status TransactionalLevelDBDatabase::Put(std::string_view key,
+leveldb::Status TransactionalLevelDBDatabase::Put(const StringPiece& key,
                                                   std::string* value) {
   leveldb::WriteOptions write_options;
   write_options.sync = kSyncWrites;
@@ -99,10 +111,11 @@ leveldb::Status TransactionalLevelDBDatabase::Put(std::string_view key,
       db()->Put(write_options, leveldb_env::MakeSlice(key),
                 leveldb_env::MakeSlice(*value));
   EvictAllIterators();
+  last_modified_ = clock_->Now();
   return s;
 }
 
-leveldb::Status TransactionalLevelDBDatabase::Remove(std::string_view key) {
+leveldb::Status TransactionalLevelDBDatabase::Remove(const StringPiece& key) {
   leveldb::WriteOptions write_options;
   write_options.sync = kSyncWrites;
 
@@ -110,10 +123,11 @@ leveldb::Status TransactionalLevelDBDatabase::Remove(std::string_view key) {
       db()->Delete(write_options, leveldb_env::MakeSlice(key));
 
   EvictAllIterators();
+  last_modified_ = clock_->Now();
   return s;
 }
 
-leveldb::Status TransactionalLevelDBDatabase::Get(std::string_view key,
+leveldb::Status TransactionalLevelDBDatabase::Get(const StringPiece& key,
                                                   std::string* value,
                                                   bool* found) {
   *found = false;
@@ -142,6 +156,7 @@ leveldb::Status TransactionalLevelDBDatabase::Write(
   UMA_HISTOGRAM_TIMES("WebCore.IndexedDB.LevelDB.WriteTime",
                       base::TimeTicks::Now() - begin_time);
   EvictAllIterators();
+  last_modified_ = clock_->Now();
   return s;
 }
 
@@ -185,8 +200,8 @@ TransactionalLevelDBDatabase::CreateIterator(
       std::move(snapshot));
 }
 
-void TransactionalLevelDBDatabase::Compact(std::string_view start,
-                                           std::string_view stop) {
+void TransactionalLevelDBDatabase::Compact(const base::StringPiece& start,
+                                           const base::StringPiece& stop) {
   TRACE_EVENT0("leveldb", "LevelDBDatabase::Compact");
   const leveldb::Slice start_slice = leveldb_env::MakeSlice(start);
   const leveldb::Slice stop_slice = leveldb_env::MakeSlice(stop);
@@ -244,7 +259,7 @@ bool TransactionalLevelDBDatabase::OnMemoryDump(
   // Dumps in BACKGROUND mode can only have whitelisted strings (and there are
   // currently none) so return early.
   if (args.level_of_detail ==
-      base::trace_event::MemoryDumpLevelOfDetail::kBackground) {
+      base::trace_event::MemoryDumpLevelOfDetail::BACKGROUND) {
     return true;
   }
 
@@ -276,8 +291,8 @@ void TransactionalLevelDBDatabase::EvictAllIterators() {
   if (db_only_loaded_iterators_.empty())
     return;
   is_evicting_all_loaded_iterators_ = true;
-  base::flat_set<raw_ptr<TransactionalLevelDBIterator, CtnExperimental>>
-      to_be_evicted = std::move(db_only_loaded_iterators_);
+  base::flat_set<TransactionalLevelDBIterator*> to_be_evicted =
+      std::move(db_only_loaded_iterators_);
   for (TransactionalLevelDBIterator* iter : to_be_evicted) {
     iter->EvictLevelDBIterator();
   }

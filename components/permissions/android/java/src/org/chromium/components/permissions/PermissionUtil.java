@@ -9,9 +9,9 @@ import android.os.Build;
 
 import androidx.core.app.NotificationManagerCompat;
 
-import org.jni_zero.CalledByNative;
-
+import org.chromium.base.BuildInfo;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.components.content_settings.ContentSettingsType;
 import org.chromium.components.location.LocationUtils;
 import org.chromium.ui.base.WindowAndroid;
@@ -20,36 +20,29 @@ import org.chromium.ui.permissions.PermissionCallback;
 
 import java.util.Arrays;
 
-/** A utility class for permissions. */
+/**
+ * A utility class for permissions.
+ */
 public class PermissionUtil {
     /** The permissions associated with requesting location pre-Android S. */
     private static final String[] LOCATION_PERMISSIONS_PRE_S = {
-        android.Manifest.permission.ACCESS_FINE_LOCATION,
-        android.Manifest.permission.ACCESS_COARSE_LOCATION
-    };
-
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION};
     /** The required Android permissions associated with requesting location post-Android S. */
     private static final String[] LOCATION_REQUIRED_PERMISSIONS_POST_S = {
-        android.Manifest.permission.ACCESS_COARSE_LOCATION
-    };
-
+            android.Manifest.permission.ACCESS_COARSE_LOCATION};
     /** The optional Android permissions associated with requesting location post-Android S. */
     private static final String[] LOCATION_OPTIONAL_PERMISSIONS_POST_S = {
-        android.Manifest.permission.ACCESS_FINE_LOCATION
-    };
+            android.Manifest.permission.ACCESS_FINE_LOCATION};
 
     /** The android permissions associated with requesting access to the camera. */
     private static final String[] CAMERA_PERMISSIONS = {android.Manifest.permission.CAMERA};
-
     /** The android permissions associated with requesting access to the microphone. */
     private static final String[] MICROPHONE_PERMISSIONS = {
-        android.Manifest.permission.RECORD_AUDIO
-    };
-
+            android.Manifest.permission.RECORD_AUDIO};
     /** The required android permissions associated with posting notifications post-Android T. */
     private static final String[] NOTIFICATION_PERMISSIONS_POST_T = {
-        android.Manifest.permission.POST_NOTIFICATIONS
-    };
+            "android.permission.POST_NOTIFICATIONS"};
 
     /** Signifies there are no permissions associated. */
     private static final String[] EMPTY_PERMISSIONS = {};
@@ -65,7 +58,7 @@ public class PermissionUtil {
         // software's SDK version as opposed to Chrome's targetSdkVersion. See:
         // https://developer.android.com/about/versions/12/approximate-location
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                && PermissionsAndroidFeatureMap.isEnabled(
+                && PermissionsAndroidFeatureList.isEnabled(
                         PermissionsAndroidFeatureList
                                 .ANDROID_APPROXIMATE_LOCATION_PERMISSION_SUPPORT);
     }
@@ -83,8 +76,7 @@ public class PermissionUtil {
         switch (contentSettingType) {
             case ContentSettingsType.GEOLOCATION:
                 if (isApproximateLocationSupportEnabled()) {
-                    return Arrays.copyOf(
-                            LOCATION_REQUIRED_PERMISSIONS_POST_S,
+                    return Arrays.copyOf(LOCATION_REQUIRED_PERMISSIONS_POST_S,
                             LOCATION_REQUIRED_PERMISSIONS_POST_S.length);
                 }
                 return Arrays.copyOf(LOCATION_PERMISSIONS_PRE_S, LOCATION_PERMISSIONS_PRE_S.length);
@@ -94,9 +86,8 @@ public class PermissionUtil {
             case ContentSettingsType.AR:
                 return Arrays.copyOf(CAMERA_PERMISSIONS, CAMERA_PERMISSIONS.length);
             case ContentSettingsType.NOTIFICATIONS:
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    return Arrays.copyOf(
-                            NOTIFICATION_PERMISSIONS_POST_T,
+                if (BuildInfo.isAtLeastT()) {
+                    return Arrays.copyOf(NOTIFICATION_PERMISSIONS_POST_T,
                             NOTIFICATION_PERMISSIONS_POST_T.length);
                 }
                 return EMPTY_PERMISSIONS;
@@ -119,8 +110,7 @@ public class PermissionUtil {
         switch (contentSettingType) {
             case ContentSettingsType.GEOLOCATION:
                 if (isApproximateLocationSupportEnabled()) {
-                    return Arrays.copyOf(
-                            LOCATION_OPTIONAL_PERMISSIONS_POST_S,
+                    return Arrays.copyOf(LOCATION_OPTIONAL_PERMISSIONS_POST_S,
                             LOCATION_OPTIONAL_PERMISSIONS_POST_S.length);
                 }
                 return EMPTY_PERMISSIONS;
@@ -186,10 +176,8 @@ public class PermissionUtil {
             WindowAndroid windowAndroid, PermissionCallback callback) {
         String[] requiredPermissions;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            requiredPermissions =
-                    new String[] {
-                        Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT
-                    };
+            requiredPermissions = new String[] {
+                    Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT};
         } else {
             requiredPermissions = new String[] {Manifest.permission.ACCESS_FINE_LOCATION};
         }
@@ -202,9 +190,7 @@ public class PermissionUtil {
 
     @CalledByNative
     public static void requestLocationServices(WindowAndroid windowAndroid) {
-        windowAndroid
-                .getActivity()
-                .get()
-                .startActivity(LocationUtils.getInstance().getSystemLocationSettingsIntent());
+        windowAndroid.getActivity().get().startActivity(
+                LocationUtils.getInstance().getSystemLocationSettingsIntent());
     }
 }

@@ -4,7 +4,7 @@
 
 #include "components/omnibox/browser/actions/omnibox_pedal.h"
 
-#include <functional>
+#include <cctype>
 #include <numeric>
 
 #include "base/metrics/histogram_functions.h"
@@ -25,7 +25,7 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/jni_android.h"
-#include "components/omnibox/browser/actions/omnibox_action_factory_android.h"
+#include "components/omnibox/browser/actions/omnibox_pedal_jni_wrapper.h"
 #endif
 
 OmniboxPedal::TokenSequence::TokenSequence(size_t reserve_size) {
@@ -186,7 +186,7 @@ bool OmniboxPedal::SynonymGroup::EraseMatchesIn(
   auto eraser = fully_erase ? &TokenSequence::Erase : &TokenSequence::Consume;
   bool changed = false;
   for (const auto& synonym : synonyms_) {
-    if (std::invoke(eraser, remaining, synonym, match_once_)) {
+    if (base::invoke(eraser, remaining, synonym, match_once_)) {
       changed = true;
       if (match_once_) {
         break;
@@ -253,9 +253,7 @@ void OmniboxPedal::SetNavigationUrl(const GURL& url) {
 #if defined(SUPPORT_PEDALS_VECTOR_ICONS)
 // static
 const gfx::VectorIcon& OmniboxPedal::GetDefaultVectorIcon() {
-  return OmniboxFieldTrial::IsChromeRefreshActionChipIconsEnabled()
-             ? omnibox::kProductChromeRefreshIcon
-             : omnibox::kPedalIcon;
+  return omnibox::kPedalIcon;
 }
 
 const gfx::VectorIcon& OmniboxPedal::GetVectorIcon() const {
@@ -323,9 +321,7 @@ OmniboxActionId OmniboxPedal::ActionId() const {
 base::android::ScopedJavaLocalRef<jobject> OmniboxPedal::GetOrCreateJavaObject(
     JNIEnv* env) const {
   if (!j_omnibox_action_) {
-    j_omnibox_action_.Reset(
-        BuildOmniboxPedal(env, reinterpret_cast<intptr_t>(this), strings_.hint,
-                          strings_.accessibility_hint, PedalId()));
+    j_omnibox_action_.Reset(BuildOmniboxPedal(env, strings_.hint, PedalId()));
   }
   return base::android::ScopedJavaLocalRef<jobject>(j_omnibox_action_);
 }

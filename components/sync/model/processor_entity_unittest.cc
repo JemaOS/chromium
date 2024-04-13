@@ -16,7 +16,6 @@
 #include "components/sync/engine/commit_and_get_updates_types.h"
 #include "components/sync/protocol/entity_metadata.pb.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
-#include "components/version_info/version_info.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -48,42 +47,6 @@ std::unique_ptr<EntityData> GenerateEntityData(const ClientTagHash& hash,
   entity_data->specifics = GenerateSpecifics(name, value);
   entity_data->name = name;
   return entity_data;
-}
-
-sync_pb::EntitySpecifics GenerateSharedTabGroupDataSpecifics(
-    const std::string& guid) {
-  sync_pb::EntitySpecifics specifics;
-  specifics.mutable_shared_tab_group_data()->set_guid(guid);
-  return specifics;
-}
-
-std::unique_ptr<EntityData> GenerateSharedTabGroupDataEntityData(
-    const ClientTagHash& hash,
-    const std::string& guid,
-    const std::string& collaboration_id) {
-  std::unique_ptr<EntityData> entity_data(new EntityData());
-  entity_data->client_tag_hash = hash;
-  entity_data->specifics = GenerateSharedTabGroupDataSpecifics(guid);
-  entity_data->collaboration_id = collaboration_id;
-  return entity_data;
-}
-
-UpdateResponseData GenerateSharedTabGroupDataUpdate(
-    const ProcessorEntity& entity,
-    const ClientTagHash& hash,
-    const std::string& server_id,
-    const std::string& guid,
-    const base::Time& mtime,
-    int64_t version,
-    const std::string& collaboration_id) {
-  std::unique_ptr<EntityData> data =
-      GenerateSharedTabGroupDataEntityData(hash, guid, collaboration_id);
-  data->id = server_id;
-  data->modification_time = mtime;
-  UpdateResponseData update;
-  update.entity = std::move(*data);
-  update.response_version = version;
-  return update;
 }
 
 UpdateResponseData GenerateUpdate(const ProcessorEntity& entity,
@@ -713,6 +676,8 @@ TEST_F(ProcessorEntityTest, LocalCreationConflictsWithServerTombstone) {
 }
 
 TEST_F(ProcessorEntityTest, UpdatesSpecificsCacheOnRemoteUpdates) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kCacheBaseEntitySpecificsInMetadata);
   std::unique_ptr<ProcessorEntity> entity = CreateNew();
   const base::Time mtime = base::Time::Now();
   UpdateResponseData update =
@@ -726,6 +691,9 @@ TEST_F(ProcessorEntityTest, UpdatesSpecificsCacheOnRemoteUpdates) {
 }
 
 TEST_F(ProcessorEntityTest, UpdatesSpecificsCacheOnLocalUpdates) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kCacheBaseEntitySpecificsInMetadata);
+
   std::unique_ptr<ProcessorEntity> entity = CreateNew();
   sync_pb::EntitySpecifics specifics_for_caching =
       GenerateSpecifics(kName, kValue2);
@@ -734,75 +702,6 @@ TEST_F(ProcessorEntityTest, UpdatesSpecificsCacheOnLocalUpdates) {
   EXPECT_EQ(
       specifics_for_caching.SerializeAsString(),
       entity->metadata().possibly_trimmed_base_specifics().SerializeAsString());
-}
-
-TEST_F(ProcessorEntityTest,
-       LocalDeletionDoesNotRecordVersionInfoIfFeatureIsDisabled) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {/* enabled_features */},
-      {syncer::kSyncEntityMetadataRecordDeletedByVersionOnLocalDeletion});
-
-  std::unique_ptr<ProcessorEntity> entity = CreateNew();
-  entity->RecordLocalDeletion();
-  EXPECT_FALSE(entity->metadata().has_deleted_by_version());
-}
-
-TEST_F(ProcessorEntityTest, LocalDeletionRecordsVersionInfoIfFeatureIsEnabled) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {syncer::kSyncEntityMetadataRecordDeletedByVersionOnLocalDeletion},
-      {/* disabled_features */});
-  std::unique_ptr<ProcessorEntity> entity = CreateNew();
-  entity->RecordLocalDeletion();
-  std::string expected_version = std::string(version_info::GetVersionNumber());
-  EXPECT_EQ(expected_version, entity->metadata().deleted_by_version());
-}
-
-TEST_F(ProcessorEntityTest, ShouldCreateAndCommitNewLocalSharedItem) {
-  std::unique_ptr<ProcessorEntity> entity = CreateNew();
-  entity->RecordLocalUpdate(
-      GenerateSharedTabGroupDataEntityData(kHash, "guid", "collaboration"),
-      /*trimmed_specifics=*/{});
-  EXPECT_EQ("", entity->metadata().server_id());
-  EXPECT_EQ(kUncommittedVersion, entity->metadata().server_version());
-  EXPECT_EQ("collaboration",
-            entity->metadata().collaboration().collaboration_id());
-  EXPECT_TRUE(entity->IsUnsynced());
-
-  // Generate a commit request.
-  CommitRequestData request;
-  entity->InitializeCommitRequestData(&request);
-  const EntityData& data = *request.entity;
-  EXPECT_EQ("collaboration", data.collaboration_id);
-}
-
-TEST_F(ProcessorEntityTest, ShouldCreateNewRemoteSharedItem) {
-  std::unique_ptr<ProcessorEntity> entity = CreateNew();
-  const base::Time mtime = base::Time::Now();
-  UpdateResponseData update = GenerateSharedTabGroupDataUpdate(
-      *entity, kHash, kId, "guid", mtime, /*version=*/10, "collaboration");
-  entity->RecordAcceptedRemoteUpdate(update, /*trimmed_specifics=*/{});
-
-  EXPECT_EQ(kId, entity->metadata().server_id());
-  EXPECT_EQ("collaboration",
-            entity->metadata().collaboration().collaboration_id());
-}
-
-TEST_F(ProcessorEntityTest, ShouldMatchEntitiesByCollaborations) {
-  std::unique_ptr<ProcessorEntity> entity = CreateNew();
-  entity->RecordLocalUpdate(
-      GenerateSharedTabGroupDataEntityData(kHash, "guid", "collaboration"),
-      /*trimmed_specifics=*/{});
-
-  std::unique_ptr<EntityData> matching_entity_data =
-      GenerateSharedTabGroupDataEntityData(kHash, "guid", "collaboration");
-  std::unique_ptr<EntityData> different_collaboration_entity_data =
-      GenerateSharedTabGroupDataEntityData(kHash, "guid",
-                                           "different_collaboration");
-
-  EXPECT_TRUE(entity->MatchesData(*matching_entity_data));
-  EXPECT_FALSE(entity->MatchesData(*different_collaboration_entity_data));
 }
 
 }  // namespace syncer

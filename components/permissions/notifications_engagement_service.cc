@@ -36,7 +36,7 @@ void EraseStaleEntries(base::Value::Dict& engagement) {
   for (auto it = engagement.begin(); it != engagement.end();) {
     const auto& [key, value] = *it;
 
-    std::optional<base::Time> last_time =
+    absl::optional<base::Time> last_time =
         NotificationsEngagementService::ParsePeriodBeginFromBucketLabel(key);
     if (!last_time.has_value() || last_time.value() < cutoff) {
       it = engagement.erase(it);
@@ -79,7 +79,7 @@ void NotificationsEngagementService::IncrementCounts(const GURL& url,
                                                      int display_count_delta,
                                                      int click_count_delta) {
   base::Value engagement_as_value = settings_map_->GetWebsiteSetting(
-      url, GURL(), ContentSettingsType::NOTIFICATION_INTERACTIONS);
+      url, GURL(), ContentSettingsType::NOTIFICATION_INTERACTIONS, nullptr);
 
   base::Value::Dict engagement;
   if (engagement_as_value.is_dict())
@@ -130,7 +130,7 @@ std::string NotificationsEngagementService::GetBucketLabel(base::Time date) {
 }
 
 // static
-std::optional<base::Time>
+absl::optional<base::Time>
 NotificationsEngagementService::ParsePeriodBeginFromBucketLabel(
     const std::string& label) {
   int maybe_engagement_time;
@@ -144,7 +144,7 @@ NotificationsEngagementService::ParsePeriodBeginFromBucketLabel(
       return local_period_begin;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace permissions

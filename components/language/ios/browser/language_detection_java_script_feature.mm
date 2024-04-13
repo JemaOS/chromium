@@ -13,7 +13,13 @@
 #import "ios/web/public/js_messaging/web_frame.h"
 #import "ios/web/public/js_messaging/web_frames_manager.h"
 
+#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
+
 namespace {
+// Name for the UMA metric used to track text extraction time.
+const char kTranslateCaptureText[] = "Translate.CaptureText";
 
 const char kScriptName[] = "language_detection";
 const char kLanguageDetectionTextCapturedMessageHandlerName[] =
@@ -32,7 +38,10 @@ LanguageDetectionJavaScriptFeature::GetInstance() {
 
 LanguageDetectionJavaScriptFeature::LanguageDetectionJavaScriptFeature()
     : web::JavaScriptFeature(
-          web::ContentWorld::kIsolatedWorld,
+          // TODO(crbug.com/1380918): Move language detection feature to
+          // kIsolatedWorld once WebFrameManager supports tracking frames in
+          // an isolated world.
+          web::ContentWorld::kPageContentWorld,
           {FeatureScript::CreateWithFilename(
               kScriptName,
               FeatureScript::InjectionTime::kDocumentStart,
@@ -61,15 +70,20 @@ void LanguageDetectionJavaScriptFeature::ScriptMessageReceived(
 
   base::Value::Dict& body_dict = script_message.body()->GetDict();
 
-  std::optional<bool> has_notranslate = body_dict.FindBool("hasNoTranslate");
+  absl::optional<bool> has_notranslate = body_dict.FindBool("hasNoTranslate");
+  absl::optional<double> capture_text_time =
+      body_dict.FindDouble("captureTextTime");
   const std::string* html_lang = body_dict.FindString("htmlLang");
   const std::string* http_content_language =
       body_dict.FindString("httpContentLanguage");
   const std::string* frame_id = body_dict.FindString("frameId");
-  if (!has_notranslate.has_value() || !html_lang || !http_content_language ||
-      !frame_id) {
+  if (!has_notranslate.has_value() || !capture_text_time.has_value() ||
+      !html_lang || !http_content_language || !frame_id) {
     return;
   }
+
+  UMA_HISTOGRAM_TIMES(kTranslateCaptureText,
+                      base::Milliseconds(*capture_text_time));
 
   web::WebFrame* sender_frame =
       GetWebFramesManager(web_state)->GetFrameWithId(*frame_id);
@@ -97,7 +111,7 @@ void LanguageDetectionJavaScriptFeature::ScriptMessageReceived(
       base::Milliseconds(web::kJavaScriptFunctionCallDefaultTimeout));
 }
 
-std::optional<std::string>
+absl::optional<std::string>
 LanguageDetectionJavaScriptFeature::GetScriptMessageHandlerName() const {
   return kLanguageDetectionTextCapturedMessageHandlerName;
 }

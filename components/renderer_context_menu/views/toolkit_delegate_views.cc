@@ -5,7 +5,6 @@
 #include "components/renderer_context_menu/views/toolkit_delegate_views.h"
 
 #include <memory>
-#include <utility>
 
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/image/image.h"
@@ -14,9 +13,9 @@
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/menu/submenu_view.h"
 
-ToolkitDelegateViews::ToolkitDelegateViews() = default;
+ToolkitDelegateViews::ToolkitDelegateViews() : menu_view_(nullptr) {}
 
-ToolkitDelegateViews::~ToolkitDelegateViews() = default;
+ToolkitDelegateViews::~ToolkitDelegateViews() {}
 
 void ToolkitDelegateViews::RunMenuAt(views::Widget* parent,
                                      const gfx::Point& point,
@@ -32,10 +31,9 @@ void ToolkitDelegateViews::RunMenuAt(views::Widget* parent,
 
 void ToolkitDelegateViews::Init(ui::SimpleMenuModel* menu_model) {
   menu_adapter_ = std::make_unique<views::MenuModelAdapter>(menu_model);
-  std::unique_ptr<views::MenuItemView> menu_view = menu_adapter_->CreateMenu();
-  menu_view_ = menu_view.get();
+  menu_view_ = menu_adapter_->CreateMenu();
   menu_runner_ = std::make_unique<views::MenuRunner>(
-      std::move(menu_view),
+      menu_view_,
       views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU);
 }
 

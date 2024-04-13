@@ -7,9 +7,11 @@
 
 namespace autofill {
 
-AutocompleteChange::AutocompleteChange(Type type, const AutocompleteKey& key)
-    : type_(type), key_(key) {}
+AutofillChange::AutofillChange(Type type, const AutofillKey& key)
+    : GenericAutofillChange<AutofillKey>(type, key) {
+}
 
-AutocompleteChange::~AutocompleteChange() = default;
+AutofillChange::~AutofillChange() {
+}
 
 }  // namespace autofill

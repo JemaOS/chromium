@@ -4,8 +4,6 @@
 
 #include "components/autofill/content/renderer/renderer_save_password_progress_logger.h"
 
-#include <optional>
-
 #include "base/run_loop.h"
 #include "base/test/task_environment.h"
 #include "components/autofill/content/common/mojom/autofill_driver.mojom.h"
@@ -14,6 +12,7 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace autofill {
 
@@ -24,7 +23,7 @@ const char kTestText[] = "test";
 class FakeContentPasswordManagerDriver : public mojom::PasswordManagerDriver {
  public:
   FakeContentPasswordManagerDriver() : called_record_save_(false) {}
-  ~FakeContentPasswordManagerDriver() override = default;
+  ~FakeContentPasswordManagerDriver() override {}
 
   mojo::PendingRemote<mojom::PasswordManagerDriver>
   CreatePendingRemoteAndBind() {
@@ -57,12 +56,15 @@ class FakeContentPasswordManagerDriver : public mojom::PasswordManagerDriver {
 
   void PasswordFormCleared(const autofill::FormData& form_data) override {}
 
-  void ShowPasswordSuggestions(
-      const autofill::PasswordSuggestionRequest& request) override {}
+  void ShowPasswordSuggestions(base::i18n::TextDirection text_direction,
+                               const std::u16string& typed_username,
+                               int options,
+                               const gfx::RectF& bounds) override {}
+
 #if BUILDFLAG(IS_ANDROID)
-  void ShowKeyboardReplacingSurface(
-      autofill::mojom::SubmissionReadinessState submission_readiness,
-      bool is_webauthn_form) override {}
+  void ShowTouchToFill(
+      autofill::mojom::SubmissionReadinessState submission_readiness) override {
+  }
 #endif
 
   void RecordSavePasswordProgress(const std::string& log) override {
@@ -72,10 +74,11 @@ class FakeContentPasswordManagerDriver : public mojom::PasswordManagerDriver {
 
   void UserModifiedPasswordField() override {}
 
-  void UserModifiedNonPasswordField(autofill::FieldRendererId renderer_id,
-                                    const std::u16string& value,
-                                    bool autocomplete_attribute_has_username,
-                                    bool is_likely_otp) override {}
+  void UserModifiedNonPasswordField(
+      autofill::FieldRendererId renderer_id,
+      const std::u16string& field_name,
+      const std::u16string& value,
+      bool autocomplete_attribute_has_username) override {}
 
   void CheckSafeBrowsingReputation(const GURL& form_action,
                                    const GURL& frame_url) override {}
@@ -89,7 +92,7 @@ class FakeContentPasswordManagerDriver : public mojom::PasswordManagerDriver {
   // Records whether RecordSavePasswordProgress() gets called.
   bool called_record_save_;
   // Records data received via RecordSavePasswordProgress() call.
-  std::optional<std::string> log_;
+  absl::optional<std::string> log_;
 
   mojo::Receiver<mojom::PasswordManagerDriver> receiver_{this};
 };

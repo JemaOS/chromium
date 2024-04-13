@@ -4,7 +4,6 @@
 
 #include "components/download/content/internal/download_driver_impl.h"
 
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -12,7 +11,6 @@
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
@@ -26,6 +24,7 @@
 #include "net/http/http_byte_range.h"
 #include "net/http/http_response_headers.h"
 #include "net/http/http_status_code.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace download {
 
@@ -110,9 +109,8 @@ DriverEntry DownloadDriverImpl::CreateDriverEntry(
 
   if (item->GetState() == DownloadItem::DownloadState::COMPLETE) {
     std::string hash = item->GetHash();
-    if (!hash.empty()) {
-      entry.hash256 = base::HexEncode(hash);
-    }
+    if (!hash.empty())
+      entry.hash256 = base::HexEncode(hash.data(), hash.size());
   }
 
   return entry;
@@ -187,9 +185,10 @@ void DownloadDriverImpl::Start(
     download_url_params->add_request_header(it.name(), it.value());
   }
 
-  if (request_params.request_headers.HasHeader(
+  if (base::FeatureList::IsEnabled(features::kDownloadRange) &&
+      request_params.request_headers.HasHeader(
           net::HttpRequestHeaders::kRange)) {
-    std::optional<net::HttpByteRange> byte_range =
+    absl::optional<net::HttpByteRange> byte_range =
         ParseRangeHeader(request_params.request_headers);
     if (byte_range.has_value()) {
       download_url_params->set_use_if_range(false);
@@ -277,13 +276,13 @@ void DownloadDriverImpl::Resume(const std::string& guid) {
     item->Resume(true);
 }
 
-std::optional<DriverEntry> DownloadDriverImpl::Find(const std::string& guid) {
+absl::optional<DriverEntry> DownloadDriverImpl::Find(const std::string& guid) {
   if (!download_manager_coordinator_)
-    return std::nullopt;
+    return absl::nullopt;
   DownloadItem* item = download_manager_coordinator_->GetDownloadByGuid(guid);
   if (item)
     return CreateDriverEntry(item);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::set<std::string> DownloadDriverImpl::GetActiveDownloads() {
@@ -291,10 +290,10 @@ std::set<std::string> DownloadDriverImpl::GetActiveDownloads() {
   if (!download_manager_coordinator_)
     return guids;
 
-  std::vector<raw_ptr<DownloadItem, VectorExperimental>> items;
+  std::vector<DownloadItem*> items;
   download_manager_coordinator_->GetAllDownloads(&items);
 
-  for (download::DownloadItem* item : items) {
+  for (auto* item : items) {
     DriverEntry::State state = ToDriverEntryState(item->GetState());
     if (state == DriverEntry::State::IN_PROGRESS)
       guids.insert(item->GetGuid());

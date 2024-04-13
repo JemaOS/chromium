@@ -7,7 +7,6 @@
 #include <memory>
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/uuid.h"
 #include "components/autofill/core/browser/autofill_test_utils.h"
@@ -52,8 +51,8 @@ class MockPaymentOptionsProvider : public PaymentOptionsProvider {
 AutofillProfile CreateProfileWithContactInfo(const char* name,
                                              const char* email,
                                              const char* phone) {
-  AutofillProfile profile(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  AutofillProfile profile(base::Uuid::GenerateRandomV4().AsLowercaseString(),
+                          "http://www.example.test/");
   autofill::test::SetProfileInfo(&profile, name, "", "", email, "", "", "", "",
                                  "", "", "", phone);
   return profile;
@@ -61,8 +60,8 @@ AutofillProfile CreateProfileWithContactInfo(const char* name,
 
 AutofillProfile CreateProfileWithCompleteAddress(const char* name,
                                                  const char* phone) {
-  AutofillProfile profile(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  AutofillProfile profile(base::Uuid::GenerateRandomV4().AsLowercaseString(),
+                          "http://www.example.test/");
   autofill::test::SetProfileInfo(&profile, name, "", "", "", "", "123 Fake St.",
                                  "", "Fakesville", "MN", "54000", "US", phone);
   return profile;
@@ -70,8 +69,8 @@ AutofillProfile CreateProfileWithCompleteAddress(const char* name,
 
 AutofillProfile CreateProfileWithPartialAddress(const char* name,
                                                 const char* phone) {
-  AutofillProfile profile(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  AutofillProfile profile(base::Uuid::GenerateRandomV4().AsLowercaseString(),
+                          "http://www.example.test/");
   autofill::test::SetProfileInfo(&profile, name, "", "", "", "", "123 Fake St.",
                                  "", "", "", "54000", "", phone);
   return profile;
@@ -104,14 +103,14 @@ TEST(PaymentRequestProfileUtilTest, FilterProfilesForContact) {
   AutofillProfile include_3 = CreateProfileWithContactInfo(
       "Bart", "eatmyshorts@simpson.net", "6515553226");
 
-  std::vector<raw_ptr<AutofillProfile, VectorExperimental>> profiles = {
-      &exclude_1, &exclude_2, &include_1, &exclude_3, &include_2, &include_3};
+  std::vector<AutofillProfile*> profiles = {&exclude_1, &exclude_2, &include_1,
+                                            &exclude_3, &include_2, &include_3};
 
   MockPaymentOptionsProvider provider(kRequestPayerName | kRequestPayerEmail |
                                       kRequestPayerPhone);
   PaymentsProfileComparator comp("en-US", provider);
 
-  std::vector<raw_ptr<AutofillProfile, VectorExperimental>> filtered =
+  std::vector<AutofillProfile*> filtered =
       comp.FilterProfilesForContact(profiles);
 
   ASSERT_EQ(3u, filtered.size());
@@ -124,7 +123,7 @@ TEST(PaymentRequestProfileUtilTest, FilterProfilesForContact) {
   // we should only see the first profile with a phone number, |exclude_1|.
   MockPaymentOptionsProvider phone_only_provider(kRequestPayerPhone);
   PaymentsProfileComparator phone_only_comp("en-US", phone_only_provider);
-  std::vector<raw_ptr<AutofillProfile, VectorExperimental>> filtered_phones =
+  std::vector<AutofillProfile*> filtered_phones =
       phone_only_comp.FilterProfilesForContact(profiles);
   ASSERT_EQ(1u, filtered_phones.size());
   EXPECT_EQ(&exclude_1, filtered_phones[0]);
@@ -277,12 +276,12 @@ TEST(PaymentRequestProfileUtilTest, FilterProfilesForShipping) {
   AutofillProfile partial_no_name =
       CreateProfileWithPartialAddress("Homer", "");
 
-  std::vector<raw_ptr<AutofillProfile, VectorExperimental>> profiles = {
+  std::vector<AutofillProfile*> profiles = {
       &address_only,     &no_name,         &no_phone,   &empty,
       &complete1,        &partial_address, &no_address, &complete2,
       &partial_no_phone, &partial_no_name};
 
-  std::vector<raw_ptr<AutofillProfile, VectorExperimental>> filtered =
+  std::vector<AutofillProfile*> filtered =
       comp.FilterProfilesForShipping(profiles);
 
   // Current logic does not remove profiles, only reorder them.

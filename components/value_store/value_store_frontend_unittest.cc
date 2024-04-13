@@ -27,8 +27,7 @@ class ValueStoreFrontendTest : public testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     base::FilePath test_data_dir;
-    ASSERT_TRUE(
-        base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &test_data_dir));
+    ASSERT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &test_data_dir));
     base::FilePath src_db(
         test_data_dir.AppendASCII("components/test/data/value_store"));
     db_path_ = temp_dir_.GetPath().AppendASCII("temp_db");
@@ -52,7 +51,7 @@ class ValueStoreFrontendTest : public testing::Test {
         value_store::GetValueStoreTaskRunner());
   }
 
-  bool Get(const std::string& key, std::optional<base::Value>* output) {
+  bool Get(const std::string& key, absl::optional<base::Value>* output) {
     storage_->Get(key, base::BindOnce(&ValueStoreFrontendTest::GetAndWait,
                                       base::Unretained(this), output));
     RunUntilIdle();
@@ -62,8 +61,8 @@ class ValueStoreFrontendTest : public testing::Test {
  protected:
   void RunUntilIdle() { task_environment_.RunUntilIdle(); }
 
-  void GetAndWait(std::optional<base::Value>* output,
-                  std::optional<base::Value> result) {
+  void GetAndWait(absl::optional<base::Value>* output,
+                  absl::optional<base::Value> result) {
     *output = std::move(result);
   }
 
@@ -75,7 +74,7 @@ class ValueStoreFrontendTest : public testing::Test {
 };
 
 TEST_F(ValueStoreFrontendTest, GetExistingData) {
-  std::optional<base::Value> value;
+  absl::optional<base::Value> value;
   ASSERT_FALSE(Get("key0", &value));
 
   // Test existing keys in the DB.
@@ -100,7 +99,7 @@ TEST_F(ValueStoreFrontendTest, ChangesPersistAfterReload) {
   // Reload the DB and test our changes.
   ResetStorage();
 
-  std::optional<base::Value> value;
+  absl::optional<base::Value> value;
   {
     ASSERT_TRUE(Get("key0", &value));
     ASSERT_TRUE(value->is_int());

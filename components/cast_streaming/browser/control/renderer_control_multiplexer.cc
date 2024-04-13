@@ -80,7 +80,7 @@ void RendererControlMultiplexer::SetVolume(float volume) {
 }
 
 void RendererControlMultiplexer::SetCdm(
-    const std::optional<::base::UnguessableToken>& cdm_id,
+    const absl::optional<::base::UnguessableToken>& cdm_id,
     SetCdmCallback callback) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   renderer_remote_->SetCdm(cdm_id, std::move(callback));
@@ -88,7 +88,7 @@ void RendererControlMultiplexer::SetCdm(
 
 void RendererControlMultiplexer::Initialize(
     mojo::PendingAssociatedRemote<media::mojom::RendererClient> client,
-    std::optional<
+    absl::optional<
         std::vector<::mojo::PendingRemote<::media::mojom::DemuxerStream>>>
         streams,
     media::mojom::MediaUrlParamsPtr media_url_params,

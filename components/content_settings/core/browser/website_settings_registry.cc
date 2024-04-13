@@ -8,7 +8,6 @@
 
 #include "base/check_op.h"
 #include "base/memory/ptr_util.h"
-#include "build/blink_buildflags.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "components/content_settings/core/common/content_settings.h"
@@ -135,22 +134,13 @@ void WebsiteSettingsRegistry::Init() {
   Register(ContentSettingsType::APP_BANNER, "app-banner", base::Value(),
            WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::LOSSY,
            WebsiteSettingsInfo::GENERIC_SINGLE_ORIGIN_SCOPE,
-           DESKTOP | PLATFORM_ANDROID
-#if BUILDFLAG(USE_BLINK)
-               | PLATFORM_IOS
-#endif
-           ,
+           DESKTOP | PLATFORM_ANDROID,
            WebsiteSettingsInfo::INHERIT_IN_INCOGNITO);
-  Register(ContentSettingsType::SITE_ENGAGEMENT, "site-engagement",
-           base::Value(), WebsiteSettingsInfo::UNSYNCABLE,
-           WebsiteSettingsInfo::LOSSY,
-           WebsiteSettingsInfo::GENERIC_SINGLE_ORIGIN_SCOPE,
-           DESKTOP | PLATFORM_ANDROID
-#if BUILDFLAG(USE_BLINK)
-               | PLATFORM_IOS
-#endif
-           ,
-           WebsiteSettingsInfo::INHERIT_IN_INCOGNITO);
+  Register(
+      ContentSettingsType::SITE_ENGAGEMENT, "site-engagement", base::Value(),
+      WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::LOSSY,
+      WebsiteSettingsInfo::GENERIC_SINGLE_ORIGIN_SCOPE,
+      DESKTOP | PLATFORM_ANDROID, WebsiteSettingsInfo::INHERIT_IN_INCOGNITO);
   Register(
       ContentSettingsType::USB_CHOOSER_DATA, "usb-chooser-data", base::Value(),
       WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::NOT_LOSSY,
@@ -176,16 +166,11 @@ void WebsiteSettingsRegistry::Init() {
   // Set when an origin is activated for subresource filtering and the
   // associated UI is shown to the user. Cleared when a site is de-activated or
   // the first URL matching the origin is removed from history.
-  Register(ContentSettingsType::ADS_DATA, "subresource-filter-data",
-           base::Value(), WebsiteSettingsInfo::UNSYNCABLE,
-           WebsiteSettingsInfo::NOT_LOSSY,
-           WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
-           DESKTOP | PLATFORM_ANDROID
-#if BUILDFLAG(USE_BLINK)
-               | PLATFORM_IOS
-#endif
-           ,
-           WebsiteSettingsInfo::INHERIT_IN_INCOGNITO);
+  Register(
+      ContentSettingsType::ADS_DATA, "subresource-filter-data", base::Value(),
+      WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::NOT_LOSSY,
+      WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE, DESKTOP | PLATFORM_ANDROID,
+      WebsiteSettingsInfo::INHERIT_IN_INCOGNITO);
   Register(
       ContentSettingsType::MEDIA_ENGAGEMENT, "media-engagement", base::Value(),
       WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::LOSSY,
@@ -258,6 +243,11 @@ void WebsiteSettingsRegistry::Init() {
            WebsiteSettingsInfo::LOSSY,
            WebsiteSettingsInfo::GENERIC_SINGLE_ORIGIN_SCOPE, ALL_PLATFORMS,
            WebsiteSettingsInfo::INHERIT_IN_INCOGNITO);
+  Register(ContentSettingsType::FEDERATED_IDENTITY_ACTIVE_SESSION,
+           "fedcm-active-session", base::Value(),
+           WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::NOT_LOSSY,
+           WebsiteSettingsInfo::GENERIC_SINGLE_ORIGIN_SCOPE, ALL_PLATFORMS,
+           WebsiteSettingsInfo::DONT_INHERIT_IN_INCOGNITO);
   Register(ContentSettingsType::NOTIFICATION_INTERACTIONS,
            "notification-interactions", base::Value(),
            WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::LOSSY,
@@ -278,7 +268,8 @@ void WebsiteSettingsRegistry::Init() {
   Register(ContentSettingsType::PRIVATE_NETWORK_CHOOSER_DATA,
            "private-network-chooser-data", base::Value(),
            WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::NOT_LOSSY,
-           WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE, DESKTOP,
+           WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
+           DESKTOP | PLATFORM_ANDROID,
            WebsiteSettingsInfo::DONT_INHERIT_IN_INCOGNITO);
   Register(
       ContentSettingsType::FEDERATED_IDENTITY_IDENTITY_PROVIDER_SIGNIN_STATUS,
@@ -297,24 +288,6 @@ void WebsiteSettingsRegistry::Init() {
       WebsiteSettingsInfo::NOT_LOSSY,
       WebsiteSettingsInfo::GENERIC_SINGLE_ORIGIN_SCOPE, ALL_PLATFORMS,
       WebsiteSettingsInfo::DONT_INHERIT_IN_INCOGNITO);
-  Register(ContentSettingsType::COOKIE_CONTROLS_METADATA,
-           "cookie-controls-metadata", base::Value(),
-           WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::LOSSY,
-           WebsiteSettingsInfo::REQUESTING_SCHEMEFUL_SITE_ONLY_SCOPE,
-           DESKTOP | PLATFORM_ANDROID,
-           WebsiteSettingsInfo::DONT_INHERIT_IN_INCOGNITO);
-  Register(ContentSettingsType::SMART_CARD_DATA, "smart-card-data",
-           base::Value(), WebsiteSettingsInfo::UNSYNCABLE,
-           WebsiteSettingsInfo::NOT_LOSSY,
-           WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
-           // Add more platforms as implementation progresses.
-           // Target is DESKTOP.
-           PLATFORM_CHROMEOS, WebsiteSettingsInfo::DONT_INHERIT_IN_INCOGNITO);
-  Register(ContentSettingsType::REVOKED_ABUSIVE_NOTIFICATION_PERMISSIONS,
-           "abusive-notification-permissions", base::Value(),
-           WebsiteSettingsInfo::UNSYNCABLE, WebsiteSettingsInfo::NOT_LOSSY,
-           WebsiteSettingsInfo::GENERIC_SINGLE_ORIGIN_SCOPE, DESKTOP,
-           WebsiteSettingsInfo::DONT_INHERIT_IN_INCOGNITO);
 }
 
 }  // namespace content_settings

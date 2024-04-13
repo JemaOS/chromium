@@ -16,7 +16,6 @@
 #include "components/unexportable_keys/service_error.h"
 #include "components/unexportable_keys/unexportable_key_id.h"
 #include "crypto/signature_verifier.h"
-#include "crypto/unexportable_key.h"
 
 namespace unexportable_keys {
 
@@ -40,18 +39,12 @@ namespace unexportable_keys {
 // tasks are getting scheduled.
 class UnexportableKeyTaskManager {
  public:
-  explicit UnexportableKeyTaskManager(
-      crypto::UnexportableKeyProvider::Config config);
+  UnexportableKeyTaskManager();
   ~UnexportableKeyTaskManager();
 
   UnexportableKeyTaskManager(const UnexportableKeyTaskManager&) = delete;
   UnexportableKeyTaskManager& operator=(const UnexportableKeyTaskManager&) =
       delete;
-
-  // Returns a `crypto::UnexportableKeyProvider` that will be used by the
-  // `UnexportableKeyTaskManager`.
-  static std::unique_ptr<crypto::UnexportableKeyProvider>
-  GetUnexportableKeyProvider(crypto::UnexportableKeyProvider::Config config);
 
   // Generates a new signing key asynchronously.
   // The first supported value of `acceptable_algorithms` determines the type of
@@ -97,8 +90,6 @@ class UnexportableKeyTaskManager {
  private:
   // Scheduler to run long tasks in background.
   BackgroundLongTaskScheduler task_scheduler_;
-
-  const crypto::UnexportableKeyProvider::Config config_;
 };
 
 }  // namespace unexportable_keys

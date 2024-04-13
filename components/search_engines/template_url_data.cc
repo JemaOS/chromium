@@ -45,7 +45,8 @@ TemplateURLData::TemplateURLData()
       id(0),
       date_created(base::Time::Now()),
       last_modified(base::Time::Now()),
-      created_by_policy(CreatedByPolicy::kNoPolicy),
+      last_visited(base::Time()),
+      created_by_policy(false),
       enforced_by_policy(false),
       created_from_play_api(false),
       usage_count(0),
@@ -60,8 +61,8 @@ TemplateURLData& TemplateURLData::operator=(const TemplateURLData& other) =
     default;
 
 TemplateURLData::TemplateURLData(
-    std::u16string_view name,
-    std::u16string_view keyword,
+    const std::u16string& name,
+    const std::u16string& keyword,
     base::StringPiece search_url,
     base::StringPiece suggest_url,
     base::StringPiece image_url,
@@ -106,7 +107,9 @@ TemplateURLData::TemplateURLData(
       favicon_url(favicon_url),
       safe_for_autoreplace(true),
       id(0),
-      created_by_policy(CreatedByPolicy::kNoPolicy),
+      date_created(base::Time()),
+      last_modified(base::Time()),
+      created_by_policy(false),
       enforced_by_policy(false),
       created_from_play_api(false),
       usage_count(0),
@@ -129,13 +132,13 @@ TemplateURLData::TemplateURLData(
 
 TemplateURLData::~TemplateURLData() = default;
 
-void TemplateURLData::SetShortName(std::u16string_view short_name) {
+void TemplateURLData::SetShortName(const std::u16string& short_name) {
   // Remove tabs, carriage returns, and the like, as they can corrupt
   // how the short name is displayed.
   short_name_ = base::CollapseWhitespace(short_name, true);
 }
 
-void TemplateURLData::SetKeyword(std::u16string_view keyword) {
+void TemplateURLData::SetKeyword(const std::u16string& keyword) {
   DCHECK(!keyword.empty());
 
   // Case sensitive keyword matching is confusing. As such, we force all

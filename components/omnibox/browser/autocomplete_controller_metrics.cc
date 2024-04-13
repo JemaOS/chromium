@@ -59,8 +59,7 @@ void AutocompleteControllerMetrics::OnNotifyChanged(
   // E.g., suggestion deletion can call `OnNotifyChanged()` after the controller
   // is done and finalization metrics have been logged. They shouldn't be
   // re-logged.
-  if (controller_->last_update_type() ==
-      AutocompleteController::UpdateType::kMatchDeletion)
+  if (logged_finalization_metrics_)
     return;
 
   const bool any_match_changed_or_removed_or_added =
@@ -76,7 +75,7 @@ void AutocompleteControllerMetrics::OnNotifyChanged(
   }
   // It's common to have multiple async updates per input. Only log the final
   // update.
-  if (controller_->done())
+  if (ControllerIdle())
     LogSuggestionFinalizationMetrics();
 }
 
@@ -102,38 +101,36 @@ void AutocompleteControllerMetrics::OnStop() {
 
   // Done providers should already be logged by `OnProviderUpdate()`.
   for (const auto& provider : controller_->providers()) {
-    if (!provider->done())
+    if (!provider->done()) {
+      DCHECK(!controller_->done() || !controller_->sync_pass_done());
       LogProviderTimeMetrics(*provider);
+    }
   }
 
   // If the controller is done, `OnNotifyChanged()` should have already logged
   // finalization metrics. This case, i.e. `OnStop()` invoked even though the
-  // controller is done, is possible because `OnStart()` calls `OnStop()`.
-  if (!controller_->done())
+  // controller is done, is possible because 1) `OnStart()` calls `OnStop()`
+  // and 2) `AutocompleteController::stop_timer_` may fire after the controller
+  // completes. Checking `!logged_finalization_metrics_` isn't sufficient, as
+  // that would log synchronous inputs.
+  if (!ControllerIdle())
     LogSuggestionFinalizationMetrics();
 }
 
+bool AutocompleteControllerMetrics::ControllerIdle() {
+  return controller_->done() && controller_->expire_timer_done();
+}
+
 void AutocompleteControllerMetrics::LogSuggestionFinalizationMetrics() {
-  // Finalization metrics should be logged once only, either when all async
-  // providers complete or they're interrupted before completion.
-#if BUILDFLAG(IS_IOS)
-  // iOS is weird in that it sometimes calls `InjectAdHocMatch()` when the user
-  // selects a suggestion, thus changing the results when autocompletion is done
-  // and suggestions should be stable.
-  if (logged_finalization_metrics_)
-    return;
-#endif
-  DCHECK(!logged_finalization_metrics_)
-      << "last_update_type: "
-      << AutocompleteController::UpdateTypeToDebugString(
-             controller_->last_update_type());
+  // Should be logged once only, either when all async providers complete
+  // or they're interrupted before completion.
+  DCHECK(!logged_finalization_metrics_);
   logged_finalization_metrics_ = true;
 
-  LogAsyncAutocompletionTimeMetrics("Done", controller_->done(),
-                                    base::TimeTicks::Now());
-  LogAsyncAutocompletionTimeMetrics("LastChange", controller_->done(),
-                                    last_change_time_);
-  LogAsyncAutocompletionTimeMetrics("LastDefaultChange", controller_->done(),
+  const bool done = ControllerIdle();
+  LogAsyncAutocompletionTimeMetrics("Done", done, base::TimeTicks::Now());
+  LogAsyncAutocompletionTimeMetrics("LastChange", done, last_change_time_);
+  LogAsyncAutocompletionTimeMetrics("LastDefaultChange", done,
                                     last_default_change_time_);
 }
 
@@ -165,10 +162,7 @@ void AutocompleteControllerMetrics::LogSuggestionChangeIndexMetrics(
   size_t max = AutocompleteResult::kMaxAutocompletePositionValue;
   // These metrics are logged up to about 50 times per omnibox keystroke, so use
   // UMA macros for efficiency.
-  if (controller_->last_update_type() ==
-          AutocompleteController::UpdateType::kSyncPass ||
-      controller_->last_update_type() ==
-          AutocompleteController::UpdateType::kSyncPassOnly) {
+  if (!controller_->sync_pass_done()) {
     UMA_HISTOGRAM_EXACT_LINEAR(name + ".CrossInput", change_index, max);
   } else {
     UMA_HISTOGRAM_EXACT_LINEAR(name + ".Async", change_index, max);
@@ -181,10 +175,7 @@ void AutocompleteControllerMetrics::LogSuggestionChangeInAnyPositionMetrics(
   std::string name = "Omnibox.MatchStability2.MatchChangeInAnyPosition";
   // These metrics are logged up to about 5 times per omnibox keystroke, so
   // use UMA macros for efficiency.
-  if (controller_->last_update_type() ==
-          AutocompleteController::UpdateType::kSyncPass ||
-      controller_->last_update_type() ==
-          AutocompleteController::UpdateType::kSyncPassOnly) {
+  if (!controller_->sync_pass_done()) {
     UMA_HISTOGRAM_BOOLEAN(name + ".CrossInput", changed);
   } else {
     UMA_HISTOGRAM_BOOLEAN(name + ".Async", changed);

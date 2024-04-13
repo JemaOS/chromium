@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_VIZ_SERVICE_COMPOSITOR_FRAME_FUZZER_FUZZER_BROWSER_PROCESS_H_
 #define COMPONENTS_VIZ_SERVICE_COMPOSITOR_FRAME_FUZZER_FUZZER_BROWSER_PROCESS_H_
 
-#include <optional>
 #include <vector>
 
 #include "components/viz/common/surfaces/frame_sink_id.h"
@@ -18,13 +17,14 @@
 #include "components/viz/test/fake_display_client.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "services/viz/privileged/mojom/compositing/external_begin_frame_controller.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace viz {
 
 // A fake browser process to use as a fuzzer target. Uses software compositing.
 class FuzzerBrowserProcess {
  public:
-  explicit FuzzerBrowserProcess(std::optional<base::FilePath> png_dir_path);
+  explicit FuzzerBrowserProcess(absl::optional<base::FilePath> png_dir_path);
 
   FuzzerBrowserProcess(const FuzzerBrowserProcess&) = delete;
   FuzzerBrowserProcess& operator=(const FuzzerBrowserProcess&) = delete;

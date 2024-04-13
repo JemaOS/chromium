@@ -24,8 +24,8 @@ bool TutorialRegistry::IsTutorialRegistered(TutorialIdentifier id) const {
   return base::Contains(tutorial_registry_, id);
 }
 
-const TutorialDescription* TutorialRegistry::GetTutorialDescription(
-    TutorialIdentifier id) const {
+TutorialDescription* TutorialRegistry::GetTutorialDescription(
+    TutorialIdentifier id) {
   DCHECK(tutorial_registry_.size() > 0);
   auto pair = tutorial_registry_.find(id);
   if (pair == tutorial_registry_.end())
@@ -33,8 +33,8 @@ const TutorialDescription* TutorialRegistry::GetTutorialDescription(
   return &pair->second;
 }
 
-const std::vector<TutorialIdentifier> TutorialRegistry::GetTutorialIdentifiers()
-    const {
+const std::vector<TutorialIdentifier>
+TutorialRegistry::GetTutorialIdentifiers() {
   DCHECK(tutorial_registry_.size() > 0);
   std::vector<TutorialIdentifier> id_strings;
   base::ranges::transform(tutorial_registry_, std::back_inserter(id_strings),

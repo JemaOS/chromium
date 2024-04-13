@@ -4,13 +4,13 @@
 
 #include "components/policy/core/common/remote_commands/remote_command_job.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/functional/bind.h"
 #include "base/strings/stringprintf.h"
 #include "base/syslog_logging.h"
 #include "device_management_backend.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 
@@ -173,7 +173,7 @@ base::TimeDelta RemoteCommandJob::GetCommandTimeout() const {
   return kDefaultCommandTimeout;
 }
 
-std::optional<enterprise_management::RemoteCommandResult::ResultType>
+absl::optional<enterprise_management::RemoteCommandResult::ResultType>
 RemoteCommandJob::GetResult() const {
   switch (status_) {
     case SUCCEEDED:
@@ -184,7 +184,7 @@ RemoteCommandJob::GetResult() const {
           RemoteCommandResult_ResultType_RESULT_FAILURE;
     case ACKED:
       // We don't send any result when the command is in `ACKED` state.
-      return std::nullopt;
+      return absl::nullopt;
     // Result type is `RESULT_IGNORED` unless the command has finished execution
     // with either success or failure.
     default:
@@ -199,7 +199,7 @@ bool RemoteCommandJob::IsExecutionFinished() const {
 
 std::unique_ptr<std::string> RemoteCommandJob::GetResultPayload() const {
   DCHECK(thread_checker_.CalledOnValidThread());
-  DCHECK(status_ == SUCCEEDED || status_ == FAILED || status_ == ACKED);
+  DCHECK(status_ == SUCCEEDED || status_ == FAILED);
 
   if (!result_payload_.has_value()) {
     return nullptr;
@@ -222,7 +222,7 @@ void RemoteCommandJob::TerminateImpl() {}
 
 void RemoteCommandJob::OnCommandExecutionFinishedWithResult(
     ResultType result,
-    std::optional<std::string> result_payload) {
+    absl::optional<std::string> result_payload) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK_EQ(RUNNING, status_);
   status_ = ResultTypeToStatus(result);

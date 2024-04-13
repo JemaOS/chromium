@@ -7,7 +7,6 @@
 
 #include <climits>
 #include <map>
-#include <optional>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
@@ -20,6 +19,7 @@
 #include "components/feed/core/v2/public/stream_type.h"
 #include "components/feed/core/v2/public/web_feed_subscriptions.h"
 #include "components/feed/core/v2/types.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefService;
 namespace feedstore {
@@ -106,15 +106,22 @@ class MetricsReporter {
 
   struct LoadStreamResultSummary {
     LoadStreamResultSummary();
-    LoadStreamResultSummary(const LoadStreamResultSummary& src);
+    LoadStreamResultSummary(
+        LoadStreamStatus load_from_store_status,
+        LoadStreamStatus final_status,
+        bool is_initial_load,
+        bool loaded_new_content_from_network,
+        base::TimeDelta stored_content_age,
+        ContentOrder content_order,
+        absl::optional<feedstore::Metadata::StreamMetadata> stream_metadata);
     ~LoadStreamResultSummary();
-    LoadStreamStatus load_from_store_status = LoadStreamStatus::kNoStatus;
-    LoadStreamStatus final_status = LoadStreamStatus::kNoStatus;
-    bool is_initial_load = false;
-    bool loaded_new_content_from_network = false;
+    LoadStreamStatus load_from_store_status;
+    LoadStreamStatus final_status;
+    bool is_initial_load;
+    bool loaded_new_content_from_network;
     base::TimeDelta stored_content_age;
-    ContentOrder content_order = ContentOrder::kUnspecified;
-    std::optional<feedstore::Metadata::StreamMetadata> stream_metadata;
+    ContentOrder content_order;
+    absl::optional<feedstore::Metadata::StreamMetadata> stream_metadata;
   };
   virtual void OnLoadStream(const StreamType& stream_type,
                             const LoadStreamResultSummary& result_summary,
@@ -136,7 +143,6 @@ class MetricsReporter {
   void OnEnterBackground();
 
   static void OnImageFetched(const GURL& url, int net_error_or_http_status);
-  static void OnResourceFetched(int net_error_or_http_status);
 
   // Actions upload.
   static void OnUploadActionsBatch(UploadActionsBatchStatus status);
@@ -219,10 +225,9 @@ class MetricsReporter {
   StreamStats& ForStream(const StreamType& stream_type);
 
   raw_ptr<PrefService> profile_prefs_;
-  raw_ptr<Delegate, DanglingUntriaged> delegate_ = nullptr;
+  raw_ptr<Delegate> delegate_ = nullptr;
 
   StreamStats for_you_stats_;
-  StreamStats supervised_feed_stats_;
   StreamStats web_feed_stats_;
   StreamStats combined_stats_;
 
@@ -248,7 +253,7 @@ class MetricsReporter {
   SurfaceWaiting pending_open_;
 
   // For tracking time spent in the Feed.
-  std::optional<base::TimeTicks> time_in_feed_start_;
+  absl::optional<base::TimeTicks> time_in_feed_start_;
   // For TimeSpentOnFeed.
   base::TimeDelta tracked_visit_time_in_feed_;
   // Non-null only directly after a stream load.

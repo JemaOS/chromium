@@ -131,11 +131,12 @@ class VIZ_SERVICE_EXPORT OutputPresenter {
       ScopedOverlayAccess* access,
       std::unique_ptr<gfx::GpuFence> acquire_fence) = 0;
 
+  virtual bool SupportsGpuVSync() const;
+  virtual void SetGpuVSyncEnabled(bool enabled) {}
   virtual void SetVSyncDisplayID(int64_t display_id) {}
 
 #if BUILDFLAG(IS_APPLE)
   virtual void SetCALayerErrorCode(gfx::CALayerResult ca_layer_error_code) {}
-  virtual void SetMaxPendingSwaps(int max_pending_swaps) {}
 #endif
 };
 

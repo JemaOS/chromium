@@ -6,7 +6,6 @@
 
 #include <utility>
 
-#include "base/trace_event/trace_event.h"
 #include "components/sync/model/metadata_batch.h"
 #include "components/sync/protocol/entity_data.h"
 
@@ -94,7 +93,8 @@ void ForwardingModelTypeChangeProcessor::ReportError(const ModelError& error) {
   other_->ReportError(error);
 }
 
-std::optional<ModelError> ForwardingModelTypeChangeProcessor::GetError() const {
+absl::optional<ModelError> ForwardingModelTypeChangeProcessor::GetError()
+    const {
   return other_->GetError();
 }
 

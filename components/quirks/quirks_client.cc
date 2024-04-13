@@ -72,7 +72,7 @@ void QuirksClient::StartDownload() {
   DCHECK(thread_checker_.CalledOnValidThread());
 
   // URL of icc file on Quirks Server.
-  int major_version = version_info::GetMajorVersionNumberAsInt();
+  int major_version = atoi(version_info::GetVersionNumber().c_str());
   std::string url = base::StringPrintf(
       kQuirksUrlFormat, IdToHexString(product_id_).c_str(), major_version);
 
@@ -187,7 +187,7 @@ void QuirksClient::Retry() {
 }
 
 bool QuirksClient::ParseResult(const std::string& result, std::string* data) {
-  std::optional<base::Value> maybe_json = base::JSONReader::Read(result);
+  absl::optional<base::Value> maybe_json = base::JSONReader::Read(result);
   if (!maybe_json || !maybe_json->is_dict()) {
     VLOG(1) << "Failed to parse JSON icc data";
     return false;

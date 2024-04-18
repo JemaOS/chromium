@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Forms>Output"
-}
-team_email: "dom-dev@chromium.org"
-

@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>HTML>Parser"
-}
-team_email: "dom-dev@chromium.org"
-

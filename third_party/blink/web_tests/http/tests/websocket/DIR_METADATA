@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Network>WebSockets"
-}
-team_email: "blink-network-dev@chromium.org"
-

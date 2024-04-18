@@ -1,4 +1,0 @@
-monorail {
-  component: "Blink>ShapeDetection"
-}
-team_email: "device-dev@chromium.org"

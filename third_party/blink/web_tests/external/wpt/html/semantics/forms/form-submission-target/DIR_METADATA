@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Forms>Submission"
-}
-team_email: "dom-dev@chromium.org"
-

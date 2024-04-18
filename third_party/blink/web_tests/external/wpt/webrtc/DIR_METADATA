@@ -1,7 +1,0 @@
-monorail {
-  component: "Blink>WebRTC"
-}
-wpt {
-  notify: YES
-}
-

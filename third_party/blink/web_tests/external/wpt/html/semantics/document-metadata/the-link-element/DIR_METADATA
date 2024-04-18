@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>HTML>Link"
-}
-team_email: "dom-dev@chromium.org"
-

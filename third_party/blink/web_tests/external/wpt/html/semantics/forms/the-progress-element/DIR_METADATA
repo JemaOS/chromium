@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>HTML>Progress"
-}
-team_email: "dom-dev@chromium.org"
-

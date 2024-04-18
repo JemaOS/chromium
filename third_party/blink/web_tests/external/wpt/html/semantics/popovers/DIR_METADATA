@@ -1,4 +1,0 @@
-monorail {
-  component: "Blink>HTML>Popover"
-}
-team_email: "dom-dev@chromium.org"

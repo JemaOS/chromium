@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Forms>Fieldset"
-}
-team_email: "dom-dev@chromium.org"
-

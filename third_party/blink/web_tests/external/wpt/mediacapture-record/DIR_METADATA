@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>MediaRecording"
-}
-team_email: "media-dev@chromium.org"
-

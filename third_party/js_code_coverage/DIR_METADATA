@@ -1,4 +1,0 @@
-monorail: {
-  component: "Infra>Test>CodeCoverage"
-}
-team_email: "code-coverage@google.com"

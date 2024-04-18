@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Fonts"
-}
-team_email: "layout-dev@chromium.org"
-

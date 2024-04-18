@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Storage>IndexedDB"
-}
-team_email: "storage-dev@chromium.org"
-

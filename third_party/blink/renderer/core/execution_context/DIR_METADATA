@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Internals>Frames"
-}
-
-team_email: "platform-architecture-dev@chromium.org"

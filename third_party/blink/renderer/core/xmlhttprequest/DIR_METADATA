@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Network>XHR"
-}
-
-team_email: "blink-network-dev@chromium.org"

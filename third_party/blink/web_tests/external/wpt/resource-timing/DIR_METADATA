@@ -1,8 +1,0 @@
-monorail {
-  component: "Blink>PerformanceAPIs>ResourceTiming"
-}
-team_email: "speed-metrics-dev@chromium.org"
-wpt {
-  notify: YES
-}
-

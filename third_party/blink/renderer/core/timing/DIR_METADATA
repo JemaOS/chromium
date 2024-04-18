@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>PerformanceAPIs"
-}
-
-team_email: "speed-metrics-dev@chromium.org"

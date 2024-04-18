@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>Forms>Select"
-}
-team_email: "dom-dev@chromium.org"
-

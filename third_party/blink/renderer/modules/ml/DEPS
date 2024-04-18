@@ -1,4 +1,0 @@
-include_rules = [
-    "+components/ml/mojom",
-    "+services/webnn/public/mojom",
-]

@@ -1,8 +1,0 @@
-monorail {
-  component: "Blink>JavaScript>WebAssembly"
-}
-team_email: "wasm-v8@google.com"
-wpt {
-  notify: YES
-}
-

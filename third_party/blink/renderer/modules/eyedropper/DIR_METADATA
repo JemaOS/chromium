@@ -1,4 +1,0 @@
-monorail {
-  component: "Blink>Forms>Color"
-}
-team_email: "dom-dev@chromium.org"

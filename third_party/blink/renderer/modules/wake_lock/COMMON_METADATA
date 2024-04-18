@@ -1,4 +1,0 @@
-monorail {
-  component: "Blink>WakeLock"
-}
-team_email: "device-dev@chromium.org"

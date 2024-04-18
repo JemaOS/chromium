@@ -1,0 +1,68 @@
+# Copyright 2018 The FlintOS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Author: Simon Tsao(yang@flintos.io)
+
+import("//build/config/features.gni")
+import("//extensions/buildflags/buildflags.gni")
+import("//jemaos/extensions/common/api/jemaos_schema.gni")
+import("//mojo/public/tools/bindings/mojom.gni")
+import("//rlz/buildflags/buildflags.gni")
+import("//tools/grit/grit_rule.gni")
+
+assert(enable_extensions)
+assert(is_chromeos)
+
+grit("resources") {
+  source = "jemaos_extensions_resources.grd"
+  outputs = [
+    "grit/jemaos_extensions_resources.h",
+    "jemaos_extensions_resources.pak",
+  ]
+}
+
+static_library("jemaos_extensions_provider") {
+  sources = [
+    "jemaos_api_permissions.h",
+    "jemaos_api_permissions.cc",
+    "jemaos_extensions_api_provider.h",
+    "jemaos_extensions_api_provider.cc",
+  ]
+
+  configs += [
+    "//build/config:precompiled_headers",
+    "//build/config/compiler:wexit_time_destructors",
+  ]
+  defines = []
+
+  public_deps = [
+    "//extensions:extensions_resources",
+    "//extensions/common",
+    "//extensions/common:core_api_provider",
+    "//extensions/common/api",
+    "//extensions/strings",
+    ":resources",
+    "//jemaos/extensions/common/api",
+    "//jemaos/extensions/common/api:jemaos_features",
+    "//ipc:ipc_buildflags",
+  ]
+
+  deps = [
+#    "//extensions/browser",
+    "//ash/public/cpp",
+    "//ash",
+    "//ui/aura",
+  ]
+}
+
+group("common"){
+  deps = [
+    ":jemaos_extensions_provider",
+  ]
+
+  public_deps = [
+    "//jemaos/extensions/common/api",
+    "//jemaos/extensions/common/api:jemaos_features",
+#    "//jemaos/extensions/browser"
+  ]
+}

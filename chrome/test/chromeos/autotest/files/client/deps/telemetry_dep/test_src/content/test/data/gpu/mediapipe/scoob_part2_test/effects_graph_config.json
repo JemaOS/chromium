@@ -1,0 +1,10 @@
+{
+  "files": [ ],
+  "inputs": {
+    "image": {"type": "video", "stream": "input_video"}
+  },
+  "listeners": [{
+    "wants": ["output_video"],
+    "outs": { "image": "output_video" }
+  }]
+}

@@ -1,0 +1,15 @@
+{
+  "options" : {
+    "warmup" : 10
+  },
+  "inputs": [
+    {"name": "image", "type": "video", "src": "effects_test_image.jpg"}
+  ],
+  "expects": [
+    {"name": "image", "type": "video",
+     "src": "scuba_goldens/scoob_part2_expected.png", "tolerance": 2}
+  ],
+  "outputs": [
+    {"name": "image", "type": "video"}
+  ]
+}

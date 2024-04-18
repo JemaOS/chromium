@@ -1,0 +1,15 @@
+{
+  "files": [ ],
+  "graph": {"url": "face_mesh.binarypb"},
+  "listeners": [{
+    "wants": ["multi_face_landmarks", "image_transformed"],
+    "outs": {
+      "image": "image_transformed",
+      "multiFaceLandmarks":
+          {"type": "landmarks_list", "stream": "multi_face_landmarks"}
+    }
+  }],
+  "inputs": {
+    "image": {"type": "video", "stream": "input_frames_gpu"}
+  }
+}

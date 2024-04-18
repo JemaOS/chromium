@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      textarea { width: 500px; height: 100px; }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      .group {
+        background-color: #e0eef3;
+        padding: 5px;
+        margin: 5px;
+      }
+      .instructions {
+        padding-bottom: 5px;
+      }
+      .run-test { width: 500px; }
+      .status { font-weight: 600; }
+      .title { font-size: 18pt; font-weight: 600; padding-bottom: 20px; }
+      .outputs, .inputs, .expects {
+        display: inline-block;
+        min-width: 20px;
+        min-height: 20px;
+        padding: 10px;
+        margin: 5px;
+      }
+      .inputs { background-color: red; }
+      .expects { background-color: orange; }
+      .outputs { background-color: green; }
+    </style>
+    <title>MediaPipe Graph Test for Web</title>
+  </head>
+<body>
+
+  <div class="title">Mediapipe for Web: style_black_and_white_test</div>
+
+  <div class="group">
+    <div class="instructions">
+      Test is loaded into the following input element:
+    </div>
+    <div class="input">
+      <textarea class="test"></textarea>
+    </div>
+    <button class="run-test">
+      Run Test
+    </button>
+  </div>
+
+  <div class="group">
+    <div class="instructions">
+      When the graph loads, loaded status will turn COMPLETE.
+      When the test finishes, test status will turn COMPLETE.
+    </div>
+
+    <div class="status">
+      <span class="instructions">Loaded Status:</span>
+      <span class="test-ready">INCOMPLETE</span>
+    </div>
+
+    <div class="status">
+      <span class="instructions">Test Status:</span>
+      <span class="test-complete">INCOMPLETE</span>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="instructions">Errors (if any) will show up here:</div>
+    <div class="errors"></div>
+  </div>
+
+  <div class="group">
+    <div class="instructions">
+      Inputs:
+    </div>
+    <div class="inputs"></div>
+  </div>
+
+  <div class="group">
+    <div class="instructions">
+      Expectations:
+    </div>
+    <div class="expects"></div>
+  </div>
+
+  <div class="group">
+    <div class="instructions">
+      Outputs:
+    </div>
+    <div class="outputs"></div>
+  </div>
+
+</body>
+</html>
+<script src="test_harness_driver_bin.js"></script>
+<!-- The following line is replaced for the ":<name>_serve" target. Do not hand edit. -->
+<script src="style_black_and_white_test_localdriver_bin.js"></script>

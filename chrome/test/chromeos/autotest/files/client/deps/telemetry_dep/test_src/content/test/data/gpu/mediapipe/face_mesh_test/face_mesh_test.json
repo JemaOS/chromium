@@ -1,0 +1,17 @@
+{
+  "inputs": [
+    {"name": "image", "type": "video", "src": "face_mesh_test_image.jpg"}
+  ],
+  "expects": [
+    {"name": "image", "type": "video", "src": "face_mesh_test_image.jpg", "tolerance": 0.2},
+    {
+      "name": "multiFaceLandmarks",
+      "type": "object",
+      "dataPattern":"^\\[\\[\\{\"x\":0\\.464\\d+,\"y\":0\\.415\\d+,\"z\":-0\\.018\\d+\\}"
+    }
+  ],
+  "outputs": [
+    {"name": "image", "type": "video"},
+    {"name": "multiFaceLandmarks", "type": "object"}
+  ]
+}

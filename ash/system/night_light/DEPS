@@ -1,5 +1,0 @@
-specific_include_rules = {
-  "night_light_controller_impl.cc": [
-    "+cc/base/math_util.h",
-  ],
-}

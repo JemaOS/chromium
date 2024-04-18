@@ -1,6 +1,0 @@
-include_rules = [
-   "+ash/public/cpp",
-   "+extensions/browser",
-   "+ui/aura",
-   "+ash"
-]

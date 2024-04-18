@@ -1,4 +1,0 @@
-include_rules = [
-  "+third_party/re2/src/re2/re2.h",
-  "+components/account_manager_core/account.h",
-]

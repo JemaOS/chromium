@@ -1,4 +1,0 @@
-include_rules = [
-  "+components/sync/base",
-  "+components/sync/test", # For sync test tools
-]

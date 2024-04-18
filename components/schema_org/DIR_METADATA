@@ -1,5 +1,0 @@
-monorail {
-  component: "Blink>DocumentMetadata"
-}
-
-team_email: "media-dev@chromium.org"

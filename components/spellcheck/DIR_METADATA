@@ -1,5 +1,0 @@
-monorail {
-  component: "UI>Browser>Language>Spellcheck"
-}
-
-team_email: "language@chromium.org"

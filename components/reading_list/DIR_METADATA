@@ -1,5 +1,0 @@
-monorail {
-  component: "UI>Browser>ReaderMode"
-}
-
-team_email: "ios-directory-owners@chromium.org"

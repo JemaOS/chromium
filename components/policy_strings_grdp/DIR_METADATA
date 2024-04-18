@@ -1,5 +1,0 @@
-monorail {
-  component: "Enterprise"
-}
-
-team_email: "chromium-enterprise@chromium.org"

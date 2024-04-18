@@ -1,6 +1,0 @@
-include_rules = [
-  "+components/commerce/core",
-  "+components/query_tiles",
-  "+components/sync",
-  "+ui/base",
-]

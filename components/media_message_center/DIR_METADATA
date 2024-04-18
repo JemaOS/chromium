@@ -1,5 +1,0 @@
-monorail {
-  component: "UI>Notifications"
-}
-
-team_email: "media-dev@chromium.org"

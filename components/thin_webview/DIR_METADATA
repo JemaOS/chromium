@@ -1,5 +1,0 @@
-monorail {
-  component: "UI>Browser>Mobile>ThinWebView"
-}
-
-os: ANDROID

@@ -1,4 +1,0 @@
-monorail: {
-  component: "Blink>Speech"
-}
-team_email: "media-dev@chromium.org"

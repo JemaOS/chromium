@@ -1,5 +1,0 @@
-file://chromeos/ash/components/policy/OWNERS
-
-swapnilgupta@google.com
-
-per-file *event_reporter*=file://components/reporting/OWNERS

@@ -1,4 +1,0 @@
-monorail: {
-  component: "UI>Browser>Profiles"
-}
-team_email: "chrome-signin@chromium.org"

@@ -1,4 +1,0 @@
-mixins: "//chrome/browser/safe_browsing/COMMON_METADATA"
-monorail {
-  component: "UI>Browser>SafeBrowsing"
-}

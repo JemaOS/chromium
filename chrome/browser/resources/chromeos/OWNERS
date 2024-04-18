@@ -1,3 +1,0 @@
-file://ash/webui/PLATFORM_OWNERS
-
-per-file drive_internals*=file://ui/file_manager/OWNERS

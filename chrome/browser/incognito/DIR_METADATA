@@ -1,5 +1,0 @@
-monorail {
-  component: "Privacy>Incognito"
-}
-team_email: "chrome-incognito@google.com"
-os: ANDROID

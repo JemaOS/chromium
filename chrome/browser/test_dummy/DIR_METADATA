@@ -1,5 +1,0 @@
-monorail: {
-  component: "Mobile>FeatureModules"
-}
-team_email: "clank-lego@chromium.org"
-os: ANDROID

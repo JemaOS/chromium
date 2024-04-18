@@ -1,5 +1,0 @@
-monorail {
-  component: "UI>Browser>Mobile>TabSwitcher>Suggestions"
-}
-team_email: "clank-isochron-team@google.com"
-os: ANDROID

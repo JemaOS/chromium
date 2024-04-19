@@ -1,4 +1,4 @@
-// Copyright 2023 Jema Innovations. All rights reserved
+// Copyright 2023 Jema Technology. All rights reserved
 #include "chrome/browser/ui/webui/ash/login/data_restore_screen_handler.h"
 #include "components/login/localized_values_builder.h"
 #include "chrome/grit/chromium_strings.h"

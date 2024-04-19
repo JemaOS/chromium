@@ -198,7 +198,7 @@ void MockSurface::ReleaseBuffer(wl_resource* buffer) {
   // release and a buffer release if an explicit release has been asked for.
   // But, this makes testing harder, and ozone/wayland should work with
   // just one of these signals (and handle both gracefully).
-  // TODO(fangzhoug): Make buffer release mechanism a testing config variation.
+  // TODO(johndoeg): Make buffer release mechanism a testing config variation.
   if (linux_buffer_releases_.find(buffer) != linux_buffer_releases_.end()) {
     ReleaseBufferFenced(buffer, {});
     wl_buffer_send_release(buffer);

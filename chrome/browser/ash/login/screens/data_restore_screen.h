@@ -1,4 +1,4 @@
-// Copyright 2023 Jema Innovations. All rights reserved
+// Copyright 2023 Jema Technology. All rights reserved
 #ifndef CHROME_BROWSER_ASH_LOGIN_SCREENS_DATA_RESTORE_SCREEN_H_
 #define CHROME_BROWSER_ASH_LOGIN_SCREENS_DATA_RESTORE_SCREEN_H_
 

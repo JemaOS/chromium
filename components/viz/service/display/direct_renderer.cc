@@ -982,7 +982,7 @@ gfx::Size DirectRenderer::CalculateTextureSizeForRenderPass(
   return gfx::Size(width, height);
 }
 
-// TODO(fangzhoug): There should be metrics recording the amount of unused
+// TODO(johndoeg): There should be metrics recording the amount of unused
 // buffer area and number of reallocations to quantify the trade-off.
 gfx::Size DirectRenderer::CalculateSizeForOutputSurface(
     const gfx::Size& requested_viewport_size) {

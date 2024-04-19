@@ -94,7 +94,7 @@ void StatisticsCollector::StartInternal() {
     profile_ = g_browser_process->profile_manager()->GetActiveUserProfile();
   }
   if (profile_) {
-    // TODO(fangzhou@jemaos.io)
+    // TODO(johndoe@jemaos.io)
     // collect more data if kJemaOSImprovementPlanEnabled is true
     // currently, just make sure the pref kJemaOSImprovementPlanEnabled
     // is saved, it's not being used yet.

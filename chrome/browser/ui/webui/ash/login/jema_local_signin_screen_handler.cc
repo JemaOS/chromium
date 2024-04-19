@@ -1,4 +1,4 @@
-// Copyright 2022 Jema Innovations. All rights reserved
+// Copyright 2022 Jema Technology. All rights reserved
 
 #include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
 

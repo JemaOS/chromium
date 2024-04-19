@@ -1,4 +1,4 @@
-// Copyright 2023 Jema Innovations
+// Copyright 2023 Jema Technology
 
 import '../strings.m.js';
 import '../css/jema_assistant_app_shared.css.js';

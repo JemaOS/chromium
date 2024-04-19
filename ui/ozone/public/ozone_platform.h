@@ -89,7 +89,7 @@ class COMPONENT_EXPORT(OZONE) OzonePlatform {
     // This flag is a reflection of whatever the ChromeOS command line builder
     // says. If false, overlay manager will not use synchronous pageflip
     // testing with real buffer.
-    // TODO(fangzhoug): Some Chrome OS boards still use the legacy video
+    // TODO(johndoeg): Some Chrome OS boards still use the legacy video
     // decoder. Remove this once ChromeOSVideoDecoder is on everywhere.
     bool allow_sync_and_real_buffer_page_flip_testing = false;
   };

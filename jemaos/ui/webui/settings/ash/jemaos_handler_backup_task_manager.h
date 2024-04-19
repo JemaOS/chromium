@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Jema Innovations. All rights reserved.
+// Copyright (c) 2023 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef _JEMAOS_UI_WEBUI_SETTINGS_ASH_JEMAOS_HANDLER_BACKUP_TASK_MANAGER_H_

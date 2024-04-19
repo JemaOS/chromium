@@ -1,4 +1,4 @@
-// Copyright 2023 Jema Innovations. All rights reserved.
+// Copyright 2023 Jema Technology. All rights reserved.
 
 #include "jemaos/extensions/browser/api/jemaos_arc_status/jemaos_arc_status_api.h"
 #include "base/files/file_util.h"

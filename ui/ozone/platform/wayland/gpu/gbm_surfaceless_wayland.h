@@ -127,7 +127,7 @@ class GbmSurfacelessWayland : public gl::Presenter, public WaylandSurfaceGpu {
   // primary plane informations. It is a "compositor frame" on AcceleratedWidget
   // level. This information gets into browser process and overlays are
   // translated to be attached to WaylandSurfaces of the AcceleratedWidget.
-  // TODO(fangzhoug): This should be changed to support Vulkan.
+  // TODO(johndoeg): This should be changed to support Vulkan.
   struct PendingFrame {
     explicit PendingFrame(uint32_t frame_id);
     ~PendingFrame();

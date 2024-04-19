@@ -1,4 +1,4 @@
-// Copyright 2021 Jema Innovations. All rights reserved.
+// Copyright 2021 Jema Technology. All rights reserved.
 
 /** @fileoverview Definitions for chrome.appManagement API */
 

@@ -502,7 +502,7 @@ void WaylandFrameManager::OnPresentation(
       // example, imagine you are waiting for f[0], f[1] and f[2]. f[2] gets
       // discarded, previous ones mustn't be marked as failed as they will
       // come later.
-      // TODO(fangzhoug): Exo seems to deliver presentation_feedbacks out of
+      // TODO(johndoeg): Exo seems to deliver presentation_feedbacks out of
       // order occasionally, causing us to mark a valid feedback as failed.
       // Investigate the issue with surface sync.
       frame->feedback = gfx::PresentationFeedback::Failure();

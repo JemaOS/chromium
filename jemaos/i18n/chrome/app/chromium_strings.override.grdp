@@ -26,13 +26,13 @@
     </if>
   </if>
   <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
-    Help make Chromium better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Innovations
+    Help make Chromium better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Technology
   </message>
   <message name="IDS_ABOUT_VERSION_COMPANY_NAME" desc="Company name on the about pages">
-    Jema Innovations, The Chromium Authors
+    Jema Technology, The Chromium Authors
   </message>
   <message name="IDS_ABOUT_VERSION_COPYRIGHT" desc="Copyright information on the about pages">
-    Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Jema Innovations, The Chromium Authors. All rights reserved.
+    Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Jema Technology, The Chromium Authors. All rights reserved.
   </message>
   <if expr="chromeos_ash">
     <!-- Strings for the OOBE user selection screen -->
@@ -93,7 +93,7 @@
         JemaOS terms
       </message>
       <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
-        Optional: Help make JemaOS better by automatically sending usage statistics and crash reports to Jema Innovations.
+        Optional: Help make JemaOS better by automatically sending usage statistics and crash reports to Jema Technology.
       </message>
       <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
         <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the JemaOS EULA Terms.
@@ -134,7 +134,7 @@
         JemaOS terms
       </message>
       <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
-        Optional: Help make JemaOS better by automatically sending usage statistics and crash reports to Jema Innovations.
+        Optional: Help make JemaOS better by automatically sending usage statistics and crash reports to Jema Technology.
       </message>
       <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
         <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the JemaOS EULA Terms.

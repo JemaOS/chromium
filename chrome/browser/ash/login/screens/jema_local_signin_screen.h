@@ -1,4 +1,4 @@
-// Copyright 2022 Jema Innovations. All rights reserved
+// Copyright 2022 Jema Technology. All rights reserved
 
 #ifndef CHROME_BROWSER_ASH_LOGIN_SCREENS_JEMA_LOCAL_SIGNIN_SCREEN_H_
 #define CHROME_BROWSER_ASH_LOGIN_SCREENS_JEMA_LOCAL_SIGNIN_SCREEN_H_

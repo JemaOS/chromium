@@ -1,4 +1,4 @@
-// Copyright 2023 The Jema Innovations Limited. All rights reserved.
+// Copyright 2023 The Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef JEMAOS_EXTENSIONS_BROWSER_API_JEMAOS_PRIVATE_JEMAOS_PRIVATE_API_H_

@@ -733,7 +733,7 @@ class SkiaRenderer::ScopedYUVSkImageBuilder {
 
 // A read lock based fence that is signaled after gpu commands are completed
 // meaning the resource has been read.
-// TODO(fangzhoug): Move this out of this file s.t. it can be referenced in
+// TODO(johndoeg): Move this out of this file s.t. it can be referenced in
 // display_resource_provider_skia_unittest.cc.
 class SkiaRenderer::FrameResourceGpuCommandsCompletedFence
     : public ResourceFence {
@@ -767,7 +767,7 @@ class SkiaRenderer::FrameResourceGpuCommandsCompletedFence
 
 // FrameResourceFence that gets a ReleaseFence which is later set to returned
 // resources.
-// TODO(fangzhoug): Move this out of this file s.t. it can be referenced in
+// TODO(johndoeg): Move this out of this file s.t. it can be referenced in
 // display_resource_provider_skia_unittest.cc.
 class SkiaRenderer::FrameResourceReleaseFence : public ResourceFence {
  public:
@@ -3665,7 +3665,7 @@ void SkiaRenderer::PrepareRenderPassOverlay(
 #else   // BUILDFLAG(IS_OZONE)
   // Adjust |display_rect| to be include the expanded |filter_bounds|, and
   // transformed.
-  // TODO(fangzhoug): Merge Ozone and Apple code paths of delegated compositing.
+  // TODO(johndoeg): Merge Ozone and Apple code paths of delegated compositing.
   overlay->display_rect =
       quad->shared_quad_state->quad_to_target_transform.MapRect(
           gfx::RectF(filter_bounds));

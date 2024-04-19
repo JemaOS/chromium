@@ -54,7 +54,7 @@ JemaOsHandler::JemaOsHandler(Profile* profile, PrefService* prefs) :
   profile_(profile), prefs_(prefs) {
   DCHECK(ash::Shell::Get());
   ash::Shell::Get()->tablet_mode_controller()->AddObserver(this);
-  // TODO(fangzhou) use real system_salt_ and encryptor
+  // TODO(johndoe) use real system_salt_ and encryptor
   // SystemSaltGetter::Get()->GetSystemSalt(base::BindOnce(
   //     &JemaOsHandler::OnSystemSaltObtained, weak_ptr_factory_.GetWeakPtr()));
   OnSystemSaltObtained("JEMAOS");

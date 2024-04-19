@@ -1,4 +1,4 @@
-// Copyright 2023 Jema Innovations. All rights reserved
+// Copyright 2023 Jema Technology. All rights reserved
 #ifndef CHROME_BROWSER_UI_WEBUI_CHROMEOS_LOGIN_DATA_RESTORE_SCREEN_HANDLER_H_
 #define CHROME_BROWSER_UI_WEBUI_CHROMEOS_LOGIN_DATA_RESTORE_SCREEN_HANDLER_H_
 

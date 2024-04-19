@@ -36,7 +36,7 @@ class OverlayManagerOzone {
   virtual void SetContextDelegated() {}
 
  protected:
-  // TODO(fangzhoug): Some Chrome OS boards still use the legacy video decoder.
+  // TODO(johndoeg): Some Chrome OS boards still use the legacy video decoder.
   // Remove this once ChromeOSVideoDecoder is on everywhere.
   bool allow_sync_and_real_buffer_page_flip_testing_ = false;
 };

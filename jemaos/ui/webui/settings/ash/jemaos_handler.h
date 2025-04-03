@@ -27,95 +27,85 @@ class JemaOsHandler :
     public ui::SelectFileDialog::Listener,
     public ash::TabletModeObserver {
  public:
-  // Constructor and destructor
-  // NOTE FOR DEVELOPERS: Ensure proper cleanup of resources in the destructor.
   explicit JemaOsHandler(Profile* profile, PrefService* pref_service);
   ~JemaOsHandler() override;
 
-  // SettingsPageUIHandler implementation
+  // SettingsPageUIHandler implementation.
   void RegisterMessages() override;
   void OnJavascriptAllowed() override;
   void OnJavascriptDisallowed() override;
 
-  // TabletModeObserver implementation
+  // TabletModeObserver:
   void OnTabletPhysicalStateChanged() override;
-
  private:
-  // Enum representing the type of file dialog
   enum class FileDialogType {
-    kUnspecified,  // No specific file dialog type
-    kLibwidevine,  // File dialog for selecting Widevine files
-    kBackup,       // File dialog for selecting backup files
+    kUnspecified,
+    kLibwidevine,
+    kBackup,
   };
-
-  // Handles system salt retrieval
   void OnSystemSaltObtained(const std::string& system_salt);
-
-  // Handlers for offline auto sign-in
   void HandleGetIsOfflineAutoSigninEnabled(const base::Value::List& args);
   void HandleSaveOfflineLoginPassword(const base::Value::List& args);
   void HandleCleanOfflineLoginPassword(const base::Value::List& args);
 
-  // Handlers for reboot button in tray
   void OnShowRebootButtonInTrayChanged();
   void HandleSetShowRebootButtonInTray(const base::Value::List& args);
   void HandleGetShowRebootButtonInTray(const base::Value::List& args);
 
-  // Handlers for rotate screen button
   void OnShowRotateScreenButtonChanged();
   void HandleSetShowRotateScreenButton(const base::Value::List& args);
   void HandleGetShowRotateScreenButton(const base::Value::List& args);
-
-  // Handlers for tablet/laptop mode switching
   void HandleGetIsInTabletPhysicalState(const base::Value::List& args);
+
   void OnShowSwitchTabletLaptopButtonChanged();
   void HandleSetShowSwitchTabletLaptopButton(const base::Value::List& args);
   void HandleGetShowSwitchTabletLaptopButton(const base::Value::List& args);
 
-  // Handlers for TPM fallback
   void HandleGetIsForceTpmFallback(const base::Value::List& args);
   void HandleSetForceTpmFallback(const base::Value::List& args);
   void OnForceTpmFallbackChanged();
 
-  // Handlers for Widevine file selection
   void HandleSelectLibwidevineFile(const base::Value::List& args);
   void HandleGetRebootRequiredForWidevine(const base::Value::List& args);
   void HandleToggleRebootRequiredForWidevine(const base::Value::List& args);
 
-  // File dialog callbacks
-  void FileSelected(const base::FilePath& path, int index, void* params) override;
+
+  void FileSelected(
+      const base::FilePath& path, int index, void *params) override;
   void FileSelectionCanceled(void* params) override;
 
-  // Widevine file selection callbacks
   void OnLibwidevineFileSelected(const base::FilePath& path);
   void OnLibwidevineFileSelectionCanceled();
 
-  // Backup-related handlers
+  bool nextToggleRebootRequiredForWidevine_ = false;
+  bool lastToggleRebootRequiredForce_ = false;
+
   void HandleJemaOSBackupSupported(const base::Value::List& args);
   void HandleJemaOSBackupSelectFile(const base::Value::List& args);
   void HandleJemaOSBackupStarted(const base::Value::List& args);
   void HandleGetJemaOSBackupState(const base::Value::List& args);
 
-  // Backup task callbacks
-  void OnJemaOSBackupScriptChecked(const std::string& callback_id, bool supported);
+  void OnJemaOSBackupScriptChecked(const std::string& callback_id,
+                                   bool supported);
+
   void OnBackupFileSelected(const base::FilePath& path);
   void OnBackupFileSelectionCanceled();
+
   void OnBackupTaskFinished(BackupTaskManager::TaskState state);
 
-  // Member variables
-  std::string system_salt_;  // System salt for encryption
-  Profile* profile_;         // Associated user profile
-  PrefService* const prefs_; // Preference service
+  std::string system_salt_;
+  Profile* profile_;
+  PrefService* const prefs_;
 
-  scoped_refptr<ui::SelectFileDialog> select_file_dialog_; // File dialog instance
-  FileDialogType file_dialog_type_ = FileDialogType::kUnspecified; // Current file dialog type
+  scoped_refptr<ui::SelectFileDialog> select_file_dialog_;
+  FileDialogType file_dialog_type_ = FileDialogType::kUnspecified;
 
-  PrefChangeRegistrar pref_change_registrar_; // Registrar for preference changes
-  PrefChangeRegistrar local_state_pref_change_registrar_; // Registrar for local state preference changes
+  PrefChangeRegistrar pref_change_registrar_;
+  PrefChangeRegistrar local_state_pref_change_registrar_;
 
-  base::WeakPtrFactory<JemaOsHandler> weak_ptr_factory_{this}; // Weak pointer factory
+  base::WeakPtrFactory<JemaOsHandler> weak_ptr_factory_{this};
 };
 
 }  // namespace ash::settings
 
-#endif  // CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_JEMAOS_HANDLER_H_
+#endif

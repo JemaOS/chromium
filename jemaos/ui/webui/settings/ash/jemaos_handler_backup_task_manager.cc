@@ -1,9 +1,7 @@
-// Copyright 2025 Jema Technology. All rights reserved.
+// Copyright (c) 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
 #include "jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.h"
-
 #include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 #include "base/logging.h"
 #include "base/time/time.h"
@@ -35,99 +33,78 @@ using message_center::Notification;
 namespace ash::settings {
 
 namespace {
-
-// Command format for initiating a backup task
-// NOTE FOR DEVELOPERS: Ensure the command format matches the expected shell client behavior.
-const char kJemaOSBackupCommandFormat[] =
+  const char kJemaOSBackupCommandFormat[] =
     "/usr/bin/jemaos-backup backup --email %s --key %s --target %s";
+  constexpr int kJemaOSBackupTaskTrackIntervalSeconds = 5;
+  constexpr int kJemaOSBackupTaskOutputLines = 10;
 
-// Backup task tracking interval in seconds
-constexpr int kJemaOSBackupTaskTrackIntervalSeconds = 5;
+  JemaOSShellClient* GetShellClient() {
+    return JemaOSShellClient::Get();
+  }
+  BackupTaskManager* g_backup_task_manager = nullptr;
 
-// Number of output lines to fetch from the backup task
-constexpr int kJemaOSBackupTaskOutputLines = 10;
-
-// Notification IDs for backup tasks
-const char kJemaOSBackupNotificationId[] = "jemaos.os-settings.backup";
-const char kJemaOSBackupNotifierId[] = "jemaos.os-settings.backup";
-
-// Retrieves the shell client instance
-// NOTE FOR DEVELOPERS: Ensure the shell client is properly initialized before use.
-JemaOSShellClient* GetShellClient() {
-  return JemaOSShellClient::Get();
-}
-
-// Singleton instance of the BackupTaskManager
-BackupTaskManager* g_backup_task_manager = nullptr;
-
-// Creates a notification for the backup task
-// NOTE FOR DEVELOPERS: Customize the notification appearance and behavior as needed.
-std::unique_ptr<Notification> CreateNotification(
-    BackupTaskManager::TaskState state,
-    const std::u16string& title,
-    const std::u16string& message,
-    scoped_refptr<message_center::NotificationDelegate> delegate) {
-  message_center::NotificationType type =
+  const char kJemaOSBackupNotificationId[] = "jemaos.os-settings.backup";
+  const char kJemaOSBackupNotifierId[] = "jemaos.os-settings.backup";
+  std::unique_ptr<Notification> CreateNotification(
+      BackupTaskManager::TaskState state,
+      const std::u16string& title,
+      const std::u16string& message,
+      scoped_refptr<message_center::NotificationDelegate> delegate) {
+    message_center::NotificationType type =
       message_center::NOTIFICATION_TYPE_SIMPLE;
-  message_center::SystemNotificationWarningLevel warning_level =
+    message_center::SystemNotificationWarningLevel warning_level =
       message_center::SystemNotificationWarningLevel::NORMAL;
-
-  if (state == BackupTaskManager::TaskState::kRunning) {
-    type = message_center::NotificationType::NOTIFICATION_TYPE_PROGRESS;
-  }
-  if (state == BackupTaskManager::TaskState::kFailed) {
-    warning_level = message_center::SystemNotificationWarningLevel::WARNING;
-  }
-
-  std::unique_ptr<Notification> notification =
-      ::ash::CreateSystemNotificationPtr(
-          type, kJemaOSBackupNotificationId, title, message, std::u16string(),
-          GURL(),
-          message_center::NotifierId(
-              message_center::NotifierType::SYSTEM_COMPONENT,
-              kJemaOSBackupNotifierId,
-              ash::NotificationCatalogName::kJemaOSDataBackup),
-          message_center::RichNotificationData(), nullptr,
-          vector_icons::kProductIcon, warning_level);
-
-  if (state == BackupTaskManager::TaskState::kRunning) {
-    notification->set_progress(-1);
-    notification->set_pinned(true);
-    notification->set_never_timeout(true);
-  } else {
-    notification->set_never_timeout(false);
-    notification->set_pinned(false);
-    if (delegate) {
-      notification->set_delegate(std::move(delegate));
+    if (state == BackupTaskManager::TaskState::kRunning) {
+      type = message_center::NotificationType::NOTIFICATION_TYPE_PROGRESS;
     }
+    if (state == BackupTaskManager::TaskState::kFailed) {
+      warning_level = message_center::SystemNotificationWarningLevel::WARNING;
+    }
+    std::unique_ptr<Notification> notification =
+      ::ash::CreateSystemNotificationPtr(
+        type, kJemaOSBackupNotificationId,
+        title,
+        message,
+        std::u16string(), GURL(),
+        message_center::NotifierId(
+          message_center::NotifierType::SYSTEM_COMPONENT,
+          kJemaOSBackupNotifierId,
+          ash::NotificationCatalogName::kJemaOSDataBackup),
+        message_center::RichNotificationData(),
+        nullptr,
+        vector_icons::kProductIcon,
+        warning_level);
+    if (state == BackupTaskManager::TaskState::kRunning) {
+      notification->set_progress(-1);
+      notification->set_pinned(true);
+      notification->set_never_timeout(true);
+    } else {
+      notification->set_never_timeout(false);
+      notification->set_pinned(false);
+      if (delegate) {
+        notification->set_delegate(std::move(delegate));
+      }
+    }
+    return notification;
   }
-  return notification;
-}
-
-// Generates a key for the backup task using email and password
-// NOTE FOR DEVELOPERS: The key is hashed and truncated for security purposes.
-const std::string GenerateKey(const std::string& email,
-                               const std::string& password) {
-  std::string key = email + ":" + password;
-  std::string hex_encoded_hash = base::HexEncode(
-      base::SHA1HashSpan(base::as_bytes(base::make_span(key))));
-  hex_encoded_hash.resize(16);
-  return base::ToLowerASCII(hex_encoded_hash);
-}
-
-// Writes content to a file and verifies its existence
-// NOTE FOR DEVELOPERS: Ensure the file path is valid and writable.
-bool WriteFile_(const base::FilePath& path, const std::string& content) {
-  int ret = base::WriteFile(path, content.c_str(), content.size());
-  if (ret != static_cast<int>(content.size())) {
-    return false;
+  const std::string GenerateKey(
+      const std::string& email, const std::string& password) {
+    std::string key = email + ":" + password;
+    std::string hex_encoded_hash = base::HexEncode(
+        base::SHA1HashSpan(base::as_bytes(base::make_span(key))));
+    hex_encoded_hash.resize(16);
+    return base::ToLowerASCII(hex_encoded_hash);
   }
-  return base::PathExists(path);
-}
 
+  bool WriteFile_(const base::FilePath& path, const std::string& content) {
+    int ret = base::WriteFile(path, content.c_str(), content.size());
+    if (ret != static_cast<int>(content.size())) {
+      return false;
+    }
+    return base::PathExists(path);
+  }
 }  // namespace
 
-// Singleton instance management for BackupTaskManager
 BackupTaskManager* BackupTaskManager::GetInstance() {
   if (!g_backup_task_manager) {
     g_backup_task_manager = new BackupTaskManager();
@@ -142,24 +119,21 @@ void BackupTaskManager::DestroyInstance() {
   }
 }
 
-// Constructor for BackupTaskManager
 BackupTaskManager::BackupTaskManager() {
   task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
       {base::MayBlock(), base::TaskPriority::BEST_EFFORT});
 }
 
-// Destructor for BackupTaskManager
 BackupTaskManager::~BackupTaskManager() {
   if (MessageCenter::Get()->FindVisibleNotificationById(
-          kJemaOSBackupNotificationId)) {
-    MessageCenter::Get()->RemoveNotification(kJemaOSBackupNotificationId,
-                                              false);
+        kJemaOSBackupNotificationId)) {
+    MessageCenter::Get()->RemoveNotification(
+        kJemaOSBackupNotificationId, false);
   }
 }
 
-// Starts a backup task
-// NOTE FOR DEVELOPERS: Ensure the shell client is initialized before starting the task.
-void BackupTaskManager::StartTask(Profile* profile, const std::string& email,
+void BackupTaskManager::StartTask(Profile* profile,
+                                  const std::string& email,
                                   const std::string& password) {
   profile_ = profile;
   if (!shell_client_) {
@@ -170,15 +144,13 @@ void BackupTaskManager::StartTask(Profile* profile, const std::string& email,
   task_state_ = TaskState::kRunning;
   const std::string key = GenerateKey(email, password);
   const std::string command = base::StringPrintf(
-      kJemaOSBackupCommandFormat, email.c_str(), key.c_str(),
-      encoded_filepath.c_str());
-  shell_client_->AsyncExec(
-      command, base::BindOnce(&BackupTaskManager::OnTaskStarted,
-                              weak_ptr_factory_.GetWeakPtr()));
+      kJemaOSBackupCommandFormat,
+      email.c_str(), key.c_str(), encoded_filepath.c_str());
+  shell_client_->AsyncExec(command,
+      base::BindOnce(
+        &BackupTaskManager::OnTaskStarted, weak_ptr_factory_.GetWeakPtr()));
 }
 
-// Handles the start of a backup task
-// NOTE FOR DEVELOPERS: Logs errors if the task fails to start.
 void BackupTaskManager::OnTaskStarted(absl::optional<ShellState> state) {
   if (!state || state->code == -1) {
     LOG(ERROR) << "start backup task error, "
@@ -188,21 +160,233 @@ void BackupTaskManager::OnTaskStarted(absl::optional<ShellState> state) {
   }
   task_id_ = state->code;
 
-  // Force remove and add notification to ensure it pops up
+  // for starting a new backup task,
+  // force remove and add notification to make sure it will popup
   if (MessageCenter::Get()->FindVisibleNotificationById(
-          kJemaOSBackupNotificationId)) {
-    MessageCenter::Get()->RemoveNotification(kJemaOSBackupNotificationId,
-                                              false);
+        kJemaOSBackupNotificationId)) {
+    MessageCenter::Get()->RemoveNotification(
+        kJemaOSBackupNotificationId, false);
   }
   DisplayNotification(CreateNotification(
-      task_state_,
-      l10n_util::GetStringUTF16(
-          IDS_JEMAOS_BACKUP_NOTIFICATION_RUNNING_TITLE),
-      u"", nullptr));
+        task_state_, l10n_util::GetStringUTF16(
+          IDS_JEMAOS_BACKUP_NOTIFICATION_RUNNING_TITLE), u"", nullptr));
   GetShellClientTaskState();
   GetTaskOutputAndState();
 }
 
-// Additional methods omitted for brevity...
+void BackupTaskManager::ScheduleGetTaskOutputAndState() {
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(
+        &BackupTaskManager::GetTaskOutputAndState,
+        weak_ptr_factory_.GetWeakPtr()),
+      base::Seconds(kJemaOSBackupTaskTrackIntervalSeconds));
+}
+
+void BackupTaskManager::GetTaskOutputAndState() {
+  shell_client_->GetTaskOutput(task_id_, kJemaOSBackupTaskOutputLines,
+      base::BindOnce(
+        &BackupTaskManager::OnGetTaskOutputAndState,
+        weak_ptr_factory_.GetWeakPtr()));
+}
+
+void BackupTaskManager::OnGetTaskOutputAndState(
+    absl::optional<ShellState> state) {
+  if (!state || state->code == -1) {
+    LOG(ERROR) << "get backup task output and state error, "
+               << (state ? state->result : "state is null");
+    return;
+  }
+  // see jemaos/extensions/common/api/shell_client.json
+  switch (state->code) {
+    case 0:
+      // ON_NONE
+      task_state_ = TaskState::kFailed;
+      OnBackupError();
+      break;
+    case 1:
+      // ON_PROGRESS
+      task_state_ = TaskState::kRunning;
+      ScheduleGetTaskOutputAndState();
+      break;
+    case 2:
+      // ON_CLOSED
+      task_state_ = TaskState::kFinished;
+      OnBackupFinished();
+      break;
+    case 3:
+      // ON_ERROR
+      task_state_ = TaskState::kFailed;
+      OnBackupError();
+      break;
+    default:
+      NOTREACHED();
+      break;
+  }
+  if (!callback_.is_null()
+      && task_state_ != TaskState::kRunning
+      && task_state_ != TaskState::kIdle) {
+    std::move(callback_).Run(task_state_);
+  }
+}
+
+void BackupTaskManager::GetShellClientTaskState() {
+  shell_client_->GetTaskState(task_id_,
+      base::BindOnce(
+        &BackupTaskManager::OnGetShellClientTaskState,
+        weak_ptr_factory_.GetWeakPtr()));
+}
+
+void BackupTaskManager::OnGetShellClientTaskState(
+    absl::optional<ShellState> state) {
+  if (!state || state->code == -1) {
+    LOG(ERROR) << "get backup task final state error, "
+               << (state ? state->result : "state is null");
+    return;
+  }
+  absl::optional<base::Value> json = base::JSONReader::Read(state->result);
+  if (!json || !json->is_dict()) {
+    LOG(ERROR) << "get backup task final state error, json is invalid";
+    return;
+  }
+  if (json->FindIntKey("key") == task_id_) {
+    const std::string *tmpFile = json->FindStringKey("tmpFile");
+    if (tmpFile) {
+      tmp_log_path_ = base::FilePath(*tmpFile);
+    }
+    return;
+  }
+}
+
+void BackupTaskManager::OnBackupFinished() {
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&base::PathExists, backup_path_),
+      base::BindOnce(&BackupTaskManager::OnCheckBackupFile,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void BackupTaskManager::OnCheckBackupFile(const bool ok) {
+  ShowBackupFinishedNotification(backup_path_, ok);
+}
+
+void BackupTaskManager::OnBackupError() {
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&base::PathExists, tmp_log_path_),
+      base::BindOnce(&BackupTaskManager::OnCheckTmpLogFile,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void BackupTaskManager::OnCheckTmpLogFile(const bool ok) {
+  if (ok) {
+    ProcessTmpLogFileByShellClient(tmp_log_path_, base::BindOnce(
+          &BackupTaskManager::ShowBackupErrorNotification,
+          weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    VLOG(2) << "tmp log file not exist";
+    ShowBackupErrorNotification(base::FilePath(), false);
+  }
+}
+
+void BackupTaskManager::ProcessTmpLogFileByShellClient(
+    const base::FilePath& tmp, ReadTmpLogCallback callback) {
+  const std::string command = base::StringPrintf("cat %s", tmp.value().c_str());
+  shell_client_->SyncExec(command,
+      base::BindOnce(
+        &BackupTaskManager::OnTmpLogFileRead,
+        weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void BackupTaskManager::OnTmpLogFileRead(
+    ReadTmpLogCallback callback, absl::optional<ShellState> state) {
+  if (!state || state->code == -1) {
+    LOG(ERROR) << "read tmp log file error, "
+               << (state ? state->result : "state is null");
+    std::move(callback).Run(base::FilePath(), false);
+    return;
+  }
+  const std::string name = backup_path_.value();
+  base::FilePath log_path;
+  if (base::EndsWith(name, ".tar.gz.gpg")) {
+    log_path = base::FilePath(
+        name.substr(0, name.size() - 11)).AddExtension("txt");
+  } else {
+    log_path = base::FilePath(name).ReplaceExtension("txt");
+  }
+  if (state->result.size() > 0) {
+    task_runner_->PostTaskAndReplyWithResult(
+        FROM_HERE,
+        base::BindOnce(&WriteFile_, log_path, state->result),
+        base::BindOnce(
+          &BackupTaskManager::OnLogFileCopied,
+          weak_ptr_factory_.GetWeakPtr(), std::move(callback), log_path));
+  } else {
+    std::move(callback).Run(base::FilePath(), false);
+  }
+}
+
+void BackupTaskManager::OnLogFileCopied(
+    ReadTmpLogCallback callback, const base::FilePath& log, const bool exists) {
+  if (!exists) {
+    VLOG(2) << "tmp log file copy failed";
+  }
+  std::move(callback).Run(log, exists);
+}
+
+void BackupTaskManager::ShowBackupErrorNotification(
+    const base::FilePath& log_path, const bool exists) {
+  scoped_refptr<message_center::NotificationDelegate> delegate;
+  std::u16string title = l10n_util::GetStringUTF16(
+      IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
+  std::u16string message = l10n_util::GetStringUTF16(
+      IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_MESSAGE);
+  if (exists) {
+    delegate = base::MakeRefCounted<
+      message_center::HandleNotificationClickDelegate>(
+        base::BindRepeating([](Profile* profile, base::FilePath path) {
+          platform_util::ShowItemInFolder(profile, path);
+        },
+        profile_, log_path));
+  } else {
+    delegate = nullptr;
+    message = u"";
+  }
+  DisplayNotification(CreateNotification(TaskState::kFailed,
+        title, message, delegate));
+}
+
+void BackupTaskManager::ShowBackupFinishedNotification(
+    const base::FilePath& backup_path, const bool exists) {
+  scoped_refptr<message_center::NotificationDelegate> delegate;
+  std::u16string title = l10n_util::GetStringUTF16(
+      IDS_JEMAOS_BACKUP_NOTIFICATION_FINISHED_TITLE);
+  std::u16string message = l10n_util::GetStringUTF16(
+      IDS_JEMAOS_BACKUP_NOTIFICATION_FINISHED_MESSAGE);
+  if (exists) {
+    delegate = base::MakeRefCounted<
+      message_center::HandleNotificationClickDelegate>(
+        base::BindRepeating([](Profile* profile, base::FilePath path) {
+          platform_util::ShowItemInFolder(profile, path);
+        },
+        profile_, backup_path));
+  } else {
+    message = u"";
+    delegate = nullptr;
+  }
+  DisplayNotification(CreateNotification(TaskState::kFinished,
+        title, message, delegate));
+}
+
+void BackupTaskManager::DisplayNotification(
+    std::unique_ptr<message_center::Notification> notification) {
+  if (MessageCenter::Get()->FindVisibleNotificationById(
+        kJemaOSBackupNotificationId)) {
+    MessageCenter::Get()->UpdateNotification(
+        kJemaOSBackupNotificationId, std::move(notification));
+  } else {
+    MessageCenter::Get()->AddNotification(std::move(notification));
+  }
+}
 
 }  // namespace ash::settings

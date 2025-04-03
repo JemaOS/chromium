@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,6 +12,7 @@
 namespace jemaos {
 namespace constants {
 
+// URLs for JemaOS services
 CHROMEOS_EXPORT extern const char kDefaultJemaOSGaiaUrl[];
 CHROMEOS_EXPORT extern const char kDefaultJemaOSApisBaseUrl[];
 CHROMEOS_EXPORT extern const char kDefaultJemaOSDeviceManagementServerUrl[];
@@ -25,14 +26,18 @@ CHROMEOS_EXPORT extern const char kDefaultJemaOSFamilyLinkApisUrl[];
 CHROMEOS_EXPORT extern const char kDefaultJemaFtlServerEndpoint[];
 CHROMEOS_EXPORT extern const char kDefaultJemaRemotingServerEndpoint[];
 
+// Default sync interval for supervised user settings in seconds
 extern const size_t kJemaOSSupervisedUserSettingsDefaultSyncIntervalInSeconds;
 
+// Path to the enrollment token file
+CHROMEOS_EXPORT extern const char kJemaEnrollmentTokenFilePath[];
+
 #if BUILDFLAG(IS_OPENJEMA)
+// URL for developers to learn how to get API keys
 CHROMEOS_EXPORT extern const char kJemaAPIKeysDevelopersHowToURL[];
 #endif
 
-CHROMEOS_EXPORT extern const char kJemaEnrollmentTokenFilePath[];
-}//constants
-}//jemaos
+}  // namespace constants
+}  // namespace jemaos
 
-#endif
+#endif  // CHROMEOS_JEMAOS_SWITCHES_ACCOUNT_CONSTANTS_H_

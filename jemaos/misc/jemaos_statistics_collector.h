@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,15 +30,23 @@ class SimpleURLLoader;
 namespace jemaos {
 namespace misc {
 
+// Collects and uploads system and user statistics for JemaOS
 class StatisticsCollector {
  public:
+    // Constructor
     StatisticsCollector();
+
+    // Destructor
     ~StatisticsCollector();
 
+    // Starts the statistics collection process
     void Start();
+
+    // Stops the statistics collection process
     void Stop();
 
  private:
+    // Structure to hold collected statistics
     struct Statistics {
       std::string license_id;
       std::string license_type;
@@ -65,6 +73,7 @@ class StatisticsCollector {
       bool is_jema_profile;
     };
 
+    // Enumeration of collection steps
     enum CollectStep {
       INITIALIZE = 0,
       GET_LICENSE_ID,
@@ -73,10 +82,12 @@ class StatisticsCollector {
       SYNC_COLLECT,
     };
 
+    // Internal methods for managing the collection process
     void StartInternal();
     void OnMachineStatisticsLoaded();
     void ProceedToNextStep();
 
+    // Methods for collecting specific statistics
     void GetLicenseId();
     void OnGetLicenseId(absl::optional<jemaos::ash::ShellState> state);
 
@@ -89,15 +100,18 @@ class StatisticsCollector {
 
     void SyncCollect();
 
+    // Methods for collecting user and device information
     void CollectUserInfo();
     void CollectDeviceInfo();
 
+    // Methods for uploading collected statistics
     bool UploadStatistics();
     bool GetUploadData(std::string* output);
     bool EncryptData(const std::string& text, std::string* encrypted);
     void OnUploaded(std::unique_ptr<network::SimpleURLLoader> url_loader,
                     std::unique_ptr<std::string> response_body);
 
+    // Member variables
     bool started_ = false;
     CollectStep step_;
     Statistics statistics_ = {};
@@ -109,5 +123,4 @@ class StatisticsCollector {
 }  // namespace misc
 }  // namespace jemaos
 
-#endif /* ifndef JEMAOS_STATISTICS_COLLECTOR_H */
-
+#endif  // JEMAOS_STATISTICS_COLLECTOR_H

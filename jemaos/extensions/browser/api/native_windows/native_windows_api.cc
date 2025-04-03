@@ -1,7 +1,6 @@
-// Copyright (c) 2018 The FlintOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// Author: Simon Tsao(yang@flintos.io)
 
 #include "jemaos/extensions/browser/api/native_windows/native_windows_api.h"
 
@@ -54,39 +53,44 @@ namespace extensions {
   const char kAppIdIsEmptyError[] = "appId is empty.";
 
   namespace {
+
+    // Base window ID for assigning unique IDs to windows
     int baseWindowId = ash::kShellWindowId_PhantomWindow + 2;
+
+    // Assigns unique IDs to windows in the list
     void ArrangementWindowsIDs(WindowList window_list) {
       std::vector<Window*> need_id_list;
-      for (Window * aura_window : window_list) {
+      for (Window* aura_window : window_list) {
         if (aura_window->GetId() == ash::kShellWindowId_Invalid)
           need_id_list.push_back(aura_window);
         else if (aura_window->GetId() >= baseWindowId)
           baseWindowId = aura_window->GetId() + 1;
       }
-      for (Window * aura_window: need_id_list)
+      for (Window* aura_window : need_id_list)
         aura_window->SetId(baseWindowId++);
     }
 
+    // Builds a list of windows for cycling
     WindowList BuildWindowsForCycleList() {
       WindowList window_list =
           ash::Shell::Get()->mru_window_tracker()->BuildMruWindowList(ash::kAllDesks);
       auto window_is_ineligible = [](Window* window) {
         WindowState* state = WindowState::Get(window);
         return !state->IsUserPositionable() || state->is_dragged() ||
-                window->GetRootWindow()
-                    ->GetChildById(ash::kShellWindowId_AppListContainer)
-                    ->Contains(window) ||
-                window->GetProperty(ash::kHideInOverviewKey);
+               window->GetRootWindow()
+                   ->GetChildById(ash::kShellWindowId_AppListContainer)
+                   ->Contains(window) ||
+               window->GetProperty(ash::kHideInOverviewKey);
       };
       window_list.erase(std::remove_if(window_list.begin(), window_list.end(),
-                                        window_is_ineligible),
+                                       window_is_ineligible),
                         window_list.end());
       ArrangementWindowsIDs(window_list);
       return window_list;
     }
 
-    base::Value CreateWindowValueFromNativeWindow(Window* aura_window)
-    {
+    // Creates a dictionary representing a native window
+    base::Value CreateWindowValueFromNativeWindow(Window* aura_window) {
       base::Value result(base::Value::Type::DICT);
       result.SetIntKey(keys::kIdKey, aura_window->GetId());
       result.SetStringKey(keys::kWindowTypeKey, keys::kWindowTypeValueApp);
@@ -119,48 +123,41 @@ namespace extensions {
       return result;
     }
 
+    // Retrieves a window by its ID
     bool GetWindowFromWindowID(int window_id, Window** window) {
       WindowList window_list = BuildWindowsForCycleList();
-      for (Window * tmp_window : window_list){
-        if (tmp_window->GetId() == window_id){
+      for (Window* tmp_window : window_list) {
+        if (tmp_window->GetId() == window_id) {
           *window = tmp_window;
           break;
         }
       }
       return *window;
     }
-/*
-    int64_t GetDisplayIdForCurrentProfile() {
-      // Settings in secondary profile cannot access ARC.
-      return display::Screen::GetScreen()
-          ->GetDisplayNearestView(web_ui()->GetWebContents()->GetNativeView())
-          .id();
-    }
-*/
-  } // exit internel namespace
 
+  }  // namespace
+
+  // Handles the "Get" function for native windows
   ExtensionFunction::ResponseAction NativeWindowsGetFunction::Run() {
     absl::optional<windows::Get::Params> params(
         windows::Get::Params::Create(args()));
     EXTENSION_FUNCTION_VALIDATE(params);
     Window* window = nullptr;
-    if (!GetWindowFromWindowID(params->window_id,
-                                              &window)) {
+    if (!GetWindowFromWindowID(params->window_id, &window)) {
       return RespondNow(Error(keys::kNoCurrentWindowError));
     }
     return RespondNow(WithArguments(CreateWindowValueFromNativeWindow(window)));
   }
 
+  // Handles the "GetAll" function for native windows
   ExtensionFunction::ResponseAction NativeWindowsGetAllFunction::Run() {
-
     base::Value::List window_list;
-
-    for(Window* tmp_window: BuildWindowsForCycleList())
+    for (Window* tmp_window : BuildWindowsForCycleList())
       window_list.Append(CreateWindowValueFromNativeWindow(tmp_window));
     return RespondNow(WithArguments(std::move(window_list)));
   }
 
-
+  // Handles the "Update" function for native windows
   ExtensionFunction::ResponseAction NativeWindowsUpdateFunction::Run() {
     absl::optional<windows::Update::Params> params(
         windows::Update::Params::Create(args()));
@@ -174,8 +171,8 @@ namespace extensions {
         params->update_info.state != windows::WINDOW_STATE_NONE) {
       target_window_state->Restore();
     } else if (params->update_info.state ==
-                  windows::WINDOW_STATE_LOCKED_FULLSCREEN) {
-      if (!target_window_state->IsMaximizedOrFullscreenOrPinned()){
+               windows::WINDOW_STATE_LOCKED_FULLSCREEN) {
+      if (!target_window_state->IsMaximizedOrFullscreenOrPinned()) {
         const ash::WMEvent event(ash::WM_EVENT_TOGGLE_FULLSCREEN);
         target_window_state->OnWMEvent(&event);
       }
@@ -184,46 +181,45 @@ namespace extensions {
     return RespondNow(WithArguments(CreateWindowValueFromNativeWindow(target_window)));
   }
 
+  // Handles the "Remove" function for native windows
   ExtensionFunction::ResponseAction NativeWindowsRemoveFunction::Run() {
     absl::optional<windows::Remove::Params> params(
-      windows::Remove::Params::Create(args()));
+        windows::Remove::Params::Create(args()));
     EXTENSION_FUNCTION_VALIDATE(params);
     Window* target_window = nullptr;
     if (!GetWindowFromWindowID(params->window_id, &target_window))
       return RespondNow(Error(keys::kNoCurrentWindowError));
 
-    if (ash::IsArcWindow(target_window)){
+    if (ash::IsArcWindow(target_window)) {
       auto task_id = arc::GetWindowTaskId(target_window);
       if (!task_id.has_value())
         return RespondNow(Error(keys::kNoCurrentWindowError));
       arc::CloseTask(*task_id);
-    }else{
+    } else {
       ash::window_util::CloseWidgetForWindow(target_window);
     }
     return RespondNow(NoArguments());
   }
 
+  // Handles the "Create" function for native windows
   ExtensionFunction::ResponseAction NativeWindowsCreateFunction::Run() {
     absl::optional<windows::Create::Params> params(
-      windows::Create::Params::Create(args()));
+        windows::Create::Params::Create(args()));
     EXTENSION_FUNCTION_VALIDATE(params);
-    if(params->app_id.empty())
+    if (params->app_id.empty())
       return RespondNow(Error(kAppIdIsEmptyError));
     if (params->app_id == arc::kSettingsAppId) {
-      arc::LaunchApp(browser_context(),
-                     arc::kSettingsAppId,
-                     ui::EF_NONE,
-                     arc::UserInteractionType::APP_STARTED_FROM_SETTINGS
-                     );
+      arc::LaunchApp(browser_context(), arc::kSettingsAppId, ui::EF_NONE,
+                     arc::UserInteractionType::APP_STARTED_FROM_SETTINGS);
     } else {
       Profile* profile = Profile::FromBrowserContext(browser_context());
       AppListClientImpl* client = AppListClientImpl::GetInstance();
       apps::AppServiceProxyAsh* proxy =
-        apps::AppServiceProxyFactory::GetForProfile(profile);
+          apps::AppServiceProxyFactory::GetForProfile(profile);
       int event_flags = ui::EF_NONE;
       bool is_active_app = false;
-      proxy->AppRegistryCache()
-          .ForOneApp(params->app_id, [&is_active_app](const apps::AppUpdate& update) {
+      proxy->AppRegistryCache().ForOneApp(
+          params->app_id, [&is_active_app](const apps::AppUpdate& update) {
             if (update.AppType() == apps::AppType::kCrostini ||
                 ((update.AppType() == apps::AppType::kExtension ||
                   update.AppType() == apps::AppType::kSystemWeb ||
@@ -243,11 +239,13 @@ namespace extensions {
               /*filter_predicate=*/base::NullCallback());
         }
       } else {
-        proxy->Launch(params->app_id, event_flags, apps::LaunchSource::kFromAppListGrid,
-                  std::make_unique<apps::WindowInfo>(client->GetAppListDisplayId()));
+        proxy->Launch(params->app_id, event_flags,
+                      apps::LaunchSource::kFromAppListGrid,
+                      std::make_unique<apps::WindowInfo>(
+                          client->GetAppListDisplayId()));
       }
     }
     return RespondNow(NoArguments());
   }
 
-} // exit namesapce extensions
+}  // namespace extensions

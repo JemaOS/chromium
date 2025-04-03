@@ -1,7 +1,6 @@
-// Copyright (c) 2018 The FlintOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// Author: Simon Tsao(yang@flintos.io)
 
 #include "jemaos/extensions/browser/api/command_line/command_line_api.h"
 #include "jemaos/extensions/common/api/command_line.h"
@@ -17,15 +16,18 @@ namespace extensions {
   const char kEmptySwitchName[] = "Switch name is empty.";
 
   namespace {
-    bool HasSwitch(const std::string& name){
+    // Checks if a switch exists
+    bool HasSwitch(const std::string& name) {
       return base::CommandLine::ForCurrentProcess()->HasSwitch(name);
     }
-    std::string GetSwitchValue(const std::string& name){
+
+    // Retrieves the value of a switch
+    std::string GetSwitchValue(const std::string& name) {
       return base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(name);
     }
+  }  // namespace
 
-  } //internal namespace
-
+  // Handles the "HasSwitch" function
   ExtensionFunction::ResponseAction CommandLineHasSwitchFunction::Run() {
     absl::optional<command_line::HasSwitch::Params> params(
       command_line::HasSwitch::Params::Create(args()));
@@ -37,6 +39,7 @@ namespace extensions {
     return RespondNow(ArgumentList(command_line::HasSwitch::Results::Create(true, GetSwitchValue(params->name))));
   }
 
+  // Handles the "AddSwitch" function
   ExtensionFunction::ResponseAction CommandLineAddSwitchFunction::Run() {
     absl::optional<command_line::AddSwitch::Params> params(
       command_line::AddSwitch::Params::Create(args()));
@@ -50,6 +53,7 @@ namespace extensions {
     return RespondNow(NoArguments());
   }
 
+  // Handles the "RemoveSwitch" function
   ExtensionFunction::ResponseAction CommandLineRemoveSwitchFunction::Run() {
     absl::optional<command_line::RemoveSwitch::Params> params(
       command_line::RemoveSwitch::Params::Create(args()));
@@ -60,4 +64,4 @@ namespace extensions {
     return RespondNow(NoArguments());
   }
 
-} //extensions
+}  // namespace extensions

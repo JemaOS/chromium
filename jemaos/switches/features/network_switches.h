@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,8 +10,10 @@
 namespace jemaos {
 namespace switches {
 
+// Checks if the Wi-Fi driver needs to be reset
 CHROMEOS_EXPORT bool NeedResetWifiDriver();
 
-} // switches
-} // jemaos
-#endif
+}  // namespace switches
+}  // namespace jemaos
+
+#endif  // CHROMEOS_JEMAOS_SWITCHES_NETWORK_SWITCHES_H_

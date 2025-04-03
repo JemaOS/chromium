@@ -1,4 +1,4 @@
-// Copyright 2021 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 
 #ifndef ASH_SYSTEM_UNIFIED_SWITCH_TABLET_LAPTOP_FEATURE_POD_CONTROLLER_H_
 #define ASH_SYSTEM_UNIFIED_SWITCH_TABLET_LAPTOP_FEATURE_POD_CONTROLLER_H_

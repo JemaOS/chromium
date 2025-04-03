@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,31 +28,71 @@ namespace jemaos {
 
 namespace misc {
 
+// Manages the stateful update process for JemaOS
 class StatefulUpdater {
  public:
+    // Constructor
     StatefulUpdater();
+
+    // Destructor
     ~StatefulUpdater();
+
+    // Starts the stateful update process
     void Start();
+
+    // Stops the stateful update process
     void Stop();
 
  private:
+    // Delays the update check
     void CheckUpdateDelay();
+
+    // Checks for available updates
     void CheckUpdate();
+
+    // Callback for when the update check is complete
     void OnCheckUpdateDone(absl::optional<jemaos::ash::ShellState> state);
+
+    // Generates a notification for available updates
     void GenerateUpdateNotification();
+
+    // Closes the update notification
     void CloseUpdateNotification();
+
+    // Performs the update
     void DoUpdate();
+
+    // Callback for when the update starts
     void OnDoUpdateStarted(absl::optional<jemaos::ash::ShellState> state);
+
+    // Generates a progress notification for the update
     void GenerateProgressNotification();
+
+    // Closes the progress notification
     void CloseProgressNotification();
+
+    // Generates a reboot notification
     void GenerateRebootNotification();
+
+    // Updates the progress notification
     void TrytoUpdateProgressNotification(std::string result);
+
+    // Closes the reboot notification
     void CloseRebootNotification();
+
+    // Checks the update status
     void CheckUpdateStatus();
+
+    // Callback for when the update status check is complete
     void OnCheckUpdateStatusDone(absl::optional<jemaos::ash::ShellState> state);
+
+    // Reboots the system
     void Reboot();
 
+    // Handles clicks on the update notification
     void HandleUpdateNotificationClick(absl::optional<int> button_index);
+
+    // Handles clicks on the reboot notification
     void HandleRebootNotificationClick(absl::optional<int> button_index);
 
     Profile* profile_ = nullptr;
@@ -63,7 +103,6 @@ class StatefulUpdater {
     int check_update_count_;
     int check_status_count_;
 
-
     base::WeakPtrFactory<StatefulUpdater> weak_ptr_factory_{this};
 };
 
@@ -71,5 +110,4 @@ class StatefulUpdater {
 
 }  // namespace jemaos
 
-
-#endif
+#endif  // JEMAOS_STATEFUL_UPDATE_H

@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,9 +11,10 @@
 namespace jemaos {
 namespace switches {
 
+// Retrieves the ARC delay value from the command-line switch
 CHROMEOS_EXPORT int64_t GetJemaOSArcDelay();
 
-} // switches
-} // jemaos
+}  // namespace switches
+}  // namespace jemaos
 
-#endif
+#endif  // CHROMEOS_JEMAOS_SWITCHES_ARC_SWITCHES_H_

@@ -1,6 +1,7 @@
-// Copyright (c) 2023 Jema Technology. All rights reserved.
+// Copyright (c) 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #ifndef _JEMAOS_UI_WEBUI_SETTINGS_ASH_JEMAOS_HANDLER_BACKUP_TASK_MANAGER_H_
 #define _JEMAOS_UI_WEBUI_SETTINGS_ASH_JEMAOS_HANDLER_BACKUP_TASK_MANAGER_H_
 
@@ -17,6 +18,7 @@ namespace base {
 class OneShotTimer;
 class FilePath;
 }
+
 namespace message_center {
 class Notification;
 }
@@ -34,71 +36,111 @@ using jemaos::ash::ShellState;
 
 class BackupTaskManager {
  public:
-    enum class TaskState {
-      kIdle,
-      kRunning,
-      kFinished,
-      kFailed,
-    };
-    using BackupTaskCallback = base::OnceCallback<void(TaskState)>;
-    BackupTaskManager();
-    ~BackupTaskManager();
+  // Enum representing the state of the backup task
+  // NOTE FOR DEVELOPERS: Add new states here if additional task states are introduced.
+  enum class TaskState {
+    kIdle,     // Task is idle and not running
+    kRunning,  // Task is currently running
+    kFinished, // Task has completed successfully
+    kFailed,   // Task has failed
+  };
 
-    static BackupTaskManager* GetInstance();
-    static void DestroyInstance();
+  using BackupTaskCallback = base::OnceCallback<void(TaskState)>;
 
-    void StartTask(Profile* profile,
-                   const std::string& email,
-                   const std::string& password);
-    void OnTaskStarted(absl::optional<ShellState> state);
-    void GetTaskOutputAndState();
-    void OnGetTaskOutputAndState(absl::optional<ShellState> state);
+  // Constructor and destructor
+  // NOTE FOR DEVELOPERS: Ensure proper cleanup of resources in the destructor.
+  BackupTaskManager();
+  ~BackupTaskManager();
 
-    void ScheduleGetTaskOutputAndState();
+  // Singleton instance management
+  // NOTE FOR DEVELOPERS: Use these methods to manage the global instance of the BackupTaskManager.
+  static BackupTaskManager* GetInstance();
+  static void DestroyInstance();
 
-    void SetBackupFile(const base::FilePath& path) { backup_path_ = path; }
-    TaskState GetTaskState() const { return task_state_; }
-    void SetCallback(BackupTaskCallback callback) {
-      callback_ = std::move(callback);
-    }
+  // Starts a backup task
+  // NOTE FOR DEVELOPERS: Ensure the profile, email, and password are valid before calling this method.
+  void StartTask(Profile* profile,
+                 const std::string& email,
+                 const std::string& password);
+
+  // Callback for when the backup task starts
+  void OnTaskStarted(absl::optional<ShellState> state);
+
+  // Retrieves the output and state of the backup task
+  void GetTaskOutputAndState();
+
+  // Callback for when the task output and state are retrieved
+  void OnGetTaskOutputAndState(absl::optional<ShellState> state);
+
+  // Schedules periodic retrieval of task output and state
+  void ScheduleGetTaskOutputAndState();
+
+  // Sets the backup file path
+  void SetBackupFile(const base::FilePath& path) { backup_path_ = path; }
+
+  // Retrieves the current state of the backup task
+  TaskState GetTaskState() const { return task_state_; }
+
+  // Sets a callback to be invoked when the task state changes
+  void SetCallback(BackupTaskCallback callback) {
+    callback_ = std::move(callback);
+  }
 
  private:
-    void DisplayNotification(
-        std::unique_ptr<message_center::Notification> notification);
+  // Displays a notification for the backup task
+  // NOTE FOR DEVELOPERS: Customize the notification appearance and behavior as needed.
+  void DisplayNotification(
+      std::unique_ptr<message_center::Notification> notification);
 
-    // Handle backup finished
-    void OnBackupFinished();
-    void OnCheckBackupFile(const bool);
-    void ShowBackupFinishedNotification(
-        const base::FilePath& file_path, const bool exists);
+  // Handles the completion of the backup task
+  void OnBackupFinished();
 
-    void GetShellClientTaskState();
-    void OnGetShellClientTaskState(absl::optional<ShellState> state);
+  // Checks if the backup file exists
+  void OnCheckBackupFile(const bool exists);
 
-    // Handle backup error
-    using ReadTmpLogCallback = base::OnceCallback<
-      void(const base::FilePath& file_path, const bool exists)>;
-    void OnBackupError();
-    void OnCheckTmpLogFile(const bool);
-    void ProcessTmpLogFileByShellClient(
-        const base::FilePath& tmp, ReadTmpLogCallback callback);
-    void OnTmpLogFileRead(
-        ReadTmpLogCallback callback, absl::optional<ShellState> state);
-    void OnLogFileCopied(ReadTmpLogCallback callback,
-                         const base::FilePath& log, const bool exists);
-    void ShowBackupErrorNotification(
-        const base::FilePath& log, const bool exists);
+  // Displays a notification when the backup is finished
+  void ShowBackupFinishedNotification(
+      const base::FilePath& file_path, const bool exists);
 
-    JemaOSShellClient* shell_client_ = nullptr;
-    int32_t task_id_ = 0;
-    TaskState task_state_ = TaskState::kIdle;
-    Profile* profile_ = nullptr;
-    base::FilePath backup_path_;
-    base::FilePath tmp_log_path_;
-    BackupTaskCallback callback_;
+  // Retrieves the state of the shell client task
+  void GetShellClientTaskState();
 
-    scoped_refptr<base::SequencedTaskRunner> task_runner_;
-    base::WeakPtrFactory<BackupTaskManager> weak_ptr_factory_{this};
+  // Callback for when the shell client task state is retrieved
+  void OnGetShellClientTaskState(absl::optional<ShellState> state);
+
+  // Handles backup errors
+  void OnBackupError();
+
+  // Checks if the temporary log file exists
+  void OnCheckTmpLogFile(const bool exists);
+
+  // Processes the temporary log file using the shell client
+  void ProcessTmpLogFileByShellClient(
+      const base::FilePath& tmp, ReadTmpLogCallback callback);
+
+  // Callback for when the temporary log file is read
+  void OnTmpLogFileRead(
+      ReadTmpLogCallback callback, absl::optional<ShellState> state);
+
+  // Callback for when the log file is copied
+  void OnLogFileCopied(ReadTmpLogCallback callback,
+                       const base::FilePath& log, const bool exists);
+
+  // Displays a notification when a backup error occurs
+  void ShowBackupErrorNotification(
+      const base::FilePath& log, const bool exists);
+
+  // Member variables
+  JemaOSShellClient* shell_client_ = nullptr;  // Shell client instance
+  int32_t task_id_ = 0;                        // ID of the current task
+  TaskState task_state_ = TaskState::kIdle;    // Current state of the task
+  Profile* profile_ = nullptr;                 // Profile associated with the task
+  base::FilePath backup_path_;                 // Path to the backup file
+  base::FilePath tmp_log_path_;                // Path to the temporary log file
+  BackupTaskCallback callback_;                // Callback for task state changes
+
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;  // Task runner for background tasks
+  base::WeakPtrFactory<BackupTaskManager> weak_ptr_factory_{this};  // Weak pointer factory
 };
 
 }  // namespace ash::settings

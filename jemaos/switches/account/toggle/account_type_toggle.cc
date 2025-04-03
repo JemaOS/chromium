@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Jema Technology. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,14 +15,14 @@
 #include "base/command_line.h"
 #include "remoting/base/service_urls.h"
 
-
 namespace jemaos {
 namespace switches {
 
 namespace {
 
+// Resets URLs for Gaia and remoting services
 void ResetUrls() {
-  GaiaUrls *gaia_urls = GaiaUrls::GetInstance();
+  GaiaUrls* gaia_urls = GaiaUrls::GetInstance();
   if (gaia_urls) {
     gaia_urls->Reset();
   }
@@ -40,6 +40,7 @@ void ResetUrls() {
   }
 }
 
+// Toggles the Jema account flag internally based on the account type
 void ToggleJemaAccountFlagInternal(base::CommandLine* cmdline, const AccountType account_type) {
   if (cmdline->HasSwitch(kJemaAccountForceDisabledForTest)) return;
   if (IsJemaSetDeviceManaged()) return;
@@ -63,6 +64,7 @@ void ToggleJemaAccountFlagInternal(base::CommandLine* cmdline, const AccountType
   }
 }
 
+// Retrieves the active user internally
 user_manager::User* GetActiveUserInternal() {
   if (!user_manager::UserManager::IsInitialized()) { return nullptr; }
   user_manager::UserManager* user_manager_ = user_manager::UserManager::Get();
@@ -71,13 +73,15 @@ user_manager::User* GetActiveUserInternal() {
   return user;
 }
 
-}
+}  // namespace
 
+// Toggles the Jema account flag by account ID
 void ToggleJemaAccountFlagByAccountId(const AccountId& account_id) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   ToggleJemaAccountFlagInternal(command_line, account_id.GetAccountType());
 }
 
+// Toggles the Jema account flag for the current command line
 void ToggleJemaAccountFlagForCommandLine(base::CommandLine* command_line) {
   user_manager::User* user = GetActiveUserInternal();
   if (!user) return;
@@ -85,38 +89,44 @@ void ToggleJemaAccountFlagForCommandLine(base::CommandLine* command_line) {
   ToggleJemaAccountFlagInternal(command_line, account_id.GetAccountType());
 }
 
+// Toggles the Jema account flag for the command line by account ID
 void ToggleJemaAccountFlagForCommandLineByAccountId(base::CommandLine* command_line, const AccountId& account_id) {
   ToggleJemaAccountFlagInternal(command_line, account_id.GetAccountType());
 }
 
+// Enables the Jema account flag
 void EnableJemaAccountFlag() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   ToggleJemaAccountFlagInternal(command_line, AccountType::JEMA_ACCOUNT);
 }
 
+// Disables the Jema account flag
 void DisableJemaAccountFlag() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   ToggleJemaAccountFlagInternal(command_line, AccountType::GOOGLE);
 }
 
+// Toggles the Jema account flag by the active user
 void ToggleJemaAccountFlagByActiveUser() {
   user_manager::User* user = GetActiveUserInternal();
   if (!user) return;
   ToggleJemaAccountFlagByAccountId(user->GetAccountId());
 }
 
+// Enables the Jema account flag for a managed device
 void EnableJemaAccountFlagForManagedDevice() {
   EnableJemaAccountFlag();
   JemaSetDeviceManagedFlag(true);
 }
 
+// Disables the Jema account flag for a managed device
 void DisableJemaAccountFlagForManagedDevice() {
   DisableJemaAccountFlag();
   JemaSetDeviceManagedFlag(true);
 }
 
+// Appends account switches if needed
 void AppendAccountSwitchesIfNeed(const AccountId& account_id, std::vector<std::string>* switches) {
-  // GetSwitchString
   base::CommandLine cmd_line(base::CommandLine::NO_PROGRAM);
   cmd_line.AppendSwitch(kJemaAccountEnable);
   const std::string account_switch = cmd_line.argv()[1];
@@ -126,5 +136,5 @@ void AppendAccountSwitchesIfNeed(const AccountId& account_id, std::vector<std::s
   }
 }
 
-} // namespace switches
-} // namespace jemaos
+}  // namespace switches
+}  // namespace jemaos

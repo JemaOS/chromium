@@ -17,12 +17,15 @@
 
 namespace ash {
 
+// Constructor for SwitchTabletLabtopFeaturePodController
 SwitchTabletLabtopFeaturePodController::SwitchTabletLabtopFeaturePodController(
     UnifiedSystemTrayController* tray_controller)
     : tray_controller_(tray_controller) {}
 
+// Destructor for SwitchTabletLabtopFeaturePodController
 SwitchTabletLabtopFeaturePodController::~SwitchTabletLabtopFeaturePodController() = default;
 
+// Creates the feature pod button
 FeaturePodButton* SwitchTabletLabtopFeaturePodController::CreateButton() {
   DCHECK(!button_);
   DCHECK(!features::IsQsRevampEnabled());
@@ -30,6 +33,8 @@ FeaturePodButton* SwitchTabletLabtopFeaturePodController::CreateButton() {
   UpdateButton();
   return button_;
 }
+
+// Creates the feature tile
 std::unique_ptr<FeatureTile> SwitchTabletLabtopFeaturePodController::CreateTile(
     bool compact) {
   DCHECK(!tile_);
@@ -44,6 +49,7 @@ std::unique_ptr<FeatureTile> SwitchTabletLabtopFeaturePodController::CreateTile(
   return tile;
 }
 
+// Handles the icon press event
 void SwitchTabletLabtopFeaturePodController::OnIconPressed() {
   tray_controller_->CloseBubble();
   TabletModeController* controller = Shell::Get()->tablet_mode_controller();
@@ -61,16 +67,19 @@ void SwitchTabletLabtopFeaturePodController::OnIconPressed() {
   }
 }
 
+// Returns the catalog name for the feature
 QsFeatureCatalogName SwitchTabletLabtopFeaturePodController::GetCatalogName() {
   return QsFeatureCatalogName::kSwitchLaptopTablet;
 }
 
+// Registers local state preferences
 void SwitchTabletLabtopFeaturePodController::RegisterLocalStatePrefs(
     PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(
       jemaos::prefs::kShowSwitchTabletLaptopButton, false);
 }
 
+// Updates the visibility of the button or tile
 void SwitchTabletLabtopFeaturePodController::UpdateButton() {
   TabletModeController* controller = Shell::Get()->tablet_mode_controller();
   const bool force_on = controller->IsInJemaForceOnMode();
@@ -113,6 +122,7 @@ void SwitchTabletLabtopFeaturePodController::UpdateButton() {
   }
 }
 
+// Checks if the system is in tablet mode
 bool SwitchTabletLabtopFeaturePodController::IsInTabletMode() {
   TabletModeController* controller = Shell::Get()->tablet_mode_controller();
   const bool in_dev_mode = controller->IsInDevTabletMode();

@@ -23,22 +23,26 @@ namespace ash {
 
 namespace {
 
+// Determines if the rotate screen button should be shown by default
 bool shouldShowRotateScreenByDefault(const std::string& board) {
   return jemaos::switches::IsNonForYouBoard(board);
 }
 
-}
+}  // namespace
 
+// Constructor for RotateScreenFeaturePodController
 RotateScreenFeaturePodController::RotateScreenFeaturePodController() {
   DCHECK(Shell::Get());
   Shell::Get()->tablet_mode_controller()->AddObserver(this);
 }
 
+// Destructor for RotateScreenFeaturePodController
 RotateScreenFeaturePodController::~RotateScreenFeaturePodController() {
   if (Shell::Get()->tablet_mode_controller())
     Shell::Get()->tablet_mode_controller()->RemoveObserver(this);
 }
 
+// Creates the feature pod button
 FeaturePodButton* RotateScreenFeaturePodController::CreateButton() {
   DCHECK(!button_);
   DCHECK(!features::IsQsRevampEnabled());
@@ -51,6 +55,8 @@ FeaturePodButton* RotateScreenFeaturePodController::CreateButton() {
   UpdateButton();
   return button_;
 }
+
+// Creates the feature tile
 std::unique_ptr<FeatureTile> RotateScreenFeaturePodController::CreateTile(
     bool compact) {
   DCHECK(!tile_);
@@ -70,14 +76,17 @@ std::unique_ptr<FeatureTile> RotateScreenFeaturePodController::CreateTile(
   return tile;
 }
 
+// Handles the icon press event
 void RotateScreenFeaturePodController::OnIconPressed() {
   RotateScreenJemaOS();
 }
 
+// Handles changes in the tablet physical state
 void RotateScreenFeaturePodController::OnTabletPhysicalStateChanged() {
   UpdateButton();
 }
 
+// Updates the visibility of the button or tile
 void RotateScreenFeaturePodController::UpdateButton() {
   const bool is_in_tablet_physical_state =
     Shell::Get()->tablet_mode_controller()->is_in_tablet_physical_state();
@@ -98,10 +107,12 @@ void RotateScreenFeaturePodController::UpdateButton() {
   }
 }
 
+// Returns the catalog name for the feature
 QsFeatureCatalogName RotateScreenFeaturePodController::GetCatalogName() {
   return QsFeatureCatalogName::kRotateScreen;
 }
 
+// Registers local state preferences
 void RotateScreenFeaturePodController::RegisterLocalStatePrefs(
     PrefRegistrySimple* registry) {
   const std::string board = base::SysInfo::GetLsbReleaseBoard();

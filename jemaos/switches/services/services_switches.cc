@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,34 +15,43 @@ namespace switches {
 
 namespace {
 
+// Command-line switches for disabling APIs
 const char kDisableJemaOSGeolocationAPI[] = "disable-jemaos-geolocation-api";
 const char kDisableJemaOSTimezoneAPI[] = "disable-jemaos-timezone-api";
 
+// Command-line switches for custom API URLs
 const char kJemaOSGeolocationAPIUrl[] = "jemaos-geolocation-api-url";
 const char kJemaOSTimezoneAPIUrl[] = "jemaos-timezone-api-url";
 
+// Command-line switch for Looking Glass URL
 const char kJemaOSLookingGlassUrl[] = "jemaos-lookingglass-url";
 
+// Command-line switches for App Store URLs
 const char kJemaOSAppsGalleryURL[] = "jemaos-apps-gallery-url";
-
 const char kJemaOSAppsGalleryUpdateURL[] = "jemaos-apps-gallery-update-url";
 
+// Command-line switch for Assistant Web URL
 const char kJemaOSAssistantWebUrl[] = "jemaos-ai-url";
 
+// Store URL prefixes
 const char kJemaOSStoreComPrefix[] = "https://store.jemaos.com";
 const char kJemaOSStoreIoPrefix[] = "https://store.jemaos.io";
-}
 
+}  // namespace
+
+// Checks if the Geolocation API is disabled
 bool DisableJemaOSGeolocationAPI() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   return command_line->HasSwitch(kDisableJemaOSGeolocationAPI);
 }
 
+// Checks if the Timezone API is disabled
 bool DisableJemaOSTimezoneAPI() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   return command_line->HasSwitch(kDisableJemaOSTimezoneAPI);
 }
 
+// Retrieves the Geolocation API URL
 std::string GetJemaOSGeolocationAPIUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(kJemaOSGeolocationAPIUrl)) {
@@ -52,6 +61,7 @@ std::string GetJemaOSGeolocationAPIUrl() {
   }
 }
 
+// Retrieves the Timezone API URL
 std::string GetJemaOSTimezoneAPIUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(kJemaOSTimezoneAPIUrl)) {
@@ -61,6 +71,7 @@ std::string GetJemaOSTimezoneAPIUrl() {
   }
 }
 
+// Retrieves the Looking Glass URL
 std::string GetJemaOSLookingGlassUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(kJemaOSLookingGlassUrl)) {
@@ -70,6 +81,7 @@ std::string GetJemaOSLookingGlassUrl() {
   }
 }
 
+// Retrieves the App Store URL
 std::string GetJemaOSAppStoreURL() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(kJemaOSAppsGalleryURL)) {
@@ -79,6 +91,7 @@ std::string GetJemaOSAppStoreURL() {
   }
 }
 
+// Retrieves the Web Store Update URL
 std::string GetJemaOSWebStoreUpdateUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(kJemaOSAppsGalleryUpdateURL)) {
@@ -88,6 +101,7 @@ std::string GetJemaOSWebStoreUpdateUrl() {
   }
 }
 
+// Retrieves the Assistant Web URL
 std::string GetJemaOSAssistantWebUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(kJemaOSAssistantWebUrl)) {
@@ -99,6 +113,7 @@ std::string GetJemaOSAssistantWebUrl() {
   return std::string(jemaos::constants::kJemaOSAssistantDefaultWebUrl);
 }
 
+// Converts the Web Store Update URL based on the domain
 CHROMEOS_EXPORT std::string MayConvertWebStoreUpdateUrl(
     const std::string& url) {
   std::string new_url = url;
@@ -116,5 +131,5 @@ CHROMEOS_EXPORT std::string MayConvertWebStoreUpdateUrl(
   return new_url;
 }
 
-} // switches
-} // jemaos
+}  // namespace switches
+}  // namespace jemaos

@@ -1,7 +1,6 @@
-// Copyright (c) 2018 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// Author: Simon Tsao(yang@jemaos.io)
 
 #include "jemaos/extensions/browser/api/shell_client/shell_client_api.h"
 
@@ -26,13 +25,15 @@ namespace {
   const char kShellCode[] = "code";
   const char kShellResult[] = "result";
 
+  // Retrieves the JemaOS Shell client instance
   JemaOSShellClient* GetShellClient() {
     return JemaOSShellClient::Get();
   }
 
+  // Creates a dictionary value from the ShellState object
   base::Value CreateStateValueFromState(absl::optional<ShellState> state) {
     base::Value value(base::Value::Type::DICT);
-    VLOG(1) << "get state and create value";
+    VLOG(1) << "Get state and create value";
     if (!state) {
       value.SetIntKey(kShellCode, -1);
       value.SetStringKey(kShellResult, "no state return");
@@ -42,7 +43,6 @@ namespace {
     }
     return value;
   }
-
 
 }  // namespace
 
@@ -56,16 +56,19 @@ ShellClientAPI::GetFactoryInstance() {
   return g_shell_client_api_factory.Pointer();
 }
 
+// Retrieves the ShellClientAPI instance for the given browser context
 ShellClientAPI* ShellClientAPI::Get(
     content::BrowserContext* context) {
   return GetFactoryInstance()->Get(context);
 }
 
+// Constructor for ShellClientAPI
 ShellClientAPI::ShellClientAPI(content::BrowserContext* context)
   : profile_(Profile::FromBrowserContext(context)), weak_factory_(this) {
   RegisterNotifications();
 }
 
+// Constructor for ShellClientEventRouter
 ShellClientEventRouter::ShellClientEventRouter(Profile* profile)
   : jemaos_client_observer_(this),
     profile_(profile),
@@ -74,8 +77,10 @@ ShellClientEventRouter::ShellClientEventRouter(Profile* profile)
   jemaos_client_observer_.Observe(GetShellClient());
 }
 
+// Destructor for ShellClientEventRouter
 ShellClientEventRouter::~ShellClientEventRouter() {}
 
+// Adds an extension ID to the event router
 void ShellClientEventRouter::AddExtensionId(const std::string& extension_id,
     const std::string& event_name) {
   if (event_name == shell::OnSystemNotifying::kEventName)
@@ -86,6 +91,7 @@ void ShellClientEventRouter::AddExtensionId(const std::string& extension_id,
     custom_extension_ids_.insert(extension_id);
 }
 
+// Removes an extension ID from the event router
 void ShellClientEventRouter::RemoveExtensionId(const std::string& extension_id,
     const std::string& event_name) {
   if (event_name == shell::OnSystemNotifying::kEventName)
@@ -96,6 +102,7 @@ void ShellClientEventRouter::RemoveExtensionId(const std::string& extension_id,
     custom_extension_ids_.erase(extension_id);
 }
 
+// Handles system notifications
 void ShellClientEventRouter::OnSystemNotificationReceived(int32_t level,
     const std::string& msg) {
   VLOG(1) << "Received system notification level:" << level;
@@ -110,6 +117,7 @@ void ShellClientEventRouter::OnSystemNotificationReceived(int32_t level,
   event_router_->BroadcastEvent(std::move(event));
 }
 
+// Handles command notifications
 void ShellClientEventRouter::OnCommandNotificationReceived(int32_t handler,
     int32_t state, const std::string& msg) {
   VLOG(1) << "Received command notification handler:" << handler;
@@ -125,6 +133,7 @@ void ShellClientEventRouter::OnCommandNotificationReceived(int32_t handler,
   event_router_->BroadcastEvent(std::move(event));
 }
 
+// Handles custom notifications
 void ShellClientEventRouter::OnCustomNotificationReceived(int32_t data,
     int32_t exdata, const std::string& extra) {
   VLOG(1) << "Received custom notification data:" << data;
@@ -140,6 +149,7 @@ void ShellClientEventRouter::OnCustomNotificationReceived(int32_t data,
   event_router_->BroadcastEvent(std::move(event));
 }
 
+// Registers notifications for the ShellClientAPI
 void ShellClientAPI::RegisterNotifications() {
   VLOG(1) << "Init shell client API: register notifications";
   EventRouter* router = EventRouter::Get(profile_);
@@ -151,13 +161,16 @@ void ShellClientAPI::RegisterNotifications() {
       this, shell::OnShellCustomNotifying::kEventName);
 }
 
+// Destructor for ShellClientAPI
 ShellClientAPI::~ShellClientAPI() {}
 
+// Shuts down the ShellClientAPI
 void ShellClientAPI::Shutdown() {
   EventRouter::Get(profile_)->UnregisterObserver(this);
   shell_client_event_router_.reset(nullptr);
 }
 
+// Handles the addition of a listener
 void ShellClientAPI::OnListenerAdded(const EventListenerInfo& details) {
   VLOG(1) << "Add extension:" << details.extension_id
     << " on listener:" << details.event_name;
@@ -169,6 +182,7 @@ void ShellClientAPI::OnListenerAdded(const EventListenerInfo& details) {
     details.event_name);
 }
 
+// Handles the removal of a listener
 void ShellClientAPI::OnListenerRemoved(const EventListenerInfo& details) {
   VLOG(1) << "Remove extension:" << details.extension_id
     << " on listener:" << details.event_name;
@@ -177,22 +191,25 @@ void ShellClientAPI::OnListenerRemoved(const EventListenerInfo& details) {
       details.event_name);
 }
 
+// Executes a synchronous shell command
 ExtensionFunction::ResponseAction ShellClientExecSyncFunction::Run() {
   absl::optional<shell::ExecSync::Params> params(
       shell::ExecSync::Params::Create(args()));
   EXTENSION_FUNCTION_VALIDATE(params);
-  VLOG(1) << "shell extension get command:" << params->command;
+  VLOG(1) << "Shell extension get command:" << params->command;
   GetShellClient()->SyncExec(
       params->command,
       base::BindOnce(&ShellClientExecSyncFunction::StateCallback, this));
   return RespondLater();
 }
 
+// Callback for synchronous shell command execution
 void ShellClientExecSyncFunction::StateCallback(
     absl::optional<ShellState> state) {
   Respond(WithArguments(CreateStateValueFromState(state)));
 }
 
+// Executes an asynchronous shell command
 ExtensionFunction::ResponseAction ShellClientExecAsyncFunction::Run() {
   absl::optional<shell::ExecAsync::Params> params(
       shell::ExecAsync::Params::Create(args()));
@@ -203,11 +220,13 @@ ExtensionFunction::ResponseAction ShellClientExecAsyncFunction::Run() {
   return RespondLater();
 }
 
+// Callback for asynchronous shell command execution
 void ShellClientExecAsyncFunction::StateCallback(
     absl::optional<ShellState> state) {
   Respond(WithArguments(CreateStateValueFromState(state)));
 }
 
+// Retrieves the state of a task
 ExtensionFunction::ResponseAction ShellClientGetTaskStateFunction::Run() {
   absl::optional<shell::GetTaskState::Params> params(
       shell::GetTaskState::Params::Create(args()));
@@ -218,11 +237,13 @@ ExtensionFunction::ResponseAction ShellClientGetTaskStateFunction::Run() {
   return RespondLater();
 }
 
+// Callback for retrieving the state of a task
 void ShellClientGetTaskStateFunction::StateCallback(
     absl::optional<ShellState> state) {
   Respond(WithArguments(CreateStateValueFromState(state)));
 }
 
+// Forces the closure of a task
 ExtensionFunction::ResponseAction ShellClientForceCloseTaskFunction::Run() {
   absl::optional<shell::ForceCloseTask::Params> params(
       shell::ForceCloseTask::Params::Create(args()));
@@ -233,11 +254,13 @@ ExtensionFunction::ResponseAction ShellClientForceCloseTaskFunction::Run() {
   return RespondLater();
 }
 
+// Callback for forcing the closure of a task
 void ShellClientForceCloseTaskFunction::StateCallback(
     absl::optional<ShellState> state) {
   Respond(WithArguments(CreateStateValueFromState(state)));
 }
 
+// Retrieves the output of a task
 ExtensionFunction::ResponseAction ShellClientGetTaskOutputFunction::Run() {
   absl::optional<shell::GetTaskOutput::Params> params(
       shell::GetTaskOutput::Params::Create(args()));
@@ -249,19 +272,23 @@ ExtensionFunction::ResponseAction ShellClientGetTaskOutputFunction::Run() {
   return RespondLater();
 }
 
+// Callback for retrieving the output of a task
 void ShellClientGetTaskOutputFunction::StateCallback(
     absl::optional<ShellState> state) {
   Respond(WithArguments(CreateStateValueFromState(state)));
 }
 
+// Retrieves the state of the daemon
 ExtensionFunction::ResponseAction ShellClientGetDaemonStateFunction::Run() {
   GetShellClient()->GetDaemonState(
       base::BindOnce(&ShellClientGetDaemonStateFunction::StateCallback, this));
   return RespondLater();
 }
 
+// Callback for retrieving the state of the daemon
 void ShellClientGetDaemonStateFunction::StateCallback(
     absl::optional<ShellState> state) {
   Respond(WithArguments(CreateStateValueFromState(state)));
 }
-} //exit extensions
+
+}  // namespace extensions

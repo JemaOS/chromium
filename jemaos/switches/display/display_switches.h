@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,10 +10,13 @@
 namespace jemaos {
 namespace switches {
 
+// Retrieves the default device scale factor from the command-line switch
 CHROMEOS_EXPORT float GetDefaultDSF(float default_value);
+
+// Retrieves the default screen DPI from the command-line switch
 CHROMEOS_EXPORT float GetDefaultScreenDpi(float default_value);
 
-} // switches
-} // jemaos
+}  // namespace switches
+}  // namespace jemaos
 
-#endif /* ifndef CHROMEOS_JEMAOS_SWITCHES_DISPLAY_SWITCHES_H_ */
+#endif  // CHROMEOS_JEMAOS_SWITCHES_DISPLAY_SWITCHES_H_

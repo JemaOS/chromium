@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,10 +11,12 @@ namespace jemaos {
 
 namespace ash {
 
+// Constructor for ShellState
 ShellState::ShellState()
-    : code(0){
+    : code(0) {
 }
 
+// Converts the ShellState object to a string representation
 std::string ShellState::ToString() const {
   std::string result_s;
   base::StringAppendF(&result_s,
@@ -26,6 +28,6 @@ std::string ShellState::ToString() const {
   return result_s;
 }
 
-}
+}  // namespace ash
 
 }  // namespace jemaos

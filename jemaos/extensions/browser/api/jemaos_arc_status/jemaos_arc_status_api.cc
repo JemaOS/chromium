@@ -1,4 +1,4 @@
-// Copyright 2023 Jema Technology. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 
 #include "jemaos/extensions/browser/api/jemaos_arc_status/jemaos_arc_status_api.h"
 #include "base/files/file_util.h"
@@ -7,20 +7,26 @@ namespace extensions {
 
 namespace {
 
+// Base path for ARC image files
 const char kArcImageBasePath[] = "/opt/google/containers/android";
+// Names of ARC system and vendor image files
 const char kArcSystemImageName[] = "system.raw.img";
 const char kArcVendorImageName[] = "vendor.raw.img";
 
+// Process names for ARC status checks
 const char kArcRunningProcessName[] = "org.chromium.arc.home";
 const char kArcInstallableProcessName[] = "/system/bin/arc_jemaos_service";
 
+// Keys for ARC status dictionary
 const char kArcSupportedKey[] = "supported";
 const char kArcHeroKey[] = "archero";
 const char kArcRunningKey[] = "running";
 const char kArcInstallableKey[] = "installable";
 
+// Prefix for ARC Hero process names
 const char kArcHeroProcessSuffix[] = "com.jemaos.archero.";
 
+// Checks if ARC is supported by verifying the existence of required image files
 bool GetArcSupported() {
   bool system_img_exists = base::PathExists(
       base::FilePath(kArcImageBasePath).Append(kArcSystemImageName));
@@ -29,6 +35,7 @@ bool GetArcSupported() {
   return system_img_exists && vendor_img_exists;
 }
 
+// Retrieves the ARC status
 void ArcStatusHelper::GetStatus(StatusCallback callback) {
   callback_ = std::move(callback);
 
@@ -40,6 +47,7 @@ void ArcStatusHelper::GetStatus(StatusCallback callback) {
   GetSystemProcessList();
 }
 
+// Retrieves the list of system processes
 void ArcStatusHelper::GetSystemProcessList() {
   arc::ArcProcessService* arc_process_service = arc::ArcProcessService::Get();
   if (!arc_process_service) {
@@ -50,6 +58,7 @@ void ArcStatusHelper::GetSystemProcessList() {
       base::BindOnce(&ArcStatusHelper::OnGetSystemProcessList, weak_factory_.GetWeakPtr()));
 }
 
+// Processes the list of system processes
 void ArcStatusHelper::OnGetSystemProcessList(
     OptionalArcProcessList processes) {
   if (!processes) {
@@ -62,7 +71,7 @@ void ArcStatusHelper::OnGetSystemProcessList(
     } else if (entry.process_name() == kArcInstallableProcessName) {
       status_.installable = true;
     } else if (base::StartsWith(entry.process_name(), kArcHeroProcessSuffix)) {
-      // it's a special case
+      // Special case for ARC Hero
       status_.archero = true;
       status_.running = true;
       status_.supported = true;
@@ -77,6 +86,7 @@ void ArcStatusHelper::OnGetSystemProcessList(
   GetAppProcessList();
 }
 
+// Retrieves the list of app processes
 void ArcStatusHelper::GetAppProcessList() {
   arc::ArcProcessService* arc_process_service = arc::ArcProcessService::Get();
   if (!arc_process_service) {
@@ -87,6 +97,7 @@ void ArcStatusHelper::GetAppProcessList() {
       base::BindOnce(&ArcStatusHelper::OnGetAppProcessList, weak_factory_.GetWeakPtr()));
 }
 
+// Processes the list of app processes
 void ArcStatusHelper::OnGetAppProcessList(
     OptionalArcProcessList processes) {
   if (!processes) {
@@ -94,7 +105,7 @@ void ArcStatusHelper::OnGetAppProcessList(
     return;
   }
   for (auto& entry : *processes) {
-    // check only kArcRunningProcessName here
+    // Check only for the ARC running process
     if (entry.process_name() == kArcRunningProcessName) {
       status_.running = true;
       break;
@@ -103,16 +114,19 @@ void ArcStatusHelper::OnGetAppProcessList(
   Final();
 }
 
+// Finalizes the ARC status retrieval and invokes the callback
 void ArcStatusHelper::Final() {
   if (callback_) {
     std::move(callback_).Run(status_);
   }
 }
 
+// Global helper instance
 ArcStatusHelper *helper = nullptr;
 
 }  // namespace
 
+// Handles the "Get" function for ARC status
 ExtensionFunction::ResponseAction JemaosArcStatusGetFunction::Run() {
   if (!helper) {
     helper = new ArcStatusHelper();
@@ -123,6 +137,7 @@ ExtensionFunction::ResponseAction JemaosArcStatusGetFunction::Run() {
   return RespondLater();
 }
 
+// Callback for when ARC status is retrieved
 void JemaosArcStatusGetFunction::OnGetStatus(ArcStatus status) {
   base::Value result(base::Value::Type::DICT);
   result.SetBoolKey(kArcSupportedKey, status.supported);
@@ -132,4 +147,4 @@ void JemaosArcStatusGetFunction::OnGetStatus(ArcStatus status) {
   Respond(WithArguments(std::move(result)));
 }
 
-}
+}  // namespace extensions

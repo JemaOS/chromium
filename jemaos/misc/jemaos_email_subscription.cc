@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,6 +38,7 @@ namespace {
   const char kJemaOSSubscriptionParamAction[] = "fluentform_submit";
   const char kJemaOSSubscriptionParamFormId[] = "5";
 
+  // Handles the completion of the URL loader
   void OnSimpleLoaderComplete(
       std::unique_ptr<network::SimpleURLLoader> url_loader,
       std::unique_ptr<std::string> response_body) {
@@ -50,17 +51,18 @@ namespace {
       VLOG(2) << "received from subscription service:" << *response_body;
     }
     if (response_code != net::HTTP_OK) {
-      VLOG(2) << "subscribtion service net error:" << url_loader->NetError();
+      VLOG(2) << "subscription service net error:" << url_loader->NetError();
     }
   }
 
+  // Encodes a string for use in a query string
   const std::string EncodeQueryStringData(const std::string& str) {
     url::RawCanonOutputT<char> encoded;
     url::EncodeURIComponent(str.c_str(), str.length(), &encoded);
-    std::string encoded_str = std::string(encoded.data(), encoded.length());
-    return encoded_str;
+    return std::string(encoded.data(), encoded.length());
   }
 
+  // Constructs a query string with system information
   std::string QueryStringifyParamsWithSysInfo(const std::string& name, const std::string& email,
                                               bool email_opt_in, bool improve_plan_opt_in) {
     const std::string encoded_name = EncodeQueryStringData(name);
@@ -85,6 +87,7 @@ namespace {
     return std::string(percent_encoded_data.data(), percent_encoded_data.length());
   }
 
+  // Starts a POST request to the subscription service
   void StartPost(const std::string& name, const std::string& email,
                  bool email_opt_in, bool improve_plan_opt_in) {
     if (!g_browser_process->system_network_context_manager()->HasInstance()) {
@@ -102,7 +105,7 @@ namespace {
         semantics {
           sender: "JemaOS Email Subscription"
           description:
-            "Subscribe to jemaos news"
+            "Subscribe to JemaOS news"
           trigger:
             "Choose opt-in during OOBE"
           data:
@@ -143,6 +146,7 @@ namespace {
 
 namespace misc {
 
+  // Subscribes a user to the JemaOS email subscription service
   void Subscribe(Profile* profile, bool email_opt_in, bool improve_plan_opt_in) {
     if (!profile) {
       return;

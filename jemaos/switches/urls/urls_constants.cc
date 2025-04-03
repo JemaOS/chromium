@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,8 @@ namespace jemaos::constants {
 
 #if BUILDFLAG(USE_JEMAOS_COM)
 
+// URLs for JemaOS services when using the .com domain
+// NOTE: These URLs are placeholders and will need to be updated to use jematechnology.fr.
 const char kDefaultTestUrl[] = "http://store.jemaos.com/204";
 const char kJemaOSHomePageUrl[] = "https://jemaos.com";
 
@@ -57,6 +59,8 @@ const char kJemaOSBackupRestoreLearnMoreURL[] = "https://jemaos.com/docs/manual/
 
 #else
 
+// URLs for JemaOS services when using the .io domain
+// NOTE: These URLs are placeholders and will need to be updated to use jematechnology.fr.
 const char kDefaultTestUrl[] = "http://store.jemaos.io/204";
 const char kJemaOSHomePageUrl[] = "https://jemaos.io";
 
@@ -105,4 +109,4 @@ const char kJemaOSBackupRestoreLearnMoreURL[] = "https://jemaos.io/docs/manual/c
 
 #endif
 
-}  // jemaos::constants
+}  // namespace jemaos::constants

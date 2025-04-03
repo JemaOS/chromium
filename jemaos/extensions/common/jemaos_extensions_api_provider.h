@@ -1,4 +1,4 @@
-// Copyright 2018 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,20 +10,40 @@
 
 namespace extensions {
 
+// Provides API features, permissions, and schemas for JemaOS extensions.
 class JemaOSExtensionsAPIProvider : public ExtensionsAPIProvider {
  public:
+  // Constructor
   JemaOSExtensionsAPIProvider();
+
+  // Destructor
   ~JemaOSExtensionsAPIProvider() override;
 
-  // ExtensionsAPIProvider:
+  // Adds API features to the feature provider
   void AddAPIFeatures(FeatureProvider* provider) override;
+
+  // Adds manifest features to the feature provider
   void AddManifestFeatures(FeatureProvider* provider) override;
+
+  // Adds permission features to the feature provider
   void AddPermissionFeatures(FeatureProvider* provider) override;
+
+  // Adds behavior features to the feature provider
   void AddBehaviorFeatures(FeatureProvider* provider) override;
+
+  // Adds API JSON sources to the JSON feature provider
   void AddAPIJSONSources(JSONFeatureProviderSource* json_source) override;
+
+  // Checks if an API schema is generated
   bool IsAPISchemaGenerated(const std::string& name) override;
+
+  // Retrieves the API schema for a given name
   base::StringPiece GetAPISchema(const std::string& name) override;
+
+  // Registers permissions with the PermissionsInfo global
   void RegisterPermissions(PermissionsInfo* permissions_info) override;
+
+  // Registers manifest handlers
   void RegisterManifestHandlers() override;
 };
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 The JemaOS Authors. All rights reserved.
+// Copyright 2025 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,15 +14,23 @@ namespace jemaos {
 
 namespace prefs {
 
+// Registers local state preferences
 void RegisterLocalStatePrefs(PrefRegistrySimple* registry);
+
+// Registers profile-specific preferences
 void RegisterProfilePrefs(PrefRegistrySimple* registry);
 
+// Keeps the current preferences in sync with their corresponding values
 void KeepCurrentPrefs(PrefService* local_state);
+
+// Marks TPM fallback as not necessary
 void SetNotNecessaryForceTpmFallback(PrefService* local_state);
 
+// Clears the reboot mark preferences
 void ClearRebootMarkPrefs(PrefService* local_state);
 
-} // prefs
+}  // namespace prefs
 
-} // jemaos
-#endif /* ifndef JEMAOS_PREFS_H */
+}  // namespace jemaos
+
+#endif  // CHROMEOS_JEMAOS_PREFS_H_

@@ -1,17 +1,21 @@
-// Copyright 2019 JemaOS Authors. All rights reserved.
-// Author: yudong
+// Copyright 2025 Jema Technology. All rights reserved.
 
 const NUTSTORE_SIGNUP_URL = 'https://www.jianguoyun.com/d/signup';
 const NUTSTORE_APPID = 'kpnkdhagknjilnbjjakakopieodoiifn';
 const NUTSTORE_DISPLAY_ONCE_KEY = 'nutstoreDisplayOnce';
 
 /**
+ * Represents the Nutstore Hint Dialog.
+ * NOTE FOR DEVELOPERS: This dialog provides users with instructions on how to
+ * set up and connect their Nutstore account.
  * @param {HTMLElement} parentNode Node to be parent for this dialog.
  * @constructor
  */
 function NutstoreHintDialog(element) {
+  // Check if Jema account integration is enabled
   if (!loadTimeData.getBoolean('JEMA_ACCOUNT_ENABLED')) return;
 
+  // Localized strings for the dialog
   const NUTSTORE_HINT_BANNER_TITLE = str('NUTSTORE_HINT_BANNER_TITLE');
   const NUTSTORE_HINT_BANNER_DESCRIPTION = str('NUTSTORE_HINT_BANNER_DESCRIPTION');
   const NUTSTORE_HINT_STEPS_SIGUNUP = str('NUTSTORE_HINT_STEPS_SIGUNUP');
@@ -21,6 +25,7 @@ function NutstoreHintDialog(element) {
   const NUTSTORE_HINT_STEPS_CONNECT_ACCOUNT = str('NUTSTORE_HINT_STEPS_CONNECT_ACCOUNT');
   const NUTSTORE_HINT_CONFIRM_BUTTON_TEXT = str('NUTSTORE_HINT_CONFIRM_BUTTON_TEXT');
 
+  // HTML template for the dialog
   const template = `<div>
     <div class="banner">
       <div class="title">${NUTSTORE_HINT_BANNER_TITLE}</div>
@@ -38,34 +43,30 @@ function NutstoreHintDialog(element) {
         <span>${NUTSTORE_HINT_CONFIRM_BUTTON_TEXT}</span>
       </cr-button>
     </div>
-  </div>`
+  </div>`;
 
   // The dialog itself
-  this.dialog_ =
-    queryRequiredElement('#nutstore-hint-dialog', element);
+  this.dialog_ = queryRequiredElement('#nutstore-hint-dialog', element);
 
-  // Append html template to #nutstore-hint-dialog
-  // Direct append to document.body will cause i18n error,
-  // so #nutstore-hint-dialog node is required in main.html
+  // Append HTML template to #nutstore-hint-dialog
+  // NOTE FOR DEVELOPERS: Direct append to document.body will cause i18n errors,
+  // so #nutstore-hint-dialog node is required in main.html.
   this.dialog_.innerHTML += template;
 
-  // Hide the dialog
-  this.cancelButton_ =
-    queryRequiredElement('#nutstore-hint-dialog .confirm', element);
+  // Hide the dialog when the confirm button is clicked
+  this.cancelButton_ = queryRequiredElement('#nutstore-hint-dialog .confirm', element);
   this.cancelButton_.onclick = () => {
     this.dialog_.hidden = true;
   };
 
-  // Visit nutstore signup page
-  this.signupLink_ =
-    queryRequiredElement('#nutstore-hint-dialog .signup', element);
+  // Open the Nutstore signup page when the signup link is clicked
+  this.signupLink_ = queryRequiredElement('#nutstore-hint-dialog .signup', element);
   this.signupLink_.onclick = () => {
     window.open(NUTSTORE_SIGNUP_URL);
   };
 
-  // Launch nutstore extension
-  this.appLaunch_ =
-    queryRequiredElement('#nutstore-hint-dialog .app-launch', element);
+  // Launch the Nutstore extension when the app launch link is clicked
+  this.appLaunch_ = queryRequiredElement('#nutstore-hint-dialog .app-launch', element);
   this.appLaunch_.onclick = () => {
     chrome.management.getAll(apps => {
       const nutstoreApp = apps.find(item => item.id === NUTSTORE_APPID);
@@ -78,8 +79,7 @@ function NutstoreHintDialog(element) {
     });
   };
 
-  // Display this dialog after 3 second after Files launched
-  // and only once
+  // Display this dialog 3 seconds after the Files app is launched, but only once
   chrome.storage.local.get([NUTSTORE_DISPLAY_ONCE_KEY], (result) => {
     if (!result[NUTSTORE_DISPLAY_ONCE_KEY]) {
       let values = {};

@@ -1,6 +1,7 @@
-/* Copyright 2020 JemaOS Authors. All rights reserved. */
-/* Author: yudong */
+/* Copyright 2025 Jema Technology. All rights reserved. */
 
+/* Styles for the Nutstore Hint Dialog */
+/* NOTE FOR DEVELOPERS: This dialog provides users with instructions on how to set up and connect their Nutstore account. */
 #nutstore-hint-dialog {
   background-color: white;
   border-radius: 2px;
@@ -76,6 +77,8 @@
   background-color: #870611;
 }
 
+/* Styles for the JemaDrop view */
+/* NOTE FOR DEVELOPERS: This view is used to display the JemaDrop interface. */
 #jemadrop-view {
   display: flex;
   flex-direction: column;
@@ -88,6 +91,8 @@
   z-index: 2;
 }
 
+/* Styles for the JemaDrop root-type icon */
+/* NOTE FOR DEVELOPERS: This icon is displayed in the file tree for JemaDrop volumes. */
 .tree-row > .file-row > [root-type-icon='jemadrop'] {
   -webkit-mask-image: url(../images/volumes/jemadrop.svg);
 }

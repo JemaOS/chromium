@@ -2,7 +2,7 @@
 
 ## [Feature] Nutstore sign-up hint
 
-> Maintainer: yudong@jemaos.io
+> Maintainer: jonathan@jematechnology.fr
 
 Here are all the files that are modified or added to pop up the Nutstore sign-up hint when file manager is launched.
 
@@ -40,7 +40,7 @@ New items are added in i18n:
 
 ## [Feature] JemaDrop in file manager
 
-> Maintainer: yudong@jemaos.io
+> Maintainer: jonathan@jematechnology.fr
 
 Files added or modified:
 

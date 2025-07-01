@@ -1605,6 +1605,7 @@ void GaiaScreenHandler::UpdateStateInternal(NetworkError::ErrorReason reason,
   }
 
   if (!is_online || is_gaia_loading_timeout || is_gaia_error) {
+    // ---***JEMAOS BEGIN***---
     // BUGFIX: https://github.com/JemaOS/project-jemaos/issues/10
     // if (GetCurrentScreen() != ErrorScreenView::kScreenId) {
     //   error_screen_->SetParentScreen(GaiaView::kScreenId);
@@ -1613,6 +1614,7 @@ void GaiaScreenHandler::UpdateStateInternal(NetworkError::ErrorReason reason,
     // }
     // // Show `ErrorScreen` or update network error message.
     // error_screen_->ShowNetworkErrorMessage(state, reason);
+    // ---***JEMAOS END***---
     histogram_helper_->OnErrorShow(error_screen_->GetErrorState());
   } else {
     HideOfflineMessage(state, reason);

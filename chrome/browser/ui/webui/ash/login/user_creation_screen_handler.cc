@@ -57,6 +57,12 @@ void UserCreationScreenHandler::DeclareLocalizedValues(
                IDS_OOBE_ACCOUNT_TYPE_SELECTION_TITLE);
   builder->Add("accountTypeSelectionSubtitle",
                IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE);
+  // Local JemaOS account -- START
+  builder->Add("accountTypeSelectionLocalJemaOSTitle",
+               IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_TITLE);
+  builder->Add("accountTypeSelectionLocalJemaOSSubtitle",
+               IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_SUBTITLE);
+  // Local JemaOS account -- END
   builder->Add("accountTypeSelectionJemaOSTitle",
                IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE);
   builder->Add("accountTypeSelectionJemaOSSubtitle",

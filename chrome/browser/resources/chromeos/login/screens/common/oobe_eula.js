@@ -434,21 +434,10 @@ class EulaScreen extends EulaScreenBase {
   }
 
   /**
-   * Event handler that is invoked when EULA is loaded. Either online version or
-   * 'chrome://terms' fallback.
+   * Event handler that is invoked when EULA is loaded.
    */
   onFrameLoad_() {
-    // Get the already created EulaLoader instance.
-    var eulaLoader = new EulaLoader(
-        this.$.crosEulaFrame, /*timeout=*/ undefined,
-        /*load_offline_callback=*/ undefined, /*clear_anchors=*/ undefined);
-
-    // When online EULA fails to load, wait until the offline EULA is loaded
-    // before updating the UI step.
-    if (eulaLoader.isPerformingRequests_) {
-      return;
-    }
-
+    // Since we're loading offline content directly, always update UI step
     if (this.uiStep !== EulaScreenState.PRIVACY) {
       this.setUIStep(EulaScreenState.EULA);
     }
@@ -492,21 +481,14 @@ class EulaScreen extends EulaScreenBase {
   }
 
   loadEula() {
-    // This forces frame to reload.
-    const onlineEulaUrl = loadTimeData.getString('eulaOnlineUrl');
-
-    this.setUIStep(EulaScreenState.LOADING);
-    this.loadEulaToWebview_(
-        this.$.crosEulaFrame, onlineEulaUrl, false /* clear_anchors */);
-
-    // const additionalToSUrl =
-    //     loadTimeData.getString('eulaAdditionalToSOnlineUrl');
-    // this.loadEulaToWebview_(
-    //     this.$.additionalChromeToSFrame, additionalToSUrl,
-    //     true /* clear_anchors */);
-
-    const onlinePrivacyUrl = loadTimeData.getString('privacyOnlineUrl');
-    this.loadEulaToWebview_(this.$.jemaosPrivacyFrame, onlinePrivacyUrl, false);
+    // Load offline version directly for immediate display - no online attempts
+    this.setUIStep(EulaScreenState.EULA);
+    WebViewHelper.loadUrlContentToWebView(
+        this.$.crosEulaFrame, EULA_TERMS_URL, ContentType.HTML);
+    
+    // Load offline version for privacy frame as well
+    WebViewHelper.loadUrlContentToWebView(
+        this.$.jemaosPrivacyFrame, EULA_TERMS_URL, ContentType.HTML);
   }
 
   /**
@@ -519,12 +501,8 @@ class EulaScreen extends EulaScreenBase {
   }
 
   eulaFirstStepAccepted_() {
-    if (IsEulaLoaderOffline('crosEulaFrame') ||
-        IsEulaLoaderOffline('jemaosPrivacyFrame')) {
-      this.eulaAccepted_();
-      return;
-    }
-    this.setUIStep(EulaScreenState.PRIVACY);
+    // Complete EULA acceptance directly without requiring second accept
+    this.eulaAccepted_();
   }
 
   privacyAccepted_() {

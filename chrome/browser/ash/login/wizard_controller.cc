@@ -454,11 +454,13 @@ void WizardController::Init(OobeScreenId first_screen) {
       policy::EnrollmentConfig::GetPrescribedEnrollmentConfig();
 
   VLOG(1) << "Starting OOBE wizard with screen: " << first_screen;
+  LOG(INFO) << "[JEMA DEBUG] WizardController::Init - first_screen: " << first_screen;
 
   bool oobe_complete = StartupUtils::IsOobeCompleted();
   if (!oobe_complete) {
     UpdateOobeConfiguration();
     is_out_of_box_ = true;
+    LOG(INFO) << "[JEMA DEBUG] OOBE not complete, updating configuration.";
   }
 
   wizard_context_->is_add_person_flow =
@@ -475,9 +477,12 @@ void WizardController::Init(OobeScreenId first_screen) {
   policy::BrowserPolicyConnectorAsh* connector =
       g_browser_process->platform_part()->browser_policy_connector_ash();
   const bool is_enterprise_managed = connector->IsDeviceEnterpriseManaged();
+  LOG(INFO) << "[JEMA DEBUG] is_enterprise_managed: " << is_enterprise_managed;
+
   if (!is_enterprise_managed) {
     const PrefService::PrefInitializationStatus status =
         GetLocalState()->GetInitializationStatus();
+    LOG(INFO) << "[JEMA DEBUG] LocalState initialization status: " << status;
     if (status == PrefService::INITIALIZATION_STATUS_ERROR) {
       OnLocalStateInitialized(false);
       return;
@@ -492,17 +497,18 @@ void WizardController::Init(OobeScreenId first_screen) {
   const bool device_is_owned =
       is_enterprise_managed ||
       !user_manager::UserManager::Get()->GetUsers().empty();
-  // Do not show the HID Detection screen if device is owned.
+  LOG(INFO) << "[JEMA DEBUG] device_is_owned: " << device_is_owned;
+
   if (!device_is_owned && HIDDetectionScreen::CanShowScreen() &&
       first_screen == ash::OOBE_SCREEN_UNKNOWN) {
-    // TODO(https://crbug.com/1275960): Move logic into
-    // HIDDetectionScreen::MaybeSkip.
+    LOG(INFO) << "[JEMA DEBUG] Showing HIDDetectionScreen";
     GetScreen<HIDDetectionScreen>()->CheckIsScreenRequired(
         base::BindOnce(&WizardController::OnHIDScreenNecessityCheck,
                        weak_factory_.GetWeakPtr()));
     return;
   }
 
+  LOG(INFO) << "[JEMA DEBUG] Advancing to screen after HID detection: " << first_screen;
   AdvanceToScreenAfterHIDDetection(first_screen);
 }
 
@@ -524,6 +530,7 @@ void WizardController::HideCurrentScreen() {
 
 void WizardController::AdvanceToScreenAfterHIDDetection(
     OobeScreenId first_screen) {
+  LOG(INFO) << "[JEMA DEBUG] AdvanceToScreenAfterHIDDetection called with: " << first_screen;
   OobeScreenId actual_first_screen = first_screen;
   if (actual_first_screen == ash::OOBE_SCREEN_UNKNOWN) {
     if (!is_out_of_box_) {
@@ -547,8 +554,10 @@ void WizardController::AdvanceToScreenAfterHIDDetection(
 
   if (!IsMachineHWIDCorrect() && !StartupUtils::IsDeviceRegistered() &&
       first_screen == ash::OOBE_SCREEN_UNKNOWN) {
+    LOG(INFO) << "[JEMA DEBUG] HWID not correct or device not registered, showing WrongHWIDScreen";
     ShowWrongHWIDScreen();
   } else {
+    LOG(INFO) << "[JEMA DEBUG] Advancing to actual first screen: " << actual_first_screen;
     AdvanceToScreen(actual_first_screen);
   }
 
@@ -1395,13 +1404,25 @@ void WizardController::OnActiveDirectoryLoginScreenExit() {
   LoginDisplayHost::default_host()->HideOobeDialog();
 }
 
-void WizardController::OnJemaLocalSigninScreenExit() {
+void WizardController::OnJemaLocalSigninScreenExit(JemaLocalSigninScreen::Result result) {
+  LOG(INFO) << "[JEMA DEBUG] OnJemaLocalSigninScreenExit called with result: " << static_cast<int>(result);
   OnScreenExit(JemaLocalSigninView::kScreenId, kDefaultExitReason);
-  if (wizard_context_->is_user_creation_enabled) {
-    AdvanceToScreen(UserCreationView::kScreenId);
-  } else {
-    GetScreen<GaiaScreen>()->LoadOnline(EmptyAccountId());
+  
+  if (result == JemaLocalSigninScreen::Result::ACCOUNT_TYPE_SELECTION_BACK) {
+    LOG(INFO) << "[JEMA DEBUG] Navigating back to Account Type Selection (Gaia Screen)";
+    // Set flag to indicate we're coming back from JemaLocalSigninScreen
+    // This ensures Account Type Selection is shown directly
+    wizard_context_->is_back_from_jema_local_signin = true;
     AdvanceToScreen(GaiaView::kScreenId);
+  } else if (result == JemaLocalSigninScreen::Result::CANCEL) {
+    LOG(INFO) << "[JEMA DEBUG] JemaLocalSigninScreen cancelled";
+    if (wizard_context_->is_user_creation_enabled) {
+      LOG(INFO) << "[JEMA DEBUG] is_user_creation_enabled, advancing to UserCreationView";
+      AdvanceToScreen(UserCreationView::kScreenId);
+    } else {
+      LOG(INFO) << "[JEMA DEBUG] Looping JemaLocalSigninView";
+      AdvanceToScreen(JemaLocalSigninView::kScreenId);
+    }
   }
 }
 
@@ -1497,7 +1518,8 @@ void WizardController::OnOsTrialScreenExit(OsTrialScreen::Result result) {
       ShowWelcomeScreen();
       break;
     case OsTrialScreen::Result::NEXT_TRY:
-      ShowNetworkScreen();
+      LOG(WARNING) << "[JEMA DEBUG] OsTrialScreen::Result::NEXT_TRY";
+      ShowEulaScreen();
       break;
     case OsTrialScreen::Result::NEXT_INSTALL:
       ShowOsInstallScreen();
@@ -1744,7 +1766,7 @@ void WizardController::OnNetworkScreenExit(NetworkScreen::Result result) {
         break;
       case NetworkScreen::Result::BACK:
         demo_setup_controller_.reset();
-        ShowWelcomeScreen();
+          ShowWelcomeScreen();
         break;
     }
     return;
@@ -1764,7 +1786,7 @@ void WizardController::OnNetworkScreenExit(NetworkScreen::Result result) {
         }
         break;
       case NetworkScreen::Result::BACK:
-        ShowOsTrialScreen();
+          ShowOsTrialScreen();
         break;
     }
     return;
@@ -1783,7 +1805,7 @@ void WizardController::OnNetworkScreenExit(NetworkScreen::Result result) {
       }
       break;
     case NetworkScreen::Result::BACK:
-      ShowWelcomeScreen();
+        ShowWelcomeScreen();
       break;
   }
 }
@@ -1806,7 +1828,8 @@ void WizardController::OnEulaScreenExit(EulaScreen::Result result) {
       break;
     case EulaScreen::Result::BACK:
       DCHECK(!demo_setup_controller_);
-      ShowNetworkScreen();
+      LOG(WARNING) << "EulaScreen::Result::BACK screen";
+      ShowOsTrialScreen();
       break;
     case EulaScreen::Result::BACK_DEMO_MODE:
       DCHECK(demo_setup_controller_);
@@ -1842,6 +1865,7 @@ void WizardController::OnUpdateScreenExit(UpdateScreen::Result result) {
       // Ignore update errors if the OOBE flow has already completed - this
       // prevents the user getting blocked from getting to the login screen.
       if (is_out_of_box_) {
+        LOG(WARNING) << "is_out_of_box_ shownetwork screen";
         ShowNetworkScreen();
       } else {
         OnUpdateCompleted();
@@ -1990,6 +2014,7 @@ void WizardController::OnDemoPreferencesScreenExit(
       InitiateOOBEUpdate();
       break;
     case DemoPreferencesScreen::Result::CANCELED:
+      LOG(WARNING) << "DemoPreferencesScreen::Result::CANCELED shownetwork screen";
       ShowNetworkScreen();
       break;
   }
@@ -2349,6 +2374,8 @@ void WizardController::PerformOOBECompletedActions() {
 void WizardController::SetCurrentScreen(BaseScreen* new_current) {
   VLOG(1) << "SetCurrentScreen: "
           << (new_current ? new_current->screen_id().name : "null");
+  LOG(INFO) << "[JEMA DEBUG] SetCurrentScreen: "
+            << (new_current ? new_current->screen_id().name : "null");
 
   if (new_current && new_current->MaybeSkip(*wizard_context_)) {
     RecordUMAHistogramForOOBEStepShownStatus(new_current->screen_id(),
@@ -2485,6 +2512,7 @@ bool WizardController::CanNavigateTo(OobeScreenId screen_id) {
 
 void WizardController::AdvanceToScreen(OobeScreenId screen_id) {
   VLOG(1) << "AdvanceToScreen " << screen_id;
+  LOG(INFO) << "[JEMA DEBUG] AdvanceToScreen: " << screen_id;
   if (!CanNavigateTo(screen_id)) {
     LOG(WARNING) << "Cannot advance to screen : " << screen_id
                  << " as it's priority is less than the current screen : "
@@ -2495,6 +2523,7 @@ void WizardController::AdvanceToScreen(OobeScreenId screen_id) {
   if (screen_id == WelcomeView::kScreenId) {
     ShowWelcomeScreen();
   } else if (screen_id == NetworkScreenView::kScreenId) {
+    LOG(WARNING) << "AdvanceToScreen shownetwork screen";
     ShowNetworkScreen();
   } else if (screen_id == PackagedLicenseView::kScreenId) {
     ShowPackagedLicenseScreen();
@@ -2603,6 +2632,7 @@ void WizardController::StartDemoModeSetup() {
   // Start Demo Mode by initiate demo set up controller and showing the first
   // network screen in demo mode setup flow.
   demo_setup_controller_ = std::make_unique<DemoSetupController>();
+  LOG(WARNING) << "EulaScreen::Result::StartDemoModeSetup shownetwork screen";
   ShowNetworkScreen();
 }
 

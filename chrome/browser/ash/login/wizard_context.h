@@ -148,6 +148,11 @@ class WizardContext {
   // True when user is inside the "Add Person" flow.
   bool is_add_person_flow = false;
 
+  // True if navigating back to GaiaScreen from JemaLocalSigninScreen.
+  // This flag ensures Account Type Selection is shown directly without
+  // loading the webview first.
+  bool is_back_from_jema_local_signin = false;
+
   // True if user clicked "Select more fatures" button on the last CHOOBE
   // selected screen.
   bool return_to_choobe_screen = false;

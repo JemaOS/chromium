@@ -81,6 +81,8 @@ class GaiaView : public base::SupportsWeakPtr<GaiaView> {
   // Shows Gaia screen.
   virtual void Show() = 0;
   virtual void Hide() = 0;
+  // Sets whether to show account type selection directly.
+  virtual void SetShowAccountTypeSelection(bool show) = 0;
   // Sets Gaia path for sign-in, child sign-in or child sign-up.
   virtual void SetGaiaPath(GaiaPath gaia_path) = 0;
   // Show error UI at the end of GAIA flow when user is not allowlisted.
@@ -143,6 +145,7 @@ class GaiaScreenHandler
   void LoadGaiaAsync(const AccountId& account_id) override;
   void Show() override;
   void Hide() override;
+  void SetShowAccountTypeSelection(bool show) override;
   void SetGaiaPath(GaiaPath gaia_path) override;
   void ShowAllowlistCheckFailedError() override;
   void ReloadGaiaAuthenticator() override;
@@ -235,6 +238,7 @@ class GaiaScreenHandler
   void HandleLaunchSAMLPublicSession(const std::string& email);
 
   // ---***JEMAOS BEGIN***---
+  void SetupCertificateCacheForOnlineAuth();
   void HandleUserSelectGoogleAccount();
   void HandleResetAccountFlag();
   // ---***JEMAOS END***---
@@ -435,6 +439,10 @@ class GaiaScreenHandler
 
   bool hidden_ = true;
 
+  // Helper method to check network connectivity and show error screen if offline.
+  // Returns true if network is available, false if error screen was shown.
+  bool CheckNetworkAndShowErrorIfOffline();
+
   // Used to record amount of time user needed for successful online login.
   std::unique_ptr<base::ElapsedTimer> elapsed_timer_;
 
@@ -487,6 +495,15 @@ class GaiaScreenHandler
   base::TimeDelta offline_timeout_ = base::Seconds(1);
 
   std::unique_ptr<ErrorScreensHistogramHelper> histogram_helper_;
+
+  // Flag to indicate if account type selection should be shown directly.
+  bool show_account_type_selection_ = false;
+
+  // Flag to indicate account type selection should be shown after network is restored
+  bool pending_account_type_selection_ = false;
+
+  // Whether a network error has been shown for account selection.
+  bool network_error_shown_for_account_selection_ = false;
 
   base::WeakPtrFactory<GaiaScreenHandler> weak_factory_{this};
 };

@@ -163,6 +163,15 @@ void GaiaScreen::ShowImpl() {
   }
   // Landed on the login screen. No longer skipping enrollment for tests.
   context()->skip_to_login_for_tests = false;
+  
+  // Check if we're coming back from JemaLocal signin screen
+  if (context()->is_back_from_jema_local_signin) {
+    // Set flag to show account type selection directly
+    view_->SetShowAccountTypeSelection(true);
+    // Reset the flag to prevent it from affecting future navigations
+    context()->is_back_from_jema_local_signin = false;
+  }
+  
   view_->Show();
 }
 

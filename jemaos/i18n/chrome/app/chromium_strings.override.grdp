@@ -49,6 +49,14 @@
           Please choose your preferred online account type to sign in to JemaOS. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
       </message>
     </if>
+    <!-- Local JemaOS account ** START -->
+    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
+        Local JemaOS account
+    </message>
+    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
+        Create a local account that will not be synchronized with the JemaOS API.
+    </message>
+    <!-- Local JemaOS account ** END -->
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
         JemaOS account
     </message>

@@ -185,7 +185,7 @@ void RecordAPILogin(bool is_third_party_idp, bool is_api_used) {
 }
 
 // Timeout used to prevent infinite connecting to a flaky network.
-constexpr base::TimeDelta kConnectingTimeout = base::Seconds(60);
+const base::TimeDelta kConnectingTimeout = base::Seconds(60);
 
 GaiaScreenHandler::GaiaScreenMode GetGaiaScreenMode(const std::string& email) {
   int authentication_behavior = 0;
@@ -506,6 +506,7 @@ void GaiaScreenHandler::LoadGaiaWithPartitionAndVersionAndConsent(
   }
 
   params.Set("gaiaUrl", GaiaUrls::GetInstance()->gaia_url().spec());
+  LOG(INFO) << "Loading Gaia URL: " << GaiaUrls::GetInstance()->gaia_url().spec();
   switch (gaia_path_) {
     case GaiaPath::kDefault:
       // Use the default gaia signin path embedded/setup/v2/chromeos which is
@@ -571,6 +572,7 @@ void GaiaScreenHandler::LoadGaiaWithPartitionAndVersionAndConsent(
     params.Set("samlAclUrl", saml_acl_url);
     if (public_saml_url_fetcher_->FetchSucceeded()) {
       params.Set("frameUrl", public_saml_url_fetcher_->GetRedirectUrl());
+      LOG(INFO) << "Loading SAML frame URL: " << public_saml_url_fetcher_->GetRedirectUrl();
     } else {
       LoginDisplayHost::default_host()->GetSigninUI()->ShowSigninError(
           SigninError::kFailedToFetchSamlRedirect, /*details=*/std::string());
@@ -932,8 +934,37 @@ void GaiaScreenHandler::OnCookieWaitTimeout() {
 }
 
 // ---***JEMAOS BEGIN***---
+void GaiaScreenHandler::SetupCertificateCacheForOnlineAuth() {
+  if (!untrusted_authority_certs_cache_) {
+    // Make additional untrusted authority certificates available for client
+    // certificate discovery in case a SAML flow is used which requires a client
+    // certificate to be present.
+    // When the WebUI is destroyed, `untrusted_authority_certs_cache_` will go
+    // out of scope and the certificates will not be held in memory anymore.
+    untrusted_authority_certs_cache_ =
+        std::make_unique<network::NSSTempCertsCacheChromeOS>(
+            g_browser_process->platform_part()
+                ->browser_policy_connector_ash()
+                ->GetDeviceNetworkConfigurationUpdater()
+                ->GetAllAuthorityCertificates(
+                    chromeos::onc::CertificateScope::Default()));
+  }
+}
+
 void GaiaScreenHandler::HandleUserSelectGoogleAccount() {
+  // Check network availability before proceeding with Google account
+  if (!CheckNetworkAndShowErrorIfOffline()) {
+    return;
+  }
+  
   jemaos::switches::DisableJemaAccountFlag();
+  
+  // Setup certificate cache only when user selects Google account
+  SetupCertificateCacheForOnlineAuth();
+  
+  // Load auth extension only when user selects Google account
+  LoadAuthExtension(/* force=*/true);
+  
   LoadGaiaAsync(EmptyAccountId());
   LoginDisplayHost::default_host()->StartWizard(UserCreationView::kScreenId);
 }
@@ -942,7 +973,20 @@ void GaiaScreenHandler::HandleResetAccountFlag() {
   if (g_browser_process->platform_part()
       ->browser_policy_connector_ash()
       ->IsDeviceEnterpriseManaged()) return;
+      
+  // Check network availability before proceeding with JemaOS online account
+  if (!CheckNetworkAndShowErrorIfOffline()) {
+    return;
+  }
+  
   jemaos::switches::EnableJemaAccountFlag();
+  
+  // Setup certificate cache only when user selects JemaOS online account
+  SetupCertificateCacheForOnlineAuth();
+  
+  // Load auth extension only when user selects JemaOS online account
+  LoadAuthExtension(/* force=*/true);
+  
   ReloadGaia(true/* force_reload */);
 }
 // ---***JEMAOS END***---
@@ -1249,6 +1293,13 @@ void GaiaScreenHandler::Show() {
   base::Value::Dict data;
   if (LoginDisplayHost::default_host())
     data.Set("hasUserPods", LoginDisplayHost::default_host()->HasUserPods());
+  
+  // Check if we should show account type selection directly
+  if (show_account_type_selection_) {
+    data.Set("showAccountTypeSelection", true);
+    show_account_type_selection_ = false; // Reset the flag
+  }
+  
   ShowInWebUI(std::move(data));
   elapsed_timer_ = std::make_unique<base::ElapsedTimer>();
   hidden_ = false;
@@ -1397,22 +1448,8 @@ void GaiaScreenHandler::ShowGaiaScreenIfReady() {
     return;
   }
 
-  if (!untrusted_authority_certs_cache_) {
-    // Make additional untrusted authority certificates available for client
-    // certificate discovery in case a SAML flow is used which requires a client
-    // certificate to be present.
-    // When the WebUI is destroyed, `untrusted_authority_certs_cache_` will go
-    // out of scope and the certificates will not be held in memory anymore.
-    untrusted_authority_certs_cache_ =
-        std::make_unique<network::NSSTempCertsCacheChromeOS>(
-            g_browser_process->platform_part()
-                ->browser_policy_connector_ash()
-                ->GetDeviceNetworkConfigurationUpdater()
-                ->GetAllAuthorityCertificates(
-                    chromeos::onc::CertificateScope::Default()));
-  }
-
-  LoadAuthExtension(/* force=*/true);
+  // Remove automatic certificate cache and auth extension loading
+  // These will be loaded only when user selects online account types
 
   UpdateState(NetworkError::ERROR_REASON_UPDATE);
 
@@ -1605,22 +1642,32 @@ void GaiaScreenHandler::UpdateStateInternal(NetworkError::ErrorReason reason,
   }
 
   if (!is_online || is_gaia_loading_timeout || is_gaia_error) {
-    // ---***JEMAOS BEGIN***---
-    // BUGFIX: https://github.com/JemaOS/project-jemaos/issues/10
-    // if (GetCurrentScreen() != ErrorScreenView::kScreenId) {
-    //   error_screen_->SetParentScreen(GaiaView::kScreenId);
-    //   error_screen_->SetHideCallback(base::BindOnce(
-    //       &GaiaScreenHandler::OnErrorScreenHide, weak_factory_.GetWeakPtr()));
-    // }
-    // // Show `ErrorScreen` or update network error message.
-    // error_screen_->ShowNetworkErrorMessage(state, reason);
-    // ---***JEMAOS END***---
+    LOG(WARNING) << "surendar error screen, state: " << state
+                 << ", reason: " << reason
+                 << ", frame_error: " << frame_error_;
+    
+    // Only show network error screen for genuine network connectivity issues
+    // Show for OFFLINE state with network-related error reasons, avoid showing for other issues that might cause loops
+    if (!is_online && 
+        (state == NetworkStateInformer::OFFLINE || state == NetworkStateInformer::CONNECTING) &&
+        (reason == NetworkError::ERROR_REASON_NETWORK_STATE_CHANGED ||
+         reason == NetworkError::ERROR_REASON_PORTAL_DETECTED ||
+         reason == NetworkError::ERROR_REASON_PROXY_CONNECTION_FAILED)) {
+      if (GetCurrentScreen() != ErrorScreenView::kScreenId) {
+        error_screen_->SetParentScreen(GaiaView::kScreenId);
+        error_screen_->SetHideCallback(base::BindOnce(
+            &GaiaScreenHandler::OnErrorScreenHide, weak_factory_.GetWeakPtr()));
+      }
+      // Show `ErrorScreen` for genuine network issues only
+      error_screen_->ShowNetworkErrorMessage(state, reason);
+    }
     histogram_helper_->OnErrorShow(error_screen_->GetErrorState());
   } else {
     HideOfflineMessage(state, reason);
   }
 
   if (reload_gaia) {
+    // Remove or comment this out to prevent auto-reload:
     ReloadGaia(/*force_reload=*/true);
   }
 }
@@ -1688,8 +1735,12 @@ void GaiaScreenHandler::ReenableNetworkStateUpdatesAfterProxyAuth() {
 void GaiaScreenHandler::OnErrorScreenHide() {
   histogram_helper_->OnErrorHide();
   error_screen_->SetParentScreen(ash::OOBE_SCREEN_UNKNOWN);
-  ReloadGaia(/*force_reload=*/true);
-  ShowScreenDeprecated(GaiaView::kScreenId);
+  // Only reload Gaia if the network is actually back online to avoid loops
+  NetworkStateInformer::State state = network_state_informer_->state();
+  if (state == NetworkStateInformer::ONLINE) {
+    ReloadGaia(/*force_reload=*/true);
+    ShowScreenDeprecated(GaiaView::kScreenId);
+  }
 }
 
 bool GaiaScreenHandler::IsGaiaVisible() {
@@ -1759,6 +1810,36 @@ void GaiaScreenHandler::CheckIfAllowlisted(const std::string& user_email) {
           absl::nullopt)) {
     ShowAllowlistCheckFailedError();
   }
+}
+
+void GaiaScreenHandler::SetShowAccountTypeSelection(bool show) {
+  if (show) {
+    // Check network availability before showing account type selection
+    NetworkStateInformer::State state = network_state_informer_->state();
+    if (state != NetworkStateInformer::ONLINE) {
+      CheckNetworkAndShowErrorIfOffline();
+      return; // Don't set the flag if no network
+    }
+  }
+  
+  show_account_type_selection_ = show;
+}
+
+bool GaiaScreenHandler::CheckNetworkAndShowErrorIfOffline() {
+  NetworkStateInformer::State state = network_state_informer_->state();
+  if (state != NetworkStateInformer::ONLINE) {
+    LOG(WARNING) << "Network not available, showing error screen";
+    // Show network error screen for offline state
+    if (GetCurrentScreen() != ErrorScreenView::kScreenId) {
+      error_screen_->SetParentScreen(GaiaView::kScreenId);
+      error_screen_->SetHideCallback(base::BindOnce(
+          &GaiaScreenHandler::OnErrorScreenHide, weak_factory_.GetWeakPtr()));
+    }
+    error_screen_->ShowNetworkErrorMessage(state, NetworkError::ERROR_REASON_NETWORK_STATE_CHANGED);
+    histogram_helper_->OnErrorShow(error_screen_->GetErrorState());
+    return false; // Network not available
+  }
+  return true; // Network is available
 }
 
 }  // namespace ash

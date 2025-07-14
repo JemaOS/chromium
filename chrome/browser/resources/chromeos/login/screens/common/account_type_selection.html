@@ -34,6 +34,18 @@ found in the LICENSE file. -->
   </div>
   <div slot="content" class="layout vertical landscape-vertical-centered">
     <cr-radio-group id="accountType" selected="{{selectedAccountType_}}">
+      <cr-card-radio-button id="jemaLocalButton" class="flex" name="jema-local">
+        <div class="card-container">
+          <div class="card-content">
+            <div class="card-label">
+              [[i18nDynamic(locale, 'accountTypeSelectionLocalJemaOSTitle')]]
+            </div>
+            <div class="card-text">
+              [[i18nDynamic(locale, 'accountTypeSelectionLocalJemaOSSubtitle')]]
+            </div>
+          </div>
+        </div>
+      </cr-card-radio-button>
       <cr-card-radio-button id="jemaButton" class="flex" name="jema">
         <div class="card-container">
           <div class="card-content">

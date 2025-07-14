@@ -32,6 +32,7 @@ const AccountTypeSelectionScreenElementBase = mixinBehaviors(
 const AccountTypeToSelect = {
   GOOGLE: 'google',
   JEMA: 'jema',
+  JEMA_LOCAL: 'jema-local',
 };
 
 AccountTypeSelectionScreenElementBase.$;
@@ -69,7 +70,7 @@ class AccountTypeSelection extends AccountTypeSelectionScreenElementBase {
   ready() {
     super.ready();
     console.log('account-type-selection ready');
-    this.selectedAccountType_ = AccountTypeToSelect.JEMA;
+    this.selectedAccountType_ = AccountTypeToSelect.JEMA_LOCAL;
   }
 
   attached() {

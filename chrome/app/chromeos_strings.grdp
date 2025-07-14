@@ -593,6 +593,12 @@
   <message name="IDS_NETWORK_SELECTION_TITLE" desc="Title of network selection screen" meaning="A title of the dialog where user should select network to connect to Internet">
     Connect to network
   </message>
+  <message name="IDS_NETWORK_SELECTION_TITLE_WIFI" desc="Title of network selection screen when connected via WiFi" meaning="A title of the dialog when device is connected via WiFi">
+    Connected via WiFi
+  </message>
+  <message name="IDS_NETWORK_SELECTION_TITLE_ETHERNET" desc="Title of network selection screen when connected via Ethernet" meaning="A title of the dialog when device is connected via Ethernet">
+    Connected via Ethernet
+  </message>
   <message name="IDS_NETWORK_SELECTION_HINT" desc="Under-title line on the network selection screen" meaning="A hint to the user why device should be connected to the network">
     To restore your data, connect to the internet
   </message>
@@ -6703,6 +6709,17 @@ Your <ph name="DEVICE_TYPE">{0}<ex>Chromebook</ex></ph> will be locked now.
   </message>
   <message name="IDS_SECURITY_CURTAIN_DESCRIPTION" desc="Detailed description displayed to inform the user a remote admin has taken control of the ChromeOs device.">
     Your administrator has logged in to look into an issue. You can continue to use the device after the administrator gives the control back to you.
+  </message>
+
+  <!-- JemaOS Online Account Network Requirements -->
+  <message name="IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR" desc="Error message shown when JemaOS online account is selected but no internet connection is available.">
+    Internet connection required for JemaOS online account. Please connect to WiFi or Ethernet to continue.
+  </message>
+  <message name="IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_MESSAGE" desc="Message shown when JemaOS online account requires internet connection.">
+    JemaOS online account requires internet connection. Please select a network below to connect.
+  </message>
+  <message name="IDS_JEMAOS_ONLINE_ACCOUNT_WIFI_PREFERRED_MESSAGE" desc="Message shown when JemaOS online account prefers WiFi over Ethernet.">
+    For the best experience with JemaOS online account, please connect to WiFi.
   </message>
 
 </grit-part>

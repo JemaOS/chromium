@@ -607,6 +607,14 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       this.isClosable_ = data.hasUserPods;
     }
 
+    // Check if we should show account type selection directly
+    if (data && data.showAccountTypeSelection) {
+      // Enable account type selection and reset selection state
+      this.isAccountTypeSelectionRequired_ = true;
+      this.isAccountTypeSelected_ = false;
+      // refreshDialogStep_ will be called automatically by the observer
+    }
+
     invokePolymerMethod(this.$.pinDialog, 'onBeforeShow');
   }
 
@@ -748,6 +756,10 @@ class GaiaSigninElement extends GaiaSigninElementBase {
     if (this.isSaml_) {
       this.usedSaml_ = true;
     }
+
+    console.warn('onSamlChanged: isSaml_ = ' + this.isSaml_ +
+        ', usedSaml_ = ' + this.usedSaml_ +
+        ', authFlow = ' + this.authFlow);
 
     chrome.send('samlStateChanged', [this.isSaml_]);
 
@@ -1199,6 +1211,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       return;
     }
     if (isAccountTypeSelectionRequired && !isAccountTypeSelected) {
+      // Always show account type selection dialog, but show error state when offline
       this.setUIStep(DialogMode.ACCOUNT_TYPE_SELECTION);
       return;
     }
@@ -1291,6 +1304,9 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   }
 
   onAccountTypeSelectionBack_() {
+    // Reset account type selection when going back to ensure the 
+    // Account Type Selection dialog is shown instead of the webview
+    this.isAccountTypeSelected_ = false;
     this.userActed('accountTypeSelectionBack');
   }
 
@@ -1300,6 +1316,8 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       chrome.send('userSelectGoogleAccount');
     } else if (e.detail === 'jema') {
       chrome.send('resetAccountFlag');
+    } else if (e.detail === 'jema-local') {
+      chrome.send('jemaLocalSignin');
     }
   }
 

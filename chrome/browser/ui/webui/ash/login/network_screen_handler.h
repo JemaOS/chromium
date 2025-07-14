@@ -29,6 +29,9 @@ class NetworkScreenView : public base::SupportsWeakPtr<NetworkScreenView> {
 
   // Hides error messages showing no error state.
   virtual void ClearErrors() = 0;
+
+  // Called when JemaOS online account type is selected.
+  virtual void OnJemaosOnlineAccountSelected() = 0;
 };
 
 // WebUI implementation of NetworkScreenView. It is used to interact with
@@ -50,6 +53,7 @@ class NetworkScreenHandler : public NetworkScreenView,
   void Show() override;
   void ShowError(const std::u16string& message) override;
   void ClearErrors() override;
+  void OnJemaosOnlineAccountSelected() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(

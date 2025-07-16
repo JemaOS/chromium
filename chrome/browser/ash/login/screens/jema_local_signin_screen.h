@@ -16,6 +16,8 @@ class JemaLocalSigninScreen
   public:
     enum class Result { CANCEL, ACCOUNT_TYPE_SELECTION_BACK, BACK };
     
+    static std::string GetResultString(Result result);
+    
     JemaLocalSigninScreen(base::WeakPtr<JemaLocalSigninView> view,
                           const base::RepeatingCallback<void(Result)>& exit_callback);
 

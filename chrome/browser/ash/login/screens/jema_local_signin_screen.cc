@@ -11,6 +11,17 @@ constexpr char kUserActionBackToUserSelection[] = "accountTypeSelectionBack";
 
 }
 
+std::string JemaLocalSigninScreen::GetResultString(Result result) {
+  switch (result) {
+    case Result::CANCEL:
+      return "Cancel";
+    case Result::ACCOUNT_TYPE_SELECTION_BACK:
+      return "Back";
+    case Result::BACK:
+      return "Back";
+  }
+}
+
 JemaLocalSigninScreen::JemaLocalSigninScreen(
     base::WeakPtr<JemaLocalSigninView> view,
     const base::RepeatingCallback<void(Result)>& exit_callback)

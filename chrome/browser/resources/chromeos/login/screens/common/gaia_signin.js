@@ -22,18 +22,18 @@ import '../../components/dialogs/oobe_loading_dialog.js';
 import '../../components/throbber_notice.js';
 import './account_type_selection.js';
 
-import {assert} from '//resources/ash/common/assert.js';
-import {afterNextRender, html, mixinBehaviors, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import { assert } from '//resources/ash/common/assert.js';
+import { afterNextRender, html, mixinBehaviors, PolymerElement } from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {AuthFlow, AuthMode, SUPPORTED_PARAMS} from '../../../../gaia_auth_host/authenticator.js';
-import {LoginScreenBehavior, LoginScreenBehaviorInterface} from '../../components/behaviors/login_screen_behavior.js';
-import {MultiStepBehavior, MultiStepBehaviorInterface} from '../../components/behaviors/multi_step_behavior.js';
-import {OobeI18nBehavior, OobeI18nBehaviorInterface} from '../../components/behaviors/oobe_i18n_behavior.js';
-import {OobeModalDialog} from '../../components/dialogs/oobe_modal_dialog.js';
-import {OOBE_UI_STATE} from '../../components/display_manager_types.js';
-import {OobeTypes} from '../../components/oobe_types.js';
-import {Oobe} from '../../cr_ui.js';
-import {invokePolymerMethod} from '../../display_manager.js';
+import { AuthFlow, AuthMode, SUPPORTED_PARAMS } from '../../../../gaia_auth_host/authenticator.js';
+import { LoginScreenBehavior, LoginScreenBehaviorInterface } from '../../components/behaviors/login_screen_behavior.js';
+import { MultiStepBehavior, MultiStepBehaviorInterface } from '../../components/behaviors/multi_step_behavior.js';
+import { OobeI18nBehavior, OobeI18nBehaviorInterface } from '../../components/behaviors/oobe_i18n_behavior.js';
+import { OobeModalDialog } from '../../components/dialogs/oobe_modal_dialog.js';
+import { OOBE_UI_STATE } from '../../components/display_manager_types.js';
+import { OobeTypes } from '../../components/oobe_types.js';
+import { Oobe } from '../../cr_ui.js';
+import { invokePolymerMethod } from '../../display_manager.js';
 
 
 // GAIA animation guard timer. Started when GAIA page is loaded (Authenticator
@@ -87,7 +87,7 @@ const POSSIBLE_FIRST_SIGNIN_STEPS = [DialogMode.ACCOUNT_TYPE_SELECTION, DialogMo
  * @implements {OobeI18nBehaviorInterface}
  */
 const GaiaSigninElementBase = mixinBehaviors(
-    [OobeI18nBehavior, LoginScreenBehavior, MultiStepBehavior], PolymerElement);
+  [OobeI18nBehavior, LoginScreenBehavior, MultiStepBehavior], PolymerElement);
 
 /**
  * @typedef {{
@@ -127,7 +127,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       isLoadingUiShown_: {
         type: Boolean,
         computed: 'computeIsLoadingUiShown_(loadingFrameContents_, ' +
-            'isAllowlistErrorShown_, authCompleted_)',
+          'isAllowlistErrorShown_, authCompleted_)',
       },
 
       /**
@@ -315,6 +315,10 @@ class GaiaSigninElement extends GaiaSigninElementBase {
         type: Boolean,
         value: false,
       },
+      selectedAccountType_: {
+        type: String,
+        value: 'jema-local', // Default to JemaOS local account type
+      }
     };
   }
 
@@ -409,7 +413,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   static get observers() {
     return [
       'refreshDialogStep_(isAccountTypeSelectionRequired_, isAccountTypeSelected_, isShown_, pinDialogParameters_,' +
-          'isLoadingUiShown_, isAllowlistErrorShown_, isDupEmailErrorShown_)',
+      'isLoadingUiShown_, isAllowlistErrorShown_, isDupEmailErrorShown_)',
     ];
   }
 
@@ -434,13 +438,13 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   ready() {
     super.ready();
     this.authenticator_.insecureContentBlockedCallback =
-        this.onInsecureContentBlocked_.bind(this);
+      this.onInsecureContentBlocked_.bind(this);
     this.authenticator_.missingGaiaInfoCallback =
-        this.missingGaiaInfo_.bind(this);
+      this.missingGaiaInfo_.bind(this);
     this.authenticator_.accountTypeGoogleSelectedCallback = this.accountTypeGoogleSelectedCallback_.bind(this);
     this.authenticator_.samlApiUsedCallback = this.samlApiUsed_.bind(this);
     this.authenticator_.recordSAMLProviderCallback =
-        this.recordSAMLProvider_.bind(this);
+      this.recordSAMLProvider_.bind(this);
 
     this.initializeLoginScreen('GaiaSigninScreen');
   }
@@ -453,7 +457,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
    */
   isFirstSigninStep(uiStep, canGaiaGoBack, isSaml) {
     return !this.isClosable_ && POSSIBLE_FIRST_SIGNIN_STEPS.includes(uiStep) &&
-        !canGaiaGoBack && !(isSaml && !this.isDefaultSsoProvider_);
+      !canGaiaGoBack && !(isSaml && !this.isDefaultSsoProvider_);
   }
 
   onIsFirstSigninStepChanged(isFirstSigninStep) {
@@ -469,8 +473,9 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   onBackButtonCancel_() {
     if (!this.authCompleted_) {
       if (!this.userCreationContext_ && this.isAccountTypeSelectionRequired_) {
-        // from fydoe signin page back to account type selection page
         this.isAccountTypeSelected_ = false;
+        this.setUIStep(DialogMode.ACCOUNT_TYPE_SELECTION); // Transition back to account type selection
+        return;
       }
       this.cancel(true /* isBackClicked */);
     }
@@ -555,7 +560,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   startLoadingTimer_() {
     this.clearLoadingTimer_();
     this.loadingTimer_ = setTimeout(
-        this.onLoadingTimeOut_.bind(this), MAX_GAIA_LOADING_TIME_SEC * 1000);
+      this.onLoadingTimeOut_.bind(this), MAX_GAIA_LOADING_TIME_SEC * 1000);
   }
 
   /**
@@ -585,8 +590,8 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   startLoadAnimationGuardTimer_() {
     this.clearLoadAnimationGuardTimer_();
     this.loadAnimationGuardTimer_ = setTimeout(
-        this.onLoadAnimationGuardTimer_.bind(this),
-        GAIA_ANIMATION_GUARD_MILLISEC);
+      this.onLoadAnimationGuardTimer_.bind(this),
+      GAIA_ANIMATION_GUARD_MILLISEC);
   }
 
   getOobeUIInitialState() {
@@ -673,10 +678,10 @@ class GaiaSigninElement extends GaiaSigninElementBase {
     });
 
     this.isDefaultSsoProviderConfigured_ =
-        data.screenMode == ScreenAuthMode.SAML_REDIRECT;
+      data.screenMode == ScreenAuthMode.SAML_REDIRECT;
     params.doSamlRedirect = data.screenMode == ScreenAuthMode.SAML_REDIRECT;
     params.menuEnterpriseEnrollment =
-        !(data.enterpriseManagedDevice || data.hasDeviceOwner);
+      !(data.enterpriseManagedDevice || data.hasDeviceOwner);
     params.isFirstUser = !(data.enterpriseManagedDevice || data.hasDeviceOwner);
     params.obfuscatedOwnerId = data.obfuscatedOwnerId;
 
@@ -718,7 +723,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   onVideoEnabledChange_() {
     if (this.videoEnabled_ && this.videoTimer_ === undefined) {
       this.videoTimer_ =
-          setTimeout(this.cancel.bind(this), VIDEO_LOGIN_TIMEOUT);
+        setTimeout(this.cancel.bind(this), VIDEO_LOGIN_TIMEOUT);
     } else {
       this.clearVideoTimer_();
     }
@@ -758,8 +763,8 @@ class GaiaSigninElement extends GaiaSigninElementBase {
     }
 
     console.warn('onSamlChanged: isSaml_ = ' + this.isSaml_ +
-        ', usedSaml_ = ' + this.usedSaml_ +
-        ', authFlow = ' + this.authFlow);
+      ', usedSaml_ = ' + this.usedSaml_ +
+      ', authFlow = ' + this.authFlow);
 
     chrome.send('samlStateChanged', [this.isSaml_]);
 
@@ -776,7 +781,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
     this.startLoadAnimationGuardTimer_();
     this.clearLoadingTimer_();
     // Workaround to hide flashing scroll bar.
-    setTimeout(function() {
+    setTimeout(function () {
       this.loadingFrameContents_ = false;
     }.bind(this), 100);
   }
@@ -821,7 +826,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
    */
   onInsecureContentBlocked_(url) {
     this.showFatalAuthError_(
-        OobeTypes.FatalErrorCode.INSECURE_CONTENT_BLOCKED, {'url': url});
+      OobeTypes.FatalErrorCode.INSECURE_CONTENT_BLOCKED, { 'url': url });
   }
 
   /**
@@ -1009,7 +1014,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
     // If user goes back from the derived SAML page or GAIA page that is shown
     // to change SSO provider we need to reload default authenticator.
     if ((this.isSamlSsoVisible_ || this.isDefaultSsoProviderConfigured_) &&
-        !this.isDefaultSsoProvider_) {
+      !this.isDefaultSsoProvider_) {
       this.userActed('reloadDefault');
       return;
     }
@@ -1148,8 +1153,8 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       });
     }
     if ((oldValue !== null && newValue === null) ||
-        (oldValue !== null && newValue !== null &&
-         !this.pinDialogResultReported_)) {
+      (oldValue !== null && newValue !== null &&
+        !this.pinDialogResultReported_)) {
       // Report the cancellation result if the dialog got closed or got reused
       // before reporting the result.
       chrome.send('securityTokenPinEntered', [/*user_input=*/ '']);
@@ -1220,8 +1225,8 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       return;
     }
     if (isLoading) {
-      this.setUIStep(DialogMode.LOADING);
-      return;
+      // this.setUIStep(DialogMode.LOADING);
+      console.log('[DEBUG] Setting UI step to GAIA for online accounts');
     }
     if (isAllowlistError) {
       this.setUIStep(DialogMode.GAIA_ALLOWLIST_ERROR);
@@ -1231,7 +1236,17 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       this.setUIStep(DialogMode.GAIA_DUP_EMAIL_ERROR);
       return;
     }
-    this.setUIStep(DialogMode.GAIA);
+    // Only set GAIA step for online accounts (Google and JemaOS online)
+    if (this.isAccountTypeSelected_ && (this.selectedAccountType_ === 'google' || this.selectedAccountType_ === 'jema')) {
+      this.setUIStep(DialogMode.GAIA);
+      return;
+    }
+
+    // For jema-local, bypass GAIA and navigate directly
+    if (this.isAccountTypeSelected_ && this.selectedAccountType_ === 'jema-local') {
+      console.log('[DEBUG] Navigating directly to JemaOS local signin');
+      return;
+    }
   }
 
   /**
@@ -1256,7 +1271,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
    * @private
    */
   computeIsLoadingUiShown_(
-      loadingFrameContents, isAllowlistErrorShown, authCompleted) {
+    loadingFrameContents, isAllowlistErrorShown, authCompleted) {
     return (loadingFrameContents || authCompleted) && !isAllowlistErrorShown;
   }
 
@@ -1311,14 +1326,17 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   }
 
   onAccountTypeSelected_(e) {
-    this.isAccountTypeSelected_ = true;
     if (e.detail === 'google') {
+      this.selectedAccountType_ = 'google';
       chrome.send('userSelectGoogleAccount');
     } else if (e.detail === 'jema') {
+      this.selectedAccountType_ = 'jema';
       chrome.send('resetAccountFlag');
     } else if (e.detail === 'jema-local') {
+      this.selectedAccountType_ = 'jema-local';
       chrome.send('jemaLocalSignin');
     }
+    this.isAccountTypeSelected_ = true;
   }
 
   onUserCreationCanceled_(e) {

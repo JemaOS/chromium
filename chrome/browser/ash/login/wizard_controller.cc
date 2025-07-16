@@ -1406,7 +1406,7 @@ void WizardController::OnActiveDirectoryLoginScreenExit() {
 
 void WizardController::OnJemaLocalSigninScreenExit(JemaLocalSigninScreen::Result result) {
   LOG(INFO) << "[JEMA DEBUG] OnJemaLocalSigninScreenExit called with result: " << static_cast<int>(result);
-  OnScreenExit(JemaLocalSigninView::kScreenId, kDefaultExitReason);
+  OnScreenExit(JemaLocalSigninView::kScreenId, JemaLocalSigninScreen::GetResultString(result));
   
   if (result == JemaLocalSigninScreen::Result::ACCOUNT_TYPE_SELECTION_BACK) {
     LOG(INFO) << "[JEMA DEBUG] Navigating back to Account Type Selection (Gaia Screen)";

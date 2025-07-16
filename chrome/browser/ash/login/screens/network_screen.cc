@@ -61,7 +61,7 @@ bool NetworkScreen::MaybeSkip(WizardContext& context) {
   }
   
   // Skip this screen if the device is connected to Ethernet for the first time
-  // in this session AND WiFi is also connected.
+  // in this session
   return UpdateStatusIfConnectedToEthernet();
 }
 
@@ -170,7 +170,7 @@ void NetworkScreen::StopWaitingForConnection(const std::u16string& network_id) {
   network_id_ = network_id;
 
   // Automatically continue if the device is connected to Ethernet for the first
-  // time in this session AND WiFi is also connected.
+  // time in this session
   if (UpdateStatusIfConnectedToEthernet())
     return;
 

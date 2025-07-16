@@ -506,7 +506,6 @@ void GaiaScreenHandler::LoadGaiaWithPartitionAndVersionAndConsent(
   }
 
   params.Set("gaiaUrl", GaiaUrls::GetInstance()->gaia_url().spec());
-  LOG(INFO) << "Loading Gaia URL: " << GaiaUrls::GetInstance()->gaia_url().spec();
   switch (gaia_path_) {
     case GaiaPath::kDefault:
       // Use the default gaia signin path embedded/setup/v2/chromeos which is
@@ -572,7 +571,6 @@ void GaiaScreenHandler::LoadGaiaWithPartitionAndVersionAndConsent(
     params.Set("samlAclUrl", saml_acl_url);
     if (public_saml_url_fetcher_->FetchSucceeded()) {
       params.Set("frameUrl", public_saml_url_fetcher_->GetRedirectUrl());
-      LOG(INFO) << "Loading SAML frame URL: " << public_saml_url_fetcher_->GetRedirectUrl();
     } else {
       LoginDisplayHost::default_host()->GetSigninUI()->ShowSigninError(
           SigninError::kFailedToFetchSamlRedirect, /*details=*/std::string());

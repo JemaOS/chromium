@@ -203,6 +203,15 @@ class ErrorMessageScreen extends ErrorMessageScreenBase {
         type: Boolean,
         value: false,
       },
+
+      /**
+       * Network monitoring interval ID
+       * @private
+       */
+      networkMonitoringInterval_: {
+        type: Number,
+        value: null,
+      },
     };
   }
 
@@ -247,9 +256,22 @@ class ErrorMessageScreen extends ErrorMessageScreenBase {
     super.ready();
     this.initializeLoginScreen('ErrorMessageScreen');
 
+    // Listen for network state changes
+    this.addEventListener('network-state-changed', this.onNetworkStateChanged_.bind(this));
+    
     this.updateLocalizedContent();
   }
 
+  /**
+   * Handle network state changes and auto-close error screen when online
+   * @private
+   */
+  onNetworkStateChanged_(event) {
+    if (event.detail && event.detail.isConnected) {
+      // Network is connected, automatically trigger network-connected action
+      this.onNetworkConnected_();
+    }
+  }
 
   /**
    * Checks if the state ( === arguments[0]) is equal to one of the following
@@ -277,6 +299,8 @@ class ErrorMessageScreen extends ErrorMessageScreenBase {
   }
 
   onNetworkConnected_() {
+    // Hide connecting indicator when network is connected
+    this.showConnectingIndicator(false);
     this.userActed('network-connected');
   }
 
@@ -403,6 +427,9 @@ class ErrorMessageScreen extends ErrorMessageScreenBase {
     this.hasUserPods_ = data && ('hasUserPods' in data) && data.hasUserPods;
     // `closable` is dependent on `hasUserPods_`
     this.$.backButton.hidden = !this.closable;
+    
+    // Start monitoring network connectivity
+    this.startNetworkMonitoring_();
   }
 
   /**
@@ -413,6 +440,34 @@ class ErrorMessageScreen extends ErrorMessageScreenBase {
     Oobe.getInstance().setOobeUIState(OOBE_UI_STATE.HIDDEN);
     // Reset property to the default state.
     this.setIsPersistentError(false);
+    
+    // Stop monitoring network connectivity
+    this.stopNetworkMonitoring_();
+  }
+
+  /**
+   * Start monitoring network connectivity
+   * @private
+   */
+  startNetworkMonitoring_() {
+    // Check connectivity every 2 seconds
+    this.networkMonitoringInterval_ = setInterval(() => {
+      if (navigator.onLine) {
+        // Browser reports we're online, trigger network connected
+        this.onNetworkConnected_();
+      }
+    }, 2000);
+  }
+
+  /**
+   * Stop monitoring network connectivity
+   * @private
+   */
+  stopNetworkMonitoring_() {
+    if (this.networkMonitoringInterval_) {
+      clearInterval(this.networkMonitoringInterval_);
+      this.networkMonitoringInterval_ = null;
+    }
   }
 
   /**

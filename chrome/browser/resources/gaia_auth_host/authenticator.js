@@ -575,7 +575,6 @@ export class Authenticator extends EventTarget {
     this.sessionIndex_ = null;
     this.trusted_ = true;
     this.authFlow = AuthFlow.DEFAULT;
-    this.samlHandler_.reset();
     this.videoEnabled = false;
     this.services_ = null;
     this.servicesProvided_ = false;
@@ -584,6 +583,12 @@ export class Authenticator extends EventTarget {
     this.syncTrustedVaultKeys_ = null;
     this.closeViewReceived_ = false;
     this.disableAllActions_();
+      // Ensure samlHandler_ is initialized before calling reset()
+    if (this.samlHandler_) {
+      this.samlHandler_.reset();
+    } else {
+      console.error('[ERROR] samlHandler_ is undefined in resetStates()');
+    }
   }
 
   /**

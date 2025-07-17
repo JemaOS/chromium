@@ -14,8 +14,12 @@ namespace ash {
 class JemaLocalSigninScreen
     : public BaseScreen {
   public:
+    enum class Result { CANCEL, ACCOUNT_TYPE_SELECTION_BACK, BACK };
+    
+    static std::string GetResultString(Result result);
+    
     JemaLocalSigninScreen(base::WeakPtr<JemaLocalSigninView> view,
-                          const base::RepeatingClosure& exit_callback);
+                          const base::RepeatingCallback<void(Result)>& exit_callback);
 
     ~JemaLocalSigninScreen() override;
 
@@ -24,6 +28,7 @@ class JemaLocalSigninScreen
 
   private:
     void HandleCancel();
+    void HandleBackToUserSelection();
 
     // BaseScreen:
     void ShowImpl() override;
@@ -33,7 +38,7 @@ class JemaLocalSigninScreen
 
     base::WeakPtr<JemaLocalSigninView> view_;
 
-    base::RepeatingClosure exit_callback_;
+    base::RepeatingCallback<void(Result)> exit_callback_;
 
     base::WeakPtrFactory<JemaLocalSigninScreen> weak_factory_{this};
 };

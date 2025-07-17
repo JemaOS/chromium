@@ -37,18 +37,26 @@
   <if expr="chromeos_ash">
     <!-- Strings for the OOBE user selection screen -->
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_TITLE" desc="Title of the screen which allows users to select account type.">
-        Which online account would you like to use?
+        Which account would you like to use?
     </message>
     <if expr="not openjema">
       <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          Please choose your preferred online account type to sign in to JemaOS. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
+          Please choose the type of account you prefer to sign in to JemaOS. Note that once signed in, you will not be able to change the account type. However, you can sign in with a new account of a different type.
       </message>
     </if>
     <if expr="openjema">
       <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          Please choose your preferred online account type to sign in to JemaOS. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
+          Please choose the type of account you prefer to sign in to JemaOS. Note that once signed in, you will not be able to change the account type. However, you can sign in with a new account of a different type.
       </message>
     </if>
+    <!-- Local JemaOS account ** START -->
+    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
+        Local JemaOS account
+    </message>
+    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
+        Create a local account that will not be synchronized with the JemaOS API.
+    </message>
+    <!-- Local JemaOS account ** END -->
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
         JemaOS account
     </message>

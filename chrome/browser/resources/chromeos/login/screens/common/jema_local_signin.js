@@ -210,7 +210,7 @@ class JemaLocalSignin extends JemaLocalSigninBase {
   }
 
   onBackButton_() {
-    this.userActed('cancel');
+    this.userActed('accountTypeSelectionBack');
   }
 
   onKeydownUserInput_(e) {

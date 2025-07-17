@@ -45,6 +45,7 @@
 #include "chrome/browser/ash/login/screens/guest_tos_screen.h"
 #include "chrome/browser/ash/login/screens/hardware_data_collection_screen.h"
 #include "chrome/browser/ash/login/screens/hid_detection_screen.h"
+#include "chrome/browser/ash/login/screens/jema_local_signin_screen.h"
 #include "chrome/browser/ash/login/screens/kiosk_autolaunch_screen.h"
 #include "chrome/browser/ash/login/screens/locale_switch_screen.h"
 #include "chrome/browser/ash/login/screens/marketing_opt_in_screen.h"
@@ -88,6 +89,7 @@ class SimpleGeolocationProvider;
 class TimeZoneProvider;
 struct TimeZoneResponseData;
 enum class KioskAppType;
+class WizardContext;
 
 // Class that manages control flow between wizard screens. Wizard controller
 // interacts with screen controllers to move the user between screens.
@@ -266,6 +268,9 @@ class WizardController : public OobeUI::Observer {
   void AddObserver(ScreenObserver* obs);
   void RemoveObserver(ScreenObserver* obs);
 
+  // Returns the wizard context.
+  WizardContext* GetContext() const { return wizard_context_; }
+
   // OobeUI::Observer
   void OnCurrentScreenChanged(OobeScreenId, OobeScreenId) override {}
   void OnDestroyingOobeUI() override;
@@ -396,7 +401,7 @@ class WizardController : public OobeUI::Observer {
   void OnOobeFlowFinished();
   void OnPackagedLicenseScreenExit(PackagedLicenseScreen::Result result);
   void OnActiveDirectoryPasswordChangeScreenExit();
-  void OnJemaLocalSigninScreenExit();
+  void OnJemaLocalSigninScreenExit(JemaLocalSigninScreen::Result result);
   void OnFamilyLinkNoticeScreenExit(FamilyLinkNoticeScreen::Result result);
   void OnUserCreationScreenExit(UserCreationScreen::Result result);
   void OnGaiaScreenExit(GaiaScreen::Result result);

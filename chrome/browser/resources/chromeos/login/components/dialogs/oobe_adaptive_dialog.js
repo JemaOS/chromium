@@ -104,6 +104,44 @@ export class OobeAdaptiveDialog extends PolymerElement {
         type: Boolean,
         value: false,
       },
+
+      /**
+       * The name of the current OOBE screen for debugging purposes.
+       * @type {string}
+       */
+      screenName: {
+        type: String,
+        value: 'Unknown Screen',
+      },
+
+      /**
+       * Screen slug identifier for tracking and analytics.
+       * @type {string}
+       */
+      screenSlug: {
+        type: String,
+        value: '',
+      },
+
+      /**
+       * Network connection status for the dialog.
+       * @type {boolean}
+       */
+      networkConnectionStatus: {
+        type: Boolean,
+        value: false,
+        observer: 'onNetworkConnectionStatusChanged_',
+      },
+
+      /**
+       * Type of network connection (WiFi, Ethernet, etc.).
+       * @type {string}
+       */
+      networkConnectionType: {
+        type: String,
+        value: '',
+        observer: 'onNetworkConnectionTypeChanged_',
+      },
     };
   }
 
@@ -366,6 +404,48 @@ export class OobeAdaptiveDialog extends PolymerElement {
   /** @private */
   onReadMoreClick_() {
     this.maybeUpgradeReadMoreState_(true /* read_more_clicked */);
+  }
+
+  /**
+   * Observer for network connection status changes.
+   * @param {boolean} newStatus New connection status
+   * @private
+   */
+  onNetworkConnectionStatusChanged_(newStatus) {
+    console.log(`Adaptive dialog: Network connection status changed to ${newStatus} for screen ${this.screenSlug || this.screenName}`);
+    
+    // Dispatch event to notify parent components about network status change
+    this.dispatchEvent(new CustomEvent('dialog-network-status-changed', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        isConnected: newStatus,
+        networkType: this.networkConnectionType,
+        screenSlug: this.screenSlug,
+        screenName: this.screenName
+      }
+    }));
+  }
+
+  /**
+   * Observer for network connection type changes.
+   * @param {string} newType New connection type
+   * @private
+   */
+  onNetworkConnectionTypeChanged_(newType) {
+    console.log(`Adaptive dialog: Network connection type changed to ${newType} for screen ${this.screenSlug || this.screenName}`);
+    
+    // Dispatch event to notify parent components about network type change
+    this.dispatchEvent(new CustomEvent('dialog-network-type-changed', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        networkType: newType,
+        isConnected: this.networkConnectionStatus,
+        screenSlug: this.screenSlug,
+        screenName: this.screenName
+      }
+    }));
   }
 }
 

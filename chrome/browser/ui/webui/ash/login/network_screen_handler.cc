@@ -53,13 +53,25 @@ void NetworkScreenHandler::ClearErrors() {
   CallExternalAPI("setError", std::string());
 }
 
+void NetworkScreenHandler::OnJemaosOnlineAccountSelected() {
+  CallExternalAPI("onJemaosOnlineAccountSelected");
+}
+
 void NetworkScreenHandler::DeclareLocalizedValues(
     ::login::LocalizedValuesBuilder* builder) {
   builder->Add("networkSectionTitle", IDS_NETWORK_SELECTION_TITLE);
+  builder->Add("networkSectionTitleWiFi", IDS_NETWORK_SELECTION_TITLE_WIFI);
+  builder->Add("networkSectionTitleEthernet", IDS_NETWORK_SELECTION_TITLE_ETHERNET);
   builder->Add("networkSectionHint", IDS_NETWORK_SELECTION_HINT);
   builder->Add("proxySettingsListItemName",
                IDS_NETWORK_PROXY_SETTINGS_LIST_ITEM_NAME);
   builder->Add("addWiFiListItemName", IDS_NETWORK_ADD_WI_FI_LIST_ITEM_NAME);
+  
+  // JemaOS online account network requirement strings
+  builder->Add("jemaosOnlineAccountNetworkRequiredError", IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR);
+  builder->Add("jemaosOnlineAccountNetworkRequiredMessage", IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_MESSAGE);
+  builder->Add("jemaosOnlineAccountWifiPreferredMessage", IDS_JEMAOS_ONLINE_ACCOUNT_WIFI_PREFERRED_MESSAGE);
+  
   ui::network_element::AddLocalizedValuesToBuilder(builder);
   cellular_setup::AddLocalizedValuesToBuilder(builder);
 }

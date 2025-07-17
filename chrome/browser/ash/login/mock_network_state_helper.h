@@ -18,6 +18,7 @@ class MockNetworkStateHelper : public NetworkStateHelper {
   MOCK_CONST_METHOD0(GetCurrentNetworkName, std::u16string(void));
   MOCK_CONST_METHOD0(IsConnected, bool(void));
   MOCK_CONST_METHOD0(IsConnectedToEthernet, bool(void));
+  MOCK_CONST_METHOD0(IsConnectedToWifi, bool(void));
   MOCK_CONST_METHOD0(IsConnecting, bool(void));
 };
 

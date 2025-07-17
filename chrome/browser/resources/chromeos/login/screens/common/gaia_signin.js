@@ -315,6 +315,10 @@ class GaiaSigninElement extends GaiaSigninElementBase {
         type: Boolean,
         value: false,
       },
+      selectedAccountType_: {
+        type: String,
+        value: 'jema-local', // Default to JemaOS local account type
+      }
     };
   }
 
@@ -469,8 +473,9 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   onBackButtonCancel_() {
     if (!this.authCompleted_) {
       if (!this.userCreationContext_ && this.isAccountTypeSelectionRequired_) {
-        // from fydoe signin page back to account type selection page
         this.isAccountTypeSelected_ = false;
+        this.setUIStep(DialogMode.ACCOUNT_TYPE_SELECTION); // Transition back to account type selection
+        return;
       }
       this.cancel(true /* isBackClicked */);
     }
@@ -605,6 +610,14 @@ class GaiaSigninElement extends GaiaSigninElementBase {
 
     if (data && 'hasUserPods' in data) {
       this.isClosable_ = data.hasUserPods;
+    }
+
+    // Check if we should show account type selection directly
+    if (data && data.showAccountTypeSelection) {
+      // Enable account type selection and reset selection state
+      this.isAccountTypeSelectionRequired_ = true;
+      this.isAccountTypeSelected_ = false;
+      // refreshDialogStep_ will be called automatically by the observer
     }
 
     invokePolymerMethod(this.$.pinDialog, 'onBeforeShow');
@@ -809,7 +822,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
    */
   onInsecureContentBlocked_(url) {
     this.showFatalAuthError_(
-        OobeTypes.FatalErrorCode.INSECURE_CONTENT_BLOCKED, {'url': url});
+        OobeTypes.FatalErrorCode.INSECURE_CONTENT_BLOCKED, { 'url': url });
   }
 
   /**
@@ -1137,7 +1150,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
     }
     if ((oldValue !== null && newValue === null) ||
         (oldValue !== null && newValue !== null &&
-         !this.pinDialogResultReported_)) {
+          !this.pinDialogResultReported_)) {
       // Report the cancellation result if the dialog got closed or got reused
       // before reporting the result.
       chrome.send('securityTokenPinEntered', [/*user_input=*/ '']);
@@ -1199,6 +1212,7 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       return;
     }
     if (isAccountTypeSelectionRequired && !isAccountTypeSelected) {
+      // Always show account type selection dialog, but show error state when offline
       this.setUIStep(DialogMode.ACCOUNT_TYPE_SELECTION);
       return;
     }
@@ -1207,8 +1221,8 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       return;
     }
     if (isLoading) {
-      this.setUIStep(DialogMode.LOADING);
-      return;
+      // this.setUIStep(DialogMode.LOADING);
+      console.log('[DEBUG] Setting UI step to GAIA for online accounts');
     }
     if (isAllowlistError) {
       this.setUIStep(DialogMode.GAIA_ALLOWLIST_ERROR);
@@ -1218,7 +1232,17 @@ class GaiaSigninElement extends GaiaSigninElementBase {
       this.setUIStep(DialogMode.GAIA_DUP_EMAIL_ERROR);
       return;
     }
-    this.setUIStep(DialogMode.GAIA);
+    // Only set GAIA step for online accounts (Google and JemaOS online)
+    if (this.isAccountTypeSelected_ && (this.selectedAccountType_ === 'google' || this.selectedAccountType_ === 'jema')) {
+      this.setUIStep(DialogMode.GAIA);
+      return;
+    }
+
+    // For jema-local, bypass GAIA and navigate directly
+    if (this.isAccountTypeSelected_ && this.selectedAccountType_ === 'jema-local') {
+      console.log('[DEBUG] Navigating directly to JemaOS local signin');
+      return;
+    }
   }
 
   /**
@@ -1291,16 +1315,24 @@ class GaiaSigninElement extends GaiaSigninElementBase {
   }
 
   onAccountTypeSelectionBack_() {
+    // Reset account type selection when going back to ensure the 
+    // Account Type Selection dialog is shown instead of the webview
+    this.isAccountTypeSelected_ = false;
     this.userActed('accountTypeSelectionBack');
   }
 
   onAccountTypeSelected_(e) {
-    this.isAccountTypeSelected_ = true;
     if (e.detail === 'google') {
+      this.selectedAccountType_ = 'google';
       chrome.send('userSelectGoogleAccount');
     } else if (e.detail === 'jema') {
+      this.selectedAccountType_ = 'jema';
       chrome.send('resetAccountFlag');
+    } else if (e.detail === 'jema-local') {
+      this.selectedAccountType_ = 'jema-local';
+      chrome.send('jemaLocalSignin');
     }
+    this.isAccountTypeSelected_ = true;
   }
 
   onUserCreationCanceled_(e) {

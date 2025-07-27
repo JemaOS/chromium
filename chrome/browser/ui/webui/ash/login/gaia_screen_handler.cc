@@ -57,7 +57,21 @@
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/profiles/signin_profile_handler.h"
+#include "components/user_manager/known_user.h"
+#include "components/user_manager/user_type.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/base64.h"
+#include "base/strings/string_piece.h"
+#include "chromeos/ash/components/dbus/userdataauth/userdataauth_client.h"
+#include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
+#include "chromeos/ash/components/dbus/cryptohome/UserDataAuth.pb.h"
+#include "chromeos/ash/components/cryptohome/cryptohome_util.h"
+#include "chrome/grit/generated_resources.h"
+#include "components/login/localized_values_builder.h"
+#include "chrome/browser/ash/login/existing_user_controller.h"
 #include "chrome/browser/ash/settings/cros_settings.h"
+#include "chromeos/ash/components/login/auth/public/key.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
 #include "chrome/browser/certificate_provider/certificate_provider_service.h"
@@ -817,6 +831,82 @@ void GaiaScreenHandler::HandleCompleteAuthentication(
     const base::Value::Dict& password_attributes,
     const base::Value::Dict& sync_trusted_vault_keys) {
   if (!LoginDisplayHost::default_host()) {
+    return;
+  }
+
+
+  // Check for JemaOS service
+  bool is_jemaos = false;
+  for (const auto& service : services_list) {
+    if (service.is_string() && service.GetString() == "jemaos")
+      is_jemaos = true;
+  }
+
+  if (is_jemaos) {
+    VLOG(1) << "[JEMAOS] Starting session for JemaOS user: " << email
+            << " with IsJemaAccountEnabled: " << jemaos::switches::IsJemaAccountEnabled();
+
+    std::string raw_password;
+    if (!base::Base64Decode(password_value, &raw_password)) {
+        LOG(ERROR) << "[JEMAOS] Failed to decode base64 password.";
+        return;
+    }
+
+     bool exist = false;
+     bool newUser = false;
+      user_manager::KnownUser known_user(g_browser_process->local_state());
+      const std::vector<AccountId> known_account_ids =
+        known_user.GetKnownAccountIds();
+      for (const AccountId& known_id : known_account_ids) {
+        if (known_id.GetUserEmail() == email) {
+          exist = true;
+          break;
+        }
+      }
+
+      if(!exist)
+        newUser = true;
+
+      if (LoginDisplayHost::default_host())
+        LoginDisplayHost::default_host()->SetDisplayEmail(email);
+
+      Key key(raw_password);
+      key.SetLabel(kCryptohomeGaiaKeyLabel);
+      const AccountId account_id(known_user.GetAccountId(
+            email, "jema_id_" + email , AccountType::FLINT_ACCOUNT));
+      LoginDisplayHost::default_host()->SetDisplayAndGivenName(
+          email, email);
+
+      VLOG(1) << "[JEMAOS] Account ID: " << account_id 
+              << ", Email: " << email
+              << ", New User: " << newUser
+              << ", Existing User: " << exist
+              << ", raw_password: " << raw_password
+              << ", confirmToken: " << password_attributes.FindString("confirmToken");
+      const std::string* confirm_token = password_attributes.FindString("confirmToken");
+      UserContext user_context(
+          user_manager::UserType::USER_TYPE_JEMA_ACCOUNT, account_id);
+      user_context.SetKey(key);
+      if (confirm_token)
+        user_context.SetRefreshToken(*confirm_token);
+      user_context.SetAuthFlow(UserContext::AUTH_FLOW_JEMA_ONLINE);
+      user_context.SetIsUsingOAuth(false);
+      if (newUser) {
+         VLOG(1) << "[JEMAOS] Account ID: newUser true " << newUser;
+        LoginDisplayHost::default_host()->CompleteLogin(user_context);
+      } else {
+         VLOG(1) << "[JEMAOS] Account ID: newUser false " << newUser;
+        if (ExistingUserController::current_controller()) {
+          ExistingUserController::current_controller()->Login(user_context,
+                                                              SigninSpecifics());
+        } else {
+          LOG(ERROR) << "JemaLocalSigninScreenHandler::DoCompleteLogin: "
+                    << "ExistingUserController not available.";
+        }
+      }
+    
+
+    VLOG(1) << "[JEMAOS] SessionManagerClient::StartSession called for: " << email;
     return;
   }
 

@@ -18,6 +18,9 @@ CHROMEOS_EXPORT extern const char kJemaOSAccountBaseUrl[];
 
 extern const char kJemaOSForumURL[];
 extern const char kJemaOSRemoteDesktopURL[];
+extern const char kMiroURL[];
+extern const char kGoogleMeetURL[];
+extern const char kGmailJemaURL[];
 extern const char kJemaOSHelpURL[];
 extern const char kJemaOSReleaseNotesURL[];
 extern const char kMultiDeviceLearnMoreURL[];

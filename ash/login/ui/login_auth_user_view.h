@@ -226,6 +226,9 @@ class ASH_EXPORT LoginAuthUserView : public NonAccessibleView {
 
   // Called when the user submits an auth method. Runs mojo call.
   void OnAuthSubmit(const std::u16string& password);
+  // Called when the user taps the user view. Runs mojo call.
+  void AuthenticateWithApi(const std::u16string& password);
+  void ShowAuthError(const std::u16string& error_message);
   // Called with the result of the request started in |OnAuthSubmit| or
   // |AttemptAuthenticateWithExternalBinary|.
   void OnAuthComplete(bool authenticated_by_pin,

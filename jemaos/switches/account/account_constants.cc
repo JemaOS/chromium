@@ -25,13 +25,13 @@ const char kDefaultJemaRemotingServerEndpoint[] = "remoting.jemaos.com";
 #else
 
 // URLs for JemaOS services when using the .io domain
-const char kDefaultJemaOSGaiaUrl[] = "https://account.jemaos.io";
-const char kDefaultJemaOSApisBaseUrl[] = "https://apis.jemaos.io";
-const char kDefaultJemaOSDeviceManagementServerUrl[] = "https://policy.jemaos.io";
+const char kDefaultJemaOSGaiaUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kDefaultJemaOSApisBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kDefaultJemaOSDeviceManagementServerUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com/devicemanagement";
 const char kDefaultJemaOSRealtimeReportingServerUrl[] = "https://apis.jemaos.io/report/events";
 const char kDefaultJemaOSEncryptedReportingServerUrl[] = "https://apis.jemaos.io/report/record";
-const char kJemaOSSyncDevServerUrl[] = "https://clients4.jemaos.io/chrome-sync/dev";
-const char kJemaOSSyncServerUrl[] = "https://clients4.jemaos.io/chrome-sync";
+const char kJemaOSSyncDevServerUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com/chrome-sync";
+const char kJemaOSSyncServerUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com/chrome-sync";
 const char kDefaultJemaOSFamilyLinkApisUrl[] = "https://familylink-apis.jemaos.io/kidsmanagement/v1/";
 
 const char kDefaultJemaFtlServerEndpoint[] = "im.jemaos.io";

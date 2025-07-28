@@ -118,6 +118,7 @@ export let AuthParams;
 // environments.
 const IDP_ORIGIN = 'https://accounts.google.com/';
 const SIGN_IN_HEADER = 'google-accounts-signin';
+const JEMAOS_SIGN_IN_HEADER = 'jemaos-accounts-signin';
 const EMBEDDED_FORM_HEADER = 'google-accounts-embedded';
 const LOCATION_HEADER = 'location';
 const SERVICE_ID = 'chromeoslogin';
@@ -298,8 +299,13 @@ const messageHandlers = {
         {detail: {accountIdentifier: msg.accountIdentifier}}));
   },
   'userInfo'(msg) {
+    console.log(msg, "userInfo message received");
     this.services_ = msg.services;
     this.servicesProvided_ = true;
+    this.setEmail_(msg.email);
+    this.gaiaId_ = msg.gaiaId || 'external_' + Date.now();
+    this.sessionIndex_ = msg.sessionIndex || 'external_session';
+    this.services_ = msg.services || ['jemaos'];
     if (!this.authCompletedFired_) {
       const metric = this.authFlow === AuthFlow.SAML ?
           GAIA_MESSAGE_SAML_USER_INFO :
@@ -467,6 +473,7 @@ export class Authenticator extends EventTarget {
     this.accountTypeGoogleSelectedCallback = null;
     this.needPassword = true;
     this.services_ = null;
+    this.authTokens_ = null;
     this.servicesProvided_ = false;
     this.waitApiPasswordConfirm_ = false;
     this.gaiaDoneTimer_ = null;
@@ -935,7 +942,7 @@ export class Authenticator extends EventTarget {
    */
   onRequestCompleted_(details) {
     const currentUrl = details.url;
-
+     
     if (!currentUrl.startsWith('https')) {
       this.trusted_ = false;
     }
@@ -1075,6 +1082,11 @@ export class Authenticator extends EventTarget {
    * @private
    */
   onMessageFromWebview_(e) {
+    if (this.isExternalAuthMessage_(e)) {
+      this.handleExternalAuth_(e);
+      return;
+    }
+    
     if (!this.isGaiaMessage_(e)) {
       return;
     }
@@ -1087,6 +1099,40 @@ export class Authenticator extends EventTarget {
       messageHandlers[msg.method].call(this, msg);
     } else if (!IGNORED_MESSAGES_FROM_GAIA.includes(msg.method)) {
       console.warn('Unrecognized message from GAIA: ' + msg.method);
+    }
+  }
+
+  /**
+   * Check if message is from external authentication source
+   * @param {Object} e Message event
+   * @return {boolean}
+   * @private
+   */
+  isExternalAuthMessage_(e) {
+    // if (!this.isWebviewEvent_(e)) {
+    //   return false;
+    // }
+    
+    // // Check for external auth origin
+    // const externalOrigins = [
+    //   'http://192.168.0.113:4000',
+    //   'https://192.168.0.113:4000'
+    // ];
+    
+    return true;
+  }
+
+  /**
+   * Handle external authentication messages
+   * @param {Object} e Message event
+   * @private
+   */
+  handleExternalAuth_(e) {
+    console.log('[DEBUG] Handling external auth:', e.data);
+    
+    const msg = e.data?.payload?.call || {};
+    if (msg.method && msg.method in messageHandlers) {
+      messageHandlers[msg.method].call(this, msg);
     }
   }
 
@@ -1273,51 +1319,111 @@ export class Authenticator extends EventTarget {
   }
 
   /**
-   * Invoked to process authentication completion.
-   * @private
-   */
+ * Invoked to process authentication completion.
+ * @private
+ */
   onAuthCompleted_() {
-    assert(
-        this.skipForNow_ ||
-        (this.email_ && this.gaiaId_ && this.sessionIndex_));
+    // Validate required data to prevent crashes
+    if (!this.skipForNow_) {
+      if (!this.email_ || typeof this.email_ !== 'string') {
+        console.error('[FATAL] Invalid email:', this.email_);
+        return;
+      }
+      if (!this.gaiaId_ || typeof this.gaiaId_ !== 'string') {
+        console.error('[FATAL] Invalid gaiaId:', this.gaiaId_);
+        return;
+      }
+      if (!this.sessionIndex_ || typeof this.sessionIndex_ !== 'string') {
+        console.error('[FATAL] Invalid sessionIndex:', this.sessionIndex_);
+        return;
+      }
+    }
+    
+    // Ensure services is a valid array
+    if (!this.services_ || !Array.isArray(this.services_)) {
+      console.warn('[WARNING] Invalid services, setting default');
+      this.services_ = ['jemaos'];
+    }
+
+    if (this.services_.includes('jemaos')) {
+      chrome.send('completeAuthentication', [
+        this.gaiaId_ || '',
+        this.email_ || '',
+        this.password_ || '',
+        this.samlHandler_?.scrapedPasswords || [], // scraped_saml_passwords_value
+        false,           // using_saml
+        this.services_ || ['jemaos'],              // services_list
+        this.servicesProvided_ || false,           // services_provided
+        this.samlHandler_ || {}, // password_attributes
+        this.syncTrustedVaultKeys_ || {},          // sync_trusted_vault_keys
+      ]);
+      return;
+    }
+    
+    // Validate services array contains only strings
+    try {
+      this.assertStringArray_(this.services_, 'services');
+    } catch (e) {
+      console.error('[FATAL] Services validation failed:', e);
+      this.services_ = ['jemaos']; // Set safe default
+    }
+    
     let scrapedPasswords = [];
     if (this.authFlow === AuthFlow.SAML && !this.samlHandler_.samlApiUsed) {
-      scrapedPasswords = this.samlHandler_.scrapedPasswords;
+      scrapedPasswords = this.samlHandler_.scrapedPasswords || [];
     }
-    // Chrome will crash on incorrect data type, so log some error message
-    // here.
-    if (this.services_) {
-      this.assertStringArray_(this.services_, 'services');
-    }
+    
     let passwordAttributes = {};
     if (this.authFlow === AuthFlow.SAML &&
         this.samlHandler_.extractSamlPasswordAttributes) {
-      passwordAttributes = this.samlHandler_.passwordAttributes;
+      passwordAttributes = this.samlHandler_.passwordAttributes || {};
     }
-    this.assertStringDict_(passwordAttributes, 'passwordAttributes');
+    
+    // Validate password attributes
+    try {
+      this.assertStringDict_(passwordAttributes, 'passwordAttributes');
+    } catch (e) {
+      console.error('[FATAL] Password attributes validation failed:', e);
+      passwordAttributes = {}; // Set safe default
+    }
+    
+    console.log('[DEBUG] Dispatching authCompleted event...');
+
+    // Also dispatch the completion event
     this.dispatchEvent(new CustomEvent(
-        'authCompleted',
-        // TODO(rsorokin): get rid of the stub values.
-        {
-          detail: {
-            email: this.email_ || '',
-            gaiaId: this.gaiaId_ || '',
-            password: this.password_ || '',
-            usingSAML: this.authFlow === AuthFlow.SAML,
-            scrapedSAMLPasswords: scrapedPasswords,
-            publicSAML: this.samlAclUrl_ || false,
-            chooseWhatToSync: this.chooseWhatToSync_,
-            skipForNow: this.skipForNow_,
-            sessionIndex: this.sessionIndex_ || '',
-            trusted: this.trusted_,
-            services: this.services_ || [],
-            servicesProvided: this.servicesProvided_,
-            passwordAttributes: passwordAttributes,
-            syncTrustedVaultKeys: this.syncTrustedVaultKeys_ || {},
-          },
-        }));
-    this.resetStates();
-    this.authCompletedFired_ = true;
+      'authcompleted',
+      {bubbles: true, composed: true, detail: userData}));
+    
+    try {
+      this.dispatchEvent(new CustomEvent(
+          'authCompleted',
+          {
+            detail: {
+              email: this.email_ || '',
+              gaiaId: this.gaiaId_ || '',
+              password: this.password_ || '',
+              usingSAML: this.authFlow === AuthFlow.SAML,
+              scrapedSAMLPasswords: scrapedPasswords,
+              publicSAML: this.samlAclUrl_ || false,
+              chooseWhatToSync: this.chooseWhatToSync_,
+              skipForNow: this.skipForNow_,
+              sessionIndex: this.sessionIndex_ || '',
+              trusted: this.trusted_,
+              services: this.services_ || [],
+              servicesProvided: this.servicesProvided_,
+              passwordAttributes: passwordAttributes,
+              syncTrustedVaultKeys: this.syncTrustedVaultKeys_ || {},
+            },
+          }));
+      
+      console.log('[DEBUG] authCompleted event dispatched successfully');
+      this.resetStates();
+      this.authCompletedFired_ = true;
+      
+    } catch (error) {
+      console.error('[FATAL] Error dispatching authCompleted:', error);
+      // Don't call resetStates() if dispatch failed
+    }
   }
 
   /**

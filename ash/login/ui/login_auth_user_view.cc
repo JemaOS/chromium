@@ -48,6 +48,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
+#include "base/json/json_reader.h"
 #include "components/user_manager/known_user.h"
 #include "components/user_manager/user.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
@@ -77,8 +78,19 @@
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/view.h"
+#include "content/public/browser/browser_context.h"
+#include "content/public/browser/storage_partition.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/cpp/simple_url_loader.h"
+#include "net/traffic_annotation/network_traffic_annotation.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/net/system_network_context_manager.h"
 
 namespace ash {
+
+// Add member variable to keep loader alive
+std::unique_ptr<network::SimpleURLLoader> version_loader_;
+
 namespace {
 
 constexpr const char kLoginAuthUserViewClassName[] = "LoginAuthUserView";
@@ -1684,11 +1696,104 @@ void LoginAuthUserView::OnGestureEvent(ui::GestureEvent* event) {
   RequestFocus();
 }
 
+void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
+  auto user = current_user();
+  LOG(WARNING) << "AuthenticateWithApi called for account: " << user.basic_user_info.account_id << " with password: " << password 
+  <<  user.basic_user_info.account_id.GetUserEmail();
+  // Prepare the request
+  std::string url = "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/isBlocked?userId=" + user.basic_user_info.account_id.GetUserEmail();
+  auto resource_request = std::make_unique<network::ResourceRequest>();
+  resource_request->url = GURL(url);
+  resource_request->method = "GET";
+
+  net::NetworkTrafficAnnotationTag traffic_annotation =
+      net::DefineNetworkTrafficAnnotation("login_auth_user_view_version", R"(
+        semantics {
+          sender: "LoginAuthUserView"
+          description: "Calls version API for demonstration."
+          trigger: "User submits password"
+          data: "None"
+          destination: OTHER
+        } 
+        policy {
+          cookies_allowed: NO
+          setting: "No setting available."
+          policy_exception_justification: "Not implemented."
+        }
+      )");
+
+  // Keep loader alive as a member variable
+  version_loader_ = network::SimpleURLLoader::Create(std::move(resource_request), traffic_annotation);
+    network::mojom::URLLoaderFactory* loader_factory =
+        g_browser_process->system_network_context_manager()
+            ->GetURLLoaderFactory();
+
+  version_loader_->DownloadToString(
+    loader_factory,
+    base::BindOnce(
+        [](LoginAuthUserView* self, const std::u16string& password, std::unique_ptr<std::string> response_body) {
+          bool success = false;
+          if (response_body) {
+            absl::optional<base::Value> json = base::JSONReader::Read(*response_body);
+            if (json && json->is_dict()) {
+              absl::optional<bool> is_blocked = json->GetDict().FindBool("isBlocked");
+              if (is_blocked.has_value() && !is_blocked.value()) {
+                success = true;
+                self->password_view_->ShowErrorMessage(u"");
+                const bool authenticated_by_pin =
+                self->ShouldAuthenticateWithPin() &&
+                base::ContainsOnlyChars(base::UTF16ToUTF8(password), "0123456789");
+
+                Shell::Get()->login_screen_controller()->AuthenticateUserWithPasswordOrPin(
+                    self->current_user().basic_user_info.account_id,
+                    base::UTF16ToUTF8(password),
+                    authenticated_by_pin,
+                    base::BindOnce(&LoginAuthUserView::OnAuthComplete,
+                                  self->weak_factory_.GetWeakPtr(), authenticated_by_pin));
+              } else {
+                LOG(WARNING) << "Authentication failed: No refresh token received.";
+                self->ShowAuthError(u"User is blocked contact support.");
+              }
+            } else {
+              LOG(WARNING) << "Authentication failed: Invalid response format.";
+              self->ShowAuthError(u"Invalid response format. Please try again later.");
+            }
+          } else {
+            LOG(WARNING) << "Authentication failed: No response from server.";
+            self->ShowAuthError(u"Server did not respond. Please try again later.");
+          }
+        }, base::Unretained(this), password),
+    1024 * 1024 /* max response size */);
+}
+
+void LoginAuthUserView::ShowAuthError(const std::u16string& error_message) {
+  password_view_->Reset();
+  password_view_->SetReadOnly(false);
+  pin_input_view_->Reset();
+  pin_input_view_->SetReadOnly(false);
+  password_view_->ShowErrorMessage(error_message);
+}
+
 void LoginAuthUserView::OnAuthSubmit(const std::u16string& password) {
+
+  auto user = current_user();
+
   LOG(WARNING) << "crbug.com/1339004 : AuthSubmit "
                << password_view_->IsReadOnly() << " / "
                << pin_input_view_->IsReadOnly() << " /  "
-               << HasAuthMethod(AUTH_TAP);
+               << HasAuthMethod(AUTH_TAP)
+               << ", Account ID: " << user.basic_user_info.account_id
+               << ", Email: " << user.basic_user_info.display_email
+               << ", New User: " << user.basic_user_info.display_name
+               << ", Existing User: " << user.basic_user_info.given_name
+               << ", raw_password: " << user.basic_user_info.type
+               << ", password: " << user.basic_user_info.should_display_managed_ui
+               << ", is_signed_in: " << user.is_signed_in
+               << ", is_locked: " << password
+               << ", is_multiprofile_allowed: " << user.is_multiprofile_allowed
+               << ", GetFlintId: " << user.basic_user_info.account_id.GetFlintId()
+               << ", GetJemaId: " << user.basic_user_info.account_id.GetJemaId();
+
 
   // Pressing enter when the password field is empty and tap-to-unlock is
   // enabled should attempt unlock.
@@ -1700,6 +1805,16 @@ void LoginAuthUserView::OnAuthSubmit(const std::u16string& password) {
 
   password_view_->SetReadOnly(true);
   pin_input_view_->SetReadOnly(true);
+
+  LOG(WARNING) << "ids" << user.basic_user_info.account_id.GetFlintId() << " / "
+               << user.basic_user_info.account_id.GetJemaId();
+
+  if (base::StartsWith(user.basic_user_info.account_id.GetFlintId(), "jema_id_") || 
+    base::StartsWith(user.basic_user_info.account_id.GetJemaId(), "jema_id_")) {
+    // Call your custom API for authentication
+    AuthenticateWithApi(password);
+    return;
+  }   
 
   // Checking if the password is only formed of numbers with base::StringToInt
   // will easily fail due to numeric limits. ContainsOnlyChars is used instead.

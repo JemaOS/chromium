@@ -18,6 +18,7 @@
 #include "ui/compositor/layer_animation_observer.h"
 #include "ui/views/controls/textfield/textfield_controller.h"
 #include "ui/views/view.h"
+#include "ui/views/controls/label.h"
 
 namespace views {
 class ImageView;
@@ -95,6 +96,12 @@ class ASH_EXPORT LoginPasswordView
   LoginPasswordView& operator=(const LoginPasswordView&) = delete;
 
   ~LoginPasswordView() override;
+
+  // Show an error message below the password field.
+  void ShowErrorMessage(const std::u16string& error_message);
+  void HideErrorMessage();
+
+  raw_ptr<views::Label, ExperimentalAsh> error_label_ = nullptr;
 
   // |on_submit| is called when the user hits enter or has pressed the submit
   // arrow.

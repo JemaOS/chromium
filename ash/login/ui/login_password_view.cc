@@ -51,6 +51,7 @@
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/widget/widget.h"
+#include "ui/views/controls/label.h"
 
 // TODO(jdufault): On two user view the password prompt is visible to
 // accessibility using special navigation keys even though it is invisible. We
@@ -643,6 +644,17 @@ LoginPasswordView::LoginPasswordView()
           },
           this)));
 
+  // Add error label below the password row, as a separate row inside the password_row_container
+  auto* error_label_container = password_row_container->AddChildView(std::make_unique<NonAccessibleView>());
+  error_label_container->SetLayoutManager(std::make_unique<views::BoxLayout>(
+      views::BoxLayout::Orientation::kHorizontal,
+      gfx::Insets::TLBR(4, 0, 0, 0)));
+  error_label_ = error_label_container->AddChildView(std::make_unique<views::Label>());
+  error_label_->SetVisible(false);
+  error_label_->SetEnabledColor(SK_ColorRED);
+  error_label_->SetFontList(error_label_->font_list().DeriveWithSizeDelta(1));
+  error_label_->SetMultiLine(true);
+
   submit_button_ = AddChildView(std::make_unique<ArrowButtonView>(
       base::BindRepeating(&LoginPasswordView::SubmitPassword,
                           base::Unretained(this)),
@@ -665,6 +677,20 @@ LoginPasswordView::LoginPasswordView()
 
   // Make sure the UI start with the correct states.
   UpdateUiState();
+}
+
+void LoginPasswordView::ShowErrorMessage(const std::u16string& error_message) {
+  if (error_label_) {
+    error_label_->SetText(error_message);
+    error_label_->SetVisible(true);
+  }
+}
+
+void LoginPasswordView::HideErrorMessage() {
+  if (error_label_) {
+    error_label_->SetVisible(false);
+    error_label_->SetText(u"");
+  }
 }
 
 LoginPasswordView::~LoginPasswordView() {

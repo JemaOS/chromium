@@ -19,6 +19,9 @@ const char kJemaOSAccountBaseUrl[] = "https://account.jemaos.com";
 
 const char kJemaOSForumURL[] = "https://community.jemaos.com/";
 const char kJemaOSRemoteDesktopURL[] = "https://rdp.jemaos.com/";
+const char kMiroURL[] = "https://miro.com/app/";
+const char kGoogleMeetURL[] = "https://meet.google.com/";
+const char kGmailJemaURL[] = "https://mail.google.com/";
 const char kJemaOSHelpURL[] = "https://jemaos.com/help/";
 const char kJemaOSReleaseNotesURL[] = "https://jemaos.com/release";
 const char kMultiDeviceLearnMoreURL[] = "https://jemaos.com/docs";
@@ -65,10 +68,13 @@ const char kDefaultTestUrl[] = "http://store.jemaos.io/204";
 const char kJemaOSHomePageUrl[] = "https://jemaos.io";
 
 const char kJemaOSStoreBaseUrl[] = "https://store.jemaos.io";
-const char kJemaOSAccountBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kJemaOSAccountBaseUrl[] = "https://account.jemaos.io";
 
 const char kJemaOSForumURL[] = "https://community.jemaos.io/";
 const char kJemaOSRemoteDesktopURL[] = "https://rdp.jemaos.io/";
+const char kMiroURL[] = "https://miro.com/app/";
+const char kGoogleMeetURL[] = "https://meet.google.com/";
+const char kGmailJemaURL[] = "https://mail.google.com/";
 const char kJemaOSHelpURL[] = "https://jemaos.io/help/";
 const char kJemaOSReleaseNotesURL[] = "https://jemaos.io/release";
 const char kMultiDeviceLearnMoreURL[] = "https://jemaos.io/docs";
@@ -81,9 +87,9 @@ const char kJemaNewGestureHelpURL[] = "https://jemaos.io/docs/manual/customize-s
 const char kSmbSharesLearnMoreURL[] = "https://jemaos.io/docs";
 const char kCupsPrintLearnMoreURL[] = "https://jemaos.io/docs";
 const char kNaturalScrollHelpURL[] = "https://jemaos.io/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
-const char kJemaOSAccountURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
-const char kJemaOSAccountChooserURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
-const char kJemaOSPasswordManagerURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kJemaOSAccountURL[] = "https://account.jemaos.io";
+const char kJemaOSAccountChooserURL[] = "https://account.jemaos.io";
+const char kJemaOSPasswordManagerURL[] = "https://account.jemaos.io";
 
 const char kGoogleDriveBuyStorageUrl[] = "https://jemaos.io/docs/knowledge-base";
 const char kGoogleDriveOverviewUrl[] = "https://jemaos.io/docs/knowledge-base";

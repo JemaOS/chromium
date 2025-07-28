@@ -39,6 +39,9 @@
 
 #include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.h"
 #include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.h"
+#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/miro.h"
+#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/meet.h"
+#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/gmail_jema.h"
 
 namespace web_app {
 namespace {
@@ -115,6 +118,9 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps() {
   return {
     GetConfigForJemaCommunity(),
     GetConfigForJemaRemoteDesktop(),
+    GetConfigForMiro(),
+    GetConfigForGoogleMeet(),
+    GetConfigForGmailJema(),
   };
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }

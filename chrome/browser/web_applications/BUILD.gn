@@ -461,6 +461,12 @@ source_set("web_applications") {
     "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.h",
     "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.cc",
     "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.h",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/miro.cc",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/miro.h",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/meet.cc",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/meet.h",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/gmail_jema.cc",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/gmail_jema.h",
   ]
 
   if (is_win) {

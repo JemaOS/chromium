@@ -1,8 +1,8 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2024 The Jema Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/figma.h"
 
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
@@ -15,26 +15,20 @@
 
 namespace web_app {
 
-ExternalInstallOptions GetConfigForGmail() {
+ExternalInstallOptions GetConfigForFigma() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL(
-          "https://mail.google.com/mail/installwebapp?usp=chrome_default"),
+      /*install_url=*/GURL("https://www.figma.com/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 
   options.user_type_allowlist = {"unmanaged", "managed", "child"};
-  options.uninstall_and_replace.push_back("pjkljhegncpnkpknbcohdijeoejaedia");
-  
-  // Install for all users, not just new ones
   options.only_for_new_users = false;
   options.override_previous_user_uninstall = true;
-  
-  // Ensure Gmail appears in applications menu and is searchable
   options.add_to_applications_menu = true;
   options.add_to_search = true;
   options.add_to_management = true;
   options.add_to_desktop = false;
-  options.add_to_quick_launch_bar = true;  // Gmail can be pinned to shelf
+  options.add_to_quick_launch_bar = false;  // No shelf pinning
 
   return options;
 }

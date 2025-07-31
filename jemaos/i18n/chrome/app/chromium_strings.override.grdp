@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- override chrome/app/chromium_strings.grd -->
 <grit-part>
+  <!-- Change browser name from Chromium to thot -->
+  <message name="IDS_PRODUCT_NAME" desc="The Chrome application name">
+    Thot
+  </message>
+  <message name="IDS_SHORT_PRODUCT_NAME" desc="The Chrome application short name.">
+    Thot
+  </message>
+  <message name="IDS_HELPER_NAME" desc="The helper application's name.">
+    Thot Helper
+  </message>
+  
   <if expr="chromeos_ash">
     <if expr="openjema">
       <message name="IDS_PRODUCT_OS_NAME" desc="The Chrome OS application name">

@@ -785,6 +785,15 @@ void PreinstalledWebAppManager::PostProcessConfigs(
 
   // TODO(crbug.com/1175196): Move this constant into some shared constants.h
   // file.
+  
+  // Force enable preinstalled apps for JemaOS to ensure PWAs install at first startup
+#if defined(OPENJEMA_BUILD)
+  // Ensure the preference is properly set for JemaOS
+  if (profile_->GetPrefs()->GetString(prefs::kPreinstalledApps).empty()) {
+    profile_->GetPrefs()->SetString(prefs::kPreinstalledApps, "install");
+  }
+#endif
+  
   bool preinstalled_apps_enabled_in_prefs =
       profile_->GetPrefs()->GetString(prefs::kPreinstalledApps) == "install";
   bool is_new_user = IsNewUser();

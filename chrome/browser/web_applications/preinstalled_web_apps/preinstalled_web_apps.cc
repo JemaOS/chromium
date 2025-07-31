@@ -13,7 +13,7 @@
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/common/chrome_switches.h"
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+// Include Google app headers for all builds (JemaOS needs them too)
 #include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_docs.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_drive.h"
@@ -28,20 +28,17 @@
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_calendar.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_chat.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_meet.h"
-#include "chrome/browser/web_applications/preinstalled_web_apps/messages_dogfood.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/common/extensions/extension_constants.h"
 #include "extensions/common/constants.h"
 #include "google_apis/gaia/gaia_auth_util.h"
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#include "chrome/browser/web_applications/preinstalled_web_apps/messages_dogfood.h"
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.h"
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.h"
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/miro.h"
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/meet.h"
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/gmail_jema.h"
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
 
 namespace web_app {
 namespace {
@@ -49,17 +46,8 @@ namespace {
 std::vector<ExternalInstallOptions>* g_preinstalled_app_data_for_testing =
     nullptr;
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
-#if BUILDFLAG(IS_CHROMEOS)
-bool IsGoogleInternalAccount() {
-  Profile* profile = ProfileManager::GetActiveUserProfile();
-  if (!profile)
-    return false;
-  return gaia::IsGoogleInternalAccountEmail(profile->GetProfileUserName());
-}
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
+// Make GetChromeBrandedApps available for all builds (JemaOS needs it)
 std::vector<ExternalInstallOptions> GetChromeBrandedApps() {
   // TODO(crbug.com/1104692): Replace these C++ configs with JSON configs like
   // those seen in: chrome/test/data/web_app_default_apps/good_json
@@ -79,7 +67,7 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps() {
       GetConfigForGoogleSlides(),
       GetConfigForYouTube(),
 #if BUILDFLAG(IS_CHROMEOS)
-      GetConfigForCalculator(),
+      GetConfigForCalculator(), // Works offline once installed as PWA
       GetConfigForGoogleCalendar(),
       GetConfigForGoogleChat(),
       GetConfigForGoogleMeet(),
@@ -87,7 +75,6 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps() {
       // clang-format on
   };
 }
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 }  // namespace
 
@@ -105,6 +92,13 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps() {
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #if BUILDFLAG(IS_CHROMEOS)
+  bool IsGoogleInternalAccount() {
+    Profile* profile = ProfileManager::GetActiveUserProfile();
+    if (!profile)
+      return false;
+    return gaia::IsGoogleInternalAccountEmail(profile->GetProfileUserName());
+  }
+  
   // TODO(crbug/1346167): replace with config in admin console.
   if (IsGoogleInternalAccount()) {
     std::vector<ExternalInstallOptions> apps = GetChromeBrandedApps();
@@ -115,13 +109,8 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps() {
 
   return GetChromeBrandedApps();
 #else
-  return {
-    GetConfigForJemaCommunity(),
-    GetConfigForJemaRemoteDesktop(),
-    GetConfigForMiro(),
-    GetConfigForGoogleMeet(),
-    GetConfigForGmailJema(),
-  };
+  // Enable Google PWAs for JemaOS even without Chrome branding
+  return GetChromeBrandedApps();
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }
 

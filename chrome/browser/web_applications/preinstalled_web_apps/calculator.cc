@@ -11,7 +11,6 @@
 #include "chrome/browser/web_applications/preinstalled_web_apps/preinstalled_web_app_definition_utils.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
-#include "chrome/grit/preinstalled_web_apps_resources.h"
 
 namespace web_app {
 
@@ -24,6 +23,8 @@ ExternalInstallOptions GetConfigForCalculator() {
   options.user_type_allowlist = {"unmanaged", "managed", "child"};
   options.uninstall_and_replace.push_back("joodangkbfjnajiiifokapkpmhfnpleo");
   options.expected_app_id = kCalculatorAppId;
+  
+  // Let JemaOS fetch real icons from website automatically (like manual install)
   return options;
 }
 

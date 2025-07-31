@@ -480,6 +480,20 @@ source_set("web_applications") {
       "preinstalled_web_apps/google_chat.h",
       "preinstalled_web_apps/google_meet.cc",
       "preinstalled_web_apps/google_meet.h",
+      
+      # Additional PWAs for JemaOS (available in menu, not pinned to shelf)
+      "preinstalled_web_apps/whatsapp.cc",
+      "preinstalled_web_apps/whatsapp.h",
+      "preinstalled_web_apps/teams.cc",
+      "preinstalled_web_apps/teams.h",
+      "preinstalled_web_apps/office365.cc",
+      "preinstalled_web_apps/office365.h",
+      "preinstalled_web_apps/miro.cc",
+      "preinstalled_web_apps/miro.h",
+      "preinstalled_web_apps/figma.cc",
+      "preinstalled_web_apps/figma.h",
+      "preinstalled_web_apps/photopea.cc",
+      "preinstalled_web_apps/photopea.h",
     ]
   }
 

@@ -4,6 +4,7 @@
 
 import("//build/config/chromeos/ui_mode.gni")
 import("//chrome/browser/buildflags.gni")
+import("//jemaos/build/config/buildflags.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
 source_set("web_applications") {
@@ -456,18 +457,32 @@ source_set("web_applications") {
     deps += [ "//chrome/browser/resources:preinstalled_web_apps_resources" ]
   }
 
-  sources += [
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.cc",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.h",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.cc",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.h",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/miro.cc",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/miro.h",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/meet.cc",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/meet.h",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/gmail_jema.cc",
-    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/gmail_jema.h",
-  ]
+  # JemaOS: Enable Google PWAs even without Chrome branding
+  if (is_openjema) {
+    sources += [
+      "preinstalled_web_apps/gmail.cc",
+      "preinstalled_web_apps/gmail.h",
+      "preinstalled_web_apps/google_docs.cc",
+      "preinstalled_web_apps/google_docs.h",
+      "preinstalled_web_apps/google_drive.cc",
+      "preinstalled_web_apps/google_drive.h",
+      "preinstalled_web_apps/google_sheets.cc",
+      "preinstalled_web_apps/google_sheets.h",
+      "preinstalled_web_apps/google_slides.cc",
+      "preinstalled_web_apps/google_slides.h",
+      "preinstalled_web_apps/youtube.cc",
+      "preinstalled_web_apps/youtube.h",
+      "preinstalled_web_apps/calculator.cc",
+      "preinstalled_web_apps/calculator.h",
+      "preinstalled_web_apps/google_calendar.cc",
+      "preinstalled_web_apps/google_calendar.h",
+      "preinstalled_web_apps/google_chat.cc",
+      "preinstalled_web_apps/google_chat.h",
+      "preinstalled_web_apps/google_meet.cc",
+      "preinstalled_web_apps/google_meet.h",
+    ]
+  }
+
 
   if (is_win) {
     deps += [

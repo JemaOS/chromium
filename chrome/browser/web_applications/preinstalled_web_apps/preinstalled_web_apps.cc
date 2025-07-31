@@ -21,6 +21,14 @@
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_slides.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/youtube.h"
 
+// Include additional PWAs for JemaOS (available in menu, not pinned to shelf)
+#include "chrome/browser/web_applications/preinstalled_web_apps/whatsapp.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/teams.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/office365.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/miro.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/figma.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/photopea.h"
+
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -69,8 +77,15 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps() {
 #if BUILDFLAG(IS_CHROMEOS)
       GetConfigForCalculator(), // Works offline once installed as PWA
       GetConfigForGoogleCalendar(),
-      GetConfigForGoogleChat(),
       GetConfigForGoogleMeet(),
+      
+      // Additional PWAs for JemaOS (available in menu, not pinned to shelf)
+      GetConfigForWhatsApp(),
+      GetConfigForTeams(),
+      GetConfigForOffice365(),
+      GetConfigForMiro(),
+      GetConfigForFigma(),
+      GetConfigForPhotopea(),
 #endif  // BUILDFLAG(IS_CHROMEOS)
       // clang-format on
   };
@@ -79,8 +94,14 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps() {
 }  // namespace
 
 bool PreinstalledWebAppsDisabled() {
+#if defined(OPENJEMA_BUILD)
+  // For JemaOS, ignore --disable-default-apps flag to ensure PWAs are always installed
+  // This prevents test flags or development flags from blocking PWA installation in production
+  return false;
+#else
   return base::CommandLine::ForCurrentProcess()->HasSwitch(
       ::switches::kDisableDefaultApps);
+#endif
 }
 
 std::vector<ExternalInstallOptions> GetPreinstalledWebApps() {

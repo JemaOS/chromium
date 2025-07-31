@@ -5,7 +5,7 @@
 <translation id="275588974610408078">Խափանումների մասին հաղորդումը մատչելի չէ Chromium-ում:</translation>
 <translation id="3064346599913645280">Ցուցադրվող Chromium էջն անվտանգ է</translation>
 <translation id="358997566136285270">Chromium-ի պատկերանշանը</translation>
-<translation id="4365115785552740256">Chromium-ը ստեղծվել է շնորհիվ <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> բաց կոդով նախագծի և այլ <ph name="BEGIN_LINK_OSS" />բաց կոդով ծրագրակազմերի<ph name="END_LINK_OSS" />:</translation>
+<translation id="4365115785552740256">Thot-ը ստեղծվել է շնորհիվ <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> բաց կոդով նախագծի և այլ <ph name="BEGIN_LINK_OSS" />բաց կոդով ծրագրակազմերի<ph name="END_LINK_OSS" />:</translation>
 <translation id="4559775032954821361">Անցեք
           Chromium-ի ընտրացանկ &gt;
           <ph name="SETTINGS_TITLE" />
@@ -29,7 +29,7 @@
           և համոզվեք, որ ընտրված է «առանց պրոքսի-սերվերի» կամ «անմիջական» կազմաձևումը:</translation>
 <translation id="6549378540556750549">Chromium-ը նաև աշխատում է այլ <ph name="BEGIN_LINK_OSS" />բաց կոդով ծրագրակազմի<ph name="END_LINK_OSS" /> շնորհիվ։</translation>
 <translation id="6613594504749178791">Փոփոխություններն ուժի մեջ կմտնեն Chromium-ը հաջորդ անգամ գործարկելիս:</translation>
-<translation id="7681937895330411637">Chromium-ը ստեղծվել է <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" />-ի բաց կոդով նախագծի հիման վրա։</translation>
+<translation id="7681937895330411637">Thot-ը ստեղծվել է <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" />-ի բաց կոդով նախագծի հիման վրա։</translation>
 <translation id="7861509383340276692">Անցեք
           Chromium ընտրացանկ &gt;
           <ph name="SETTINGS_TITLE" />

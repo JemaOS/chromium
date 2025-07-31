@@ -475,7 +475,6 @@ void AddClearBrowsingDataStrings(content::WebUIDataSource* html_source,
      IDS_CLEAR_BROWSING_DATA_PASSWORDS_NOTICE_TITLE},
     {"passwordsDeletionDialogOK", IDS_CLEAR_BROWSING_DATA_PASSWORDS_NOTICE_OK},
     {"notificationWarning", IDS_SETTINGS_NOTIFICATION_WARNING},
-    {"clearBrowsingHistorySummarySignedIn", IDS_SETTINGS_CLEAR_BROWSING_HISTORY_SUMMARY_SIGNED_IN},
   };
 
   html_source->AddString(
@@ -501,7 +500,9 @@ void AddClearBrowsingDataStrings(content::WebUIDataSource* html_source,
           IDS_CLEAR_BROWSING_DATA_PASSWORDS_NOTICE,
           l10n_util::GetStringUTF16(IDS_PASSWORDS_WEB_LINK)));
 
-  html_source->AddLocalizedStrings(kLocalizedStrings);
+ for (const auto& str : kLocalizedStrings) {
+   html_source->AddLocalizedString(str.name, str.id);
+ }
 }
 
 #if !BUILDFLAG(IS_CHROMEOS)

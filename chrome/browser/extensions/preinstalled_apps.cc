@@ -74,6 +74,14 @@ void Provider::InitProfileState() {
   //   usually set in the master_preferences file.
   // - If they have already been installed, don't reinstall them.
 
+  // Force enable preinstalled apps for JemaOS to ensure PWAs install at first startup
+#if defined(OPENJEMA_BUILD)
+  // Ensure the preference is properly set for JemaOS
+  if (profile_->GetPrefs()->GetString(prefs::kPreinstalledApps).empty()) {
+    profile_->GetPrefs()->SetString(prefs::kPreinstalledApps, "install");
+  }
+#endif
+
   preinstalled_apps_enabled_ =
       IsLocaleSupported() &&
       profile_->GetPrefs()->GetString(prefs::kPreinstalledApps) == "install";

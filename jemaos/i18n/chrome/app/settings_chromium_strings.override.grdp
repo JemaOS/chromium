@@ -1,28 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- override chrome/app/settings_chromium_strings.grdp, included from chromium_strings.grd -->
+<!-- override chrome/app/settings_chromium_strings.grdp -->
 <grit-part>
+  <!-- About Page -->
+  <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">
+    About Thot
+  </message>
+  
+  <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">
+    Get help with Thot
+  </message>
+  
   <if expr="chromeos_ash">
-    <if expr="openjema">
-      <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">
-        About JemaOS
-      </message>
-      <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings, which gives information about the current Chrome OS version.">
-        JemaOS version
-      </message>
-      <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">
-        Get help with JemaOS
-      </message>
-    </if>
-    <if expr="not openjema">
-      <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">
-        About JemaOS
-      </message>
-      <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings, which gives information about the current Chrome OS version.">
-        JemaOS version
-      </message>
-      <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">
-        Get help with JemaOS
-      </message>
-    </if>
+    <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About ChromiumOS page.">
+      About JemaOS
+    </message>
+    <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">
+      Get help with Thot
+    </message>
   </if>
 </grit-part>

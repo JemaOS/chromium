@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- override chrome/app/chromium_strings.grd -->
 <grit-part>
-  <!-- Change browser name from Chromium to thot -->
+  <!-- Change browser name from Chromium to Thot -->
   <message name="IDS_PRODUCT_NAME" desc="The Chrome application name">
     Thot
   </message>
@@ -39,11 +39,15 @@
   <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
     Help make Chromium better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Technology
   </message>
+  <!-- About menu and version info -->
+  <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
+    About &amp;Thot
+  </message>
   <message name="IDS_ABOUT_VERSION_COMPANY_NAME" desc="Company name on the about pages">
-    Jema Technology, The Chromium Authors
+    Jema Technology, The Jema Authors
   </message>
   <message name="IDS_ABOUT_VERSION_COPYRIGHT" desc="Copyright information on the about pages">
-    Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Jema Technology, The Chromium Authors. All rights reserved.
+    Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Jema Technology, The Jema Authors. All rights reserved.
   </message>
   <if expr="chromeos_ash">
     <!-- Strings for the OOBE user selection screen -->

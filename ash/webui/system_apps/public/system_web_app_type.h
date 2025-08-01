@@ -116,6 +116,7 @@ enum class SystemWebAppType {
   FACE_ML = 24,
 
   JEMA_ASSISTANT = 25,
+
   // When adding a new System App, remember to:
   //
   // 1. Add a corresponding histogram suffix in WebAppSystemAppInternalName

@@ -14,7 +14,6 @@
 #include "chrome/common/chrome_switches.h"
 
 // Include Google app headers for all builds (JemaOS needs them too)
-#include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_docs.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_drive.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_sheets.h"
@@ -24,10 +23,9 @@
 // Include additional PWAs for JemaOS (available in menu, not pinned to shelf)
 #include "chrome/browser/web_applications/preinstalled_web_apps/whatsapp.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/teams.h"
-#include "chrome/browser/web_applications/preinstalled_web_apps/office365.h"
-#include "chrome/browser/web_applications/preinstalled_web_apps/miro.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/figma.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/photopea.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/text.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/profiles/profile.h"
@@ -68,7 +66,6 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps() {
   //   installers on every desktop platform.
   return {
       // clang-format off
-      GetConfigForGmail(),
       GetConfigForGoogleDocs(),
       GetConfigForGoogleDrive(),
       GetConfigForGoogleSheets(),
@@ -82,10 +79,9 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps() {
       // Additional PWAs for JemaOS (available in menu, not pinned to shelf)
       GetConfigForWhatsApp(),
       GetConfigForTeams(),
-      GetConfigForOffice365(),
-      GetConfigForMiro(),
       GetConfigForFigma(),
       GetConfigForPhotopea(),
+      GetConfigForText(),
 #endif  // BUILDFLAG(IS_CHROMEOS)
       // clang-format on
   };
@@ -113,7 +109,7 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps() {
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #if BUILDFLAG(IS_CHROMEOS)
-  bool IsGoogleInternalAccount() {
+  static bool IsGoogleInternalAccount() {
     Profile* profile = ProfileManager::GetActiveUserProfile();
     if (!profile)
       return false;

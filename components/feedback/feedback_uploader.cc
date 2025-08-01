@@ -4,6 +4,7 @@
 
 #include "components/feedback/feedback_uploader.h"
 
+#include "base/logging.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -62,9 +63,11 @@ base::TimeDelta g_dispatching_wait_delay = base::Seconds(4);
 GURL GetFeedbackPostGURL() {
   const base::CommandLine& command_line =
       *base::CommandLine::ForCurrentProcess();
-  return GURL(command_line.HasSwitch(switches::kFeedbackServer)
-                  ? command_line.GetSwitchValueASCII(switches::kFeedbackServer)
-                  : jemaos::constants::kJemaOSFeedbackPostUrl);
+  std::string feedback_post_url = command_line.HasSwitch(switches::kFeedbackServer)
+                ? command_line.GetSwitchValueASCII(switches::kFeedbackServer)
+                : jemaos::constants::kJemaOSFeedbackPostUrl;
+  VLOG(1) << "[JEMA URL SERVICE] FeedbackUploader: Using feedback post URL: " << feedback_post_url;
+  return GURL(feedback_post_url);
 }
 
 // Creates a new SingleThreadTaskRunner that is used to run feedback blocking

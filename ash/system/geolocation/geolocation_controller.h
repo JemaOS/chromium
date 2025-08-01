@@ -121,6 +121,14 @@ class ASH_EXPORT GeolocationController
   void SetClockForTesting(base::Clock* clock);
 
   void SetCurrentTimezoneIdForTesting(const std::u16string& timezone_id);
+  scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory_;
+  void RequestGeolocationUpdate();
+
+  std::unique_ptr<network::SimpleURLLoader> ip_loader_;
+  void OnIpResolved(std::unique_ptr<std::string> response_body);
+  base::WeakPtrFactory<GeolocationController> weak_factory_{this};
+  std::unique_ptr<network::SimpleURLLoader> geo_loader_;
+  void OnGeoResolved(std::unique_ptr<std::string> response_body);
 
  protected:
   // The callback of geolocation request via `provider_`. Once receiving a
@@ -135,7 +143,7 @@ class ASH_EXPORT GeolocationController
   // Virtual so that it can be overridden by a fake implementation in unit tests
   // that doesn't request actual geopositions.
   virtual void RequestGeoposition();
-
+  
  private:
   // Gets now time from the `clock_` or `base::Time::Now()` if `clock_` does
   // not exist.

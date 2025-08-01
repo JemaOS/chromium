@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/logging.h"
 #include "base/files/file_path.h"
 #include "base/memory/ptr_util.h"
 #include "base/ranges/algorithm.h"
@@ -17,6 +18,7 @@
 #include "components/feedback/proto/extension.pb.h"
 #include "components/feedback/proto/math.pb.h"
 #include "google_apis/gaia/gaia_auth_util.h"
+#include "components/user_manager/user_manager.h"
 
 namespace {
 
@@ -150,9 +152,16 @@ void FeedbackCommon::PrepareReport(
                                                : default_product_id);
 
   userfeedback::CommonData* common_data = feedback_data->mutable_common_data();
+  const user_manager::User* user = user_manager::UserManager::Get()->GetActiveUser();
+  if (user) {
+    LOG(WARNING) << "User email: " << user->GetAccountId();
+    common_data->set_gaia_id(user->GetAccountId().GetJemaId());
+    common_data->set_user_email(user->GetAccountId().GetUserEmail());
+  } else {
+    common_data->set_gaia_id(gaia_id());
+    common_data->set_user_email(user_email());
+  }
   // We're not using gaia ids, we're using the e-mail field instead.
-  common_data->set_gaia_id(gaia_id());
-  common_data->set_user_email(user_email());
   common_data->set_description(description());
   common_data->set_source_description_language(locale());
   common_data->set_unique_report_identifier(unique_id());

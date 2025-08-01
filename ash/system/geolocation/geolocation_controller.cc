@@ -14,11 +14,18 @@
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/time/clock.h"
+#include "base/json/json_reader.h"
 #include "chromeos/ash/components/geolocation/geoposition.h"
 #include "chromeos/ash/components/geolocation/simple_geolocation_provider.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "third_party/icu/source/i18n/astro.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "net/traffic_annotation/network_traffic_annotation.h"
+#include "services/network/public/cpp/simple_url_loader.h"
+#include "chromeos/ash/components/settings/timezone_settings.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/net/system_network_context_manager.h"
 
 namespace ash {
 
@@ -37,6 +44,13 @@ constexpr base::TimeDelta kNextRequestDelayAfterSuccess = base::Days(1);
 // Default sunset time at 6:00 PM as an offset from 00:00.
 constexpr int kDefaultSunsetTimeOffsetMinutes = 18 * 60;
 
+const char kDefaultGeoAndTimezoneProviderUrl[] =
+    "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/geo";
+
+const char kDefaultIPProviderUrl[] =
+    "https://api.ipify.org?format=json";
+
+
 // Default sunrise time at 6:00 AM as an offset from 00:00.
 constexpr int kDefaultSunriseTimeOffsetMinutes = 6 * 60;
 
@@ -44,7 +58,8 @@ constexpr int kDefaultSunriseTimeOffsetMinutes = 6 * 60;
 
 GeolocationController::GeolocationController(
     scoped_refptr<network::SharedURLLoaderFactory> factory)
-    : factory_(factory.get()),
+    : shared_url_loader_factory_(factory),
+      factory_(factory.get()),
       provider_(this,
                 std::move(factory),
                 SimpleGeolocationProvider::DefaultGeolocationProviderURL()),
@@ -132,6 +147,166 @@ void GeolocationController::OnActiveUserPrefServiceChanged(
 
   active_user_pref_service_ = pref_service;
   LoadCachedGeopositionIfNeeded();
+}
+
+void GeolocationController::RequestGeolocationUpdate() {
+  LOG(ERROR)
+        << "RequestGeolocationUpdate: Starting IP → Geo resolution";
+
+  if (!shared_url_loader_factory_) {
+        LOG(ERROR) << "shared_url_loader_factory_ is null!";
+        return;
+  }
+  if (!active_user_pref_service_) {
+      LOG(ERROR) << "active_user_pref_service_ is null!";
+      return;
+  }
+
+  auto request = std::make_unique<network::ResourceRequest>();
+  request->url = GURL(kDefaultIPProviderUrl);
+
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+      net::DefineNetworkTrafficAnnotation("timezone_resolver_ip_request", R"(
+            semantics {
+              sender: "TimezoneResolver"
+              description:
+                "This request resolves the current IP address to a "
+                "geolocation and timezone."
+              trigger:
+                "Triggered by the TimezoneResolver component to determine "
+                "the current timezone based on the device's IP address."
+              data: "IP address in JSON format."
+              destination: GOOGLE_OWNED_SERVICE
+            }
+            policy {
+              cookies_allowed: NO
+              setting: "This request is made automatically by the system and "
+                       "does not have a user-configurable setting."
+            })");
+
+  ip_loader_ = network::SimpleURLLoader::Create(
+      std::move(request),
+      traffic_annotation);
+  network::mojom::URLLoaderFactory* loader_factory =
+        g_browser_process->system_network_context_manager()
+            ->GetURLLoaderFactory();
+
+  ip_loader_->DownloadToString(
+      loader_factory,
+      base::BindOnce(&GeolocationController::OnIpResolved, weak_factory_.GetWeakPtr()),
+      1024);
+}
+
+void GeolocationController::OnIpResolved(
+    std::unique_ptr<std::string> response_body) {
+  LOG(ERROR)
+        << "GeolocationController: OnIpResolved";
+  if (!response_body) {
+    LOG(ERROR) << "GeolocationController: Failed to fetch public IP.";
+    return;
+  }
+
+  absl::optional<base::Value> parsed = base::JSONReader::Read(*response_body);
+  if (!parsed || !parsed->is_dict()) {
+    LOG(ERROR) << "GeolocationController: Failed to parse IP JSON.";
+    return;
+  }
+
+  const std::string* ip = parsed->GetDict().FindString("ip");
+  if (!ip) {
+    LOG(ERROR) << "GeolocationController: Public IP not found in response.";
+    return;
+  }
+
+  LOG(ERROR) << "GeolocationController: Fetched IP: " << *ip;
+
+  auto request = std::make_unique<network::ResourceRequest>();
+  request->url = GURL(kDefaultGeoAndTimezoneProviderUrl);
+  request->method = "POST";
+  request->headers.SetHeader("Content-Type", "application/json");
+
+  std::string json_body = R"({"ip":")" + *ip + R"("})";
+
+  net::NetworkTrafficAnnotationTag geo_traffic_annotation =
+      net::DefineNetworkTrafficAnnotation("timezone_resolver_geo_request", R"(
+            semantics {
+              sender: "TimezoneResolver"
+              description:
+                "This request sends the resolved IP address to a custom "
+                "geolocation API to determine the device's location and timezone."
+              trigger:
+                "Triggered after fetching the public IP address."
+              data: "IP address in JSON format."
+              destination: OTHER
+            }
+            policy {
+              cookies_allowed: NO
+              setting: "This request is made automatically by the system and "
+                       "does not have a user-configurable setting."
+            })");
+
+  geo_loader_ = network::SimpleURLLoader::Create(
+      std::move(request),
+      geo_traffic_annotation);
+  geo_loader_->AttachStringForUpload(json_body, "application/json");
+  network::mojom::URLLoaderFactory* loader_factory =
+        g_browser_process->system_network_context_manager()
+            ->GetURLLoaderFactory();
+  geo_loader_->DownloadToString(
+      loader_factory,
+      base::BindOnce(&GeolocationController::OnGeoResolved, weak_factory_.GetWeakPtr()),
+      1024 * 10);
+}
+
+// Handles the response from the custom geolocation API.
+void GeolocationController::OnGeoResolved(std::unique_ptr<std::string> response_body) {
+  LOG(ERROR) << "OnGeoResolved";
+  if (!response_body) {
+    LOG(ERROR) << "No response from custom geolocation API.";
+    return;
+  }
+
+  absl::optional<base::Value> parsed = base::JSONReader::Read(*response_body);
+  if (!parsed || !parsed->is_dict()) {
+    LOG(ERROR) << "Invalid JSON from geolocation API.";
+    return;
+  }
+
+  const std::string* timezone = parsed->GetDict().FindString("timezone");
+  if (!timezone || timezone->empty()) {
+    LOG(ERROR) << "Timezone not found in geolocation response.";
+    return;
+  }
+
+  LOG(ERROR) << "timezone: " << *timezone;
+
+  const absl::optional<double> latitude = parsed->GetDict().FindDouble("latitude");
+  const absl::optional<double> longitude = parsed->GetDict().FindDouble("longitude");
+  if (!latitude.has_value() || !longitude.has_value()) {
+      LOG(ERROR) << "Latitude or longitude missing in geolocation response.";
+      return;
+  }
+  geoposition_ = std::make_unique<SimpleGeoposition>();
+  geoposition_->latitude = latitude.value();
+  geoposition_->longitude = longitude.value();
+  is_current_geoposition_from_cache_ = false;
+
+  LOG(ERROR) << "Timezone resolved: " << *timezone
+            << ", Latitude: " << geoposition_->latitude
+            << ", Longitude: " << geoposition_->longitude;
+
+  system::TimezoneSettings::GetInstance()->SetTimezoneFromID(base::UTF8ToUTF16(*timezone));
+
+  current_timezone_id_ = base::UTF8ToUTF16(*timezone);
+  
+  Geoposition position;
+  position.latitude = geoposition_->latitude;
+  position.longitude = geoposition_->longitude;
+  position.status = Geoposition::STATUS_OK;
+  position.error_message.clear();
+
+  OnGeoposition(position, /*server_error=*/false, /*elapsed=*/base::Seconds(0));
+
 }
 
 // static
@@ -275,7 +450,9 @@ void GeolocationController::LoadCachedGeopositionIfNeeded() {
     LOG(ERROR)
         << "No valid current geoposition and no valid cached geoposition"
            " are available. Will use default times for sunset / sunrise.";
-    geoposition_.reset();
+    VLOG(1) << "GeolocationController: Fetched IP: "
+            << "No cached geoposition available. Requesting a new one.";
+    RequestGeolocationUpdate();
     return;
   }
 

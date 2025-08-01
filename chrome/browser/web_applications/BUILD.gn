@@ -484,12 +484,8 @@ source_set("web_applications") {
       "preinstalled_web_apps/whatsapp.h",
       "preinstalled_web_apps/teams.cc",
       "preinstalled_web_apps/teams.h",
-      "preinstalled_web_apps/figma.cc",
-      "preinstalled_web_apps/figma.h",
       "preinstalled_web_apps/photopea.cc",
       "preinstalled_web_apps/photopea.h",
-      "preinstalled_web_apps/text.cc",
-      "preinstalled_web_apps/text.h",
     ]
   }
 

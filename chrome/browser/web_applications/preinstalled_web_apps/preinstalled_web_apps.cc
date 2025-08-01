@@ -23,9 +23,7 @@
 // Include additional PWAs for JemaOS (available in menu, not pinned to shelf)
 #include "chrome/browser/web_applications/preinstalled_web_apps/whatsapp.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/teams.h"
-#include "chrome/browser/web_applications/preinstalled_web_apps/figma.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/photopea.h"
-#include "chrome/browser/web_applications/preinstalled_web_apps/text.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/profiles/profile.h"
@@ -79,9 +77,7 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps() {
       // Additional PWAs for JemaOS (available in menu, not pinned to shelf)
       GetConfigForWhatsApp(),
       GetConfigForTeams(),
-      GetConfigForFigma(),
       GetConfigForPhotopea(),
-      GetConfigForText(),
 #endif  // BUILDFLAG(IS_CHROMEOS)
       // clang-format on
   };

@@ -1671,11 +1671,7 @@ BASE_FEATURE(kPhoneHubCameraRoll,
 
 BASE_FEATURE(kJemaAssistant,
              "JemaAssistant",
-#if BUILDFLAG(IS_OPENJEMA)
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#else
              base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
 
 // Enable PhoneHub features setup error handling, which handles different
 // setup response from remote phone device.
@@ -3146,8 +3142,8 @@ bool IsPhoneHubCameraRollEnabled() {
 }
 
 bool IsJemaAssistantEnabled() {
-  return base::FeatureList::IsEnabled(kJemaAssistant) &&
-         jemaos::switches::IsJemaCustomEnabled();
+  // Jema AI is permanently disabled
+  return false;
 }
 
 bool IsPhoneHubMonochromeNotificationIconsEnabled() {

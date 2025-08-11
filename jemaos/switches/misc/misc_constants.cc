@@ -32,7 +32,7 @@ const char kJemaOSWallpapersBasePath[] = "/usr/share/chromeos-assets/jemaos_wall
 const char kJemaOSBackupScriptPath[] = "/usr/bin/jemaos-backup";
 
 // Path to the restore script
-const char kJemaOSRestoreScriptPath[] = "/usr/bin/jemaos-backup";
+const char kJemaOSRestoreScriptPath[] = "/usr/bin/jemaos-restore";
 
 }  // namespace constants
 }  // namespace jemaos

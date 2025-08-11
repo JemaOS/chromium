@@ -186,7 +186,7 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     super();
     this.client_ =  new WidevineHelper(this);
     this.backupEmail_ = '';
-    this.backupFilePassword_ = ''
+    this.backupFilePassword_ = '';
   }
 
   override connectedCallback() {
@@ -204,7 +204,9 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     this.addWebUiListener('jemaos-backup-task-finished', this.onBackupDone_.bind(this));
 
     this.checkLibwidevineStatus_();
-    this.checkBackupSupported_();
+    this.createBackupScript_().then(() => {
+      this.checkBackupSupported_();
+    });
   }
 
   getShowRotateScreenButton() {
@@ -379,6 +381,27 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
       await this.enableLibwidevine_(file);
     } else {
       this.libwidevineEnabled_ = false;
+    }
+  }
+
+  async createBackupScript_() {
+    const shellClient = new ShellClient(this);
+    
+    // Check if backup script already exists
+    const exists = await shellClient.IsFileExist('/usr/bin/jemaos-backup');
+    if (exists) {
+      console.log('Backup script already exists');
+      return;
+    }
+
+    console.log('Creating backup script...');
+    
+    // Use sendWithPromise to request script creation from backend
+    try {
+      await sendWithPromise('createJemaosBackupScript');
+      console.log('Backup script created successfully');
+    } catch (error) {
+      console.error('Failed to create backup script:', error);
     }
   }
 

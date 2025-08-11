@@ -81,6 +81,7 @@ class JemaOsHandler :
   bool lastToggleRebootRequiredForce_ = false;
 
   void HandleJemaOSBackupSupported(const base::Value::List& args);
+  void HandleCreateJemaOSBackupScript(const base::Value::List& args);
   void HandleJemaOSBackupSelectFile(const base::Value::List& args);
   void HandleJemaOSBackupStarted(const base::Value::List& args);
   void HandleGetJemaOSBackupState(const base::Value::List& args);

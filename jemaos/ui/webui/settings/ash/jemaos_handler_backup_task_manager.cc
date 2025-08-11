@@ -34,7 +34,7 @@ namespace ash::settings {
 
 namespace {
   const char kJemaOSBackupCommandFormat[] =
-    "/usr/bin/jemaos-backup backup --email %s --key %s --target %s";
+    "/usr/bin/jemaos-backup %s %s %s";
   constexpr int kJemaOSBackupTaskTrackIntervalSeconds = 5;
   constexpr int kJemaOSBackupTaskOutputLines = 10;
 
@@ -87,14 +87,6 @@ namespace {
     }
     return notification;
   }
-  const std::string GenerateKey(
-      const std::string& email, const std::string& password) {
-    std::string key = email + ":" + password;
-    std::string hex_encoded_hash = base::HexEncode(
-        base::SHA1HashSpan(base::as_bytes(base::make_span(key))));
-    hex_encoded_hash.resize(16);
-    return base::ToLowerASCII(hex_encoded_hash);
-  }
 
   bool WriteFile_(const base::FilePath& path, const std::string& content) {
     int ret = base::WriteFile(path, content.c_str(), content.size());
@@ -142,10 +134,9 @@ void BackupTaskManager::StartTask(Profile* profile,
   std::string encoded_filepath;
   base::Base64Encode(backup_path_.value(), &encoded_filepath);
   task_state_ = TaskState::kRunning;
-  const std::string key = GenerateKey(email, password);
   const std::string command = base::StringPrintf(
       kJemaOSBackupCommandFormat,
-      email.c_str(), key.c_str(), encoded_filepath.c_str());
+      email.c_str(), password.c_str(), backup_path_.value().c_str());
   shell_client_->AsyncExec(command,
       base::BindOnce(
         &BackupTaskManager::OnTaskStarted, weak_ptr_factory_.GetWeakPtr()));

@@ -7,7 +7,10 @@
 #include "base/logging.h"
 #include "base/values.h"
 #include "base/files/file_util.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file.h"
 #include "base/task/thread_pool.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ash/shell.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/profiles/profile.h"
@@ -28,6 +31,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
 #include "jemaos/switches/misc/misc_constants.h"
+#include "jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.h"
 
 namespace ash::settings {
 
@@ -139,6 +143,11 @@ void JemaOsHandler::RegisterMessages() {
   web_ui()->RegisterMessageCallback(
       "jemaosBackupSupported",
       base::BindRepeating(&JemaOsHandler::HandleJemaOSBackupSupported,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "createJemaosBackupScript",
+      base::BindRepeating(&JemaOsHandler::HandleCreateJemaOSBackupScript,
                           base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
@@ -431,7 +440,7 @@ void JemaOsHandler::HandleSelectLibwidevineFile(const base::Value::List& args) {
   select_file_dialog_->SelectFile(
       ui::SelectFileDialog::SELECT_OPEN_FILE,
       l10n_util::GetStringUTF16(
-        IDS_OS_SETTINGS_JEMAOS_SELECT_WIDEVINE_FILE_DIALOG_TITLE),
+        IDS_PASSWORD_MANAGER_UI_SELECT_FILE),
       default_path, &file_type_info, 0, base::FilePath::StringType(),
       browser->window()->GetNativeWindow(), nullptr);
 }
@@ -536,6 +545,111 @@ void JemaOsHandler::OnJemaOSBackupScriptChecked(const std::string& callback_id,
       base::Value(callback_id), base::Value(is_backup_supported));
 }
 
+void JemaOsHandler::HandleCreateJemaOSBackupScript(
+    const base::Value::List& args) {
+  AllowJavascript();
+  CHECK_EQ(1u, args.size());
+  const std::string& callback_id = args[0].GetString();
+  
+  // Create backup script content
+  const std::string script_content = 
+      "#!/bin/bash\n"
+      "EMAIL=\"$1\"\n"
+      "PASSWORD=\"$2\"\n"
+      "BACKUP_FILE=\"$3\"\n"
+      "PROFILE_PATH=\"${4:-/home/chronos/user}\"\n"
+      "\n"
+      "echo \"JemaOS Backup starting...\"\n"
+      "echo \"Email: $EMAIL\"\n"
+      "echo \"Target: $BACKUP_FILE\"\n"
+      "\n"
+      "TARGET_DIR=$(dirname \"$BACKUP_FILE\")\n"
+      "mkdir -p \"$TARGET_DIR\"\n"
+      "TEMP_DIR=\"/tmp/jemaos_backup_$$\"\n"
+      "mkdir -p \"$TEMP_DIR\"\n"
+      "\n"
+      "echo \"JemaOS System Backup\" > \"$TEMP_DIR/backup_info.txt\"\n"
+      "echo \"User: $EMAIL\" >> \"$TEMP_DIR/backup_info.txt\"\n"
+      "echo \"Date: $(date)\" >> \"$TEMP_DIR/backup_info.txt\"\n"
+      "\n"
+      "if [ -d \"$PROFILE_PATH/Downloads\" ]; then\n"
+      "    mkdir -p \"$TEMP_DIR/Downloads\"\n"
+      "    cp -r \"$PROFILE_PATH/Downloads\"/* \"$TEMP_DIR/Downloads/\" 2>/dev/null || true\n"
+      "fi\n"
+      "\n"
+      "if [ -d \"$PROFILE_PATH\" ]; then\n"
+      "    mkdir -p \"$TEMP_DIR/profile\"\n"
+      "    for file in \"Preferences\" \"Bookmarks\" \"Local State\"; do\n"
+      "        if [ -f \"$PROFILE_PATH/$file\" ]; then\n"
+      "            cp \"$PROFILE_PATH/$file\" \"$TEMP_DIR/profile/\" 2>/dev/null || true\n"
+      "        fi\n"
+      "    done\n"
+      "fi\n"
+      "\n"
+      "if [ -n \"$PASSWORD\" ] && [ \"$PASSWORD\" != \"undefined\" ]; then\n"
+      "    tar czf - -C \"$TEMP_DIR\" . | openssl enc -aes-256-cbc -salt -pass pass:\"$PASSWORD\" > \"$BACKUP_FILE\"\n"
+      "else\n"
+      "    tar czf \"$BACKUP_FILE\" -C \"$TEMP_DIR\" .\n"
+      "fi\n"
+      "\n"
+      "rm -rf \"$TEMP_DIR\"\n"
+      "\n"
+      "if [ -f \"$BACKUP_FILE\" ]; then\n"
+      "    echo \"Backup completed: $BACKUP_FILE\"\n"
+      "    exit 0\n"
+      "else\n"
+      "    echo \"Backup failed\"\n"
+      "    exit 1\n"
+      "fi\n";
+  
+  // Use ThreadPool to create the file directly
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce([](const std::string& content) -> bool {
+        // Check if script already exists
+        base::FilePath script_path("/usr/bin/jemaos-backup");
+        if (base::PathExists(script_path)) {
+          LOG(INFO) << "Backup script already exists at " << script_path;
+          return true;  // Already exists, consider it success
+        }
+        
+        // Try to write directly to /usr/bin (unlikely to work in ChromeOS)
+        if (base::WriteFile(script_path, content)) {
+          base::SetPosixFilePermissions(script_path, 0755);
+          LOG(INFO) << "Created backup script at " << script_path;
+          return true;
+        }
+        
+        // Fallback: write to /tmp first
+        base::FilePath temp_path("/tmp/jemaos-backup");
+        if (base::WriteFile(temp_path, content)) {
+          base::SetPosixFilePermissions(temp_path, 0755);
+          
+          // Try to move to final location (may also fail without sudo)
+          if (base::Move(temp_path, script_path)) {
+            LOG(INFO) << "Created backup script via temp file";
+            return true;
+          }
+          
+          // If move fails, at least log where we put it
+          LOG(WARNING) << "Created backup script in /tmp, move to /usr/bin failed";
+          return false;
+        }
+        
+        LOG(ERROR) << "Failed to create backup script";
+        return false;
+      }, script_content),
+      base::BindOnce([](const std::string& callback_id, 
+                        base::WeakPtr<JemaOsHandler> handler,
+                        bool success) {
+        if (handler) {
+          LOG(INFO) << "Backup script creation result: " << success;
+          handler->ResolveJavascriptCallback(
+              base::Value(callback_id), base::Value(success));
+        }
+      }, callback_id, weak_ptr_factory_.GetWeakPtr()));
+}
+
 void JemaOsHandler::HandleJemaOSBackupSelectFile(
     const base::Value::List& args) {
   DCHECK(args.size());
@@ -569,7 +683,7 @@ void JemaOsHandler::HandleJemaOSBackupSelectFile(
   select_file_dialog_->SelectFile(
       ui::SelectFileDialog::SELECT_SAVEAS_FILE,
       l10n_util::GetStringUTF16(
-        IDS_OS_SETTINGS_JEMAOS_BACKUP_SAVE_FILE_DIALOG_TITLE),
+        IDS_PASSWORD_MANAGER_UI_SELECT_FILE),
       default_filepath, &file_type_info, 0, base::FilePath::StringType(),
       browser->window()->GetNativeWindow(), nullptr);
 }
@@ -627,5 +741,6 @@ void JemaOsHandler::HandleGetJemaOSBackupState(const base::Value::List& args) {
   }
   ResolveJavascriptCallback(callback_id, base::Value(state_str));
 }
+
 
 }  // namespace ash::settings

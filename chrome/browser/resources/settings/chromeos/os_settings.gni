@@ -152,6 +152,8 @@ web_component_files = [
   "chromeos/os_jema_page/os_jema_page.ts",
   "chromeos/os_jema_page/components/backup_password_prompt_dialog.ts",
   "chromeos/os_jema_page/components/backup_intro_dialog.ts",
+  "chromeos/os_jema_page/components/restore_password_dialog.ts",
+  "chromeos/os_jema_page/components/restore_result_dialog.ts",
   "chromeos/os_apps_page/android_apps_subpage.ts",
   "chromeos/os_apps_page/app_management_page/app_detail_view.ts",
   "chromeos/os_apps_page/app_management_page/app_details_item.ts",

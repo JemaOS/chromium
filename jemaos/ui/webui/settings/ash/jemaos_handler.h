@@ -42,6 +42,7 @@ class JemaOsHandler :
     kUnspecified,
     kLibwidevine,
     kBackup,
+    kRestore,
   };
   void OnSystemSaltObtained(const std::string& system_salt);
   void HandleGetIsOfflineAutoSigninEnabled(const base::Value::List& args);
@@ -86,13 +87,26 @@ class JemaOsHandler :
   void HandleJemaOSBackupStarted(const base::Value::List& args);
   void HandleGetJemaOSBackupState(const base::Value::List& args);
 
+  void HandleJemaOSRestoreSupported(const base::Value::List& args);
+  void HandleCreateJemaOSRestoreScript(const base::Value::List& args);
+  void HandleRestoreJemaOSBackup(const base::Value::List& args);
+  void HandleJemaOSRestoreSelectFile(const base::Value::List& args);
+
   void OnJemaOSBackupScriptChecked(const std::string& callback_id,
                                    bool supported);
+  void OnJemaOSRestoreScriptChecked(const std::string& callback_id,
+                                    bool supported);
 
   void OnBackupFileSelected(const base::FilePath& path);
   void OnBackupFileSelectionCanceled();
 
+  void OnRestoreFileSelected(const base::FilePath& path);
+  void OnRestoreFileSelectionCanceled();
+
   void OnBackupTaskFinished(BackupTaskManager::TaskState state);
+
+  // Helper method to ensure sudoers configuration exists for restore operations
+  void EnsureRestorePermissions();
 
   std::string system_salt_;
   Profile* profile_;
@@ -100,6 +114,8 @@ class JemaOsHandler :
 
   scoped_refptr<ui::SelectFileDialog> select_file_dialog_;
   FileDialogType file_dialog_type_ = FileDialogType::kUnspecified;
+
+  base::FilePath restore_file_path_;
 
   PrefChangeRegistrar pref_change_registrar_;
   PrefChangeRegistrar local_state_pref_change_registrar_;

@@ -14,6 +14,8 @@ import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
 import '../../settings_shared.css.js';
 import '../../controls/password_prompt_dialog.js';
 import './components/backup_intro_dialog.js';
+import './components/restore_password_dialog.js';
+import './components/restore_result_dialog.js';
 import {ShellClient} from './shell_client.js';
 
 import {getTemplate} from './jemaos_tweak_ui.html.js';
@@ -155,6 +157,26 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
         type: Boolean,
         value: false,
       },
+      showRestore_: {
+        type: Boolean,
+        value: false,
+      },
+      restoreRunning_: {
+        type: Boolean,
+        value: false,
+      },
+      showRestoreFileDialog_: {
+        type: Boolean,
+        value: false,
+      },
+      showRestorePasswordDialog_: {
+        type: Boolean,
+        value: false,
+      },
+      selectedRestoreFile_: {
+        type: String,
+        value: '',
+      },
     };
   }
 
@@ -172,6 +194,12 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private backupRunning_: boolean;
   private showPasswordPromptDialog_: boolean;
   private showBackupIntroDialog_: boolean;
+
+  private showRestore_: boolean;
+  private restoreRunning_: boolean;
+  private showRestoreFileDialog_: boolean;
+  private showRestorePasswordDialog_: boolean;
+  private selectedRestoreFile_: string;
 
   private client_: WidevineHelper;
 
@@ -202,10 +230,12 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
     this.addWebUiListener('jemaos-backup-file-selected', this.onBackupFileSelected_.bind(this));
     this.addWebUiListener('jemaos-backup-task-finished', this.onBackupDone_.bind(this));
+    this.addWebUiListener('jemaos-restore-file-selected', this.onRestoreFileSelected_.bind(this));
 
     this.checkLibwidevineStatus_();
     this.createBackupScript_().then(() => {
       this.checkBackupSupported_();
+      this.checkRestoreSupported_();
     });
   }
 
@@ -507,6 +537,98 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
   onPasswordPromptCanceled_(e: Event) {
     console.log('password prompt cancel', e);
+  }
+
+  // Restore functionality methods
+  async checkRestoreSupported_() {
+    sendWithPromise('jemaosRestoreSupported').then((supported) => {
+      if (!supported) {
+        this.showRestore_ = false;
+        return;
+      }
+      this.showRestore_ = true;
+    });
+  }
+
+  onRestoreClick_() {
+    console.log('Restore button clicked, opening file dialog...');
+    // Use Chrome's file picker for restore file selection
+    chrome.send('jemaosRestoreSelectFile');
+  }
+
+  onRestoreFileSelected_(canceled: boolean) {
+    console.log('onRestoreFileSelected_ called with canceled:', canceled);
+    if (canceled) {
+      console.log('Restore file selection canceled');
+      return;
+    }
+    
+    // Show password dialog instead of system prompt
+    this.openRestorePasswordDialog_();
+  }
+
+  private openRestorePasswordDialog_() {
+    console.log('Showing restore password dialog');
+    
+    // Create and show the password dialog
+    const dialog = document.createElement('restore-password-dialog') as any;
+    dialog.restoreFile = this.selectedRestoreFile_ || 'Selected backup file';
+    document.body.appendChild(dialog);
+    
+    // Listen for password entry
+    dialog.addEventListener('restore-password-entered', (event: any) => {
+      console.log('Password entered from dialog');
+      document.body.removeChild(dialog);
+      this.startRestoreWithPassword_(event.detail.password);
+    });
+    
+    // Listen for dialog cancel
+    dialog.addEventListener('cr-dialog-cancel', () => {
+      console.log('Restore password dialog canceled');
+      document.body.removeChild(dialog);
+    });
+  }
+
+  private startRestoreWithPassword_(password: string) {
+    console.log('Starting restore operation with password, length:', password.length);
+    
+    this.restoreRunning_ = true;
+    
+    // Call the restore handler with the restore file path that was set in the backend
+    sendWithPromise('restoreJemaOSBackup', password).then(
+      (success: boolean) => {
+        console.log('Restore operation completed with success:', success);
+        this.restoreRunning_ = false;
+        if (success) {
+          this.showRestoreSuccessToast_();
+        } else {
+          this.showRestoreErrorToast_();
+        }
+      }
+    ).catch((error: any) => {
+      console.error('Restore operation failed with error:', error);
+      this.restoreRunning_ = false;
+      this.showRestoreErrorToast_();
+    });
+  }
+
+  showRestoreSuccessToast_() {
+    // Show success message
+    console.log('Restore completed successfully');
+    this.showRestoreResultDialog_(true, 'Backup restored successfully! Please restart Chrome for changes to take effect.');
+  }
+
+  showRestoreErrorToast_() {
+    // Show error message
+    console.log('Restore failed');
+    this.showRestoreResultDialog_(false, 'Restore failed. Please check the backup file and password, then try again.');
+  }
+
+  private showRestoreResultDialog_(isSuccess: boolean, message: string) {
+    const dialog = document.createElement('restore-result-dialog') as any;
+    dialog.isSuccess = isSuccess;
+    dialog.message = message;
+    document.body.appendChild(dialog);
   }
 }
 

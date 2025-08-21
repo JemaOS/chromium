@@ -10,6 +10,10 @@ polymer_element_files = [
   "jemaos_tweak_ui.js",
   "jemaos_experiment.js",
   "os_jema_page.js",
+  "components/backup_intro_dialog.js",
+  "components/backup_password_prompt_dialog.js",
+  "components/restore_password_dialog.js",
+  "components/restore_result_dialog.js", 
 ]
 
 js_type_check("closure_compile_module") {
@@ -24,6 +28,10 @@ js_type_check("closure_compile_module") {
     ":jemaos_tweak_ui",
     ":jemaos_experiment",
     ":os_jema_page",
+    ":backup_intro_dialog",
+    ":backup_password_prompt_dialog",
+    ":restore_password_dialog",
+    ":restore_result_dialog", 
   ]
 }
 
@@ -43,6 +51,13 @@ js_library("jemaos_account") {
     "//ui/webui/resources/js:web_ui_listener_behavior.m",
     "//ui/webui/resources/cr_elements/chromeos/cr_picture:png",
     "//ui/webui/resources/js:icon",
+  ]
+}
+
+js_library("restore_result_dialog") {
+  deps = [
+    "//third_party/polymer/v3_0/components-chromium/polymer:polymer_bundled",
+    "//ui/webui/resources/js:i18n_behavior.m",
   ]
 }
 
@@ -100,6 +115,34 @@ js_library("os_jema_page") {
   deps = [
     "//ash/webui/common/resources:i18n_behavior",
     "..:route_observer_behavior",
+  ]
+}
+
+js_library("backup_intro_dialog") {
+  deps = [
+    "//third_party/polymer/v3_0/components-chromium/polymer:polymer_bundled",
+    "//ui/webui/resources/js:i18n_behavior.m",
+  ]
+}
+
+js_library("backup_password_prompt_dialog") {
+  deps = [
+    "//third_party/polymer/v3_0/components-chromium/polymer:polymer_bundled",
+    "//ui/webui/resources/js:i18n_behavior.m",
+  ]
+}
+
+js_library("restore_file_dialog") {
+  deps = [
+    "//third_party/polymer/v3_0/components-chromium/polymer:polymer_bundled",
+    "//ui/webui/resources/js:i18n_behavior.m",
+  ]
+}
+
+js_library("restore_password_dialog") {
+  deps = [
+    "//third_party/polymer/v3_0/components-chromium/polymer:polymer_bundled",
+    "//ui/webui/resources/js:i18n_behavior.m",
   ]
 }
 

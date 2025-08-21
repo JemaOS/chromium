@@ -31,6 +31,17 @@
     on-cancel="onPasswordPromptCanceled_">
   </backup-password-prompt-dialog>
 </template>
+<div class="settings-box two-line" hidden="[[!showRestore_]]">
+  <div class="start padded">
+    <localized-link
+      localized-string="Restore Backup">
+    </localized-link>
+  </div>
+  <div class="separator"></div>
+  <cr-button on-click="onRestoreClick_" disabled="[[restoreRunning_]]">
+    Restore
+  </cr-button>
+</div>
 <div class="settings-box two-line" hidden=[[!showToggleRebootButtonInTray]]>
   <div class="start padded">
     $i18n{rebootButtonInTrayLabel}

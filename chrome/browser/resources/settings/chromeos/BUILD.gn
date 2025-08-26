@@ -252,8 +252,7 @@ generate_grd("build_grd") {
     "images/switch_access_setup_guide_closing.svg",
     "images/switch_access_setup_guide_closing_dark.svg",
     "images/icon_backup.png",
-    "images/backup_intro.png",
-    "images/backup_intro_dark.png",
+    "images/backup_intro_jemaos.png",
     "os_settings_v3.html",
   ]
   input_files_base_dir = rebase_path(".", "//")

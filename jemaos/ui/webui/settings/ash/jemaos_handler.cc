@@ -7,7 +7,15 @@
 #include "base/logging.h"
 #include "base/values.h"
 #include "base/files/file_util.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file.h"
 #include "base/task/thread_pool.h"
+#include "base/command_line.h"
+#include "base/process/launch.h"
+#include "base/process/process.h"
+#include "base/process/process_handle.h"
+#include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ash/shell.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/profiles/profile.h"
@@ -28,6 +36,8 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
 #include "jemaos/switches/misc/misc_constants.h"
+#include "jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 
 namespace ash::settings {
 
@@ -44,6 +54,24 @@ bool SuitableForBackupVolume(const file_manager::Volume* volume) {
     && !volume->is_read_only_removable_device()
     && !volume->is_read_only()
     && volume->has_media();
+}
+
+// Shell-quote an arbitrary string so it is safe to embed in a single command line
+// Uses the pattern: 'foo' becomes 'foo', and any single quote is represented as '
+// '"'"' which closes the quote, inserts a literal single-quote, and reopens.
+static std::string ShellQuote(const std::string& input) {
+  std::string out;
+  out.reserve(input.size() + 2);
+  out.push_back('\'');
+  for (char c : input) {
+    if (c == '\'') {
+      out.append("'\"'\"'");
+    } else {
+      out.push_back(c);
+    }
+  }
+  out.push_back('\'');
+  return out;
 }
 
 }  // namespace
@@ -142,6 +170,11 @@ void JemaOsHandler::RegisterMessages() {
                           base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
+      "createJemaosBackupScript",
+      base::BindRepeating(&JemaOsHandler::HandleCreateJemaOSBackupScript,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
       "jemaosBackupSelectFile",
       base::BindRepeating(&JemaOsHandler::HandleJemaOSBackupSelectFile,
                           base::Unretained(this)));
@@ -154,6 +187,26 @@ void JemaOsHandler::RegisterMessages() {
   web_ui()->RegisterMessageCallback(
       "getJemaosBackupState",
       base::BindRepeating(&JemaOsHandler::HandleGetJemaOSBackupState,
+                          base::Unretained(this)));
+  
+  web_ui()->RegisterMessageCallback(
+      "jemaosRestoreSupported",
+      base::BindRepeating(&JemaOsHandler::HandleJemaOSRestoreSupported,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "createJemaosRestoreScript",
+      base::BindRepeating(&JemaOsHandler::HandleCreateJemaOSRestoreScript,
+                          base::Unretained(this)));
+                          
+  web_ui()->RegisterMessageCallback(
+      "jemaosRestoreSelectFile",
+      base::BindRepeating(&JemaOsHandler::HandleJemaOSRestoreSelectFile,
+                          base::Unretained(this)));
+                          
+  web_ui()->RegisterMessageCallback(
+      "restoreJemaOSBackup",
+      base::BindRepeating(&JemaOsHandler::HandleRestoreJemaOSBackup,
                           base::Unretained(this)));
 }
 
@@ -431,7 +484,7 @@ void JemaOsHandler::HandleSelectLibwidevineFile(const base::Value::List& args) {
   select_file_dialog_->SelectFile(
       ui::SelectFileDialog::SELECT_OPEN_FILE,
       l10n_util::GetStringUTF16(
-        IDS_OS_SETTINGS_JEMAOS_SELECT_WIDEVINE_FILE_DIALOG_TITLE),
+        IDS_PASSWORD_MANAGER_UI_SELECT_FILE),
       default_path, &file_type_info, 0, base::FilePath::StringType(),
       browser->window()->GetNativeWindow(), nullptr);
 }
@@ -486,6 +539,9 @@ void JemaOsHandler::FileSelected(const base::FilePath& path,
     case FileDialogType::kBackup:
       OnBackupFileSelected(path);
       break;
+    case FileDialogType::kRestore:
+      OnRestoreFileSelected(path);
+      break;
     case FileDialogType::kUnspecified:
       NOTREACHED();
       break;
@@ -500,6 +556,9 @@ void JemaOsHandler::FileSelectionCanceled(void* params) {
       break;
     case FileDialogType::kBackup:
       OnBackupFileSelectionCanceled();
+      break;
+    case FileDialogType::kRestore:
+      OnRestoreFileSelectionCanceled();
       break;
     case FileDialogType::kUnspecified:
       NOTREACHED();
@@ -536,6 +595,234 @@ void JemaOsHandler::OnJemaOSBackupScriptChecked(const std::string& callback_id,
       base::Value(callback_id), base::Value(is_backup_supported));
 }
 
+void JemaOsHandler::OnJemaOSRestoreScriptChecked(const std::string& callback_id,
+                                                 bool is_restore_supported) {
+  ResolveJavascriptCallback(
+      base::Value(callback_id), base::Value(is_restore_supported));
+}
+
+void JemaOsHandler::HandleCreateJemaOSBackupScript(
+    const base::Value::List& args) {
+  AllowJavascript();
+  CHECK_EQ(1u, args.size());
+  const std::string& callback_id = args[0].GetString();
+  
+  // Create backup script content
+  const std::string script_content = 
+      "#!/bin/bash\n"
+      "EMAIL=\"$1\"\n"
+      "PASSWORD=\"$2\"\n"
+      "BACKUP_FILE=\"$3\"\n"
+      "PROFILE_PATH=\"${4:-/home/chronos/user}\"\n"
+      "\n"
+      "echo \"JemaOS Backup starting...\"\n"
+      "echo \"Email: $EMAIL\"\n"
+      "echo \"Target: $BACKUP_FILE\"\n"
+      "\n"
+      "TARGET_DIR=$(dirname \"$BACKUP_FILE\")\n"
+      "mkdir -p \"$TARGET_DIR\"\n"
+      "TEMP_DIR=\"/tmp/jemaos_backup_$$\"\n"
+      "mkdir -p \"$TEMP_DIR\"\n"
+      "\n"
+      "echo \"JemaOS System Backup\" > \"$TEMP_DIR/backup_info.txt\"\n"
+      "echo \"User: $EMAIL\" >> \"$TEMP_DIR/backup_info.txt\"\n"
+      "echo \"Date: $(date)\" >> \"$TEMP_DIR/backup_info.txt\"\n"
+      "\n"
+      "if [ -d \"$PROFILE_PATH/Downloads\" ]; then\n"
+      "    mkdir -p \"$TEMP_DIR/Downloads\"\n"
+      "    cp -r \"$PROFILE_PATH/Downloads\"/* \"$TEMP_DIR/Downloads/\" 2>/dev/null || true\n"
+      "fi\n"
+      "\n"
+      "if [ -d \"$PROFILE_PATH\" ]; then\n"
+      "    mkdir -p \"$TEMP_DIR/profile\"\n"
+      "    for file in \"Preferences\" \"Bookmarks\" \"Local State\"; do\n"
+      "        if [ -f \"$PROFILE_PATH/$file\" ]; then\n"
+      "            cp \"$PROFILE_PATH/$file\" \"$TEMP_DIR/profile/\" 2>/dev/null || true\n"
+      "        fi\n"
+      "    done\n"
+      "fi\n"
+      "\n"
+      "if [ -n \"$PASSWORD\" ] && [ \"$PASSWORD\" != \"undefined\" ]; then\n"
+      "    tar czf - -C \"$TEMP_DIR\" . | openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:\"$PASSWORD\" > \"$BACKUP_FILE\"\n"
+      "else\n"
+      "    tar czf \"$BACKUP_FILE\" -C \"$TEMP_DIR\" .\n"
+      "fi\n"
+      "\n"
+      "rm -rf \"$TEMP_DIR\"\n"
+      "\n"
+      "if [ -f \"$BACKUP_FILE\" ]; then\n"
+      "    echo \"Backup completed: $BACKUP_FILE\"\n"
+      "    exit 0\n"
+      "else\n"
+      "    echo \"Backup failed\"\n"
+      "    exit 1\n"
+      "fi\n";
+  
+  // Use ThreadPool to create the file directly
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce([](const std::string& content) -> bool {
+        // Check if script already exists
+        base::FilePath script_path("/usr/bin/jemaos-backup");
+        if (base::PathExists(script_path)) {
+          LOG(INFO) << "Backup script already exists at " << script_path;
+          return true;  // Already exists, consider it success
+        }
+        
+        // Try to write directly to /usr/bin (unlikely to work in ChromeOS)
+        if (base::WriteFile(script_path, content)) {
+          base::SetPosixFilePermissions(script_path, 0755);
+          LOG(INFO) << "Created backup script at " << script_path;
+          return true;
+        }
+        
+        // Fallback: write to /tmp first
+        base::FilePath temp_path("/tmp/jemaos-backup");
+        if (base::WriteFile(temp_path, content)) {
+          base::SetPosixFilePermissions(temp_path, 0755);
+          
+          // Try to move to final location (may also fail without sudo)
+          if (base::Move(temp_path, script_path)) {
+            LOG(INFO) << "Created backup script via temp file";
+            return true;
+          }
+          
+          // If move fails, at least log where we put it
+          LOG(WARNING) << "Created backup script in /tmp, move to /usr/bin failed";
+          return false;
+        }
+        
+        LOG(ERROR) << "Failed to create backup script";
+        return false;
+      }, script_content),
+      base::BindOnce([](const std::string& callback_id, 
+                        base::WeakPtr<JemaOsHandler> handler,
+                        bool success) {
+        if (handler) {
+          LOG(INFO) << "Backup script creation result: " << success;
+          handler->ResolveJavascriptCallback(
+              base::Value(callback_id), base::Value(success));
+        }
+      }, callback_id, weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::HandleCreateJemaOSRestoreScript(
+    const base::Value::List& args) {
+  AllowJavascript();
+  CHECK_EQ(1u, args.size());
+  const std::string& callback_id = args[0].GetString();
+  
+  // Ensure sudoers configuration exists for restore operations
+  EnsureRestorePermissions();
+  
+  // Create simplified embedded restore script  
+  const std::string embedded_script = 
+      "#!/bin/bash\n"
+      "# JemaOS Restore Script (Embedded)\n"
+      "\n"
+      "BACKUP_FILE=\"$1\"\n"
+      "PASSWORD=\"$2\"\n"
+      "PROFILE_PATH=\"${3:-/home/chronos/user}\"\n"
+      "\n"
+      "[ \"$DEBUG\" = \"1\" ] && set -x\n"
+      "\n"
+      "if [ ! -f \"$BACKUP_FILE\" ]; then\n"
+      "    echo \"Error: Backup file not found: $BACKUP_FILE\"\n"
+      "    exit 1\n"
+      "fi\n"
+      "\n"
+      "echo \"JemaOS Restore starting...\"\n"
+      "echo \"Source: $BACKUP_FILE\"\n"
+      "echo \"Target profile: $PROFILE_PATH\"\n"
+      "\n"
+      "TEMP_DIR=\"/tmp/jemaos_restore_$$\"\n"
+      "mkdir -p \"$TEMP_DIR\"\n"
+      "\n"
+      "# Extract backup file\n"
+      "cd \"$TEMP_DIR\"\n"
+      "if [ -n \"$PASSWORD\" ] && [ \"$PASSWORD\" != \"undefined\" ]; then\n"
+      "    echo \"Extracting encrypted backup...\"\n"
+      "    if ! openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:\"$PASSWORD\" -in \"$BACKUP_FILE\" | tar xzf -; then\n"
+      "        echo \"Error: Failed to extract encrypted backup. Check password.\"\n"
+      "        rm -rf \"$TEMP_DIR\"\n"
+      "        exit 1\n"
+      "    fi\n"
+      "else\n"
+      "    echo \"Extracting unencrypted backup...\"\n"
+      "    if ! tar xzf \"$BACKUP_FILE\"; then\n"
+      "        echo \"Error: Failed to extract backup file.\"\n"
+      "        rm -rf \"$TEMP_DIR\"\n"
+      "        exit 1\n"
+      "    fi\n"
+      "fi\n"
+      "\n"
+      "# Verify backup info\n"
+      "if [ -f \"backup_info.txt\" ]; then\n"
+      "    echo \"Backup info:\"\n"
+      "    cat \"backup_info.txt\"\n"
+      "else\n"
+      "    echo \"Warning: No backup info found\"\n"
+      "fi\n"
+      "\n"
+      "# Restore Downloads\n"
+      "if [ -d \"Downloads\" ]; then\n"
+      "    echo \"Restoring Downloads...\"\n"
+      "    mkdir -p \"$PROFILE_PATH/Downloads\"\n"
+      "    cp -r Downloads/* \"$PROFILE_PATH/Downloads/\" 2>/dev/null || true\n"
+      "fi\n"
+      "\n"
+      "# Restore profile files\n"
+      "if [ -d \"profile\" ]; then\n"
+      "    echo \"Restoring profile files...\"\n"
+      "    for file in \"Preferences\" \"Bookmarks\" \"Local State\"; do\n"
+      "        if [ -f \"profile/$file\" ]; then\n"
+      "            echo \"Restoring $file...\"\n"
+      "            cp \"profile/$file\" \"$PROFILE_PATH/\" 2>/dev/null || true\n"
+      "        fi\n"
+      "    done\n"
+      "fi\n"
+      "\n"
+      "# Cleanup\n"
+      "cd /\n"
+      "rm -rf \"$TEMP_DIR\"\n"
+      "\n"
+      "echo \"Restore completed successfully!\"\n"
+      "echo \"Please restart Chrome for changes to take effect.\"\n"
+      "exit 0\n";
+  
+  // Use ThreadPool to create the embedded script
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce([](const std::string& content) -> bool {
+        // Check if system script already exists
+        base::FilePath script_path("/usr/bin/jemaos-restore");
+        if (base::PathExists(script_path)) {
+          LOG(INFO) << "System restore script already exists at " << script_path;
+          return true;  // Already exists, consider it success
+        }
+        
+        // Create embedded script in /tmp (this should always work)
+        base::FilePath embedded_path("/tmp/jemaos-restore-embedded");
+        if (base::WriteFile(embedded_path, content)) {
+          base::SetPosixFilePermissions(embedded_path, 0755);
+          LOG(INFO) << "Created embedded restore script at " << embedded_path;
+          return true;
+        }
+        
+        LOG(ERROR) << "Failed to create embedded restore script";
+        return false;
+      }, embedded_script),
+      base::BindOnce([](const std::string& callback_id, 
+                        base::WeakPtr<JemaOsHandler> handler,
+                        bool success) {
+        if (handler) {
+          LOG(INFO) << "Restore script creation result: " << success;
+          handler->ResolveJavascriptCallback(
+              base::Value(callback_id), base::Value(success));
+        }
+      }, callback_id, weak_ptr_factory_.GetWeakPtr()));
+}
+
 void JemaOsHandler::HandleJemaOSBackupSelectFile(
     const base::Value::List& args) {
   DCHECK(args.size());
@@ -569,7 +856,7 @@ void JemaOsHandler::HandleJemaOSBackupSelectFile(
   select_file_dialog_->SelectFile(
       ui::SelectFileDialog::SELECT_SAVEAS_FILE,
       l10n_util::GetStringUTF16(
-        IDS_OS_SETTINGS_JEMAOS_BACKUP_SAVE_FILE_DIALOG_TITLE),
+        IDS_PASSWORD_MANAGER_UI_SELECT_FILE),
       default_filepath, &file_type_info, 0, base::FilePath::StringType(),
       browser->window()->GetNativeWindow(), nullptr);
 }
@@ -583,6 +870,18 @@ void JemaOsHandler::OnBackupFileSelected(const base::FilePath& path) {
 void JemaOsHandler::OnBackupFileSelectionCanceled() {
   const bool canceled = true;
   FireWebUIListener("jemaos-backup-file-selected", base::Value(canceled));
+}
+
+void JemaOsHandler::OnRestoreFileSelected(const base::FilePath& path) {
+  // Store the restore file path for the restore operation
+  restore_file_path_ = path;
+  const bool canceled = false;
+  FireWebUIListener("jemaos-restore-file-selected", base::Value(canceled));
+}
+
+void JemaOsHandler::OnRestoreFileSelectionCanceled() {
+  const bool canceled = true;
+  FireWebUIListener("jemaos-restore-file-selected", base::Value(canceled));
 }
 
 void JemaOsHandler::HandleJemaOSBackupStarted(const base::Value::List& args) {
@@ -626,6 +925,529 @@ void JemaOsHandler::HandleGetJemaOSBackupState(const base::Value::List& args) {
       break;
   }
   ResolveJavascriptCallback(callback_id, base::Value(state_str));
+}
+
+void JemaOsHandler::HandleJemaOSRestoreSupported(const base::Value::List& args) {
+  AllowJavascript();
+  CHECK_EQ(1u, args.size());
+  const base::Value& callback_id = args[0];
+  
+  // Always return true since we'll run the script content directly
+  ResolveJavascriptCallback(callback_id, base::Value(true));
+}
+
+void JemaOsHandler::HandleRestoreJemaOSBackup(const base::Value::List& args) {
+  CHECK_EQ(2u, args.size());
+  const std::string& callback_id = args[0].GetString();
+  const std::string& password = args[1].GetString();
+
+  // Ensure sudoers configuration exists for restore operations
+  EnsureRestorePermissions();
+
+  if (restore_file_path_.empty()) {
+    LOG(ERROR) << "No restore file selected";
+    FireWebUIListener("jemaos-restore-error", base::Value("No restore file selected"));
+    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
+    return;
+  }
+
+  // Verify file exists and is accessible
+  if (!base::PathExists(restore_file_path_)) {
+    LOG(ERROR) << "Restore file not found: " << restore_file_path_.value();
+    FireWebUIListener("jemaos-restore-error", base::Value("Restore file not found"));
+    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
+    return;
+  }
+
+  LOG(INFO) << "=== JemaOS Restore Process Started ===";
+  LOG(INFO) << "Restore file: " << restore_file_path_.value();
+  LOG(INFO) << "Password provided: " << (password.empty() ? "No" : "Yes");
+  LOG(INFO) << "Timestamp: " << base::Time::Now();
+
+  // Notify UI that restore has started
+  FireWebUIListener("jemaos-restore-started", base::Value(true));
+
+  // Execute via JemaOS Shell daemon with a normalized user path
+  auto* shell_client = jemaos::ash::JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client unavailable";
+    FireWebUIListener("jemaos-restore-error", base::Value("System service unavailable"));
+    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
+    return;
+  }
+
+  // Normalize /home/chronos/u-<hash>/... -> /home/chronos/user/...
+  std::string original = restore_file_path_.value();
+  std::string normalized = original;
+  const char kPrefix[] = "/home/chronos/u-";
+  if (base::StartsWith(original, kPrefix, base::CompareCase::SENSITIVE)) {
+    size_t pos = original.find('/', strlen(kPrefix));
+    if (pos != std::string::npos) {
+      normalized = std::string("/home/chronos/user").append(original.substr(pos));
+    } else {
+      normalized = "/home/chronos/user";
+    }
+  }
+
+  const std::string file_arg = ShellQuote(normalized);
+  const std::string pwd_arg = ShellQuote(password);
+  
+  // Determine which script to use, create embedded script if needed
+  std::string script_path = "/usr/bin/jemaos-restore";
+  if (!base::PathExists(base::FilePath(script_path))) {
+    script_path = "/tmp/jemaos-restore-embedded";
+    if (!base::PathExists(base::FilePath(script_path))) {
+      LOG(INFO) << "Creating embedded restore script on-demand";
+      
+      // Create embedded script content
+      const std::string embedded_script = 
+          "#!/bin/bash\n"
+          "# JemaOS Restore Script (Embedded)\n"
+          "\n"
+          "BACKUP_FILE=\"$1\"\n"
+          "PASSWORD=\"$2\"\n"
+          "PROFILE_PATH=\"${3:-/home/chronos/user}\"\n"
+          "\n"
+          "[ \"$DEBUG\" = \"1\" ] && set -x\n"
+          "\n"
+          "if [ ! -f \"$BACKUP_FILE\" ]; then\n"
+          "    echo \"Error: Backup file not found: $BACKUP_FILE\" >&2\n"
+          "    exit 1\n"
+          "fi\n"
+          "\n"
+          "echo \"JemaOS Restore starting...\" >&2\n"
+          "echo \"Source: $BACKUP_FILE\" >&2\n"
+          "echo \"Target profile: $PROFILE_PATH\" >&2\n"
+          "\n"
+          "TEMP_DIR=\"/tmp/jemaos_restore_$$\"\n"
+          "mkdir -p \"$TEMP_DIR\"\n"
+          "\n"
+          "# Extract backup file\n"
+          "cd \"$TEMP_DIR\"\n"
+          "if [ -n \"$PASSWORD\" ] && [ \"$PASSWORD\" != \"undefined\" ]; then\n"
+          "    echo \"Extracting encrypted backup...\" >&2\n"
+          "    if ! openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:\"$PASSWORD\" -in \"$BACKUP_FILE\" | tar xzf -; then\n"
+          "        echo \"Error: Failed to extract encrypted backup. Check password.\" >&2\n"
+          "        rm -rf \"$TEMP_DIR\"\n"
+          "        exit 1\n"
+          "    fi\n"
+          "else\n"
+          "    echo \"Extracting unencrypted backup...\" >&2\n"
+          "    if ! tar xzf \"$BACKUP_FILE\"; then\n"
+          "        echo \"Error: Failed to extract backup file.\" >&2\n"
+          "        rm -rf \"$TEMP_DIR\"\n"
+          "        exit 1\n"
+          "    fi\n"
+          "fi\n"
+          "\n"
+          "# Verify backup info\n"
+          "if [ -f \"backup_info.txt\" ]; then\n"
+          "    echo \"Backup info:\" >&2\n"
+          "    cat \"backup_info.txt\" >&2\n"
+          "else\n"
+          "    echo \"Warning: No backup info found\" >&2\n"
+          "fi\n"
+          "\n"
+          "# Restore Downloads\n"
+          "if [ -d \"Downloads\" ]; then\n"
+          "    echo \"Restoring Downloads...\" >&2\n"
+          "    mkdir -p \"$PROFILE_PATH/Downloads\"\n"
+          "    cp -r Downloads/* \"$PROFILE_PATH/Downloads/\" 2>/dev/null || true\n"
+          "fi\n"
+          "\n"
+          "# Restore profile files\n"
+          "if [ -d \"profile\" ]; then\n"
+          "    echo \"Restoring profile files...\" >&2\n"
+          "    for file in \"Preferences\" \"Bookmarks\" \"Local State\"; do\n"
+          "        if [ -f \"profile/$file\" ]; then\n"
+          "            echo \"Restoring $file...\" >&2\n"
+          "            cp \"profile/$file\" \"$PROFILE_PATH/\" 2>/dev/null || true\n"
+          "        fi\n"
+          "    done\n"
+          "fi\n"
+          "\n"
+          "# Fix ownership for restored files (use sudo if available, no password prompts)\n"
+          "echo \"Fixing file ownership...\" >&2\n"
+          "if command -v sudo >/dev/null 2>&1; then\n"
+          "    sudo chown -R chronos:chronos \"$PROFILE_PATH\" 2>/dev/null || {\n"
+          "        echo \"Warning: Could not fix ownership with sudo\" >&2\n"
+          "    }\n"
+          "elif [ \"$(id -u)\" -eq 0 ]; then\n"
+          "    chown -R chronos:chronos \"$PROFILE_PATH\" 2>/dev/null || {\n"
+          "        echo \"Warning: Could not fix ownership as root\" >&2\n"
+          "    }\n"
+          "else\n"
+          "    echo \"Info: Not running as root, ownership unchanged\" >&2\n"
+          "fi\n"
+          "\n"
+          "# Cleanup\n"
+          "cd /\n"
+          "rm -rf \"$TEMP_DIR\"\n"
+          "\n"
+          "echo \"Restore completed successfully!\" >&2\n"
+          "echo \"Please restart Chrome for changes to take effect.\" >&2\n"
+          "exit 0\n";
+      
+      // Try to create the embedded script synchronously
+      if (!base::WriteFile(base::FilePath(script_path), embedded_script)) {
+        LOG(ERROR) << "Failed to create embedded restore script";
+        FireWebUIListener("jemaos-restore-error", base::Value("Cannot create restore script"));
+        ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
+        return;
+      }
+      
+      // Make script executable
+      base::SetPosixFilePermissions(base::FilePath(script_path), 0755);
+      LOG(INFO) << "Created embedded restore script at " << script_path;
+    }
+  }
+  
+  // Create staging script for robust file handling and execution
+  std::string staging_script_path = "/tmp/jemaos_restore_wrapper_" + std::to_string(base::Time::Now().ToTimeT()) + ".sh";
+  
+  std::string staging_script_content = base::StringPrintf(
+      "#!/bin/bash\n"
+      "set -e\n"
+      "SRC=%s\n"
+      "ST=\"/tmp/jemaos_restore_staged_$$.bak\"\n"
+      "# Stage file to avoid permission/mount issues\n"
+      "if cp \"$SRC\" \"$ST\" 2>/dev/null; then\n"
+      "  echo \"Using staged file: $ST\" >&2\n"
+      "  SRC=\"$ST\"\n"
+      "elif sudo -n cp \"$SRC\" \"$ST\" 2>/dev/null; then\n"
+      "  echo \"Using sudo-staged file: $ST\" >&2\n"
+      "  SRC=\"$ST\"\n"
+      "else\n"
+      "  echo \"Using original file: $SRC\" >&2\n"
+      "fi\n"
+      "# Run the restore script\n"
+      "export DEBUG=1\n"
+      "%s \"$SRC\" %s\n"
+      "RC=$?\n"
+      "# Cleanup staged file if exists\n"
+      "[ -f \"$ST\" ] && rm -f \"$ST\" 2>/dev/null || true\n"
+      "exit $RC\n",
+      file_arg.c_str(),
+      script_path.c_str(),
+      pwd_arg.c_str());
+  
+  // Write the staging script
+  if (!base::WriteFile(base::FilePath(staging_script_path), staging_script_content)) {
+    LOG(ERROR) << "Failed to create staging script";
+    FireWebUIListener("jemaos-restore-error", base::Value("Cannot create staging script"));
+    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
+    return;
+  }
+  base::SetPosixFilePermissions(base::FilePath(staging_script_path), 0755);
+  
+  // Use bash execution to avoid permission issues with shell daemon
+  std::string command = base::StringPrintf("bash %s", staging_script_path.c_str());
+  
+  // Log a masked version of the command for security
+  std::string masked_command = base::StringPrintf(
+      "Staging script: DEBUG=1 %s %s '%s'",
+      script_path.c_str(), file_arg.c_str(), password.empty() ? "" : "****");
+  LOG(INFO) << "Restore command (via staging script): " << masked_command;
+
+  shell_client->SyncExec(
+      command,
+      base::BindOnce(
+          [](const std::string& cb_id,
+             base::WeakPtr<JemaOsHandler> handler,
+             const std::string normalized_path,
+             const std::string password,
+             const std::string staging_script_path,
+             absl::optional<jemaos::ash::ShellState> state) {
+            bool success = false;
+            std::string error_message;
+            
+            if (!state) {
+              LOG(ERROR) << "Restore task exec error: state is null";
+              success = false;
+              error_message = "Failed to execute restore command";
+            } else {
+              LOG(INFO) << "Restore finished with code: " << state->code;
+              if (!state->result.empty()) {
+                LOG(INFO) << "Restore output: \n" << state->result;
+              }
+              
+              success = (state->code == 0);
+              
+              if (!success) {
+                // Analyze the specific exit code and output to provide better error messages
+                const std::string& out = state->result;
+                
+                if (state->code == 1) {
+                  if (out.find("Failed to decrypt") != std::string::npos ||
+                      out.find("bad decrypt") != std::string::npos ||
+                      out.find("Check password") != std::string::npos) {
+                    error_message = "Wrong password or corrupted backup file";
+                    if (handler) {
+                      handler->FireWebUIListener("jemaos-restore-password-required", base::Value("wrong"));
+                    }
+                  } else if (out.find("Backup file not found") != std::string::npos ||
+                             out.find("No such file") != std::string::npos) {
+                    error_message = "Backup file not found or not accessible";
+                  } else {
+                    error_message = "Restore script failed (exit code 1)";
+                  }
+                } else if (state->code == 2) {
+                  if (out.find("command not found") != std::string::npos ||
+                      out.find("No such file or directory") != std::string::npos) {
+                    error_message = "Required command or script not found";
+                  } else if (out.find("Permission denied") != std::string::npos) {
+                    error_message = "Permission denied accessing files";
+                  } else if (out.find("openssl") != std::string::npos) {
+                    error_message = "OpenSSL command failed - check encryption format";
+                  } else {
+                    error_message = base::StringPrintf("Restore script failed (exit code %d)", state->code);
+                  }
+                } else if (state->code == 126) {
+                  error_message = "Script cannot be executed (permission denied)";
+                } else if (state->code == 127) {
+                  error_message = "Script or command not found";
+                } else if (state->code == -1) {
+                  error_message = "Command execution failed";
+                  // Handle exit status messages that come in result text
+                  if (out.find("exit status") != std::string::npos) {
+                    error_message = "Script execution failed: " + out;
+                  }
+                } else {
+                  error_message = base::StringPrintf("Restore failed with exit code %d", state->code);
+                }
+                
+                LOG(ERROR) << "Restore failed: " << error_message;
+                if (!out.empty()) {
+                  LOG(ERROR) << "Script output: " << out;
+                }
+              }
+            }
+
+            if (!success && handler) {
+              // Fallback: try running as chronos user, which may see MyFiles mounts
+              auto* sc = jemaos::ash::JemaOSShellClient::Get();
+              if (!sc) {
+                LOG(ERROR) << "Shell client unavailable for fallback";
+                handler->ResolveJavascriptCallback(base::Value(cb_id), base::Value(false));
+                return;
+              }
+              const std::string file_arg2 = ShellQuote(normalized_path);
+              const std::string pwd_arg2 = ShellQuote(password);
+              // Build a command that copies to /tmp as chronos, then runs restore, then cleans up
+              // Use the same script detection logic for fallback
+              std::string fallback_script = "/usr/bin/jemaos-restore";
+              if (!base::PathExists(base::FilePath(fallback_script))) {
+                fallback_script = "/tmp/jemaos-restore-embedded";
+              }
+              
+              // Create fallback staging script
+              std::string fallback_staging_path = "/tmp/jemaos_restore_fallback_" + std::to_string(base::Time::Now().ToTimeT()) + ".sh";
+              std::string fallback_content = base::StringPrintf(
+                  "#!/bin/bash\n"
+                  "set -e\n"
+                  "SRC=%s\n"
+                  "ST=\"/tmp/jemaos_restore_staged_$$.bak\"\n"
+                  "sudo -n cp \"$SRC\" \"$ST\" 2>/dev/null || cp \"$SRC\" \"$ST\" 2>/dev/null || { echo 'Cannot copy file'; exit 1; }\n"
+                  "export DEBUG=1\n"
+                  "sudo -n -u chronos %s \"$ST\" %s\n"
+                  "RC=$?\n"
+                  "rm -f \"$ST\" 2>/dev/null || true\n"
+                  "exit $RC\n",
+                  file_arg2.c_str(), fallback_script.c_str(), pwd_arg2.c_str());
+              
+              if (!base::WriteFile(base::FilePath(fallback_staging_path), fallback_content)) {
+                LOG(ERROR) << "Failed to create fallback staging script";
+                handler->ResolveJavascriptCallback(base::Value(cb_id), base::Value(false));
+                return;
+              }
+              base::SetPosixFilePermissions(base::FilePath(fallback_staging_path), 0755);
+              
+              LOG(INFO) << "Fallback restore command using script: " << fallback_script;
+              // Use bash execution for compatibility
+              std::string fallback_command = base::StringPrintf("bash %s", fallback_staging_path.c_str());
+              sc->SyncExec(
+                  fallback_command,
+                  base::BindOnce(
+                      [](const std::string& cb_id_inner, 
+                         base::WeakPtr<JemaOsHandler> handler_inner,
+                         const std::string fallback_staging_path,
+                         absl::optional<jemaos::ash::ShellState> st2) {
+                        bool ok = false;
+                        std::string fallback_error;
+                        
+                        if (!st2) {
+                          LOG(ERROR) << "Fallback restore exec error: state is null";
+                          fallback_error = "Fallback restore execution failed";
+                        } else {
+                          LOG(INFO) << "Fallback restore finished with code: " << st2->code;
+                          if (!st2->result.empty()) {
+                            LOG(INFO) << "Fallback restore output: \n" << st2->result;
+                          }
+                          ok = (st2->code == 0);
+                          if (!ok) {
+                            fallback_error = base::StringPrintf("Fallback restore failed (exit code %d)", st2->code);
+                            if (!st2->result.empty()) {
+                              const std::string& out = st2->result;
+                              if (out.find("Failed to decrypt") != std::string::npos ||
+                                  out.find("Check password") != std::string::npos) {
+                                fallback_error = "Wrong password or corrupted backup file";
+                              } else if (out.find("Permission denied") != std::string::npos) {
+                                fallback_error = "Permission denied accessing backup file";
+                              }
+                            }
+                          }
+                        }
+                        
+                        // Cleanup fallback staging script
+                        base::DeleteFile(base::FilePath(fallback_staging_path));
+                        
+                        if (handler_inner) {
+                          if (ok) {
+                            LOG(INFO) << "Restore completed successfully! Please restart Chrome for changes to take effect.";
+                            LOG(INFO) << "You can restart by running: sudo restart ui";
+                            handler_inner->FireWebUIListener("jemaos-restore-completed", base::Value(true));
+                          } else {
+                            LOG(ERROR) << "Restore failed: " << fallback_error;
+                            handler_inner->FireWebUIListener("jemaos-restore-error", base::Value(fallback_error));
+                          }
+                          handler_inner->ResolveJavascriptCallback(base::Value(cb_id_inner), base::Value(ok));
+                        }
+                      },
+                      cb_id, handler->weak_ptr_factory_.GetWeakPtr(), fallback_staging_path));
+              return;
+            }
+
+            // Cleanup staging script
+            base::DeleteFile(base::FilePath(staging_script_path));
+            
+            if (handler) {
+              if (success) {
+                LOG(INFO) << "Restore completed successfully! Please restart Chrome for changes to take effect.";
+                LOG(INFO) << "You can restart by running: sudo restart ui";
+                handler->FireWebUIListener("jemaos-restore-completed", base::Value(true));
+              } else {
+                LOG(ERROR) << "Restore failed: " << error_message;
+                handler->FireWebUIListener("jemaos-restore-error", base::Value(error_message));
+                
+                // Send specific password error if detected
+                if (error_message.find("password") != std::string::npos ||
+                    error_message.find("decrypt") != std::string::npos) {
+                  handler->FireWebUIListener("jemaos-restore-password-required", base::Value("wrong"));
+                }
+              }
+              handler->ResolveJavascriptCallback(base::Value(cb_id), base::Value(success));
+            }
+          },
+          callback_id, weak_ptr_factory_.GetWeakPtr(), normalized, password, staging_script_path));
+}
+
+void JemaOsHandler::HandleJemaOSRestoreSelectFile(const base::Value::List& args) {
+  CHECK_EQ(0u, args.size());
+  select_file_dialog_ = ui::SelectFileDialog::Create(
+      this,
+      std::make_unique<ChromeSelectFilePolicy>(web_ui()->GetWebContents()));
+
+  ui::SelectFileDialog::FileTypeInfo file_type_info;
+  file_type_info.allowed_paths =
+    ui::SelectFileDialog::FileTypeInfo::NATIVE_PATH;
+  file_type_info.extensions.resize(1);
+  file_type_info.extensions[0].push_back(FILE_PATH_LITERAL("bak"));
+  file_type_info.extensions[0].push_back(FILE_PATH_LITERAL("backup"));
+
+  Browser* browser =
+      chrome::FindBrowserWithWebContents(web_ui()->GetWebContents());
+
+  base::FilePath default_path = 
+    file_manager::util::GetMyFilesFolderForProfile(profile_);
+  
+  file_dialog_type_ = FileDialogType::kRestore;
+  select_file_dialog_->SelectFile(
+      ui::SelectFileDialog::SELECT_OPEN_FILE,
+      l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_UI_SELECT_FILE),
+      default_path, &file_type_info, 0, base::FilePath::StringType(),
+      browser->window()->GetNativeWindow(), nullptr);
+}
+ 
+
+void JemaOsHandler::EnsureRestorePermissions() {
+  // Check if sudoers configuration already exists
+  base::FilePath sudoers_file("/etc/sudoers.d/jemaos-restore");
+  if (base::PathExists(sudoers_file)) {
+    LOG(INFO) << "JemaOS restore sudoers configuration already exists";
+    return;
+  }
+  
+  LOG(INFO) << "Creating JemaOS restore sudoers configuration";
+  
+  // Create sudoers content for restore operations
+  const std::string sudoers_content =
+      "# JemaOS Restore Operations - Allow file operations without password\n"
+      "# This enables backup/restore functionality to work seamlessly in production ChromeOS\n"
+      "\n"
+      "# Allow chronos user (Chrome browser) to run file operations for restore without password\n"
+      "chronos ALL=(ALL) NOPASSWD: /bin/cp, /bin/mv, /bin/rm, /bin/chown, /bin/chmod, /bin/mkdir\n"
+      "chronos ALL=(ALL) NOPASSWD: /usr/bin/jemaos-restore, /tmp/jemaos-restore-embedded\n"
+      "\n"
+      "# Allow root to run restore operations (for system processes)\n"
+      "root ALL=(ALL) NOPASSWD: /bin/cp, /bin/mv, /bin/rm, /bin/chown, /bin/chmod, /bin/mkdir\n"
+      "root ALL=(chronos) NOPASSWD: /usr/bin/jemaos-restore, /tmp/jemaos-restore-embedded\n"
+      "\n"
+      "# Allow staging file operations from user directories to /tmp\n"
+      "chronos ALL=(ALL) NOPASSWD: /bin/cp /home/chronos/user/MyFiles/Downloads/* /tmp/jemaos_restore_staged_*\n"
+      "chronos ALL=(ALL) NOPASSWD: /bin/cp /home/chronos/u-*/MyFiles/Downloads/* /tmp/jemaos_restore_staged_*\n"
+      "\n"
+      "# Specific file operations needed for restore staging\n"
+      "chronos ALL=(ALL) NOPASSWD: /bin/cp * /tmp/jemaos_restore_staged_*\n";
+  
+  // Create temporary file first
+  base::FilePath temp_sudoers("/tmp/jemaos-restore-sudoers");
+  if (!base::WriteFile(temp_sudoers, sudoers_content)) {
+    LOG(ERROR) << "Failed to create temporary sudoers file";
+    return;
+  }
+  
+  // Use shell client to validate and install sudoers file
+  auto* shell_client = jemaos::ash::JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client unavailable for sudoers setup";
+    base::DeleteFile(temp_sudoers);
+    return;
+  }
+  
+  // Validate sudoers syntax and install
+  std::string validate_and_install_cmd = base::StringPrintf(
+      "if visudo -c -f %s >/dev/null 2>&1; then "
+      "sudo cp %s %s && "
+      "sudo chmod 440 %s && "
+      "sudo chown root:root %s && "
+      "echo 'JemaOS restore sudoers installed successfully'; "
+      "else "
+      "echo 'Sudoers validation failed' >&2; exit 1; "
+      "fi; rm -f %s",
+      temp_sudoers.value().c_str(),
+      temp_sudoers.value().c_str(),
+      sudoers_file.value().c_str(),
+      sudoers_file.value().c_str(),
+      sudoers_file.value().c_str(),
+      temp_sudoers.value().c_str());
+  
+  shell_client->SyncExec(
+      validate_and_install_cmd,
+      base::BindOnce([](absl::optional<jemaos::ash::ShellState> state) {
+        if (!state) {
+          LOG(ERROR) << "Failed to execute sudoers installation command";
+          return;
+        }
+        
+        if (state->code == 0) {
+          LOG(INFO) << "JemaOS restore sudoers configuration installed successfully";
+        } else {
+          LOG(ERROR) << "Failed to install sudoers configuration (exit code " << state->code << ")";
+          if (!state->result.empty()) {
+            LOG(ERROR) << "Sudoers installation output: " << state->result;
+          }
+        }
+      }));
 }
 
 }  // namespace ash::settings

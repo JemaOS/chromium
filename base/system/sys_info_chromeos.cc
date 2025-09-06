@@ -36,7 +36,7 @@ const char* const kLinuxStandardBaseVersionKeys[] = {
 const char kChromeOsReleaseNameKey[] = "CHROMEOS_RELEASE_NAME";
 
 const char* const kChromeOsReleaseNames[] = {
-    "Chrome OS", "Chromium OS",
+    "Chrome OS", "Chromium OS", "JemaOS",
 };
 
 const char kLinuxStandardBaseReleaseFile[] = "/etc/lsb-release";

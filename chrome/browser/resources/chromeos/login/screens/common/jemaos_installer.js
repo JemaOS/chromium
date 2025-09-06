@@ -323,6 +323,7 @@ class JemaOSInstaller {
   }
 
   async IsDualbootInstallEnabled() {
+    console.log("Checking if dualboot install is enabled...");
     if (this.IS_DEBUG) return true;
     const ret = await this.isFileExist('/usr/share/dualboot/install_jemaos_loader.sh');
     return ret;
@@ -408,6 +409,8 @@ class JemaOSInstaller {
   }
 
   static InstallrEFIndCMD(devPath) {
+    console.log(`InstallrEFIndCMD, devPath: ${devPath}`);
+    console.log(`/usr/share/dualboot/install_refind.sh -d ${devPath}`);
     return `/usr/share/dualboot/install_refind.sh -d ${devPath}`;
   }
 
@@ -468,18 +471,25 @@ class JemaOSInstaller {
     } else {
       strArg = '';
     }
+    console.log(`UtilWrapperCMD, cmd: ${cmd}, args: ${strArg}`);
+    console.log(`UtilWrapperCMD, full command: /usr/share/dualboot/jemaos_util_wrapper.sh ${cmd} ${strArg}`);
     return `/usr/share/dualboot/jemaos_util_wrapper.sh ${cmd} ${strArg}`;
   }
 
   static InstallKernelCMD(devPath) {
+    console.log(`InstallKernelCMD, devPath: ${devPath}`);
+    console.log(`/usr/share/dualboot/install_kernel.sh -d ${devPath}`);
     return `/usr/share/dualboot/install_kernel.sh -d ${devPath}`;
   }
 
   static InstallImageCMD(devPath) {
+    console.log(`InstallImageCMD, devPath: ${devPath}`);
     return JemaOSInstaller.UtilWrapperCMD('create_dualboot_image', devPath);
   }
 
   static InstallLoaderCMD(devPath) {
+    console.log(`InstallLoaderCMD, devPath: ${devPath}`);
+    console.log(`/usr/share/dualboot/install_jemaos_loader.sh -d ${devPath}`);
     return `/usr/share/dualboot/install_jemaos_loader.sh -d ${devPath}`;
   }
 
@@ -558,12 +568,7 @@ class JemaOSInstaller {
         indicator: 90,
       },
       {
-        // <if expr="openjema">
-        command: JemaOSInstaller.UtilWrapperCMD('safe_create_entry', ['/EFI/openjema/bootx64.efi', 'JemaOS_Dualboot_Loader', efiPath]),
-        // </if>
-        // <if expr="not openjema">
         command: JemaOSInstaller.UtilWrapperCMD('safe_create_entry', ['/EFI/jemaos/bootx64.efi', 'JemaOS_Dualboot_Loader', efiPath]),
-        // </if>
         enable: installBoot,
         descript: 'Install boot entry to bios',
         timeout: 5,
@@ -573,12 +578,24 @@ class JemaOSInstaller {
     ];
 
     function Exector() {
+      console.log('Exector, process.length', process.length);
+      console.log('Exector, process', process);
       if (self.forceClosed) return;
       if (process.length === 0) {
+        
+        self.GetDualBootInstallLog().then((errorLog) => {
+          console.log('All missions accomplished, error log:', errorLog);
+          console.log('All missions accomplished.');
+          dispatchSuccess('All mission accomplish.');
+        });
+        
+        console.log('All missions accomplished.');
         dispatchSuccess('All mission accomplish.');
         return;
       }
       const mission = process.shift();
+      console.log('Exector, mission', mission);
+      
       if (mission.enable) {
         self.execForLongTask(mission.command, self.asyncTaskCreated, () => {
           self.dispatchEvent(JemaOSInstaller.Events.OnProgress, { detail: { desc: mission.descript, indicator: mission.indicator } });
@@ -591,6 +608,7 @@ class JemaOSInstaller {
         Exector();
       }
     }
+    
 
     return self.clearDualbootLog().then(() => {
       Exector();

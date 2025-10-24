@@ -25,8 +25,8 @@
   <message name="IDS_FILE_BROWSER_NUTSTORE_HINT_STEPS_CONNECT_ACCOUNT" desc="Steps to setup Nutstore account - fill account and password to connect nutstore to jemaos">
     and connect Nutstore account to JemaOS with your email and application password
   </message>
-  <message name="IDS_FILE_BROWSER_JEMADROP_ROOT_LABEL" desc="A label for FyDrop in file manager sidebar">
-    FyDrop
+  <message name="IDS_FILE_BROWSER_JEMADROP_ROOT_LABEL" desc="A label for JemaDrop in file manager sidebar">
+    JemaDrop
   </message>
   <if expr="openjema">
     <message name="IDS_FILE_BROWSER_NO_TASK_FOR_APK" desc="Message shown when a user tries to open a *.apk file, which we don't handle in the Files app.">

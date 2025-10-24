@@ -11,6 +11,7 @@ import 'chrome://resources/ash/common/cr_elements/cr_link_row/cr_link_row.js';
 import 'chrome://resources/ash/common/cr_elements/icons.html.js';
 import 'chrome://resources/ash/common/cr_elements/policy/cr_policy_indicator.js';
 import 'chrome://resources/ash/common/cr_elements/cr_shared_vars.css.js';
+import 'chrome://resources/ash/common/cr_elements/localized_link/localized_link.js';
 import 'chrome://resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
 import '../controls/settings_toggle_button.js';
 import '../settings_shared.css.js';
@@ -133,11 +134,20 @@ export class OsSettingsPeoplePageElement extends
         readOnly: true,
       },
 
+      shouldUseNewUI_: {
+        type: Boolean,
+        value: () => {
+          return isRevampWayfindingEnabled() && !loadTimeData.getBoolean('isJemaProfile');
+        }
+      },
+
       showParentalControls_: {
         type: Boolean,
         value() {
           return loadTimeData.valueExists('showParentalControls') &&
-              loadTimeData.getBoolean('showParentalControls');
+              loadTimeData.getBoolean('showParentalControls') &&
+             (!loadTimeData.valueExists('isJemaProfile') ||
+              !loadTimeData.getBoolean('isJemaProfile'));
         },
       },
 
@@ -178,6 +188,33 @@ export class OsSettingsPeoplePageElement extends
         type: Boolean,
         value: loadTimeData.getBoolean('showSyncSettingsRevamp'),
         readOnly: true,
+      },
+
+      isProfileActionable_: {
+        type: Boolean,
+        value: function() {
+          if (loadTimeData.getBoolean('isJemaProfile')) {
+            return !loadTimeData.getBoolean('isJemaLocalAccount');
+          }
+          return loadTimeData.getBoolean('isAccountManagerEnabled');
+        },
+      },
+  
+      profileActionButtonIcon_: {
+        type: String,
+          value: function() {
+            if (loadTimeData.getBoolean('isJemaProfile')) {
+              return 'icon-external';
+            }
+            return 'subpage-arrow';
+          },
+      },
+
+      isJemaLocalAccount_: {
+        type: Boolean,
+        value() {
+          return loadTimeData.getBoolean('isJemaLocalAccount');
+        },
       },
 
     };
@@ -429,6 +466,16 @@ export class OsSettingsPeoplePageElement extends
   }
 
   private onAccountManagerClick_(): void {
+    if (loadTimeData.getBoolean('isJemaProfile')) {
+      if (loadTimeData.getBoolean('isJemaLocalAccount')) {
+        return;
+      }
+      const baseUrl = loadTimeData.getString('jemaosAccountBaseUrl');
+      const url = `${baseUrl}/personalInfo/`;
+      window.open(url);
+      return;
+    }
+
     if (this.isAccountManagerEnabled_) {
       Router.getInstance().navigateTo(routes.ACCOUNT_MANAGER);
     }
@@ -468,6 +515,11 @@ export class OsSettingsPeoplePageElement extends
   onGraduationAppUpdated(isAppEnabled: boolean): void {
     this.showGraduationApp_ =
         loadTimeData.getBoolean('isGraduationFlagEnabled') && isAppEnabled;
+  }
+
+  private openLocalAccountChangePasswordSystemSettings_(event: CustomEvent<{event: Event}>): void {
+    event.detail.event.preventDefault();
+    Router.getInstance().navigateTo(routes.LOCK_SCREEN);
   }
 }
 

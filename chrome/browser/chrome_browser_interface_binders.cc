@@ -254,6 +254,7 @@
 #include "ash/webui/boca_ui/mojom/boca.mojom.h"
 #include "ash/webui/camera_app_ui/camera_app_helper.mojom.h"
 #include "ash/webui/camera_app_ui/camera_app_ui.h"
+#include "ash/webui/jema_assistant_app_ui/jema_assistant_app_ui.h"
 #include "ash/webui/color_internals/color_internals_ui.h"
 #include "ash/webui/color_internals/mojom/color_internals.mojom.h"
 #include "ash/webui/common/mojom/accelerator_fetcher.mojom.h"
@@ -1778,6 +1779,9 @@ void PopulateChromeWebUIFrameInterfaceBrokers(
 
   registry.ForWebUI<ash::HelpAppUntrustedUI>()
       .Add<color_change_listener::mojom::PageHandler>();
+  if (ash::features::IsJemaAssistantEnabled()) {
+    registry.ForWebUI<ash::JemaAssistantAppUI>();
+  }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(IS_CHROMEOS_ASH) && !defined(OFFICIAL_BUILD)

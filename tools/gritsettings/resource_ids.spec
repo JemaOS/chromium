@@ -277,7 +277,7 @@
     "includes": [3340],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/login/resources.grd": {
-    "META": {"sizes": {"includes": [320],}},
+    "META": {"sizes": {"includes": [360],}},
     "includes": [3360],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/manage_mirrorsync/resources.grd": {
@@ -1385,7 +1385,19 @@
   "<(SHARED_INTERMEDIATE_DIR)/third_party/blink/public/strings/permission_element_generated_strings.grd": {
     "META": {"sizes": {"messages": [2000],}},
     "messages": [10080],
-  }
+  },
+
+  #//---***JEMAOS BEGIN***---
+  "jemaos/extensions/common/jemaos_extensions_resources.grd": {
+    "includes": [10100],
+    "messages": [10120],
+  },
+
+  "<(SHARED_INTERMEDIATE_DIR)/ash/webui/jema_assistant_app_ui/resources/resources.grd": {
+    "META": {"sizes": {"includes": [50],}},
+    "includes": [10140],
+  },
+  #//---***JEMAOS END***---
 
   # END "everything else" section.
   # Everything but chrome/, components/, content/, and ios/

@@ -41,11 +41,22 @@
 #include "components/signin/public/identity_manager/tribool.h"
 #include "components/strings/grit/components_branded_strings.h"
 #include "components/strings/grit/components_strings.h"
+#include "components/version_info/version_info.h"
 #include "components/version_ui/version_ui_constants.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "jemaos/constants/jemaos_constants.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/webui/web_ui_util.h"
 #include "ui/chromeos/devicetype_utils.h"
+#include "jemaos/switches/urls/urls_constants.h"
+#include "jemaos/switches/license/license_switches.h"
+#include "chromeos/version/version_loader.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
+
+#if BUILDFLAG(JEMAOS_DEVICE)
+#include "chromeos/ash/components/system/statistics_provider.h"
+#include "jemaos/switches/services/services_switches.h"
+#endif
 
 namespace ash::settings {
 
@@ -254,12 +265,10 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
   // Top level About page strings.
   webui::LocalizedString kLocalizedStrings[] = {
       {"aboutProductLogoAlt", IDS_SHORT_PRODUCT_LOGO_ALT_TEXT},
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
       {"aboutReportAnIssue", IDS_SETTINGS_ABOUT_PAGE_REPORT_AN_ISSUE},
       {"aboutSendFeedback", IDS_SETTINGS_ABOUT_PAGE_SEND_FEEDBACK},
       {"aboutSendFeedbackDescription",
        IDS_OS_SETTINGS_REVAMP_SEND_FEEDBACK_DESCRIPTION},
-#endif
       {"aboutDiagnostics", IDS_SETTINGS_ABOUT_PAGE_DIAGNOSTICS},
       {"aboutDiagnosticseDescription",
        IDS_OS_SETTINGS_REVAMP_DIAGNOSTICS_DESCRIPTION},
@@ -391,6 +400,11 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       {"aboutUpdateToRollbackVersionDisallowed",
        IDS_SETTINGS_UPDATE_TO_ROLLBACK_VERSION_DISALLOWED},
 
+      {"aboutJemaOSOtaDisallowedRequiresOneTimePayment",
+       IDS_OS_SETTINGS_JEMAOS_OTA_DISALLOWED_REQUIRES_ONE_TIME_PAYMENT},
+      {"aboutJemaOSOtaDisallowedByLicenseValidation",
+       IDS_OS_SETTINGS_JEMAOS_OTA_DISALLOWED_BY_LICENSE_VALIDATION},
+
       // About page auto update toggle.
       {"aboutConsumerAutoUpdateToggleTitle",
        IDS_SETTINGS_ABOUT_PAGE_CONSUMER_AUTO_UPDATE_TOGGLE_TITLE},
@@ -404,8 +418,46 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
        IDS_SETTINGS_ABOUT_PAGE_CONSUMER_AUTO_UPDATE_TOGGLE_TURN_OFF_BUTTON},
       {"aboutConsumerAutoUpdateToggleKeepUpdatesButton",
        IDS_SETTINGS_ABOUT_PAGE_CONSUMER_AUTO_UPDATE_TOGGLE_KEEP_UPDATES_BUTTON},
+      {"aboutJemaOSVersionWithoutLicenseState",
+       IDS_SETTINGS_ABOUT_PAGE_NEW_JEMAOS_VERSION_WITHOUT_LICENSE_STATE},
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+      {"aboutJemaOSVersion",
+       IDS_SETTINGS_ABOUT_PAGE_NEW_JEMAOS_VERSION},
+      {"aboutJemaOSLicenseStateUnlicensed",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_UNLICENSED},
+      {"aboutJemaOSLicenseStateForYouTrial",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_FOR_YOU_TRIAL},
+      {"aboutJemaOSLicenseStateForYouValid",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_FOR_YOU_VALID},
+      {"aboutJemaOSLicenseStateForYouExpired",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_FOR_YOU_EXPIRED},
+      {"aboutJemaOSLicenseStateEnterpriseTrial",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_ENTERPRISE_TRIAL},
+      {"aboutJemaOSLicenseStateEnterpriseValid",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_ENTERPRISE_VALID},
+      {"aboutJemaOSLicenseStateEnterpriseExpired",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_ENTERPRISE_EXPIRED},
+#endif
+      {"aboutJemaOSDeviceTitleLegacyIntel",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_DEVICE_TITLE_LEGACY_INTEL},
+      {"aboutJemaOSDeviceTitleModernIntel",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_DEVICE_TITLE_MODERN_INTEL},
+      {"aboutJemaOSDeviceTitleAMDGraphics",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_DEVICE_TITLE_AMD_GRAPHICS},
+      {"aboutJemaOSDeviceTitleIntelSlim",
+       IDS_SETTINGS_ABOUT_PAGE_JEMAOS_DEVICE_TITLE_INTEL_SLIM},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
+
+  html_source->AddString("aboutKeepJemaOsUpdateToDate",
+      l10n_util::GetStringFUTF16(IDS_SETTINGS_ABOUT_KEEP_JEMAOS_UPDATE_TO_DATE,
+        l10n_util::GetStringUTF16(IDS_PRODUCT_OS_NAME)));
+  html_source->AddString("aboutJemaOsUpdateEnabled",
+      l10n_util::GetStringFUTF16(IDS_SETTINGS_ABOUT_JEMAOS_UPDATE_ENABLED,
+        l10n_util::GetStringUTF16(IDS_PRODUCT_OS_NAME)));
+  html_source->AddString("aboutJemaOsUpdateDisabled",
+      l10n_util::GetStringFUTF16(IDS_SETTINGS_ABOUT_JEMAOS_UPDATE_DISABLED,
+        l10n_util::GetStringUTF16(IDS_PRODUCT_OS_NAME)));
 
   html_source->AddString("aboutTPMFirmwareUpdateLearnMoreURL",
                          chrome::kTPMFirmwareUpdateLearnMoreURL);
@@ -436,6 +488,21 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
 
   html_source->AddString("aboutBrowserVersion",
                          VersionUI::GetAnnotatedVersionStringForUi());
+  std::string jemaosMajorVersion = base::SysInfo::GetLsbJemaReleaseVersion();
+  if (jemaosMajorVersion == "" || jemaosMajorVersion == "unknown") {
+    jemaosMajorVersion = "";
+  } else {
+    jemaosMajorVersion = "v" + jemaosMajorVersion;
+  }
+  auto version = chromeos::version_loader::GetVersion(chromeos::version_loader::VERSION_SHORT);
+  html_source->AddString("aboutJemaOSPlatformVersion", version.value_or(""));
+  html_source->AddString("aboutJemaOSChromiumVersion", std::string(version_info::GetVersionNumber()));
+  html_source->AddString("aboutJemaOSVersionNumber", jemaosMajorVersion);
+  html_source->AddString("aboutJemaOSBoardName", base::SysInfo::GetLsbReleaseBoard());
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+  html_source->AddInteger("aboutJemaOSLicenseState",
+                          g_browser_process->local_state()->GetInteger(jemaos::prefs::kJemaLicenseStateType));
+#endif
   html_source->AddString(
       "aboutProductCopyright",
       base::i18n::MessageFormatter::FormatWithNumberedArgs(
@@ -473,7 +540,9 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       "endOfLifeMessage",
       l10n_util::GetStringFUTF16(IDS_SETTINGS_ABOUT_PAGE_LAST_UPDATE_MESSAGE,
                                  ui::GetChromeOSDeviceName(),
-                                 chrome::kEolNotificationURL));
+                                 base::ASCIIToUTF16(jemaos::constants::kEolNotificationURL)));
+
+  html_source->AddString("jemaosLicenseWebUrl", jemaos::switches::GetJemaOSLicenseWebUrl());
 
   html_source->AddString("eolIncentiveOfferTitle",
                          l10n_util::GetStringUTF16(
@@ -515,6 +584,76 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       l10n_util::GetStringUTF16(IDS_ABOUT_SAFETY_INFORMATION));
   html_source->AddString("aboutProductSafetyURL",
                          base::UTF8ToUTF16(safetyInfoLink));
+#endif
+
+  html_source->AddString(
+      "aboutJemaOsProductTitleWithLink",
+      l10n_util::GetStringFUTF16(IDS_VERSION_UI_JEMAOS_PRODUCT_TITLE_WITH_LINK,
+#if BUILDFLAG(IS_OPENJEMA)
+                                base::UTF8ToUTF16(jemaos::constants::kOpenJemaHomePageUrl)));
+#else
+                                base::UTF8ToUTF16(jemaos::constants::kJemaOSHomePageUrl)));
+#endif
+  html_source->AddString("aboutJemaOsProductCopyright",
+                         base::i18n::MessageFormatter::FormatWithNumberedArgs(
+                            l10n_util::GetStringUTF16(IDS_SETTINGS_JEMAOS_PRODUCT_COPYRIGHT),
+                            base::Time::Now()));
+#if !BUILDFLAG(IS_OPENJEMA)
+  html_source->AddString(
+      "aboutJemaOsProductTos",
+      l10n_util::GetStringFUTF16(IDS_VERSION_UI_JEMAOS_PRODUCT_TOS,
+                                 base::UTF8ToUTF16(jemaos::constants::kPrivacyURLPath),
+                                 base::UTF8ToUTF16(jemaos::constants::kEulaURLPath))),
+#endif
+
+#if BUILDFLAG(IS_OPENJEMA)
+  html_source->AddString(
+      "aboutJemaOsOpenJemaLicenseDesc",
+      l10n_util::GetStringUTF16(IDS_VERSION_UI_JEMAOS_OPENJEMA_LICENSE_DESC));
+#else
+  html_source->AddString(
+      "aboutJemaOsOpenJemaLicenseDesc",
+      l10n_util::GetStringFUTF16(IDS_VERSION_UI_JEMAOS_OPENJEMA_LICENSE_DESC,
+                                base::UTF8ToUTF16(jemaos::constants::kOpenJemaHomePageUrl)));
+#endif
+  html_source->AddString(
+      "aboutJemaOsOpenJemaProductLicense",
+      l10n_util::GetStringFUTF16(IDS_VERSION_UI_JEMAOS_OPENJEMA_PRODUCT_LICENSE,
+                                 chrome::kChromiumProjectURL));
+  html_source->AddString(
+      "aboutJemaOsProductAndChromiumLicense",
+      l10n_util::GetStringFUTF16(IDS_VERSION_UI_JEMAOS_PRODUCT_CHROMIUM_LICENSE,
+                                chrome::kChromeUICreditsURL16,
+                                chrome::kChromeUIOSCreditsURL16));
+
+#if BUILDFLAG(JEMAOS_DEVICE)
+  html_source->AddString(
+      "aboutJemaOsDeviceProductCopyrightInfo",
+                         base::i18n::MessageFormatter::FormatWithNumberedArgs(
+                         l10n_util::GetStringUTF16(IDS_VERSION_UI_JEMAOS_DEVICE_PRODUCT_COPYRIGHT_INFO),
+                            base::Time::Now()));
+  html_source->AddString(
+      "aboutJemaOsDeviceProductRegulatoryInfo",
+      l10n_util::GetStringUTF16(IDS_VERSION_UI_JEMAOS_DEVICE_PRODUCT_REGULATORY_INFO));
+#if !BUILDFLAG(USE_JEMAOS_COM)
+  html_source->AddString(
+      "aboutJemaOsDeviceProductCopyrightInfoExtra",
+      l10n_util::GetStringUTF16(IDS_VERSION_UI_JEMAOS_DEVICE_PRODUCT_COPYRIGHT_INFO_EXTRA));
+#endif
+  html_source->AddString(
+      "aboutJemaOsDeviceProductSerialNumberLabel",
+      l10n_util::GetStringUTF16(IDS_VERSION_UI_JEMAOS_DEVICE_PRODUCT_SERIAL_NUMBER_LABEL));
+  html_source->AddString(
+      "aboutJemaOsDeviceProductWarrantyUrlTitle",
+      l10n_util::GetStringUTF16(IDS_VERSION_UI_JEMAOS_DEVICE_PRODUCT_WARRANTY_URL_TITLE));
+
+
+  auto provider = ::ash::system::StatisticsProvider::GetInstance();
+  if (provider) {
+    auto machine_id = provider->GetMachineID();
+    html_source->AddString("jemaosDeviceSerialNumber", base::UTF8ToUTF16(machine_id.value_or("")));
+  }
+  html_source->AddString("jemaosProductWarrentyUrl", jemaos::switches::GetJemaOSProductWarrantyUrl());
 #endif
 
   // Crostini subsection exists only when OsSettingsRevampWayfinding is enabled.

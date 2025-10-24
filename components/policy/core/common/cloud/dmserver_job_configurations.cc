@@ -14,6 +14,8 @@
 #include "net/base/url_util.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "url/gurl.h"
+#include "chromeos/ash/components/system/statistics_provider.h"
+#include "jemaos/switches/account/account_switches.h"
 
 namespace em = enterprise_management;
 
@@ -113,6 +115,18 @@ const char* JobTypeToRequestType(
   NOTREACHED() << "Invalid job type " << type;
 }
 
+std::string GetJemaOsLicenseId() {
+  ash::system::StatisticsProvider* provider =
+      ash::system::StatisticsProvider::GetInstance();
+  std::string jemaos_license_id = "";
+  const std::optional<std::string_view> str =
+    provider->GetMachineStatistic(ash::system::kJemaOsLicenseIdKey);
+  if (str) {
+    jemaos_license_id = std::string(str.value());
+  }
+  return jemaos_license_id;
+}
+
 }  // namespace
 
 // static
@@ -189,6 +203,10 @@ DMServerJobConfiguration::DMServerJobConfiguration(CreateParams params)
   AddParameter(dm_protocol::kParamPlatform,
                params.service->configuration()->GetPlatformParameter());
   AddParameter(dm_protocol::kParamDeviceID, params.client_id);
+
+  if (jemaos::switches::IsJemaDMServerUrl(server_url_)) {
+    AddParameter(dm_protocol::kParamJemaOsLicenseId, GetJemaOsLicenseId());
+  }
 
   if (params.profile_id) {
     AddParameter(dm_protocol::kParamProfileID, *params.profile_id);

@@ -2493,7 +2493,17 @@ static_library("browser") {
     "//ui/strings",
     "//ui/surface",
     "//ui/webui",
+    "//jemaos/prefs",
+    "//jemaos/switches",
   ]
+
+  if (is_chromeos) {
+    if (use_jemaos_license) {
+      deps += [
+        "//jemaos/license",
+      ]
+    }
+  }
 
   # Platforms that have a network diagnostics dialog. All others fall through
   # to the stub which is not implemented.

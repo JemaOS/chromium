@@ -20,6 +20,7 @@ const INITIAL_PREFERENCES: Preferences = {
   arcEnabled: false,
   arcRemovableMediaAccessEnabled: false,
   folderShortcuts: [],
+  jemaAssistantEnabled: false,
   trashEnabled: false,
   officeFileMovedOneDrive: 0,
   officeFileMovedGoogleDrive: 0,

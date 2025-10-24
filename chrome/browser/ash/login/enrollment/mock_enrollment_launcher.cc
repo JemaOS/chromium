@@ -73,6 +73,10 @@ void FakeEnrollmentLauncher::EnrollUsingToken(const std::string& token) {
   mock_->EnrollUsingToken(token);
 }
 
+void FakeEnrollmentLauncher::EnrollUsingJemaToken() {
+  mock_->EnrollUsingJemaToken();
+}
+
 void FakeEnrollmentLauncher::EnrollUsingAttestation() {
   mock_->EnrollUsingAttestation();
 }

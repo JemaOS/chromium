@@ -224,6 +224,13 @@ export class OsSettingsPrivacyPageElement extends
         readOnly: true,
       },
 
+      isJemaLocalAccount_: {
+        type: Boolean,
+        value() {
+          return loadTimeData.getBoolean('isJemaLocalAccount');
+        },
+      },
+
       isRevampWayfindingEnabled_: {
         type: Boolean,
         value: () => {
@@ -299,6 +306,7 @@ export class OsSettingsPrivacyPageElement extends
   private dataAccessShiftTabPressed_: boolean;
   private fingerprintUnlockEnabled_: boolean;
   private isAccountManagerEnabled_: boolean;
+  private isJemaLocalAccount_: boolean;
   private isAuthPanelInSessionEnabled_: boolean;
   private isGuestMode_: boolean;
   private isRevampWayfindingEnabled_: boolean;

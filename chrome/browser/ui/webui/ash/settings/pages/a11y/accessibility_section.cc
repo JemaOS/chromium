@@ -49,6 +49,7 @@
 #include "ui/base/webui/web_ui_util.h"
 #include "ui/events/ash/keyboard_layout_util.h"
 #include "ui/native_theme/native_theme_features.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 namespace ash::settings {
 
@@ -1445,7 +1446,7 @@ void AccessibilitySection::AddLoadTimeData(
   html_source->AddLocalizedStrings(kLocalizedStrings);
 
   html_source->AddString("a11yLearnMoreUrl",
-                         chrome::kChromeAccessibilityHelpURL);
+                         jemaos::constants::kJemaAccessibilityHelpURL);
 
   html_source->AddString("selectToSpeakLearnMoreUrl",
                          chrome::kSelectToSpeakLearnMoreURL);
@@ -1472,7 +1473,7 @@ void AccessibilitySection::AddLoadTimeData(
                           AreTabletNavigationButtonsAllowed());
 
   html_source->AddString("tabletModeShelfNavigationButtonsLearnMoreUrl",
-                         chrome::kTabletModeGesturesLearnMoreURL);
+                         jemaos::constants::kTabletModeGesturesLearnMoreURL);
 
   html_source->AddBoolean("isAccessibilityReducedAnimationsEnabled",
                           IsAccessibilityReducedAnimationsEnabled());

@@ -1,0 +1,23 @@
+<style include="settings-shared">
+  .jemaos-setting-item-text {
+    margin-inline-end: var(--cr-controlled-by-spacing);
+  }
+</style>
+<settings-card header-text="$i18n{jemaosExperimentalFeatures}" section="experiment" hidden=[[!shouldShowExperimentFeature_]]>
+  <div class="settings-box two-line" hidden="[[!shouldShowTpmFallback_]]">
+    <div class="start padded settings-box-text jemaos-setting-item-text">
+      $i18n{jemaosBypassTpmChecksTitle}
+      <div class="secondary">
+        $i18n{jemaosBypassTpmChecksDesc}
+        <a target="_blank" href="[[jemaExperimentTpmfallbackUrl_]]">$i18n{learnMore}</a>
+      </div>
+    </div>
+    <cr-button id="tpmFallbackRestartButton" class="restartButton" on-click="onRestartTap_" hidden="[[!shouldShowTpmFallbackRestartButton_]]">
+      $i18n{restart}
+    </cr-button>
+    <div class="separator" hidden="[[!shouldShowTpmFallbackRestartButton_]]"></div>
+    <cr-toggle id="toggleForceTpmFallback" disabled="[[!isOwner_]]"
+                role="button" checked="[[forceTpmFallback_]]" on-change="onToggleForceTpmFallback_">
+    </cr-toggle>
+  </div>
+</settings-card>

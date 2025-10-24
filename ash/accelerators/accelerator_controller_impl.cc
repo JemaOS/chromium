@@ -26,6 +26,7 @@
 #include "ash/constants/ash_features.h"
 #include "ash/constants/devicetype.h"
 #include "ash/debug.h"
+#include "ash/jemaos_ai/jemaos_ai_view.h"
 #include "ash/ime/ime_controller_impl.h"
 #include "ash/ime/ime_switch_type.h"
 #include "ash/public/cpp/accelerator_actions.h"
@@ -33,6 +34,7 @@
 #include "ash/public/cpp/debug_delegate.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
+#include "ash/shelf/shelf.h"
 #include "ash/system/input_device_settings/input_device_settings_notification_controller.h"
 #include "ash/system/power/power_button_controller.h"
 #include "ash/wm/mru_window_tracker.h"
@@ -410,6 +412,21 @@ bool IsShortcutBlockedByPolicy(ui::Accelerator accelerator) {
 
   return kSystemShortcutPolicyBlockedAccelerators.contains(
       {accelerator.key_code(), accelerator.modifiers()});
+}
+
+bool CanToggleAssistant() {
+  if (!ash::features::IsJemaAssistantEnabled()) {
+    return false;
+  }
+  return AssistantState::Get()->jema_assistant_enabled().value_or(false);
+}
+
+bool CanHandleToggleJemaOSAssistantBubble() {
+  if (!CanToggleAssistant()) {
+    return false;
+  }
+  Shelf* shelf = Shelf::ForWindow(Shell::GetPrimaryRootWindow());
+  return shelf->jema_assistant_view() && shelf->jema_assistant_view()->CanHandleToggleJemaOSAssistant();
 }
 
 }  // namespace
@@ -941,7 +958,7 @@ bool AcceleratorControllerImpl::CanPerformAction(
     case AcceleratorAction::kToggleStylusTools:
       return accelerators::CanShowStylusTools();
     case AcceleratorAction::kStartAssistant:
-      return true;
+      return CanToggleAssistant();
     case AcceleratorAction::kStopScreenRecording:
       return accelerators::CanStopScreenRecording();
     case AcceleratorAction::kSwapPrimaryDisplay:
@@ -976,6 +993,8 @@ bool AcceleratorControllerImpl::CanPerformAction(
       return true;
     case AcceleratorAction::kEnableSelectToSpeak:
       return true;
+    case AcceleratorAction::kToggleJemaosAssistant:
+      return CanHandleToggleJemaOSAssistantBubble();
     case AcceleratorAction::kEnableOrToggleDictation:
       return accelerators::CanEnableOrToggleDictation();
     case AcceleratorAction::kToggleDockedMagnifier:
@@ -1061,7 +1080,6 @@ bool AcceleratorControllerImpl::CanPerformAction(
     case AcceleratorAction::kNewTab:
     case AcceleratorAction::kNewWindow:
     case AcceleratorAction::kOpenCalculator:
-    case AcceleratorAction::kOpenCrosh:
     case AcceleratorAction::kOpenDiagnostics:
     case AcceleratorAction::kOpenFeedbackPage:
     case AcceleratorAction::kOpenFileManager:
@@ -1089,6 +1107,8 @@ bool AcceleratorControllerImpl::CanPerformAction(
     case AcceleratorAction::kVolumeUp:
     case AcceleratorAction::kWindowMinimize:
       return true;
+    case AcceleratorAction::kOpenCrosh:
+      return !Shell::Get()->session_controller()->IsUserGuest();
     case AcceleratorAction::kTouchFingerprintSensor1:
     case AcceleratorAction::kTouchFingerprintSensor2:
     case AcceleratorAction::kTouchFingerprintSensor3:
@@ -1547,6 +1567,9 @@ void AcceleratorControllerImpl::PerformAction(
     case AcceleratorAction::kEnableSelectToSpeak:
       accelerators::EnableSelectToSpeak();
       break;
+    case AcceleratorAction::kToggleJemaosAssistant:
+      accelerators::ToggleJemaOSAssistant();
+      break;
     case AcceleratorAction::kEnableOrToggleDictation:
       // UMA metrics are recorded later in the call stack.
       accelerators::EnableOrToggleDictation();
@@ -1815,6 +1838,10 @@ void AcceleratorControllerImpl::PerformDebugActionOnDelegateIfEnabled(
     default:
       break;
   }
+}
+
+void RotateScreenJemaOS() {
+  accelerators::RotateScreenWithoutConfirmation();
 }
 
 }  // namespace ash

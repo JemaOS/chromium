@@ -24,6 +24,8 @@ export class TestAboutPageBrowserProxy extends TestBrowserProxy implements
     targetChannel: BrowserChannel.BETA,
     isLts: false,
   };
+  private jemaOtaEnabled_ = false;
+  private firmwareUpdateSupported_ = false;
   private canChangeChannel_ = true;
   private regulatoryInfo_: RegulatoryInfo|null = null;
   private tpmFirmwareUpdateStatus_: TpmFirmwareUpdateStatusChangedEvent = {
@@ -54,6 +56,8 @@ export class TestAboutPageBrowserProxy extends TestBrowserProxy implements
       'getChannelInfo',
       'getVersionInfo',
       'getRegulatoryInfo',
+      'getEnabledJemaOTA',
+      'getIsFirmwareUpdateSupported',
       'checkInternetConnection',
       'getEndOfLifeInfo',
       'endOfLifeIncentiveButtonClicked',
@@ -64,6 +68,7 @@ export class TestAboutPageBrowserProxy extends TestBrowserProxy implements
       'refreshTpmFirmwareUpdateStatus',
       'requestUpdate',
       'requestUpdateOverCellular',
+      'enableJemaOTA',
       'setChannel',
       'getFirmwareUpdateCount',
       'openFirmwareUpdatesPage',
@@ -184,6 +189,16 @@ export class TestAboutPageBrowserProxy extends TestBrowserProxy implements
     return Promise.resolve(this.regulatoryInfo_);
   }
 
+  getEnabledJemaOTA(): Promise<boolean> {
+    this.methodCalled('getEnabledJemaOTA');
+    return Promise.resolve(this.jemaOtaEnabled_);
+  }
+
+  getIsFirmwareUpdateSupported(): Promise<boolean> {
+    this.methodCalled('getIsFirmwareUpdateSupported');
+    return Promise.resolve(this.firmwareUpdateSupported_);
+  }
+
   getEndOfLifeInfo(): Promise<EndOfLifeInfo> {
     this.methodCalled('getEndOfLifeInfo');
     return Promise.resolve(this.endOfLifeInfo_);
@@ -195,6 +210,10 @@ export class TestAboutPageBrowserProxy extends TestBrowserProxy implements
 
   setChannel(channel: BrowserChannel, isPowerwashAllowed: boolean): void {
     this.methodCalled('setChannel', [channel, isPowerwashAllowed]);
+  }
+
+  enableJemaOTA(enabled: boolean) {
+    this.methodCalled('enableJemaOTA', [enabled]);
   }
 
   setTpmFirmwareUpdateStatus(status: TpmFirmwareUpdateStatusChangedEvent):

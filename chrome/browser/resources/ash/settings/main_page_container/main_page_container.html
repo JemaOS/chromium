@@ -254,6 +254,16 @@
         </os-settings-apps-page>
       </page-displayer>
     </template>
+
+    <template is="dom-if"
+        if="[[shouldStampPage_(pageAvailability, Section.kJemaAssistant)]]"
+        restamp>
+      <page-displayer section="[[Section.kJemaAssistant]]">
+        <os-settings-jema-assistant-page prefs="{{prefs}}">
+        </os-settings-jema-assistant-page>
+      </page-displayer>
+    </template>
+
     <template is="dom-if"
         if="[[shouldStampPage_(pageAvailability, Section.kAccessibility)]]"
         restamp>
@@ -338,6 +348,16 @@
       </template>
     </div>
 
+    <div id="jemaosPageContainer"
+      hidden$="[[!shouldShowJemaOsSettingsPageContainer_]]">
+      <template is="dom-if"
+          if="[[shouldStampPage_(pageAvailability, Section.kJemaOs)]]"
+          restamp>
+        <page-displayer section="[[Section.kJemaOs]]">
+          <os-jema-page></os-jema-page>
+        </page-displayer>
+      </template>
+    </div>
     <div id="aboutPageContainer"
         hidden$="[[!shouldShowAboutPageContainer_]]">
       <template is="dom-if"

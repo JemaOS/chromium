@@ -413,6 +413,11 @@ bool Profile::IsGuestSession() const {
 PrefService* Profile::GetReadOnlyOffTheRecordPrefs() {
   return nullptr;
 }
+//---***JEMAOS BEGIN***---
+bool Profile::IsJemaProfile() const {
+  return is_jema_profile_;
+}
+//---***JEMAOS END***---
 
 bool Profile::IsSystemProfile() const {
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)

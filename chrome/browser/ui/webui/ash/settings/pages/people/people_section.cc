@@ -63,6 +63,7 @@
 #include "ui/base/webui/web_ui_util.h"
 #include "ui/chromeos/devicetype_utils.h"
 #include "ui/chromeos/resources/grit/ui_chromeos_resources.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 namespace ash::settings {
 
@@ -207,6 +208,8 @@ void AddAccountManagerPageStrings(content::WebUIDataSource* html_source,
 
   user_manager::User* user = ProfileHelper::Get()->GetUserByProfile(profile);
   DCHECK(user);
+  html_source->AddString("jemaosAccountBaseUrl",
+                         jemaos::constants::kJemaOSAccountBaseUrl);
   html_source->AddString(
       "accountListChildDescription",
       l10n_util::GetStringFUTF16(
@@ -346,7 +349,7 @@ void AddLockScreenPageStrings(content::WebUIDataSource* html_source,
                              IDS_SETTINGS_PEOPLE_LOCK_SCREEN_FINGERPRINT_NOTICE,
                              ui::GetChromeOSDeviceName()));
   html_source->AddString("fingerprintLearnMoreLink",
-                         chrome::kFingerprintLearnMoreURL);
+                         jemaos::constants::kFingerprintLearnMoreURL);
   html_source->AddString("recoveryLearnMoreUrl", chrome::kRecoveryLearnMoreURL);
 }
 
@@ -499,6 +502,12 @@ bool IsSameAccount(const ::account_manager::AccountKey& account_key,
     case account_manager::AccountType::kActiveDirectory:
       return account_id.GetAccountType() == AccountType::ACTIVE_DIRECTORY &&
              account_id.GetObjGuid() == account_key.id();
+    case account_manager::AccountType::kFlint:
+      return account_id.GetAccountType() == AccountType::FLINT_ACCOUNT &&
+             account_id.GetFlintId() == account_key.id();
+    case account_manager::AccountType::kJema:
+      return account_id.GetAccountType() == AccountType::JEMA_ACCOUNT &&
+             account_id.GetJemaId() == account_key.id();
   }
 }
 
@@ -532,7 +541,7 @@ PeopleSection::PeopleSection(Profile* profile,
 
   // TODO(jamescook): Sort out how account management is split between Chrome
   // OS and browser settings.
-  if (IsAccountManagerAvailable(profile)) {
+  if (IsAccountManagerAvailable(profile) && !profile->IsJemaProfile()) {
     // Some Account Manager search tags are added/removed dynamically.
     auto* factory =
         g_browser_process->platform_part()->GetAccountManagerFactory();
@@ -571,6 +580,7 @@ void PeopleSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       {"lockScreenFingerprintTitle",
        IDS_SETTINGS_PEOPLE_LOCK_SCREEN_FINGERPRINT_SUBPAGE_TITLE},
       {"manageOtherPeople", IDS_SETTINGS_PEOPLE_MANAGE_OTHER_PEOPLE},
+      {"jemaLocalAccountChangePasswordLinkDesc", IDS_SETTINGS_OS_SETTINGS_JEMA_LOCAL_ACCOUNT_CHANGE_PASSWORD_LINK_DESC},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 

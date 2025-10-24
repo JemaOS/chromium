@@ -15,6 +15,8 @@
 #include "chromeos/ash/components/audio/cras_audio_handler.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
+#include "device_management_backend.pb.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 namespace ash {
 
@@ -89,6 +91,14 @@ void AssistantStateBase::RegisterPrefChanges(PrefService* pref_service) {
       assistant::prefs::kAssistantOnboardingMode,
       base::BindRepeating(&AssistantStateBase::UpdateOnboardingMode,
                           base::Unretained(this)));
+  pref_change_registrar_->Add(
+      jemaos::prefs::kJemaAssistantEnabled,
+      base::BindRepeating(&AssistantStateBase::UpdateJemaAssistantEnabled,
+                          base::Unretained(this)));
+  pref_change_registrar_->Add(
+      jemaos::prefs::kJemaAssistantExtraAcceleratorEnabled,
+      base::BindRepeating(&AssistantStateBase::UpdateJemaAssistantEnabled,
+                          base::Unretained(this)));
 
   UpdateConsentStatus();
   UpdateContextEnabled();
@@ -98,6 +108,7 @@ void AssistantStateBase::RegisterPrefChanges(PrefService* pref_service) {
   UpdateLaunchWithMicOpen();
   UpdateNotificationEnabled();
   UpdateOnboardingMode();
+  UpdateJemaAssistantEnabled();
 }
 
 bool AssistantStateBase::IsScreenContextAllowed() const {
@@ -133,6 +144,10 @@ void AssistantStateBase::InitializeObserver(AssistantStateObserver* observer) {
     observer->OnAssistantNotificationEnabled(notification_enabled_.value());
   if (onboarding_mode_.has_value())
     observer->OnAssistantOnboardingModeChanged(onboarding_mode_.value());
+  if (jema_assistant_enabled_.has_value())
+    observer->OnJemaAssistantEnabled(jema_assistant_enabled_.value());
+  if (jema_assistant_extra_accelerator_enabled_.has_value())
+    observer->OnJemaAssistantExtraAcceleratorEnabled(jema_assistant_extra_accelerator_enabled_.value());
 
   observer->OnAssistantStatusChanged(assistant_status_);
   if (allowed_state_.has_value())
@@ -238,6 +253,30 @@ void AssistantStateBase::UpdateOnboardingMode() {
   onboarding_mode_ = onboarding_mode;
   for (auto& observer : observers_)
     observer.OnAssistantOnboardingModeChanged(onboarding_mode_.value());
+}
+
+void AssistantStateBase::UpdateJemaAssistantEnabled() {
+  auto jema_assistant_enabled = pref_change_registrar_->prefs()->GetBoolean(
+      jemaos::prefs::kJemaAssistantEnabled);
+  if (!jema_assistant_enabled_.has_value() ||
+      jema_assistant_enabled_.value() != jema_assistant_enabled) {
+    jema_assistant_enabled_ = jema_assistant_enabled;
+    for (auto& observer : observers_) {
+      observer.OnJemaAssistantEnabled(jema_assistant_enabled_.value());
+    }
+  }
+
+  auto jema_assistant_extra_accelerator_enabled = pref_change_registrar_->prefs()->GetBoolean(
+      jemaos::prefs::kJemaAssistantExtraAcceleratorEnabled);
+  jema_assistant_extra_accelerator_enabled = jema_assistant_enabled && jema_assistant_extra_accelerator_enabled;
+  if (jema_assistant_extra_accelerator_enabled_.has_value() &&
+      jema_assistant_extra_accelerator_enabled_.value() == jema_assistant_extra_accelerator_enabled) {
+    return;
+  }
+  jema_assistant_extra_accelerator_enabled_ = jema_assistant_extra_accelerator_enabled;
+  for (auto& observer : observers_) {
+    observer.OnJemaAssistantExtraAcceleratorEnabled(jema_assistant_extra_accelerator_enabled_.value());
+  }
 }
 
 void AssistantStateBase::UpdateAssistantStatus(

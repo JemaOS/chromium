@@ -19,6 +19,7 @@ import {CrSettingsPrefs} from '/shared/settings/prefs/prefs_types.js';
 import type {PrivacyPageBrowserProxy} from '/shared/settings/privacy_page/privacy_page_browser_proxy.js';
 import {PrivacyPageBrowserProxyImpl} from '/shared/settings/privacy_page/privacy_page_browser_proxy.js';
 import {HelpBubbleMixin} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
+import {BaseMixin} from '../base_mixin.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {assert} from 'chrome://resources/js/assert.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
@@ -76,7 +77,7 @@ export interface SettingsSecurityPageElement {
 }
 
 const SettingsSecurityPageElementBase =
-    HelpBubbleMixin(RouteObserverMixin(I18nMixin(PrefsMixin(PolymerElement))));
+    HelpBubbleMixin(RouteObserverMixin(I18nMixin(PrefsMixin(BaseMixin(PolymerElement)))));
 
 export class SettingsSecurityPageElement extends
     SettingsSecurityPageElementBase {
@@ -227,6 +228,13 @@ export class SettingsSecurityPageElement extends
 
       showDisableSafebrowsingDialog_: Boolean,
 
+      shouldHideGoogle_: {
+        type: Boolean,
+        value() {
+          return loadTimeData.getBoolean('isJemaProfile');
+        },
+      },
+
       /**
        * A timestamp that records the last time the user visited this page or
        * returned to it.
@@ -278,6 +286,8 @@ export class SettingsSecurityPageElement extends
   private enableEsbAiStringUpdate_: boolean;
   private hideExtendedReportingRadioButton_: boolean;
   private enablePasswordLeakToggleMove_: boolean;
+
+  private shouldHideGoogle_: boolean;
 
   private browserProxy_: PrivacyPageBrowserProxy =
       PrivacyPageBrowserProxyImpl.getInstance();
@@ -470,9 +480,8 @@ export class SettingsSecurityPageElement extends
   }
 
   private getSafeBrowsingEnhancedSubLabel_(): string {
-    return this.i18n(
-        this.enableEsbAiStringUpdate_ ? 'safeBrowsingEnhancedDescUpdated' :
-                                        'safeBrowsingEnhancedDesc');
+    return this.enableEsbAiStringUpdate_ ? this.i18n('safeBrowsingEnhancedDescUpdated') :
+                                           this.safeBrowsingEnhancedDesc_();
   }
 
   private getSafeBrowsingStandardSubLabel_(): string {
@@ -491,7 +500,7 @@ export class SettingsSecurityPageElement extends
     if (this.prefs !== undefined) {
       const generatedPref = this.getPref('generated.password_leak_detection');
       if (this.getPref('profile.password_manager_leak_detection').value &&
-          !generatedPref.value && generatedPref.userControlDisabled) {
+          !generatedPref.value && generatedPref.userControlDisabled && !this.shouldHideGoogle_) {
         subLabel +=
             ' ' +  // Whitespace is a valid sentence separator w.r.t. i18n.
             this.i18n('passwordsLeakDetectionSignedOutEnabledDescription');
@@ -709,6 +718,47 @@ export class SettingsSecurityPageElement extends
     this.metricsBrowserProxy_.recordAction(
         confirmed ? 'SafeBrowsing.Settings.DisableSafeBrowsingDialogConfirmed' :
                     'SafeBrowsing.Settings.DisableSafeBrowsingDialogDenied');
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+    const isJemaProfile = loadTimeData.getBoolean('isJemaProfile');
+    if (!isJemaProfile) return;
+    setTimeout(() => {
+      [
+        '#advanced-protection-program-link',
+        'settings-toggle-button#safeBrowsingReportingToggle',
+        `settings-toggle-button[label="${this.i18n('linkDoctorPref')}"]`, // actually this i18n key is not used in html/js files
+      ].forEach((selector) => {
+        const node = this.$$(selector) as HTMLElement;
+        if (node) {
+          node.style.display = 'none';
+        }
+      });
+    }, 0);
+  }
+
+  private maybeLastCollapseItemClass_() {
+    if (this.shouldHideGoogle_) {
+      return 'bullet-line last-collapse-item';
+    }
+    return 'bullet-line';
+  }
+
+  private safeBrowsingEnhancedDesc_(): string {
+    if (loadTimeData.getBoolean('isJemaProfile')) {
+      return this.i18n('safeBrowsingEnhancedJemaDesc');
+    } else {
+      return this.i18n('safeBrowsingEnhancedDesc');
+    }
+  }
+
+  private safeBrowsingNoneDesc_(): string {
+    if (loadTimeData.getBoolean('isJemaProfile')) {
+      return this.i18n('safeBrowsingNoneJemaDesc');
+    } else {
+      return this.i18n('safeBrowsingNoneDesc');
+    }
   }
 }
 

@@ -63,6 +63,9 @@ User::User(const AccountId& account_id, UserType type)
     : account_id_(account_id), type_(type), user_image_(new UserImage()) {
   switch (type_) {
     case user_manager::UserType::kRegular:
+    case user_manager::UserType::kFlintAccount:
+    case user_manager::UserType::kJemaAccount:
+    case user_manager::UserType::kJemaChild:
     case user_manager::UserType::kChild:
     case user_manager::UserType::kKioskApp:
     case user_manager::UserType::kWebKioskApp:
@@ -127,7 +130,19 @@ void User::UpdateType(UserType new_type) {
 }
 
 bool User::HasGaiaAccount() const {
-  return TypeHasGaiaAccount(GetType());
+  return TypeHasGaiaAccount(GetType()) || IsJemaAccountUser();
+}
+
+bool User::IsJemaAccountUser() const {
+  return GetType() == UserType::kJemaAccount || GetType() == UserType::kJemaChild;
+}
+
+bool User::IsFlintAccountUser() const {
+  return GetType() == UserType::kFlintAccount;
+}
+
+bool User::IsJemaExtendAccountUser() const {
+  return GetType() == UserType::kFlintAccount || IsJemaAccountUser();
 }
 
 bool User::IsChild() const {
@@ -144,6 +159,9 @@ std::string User::GetAccountName(bool use_display_email) const {
 bool User::CanLock() const {
   switch (type_) {
     case user_manager::UserType::kRegular:
+    case user_manager::UserType::kFlintAccount:
+    case user_manager::UserType::kJemaAccount:
+    case user_manager::UserType::kJemaChild:
     case user_manager::UserType::kChild:
       if (!profile_prefs_) {
         return false;
@@ -183,12 +201,15 @@ bool User::is_active() const {
 }
 
 bool User::has_gaia_account() const {
-  static_assert(static_cast<int>(user_manager::UserType::kMaxValue) == 10,
-                "kMaxValue should equal 10");
+  static_assert(static_cast<int>(user_manager::UserType::kMaxValue) == 13,
+                "kMaxValue should equal 13");
   switch (GetType()) {
     case user_manager::UserType::kRegular:
     case user_manager::UserType::kChild:
+    case user_manager::UserType::kJemaAccount:
+    case user_manager::UserType::kJemaChild:
       return true;
+    case user_manager::UserType::kFlintAccount:
     case user_manager::UserType::kGuest:
     case user_manager::UserType::kPublicAccount:
     case user_manager::UserType::kKioskApp:
@@ -251,6 +272,9 @@ void User::SetAffiliated(bool is_affiliated) {
 bool User::IsDeviceLocalAccount() const {
   switch (type_) {
     case user_manager::UserType::kRegular:
+    case user_manager::UserType::kFlintAccount:
+    case user_manager::UserType::kJemaAccount:
+    case user_manager::UserType::kJemaChild:
     case user_manager::UserType::kChild:
     case user_manager::UserType::kGuest:
       return false;
@@ -269,7 +293,8 @@ bool User::IsKioskType() const {
 
 User* User::CreateRegularUser(const AccountId& account_id,
                               const UserType type) {
-  CHECK(type == UserType::kRegular || type == UserType::kChild)
+  CHECK(type == UserType::kRegular || type == UserType::kChild || type == UserType::kFlintAccount ||
+        type == UserType::kJemaAccount || type == UserType::kJemaChild)
       << "Invalid user type " << type;
 
   return new User(account_id, type);

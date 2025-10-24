@@ -53,6 +53,7 @@
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/chromeos/resources/grit/ui_chromeos_resources.h"
 #include "ui/gfx/image/image_skia.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 namespace user_manager {
 namespace {
@@ -84,6 +85,17 @@ UserType GetStoredUserType(const base::Value::Dict& prefs_user_types,
     return UserType::kRegular;
   }
   return static_cast<UserType>(int_user_type);
+}
+
+UserType FixUserTypeForJema(const UserType user_type, const AccountId& account_id) {
+  switch (account_id.GetAccountType()) {
+    case AccountType::FLINT_ACCOUNT:
+      return UserType::kFlintAccount;
+    case AccountType::JEMA_ACCOUNT:
+      return UserType::kJemaAccount;
+    default:
+      return user_type;
+  }
 }
 
 std::unique_ptr<UserImage> CreateStubImage() {
@@ -200,6 +212,7 @@ const UserList& UserManagerImpl::GetUsers() const {
 UserList UserManagerImpl::GetUsersAllowedForMultiUserSignIn() const {
   // Supervised users are not allowed to use multi-user sign-in.
   if (logged_in_users_.size() == 1 &&
+      primary_user_->GetType() != UserType::kJemaAccount && // JEMAOS_NOTE, might want to remove this line, jema account do not allow multi-profile
       primary_user_->GetType() != UserType::kRegular) {
     return {};
   }
@@ -353,6 +366,12 @@ void UserManagerImpl::UserLoggedIn(const AccountId& account_id,
 
   switch (user_type) {
     case UserType::kRegular:
+      [[fallthrough]];
+    case UserType::kJemaAccount:
+      [[fallthrough]];
+    case UserType::kFlintAccount:
+      [[fallthrough]];
+    case UserType::kJemaChild:
       [[fallthrough]];
     case UserType::kChild:
       if (account_id != GetOwnerAccountId() && !user &&
@@ -674,6 +693,7 @@ void UserManagerImpl::RemoveUserFromListImpl(
 
   RemoveNonCryptohomeData(account_id);
   KnownUser(local_state_.get()).RemovePrefs(account_id);
+  RemoveLocalAutoSigninCredential(account_id);
 
   // After the User object is deleted from memory in DeleteUser() here,
   // the account_id reference will be invalid if the reference points
@@ -760,6 +780,10 @@ void UserManagerImpl::SaveForceOnlineSignin(const AccountId& account_id,
                                             bool force_online_signin) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  if (account_id.GetAccountType() == AccountType::FLINT_ACCOUNT) {
+    return;
+  }
+
   User* const user = FindUserAndModify(account_id);
   if (user) {
     user->set_force_online_signin(force_online_signin);
@@ -822,7 +846,7 @@ void UserManagerImpl::SaveUserDisplayEmail(const AccountId& account_id,
 UserType UserManagerImpl::GetUserType(const AccountId& account_id) {
   const base::Value::Dict& prefs_user_types =
       local_state_->GetDict(prefs::kUserType);
-  return GetStoredUserType(prefs_user_types, account_id);
+  return FixUserTypeForJema(GetStoredUserType(prefs_user_types, account_id), account_id);
 }
 
 void UserManagerImpl::SaveUserType(const User* user) {
@@ -990,9 +1014,15 @@ bool UserManagerImpl::IsLoggedInAsUserWithGaiaAccount() const {
   return IsUserLoggedIn() && active_user_->HasGaiaAccount();
 }
 
+bool UserManagerImpl::IsLoggedInAsUserWithJemaExtendedAccount() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return IsUserLoggedIn() && active_user_->IsJemaExtendAccountUser();
+}
+
 bool UserManagerImpl::IsLoggedInAsChildUser() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return IsUserLoggedIn() && active_user_->GetType() == UserType::kChild;
+  return IsUserLoggedIn() && (active_user_->GetType() == UserType::kChild ||
+                              active_user_->GetType() == UserType::kJemaChild);
 }
 
 bool UserManagerImpl::IsLoggedInAsManagedGuestSession() const {
@@ -1059,7 +1089,7 @@ bool UserManagerImpl::IsUserNonCryptohomeDataEphemeral(
   // b) The user logged into any other account type.
   if (IsUserLoggedIn() && (account_id == GetActiveUser()->GetAccountId()) &&
       (is_current_user_ephemeral_regular_user_ ||
-       !IsLoggedInAsUserWithGaiaAccount())) {
+       (!IsLoggedInAsUserWithGaiaAccount() && !IsLoggedInAsUserWithJemaExtendedAccount()))) {
     return true;
   }
 
@@ -1224,6 +1254,9 @@ bool UserManagerImpl::IsGaiaUserAllowed(const User& user) const {
 bool UserManagerImpl::IsUserAllowed(const User& user) const {
   DCHECK(user.GetType() == UserType::kRegular ||
          user.GetType() == UserType::kGuest ||
+         user.GetType() == UserType::kFlintAccount ||
+         user.GetType() == UserType::kJemaAccount ||
+         user.GetType() == UserType::kJemaChild ||
          user.GetType() == UserType::kChild);
 
   return UserManager::IsUserAllowed(
@@ -1245,7 +1278,7 @@ bool UserManagerImpl::IsDeviceLocalAccountMarkedForRemoval(
 
 bool UserManagerImpl::CanUserBeRemoved(const User* user) const {
   // Only regular users are allowed to be manually removed.
-  if (!user || !user->HasGaiaAccount()) {
+  if (!user || !(user->HasGaiaAccount() || user->IsJemaExtendAccountUser())) {
     return false;
   }
 
@@ -1348,7 +1381,7 @@ void UserManagerImpl::EnsureUsersLoaded() {
         kLegacySupervisedUsersHistogramName,
         LegacySupervisedUserStatus::kGaiaUserDisplayed);
     User* user =
-        User::CreateRegularUser(*it, GetStoredUserType(prefs_user_types, *it));
+        User::CreateRegularUser(*it, FixUserTypeForJema(GetStoredUserType(prefs_user_types, *it), *it));
     user->set_oauth_token_status(LoadUserOAuthStatus(*it));
     user->set_force_online_signin(LoadForceOnlineSignin(*it));
     KnownUser known_user(local_state_.get());
@@ -1688,7 +1721,7 @@ User* UserManagerImpl::RemoveRegularOrSupervisedUserFromList(
       user = *it;
       it = users_.erase(it);
     } else {
-      if ((*it)->HasGaiaAccount()) {
+      if ((*it)->HasGaiaAccount() || (*it)->IsJemaExtendAccountUser()) {
         const std::string user_email = (*it)->GetAccountId().GetUserEmail();
         prefs_users_update->Append(user_email);
       }
@@ -1899,6 +1932,22 @@ void UserManagerImpl::RemoveDeprecatedArcKioskUser(
     base::UmaHistogramEnumeration(kDeprecatedArcKioskUsersHistogramName,
                                   DeprecatedArcKioskUserStatus::kHidden);
   }
+}
+
+void UserManagerImpl::RemoveLocalAutoSigninCredential(const AccountId& account_id) {
+  if (account_id.GetAccountType() != AccountType::FLINT_ACCOUNT) {
+    return;
+  }
+  // See JemaOsHandler::HandleSaveOfflineLoginPassword
+  PrefService* prefs = GetLocalState();
+  const std::string& account_id_key = prefs->GetString(jemaos::prefs::kOfflineAutoSigninAccountIdKey);
+  if (account_id_key != account_id.GetAccountIdKey()) {
+    return;
+  }
+
+  prefs->ClearPref(jemaos::prefs::kOfflineAutoSigninPassword);
+  prefs->ClearPref(jemaos::prefs::kOfflineAutoSigninPasswordFormat);
+  prefs->ClearPref(jemaos::prefs::kOfflineAutoSigninAccountIdKey);
 }
 
 }  // namespace user_manager

@@ -26,6 +26,9 @@
 #include "content/public/browser/storage_partition.h"
 #include "google_apis/gaia/gaia_urls.h"
 #include "ui/base/l10n/l10n_util.h"
+// ---***JEMAOS BEGIN***---
+#include "jemaos/switches/account/account_switches.h"
+// ---***JEMAOS END***---
 
 namespace ash {
 namespace login {
@@ -136,6 +139,11 @@ user_manager::UserType GetUsertypeFromServicesString(
     }
   }
 
+  if (jemaos::switches::IsJemaAccountEnabled()) {
+    return is_child ? user_manager::UserType::kJemaChild
+                    : user_manager::UserType::kJemaAccount;
+  }
+
   return is_child ? user_manager::UserType::kChild
                   : user_manager::UserType::kRegular;
 }
@@ -194,6 +202,11 @@ std::unique_ptr<UserContext> BuildUserContextForGaiaSignIn(
   user_context->SetAuthFlow(using_saml
                                 ? UserContext::AUTH_FLOW_GAIA_WITH_SAML
                                 : UserContext::AUTH_FLOW_GAIA_WITHOUT_SAML);
+  //---***JEMAOS BEGIN***---
+  if (account_id.GetAccountType() == AccountType::JEMA_ACCOUNT) {
+    user_context->SetAuthFlow(UserContext::AUTH_FLOW_JEMA_ONLINE);
+  }
+  //---***JEMAOS END***---
   if (using_saml) {
     user_context->SetIsUsingSamlPrincipalsApi(using_saml_api);
     if (ExtractSamlPasswordAttributesEnabled()) {

@@ -254,6 +254,7 @@ source_set("internal") {
     "//third_party/re2",
     "//ui/base",
     "//url",
+    "//jemaos/switches",
   ]
 
   if (is_chromeos_lacros) {
@@ -498,6 +499,7 @@ source_set("common_constants") {
   deps = [
     "//base",
     "//build:chromeos_buildflags",
+    "//jemaos/switches",
   ]
   sources = [
     "../../policy_export.h",

@@ -14,6 +14,7 @@ import {assert} from 'chrome://resources/js/assert.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
 import {androidAppsVisible, isAppParentalControlsFeatureAvailable, isArcVmEnabled, isCrostiniSupported, isGuest, isInputDeviceSettingsSplitEnabled, isKerberosEnabled, isPluginVmAvailable, isPowerwashAllowed, isRevampWayfindingEnabled} from './common/load_time_booleans.js';
+import {isJemaAssistantFeatureEnabled} from './common/load_time_booleans.js';
 import * as routesMojom from './mojom-webui/routes.mojom-webui.js';
 
 /**
@@ -186,6 +187,10 @@ export interface OsSettingsRoutes extends MinimumRoutes {
   EXTERNAL_STORAGE_PREFERENCES: Route;
   FINGERPRINT: Route;
   FILES: Route;
+  JEMAOS: Route,
+// <if expr="use_jemaos_license">
+  JEMAOS_LICENSE_INFO: Route,
+// </if>
   GOOGLE_ASSISTANT: Route;
   GOOGLE_DRIVE: Route;
   GRAPHICS_TABLET: Route;
@@ -209,6 +214,7 @@ export interface OsSettingsRoutes extends MinimumRoutes {
   OFFICE: Route;
   ON_STARTUP: Route;
   ONE_DRIVE: Route;
+  OS_JEMA_ASSISTANT: Route;
   OS_ACCESSIBILITY: Route;
   OS_LANGUAGES: Route;
   OS_LANGUAGES_APP_LANGUAGES: Route;
@@ -464,6 +470,13 @@ export function createRoutes(): OsSettingsRoutes {
         Subpage.kAppParentalControls);
   }
 
+  // Jema Assistant section.
+  if (!isGuest() && isJemaAssistantFeatureEnabled()) {
+    r.OS_JEMA_ASSISTANT = createSection(
+        r.BASIC, routesMojom.JEMA_ASSISTANT_SECTION_PATH, Section.kJemaAssistant);
+  }
+
+
   // Accessibility section.
   r.OS_ACCESSIBILITY = createSection(
       r.BASIC, routesMojom.ACCESSIBILITY_SECTION_PATH, Section.kAccessibility);
@@ -550,6 +563,13 @@ export function createRoutes(): OsSettingsRoutes {
       r.ABOUT, routesMojom.INTERNAL_STORYBOOK_SUBPAGE_PATH,
       Subpage.kInternalStorybook);
 
+  r.JEMAOS = createSection(null, routesMojom.JEMA_OS_SECTION_PATH, Section.kJemaOs);
+// <if expr="use_jemaos_license">
+  r.JEMAOS_LICENSE_INFO = createSubpage(
+      r.JEMAOS, routesMojom.JEMA_OS_LICENSE_INFO_SUBPAGE_PATH,
+      Subpage.kJemaOsLicenseInfo);
+// </if>
+
   if (isRevampWayfindingEnabled()) {
     // Device section, Input subpages.
     const inputParentRoute = isInputDeviceSettingsSplitEnabled() ?
@@ -632,13 +652,15 @@ export function createRoutes(): OsSettingsRoutes {
         Subpage.kPrintingDetails);
 
     // Crostini subpages.
+    r.CROSTINI = createSection(
+        r.ADVANCED, routesMojom.CROSTINI_SECTION_PATH, Section.kCrostini);
     if (isCrostiniSupported()) {
       r.CROSTINI_DETAILS = createSubpage(
-          r.ABOUT, routesMojom.CROSTINI_DETAILS_SUBPAGE_PATH,
+          r.CROSTINI, routesMojom.CROSTINI_DETAILS_SUBPAGE_PATH,
           Subpage.kCrostiniDetails);
 
       r.BRUSCHETTA_DETAILS = createSubpage(
-          r.ABOUT, routesMojom.BRUSCHETTA_DETAILS_SUBPAGE_PATH,
+          r.CROSTINI, routesMojom.BRUSCHETTA_DETAILS_SUBPAGE_PATH,
           Subpage.kBruschettaDetails);
     }
 

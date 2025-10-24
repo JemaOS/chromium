@@ -46,6 +46,7 @@ const LocalPasswordSetupBase = OobeDialogHostMixin(
 interface LocalPasswordSetupScreenData {
   showBackButton: boolean;
   isRecoveryFlow: boolean;
+  isJemaProfile: boolean;
 }
 
 export class LocalPasswordSetup extends LocalPasswordSetupBase {
@@ -69,6 +70,10 @@ export class LocalPasswordSetup extends LocalPasswordSetupBase {
         type: Boolean,
       },
 
+      isJemaProfile: {
+        type: Boolean,
+      },
+
       passwordValue: {
         type: String,
         value: null,
@@ -78,6 +83,7 @@ export class LocalPasswordSetup extends LocalPasswordSetupBase {
 
   private backButtonVisible: boolean;
   private isRecoveryFlow: boolean;
+  private isJemaProfile: boolean;
   private passwordValue: string;
 
   constructor() {
@@ -118,6 +124,7 @@ export class LocalPasswordSetup extends LocalPasswordSetupBase {
     this.reset();
     this.backButtonVisible = data['showBackButton'];
     this.isRecoveryFlow = data['isRecoveryFlow'];
+    this.isJemaProfile = data['isJemaProfile'];
   }
 
   showLocalPasswordSetupFailure(): void {
@@ -176,6 +183,18 @@ export class LocalPasswordSetup extends LocalPasswordSetupBase {
 
   private isValid(password: string) {
     return !!password;
+  }
+
+  private getLocalPasswordSetupSubtitle(
+    locale: string,
+    isJemaProfile: boolean,
+  ): string {
+    return this.i18nDynamic(
+      locale,
+      isJemaProfile
+        ? "localPasswordSetupJemaSubtitle"
+        : "localPasswordSetupSubtitle",
+    );
   }
 }
 

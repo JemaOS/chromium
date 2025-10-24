@@ -62,6 +62,11 @@ export class PrivacyGuideSafeBrowsingFragmentElement extends
           return loadTimeData.getBoolean('enableHashPrefixRealTimeLookups');
         },
       },
+
+      isJemaProfile_: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('isJemaProfile'),
+      },
     };
   }
 
@@ -140,6 +145,15 @@ export class PrivacyGuideSafeBrowsingFragmentElement extends
             'privacyGuideSafeBrowsingCardStandardProtectionPrivacyDescription1Proxy' :
             'privacyGuideSafeBrowsingCardStandardProtectionPrivacyDescription1');
   }
+
+  private safeBrowsingEnhancedDesc_(): string {
+    if (loadTimeData.getBoolean('isJemaProfile')) {
+      return this.i18n('safeBrowsingEnhancedJemaDesc');
+    } else {
+      return this.i18n('safeBrowsingEnhancedDesc');
+    }
+  }
+
 }
 
 declare global {

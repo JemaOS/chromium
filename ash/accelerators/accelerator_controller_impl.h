@@ -303,6 +303,10 @@ class ASH_EXPORT AcceleratorControllerImpl
       notification_controller_;
 };
 
+// ---***JEMAOS BEGIN***---
+void RotateScreenJemaOS();
+// ---***JEMAOS END***---
+
 }  // namespace ash
 
 #endif  // ASH_ACCELERATORS_ACCELERATOR_CONTROLLER_IMPL_H_

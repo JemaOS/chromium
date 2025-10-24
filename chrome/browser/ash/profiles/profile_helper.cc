@@ -274,5 +274,11 @@ void ProfileHelperImpl::SetUserToProfileMappingForTesting(
   DCHECK(user);
   user_to_profile_for_testing_[user] = profile;
 }
+// ---***JEMAOS BEGIN***---
+// static
+bool ProfileHelper::IsJemaProfile(const Profile* profile) {
+  return profile && profile->IsJemaProfile();
+}
+// ---***JEMAOS END***---
 
 }  // namespace ash

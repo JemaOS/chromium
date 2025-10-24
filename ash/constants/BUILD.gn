@@ -44,4 +44,9 @@ component("constants") {
     "//build:branding_buildflags",
     "//chromeos/components/libsegmentation:buildflags",
   ]
+
+  deps += [
+    "//jemaos/switches",
+    "//jemaos/build/config:buildflags",
+  ]
 }

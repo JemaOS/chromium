@@ -133,6 +133,11 @@ base::FilePath GetCacheRootPath(const Profile* const profile) {
 DriveAvailability CheckDriveAvailabilityForProfile(
     const Profile* const profile) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  // ---***JEMAOS BEGIN***---
+  if (profile->IsJemaProfile()) {
+    return DriveAvailability::kNotAvailableForAccountType;
+  }
+  // ---***JEMAOS END***---
 
   // Disable Drive for non-Gaia accounts.
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(

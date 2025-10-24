@@ -243,6 +243,7 @@ void AddUiColorMixer(ColorProvider* provider, const ColorProviderKey& key) {
   mixer[kColorTextfieldOutlineDisabled] = {kColorFocusableBorderUnfocused};
   mixer[kColorTextfieldOutlineInvalid] = {kColorAlertHighSeverity};
   mixer[kColorTextfieldSelectionBackground] = {kColorTextSelectionBackground};
+  mixer[kJemaColorTextfieldSelectionBackground] = {kJemaColorTextSelectionBackground};
   mixer[kColorTextfieldSelectionForeground] = {kColorTextSelectionForeground};
   mixer[kColorThrobber] =
       PickGoogleColor(kColorAccent, kColorDialogBackground,

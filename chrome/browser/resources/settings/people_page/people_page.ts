@@ -148,10 +148,20 @@ export class SettingsPeoplePageElement extends SettingsPeoplePageElementBase {
             // Opens profile manager.
             return true;
           }
+          if (loadTimeData.getBoolean('isJemaProfile')) {
+            return !loadTimeData.getBoolean('isJemaLocalAccount');
+          }
           // Post-SplitSettings links out to account manager if it is available.
           return loadTimeData.getBoolean('isAccountManagerEnabled');
         },
         readOnly: true,
+      },
+
+      isJemaLocalAccount_: {
+        type: Boolean,
+        value() {
+          return loadTimeData.getBoolean('isJemaLocalAccount');
+        },
       },
 
       /**
@@ -221,6 +231,7 @@ export class SettingsPeoplePageElement extends SettingsPeoplePageElementBase {
   private profileName_: string;
   private enableAiSettingsPageRefresh_: boolean;
   private showHistorySearchControl_: boolean;
+  private isJemaLocalAccount_: boolean;
 
   // <if expr="not chromeos_ash">
   storedAccounts: StoredAccount[]|null;
@@ -370,6 +381,15 @@ export class SettingsPeoplePageElement extends SettingsPeoplePageElementBase {
 
   private onProfileClick_() {
     // <if expr="chromeos_ash">
+    if (loadTimeData.getBoolean('isJemaProfile')) {
+      if (loadTimeData.getBoolean('isJemaLocalAccount')) {
+        return;
+      }
+      const baseUrl = loadTimeData.getString('jemaosAccountBaseUrl');
+      const url = `${baseUrl}/personalInfo/`;
+      window.open(url);
+      return;
+    }
     if (loadTimeData.getBoolean('isAccountManagerEnabled')) {
       // Post-SplitSettings. The browser C++ code loads OS settings in a window.
       OpenWindowProxyImpl.getInstance().openUrl(

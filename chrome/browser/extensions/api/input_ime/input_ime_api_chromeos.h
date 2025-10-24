@@ -40,6 +40,18 @@ class InputImeSetCandidateWindowPropertiesFunction : public ExtensionFunction {
   ResponseAction Run() override;
 };
 
+class InputImeShowJemaLanguageStateFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("input.ime.showJemaLanguageState",
+                             INPUT_IME_SHOW_JEMA_LANGUAGE_STATE)
+
+ protected:
+  ~InputImeShowJemaLanguageStateFunction() override = default;
+
+  // ExtensionFunction:
+  ResponseAction Run() override;
+};
+
 class InputImeSetCandidatesFunction : public ExtensionFunction {
  public:
   DECLARE_EXTENSION_FUNCTION("input.ime.setCandidates", INPUT_IME_SETCANDIDATES)

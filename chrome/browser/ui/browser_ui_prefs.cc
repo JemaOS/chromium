@@ -24,6 +24,8 @@
 #include "components/translate/core/browser/translate_pref_names.h"
 #include "media/media_buildflags.h"
 #include "third_party/blink/public/common/peerconnection/webrtc_ip_handling_policy.h"
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ui/accessibility/accessibility_features.h"
@@ -115,7 +117,11 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
 
   // We need to register the type of these preferences in order to query
   // them even though they're only typically controlled via policy.
-  registry->RegisterBooleanPref(policy::policy_prefs::kHideWebStoreIcon, false);
+  registry->RegisterBooleanPref(policy::policy_prefs::kHideWebStoreIcon,
+      jemaos::switches::IsJemaExtendAccountEnabled());
+  // hide google web store for jema account,
+  // show both google web store and jemaos store for google account
+  registry->RegisterBooleanPref(jemaos::prefs::kPrefHideJemaOSStoreIcon, false);
   registry->RegisterBooleanPref(prefs::kSharedClipboardEnabled, true);
 
 #if BUILDFLAG(ENABLE_CLICK_TO_CALL)

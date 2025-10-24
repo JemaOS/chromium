@@ -19,6 +19,7 @@
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "jemaos/switches/services/services_constants.h"
 
 namespace feedback {
 
@@ -38,8 +39,8 @@ enum class FeedbackReportSendingResult {
 constexpr base::FilePath::CharType kFeedbackReportPath[] =
     FILE_PATH_LITERAL("Feedback Reports");
 
-constexpr char kFeedbackPostUrl[] =
-    "https://www.google.com/tools/feedback/chrome/__submit";
+// constexpr char kFeedbackPostUrl[] =
+//     "https://www.google.com/tools/feedback/chrome/__submit";
 
 constexpr char kProtoBufMimeType[] = "application/x-protobuf";
 
@@ -63,7 +64,7 @@ GURL GetFeedbackPostGURL() {
       *base::CommandLine::ForCurrentProcess();
   return GURL(command_line.HasSwitch(switches::kFeedbackServer)
                   ? command_line.GetSwitchValueASCII(switches::kFeedbackServer)
-                  : kFeedbackPostUrl);
+                  : jemaos::constants::kJemaOSFeedbackPostUrl);
 }
 
 // Creates a new SingleThreadTaskRunner that is used to run feedback blocking

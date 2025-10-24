@@ -267,6 +267,10 @@ function getCSS() {
       -webkit-mask-image: url(../foreground/images/volumes/usb.svg);
     }
 
+    :host([type="jemadrop"]) span {
+      -webkit-mask-image: url(../foreground/images/volumes/jemadrop.svg);
+    }
+
     :host([type="drive_recent"]) span, :host([type="recent"]) span {
       -webkit-mask-image: url(../foreground/images/volumes/recent.svg);
     }

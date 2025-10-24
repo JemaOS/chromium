@@ -40,6 +40,10 @@ enum PasswordSelectionState {
 const PasswordSelectionBase = OobeDialogHostMixin(
     LoginScreenMixin(MultiStepMixin(OobeI18nMixin(PolymerElement))));
 
+interface PasswordSelectionScreenData {
+  isJemaProfile: boolean;
+}
+
 export class PasswordSelection extends PasswordSelectionBase {
   static get is() {
     return 'password-selection-element' as const;
@@ -56,6 +60,10 @@ export class PasswordSelection extends PasswordSelectionBase {
        */
       selectedPasswordType: {
         type: String,
+      },
+
+      isJemaProfile: {
+        type: Boolean,
       },
 
       /**
@@ -77,6 +85,7 @@ export class PasswordSelection extends PasswordSelectionBase {
   }
 
   private selectedPasswordType: string;
+  private isJemaProfile: boolean;
   private passwordTypeEnum: PasswordType;
   private backButtonVisible: boolean;
 
@@ -103,9 +112,10 @@ export class PasswordSelection extends PasswordSelectionBase {
   }
 
   // Invoked just before being shown. Contains all the data for the screen.
-  override onBeforeShow(): void {
+  override onBeforeShow(data: PasswordSelectionScreenData): void {
     super.onBeforeShow();
     this.selectedPasswordType = PasswordType.LOCAL_PASSWORD;
+    this.isJemaProfile = data["isJemaProfile"];
   }
 
   override onBeforeHide(): void {
@@ -131,6 +141,34 @@ export class PasswordSelection extends PasswordSelectionBase {
 
   private onNextClicked(): void {
     this.userActed(this.selectedPasswordType);
+  }
+
+  private getPasswordSelectionSubtitile(
+    locale: string,
+    isJemaProfile: boolean,
+  ): string {
+    return this.i18nDynamic(
+      locale,
+      isJemaProfile
+        ? "passwordSelectionJemaSubtitle"
+        : "passwordSelectionSubtitile",
+    );
+  }
+
+  private getGaiaPasswordSelectionIcon(isJemaProfile: boolean): string {
+    return isJemaProfile ? 'oobe-32:jemaos-f': 'oobe-32:google-g';
+  }
+
+  private getGaiaPasswordSelectionLabel(
+    locale: string,
+    isJemaProfile: boolean,
+  ): string {
+    return this.i18nDynamic(
+      locale,
+      isJemaProfile
+        ? "gaiaPasswordSelectionJemaLabel"
+        : "gaiaPasswordSelectionLabel",
+    );
   }
 }
 

@@ -11,6 +11,8 @@
 #include "components/invalidation/invalidation_constants.h"
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
 #include "components/policy/core/common/cloud/policy_invalidation_scope.h"
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/switches/account/policy_constants.h"
 
 namespace policy {
 
@@ -51,6 +53,9 @@ bool IsDirectInvalidationEnabledForScope(PolicyInvalidationScope scope) {
 
 std::string_view GetRemoteCommandsInvalidationProjectNumber(
     PolicyInvalidationScope scope) {
+  if (jemaos::switches::IsPolicyManagedByJema()) {
+    return jemaos::constants::kJemaOSPolicyFCMInvalidationSenderID;
+  }
   if (IsDirectInvalidationEnabledForScope(scope)) {
     return kRemoteCommandsInvalidationsProjectNumber;
   }

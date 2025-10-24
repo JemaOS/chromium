@@ -53,6 +53,7 @@
 #include "net/base/url_util.h"
 #include "net/http/http_status_code.h"
 #include "third_party/metrics_proto/translate_event.pb.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 namespace translate {
 
@@ -714,6 +715,9 @@ bool TranslateManager::ShouldOverrideMatchesPreviousLanguageDecision() {
 
 bool TranslateManager::ShouldSuppressBubbleUI(
     const std::string& target_language) {
+  if (jemaos::switches::IsJemaCustomEnabled()) {
+    return true;
+  }
   // Suppress the UI if the user navigates to a page with the same language as
   // the previous page, unless the page was loaded from a link click with
   // hrefTranslate attached that matches the target language, since in that case

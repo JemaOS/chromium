@@ -105,8 +105,13 @@ found in the LICENSE file.
     border-bottom: var(--oobe-a11y-dialog-list-item-border);
   }
 
+  .jemaos-toggle-row {
+    margin-bottom: 12px;
+  }
 </style>
 <oobe-adaptive-dialog id="marketingOptInOverviewDialog" role="dialog"
+    jemaos-layout
+    animation-url="animations/jemaos_done.json"
     for-step="overview"
     aria-label$="[[i18nDynamic(locale, 'marketingOptInScreenTitle')]]"
     aria-describedby="marketing-opt-in-subtitle">
@@ -175,13 +180,35 @@ found in the LICENSE file.
   </div>
 
   <div hidden="[[isCloudGamingDevice]]" id="contentArea"
-        slot="content" class="layout flex vertical">
-    <!-- Animation -->
-    <div  class="marketing-animation-content">
-      <oobe-cr-lottie id="animation"
-          animation-url="animations/all_set.json"
-          singleLoop="true">
-      </oobe-cr-lottie>
+        slot="content" class="layout flex vertical landscape-header-aligned">
+    <div class="layout horizontal center jemaos-toggle-row"
+        hidden="[[!jemaMarketingOptInVisible]]"
+        id="jemaGetUpdatesToggleRow">
+      <cr-checkbox id="jemaUpdatesOption" checked
+          class="jemaos-toggle-option"
+          jemaos-style
+          aria-labelledby="jemaUpdatesOptionLabel">
+      </cr-checkbox>
+      <div id="jemaUpdatesOptionLabel" class="flex layout vertical"
+          aria-hidden="true">
+        <div class="toggle-title">
+          [[i18nDynamic(locale, 'marketingOptInGetJemaUpdates')]]
+        </div>
+      </div>
+    </div>
+    <div class="layout horizontal center jemaos-toggle-row"
+        id="jemaOSImprovementPlanToggleRow">
+      <cr-checkbox id="jemaOSImprovementPlanOption" checked
+          class="jemaos-toggle-option"
+          jemaos-style
+          aria-labelledby="jemaOSImprovementPlanOptionLabel">
+      </cr-checkbox>
+      <div id="jemaOSImprovementPlanOptionLabel" class="flex layout vertical"
+          aria-hidden="true">
+        <div class="toggle-title">
+          [[i18nDynamic(locale, 'jemaOSImprovementPlanOptionLabel')]]
+        </div>
+      </div>
     </div>
   </div>
   <div hidden="[[!isCloudGamingDevice]]" slot="content"

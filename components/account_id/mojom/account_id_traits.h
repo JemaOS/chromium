@@ -22,6 +22,12 @@ struct EnumTraits<signin::mojom::AccountType, AccountType> {
         return signin::mojom::AccountType::GOOGLE;
       case AccountType::ACTIVE_DIRECTORY:
         return signin::mojom::AccountType::ACTIVE_DIRECTORY;
+//---***JEMAOS BEGIN***---
+      case AccountType::FLINT_ACCOUNT:
+        return signin::mojom::AccountType::FLINT_ACCOUNT;
+      case AccountType::JEMA_ACCOUNT:
+        return signin::mojom::AccountType::JEMA_ACCOUNT;
+//---***JEMAOS END***---
     }
     NOTREACHED_IN_MIGRATION();
     return signin::mojom::AccountType::UNKNOWN;
@@ -38,6 +44,14 @@ struct EnumTraits<signin::mojom::AccountType, AccountType> {
       case signin::mojom::AccountType::ACTIVE_DIRECTORY:
         *out = AccountType::ACTIVE_DIRECTORY;
         return true;
+//---***JEMAOS BEGIN***---
+      case signin::mojom::AccountType::FLINT_ACCOUNT:
+        *out = AccountType::FLINT_ACCOUNT;
+        return true;
+      case signin::mojom::AccountType::JEMA_ACCOUNT:
+        *out = AccountType::JEMA_ACCOUNT;
+        return true;
+//---***JEMAOS END***---
     }
     NOTREACHED_IN_MIGRATION();
     return false;
@@ -55,6 +69,12 @@ struct StructTraits<signin::mojom::AccountIdDataView, AccountId> {
         return r.GetGaiaId();
       case AccountType::ACTIVE_DIRECTORY:
         return r.GetObjGuid();
+      //---***JEMAOS BEGIN***---
+      case AccountType::FLINT_ACCOUNT:
+        return r.GetFlintId();
+      case AccountType::JEMA_ACCOUNT:
+        return r.GetJemaId();
+      //---***JEMAOS END***---
       case AccountType::UNKNOWN:
         // UNKNOWN type is used for users that have only email (e.g. in tests
         // or legacy users that have not run through migration code).
@@ -82,6 +102,14 @@ struct StructTraits<signin::mojom::AccountIdDataView, AccountId> {
       case AccountType::ACTIVE_DIRECTORY:
         *out = AccountId::AdFromUserEmailObjGuid(user_email, id);
         break;
+     //---***JEMAOS BEGIN***---
+      case AccountType::FLINT_ACCOUNT:
+        *out = AccountId::FtFromUserEmailFlintId(user_email, id);
+        break;
+      case AccountType::JEMA_ACCOUNT:
+        *out = AccountId::FyFromUserEmailJemaId(user_email, id);
+        break;
+     //---***JEMAOS END***---
       case AccountType::UNKNOWN:
         // UNKNOWN type is used for users that have only email (e.g. in tests
         // or legacy users that have not run through migration code).

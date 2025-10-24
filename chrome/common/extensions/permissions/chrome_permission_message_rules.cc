@@ -19,6 +19,9 @@
 #include "components/device_signals/core/common/signals_features.h"
 #include "extensions/common/mojom/api_permission_id.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
+//---***JEMAOS BEGIN***---
+#include "jemaos/extensions/common/grit/jemaos_extensions_resources.h"
+//---***JEMAOS END***---
 
 using extensions::mojom::APIPermissionID;
 
@@ -769,6 +772,12 @@ ChromePermissionMessageRule::GetAllRules() {
        {}},
       {IDS_EXTENSION_PROMPT_WARNING_CHROMEOS_TELEMETRY_NETWORK_INFORMATION,
        {APIPermissionID::kChromeOSTelemetryNetworkInformation},
+       {}},
+      {IDS_EXTENSION_PROMPT_WARNING_JEMAOS_PRIVATE_API,
+       {APIPermissionID::kJemaOSPrivate},
+       {}},
+      {IDS_EXTENSION_PROMPT_WARNING_JEMAOS_SHELL_CLIENT_API,
+       {APIPermissionID::kJemaOSShellClient},
        {}}};
 
   return std::vector<ChromePermissionMessageRule>(

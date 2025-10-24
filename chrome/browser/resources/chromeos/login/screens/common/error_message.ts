@@ -100,6 +100,7 @@ export class ErrorMessageScreen extends ErrorMessageScreenBase {
   override get EXTERNAL_API(): string[] {
     return [
       'allowGuestSignin',
+      'allowJemaLocalSignin',
       'allowOfflineLogin',
       'setUiState',
       'setErrorState',
@@ -160,6 +161,12 @@ export class ErrorMessageScreen extends ErrorMessageScreenBase {
         observer: 'updateLocalizedContent',
       },
 
+      jemaLocalSigninAllowed: {
+        type: Boolean,
+        value: true,
+        observer: 'updateLocalizedContent',
+      },
+
       /**
        * True if offline login is allowed from the error screen.
        */
@@ -185,6 +192,7 @@ export class ErrorMessageScreen extends ErrorMessageScreenBase {
   private enableWifiScans: boolean;
   private currentNetworkName: string;
   private guestSessionAllowed: boolean;
+  private jemaLocalSigninAllowed: boolean;
   private offlineLoginAllowed: boolean;
   private connectingIndicatorShown: boolean;
 
@@ -355,6 +363,13 @@ export class ErrorMessageScreen extends ErrorMessageScreenBase {
     errorGuestSigninLink.addEventListener(
         'click', this.launchGuestSession.bind(this));
 
+    this.updateElementWithStringAndAnchorTag(
+        'jema-local-signin', 'jemaLocalSignin', {}, ['jema-local-signin-link']);
+    const jemaLocalSigninLink =
+        this.shadowRoot?.querySelector('#jema-local-signin-link');
+    assert(jemaLocalSigninLink instanceof HTMLAnchorElement);
+    jemaLocalSigninLink.addEventListener(
+        'click', this.advanceToJemaLocalSignin_.bind(this));
 
     this.updateElementWithStringAndAnchorTag(
         'error-guest-signin-fix-network', 'guestSigninFixNetwork', {},
@@ -418,6 +433,14 @@ export class ErrorMessageScreen extends ErrorMessageScreenBase {
    */
   allowGuestSignin(allowed: boolean): void {
     this.guestSessionAllowed = allowed;
+  }
+
+  allowJemaLocalSignin(allowed: boolean) {
+    this.jemaLocalSigninAllowed = allowed;
+  }
+
+  advanceToJemaLocalSignin_() {
+    chrome.send('jemaLocalSignin');
   }
 
   /**

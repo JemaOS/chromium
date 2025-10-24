@@ -210,6 +210,7 @@ class USER_MANAGER_EXPORT UserManagerImpl : public UserManager {
   bool IsCurrentUserCryptohomeDataEphemeral() const override;
   bool IsUserLoggedIn() const override;
   bool IsLoggedInAsUserWithGaiaAccount() const override;
+  bool IsLoggedInAsUserWithJemaExtendedAccount() const override;
   bool IsLoggedInAsChildUser() const override;
   bool IsLoggedInAsManagedGuestSession() const override;
   bool IsLoggedInAsGuest() const override;
@@ -454,6 +455,8 @@ class USER_MANAGER_EXPORT UserManagerImpl : public UserManager {
   // TODO(b/355590943): Check if it is not used anymore and remove it.
   bool IsDeprecatedArcKioskAccountId(const AccountId& account_id) const;
   void RemoveDeprecatedArcKioskUser(const AccountId& account_id);
+
+  void RemoveLocalAutoSigninCredential(const AccountId& account_id);
 
   std::unique_ptr<Delegate> delegate_;
 

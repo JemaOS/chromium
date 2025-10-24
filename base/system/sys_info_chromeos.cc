@@ -229,6 +229,38 @@ std::string SysInfo::GetLsbReleaseBoard() {
   return board;
 }
 
+std::string SysInfo::GetLsbReleaseBoardWithoutSuffix() {
+  std::string board = GetLsbReleaseBoard();
+  if (board.size() < 4) {
+    return board;
+  }
+  if (board.substr(board.size() - 4) == "-com") {
+    return board.substr(0, board.size() - 4);
+  }
+  if (board.substr(board.size() - 3) == "-io") {
+    return board.substr(0, board.size() - 3);
+  }
+  return board;
+}
+
+// ---***JEMAOS BEGIN***---
+std::string SysInfo::GetLsbJemaReleaseVersion() {
+  const char kJemaReleaseVersion[] = "CHROMEOS_RELEASE_BUILD_TYPE";
+  std::string version;
+  char jemaosVersion[16 + 1] = {'\0'};
+  if (!GetLsbReleaseValue(kJemaReleaseVersion, &version)) {
+    return "unknown";
+  }
+  if (sscanf(version.c_str(), "Release Build v%16s",  jemaosVersion) != 1) {
+    return "unknown";
+  }
+  if (strlen(jemaosVersion) < 1) {
+    return "unknown";
+  }
+  return std::string(jemaosVersion);
+}
+// ---***JEMAOS END***---
+
 // static
 Time SysInfo::GetLsbReleaseTime() {
   return GetChromeOSVersionInfo().lsb_release_time();

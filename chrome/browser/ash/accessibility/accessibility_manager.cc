@@ -118,6 +118,7 @@
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_observer.h"
 #include "url/gurl.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 namespace ash {
 
@@ -442,7 +443,7 @@ AccessibilityManager* AccessibilityManager::Get() {
 // static
 void AccessibilityManager::ShowAccessibilityHelp() {
   ShowSingletonTab(ProfileManager::GetActiveUserProfile(),
-                   GURL(chrome::kChromeAccessibilityHelpURL));
+                   GURL(jemaos::constants::kJemaAccessibilityHelpURL));
 }
 
 AccessibilityManager::AccessibilityManager() {

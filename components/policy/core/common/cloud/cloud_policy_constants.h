@@ -26,6 +26,7 @@ extern const char kParamPlatform[];
 extern const char kParamRequest[];
 extern const char kParamRetry[];
 extern const char kParamProfileID[];
+extern const char kParamJemaOsLicenseId[];
 
 // Policy constants used in authorization header.
 extern const char kAuthHeader[];
@@ -36,6 +37,8 @@ extern const char kOAuthTokenHeaderPrefix[];
 extern const char kOidcAuthHeaderPrefix[];
 extern const char kOidcAuthTokenHeaderPrefix[];
 extern const char kOidcIdTokenHeaderPrefix[];
+
+extern const char kJemaEnrollmentTokenAuthHeaderPrefix[];
 
 // String extern constants for the device and app type we report to the server.
 extern const char kValueAppType[];

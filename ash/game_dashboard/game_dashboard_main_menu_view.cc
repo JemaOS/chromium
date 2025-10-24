@@ -84,6 +84,7 @@
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
+#include "jemaos/build/config/buildflags.h"
 
 namespace ash {
 
@@ -148,8 +149,13 @@ constexpr int kSetupPulseTimes = 3;
 constexpr base::TimeDelta kSetupPulseDuration = base::Seconds(2);
 
 constexpr char kSetupNudgeId[] = "SetupNudgeId";
+#if BUILDFLAG(USE_JEMAOS_COM)
 constexpr char kHelpUrl[] =
-    "https://support.google.com/chromebook/?p=game-dashboard-help";
+    "https://jemaos.com/help/knowledge-base/getting-started/game-dashboard";
+#else
+constexpr char kHelpUrl[] =
+    "https://jemaos.io/help/knowledge-base/getting-started/game-dashboard";
+#endif
 
 // Creates an individual Game Dashboard Tile.
 std::unique_ptr<FeatureTile> CreateFeatureTile(

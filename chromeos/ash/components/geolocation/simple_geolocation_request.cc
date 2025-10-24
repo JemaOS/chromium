@@ -31,6 +31,7 @@
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "jemaos/switches/services/services_switches.h"
 
 // Location resolve timeout is usually 1 minute, so 2 minutes with 50 buckets
 // should be enough.
@@ -154,6 +155,10 @@ GURL GeolocationRequestURL(const GURL& url) {
     return url;
 
   std::string api_key = google_apis::GetAPIKey();
+  if (!jemaos::switches::DisableJemaOSGeolocationAPI() &&
+      google_apis::HasJemaOSAPIKeyConfigured()) {
+      api_key = google_apis::GetJemaOSAPIKey();
+  }
   if (api_key.empty())
     return url;
 

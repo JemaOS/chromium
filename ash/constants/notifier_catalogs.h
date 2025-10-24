@@ -209,7 +209,10 @@ enum class NotificationCatalogName {
   kOnTaskSessionEnd = 190,
   kOnTaskAddContentToBundle = 191,
   kOnTaskRemoveContentFromBundle = 192,
-  kMaxValue = kOnTaskRemoveContentFromBundle
+  kJemaOSDataBackup = 193,
+  kJemaOSLicenseEnforcement = 194,
+  kJemaOSCrostiniInstall = 195,
+  kMaxValue = kJemaOSCrostiniInstall
 };
 
 // A living catalog that registers system nudges.
@@ -325,7 +328,8 @@ enum class ToastCatalogName {
   kOnTaskUrlBlocked = 55,
   kCopyImageToClipboardAction = 56,
   kCaptureModeTextCopied = 57,
-  kMaxValue = kCaptureModeTextCopied
+  kImeShowJemaLanguageState = 58,
+  kMaxValue = kImeShowJemaLanguageState
 };
 
 }  // namespace ash

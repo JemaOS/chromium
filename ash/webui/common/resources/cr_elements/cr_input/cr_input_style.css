@@ -236,3 +236,37 @@
         --cr-icon-color: currentColor;
         --cr-icon-button-fill-color: currentColor;
       }
+
+      :host-context([jemaos-layout]):host  {
+        --cr-input-background-color: var(--cros-sys-white);
+        margin-top: -10px;
+      }
+
+      :host-context([jemaos-layout]) #label {
+        position: relative;
+        bottom: -10px;
+        left: 16px;
+        padding: 4px;
+        z-index: 1;
+        background: linear-gradient(to bottom, var(--oobe-bg-color) 50%, var(--cr-input-background-color) 50%);
+        width: fit-content;
+        margin-bottom: 0;
+      }
+
+      :host-context([jemaos-layout]) #row-container {
+        border-radius: 32px;
+        padding: 6px 12px;
+        background-color: var(--cr-input-background-color);
+        border: solid 1px var(--color-combobox-container-outline,
+            var(--cr-fallback-color-neutral-outline));
+      }
+
+      :host-context([jemaos-layout]) #inner-input-content
+          ::slotted([slot='inline-suffix']) {
+        padding-inline-end: var(--cr-input-padding-end, 8px);
+        padding-inline-start: var(--cr-input-padding-start, 8px);
+      }
+
+      :host-context([jemaos-layout]) #underline {
+        display: none;
+      }

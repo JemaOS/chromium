@@ -16,10 +16,11 @@ LocalPasswordSetupHandler::LocalPasswordSetupHandler()
 
 LocalPasswordSetupHandler::~LocalPasswordSetupHandler() = default;
 
-void LocalPasswordSetupHandler::Show(bool can_go_back, bool is_recovery_flow) {
+void LocalPasswordSetupHandler::Show(bool can_go_back, bool is_recovery_flow, bool is_jema_profile) {
   base::Value::Dict dict;
   dict.Set("showBackButton", can_go_back);
   dict.Set("isRecoveryFlow", is_recovery_flow);
+  dict.Set("isJemaProfile", is_jema_profile);
   ShowInWebUI(std::move(dict));
 }
 
@@ -35,6 +36,8 @@ void LocalPasswordSetupHandler::DeclareLocalizedValues(
                 device_name);
   builder->AddF("localPasswordSetupSubtitle",
                 IDS_LOGIN_LOCAL_PASSWORD_SETUP_SUBTITLE, device_name);
+  builder->AddF("localPasswordSetupJemaSubtitle",
+                IDS_LOGIN_LOCAL_PASSWORD_JEMA_SETUP_SUBTITLE, device_name);
   builder->AddF("localPasswordResetTitle", IDS_LOGIN_LOCAL_PASSWORD_RESET_TITLE,
                 device_name);
   builder->Add("passwordInputPlaceholderText",

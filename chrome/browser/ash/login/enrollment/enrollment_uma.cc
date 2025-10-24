@@ -19,6 +19,8 @@ const char* const kMetricEnrollmentForcedInitial =
     "Enterprise.EnrollmentForcedInitial";
 const char* const kMetricEnrollmentAttestationBased =
     "Enterprise.EnrollmentAttestationBased";
+const char* const kMetricEnrollmentJemaBased =
+    "Enterprise.EnrollmentJemaBased";
 const char* const kMetricEnrollmentForcedAttestationBased =
     "Enterprise.EnrollmentForcedAttestationBased";
 const char* const kMetricEnrollmentForcedInitialAttestationBased =
@@ -58,6 +60,9 @@ void EnrollmentUMA(policy::MetricEnrollment sample,
     case policy::EnrollmentConfig::MODE_LOCAL_FORCED:
     case policy::EnrollmentConfig::MODE_SERVER_FORCED:
       base::UmaHistogramSparse(kMetricEnrollmentForced, sample);
+      break;
+    case policy::EnrollmentConfig::MODE_JEMA_LOCAL_FORCED:
+      base::UmaHistogramSparse(kMetricEnrollmentJemaBased, sample);
       break;
     case policy::EnrollmentConfig::MODE_INITIAL_SERVER_FORCED:
       base::UmaHistogramEnumeration(kMetricEnrollmentForcedInitial, sample);

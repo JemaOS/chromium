@@ -235,6 +235,11 @@ class BASE_EXPORT SysInfo {
   // whether a USE flag is set or not). See https://goo.gl/BbBkzg for more
   // details.
   static std::string GetLsbReleaseBoard();
+  // ---***JEMAOS BEGIN***---
+  static std::string GetLsbJemaReleaseVersion();
+  // ---***JEMAOS END***---
+
+  static std::string GetLsbReleaseBoardWithoutSuffix();
 
   // Returns the creation time of /etc/lsb-release. (Used to get the date and
   // time of the Chrome OS build).

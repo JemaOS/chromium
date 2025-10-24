@@ -21,6 +21,18 @@ build_webui("build") {
     "animations/spinner.json",
     "animations/welcome_screen_animation.json",
 
+    "animations/jemaos_spinner.json",
+
+    "animations/jemaos_v20_welcome.mp4",
+
+    "animations/jemaos_choose_language.json",
+    "animations/jemaos_network_select.json",
+    "animations/jemaos_eula.json",
+    "animations/jemaos_signin.json",
+    "animations/jemaos_choose_pin.json",
+    "animations/jemaos_done.json",
+    "animations/jemaos_choose_account.json",
+
     # Vector resources
     "images/app_icons/a4.svg",
     "images/app_icons/calculator.svg",
@@ -28,6 +40,13 @@ build_webui("build") {
     "images/app_icons/files.svg",
     "images/app_icons/photos.svg",
     "images/app_icons/settings.svg",
+    "images/app_icons/jemaos/camera.svg",
+    "images/app_icons/jemaos/files.svg",
+    "images/app_icons/jemaos/settings.svg",
+    "images/app_icons/jemaos/rdp.svg",
+    # "images/app_icons/jemaos/onedrive.svg",
+    "images/app_icons/jemaos/store.svg",
+    "images/app_icons/jemaos/ai.svg",
     "images/arc_vm_data_migration_icon.svg",
     "images/browser_sync.svg",
     "images/error.svg",
@@ -43,6 +62,15 @@ build_webui("build") {
     "images/1x/thumbnail-theme-auto-1x.png",
     "images/2x/thumbnail-theme-auto-2x.png",
 
+    "images/1x/jemaos/thumbnail-theme-light-1x.png",
+    "images/2x/jemaos/thumbnail-theme-light-2x.png",
+    "images/1x/jemaos/thumbnail-theme-dark-1x.png",
+    "images/2x/jemaos/thumbnail-theme-dark-2x.png",
+    "images/1x/jemaos/thumbnail-theme-auto-1x.png",
+    "images/2x/jemaos/thumbnail-theme-auto-2x.png",
+
+    "images/jemaos_touchpad_scroll_illo.png",
+
     # Structure files
     "oobe.css",
     "oobe.html",
@@ -50,6 +78,8 @@ build_webui("build") {
     "oobe_screen.css",
 
     "screens/common/throbber.css",
+
+    "images/eula_illustration.svg",
   ]
 
   mojo_files_deps = [
@@ -109,9 +139,13 @@ build_webui("build") {
     "screens/common/managed_terms_of_service.ts",
     "screens/common/marketing_opt_in.ts",
     "screens/common/multidevice_setup.ts",
+    "screens/common/jema_local_signin.ts",
+    "screens/common/data_restore.ts",
     "screens/common/online_authentication_screen.ts",
     "screens/common/oobe_reset.ts",
+    "screens/common/oobe_eula.ts",
     "screens/common/os_install.ts",
+    "screens/common/jemaos_installer.ts",
     "screens/common/os_trial.ts",
     "screens/common/parental_handoff.ts",
     "screens/common/quick_start.ts",
@@ -132,6 +166,7 @@ build_webui("build") {
     "screens/common/tpm_error.ts",
     "screens/common/user_allowlist_check_screen.ts",
     "screens/common/user_creation.ts",
+    "screens/common/account_type_selection.ts",
     "screens/common/wrong_hwid.ts",
 
     # Login screens
@@ -224,6 +259,7 @@ build_webui("build") {
     "priority_screens_common_flow.ts",
     "priority_screens_oobe_flow.ts",
     "screens.ts",
+    "jemaos_shell_client.ts",
     "test_api/no_test_api.ts",
     "test_api/test_api.ts",
   ]
@@ -258,6 +294,7 @@ build_webui("build") {
     "//tools/typescript/definitions/tabs.d.ts",
     "//tools/typescript/definitions/webview_tag.d.ts",
     "//tools/typescript/definitions/web_request.d.ts",
+    "//tools/typescript/definitions/shell_client.d.ts",
   ]
   if (is_chrome_branded) {
     ts_definitions += [ "dummy.d.ts" ]

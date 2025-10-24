@@ -22,12 +22,14 @@
 #include "components/invalidation/public/identity_provider.h"
 #include "components/prefs/pref_service.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "jemaos/switches/account/policy_constants.h"
 
 namespace invalidation {
 
 namespace {
 constexpr auto kInvalidationProjects = base::MakeFixedFlatSet<std::string_view>(
     {kCriticalInvalidationsProjectNumber,
+     jemaos::constants::kJemaOSPolicyFCMInvalidationSenderID,
      kNonCriticalInvalidationsProjectNumber});
 }
 

@@ -622,8 +622,11 @@ mojom::SessionType GetSessionType() {
       user_manager::UserManager::Get()->GetPrimaryUser();
   switch (user->GetType()) {
     case user_manager::UserType::kRegular:
+    case user_manager::UserType::kFlintAccount:
+    case user_manager::UserType::kJemaAccount:
       return mojom::SessionType::kRegularSession;
     case user_manager::UserType::kChild:
+    case user_manager::UserType::kJemaChild:
       return mojom::SessionType::kChildSession;
     case user_manager::UserType::kGuest:
       return mojom::SessionType::kGuestSession;
@@ -685,6 +688,16 @@ std::optional<account_manager::Account> GetDeviceAccount() {
           account_manager::AccountKey{account_id.GetGaiaId(),
                                       account_manager::AccountType::kGaia},
           user->GetDisplayEmail()});
+    case AccountType::JEMA_ACCOUNT:
+      return std::make_optional(account_manager::Account{
+          account_manager::AccountKey{account_id.GetJemaId(),
+                                      account_manager::AccountType::kJema},
+              user->GetDisplayEmail()});
+    case AccountType::FLINT_ACCOUNT:
+      return std::make_optional(account_manager::Account{
+          account_manager::AccountKey{account_id.GetFlintId(),
+                                      account_manager::AccountType::kFlint},
+              user->GetDisplayEmail()});
     case AccountType::UNKNOWN:
       return std::nullopt;
   }
@@ -1126,6 +1139,8 @@ policy::CloudPolicyCore* GetCloudPolicyCoreForUser(
     const user_manager::User& user) {
   switch (user.GetType()) {
     case user_manager::UserType::kRegular:
+    case user_manager::UserType::kJemaAccount:
+    case user_manager::UserType::kJemaChild:
     case user_manager::UserType::kChild: {
       policy::UserCloudPolicyManagerAsh* manager =
           GetUserCloudPolicyManager(user);
@@ -1140,6 +1155,7 @@ policy::CloudPolicyCore* GetCloudPolicyCoreForUser(
       return broker ? broker->core() : nullptr;
     }
     case user_manager::UserType::kGuest:
+    case user_manager::UserType::kFlintAccount:
       return nullptr;
   }
 }
@@ -1148,6 +1164,8 @@ policy::ComponentCloudPolicyService* GetComponentCloudPolicyServiceForUser(
     const user_manager::User& user) {
   switch (user.GetType()) {
     case user_manager::UserType::kRegular:
+    case user_manager::UserType::kJemaAccount:
+    case user_manager::UserType::kJemaChild:
     case user_manager::UserType::kChild: {
       policy::UserCloudPolicyManagerAsh* manager =
           GetUserCloudPolicyManager(user);
@@ -1161,6 +1179,7 @@ policy::ComponentCloudPolicyService* GetComponentCloudPolicyServiceForUser(
           GetDeviceLocalAccountPolicyBroker(user);
       return broker ? broker->component_policy_service() : nullptr;
     }
+    case user_manager::UserType::kFlintAccount:
     case user_manager::UserType::kGuest:
       return nullptr;
   }

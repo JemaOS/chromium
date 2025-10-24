@@ -94,6 +94,13 @@ export class HistorySideBarElement extends PolymerElement {
             'historyClustersEnabled, historyClustersVisible)',
       },
 
+      isJemaLocalAccount_: {
+        type: Boolean,
+        value: () => {
+          return loadTimeData.getBoolean('isJemaLocalAccount');
+        },
+      },
+
       compareHistoryEnabled_: Boolean,
     };
   }

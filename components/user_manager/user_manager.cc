@@ -145,6 +145,14 @@ UserType UserManager::CalculateUserType(const AccountId& account_id,
                      << new_user_type;
       }
       return new_user_type;
+    } else if (user_type == UserType::kJemaChild || user_type == UserType::kJemaAccount) {
+      const UserType new_user_type =
+          is_child ? UserType::kJemaChild : UserType::kJemaAccount;
+      if (new_user_type != user_type) {
+        LOG(WARNING) << "JemaOS child user type has changed: " << user_type << " => "
+                     << new_user_type;
+      }
+      return new_user_type;
     } else if (is_child) {
       LOG(FATAL) << "Incorrect child user type " << user_type;
     }
@@ -160,9 +168,17 @@ UserType UserManager::CalculateUserType(const AccountId& account_id,
 
   // User is new
   if (is_child)
-    return UserType::kChild;
+    return account_id.GetAccountType() == AccountType::JEMA_ACCOUNT ? UserType::kJemaChild : UserType::kChild;
 
   CHECK(account_id.GetAccountType() != AccountType::ACTIVE_DIRECTORY);
+
+  if (account_id.GetAccountType() == AccountType::FLINT_ACCOUNT) {
+    return UserType::kFlintAccount;
+  }
+
+  if (account_id.GetAccountType() == AccountType::JEMA_ACCOUNT) {
+    return UserType::kJemaAccount;
+  }
 
   return UserType::kRegular;
 }
@@ -171,7 +187,10 @@ bool UserManager::IsUserAllowed(const user_manager::User& user,
                                 bool is_guest_allowed,
                                 bool is_user_allowlisted) {
   DCHECK(user.GetType() == UserType::kRegular ||
+         user.GetType() == UserType::kFlintAccount ||
+         user.GetType() == UserType::kJemaAccount ||
          user.GetType() == UserType::kGuest ||
+         user.GetType() == UserType::kJemaChild ||
          user.GetType() == UserType::kChild);
 
   if (user.GetType() == UserType::kGuest && !is_guest_allowed) {

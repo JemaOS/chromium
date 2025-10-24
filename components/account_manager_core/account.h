@@ -20,6 +20,10 @@ enum class AccountType : int {
   kGaia = 1,
   // Microsoft Active Directory accounts.
   kActiveDirectory = 2,
+  //---***JEMAOS BEGIN***---
+  kFlint = 3,
+  kJema = 4,
+  //---***JEMAOS END***---
 };
 
 // Uniquely identifies an account.

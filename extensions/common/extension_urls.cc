@@ -19,6 +19,7 @@
 #include "net/base/url_util.h"
 #include "url/gurl.h"
 #include "url/origin.h"
+#include "jemaos/switches/services/services_switches.h"
 
 namespace extensions {
 
@@ -76,6 +77,10 @@ std::string GetWebstoreExtensionsCategoryURL() {
     return GetNewWebstoreLaunchURL().spec() + "category/extensions";
   }
   return GetWebstoreLaunchURL().spec() + "/category/extensions";
+}
+
+std::string GetJemaWebstoreExtensionsCategoryURL() {
+  return jemaos::switches::GetJemaOSAppStoreURL() + "/?init=extensions";
 }
 
 std::string GetWebstoreItemDetailURLPrefix() {
@@ -146,6 +151,13 @@ bool IsWebstoreUpdateUrl(const GURL& update_url) {
   return (update_url.host_piece() == store_url.host_piece() &&
           update_url.path_piece() == store_url.path_piece());
 }
+
+// ---***JEMAOS BEGIN***---
+bool IsJemaOSWebstoreUpdateUrl(const GURL& update_url) {
+  GURL store_url = GURL(jemaos::switches::GetJemaOSWebStoreUpdateUrl());
+  return update_url.host_piece() == store_url.host_piece();
+}
+// ---***JEMAOS END***---
 
 bool IsBlocklistUpdateUrl(const GURL& url) {
   extensions::ExtensionsClient* client = extensions::ExtensionsClient::Get();

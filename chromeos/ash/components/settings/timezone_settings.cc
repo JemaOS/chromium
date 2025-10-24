@@ -30,6 +30,9 @@
 #include "base/task/thread_pool.h"
 #include "chromeos/ash/components/settings/timezone_settings_helper.h"
 
+#include "jemaos/switches/misc/misc_switches.h"
+#include "jemaos/switches/misc/misc_constants.h"
+
 namespace ash {
 namespace system {
 const char kUTCTimezoneName[] = "Etc/GMT";
@@ -417,6 +420,11 @@ TimezoneSettingsImpl* TimezoneSettingsImpl::GetInstance() {
 TimezoneSettingsImpl::TimezoneSettingsImpl() {
   std::string id = GetTimezoneIDAsString();
   if (id.empty()) {
+    //---***JEMAOS BEGIN***---
+    if (jemaos::switches::IsJemaCustomEnabled())
+       id = jemaos::constants::kJemaOSDefaultTimeZoneId;
+    else
+    //---***JEMAOS END***---
     id = kFallbackTimeZoneId;
     LOG(ERROR) << "Got an empty string for timezone, default to '" << id;
   }

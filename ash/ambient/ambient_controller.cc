@@ -88,6 +88,7 @@
 #include "ui/wm/core/cursor_manager.h"
 #include "ui/wm/core/visibility_controller.h"
 #include "ui/wm/core/window_animations.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 #if BUILDFLAG(ENABLE_CROS_AMBIENT_MODE_BACKEND)
 #include "ash/ambient/backdrop/ambient_backend_controller_impl.h"
@@ -155,6 +156,9 @@ PrefService* GetActivePrefService() {
 }
 
 bool IsUserAmbientModeEnabled() {
+  if (jemaos::switches::IsJemaCustomEnabled()) {
+    return false;
+  }
   if (!AmbientClient::Get()->IsAmbientModeAllowed()) {
     return false;
   }
@@ -165,6 +169,9 @@ bool IsUserAmbientModeEnabled() {
 }
 
 bool IsAmbientModeManagedScreensaverEnabled() {
+  if (jemaos::switches::IsJemaCustomEnabled()) {
+    return false;
+  }
   PrefService* pref_service = GetActivePrefService();
 
   return !chromeos::IsKioskSession() && pref_service &&

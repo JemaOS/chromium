@@ -50,6 +50,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "jemaos/switches/misc/misc_constants.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "v8/include/v8-version-string.h"
 
@@ -85,6 +86,13 @@
 #include "components/user_manager/user_manager.h"
 #include "third_party/icu/source/i18n/unicode/timezone.h"
 #include "ui/chromeos/devicetype_utils.h"
+// ---***JEMAOS BEGIN***---
+#include "jemaos/misc/jemaos_toggle_ota.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
+#include "components/prefs/pref_service.h"
+#include "jemaos/switches/urls/urls_constants.h"
+#include "jemaos/misc/jemaos_release_note_url.h"
+// ---***JEMAOS END***---
 #endif
 
 namespace {
@@ -143,6 +151,13 @@ bool CanChangeChannel(Profile* profile) {
     return user && user->IsAffiliated();
   }
 
+  // ---***JEMAOS BEGIN***---
+  PrefService* local_state = g_browser_process->local_state();
+  bool tpm_fallback = local_state->GetBoolean(jemaos::prefs::kCurrentForceTpmFallback);
+  if (tpm_fallback) {
+    return user_manager::UserManager::Get()->IsCurrentUserOwner();
+  }
+  // ---***JEMAOS END***---
   // On non-managed machines, only the local owner can change the channel.
   ash::OwnerSettingsServiceAsh* service =
       ash::OwnerSettingsServiceAshFactory::GetInstance()->GetForBrowserContext(
@@ -305,6 +320,11 @@ void AboutHandler::RegisterMessages() {
                           base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
+      "getIsFirmwareUpdateSupported",
+      base::BindRepeating(&AboutHandler::HandleGetIsFirmwareUpdateSupported,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
       "getFirmwareUpdateCount",
       base::BindRepeating(&AboutHandler::HandleGetFirmwareUpdateCount,
                           base::Unretained(this)));
@@ -388,6 +408,16 @@ void AboutHandler::RegisterMessages() {
       "recordExtendedUpdatesShown",
       base::BindRepeating(&AboutHandler::HandleRecordExtendedUpdatesShown,
                           base::Unretained(this)));
+  // ---***JEMAOS BEGIN***---
+  web_ui()->RegisterMessageCallback(
+      "enableJemaOTA",
+      base::BindRepeating(&AboutHandler::HandleEnableJemaOTA,
+                          base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
+      "getEnabledJemaOTA",
+      base::BindRepeating(&AboutHandler::HandleGetEnabledJemaOTA,
+                          base::Unretained(this)));
+  // ---***JEMAOS END***---
 #endif
 #if BUILDFLAG(IS_MAC)
   web_ui()->RegisterMessageCallback(
@@ -524,6 +554,52 @@ void AboutHandler::HandleCheckInternetConnection(
                             base::Value(network && network->IsOnline()));
 }
 
+// ---***JEMAOS BEGIN***---
+void AboutHandler::HandleEnableJemaOTA(const base::Value::List& args) {
+  CHECK_EQ(1U, args.size());
+  bool enabled = args[0].GetBool();
+  /*
+  if (!user_manager::UserManager::Get()->IsCurrentUserOwner()) {
+    LOG(WARNING) << "Non-owner tried to set jemaos ota permission";
+    jemaos::misc::GetEnabledJemaOTA(
+        base::BindOnce(&AboutHandler::OnEnableJemaOTA,
+                       weak_factory_.GetWeakPtr()));
+    return;
+  }
+  */
+  jemaos::misc::EnableJemaOTA(enabled,
+      base::BindOnce(&AboutHandler::OnEnableJemaOTA,
+                     weak_factory_.GetWeakPtr()));
+}
+
+void AboutHandler::OnEnableJemaOTA() {
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(&jemaos::misc::GetEnabledJemaOTA),
+      base::BindOnce(&AboutHandler::RefreshEnableJemaOTA,
+                     weak_factory_.GetWeakPtr()));
+}
+
+void AboutHandler::RefreshEnableJemaOTA(const bool enabled) {
+  FireWebUIListener("jema-ota-enabled-changed", base::Value(enabled));
+}
+
+void AboutHandler::HandleGetEnabledJemaOTA(const base::Value::List& args) {
+  CHECK_EQ(1U, args.size());
+  std::string callback_id = args[0].GetString();
+
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(&jemaos::misc::GetEnabledJemaOTA),
+      base::BindOnce(&AboutHandler::OnGetEnabledJemaOTA,
+                     weak_factory_.GetWeakPtr(), callback_id));
+}
+
+void AboutHandler::OnGetEnabledJemaOTA(const std::string callback_id, const bool enabled) {
+  ResolveJavascriptCallback(base::Value(callback_id), base::Value(enabled));
+}
+// ---***JEMAOS END***---
+
 void AboutHandler::HandleLaunchReleaseNotes(const base::Value::List& args) {
   DCHECK(args.empty());
   // We can always show the release notes since the Help app caches it, or can
@@ -576,6 +652,24 @@ void AboutHandler::HandleGetVersionInfo(const base::Value::List& args) {
 void AboutHandler::OnGetVersionInfoReady(std::string callback_id,
                                          base::Value::Dict version_info) {
   ResolveJavascriptCallback(base::Value(callback_id), version_info);
+}
+
+void AboutHandler::HandleGetIsFirmwareUpdateSupported(const base::Value::List& args) {
+  CHECK_EQ(1U, args.size());
+  const std::string& callback_id = args[0].GetString();
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(
+        &base::PathExists,
+        base::FilePath(jemaos::constants::kJemaOSFirmwareUpdateBinPath)),
+      base::BindOnce(&AboutHandler::OnJemaOSUpdateBinCheckedChecked,
+                     weak_factory_.GetWeakPtr(), callback_id));
+}
+
+void AboutHandler::OnJemaOSUpdateBinCheckedChecked(const std::string& callback_id,
+                                                   bool is_supported) {
+  ResolveJavascriptCallback(
+      base::Value(callback_id), base::Value(is_supported));
 }
 
 void AboutHandler::HandleGetFirmwareUpdateCount(const base::Value::List& args) {
@@ -753,8 +847,8 @@ std::u16string AboutHandler::GetEndOfLifeMessage(base::Time eol_date) const {
   int eol_string_id = eol_passed
                           ? IDS_SETTINGS_ABOUT_PAGE_END_OF_LIFE_MESSAGE_PAST
                           : IDS_SETTINGS_ABOUT_PAGE_END_OF_LIFE_MESSAGE_FUTURE;
-  const char16_t* eol_url =
-      eol_passed ? chrome::kEolNotificationURL : chrome::kAutoUpdatePolicyURL;
+  const std::u16string eol_url =
+      eol_passed ? base::UTF8ToUTF16(jemaos::constants::kEolNotificationURL) : base::UTF8ToUTF16(jemaos::misc::BuildJemaReleaseNoteUrlWithPath());
   return l10n_util::GetStringFUTF16(eol_string_id,
                                     base::TimeFormatMonthAndYearForTimeZone(
                                         eol_date, icu::TimeZone::getGMT()),

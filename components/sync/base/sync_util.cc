@@ -17,6 +17,10 @@
 #include "google_apis/gaia/gaia_config.h"
 #include "ui/base/device_form_factor.h"
 #include "url/gurl.h"
+// ---***JEMAOS BEGIN***---
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/switches/account/account_constants.h"
+// ---***JEMAOS END***---
 
 namespace {
 
@@ -79,6 +83,30 @@ GURL GetSyncServiceURL(const base::CommandLine& command_line,
   // 1. Explicitly specified --sync-url
   // 2. Specified as part of the --gaia-config
   // 3. Default URL (different for Stable/Beta vs. Dev/Canary/unbranded)
+  // ---***JEMAOS BEGIN***---
+  if (jemaos::switches::IsJemaAccountEnabled()) {
+    GURL result(jemaos::constants::kJemaOSSyncDevServerUrl);
+    if (channel == version_info::Channel::STABLE ||
+        channel == version_info::Channel::BETA) {
+      result = GURL(jemaos::constants::kJemaOSSyncServerUrl);
+    }
+    if (command_line.HasSwitch(jemaos::switches::kJemaOSSyncServiceURL)) {
+      std::string value(
+          command_line.GetSwitchValueASCII(jemaos::switches::kJemaOSSyncServiceURL));
+      if (!value.empty()) {
+        GURL custom_sync_url(value);
+        if (custom_sync_url.is_valid()) {
+          result = custom_sync_url;
+        } else {
+          LOG(WARNING) << "The following JemaOS sync URL specified at the command-line "
+            << "is invalid: " << value;
+        }
+      }
+    }
+    return result;
+  }
+  // ---***JEMAOS END***---
+  GURL result(internal::kSyncDevServerUrl);
 
   // 1. Get the sync server URL from the --sync-url command-line param, if
   // specified.

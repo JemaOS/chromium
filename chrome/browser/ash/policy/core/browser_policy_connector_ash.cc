@@ -16,6 +16,7 @@
 #include "base/command_line.h"
 #include "base/containers/contains.h"
 #include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/overloaded.h"
 #include "base/location.h"
@@ -105,6 +106,8 @@
 #include "components/variations/pref_names.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "jemaos/switches/account/toggle/account_type_toggle.h"
+#include "jemaos/switches/account/policy_constants.h"
 
 namespace policy {
 
@@ -120,6 +123,7 @@ std::set<std::string> GetAllInvalidationProjectNumbers() {
   // Cannot be a static constant because project number is decided by feature,
   // which is not available during static initialization.
   return {
+      std::string(jemaos::constants::kJemaOSPolicyFCMInvalidationSenderID),
       std::string(policy::GetPolicyInvalidationProjectNumber(
           PolicyInvalidationScope::kDevice)),
       std::string(policy::GetPolicyInvalidationProjectNumber(
@@ -243,7 +247,23 @@ BrowserPolicyConnectorAsh::~BrowserPolicyConnectorAsh() = default;
 void BrowserPolicyConnectorAsh::Init(
     PrefService* local_state,
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory) {
+  if (base::PathExists(base::FilePath(jemaos::constants::kJemaOSOobeZteConfigFile))) {
+    jemaos::switches::EnableJemaAccountFlag();
+  }
   local_state_ = local_state;
+  // ---***JEMAOS BEGIN***---
+  auto install_attributes = ash::InstallAttributes::Get();
+  if (install_attributes &&(install_attributes->IsCloudManaged()
+                            || install_attributes->IsEnterpriseManaged())) {
+    const std::string management_service = install_attributes->GetServiceName();
+    VLOG(2) << "enterprise management_service: " << management_service;
+    if (management_service == "jemaos") {
+      jemaos::switches::EnableJemaAccountFlagForManagedDevice();
+    } else {
+      jemaos::switches::DisableJemaAccountFlagForManagedDevice();
+    }
+  }
+  // ---***JEMAOS END***---
   ChromeBrowserPolicyConnector::Init(local_state, url_loader_factory);
 
   instance_id_driver_ = std::make_unique<instance_id::InstanceIDDriver>(

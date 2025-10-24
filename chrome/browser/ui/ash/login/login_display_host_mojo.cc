@@ -66,6 +66,7 @@
 #include "chrome/browser/ui/webui/ash/login/remote_activity_notification_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/reset_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/user_creation_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/data_restore_screen_handler.h"
 #include "chrome/common/pref_names.h"
 #include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
 #include "chromeos/ash/components/login/auth/public/auth_failure.h"
@@ -91,6 +92,7 @@
 #include "ui/events/keycodes/keyboard_codes_posix.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/views/view.h"
+#include "jemaos/switches/account/toggle/account_type_toggle.h"
 
 namespace ash {
 namespace {
@@ -579,6 +581,7 @@ void LoginDisplayHostMojo::ShowGaiaDialogImpl(
     gaia_reauth_account_id_ = prefilled_account;
   } else {
     gaia_reauth_account_id_.reset();
+    jemaos::switches::EnableJemaAccountFlag();
   }
   ShowGaiaDialogCommon(prefilled_account);
 
@@ -593,6 +596,11 @@ void LoginDisplayHostMojo::ShowOsInstallScreen() {
   ShowDialog();
 }
 
+void LoginDisplayHostMojo::ShowDataRestoreScreen() {
+  StartWizard(DataRestoreScreenView::kScreenId);
+  ShowDialog();
+}
+
 void LoginDisplayHostMojo::ShowGuestTosScreen() {
   StartWizard(GuestTosScreenView::kScreenId);
   ShowDialog();
@@ -600,6 +608,14 @@ void LoginDisplayHostMojo::ShowGuestTosScreen() {
 
 void LoginDisplayHostMojo::ShowRemoteActivityNotificationScreen() {
   StartWizard(RemoteActivityNotificationView::kScreenId);
+  ShowDialog();
+}
+
+void LoginDisplayHostMojo::ShowLocalDialog() {
+  DCHECK(GetOobeUI());
+
+  ShowLocalDialogCommon();
+
   ShowDialog();
 }
 
@@ -745,6 +761,14 @@ void LoginDisplayHostMojo::HandleAuthenticateUserWithPasswordOrPin(
   if (account_id.GetAccountType() == AccountType::ACTIVE_DIRECTORY) {
     LOG(FATAL) << "Incorrect Active Directory user type "
                << user_context.GetUserType();
+  }
+
+  if (account_id.GetAccountType() == AccountType::FLINT_ACCOUNT) {
+    if (user_context.GetUserType() !=
+        user_manager::UserType::kFlintAccount) {
+      LOG(FATAL) << "Incorrect Flint Account user type "
+                 << user_context.GetUserType();
+    }
   }
 
   existing_user_controller_->Login(user_context, SigninSpecifics());

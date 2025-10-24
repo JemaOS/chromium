@@ -176,6 +176,9 @@ void MainSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       {"medium", IDS_SETTINGS_MEDIUM_FONT},
       {"large", IDS_SETTINGS_LARGE_FONT},
       {"veryLarge", IDS_SETTINGS_VERY_LARGE_FONT},
+      // ---***JEMAOS BEGIN***---
+      {"jemaOSRemoteDesktopAppName", IDS_SETTINGS_JEMAOS_REMOTE_DESKTOP_APP_NAME}
+      // ---***JEMAOS END***---
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 
@@ -196,6 +199,9 @@ void MainSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
                           IsKioskOldA11ySettingsRedirectionEnabled(user));
   html_source->AddBoolean("isChild", IsChildUser(user));
 
+  html_source->AddBoolean("isJemaProfile", IsJemaProfile());
+  html_source->AddBoolean("isJemaLocalAccount",
+                          user->GetType() == user_manager::UserType::kFlintAccount);
   // Add the System Web App resources for Settings.
   html_source->AddResourcePath("icon-192.png", IDR_SETTINGS_LOGO_192);
 

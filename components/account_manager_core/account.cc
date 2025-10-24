@@ -48,6 +48,12 @@ std::ostream& operator<<(std::ostream& os, const AccountType& account_type) {
     case account_manager::AccountType::kActiveDirectory:
       os << "ActiveDirectory";
       break;
+    case account_manager::AccountType::kFlint:
+      os << "Flint";
+      break;
+    case account_manager::AccountType::kJema:
+      os << "Jema";
+      break;
   }
 
   return os;

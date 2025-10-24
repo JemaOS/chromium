@@ -22,7 +22,9 @@ enum class AccountType {
 
   // Microsoft Active Directory accounts (Deprecated, pending removal:
   // b/263367348).
-  ACTIVE_DIRECTORY
+  ACTIVE_DIRECTORY,
+  FLINT_ACCOUNT = 99,
+  JEMA_ACCOUNT = 100,
 };
 
 // Type that contains enough information to identify user.
@@ -99,6 +101,16 @@ class AccountId {
   std::string Serialize() const;
   static std::optional<AccountId> Deserialize(std::string_view serialized);
 
+  //---***JEMAOS BEGIN***---
+  const std::string& GetFlintId() const;
+  static AccountId FtFromUserEmailFlintId(const std::string& email,
+                                          const std::string& flint_id);
+  static AccountId FtFromFlintId(const std::string& flint_id);
+  const std::string& GetJemaId() const;
+  static AccountId FyFromUserEmailJemaId(const std::string& email,
+                                          const std::string& jema_id);
+  static AccountId FyFromJemaId(const std::string& jema_id);
+  //---***JEMAOS END***---
  private:
   friend std::ostream& operator<<(std::ostream&, const AccountId&);
 

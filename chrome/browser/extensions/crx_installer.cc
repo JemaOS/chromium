@@ -181,6 +181,12 @@ void CrxInstaller::InstallCrx(const base::FilePath& source_file) {
                 base::CommandLine::ForCurrentProcess()->HasSwitch(
                     ::switches::kAppsGalleryURL))
           : GetExternalVerifierFormat();
+  // ---***JEMAOS BEGIN***---
+  // if (profile_->IsJemaProfile()) {
+  // allow google account install from jemaos store
+  format = GetExternalVerifierFormat();
+  // }
+  // ---***JEMAOS END***---
   InstallCrxFile(CRXFileInfo(source_file, format));
 }
 

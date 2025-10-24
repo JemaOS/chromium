@@ -560,6 +560,7 @@ declare global {
         driveFsBulkPinningEnabled: boolean;
         localUserFilesAllowed: boolean;
         defaultLocation: DefaultLocation;
+        jemaAssistantEnabled: boolean;
         skyVaultMigrationDestination: CloudProvider;
       }
 
@@ -569,6 +570,7 @@ declare global {
         arcRemovableMediaAccessEnabled?: boolean;
         folderShortcuts?: string[];
         driveFsBulkPinningEnabled?: boolean;
+        jemaAssistantEnabled?: boolean;
       }
 
       export interface SearchParams {

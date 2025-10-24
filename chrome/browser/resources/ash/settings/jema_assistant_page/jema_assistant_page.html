@@ -1,0 +1,30 @@
+<style include="settings-shared">
+</style>
+
+<os-settings-animated-pages id="pages" section="[[section_]]">
+  <div route-path="default">
+    <settings-card header-text="$i18n{jemaAssistantPageTitle}">
+      <settings-toggle-button
+          pref="{{prefs.jema_assistant_enabled}}"
+          id="jemaAssistantToggle"
+          label="$i18n{jemaAssistantToggleLabel}"
+          sub-label="$i18n{jemaAssistantToggleSublabel}">
+      </settings-toggle-button>
+      <div class="hr"></div>
+      <settings-toggle-button
+          disabled="[[!prefs.jema_assistant_enabled.value]]"
+          pref="{{prefs.jema_assistant_extra_accelerator_enabled}}"
+          id="jemaAssistantExtraAcceleratorToggle"
+          label="$i18n{jemaAssistantBubbleShortcutToggleLabel}"
+          sub-label="$i18n{jemaAssistantBubbleShortcutToggleSublabel}">
+      </settings-toggle-button>
+      <div class="hr"></div>
+      <cr-link-row id="jemaosAiSettingsLink"
+          disabled="[[!prefs.jema_assistant_enabled.value]]"
+          label="$i18n{jemaAssistantSettingsInAppLabel}"
+          sub-label="$i18n{jemaAssistantSettingsInAppSublabel}"
+          on-click="onSettingsClicked_"
+          external>
+      </cr-link-row>
+  </div>
+</os-settings-animated-pages>

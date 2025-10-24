@@ -46,6 +46,9 @@ import {Router, routes} from '../router.js';
 
 import type {AboutPageBrowserProxy, AboutPageUpdateInfo, BrowserChannel, RegulatoryInfo, TpmFirmwareUpdateStatusChangedEvent, UpdateStatusChangedEvent} from './about_page_browser_proxy.js';
 import {AboutPageBrowserProxyImpl, browserChannelToI18nId, UpdateStatus} from './about_page_browser_proxy.js';
+import {PopupLicenseWindowProxy, PopupLicenseWindowProxyImpl, RenewalStatus} from './popup_license_window.js';
+import {JemaOSBoardNameTitleMap, JemaOSBoardNameTitleListWithI18n, JemaOSBoardNameReleaseNameMap} from './jemaos_board_name.js';
+
 import {getTemplate} from './os_about_page.html.js';
 
 declare global {
@@ -65,6 +68,18 @@ export interface OsAboutPageElement {
     updateStatusMessageInner: HTMLDivElement,
   };
 }
+
+// jemaos/constants/jemaos_constants.h
+const LICENSE_STATE_TYPE = {
+  kUnspecified: 0,
+  kUnlicensed: 1,
+  kLicenseForYouTrial: 2 ,
+  kLicenseForYouValid: 3,
+  kLicenseForYouExpired: 4,
+  kLicenseForEnterpriseTrial: 5,
+  kLicenseForEnterpriseValid: 6,
+  kLicenseForEnterpriseExpired: 7,
+};
 
 const OsAboutPageBase = DeepLinkingMixin(
     RouteOriginMixin(I18nMixin(WebUiListenerMixin(PolymerElement))));
@@ -103,6 +118,7 @@ export class OsAboutPageElement extends OsAboutPageBase {
           powerwash: false,
           status: UpdateStatus.UPDATED,
         },
+        observer: 'handleUpdateStatusHttpFailed_',
       },
 
       /**
@@ -172,6 +188,11 @@ export class OsAboutPageElement extends OsAboutPageBase {
         value: false,
       },
 
+      isFirmwareUpdateSupported_: {
+        type: Boolean,
+        value: false,
+      },
+
       firmwareUpdateCount_: {
         type: Number,
         value: 0,
@@ -199,7 +220,14 @@ export class OsAboutPageElement extends OsAboutPageBase {
         type: Boolean,
         computed: 'computeShowCheckUpdates_(' +
             'currentUpdateStatusEvent_, hasCheckedForUpdates_, hasEndOfLife_,' +
+            'renewalStatus_,' +
             'showExtendedUpdatesOption_)',
+      },
+
+      showRenewLearnMore_: {
+        type: Boolean,
+        value: false,
+        computed: 'computeShowRenewLearnMore_(renewalStatus_)',
       },
 
       showUpdateWarningDialog_: {
@@ -211,6 +239,18 @@ export class OsAboutPageElement extends OsAboutPageBase {
         type: Boolean,
         value: false,
       },
+
+// <if expr="jemaos_device">
+      jemaosDeviceSerialNumber_: {
+        type: String,
+        value: () => {
+          if (!loadTimeData.valueExists('jemaosDeviceSerialNumber')) {
+            return '';
+          }
+          return loadTimeData.getString('jemaosDeviceSerialNumber');
+        },
+      },
+// </if>
 
       showTPMFirmwareUpdateDialog_: Boolean,
 
@@ -313,6 +353,31 @@ export class OsAboutPageElement extends OsAboutPageBase {
         type: Boolean,
         value: false,
       },
+      // ---***JEMAOS BEGIN***---
+      isOwner_: {
+        type: Boolean,
+        value: true,
+      },
+      jemaOTAToggleState_: {
+        type: Boolean,
+        value: true,
+      },
+
+      renewalStatus_: {
+        type: String,
+        value: RenewalStatus.OK,
+      },
+
+      licenseStateType_: {
+        type: Number,
+        value() {
+          if (!loadTimeData.valueExists('aboutJemaOSLicenseState')) {
+            return -1;
+          }
+          return loadTimeData.getInteger('aboutJemaOSLicenseState');
+        }
+      },
+      // ---***JEMAOS END***---
     };
   }
 
@@ -321,6 +386,7 @@ export class OsAboutPageElement extends OsAboutPageBase {
       'updateShowUpdateStatus_(hasEndOfLife_, currentUpdateStatusEvent_,' +
           'hasCheckedForUpdates_, showExtendedUpdatesOption_)',
       'updateShowButtonContainer_(showRelaunch_, showCheckUpdates_,' +
+          'showRenewLearnMore_,' +
           'showExtendedUpdatesOption_)',
       'handleCrostiniEnabledChanged_(prefs.crostini.enabled.value)',
       'updateIsExtendedUpdatesOptInEligible_(' +
@@ -344,6 +410,7 @@ export class OsAboutPageElement extends OsAboutPageBase {
   private hasDeferredUpdate_: boolean;
   private eolMessageWithMonthAndYear_: string;
   private hasInternetConnection_: boolean;
+  private isFirmwareUpdateSupported_: boolean;
   private firmwareUpdateCount_: number;
   private rowIcons_: Record<string, string>;
   private showCrostiniLicense_: boolean;
@@ -365,6 +432,13 @@ export class OsAboutPageElement extends OsAboutPageBase {
 
   private aboutBrowserProxy_: AboutPageBrowserProxy;
 
+  private isOwner_: boolean;
+  private jemaOTAToggleState_: boolean;
+
+  private renewalStatus_: string;
+  private popupLicenseWindow_: PopupLicenseWindowProxy;
+  private showRenewLearnMore_: boolean;
+
   constructor() {
     super();
 
@@ -372,6 +446,8 @@ export class OsAboutPageElement extends OsAboutPageBase {
     this.route = routes.ABOUT;
 
     this.aboutBrowserProxy_ = AboutPageBrowserProxyImpl.getInstance();
+
+    this.popupLicenseWindow_ = PopupLicenseWindowProxyImpl.getInstance();
   }
 
   override connectedCallback(): void {
@@ -413,12 +489,20 @@ export class OsAboutPageElement extends OsAboutPageBase {
       this.firmwareUpdateCount_ = result;
     });
 
+    this.aboutBrowserProxy_.getIsFirmwareUpdateSupported().then(result => {
+      this.isFirmwareUpdateSupported_ = result;
+    });
+
     if (Router.getInstance().getQueryParameters().get('checkForUpdate') ===
         'true') {
       this.onCheckUpdatesClick_();
     }
 
     this.registerExtendedUpdatesObserver_();
+
+    this.popupLicenseWindow_.init();
+
+    this.jemaOTAToggleInit_();
   }
 
   override ready(): void {
@@ -506,6 +590,15 @@ export class OsAboutPageElement extends OsAboutPageBase {
   private onRelaunchClick_(): void {
     LifetimeBrowserProxyImpl.getInstance().relaunch();
   }
+  private onRenewLearnMoreClick_() {
+    if (this.checkRenewalStatus_(RenewalStatus.LICENSE_EXPIRED)) {
+      this.popupLicenseWindow_.popupRenew();
+    } else if (this.checkRenewalStatus_(RenewalStatus.SINGLE_UPGRADE)) {
+      this.popupLicenseWindow_.popupUpgrade();
+    }
+    this.renewalStatus_ = RenewalStatus.OK;
+    this.hasCheckedForUpdates_ = false;
+  }
 
   private updateShowUpdateStatus_(): void {
     // Do not show the "updated" status or error states from a previous update
@@ -539,6 +632,7 @@ export class OsAboutPageElement extends OsAboutPageBase {
    */
   private updateShowButtonContainer_(): void {
     this.showButtonContainer_ = this.showRelaunch_ || this.showCheckUpdates_ ||
+        this.showRenewLearnMore_ ||
         this.showExtendedUpdatesOption_;
 
     // Check if we have yet to focus the check for update button.
@@ -553,6 +647,10 @@ export class OsAboutPageElement extends OsAboutPageBase {
     });
   }
 
+  private showCrostiniInAboutPage_(_isRevampWayfindingEnabled: boolean): boolean {
+    return false;
+  }
+
   private computeShowRelaunch_(): boolean {
     return this.checkStatus_(UpdateStatus.NEARLY_UPDATED);
   }
@@ -563,6 +661,19 @@ export class OsAboutPageElement extends OsAboutPageBase {
 
   private shouldShowFirmwareUpdatesBadge_(): boolean {
     return this.firmwareUpdateCount_ > 0;
+  }
+
+  private getAbnormalRenewalStatusMessage_(): TrustedHTML {
+    switch (this.renewalStatus_) {
+      case RenewalStatus.CHECKING:
+        return this.i18nAdvanced('aboutUpgradeCheckStarted');
+      case RenewalStatus.SINGLE_UPGRADE:
+        return this.i18nAdvanced('aboutJemaOSOtaDisallowedRequiresOneTimePayment');
+      case RenewalStatus.LICENSE_EXPIRED:
+        return this.i18nAdvanced('aboutJemaOSOtaDisallowedByLicenseValidation');
+      default:
+        return this.i18nAdvanced('aboutUpgradeTryAgain');
+    }
   }
 
   private getUpdateStatusMessage_(): TrustedHTML {
@@ -613,6 +724,9 @@ export class OsAboutPageElement extends OsAboutPageBase {
         }
         return this.i18nAdvanced('aboutUpgradeUpdating');
       case UpdateStatus.FAILED_HTTP:
+        if (!this.isNormalRenewalStatus_()) {
+          return this.getAbnormalRenewalStatusMessage_();
+        }
         return this.i18nAdvanced('aboutUpgradeTryAgain');
       case UpdateStatus.FAILED_DOWNLOAD:
         return this.i18nAdvanced('aboutUpgradeDownloadError');
@@ -646,6 +760,10 @@ export class OsAboutPageElement extends OsAboutPageBase {
     // TODO(b/328506053): Finalize icon.
     if (this.showExtendedUpdatesOption_) {
       return 'os-settings:about-update-complete';
+    }
+
+    if (this.checkRenewalStatus_(RenewalStatus.CHECKING)) {
+      return null;
     }
 
     switch (this.currentUpdateStatusEvent_.status) {
@@ -689,6 +807,11 @@ export class OsAboutPageElement extends OsAboutPageBase {
     if (this.hasEndOfLife_ || this.showExtendedUpdatesOption_) {
       return null;
     }
+    if (this.checkRenewalStatus_(RenewalStatus.CHECKING)) {
+      return this.isDarkModeActive_ ?
+          'chrome://resources/images/throbber_small_dark.svg' :
+          'chrome://resources/images/throbber_small.svg';
+    }
 
     switch (this.currentUpdateStatusEvent_.status) {
       case UpdateStatus.CHECKING:
@@ -703,6 +826,15 @@ export class OsAboutPageElement extends OsAboutPageBase {
 
   private checkStatus_(status: UpdateStatus): boolean {
     return this.currentUpdateStatusEvent_.status === status;
+  }
+
+  private checkRenewalStatus_(status: string): boolean {
+    return this.renewalStatus_ === status;
+  }
+
+  private isNormalRenewalStatus_() {
+    // if 'failed', we'd better not bother showing the message.
+    return this.checkRenewalStatus_(RenewalStatus.OK) || this.checkRenewalStatus_(RenewalStatus.FAILED);
   }
 
   private onManagementPageClick_(): void {
@@ -747,6 +879,9 @@ export class OsAboutPageElement extends OsAboutPageBase {
     if (this.hasEndOfLife_ || this.showExtendedUpdatesOption_) {
       return false;
     }
+    if (!this.isNormalRenewalStatus_()) {
+      return false;
+    }
 
     // Enable the update button if we are in a stale 'updated' status or
     // update has failed. Disable it otherwise.
@@ -759,6 +894,10 @@ export class OsAboutPageElement extends OsAboutPageBase {
         this.checkStatus_(UpdateStatus.UPDATE_TO_ROLLBACK_VERSION_DISALLOWED);
   }
 
+  computeShowRenewLearnMore_() {
+    return this.checkRenewalStatus_(RenewalStatus.LICENSE_EXPIRED) || this.checkRenewalStatus_(RenewalStatus.SINGLE_UPGRADE);
+  }
+
   /**
    * @param showCrostiniLicense True if Crostini is enabled and
    * Crostini UI is allowed.
@@ -769,11 +908,55 @@ export class OsAboutPageElement extends OsAboutPageBase {
         this.i18nAdvanced('aboutProductOsLicense');
   }
 
+  private handleUpdateStatusHttpFailed_(event: UpdateStatusChangedEvent, oldEvent: UpdateStatusChangedEvent) {
+    if (!event || !oldEvent) return;
+    if (oldEvent.status === event.status) {
+      return;
+    }
+    const { status } = event;
+    if (status !== UpdateStatus.FAILED_HTTP) {
+      return;
+    }
+    if (!this.hasCheckedForUpdates_) return;
+    this.fetchRenewalStatus_();
+  }
+
+  private fetchRenewalStatus_() {
+    if (this.checkRenewalStatus_(RenewalStatus.CHECKING)) return;
+    this.renewalStatus_ = RenewalStatus.CHECKING;
+    const controller_appid = 'mofiofjpikncjaigmdlblhojbnkabako';
+    const command = 'get_license_renew_state';
+    try {
+      chrome.runtime.sendMessage(controller_appid, { command }, (response: any) => {
+        if (!this.checkStatus_(UpdateStatus.FAILED_HTTP)) {
+          // ota status is changed, not failed_http any more, do inothing here
+          this.renewalStatus_ = RenewalStatus.OK;
+          return;
+        }
+        if (!response || response.state !== 'OK' || !response.data) {
+          this.renewalStatus_ = RenewalStatus.FAILED;
+          return;
+        }
+        const state = response.data ? response.data.state : '';
+        if (state === 'licenseSingleUpgrade') {
+          this.renewalStatus_ = RenewalStatus.SINGLE_UPGRADE;
+        } else if (state === 'licenseExpired') {
+          this.renewalStatus_ = RenewalStatus.LICENSE_EXPIRED;
+        } else {
+          this.renewalStatus_ = RenewalStatus.OK;
+        }
+      });
+    } catch (e) {
+      this.renewalStatus_ = RenewalStatus.FAILED;
+    }
+  }
+
   /**
    * @param enabled True if Crostini is enabled.
    */
   private handleCrostiniEnabledChanged_(enabled: boolean): void {
-    this.showCrostiniLicense_ = enabled && isCrostiniSupported();
+    const force_disable = true;
+    this.showCrostiniLicense_ = !force_disable && enabled && isCrostiniSupported();
   }
 
   private shouldShowSafetyInfo_(): boolean {
@@ -819,7 +1002,6 @@ export class OsAboutPageElement extends OsAboutPageBase {
         });
   }
 
-  // <if expr="_google_chrome">
   private onReportIssueClick_(): void {
     this.aboutBrowserProxy_.openFeedbackDialog();
   }
@@ -827,7 +1009,6 @@ export class OsAboutPageElement extends OsAboutPageBase {
   private getReportIssueLabel_(): string {
     return this.i18n('aboutSendFeedback');
   }
-  // </if>
 
   private shouldShowIcons_(): boolean {
     if (this.hasEndOfLife_) {
@@ -906,6 +1087,171 @@ export class OsAboutPageElement extends OsAboutPageBase {
         });
     extendedUpdatesObserver.observe(this.$.extendedUpdatesButton);
   }
+
+  getJemaOSVersion_(licenseStateType: number, hasEndOfLife: boolean): TrustedHTML {
+    const licenseStateDesc = this.getLicenseDescription_(licenseStateType);
+    if (licenseStateDesc && !hasEndOfLife) {
+      return this.i18nAdvanced('aboutJemaOSVersion', {
+        substitutions: [
+          this.i18n('aboutOsProductTitle'),
+          this.getTitleForJemaOSDeviceName_(),
+          this.i18n('aboutJemaOSVersionNumber'),
+          licenseStateDesc,
+          this.i18n('aboutJemaOSPlatformVersion'),
+          this.i18n('aboutJemaOSChromiumVersion'),
+        ]
+      });
+    }
+    return this.i18nAdvanced('aboutJemaOSVersionWithoutLicenseState', {
+      substitutions: [
+        this.i18n('aboutOsProductTitle'),
+        this.getTitleForJemaOSDeviceName_(),
+        this.i18n('aboutJemaOSVersionNumber'),
+        this.i18n('aboutJemaOSPlatformVersion'),
+        this.i18n('aboutJemaOSChromiumVersion'),
+      ]
+    });
+  }
+
+  tryRemoveSuffix_(boardName: string) {
+    const suffixes = ['-com', '-io'];
+    for (const suffix of suffixes) {
+      if (boardName.endsWith(suffix)) {
+        return boardName.substring(0, boardName.length - suffix.length);
+      }
+    }
+    return boardName;
+  }
+
+  getI18nForTitle_(name: string): string {
+    let result = '';
+    if (!name) return '';
+    let obj = JemaOSBoardNameTitleListWithI18n.find(item => item.board === name);
+    if (obj) {
+      try {
+        result = this.i18n(obj.key);
+        return result;
+      } catch (err) {
+        console.log('no i18n for title', name, err);
+        return obj.fallback || '';
+      }
+    } else {
+      // same with previous impl
+      return JemaOSBoardNameTitleMap[name] || '';
+    }
+  }
+
+  getTitleForJemaOSDeviceName_() {
+    const jemaosBoardName = loadTimeData.getString('aboutJemaOSBoardName') || '';
+    let name = this.tryRemoveSuffix_(jemaosBoardName);
+    let prefix = JemaOSBoardNameReleaseNameMap[name] || '';
+    let title = this.getI18nForTitle_(name);
+    if (!prefix && !title) {
+      return name;
+    }
+    if (title && !prefix) {
+      prefix = 'for You';
+    }
+
+    if (prefix && !title) {
+      return prefix; // vmware
+    }
+    if (prefix === '-') { // intend to remove prefix
+      return `(${title})`;
+    }
+    return `${prefix} (${title})`;
+   }
+
+  // <if expr="not use_jemaos_license">
+  getLicenseDescription_(_licenseStateType: number) {
+    return '';
+  }
+  // </if>
+  // <if expr="use_jemaos_license">
+  getLicenseDescription_(licenseStateType: number) {
+    switch (licenseStateType) {
+      case LICENSE_STATE_TYPE.kUnspecified:
+        return '';
+      case LICENSE_STATE_TYPE.kUnlicensed:
+        return this.i18n('aboutJemaOSLicenseStateUnlicensed');
+      case LICENSE_STATE_TYPE.kLicenseForYouTrial:
+        return this.i18n('aboutJemaOSLicenseStateForYouTrial');
+      case LICENSE_STATE_TYPE.kLicenseForYouValid:
+        return this.i18n('aboutJemaOSLicenseStateForYouValid');
+      case LICENSE_STATE_TYPE.kLicenseForYouExpired:
+        return this.i18n('aboutJemaOSLicenseStateForYouExpired');
+      case LICENSE_STATE_TYPE.kLicenseForEnterpriseTrial:
+        return this.i18n('aboutJemaOSLicenseStateEnterpriseTrial');
+      case LICENSE_STATE_TYPE.kLicenseForEnterpriseValid:
+        return this.i18n('aboutJemaOSLicenseStateEnterpriseValid');
+      case LICENSE_STATE_TYPE.kLicenseForEnterpriseExpired:
+        return this.i18n('aboutJemaOSLicenseStateEnterpriseExpired');
+      default:
+        return ''
+    }
+  }
+  // </if>
+
+  jemaOTAToggleInit_() {
+    this.aboutBrowserProxy_.getEnabledJemaOTA().then(enabled => {
+      console.log('getEnabledJemaOTA', enabled);
+      this.jemaOTAToggleState_ = enabled;
+    });
+    this.addWebUiListener(
+        'jema-ota-enabled-changed',
+        this.onJemaOSOTASwitchChanged_.bind(this));
+  }
+
+  onJemaOSOTASwitchChanged_(enabled: boolean) {
+    console.log('onJemaOSOTASwitchChanged_', enabled);
+    this.jemaOTAToggleState_ = enabled;
+  }
+
+  /*
+  created() {
+    chrome.usersPrivate.getCurrentUser(user => {
+      console.log('user', user);
+      this.isOwner_ = user.isOwner;
+    });
+  }
+  */
+
+  onEnableJemaOTAChange_() {
+    this.jemaOTAToggleState_ = !this.jemaOTAToggleState_;
+    console.log('onEnableJemaOTAChange_', this.jemaOTAToggleState_);
+    this.aboutBrowserProxy_.enableJemaOTA(this.jemaOTAToggleState_);
+  }
+
+  jemaosOTAStateMessage_() {
+    if (this.jemaOTAToggleState_) {
+      return this.i18nAdvanced('aboutJemaOsUpdateEnabled');
+    } else {
+      // return isOwner ? 'OTA disabled' : "Device owner disabled OTA";
+      return this.i18nAdvanced('aboutJemaOsUpdateDisabled');
+    }
+  }
+
+  canToggleJemaOTA_() {
+    return this.isOwner_ && !(
+      this.currentUpdateStatusEvent_.status === UpdateStatus.CHECKING ||
+      this.currentUpdateStatusEvent_.status === UpdateStatus.UPDATING ||
+      this.currentUpdateStatusEvent_.status === UpdateStatus.DISABLED ||
+      this.currentUpdateStatusEvent_.status === UpdateStatus.DISABLED_BY_ADMIN
+    ) && this.currentUpdateStatusEvent_.progress === 0;
+  }
+
+// <if expr="jemaos_device">
+  getJemaDeviceProductName_() {
+    const jemaosBoardName = loadTimeData.getString('aboutJemaOSBoardName') || '';
+    let name = this.tryRemoveSuffix_(jemaosBoardName);
+    let title = JemaOSBoardNameTitleMap[name] || '';
+    return title;
+  }
+  getJemaosDeviceWarrantyUrl_(jemaosDeviceSerialNumber: string) {
+    const url = loadTimeData.getString('jemaosProductWarrentyUrl');
+    return `${url}/${jemaosDeviceSerialNumber}`;
+  }
+// </if>
 }
 
 declare global {

@@ -37,6 +37,7 @@
 #include "ui/chromeos/resources/grit/ui_chromeos_resources.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_skia_rep.h"
+#include "jemaos/switches/account/account_switches.h"
 
 namespace ash::settings {
 
@@ -59,7 +60,9 @@ constexpr char kAccountRemovedToastId[] =
   DCHECK((account_type_int >=
           static_cast<int>(account_manager::AccountType::kGaia)) &&
          (account_type_int <=
-          static_cast<int>(account_manager::AccountType::kActiveDirectory)));
+          // ---***JEMAOS BEGIN***---
+          static_cast<int>(account_manager::AccountType::kJema)));
+          // ---***JEMAOS END***---
   const account_manager::AccountType account_type =
       static_cast<account_manager::AccountType>(account_type_int);
 
@@ -70,11 +73,23 @@ bool IsSameAccount(const ::account_manager::AccountKey& account_key,
                    const AccountId& account_id) {
   switch (account_key.account_type()) {
     case account_manager::AccountType::kGaia:
+      // ---***JEMAOS BEGIN***---
+      if (jemaos::switches::IsJemaAccountEnabled()) {
+        return (account_id.GetAccountType() == AccountType::JEMA_ACCOUNT) &&
+               (account_id.GetJemaId() == account_key.id());
+      }
+      // ---***JEMAOS END***---
       return (account_id.GetAccountType() == AccountType::GOOGLE) &&
              (account_id.GetGaiaId() == account_key.id());
     case account_manager::AccountType::kActiveDirectory:
       return (account_id.GetAccountType() == AccountType::ACTIVE_DIRECTORY) &&
              (account_id.GetObjGuid() == account_key.id());
+    case account_manager::AccountType::kFlint:
+      return (account_id.GetAccountType() == AccountType::FLINT_ACCOUNT) &&
+             (account_id.GetFlintId() == account_key.id());
+    case account_manager::AccountType::kJema:
+      return (account_id.GetAccountType() == AccountType::JEMA_ACCOUNT) &&
+             (account_id.GetJemaId() == account_key.id());
   }
 }
 

@@ -150,6 +150,12 @@ export class SettingsPersonalizationOptionsElement extends
           return loadTimeData.getBoolean('showHistorySearchControl');
         },
       },
+      isJemaProfile_: {
+        type: Boolean,
+        value() {
+          return loadTimeData.getBoolean('isJemaProfile');
+        },
+      },
     };
   }
 

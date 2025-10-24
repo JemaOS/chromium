@@ -23,6 +23,7 @@
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/spellcheck/browser/pref_names.h"
 #include "components/translate/core/browser/translate_pref_names.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/chromeos/extensions/controlled_pref_mapping.h"
@@ -37,6 +38,10 @@ namespace {
 constexpr char kOnPrefChangeFormat[] = "types.ChromeSetting.%s.onChange";
 
 const PrefMappingEntry kMappings[] = {
+    {"jemaosImprovementPlanEnabled",
+     jemaos::prefs::kJemaOSImprovementPlanEnabled,
+     APIPermissionID::kJemaOSPrivate,
+     APIPermissionID::kJemaOSPrivate},
     {"alternateErrorPagesEnabled",
      embedder_support::kAlternateErrorPagesEnabled, APIPermissionID::kPrivacy,
      APIPermissionID::kPrivacy},

@@ -262,6 +262,8 @@
 #include "components/os_crypt/async/browser/secret_portal_key_provider.h"
 #endif
 
+#include "jemaos/prefs/jemaos_prefs.h"
+
 #if BUILDFLAG(IS_WIN) || (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS))
 // How often to check if the persistent instance of Chrome needs to restart
 // to install an update.
@@ -925,6 +927,10 @@ void BrowserProcessImpl::CreateDevToolsProtocolHandler() {
     remote_debugging_server_ = std::make_unique<RemoteDebuggingServer>();
   }
 #endif
+
+  // ---***JEMAOS BEGIN***---
+  jemaos::prefs::KeepCurrentPrefs(local_state());
+  // ---***JEMAOS END***---
 }
 
 void BrowserProcessImpl::CreateDevToolsAutoOpener() {

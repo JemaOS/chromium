@@ -33,6 +33,15 @@ constexpr char kUnknown[] = "unknown";
 constexpr char kKeyGaiaIdPrefix[] = "g-";
 constexpr char kKeyAdIdPrefix[] = "a-";
 
+//  ---***JEMAOS BEGIN***---
+const char kFlintIdKey[] = "flint_id";
+const char kFlint[] = "ft";
+const char kKeyFtIdPrefix[] = "f-";
+const char kJemaIdKey[] = "jema_id";
+const char kJema[] = "fy";
+const char kKeyFyIdPrefix[] = "y-";
+//  ---***JEMAOS END***---
+
 }  // anonymous namespace
 
 AccountId::AccountId() = default;
@@ -44,6 +53,19 @@ AccountId::AccountId(std::string_view id,
   DCHECK_EQ(user_email, gaia::CanonicalizeEmail(user_email));
   DCHECK(account_type != AccountType::UNKNOWN || id.empty());
   DCHECK(account_type != AccountType::ACTIVE_DIRECTORY || !id.empty());
+    // ---***JEMAOS BEGIN***---
+    if (account_type == AccountType::FLINT_ACCOUNT)
+        LOG_ASSERT(!base::StartsWith(user_email, kKeyFtIdPrefix,
+                                 base::CompareCase::SENSITIVE) ||
+               user_email.find('@') != std::string::npos)
+        << "Bad e-mail: '" << user_email << "' with flint_id='" << id << "'";
+    else if (account_type == AccountType::JEMA_ACCOUNT)
+        LOG_ASSERT(!base::StartsWith(user_email, kKeyFyIdPrefix,
+                                 base::CompareCase::SENSITIVE) ||
+               user_email.find('@') != std::string::npos)
+        << "Bad e-mail: '" << user_email << "' with jema_id='" << id << "'";
+    else
+    // ---***JEMAOS END***---
   // Fail if e-mail looks similar to GaiaIdKey.
   LOG_ASSERT(!base::StartsWith(user_email, kKeyGaiaIdPrefix,
                                base::CompareCase::SENSITIVE) ||
@@ -68,6 +90,10 @@ bool AccountId::operator==(const AccountId& other) const {
     return false;
   switch (account_type_) {
     case AccountType::GOOGLE:
+    // ---***JEMAOS BEGIN***---
+    case AccountType::FLINT_ACCOUNT:
+    case AccountType::JEMA_ACCOUNT:
+    // ---***JEMAOS END***---
       return (id_ == other.id_ && user_email_ == other.user_email_) ||
              (!id_.empty() && id_ == other.id_) ||
              (!user_email_.empty() && user_email_ == other.user_email_);
@@ -96,8 +122,11 @@ bool AccountId::empty() const {
 bool AccountId::is_valid() const {
   switch (account_type_) {
     case AccountType::GOOGLE:
+    case AccountType::JEMA_ACCOUNT:
       // TODO(http://b/279005619): Add an additional check for empty account ids
       // when this bug is fixed.
+      return !user_email_.empty();
+    case AccountType::FLINT_ACCOUNT:
       return !user_email_.empty();
     case AccountType::ACTIVE_DIRECTORY:
       return !id_.empty() && !user_email_.empty();
@@ -151,6 +180,12 @@ const std::string AccountId::GetAccountIdKey() const {
       return std::string(kKeyGaiaIdPrefix) + id_;
     case AccountType::ACTIVE_DIRECTORY:
       return std::string(kKeyAdIdPrefix) + id_;
+    // ---***JEMAOS BEGIN***---
+    case AccountType::FLINT_ACCOUNT:
+      return std::string(kKeyFtIdPrefix) + id_;
+    case AccountType::JEMA_ACCOUNT:
+      return std::string(kKeyFyIdPrefix) + id_;
+    // ---***JEMAOS END***---
     default:
       NOTREACHED_IN_MIGRATION() << "Unknown account type";
   }
@@ -192,11 +227,53 @@ AccountId AccountId::AdFromUserEmailObjGuid(std::string_view email,
   return AccountId(obj_guid, email, AccountType::ACTIVE_DIRECTORY);
 }
 
+const std::string& AccountId::GetFlintId() const {
+  if (account_type_ != AccountType::FLINT_ACCOUNT)
+    NOTIMPLEMENTED()
+        << "Failed to get flint_id for non-FLINT account.";
+  return id_;
+}
+
+AccountId AccountId::FtFromUserEmailFlintId(const std::string& email,
+                                            const std::string& flint_id) {
+  DCHECK(!email.empty() && !flint_id.empty());
+  return AccountId(flint_id, email, AccountType::FLINT_ACCOUNT);
+}
+
+AccountId AccountId::FtFromFlintId(const std::string& flint_id) {
+  DCHECK(!flint_id.empty());
+  return AccountId(flint_id, std::string() /* email */,
+                   AccountType::FLINT_ACCOUNT);
+}
+
+const std::string& AccountId::GetJemaId() const {
+  if (account_type_ != AccountType::JEMA_ACCOUNT)
+    NOTIMPLEMENTED()
+        << "Failed to get jema_id for non-JEMA account.";
+  return id_;
+}
+
+AccountId AccountId::FyFromUserEmailJemaId(const std::string& email,
+                                          const std::string& jema_id) {
+  DCHECK(!email.empty() && !jema_id.empty());
+  return AccountId(jema_id, email, AccountType::JEMA_ACCOUNT);
+}
+
+AccountId AccountId::FyFromJemaId(const std::string& jema_id) {
+  DCHECK(!jema_id.empty());
+  return AccountId(jema_id, std::string() /* email */,
+                   AccountType::JEMA_ACCOUNT);
+}
+
 // static
 AccountType AccountId::StringToAccountType(
     std::string_view account_type_string) {
   if (account_type_string == kGoogle)
     return AccountType::GOOGLE;
+  if (account_type_string == kFlint)
+    return AccountType::FLINT_ACCOUNT;
+  if (account_type_string == kJema)
+    return AccountType::JEMA_ACCOUNT;
   if (account_type_string == kAd)
     return AccountType::ACTIVE_DIRECTORY;
   if (account_type_string == kUnknown)
@@ -212,6 +289,12 @@ const char* AccountId::AccountTypeToString(AccountType account_type) {
       return kGoogle;
     case AccountType::ACTIVE_DIRECTORY:
       return kAd;
+    // ---***JEMAOS BEGIN***---
+    case AccountType::FLINT_ACCOUNT:
+      return kFlint;
+    case AccountType::JEMA_ACCOUNT:
+      return kJema;
+    // ---***JEMAOS END***---
     case AccountType::UNKNOWN:
       return kUnknown;
   }
@@ -227,6 +310,14 @@ std::string AccountId::Serialize() const {
     case AccountType::ACTIVE_DIRECTORY:
       value.Set(kObjGuid, id_);
       break;
+    // ---***JEMAOS BEGIN***---
+    case AccountType::FLINT_ACCOUNT:
+      value.Set(kFlintIdKey, id_);
+      break;
+    case AccountType::JEMA_ACCOUNT:
+      value.Set(kJemaIdKey, id_);
+      break;
+    // ---***JEMAOS END***---
     case AccountType::UNKNOWN:
       break;
   }
@@ -248,6 +339,8 @@ std::optional<AccountId> AccountId::Deserialize(std::string_view serialized) {
   AccountType account_type = AccountType::GOOGLE;
   base::Value::Dict& dict = value->GetDict();
   const std::string* gaia_id = dict.FindString(kGaiaIdKey);
+  const std::string* flint_id = dict.FindString(kFlintIdKey);
+  const std::string* jema_id = dict.FindString(kJemaIdKey);
   const std::string* user_email = dict.FindString(kEmailKey);
   const std::string* obj_guid = dict.FindString(kObjGuid);
   const std::string* account_type_string = dict.FindString(kAccountTypeKey);
@@ -296,7 +389,20 @@ std::optional<AccountId> AccountId::Deserialize(std::string_view serialized) {
       }
 
       return AdFromUserEmailObjGuid(*user_email, *obj_guid);
-
+    case AccountType::FLINT_ACCOUNT:
+      if (!flint_id || !user_email) {
+        DLOG(ERROR) << "flint_id or user_email is not found in '"
+          << serialized << "'";
+        return std::nullopt;
+      }
+      return FtFromUserEmailFlintId(*user_email, *flint_id);
+    case AccountType::JEMA_ACCOUNT:
+      if (!jema_id || !user_email) {
+        DLOG(ERROR) << "jema_id or user_email is not found in '"
+          << serialized << "'";
+        return std::nullopt;
+      }
+      return FyFromUserEmailJemaId(*user_email, *jema_id);
     case AccountType::UNKNOWN:
       if (!user_email) {
         return std::nullopt;

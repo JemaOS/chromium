@@ -15,6 +15,10 @@ export function isGuest(): boolean {
   return loadTimeData.getBoolean('isGuest');
 }
 
+export function isJemaAssistantFeatureEnabled(): boolean {
+  return loadTimeData.getBoolean('jemaAssistantFeatureEnabled');
+}
+
 export function isChild(): boolean {
   return loadTimeData.getBoolean('isChild');
 }

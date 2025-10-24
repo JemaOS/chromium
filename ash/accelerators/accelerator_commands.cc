@@ -24,6 +24,7 @@
 #include "ash/display/screen_orientation_controller.h"
 #include "ash/focus_cycler.h"
 #include "ash/frame/non_client_frame_view_ash.h"
+#include "ash/jemaos_ai/jemaos_ai_view.h"
 #include "ash/game_dashboard/game_dashboard_controller.h"
 #include "ash/glanceables/glanceables_controller.h"
 #include "ash/ime/ime_controller_impl.h"
@@ -1178,6 +1179,10 @@ void RotatePaneFocus(FocusCycler::Direction direction) {
   Shell::Get()->focus_cycler()->RotateFocus(direction);
 }
 
+void RotateScreenWithoutConfirmation() {
+  RotateScreenImpl();
+}
+
 void RotateScreen() {
   if (Shell::Get()->display_manager()->IsInUnifiedMode())
     return;
@@ -1318,6 +1323,14 @@ void ToggleAssignToAllDesk() {
 }
 
 void ToggleAssistant() {
+  if (ash::features::IsJemaAssistantEnabled()) {
+    if (AssistantState::Get()->jema_assistant_enabled().value_or(false)) {
+      NewWindowDelegate::GetInstance()->OpenUrl(GURL("chrome://jemaos-ai"),
+                                                NewWindowDelegate::OpenUrlFrom::kUserInteraction,
+                                                NewWindowDelegate::Disposition::kNewWindow);
+    }
+    return;
+  }
   using assistant::AssistantAllowedState;
   switch (AssistantState::Get()->allowed_state().value_or(
       AssistantAllowedState::ALLOWED)) {
@@ -1451,6 +1464,14 @@ void TogglePicker(base::TimeTicks accelerator_timestamp) {
 
 void EnableSelectToSpeak() {
   Shell::Get()->accessibility_controller()->EnableSelectToSpeakWithDialog();
+}
+
+void ToggleJemaOSAssistant() {
+  if (!ash::features::IsJemaAssistantEnabled()) {
+    return;
+  }
+  Shelf* shelf = Shelf::ForWindow(Shell::GetPrimaryRootWindow());
+  shelf->jema_assistant_view()->ShowBubble();
 }
 
 void EnableOrToggleDictation() {

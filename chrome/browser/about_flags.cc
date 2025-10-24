@@ -8731,6 +8731,11 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kTetheringExperimentalFunctionalityDescription, kOsCrOS,
      FEATURE_VALUE_TYPE(ash::features::kTetheringExperimentalFunctionality)},
 
+    {"enable-jemaos-ai",
+     flag_descriptions::kJemaOsAIName,
+     flag_descriptions::kJemaOsAIDescription, kOsCrOS,
+     FEATURE_VALUE_TYPE(ash::features::kJemaAssistant)},
+
     {"dynamic-search-update-animation",
      flag_descriptions::kDynamicSearchUpdateAnimationName,
      flag_descriptions::kDynamicSearchUpdateAnimationDescription, kOsCrOS,

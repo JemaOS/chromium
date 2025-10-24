@@ -79,6 +79,11 @@
 #else
 #include "chrome/browser/ui/signin/signin_view_controller.h"
 #endif
+//---***JEMAOS BEGIN***---
+#include "jemaos/switches/urls/urls_constants.h"
+#include "jemaos/misc/jemaos_release_note_url.h"
+#include "jemaos/switches/services/services_switches.h"
+//---***JEMAOS END***---
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "base/metrics/histogram_functions.h"
@@ -133,6 +138,14 @@ void LaunchReleaseNotesImpl(Profile* profile, apps::LaunchSource source) {
   LaunchSystemWebAppAsync(profile, ash::SystemWebAppType::HELP, params);
 }
 #endif
+
+//---***JEMAOS BEGIN***---
+void LaunchReleaseNotesInTab(Profile* profile) {
+  GURL url(jemaos::misc::BuildJemaReleaseNoteUrlWithPath());
+  auto displayer = std::make_unique<ScopedTabbedBrowserDisplayer>(profile);
+  ShowSingletonTab(displayer->browser(), url);
+}
+//---***JEMAOS END***---
 
 // Shows either the help app or the appropriate help page for |source|. If
 // |browser| is NULL and the help page is used (vs the app), the help page is
@@ -195,6 +208,7 @@ void ShowHelpImpl(Browser* browser, Profile* profile, HelpSource source) {
       NOTREACHED() << "Unhandled help source " << source;
   }
 #endif  // BUILDFLAG_IS_CHROMEOS_LACROS)
+  url = GURL(jemaos::constants::kJemaOSHelpURL);
   if (browser) {
     ShowSingletonTab(browser, url);
   } else {
@@ -391,10 +405,15 @@ void LaunchReleaseNotes(Profile* profile, apps::LaunchSource source) {
 #if BUILDFLAG(IS_CHROMEOS_ASH) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
   LaunchReleaseNotesImpl(profile, source);
 #endif
+  // ---***JEMAOS BEGIN***---
+  LaunchReleaseNotesInTab(profile);
+  // ---***JEMAOS END***---
 }
 
 void ShowBetaForum(Browser* browser) {
-  ShowSingletonTab(browser, GURL(kChromeBetaForumURL));
+  //---***JEMAOS BEGIN***---
+  ShowSingletonTab(browser, GURL(jemaos::constants::kJemaOSForumURL));
+  //---***JEMAOS END***---
 }
 
 void ShowSlow(Browser* browser) {
@@ -575,14 +594,16 @@ void ShowSearchEngineSettings(Browser* browser) {
 }
 
 void ShowWebStore(Browser* browser, std::string_view utm_source_value) {
-  GURL webstore_url = extension_urls::GetWebstoreLaunchURL();
-  // TODO(crbug.com/40073814): Refactor this check into
-  // extension_urls::GetWebstoreLaunchURL() and fix tests relying on it.
-  if (base::FeatureList::IsEnabled(extensions_features::kNewWebstoreURL)) {
-    webstore_url = extension_urls::GetNewWebstoreLaunchURL();
-  }
-  ShowSingletonTabIgnorePathOverwriteNTP(
-      browser, extension_urls::AppendUtmSource(webstore_url, utm_source_value));
+  GURL webstore_url = GURL(jemaos::switches::GetJemaOSAppStoreURL() + "/?init=");
+  NavigateParams params(browser, webstore_url, ui::PAGE_TRANSITION_AUTO_BOOKMARK);
+  params.disposition = WindowOpenDisposition::CURRENT_TAB;
+  params.window_action = NavigateParams::NO_ACTION;
+  params.opened_by_another_window = true;
+  params.should_replace_current_entry = false;
+  params.user_gesture = true;
+  params.tabstrip_add_types |= AddTabTypes::ADD_NONE;
+  params.path_behavior = NavigateParams::IGNORE_AND_NAVIGATE;
+  Navigate(&params);
 }
 
 void ShowPrivacySandboxSettings(Browser* browser) {

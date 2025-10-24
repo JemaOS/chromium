@@ -344,7 +344,12 @@ export class SearchPageElement extends SearchPageElementBase {
 
   protected feedbackWritingGuidanceUrl(): string {
     // TODO(xiangdongkong): append ?hl={the application locale} to the url.
-    const url = 'https://support.google.com/chromebook/answer/2982029';
+    // <if expr="not use_jemaos_com">
+    const url = 'https://jemaos.io/docs/knowledge-base/recipes/feedback-howto';
+    // </if>
+    // <if expr="use_jemaos_com">
+    const url = 'https://jemaos.com/docs/knowledge-base/recipes/feedback-howto';
+    // </if>
     return url;
   }
 
@@ -449,6 +454,11 @@ export class SearchPageElement extends SearchPageElementBase {
 
   protected onContainerScroll(event: Event): void {
     showScrollingEffects(event, this as HTMLElement);
+  }
+
+  private jemaosFeedbackFeatureHelpMessage() {
+    return this.i18nAdvanced(
+        'jemaosFeedbackFeatureHelpMessage', {tags: ['ul', 'li']});
   }
 
   getSearchResultCountForTesting(): number {

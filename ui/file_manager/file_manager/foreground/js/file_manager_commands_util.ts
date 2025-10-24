@@ -414,6 +414,15 @@ export function isOnTrashRoot(fileManager: CommandHandlerDeps) {
   return isTrashRootType(currentRootType);
 }
 
+export function isOnJemaDropRoot(fileManager: CommandHandlerDeps) {
+  const currentRootType = fileManager.directoryModel.getCurrentRootType();
+  if (!currentRootType) {
+    return false;
+  }
+  return currentRootType === RootType.JEMADROP;
+}
+
+
 /**
  * Extracts entry on which command event was dispatched.
  */

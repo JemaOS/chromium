@@ -16,6 +16,14 @@ static_library("settings") {
     "os_settings_ui.h",
     "pref_names.cc",
     "pref_names.h",
+    "../../../../../../jemaos/ui/webui/settings/ash/jemaos_handler.cc",
+    "../../../../../../jemaos/ui/webui/settings/ash/jemaos_handler.h",
+    "../../../../../../jemaos/ui/webui/settings/ash/jemaos_section.cc",
+    "../../../../../../jemaos/ui/webui/settings/ash/jemaos_section.h",
+    "../../../../../../jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.cc",
+    "../../../../../../jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.h",
+    "../../../../../../jemaos/ui/webui/settings/ash/jema_assistant_section.cc",
+    "../../../../../../jemaos/ui/webui/settings/ash/jema_assistant_section.h",
   ]
 
   public_deps = [

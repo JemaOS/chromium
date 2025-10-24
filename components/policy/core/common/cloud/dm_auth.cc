@@ -35,6 +35,11 @@ DMAuth DMAuth::FromOidcResponse(const std::string& oidc_id_token) {
 }
 
 // static
+DMAuth DMAuth::FromJemaToken(const std::string& token) {
+  return DMAuth(token, DMAuthTokenType::kJema);
+}
+
+// static
 DMAuth DMAuth::NoAuth() {
   return {};
 }

@@ -36,6 +36,13 @@ void CollectorBase::Collect(bool is_event_driven) {
       base::BindPostTaskToCurrentDefault(std::move(on_collected_cb)));
 }
 
+void CollectorBase::JemaHeartBeat() {
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  CheckOnSequence();
+
+  sampler_->MaybeSendHeartBeatToJema();
+}
+
 void CollectorBase::CheckOnSequence() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }

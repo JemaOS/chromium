@@ -7642,6 +7642,9 @@ const char kTetheringExperimentalFunctionalityDescription[] =
     "Feature to enable Chromebook hotspot functionality for experimental "
     "carriers, modem and modem FW.";
 
+const char kJemaOsAIName[] = "Enable JemaOS AI";
+const char kJemaOsAIDescription[] = "Enable JemaOS AI feature";
+
 // Prefer keeping this section sorted to adding new definitions down here.
 
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)

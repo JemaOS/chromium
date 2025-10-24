@@ -970,6 +970,8 @@ source_set("extensions") {
     "//ui/shell_dialogs",
     "//ui/strings",
     "//url",
+    "//jemaos/build/config:buildflags",
+    "//jemaos/switches",
   ]
 
   if (is_linux || is_mac || is_win) {
@@ -1470,6 +1472,12 @@ source_set("extensions") {
       "//components/enterprise/data_controls/core/browser",
     ]
   }
+
+#---***JEMAOS BEGIN***---
+  if (is_chromeos) {
+    deps += [ "//jemaos/extensions/browser" ]
+  }
+#---***JEMAOS END***---
 }
 
 # KeyedService factories initialization.

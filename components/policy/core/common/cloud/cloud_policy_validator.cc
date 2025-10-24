@@ -141,7 +141,9 @@ void CloudPolicyValidatorBase::ValidateTimestamp(
 void CloudPolicyValidatorBase::ValidateUser(const AccountId& account_id) {
   validation_flags_ |= VALIDATE_USER;
   username_ = account_id.GetUserEmail();
-  gaia_id_ = account_id.GetGaiaId();
+  // ---***JEMAOS BEGIN***---
+  gaia_id_ = (account_id.GetAccountType() == AccountType::JEMA_ACCOUNT ? account_id.GetJemaId() : account_id.GetGaiaId());
+  // ---***JEMAOS END***---
   // Always canonicalize when falls back to username check,
   // because it checks only for regular users.
   canonicalize_user_ = true;

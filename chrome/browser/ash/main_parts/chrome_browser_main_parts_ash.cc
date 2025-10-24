@@ -47,6 +47,7 @@
 #include "base/task/thread_pool.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "build/branding_buildflags.h"
+#include "jemaos/build/config/buildflags.h"
 #include "build/config/chromebox_for_meetings/buildflags.h"  // PLATFORM_CFM
 #include "chrome/browser/ash/accessibility/accessibility_event_rewriter_delegate_impl.h"
 #include "chrome/browser/ash/accessibility/accessibility_manager.h"
@@ -287,6 +288,12 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/events/ash/pref_names.h"
 #include "ui/events/event_utils.h"
+//---***JEMAOS BEGIN***---
+#include "jemaos/misc/jemaos_misc_scheduler.h"
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+#include "jemaos/license/jemaos_license_manager.h"
+#endif
+//---***JEMAOS END***---
 
 #if BUILDFLAG(PLATFORM_CFM)
 #include "chrome/browser/ash/chromebox_for_meetings/cfm_chrome_services.h"
@@ -546,6 +553,12 @@ class DBusServices {
     DeviceSettingsService::Get()->SetSessionManager(
         SessionManagerClient::Get(),
         OwnerSettingsServiceAshFactory::GetInstance()->GetOwnerKeyUtil());
+    //---***JEMAOS BEGIN***---
+    jemaos::misc::JemaMiscScheduler::Initialize();
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+    jemaos::license::LicenseManager::Initialize();
+#endif
+    //---***JEMAOS END***---
   }
 
   void CreateMachineLearningDecisionProvider() {
@@ -567,6 +580,12 @@ class DBusServices {
   ~DBusServices() {
     rollback_network_config::Shutdown();
     chromeos::sensors::SensorHalDispatcher::Shutdown();
+    //---***JEMAOS BEGIN***---
+    jemaos::misc::JemaMiscScheduler::Shutdown();
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+    jemaos::license::LicenseManager::Shutdown();
+#endif
+    //---***JEMAOS END***---
     NetworkHandler::Shutdown();
     if (ash::features::IsWifiDirectEnabled()) {
       WifiP2PController::Shutdown();

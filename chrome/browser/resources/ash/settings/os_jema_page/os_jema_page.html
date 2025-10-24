@@ -1,0 +1,55 @@
+<style include="cr-shared-style settings-shared os-settings-page-styles"></style>
+<!-- <os-settings-jemaos-drivers class="jemasettings-card-wrapper"></os-settings-jemaos-drivers> -->
+<os-settings-animated-pages id="pages" section="[[section_]]">
+  <div route-path="default">
+    <settings-card header-text="$i18n{jemaosSettingsAccountTitle}" section="jemaosAccount" hidden="[[!isJemaAccount_]]">
+      <os-settings-jemaos-account
+        on-auth-factor-has-password-changed="onAuthFactorHasPasswordChanged_">
+      </os-settings-jemaos-account>
+    </settings-card>
+    <if expr="use_jemaos_license">
+      <settings-card
+        header-text="$i18n{jemaosSettingsLicenseTitle}"
+        section="jemaosLicense"
+        hidden="[[!showJemaOsLicense_]]"
+      >
+        <cr-link-row class="hr" id="license-info-trigger"
+                                on-click="onLicenseInfoClick_"
+                                label="$i18n{jemaosSettingsLicenseLabel}">
+        </cr-link-row>
+      </settings-card>
+    </if>
+    <settings-card header-text="$i18n{jemaosSettingsRemoteAssistanceTitle}" section="remoteAssistance">
+      <os-settings-jemaos-remoting>
+      </os-settings-jemaos-remoting>
+    </settings-card>
+<template is="dom-if" if="[[!isGuest_]]">
+    <os-settings-jemaos-dev-mode></os-settings-jemaos-dev-mode>
+    <settings-card header-text="$i18n{jemaosSettingsOtherTweaksTitle}" section="tweakUI"
+                        hidden="[[!showJemaOsTweakUi_(showToggleRebootButtonInTray, showToggleRotateScreenButton, showToggleSwitchTabletLaptopButton)]]">
+      <os-settings-jemaos-tweak-ui
+        auth-factor-has-password="[[authFactorHasPassword_]]"
+        show-toggle-rotate-screen-button="[[showToggleRotateScreenButton]]"
+        show-toggle-reboot-button-in-tray="[[showToggleRebootButtonInTray]]"
+        show-toggle-switch-tablet-laptop-button="[[showToggleSwitchTabletLaptopButton]]">
+      </os-settings-jemaos-tweak-ui>
+    </settings-card>
+    <os-settings-jemaos-experiment class="jemaos-settings-section-wrapper"></os-settings-jemaos-experiment>
+</template>
+    <settings-card header-text="$i18n{jemaosSettingsMoreInfoTitle}" section="moreInfo">
+      <os-settings-jemaos-more-info>
+      </os-settings-jemaos-more-info>
+    </settings-card>
+    <if expr="_google_chrome">
+    <div>this is a test for build tools</div>
+    </if>
+  </div>
+  <if expr="use_jemaos_license">
+    <template is="dom-if" route-path="/jemaos/license">
+      <os-settings-subpage page-title="$i18n{jemaosSettingsLicenseTitle}">
+        <os-settings-jemaos-license-info>
+        </os-settings-jemaos-license-info>
+      </os-settings-subpage>
+    </template>
+  </if>
+</os-settings-animated-pages>

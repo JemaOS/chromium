@@ -40,6 +40,7 @@
 #include "ui/chromeos/devicetype_utils.h"
 #include "ui/chromeos/strings/grit/ui_chromeos_strings.h"
 #include "ui/chromeos/strings/network/network_element_localized_strings_provider.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 namespace ash::network_config {
 namespace mojom = chromeos::network_config::mojom;
@@ -1161,7 +1162,7 @@ void InternetSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
                          chrome::kGoogleNameserversLearnMoreURL);
 
   html_source->AddString("wifiHiddenNetworkLearnMoreUrl",
-                         chrome::kWifiHiddenNetworkURL);
+                         jemaos::constants::kWifiHiddenNetworkURL);
 
   html_source->AddString("wifiPasspointLearnMoreUrl",
                          chrome::kWifiPasspointURL);

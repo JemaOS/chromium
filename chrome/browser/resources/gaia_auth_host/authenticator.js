@@ -101,6 +101,7 @@ export let AuthCompletedCredentials;
  *   flow: string,
  *   ignoreCrOSIdpSetting: boolean,
  *   enableGaiaActionButtons: boolean,
+ *   enableJemaAccount: boolean,
  *   forceDarkMode: boolean,
  *   enterpriseEnrollmentDomain: string,
  *   samlAclUrl: string,
@@ -310,6 +311,19 @@ const messageHandlers = {
       this.maybeCompleteAuth_();
     }
   },
+  'selectAccountType'(msg) {
+    if (this.isExistedUser_) {
+      return;
+    }
+    this.selectedAccountType_ = msg.type;
+    if (this.email_ && this.gaiaId_ && this.sessionIndex_) {
+      this.maybeCompleteAuth_();
+    }
+  },
+  'setLicenseType'(msg) {
+    this.dispatchEvent(
+        new CustomEvent('setLicenseType', {detail: msg.type}));
+  },
   'showIncognito'(msg) {
     this.dispatchEvent(new Event('showIncognito'));
   },
@@ -407,6 +421,13 @@ export class Authenticator extends EventTarget {
     /** @private {boolean}  Whether media access was requested. */
     this.videoEnabled_ = false;
 
+    // <if expr="openjema or not use_jemaos_com">
+    this.requireSelectAccountTypeAfterSignin_ = false;
+    // </if>
+    // <if expr="not openjema and use_jemaos_com">
+    this.requireSelectAccountTypeAfterSignin_ = true;
+    // </if>
+
     this.isLoaded_ = false;
     this.email_ = null;
     this.password_ = null;
@@ -436,7 +457,11 @@ export class Authenticator extends EventTarget {
         /** @type {WebView} */ ($(webview)) :
         webview;
     assert(this.webview_);
+    this.selectedAccountType_ = null;
     this.enableGaiaActionButtons_ = false;
+    this.enableJemaAccount_ = true;
+    this.isExistedUser_ = false;
+    this.deviceEnterpriseManaged_ = false;
     this.webviewEventManager_ = new WebviewEventManager();
 
     this.clientId_ = null;
@@ -447,6 +472,7 @@ export class Authenticator extends EventTarget {
     this.samlApiUsedCallback = null;
     this.recordSamlProviderCallback = null;
     this.missingGaiaInfoCallback = null;
+    this.accountTypeGoogleSelectedCallback = null;
     this.needPassword = true;
     this.services_ = null;
     this.servicesProvided_ = false;
@@ -551,6 +577,7 @@ export class Authenticator extends EventTarget {
     this.gaiaId_ = null;
     this.password_ = null;
     this.readyFired_ = false;
+    this.selectedAccountType_ = null;
     this.skipForNow_ = false;
     this.sessionIndex_ = null;
     this.trusted_ = true;
@@ -731,6 +758,10 @@ export class Authenticator extends EventTarget {
     this.dontResizeNonEmbeddedPages = data.dontResizeNonEmbeddedPages;
     this.enableGaiaActionButtons_ = data.enableGaiaActionButtons;
 
+    this.enableJemaAccount_ = data.enableJemaAccount;
+    this.isExistedUser_ = data.email && data.readOnlyEmail;
+    this.deviceEnterpriseManaged_ = data.enterpriseDomainManager || data.enterpriseEnrollmentDomain;
+
     this.initialFrameUrl_ = this.constructInitialFrameUrl_(data);
     this.reloadUrl_ = data.frameUrl || this.initialFrameUrl_;
     this.samlAclUrl_ = data.samlAclUrl;
@@ -902,6 +933,9 @@ export class Authenticator extends EventTarget {
     }
     if (data.autoReloadAttempts) {
       url = appendParam(url, 'auto_reload_attempts', data.autoReloadAttempts);
+    }
+    if (!this.shouldWaitForJemaAccountTypeSelection_()) {
+      url = appendParam(url, 'skip_type_selection', '1');
     }
 
     return url;
@@ -1096,6 +1130,11 @@ export class Authenticator extends EventTarget {
     this.webview_.contentWindow.postMessage(payload, currentUrl);
   }
 
+  shouldWaitForJemaAccountTypeSelection_() {
+    return this.enableJemaAccount_ && !this.isExistedUser_ && !this.deviceEnterpriseManaged_ &&
+           this.requireSelectAccountTypeAfterSignin_;
+  }
+
   /**
    * Check Saml flow and start password confirmation flow if needed.
    * Otherwise, continue with auto completion.
@@ -1104,6 +1143,15 @@ export class Authenticator extends EventTarget {
   maybeCompleteAuth_() {
     if (this.authCompletedFired_) {
       return;
+    }
+    if (this.shouldWaitForJemaAccountTypeSelection_()) {
+      if (!this.selectedAccountType_) {
+        return;
+      }
+      if (this.selectedAccountType_ === 'google') {
+        this.accountTypeGoogleSelectedCallback();
+        return;
+      }
     }
     const missingGaiaInfo =
         !this.email_ || !this.gaiaId_ || !this.sessionIndex_;

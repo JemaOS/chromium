@@ -1396,7 +1396,7 @@ metrics consent we also won't be able to send UMA metrics. -->
   <int value="7077888"
       label="TCSD_ORD_DELEGATE_UPDATEVERIFICATIONCOUNT: tpm: TSS_SUCCESS"/>
   <int value="7143424"
-      label="TCSD_ORD_DELEGATE_VERIFYDELEGATION: tpm: TSS_SUCCESS"/>
+      label="TCSD_ORD_DELEGATE_VERIJEMALEGATION: tpm: TSS_SUCCESS"/>
   <int value="7208960"
       label="TCSD_ORD_CREATEREVOCABLEENDORSEMENTKEYPAIR: tpm: TSS_SUCCESS"/>
   <int value="7274496"

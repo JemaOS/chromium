@@ -576,6 +576,7 @@ source_set("browser_sources") {
     "//ui/display",
     "//ui/menus",
     "//url",
+    "//jemaos/constants",
   ]
 
   public_deps = [

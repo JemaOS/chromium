@@ -71,10 +71,16 @@ static_library("login") {
     "enter_old_password_screen_handler.h",
     "error_screen_handler.cc",
     "error_screen_handler.h",
+    "eula_screen_handler.cc",
+    "eula_screen_handler.h",
     "family_link_notice_screen_handler.cc",
     "family_link_notice_screen_handler.h",
     "fingerprint_setup_screen_handler.cc",
     "fingerprint_setup_screen_handler.h",
+    "jema_local_signin_screen_handler.cc",
+    "jema_local_signin_screen_handler.h",
+    "data_restore_screen_handler.cc",
+    "data_restore_screen_handler.h",
     "gaia_info_screen_handler.cc",
     "gaia_info_screen_handler.h",
     "gaia_screen_handler.cc",
@@ -335,6 +341,7 @@ static_library("login") {
     "//ui/display/manager",
     "//ui/resources:webui_resources_grd",
     "//ui/strings:ui_strings",
+    "//jemaos/switches/account/toggle:account_toggle",
   ]
 
   allow_circular_includes_from = [

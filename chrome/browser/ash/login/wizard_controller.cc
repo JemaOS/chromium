@@ -58,6 +58,8 @@
 // LINT.IfChange(UsageMetrics)
 #include "chrome/browser/ash/login/screens/account_selection_screen.h"
 #include "chrome/browser/ash/login/screens/add_child_screen.h"
+#include "chrome/browser/ash/login/screens/jema_local_signin_screen.h"
+#include "chrome/browser/ash/login/screens/data_restore_screen.h"
 #include "chrome/browser/ash/login/screens/ai_intro_screen.h"
 #include "chrome/browser/ash/login/screens/app_downloading_screen.h"
 #include "chrome/browser/ash/login/screens/app_launch_splash_screen.h"
@@ -94,6 +96,7 @@
 #include "chrome/browser/ash/login/screens/multidevice_setup_screen.h"
 #include "chrome/browser/ash/login/screens/network_error.h"
 #include "chrome/browser/ash/login/screens/network_screen.h"
+#include "chrome/browser/ash/login/screens/eula_screen.h"
 #include "chrome/browser/ash/login/screens/offline_login_screen.h"
 #include "chrome/browser/ash/login/screens/online_authentication_screen.h"
 #include "chrome/browser/ash/login/screens/osauth/apply_online_password_screen.h"
@@ -156,6 +159,7 @@
 #include "chrome/browser/ui/ash/system/system_tray_client_impl.h"
 #include "chrome/browser/ui/webui/ash/login/account_selection_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/add_child_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/ai_intro_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/app_downloading_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/app_launch_splash_screen_handler.h"
@@ -196,6 +200,7 @@
 #include "chrome/browser/ui/webui/ash/login/marketing_opt_in_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/multidevice_setup_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/network_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/eula_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/offline_login_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/online_authentication_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/oobe_ui.h"
@@ -231,6 +236,7 @@
 #include "chrome/browser/ui/webui/ash/login/user_creation_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/welcome_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/wrong_hwid_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/data_restore_screen_handler.h"
 #include "chrome/browser/ui/webui/help/help_utils_chromeos.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/pref_names.h"
@@ -265,6 +271,12 @@
 #include "services/service_manager/public/cpp/connector.h"
 #include "third_party/cros_system_api/dbus/service_constants.h"
 #include "ui/base/accelerators/accelerator.h"
+// ---***JEMAOS BEGIN***---
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/switches/account/toggle/account_type_toggle.h"
+#include "jemaos/switches/misc/misc_switches.h"
+#include "jemaos/build/config/buildflags.h"
+// ---***JEMAOS END***---
 
 // Enable VLOG level 1.
 #undef ENABLED_VLOG_LEVEL
@@ -291,6 +303,7 @@ constexpr char kLegacyUpdateScreenName[] = "update";
 const StaticOobeScreenId kResumableOobeScreens[] = {
     WelcomeView::kScreenId,
     NetworkScreenView::kScreenId,
+    EulaView::kScreenId,
     UpdateView::kScreenId,
     EnrollmentScreenView::kScreenId,
     AutoEnrollmentCheckScreenView::kScreenId,
@@ -523,6 +536,7 @@ void WizardController::Init(OobeScreenId first_screen) {
       !user_manager::UserManager::Get()->GetUsers().empty();
   // Do not show the HID Detection screen if device is owned.
   if (!device_is_owned && HIDDetectionScreen::CanShowScreen() &&
+      !prescribed_enrollment_config_.is_mode_jema() &&
       first_screen == ash::OOBE_SCREEN_UNKNOWN) {
     // TODO(https://crbug.com/1275960): Move logic into
     // HIDDetectionScreen::MaybeSkip.
@@ -670,6 +684,10 @@ WizardController::CreateScreens() {
   append(std::make_unique<NetworkScreen>(
       oobe_ui->GetView<NetworkScreenHandler>()->AsWeakPtr(),
       base::BindRepeating(&WizardController::OnNetworkScreenExit,
+                          weak_factory_.GetWeakPtr())));
+  append(std::make_unique<EulaScreen>(
+      oobe_ui->GetView<EulaScreenHandler>()->AsWeakPtr(),
+      base::BindRepeating(&WizardController::OnEulaScreenExit,
                           weak_factory_.GetWeakPtr())));
   append(std::make_unique<UpdateScreen>(
       oobe_ui->GetView<UpdateScreenHandler>()->AsWeakPtr(),
@@ -858,6 +876,11 @@ WizardController::CreateScreens() {
       base::BindRepeating(&WizardController::OnAddChildScreenExit,
                           weak_factory_.GetWeakPtr())));
 
+  append(std::make_unique<JemaLocalSigninScreen>(
+      oobe_ui->GetView<JemaLocalSigninScreenHandler>()->AsWeakPtr(),
+      base::BindRepeating(&WizardController::OnJemaLocalSigninScreenExit,
+                          weak_factory_.GetWeakPtr())));
+
   append(std::make_unique<EduCoexistenceLoginScreen>(
       base::BindRepeating(&WizardController::OnEduCoexistenceLoginScreenExit,
                           weak_factory_.GetWeakPtr())));
@@ -892,6 +915,11 @@ WizardController::CreateScreens() {
         base::BindRepeating(&WizardController::OnOsTrialScreenExit,
                             weak_factory_.GetWeakPtr())));
   }
+
+  append(std::make_unique<DataRestoreScreen>(
+      oobe_ui->GetView<DataRestoreScreenHandler>()->AsWeakPtr(),
+      base::BindRepeating(&WizardController::OnDataRestoreScreenExit,
+                          weak_factory_.GetWeakPtr())));
 
   if (switches::IsRevenBranding()) {
     append(std::make_unique<HWDataCollectionScreen>(
@@ -1090,6 +1118,9 @@ void WizardController::OnSignInFatalErrorScreenExit() {
 
 void WizardController::ShowLoginScreen() {
   VLOG(1) << "Showing login screen.";
+  if (!wizard_context_->is_user_creation_enabled) {
+    jemaos::switches::EnableJemaAccountFlag();
+  }
   UpdateStatusAreaVisibilityForScreen(GaiaView::kScreenId);
   GetLoginDisplayHost()->StartSignInScreen();
 }
@@ -1147,6 +1178,10 @@ void WizardController::ShowDrivePinningScreen() {
   } else {
     OnDrivePinningScreenExit(DrivePinningScreen::Result::NOT_APPLICABLE);
   }
+}
+
+void WizardController::ShowEulaScreen() {
+  SetCurrentScreen(GetScreen(EulaView::kScreenId));
 }
 
 void WizardController::ShowResetScreen() {
@@ -1441,7 +1476,16 @@ void WizardController::OnUserCreationScreenExit(
       ShowEnrollmentScreenIfEligible();
       break;
     case UserCreationScreen::Result::CANCEL:
-      LoginDisplayHost::default_host()->HideOobeDialog();
+      // ---***JEMAOS BEGIN***---
+      if (!jemaos::switches::IsJemaAccountEnabled()) {
+        // back to jemaos signin webview page
+        jemaos::switches::EnableJemaAccountFlag();
+        GetScreen<GaiaScreen>()->LoadOnlineGaia();
+        AdvanceToScreen(GaiaView::kScreenId);
+      } else {
+        LoginDisplayHost::default_host()->HideOobeDialog();
+      }
+      // ---***JEMAOS END***---
       break;
   }
 }
@@ -1478,9 +1522,13 @@ void WizardController::OnConsumerUpdateScreenExit(
 void WizardController::OnGaiaScreenExit(GaiaScreen::Result result) {
   OnScreenExit(GaiaView::kScreenId, GaiaScreen::GetResultString(result));
   switch (result) {
+    case GaiaScreen::Result::USE_LOCAL_ACCOUNT:
+      AdvanceToScreen(JemaLocalSigninView::kScreenId);
+      break;
     case GaiaScreen::Result::BACK_CHILD:
       ShowAddChildScreen();
       break;
+    case GaiaScreen::Result::ACCOUNT_TYPE_SELECTION_BACK:
     case GaiaScreen::Result::BACK:
     case GaiaScreen::Result::CANCEL: {
       if (features::IsOobeSoftwareUpdateEnabled()) {
@@ -1490,7 +1538,11 @@ void WizardController::OnGaiaScreenExit(GaiaScreen::Result result) {
         if ((wizard_context_->is_user_creation_enabled ||
              !wizard_context_->is_add_person_flow) &&
             result == GaiaScreen::Result::BACK) {
-          AdvanceToScreen(UserCreationView::kScreenId);
+          if (!jemaos::switches::IsJemaAccountEnabled()) {
+            AdvanceToScreen(UserCreationView::kScreenId);
+          } else {
+            GetScreen<GaiaScreen>()->LoadOnlineGaia();
+          }
           break;
         }
       }
@@ -1522,17 +1574,34 @@ void WizardController::OnGaiaScreenExit(GaiaScreen::Result result) {
         }
       }
 
+      // same build condition as
+      // chrome/browser/resources/chromeos/login/screens/common/gaia_signin.js
+      // `<if expr="openjema or not use_jemaos_com">`
+      #if BUILDFLAG(IS_OPENJEMA) || !BUILDFLAG(USE_JEMAOS_COM)
+            const bool might_exit =
+              (result == GaiaScreen::Result::ACCOUNT_TYPE_SELECTION_BACK);;
+      #else
+            const bool might_exit = true;
+      #endif
+
       // If a default redirection to third party IdP is set we can hide the
       // dialog.
       const bool gaia_page_defaults_to_saml = IsGaiaPageDefaultsToSAML();
       if ((LoginDisplayHost::default_host()->HasUserPods() &&
+          might_exit &&
            !wizard_context_->is_user_creation_enabled) ||
           (!LoginDisplayHost::default_host()->HasUserPods() &&
            gaia_page_defaults_to_saml)) {
+        if (!jemaos::switches::IsJemaAccountEnabled()) {
+          jemaos::switches::EnableJemaAccountFlag();
+        }
         GetScreen<GaiaScreen>()->Reset();
         LoginDisplayHost::default_host()->HideOobeDialog(
             gaia_page_defaults_to_saml);
       } else {
+        if (!jemaos::switches::IsJemaAccountEnabled()) {
+          jemaos::switches::EnableJemaAccountFlag();
+        }
         GetScreen<GaiaScreen>()->LoadOnlineGaia();
       }
       break;
@@ -1629,6 +1698,16 @@ void WizardController::OnSamlConfirmPasswordScreenExit(
   }
 }
 
+void WizardController::OnJemaLocalSigninScreenExit() {
+  OnScreenExit(JemaLocalSigninView::kScreenId, kDefaultExitReason);
+  if (wizard_context_->is_user_creation_enabled) {
+    AdvanceToScreen(UserCreationView::kScreenId);
+  } else {
+    GetScreen<GaiaScreen>()->LoadOnlineGaia();
+    AdvanceToScreen(GaiaView::kScreenId);
+  }
+}
+
 void WizardController::OnEduCoexistenceLoginScreenExit(
     EduCoexistenceLoginScreen::Result result) {
   OnScreenExit(EduCoexistenceLoginScreen::kScreenId,
@@ -1719,6 +1798,11 @@ void WizardController::OnOsTrialScreenExit(OsTrialScreen::Result result) {
       ShowOsInstallScreen();
       break;
   }
+}
+
+void WizardController::OnDataRestoreScreenExit() {
+  OnScreenExit(DataRestoreScreenView::kScreenId, kDefaultExitReason);
+  ShowLoginScreen();
 }
 
 void WizardController::OnHWDataCollectionScreenExit(
@@ -2147,9 +2231,13 @@ void WizardController::OnNetworkScreenExit(NetworkScreen::Result result) {
     switch (result) {
       case NetworkScreen::Result::CONNECTED:
       case NetworkScreen::Result::NOT_APPLICABLE:
-        MaybeTakeTPMOwnership();
-        PerformPostNetworkScreenActions();
-        InitiateOOBEUpdate();
+        if (jemaos::switches::IsJemaCustomEnabled()) {
+          ShowEulaScreen();
+        } else {
+          MaybeTakeTPMOwnership();
+          PerformPostNetworkScreenActions();
+          InitiateOOBEUpdate();
+        }
         break;
       case NetworkScreen::Result::BACK:
         ShowOsTrialScreen();
@@ -2164,9 +2252,13 @@ void WizardController::OnNetworkScreenExit(NetworkScreen::Result result) {
   switch (result) {
     case NetworkScreen::Result::CONNECTED:
     case NetworkScreen::Result::NOT_APPLICABLE:
-      MaybeTakeTPMOwnership();
-      PerformPostNetworkScreenActions();
-      InitiateOOBEUpdate();
+      if (jemaos::switches::IsJemaCustomEnabled()) {
+        ShowEulaScreen();
+      } else {
+        MaybeTakeTPMOwnership();
+        PerformPostNetworkScreenActions();
+        InitiateOOBEUpdate();
+      }
       break;
     case NetworkScreen::Result::BACK:
       ShowWelcomeScreen();
@@ -2175,6 +2267,31 @@ void WizardController::OnNetworkScreenExit(NetworkScreen::Result result) {
       ShowQuickStartScreen();
       break;
   }
+}
+
+void WizardController::OnEulaScreenExit(EulaScreen::Result result) {
+  OnScreenExit(EulaView::kScreenId, EulaScreen::GetResultString(result));
+
+  switch (result) {
+    case EulaScreen::Result::ACCEPTED:
+      OnEulaAccepted();
+      break;
+    case EulaScreen::Result::ALREADY_ACCEPTED:
+      InitiateOOBEUpdate();
+      break;
+    case EulaScreen::Result::NOT_APPLICABLE:
+      OnEulaAccepted();
+      break;
+    case EulaScreen::Result::BACK:
+      ShowNetworkScreen();
+      break;
+  }
+}
+
+void WizardController::OnEulaAccepted() {
+  StartupUtils::MarkEulaAccepted();
+  PerformPostNetworkScreenActions();
+  InitiateOOBEUpdate();
 }
 
 void WizardController::OnUpdateScreenExit(UpdateScreen::Result result) {
@@ -3190,6 +3307,8 @@ void WizardController::AdvanceToScreen(OobeScreenId screen_id) {
     ShowPackagedLicenseScreen();
   } else if (screen_id == UpdateView::kScreenId) {
     InitiateOOBEUpdate();
+  } else if (screen_id == EulaView::kScreenId) {
+    ShowEulaScreen();
   } else if (screen_id == ResetView::kScreenId) {
     ShowResetScreen();
   } else if (screen_id == EnableAdbSideloadingScreenView::kScreenId) {
@@ -3294,8 +3413,10 @@ void WizardController::AdvanceToScreen(OobeScreenId screen_id) {
              screen_id == LocaleSwitchView::kScreenId ||
              screen_id == RecoveryEligibilityView::kScreenId ||
              screen_id == OfflineLoginView::kScreenId ||
+             screen_id == JemaLocalSigninView::kScreenId ||
              screen_id == OsInstallScreenView::kScreenId ||
              screen_id == OsTrialScreenView::kScreenId ||
+             screen_id == DataRestoreScreenView::kScreenId ||
              screen_id == ParentalHandoffScreenView::kScreenId ||
              screen_id == HWDataCollectionView::kScreenId ||
              screen_id == SmartPrivacyProtectionView::kScreenId ||
@@ -3542,6 +3663,10 @@ bool WizardController::SetOnTimeZoneResolvedForTesting(
 }
 
 void WizardController::StartEnrollmentScreen() {
+  if (!(current_screen_ && IsSigninScreen(current_screen_->screen_id()))) {
+    jemaos::switches::EnableJemaAccountFlag();
+  }
+
   VLOG(1) << "Showing enrollment screen.";
 
   // Determine the effective enrollment configuration. If OOBE Configuration

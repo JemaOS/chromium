@@ -354,6 +354,11 @@ static_library("common_lib") {
       "//components/printing/common",
       "//printing",
     ]
+    #---***JEMAOS BEGIN***--- add jemaos extensions api provider
+    if (is_chromeos) {
+      public_deps += [ "//jemaos/extensions/common" ]
+    }
+    #---***JEMAOS END***---
   }
 
   if (is_android) {

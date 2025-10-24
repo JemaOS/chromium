@@ -389,6 +389,14 @@
           <structure type="chrome_scaled_image" name="IDR_SUCCESS_GREEN_CHECKMARK" file="google_chrome/success_green_checkmark.png" />
         </if>
       </if>
+      <!--JEMAOS BEGIN-->
+      <if expr="openjema">
+        <part file="../../../openjema/resources/theme/app/jemaos_theme_resources.grdp" />
+      </if>
+      <if expr="not openjema">
+        <part file="../../../jemaos/resources/theme/app/jemaos_theme_resources.grdp" />
+      </if>
+      <!--JEMAOS END-->
     </structures>
   </release>
 </grit>

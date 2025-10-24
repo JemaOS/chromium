@@ -15,5 +15,9 @@ const char kLsoUrl[]                        = "lso-url";
 const char kOAuthAccountManagerUrl[] = "oauth-account-manager-url";
 const char kOAuth2ClientID[] = "oauth2-client-id";
 const char kOAuth2ClientSecret[] = "oauth2-client-secret";
+#if BUILDFLAG(IS_OPENJEMA)
+const char kOAuth2JemaOsClientID[] = "oauth2-jemaos-client-id";
+const char kOAuth2JemaOsClientSecret[] = "oauth2-jemaos-client-secret";
+#endif
 
 }  // namespace switches

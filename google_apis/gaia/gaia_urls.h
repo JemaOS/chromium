@@ -18,6 +18,9 @@
 class COMPONENT_EXPORT(GOOGLE_APIS) GaiaUrls {
  public:
   static GaiaUrls* GetInstance();
+  // ---***JEMAOS BEGIN***---
+  void Reset();
+  // ---***JEMAOS END***---
 
   // Public for testing, otherwise use singleton above.
   GaiaUrls();

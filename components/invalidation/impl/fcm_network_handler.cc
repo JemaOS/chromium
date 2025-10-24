@@ -25,6 +25,7 @@
 #include "components/invalidation/impl/invalidation_switches.h"
 #include "components/invalidation/impl/status.h"
 #include "components/invalidation/public/invalidator_state.h"
+#include "jemaos/switches/account/policy_constants.h"
 
 using instance_id::InstanceID;
 
@@ -48,7 +49,7 @@ const int kTokenValidationPeriodMinutesDefault = 60 * 24;
 base::TimeDelta GetTimeToLive(const std::string& sender_id) {
   // This magic value is identical to kPolicyFCMInvalidationSenderID, i.e. the
   // value that ChromeOS policy uses for its invalidations.
-  if (sender_id == "1013309121859") {
+  if (sender_id == "1013309121859" || sender_id == jemaos::constants::kJemaOSPolicyFCMInvalidationSenderID) {
     if (!base::FeatureList::IsEnabled(switches::kPolicyInstanceIDTokenTTL)) {
       return base::TimeDelta();
     }

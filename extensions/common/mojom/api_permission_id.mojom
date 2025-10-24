@@ -285,6 +285,8 @@ enum APIPermissionID {
   kChromeOSDiagnosticsNetworkInfoForMlab = 258,
   kAILanguageModelOriginTrial = 259,
   kExperimentalAiData = 260,
+  kJemaOSPrivate = 261,
+  kJemaOSShellClient = 262,
 
   // Add new entries at the end of the enum and be sure to update the
   // "ExtensionPermission3" enum in

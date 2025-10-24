@@ -99,6 +99,19 @@ std::string_view GetAttachmentName(debugd::FeedbackBinaryLogType log_type) {
       return "bluetooth_firmware_dumps.tar.zst";
   }
 }
+
+constexpr base::FilePath::CharType kJemaOSLogFilePath[] =
+    FILE_PATH_LITERAL("/var/log/jemaos.log");
+constexpr char kJemaOSLogFileName[] = "jemaos.log";
+void FetchJemaOSLog(scoped_refptr<feedback::FeedbackData> feedback_data) {
+  std::string jemaos_log;
+  if (base::ReadFileToString(base::FilePath(kJemaOSLogFilePath),
+                             &jemaos_log)) {
+    feedback_data->AddLog(kJemaOSLogFileName,
+                           std::move(jemaos_log));
+  }
+}
+
 #endif
 
 void RedactFeedbackData(scoped_refptr<feedback::FeedbackData> feedback_data) {
@@ -193,6 +206,17 @@ void FeedbackService::FetchAttachedFileAndScreenshot(
 }
 
 void FeedbackService::OnAttachedFileAndScreenshotFetched(
+    const FeedbackParams& params,
+    scoped_refptr<feedback::FeedbackData> feedback_data,
+    SendFeedbackCallback callback) {
+  base::ThreadPool::PostTaskAndReply(
+      FROM_HERE, {base::MayBlock()},
+      base::BindOnce(&FetchJemaOSLog, feedback_data),
+      base::BindOnce(&FeedbackService::OnJemaOSLogCollected, this, params,
+                     feedback_data, std::move(callback)));
+}
+
+void FeedbackService::OnJemaOSLogCollected(
     const FeedbackParams& params,
     scoped_refptr<feedback::FeedbackData> feedback_data,
     SendFeedbackCallback callback) {

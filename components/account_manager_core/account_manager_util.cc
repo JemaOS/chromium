@@ -237,6 +237,12 @@ crosapi::mojom::AccountType ToMojoAccountType(
       return crosapi::mojom::AccountType::kGaia;
     case account_manager::AccountType::kActiveDirectory:
       return crosapi::mojom::AccountType::kActiveDirectory;
+    // ---***JEMAOS BEGIN***---
+    case account_manager::AccountType::kFlint:
+      return crosapi::mojom::AccountType::kFlint;
+    case account_manager::AccountType::kJema:
+      return crosapi::mojom::AccountType::kJema;
+    // ---***JEMAOS END***---
   }
 }
 

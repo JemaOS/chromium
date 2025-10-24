@@ -286,7 +286,9 @@ void SyncConsentScreen::MaybeEnableSyncForSkip() {
     case SyncScreenBehavior::kSkipAndEnableScreenPolicy:
       // Sync is autostarted during SyncService
       // creation with "sync everything" toggle off. We need to turn it on here.
-      SetSyncEverythingEnabled(/*enabled=*/true);
+      if (!profile_->IsJemaProfile()) {
+        SetSyncEverythingEnabled(/*enabled=*/true);
+      }
       return;
   }
 }
@@ -328,7 +330,7 @@ SyncConsentScreen::SyncScreenBehavior SyncConsentScreen::GetSyncScreenBehavior(
       user_manager::UserManager::Get();
   // Skip for non-regular ephemeral users.
   if (user_manager->IsUserNonCryptohomeDataEphemeral(user_->GetAccountId()) &&
-      (user_->GetType() != user_manager::UserType::kRegular)) {
+      (user_->GetType() != user_manager::UserType::kRegular) && (user_->GetType() != user_manager::UserType::kJemaAccount)) {
     return SyncScreenBehavior::kSkipAndEnableEmphemeralUser;
   }
 

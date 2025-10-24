@@ -17,6 +17,7 @@ component("geolocation") {
     "//net",
     "//services/device/public/cpp/geolocation",
     "//services/network/public/cpp",
+    "//jemaos/switches",
   ]
   sources = [
     "geoposition.cc",

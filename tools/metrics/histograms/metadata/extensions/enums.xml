@@ -763,6 +763,15 @@ Called by update_extension_histograms.py.-->
   <int value="560" label="TTS_ENGINE_ON_INSTALL_LANGUAGE_REQUEST"/>
   <int value="561" label="TTS_ENGINE_ON_LANGUAGE_STATUS_REQUEST"/>
   <int value="562" label="TTS_ENGINE_ON_UNINSTALL_LANGUAGE_REQUEST"/>
+  <int value="563" label="JEMAOS_SHELL_CLIENT_SYSTEM_NOTIFICATION"/>
+  <int value="564" label="JEMAOS_SHELL_CLIENT_COMMAND_NOTIFICATION"/>
+  <int value="565" label="JEMAOS_SHELL_CLIENT_CUSTOM_NOTIFICATION"/>
+  <int value="566" label="ARC_APPS_PRIVATE_ON_REMOVED"/>
+  <int value="567" label="ARC_APPS_PRIVATE_ON_INSTALLATION_STARTED"/>
+  <int value="568" label="ARC_APPS_PRIVATE_ON_INSTALLATION_PROGRESS_CHANGED"/>
+  <int value="569" label="ARC_APPS_PRIVATE_ON_INSTALLATION_FINISHED"/>
+  <int value="570" label="JEMAOS_LICENSE_INVALID_NOTIFICATION"/>
+  <int value="571" label="JEMAOS_LICENSE_VALID_NOTIFICATION"/>
 </enum>
 
 <enum name="ExtensionForceInstalledPreInstalledDeprecatedSite">
@@ -1204,7 +1213,7 @@ Called by update_extension_histograms.py.-->
   <int value="416" label="FILEMANAGERPRIVATE_LOGOUTUSERFORREAUTHENTICATION"/>
   <int value="417" label="DEVELOPERPRIVATE_CHOOSEPATH"/>
   <int value="418" label="DEVELOPERPRIVATE_PACKDIRECTORY"/>
-  <int value="419" label="NETWORKINGPRIVATE_VERIFYDESTINATION"/>
+  <int value="419" label="NETWORKINGPRIVATE_VERIJEMASTINATION"/>
   <int value="420" label="NETWORKINGPRIVATE_VERIFYANDENCRYPTCREDENTIALS"/>
   <int value="421" label="NETWORKINGPRIVATE_VERIFYANDENCRYPTDATA"/>
   <int value="422" label="DEVELOPERPRIVATE_RESTART"/>
@@ -1983,7 +1992,7 @@ Called by update_extension_histograms.py.-->
   <int value="1161" label="AUDIO_SETMUTE"/>
   <int value="1162" label="AUDIO_GETDEVICES"/>
   <int value="1163" label="VIRTUALKEYBOARD_RESTRICTFEATURES"/>
-  <int value="1164" label="DELETED_NETWORKINGCASTPRIVATE_VERIFYDESTINATION"/>
+  <int value="1164" label="DELETED_NETWORKINGCASTPRIVATE_VERIJEMASTINATION"/>
   <int value="1165"
       label="DELETED_NETWORKINGCASTPRIVATE_VERIFYANDENCRYPTCREDENTIALS"/>
   <int value="1166" label="DELETED_NETWORKINGCASTPRIVATE_VERIFYANDENCRYPTDATA"/>
@@ -2782,6 +2791,30 @@ Called by update_extension_histograms.py.-->
   <int value="1912" label="TTSENGINE_UPDATELANGUAGE"/>
   <int value="1913" label="ODFSCONFIGPRIVATE_OPENINOFFICEAPP"/>
   <int value="1914" label="COOKIES_GETPARTITIONKEY"/>
+  <int value="1915" label="NATIVE_WINDOWS_GET"/>
+  <int value="1916" label="NATIVE_WINDOWS_GETALL"/>
+  <int value="1917" label="NATIVE_WINDOWS_UPDATE"/>
+  <int value="1918" label="NATIVE_WINDOWS_REMOVE"/>
+  <int value="1919" label="NATIVE_WINDOWS_CREATE"/>
+  <int value="1920" label="APP_MANAGEMENT_GETAPPLIST"/>
+  <int value="1921" label="APP_MANAGEMENT_INSTALLWEBAPP"/>
+  <int value="1922" label="APP_MANAGEMENT_INSTALLARCAPP"/>
+  <int value="1923" label="COMMAND_LINE_HASSWITCH"/>
+  <int value="1924" label="COMMAND_LINE_REMOVESWITCH"/>
+  <int value="1925" label="COMMAND_LINE_ADDSWITCH"/>
+  <int value="1926" label="APP_MANAGEMENT_GETARCPOLICY"/>
+  <int value="1927" label="SHELL_SYNC_EXEC"/>
+  <int value="1928" label="SHELL_ASYNC_EXEC"/>
+  <int value="1929" label="SHELL_GET_TASK_STATE"/>
+  <int value="1930" label="SHELL_GET_TASK_OUTPUT"/>
+  <int value="1931" label="SHELL_GET_DAEMON_STATE"/>
+  <int value="1932" label="SHELL_FORCE_CLOSE_TASK"/>
+  <int value="1933" label="JEMAOS_ARC_STATUS_GET"/>
+  <int value="1934" label="INPUT_IME_SHOW_JEMA_LANGUAGE_STATE"/>
+  <int value="1935" label="ARCAPPSPRIVATE_REMOVEPACKAGE"/>
+  <int value="1936" label="ARCAPPSPRIVATE_INSTALLPACKAGE_FROM_PATH"/>
+  <int value="1937" label="JEMAOS_PRIVATE_GET_JEMAOS_INFO"/>
+  <int value="1938" label="LICENSE_MANAGEMENT_REFRESH"/>
 </enum>
 
 <enum name="ExtensionInstallationCrxInstallError">
@@ -3165,6 +3198,8 @@ Called by update_extension_permission.py.-->
   <int value="258" label="kChromeOSDiagnosticsNetworkInfoForMlab"/>
   <int value="259" label="kAILanguageModelOriginTrial"/>
   <int value="260" label="kExperimentalAiData"/>
+  <int value="261" label="kJemaOSPrivate"/>
+  <int value="262" label="kJemaOSShellClient"/>
 </enum>
 
 <enum name="ExtensionPolicyReinstallReason">

@@ -61,6 +61,9 @@ AssistantAllowedState GetErrorForUserType(const Profile* profile) {
     case user_manager::UserType::kKioskIWA:
       return AssistantAllowedState::DISALLOWED_BY_KIOSK_MODE;
 
+    case user_manager::UserType::kFlintAccount:
+    case user_manager::UserType::kJemaAccount:
+    case user_manager::UserType::kJemaChild:
     case user_manager::UserType::kGuest:
       return AssistantAllowedState::DISALLOWED_BY_ACCOUNT_TYPE;
 
@@ -125,6 +128,10 @@ bool HasDedicatedAssistantKey() {
 namespace assistant {
 
 AssistantAllowedState IsAssistantAllowedForProfile(const Profile* profile) {
+  // ---***JEMAOS BEGIN***---
+  if (profile->IsJemaProfile())
+    return AssistantAllowedState::DISALLOWED_BY_ACCOUNT_TYPE;
+  // ---***JEMAOS END***---
   // Disabled because the libassistant.so is not available.
   if (!ash::assistant::features::IsLibAssistantDLCEnabled()) {
     return AssistantAllowedState::DISALLOWED_BY_NO_BINARY;

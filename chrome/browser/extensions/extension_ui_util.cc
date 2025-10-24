@@ -16,6 +16,8 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/image_util.h"
 #include "extensions/common/manifest_handlers/app_display_info.h"
+#include "jemaos/switches/services/services_constants.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 namespace extensions {
 
@@ -24,6 +26,13 @@ namespace {
 bool IsBlockedByPolicy(const Extension* app, content::BrowserContext* context) {
   Profile* profile = Profile::FromBrowserContext(context);
   DCHECK(profile);
+  // ---***JEMAOS BEGIN***---
+  if (app->id() == jemaos::constants::kJemaOSStoreAppId &&
+      profile->GetPrefs()->GetBoolean(
+        jemaos::prefs::kPrefHideJemaOSStoreIcon)) {
+    return true;
+  }
+  // ---***JEMAOS END***---
 
   return app->id() == extensions::kWebStoreAppId &&
          profile->GetPrefs()->GetBoolean(

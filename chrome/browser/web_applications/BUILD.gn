@@ -572,6 +572,15 @@ source_set("web_applications") {
     ]
   }
 
+  sources += [
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.cc",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.h",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.cc",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.h",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/notes.cc",
+    "../../../jemaos/chrome/browser/web_applications/preinstalled_web_apps/notes.h",
+  ]
+
   if (is_win) {
     deps += [
       "//chrome/browser/profiles:profile_util",

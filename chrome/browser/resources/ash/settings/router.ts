@@ -355,6 +355,13 @@ export function isAboutRoute(route: Route|null): boolean {
   return routes.ABOUT.contains(route);
 }
 
+export function isJemaOsSettingsRoute(route: Route|null): boolean {
+  if (!route) {
+    return false;
+  }
+  return routes.JEMAOS.contains(route);
+}
+
 /**
  * @returns true if |route| is able to be directly navigated to (ie. there
  * is a dedicated page or subpage that exists for the given route).

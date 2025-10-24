@@ -90,6 +90,15 @@ class AboutHandler : public settings::SettingsPageUIHandler,
   // Checks if system is connected to internet.
   void HandleCheckInternetConnection(const base::Value::List& args);
 
+  // ---***JEMAOS BEGIN***---
+  void HandleEnableJemaOTA(const base::Value::List& args);
+  void OnEnableJemaOTA();
+  void RefreshEnableJemaOTA(const bool enabled);
+
+  void HandleGetEnabledJemaOTA(const base::Value::List& args);
+  void OnGetEnabledJemaOTA(const std::string callback_id, const bool enabled);
+  // ---***JEMAOS END***---
+
   // Opens the release notes app. |args| must be empty.
   void HandleLaunchReleaseNotes(const base::Value::List& args);
 
@@ -103,6 +112,9 @@ class AboutHandler : public settings::SettingsPageUIHandler,
   void HandleGetVersionInfo(const base::Value::List& args);
   void OnGetVersionInfoReady(std::string callback_id,
                              base::Value::Dict version_info);
+
+  void HandleGetIsFirmwareUpdateSupported(const base::Value::List& args);
+  void OnJemaOSUpdateBinCheckedChecked(const std::string& callback_id, bool is_supported);
 
   // Retrieves the number of firmware updates available.
   void HandleGetFirmwareUpdateCount(const base::Value::List& args);

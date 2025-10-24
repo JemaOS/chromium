@@ -1,0 +1,21 @@
+import("//build/config/chromeos/ui_mode.gni")
+
+assert(is_chromeos_ash, "Jema Assistant is ash-chrome only")
+
+static_library("jema_assistant_app_ui") {
+  sources = [
+    "jema_assistant_app_ui.cc",
+    "jema_assistant_app_ui.h",
+    "jema_assistant_app_ui_delegate.h",
+    "jema_assistant_app_webui_handler.cc",
+    "jema_assistant_app_webui_handler.h",
+    "url_constants.cc",
+    "url_constants.h",
+  ]
+
+  deps = [
+    "//ash/webui/jema_assistant_app_ui/resources:resources",
+    "//content/public/browser",
+    "//ui/webui",
+  ]
+}

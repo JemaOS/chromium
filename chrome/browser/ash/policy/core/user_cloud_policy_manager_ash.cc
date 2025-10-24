@@ -66,6 +66,7 @@
 #include "content/public/browser/network_service_instance.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "url/gurl.h"
+#include "jemaos/switches/account/toggle/account_type_toggle.h"
 
 namespace em = enterprise_management;
 
@@ -100,7 +101,7 @@ void RegistrationResultUMA(RegistrationResult registration_result) {
 bool IsChildUser(const AccountId& account_id) {
   const user_manager::User* const user =
       user_manager::UserManager::Get()->FindUser(account_id);
-  return user && user->GetType() == user_manager::UserType::kChild;
+  return user && (user->GetType() == user_manager::UserType::kChild || user->GetType() == user_manager::UserType::kJemaChild);
 }
 
 // This class is used to subscribe for notifications that the current profile is
@@ -551,6 +552,9 @@ void UserCloudPolicyManagerAsh::SetPolicyRequired(bool policy_required) {
         base::CommandLine(base::CommandLine::NO_PROGRAM);
     command_line.AppendSwitchASCII(ash::switches::kProfileRequiresPolicy,
                                    policy_required ? "true" : "false");
+    // ---***JEMAOS BEGIN***---
+    jemaos::switches::ToggleJemaAccountFlagForCommandLineByAccountId(&command_line, account_id_);
+    // ---***JEMAOS END***---
     base::CommandLine::StringVector flags;
     flags.assign(command_line.argv().begin() + 1, command_line.argv().end());
     DCHECK_EQ(1u, flags.size());

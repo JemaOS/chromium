@@ -80,6 +80,10 @@ bool HasAPIKeyConfigured() {
   return GetApiKeyCacheInstance().HasAPIKeyConfigured();
 }
 
+bool HasJemaOSAPIKeyConfigured() {
+  return GetApiKeyCacheInstance().HasJemaOSAPIKeyConfigured();
+}
+
 const std::string& GetAPIKey(version_info::Channel channel) {
   return channel == version_info::Channel::STABLE
              ? GetAPIKey()
@@ -88,6 +92,10 @@ const std::string& GetAPIKey(version_info::Channel channel) {
 
 const std::string& GetAPIKey() {
   return GetApiKeyCacheInstance().api_key();
+}
+
+const std::string& GetJemaOSAPIKey() {
+  return GetApiKeyCacheInstance().jemaos_api_key();
 }
 
 const std::string& GetRemotingAPIKey() {
@@ -129,6 +137,12 @@ const std::string& GetMetricsKey() {
 bool HasOAuthClientConfigured() {
   return GetApiKeyCacheInstance().HasOAuthClientConfigured();
 }
+
+#if BUILDFLAG(IS_OPENJEMA)
+bool HasJemaOAuthClientConfigured() {
+  return GetApiKeyCacheInstance().HasJemaOAuthClientConfigured();
+}
+#endif
 
 const std::string& GetOAuth2ClientID(OAuth2Client client) {
   return GetApiKeyCacheInstance().GetClientID(client);

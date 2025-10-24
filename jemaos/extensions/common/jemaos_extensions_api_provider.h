@@ -1,19 +1,19 @@
-// Copyright 2018 The FydeOS Authors. All rights reserved.
+// Copyright 2018 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FYDEOS_EXTENSIONS_API_PROVIDER_H_
-#define FYDEOS_EXTENSIONS_API_PROVIDER_H_
+#ifndef JEMAOS_EXTENSIONS_API_PROVIDER_H_
+#define JEMAOS_EXTENSIONS_API_PROVIDER_H_
 
-#include "fydeos/extensions/common/fydeos_api_permissions.h"
+#include "jemaos/extensions/common/jemaos_api_permissions.h"
 #include "extensions/common/extensions_api_provider.h"
 
 namespace extensions {
 
-class FydeOSExtensionsAPIProvider : public ExtensionsAPIProvider {
+class JemaOSExtensionsAPIProvider : public ExtensionsAPIProvider {
  public:
-  FydeOSExtensionsAPIProvider();
-  ~FydeOSExtensionsAPIProvider() override;
+  JemaOSExtensionsAPIProvider();
+  ~JemaOSExtensionsAPIProvider() override;
 
   // ExtensionsAPIProvider:
   void AddAPIFeatures(FeatureProvider* provider) override;
@@ -29,4 +29,4 @@ class FydeOSExtensionsAPIProvider : public ExtensionsAPIProvider {
 
 }  // namespace extensions
 
-#endif  // FYDEOS_EXTENSIONS_API_PROVIDER_H_
+#endif  // JEMAOS_EXTENSIONS_API_PROVIDER_H_

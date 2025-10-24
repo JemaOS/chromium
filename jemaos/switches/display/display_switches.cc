@@ -1,19 +1,19 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/display/display_switches.h"
+#include "jemaos/switches/display/display_switches.h"
 
 #include "base/command_line.h"
 #include <string>
 
-namespace fydeos {
+namespace jemaos {
 namespace switches {
 
 namespace {
 
-const char kDefaultDSF[] = "fydeos-default-dsf";
-const char kScreenDpi[] = "fydeos-default-screen-dpi";
+const char kDefaultDSF[] = "jemaos-default-dsf";
+const char kScreenDpi[] = "jemaos-default-screen-dpi";
 
 }
 
@@ -32,5 +32,5 @@ float GetDefaultScreenDpi(float default_value) {
 }
 
 } // switches
-} // fydeos
+} // jemaos
 

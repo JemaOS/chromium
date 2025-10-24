@@ -1,20 +1,20 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/license/license_constants.h"
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/switches/license/license_constants.h"
+#include "jemaos/build/config/buildflags.h"
 
-namespace fydeos::constants {
+namespace jemaos::constants {
 
-#if BUILDFLAG(USE_FYDEOS_COM)
-const char kDefaultFydeOSLicenseWebUrl[] = "https://cashier.fydeos.com";
-const char kDefaultFydeOSLicenseApiUrl[] = "https://apis.fydeos.com/license";
+#if BUILDFLAG(USE_JEMAOS_COM)
+const char kDefaultJemaOSLicenseWebUrl[] = "https://cashier.jemaos.com";
+const char kDefaultJemaOSLicenseApiUrl[] = "https://apis.jemaos.com/license";
 #else
-const char kDefaultFydeOSLicenseWebUrl[] = "https://cashier.fydeos.io";
-const char kDefaultFydeOSLicenseApiUrl[] = "https://apis.fydeos.io/license";
+const char kDefaultJemaOSLicenseWebUrl[] = "https://cashier.jemaos.io";
+const char kDefaultJemaOSLicenseApiUrl[] = "https://apis.jemaos.io/license";
 #endif
 
-const char kFydeOSOEMTokenFilePath[] = "/usr/share/oem/fydeos_oem_token";
+const char kJemaOSOEMTokenFilePath[] = "/usr/share/oem/jemaos_oem_token";
 
-}  // namespace fydeos::constants
+}  // namespace jemaos::constants

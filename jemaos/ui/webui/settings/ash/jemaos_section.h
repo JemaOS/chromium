@@ -1,9 +1,9 @@
-// Copyright (c) 2021 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2021 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_FYDEOS_SECTION_H_
-#define CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_FYDEOS_SECTION_H_
+#ifndef CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_JEMAOS_SECTION_H_
+#define CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_JEMAOS_SECTION_H_
 
 #include <string>
 #include "base/values.h"
@@ -15,11 +15,11 @@ class Profile;
 
 namespace ash::settings {
 
-class FydeOsSection : public OsSettingsSection {
+class JemaOsSection : public OsSettingsSection {
  public:
-  FydeOsSection(Profile* profile, SearchTagRegistry* search_tag_registry,
+  JemaOsSection(Profile* profile, SearchTagRegistry* search_tag_registry,
       PrefService* pref_service);
-  ~FydeOsSection() override;
+  ~JemaOsSection() override;
 
  private:
   // OsSettingsSection:

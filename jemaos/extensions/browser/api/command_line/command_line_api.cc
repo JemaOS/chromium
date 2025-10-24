@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 // Author: Simon Tsao(yang@flintos.io)
 
-#include "fydeos/extensions/browser/api/command_line/command_line_api.h"
-#include "fydeos/extensions/common/api/command_line.h"
+#include "jemaos/extensions/browser/api/command_line/command_line_api.h"
+#include "jemaos/extensions/common/api/command_line.h"
 
 #include <memory>
 #include <string>

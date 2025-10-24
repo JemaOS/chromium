@@ -1,14 +1,14 @@
-// Copyright 2018 The FydeOS Authors. All rights reserved.
+// Copyright 2018 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// Author: Simon Tsao(yang@fydeos.io)
+// Author: Jema Technology
 
 [
 {
   "namespace": "shellClient",
   "description": "chrome.shellClient functions",
   "compiler_options": {
-    "implemented_in": "fydeos/extensions/browser/api/shell_client/shell_client_api.h"
+    "implemented_in": "jemaos/extensions/browser/api/shell_client/shell_client_api.h"
   },
   "types":[
     {

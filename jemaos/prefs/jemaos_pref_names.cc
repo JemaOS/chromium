@@ -1,16 +1,16 @@
-// Copyright (c) 2021 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2021 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/prefs/fydeos_pref_names.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace prefs {
 
 
-const char kPrefHideFydeOSStoreIcon[] = "hide_fydeos_store_icon";
+const char kPrefHideJemaOSStoreIcon[] = "hide_jemaos_store_icon";
 
-const char kFydeOSImprovementPlanEnabled[] = "fydeos_improvement_plan_enabled";
+const char kJemaOSImprovementPlanEnabled[] = "jemaos_improvement_plan_enabled";
 
 // local state
 const char kEnableArcIMEGlobally[] = "enable_arc_ime_globally";
@@ -33,20 +33,20 @@ const char kFactoryResetRequested[] = "FactoryResetRequested";
 
 const char kRebootRequiredForWidevine[] = "reboot_required_for_widevine";
 
-const char kFydeAssistantEnabled[] = "fyde_assistant_enabled";
-const char kFydeAssistantExtraAcceleratorEnabled[] = "fyde_assistant_extra_accelerator_enabled";
+const char kJemaAssistantEnabled[] = "jema_assistant_enabled";
+const char kJemaAssistantExtraAcceleratorEnabled[] = "jema_assistant_extra_accelerator_enabled";
 
-const char kFydeOSArcMediaAutoScanEnabled[] = "fydeos_arc_media_auto_scan_enabled";
+const char kJemaOSArcMediaAutoScanEnabled[] = "jemaos_arc_media_auto_scan_enabled";
 
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
-const char kFydeLicenseShouldShowInSettings[] = "fyde_license_should_show_in_settings";
-const char kFydeLicenseStateType[] = "fyde_license_state_type";
-const char kFydeLicenseEnforcementLevel[] = "fyde_license_enforcement_level";
-const char kFydeLicenseEnforcementLogOutInterval[] = "fydeo_license_enforcement_log_out_interval";
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+const char kJemaLicenseShouldShowInSettings[] = "jema_license_should_show_in_settings";
+const char kJemaLicenseStateType[] = "jema_license_state_type";
+const char kJemaLicenseEnforcementLevel[] = "jema_license_enforcement_level";
+const char kJemaLicenseEnforcementLogOutInterval[] = "jemao_license_enforcement_log_out_interval";
 #endif
 
-#if BUILDFLAG(USE_FYDEOS_COM)
-const char kCrostiniInstallerNotificationUserInteracted[] = "fydeos_crostini_installer_notificaion_user_interacted";
+#if BUILDFLAG(USE_JEMAOS_COM)
+const char kCrostiniInstallerNotificationUserInteracted[] = "jemaos_crostini_installer_notificaion_user_interacted";
 #endif
 }
 }

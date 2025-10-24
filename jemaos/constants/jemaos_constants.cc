@@ -1,19 +1,19 @@
-// Copyright 2024 The Fyde Innovations Limited. All rights reserved.
+// Copyright 2024 The Jema Technology Limited. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/constants/fydeos_constants.h"
+#include "jemaos/constants/jemaos_constants.h"
 
-namespace fydeos::constants {
+namespace jemaos::constants {
 
 namespace {
 
-const char kFydeSystemControllerExtensionId[] = "mofiofjpikncjaigmdlblhojbnkabako";
-const char kFydeRdpExtensionId[] = "fogdcaodknbhigpklbhepedofamkfbln";
+const char kJemaSystemControllerExtensionId[] = "mofiofjpikncjaigmdlblhojbnkabako";
+const char kJemaRdpExtensionId[] = "fogdcaodknbhigpklbhepedofamkfbln";
 
 constexpr char const* kExtensionIdsHiddenInList[] = {
-    kFydeSystemControllerExtensionId,
-    kFydeRdpExtensionId,
+    kJemaSystemControllerExtensionId,
+    kJemaRdpExtensionId,
 };
 
 }
@@ -27,4 +27,4 @@ bool ShouldHideExtensionById(const std::string& extension_id) {
   return false;
 }
 
-} // namespace fydeos::constants
+} // namespace jemaos::constants

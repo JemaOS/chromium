@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- override components/version_ui_strings.grdp, included from components/components_strings.grd -->
 <grit-part>
-  <if expr="openfyde">
+  <if expr="openjema">
     <message name="IDS_VERSION_UI_OFFICIAL" desc="official build on the about:version page">
-      openFyde unlicensed version
+      openJema unlicensed version
     </message>
     <message name="IDS_VERSION_UI_UNOFFICIAL" desc="unofficial build on the about:version page">
-      openFyde unlicensed version
+      openJema unlicensed version
     </message>
   </if>
-  <if expr="not openfyde">
+  <if expr="not openjema">
     <message name="IDS_VERSION_UI_OFFICIAL" desc="official build on the about:version page">
-      FydeOS unlicensed version
+      JemaOS unlicensed version
     </message>
     <message name="IDS_VERSION_UI_UNOFFICIAL" desc="unofficial build on the about:version page">
-      FydeOS unlicensed version
+      JemaOS unlicensed version
     </message>
   </if>
 </grit-part>

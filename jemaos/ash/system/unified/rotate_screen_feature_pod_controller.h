@@ -1,4 +1,4 @@
-// Copyright 2021 The FydeOS Authors. All rights reserved.
+// Copyright 2021 The JemaOS Authors. All rights reserved.
 
 #ifndef ASH_SYSTEM_UNIFIED_ROTATE_SCREEN_FEATURE_POD_CONTROLLER_H_
 #define ASH_SYSTEM_UNIFIED_ROTATE_SCREEN_FEATURE_POD_CONTROLLER_H_

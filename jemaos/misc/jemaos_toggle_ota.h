@@ -1,13 +1,13 @@
-#ifndef FYDEOS_TOGGLE_OTA_H_
-#define FYDEOS_TOGGLE_OTA_H_
+#ifndef JEMAOS_TOGGLE_OTA_H_
+#define JEMAOS_TOGGLE_OTA_H_
 
 #include "base/functional/callback_forward.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace misc {
-  void EnableFydeOTA(const bool enabled, base::OnceCallback<void()> callback);
-  bool GetEnabledFydeOTA();
+  void EnableJemaOTA(const bool enabled, base::OnceCallback<void()> callback);
+  bool GetEnabledJemaOTA();
 } // misc
 
-} // fydeos
-#endif /* ifndef FYDEOS_TOGGLE_OTA_H_ */
+} // jemaos
+#endif /* ifndef JEMAOS_TOGGLE_OTA_H_ */

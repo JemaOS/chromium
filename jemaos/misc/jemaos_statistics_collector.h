@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FYDEOS_STATISTICS_COLLECTOR_H
-#define FYDEOS_STATISTICS_COLLECTOR_H
+#ifndef JEMAOS_STATISTICS_COLLECTOR_H
+#define JEMAOS_STATISTICS_COLLECTOR_H
 
 #include <memory>
 #include <string>
@@ -13,7 +13,7 @@
 #include "base/time/time.h"
 #include "base/functional/callback.h"
 #include "chromeos/ash/components/login/login_state/login_state.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/shell_state.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
 
 class Profile;
 
@@ -27,7 +27,7 @@ namespace network {
 class SimpleURLLoader;
 }
 
-namespace fydeos {
+namespace jemaos {
 namespace misc {
 
 class StatisticsCollector {
@@ -63,7 +63,7 @@ class StatisticsCollector {
       base::Time profile_creation_time;
       base::Time profile_start_time;
       bool is_new_profile;
-      bool is_fyde_profile;
+      bool is_jema_profile;
     };
 
     enum CollectStep {
@@ -79,14 +79,14 @@ class StatisticsCollector {
     void ProceedToNextStep();
 
     void GetLicenseId();
-    void OnGetLicenseId(absl::optional<fydeos::ash::ShellState> state);
+    void OnGetLicenseId(absl::optional<jemaos::ash::ShellState> state);
 
     void GetLicenseType();
-    void OnGetLicenseType(absl::optional<fydeos::ash::ShellState> state);
+    void OnGetLicenseType(absl::optional<jemaos::ash::ShellState> state);
     void GetLicenseTypeFromInfo(const std::string& license);
 
     void GetInstallType();
-    void OnGetInstallType(absl::optional<fydeos::ash::ShellState> state);
+    void OnGetInstallType(absl::optional<jemaos::ash::ShellState> state);
 
     void SyncCollect();
 
@@ -108,7 +108,7 @@ class StatisticsCollector {
 };
 
 }  // namespace misc
-}  // namespace fydeos
+}  // namespace jemaos
 
-#endif /* ifndef FYDEOS_STATISTICS_COLLECTOR_H */
+#endif /* ifndef JEMAOS_STATISTICS_COLLECTOR_H */
 

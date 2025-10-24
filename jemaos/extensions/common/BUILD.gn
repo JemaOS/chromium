@@ -5,7 +5,7 @@
 
 import("//build/config/features.gni")
 import("//extensions/buildflags/buildflags.gni")
-import("//fydeos/extensions/common/api/fydeos_schema.gni")
+import("//jemaos/extensions/common/api/jemaos_schema.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 import("//rlz/buildflags/buildflags.gni")
 import("//tools/grit/grit_rule.gni")
@@ -14,19 +14,19 @@ assert(enable_extensions)
 assert(is_chromeos)
 
 grit("resources") {
-  source = "fydeos_extensions_resources.grd"
+  source = "jemaos_extensions_resources.grd"
   outputs = [
-    "grit/fydeos_extensions_resources.h",
-    "fydeos_extensions_resources.pak",
+    "grit/jemaos_extensions_resources.h",
+    "jemaos_extensions_resources.pak",
   ]
 }
 
-static_library("fydeos_extensions_provider") {
+static_library("jemaos_extensions_provider") {
   sources = [
-    "fydeos_api_permissions.h",
-    "fydeos_api_permissions.cc",
-    "fydeos_extensions_api_provider.h",
-    "fydeos_extensions_api_provider.cc",
+    "jemaos_api_permissions.h",
+    "jemaos_api_permissions.cc",
+    "jemaos_extensions_api_provider.h",
+    "jemaos_extensions_api_provider.cc",
   ]
 
   configs += [
@@ -42,8 +42,8 @@ static_library("fydeos_extensions_provider") {
     "//extensions/common/api",
     "//extensions/strings",
     ":resources",
-    "//fydeos/extensions/common/api",
-    "//fydeos/extensions/common/api:fydeos_features",
+    "//jemaos/extensions/common/api",
+    "//jemaos/extensions/common/api:jemaos_features",
     "//ipc:ipc_buildflags",
   ]
 
@@ -57,12 +57,12 @@ static_library("fydeos_extensions_provider") {
 
 group("common"){
   deps = [
-    ":fydeos_extensions_provider",
+    ":jemaos_extensions_provider",
   ]
 
   public_deps = [
-    "//fydeos/extensions/common/api",
-    "//fydeos/extensions/common/api:fydeos_features",
-#    "//fydeos/extensions/browser"
+    "//jemaos/extensions/common/api",
+    "//jemaos/extensions/common/api:jemaos_features",
+#    "//jemaos/extensions/browser"
   ]
 }

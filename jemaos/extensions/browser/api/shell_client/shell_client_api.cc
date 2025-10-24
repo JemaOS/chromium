@@ -1,23 +1,23 @@
-// Copyright (c) 2018 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2018 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// Author: Simon Tsao(yang@fydeos.io)
+// Author: Jema Technology
 
-#include "fydeos/extensions/browser/api/shell_client/shell_client_api.h"
+#include "jemaos/extensions/browser/api/shell_client/shell_client_api.h"
 
 #include <stddef.h>
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/lazy_instance.h"
-#include "fydeos/extensions/common/api/shell_client.h"
+#include "jemaos/extensions/common/api/shell_client.h"
 #include "chromeos/ash/components/dbus/dbus_thread_manager.h"
 #include "chromeos/dbus/common/dbus_callback.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/shell_state.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/fydeos_shell_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 
 using DBusThreadManager = ash::DBusThreadManager;
-using FydeOSShellClient = fydeos::ash::FydeOSShellClient;
-using ShellState = fydeos::ash::ShellState;
+using JemaOSShellClient = jemaos::ash::JemaOSShellClient;
+using ShellState = jemaos::ash::ShellState;
 namespace shell = extensions::api::shell_client;
 
 namespace extensions {
@@ -26,8 +26,8 @@ namespace {
   const char kShellCode[] = "code";
   const char kShellResult[] = "result";
 
-  FydeOSShellClient* GetShellClient() {
-    return FydeOSShellClient::Get();
+  JemaOSShellClient* GetShellClient() {
+    return JemaOSShellClient::Get();
   }
 
   base::Value CreateStateValueFromState(std::optional<ShellState> state) {
@@ -67,11 +67,11 @@ ShellClientAPI::ShellClientAPI(content::BrowserContext* context)
 }
 
 ShellClientEventRouter::ShellClientEventRouter(Profile* profile)
-  : fydeos_client_observer_(this),
+  : jemaos_client_observer_(this),
     profile_(profile),
     event_router_(EventRouter::Get(profile_)),
     weak_factory_(this) {
-  fydeos_client_observer_.Observe(GetShellClient());
+  jemaos_client_observer_.Observe(GetShellClient());
 }
 
 ShellClientEventRouter::~ShellClientEventRouter() {}
@@ -105,7 +105,7 @@ void ShellClientEventRouter::OnSystemNotificationReceived(int32_t level,
   args.Append(level);
   args.Append(msg);
   auto event = std::make_unique<Event>(
-      events::FYDEOS_SHELL_CLIENT_SYSTEM_NOTIFICATION,
+      events::JEMAOS_SHELL_CLIENT_SYSTEM_NOTIFICATION,
       shell::OnSystemNotifying::kEventName, std::move(args));
   event_router_->BroadcastEvent(std::move(event));
 }
@@ -120,7 +120,7 @@ void ShellClientEventRouter::OnCommandNotificationReceived(int32_t handler,
   args.Append(state);
   args.Append(msg);
   auto event = std::make_unique<Event>(
-      events::FYDEOS_SHELL_CLIENT_COMMAND_NOTIFICATION,
+      events::JEMAOS_SHELL_CLIENT_COMMAND_NOTIFICATION,
       shell::OnShellCommandNotifying::kEventName, std::move(args));
   event_router_->BroadcastEvent(std::move(event));
 }
@@ -135,7 +135,7 @@ void ShellClientEventRouter::OnCustomNotificationReceived(int32_t data,
   args.Append(exdata);
   args.Append(extra);
   auto event = std::make_unique<Event>(
-      events::FYDEOS_SHELL_CLIENT_CUSTOM_NOTIFICATION,
+      events::JEMAOS_SHELL_CLIENT_CUSTOM_NOTIFICATION,
       shell::OnShellCustomNotifying::kEventName, std::move(args));
   event_router_->BroadcastEvent(std::move(event));
 }

@@ -2,26 +2,26 @@
 <!-- override chrome/app/chromium_strings.grd -->
 <grit-part>
   <if expr="chromeos_ash">
-    <if expr="openfyde">
+    <if expr="openjema">
       <message name="IDS_PRODUCT_OS_NAME" desc="The Chrome OS application name">
-        openFyde
+        openJema
       </message>
       <message name="IDS_SHORT_PRODUCT_OS_NAME" desc="The Chrome OS application short name">
-        openFyde
+        openJema
       </message>
       <message name="IDS_INSTALLED_PRODUCT_OS_NAME" desc="Installed OS name">
-        openFyde
+        openJema
       </message>
     </if>
-    <if expr="not openfyde">
+    <if expr="not openjema">
       <message name="IDS_PRODUCT_OS_NAME" desc="The Chrome OS application name">
-        FydeOS
+        JemaOS
       </message>
       <message name="IDS_SHORT_PRODUCT_OS_NAME" desc="The Chrome OS application short name">
-        FydeOS
+        JemaOS
       </message>
       <message name="IDS_INSTALLED_PRODUCT_OS_NAME" desc="Installed OS name">
-        FydeOS
+        JemaOS
       </message>
     </if>
   </if>
@@ -35,34 +35,34 @@
     About &amp;Browser
   </message>
   <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
-    Help make Chromium better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Fyde Innovations
+    Help make Chromium better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Technology
   </message>
   <message name="IDS_ABOUT_VERSION_COMPANY_NAME" desc="Company name on the about pages">
-    Fyde Innovations, The Chromium Authors
+    Jema Technology, The Chromium Authors
   </message>
   <message name="IDS_ABOUT_VERSION_COPYRIGHT" desc="Copyright information on the about pages">
-    Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Fyde Innovations, The Chromium Authors. All rights reserved.
+    Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Jema Technology, The Chromium Authors. All rights reserved.
   </message>
   <if expr="chromeos_ash">
     <!-- Strings for the OOBE user selection screen -->
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_TITLE" desc="Title of the screen which allows users to select account type.">
         Which online account would you like to use?
     </message>
-    <if expr="not openfyde">
+    <if expr="not openjema">
       <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          Please choose your preferred online account type to sign in to FydeOS. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
+          Please choose your preferred online account type to sign in to JemaOS. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
       </message>
     </if>
-    <if expr="openfyde">
+    <if expr="openjema">
       <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          Please choose your preferred online account type to sign in to openFyde. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
+          Please choose your preferred online account type to sign in to openJema. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
       </message>
     </if>
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_FYDEOS_TITLE" desc="Title of user select FydeOS account type.">
-        FydeOS account
+    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
+        JemaOS account
     </message>
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_FYDEOS_SUBTITLE" desc="Subtitle of user select FydeOS account type.">
-        Sign in with a FydeOS account and use cloud services associated by your FydeOS account.
+    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
+        Sign in with a JemaOS account and use cloud services associated by your JemaOS account.
     </message>
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_TITLE" desc="Title of user select Google account type.">
         Google account
@@ -70,86 +70,86 @@
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_SUBTITLE" desc="Subtitle of user select Google account type.">
         Sign in with a Google account and use cloud services provided by Google.
     </message>
-    <if expr="openfyde">
+    <if expr="openjema">
       <message name="IDS_ABOUT_CROS_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS.">
-        openFyde is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>.
+        openJema is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>.
       </message>
       <message name="IDS_ABOUT_CROS_WITH_LINUX_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS when Crostini is installed.">
-        openFyde is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>, as is <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Beta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
+        openJema is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>, as is <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Beta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
       </message>
       <message name="IDS_EXTERNAL_PROTOCOL_NO_HANDLER_TITLE" desc="External Protocol Dialog Title">
-        openFyde can't open this page.
+        openJema can't open this page.
       </message>
       <message name="IDS_SYNC_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when the user's sign-in credentials are out of date.">
-        openFyde could not sync your data because your account sign-in details are out of date.
+        openJema could not sync your data because your account sign-in details are out of date.
       </message>
       <message name="IDS_SYNC_UNAVAILABLE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when sync is not available for their domain.">
-        openFyde could not sync your data because Sync is not available for your domain.
+        openJema could not sync your data because Sync is not available for your domain.
       </message>
       <message name="IDS_SYNC_OTHER_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when there's an error signing in.">
-        openFyde could not sync your data due to an error signing in.
+        openJema could not sync your data due to an error signing in.
       </message>
       <message name="IDS_UPDATE_RECOMMENDED_DIALOG_TITLE" desc="The window title for the Update Recommended dialog.">
-        Restart openFyde
+        Restart openJema
       </message>
       <message name="IDS_UPDATE_RECOMMENDED" desc="The main text of the Update Recommended dialog.">
-        openFyde needs to be restarted to apply the update.
+        openJema needs to be restarted to apply the update.
       </message>
       <message name="IDS_INSTALLING_UPDATE" desc="Label shown on the updates installation screen during OOBE">
-        Please wait while openFyde installs the latest system updates.
+        Please wait while openJema installs the latest system updates.
       </message>
       <message name="IDS_EULA_SCREEN_ACCESSIBLE_TITLE" desc="Title to be spoken on opening the OOBE EULA screen">
-        openFyde terms
+        openJema terms
       </message>
       <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
-        Optional: Help make openFyde better by automatically sending usage statistics and crash reports to Fyde Innovations.
+        Optional: Help make openJema better by automatically sending usage statistics and crash reports to Jema Technology.
       </message>
       <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
-        <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the openFyde EULA Terms.
+        <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the openJema EULA Terms.
       </message>
       <message name="IDS_RESTORE_NOTIFICATION_DISPLAY_SOURCE" desc="This is the string shown as the display source of the notification for the user to select restore or not on startup.">
-        openFyde
+        openJema
       </message>
     </if>
-    <if expr="not openfyde">
+    <if expr="not openjema">
       <message name="IDS_ABOUT_CROS_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS.">
-        FydeOS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>.
+        JemaOS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>.
       </message>
       <message name="IDS_ABOUT_CROS_WITH_LINUX_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS when Crostini is installed.">
-        FydeOS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>, as is <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Beta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
+        JemaOS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>, as is <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Beta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
       </message>
       <message name="IDS_EXTERNAL_PROTOCOL_NO_HANDLER_TITLE" desc="External Protocol Dialog Title">
-        FydeOS can't open this page.
+        JemaOS can't open this page.
       </message>
       <message name="IDS_SYNC_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when the user's sign-in credentials are out of date.">
-        FydeOS could not sync your data because your account sign-in details are out of date.
+        JemaOS could not sync your data because your account sign-in details are out of date.
       </message>
       <message name="IDS_SYNC_UNAVAILABLE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when sync is not available for their domain.">
-        FydeOS could not sync your data because Sync is not available for your domain.
+        JemaOS could not sync your data because Sync is not available for your domain.
       </message>
       <message name="IDS_SYNC_OTHER_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when there's an error signing in.">
-        FydeOS could not sync your data due to an error signing in.
+        JemaOS could not sync your data due to an error signing in.
       </message>
       <message name="IDS_UPDATE_RECOMMENDED_DIALOG_TITLE" desc="The window title for the Update Recommended dialog.">
-        Restart FydeOS
+        Restart JemaOS
       </message>
       <message name="IDS_UPDATE_RECOMMENDED" desc="The main text of the Update Recommended dialog.">
-        FydeOS needs to be restarted to apply the update.
+        JemaOS needs to be restarted to apply the update.
       </message>
       <message name="IDS_INSTALLING_UPDATE" desc="Label shown on the updates installation screen during OOBE">
-        Please wait while FydeOS installs the latest system updates.
+        Please wait while JemaOS installs the latest system updates.
       </message>
       <message name="IDS_EULA_SCREEN_ACCESSIBLE_TITLE" desc="Title to be spoken on opening the OOBE EULA screen">
-        FydeOS terms
+        JemaOS terms
       </message>
       <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
-        Optional: Help make FydeOS better by automatically sending usage statistics and crash reports to Fyde Innovations.
+        Optional: Help make JemaOS better by automatically sending usage statistics and crash reports to Jema Technology.
       </message>
       <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
-        <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the FydeOS EULA Terms.
+        <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the JemaOS EULA Terms.
       </message>
       <message name="IDS_RESTORE_NOTIFICATION_DISPLAY_SOURCE" desc="This is the string shown as the display source of the notification for the user to select restore or not on startup.">
-        FydeOS
+        JemaOS
       </message>
     </if>
   </if>

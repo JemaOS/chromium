@@ -1,9 +1,9 @@
 [
   {
-    "namespace": "fydeosPrivate",
-    "description": "get or set some fydeos specified prefs throught this api",
+    "namespace": "jemaosPrivate",
+    "description": "get or set some jemaos specified prefs throught this api",
     "compiler_options": {
-      "implemented_in": "fydeos/extensions/browser/api/fydeos_private/fydeos_private_api.h"
+      "implemented_in": "jemaos/extensions/browser/api/jemaos_private/jemaos_private_api.h"
     },
     "properties": {
       "services": {
@@ -11,10 +11,10 @@
         "value": {},
         "description": "Prefs that enable or disable functions.",
         "properties": {
-          "fydeosImprovementPlanEnabled": {
+          "jemaosImprovementPlanEnabled": {
             "$ref": "types.ChromeSetting",
-            "value": ["fydeosImprovementPlanEnabled", {"type":"boolean"}],
-            "description": "If enabled, Non-PII system info will be collected by fydeos server."
+            "value": ["jemaosImprovementPlanEnabled", {"type":"boolean"}],
+            "description": "If enabled, Non-PII system info will be collected by jemaos server."
           }
         }
       }
@@ -24,11 +24,11 @@
       "type": "object",
       "properties": {
         "host_suffix": { "type": "string" },
-        "fydeos": { "type": "boolean" }
+        "jemaos": { "type": "boolean" }
       }
     }],
     "functions": [{
-      "name": "getFydeOSInfo",
+      "name": "getJemaOSInfo",
       "type": "function",
       "description": "host info",
       "parameters": [],

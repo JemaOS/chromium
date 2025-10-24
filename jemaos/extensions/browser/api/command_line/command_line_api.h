@@ -25,4 +25,4 @@ namespace extensions {
   };
 
 } //extensions
-#endif // FYDEOS_EXTENSIONS_API_COMMAND_LINE_API_H_
+#endif // JEMAOS_EXTENSIONS_API_COMMAND_LINE_API_H_

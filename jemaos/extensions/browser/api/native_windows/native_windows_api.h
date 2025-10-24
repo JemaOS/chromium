@@ -36,4 +36,4 @@ class NativeWindowsCreateFunction : public ExtensionFunction {
 
 }
 
-#endif  // FYDEOS_EXTENSIONS_API_TABS_TABS_API_H_
+#endif  // JEMAOS_EXTENSIONS_API_TABS_TABS_API_H_

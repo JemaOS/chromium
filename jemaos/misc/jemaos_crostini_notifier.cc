@@ -1,16 +1,16 @@
-// Copyright 2024 The Fyde Innovations Limited. All rights reserved.
+// Copyright 2024 The Jema Technology Limited. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 
-#include "fydeos/misc/fydeos_crostini_notifier.h"
+#include "jemaos/misc/jemaos_crostini_notifier.h"
 #include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/ash/crostini/crostini_util.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ash/crostini/crostini_features.h"
 #include "components/prefs/pref_service.h"
-#include "fydeos/prefs/fydeos_pref_names.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 #include "ui/message_center/message_center.h"
 #include "ui/message_center/public/cpp/notification.h"
 #include "ash/public/cpp/notification_utils.h"
@@ -24,13 +24,13 @@
 using message_center::MessageCenter;
 using message_center::Notification;
 
-namespace fydeos::misc {
+namespace jemaos::misc {
 
 namespace {
   const char kMiscCrostiniInstallNotificationId[] =
-    "fydeos.misc.crostini.install.notification";
+    "jemaos.misc.crostini.install.notification";
   const char kMiscCrostiniInstallNotifierId[] =
-    "fydeos.misc.crostini.install.notifier";
+    "jemaos.misc.crostini.install.notifier";
 
   const int kCrostiniInstallerNotificationDelayInSeconds = 10;
 }
@@ -73,7 +73,7 @@ void MiscCrostiniNotifier::MayShowCrostiniInstallerNotification() {
     return;
   }
   // if already interacted, return
-  bool notified = profile_->GetPrefs()->GetBoolean(fydeos::prefs::kCrostiniInstallerNotificationUserInteracted);
+  bool notified = profile_->GetPrefs()->GetBoolean(jemaos::prefs::kCrostiniInstallerNotificationUserInteracted);
   if (notified) {
     VLOG(2) << "Crostini installer notification already shown and clicked(or closed) by current user";
     return;
@@ -83,14 +83,14 @@ void MiscCrostiniNotifier::MayShowCrostiniInstallerNotification() {
       message_center::NOTIFICATION_TYPE_SIMPLE,
       kMiscCrostiniInstallNotificationId,
       l10n_util::GetStringUTF16(
-        IDS_ASH_FYDEOS_CROSTINI_INSTALL_NOTIFICATION_TITLE),
+        IDS_ASH_JEMAOS_CROSTINI_INSTALL_NOTIFICATION_TITLE),
       l10n_util::GetStringUTF16(
-        IDS_ASH_FYDEOS_CROSTINI_INSTALL_NOTIFICATION_MESSAGE),
+        IDS_ASH_JEMAOS_CROSTINI_INSTALL_NOTIFICATION_MESSAGE),
       std::u16string(), GURL(),
       message_center::NotifierId(
         message_center::NotifierType::SYSTEM_COMPONENT,
         kMiscCrostiniInstallNotifierId,
-        ::ash::NotificationCatalogName::kFydeOSCrostiniInstall),
+        ::ash::NotificationCatalogName::kJemaOSCrostiniInstall),
       message_center::RichNotificationData(),
       base::MakeRefCounted<message_center::ThunkNotificationDelegate>(
           weak_ptr_factory_.GetWeakPtr()),
@@ -105,7 +105,7 @@ void MiscCrostiniNotifier::Click(
     const std::optional<std::u16string>& reply) {
   if (!profile_) return;
   CloseNotification();
-  profile_->GetPrefs()->SetBoolean(fydeos::prefs::kCrostiniInstallerNotificationUserInteracted, true);
+  profile_->GetPrefs()->SetBoolean(jemaos::prefs::kCrostiniInstallerNotificationUserInteracted, true);
   auto installer = crostini::CrostiniInstallerFactory::GetForProfile(profile_);
   if (installer) {
     installer->ShowDialog(crostini::CrostiniUISurface::kNotification);
@@ -115,8 +115,8 @@ void MiscCrostiniNotifier::Click(
 void MiscCrostiniNotifier::Close(bool by_user) {
   if (!profile_) return;
   if (by_user) {
-    profile_->GetPrefs()->SetBoolean(fydeos::prefs::kCrostiniInstallerNotificationUserInteracted, true);
+    profile_->GetPrefs()->SetBoolean(jemaos::prefs::kCrostiniInstallerNotificationUserInteracted, true);
   }
 }
 
-} // namespace fydeos::misc
+} // namespace jemaos::misc

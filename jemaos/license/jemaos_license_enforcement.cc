@@ -1,8 +1,8 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/license/fydeos_license_enforcement.h"
+#include "jemaos/license/jemaos_license_enforcement.h"
 
 #include "base/timer/timer.h"
 #include "chrome/browser/ui/browser_commands.h"
@@ -22,24 +22,24 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ash/strings/grit/ash_strings.h"
 #include "chrome/browser/notifications/notification_display_service_factory.h"
-#include "fydeos/switches/license/license_switches.h"
+#include "jemaos/switches/license/license_switches.h"
 #include "net/base/url_util.h"
 #include "ash/constants/notifier_catalogs.h"
 #include "base/system/sys_info.h"
 #include "base/time/default_clock.h"
-#include "fydeos/license/fydeos_license_user_util.h"
+#include "jemaos/license/jemaos_license_user_util.h"
 
-namespace fydeos::license {
+namespace jemaos::license {
 namespace {
-  const char kFydeOSSettingsLicensePath[] =
-    "chrome://os-settings/fydeos/license";
-  const char kFydeOSLicenseForceQuitNotificationId[] =
-    "fydeos.license.enforcement.forcequit";
-  const char kFydeOSLicenseEnforceonmentNotifierId[] =
-    "fydeos.license-enforcement";
-  const int kFydeOSForceQuitDelayInMinutes = 15;
-  const int kFydeOSRefreshForceQuitNotificationIntervalInSeconds = 10;
-  const int kFydeOSEnforceIntervalInMinutes = 10;
+  const char kJemaOSSettingsLicensePath[] =
+    "chrome://os-settings/jemaos/license";
+  const char kJemaOSLicenseForceQuitNotificationId[] =
+    "jemaos.license.enforcement.forcequit";
+  const char kJemaOSLicenseEnforceonmentNotifierId[] =
+    "jemaos.license-enforcement";
+  const int kJemaOSForceQuitDelayInMinutes = 15;
+  const int kJemaOSRefreshForceQuitNotificationIntervalInSeconds = 10;
+  const int kJemaOSEnforceIntervalInMinutes = 10;
 }  // namespace
 
 LicenseEnforcement::LicenseEnforcement():
@@ -63,10 +63,10 @@ void LicenseEnforcement::StartEnforcement(Profile* profile,
   if (logOutInterval > 0 && logOutInterval < 2 * 60 * 60) {
     log_out_interval_ = logOutInterval;
   } else {
-    log_out_interval_ = kFydeOSForceQuitDelayInMinutes * 60;
+    log_out_interval_ = kJemaOSForceQuitDelayInMinutes * 60;
   }
 
-  VLOG(2) << "FydeOS License Enforcement, mode " << mode_ << ", log out interval: " << log_out_interval_;
+  VLOG(2) << "JemaOS License Enforcement, mode " << mode_ << ", log out interval: " << log_out_interval_;
 
   ::ash::UpdateEngineClient* update_engine_client = ::ash::UpdateEngineClient::Get();
   update_engine_client->GetEolInfo(
@@ -88,7 +88,7 @@ void LicenseEnforcement::OnGetEolInfo(::ash::UpdateEngineClient::EolInfo info) {
 void LicenseEnforcement::StartEnforcementInternal() {
 
   if (enforce_timer_->IsRunning()) {
-    if (fydeos::switches::IsLicenseTestMode()) {
+    if (jemaos::switches::IsLicenseTestMode()) {
       Enforce();
     }
     return;
@@ -96,7 +96,7 @@ void LicenseEnforcement::StartEnforcementInternal() {
 
   enforce_timer_->Start(
       FROM_HERE,
-      base::Minutes(kFydeOSEnforceIntervalInMinutes),
+      base::Minutes(kJemaOSEnforceIntervalInMinutes),
       base::BindRepeating(&LicenseEnforcement::Enforce,
                           base::Unretained(this)));
 
@@ -133,9 +133,9 @@ void LicenseEnforcement::StopEnforcement() {
 void LicenseEnforcement::PopupLicenseWindow(bool from_user_interaction) {
   if (!profile_) return;
 
-  VLOG(2) << "FydeOS License Enforcement, PopupLicenseWindow";
+  VLOG(2) << "JemaOS License Enforcement, PopupLicenseWindow";
   ash::NewWindowDelegate::GetInstance()->OpenUrl(
-      GURL(kFydeOSSettingsLicensePath),
+      GURL(kJemaOSSettingsLicensePath),
       from_user_interaction ?
       ash::NewWindowDelegate::OpenUrlFrom::kUserInteraction :
       ash::NewWindowDelegate::OpenUrlFrom::kUnspecified,
@@ -154,7 +154,7 @@ void LicenseEnforcement::ForceQuitCurrentUser() {
     return;
   }
 
-  VLOG(2) << "FydeOS LicenseEnforcement, logout after "
+  VLOG(2) << "JemaOS LicenseEnforcement, logout after "
           << log_out_interval_ << " seconds";
   ForceQuitNotification();
   force_quit_timer_->Start(
@@ -175,14 +175,14 @@ void LicenseEnforcement::OnForceQuitNotificationClicked() {
 void LicenseEnforcement::ForceQuitNotification() {
   notification_ = ash::CreateSystemNotificationPtr(
       message_center::NOTIFICATION_TYPE_SIMPLE,
-      kFydeOSLicenseForceQuitNotificationId,
+      kJemaOSLicenseForceQuitNotificationId,
       l10n_util::GetStringUTF16(
-        IDS_ASH_FYDEOS_ENFORCEMENT_FORCE_QUIT_NOTIFICATION_TITLE),
+        IDS_ASH_JEMAOS_ENFORCEMENT_FORCE_QUIT_NOTIFICATION_TITLE),
       std::u16string(), std::u16string(), GURL(),
       message_center::NotifierId(
           message_center::NotifierType::SYSTEM_COMPONENT,
-          kFydeOSLicenseEnforceonmentNotifierId,
-          ::ash::NotificationCatalogName::kFydeOSLicenseEnforcement),
+          kJemaOSLicenseEnforceonmentNotifierId,
+          ::ash::NotificationCatalogName::kJemaOSLicenseEnforcement),
       message_center::RichNotificationData(),
       new message_center::HandleNotificationClickDelegate(
           base::BindRepeating(
@@ -197,7 +197,7 @@ void LicenseEnforcement::ForceQuitNotification() {
 
   notification_timer_->Start(
       FROM_HERE,
-      base::Seconds(kFydeOSRefreshForceQuitNotificationIntervalInSeconds),
+      base::Seconds(kJemaOSRefreshForceQuitNotificationIntervalInSeconds),
       base::BindRepeating(
         &LicenseEnforcement::UpdateForceQuitNotification,
         base::Unretained(this)));
@@ -210,7 +210,7 @@ std::u16string LicenseEnforcement::ForceQuitNotificationMessage() {
     force_quit_timer_->desired_run_time() - base::TimeTicks::Now();
   int seconds = left.InSeconds();
   return l10n_util::GetStringFUTF16(
-      IDS_ASH_FYDEOS_ENFORCEMENT_FORCE_QUIT_NOTIFICATION_MESSAGE,
+      IDS_ASH_JEMAOS_ENFORCEMENT_FORCE_QUIT_NOTIFICATION_MESSAGE,
       base::NumberToString16(
         seconds > 0 ? seconds : log_out_interval_));
 }
@@ -240,8 +240,8 @@ void LicenseEnforcement::RemoveForceQuitNotification() {
   if (!profile_ || notification_ == nullptr) return;
   NotificationDisplayServiceFactory::GetForProfile(profile_)->Close(
       NotificationHandler::Type::TRANSIENT,
-      kFydeOSLicenseForceQuitNotificationId);
+      kJemaOSLicenseForceQuitNotificationId);
   notification_.reset();
 }
 
-}  // namespace fydeos::license
+}  // namespace jemaos::license

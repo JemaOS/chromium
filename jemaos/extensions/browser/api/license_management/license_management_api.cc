@@ -1,14 +1,14 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/extensions/browser/api/license_management/license_management_api.h"
+#include "jemaos/extensions/browser/api/license_management/license_management_api.h"
 
 #include <stddef.h>
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/lazy_instance.h"
-#include "fydeos/extensions/common/api/license_management.h"
+#include "jemaos/extensions/common/api/license_management.h"
 
 namespace license = extensions::api::license_management;
 
@@ -35,8 +35,8 @@ LicenseEventRouter::LicenseEventRouter(Profile* profile)
     profile_(profile),
     event_router_(EventRouter::Get(profile_)),
     weak_factory_(this){
-  CHECK(fydeos::license::LicenseManager::Get() != nullptr);
-  license_observer_.Observe(fydeos::license::LicenseManager::Get());
+  CHECK(jemaos::license::LicenseManager::Get() != nullptr);
+  license_observer_.Observe(jemaos::license::LicenseManager::Get());
 }
 
 LicenseEventRouter::~LicenseEventRouter() = default;
@@ -61,12 +61,12 @@ void LicenseEventRouter::OnLicenseStateChanged(bool IsValid) {
   base::Value::List event_args;
   if (IsValid) {
     auto event = std::make_unique<Event>(
-        events::FYDEOS_LICENSE_VALID_NOTIFICATION,
+        events::JEMAOS_LICENSE_VALID_NOTIFICATION,
         license::OnValid::kEventName, std::move(event_args));
     event_router_->BroadcastEvent(std::move(event));
   }else {
     auto event = std::make_unique<Event>(
-        events::FYDEOS_LICENSE_INVALID_NOTIFICATION,
+        events::JEMAOS_LICENSE_INVALID_NOTIFICATION,
         license::OnInvalid::kEventName, std::move(event_args));
     event_router_->BroadcastEvent(std::move(event));
   }
@@ -97,7 +97,7 @@ void LicenseManagementAPI::OnListenerRemoved(const EventListenerInfo& details) {
 }
 
 ExtensionFunction::ResponseAction LicenseManagementRefreshLicenseFunction::Run() {
-  fydeos::license::LicenseManager::Get()->CheckLicense();
+  jemaos::license::LicenseManager::Get()->CheckLicense();
   return RespondNow(NoArguments());
 }
 

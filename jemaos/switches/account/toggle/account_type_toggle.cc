@@ -1,10 +1,10 @@
-// Copyright (c) 2022 Fyde Innovations. All rights reserved.
+// Copyright (c) 2022 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/account/toggle/account_type_toggle.h"
-#include "fydeos/switches/account/account_switches.h"
-#include "fydeos/switches/account/base/account_base.h"
+#include "jemaos/switches/account/toggle/account_type_toggle.h"
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/switches/account/base/account_base.h"
 
 #include "google_apis/gaia/gaia_urls.h"
 #include "chrome/browser/browser_process.h"
@@ -16,7 +16,7 @@
 #include "remoting/base/service_urls.h"
 
 
-namespace fydeos {
+namespace jemaos {
 namespace switches {
 
 namespace {
@@ -40,18 +40,18 @@ void ResetUrls() {
   }
 }
 
-void ToggleFydeAccountFlagInternal(base::CommandLine* cmdline, const AccountType account_type) {
-  if (cmdline->HasSwitch(kFydeAccountForceDisabledForTest)) return;
-  if (IsFydeSetDeviceManaged()) return;
+void ToggleJemaAccountFlagInternal(base::CommandLine* cmdline, const AccountType account_type) {
+  if (cmdline->HasSwitch(kJemaAccountForceDisabledForTest)) return;
+  if (IsJemaSetDeviceManaged()) return;
   bool need_reset_url = false;
-  if (account_type == AccountType::FYDE_ACCOUNT) {
-    if (!cmdline->HasSwitch(kFydeAccountEnable)) {
-      cmdline->AppendSwitch(kFydeAccountEnable);
+  if (account_type == AccountType::JEMA_ACCOUNT) {
+    if (!cmdline->HasSwitch(kJemaAccountEnable)) {
+      cmdline->AppendSwitch(kJemaAccountEnable);
       need_reset_url = true;
     }
   } else if (account_type == AccountType::GOOGLE) {
-    if (cmdline->HasSwitch(kFydeAccountEnable)) {
-      cmdline->RemoveSwitch(kFydeAccountEnable);
+    if (cmdline->HasSwitch(kJemaAccountEnable)) {
+      cmdline->RemoveSwitch(kJemaAccountEnable);
       need_reset_url = true;
     }
   } else {
@@ -73,58 +73,58 @@ user_manager::User* GetActiveUserInternal() {
 
 }
 
-void ToggleFydeAccountFlagByAccountId(const AccountId& account_id) {
+void ToggleJemaAccountFlagByAccountId(const AccountId& account_id) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  ToggleFydeAccountFlagInternal(command_line, account_id.GetAccountType());
+  ToggleJemaAccountFlagInternal(command_line, account_id.GetAccountType());
 }
 
-void ToggleFydeAccountFlagForCommandLine(base::CommandLine* command_line) {
+void ToggleJemaAccountFlagForCommandLine(base::CommandLine* command_line) {
   user_manager::User* user = GetActiveUserInternal();
   if (!user) return;
   AccountId account_id = user->GetAccountId();
-  ToggleFydeAccountFlagInternal(command_line, account_id.GetAccountType());
+  ToggleJemaAccountFlagInternal(command_line, account_id.GetAccountType());
 }
 
-void ToggleFydeAccountFlagForCommandLineByAccountId(base::CommandLine* command_line, const AccountId& account_id) {
-  ToggleFydeAccountFlagInternal(command_line, account_id.GetAccountType());
+void ToggleJemaAccountFlagForCommandLineByAccountId(base::CommandLine* command_line, const AccountId& account_id) {
+  ToggleJemaAccountFlagInternal(command_line, account_id.GetAccountType());
 }
 
-void EnableFydeAccountFlag() {
+void EnableJemaAccountFlag() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  ToggleFydeAccountFlagInternal(command_line, AccountType::FYDE_ACCOUNT);
+  ToggleJemaAccountFlagInternal(command_line, AccountType::JEMA_ACCOUNT);
 }
 
-void DisableFydeAccountFlag() {
+void DisableJemaAccountFlag() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  ToggleFydeAccountFlagInternal(command_line, AccountType::GOOGLE);
+  ToggleJemaAccountFlagInternal(command_line, AccountType::GOOGLE);
 }
 
-void ToggleFydeAccountFlagByActiveUser() {
+void ToggleJemaAccountFlagByActiveUser() {
   user_manager::User* user = GetActiveUserInternal();
   if (!user) return;
-  ToggleFydeAccountFlagByAccountId(user->GetAccountId());
+  ToggleJemaAccountFlagByAccountId(user->GetAccountId());
 }
 
-void EnableFydeAccountFlagForManagedDevice() {
-  EnableFydeAccountFlag();
-  FydeSetDeviceManagedFlag(true);
+void EnableJemaAccountFlagForManagedDevice() {
+  EnableJemaAccountFlag();
+  JemaSetDeviceManagedFlag(true);
 }
 
-void DisableFydeAccountFlagForManagedDevice() {
-  DisableFydeAccountFlag();
-  FydeSetDeviceManagedFlag(true);
+void DisableJemaAccountFlagForManagedDevice() {
+  DisableJemaAccountFlag();
+  JemaSetDeviceManagedFlag(true);
 }
 
 void AppendAccountSwitchesIfNeed(const AccountId& account_id, std::vector<std::string>* switches) {
   // GetSwitchString
   base::CommandLine cmd_line(base::CommandLine::NO_PROGRAM);
-  cmd_line.AppendSwitch(kFydeAccountEnable);
+  cmd_line.AppendSwitch(kJemaAccountEnable);
   const std::string account_switch = cmd_line.argv()[1];
 
-  if (account_id.GetAccountType() == AccountType::FYDE_ACCOUNT && std::find(switches->begin(), switches->end(), account_switch) == switches->end()) {
+  if (account_id.GetAccountType() == AccountType::JEMA_ACCOUNT && std::find(switches->begin(), switches->end(), account_switch) == switches->end()) {
     switches->push_back(account_switch);
   }
 }
 
 } // namespace switches
-} // namespace fydeos
+} // namespace jemaos

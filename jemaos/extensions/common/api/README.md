@@ -5,7 +5,7 @@
 
 ## Detail:
 1. Root gn file `src/chrome/common/extensions/api/BUILD.gn`
-2. the c++ files in browser/api is compiled by `src/fydeos/extensions/browser/BUILD.gn` and add url to `src/chrome/browser/extensions/BUILD.gn`
+2. the c++ files in browser/api is compiled by `src/jemaos/extensions/browser/BUILD.gn` and add url to `src/chrome/browser/extensions/BUILD.gn`
 3. Add more function objects to extension:
 * Add const names of new functions to `src/extensions/browser/extension_function_histogram_value.h`
 * running script `python tools/metrics/histograms/update_extension_histograms.py`
@@ -14,7 +14,7 @@
 * running script `python tools/metrics/histograms/update_extension_permission.py`
 * Add register command to `APIPermissionInfo::InitInfo permissions_to_register` in `src/extensions/common/extensions_api_permissions.cc`
 5. Add check permission command at the front of real private functions.
-6. Add permission information to `chrome/app/fydeos_generated_resources.grdp` append ids to  `chrome/common/extensions/permissions/chrome_permission_message_rules.cc` 
+6. Add permission information to `chrome/app/jemaos_generated_resources.grdp` append ids to  `chrome/common/extensions/permissions/chrome_permission_message_rules.cc` 
 
 
 ## About BUILD.gn

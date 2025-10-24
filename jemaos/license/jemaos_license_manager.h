@@ -1,22 +1,22 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FYDEOS_LICENSE_MANAGER_H_
-#define FYDEOS_LICENSE_MANAGER_H_
+#ifndef JEMAOS_LICENSE_MANAGER_H_
+#define JEMAOS_LICENSE_MANAGER_H_
 #include <memory>
 #include <string>
 #include "base/timer/timer.h"
 #include "base/threading/thread.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/shell_state.h"
-#include "fydeos/license/fydeos_license_fetcher.h"
-#include "fydeos/license/fydeos_license_validator.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
+#include "jemaos/license/jemaos_license_fetcher.h"
+#include "jemaos/license/jemaos_license_validator.h"
 #include "chromeos/chromeos_export.h"
 #include "chromeos/ash/components/login/login_state/login_state.h"
 
 class Profile;
 
-namespace fydeos::license {
+namespace jemaos::license {
 
 class LicenseEnforcement;
 
@@ -56,16 +56,16 @@ class CHROMEOS_EXPORT LicenseManager : public ::ash::LoginState::Observer {
   void OnFetchedOnlineLicense(std::string license);
   void IFetchOfflineLicense();
   void OnFetchError(int errCode, const std::string& errMsg);
-  void OnFetchedOfflineLicense(std::optional<fydeos::ash::ShellState> state);
+  void OnFetchedOfflineLicense(std::optional<jemaos::ash::ShellState> state);
   void IGetId();
   void IGetSerialNumber();
   void NotifyObservers();
-  void OnGotId(std::optional<fydeos::ash::ShellState> state);
-  void OnGotSerialNumber(std::optional<fydeos::ash::ShellState> state);
+  void OnGotId(std::optional<jemaos::ash::ShellState> state);
+  void OnGotSerialNumber(std::optional<jemaos::ash::ShellState> state);
   void IValidateLicense(std::optional<std::string> license);
   void ISaveLocalLicenseString(std::optional<base::Value> license);
   void IStoreLicense(std::optional<base::Value> license);
-  void OnStoredLicense(std::optional<fydeos::ash::ShellState> state);
+  void OnStoredLicense(std::optional<jemaos::ash::ShellState> state);
   void OnError(int errCode, const std::string& errMsg);
   void OnValidateError(int errCode, const std::string& errMsg, std::optional<base::Value> license = std::nullopt);
   void OnValidPref(int licenseType, bool expired, int expiration_action, int showLicenseInSettings, int logOutInterval);
@@ -100,7 +100,7 @@ class CHROMEOS_EXPORT LicenseManager : public ::ash::LoginState::Observer {
   base::WeakPtrFactory<LicenseManager> weak_ptr_factory_{this};
 };
 
-}  // namespace fydeos::license
+}  // namespace jemaos::license
 
 
-#endif  // FYDEOS_LICENSE_MANAGER_H_
+#endif  // JEMAOS_LICENSE_MANAGER_H_

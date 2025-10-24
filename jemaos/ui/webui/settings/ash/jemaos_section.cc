@@ -1,8 +1,8 @@
-// Copyright (c) 2021 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2021 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/ui/webui/settings/ash/fydeos_section.h"
+#include "jemaos/ui/webui/settings/ash/jemaos_section.h"
 #include "base/command_line.h"
 #include "base/no_destructor.h"
 #include "chrome/grit/generated_resources.h"
@@ -16,18 +16,18 @@
 #include "components/prefs/pref_service.h"
 #include "base/system/sys_info.h"
 #include "chrome/browser/browser_process.h"
-#include "fydeos/switches/misc/misc_switches.h"
-#include "fydeos/switches/urls/urls_constants.h"
+#include "jemaos/switches/misc/misc_switches.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 #include "base/strings/utf_string_conversions.h"
 
-#include "fydeos/ui/webui/settings/ash/fydeos_handler.h"
-#include "fydeos/prefs/fydeos_pref_names.h"
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/ui/webui/settings/ash/jemaos_handler.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
+#include "jemaos/build/config/buildflags.h"
 
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
-#include "fydeos/switches/license/license_switches.h"
-#include "fydeos/license/fydeos_license_user_util.h"
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+#include "jemaos/switches/license/license_switches.h"
+#include "jemaos/license/jemaos_license_user_util.h"
 #endif
 
 #include "chromeos/dbus/constants/dbus_switches.h"
@@ -35,10 +35,10 @@
 namespace ash::settings {
 
 namespace mojom {
-using ::chromeos::settings::mojom::kFydeOsSectionPath;
-using ::chromeos::settings::mojom::kFydeOsSubpagePath;
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
-using ::chromeos::settings::mojom::kFydeOsLicenseInfoSubpagePath;
+using ::chromeos::settings::mojom::kJemaOsSectionPath;
+using ::chromeos::settings::mojom::kJemaOsSubpagePath;
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+using ::chromeos::settings::mojom::kJemaOsLicenseInfoSubpagePath;
 #endif
 using ::chromeos::settings::mojom::Section;
 using ::chromeos::settings::mojom::Subpage;
@@ -46,205 +46,205 @@ using ::chromeos::settings::mojom::Setting;
 }
 
 namespace {
-  const std::vector<SearchConcept>& GetFydeOsSearchConcepts() {
+  const std::vector<SearchConcept>& GetJemaOsSearchConcepts() {
     static const base::NoDestructor<std::vector<SearchConcept>> tags({
-      {IDS_OS_SETTINGS_FYDEOS_SETTINGS,
-       mojom::kFydeOsSubpagePath,
+      {IDS_OS_SETTINGS_JEMAOS_SETTINGS,
+       mojom::kJemaOsSubpagePath,
        mojom::SearchResultIcon::kChrome,
        mojom::SearchResultDefaultRank::kMedium,
        mojom::SearchResultType::kSubpage,
-       {.subpage = mojom::Subpage::kFydeOsMain}},
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
-      {IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_TITLE,
-       mojom::kFydeOsLicenseInfoSubpagePath,
+       {.subpage = mojom::Subpage::kJemaOsMain}},
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+      {IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_TITLE,
+       mojom::kJemaOsLicenseInfoSubpagePath,
        mojom::SearchResultIcon::kChrome,
        mojom::SearchResultDefaultRank::kMedium,
        mojom::SearchResultType::kSubpage,
-       {.subpage = mojom::Subpage::kFydeOsLicenseInfo}},
+       {.subpage = mojom::Subpage::kJemaOsLicenseInfo}},
 #endif
     });
     return *tags;
   }
 
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
-  const char kFydeOSLicenseLookupPath[] = "/web/license.html";
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+  const char kJemaOSLicenseLookupPath[] = "/web/license.html";
 #endif
 }  // namespace
 
-FydeOsSection::FydeOsSection(Profile* profile,
+JemaOsSection::JemaOsSection(Profile* profile,
                            SearchTagRegistry* search_tag_registry,
                            PrefService* pref_service)
   : OsSettingsSection(profile, search_tag_registry),
     pref_service_(pref_service) {
   SearchTagRegistry::ScopedTagUpdater updater = registry()->StartUpdate();
-  updater.AddSearchTags(GetFydeOsSearchConcepts());
+  updater.AddSearchTags(GetJemaOsSearchConcepts());
 }
 
-FydeOsSection::~FydeOsSection() = default;
+JemaOsSection::~JemaOsSection() = default;
 
-void FydeOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
+void JemaOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
   static constexpr webui::LocalizedString kLocalizedStrings[] = {
-    {"fydeosSettingsAccountTitle", IDS_OS_SETTINGS_FYDEOS_ACCOUNT_TITLE},
-    {"fydeosSettingsRemoteAssistanceTitle",
-      IDS_OS_SETTINGS_FYDEOS_REMOTE_ASSISTANCE_TITLE},
-    {"fydeosSettingsRemoteHelperServiceTitle",
-      IDS_OS_SETTINGS_FYDEOS_REMOTE_HELPER_SERVICE_TITLE},
-    {"fydeosSettingsRemoteHelperDesc",
-      IDS_OS_SETTINGS_FYDEOS_REMOTE_HELPER_SERVICE_DESC},
-    {"fydeosSettingsRemoteHelperEnabledMessage",
-      IDS_OS_SETTINGS_FYDEOS_REMOTE_HELPER_SERVICE_ENABLED_MESSAGE},
-    {"fydeosSettingsRemoteHelperRequireRestartMessage",
-      IDS_OS_SETTINGS_FYDEOS_REMOTE_HELPER_SERVICE_REQUIRE_RESTART_MESSAGE},
-    {"fydeosSettingsRemoteHelperStartingMessage",
-      IDS_OS_SETTINGS_FYDEOS_REMOTE_HELPER_SERVICE_STARGING_MESSAGE},
-    {"fydeosSettingsMoreInfoTitle", IDS_OS_SETTINGS_FYDEOS_MORE_INFO_TITLE},
+    {"jemaosSettingsAccountTitle", IDS_OS_SETTINGS_JEMAOS_ACCOUNT_TITLE},
+    {"jemaosSettingsRemoteAssistanceTitle",
+      IDS_OS_SETTINGS_JEMAOS_REMOTE_ASSISTANCE_TITLE},
+    {"jemaosSettingsRemoteHelperServiceTitle",
+      IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_TITLE},
+    {"jemaosSettingsRemoteHelperDesc",
+      IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_DESC},
+    {"jemaosSettingsRemoteHelperEnabledMessage",
+      IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_ENABLED_MESSAGE},
+    {"jemaosSettingsRemoteHelperRequireRestartMessage",
+      IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_REQUIRE_RESTART_MESSAGE},
+    {"jemaosSettingsRemoteHelperStartingMessage",
+      IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_STARGING_MESSAGE},
+    {"jemaosSettingsMoreInfoTitle", IDS_OS_SETTINGS_JEMAOS_MORE_INFO_TITLE},
 
-    {"fydeosSettingsOtherTweaksTitle",
-      IDS_OS_SETTINGS_FYDEOS_OTHER_TWEAKS_TITLE},
+    {"jemaosSettingsOtherTweaksTitle",
+      IDS_OS_SETTINGS_JEMAOS_OTHER_TWEAKS_TITLE},
     {"rebootButtonInTrayLabel",
-      IDS_OS_SETTINGS_FYDEOS_REBOOT_BUTTON_IN_TRAY_LABEL},
-    {"displayFydeOsRebootButtonInTray",
-      IDS_OS_SETTINGS_FYDEOS_DISPLAY_REBOOT_BUTTON_IN_TRAY},
+      IDS_OS_SETTINGS_JEMAOS_REBOOT_BUTTON_IN_TRAY_LABEL},
+    {"displayJemaOsRebootButtonInTray",
+      IDS_OS_SETTINGS_JEMAOS_DISPLAY_REBOOT_BUTTON_IN_TRAY},
     {"rotateScreenButtonInTrayLabel",
-      IDS_OS_SETTINGS_FYDEOS_ROTATE_SCREEN_BUTTON_IN_TRAY_LABEL},
-    {"notTabletPhysicalStateDisableFydeOsRotateScreen",
-      IDS_OS_SETTINGS_FYDEOS_NOT_TABLET_STATE_DISABLE_ROTATE_SCREEN},
-    {"displayFydeOsRotateScreenButton",
-      IDS_OS_SETTINGS_FYDEOS_DISPLAY_ROTATE_SCREEN_BUTTON},
+      IDS_OS_SETTINGS_JEMAOS_ROTATE_SCREEN_BUTTON_IN_TRAY_LABEL},
+    {"notTabletPhysicalStateDisableJemaOsRotateScreen",
+      IDS_OS_SETTINGS_JEMAOS_NOT_TABLET_STATE_DISABLE_ROTATE_SCREEN},
+    {"displayJemaOsRotateScreenButton",
+      IDS_OS_SETTINGS_JEMAOS_DISPLAY_ROTATE_SCREEN_BUTTON},
     {"switchTabletLaptopModeButtonInTrayLabel",
-      IDS_OS_SETTINGS_FYDEOS_SWITCH_TABLET_LAPTOP_MODE_BUTTON_IN_TRAY_LABEL},
+      IDS_OS_SETTINGS_JEMAOS_SWITCH_TABLET_LAPTOP_MODE_BUTTON_IN_TRAY_LABEL},
     {"displaySwitchTabletLaptopModeButton",
-      IDS_OS_SETTINGS_FYDEOS_DISPLAY_SWITCH_TABLET_LAPTOP_MODE_BUTTON},
-    {"enableLibwidevineLabel", IDS_OS_SETTINGS_FYDEOS_ENABLE_LIBWIDEVINE_LABEL},
+      IDS_OS_SETTINGS_JEMAOS_DISPLAY_SWITCH_TABLET_LAPTOP_MODE_BUTTON},
+    {"enableLibwidevineLabel", IDS_OS_SETTINGS_JEMAOS_ENABLE_LIBWIDEVINE_LABEL},
     {"failedEnableWidevineTitle",
-      IDS_OS_SETTINGS_FYDEOS_FAILED_ENABLE_WIDEVINE_TITLE},
+      IDS_OS_SETTINGS_JEMAOS_FAILED_ENABLE_WIDEVINE_TITLE},
     {"failedEnableWidevineMessage",
-      IDS_OS_SETTINGS_FYDEOS_FAILED_ENABLE_WIDEVINE_MESSAGE},
-    {"fydeosSettingsMenuItemDescription",
-      IDS_OS_SETTINGS_FYDEOS_MENU_ITEM_DESCRIPTION},
-    {"fydeosExperimentalFeatures",
-      IDS_OS_SETTINGS_FYDEOS_EXPERIMENTAL_FEATURES_TITLE},
-    {"fydeosBypassTpmChecksTitle",
-      IDS_OS_SETTINGS_FYDEOS_BYPASS_TPM_CHECKS_TITLE},
-    {"fydeosBypassTpmChecksDesc",
-      IDS_OS_SETTINGS_FYDEOS_BYPASS_TPM_CHECKS_DESC},
+      IDS_OS_SETTINGS_JEMAOS_FAILED_ENABLE_WIDEVINE_MESSAGE},
+    {"jemaosSettingsMenuItemDescription",
+      IDS_OS_SETTINGS_JEMAOS_MENU_ITEM_DESCRIPTION},
+    {"jemaosExperimentalFeatures",
+      IDS_OS_SETTINGS_JEMAOS_EXPERIMENTAL_FEATURES_TITLE},
+    {"jemaosBypassTpmChecksTitle",
+      IDS_OS_SETTINGS_JEMAOS_BYPASS_TPM_CHECKS_TITLE},
+    {"jemaosBypassTpmChecksDesc",
+      IDS_OS_SETTINGS_JEMAOS_BYPASS_TPM_CHECKS_DESC},
 
-    {"autoSigninForFydeLocalAccountTitle",
-      IDS_OS_SETTINGS_FYDEOS_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_TITLE},
-    {"enableAutoSigninForFydeLocalAccountHelpMessage",
-      IDS_OS_SETTINGS_FYDEOS_ENABLE_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_MESSAGE},
-    {"autoSigninForFydeLocalAccountOtherUserAlreadyEnabled",
-      IDS_OS_SETTINGS_FYDEOS_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_ALREADY_ENABLED_BY_OTHER},
-    {"unableToSetAutoSigninForFydeLocalAccount",
-      IDS_OS_SETTINGS_FYDEOS_UNABLE_TO_SET_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT},
-    {"unableToSetAutoSigninForFydeNonLocalAccount",
-      IDS_OS_SETTINGS_FYDEOS_UNABLE_TO_SET_AUTO_SIGNIN_FOR_NON_LOCAL_ACCOUNT},
+    {"autoSigninForJemaLocalAccountTitle",
+      IDS_OS_SETTINGS_JEMAOS_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_TITLE},
+    {"enableAutoSigninForJemaLocalAccountHelpMessage",
+      IDS_OS_SETTINGS_JEMAOS_ENABLE_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_MESSAGE},
+    {"autoSigninForJemaLocalAccountOtherUserAlreadyEnabled",
+      IDS_OS_SETTINGS_JEMAOS_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_ALREADY_ENABLED_BY_OTHER},
+    {"unableToSetAutoSigninForJemaLocalAccount",
+      IDS_OS_SETTINGS_JEMAOS_UNABLE_TO_SET_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT},
+    {"unableToSetAutoSigninForJemaNonLocalAccount",
+      IDS_OS_SETTINGS_JEMAOS_UNABLE_TO_SET_AUTO_SIGNIN_FOR_NON_LOCAL_ACCOUNT},
     {"unableToSetAutoSigninWithoutPasswordAuthFactor",
-      IDS_OS_SETTINGS_FYDEOS_UNABLE_TO_SET_AUTO_SIGNIN_WITHOUT_PASSWORD_AUTH_FACTOR},
+      IDS_OS_SETTINGS_JEMAOS_UNABLE_TO_SET_AUTO_SIGNIN_WITHOUT_PASSWORD_AUTH_FACTOR},
 
-    {"fydeosSettingsBackupButtonLabel",
-      IDS_OS_SETTINGS_FYDEOS_BACKUP_BUTTON_LABEL},
-    {"fydeosSettingsBackupIntroTitle",
-      IDS_OS_SETTINGS_FYDEOS_BACKUP_INTRO_TITLE},
-    {"fydeosSettingsBackupPasswordPromptTitle",
-      IDS_OS_SETTINGS_FYDEOS_BACKUP_PASSWORD_PROMPT_TITLE},
-    {"fydeosSettingsBackupPasswordPromptText",
-      IDS_OS_SETTINGS_FYDEOS_BACKUP_PASSWORD_PROMPT_TEXT},
+    {"jemaosSettingsBackupButtonLabel",
+      IDS_OS_SETTINGS_JEMAOS_BACKUP_BUTTON_LABEL},
+    {"jemaosSettingsBackupIntroTitle",
+      IDS_OS_SETTINGS_JEMAOS_BACKUP_INTRO_TITLE},
+    {"jemaosSettingsBackupPasswordPromptTitle",
+      IDS_OS_SETTINGS_JEMAOS_BACKUP_PASSWORD_PROMPT_TITLE},
+    {"jemaosSettingsBackupPasswordPromptText",
+      IDS_OS_SETTINGS_JEMAOS_BACKUP_PASSWORD_PROMPT_TEXT},
 
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
-    {"fydeosSettingsLicenseStateLoading",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_STATE_LOADING},
-    {"fydeosSettingsLicenseRetryButtonText",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_RETRY_BUTTON},
-    {"fydeosSettingsLicenseLabel",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_MENU},
-    {"fydeosSettingsLicenseTitle",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_TITLE},
-    {"fydeosSettingsLicenseErrorReadMachineId",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_ERROR_MACHINE_ID},
-    {"fydeosSettingsLicenseIdLabel",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_ID_LABEL},
-    {"fydeosSettingsLicenseExpireDateLabel",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_EXPIRE_DATE_LABEL},
-    {"fydeosSettingsLicenseRetryWebviewButtonText",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_RETRY_WEBVIEW_BUTTON},
-    {"fydeosSettingsLicenseOfflineHintMessage",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_OFFLINE_HINT_MESSAGE},
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+    {"jemaosSettingsLicenseStateLoading",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_STATE_LOADING},
+    {"jemaosSettingsLicenseRetryButtonText",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_RETRY_BUTTON},
+    {"jemaosSettingsLicenseLabel",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_MENU},
+    {"jemaosSettingsLicenseTitle",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_TITLE},
+    {"jemaosSettingsLicenseErrorReadMachineId",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_ERROR_MACHINE_ID},
+    {"jemaosSettingsLicenseIdLabel",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_ID_LABEL},
+    {"jemaosSettingsLicenseExpireDateLabel",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_EXPIRE_DATE_LABEL},
+    {"jemaosSettingsLicenseRetryWebviewButtonText",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_RETRY_WEBVIEW_BUTTON},
+    {"jemaosSettingsLicenseOfflineHintMessage",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_OFFLINE_HINT_MESSAGE},
 #endif
-    {"fydeosSettingsSecuritySectionTitle",
-      IDS_OS_SETTINGS_FYDEOS_SECURITY_SECTION_TITLE},
-    {"fydeosSettingsEnableDevModeButtonText",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_ENABLE_DEV_MODE_BUTTON_TEXT},
-    {"fydeosSettingsInDevModeTooltip",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_IN_DEV_MODE_TOOLTIP},
-    {"fydeosSettingsEnableDevModeConfirmTitle",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_ENABLE_DEV_MODE_CONFIRM_TITLE},
-    {"fydeosSettingsEnableDevModeConfirmMessage",
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_ENABLE_DEV_MODE_CONFIRM_MESSAGE},
+    {"jemaosSettingsSecuritySectionTitle",
+      IDS_OS_SETTINGS_JEMAOS_SECURITY_SECTION_TITLE},
+    {"jemaosSettingsEnableDevModeButtonText",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_ENABLE_DEV_MODE_BUTTON_TEXT},
+    {"jemaosSettingsInDevModeTooltip",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_IN_DEV_MODE_TOOLTIP},
+    {"jemaosSettingsEnableDevModeConfirmTitle",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_ENABLE_DEV_MODE_CONFIRM_TITLE},
+    {"jemaosSettingsEnableDevModeConfirmMessage",
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_ENABLE_DEV_MODE_CONFIRM_MESSAGE},
   };
 
   html_source->AddLocalizedStrings(kLocalizedStrings);
-  html_source->AddString("fydeosSettingsPageTitle",
-      l10n_util::GetStringFUTF16(IDS_OS_SETTINGS_FYDEOS_SETTINGS,
+  html_source->AddString("jemaosSettingsPageTitle",
+      l10n_util::GetStringFUTF16(IDS_OS_SETTINGS_JEMAOS_SETTINGS,
         l10n_util::GetStringUTF16(IDS_PRODUCT_OS_NAME)));
 
   html_source->AddString(
-      "fydeosSettingsBackupLabel",
-      l10n_util::GetStringFUTF16(IDS_OS_SETTINGS_FYDEOS_BACKUP_LABEL,
+      "jemaosSettingsBackupLabel",
+      l10n_util::GetStringFUTF16(IDS_OS_SETTINGS_JEMAOS_BACKUP_LABEL,
           base::ASCIIToUTF16(
-            fydeos::constants::kFydeOSBackupRestoreLearnMoreURL)));
+            jemaos::constants::kJemaOSBackupRestoreLearnMoreURL)));
   html_source->AddString(
-      "fydeosSettingsBackupIntroText",
+      "jemaosSettingsBackupIntroText",
       l10n_util::GetStringFUTF16(
-          IDS_OS_SETTINGS_FYDEOS_BACKUP_INTRO_TEXT,
+          IDS_OS_SETTINGS_JEMAOS_BACKUP_INTRO_TEXT,
           base::ASCIIToUTF16(
-            fydeos::constants::kFydeOSBackupRestoreLearnMoreURL)));
+            jemaos::constants::kJemaOSBackupRestoreLearnMoreURL)));
 
   html_source->AddString(
       "toggleWidevineHelpMessage",
       l10n_util::GetStringFUTF16(
-          IDS_OS_SETTINGS_FYDEOS_TOGGLE_LIBWIDEVINE_HELP_MESSAGE,
+          IDS_OS_SETTINGS_JEMAOS_TOGGLE_LIBWIDEVINE_HELP_MESSAGE,
             base::ASCIIToUTF16(
-              fydeos::constants::kFydeOSEnableWidevineLearnMoreURL)));
+              jemaos::constants::kJemaOSEnableWidevineLearnMoreURL)));
 
   html_source->AddString(
       "toggleArcMediaAutoScanLabel",
       l10n_util::GetStringFUTF16(
-          IDS_OS_SETTINGS_FYDEOS_TOGGLE_ARC_MEDIA_AUTO_SCAN_LABEL,
+          IDS_OS_SETTINGS_JEMAOS_TOGGLE_ARC_MEDIA_AUTO_SCAN_LABEL,
             base::ASCIIToUTF16(
-              fydeos::constants::kFydeOSToggleArcMediaAutoScanLearnMoreURL)));
+              jemaos::constants::kJemaOSToggleArcMediaAutoScanLearnMoreURL)));
 
   html_source->AddString(
-      "fydeosSettingsDevModeTransitionLabel",
-      l10n_util::GetStringFUTF16(IDS_OS_SETTINGS_FYDEOS_DEV_MODE_TRANSITION_LABEL,
+      "jemaosSettingsDevModeTransitionLabel",
+      l10n_util::GetStringFUTF16(IDS_OS_SETTINGS_JEMAOS_DEV_MODE_TRANSITION_LABEL,
                                  l10n_util::GetStringUTF16(IDS_PRODUCT_OS_NAME),
                                  base::ASCIIToUTF16(
-                                 fydeos::constants::kFydeOSDevModeTransitionLearnMoreURL)));
+                                 jemaos::constants::kJemaOSDevModeTransitionLearnMoreURL)));
 
   const std::string board = base::SysInfo::GetLsbReleaseBoard();
   html_source->AddBoolean("showToggleRebootButtonInTray", false);
   html_source->AddBoolean("showToggleRotateScreenButton",
-      fydeos::switches::IsNonForYouBoard(board));
+      jemaos::switches::IsNonForYouBoard(board));
   html_source->AddBoolean("showToggleSwitchTabletLaptopButton", true);
 
-  html_source->AddString("fydeOSRdpUrl",
-      fydeos::constants::kFydeOSRemoteDesktopURL);
-  html_source->AddString("fydeosAccountBaseUrl",
-      fydeos::constants::kFydeOSAccountBaseUrl);
+  html_source->AddString("jemaOSRdpUrl",
+      jemaos::constants::kJemaOSRemoteDesktopURL);
+  html_source->AddString("jemaosAccountBaseUrl",
+      jemaos::constants::kJemaOSAccountBaseUrl);
 
   html_source->AddBoolean("isTpmFallbackNecessary",
       g_browser_process->local_state()->GetBoolean(
-        fydeos::prefs::kForceTpmFallbackNecessary));
-  html_source->AddString("fydeExperimentTpmfallbackUrl",
-      fydeos::constants::kFydeExperimentTpmFallbackUrl);
+        jemaos::prefs::kForceTpmFallbackNecessary));
+  html_source->AddString("jemaExperimentTpmfallbackUrl",
+      jemaos::constants::kJemaExperimentTpmFallbackUrl);
 
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
-  html_source->AddBoolean("showFydeOsLicense", g_browser_process->local_state()->GetBoolean(fydeos::prefs::kFydeLicenseShouldShowInSettings));
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+  html_source->AddBoolean("showJemaOsLicense", g_browser_process->local_state()->GetBoolean(jemaos::prefs::kJemaLicenseShouldShowInSettings));
 
-  GURL url(fydeos::switches::GetFydeOSLicenseWebUrl() + kFydeOSLicenseLookupPath);
-  html_source->AddString("fydeosSettingsLicenseUrl",
-      fydeos::license::AppendAccountIdQueryParameter(url).spec());
-  html_source->AddString("fydeosBoardName", board);
+  GURL url(jemaos::switches::GetJemaOSLicenseWebUrl() + kJemaOSLicenseLookupPath);
+  html_source->AddString("jemaosSettingsLicenseUrl",
+      jemaos::license::AppendAccountIdQueryParameter(url).spec());
+  html_source->AddString("jemaosBoardName", board);
 #endif
 
   html_source->AddBoolean("devMode",
@@ -252,48 +252,48 @@ void FydeOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
                           chromeos::switches::kSystemDevMode));
 }
 
-int FydeOsSection::GetSectionNameMessageId() const {
-  return IDS_OS_SETTINGS_FYDEOS_SETTINGS;
+int JemaOsSection::GetSectionNameMessageId() const {
+  return IDS_OS_SETTINGS_JEMAOS_SETTINGS;
 }
 
-mojom::Section FydeOsSection::GetSection() const {
-  return mojom::Section::kFydeOs;
+mojom::Section JemaOsSection::GetSection() const {
+  return mojom::Section::kJemaOs;
 }
 
-mojom::SearchResultIcon FydeOsSection::GetSectionIcon() const {
+mojom::SearchResultIcon JemaOsSection::GetSectionIcon() const {
   NOTIMPLEMENTED();
   return mojom::SearchResultIcon::kChrome;
 }
 
-const char* FydeOsSection::GetSectionPath() const {
-  return mojom::kFydeOsSectionPath;
+const char* JemaOsSection::GetSectionPath() const {
+  return mojom::kJemaOsSectionPath;
 }
 
-void FydeOsSection::AddHandlers(content::WebUI* web_ui) {
+void JemaOsSection::AddHandlers(content::WebUI* web_ui) {
   web_ui->AddMessageHandler(
-      std::make_unique<FydeOsHandler>(profile(), pref_service_));
+      std::make_unique<JemaOsHandler>(profile(), pref_service_));
 }
 
-bool FydeOsSection::LogMetric(
+bool JemaOsSection::LogMetric(
     mojom::Setting setting, base::Value& value) const {
   // Unimplemented.
   return false;
 }
 
-void FydeOsSection::RegisterHierarchy(HierarchyGenerator* generator) const {
-  // fydeos top level
+void JemaOsSection::RegisterHierarchy(HierarchyGenerator* generator) const {
+  // jemaos top level
   generator->RegisterTopLevelSubpage(
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS, mojom::Subpage::kFydeOsMain,
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS, mojom::Subpage::kJemaOsMain,
       mojom::SearchResultIcon::kChrome, mojom::SearchResultDefaultRank::kMedium,
-      mojom::kFydeOsSubpagePath);
+      mojom::kJemaOsSubpagePath);
 
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
   // license info.
   generator->RegisterNestedSubpage(
-      IDS_OS_SETTINGS_FYDEOS_SETTINGS_FYDEOS_LICENSE_INFO_TITLE,
-      mojom::Subpage::kFydeOsLicenseInfo, mojom::Subpage::kFydeOsMain,
+      IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_TITLE,
+      mojom::Subpage::kJemaOsLicenseInfo, mojom::Subpage::kJemaOsMain,
       mojom::SearchResultIcon::kChrome, mojom::SearchResultDefaultRank::kMedium,
-      mojom::kFydeOsLicenseInfoSubpagePath);
+      mojom::kJemaOsLicenseInfoSubpagePath);
 #endif
 }
 

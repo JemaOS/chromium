@@ -1,38 +1,38 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_FYDEOS_SWITCHES_ACCOUNT_CONSTANTS_H_
-#define CHROMEOS_FYDEOS_SWITCHES_ACCOUNT_CONSTANTS_H_
+#ifndef CHROMEOS_JEMAOS_SWITCHES_ACCOUNT_CONSTANTS_H_
+#define CHROMEOS_JEMAOS_SWITCHES_ACCOUNT_CONSTANTS_H_
 
 #include <string>
 #include "chromeos/chromeos_export.h"
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/build/config/buildflags.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace constants {
 
-CHROMEOS_EXPORT extern const char kDefaultFydeOSGaiaUrl[];
-CHROMEOS_EXPORT extern const char kDefaultFydeOSApisBaseUrl[];
-CHROMEOS_EXPORT extern const char kDefaultFydeOSDeviceManagementServerUrl[];
-CHROMEOS_EXPORT extern const char kDefaultFydeOSRealtimeReportingServerUrl[];
-CHROMEOS_EXPORT extern const char kDefaultFydeOSEncryptedReportingServerUrl[];
-CHROMEOS_EXPORT extern const char kFydeOSSyncDevServerUrl[];
-CHROMEOS_EXPORT extern const char kFydeOSSyncServerUrl[];
+CHROMEOS_EXPORT extern const char kDefaultJemaOSGaiaUrl[];
+CHROMEOS_EXPORT extern const char kDefaultJemaOSApisBaseUrl[];
+CHROMEOS_EXPORT extern const char kDefaultJemaOSDeviceManagementServerUrl[];
+CHROMEOS_EXPORT extern const char kDefaultJemaOSRealtimeReportingServerUrl[];
+CHROMEOS_EXPORT extern const char kDefaultJemaOSEncryptedReportingServerUrl[];
+CHROMEOS_EXPORT extern const char kJemaOSSyncDevServerUrl[];
+CHROMEOS_EXPORT extern const char kJemaOSSyncServerUrl[];
 
-CHROMEOS_EXPORT extern const char kDefaultFydeOSFamilyLinkApisUrl[];
+CHROMEOS_EXPORT extern const char kDefaultJemaOSFamilyLinkApisUrl[];
 
-CHROMEOS_EXPORT extern const char kDefaultFydeFtlServerEndpoint[];
-CHROMEOS_EXPORT extern const char kDefaultFydeRemotingServerEndpoint[];
+CHROMEOS_EXPORT extern const char kDefaultJemaFtlServerEndpoint[];
+CHROMEOS_EXPORT extern const char kDefaultJemaRemotingServerEndpoint[];
 
-extern const size_t kFydeOSSupervisedUserSettingsDefaultSyncIntervalInSeconds;
+extern const size_t kJemaOSSupervisedUserSettingsDefaultSyncIntervalInSeconds;
 
-#if BUILDFLAG(IS_OPENFYDE)
-CHROMEOS_EXPORT extern const char kFydeAPIKeysDevelopersHowToURL[];
+#if BUILDFLAG(IS_OPENJEMA)
+CHROMEOS_EXPORT extern const char kJemaAPIKeysDevelopersHowToURL[];
 #endif
 
-CHROMEOS_EXPORT extern const char kFydeEnrollmentTokenFilePath[];
+CHROMEOS_EXPORT extern const char kJemaEnrollmentTokenFilePath[];
 }//constants
-}//fydeos
+}//jemaos
 
 #endif

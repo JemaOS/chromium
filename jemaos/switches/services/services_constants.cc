@@ -1,42 +1,42 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/services/services_constants.h"
-#include "fydeos/build/config/buildflags.h"
-#include "fydeos/switches/account/policy_constants.h"
+#include "jemaos/switches/services/services_constants.h"
+#include "jemaos/build/config/buildflags.h"
+#include "jemaos/switches/account/policy_constants.h"
 
-namespace fydeos::constants {
+namespace jemaos::constants {
 
-#if BUILDFLAG(USE_FYDEOS_COM)
-const char kDefaultFydeOSGeolocationAPIUrl[] =
-  "https://apis.fydeos.com/geo/locationByIp?";
-const char kDefaultFydeOSTimezoneAPIUrl[] =
-  "https://apis.fydeos.com/geo/timezone?";
-const char kDefaultFydeOSLookingGlassUrl[] =
-  "https://apis.fydeos.com/lookingglass";
-const char kFydeOSWebStoreUpdateURL[] = "https://store.fydeos.com";
-const char kFydeOSFeedbackPostUrl[] = "https://apis.fydeos.com/feedback/submit";
+#if BUILDFLAG(USE_JEMAOS_COM)
+const char kDefaultJemaOSGeolocationAPIUrl[] =
+  "https://apis.jemaos.com/geo/locationByIp?";
+const char kDefaultJemaOSTimezoneAPIUrl[] =
+  "https://apis.jemaos.com/geo/timezone?";
+const char kDefaultJemaOSLookingGlassUrl[] =
+  "https://apis.jemaos.com/lookingglass";
+const char kJemaOSWebStoreUpdateURL[] = "https://store.jemaos.com";
+const char kJemaOSFeedbackPostUrl[] = "https://apis.jemaos.com/feedback/submit";
 
-const char kFydeOSAssistantDefaultWebUrl[] = "https://ai.fydeos.com/chat/";
+const char kJemaOSAssistantDefaultWebUrl[] = "https://ai.jemaos.com/chat/";
 #else
-const char kDefaultFydeOSGeolocationAPIUrl[] =
-  "https://apis.fydeos.io/geo/locationByIp?";
-const char kDefaultFydeOSTimezoneAPIUrl[] =
-  "https://apis.fydeos.io/geo/timezone?";
-const char kDefaultFydeOSLookingGlassUrl[] =
-  "https://apis.fydeos.io/lookingglass";
-const char kFydeOSWebStoreUpdateURL[] = "https://store.fydeos.io";
-const char kFydeOSFeedbackPostUrl[] = "https://apis.fydeos.io/feedback/submit";
+const char kDefaultJemaOSGeolocationAPIUrl[] =
+  "https://apis.jemaos.io/geo/locationByIp?";
+const char kDefaultJemaOSTimezoneAPIUrl[] =
+  "https://apis.jemaos.io/geo/timezone?";
+const char kDefaultJemaOSLookingGlassUrl[] =
+  "https://apis.jemaos.io/lookingglass";
+const char kJemaOSWebStoreUpdateURL[] = "https://store.jemaos.io";
+const char kJemaOSFeedbackPostUrl[] = "https://apis.jemaos.io/feedback/submit";
 
-const char kFydeOSAssistantDefaultWebUrl[] = "https://ai.fydeos.io/chat/";
+const char kJemaOSAssistantDefaultWebUrl[] = "https://ai.jemaos.io/chat/";
 #endif
 
-const uint8_t* kFydeOSCryptoKey =
-  fydeos::constants::kFydeOSPolicyVerificationKey;
-const size_t kFydeOSCryptoKeyLength =
-  fydeos::constants::kFydeOSPolicyVerificationKeyLength;
+const uint8_t* kJemaOSCryptoKey =
+  jemaos::constants::kJemaOSPolicyVerificationKey;
+const size_t kJemaOSCryptoKeyLength =
+  jemaos::constants::kJemaOSPolicyVerificationKeyLength;
 
-const char kFydeOSStoreAppId[] = "hidnajblbifdkmheebalalchohohmaef";
+const char kJemaOSStoreAppId[] = "hidnajblbifdkmheebalalchohohmaef";
 
-}  // namespace fydeos::constants
+}  // namespace jemaos::constants

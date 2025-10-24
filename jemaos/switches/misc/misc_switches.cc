@@ -1,44 +1,44 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/misc/misc_switches.h"
+#include "jemaos/switches/misc/misc_switches.h"
 #include "base/command_line.h"
 #include "base/strings/string_util.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace switches {
 
 namespace {
 
-const char kFydeDisableCustom[] = "fyde-disable-custom";
+const char kJemaDisableCustom[] = "jema-disable-custom";
 
-const char kEnableTpmDictionaryAttackLockout[] = "fydeos-enable-tpm-da-lockout";
+const char kEnableTpmDictionaryAttackLockout[] = "jemaos-enable-tpm-da-lockout";
 
 const char kDisallowInitDevicePolicyWithoutStateKeys[] = "disallow-init-device-policy-without-state-keys";
 
 const char kDisableUnknownPeripheralBatteryNotification[] = "disable-unknown-peripheral-battery-notification";
 
-const char kFydeEnableDynamicDefaultWallpaper[] =
-  "fyde-dynamic-default-wallpaper";
+const char kJemaEnableDynamicDefaultWallpaper[] =
+  "jema-dynamic-default-wallpaper";
 
 const std::vector<std::string> kNonForYouBoards = {
-  "amd64-fydeos",
-  "amd64-openfyde",
+  "amd64-jemaos",
+  "amd64-openjema",
   "amd64-vmware",
   "amd64-generic",
-  "fydetab_duo-fydeos",
+  "jematab_duo-jemaos",
 };
 
-const char kFydeAutoSigninDelay[] = "fyde-auto-signin-delay";
+const char kJemaAutoSigninDelay[] = "jema-auto-signin-delay";
 
 }
 
-const char kFydeOSServiceHostSuffixForTesting[] =
-  "fydeos-service-host-suffix-for-testing";
+const char kJemaOSServiceHostSuffixForTesting[] =
+  "jemaos-service-host-suffix-for-testing";
 
-bool IsFydeCustomEnabled() {
-  return !base::CommandLine::ForCurrentProcess()->HasSwitch(kFydeDisableCustom);
+bool IsJemaCustomEnabled() {
+  return !base::CommandLine::ForCurrentProcess()->HasSwitch(kJemaDisableCustom);
 }
 
 bool IsTpmDictionaryAttackLockoutIgnored() {
@@ -67,15 +67,15 @@ bool IsUnknownPeripheralBatteryNotificationDisabled() {
 
 bool IsDynamicDefaultWallpaperSupported() {
   return base::CommandLine::ForCurrentProcess()->HasSwitch(
-      kFydeEnableDynamicDefaultWallpaper);
+      kJemaEnableDynamicDefaultWallpaper);
 }
 
-int64_t GetFydeOSAutoSigninDelay() {
-	std::string delayStr = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(kFydeAutoSigninDelay);
+int64_t GetJemaOSAutoSigninDelay() {
+	std::string delayStr = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(kJemaAutoSigninDelay);
 	if (delayStr.empty())
 		return 0;
 	return (int64_t) std::stoi(delayStr);
 }
 
 } // switches
-} // fydeos
+} // jemaos

@@ -1,6 +1,6 @@
-// Copyright 2023 Fyde Innovations. All rights reserved.
+// Copyright 2023 Jema Technology. All rights reserved.
 
-#include "fydeos/extensions/browser/api/fydeos_arc_status/fydeos_arc_status_api.h"
+#include "jemaos/extensions/browser/api/jemaos_arc_status/jemaos_arc_status_api.h"
 #include "base/files/file_util.h"
 
 namespace extensions {
@@ -12,14 +12,14 @@ const char kArcSystemImageName[] = "system.raw.img";
 const char kArcVendorImageName[] = "vendor.raw.img";
 
 const char kArcRunningProcessName[] = "org.chromium.arc.home";
-const char kArcInstallableProcessName[] = "/system/bin/arc_fydeos_service";
+const char kArcInstallableProcessName[] = "/system/bin/arc_jemaos_service";
 
 const char kArcSupportedKey[] = "supported";
 const char kArcHeroKey[] = "archero";
 const char kArcRunningKey[] = "running";
 const char kArcInstallableKey[] = "installable";
 
-const char kArcHeroProcessSuffix[] = "com.fydeos.archero.";
+const char kArcHeroProcessSuffix[] = "com.jemaos.archero.";
 
 bool GetArcSupported() {
   bool system_img_exists = base::PathExists(
@@ -113,17 +113,17 @@ ArcStatusHelper *helper = nullptr;
 
 }  // namespace
 
-ExtensionFunction::ResponseAction FydeosArcStatusGetFunction::Run() {
+ExtensionFunction::ResponseAction JemaosArcStatusGetFunction::Run() {
   if (!helper) {
     helper = new ArcStatusHelper();
   }
   helper->GetStatus(base::BindOnce(
-      &FydeosArcStatusGetFunction::OnGetStatus, this));
+      &JemaosArcStatusGetFunction::OnGetStatus, this));
 
   return RespondLater();
 }
 
-void FydeosArcStatusGetFunction::OnGetStatus(ArcStatus status) {
+void JemaosArcStatusGetFunction::OnGetStatus(ArcStatus status) {
   base::Value::Dict result;
   result.Set(kArcSupportedKey, status.supported);
   result.Set(kArcHeroKey, status.archero);

@@ -1,23 +1,23 @@
-// Copyright 2024 The Fyde Innovations Limited. All rights reserved.
+// Copyright 2024 The Jema Technology Limited. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/misc/fydeos_dev_mode.h"
+#include "jemaos/misc/jemaos_dev_mode.h"
 #include "base/files/file_util.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/logging.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/fydeos_shell_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 
-using fydeos::ash::FydeOSShellClient;
-using fydeos::ash::ShellState;
+using jemaos::ash::JemaOSShellClient;
+using jemaos::ash::ShellState;
 
-namespace fydeos::misc {
+namespace jemaos::misc {
 
 namespace {
 
-FydeOSShellClient* GetShellClient() {
-  return FydeOSShellClient::Get();
+JemaOSShellClient* GetShellClient() {
+  return JemaOSShellClient::Get();
 }
 const char bin_script[] = "/usr/sbin/crossystem_mode-switch.sh";
 const char enable_param[] = "enable-dev_mode";
@@ -51,7 +51,7 @@ bool IsDevModeSwitchSupported() {
 }
 
 void SetDevMode(const bool enabled, base::OnceCallback<void(bool)> callback) {
-  FydeOSShellClient* shellClient = GetShellClient();
+  JemaOSShellClient* shellClient = GetShellClient();
   if (!shellClient) {
     std::move(callback).Run(false);
     return;
@@ -62,7 +62,7 @@ void SetDevMode(const bool enabled, base::OnceCallback<void(bool)> callback) {
 }
 
 void GetDevMode(base::OnceCallback<void(bool)> callback) {
-  FydeOSShellClient* shellClient = GetShellClient();
+  JemaOSShellClient* shellClient = GetShellClient();
   if (!shellClient) {
     std::move(callback).Run(false);
     return;
@@ -72,5 +72,5 @@ void GetDevMode(base::OnceCallback<void(bool)> callback) {
       base::BindOnce(&OnGetCommandFinished, std::move(callback)));
 }
 
-} // namespace fydeos::misc
+} // namespace jemaos::misc
 

@@ -1,15 +1,15 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 
-#include "fydeos/license/fydeos_license_user_util.h"
+#include "jemaos/license/jemaos_license_user_util.h"
 
 #include "url/gurl.h"
 #include "components/user_manager/user_manager.h"
 #include "net/base/url_util.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace license {
 
 GURL AppendAccountIdQueryParameter(GURL& url) {
@@ -24,8 +24,8 @@ GURL AppendAccountIdQueryParameter(GURL& url) {
     std::string id;
     if (account_type == AccountType::GOOGLE) {
       id = account_id.GetGaiaId();
-    } else if (account_type == AccountType::FYDE_ACCOUNT) {
-      id = account_id.GetFydeId();
+    } else if (account_type == AccountType::JEMA_ACCOUNT) {
+      id = account_id.GetJemaId();
     }
     std::string account_type_str = AccountId::AccountTypeToString(account_type);
     url = net::AppendQueryParameter(url, "account_type", account_type_str);
@@ -35,4 +35,4 @@ GURL AppendAccountIdQueryParameter(GURL& url) {
 }
 
 } // license
-} // fydeos
+} // jemaos

@@ -1,16 +1,16 @@
-// Copyright 2024 The Fyde Innovations Limited. All rights reserved.
+// Copyright 2024 The Jema Technology Limited. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FYDEOS_CONSTANTS_FYDEOS_CONSTANTS_H_
-#define FYDEOS_CONSTANTS_FYDEOS_CONSTANTS_H_
+#ifndef JEMAOS_CONSTANTS_JEMAOS_CONSTANTS_H_
+#define JEMAOS_CONSTANTS_JEMAOS_CONSTANTS_H_
 
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/build/config/buildflags.h"
 #include <string>
 
-namespace fydeos::constants {
+namespace jemaos::constants {
 
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
 
 enum class LicenseStateType {
   kUnspecified = 0,
@@ -35,6 +35,6 @@ enum class LicenseEnforcementLevel {
 
 bool ShouldHideExtensionById(const std::string& extension_id);
 
-} // namespace fydeos::constants
+} // namespace jemaos::constants
 
-#endif // !FYDEOS_CONSTANTS_FYDEOS_CONSTANTS_H_
+#endif // !JEMAOS_CONSTANTS_JEMAOS_CONSTANTS_H_

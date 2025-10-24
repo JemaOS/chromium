@@ -1,5 +1,5 @@
-#ifndef FYDEOS_DBUS_SHELL_CLIENT_H_
-#define FYDEOS_DBUS_SHELL_CLIENT_H_
+#ifndef JEMAOS_DBUS_SHELL_CLIENT_H_
+#define JEMAOS_DBUS_SHELL_CLIENT_H_
 
 #include <stdint.h>
 
@@ -11,12 +11,12 @@
 #include "chromeos/chromeos_export.h"
 #include "chromeos/dbus/common/dbus_client.h"
 #include "chromeos/dbus/common/dbus_callback.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/shell_state.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace ash {
 
-class COMPONENT_EXPORT(ASH_DBUS_FYDEOS_SHELL_CLIENT) FydeOSShellClient
+class COMPONENT_EXPORT(ASH_DBUS_JEMAOS_SHELL_CLIENT) JemaOSShellClient
     : public chromeos::DBusClient {
   public:
     class Observer {
@@ -49,17 +49,17 @@ class COMPONENT_EXPORT(ASH_DBUS_FYDEOS_SHELL_CLIENT) FydeOSShellClient
     static void Shutdown();
 
     // Returns the global instance if initialized. May return null.
-    static FydeOSShellClient* Get();
+    static JemaOSShellClient* Get();
 
-  FydeOSShellClient(const FydeOSShellClient&) = delete;
-  FydeOSShellClient& operator=(const FydeOSShellClient&) = delete;
+  JemaOSShellClient(const JemaOSShellClient&) = delete;
+  JemaOSShellClient& operator=(const JemaOSShellClient&) = delete;
 
   protected:
     // Initialize() should be used instead.
-    FydeOSShellClient();
-    ~FydeOSShellClient() override;
+    JemaOSShellClient();
+    ~JemaOSShellClient() override;
 };
 
 } // namespace ash
-} // namespace fydeos
+} // namespace jemaos
 #endif

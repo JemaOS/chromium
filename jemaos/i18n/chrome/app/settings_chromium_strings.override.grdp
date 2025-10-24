@@ -8,26 +8,26 @@
     Get help with Chromium browser
   </message>
   <if expr="chromeos_ash">
-    <if expr="openfyde">
+    <if expr="openjema">
       <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">
-        About openFyde
+        About openJema
       </message>
       <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings, which gives information about the current Chrome OS version.">
-        openFyde version
+        openJema version
       </message>
       <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">
-        Get help with openFyde
+        Get help with openJema
       </message>
     </if>
-    <if expr="not openfyde">
+    <if expr="not openjema">
       <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">
-        About FydeOS
+        About JemaOS
       </message>
       <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings, which gives information about the current Chrome OS version.">
-        FydeOS version
+        JemaOS version
       </message>
       <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">
-        Get help with FydeOS
+        Get help with JemaOS
       </message>
     </if>
   </if>

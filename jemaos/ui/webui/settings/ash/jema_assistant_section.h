@@ -1,10 +1,10 @@
-// Copyright 2024 The Fyde Innovations Limited. All rights reserved.
+// Copyright 2024 The Jema Technology Limited. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 
-#ifndef CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_FYDE_ASSISTANT_SECTION_H_
-#define CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_FYDE_ASSISTANT_SECTION_H_
+#ifndef CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_JEMA_ASSISTANT_SECTION_H_
+#define CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_JEMA_ASSISTANT_SECTION_H_
 
 #include <string>
 #include "base/values.h"
@@ -16,11 +16,11 @@ class Profile;
 
 namespace ash::settings {
 
-class FydeAssistantSection : public OsSettingsSection {
+class JemaAssistantSection : public OsSettingsSection {
  public:
-  FydeAssistantSection(Profile* profile, SearchTagRegistry* search_tag_registry,
+  JemaAssistantSection(Profile* profile, SearchTagRegistry* search_tag_registry,
       PrefService* pref_service);
-  ~FydeAssistantSection() override;
+  ~JemaAssistantSection() override;
 
 private:
   // OsSettingsSection:
@@ -39,4 +39,4 @@ private:
 
 } // namespace ash::settings
 
-#endif // CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_FYDE_ASSISTANT_SECTION_H_
+#endif // CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_JEMA_ASSISTANT_SECTION_H_

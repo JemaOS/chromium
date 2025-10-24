@@ -8,7 +8,7 @@
   "namespace": "appManagement",
     "description": "Use the <code>chrome.appManagement</code> API to interact with FlintOS app(platform_app and arc_app). You can use this API to create, modify, and rearrange windows in the browser.",
     "compiler_options": {
-      "implemented_in": "fydeos/extensions/browser/api/app_management/app_management_api.h"
+      "implemented_in": "jemaos/extensions/browser/api/app_management/app_management_api.h"
     },
     "types":[
       {

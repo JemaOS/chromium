@@ -1,17 +1,17 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/license/fydeos_license_validator.h"
+#include "jemaos/license/jemaos_license_validator.h"
 #include "base/logging.h"
 #include "base/containers/span.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "base/base64.h"
 #include "base/json/json_reader.h"
-#include "fydeos/switches/account/policy_constants.h"
+#include "jemaos/switches/account/policy_constants.h"
 
-namespace fydeos::license {
+namespace jemaos::license {
 namespace  {
   const char kExpireDate[]="expire_date";
   const char kLicenseType[]="license_type";
@@ -87,8 +87,8 @@ void LicenseValidator::StartValidate(const std::string& id,
     return;
   }
   const std::string key = std::string(
-    reinterpret_cast<const char*>(fydeos::constants::kFydeOSPolicyVerificationKey),
-    fydeos::constants::kFydeOSPolicyVerificationKeyLength);
+    reinterpret_cast<const char*>(jemaos::constants::kJemaOSPolicyVerificationKey),
+    jemaos::constants::kJemaOSPolicyVerificationKeyLength);
   if (!signature_verifier_.VerifyInit(
         crypto::SignatureVerifier::RSA_PKCS1_SHA256,
     base::as_bytes(base::make_span(signature)),
@@ -125,4 +125,4 @@ void LicenseValidator::StartValidate(const std::string& id,
   std::move(success_callback).Run(std::move(json));
 }
 
-}  // namespace fydeos::license
+}  // namespace jemaos::license

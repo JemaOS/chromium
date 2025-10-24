@@ -1,13 +1,13 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/account/policy_constants.h"
+#include "jemaos/switches/account/policy_constants.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace constants {
 
-const uint8_t kFydeOSPolicyVerificationKey[] = {
+const uint8_t kJemaOSPolicyVerificationKey[] = {
     0x30, 0x82, 0x01, 0x22, 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86,
     0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x0F, 0x00,
     0x30, 0x82, 0x01, 0x0A, 0x02, 0x82, 0x01, 0x01, 0x00, 0xE3, 0xFC, 0x89,
@@ -34,8 +34,8 @@ const uint8_t kFydeOSPolicyVerificationKey[] = {
     0x80, 0xEC, 0x69, 0x03, 0x01, 0xEB, 0x7B, 0x26, 0xE2, 0xA5, 0x69, 0x73,
     0xF1, 0x02, 0x03, 0x01, 0x00, 0x01};
 
-const size_t kFydeOSPolicyVerificationKeyLength = sizeof(kFydeOSPolicyVerificationKey);
+const size_t kJemaOSPolicyVerificationKeyLength = sizeof(kJemaOSPolicyVerificationKey);
 
-const char kFydeOSOobeZteConfigFile[] = "/usr/share/oem/flex_config/config.json";
+const char kJemaOSOobeZteConfigFile[] = "/usr/share/oem/flex_config/config.json";
 }
 }

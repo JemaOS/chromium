@@ -10,19 +10,19 @@
     Version <ph name="PRODUCT_VERSION">$1<ex>15.0.865.0</ex></ph> <ph name="PRODUCT_MODIFIER">$2</ph> <ph name="PRODUCT_VERSION_BITS">$3</ph>
   </message>
   <if expr="chromeos_ash">
-    <if expr="openfyde">
+    <if expr="openjema">
       <message name="IDS_SETTINGS_LANGUAGES_OPEN_CHROME_OS_SETTINGS_LABEL" desc="Label for the section that allow users to open languages settings in Chrome OS.">
-        Manage languages in openFyde settings
+        Manage languages in openJema settings
       </message>
     </if>
-    <if expr="not openfyde">
+    <if expr="not openjema">
       <message name="IDS_SETTINGS_LANGUAGES_OPEN_CHROME_OS_SETTINGS_LABEL" desc="Label for the section that allow users to open languages settings in Chrome OS.">
-        Manage languages in FydeOS settings
+        Manage languages in JemaOS settings
       </message>
     </if>
   </if>
-  <message name="IDS_SETTINGS_CHANGE_PICTURE_PROFILE_PHOTO" desc="The text on the FydeOS profile photo of the user.">
-    FydeOS Profile photo
+  <message name="IDS_SETTINGS_CHANGE_PICTURE_PROFILE_PHOTO" desc="The text on the JemaOS profile photo of the user.">
+    JemaOS Profile photo
   </message>
   <message name="IDS_SETTINGS_SITE_SETTINGS_PDF_DOWNLOAD_PDFS" desc="Label for downloading PDF documents instead of automatically opening them in Chromium.">
     Download PDF files instead of automatically opening them in Chromium
@@ -56,14 +56,14 @@
   <message name="IDS_SETTINGS_SEARCH_ENGINES_SITE_SEARCH_EXPLANATION" desc="Explanation for 'Site Search' section. Used interchangeably with IDS_SETTINGS_SEARCH_ENGINES_SITE_SEARCH_EXPLANATION_STARTER_PACK">
     To search a specific site or part of the browser, type its shortcut in the address bar, followed by your preferred keyboard shortcut.
   </message>
-  <if expr="openfyde">
+  <if expr="openjema">
     <message name="IDS_SETTINGS_SECURE_DNS_OPEN_CHROME_OS_SETTINGS_LABEL" desc="Label for the section that allow users to open Secure DNS settings in ChromeOS.">
-      Manage secure DNS in openFyde settings
+      Manage secure DNS in openJema settings
     </message>
   </if>
-  <if expr="not openfyde">
+  <if expr="not openjema">
     <message name="IDS_SETTINGS_SECURE_DNS_OPEN_CHROME_OS_SETTINGS_LABEL" desc="Label for the section that allow users to open Secure DNS settings in ChromeOS.">
-      Manage secure DNS in FydeOS settings
+      Manage secure DNS in JemaOS settings
     </message>
   </if>
 

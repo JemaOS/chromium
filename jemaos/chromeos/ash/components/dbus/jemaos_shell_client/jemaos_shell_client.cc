@@ -1,8 +1,8 @@
-// Copyright (c) 2018 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2018 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/fydeos_shell_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 
 #include <stdint.h>
 
@@ -17,14 +17,14 @@
 #include "dbus/object_path.h"
 #include "dbus/object_proxy.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace ash {
 
 namespace {
 
-const char kFydeOSShellServiceName[] = "io.fydeos.ShellDaemon";
-const char kFydeOSShellServicePath[] = "/io/fydeos/ShellDaemon";
-const char kFydeOSShellServiceInterface[] = "io.fydeos.ShellInterface";
+const char kJemaOSShellServiceName[] = "io.jemaos.ShellDaemon";
+const char kJemaOSShellServicePath[] = "/io/jemaos/ShellDaemon";
+const char kJemaOSShellServiceInterface[] = "io.jemaos.ShellInterface";
 const char kShellSyncExec[] = "SyncExec";
 const char kShellAsyncExec[] = "AsyncExec";
 const char kShellGetTaskOutput[] = "GetAsyncTaskOutput";
@@ -34,73 +34,73 @@ const char kShellGetDaemonState[] = "GetDaemonState";
 const char kShellSystemNotify[] = "ShellNotifying";
 enum NotificationType { SYSTEM, COMMAND };
 
-FydeOSShellClient* g_instance = nullptr;
+JemaOSShellClient* g_instance = nullptr;
 
-class FydeOSShellClientImpl : public FydeOSShellClient {
+class JemaOSShellClientImpl : public JemaOSShellClient {
   public:
-    FydeOSShellClientImpl() : shell_proxy_(nullptr) {}
-    FydeOSShellClientImpl& operator=(const FydeOSShellClientImpl&) = delete;
+    JemaOSShellClientImpl() : shell_proxy_(nullptr) {}
+    JemaOSShellClientImpl& operator=(const JemaOSShellClientImpl&) = delete;
 
-    ~FydeOSShellClientImpl() override = default;
+    ~JemaOSShellClientImpl() override = default;
 
     void SyncExec(const std::string& cmd, chromeos::DBusMethodCallback<ShellState> callback) override {
       VLOG(1) << "SyncExec received command:" << cmd;
-      dbus::MethodCall method_call(kFydeOSShellServiceInterface, kShellSyncExec);
+      dbus::MethodCall method_call(kJemaOSShellServiceInterface, kShellSyncExec);
       dbus::MessageWriter writer(&method_call);
       writer.AppendString(cmd);
       shell_proxy_->CallMethod(&method_call,
           dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          base::BindOnce(&FydeOSShellClientImpl::OnShellDaemonReturn,
+          base::BindOnce(&JemaOSShellClientImpl::OnShellDaemonReturn,
             weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
     }
 
     void AsyncExec(const std::string& cmd, chromeos::DBusMethodCallback<ShellState> callback) override {
       VLOG(1) << "AsyncExec reveived command:" << cmd;
-      dbus::MethodCall method_call(kFydeOSShellServiceInterface, kShellAsyncExec);
+      dbus::MethodCall method_call(kJemaOSShellServiceInterface, kShellAsyncExec);
       dbus::MessageWriter writer(&method_call);
       writer.AppendString(cmd);
       shell_proxy_->CallMethod(&method_call,
                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                      base::BindOnce(&FydeOSShellClientImpl::OnShellDaemonReturn,
+                      base::BindOnce(&JemaOSShellClientImpl::OnShellDaemonReturn,
                               weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
     }
 
     void GetTaskOutput(int32_t key, int32_t lines, chromeos::DBusMethodCallback<ShellState> callback) override {
-      dbus::MethodCall method_call(kFydeOSShellServiceInterface, kShellGetTaskOutput);
+      dbus::MethodCall method_call(kJemaOSShellServiceInterface, kShellGetTaskOutput);
       dbus::MessageWriter writer(&method_call);
       writer.AppendInt32(key);
       writer.AppendInt32(lines);
       shell_proxy_->CallMethod(&method_call,
                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                      base::BindOnce(&FydeOSShellClientImpl::OnShellDaemonReturn,
+                      base::BindOnce(&JemaOSShellClientImpl::OnShellDaemonReturn,
                               weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
     }
 
     void GetTaskState(int32_t key, chromeos::DBusMethodCallback<ShellState> callback) override {
-      dbus::MethodCall method_call(kFydeOSShellServiceInterface, kShellGetTaskState);
+      dbus::MethodCall method_call(kJemaOSShellServiceInterface, kShellGetTaskState);
       dbus::MessageWriter writer(&method_call);
       writer.AppendInt32(key);
       shell_proxy_->CallMethod(&method_call,
                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                      base::BindOnce(&FydeOSShellClientImpl::OnShellDaemonReturn,
+                      base::BindOnce(&JemaOSShellClientImpl::OnShellDaemonReturn,
                               weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
     }
 
     void ForceCloseTask(int32_t key, chromeos::DBusMethodCallback<ShellState> callback) override {
-      dbus::MethodCall method_call(kFydeOSShellServiceInterface, kShellForceCloseTask);
+      dbus::MethodCall method_call(kJemaOSShellServiceInterface, kShellForceCloseTask);
       dbus::MessageWriter writer(&method_call);
       writer.AppendInt32(key);
       shell_proxy_->CallMethod(&method_call,
                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                      base::BindOnce(&FydeOSShellClientImpl::OnShellDaemonReturn,
+                      base::BindOnce(&JemaOSShellClientImpl::OnShellDaemonReturn,
                               weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
     }
 
     void GetDaemonState(chromeos::DBusMethodCallback<ShellState> callback) override {
-      dbus::MethodCall method_call(kFydeOSShellServiceInterface, kShellGetDaemonState);
+      dbus::MethodCall method_call(kJemaOSShellServiceInterface, kShellGetDaemonState);
       shell_proxy_->CallMethod(&method_call,
                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                      base::BindOnce(&FydeOSShellClientImpl::OnShellDaemonReturn,
+                      base::BindOnce(&JemaOSShellClientImpl::OnShellDaemonReturn,
                               weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
     }
 
@@ -117,13 +117,13 @@ class FydeOSShellClientImpl : public FydeOSShellClient {
     }
 
     void Init(dbus::Bus* bus) override {
-      shell_proxy_ = bus->GetObjectProxy(kFydeOSShellServiceName,
-          dbus::ObjectPath(kFydeOSShellServicePath));
+      shell_proxy_ = bus->GetObjectProxy(kJemaOSShellServiceName,
+          dbus::ObjectPath(kJemaOSShellServicePath));
       shell_proxy_->ConnectToSignal(
-        kFydeOSShellServiceInterface, kShellSystemNotify,
-        base::BindRepeating(&FydeOSShellClientImpl::OnShellSignalReceived,
+        kJemaOSShellServiceInterface, kShellSystemNotify,
+        base::BindRepeating(&JemaOSShellClientImpl::OnShellSignalReceived,
           weak_ptr_factory_.GetWeakPtr()),
-        base::BindOnce(&FydeOSShellClientImpl::SignalConnected,
+        base::BindOnce(&JemaOSShellClientImpl::SignalConnected,
           weak_ptr_factory_.GetWeakPtr())
       );
       VLOG(1) << "Init shell_proxy";
@@ -171,7 +171,7 @@ class FydeOSShellClientImpl : public FydeOSShellClient {
     void OnShellDaemonReturn(chromeos::DBusMethodCallback<ShellState> callback,
         dbus::Response* response) {
       if (!response) {
-        LOG(ERROR) << "Error calling FydeOS shell daemon";
+        LOG(ERROR) << "Error calling JemaOS shell daemon";
         std::move(callback).Run(std::nullopt);
         return;
       }
@@ -180,7 +180,7 @@ class FydeOSShellClientImpl : public FydeOSShellClient {
       dbus::MessageReader sub_reader(nullptr);
       if (!reader.PopStruct(&sub_reader) ||!sub_reader.PopInt32(&shell_state.code) ||
           !sub_reader.PopString(&shell_state.result)) {
-        LOG(ERROR) << "Error reading response from FydeOS shell daemon: "
+        LOG(ERROR) << "Error reading response from JemaOS shell daemon: "
                 << response->ToString();
         std::move(callback).Run(std::nullopt);
         return;
@@ -191,37 +191,37 @@ class FydeOSShellClientImpl : public FydeOSShellClient {
 
     dbus::ObjectProxy* shell_proxy_;
     base::ObserverList<Observer>::Unchecked observers_;
-    base::WeakPtrFactory<FydeOSShellClientImpl> weak_ptr_factory_{this};
-};// FydeOSShellClientImpl
+    base::WeakPtrFactory<JemaOSShellClientImpl> weak_ptr_factory_{this};
+};// JemaOSShellClientImpl
 
 } // namespace
 
 // static
-FydeOSShellClient* FydeOSShellClient::Get() {
+JemaOSShellClient* JemaOSShellClient::Get() {
   return g_instance;
 }
 
 // static
-void FydeOSShellClient::Initialize(dbus::Bus* bus) {
+void JemaOSShellClient::Initialize(dbus::Bus* bus) {
   CHECK(bus);
-  (new FydeOSShellClientImpl())->Init(bus);
+  (new JemaOSShellClientImpl())->Init(bus);
 }
 
 // static
-void FydeOSShellClient::Shutdown() {
+void JemaOSShellClient::Shutdown() {
   CHECK(g_instance);
   delete g_instance;
 }
 
-FydeOSShellClient::FydeOSShellClient() {
+JemaOSShellClient::JemaOSShellClient() {
   CHECK(!g_instance);
   g_instance = this;
 }
 
-FydeOSShellClient::~FydeOSShellClient() {
+JemaOSShellClient::~JemaOSShellClient() {
   CHECK_EQ(g_instance, this);
   g_instance = nullptr;
 }
 
 } // namespace ash
-} // namespace fydeos
+} // namespace jemaos

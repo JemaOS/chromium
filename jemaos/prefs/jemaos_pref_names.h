@@ -1,19 +1,19 @@
-// Copyright (c) 2021 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2021 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_FYDEOS_PREF_NAMES_H_
-#define CHROMEOS_FYDEOS_PREF_NAMES_H_
+#ifndef CHROMEOS_JEMAOS_PREF_NAMES_H_
+#define CHROMEOS_JEMAOS_PREF_NAMES_H_
 
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/build/config/buildflags.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace prefs {
 
 
-extern const char kPrefHideFydeOSStoreIcon[]; // registered in chrome/browser/ui/browser_ui_prefs.cc
+extern const char kPrefHideJemaOSStoreIcon[]; // registered in chrome/browser/ui/browser_ui_prefs.cc
 
-extern const char kFydeOSImprovementPlanEnabled[];
+extern const char kJemaOSImprovementPlanEnabled[];
 
 // local state
 extern const char kCurrentEnableArcIMEGlobally[];
@@ -38,24 +38,24 @@ extern const char kFactoryResetRequested[];
 
 extern const char kRebootRequiredForWidevine[];
 
-extern const char kFydeAssistantEnabled[];
-extern const char kFydeAssistantExtraAcceleratorEnabled[];
+extern const char kJemaAssistantEnabled[];
+extern const char kJemaAssistantExtraAcceleratorEnabled[];
 
-extern const char kFydeOSArcMediaAutoScanEnabled[];
+extern const char kJemaOSArcMediaAutoScanEnabled[];
 
-#if BUILDFLAG(USE_FYDEOS_LICENSE)
-extern const char kFydeLicenseShouldShowInSettings[];
-extern const char kFydeLicenseStateType[];
-extern const char kFydeLicenseEnforcementLevel[];
-extern const char kFydeLicenseEnforcementLogOutInterval[];
+#if BUILDFLAG(USE_JEMAOS_LICENSE)
+extern const char kJemaLicenseShouldShowInSettings[];
+extern const char kJemaLicenseStateType[];
+extern const char kJemaLicenseEnforcementLevel[];
+extern const char kJemaLicenseEnforcementLogOutInterval[];
 #endif
 
 
-#if BUILDFLAG(USE_FYDEOS_COM)
+#if BUILDFLAG(USE_JEMAOS_COM)
 extern const char kCrostiniInstallerNotificationUserInteracted[];
 #endif
 
 } // prefs
-} // fydeos
+} // jemaos
 
 #endif

@@ -1,9 +1,9 @@
-// Copyright 2024 The Fyde Innovations Limited. All rights reserved.
+// Copyright 2024 The Jema Technology Limited. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 
-#include "fydeos/ui/webui/settings/ash/fyde_assistant_section.h"
+#include "jemaos/ui/webui/settings/ash/jema_assistant_section.h"
 
 #include "ash/constants/ash_features.h"
 #include "base/no_destructor.h"
@@ -16,78 +16,78 @@
 namespace ash::settings {
 
 namespace mojom {
-using ::chromeos::settings::mojom::kFydeAssistantSectionPath;
+using ::chromeos::settings::mojom::kJemaAssistantSectionPath;
 using ::chromeos::settings::mojom::Section;
 using ::chromeos::settings::mojom::Subpage;
 using ::chromeos::settings::mojom::Setting;
 } // namespace mojom
 
 namespace {
-  const std::vector<SearchConcept>& GetFydeAssistantSearchConcepts() {
+  const std::vector<SearchConcept>& GetJemaAssistantSearchConcepts() {
     static const base::NoDestructor<std::vector<SearchConcept>> tags({
-      {IDS_OS_SETTINGS_FYDE_ASSISTANT,
-       mojom::kFydeAssistantSectionPath,
+      {IDS_OS_SETTINGS_JEMA_ASSISTANT,
+       mojom::kJemaAssistantSectionPath,
        mojom::SearchResultIcon::kAssistant,
        mojom::SearchResultDefaultRank::kMedium,
        mojom::SearchResultType::kSetting,
-       {.setting = mojom::Setting::kFydeAssistantSettings}},
+       {.setting = mojom::Setting::kJemaAssistantSettings}},
     });
     return *tags;
   }
 }
 
-FydeAssistantSection::FydeAssistantSection(Profile* profile,
+JemaAssistantSection::JemaAssistantSection(Profile* profile,
                                            SearchTagRegistry* search_tag_registry,
                                            PrefService* pref_service)
   : OsSettingsSection(profile, search_tag_registry),
     pref_service_(pref_service) {
   SearchTagRegistry::ScopedTagUpdater updater = registry()->StartUpdate();
-  updater.AddSearchTags(GetFydeAssistantSearchConcepts());
+  updater.AddSearchTags(GetJemaAssistantSearchConcepts());
 }
 
-FydeAssistantSection::~FydeAssistantSection() = default;
+JemaAssistantSection::~JemaAssistantSection() = default;
 
-void FydeAssistantSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
+void JemaAssistantSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
   static constexpr webui::LocalizedString kLocalizedStrings[] = {
-    {"fydeAssistantPageTitle", IDS_OS_SETTINGS_FYDE_ASSISTANT},
-    {"fydeAssistantMenuItemDescription", IDS_OS_SETTINGS_FYDE_ASSISTANT_MENU_ITEM_DESCRIPTION},
-    {"fydeAssistantToggleLabel", IDS_OS_SETTINGS_FYDE_ASSISTANT_TOGGLE_LABEL},
-    {"fydeAssistantToggleSublabel", IDS_OS_SETTINGS_FYDE_ASSISTANT_TOGGLE_SUBLABEL},
-    {"fydeAssistantBubbleShortcutToggleLabel", IDS_OS_SETTINGS_FYDE_ASSISTANT_BUBBLE_SHORTCUT_TOGGLE_LABEL},
-    {"fydeAssistantBubbleShortcutToggleSublabel", IDS_OS_SETTINGS_FYDE_ASSISTANT_BUBBLE_SHORTCUT_TOGGLE_SUBLABEL},
-    {"fydeAssistantSettingsInAppLabel", IDS_OS_SETTINGS_FYDE_ASSISTANT_SETTINGS_IN_APP_LABEL},
-    {"fydeAssistantSettingsInAppSublabel", IDS_OS_SETTINGS_FYDE_ASSISTANT_SETTINGS_IN_APP_SUBLABEL},
+    {"jemaAssistantPageTitle", IDS_OS_SETTINGS_JEMA_ASSISTANT},
+    {"jemaAssistantMenuItemDescription", IDS_OS_SETTINGS_JEMA_ASSISTANT_MENU_ITEM_DESCRIPTION},
+    {"jemaAssistantToggleLabel", IDS_OS_SETTINGS_JEMA_ASSISTANT_TOGGLE_LABEL},
+    {"jemaAssistantToggleSublabel", IDS_OS_SETTINGS_JEMA_ASSISTANT_TOGGLE_SUBLABEL},
+    {"jemaAssistantBubbleShortcutToggleLabel", IDS_OS_SETTINGS_JEMA_ASSISTANT_BUBBLE_SHORTCUT_TOGGLE_LABEL},
+    {"jemaAssistantBubbleShortcutToggleSublabel", IDS_OS_SETTINGS_JEMA_ASSISTANT_BUBBLE_SHORTCUT_TOGGLE_SUBLABEL},
+    {"jemaAssistantSettingsInAppLabel", IDS_OS_SETTINGS_JEMA_ASSISTANT_SETTINGS_IN_APP_LABEL},
+    {"jemaAssistantSettingsInAppSublabel", IDS_OS_SETTINGS_JEMA_ASSISTANT_SETTINGS_IN_APP_SUBLABEL},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
-  html_source->AddBoolean("fydeAssistantFeatureEnabled",ash::features::IsFydeAssistantEnabled());
+  html_source->AddBoolean("jemaAssistantFeatureEnabled",ash::features::IsJemaAssistantEnabled());
 }
 
-void FydeAssistantSection::AddHandlers(content::WebUI* web_ui) {
+void JemaAssistantSection::AddHandlers(content::WebUI* web_ui) {
 
 }
 
-int FydeAssistantSection::GetSectionNameMessageId() const {
-  return IDS_OS_SETTINGS_FYDE_ASSISTANT;
+int JemaAssistantSection::GetSectionNameMessageId() const {
+  return IDS_OS_SETTINGS_JEMA_ASSISTANT;
 }
-chromeos::settings::mojom::Section FydeAssistantSection::GetSection() const {
-  return mojom::Section::kFydeAssistant;
+chromeos::settings::mojom::Section JemaAssistantSection::GetSection() const {
+  return mojom::Section::kJemaAssistant;
 }
 
-ash::settings::mojom::SearchResultIcon FydeAssistantSection::GetSectionIcon() const {
+ash::settings::mojom::SearchResultIcon JemaAssistantSection::GetSectionIcon() const {
   return mojom::SearchResultIcon::kAssistant;
 }
 
-const char* FydeAssistantSection::GetSectionPath() const {
-  return mojom::kFydeAssistantSectionPath;
+const char* JemaAssistantSection::GetSectionPath() const {
+  return mojom::kJemaAssistantSectionPath;
 }
 
-bool FydeAssistantSection::LogMetric(chromeos::settings::mojom::Setting setting,
+bool JemaAssistantSection::LogMetric(chromeos::settings::mojom::Setting setting,
                base::Value& value) const {
   return false;
 }
 
-void FydeAssistantSection::RegisterHierarchy(HierarchyGenerator* generator) const {
-  generator->RegisterTopLevelSetting(mojom::Setting::kFydeAssistantSettings);
+void JemaAssistantSection::RegisterHierarchy(HierarchyGenerator* generator) const {
+  generator->RegisterTopLevelSetting(mojom::Setting::kJemaAssistantSettings);
 }
 
 } // namespace ash::settings

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/ash/system/unified/rotate_screen_feature_pod_controller.h"
+#include "jemaos/ash/system/unified/rotate_screen_feature_pod_controller.h"
 
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/shell.h"
@@ -14,17 +14,17 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ash/accelerators/accelerator_controller_impl.h"
 #include "base/system/sys_info.h"
-#include "fydeos/prefs/fydeos_pref_names.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
-#include "fydeos/switches/misc/misc_switches.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 namespace ash {
 
 namespace {
 
 bool shouldShowRotateScreenByDefault(const std::string& board) {
-  return fydeos::switches::IsNonForYouBoard(board);
+  return jemaos::switches::IsNonForYouBoard(board);
 }
 
 }
@@ -49,7 +49,7 @@ std::unique_ptr<FeatureTile> RotateScreenFeaturePodController::CreateTile(
   tile_->SetVectorIcon(kUnifiedMenuRotateScreenIcon);
 
   auto label_text = l10n_util::GetStringUTF16(
-        IDS_ASH_FYDEOS_UNIFIED_MENU_LABEL_ROTATE_SCREEN);
+        IDS_ASH_JEMAOS_UNIFIED_MENU_LABEL_ROTATE_SCREEN);
   tile_->SetLabel(label_text);
   tile_->SetTooltipText(label_text);
   tile_->SetSubLabelVisibility(false);
@@ -58,7 +58,7 @@ std::unique_ptr<FeatureTile> RotateScreenFeaturePodController::CreateTile(
 }
 
 void RotateScreenFeaturePodController::OnIconPressed() {
-  RotateScreenFydeOS();
+  RotateScreenJemaOS();
 }
 
 void RotateScreenFeaturePodController::OnTabletPhysicalStateChanged() {
@@ -69,7 +69,7 @@ void RotateScreenFeaturePodController::UpdateTile() {
   const bool is_in_tablet_physical_state =
     Shell::Get()->tablet_mode_controller()->is_in_tablet_physical_state();
   PrefService* prefs = Shell::Get()->local_state();
-  bool visible = prefs->GetBoolean(fydeos::prefs::kShowRotateScreenButton);
+  bool visible = prefs->GetBoolean(jemaos::prefs::kShowRotateScreenButton);
 
   if (!tile_) {
     return;
@@ -84,7 +84,7 @@ QsFeatureCatalogName RotateScreenFeaturePodController::GetCatalogName() {
 void RotateScreenFeaturePodController::RegisterLocalStatePrefs(
     PrefRegistrySimple* registry) {
   const std::string board = base::SysInfo::GetLsbReleaseBoard();
-  registry->RegisterBooleanPref(fydeos::prefs::kShowRotateScreenButton,
+  registry->RegisterBooleanPref(jemaos::prefs::kShowRotateScreenButton,
                                 shouldShowRotateScreenByDefault(board));
 }
 

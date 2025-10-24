@@ -1,144 +1,144 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/urls/urls_constants.h"
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/switches/urls/urls_constants.h"
+#include "jemaos/build/config/buildflags.h"
 
-namespace fydeos::constants {
+namespace jemaos::constants {
 
-#if BUILDFLAG(USE_FYDEOS_COM)
+#if BUILDFLAG(USE_JEMAOS_COM)
 
-const char kDefaultTestUrl[] = "http://store.fydeos.com/204";
-const char kFydeOSHomePageUrl[] = "https://fydeos.com";
-const char kOpenFydeHomePageUrl[] = "https://openfyde.cn";
+const char kDefaultTestUrl[] = "http://store.jemaos.com/204";
+const char kJemaOSHomePageUrl[] = "https://jemaos.com";
+const char kOpenJemaHomePageUrl[] = "https://openjema.cn";
 
-const char kFydeOSStoreBaseUrl[] = "https://store.fydeos.com";
-const char kFydeOSAccountBaseUrl[] = "https://account.fydeos.com";
+const char kJemaOSStoreBaseUrl[] = "https://store.jemaos.com";
+const char kJemaOSAccountBaseUrl[] = "https://account.jemaos.com";
 
-const char kFydeOSForumURL[] = "https://community.fydeos.com/";
-const char kFydeOSRemoteDesktopURL[] = "https://rdp.fydeos.com/";
-const char kFydeOSNotesAppURL[] = "https://notes.fydeos.com";
-const char kFydeOSHelpURL[] = "https://fydeos.com/help/";
-const char kFydeOSReleaseNotesURL[] = "https://fydeos.com/release";
-const char kFydeOSNewsURL[] = "https://fydeos.com/blog";
-const char kMultiDeviceLearnMoreURL[] = "https://fydeos.com/docs";
-const char kLanguageSettingsLearnMoreUrl[] = "https://fydeos.com/docs/manual/customize-settings/language/manage-your-fydeos-devices-languages/";
-const char kLinuxAppsLearnMoreURL[] = "https://fydeos.com/docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-fydeos-device/";
-const char kOnlineEulaURLPath[] = "https://fydeos.com/terms-of-service/?agent=oobe";
-const char kOnlinePrivacyURLPath[] = "https://fydeos.com/privacy/?agent=oobe";
-const char kEulaURLPath[] = "https://fydeos.com/terms-of-service";
-const char kPrivacyURLPath[] = "https://fydeos.com/privacy";
-const char kFydeAccessibilityHelpURL[] = "https://fydeos.com/docs/manual/explore-accessibility";
-const char kFydeNewGestureHelpURL[] = "https://fydeos.com/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
-const char kSmbSharesLearnMoreURL[] = "https://fydeos.com/help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
-const char kCupsPrintLearnMoreURL[] = "https://fydeos.com/docs/manual/connect-your-fydeos-device/connect-to-other-devices/set-up-your-printer";
-const char kNaturalScrollHelpURL[] = "https://fydeos.com/docs/manual/customize-settings/appearance/use-your-fydeos-device-touchpad/";
-const char kControlledScrollingHelpURL[] = "https://fydeos.com/docs/manual/customize-settings/appearance/use-your-fydeos-device-touchpad/";
-const char kTimeZoneSettingsLearnMoreURL[] = "https://fydeos.com/help/manual/customize-settings/appearance/set-the-date-and-time/";
-const char kResetProfileSettingsLearnMoreURL[] = "https://fydeos.com/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
-const char kCrosBatterySaverLearnMoreURL[] = "https://fydeos.com/help/manual/customize-settings/advanced-settings/battery-saver/";
-const char kFydeOSAccountURL[] = "https://account.fydeos.com";
-const char kFydeOSAccountChooserURL[] = "https://account.fydeos.com";
-const char kFydeOSPasswordManagerURL[] = "https://account.fydeos.com";
+const char kJemaOSForumURL[] = "https://community.jemaos.com/";
+const char kJemaOSRemoteDesktopURL[] = "https://rdp.jemaos.com/";
+const char kJemaOSNotesAppURL[] = "https://notes.jemaos.com";
+const char kJemaOSHelpURL[] = "https://jemaos.com/help/";
+const char kJemaOSReleaseNotesURL[] = "https://jemaos.com/release";
+const char kJemaOSNewsURL[] = "https://jemaos.com/blog";
+const char kMultiDeviceLearnMoreURL[] = "https://jemaos.com/docs";
+const char kLanguageSettingsLearnMoreUrl[] = "https://jemaos.com/docs/manual/customize-settings/language/manage-your-jemaos-devices-languages/";
+const char kLinuxAppsLearnMoreURL[] = "https://jemaos.com/docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-jemaos-device/";
+const char kOnlineEulaURLPath[] = "https://jemaos.com/terms-of-service/?agent=oobe";
+const char kOnlinePrivacyURLPath[] = "https://jemaos.com/privacy/?agent=oobe";
+const char kEulaURLPath[] = "https://jemaos.com/terms-of-service";
+const char kPrivacyURLPath[] = "https://jemaos.com/privacy";
+const char kJemaAccessibilityHelpURL[] = "https://jemaos.com/docs/manual/explore-accessibility";
+const char kJemaNewGestureHelpURL[] = "https://jemaos.com/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
+const char kSmbSharesLearnMoreURL[] = "https://jemaos.com/help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
+const char kCupsPrintLearnMoreURL[] = "https://jemaos.com/docs/manual/connect-your-jemaos-device/connect-to-other-devices/set-up-your-printer";
+const char kNaturalScrollHelpURL[] = "https://jemaos.com/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
+const char kControlledScrollingHelpURL[] = "https://jemaos.com/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
+const char kTimeZoneSettingsLearnMoreURL[] = "https://jemaos.com/help/manual/customize-settings/appearance/set-the-date-and-time/";
+const char kResetProfileSettingsLearnMoreURL[] = "https://jemaos.com/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
+const char kCrosBatterySaverLearnMoreURL[] = "https://jemaos.com/help/manual/customize-settings/advanced-settings/battery-saver/";
+const char kJemaOSAccountURL[] = "https://account.jemaos.com";
+const char kJemaOSAccountChooserURL[] = "https://account.jemaos.com";
+const char kJemaOSPasswordManagerURL[] = "https://account.jemaos.com";
 
-const char kGoogleDriveBuyStorageUrl[] = "https://fydeos.com/docs/knowledge-base";
-const char kGoogleDriveOverviewUrl[] = "https://fydeos.com/docs/knowledge-base";
-const char kGoogleDriveHelpUrl[] = "https://fydeos.com/docs/knowledge-base";
-const char kGoogleDriveOfflineHelpUrl[] = "https://fydeos.com/docs/knowledge-base";
-const char kGoogleDriveRootUrl[] = "https://fydeos.com";
-const char kHelpURLFormat[] = "https://fydeos.com/docs/knowledge-base/answer/%d";
-const char kHelpURLNoTaskForFile[] = "https://fydeos.com/docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-fydeos-device/";
-const char kFydeDropUrl[] = "https://drop.fydeos.com";
+const char kGoogleDriveBuyStorageUrl[] = "https://jemaos.com/docs/knowledge-base";
+const char kGoogleDriveOverviewUrl[] = "https://jemaos.com/docs/knowledge-base";
+const char kGoogleDriveHelpUrl[] = "https://jemaos.com/docs/knowledge-base";
+const char kGoogleDriveOfflineHelpUrl[] = "https://jemaos.com/docs/knowledge-base";
+const char kGoogleDriveRootUrl[] = "https://jemaos.com";
+const char kHelpURLFormat[] = "https://jemaos.com/docs/knowledge-base/answer/%d";
+const char kHelpURLNoTaskForFile[] = "https://jemaos.com/docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-jemaos-device/";
+const char kJemaDropUrl[] = "https://drop.jemaos.com";
 
-const char kFydeExperimentTpmFallbackUrl[] = "https://fydeos.com/faq/experimental-tpm-fallback";
-const char kEolNotificationURL[] = "https://fydeos.com/eol";
-const char kKeyboardShortcutHelpPageUrl[] = "https://fydeos.com/docs/knowledge-base/recipes/keyboard-shortcuts";
-const char kFydeOSEnableWidevineLearnMoreURL[] = "https://fydeos.com/docs/knowledge-base/recipes/widevine";
-const char kWifiHiddenNetworkURL[] = "https://fydeos.com/docs/manual/connect-your-fydeos-device/connect-to-wi-fi-&-other-networks/manage-wifi-networks/";
-const char kBluetoothPairingLearnMoreUrl[] = "https://fydeos.com/docs/manual/connect-your-fydeos-device/connect-to-other-devices/connect-to-bluetooth-devices/";
-const char kFileManagerHelpURL[] = "https://fydeos.com/docs/manual/manage-your-apps/files-and-downloads/open-save-or-delete-files/";
-const char kTabletModeGesturesLearnMoreURL[] = "https://fydeos.com/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
-const char kRuntimeHostPermissionsHelpURL[] = "https://fydeos.com/docs/manual/manage-your-apps/add-apps-and-extensions/add-apps-and-extensions/";
-const char kFingerprintLearnMoreURL[] = "https://fydeos.com/docs/manual/customize-settings/users-and-sync/set-up-and-sign-in-with-fingerprint-on-your-fydeos-device";
+const char kJemaExperimentTpmFallbackUrl[] = "https://jemaos.com/faq/experimental-tpm-fallback";
+const char kEolNotificationURL[] = "https://jemaos.com/eol";
+const char kKeyboardShortcutHelpPageUrl[] = "https://jemaos.com/docs/knowledge-base/recipes/keyboard-shortcuts";
+const char kJemaOSEnableWidevineLearnMoreURL[] = "https://jemaos.com/docs/knowledge-base/recipes/widevine";
+const char kWifiHiddenNetworkURL[] = "https://jemaos.com/docs/manual/connect-your-jemaos-device/connect-to-wi-fi-&-other-networks/manage-wifi-networks/";
+const char kBluetoothPairingLearnMoreUrl[] = "https://jemaos.com/docs/manual/connect-your-jemaos-device/connect-to-other-devices/connect-to-bluetooth-devices/";
+const char kFileManagerHelpURL[] = "https://jemaos.com/docs/manual/manage-your-apps/files-and-downloads/open-save-or-delete-files/";
+const char kTabletModeGesturesLearnMoreURL[] = "https://jemaos.com/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
+const char kRuntimeHostPermissionsHelpURL[] = "https://jemaos.com/docs/manual/manage-your-apps/add-apps-and-extensions/add-apps-and-extensions/";
+const char kFingerprintLearnMoreURL[] = "https://jemaos.com/docs/manual/customize-settings/users-and-sync/set-up-and-sign-in-with-fingerprint-on-your-jemaos-device";
 
-const char kFydeOSBackupRestoreLearnMoreURL[] = "https://fydeos.com/docs/manual/customize-settings/fydeos-settings/misc#backup-and-restore";
+const char kJemaOSBackupRestoreLearnMoreURL[] = "https://jemaos.com/docs/manual/customize-settings/jemaos-settings/misc#backup-and-restore";
 
-const char kFydeOSToggleArcMediaAutoScanLearnMoreURL[] = "https://fydeos.com/faq/disable-media-files-scan/";
-const char kFydeOSDevModeTransitionLearnMoreURL[] = "https://fydeos.com/docs/knowledge-base/getting-started/developer-mode";
+const char kJemaOSToggleArcMediaAutoScanLearnMoreURL[] = "https://jemaos.com/faq/disable-media-files-scan/";
+const char kJemaOSDevModeTransitionLearnMoreURL[] = "https://jemaos.com/docs/knowledge-base/getting-started/developer-mode";
 
-#if BUILDFLAG(FYDEOS_DEVICE)
-const char kFydeOSProductWarrantyDefaultURL[] = "https://sn.fydetabduo.cn";
+#if BUILDFLAG(JEMAOS_DEVICE)
+const char kJemaOSProductWarrantyDefaultURL[] = "https://sn.jematabduo.cn";
 #endif
 
 #else
 
-const char kDefaultTestUrl[] = "http://store.fydeos.io/204";
-const char kFydeOSHomePageUrl[] = "https://fydeos.io";
-const char kOpenFydeHomePageUrl[] = "https://openfyde.io";
+const char kDefaultTestUrl[] = "http://store.jemaos.io/204";
+const char kJemaOSHomePageUrl[] = "https://jemaos.io";
+const char kOpenJemaHomePageUrl[] = "https://openjema.io";
 
-const char kFydeOSStoreBaseUrl[] = "https://store.fydeos.io";
-const char kFydeOSAccountBaseUrl[] = "https://account.fydeos.io";
+const char kJemaOSStoreBaseUrl[] = "https://store.jemaos.io";
+const char kJemaOSAccountBaseUrl[] = "https://account.jemaos.io";
 
-const char kFydeOSForumURL[] = "https://community.fydeos.io/";
-const char kFydeOSRemoteDesktopURL[] = "https://rdp.fydeos.io/";
-const char kFydeOSNotesAppURL[] = "https://notes.fydeos.io";
-const char kFydeOSHelpURL[] = "https://fydeos.io/help/";
-const char kFydeOSReleaseNotesURL[] = "https://fydeos.io/release";
-const char kFydeOSNewsURL[] = "https://fydeos.io/blog";
-const char kMultiDeviceLearnMoreURL[] = "https://fydeos.io/docs";
-const char kLanguageSettingsLearnMoreUrl[] = "https://fydeos.io/docs/manual/customize-settings/language/manage-your-fydeos-devices-languages/";
-const char kLinuxAppsLearnMoreURL[] = "https://fydeos.io/docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-fydeos-device/";
-const char kOnlineEulaURLPath[] = "https://fydeos.io/terms-of-service/?agent=oobe";
-const char kOnlinePrivacyURLPath[] = "https://fydeos.io/privacy/?agent=oobe";
-const char kEulaURLPath[] = "https://fydeos.io/terms-of-service";
-const char kPrivacyURLPath[] = "https://fydeos.io/privacy";
-const char kFydeAccessibilityHelpURL[] = "https://fydeos.io/docs/manual/explore-accessibility";
-const char kFydeNewGestureHelpURL[] = "https://fydeos.io/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
-const char kSmbSharesLearnMoreURL[] = "https://fydeos.io/help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
-const char kCupsPrintLearnMoreURL[] = "https://fydeos.io/docs/manual/connect-your-fydeos-device/connect-to-other-devices/set-up-your-printer";
-const char kNaturalScrollHelpURL[] = "https://fydeos.io/docs/manual/customize-settings/appearance/use-your-fydeos-device-touchpad/";
-const char kControlledScrollingHelpURL[] = "https://fydeos.io/docs/manual/customize-settings/appearance/use-your-fydeos-device-touchpad/";
-const char kTimeZoneSettingsLearnMoreURL[] = "https://fydeos.io/help/manual/customize-settings/appearance/set-the-date-and-time/";
-const char kResetProfileSettingsLearnMoreURL[] = "https://fydeos.io/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
-const char kCrosBatterySaverLearnMoreURL[] = "https://fydeos.io/help/manual/customize-settings/advanced-settings/battery-saver/";
-const char kFydeOSAccountURL[] = "https://account.fydeos.io";
-const char kFydeOSAccountChooserURL[] = "https://account.fydeos.io";
-const char kFydeOSPasswordManagerURL[] = "https://account.fydeos.io";
+const char kJemaOSForumURL[] = "https://community.jemaos.io/";
+const char kJemaOSRemoteDesktopURL[] = "https://rdp.jemaos.io/";
+const char kJemaOSNotesAppURL[] = "https://notes.jemaos.io";
+const char kJemaOSHelpURL[] = "https://jemaos.io/help/";
+const char kJemaOSReleaseNotesURL[] = "https://jemaos.io/release";
+const char kJemaOSNewsURL[] = "https://jemaos.io/blog";
+const char kMultiDeviceLearnMoreURL[] = "https://jemaos.io/docs";
+const char kLanguageSettingsLearnMoreUrl[] = "https://jemaos.io/docs/manual/customize-settings/language/manage-your-jemaos-devices-languages/";
+const char kLinuxAppsLearnMoreURL[] = "https://jemaos.io/docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-jemaos-device/";
+const char kOnlineEulaURLPath[] = "https://jemaos.io/terms-of-service/?agent=oobe";
+const char kOnlinePrivacyURLPath[] = "https://jemaos.io/privacy/?agent=oobe";
+const char kEulaURLPath[] = "https://jemaos.io/terms-of-service";
+const char kPrivacyURLPath[] = "https://jemaos.io/privacy";
+const char kJemaAccessibilityHelpURL[] = "https://jemaos.io/docs/manual/explore-accessibility";
+const char kJemaNewGestureHelpURL[] = "https://jemaos.io/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
+const char kSmbSharesLearnMoreURL[] = "https://jemaos.io/help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
+const char kCupsPrintLearnMoreURL[] = "https://jemaos.io/docs/manual/connect-your-jemaos-device/connect-to-other-devices/set-up-your-printer";
+const char kNaturalScrollHelpURL[] = "https://jemaos.io/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
+const char kControlledScrollingHelpURL[] = "https://jemaos.io/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
+const char kTimeZoneSettingsLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/appearance/set-the-date-and-time/";
+const char kResetProfileSettingsLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
+const char kCrosBatterySaverLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/advanced-settings/battery-saver/";
+const char kJemaOSAccountURL[] = "https://account.jemaos.io";
+const char kJemaOSAccountChooserURL[] = "https://account.jemaos.io";
+const char kJemaOSPasswordManagerURL[] = "https://account.jemaos.io";
 
-const char kGoogleDriveBuyStorageUrl[] = "https://fydeos.io/docs/knowledge-base";
-const char kGoogleDriveOverviewUrl[] = "https://fydeos.io/docs/knowledge-base";
-const char kGoogleDriveHelpUrl[] = "https://fydeos.io/docs/knowledge-base";
-const char kGoogleDriveOfflineHelpUrl[] = "https://fydeos.io/docs/knowledge-base";
-const char kGoogleDriveRootUrl[] = "https://fydeos.io";
-const char kHelpURLFormat[] = "https://fydeos.io/docs/knowledge-base/answer/%d";
-const char kHelpURLNoTaskForFile[] = "https://fydeos.io/docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-fydeos-device/";
-const char kFydeDropUrl[] = "https://drop.fydeos.io";
+const char kGoogleDriveBuyStorageUrl[] = "https://jemaos.io/docs/knowledge-base";
+const char kGoogleDriveOverviewUrl[] = "https://jemaos.io/docs/knowledge-base";
+const char kGoogleDriveHelpUrl[] = "https://jemaos.io/docs/knowledge-base";
+const char kGoogleDriveOfflineHelpUrl[] = "https://jemaos.io/docs/knowledge-base";
+const char kGoogleDriveRootUrl[] = "https://jemaos.io";
+const char kHelpURLFormat[] = "https://jemaos.io/docs/knowledge-base/answer/%d";
+const char kHelpURLNoTaskForFile[] = "https://jemaos.io/docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-jemaos-device/";
+const char kJemaDropUrl[] = "https://drop.jemaos.io";
 
-const char kFydeExperimentTpmFallbackUrl[] = "https://fydeos.io/faq/experimental-tpm-fallback";
-const char kEolNotificationURL[] = "https://fydeos.io/eol";
-const char kKeyboardShortcutHelpPageUrl[] = "https://fydeos.io/docs/knowledge-base/recipes/keyboard-shortcuts";
-const char kFydeOSEnableWidevineLearnMoreURL[] = "https://fydeos.io/docs/knowledge-base/recipes/widevine";
-const char kWifiHiddenNetworkURL[] = "https://fydeos.io/docs/manual/connect-your-fydeos-device/connect-to-wi-fi-&-other-networks/manage-wifi-networks/";
-const char kBluetoothPairingLearnMoreUrl[] = "https://fydeos.io/docs/manual/connect-your-fydeos-device/connect-to-other-devices/connect-to-bluetooth-devices/";
-const char kFileManagerHelpURL[] = "https://fydeos.io/docs/manual/manage-your-apps/files-and-downloads/open-save-or-delete-files/";
-const char kTabletModeGesturesLearnMoreURL[] = "https://fydeos.io/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
-const char kRuntimeHostPermissionsHelpURL[] = "https://fydeos.io/docs/manual/manage-your-apps/add-apps-and-extensions/add-apps-and-extensions/";
-const char kFingerprintLearnMoreURL[] = "https://fydeos.io/docs/manual/customize-settings/users-and-sync/set-up-and-sign-in-with-fingerprint-on-your-fydeos-device";
+const char kJemaExperimentTpmFallbackUrl[] = "https://jemaos.io/faq/experimental-tpm-fallback";
+const char kEolNotificationURL[] = "https://jemaos.io/eol";
+const char kKeyboardShortcutHelpPageUrl[] = "https://jemaos.io/docs/knowledge-base/recipes/keyboard-shortcuts";
+const char kJemaOSEnableWidevineLearnMoreURL[] = "https://jemaos.io/docs/knowledge-base/recipes/widevine";
+const char kWifiHiddenNetworkURL[] = "https://jemaos.io/docs/manual/connect-your-jemaos-device/connect-to-wi-fi-&-other-networks/manage-wifi-networks/";
+const char kBluetoothPairingLearnMoreUrl[] = "https://jemaos.io/docs/manual/connect-your-jemaos-device/connect-to-other-devices/connect-to-bluetooth-devices/";
+const char kFileManagerHelpURL[] = "https://jemaos.io/docs/manual/manage-your-apps/files-and-downloads/open-save-or-delete-files/";
+const char kTabletModeGesturesLearnMoreURL[] = "https://jemaos.io/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
+const char kRuntimeHostPermissionsHelpURL[] = "https://jemaos.io/docs/manual/manage-your-apps/add-apps-and-extensions/add-apps-and-extensions/";
+const char kFingerprintLearnMoreURL[] = "https://jemaos.io/docs/manual/customize-settings/users-and-sync/set-up-and-sign-in-with-fingerprint-on-your-jemaos-device";
 
-const char kFydeOSBackupRestoreLearnMoreURL[] = "https://fydeos.io/docs/manual/customize-settings/fydeos-settings/misc#backup-and-restore";
+const char kJemaOSBackupRestoreLearnMoreURL[] = "https://jemaos.io/docs/manual/customize-settings/jemaos-settings/misc#backup-and-restore";
 
-const char kFydeOSToggleArcMediaAutoScanLearnMoreURL[] = "https://fydeos.io/faq/disable-media-files-scan/";
+const char kJemaOSToggleArcMediaAutoScanLearnMoreURL[] = "https://jemaos.io/faq/disable-media-files-scan/";
 
-const char kFydeOSDevModeTransitionLearnMoreURL[] = "https://fydeos.io/docs/knowledge-base/getting-started/developer-mode";
+const char kJemaOSDevModeTransitionLearnMoreURL[] = "https://jemaos.io/docs/knowledge-base/getting-started/developer-mode";
 
-const char kFydeOSDiscordServerURL[] = "https://discord.gg/Qv3kxGeMJQ";
-const char kFydeOSTelegramGroupURL[] = "https://t.me/hi_fydeos";
+const char kJemaOSDiscordServerURL[] = "https://discord.gg/Qv3kxGeMJQ";
+const char kJemaOSTelegramGroupURL[] = "https://t.me/hi_jemaos";
 
-#if BUILDFLAG(FYDEOS_DEVICE)
-const char kFydeOSProductWarrantyDefaultURL[] = "https://sn.fydetabduo.com";
+#if BUILDFLAG(JEMAOS_DEVICE)
+const char kJemaOSProductWarrantyDefaultURL[] = "https://sn.jematabduo.com";
 #endif
 
 #endif
 
-}  // fydeos::constants
+}  // jemaos::constants

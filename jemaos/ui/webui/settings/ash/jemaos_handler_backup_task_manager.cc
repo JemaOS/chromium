@@ -1,9 +1,9 @@
-// Copyright (c) 2023 Fyde Innovations. All rights reserved.
+// Copyright (c) 2023 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include "fydeos/ui/webui/settings/ash/fydeos_handler_backup_task_manager.h"
+#include "jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.h"
 #include "base/notreached.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/fydeos_shell_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 #include "base/logging.h"
 #include "base/time/time.h"
 #include "base/task/sequenced_task_runner.h"
@@ -34,18 +34,18 @@ using message_center::Notification;
 namespace ash::settings {
 
 namespace {
-  const char kFydeOSBackupCommandFormat[] =
-    "/usr/bin/fydeos-backup backup --email %s --key %s --target %s";
-  constexpr int kFydeOSBackupTaskTrackIntervalSeconds = 5;
-  constexpr int kFydeOSBackupTaskOutputLines = 10;
+  const char kJemaOSBackupCommandFormat[] =
+    "/usr/bin/jemaos-backup backup --email %s --key %s --target %s";
+  constexpr int kJemaOSBackupTaskTrackIntervalSeconds = 5;
+  constexpr int kJemaOSBackupTaskOutputLines = 10;
 
-  FydeOSShellClient* GetShellClient() {
-    return FydeOSShellClient::Get();
+  JemaOSShellClient* GetShellClient() {
+    return JemaOSShellClient::Get();
   }
   BackupTaskManager* g_backup_task_manager = nullptr;
 
-  const char kFydeOSBackupNotificationId[] = "fydeos.os-settings.backup";
-  const char kFydeOSBackupNotifierId[] = "fydeos.os-settings.backup";
+  const char kJemaOSBackupNotificationId[] = "jemaos.os-settings.backup";
+  const char kJemaOSBackupNotifierId[] = "jemaos.os-settings.backup";
   std::unique_ptr<Notification> CreateNotification(
       BackupTaskManager::TaskState state,
       const std::u16string& title,
@@ -63,14 +63,14 @@ namespace {
     }
     std::unique_ptr<Notification> notification =
       ::ash::CreateSystemNotificationPtr(
-        type, kFydeOSBackupNotificationId,
+        type, kJemaOSBackupNotificationId,
         title,
         message,
         std::u16string(), GURL(),
         message_center::NotifierId(
           message_center::NotifierType::SYSTEM_COMPONENT,
-          kFydeOSBackupNotifierId,
-          ash::NotificationCatalogName::kFydeOSDataBackup),
+          kJemaOSBackupNotifierId,
+          ash::NotificationCatalogName::kJemaOSDataBackup),
         message_center::RichNotificationData(),
         nullptr,
         vector_icons::kProductIcon,
@@ -127,9 +127,9 @@ BackupTaskManager::BackupTaskManager() {
 
 BackupTaskManager::~BackupTaskManager() {
   if (MessageCenter::Get()->FindVisibleNotificationById(
-        kFydeOSBackupNotificationId)) {
+        kJemaOSBackupNotificationId)) {
     MessageCenter::Get()->RemoveNotification(
-        kFydeOSBackupNotificationId, false);
+        kJemaOSBackupNotificationId, false);
   }
 }
 
@@ -144,7 +144,7 @@ void BackupTaskManager::StartTask(Profile* profile,
   task_state_ = TaskState::kRunning;
   const std::string key = GenerateKey(email, password);
   const std::string command = base::StringPrintf(
-      kFydeOSBackupCommandFormat,
+      kJemaOSBackupCommandFormat,
       email.c_str(), key.c_str(), encoded_filepath.c_str());
   shell_client_->AsyncExec(command,
       base::BindOnce(
@@ -163,13 +163,13 @@ void BackupTaskManager::OnTaskStarted(std::optional<ShellState> state) {
   // for starting a new backup task,
   // force remove and add notification to make sure it will popup
   if (MessageCenter::Get()->FindVisibleNotificationById(
-        kFydeOSBackupNotificationId)) {
+        kJemaOSBackupNotificationId)) {
     MessageCenter::Get()->RemoveNotification(
-        kFydeOSBackupNotificationId, false);
+        kJemaOSBackupNotificationId, false);
   }
   DisplayNotification(CreateNotification(
         task_state_, l10n_util::GetStringUTF16(
-          IDS_FYDEOS_BACKUP_NOTIFICATION_RUNNING_TITLE), u"", nullptr));
+          IDS_JEMAOS_BACKUP_NOTIFICATION_RUNNING_TITLE), u"", nullptr));
   GetShellClientTaskState();
   GetTaskOutputAndState();
 }
@@ -180,11 +180,11 @@ void BackupTaskManager::ScheduleGetTaskOutputAndState() {
       base::BindOnce(
         &BackupTaskManager::GetTaskOutputAndState,
         weak_ptr_factory_.GetWeakPtr()),
-      base::Seconds(kFydeOSBackupTaskTrackIntervalSeconds));
+      base::Seconds(kJemaOSBackupTaskTrackIntervalSeconds));
 }
 
 void BackupTaskManager::GetTaskOutputAndState() {
-  shell_client_->GetTaskOutput(task_id_, kFydeOSBackupTaskOutputLines,
+  shell_client_->GetTaskOutput(task_id_, kJemaOSBackupTaskOutputLines,
       base::BindOnce(
         &BackupTaskManager::OnGetTaskOutputAndState,
         weak_ptr_factory_.GetWeakPtr()));
@@ -197,7 +197,7 @@ void BackupTaskManager::OnGetTaskOutputAndState(
                << (state ? state->result : "state is null");
     return;
   }
-  // see fydeos/extensions/common/api/shell_client.json
+  // see jemaos/extensions/common/api/shell_client.json
   switch (state->code) {
     case 0:
       // ON_NONE
@@ -338,9 +338,9 @@ void BackupTaskManager::ShowBackupErrorNotification(
     const base::FilePath& log_path, const bool exists) {
   scoped_refptr<message_center::NotificationDelegate> delegate;
   std::u16string title = l10n_util::GetStringUTF16(
-      IDS_FYDEOS_BACKUP_NOTIFICATION_FAILED_TITLE);
+      IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
   std::u16string message = l10n_util::GetStringUTF16(
-      IDS_FYDEOS_BACKUP_NOTIFICATION_FAILED_MESSAGE);
+      IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_MESSAGE);
   if (exists) {
     delegate = base::MakeRefCounted<
       message_center::HandleNotificationClickDelegate>(
@@ -360,9 +360,9 @@ void BackupTaskManager::ShowBackupFinishedNotification(
     const base::FilePath& backup_path, const bool exists) {
   scoped_refptr<message_center::NotificationDelegate> delegate;
   std::u16string title = l10n_util::GetStringUTF16(
-      IDS_FYDEOS_BACKUP_NOTIFICATION_FINISHED_TITLE);
+      IDS_JEMAOS_BACKUP_NOTIFICATION_FINISHED_TITLE);
   std::u16string message = l10n_util::GetStringUTF16(
-      IDS_FYDEOS_BACKUP_NOTIFICATION_FINISHED_MESSAGE);
+      IDS_JEMAOS_BACKUP_NOTIFICATION_FINISHED_MESSAGE);
   if (exists) {
     delegate = base::MakeRefCounted<
       message_center::HandleNotificationClickDelegate>(
@@ -381,9 +381,9 @@ void BackupTaskManager::ShowBackupFinishedNotification(
 void BackupTaskManager::DisplayNotification(
     std::unique_ptr<message_center::Notification> notification) {
   if (MessageCenter::Get()->FindVisibleNotificationById(
-        kFydeOSBackupNotificationId)) {
+        kJemaOSBackupNotificationId)) {
     MessageCenter::Get()->UpdateNotification(
-        kFydeOSBackupNotificationId, std::move(notification));
+        kJemaOSBackupNotificationId, std::move(notification));
   } else {
     MessageCenter::Get()->AddNotification(std::move(notification));
   }

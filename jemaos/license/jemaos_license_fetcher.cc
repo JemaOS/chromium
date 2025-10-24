@@ -1,8 +1,8 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/license/fydeos_license_fetcher.h"
+#include "jemaos/license/jemaos_license_fetcher.h"
 
 #include <string>
 #include "url/gurl.h"
@@ -15,37 +15,37 @@
 */
 
 #include "chrome/browser/policy/dm_token_utils.h"
-#include "fydeos/switches/license/license_constants.h"
+#include "jemaos/switches/license/license_constants.h"
 
 #include "services/network/public/cpp/resource_request.h"
 #include "chrome/browser/net/system_network_context_manager.h"
 #include "net/http/http_status_code.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
-#include "fydeos/switches/license/license_switches.h"
+#include "jemaos/switches/license/license_switches.h"
 
 #include "net/base/url_util.h"
 #include "base/system/sys_info.h"
-#include "fydeos/license/fydeos_license_user_util.h"
+#include "jemaos/license/jemaos_license_user_util.h"
 
-namespace fydeos::license {
+namespace jemaos::license {
 namespace {
-  const char kFydeOSLicenseQueryPath[] = "/chromeos/";
+  const char kJemaOSLicenseQueryPath[] = "/chromeos/";
   const int kFetcherTimeout = 1;
   static const size_t kMaxDownloadSize = 30 * 1024;
 
   const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
-    net::DefineNetworkTrafficAnnotation("fydeos_get_online_license", R"(
+    net::DefineNetworkTrafficAnnotation("jemaos_get_online_license", R"(
         semantics {
-          sender: "FydeOS - FydeOS license API"
+          sender: "JemaOS - JemaOS license API"
           description:
-            "This request is used to fetch fydeos license "
+            "This request is used to fetch jemaos license "
             "authentication cookies."
           trigger:
-            "This request is part of FydeOS online API, and is triggered if "
+            "This request is part of JemaOS online API, and is triggered if "
             "local license is failed. "
             "cookies is not required."
           data: "None."
-          destination: FYDEOS_LICENSE_SERVICE
+          destination: JEMAOS_LICENSE_SERVICE
         }
         policy {
           cookies_allowed: NO
@@ -66,7 +66,7 @@ namespace {
                   const bool is_new_license,
                   const std::string& oem_token) {
     GURL url(
-        fydeos::switches::GetFydeOSLicenseApiUrl() + kFydeOSLicenseQueryPath + id);
+        jemaos::switches::GetJemaOSLicenseApiUrl() + kJemaOSLicenseQueryPath + id);
     url = net::AppendQueryParameter(url, "is_new", is_new_license ? "true" : "false");
     url = net::AppendQueryParameter(url, "serialNumber", serial_number);
     url = net::AppendQueryParameter(
@@ -89,7 +89,7 @@ LicenseOnlineFetcher::LicenseOnlineFetcher() = default;
 /*
 {
   net::URLRequestContextBuilder context_builder;
-  context_builder.set_user_agent("FydeOS license Fetcher/1.0");
+  context_builder.set_user_agent("JemaOS license Fetcher/1.0");
 #if defined(OS_LINUX)
   context_builder.set_proxy_config_service(std::make_unique<net::ProxyConfigServiceFixed>(
             net::ProxyConfigWithAnnotation()));
@@ -170,4 +170,4 @@ void LicenseOnlineFetcher::OnURLFetchComplete(
   }
 }
 
-}  // namespace fydeos::license
+}  // namespace jemaos::license

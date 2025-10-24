@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 // Author: Simon Tsao(yang@flintos.io)
 
-#include "fydeos/extensions/browser/api/app_management/app_management_api.h"
+#include "jemaos/extensions/browser/api/app_management/app_management_api.h"
 
 #include <stddef.h>
 #include <algorithm>
@@ -16,7 +16,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension_set.h"
-#include "fydeos/extensions/common/api/app_management.h"
+#include "jemaos/extensions/common/api/app_management.h"
 #include "chrome/browser/ash/arc/arc_util.h"
 #include "chrome/browser/policy/chrome_policy_conversions_client.h"
 #include "components/policy/core/browser/policy_conversions.h"

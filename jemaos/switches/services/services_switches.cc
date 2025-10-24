@@ -1,135 +1,135 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/services/services_switches.h"
+#include "jemaos/switches/services/services_switches.h"
 
 #include "base/command_line.h"
-#include "fydeos/switches/services/services_constants.h"
-#include "fydeos/switches/urls/urls_constants.h"
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/switches/services/services_constants.h"
+#include "jemaos/switches/urls/urls_constants.h"
+#include "jemaos/build/config/buildflags.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace switches {
 
 namespace {
 
-const char kDisableFydeOSGeolocationAPI[] = "disable-fydeos-geolocation-api";
-const char kDisableFydeOSTimezoneAPI[] = "disable-fydeos-timezone-api";
+const char kDisableJemaOSGeolocationAPI[] = "disable-jemaos-geolocation-api";
+const char kDisableJemaOSTimezoneAPI[] = "disable-jemaos-timezone-api";
 
-const char kFydeOSGeolocationAPIUrl[] = "fydeos-geolocation-api-url";
-const char kFydeOSTimezoneAPIUrl[] = "fydeos-timezone-api-url";
+const char kJemaOSGeolocationAPIUrl[] = "jemaos-geolocation-api-url";
+const char kJemaOSTimezoneAPIUrl[] = "jemaos-timezone-api-url";
 
-const char kFydeOSLookingGlassUrl[] = "fydeos-lookingglass-url";
+const char kJemaOSLookingGlassUrl[] = "jemaos-lookingglass-url";
 
-const char kFydeOSAppsGalleryURL[] = "fydeos-apps-gallery-url";
+const char kJemaOSAppsGalleryURL[] = "jemaos-apps-gallery-url";
 
-const char kFydeOSAppsGalleryUpdateURL[] = "fydeos-apps-gallery-update-url";
+const char kJemaOSAppsGalleryUpdateURL[] = "jemaos-apps-gallery-update-url";
 
-const char kFydeOSAssistantWebUrl[] = "fydeos-ai-url";
+const char kJemaOSAssistantWebUrl[] = "jemaos-ai-url";
 
-const char kFydeOSStoreComPrefix[] = "https://store.fydeos.com";
-const char kFydeOSStoreIoPrefix[] = "https://store.fydeos.io";
+const char kJemaOSStoreComPrefix[] = "https://store.jemaos.com";
+const char kJemaOSStoreIoPrefix[] = "https://store.jemaos.io";
 
-#if BUILDFLAG(FYDEOS_DEVICE)
-const char kFydeOSProductWarrantyURL[] = "fydeos-product-warranty-url";
+#if BUILDFLAG(JEMAOS_DEVICE)
+const char kJemaOSProductWarrantyURL[] = "jemaos-product-warranty-url";
 #endif
 
 }
 
-bool DisableFydeOSGeolocationAPI() {
+bool DisableJemaOSGeolocationAPI() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  return command_line->HasSwitch(kDisableFydeOSGeolocationAPI);
+  return command_line->HasSwitch(kDisableJemaOSGeolocationAPI);
 }
 
-bool DisableFydeOSTimezoneAPI() {
+bool DisableJemaOSTimezoneAPI() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  return command_line->HasSwitch(kDisableFydeOSTimezoneAPI);
+  return command_line->HasSwitch(kDisableJemaOSTimezoneAPI);
 }
 
-std::string GetFydeOSGeolocationAPIUrl() {
+std::string GetJemaOSGeolocationAPIUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kFydeOSGeolocationAPIUrl)) {
-    return command_line->GetSwitchValueASCII(kFydeOSGeolocationAPIUrl);
+  if (command_line->HasSwitch(kJemaOSGeolocationAPIUrl)) {
+    return command_line->GetSwitchValueASCII(kJemaOSGeolocationAPIUrl);
   } else {
-    return std::string(fydeos::constants::kDefaultFydeOSGeolocationAPIUrl);
+    return std::string(jemaos::constants::kDefaultJemaOSGeolocationAPIUrl);
   }
 }
 
-std::string GetFydeOSTimezoneAPIUrl() {
+std::string GetJemaOSTimezoneAPIUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kFydeOSTimezoneAPIUrl)) {
-    return command_line->GetSwitchValueASCII(kFydeOSTimezoneAPIUrl);
+  if (command_line->HasSwitch(kJemaOSTimezoneAPIUrl)) {
+    return command_line->GetSwitchValueASCII(kJemaOSTimezoneAPIUrl);
   } else {
-    return std::string(fydeos::constants::kDefaultFydeOSTimezoneAPIUrl);
+    return std::string(jemaos::constants::kDefaultJemaOSTimezoneAPIUrl);
   }
 }
 
-std::string GetFydeOSLookingGlassUrl() {
+std::string GetJemaOSLookingGlassUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kFydeOSLookingGlassUrl)) {
-    return command_line->GetSwitchValueASCII(kFydeOSLookingGlassUrl);
+  if (command_line->HasSwitch(kJemaOSLookingGlassUrl)) {
+    return command_line->GetSwitchValueASCII(kJemaOSLookingGlassUrl);
   } else {
-    return std::string(fydeos::constants::kDefaultFydeOSLookingGlassUrl);
+    return std::string(jemaos::constants::kDefaultJemaOSLookingGlassUrl);
   }
 }
 
-std::string GetFydeOSAppStoreURL() {
+std::string GetJemaOSAppStoreURL() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kFydeOSAppsGalleryURL)) {
-    return command_line->GetSwitchValueASCII(kFydeOSAppsGalleryURL);
+  if (command_line->HasSwitch(kJemaOSAppsGalleryURL)) {
+    return command_line->GetSwitchValueASCII(kJemaOSAppsGalleryURL);
   } else {
-    return std::string(fydeos::constants::kFydeOSStoreBaseUrl);
+    return std::string(jemaos::constants::kJemaOSStoreBaseUrl);
   }
 }
 
-std::string GetFydeOSWebStoreUpdateUrl() {
+std::string GetJemaOSWebStoreUpdateUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kFydeOSAppsGalleryUpdateURL)) {
-    return command_line->GetSwitchValueASCII(kFydeOSAppsGalleryUpdateURL);
+  if (command_line->HasSwitch(kJemaOSAppsGalleryUpdateURL)) {
+    return command_line->GetSwitchValueASCII(kJemaOSAppsGalleryUpdateURL);
   } else {
-    return std::string(fydeos::constants::kFydeOSWebStoreUpdateURL);
+    return std::string(jemaos::constants::kJemaOSWebStoreUpdateURL);
   }
 }
 
-std::string GetFydeOSAssistantWebUrl() {
+std::string GetJemaOSAssistantWebUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kFydeOSAssistantWebUrl)) {
-    std::string value(command_line->GetSwitchValueASCII(kFydeOSAssistantWebUrl));
+  if (command_line->HasSwitch(kJemaOSAssistantWebUrl)) {
+    std::string value(command_line->GetSwitchValueASCII(kJemaOSAssistantWebUrl));
     if (!value.empty()) {
       return value;
     }
   }
-  return std::string(fydeos::constants::kFydeOSAssistantDefaultWebUrl);
+  return std::string(jemaos::constants::kJemaOSAssistantDefaultWebUrl);
 }
 
 CHROMEOS_EXPORT std::string MayConvertWebStoreUpdateUrl(
     const std::string& url) {
   std::string new_url = url;
-#if BUILDFLAG(USE_FYDEOS_COM)
-  if (new_url.find(kFydeOSStoreIoPrefix) == 0) {
-    new_url.replace(0, sizeof(kFydeOSStoreIoPrefix) - 1,
-                    kFydeOSStoreComPrefix);
+#if BUILDFLAG(USE_JEMAOS_COM)
+  if (new_url.find(kJemaOSStoreIoPrefix) == 0) {
+    new_url.replace(0, sizeof(kJemaOSStoreIoPrefix) - 1,
+                    kJemaOSStoreComPrefix);
   }
 #else
-  if (new_url.find(kFydeOSStoreComPrefix) == 0) {
-    new_url.replace(0, sizeof(kFydeOSStoreComPrefix) - 1,
-                    kFydeOSStoreIoPrefix);
+  if (new_url.find(kJemaOSStoreComPrefix) == 0) {
+    new_url.replace(0, sizeof(kJemaOSStoreComPrefix) - 1,
+                    kJemaOSStoreIoPrefix);
   }
 #endif
   return new_url;
 }
 
-#if BUILDFLAG(FYDEOS_DEVICE)
-std::string GetFydeOSProductWarrantyUrl() {
+#if BUILDFLAG(JEMAOS_DEVICE)
+std::string GetJemaOSProductWarrantyUrl() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kFydeOSProductWarrantyURL)) {
-    return command_line->GetSwitchValueASCII(kFydeOSProductWarrantyURL);
+  if (command_line->HasSwitch(kJemaOSProductWarrantyURL)) {
+    return command_line->GetSwitchValueASCII(kJemaOSProductWarrantyURL);
   } else {
-    return std::string(fydeos::constants::kFydeOSProductWarrantyDefaultURL);
+    return std::string(jemaos::constants::kJemaOSProductWarrantyDefaultURL);
   }
 }
 #endif
 
 } // switches
-} // fydeos
+} // jemaos

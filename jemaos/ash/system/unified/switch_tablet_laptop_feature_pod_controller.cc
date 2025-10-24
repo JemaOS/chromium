@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/ash/system/unified/switch_tablet_laptop_feature_pod_controller.h"
+#include "jemaos/ash/system/unified/switch_tablet_laptop_feature_pod_controller.h"
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/system/unified/feature_pod_button.h"
 #include "ash/system/unified/feature_tile.h"
@@ -13,7 +13,7 @@
 #include "ash/system/unified/unified_system_tray_controller.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
-#include "fydeos/prefs/fydeos_pref_names.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 namespace ash {
 
@@ -39,17 +39,17 @@ std::unique_ptr<FeatureTile> SwitchTabletLabtopFeaturePodController::CreateTile(
 void SwitchTabletLabtopFeaturePodController::OnIconPressed() {
   tray_controller_->CloseBubble();
   TabletModeController* controller = Shell::Get()->tablet_mode_controller();
-  const bool force_on = controller->IsInFydeForceOnMode();
-  const bool force_off = controller->IsInFydeForceOffMode();
+  const bool force_on = controller->IsInJemaForceOnMode();
+  const bool force_off = controller->IsInJemaForceOffMode();
   if (!force_on && !force_off && !IsInTabletMode()) {
     // -> default & laptop -> force_on
-    controller->SetEnabledByFyde(true);
+    controller->SetEnabledByJema(true);
   } else if (IsInTabletMode()) {
     // -> ((default && tablet) || force_on) -> force_off
-    controller->SetEnabledByFyde(false);
+    controller->SetEnabledByJema(false);
   } else if (force_off) {
     // -> force_off -> default
-    controller->SetDefaultBehaviorByFyde();
+    controller->SetDefaultBehaviorByJema();
   }
 }
 
@@ -60,31 +60,31 @@ QsFeatureCatalogName SwitchTabletLabtopFeaturePodController::GetCatalogName() {
 void SwitchTabletLabtopFeaturePodController::RegisterLocalStatePrefs(
     PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(
-      fydeos::prefs::kShowSwitchTabletLaptopButton, false);
+      jemaos::prefs::kShowSwitchTabletLaptopButton, false);
 }
 
 void SwitchTabletLabtopFeaturePodController::UpdateTile() {
   TabletModeController* controller = Shell::Get()->tablet_mode_controller();
-  const bool force_on = controller->IsInFydeForceOnMode();
-  const bool force_off = controller->IsInFydeForceOffMode();
+  const bool force_on = controller->IsInJemaForceOnMode();
+  const bool force_off = controller->IsInJemaForceOffMode();
   std::u16string label_text;
   const gfx::VectorIcon* icon;
   if (!force_on && !force_off && !IsInTabletMode()) {
     icon = &kUnifiedMenuTabletModeIcon;
     label_text = l10n_util::GetStringUTF16(
-        IDS_ASH_FYDEOS_UNIFIED_MENU_LABEL_SWITCH_TO_TABLET_MODE);
+        IDS_ASH_JEMAOS_UNIFIED_MENU_LABEL_SWITCH_TO_TABLET_MODE);
   } else if (IsInTabletMode()) {
     icon = &kUnifiedMenuDesktopModeIcon;
     label_text = l10n_util::GetStringUTF16(
-        IDS_ASH_FYDEOS_UNIFIED_MENU_LABEL_SWITCH_TO_LAPTOP_MODE);
+        IDS_ASH_JEMAOS_UNIFIED_MENU_LABEL_SWITCH_TO_LAPTOP_MODE);
   } else if (force_off) {
     icon = &kUnifiedMenuDefaultModeIcon;
     label_text = l10n_util::GetStringUTF16(
-        IDS_ASH_FYDEOS_UNIFIED_MENU_LABEL_SWITCH_TO_DEFAULT_MODE);
+        IDS_ASH_JEMAOS_UNIFIED_MENU_LABEL_SWITCH_TO_DEFAULT_MODE);
   }
   PrefService* prefs = Shell::Get()->local_state();
   bool visible = prefs->GetBoolean(
-      fydeos::prefs::kShowSwitchTabletLaptopButton);
+      jemaos::prefs::kShowSwitchTabletLaptopButton);
   if (!tile_) {
     return;
   }
@@ -97,7 +97,7 @@ void SwitchTabletLabtopFeaturePodController::UpdateTile() {
 bool SwitchTabletLabtopFeaturePodController::IsInTabletMode() {
   TabletModeController* controller = Shell::Get()->tablet_mode_controller();
   const bool in_dev_mode = controller->IsInDevTabletMode();
-  const bool force_on = controller->IsInFydeForceOnMode();
+  const bool force_on = controller->IsInJemaForceOnMode();
   const bool physical_on = controller->is_in_tablet_physical_state();
   return in_dev_mode || force_on || physical_on;
 }

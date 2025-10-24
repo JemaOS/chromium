@@ -1,5 +1,5 @@
-#ifndef FYDEOS_EXTENSIONS_API_SHELL_CLIENT_API_H_
-#define FYDEOS_EXTENSIONS_API_SHELL_CLIENT_API_H_
+#ifndef JEMAOS_EXTENSIONS_API_SHELL_CLIENT_API_H_
+#define JEMAOS_EXTENSIONS_API_SHELL_CLIENT_API_H_
 
 #include <string>
 #include "base/memory/weak_ptr.h"
@@ -9,15 +9,15 @@
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_function.h"
 #include "extensions/browser/extension_function_histogram_value.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/fydeos_shell_client.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/shell_state.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
 
-using ShellState = fydeos::ash::ShellState;
-using FydeOSShellClient = fydeos::ash::FydeOSShellClient;
+using ShellState = jemaos::ash::ShellState;
+using JemaOSShellClient = jemaos::ash::JemaOSShellClient;
 
 namespace extensions {
 
-class ShellClientEventRouter : public FydeOSShellClient::Observer {
+class ShellClientEventRouter : public JemaOSShellClient::Observer {
   public:
     explicit ShellClientEventRouter(Profile* profile);
     ~ShellClientEventRouter() override;
@@ -31,8 +31,8 @@ class ShellClientEventRouter : public FydeOSShellClient::Observer {
         const std::string& msg) override;
     void OnCustomNotificationReceived(int32_t data, int32_t exdata,
         const std::string& extra) override;
-    base::ScopedObservation<FydeOSShellClient, FydeOSShellClient::Observer>
-      fydeos_client_observer_;
+    base::ScopedObservation<JemaOSShellClient, JemaOSShellClient::Observer>
+      jemaos_client_observer_;
     Profile* profile_;
     EventRouter* event_router_;
     std::set<std::string> system_extension_ids_;
@@ -112,4 +112,4 @@ class ShellClientAPI : public BrowserContextKeyedAPI,
     DECLARE_EXTENSION_FUNCTION("shellClient.getDaemonState", SHELL_GET_DAEMON_STATE)
   };
 } //extensions
-#endif // FYDEOS_EXTENSIONS_API_SHELL_CLIENT_API_H_
+#endif // JEMAOS_EXTENSIONS_API_SHELL_CLIENT_API_H_

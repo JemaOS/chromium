@@ -1,14 +1,14 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// Author: Simon Tsao(yang@fydeos.io)
+// Author: Jema Technology
 
 [
 {
   "namespace": "licenseManagement",
-  "description": "fydeos license management api",
+  "description": "jemaos license management api",
   "compiler_options": {
-    "implemented_in": "fydeos/extensions/browser/api/license_management/license_management_api.h"
+    "implemented_in": "jemaos/extensions/browser/api/license_management/license_management_api.h"
   },
   "functions": [
     {

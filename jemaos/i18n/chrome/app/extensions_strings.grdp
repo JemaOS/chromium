@@ -2,11 +2,11 @@
 <!-- extend chrome/app/extensions_strings.grdp, included from generated_resources.grd -->
 <grit-part>
 
-  <message name="IDS_EXTENSIONS_ITEM_SOURCE_FYDEOS_STORE" desc="The text to indicate that an extension is from the FydeOS Store.">
-    FydeOS App Store
+  <message name="IDS_EXTENSIONS_ITEM_SOURCE_JEMAOS_STORE" desc="The text to indicate that an extension is from the JemaOS Store.">
+    JemaOS App Store
   </message>
 
-  <message name="IDS_EXTENSIONS_ITEM_VIEW_IN_STORE" desc="Label for button to visit the fydeos app store or chrome web store.">
+  <message name="IDS_EXTENSIONS_ITEM_VIEW_IN_STORE" desc="Label for button to visit the jemaos app store or chrome web store.">
     View in Store
   </message>
 

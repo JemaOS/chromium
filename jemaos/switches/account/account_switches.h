@@ -1,36 +1,36 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_FYDEOS_SWITCHES_ACCOUNT_SWITCHES_H_
-#define CHROMEOS_FYDEOS_SWITCHES_ACCOUNT_SWITCHES_H_
+#ifndef CHROMEOS_JEMAOS_SWITCHES_ACCOUNT_SWITCHES_H_
+#define CHROMEOS_JEMAOS_SWITCHES_ACCOUNT_SWITCHES_H_
 
 #include <string>
 #include "chromeos/chromeos_export.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace switches {
 
-CHROMEOS_EXPORT bool IsFydeAccountEnabled();
-CHROMEOS_EXPORT bool IsFydeExtendAccountEnabled();
+CHROMEOS_EXPORT bool IsJemaAccountEnabled();
+CHROMEOS_EXPORT bool IsJemaExtendAccountEnabled();
 
-CHROMEOS_EXPORT extern const char kFydeAccountEnable[];
-CHROMEOS_EXPORT extern const char kFydeAccountForceDisabledForTest[];
+CHROMEOS_EXPORT extern const char kJemaAccountEnable[];
+CHROMEOS_EXPORT extern const char kJemaAccountForceDisabledForTest[];
 
-CHROMEOS_EXPORT extern const char kFydeOSGaiaUrl[];
-CHROMEOS_EXPORT extern const char kFydeOSApisUrl[];
-CHROMEOS_EXPORT extern const char kFydeOSDeviceManagementUrl[];
-CHROMEOS_EXPORT extern const char kFydeOSRealtimeReportingUrl[];
-CHROMEOS_EXPORT extern const char kFydeOSEncryptedReportingUrl[];
-CHROMEOS_EXPORT extern const char kFydeOSSyncServiceURL[];
-extern std::string GetFydeOSKidsManagementAPIBaseUrl();
-CHROMEOS_EXPORT int GetFydeOSSupervisedUserSettingsSyncInterval();
-CHROMEOS_EXPORT bool IsPolicyManagedByFyde();
+CHROMEOS_EXPORT extern const char kJemaOSGaiaUrl[];
+CHROMEOS_EXPORT extern const char kJemaOSApisUrl[];
+CHROMEOS_EXPORT extern const char kJemaOSDeviceManagementUrl[];
+CHROMEOS_EXPORT extern const char kJemaOSRealtimeReportingUrl[];
+CHROMEOS_EXPORT extern const char kJemaOSEncryptedReportingUrl[];
+CHROMEOS_EXPORT extern const char kJemaOSSyncServiceURL[];
+extern std::string GetJemaOSKidsManagementAPIBaseUrl();
+CHROMEOS_EXPORT int GetJemaOSSupervisedUserSettingsSyncInterval();
+CHROMEOS_EXPORT bool IsPolicyManagedByJema();
 
-bool IsFydeDMServerUrl(const std::string& url);
+bool IsJemaDMServerUrl(const std::string& url);
 
-CHROMEOS_EXPORT std::string GetFydeFtlServerEndpoint();
-CHROMEOS_EXPORT std::string GetFydeRemotingServerEndpoint();
+CHROMEOS_EXPORT std::string GetJemaFtlServerEndpoint();
+CHROMEOS_EXPORT std::string GetJemaRemotingServerEndpoint();
 
 }
 }

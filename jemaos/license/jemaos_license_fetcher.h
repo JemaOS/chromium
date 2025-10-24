@@ -1,9 +1,9 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FYDEOS_LICENSE_FETCHER_H_
-#define FYDEOS_LICENSE_FETCHER_H_
+#ifndef JEMAOS_LICENSE_FETCHER_H_
+#define JEMAOS_LICENSE_FETCHER_H_
 #include <memory>
 #include <string>
 #include "base/values.h"
@@ -14,9 +14,9 @@
 #include "net/url_request/url_request_context_getter.h"
 */
 #include "services/network/public/cpp/simple_url_loader.h"
-#include "fydeos/license/fydeos_callback_status.h"
+#include "jemaos/license/jemaos_callback_status.h"
 
-namespace fydeos::license {
+namespace jemaos::license {
 
 enum FetchMode {
   OnlineMode,
@@ -47,7 +47,7 @@ class LicenseOnlineFetcher /*:  public net::URLFetcherDelegate*/ {
   void OnTimeout();
 };
 
-}  // namespace fydeos::license
+}  // namespace jemaos::license
 
 
-#endif  // FYDEOS_LICENSE_FETCHER_H_
+#endif  // JEMAOS_LICENSE_FETCHER_H_

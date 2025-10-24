@@ -1,20 +1,20 @@
-# Copyright 2018 The FydeOS Authors. All rights reserved.
+# Copyright 2018 The JemaOS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 # Author: Simon Tsao(yang@flintos.io)
 import("//build/config/features.gni")
-import("//fydeos/extensions/common/api/fydeos_schema.gni")
+import("//jemaos/extensions/common/api/jemaos_schema.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//tools/json_schema_compiler/json_schema_api.gni")
 import("//tools/json_schema_compiler/json_features.gni")
-import("//fydeos/build/config/buildflags.gni")
+import("//jemaos/build/config/buildflags.gni")
 
 
 assert(enable_extensions)
 
-generated_json_strings("fydeos_api") {
+generated_json_strings("jemaos_api") {
   sources = extensions_api_schema_files
-  bundle_name = "FydeOS"
+  bundle_name = "JemaOS"
   root_namespace = extensions_api_root_namespace
   schema_include_rules = extensions_api_schema_include_rules
   deps = [
@@ -23,7 +23,7 @@ generated_json_strings("fydeos_api") {
   visibility = [ ":api" ]
 }
 
-generated_types("fydeos_api_types") {
+generated_types("jemaos_api_types") {
   sources = extensions_api_schema_files
   root_namespace = extensions_api_root_namespace
   deps = [
@@ -36,12 +36,12 @@ generated_types("fydeos_api_types") {
 
 group("api"){
   deps = [
-    ":fydeos_api",
-    ":fydeos_api_types",
+    ":jemaos_api",
+    ":jemaos_api_types",
   ]
 }
 
-group("fydeos_features") {
+group("jemaos_features") {
   public_deps = [
     ":api_features",
     ":permission_features",
@@ -50,23 +50,23 @@ group("fydeos_features") {
 
 json_features("api_features") {
   feature_type = "APIFeature"
-  method_name = "AddFydeOSAPIFeatures"
+  method_name = "AddJemaOSAPIFeatures"
   sources = [
     "_api_features.json",
   ]
-  if (use_fydeos_license) {
+  if (use_jemaos_license) {
     sources += [
       "_license_api_features.json",
     ]
   }
-  visibility = [ ":fydeos_features" ]
+  visibility = [ ":jemaos_features" ]
 }
 
 json_features("permission_features") {
   feature_type = "PermissionFeature"
-  method_name = "AddFydeOSPermissionFeatures"
+  method_name = "AddJemaOSPermissionFeatures"
   sources = [
     "_permission_features.json",
   ]
-  visibility = [ ":fydeos_features" ]
+  visibility = [ ":jemaos_features" ]
 }

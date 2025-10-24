@@ -1,16 +1,16 @@
-// Copyright (c) 2021 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2021 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_FYDEOS_PREFS_H_
-#define CHROMEOS_FYDEOS_PREFS_H_
+#ifndef CHROMEOS_JEMAOS_PREFS_H_
+#define CHROMEOS_JEMAOS_PREFS_H_
 
-#include "fydeos/prefs/fydeos_pref_names.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 class PrefRegistrySimple;
 class PrefService;
 
-namespace fydeos {
+namespace jemaos {
 
 namespace prefs {
 
@@ -25,5 +25,5 @@ void ClearOneShotProfilePrefs(PrefService* prefs);
 
 } // prefs
 
-} // fydeos
-#endif /* ifndef FYDEOS_PREFS_H */
+} // jemaos
+#endif /* ifndef JEMAOS_PREFS_H */

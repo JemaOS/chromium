@@ -1,9 +1,9 @@
-// Copyright (c) 2018 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2018 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FYDEOS_DBUS_SHELL_STATE_H_
-#define FYDEOS_DBUS_SHELL_STATE_H_
+#ifndef JEMAOS_DBUS_SHELL_STATE_H_
+#define JEMAOS_DBUS_SHELL_STATE_H_
 
 #include <stdint.h>
 
@@ -11,7 +11,7 @@
 
 #include "chromeos/chromeos_export.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace ash {
 
 struct CHROMEOS_EXPORT ShellState {
@@ -24,6 +24,6 @@ struct CHROMEOS_EXPORT ShellState {
 
 }
 
-}  // namespace fydeos
+}  // namespace jemaos
 
-#endif  // FYDEOS_DBUS_SHELL_STATE_H_
+#endif  // JEMAOS_DBUS_SHELL_STATE_H_

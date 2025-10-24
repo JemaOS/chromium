@@ -1,30 +1,30 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/switches/accelerometer/accelerometer_switches.h"
+#include "jemaos/switches/accelerometer/accelerometer_switches.h"
 #include "base/command_line.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace switches {
 
 namespace {
 
-const char kAccelConfigIndex[] = "fydeos-accel-config";
-const char kAccelRevertX[] = "fydeos-accel-revert-x";
-const char kAccelRevertY[] = "fydeos-accel-revert-y";
-const char kAccelRevertZ[] = "fydeos-accel-revert-z";
-const char kAccelRightMoveBits[] = "fydeos-accel-right-move";
-const char kAccelDataPattern[] = "fydeos-accel-pattern";
-const char kRotate_90[] = "fydeos-rotate-90";
-const char kRotate_180[] = "fydeos-rotate-180";
-const char kRotate_270[] = "fydeos-rotate-270";
-const char kFydeOSAccelerometerReadInterval[] = "fydeos-accel-read-interval";
-const char kFydeOSAccelerometerSwapBytes[] = "fydeos-accel-swap-bytes";
+const char kAccelConfigIndex[] = "jemaos-accel-config";
+const char kAccelRevertX[] = "jemaos-accel-revert-x";
+const char kAccelRevertY[] = "jemaos-accel-revert-y";
+const char kAccelRevertZ[] = "jemaos-accel-revert-z";
+const char kAccelRightMoveBits[] = "jemaos-accel-right-move";
+const char kAccelDataPattern[] = "jemaos-accel-pattern";
+const char kRotate_90[] = "jemaos-rotate-90";
+const char kRotate_180[] = "jemaos-rotate-180";
+const char kRotate_270[] = "jemaos-rotate-270";
+const char kJemaOSAccelerometerReadInterval[] = "jemaos-accel-read-interval";
+const char kJemaOSAccelerometerSwapBytes[] = "jemaos-accel-swap-bytes";
 
 }
 
-bool IsFydeOSAccelerometer() {
+bool IsJemaOSAccelerometer() {
   return base::CommandLine::ForCurrentProcess()->HasSwitch(kAccelConfigIndex);
 }
 
@@ -81,16 +81,16 @@ bool IsRotate_270(){
   return base::CommandLine::ForCurrentProcess()->HasSwitch(kRotate_270);
 }
 
-int GetFydeOSAccelerometerReadIntervalInMS() {
-  std::string patternStr = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(kFydeOSAccelerometerReadInterval);
+int GetJemaOSAccelerometerReadIntervalInMS() {
+  std::string patternStr = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(kJemaOSAccelerometerReadInterval);
   if (patternStr.empty())
     return 0;
   return std::stoi(patternStr);
 }
 
-bool FydeOSAccelerometerSwapBytes() {
-  return base::CommandLine::ForCurrentProcess()->HasSwitch(kFydeOSAccelerometerSwapBytes);
+bool JemaOSAccelerometerSwapBytes() {
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(kJemaOSAccelerometerSwapBytes);
 }
 
 } // switches
-} // fydeos
+} // jemaos

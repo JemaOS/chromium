@@ -1,17 +1,17 @@
-// Copyright 2022 Fyde Innovations. All rights reserved.
+// Copyright 2022 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/chrome/browser/web_applications/preinstalled_web_apps/community.h"
+#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.h"
 #include "chrome/browser/browser_process.h"
-#include "fydeos/switches/urls/urls_constants.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 namespace web_app {
 
-ExternalInstallOptions GetConfigForFydeCommunity() {
+ExternalInstallOptions GetConfigForJemaCommunity() {
   const std::string language = g_browser_process->GetApplicationLocale();
   ExternalInstallOptions options(
-      /*install_url=*/GURL(fydeos::constants::kFydeOSForumURL),
+      /*install_url=*/GURL(jemaos::constants::kJemaOSForumURL),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

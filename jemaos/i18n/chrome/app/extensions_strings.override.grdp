@@ -5,18 +5,18 @@
   <message name="IDS_EXTENSIONS_SIDEBAR_OPEN_CHROME_WEB_STORE" desc="The text for the link to get more extensions in the extensions page.">
     Open App Store
   </message>
-  <if expr="use_fydeos_com">
+  <if expr="use_jemaos_com">
     <message name="IDS_EXTENSIONS_NO_INSTALLED_ITEMS" desc="The message shown to the user on the Extensions settings page when there are no extensions or apps installed.">
-      Find extensions and themes in the <ph name="BEGIN_LINK">&lt;a href="https://store.fydeos.com/?init=extensions"&gt;</ph>FydeOS App Store<ph name="END_LINK">&lt;/a&gt;<ex>&lt;/a&gt;</ex></ph>
+      Find extensions and themes in the <ph name="BEGIN_LINK">&lt;a href="https://store.jemaos.com/?init=extensions"&gt;</ph>JemaOS App Store<ph name="END_LINK">&lt;/a&gt;<ex>&lt;/a&gt;</ex></ph>
     </message>
   </if>
-  <if expr="not use_fydeos_com">
+  <if expr="not use_jemaos_com">
     <message name="IDS_EXTENSIONS_NO_INSTALLED_ITEMS" desc="The message shown to the user on the Extensions settings page when there are no extensions or apps installed.">
-      Find extensions and themes in the <ph name="BEGIN_LINK">&lt;a href="https://store.fydeos.io/?init=extensions"&gt;</ph>FydeOS App Store<ph name="END_LINK">&lt;/a&gt;<ex>&lt;/a&gt;</ex></ph>
+      Find extensions and themes in the <ph name="BEGIN_LINK">&lt;a href="https://store.jemaos.io/?init=extensions"&gt;</ph>JemaOS App Store<ph name="END_LINK">&lt;/a&gt;<ex>&lt;/a&gt;</ex></ph>
     </message>
   </if>
-  <message name="IDS_EXTENSIONS_SIDEBAR_DISCOVER_MORE" desc="The text displayed in the sidebar to open the FydeOS App Store to get more extensions.">
-    Discover more extensions and themes on the <ph name="BEGIN_LINK">&lt;a target="_blank" href="$1"&gt;</ph>FydeOS App Store<ph name="END_LINK">&lt;/a&gt; <ex>&lt;/a&gt;</ex> </ph>
+  <message name="IDS_EXTENSIONS_SIDEBAR_DISCOVER_MORE" desc="The text displayed in the sidebar to open the JemaOS App Store to get more extensions.">
+    Discover more extensions and themes on the <ph name="BEGIN_LINK">&lt;a target="_blank" href="$1"&gt;</ph>JemaOS App Store<ph name="END_LINK">&lt;/a&gt; <ex>&lt;/a&gt;</ex> </ph>
   </message>
 
 </grit-part>

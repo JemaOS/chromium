@@ -1,9 +1,9 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FYDEOS_LICENSE_ENFORCEMENT_H_
-#define FYDEOS_LICENSE_ENFORCEMENT_H_
+#ifndef JEMAOS_LICENSE_ENFORCEMENT_H_
+#define JEMAOS_LICENSE_ENFORCEMENT_H_
 
 #include <string>
 #include <memory>
@@ -23,7 +23,7 @@ namespace message_center{
   class Notification;
 }
 
-namespace fydeos {
+namespace jemaos {
 namespace license {
 
 enum EnforcementMode {
@@ -80,5 +80,5 @@ class LicenseEnforcement {
 
 } // namespace license
 
-} // namespace fydeos
+} // namespace jemaos
 #endif

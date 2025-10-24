@@ -2,40 +2,40 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/misc/fydeos_misc_scheduler.h"
-#include "fydeos/misc/fydeos_statistics_collector.h"
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/misc/jemaos_misc_scheduler.h"
+#include "jemaos/misc/jemaos_statistics_collector.h"
+#include "jemaos/build/config/buildflags.h"
 #include <base/logging.h>
 
-#if BUILDFLAG(USE_FYDEOS_COM)
-#include "fydeos/misc/fydeos_crostini_notifier.h"
+#if BUILDFLAG(USE_JEMAOS_COM)
+#include "jemaos/misc/jemaos_crostini_notifier.h"
 #endif
 
-namespace fydeos {
+namespace jemaos {
 namespace misc {
 
 namespace {
-  FydeMiscScheduler* g_misc_scheduler = nullptr;
+  JemaMiscScheduler* g_misc_scheduler = nullptr;
 }
 
-void FydeMiscScheduler::Initialize() {
+void JemaMiscScheduler::Initialize() {
   CHECK(g_misc_scheduler == nullptr);
-  g_misc_scheduler = new FydeMiscScheduler();
+  g_misc_scheduler = new JemaMiscScheduler();
 }
 
-FydeMiscScheduler* FydeMiscScheduler::Get() {
+JemaMiscScheduler* JemaMiscScheduler::Get() {
   return g_misc_scheduler;
 }
 
-void FydeMiscScheduler::Shutdown() {
+void JemaMiscScheduler::Shutdown() {
   CHECK(g_misc_scheduler != nullptr);
   g_misc_scheduler->Stop();
   delete g_misc_scheduler;
   g_misc_scheduler = nullptr;
 }
 
-FydeMiscScheduler::FydeMiscScheduler() :
-#if BUILDFLAG(USE_FYDEOS_COM)
+JemaMiscScheduler::JemaMiscScheduler() :
+#if BUILDFLAG(USE_JEMAOS_COM)
   crostini_notifier_(std::make_unique<MiscCrostiniNotifier>()),
 #endif
   collector_(std::make_unique<StatisticsCollector>()) {
@@ -44,25 +44,25 @@ FydeMiscScheduler::FydeMiscScheduler() :
   }
 }
 
-FydeMiscScheduler::~FydeMiscScheduler() = default;
+JemaMiscScheduler::~JemaMiscScheduler() = default;
 
-void FydeMiscScheduler::Start() {
+void JemaMiscScheduler::Start() {
   if (started_) return;
-  VLOG(2) << "FydeMiscScheduler Start";
+  VLOG(2) << "JemaMiscScheduler Start";
   started_ = true;
   collector_->Start();
-#if BUILDFLAG(USE_FYDEOS_COM)
+#if BUILDFLAG(USE_JEMAOS_COM)
   crostini_notifier_->Start();
 #endif
 }
 
-void FydeMiscScheduler::Stop() {
-  VLOG(2) << "FydeMiscScheduler Stop";
+void JemaMiscScheduler::Stop() {
+  VLOG(2) << "JemaMiscScheduler Stop";
   collector_->Stop();
   started_ = false;
 }
 
-void FydeMiscScheduler::LoggedInStateChanged() {
+void JemaMiscScheduler::LoggedInStateChanged() {
   if (::ash::LoginState::Get()->IsUserLoggedIn() && ::ash::LoginState::Get()->IsUserAuthenticated()) {
     Start();
   } else {
@@ -71,4 +71,4 @@ void FydeMiscScheduler::LoggedInStateChanged() {
 }
 
 }  // namespace misc
-}  // namespace fydeos
+}  // namespace jemaos

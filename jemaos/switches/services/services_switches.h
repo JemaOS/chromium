@@ -1,39 +1,39 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_FYDEOS_SWITCHES_SERVICES_SWITCHES_H_
-#define CHROMEOS_FYDEOS_SWITCHES_SERVICES_SWITCHES_H_
+#ifndef CHROMEOS_JEMAOS_SWITCHES_SERVICES_SWITCHES_H_
+#define CHROMEOS_JEMAOS_SWITCHES_SERVICES_SWITCHES_H_
 
 #include <string>
 #include "chromeos/chromeos_export.h"
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/build/config/buildflags.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace switches {
 
-CHROMEOS_EXPORT bool DisableFydeOSGeolocationAPI();
-CHROMEOS_EXPORT bool DisableFydeOSTimezoneAPI();
+CHROMEOS_EXPORT bool DisableJemaOSGeolocationAPI();
+CHROMEOS_EXPORT bool DisableJemaOSTimezoneAPI();
 
-extern std::string GetFydeOSGeolocationAPIUrl();
-extern std::string GetFydeOSTimezoneAPIUrl();
+extern std::string GetJemaOSGeolocationAPIUrl();
+extern std::string GetJemaOSTimezoneAPIUrl();
 
-extern std::string GetFydeOSLookingGlassUrl();
+extern std::string GetJemaOSLookingGlassUrl();
 
-extern std::string GetFydeOSAppStoreURL();
+extern std::string GetJemaOSAppStoreURL();
 
-extern std::string GetFydeOSWebStoreUpdateUrl();
+extern std::string GetJemaOSWebStoreUpdateUrl();
 
-extern std::string GetFydeOSAssistantWebUrl();
+extern std::string GetJemaOSAssistantWebUrl();
 
 CHROMEOS_EXPORT std::string MayConvertWebStoreUpdateUrl(
     const std::string& url);
 
-#if BUILDFLAG(FYDEOS_DEVICE)
-std::string GetFydeOSProductWarrantyUrl();
+#if BUILDFLAG(JEMAOS_DEVICE)
+std::string GetJemaOSProductWarrantyUrl();
 #endif
 
 } // switches
-} // fydeos
+} // jemaos
 
 #endif

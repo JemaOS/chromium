@@ -1,4 +1,4 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,9 +13,9 @@
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_function.h"
 #include "extensions/browser/extension_function_histogram_value.h"
-#include "fydeos/license/fydeos_license_manager.h"
+#include "jemaos/license/jemaos_license_manager.h"
 
-using LicenseManager = fydeos::license::LicenseManager;
+using LicenseManager = jemaos::license::LicenseManager;
 using LicenseObserver = LicenseManager::Observer;
 
 namespace extensions {

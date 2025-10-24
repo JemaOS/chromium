@@ -1,65 +1,65 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/extensions/common/fydeos_extensions_api_provider.h"
+#include "jemaos/extensions/common/jemaos_extensions_api_provider.h"
 
-#include "fydeos/extensions/common/api/api_features.h"
-#include "fydeos/extensions/common/api/generated_schemas.h"
-#include "fydeos/extensions/common/api/permission_features.h"
-#include "fydeos/extensions/common/fydeos_api_permissions.h"
-#include "fydeos/extensions/common/grit/fydeos_extensions_resources.h"
+#include "jemaos/extensions/common/api/api_features.h"
+#include "jemaos/extensions/common/api/generated_schemas.h"
+#include "jemaos/extensions/common/api/permission_features.h"
+#include "jemaos/extensions/common/jemaos_api_permissions.h"
+#include "jemaos/extensions/common/grit/jemaos_extensions_resources.h"
 #include "extensions/common/features/json_feature_provider_source.h"
 #include "extensions/common/permissions/permissions_info.h"
 #include "base/logging.h"
 
 namespace extensions {
 
-FydeOSExtensionsAPIProvider::FydeOSExtensionsAPIProvider() {}
-FydeOSExtensionsAPIProvider::~FydeOSExtensionsAPIProvider() = default;
+JemaOSExtensionsAPIProvider::JemaOSExtensionsAPIProvider() {}
+JemaOSExtensionsAPIProvider::~JemaOSExtensionsAPIProvider() = default;
 
-void FydeOSExtensionsAPIProvider::AddAPIFeatures(FeatureProvider* provider) {
-  AddFydeOSAPIFeatures(provider);
-  VLOG(1) << "Add fydeos api features\n";
+void JemaOSExtensionsAPIProvider::AddAPIFeatures(FeatureProvider* provider) {
+  AddJemaOSAPIFeatures(provider);
+  VLOG(1) << "Add jemaos api features\n";
 }
 
-void FydeOSExtensionsAPIProvider::AddManifestFeatures(
+void JemaOSExtensionsAPIProvider::AddManifestFeatures(
     FeatureProvider* provider) {
 }
 
-void FydeOSExtensionsAPIProvider::AddPermissionFeatures(
+void JemaOSExtensionsAPIProvider::AddPermissionFeatures(
     FeatureProvider* provider) {
-  AddFydeOSPermissionFeatures(provider);
-  VLOG(1) << "Add fydeos permission features\n";
+  AddJemaOSPermissionFeatures(provider);
+  VLOG(1) << "Add jemaos permission features\n";
 }
 
-void FydeOSExtensionsAPIProvider::AddBehaviorFeatures(
+void JemaOSExtensionsAPIProvider::AddBehaviorFeatures(
     FeatureProvider* provider) {
   // Note: No chrome-specific behavior features.
 }
 
-void FydeOSExtensionsAPIProvider::AddAPIJSONSources(
+void JemaOSExtensionsAPIProvider::AddAPIJSONSources(
     JSONFeatureProviderSource* json_source) {
-  json_source->LoadJSON(IDR_FYDEOS_EXTENSION_API_FEATURES);
+  json_source->LoadJSON(IDR_JEMAOS_EXTENSION_API_FEATURES);
 }
 
-bool FydeOSExtensionsAPIProvider::IsAPISchemaGenerated(
+bool JemaOSExtensionsAPIProvider::IsAPISchemaGenerated(
     const std::string& name) {
-  return api::FydeOSGeneratedSchemas::IsGenerated(name);
+  return api::JemaOSGeneratedSchemas::IsGenerated(name);
 }
 
-std::string_view FydeOSExtensionsAPIProvider::GetAPISchema(
+std::string_view JemaOSExtensionsAPIProvider::GetAPISchema(
     const std::string& name) {
-  return api::FydeOSGeneratedSchemas::Get(name);
+  return api::JemaOSGeneratedSchemas::Get(name);
 }
 
-void FydeOSExtensionsAPIProvider::RegisterPermissions(PermissionsInfo* permissions_info) {
+void JemaOSExtensionsAPIProvider::RegisterPermissions(PermissionsInfo* permissions_info) {
   permissions_info->RegisterPermissions(
-      fydeos_api_permissions::GetPermissionInfos(),
-      fydeos_api_permissions::GetPermissionAliases());
-  VLOG(1) << "register fydeos permissions";
+      jemaos_api_permissions::GetPermissionInfos(),
+      jemaos_api_permissions::GetPermissionAliases());
+  VLOG(1) << "register jemaos permissions";
 }
 
-void FydeOSExtensionsAPIProvider::RegisterManifestHandlers() {
+void JemaOSExtensionsAPIProvider::RegisterManifestHandlers() {
 }
 
 }  // namespace extensions

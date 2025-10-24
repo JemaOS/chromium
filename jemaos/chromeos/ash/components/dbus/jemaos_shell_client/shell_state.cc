@@ -1,13 +1,13 @@
-// Copyright (c) 2018 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2018 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/shell_state.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
 
 #include "base/format_macros.h"
 #include "base/strings/stringprintf.h"
 
-namespace fydeos {
+namespace jemaos {
 
 namespace ash {
 
@@ -28,4 +28,4 @@ std::string ShellState::ToString() const {
 
 }
 
-}  // namespace fydeos
+}  // namespace jemaos

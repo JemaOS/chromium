@@ -1,17 +1,17 @@
-// Copyright (c) 2019 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2019 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_FYDEOS_SWITCHES_MISC_SWITCHES_H_
-#define CHROMEOS_FYDEOS_SWITCHES_MISC_SWITCHES_H_
+#ifndef CHROMEOS_JEMAOS_SWITCHES_MISC_SWITCHES_H_
+#define CHROMEOS_JEMAOS_SWITCHES_MISC_SWITCHES_H_
 
 #include <string>
 #include "chromeos/chromeos_export.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace switches {
 
-CHROMEOS_EXPORT bool IsFydeCustomEnabled();
+CHROMEOS_EXPORT bool IsJemaCustomEnabled();
 
 CHROMEOS_EXPORT bool IsTpmDictionaryAttackLockoutIgnored();
 
@@ -23,11 +23,11 @@ CHROMEOS_EXPORT bool IsUnknownPeripheralBatteryNotificationDisabled();
 
 CHROMEOS_EXPORT bool IsDynamicDefaultWallpaperSupported();
 
-CHROMEOS_EXPORT extern const char kFydeOSServiceHostSuffixForTesting[];
+CHROMEOS_EXPORT extern const char kJemaOSServiceHostSuffixForTesting[];
 
-CHROMEOS_EXPORT int64_t GetFydeOSAutoSigninDelay();
+CHROMEOS_EXPORT int64_t GetJemaOSAutoSigninDelay();
 
 } // switches
-} // fydeos
+} // jemaos
 
 #endif

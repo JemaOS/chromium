@@ -1,6 +1,6 @@
-#include "fydeos/misc/fydeos_statistics_collector.h"
-#include "fydeos/switches/services/services_switches.h"
-#include "fydeos/switches/services/services_constants.h"
+#include "jemaos/misc/jemaos_statistics_collector.h"
+#include "jemaos/switches/services/services_switches.h"
+#include "jemaos/switches/services/services_constants.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chromeos/ash/components/system/statistics_provider.h"
 #include "base/system/sys_info.h"
@@ -9,7 +9,7 @@
 #include "components/version_info/version_info.h"
 #include "chromeos/version/version_loader.h"
 #include "chromeos/ash/components/dbus/dbus_thread_manager.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/fydeos_shell_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "components/user_manager/user.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -35,25 +35,25 @@
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
 #include "net/http/http_status_code.h"
-#include "fydeos/prefs/fydeos_pref_names.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
-namespace fydeos {
+namespace jemaos {
 namespace misc {
 namespace {
   constexpr char kJsonContentType[] = "application/json;charset=UTF-8";
-  constexpr char kFydeOSLookingGlassPath[] = "/collect";
+  constexpr char kJemaOSLookingGlassPath[] = "/collect";
   constexpr char kShellCmdGetId[] =
-    "/usr/share/fydeos_shell/license-utils.sh id";
+    "/usr/share/jemaos_shell/license-utils.sh id";
   constexpr char kShellCmdGetLicense[] =
-    "/usr/share/fydeos_shell/license-utils.sh read";
+    "/usr/share/jemaos_shell/license-utils.sh read";
   constexpr char kShellCmdCheckDualBoot[] = "cgpt find -l ";
-  constexpr char kDualBootLabel[] = "FYDEOS-DUAL-BOOT";
+  constexpr char kDualBootLabel[] = "JEMAOS-DUAL-BOOT";
 
   const int kStatisticsUploadDelayInSeconds = 7;
   const size_t kMaxMessageSize = 1024;  // 1MB
 
-  fydeos::ash::FydeOSShellClient* GetShellClient() {
-    return fydeos::ash::FydeOSShellClient::Get();
+  jemaos::ash::JemaOSShellClient* GetShellClient() {
+    return jemaos::ash::JemaOSShellClient::Get();
   }
 
   static int LogBoringSSLError(const char* str, size_t len, void* ctx) {
@@ -94,14 +94,13 @@ void StatisticsCollector::StartInternal() {
     profile_ = g_browser_process->profile_manager()->GetActiveUserProfile();
   }
   if (profile_) {
-    // TODO(fangzhou@fydeos.io)
-    // collect more data if kFydeOSImprovementPlanEnabled is true
-    // currently, just make sure the pref kFydeOSImprovementPlanEnabled
+    // collect more data if kJemaOSImprovementPlanEnabled is true
+    // currently, just make sure the pref kJemaOSImprovementPlanEnabled
     // is saved, it's not being used yet.
     const bool improvementPlanEnabled =
       profile_->GetPrefs()->GetBoolean(
-          fydeos::prefs::kFydeOSImprovementPlanEnabled);
-    VLOG(3) << "fydeos improvement plan enabled: " << improvementPlanEnabled;
+          jemaos::prefs::kJemaOSImprovementPlanEnabled);
+    VLOG(3) << "jemaos improvement plan enabled: " << improvementPlanEnabled;
   }
   step_ = CollectStep::INITIALIZE;
   ProceedToNextStep();
@@ -137,7 +136,7 @@ void StatisticsCollector::GetLicenseId() {
 }
 
 void StatisticsCollector::OnGetLicenseId(
-    absl::optional<fydeos::ash::ShellState> state) {
+    absl::optional<jemaos::ash::ShellState> state) {
   if (state && state->code == 0) {
     std::string id = state->result;
     id.erase(std::remove(id.begin(), id.end(), '\n'), id.end());
@@ -155,7 +154,7 @@ void StatisticsCollector::GetLicenseType() {
 }
 
 void StatisticsCollector::OnGetLicenseType(
-    absl::optional<fydeos::ash::ShellState> state) {
+    absl::optional<jemaos::ash::ShellState> state) {
   if (state && state->code == 0) {
     GetLicenseTypeFromInfo(state->result);
   }
@@ -188,11 +187,11 @@ void StatisticsCollector::GetInstallType() {
 }
 
 void StatisticsCollector::OnGetInstallType(
-    absl::optional<fydeos::ash::ShellState> state) {
+    absl::optional<jemaos::ash::ShellState> state) {
   if (!state || state->code != 0) {
     statistics_.is_multi_boot = false;
   } else {
-    if (state->result.find("FYDEOS-DUAL-BOOT") != std::string::npos) {
+    if (state->result.find("JEMAOS-DUAL-BOOT") != std::string::npos) {
       statistics_.is_multi_boot = true;
     } else {
       statistics_.is_multi_boot = false;
@@ -228,7 +227,7 @@ void StatisticsCollector::CollectUserInfo() {
   }
   statistics_.profile_account_type =
     AccountId::AccountTypeToString(account_id.GetAccountType());
-  statistics_.is_fyde_profile = profile_->IsFydeProfile();
+  statistics_.is_jema_profile = profile_->IsJemaProfile();
   statistics_.is_new_profile = profile_->IsNewProfile();
   statistics_.profile_start_time = profile_->GetStartTime();
   statistics_.profile_creation_time = profile_->GetCreationTime();
@@ -236,7 +235,7 @@ void StatisticsCollector::CollectUserInfo() {
 
 void StatisticsCollector::CollectDeviceInfo() {
   statistics_.board_name = base::SysInfo::GetLsbReleaseBoard();
-  statistics_.major_version = base::SysInfo::GetLsbFydeReleaseVersion();
+  statistics_.major_version = base::SysInfo::GetLsbJemaReleaseVersion();
   statistics_.kernel_version = base::SysInfo::KernelVersion();
   auto version = chromeos::version_loader::GetVersion(
       chromeos::version_loader::VERSION_SHORT);
@@ -279,8 +278,8 @@ bool StatisticsCollector::EncryptData(
 
   CBS pub_key_cbs;
   CBS_init(&pub_key_cbs,
-      fydeos::constants::kFydeOSCryptoKey,
-      fydeos::constants::kFydeOSCryptoKeyLength);
+      jemaos::constants::kJemaOSCryptoKey,
+      jemaos::constants::kJemaOSCryptoKeyLength);
   bssl::UniquePtr<EVP_PKEY> pub_key(EVP_parse_public_key(&pub_key_cbs));
   if (!pub_key || CBS_len(&pub_key_cbs)) {
     ERR_print_errors_cb(&LogBoringSSLError, /*unused*/ nullptr);
@@ -337,7 +336,7 @@ bool StatisticsCollector::GetUploadData(std::string* upload_data) {
   statistics.Set("account_id", statistics_.profile_account_id);
   statistics.Set("account_type", statistics_.profile_account_type);
   statistics.Set("is_new_profile", statistics_.is_new_profile);
-  // statistics.Set("is_fyde_profile", statistics_.is_fyde_profile);
+  // statistics.Set("is_jema_profile", statistics_.is_jema_profile);
   statistics.Set("profile_creation",
       TimeToString(statistics_.profile_creation_time));
   statistics.Set("profile_start", TimeToString(statistics_.profile_start_time));
@@ -379,16 +378,16 @@ bool StatisticsCollector::UploadStatistics() {
     return false;
   }
   net::NetworkTrafficAnnotationTag traffic_annotation =
-    net::DefineNetworkTrafficAnnotation("fydeos_statistics_upload", R"(
+    net::DefineNetworkTrafficAnnotation("jemaos_statistics_upload", R"(
       semantics {
-        sender: "FydeOS statistics upload"
+        sender: "JemaOS statistics upload"
         description:
-          "upload some anonymous data to fydeos server"
+          "upload some anonymous data to jemaos server"
         trigger:
           "after signin"
         data:
           "statistics"
-        destination: FYDEOS_STATISTICS_SERVICE
+        destination: JEMAOS_STATISTICS_SERVICE
       }
       policy {
         cookies_allowed: NO
@@ -397,7 +396,7 @@ bool StatisticsCollector::UploadStatistics() {
 
     auto resource_request = std::make_unique<network::ResourceRequest>();
   resource_request->url = GURL(
-      fydeos::switches::GetFydeOSLookingGlassUrl() + kFydeOSLookingGlassPath);
+      jemaos::switches::GetJemaOSLookingGlassUrl() + kJemaOSLookingGlassPath);
   resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
   resource_request->method = "POST";
   std::unique_ptr<network::SimpleURLLoader> simple_loader =
@@ -426,15 +425,15 @@ void StatisticsCollector::OnUploaded(
     response_code = url_loader->ResponseInfo()->headers->response_code();
   }
   if (response_code != 200) {
-    VLOG(2) << "fydeos service response code: " << response_code;
+    VLOG(2) << "jemaos service response code: " << response_code;
     if (response_body) {
-      VLOG(2) << "received from fydeos service:" << *response_body;
+      VLOG(2) << "received from jemaos service:" << *response_body;
     }
   }
   if (url_loader->NetError() != net::OK) {
-    VLOG(2) << "fydeos service net error code:" << url_loader->NetError();
+    VLOG(2) << "jemaos service net error code:" << url_loader->NetError();
   }
 }
 
 }  // namespace misc
-}  // namespace fydeos
+}  // namespace jemaos

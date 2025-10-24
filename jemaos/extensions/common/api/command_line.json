@@ -8,7 +8,7 @@
     "namespace": "commandLine",
     "description": "chrome.commandLine functions",
     "compiler_options": {
-      "implemented_in": "fydeos/extensions/browser/api/command_line/command_line_api.h"
+      "implemented_in": "jemaos/extensions/browser/api/command_line/command_line_api.h"
     },
     "types":[
       {

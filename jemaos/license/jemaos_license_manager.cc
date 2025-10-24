@@ -1,8 +1,8 @@
-// Copyright 2020 The FydeOS Authors. All rights reserved.
+// Copyright 2020 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/license/fydeos_license_manager.h"
+#include "jemaos/license/jemaos_license_manager.h"
 #include "base/values.h"
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
@@ -15,25 +15,25 @@
 #include "chrome/browser/ash/policy/enrollment/enrollment_token_provider.h"
 #include "components/prefs/pref_service.h"
 #include "chromeos/ash/components/network/network_state_handler.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/fydeos_shell_client.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/shell_state.h"
-#include "fydeos/license/fydeos_callback_status.h"
-#include "fydeos/switches/license/license_constants.h"
-#include "fydeos/license/fydeos_license_enforcement.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
+#include "jemaos/license/jemaos_callback_status.h"
+#include "jemaos/switches/license/license_constants.h"
+#include "jemaos/license/jemaos_license_enforcement.h"
 
-#include "fydeos/switches/license/license_switches.h"
+#include "jemaos/switches/license/license_switches.h"
 #include "base/strings/string_number_conversions.h"
-#include "fydeos/constants/fydeos_constants.h"
-#include "fydeos/prefs/fydeos_pref_names.h"
+#include "jemaos/constants/jemaos_constants.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
-using FydeOSShellClient = fydeos::ash::FydeOSShellClient;
-using ShellState = fydeos::ash::ShellState;
-using LicenseStateType = fydeos::constants::LicenseStateType;
-using LicenseEnforcementLevel = fydeos::constants::LicenseEnforcementLevel;
+using JemaOSShellClient = jemaos::ash::JemaOSShellClient;
+using ShellState = jemaos::ash::ShellState;
+using LicenseStateType = jemaos::constants::LicenseStateType;
+using LicenseEnforcementLevel = jemaos::constants::LicenseEnforcementLevel;
 
-namespace fydeos::license {
+namespace jemaos::license {
 namespace  {
-  const char kShellCmd[] = "/usr/share/fydeos_shell/license-utils.sh %s";
+  const char kShellCmd[] = "/usr/share/jemaos_shell/license-utils.sh %s";
   const char kParamId[] = "id";
   const char kParamReadLicense[] = "read";
   const char kParamWriteLicense[] = "write";
@@ -45,8 +45,8 @@ namespace  {
   const int kLicenseCheckDelayTimeInSeconds = 30;
   LicenseManager* g_license_manager = nullptr;
 
-  FydeOSShellClient* GetShellClient() {
-    return FydeOSShellClient::Get();
+  JemaOSShellClient* GetShellClient() {
+    return JemaOSShellClient::Get();
   }
 
   std::string GetIDCmd() {
@@ -76,7 +76,7 @@ namespace  {
   }
 }  // namespace
 
-using fydeos::constants::LicenseEnforcementLevel;
+using jemaos::constants::LicenseEnforcementLevel;
 
 void LicenseManager::Initialize() {
   CHECK(g_license_manager == nullptr);
@@ -122,7 +122,7 @@ void LicenseManager::Start() {
     VLOG(1) << "Start timer of checking.";
     timer_->Start(
     FROM_HERE,
-    base::Minutes(fydeos::switches::IsLicenseTestMode() ?
+    base::Minutes(jemaos::switches::IsLicenseTestMode() ?
       kTestLicenseCheckRepeatTimeInMinutes : kLicenseCheckRepeatTimeInMinutes),
     base::BindRepeating(&LicenseManager::CheckLicense, weak_ptr_factory_.GetWeakPtr()));
   }
@@ -190,7 +190,7 @@ void LicenseManager::OnGotId(std::optional<ShellState> state) {
 
 void LicenseManager::IGetOEMToken() {
   auto* oobe_configuration = ::ash::OobeConfiguration::Get();
-  auto token = policy::GetFydeEnrollmentToken(oobe_configuration);
+  auto token = policy::GetJemaEnrollmentToken(oobe_configuration);
   if (token.has_value()) {
     OnGotOEMToken(token.value());
   }
@@ -306,7 +306,7 @@ void LicenseManager::StartEnforcement() {
   if (!profile_ || !profile_->GetPrefs()) return;
   PrefService* prefs = g_browser_process->local_state();
   if (!prefs) return;
-  LicenseEnforcementLevel level = static_cast<LicenseEnforcementLevel>(prefs->GetInteger(fydeos::prefs::kFydeLicenseEnforcementLevel));
+  LicenseEnforcementLevel level = static_cast<LicenseEnforcementLevel>(prefs->GetInteger(jemaos::prefs::kJemaLicenseEnforcementLevel));
   EnforcementMode mode;
   switch (level) {
     case LicenseEnforcementLevel::kNone:
@@ -322,7 +322,7 @@ void LicenseManager::StartEnforcement() {
       mode = EnforcementModeLevel2;
       break;
   }
-  int log_out_interval = prefs->GetInteger(fydeos::prefs::kFydeLicenseEnforcementLogOutInterval);
+  int log_out_interval = prefs->GetInteger(jemaos::prefs::kJemaLicenseEnforcementLogOutInterval);
   enforcement_->StartEnforcement(profile_, id_, serial_number_, mode, log_out_interval);
 }
 
@@ -378,7 +378,7 @@ void LicenseManager::OnValidPref(int licenseType, bool expired, int expirationAc
       state = LicenseStateType::kUnspecified;
       break;
   }
-  prefs->SetInteger(fydeos::prefs::kFydeLicenseStateType, static_cast<int>(state));
+  prefs->SetInteger(jemaos::prefs::kJemaLicenseStateType, static_cast<int>(state));
 
   VLOG(2) << "license pref, state: " << static_cast<int>(state)
     << "expiration action: " << expirationAction
@@ -400,10 +400,10 @@ void LicenseManager::OnValidPref(int licenseType, bool expired, int expirationAc
       level = LicenseEnforcementLevel::kNone;
       break;
   }
-  prefs->SetInteger(fydeos::prefs::kFydeLicenseEnforcementLevel, static_cast<int>(level));
+  prefs->SetInteger(jemaos::prefs::kJemaLicenseEnforcementLevel, static_cast<int>(level));
 
-  prefs->SetBoolean(fydeos::prefs::kFydeLicenseShouldShowInSettings, showLicenseInSettings == 1);
-  prefs->SetInteger(fydeos::prefs::kFydeLicenseEnforcementLogOutInterval, logOutInterval);
+  prefs->SetBoolean(jemaos::prefs::kJemaLicenseShouldShowInSettings, showLicenseInSettings == 1);
+  prefs->SetInteger(jemaos::prefs::kJemaLicenseEnforcementLogOutInterval, logOutInterval);
 }
 
 void LicenseManager::ISaveLocalLicenseString(std::optional<base::Value> license) {
@@ -500,4 +500,4 @@ void LicenseManager::NotifyObservers() {
     observer.OnLicenseStateChanged(is_valid_);
 }
 
-}  // namespace fydeos::license
+}  // namespace jemaos::license

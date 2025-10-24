@@ -1,14 +1,14 @@
-// Copyright (c) 2021 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2021 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include "fydeos/misc/fydeos_release_note_url.h"
+#include "jemaos/misc/jemaos_release_note_url.h"
 #include "base/strings/strcat.h"
 #include "base/system/sys_info.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/browser_process.h"
-#include "fydeos/switches/urls/urls_constants.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
-namespace fydeos::misc {
+namespace jemaos::misc {
 
 namespace {
 /*
@@ -26,24 +26,24 @@ const std::string trim_suffix(const std::string& str) {
 }
 
 const std::string ReleaseNoteUrlWithVersionAndBoard() {
-  const std::string version = base::SysInfo::GetLsbFydeReleaseVersion();
+  const std::string version = base::SysInfo::GetLsbJemaReleaseVersion();
   const std::string board_name = base::SysInfo::GetLsbReleaseBoard();
   const std::string language = g_browser_process->GetApplicationLocale();
   const std::string url = base::StrCat(
-      {fydeos::constants::kFydeOSReleaseNotesURL,
+      {jemaos::constants::kJemaOSReleaseNotesURL,
       "/", version, "/", trim_suffix(board_name)});
   return url;
 }
 */
 
-const std::string FydeOSNewsURL() {
-  return fydeos::constants::kFydeOSNewsURL;
+const std::string JemaOSNewsURL() {
+  return jemaos::constants::kJemaOSNewsURL;
 }
 
 }  // namespace
 
-const std::string BuildFydeReleaseNoteUrlWithPath(bool staging) {
-  return FydeOSNewsURL();
+const std::string BuildJemaReleaseNoteUrlWithPath(bool staging) {
+  return JemaOSNewsURL();
 }
 
-}  // namespace fydeos::misc
+}  // namespace jemaos::misc

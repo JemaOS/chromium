@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 // Author: Simon Tsao(yang@flintos.io)
 
-#include "fydeos/extensions/browser/api/native_windows/native_windows_api.h"
+#include "jemaos/extensions/browser/api/native_windows/native_windows_api.h"
 
 #include <stddef.h>
 #include <algorithm>
@@ -12,7 +12,7 @@
 #include <vector>
 #include "chrome/browser/extensions/api/tabs/tabs_constants.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
-#include "fydeos/extensions/common/api/native_windows.h"
+#include "jemaos/extensions/common/api/native_windows.h"
 #include "chrome/common/extensions/extension_constants.h"
 #include "chromeos/ui/base/window_pin_type.h"
 #include "ash/public/cpp/window_properties.h"

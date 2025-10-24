@@ -1,8 +1,8 @@
-// Copyright (c) 2023 Fyde Innovations. All rights reserved.
+// Copyright (c) 2023 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#ifndef _FYDEOS_UI_WEBUI_SETTINGS_ASH_FYDEOS_HANDLER_BACKUP_TASK_MANAGER_H_
-#define _FYDEOS_UI_WEBUI_SETTINGS_ASH_FYDEOS_HANDLER_BACKUP_TASK_MANAGER_H_
+#ifndef _JEMAOS_UI_WEBUI_SETTINGS_ASH_JEMAOS_HANDLER_BACKUP_TASK_MANAGER_H_
+#define _JEMAOS_UI_WEBUI_SETTINGS_ASH_JEMAOS_HANDLER_BACKUP_TASK_MANAGER_H_
 
 #include <string>
 #include <utility>
@@ -10,7 +10,7 @@
 #include "base/memory/weak_ptr.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
 #include "base/functional/callback.h"
-#include "fydeos/chromeos/ash/components/dbus/fydeos_shell_client/shell_state.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
 #include "base/files/file_path.h"
 
 namespace base {
@@ -23,14 +23,14 @@ class Notification;
 
 class Profile;
 
-namespace fydeos::ash {
-class FydeOSShellClient;
+namespace jemaos::ash {
+class JemaOSShellClient;
 }
 
 namespace ash::settings {
 
-using fydeos::ash::FydeOSShellClient;
-using fydeos::ash::ShellState;
+using jemaos::ash::JemaOSShellClient;
+using jemaos::ash::ShellState;
 
 class BackupTaskManager {
  public:
@@ -89,7 +89,7 @@ class BackupTaskManager {
     void ShowBackupErrorNotification(
         const base::FilePath& log, const bool exists);
 
-    FydeOSShellClient* shell_client_ = nullptr;
+    JemaOSShellClient* shell_client_ = nullptr;
     int32_t task_id_ = 0;
     TaskState task_state_ = TaskState::kIdle;
     Profile* profile_ = nullptr;
@@ -103,4 +103,4 @@ class BackupTaskManager {
 
 }  // namespace ash::settings
 
-#endif  // _FYDEOS_UI_WEBUI_SETTINGS_ASH_FYDEOS_HANDLER_BACKUP_TASK_MANAGER_H_
+#endif  // _JEMAOS_UI_WEBUI_SETTINGS_ASH_JEMAOS_HANDLER_BACKUP_TASK_MANAGER_H_

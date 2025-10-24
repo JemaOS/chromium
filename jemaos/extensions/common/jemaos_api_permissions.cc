@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/extensions/common/fydeos_api_permissions.h"
+#include "jemaos/extensions/common/jemaos_api_permissions.h"
 
 #include <stddef.h>
 
@@ -22,14 +22,14 @@ namespace {
 
   constexpr APIPermissionInfo::InitInfo permissions_to_register[] = {
       // Register permissions for all extension types.
-    {mojom::APIPermissionID::kFydeOSPrivate, "FydeOSPrivate",
+    {mojom::APIPermissionID::kJemaOSPrivate, "JemaOSPrivate",
        APIPermissionInfo::kFlagCannotBeOptional},
-    {mojom::APIPermissionID::kFydeOSShellClient, "FydeOSShellClient"}
+    {mojom::APIPermissionID::kJemaOSShellClient, "JemaOSShellClient"}
   };
 
 }  // namespace
 
-namespace fydeos_api_permissions {
+namespace jemaos_api_permissions {
 	base::span<const APIPermissionInfo::InitInfo> GetPermissionInfos() {
 	  return base::make_span(permissions_to_register);
 	}
@@ -39,5 +39,5 @@ namespace fydeos_api_permissions {
 	  // real name. See also alias.h.
 	  return base::span<const extensions::Alias>();
 	}
-} //fydeos_api_permissions
+} //jemaos_api_permissions
 }  // namespace extensions

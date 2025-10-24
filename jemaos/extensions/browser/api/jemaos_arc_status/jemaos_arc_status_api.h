@@ -1,5 +1,5 @@
-#ifndef _FYDEOS_EXTENSIONS_FYDEOS_ARC_STATUS_FYDEOS_ARC_STATUS_API_H_
-#define _FYDEOS_EXTENSIONS_FYDEOS_ARC_STATUS_FYDEOS_ARC_STATUS_API_H_
+#ifndef _JEMAOS_EXTENSIONS_JEMAOS_ARC_STATUS_JEMAOS_ARC_STATUS_API_H_
+#define _JEMAOS_EXTENSIONS_JEMAOS_ARC_STATUS_JEMAOS_ARC_STATUS_API_H_
 
 #include "extensions/browser/extension_function.h"
 #include "extensions/browser/extension_function_histogram_value.h"
@@ -41,12 +41,12 @@ namespace {
   };
 }
 
-  class FydeosArcStatusGetFunction: public ExtensionFunction {
-    ~FydeosArcStatusGetFunction() override {}
+  class JemaosArcStatusGetFunction: public ExtensionFunction {
+    ~JemaosArcStatusGetFunction() override {}
     ResponseAction Run() override;
     void OnGetStatus(ArcStatus status);
-    DECLARE_EXTENSION_FUNCTION("fydeosArcStatus.get", FYDEOS_ARC_STATUS_GET)
+    DECLARE_EXTENSION_FUNCTION("jemaosArcStatus.get", JEMAOS_ARC_STATUS_GET)
   };
 
 }
-#endif // _FYDEOS_EXTENSIONS_FYDEOS_ARC_STATUS_FYDEOS_ARC_STATUS_API_H_
+#endif // _JEMAOS_EXTENSIONS_JEMAOS_ARC_STATUS_JEMAOS_ARC_STATUS_API_H_

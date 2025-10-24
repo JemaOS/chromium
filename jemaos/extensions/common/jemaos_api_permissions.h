@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROME_COMMON_EXTENSIONS_PERMISSIONS_FYDEOS_API_PERMISSIONS_H_
-#define CHROME_COMMON_EXTENSIONS_PERMISSIONS_FYDEOS_API_PERMISSIONS_H_
+#ifndef CHROME_COMMON_EXTENSIONS_PERMISSIONS_JEMAOS_API_PERMISSIONS_H_
+#define CHROME_COMMON_EXTENSIONS_PERMISSIONS_JEMAOS_API_PERMISSIONS_H_
 
 #include "base/containers/span.h"
 #include "extensions/common/alias.h"
@@ -12,10 +12,10 @@
 namespace extensions {
 
 // Registers the permissions used in Chrome with the PermissionsInfo global.
-namespace fydeos_api_permissions {
+namespace jemaos_api_permissions {
    base::span<const APIPermissionInfo::InitInfo> GetPermissionInfos();
    base::span<const Alias> GetPermissionAliases();
-} //fydeos_api_permissions
+} //jemaos_api_permissions
 
 }  // namespace extensions
 

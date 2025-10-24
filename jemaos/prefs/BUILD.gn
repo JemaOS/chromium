@@ -1,4 +1,4 @@
-# Copyright 2021 The FydeOS Authors. All rights reserved.
+# Copyright 2021 The JemaOS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,15 +8,15 @@ assert(is_chromeos, "Non-Chrome-OS builds must not depend on //chromeos")
 
 source_set("prefs") {
   sources = [
-    "fydeos_pref_names.cc",
-    "fydeos_pref_names.h",
-    "fydeos_prefs.cc",
-    "fydeos_prefs.h",
+    "jemaos_pref_names.cc",
+    "jemaos_pref_names.h",
+    "jemaos_prefs.cc",
+    "jemaos_prefs.h",
   ]
 
   deps = [
     "//base",
-    "//fydeos/constants",
+    "//jemaos/constants",
   ]
 
   defines = [ "CHROMEOS_IMPLEMENTATION" ]

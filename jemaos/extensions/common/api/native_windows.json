@@ -8,7 +8,7 @@
     "namespace": "nativeWindows",
     "description": "Use the <code>chrome.nativeWindows</code> API to interact with FlintOS windows. You can use this API to create, modify, and rearrange windows in the browser.",
     "compiler_options": {
-      "implemented_in": "fydeos/extensions/browser/api/native_windows/native_windows_api.h"
+      "implemented_in": "jemaos/extensions/browser/api/native_windows/native_windows_api.h"
     },
     "types": [
       {

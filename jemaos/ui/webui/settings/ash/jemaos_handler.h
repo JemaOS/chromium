@@ -1,9 +1,9 @@
-// Copyright (c) 2021 The FydeOS Authors. All rights reserved.
+// Copyright (c) 2021 The JemaOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_FYDEOS_HANDLER_H_
-#define CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_FYDEOS_HANDLER_H_
+#ifndef CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_JEMAOS_HANDLER_H_
+#define CHROME_BROWSER_UI_WEBUI_SETTINGS_CHROMEOS_JEMAOS_HANDLER_H_
 
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ui/webui/settings/settings_page_ui_handler.h"
@@ -11,7 +11,7 @@
 #include "components/prefs/pref_change_registrar.h"
 #include "ash/public/cpp/tablet_mode_observer.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
-#include "fydeos/ui/webui/settings/ash/fydeos_handler_backup_task_manager.h"
+#include "jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.h"
 #include "chromeos/ash/components/dbus/cryptohome/UserDataAuth.pb.h"
 #include "chromeos/ash/components/dbus/userdataauth/userdataauth_client.h"
 
@@ -25,13 +25,13 @@ class FilePath;
 
 namespace ash::settings {
 
-class FydeOsHandler :
+class JemaOsHandler :
     public ::settings::SettingsPageUIHandler,
     public ui::SelectFileDialog::Listener,
     public ash::TabletModeObserver {
  public:
-  explicit FydeOsHandler(Profile* profile, PrefService* pref_service);
-  ~FydeOsHandler() override;
+  explicit JemaOsHandler(Profile* profile, PrefService* pref_service);
+  ~JemaOsHandler() override;
 
   // SettingsPageUIHandler implementation.
   void RegisterMessages() override;
@@ -79,12 +79,12 @@ class FydeOsHandler :
   bool nextToggleRebootRequiredForWidevine_ = false;
   bool lastToggleRebootRequiredForce_ = false;
 
-  void HandleFydeOSBackupSupported(const base::Value::List& args);
-  void HandleFydeOSBackupSelectFile(const base::Value::List& args);
-  void HandleFydeOSBackupStarted(const base::Value::List& args);
-  void HandleGetFydeOSBackupState(const base::Value::List& args);
+  void HandleJemaOSBackupSupported(const base::Value::List& args);
+  void HandleJemaOSBackupSelectFile(const base::Value::List& args);
+  void HandleJemaOSBackupStarted(const base::Value::List& args);
+  void HandleGetJemaOSBackupState(const base::Value::List& args);
 
-  void OnFydeOSBackupScriptChecked(const std::string& callback_id,
+  void OnJemaOSBackupScriptChecked(const std::string& callback_id,
                                    bool supported);
 
   void OnBackupFileSelected(const base::FilePath& path);
@@ -121,7 +121,7 @@ class FydeOsHandler :
   PrefChangeRegistrar pref_change_registrar_;
   PrefChangeRegistrar local_state_pref_change_registrar_;
 
-  base::WeakPtrFactory<FydeOsHandler> weak_ptr_factory_{this};
+  base::WeakPtrFactory<JemaOsHandler> weak_ptr_factory_{this};
 };
 
 }  // namespace ash::settings

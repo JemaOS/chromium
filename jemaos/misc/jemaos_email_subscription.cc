@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fydeos/misc/fydeos_email_subscription.h"
+#include "jemaos/misc/jemaos_email_subscription.h"
 
 #include "chrome/browser/browser_process.h"
 #include "services/network/public/cpp/resource_request.h"
@@ -21,18 +21,18 @@
 #include "base/system/sys_info.h"
 #include "base/json/json_writer.h"
 
-#include "fydeos/build/config/buildflags.h"
+#include "jemaos/build/config/buildflags.h"
 
-namespace fydeos {
+namespace jemaos {
 
 namespace {
   const char kJSONContentType[] = "application/json";
-#if BUILDFLAG(USE_FYDEOS_COM)
-  const char kFydeOSSubscriptionUrl[] =
-    "https://apis.fydeos.com/mailing/oobe/completion";
+#if BUILDFLAG(USE_JEMAOS_COM)
+  const char kJemaOSSubscriptionUrl[] =
+    "https://apis.jemaos.com/mailing/oobe/completion";
 #else
-  const char kFydeOSSubscriptionUrl[] =
-    "https://apis.fydeos.io/mailing/oobe/completion";
+  const char kJemaOSSubscriptionUrl[] =
+    "https://apis.jemaos.io/mailing/oobe/completion";
 #endif
   const size_t kMaxMessageSize = 1024 * 1;  // 1MB
 
@@ -54,7 +54,7 @@ namespace {
 
   std::string GenerateRequestBodyWithSysInfo(const std::string& name, const std::string& email,
                                               bool email_opt_in, bool improve_plan_opt_in) {
-    const std::string version = base::SysInfo::GetLsbFydeReleaseVersion();
+    const std::string version = base::SysInfo::GetLsbJemaReleaseVersion();
     const std::string board_name = base::SysInfo::GetLsbReleaseBoard();
 
     base::Value::Dict post_body_value;
@@ -86,17 +86,17 @@ namespace {
     }
 
     net::NetworkTrafficAnnotationTag traffic_annotation =
-      net::DefineNetworkTrafficAnnotation("fydeos_email_subscription", R"(
+      net::DefineNetworkTrafficAnnotation("jemaos_email_subscription", R"(
         semantics {
-          sender: "FydeOS Email Subscription"
+          sender: "JemaOS Email Subscription"
           description:
-            "Subscribe to fydeos news"
+            "Subscribe to jemaos news"
           trigger:
             "Choose opt-in during OOBE"
           data:
             "1- name.\n"
             "2- email."
-          destination: FYDEOS_SUBSCRIPTION_SERVICE
+          destination: JEMAOS_SUBSCRIPTION_SERVICE
         }
         policy {
           cookies_allowed: NO
@@ -104,7 +104,7 @@ namespace {
         })");
 
     auto resource_request = std::make_unique<network::ResourceRequest>();
-    resource_request->url = GURL(kFydeOSSubscriptionUrl);
+    resource_request->url = GURL(kJemaOSSubscriptionUrl);
     resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
     resource_request->method = "POST";
     std::unique_ptr<network::SimpleURLLoader> simple_loader =
@@ -152,4 +152,4 @@ namespace misc {
   }
 
 }  // namespace misc
-}  // namespace fydeos
+}  // namespace jemaos

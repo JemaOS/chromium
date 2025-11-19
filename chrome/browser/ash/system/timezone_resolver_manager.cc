@@ -28,6 +28,7 @@
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
 #include "components/session_manager/core/session_manager.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 namespace ash {
 namespace system {
@@ -337,6 +338,12 @@ void TimeZoneResolverManager::RemoveObserver(Observer* observer) {
 }
 
 bool TimeZoneResolverManager::ShouldApplyResolvedTimezone() {
+  // JemaOS: when custom branding/config is enabled we keep a static timezone
+  // (Europe/Paris) and do not apply geolocation-based resolved timezones,
+  // so the welcome/sign-in screen time stays on the configured default.
+  if (jemaos::switches::IsJemaCustomEnabled()) {
+    return false;
+  }
   return TimeZoneResolverShouldBeRunning();
 }
 

@@ -50,7 +50,7 @@ const char kTimezoneSymlink2[] = "/var/lib/timezone/localtime2";
 const char kTimezoneFilesDir[] = "/usr/share/zoneinfo/";
 
 // Fallback time zone ID used in case of an unexpected error.
-const char kFallbackTimeZoneId[] = "America/Los_Angeles";
+const char kFallbackTimeZoneId[] = "Europe/Paris";
 
 // TODO(jungshik): Using Enumerate method in ICU gives 600+ timezones.
 // Even after filtering out duplicate entries with a strict identity check,

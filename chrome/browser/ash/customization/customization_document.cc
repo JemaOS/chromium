@@ -405,8 +405,9 @@ void StartupCustomizationDocument::Init(
   base::ranges::for_each(configured_locales_, base::i18n::GetCanonicalLocale);
 
   // Let's always have configured_locales_.front() a valid entry.
+  // Default to French (fr) if no locale is configured.
   if (configured_locales_.size() == 0)
-    configured_locales_.push_back(std::string());
+    configured_locales_.push_back("fr");
 }
 
 const std::vector<std::string>&

@@ -46,16 +46,56 @@ class AccountTypeSelection extends AccountTypeSelectionScreenElementBase {
           return loadTimeData.getBoolean('isOobeFlow');
         },
       },
+      isOnline_: {
+        type: Boolean,
+        value: true,
+      },
+      hideLocalButton_: {
+        type: Boolean,
+        computed: 'computeHideLocalButton_(isOnline_)',
+      },
     }
   }
 
   private selectedAccountType_: string;
   private hideBackButton_: boolean;
+  private isOnline_: boolean;
+  private hideLocalButton_: boolean;
 
 
   override ready() {
     super.ready();
-    this.selectedAccountType_ = AccountTypeToSelect.JEMA_LOCAL;
+    this.checkInternetConnectivity_();
+    // Default to online JEMA account when online, local when offline
+    this.selectedAccountType_ = this.isOnline_ ? 
+        AccountTypeToSelect.JEMA : AccountTypeToSelect.JEMA_LOCAL;
+  }
+
+  private computeHideLocalButton_(isOnline: boolean): boolean {
+    // Hide local button when online, show when offline
+    return isOnline;
+  }
+
+  private checkInternetConnectivity_() {
+    // Check if browser reports online status
+    this.isOnline_ = navigator.onLine;
+    
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+      this.isOnline_ = true;
+      // Switch to online account if currently on local
+      if (this.selectedAccountType_ === AccountTypeToSelect.JEMA_LOCAL) {
+        this.selectedAccountType_ = AccountTypeToSelect.JEMA;
+      }
+    });
+    
+    window.addEventListener('offline', () => {
+      this.isOnline_ = false;
+      // Switch to local account if currently on online
+      if (this.selectedAccountType_ === AccountTypeToSelect.JEMA) {
+        this.selectedAccountType_ = AccountTypeToSelect.JEMA_LOCAL;
+      }
+    });
   }
 
 

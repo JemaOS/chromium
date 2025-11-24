@@ -123,6 +123,12 @@ class ASH_EXPORT LoginScreenController : public LoginScreen,
   std::unique_ptr<ScopedGuestButtonBlocker> GetScopedGuestButtonBlocker()
       override;
 
+  // Force the next AuthenticateUserWithPasswordOrPin call to complete as success
+  // without delegating to the client. Intended for flows where an external API
+  // has already authorized the user and OS login should proceed without
+  // cryptohome-backed checks.
+  void ForceNextAuthSuccess();
+
   void RequestSecurityTokenPin(SecurityTokenPinRequest request) override;
   void ClearSecurityTokenPinRequest() override;
   views::Widget* GetLoginWindowWidget() override;
@@ -176,6 +182,9 @@ class ASH_EXPORT LoginScreenController : public LoginScreen,
 
   // Client to communicate with chrome for displaying the management disclosure.
   raw_ptr<ManagementDisclosureClient> management_disclosure_client_ = nullptr;
+
+  // If set, the next password/PIN authentication request is short-circuited as success.
+  bool force_next_auth_success_ = false;
 
   base::WeakPtrFactory<LoginScreenController> weak_factory_{this};
 };

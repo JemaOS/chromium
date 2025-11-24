@@ -32,6 +32,7 @@
 #include "base/logging.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
+#include "base/strings/string_util.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "chrome/browser/ash/accessibility/accessibility_manager.h"
@@ -354,13 +355,13 @@ void LoginDisplayHostMojo::OnLocalAuthenticationCompleted(
   if (!success) {
     // TODO: pass flow to WizardController, suggest to
     // remove & re-create user in case of Recovery flow.
-    existing_user_controller_->OnLocalAuthenticationCancelled();
+    GetExistingUserController()->OnLocalAuthenticationCancelled();
     // While dialog itself is already hidden, this call should
     // correctly reset all associated data.
     HideOobeDialog();
     return;
   }
-  existing_user_controller_->ResumeAfterLocalAuthentication(
+  GetExistingUserController()->ResumeAfterLocalAuthentication(
       std::move(user_context));
 }
 
@@ -771,7 +772,20 @@ void LoginDisplayHostMojo::HandleAuthenticateUserWithPasswordOrPin(
     }
   }
 
-  existing_user_controller_->Login(user_context, SigninSpecifics());
+  //---***JEMAOS BEGIN***---
+  // Set AUTH_FLOW_JEMA_ONLINE for Jema/Flint accounts to ensure proper authentication flow
+  // Since we use AccountType::GOOGLE for compatibility, check the gaia_id prefix instead
+  if (account_id.GetGaiaId().find("jema_id_") == 0 ||
+      account_id.GetGaiaId().find("flint_id_") == 0) {
+    user_context.SetAuthFlow(UserContext::AUTH_FLOW_JEMA_ONLINE);
+    LOG(WARNING) << "Set AUTH_FLOW_JEMA_ONLINE for Jema/Flint account: "
+                 << account_id.GetUserEmail() << " (gaia_id: " << account_id.GetGaiaId() << ")";
+  }
+  //---***JEMAOS END***---
+
+  // Ensure existing_user_controller_ is created before using it, especially
+  // important for relogin scenarios where it might have been reset.
+  GetExistingUserController()->Login(user_context, SigninSpecifics());
 }
 
 void LoginDisplayHostMojo::HandleAuthenticateUserWithEasyUnlock(
@@ -826,7 +840,7 @@ void LoginDisplayHostMojo::HandleLaunchPublicSession(
   UserContext context(user_manager::UserType::kPublicAccount, account_id);
   context.SetPublicSessionLocale(locale);
   context.SetPublicSessionInputMethod(input_method);
-  existing_user_controller_->Login(context, SigninSpecifics());
+  GetExistingUserController()->Login(context, SigninSpecifics());
 }
 
 void LoginDisplayHostMojo::OnAuthFailure(const AuthFailure& error) {
@@ -943,7 +957,7 @@ void LoginDisplayHostMojo::OnChallengeResponseKeysPrepared(
   *user_context.GetMutableChallengeResponseKeys() =
       std::move(challenge_response_keys);
 
-  existing_user_controller_->Login(user_context, SigninSpecifics());
+  GetExistingUserController()->Login(user_context, SigninSpecifics());
 }
 
 void LoginDisplayHostMojo::ShowDialog() {

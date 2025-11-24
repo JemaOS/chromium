@@ -4,21 +4,21 @@
 
 // clang-format off
 // <if expr="not chromeos_ash">
-import {assert} from 'chrome://resources/js/assert.js';
-import {sendWithPromise} from 'chrome://resources/js/cr.js';
-import {$, appendParam} from 'chrome://resources/js/util.js';
+import { assert } from 'chrome://resources/js/assert.js';
+import { sendWithPromise } from 'chrome://resources/js/cr.js';
+import { $, appendParam } from 'chrome://resources/js/util.js';
 // </if>
 // <if expr="chromeos_ash">
-import {assert} from 'chrome://resources/ash/common/assert.js';
-import {sendWithPromise} from 'chrome://resources/ash/common/cr.m.js';
-import {NativeEventTarget as EventTarget} from 'chrome://resources/ash/common/event_target.js';
-import {$, appendParam} from 'chrome://resources/ash/common/util.js';
+import { assert } from 'chrome://resources/ash/common/assert.js';
+import { sendWithPromise } from 'chrome://resources/ash/common/cr.m.js';
+import { NativeEventTarget as EventTarget } from 'chrome://resources/ash/common/event_target.js';
+import { $, appendParam } from 'chrome://resources/ash/common/util.js';
 
 // </if>
 
-import {OnHeadersReceivedDetails, SamlHandler} from './saml_handler.js';
-import {PasswordAttributes} from './saml_password_attributes.js';
-import {WebviewEventManager} from './webview_event_manager.js';
+import { OnHeadersReceivedDetails, SamlHandler } from './saml_handler.js';
+import { PasswordAttributes } from './saml_password_attributes.js';
+import { WebviewEventManager } from './webview_event_manager.js';
 //clang-format on
 
 /**
@@ -30,13 +30,13 @@ import {WebviewEventManager} from './webview_event_manager.js';
  * See go/cros-auth-design for details on Google API.
  */
 
-  /**
-   * Individual sync trusted vault key.
-   * @typedef {{
-   *   keyMaterial: ArrayBuffer,
-   *   version: number,
-   * }}
-   */
+/**
+ * Individual sync trusted vault key.
+ * @typedef {{
+ *   keyMaterial: ArrayBuffer,
+ *   version: number,
+ * }}
+ */
 export let SyncTrustedVaultKey;
 
 /**
@@ -119,15 +119,16 @@ export let AuthCompletedCredentials;
 export let AuthParams;
 
 const SIGN_IN_HEADER = 'google-accounts-signin';
+const JEMAOS_SIGN_IN_HEADER = 'jemaos-accounts-signin';
 const EMBEDDED_FORM_HEADER = 'google-accounts-embedded';
 const SERVICE_ID = 'chromeoslogin';
 const BLANK_PAGE_URL = 'about:blank';
 
 const GAIA_DONE_ELAPSED_TIME = 'ChromeOS.Gaia.Done.ElapsedTime';
 const GAIA_CREATE_ACCOUNT_FIRST_USER =
-      'ChromeOS.Gaia.CreateAccount.IsFirstUser';
+  'ChromeOS.Gaia.CreateAccount.IsFirstUser';
 const GAIA_DONE_OOBE_NEW_ACCOUNT =
-      'ChromeOS.Gaia.Done.Oobe.NewAccount';
+  'ChromeOS.Gaia.Done.Oobe.NewAccount';
 
 // Metric names for messages we get from Gaia.
 const GAIA_MESSAGE_SAML_USER_INFO = 'ChromeOS.Gaia.Message.Saml.UserInfo';
@@ -167,25 +168,25 @@ export const AuthFlow = {
  */
 export const SUPPORTED_PARAMS = [
   'gaiaId',        // Obfuscated GAIA ID to skip the email prompt page
-                   // during the re-auth flow.
+  // during the re-auth flow.
   'gaiaUrl',       // Gaia url to use.
   'gaiaPath',      // Gaia path to use without a leading slash.
   'hl',            // Language code for the user interface.
   'service',       // Name of Gaia service.
   'frameUrl',      // Initial frame URL to use. If empty defaults to
-                   // gaiaUrl.
+  // gaiaUrl.
   'constrained',   // Whether authentication happens in a constrained
-                   // window.
+  // window.
   'clientId',      // Chrome client id.
   'needPassword',  // Whether the host is interested in getting a password.
-                   // Default is |true|.
+  // Default is |true|.
   'flow',          // One of 'default', 'enterprise', or
-                   // 'cfm' or 'enterpriseLicense'.
+  // 'cfm' or 'enterpriseLicense'.
   'enterpriseDomainManager',     // Manager of the current domain. Can be
-                                 // either a domain name (foo.com) or an email
-                                 // address (admin@foo.com).
+  // either a domain name (foo.com) or an email
+  // address (admin@foo.com).
   'enterpriseEnrollmentDomain',  // Domain in which hosting device is (or
-                                 // should be) enrolled.
+  // should be) enrolled.
   'emailDomain',                 // Value used to prefill domain for email.
   'chromeType',                  // Type of Chrome OS device, e.g. "chromebox".
   'clientVersion',               // Version of the Chrome build.
@@ -195,26 +196,26 @@ export const SUPPORTED_PARAMS = [
   'menuEnterpriseEnrollment',    // Enables "Enterprise enrollment" menu item.
   'lsbReleaseBoard',             // Chrome OS Release board name
   'isFirstUser',                 // True if this is non-enterprise device,
-                                 // and there are no users yet.
+  // and there are no users yet.
   'obfuscatedOwnerId',           // Obfuscated device owner ID, if needed.
   'extractSamlPasswordAttributes',  // If enabled attempts to extract password
-                                    // attributes from the SAML response.
+  // attributes from the SAML response.
   'ignoreCrOSIdpSetting',           // If set to true, causes Gaia to ignore 3P
-                                    // SAML IdP SSO redirection policies (and
-                                    // redirect to SAML IdPs by default).
+  // SAML IdP SSO redirection policies (and
+  // redirect to SAML IdPs by default).
   'ssoProfile',  // An identifier for the device's managing OU's
-                 // SAML SSO setting. Used by the login screen to
-                 // pass to Gaia.
+  // SAML SSO setting. Used by the login screen to
+  // pass to Gaia.
   // The email can be passed to Gaia to let it know which user is trying to
   // sign in. Gaia behavior can be different depending on the `gaiaPath`: it
   // can either simply prefill the email field, but still allow modifying it,
   // or it can proceed straight to the authentication challenge for the
   // corresponding account, not allowing the user to modify the email.
   'email',
-   // Determines which URL parameter will be used to pass the email to Gaia.
-   // TODO(b/292087570): misleading name, should be either renamed or
-   // removed completely (need to confirm if email_hint URL parameter
-   // is still relevant for some flows).
+  // Determines which URL parameter will be used to pass the email to Gaia.
+  // TODO(b/292087570): misleading name, should be either renamed or
+  // removed completely (need to confirm if email_hint URL parameter
+  // is still relevant for some flows).
   'readOnlyEmail',
   'realm',
   // If the authentication is done via external IdP, 'startsOnSamlPage'
@@ -272,7 +273,7 @@ const messageHandlers = {
     }
 
     // We need to dispatch only first event, before user enters password.
-    this.dispatchEvent(new CustomEvent('attemptLogin', {detail: msg.email}));
+    this.dispatchEvent(new CustomEvent('attemptLogin', { detail: msg.email }));
   },
   'dialogShown'(msg) {
     this.dispatchEvent(new Event('dialogShown'));
@@ -281,7 +282,7 @@ const messageHandlers = {
     this.dispatchEvent(new Event('dialogHidden'));
   },
   'backButton'(msg) {
-    this.dispatchEvent(new CustomEvent('backButton', {detail: msg.show}));
+    this.dispatchEvent(new CustomEvent('backButton', { detail: msg.show }));
   },
   'getAccounts'(msg) {
     this.dispatchEvent(new Event('getAccounts'));
@@ -290,21 +291,42 @@ const messageHandlers = {
     this.dispatchEvent(new Event('showView'));
   },
   'menuItemClicked'(msg) {
-    this.dispatchEvent(new CustomEvent('menuItemClicked', {detail: msg.item}));
+    this.dispatchEvent(new CustomEvent('menuItemClicked', { detail: msg.item }));
   },
   'identifierEntered'(msg) {
     this.setEmail_(msg.accountIdentifier);
     this.dispatchEvent(new CustomEvent(
-        'identifierEntered',
-        {detail: {accountIdentifier: msg.accountIdentifier}}));
+      'identifierEntered',
+      { detail: { accountIdentifier: msg.accountIdentifier } }));
   },
   'userInfo'(msg) {
+    console.log('[JEMAOS-DEBUG] userInfo message received:', JSON.stringify(msg));
     this.services_ = msg.services;
     this.servicesProvided_ = true;
+    this.setEmail_(msg.email);
+    this.gaiaId_ = msg.gaiaId || 'external_' + Date.now();
+    this.sessionIndex_ = msg.sessionIndex || 'external_session';
+    this.services_ = msg.services || ['jemaos'];
+
+    console.log('[JEMAOS-DEBUG] userInfo - email:', msg.email, 'gaiaId:', msg.gaiaId, 'services:', msg.services);
+    console.log('[JEMAOS-DEBUG] userInfo - has passwordBase64:', !!msg.passwordBase64, 'has password:', !!msg.password);
+
+    // Accept password from external auth payload if provided
+    if (msg.passwordBase64) {
+      this.password_ = msg.passwordBase64;
+      this.passwordIsBase64_ = true;
+      console.log('[JEMAOS-DEBUG] userInfo - Set password from passwordBase64, length:', this.password_.length);
+    } else if (msg.password) {
+      this.password_ = msg.password;
+      this.passwordIsBase64_ = false;
+      console.log('[JEMAOS-DEBUG] userInfo - Set password from password, length:', this.password_.length);
+    } else {
+      console.warn('[JEMAOS-WARNING] userInfo - NO PASSWORD PROVIDED in message!');
+    }
     if (!this.authCompletedFired_) {
       const metric = this.authFlow === AuthFlow.SAML ?
-          GAIA_MESSAGE_SAML_USER_INFO :
-          GAIA_MESSAGE_GAIA_USER_INFO;
+        GAIA_MESSAGE_SAML_USER_INFO :
+        GAIA_MESSAGE_GAIA_USER_INFO;
       chrome.send('metricsHandler:recordBooleanHistogram', [metric, true]);
     }
     if (this.email_ && this.gaiaId_ && this.sessionIndex_) {
@@ -322,7 +344,7 @@ const messageHandlers = {
   },
   'setLicenseType'(msg) {
     this.dispatchEvent(
-        new CustomEvent('setLicenseType', {detail: msg.type}));
+      new CustomEvent('setLicenseType', { detail: msg.type }));
   },
   'showIncognito'(msg) {
     this.dispatchEvent(new Event('showIncognito'));
@@ -332,39 +354,39 @@ const messageHandlers = {
       return;
     }
     this.dispatchEvent(
-        new CustomEvent('setPrimaryActionLabel', {detail: msg.value}));
+      new CustomEvent('setPrimaryActionLabel', { detail: msg.value }));
   },
   'setPrimaryActionEnabled'(msg) {
     if (!this.enableGaiaActionButtons_) {
       return;
     }
     this.dispatchEvent(
-        new CustomEvent('setPrimaryActionEnabled', {detail: msg.value}));
+      new CustomEvent('setPrimaryActionEnabled', { detail: msg.value }));
   },
   'setSecondaryActionLabel'(msg) {
     if (!this.enableGaiaActionButtons_) {
       return;
     }
     this.dispatchEvent(
-        new CustomEvent('setSecondaryActionLabel', {detail: msg.value}));
+      new CustomEvent('setSecondaryActionLabel', { detail: msg.value }));
   },
   'setSecondaryActionEnabled'(msg) {
     if (!this.enableGaiaActionButtons_) {
       return;
     }
     this.dispatchEvent(
-        new CustomEvent('setSecondaryActionEnabled', {detail: msg.value}));
+      new CustomEvent('setSecondaryActionEnabled', { detail: msg.value }));
   },
   'setAllActionsEnabled'(msg) {
     if (!this.enableGaiaActionButtons_) {
       return;
     }
     this.dispatchEvent(
-        new CustomEvent('setAllActionsEnabled', {detail: msg.value}));
+      new CustomEvent('setAllActionsEnabled', { detail: msg.value }));
   },
   'removeUserByEmail'(msg) {
     this.dispatchEvent(
-        new CustomEvent('removeUserByEmail', {detail: msg.email}));
+      new CustomEvent('removeUserByEmail', { detail: msg.email }));
   },
   'exit'(msg) {
     this.dispatchEvent(new CustomEvent('exit'));
@@ -378,8 +400,8 @@ const messageHandlers = {
         console.error('Authenticator: UserInfo should come before closeView');
       }
       const metric = this.authFlow === AuthFlow.SAML ?
-          GAIA_MESSAGE_SAML_CLOSE_VIEW :
-          GAIA_MESSAGE_GAIA_CLOSE_VIEW;
+        GAIA_MESSAGE_SAML_CLOSE_VIEW :
+        GAIA_MESSAGE_GAIA_CLOSE_VIEW;
       chrome.send('metricsHandler:recordBooleanHistogram', [metric, true]);
     }
 
@@ -431,6 +453,7 @@ export class Authenticator extends EventTarget {
     this.isLoaded_ = false;
     this.email_ = null;
     this.password_ = null;
+    this.passwordIsBase64_ = false;
     this.gaiaId_ = null, this.sessionIndex_ = null;
     this.skipForNow_ = false;
     /** @type {AuthMode} */
@@ -455,7 +478,7 @@ export class Authenticator extends EventTarget {
      */
     this.webview_ = typeof webview === 'string' ?
         /** @type {WebView} */ ($(webview)) :
-        webview;
+      webview;
     assert(this.webview_);
     this.selectedAccountType_ = null;
     this.enableGaiaActionButtons_ = false;
@@ -475,6 +498,7 @@ export class Authenticator extends EventTarget {
     this.accountTypeGoogleSelectedCallback = null;
     this.needPassword = true;
     this.services_ = null;
+    this.authTokens_ = null;
     this.servicesProvided_ = false;
     this.waitApiPasswordConfirm_ = false;
     this.gaiaDoneTimer_ = null;
@@ -487,7 +511,7 @@ export class Authenticator extends EventTarget {
     this.gaiaStartTime = null;
 
     window.addEventListener(
-        'message', e => this.onMessageFromWebview_(e), false);
+      'message', e => this.onMessageFromWebview_(e), false);
     window.addEventListener('focus', () => this.onFocus_(), false);
     window.addEventListener('popstate', e => this.onPopState_(e), false);
 
@@ -500,7 +524,7 @@ export class Authenticator extends EventTarget {
       this.initializeAfterDomLoaded_();
     } else {
       document.addEventListener(
-          'DOMContentLoaded', () => this.initializeAfterDomLoaded_());
+        'DOMContentLoaded', () => this.initializeAfterDomLoaded_());
     }
   }
 
@@ -520,7 +544,7 @@ export class Authenticator extends EventTarget {
       this.dispatchEvent(new CustomEvent('authFlowChange', {
         bubbles: true,
         composed: true,
-        detail: {oldValue: previous, newValue: value},
+        detail: { oldValue: previous, newValue: value },
       }));
     }
   }
@@ -541,7 +565,7 @@ export class Authenticator extends EventTarget {
       this.dispatchEvent(new CustomEvent('authDomainChange', {
         bubbles: true,
         composed: true,
-        detail: {oldValue: previous, newValue: domain},
+        detail: { oldValue: previous, newValue: domain },
       }));
     }
   }
@@ -562,7 +586,7 @@ export class Authenticator extends EventTarget {
       this.dispatchEvent(new CustomEvent('videoEnabledChange', {
         bubbles: true,
         composed: true,
-        detail: {oldValue: previous, newValue: enabled},
+        detail: { oldValue: previous, newValue: enabled },
       }));
     }
   }
@@ -576,13 +600,13 @@ export class Authenticator extends EventTarget {
     this.email_ = null;
     this.gaiaId_ = null;
     this.password_ = null;
+    this.passwordIsBase64_ = false;
     this.readyFired_ = false;
     this.selectedAccountType_ = null;
     this.skipForNow_ = false;
     this.sessionIndex_ = null;
     this.trusted_ = true;
     this.authFlow = AuthFlow.DEFAULT;
-    this.samlHandler_.reset();
     this.videoEnabled = false;
     this.services_ = null;
     this.servicesProvided_ = false;
@@ -591,6 +615,11 @@ export class Authenticator extends EventTarget {
     this.syncTrustedVaultKeys_ = null;
     this.closeViewReceived_ = false;
     this.disableAllActions_();
+    if (this.samlHandler_) {
+      this.samlHandler_.reset();
+    } else {
+      console.error('[ERROR] samlHandler_ is undefined in resetStates()');
+    }
   }
 
   /**
@@ -622,47 +651,47 @@ export class Authenticator extends EventTarget {
     assert(!this.samlHandler_);
 
     this.samlHandler_ =
-        new SamlHandler(this.webview_, false /* startsOnSamlPage */);
+      new SamlHandler(this.webview_, false /* startsOnSamlPage */);
     this.webviewEventManager_.addEventListener(
-        this.samlHandler_, 'insecureContentBlocked',
-        e => this.onInsecureContentBlocked_(e));
+      this.samlHandler_, 'insecureContentBlocked',
+      e => this.onInsecureContentBlocked_(e));
     this.webviewEventManager_.addEventListener(
-        this.samlHandler_, 'authPageLoaded', e => this.onAuthPageLoaded_(e));
+      this.samlHandler_, 'authPageLoaded', e => this.onAuthPageLoaded_(e));
     this.webviewEventManager_.addEventListener(
-        this.samlHandler_, 'videoEnabled', () => this.videoEnabled = true);
+      this.samlHandler_, 'videoEnabled', () => this.videoEnabled = true);
     this.webviewEventManager_.addEventListener(
-        this.samlHandler_, 'apiPasswordAdded',
-        e => this.onSamlApiPasswordAdded_(e));
+      this.samlHandler_, 'apiPasswordAdded',
+      e => this.onSamlApiPasswordAdded_(e));
     this.webviewEventManager_.addEventListener(
-          this.samlHandler_, 'apiAccountCreated',
-          e => this.onSamlApiAccountCreated_(e));
+      this.samlHandler_, 'apiAccountCreated',
+      e => this.onSamlApiAccountCreated_(e));
     this.webviewEventManager_.addEventListener(
-        this.samlHandler_, 'apiPasswordConfirmed',
-        e => this.onSamlApiPasswordConfirmed_(e));
+      this.samlHandler_, 'apiPasswordConfirmed',
+      e => this.onSamlApiPasswordConfirmed_(e));
     this.webviewEventManager_.addEventListener(
-        this.samlHandler_, 'challengeMachineKeyRequired',
-        e => this.onChallengeMachineKeyRequired_(e));
+      this.samlHandler_, 'challengeMachineKeyRequired',
+      e => this.onChallengeMachineKeyRequired_(e));
 
     this.webviewEventManager_.addEventListener(
-        this.webview_, 'droplink', e => this.onDropLink_(e));
+      this.webview_, 'droplink', e => this.onDropLink_(e));
     this.webviewEventManager_.addEventListener(
-        this.webview_, 'newwindow', e => this.onNewWindow_(e));
+      this.webview_, 'newwindow', e => this.onNewWindow_(e));
     this.webviewEventManager_.addEventListener(
-        this.webview_, 'contentload', e => this.onContentLoad_(e));
+      this.webview_, 'contentload', e => this.onContentLoad_(e));
     this.webviewEventManager_.addEventListener(
-        this.webview_, 'loadabort', e => this.onLoadAbort_(e));
+      this.webview_, 'loadabort', e => this.onLoadAbort_(e));
     this.webviewEventManager_.addEventListener(
-        this.webview_, 'loadcommit', e => this.onLoadCommit_(e));
+      this.webview_, 'loadcommit', e => this.onLoadCommit_(e));
 
     this.webviewEventManager_.addWebRequestEventListener(
-        this.webview_.request.onCompleted,
-        details => this.onRequestCompleted_(details),
-        {urls: ['<all_urls>'], types: ['main_frame']}, ['responseHeaders']);
+      this.webview_.request.onCompleted,
+      details => this.onRequestCompleted_(details),
+      { urls: ['<all_urls>'], types: ['main_frame'] }, ['responseHeaders']);
     this.webviewEventManager_.addWebRequestEventListener(
-        this.webview_.request.onHeadersReceived,
-        details => this.onHeadersReceived_(details),
-        {urls: ['<all_urls>'], types: ['main_frame', 'xmlhttprequest']},
-        ['responseHeaders']);
+      this.webview_.request.onHeadersReceived,
+      details => this.onHeadersReceived_(details),
+      { urls: ['<all_urls>'], types: ['main_frame', 'xmlhttprequest'] },
+      ['responseHeaders']);
   }
 
   /**
@@ -734,12 +763,12 @@ export class Authenticator extends EventTarget {
       // webview. Use the specified |newWebviewPartitionName|.
       const newWebview = document.createElement('webview');
       this.copyAttributes_(
-          this.webview_, newWebview, new Set(['src', 'partition']));
+        this.webview_, newWebview, new Set(['src', 'partition']));
       newWebview.partition = newWebviewPartitionName;
 
       webivewParent.replaceChild(newWebview, this.webview_);
 
-      this.rebindWebview_(/** @type {WebView} */ (newWebview));
+      this.rebindWebview_(/** @type {WebView} */(newWebview));
     }
   }
 
@@ -776,20 +805,20 @@ export class Authenticator extends EventTarget {
 
     // Enable or disable handling account create message from Gaia.
     this.samlHandler_.shouldHandleAccountCreationMessage =
-        !!data.recordAccountCreation;
+      !!data.recordAccountCreation;
 
     // Don't block insecure content for desktop flow because it lands on
     // http. Otherwise, block insecure content as long as gaia is https.
     this.samlHandler_.blockInsecureContent =
-        authMode !== AuthMode.DESKTOP && this.idpOrigin_.startsWith('https://');
+      authMode !== AuthMode.DESKTOP && this.idpOrigin_.startsWith('https://');
     this.samlHandler_.extractSamlPasswordAttributes =
-        data.extractSamlPasswordAttributes;
+      data.extractSamlPasswordAttributes;
     this.samlHandler_.urlParameterToAutofillSAMLUsername =
-        data.urlParameterToAutofillSAMLUsername;
+      data.urlParameterToAutofillSAMLUsername;
 
     this.needPassword = !('needPassword' in data) || data.needPassword;
 
-    this.webview_.contextMenus.onShow.addListener(function(e) {
+    this.webview_.contextMenus.onShow.addListener(function (e) {
       e.preventDefault();
     });
 
@@ -835,11 +864,11 @@ export class Authenticator extends EventTarget {
         url = appendParam(url, 'sso_profile', data.ssoProfile);
       }
       url = appendParam(
-          url, 'continue',
-          data.gaiaUrl + 'programmatic_auth_chromeos?hl=' + data.hl +
-              '&scope=https%3A%2F%2Fwww.google.com%2Faccounts%2FOAuthLogin&' +
-              'client_id=' + encodeURIComponent(data.clientId) +
-              '&access_type=offline');
+        url, 'continue',
+        data.gaiaUrl + 'programmatic_auth_chromeos?hl=' + data.hl +
+        '&scope=https%3A%2F%2Fwww.google.com%2Faccounts%2FOAuthLogin&' +
+        'client_id=' + encodeURIComponent(data.clientId) +
+        '&access_type=offline');
       if (data.rart) {
         url = appendParam(url, 'rart', data.rart);
       }
@@ -981,7 +1010,7 @@ export class Authenticator extends EventTarget {
       // a profile, resizing would cause a browser window to open in the
       // system profile, which is not allowed.
       if (!isEmbeddedPage && !this.dontResizeNonEmbeddedPages) {
-        this.dispatchEvent(new CustomEvent('resize', {detail: currentUrl}));
+        this.dispatchEvent(new CustomEvent('resize', { detail: currentUrl }));
         return;
       }
     }
@@ -997,9 +1026,9 @@ export class Authenticator extends EventTarget {
    */
   updateHistoryState_(url) {
     if (history.state && history.state.url !== url) {
-      history.pushState({url: url}, '');
+      history.pushState({ url: url }, '');
     } else {
-      history.replaceState({url: url}, '');
+      history.replaceState({ url: url }, '');
     }
   }
 
@@ -1009,7 +1038,7 @@ export class Authenticator extends EventTarget {
    */
   onFocus_() {
     if (this.authMode === AuthMode.DESKTOP &&
-        document.activeElement === document.body) {
+      document.activeElement === document.body) {
       this.webview_.focus();
     }
   }
@@ -1053,7 +1082,7 @@ export class Authenticator extends EventTarget {
       if (headerName === SIGN_IN_HEADER) {
         const headerValues = header.value.toLowerCase().split(',');
         const signinDetails = {};
-        headerValues.forEach(function(e) {
+        headerValues.forEach(function (e) {
           const pair = e.split('=');
           signinDetails[pair[0].trim()] = pair[1].trim();
         });
@@ -1090,11 +1119,50 @@ export class Authenticator extends EventTarget {
   }
 
   /**
+   * Check if message is from external authentication source
+   * @param {Object} e Message event
+   * @return {boolean}
+   * @private
+   */
+  isExternalAuthMessage_(e) {
+    // if (!this.isWebviewEvent_(e)) {
+    //   return false;
+    // }
+
+    // // Check for external auth origin
+    // const externalOrigins = [
+    //   'http://192.168.0.113:4000',
+    //   'https://192.168.0.113:4000'
+    // ];
+
+    return true;
+  }
+
+  /**
+   * Handle external authentication messages
+   * @param {Object} e Message event
+   * @private
+   */
+  handleExternalAuth_(e) {
+    console.log('[DEBUG] Handling external auth:', e.data);
+
+    const msg = e.data?.payload?.call || {};
+    if (msg.method && msg.method in messageHandlers) {
+      messageHandlers[msg.method].call(this, msg);
+    }
+  }
+
+  /**
    * Invoked when an HTML5 message is received from the webview element.
    * @param {Object} e Payload of the received HTML5 message.
    * @private
    */
   onMessageFromWebview_(e) {
+    if (this.isExternalAuthMessage_(e)) {
+      this.handleExternalAuth_(e);
+      return;
+    }
+
     if (!this.isGaiaMessage_(e)) {
       return;
     }
@@ -1120,7 +1188,7 @@ export class Authenticator extends EventTarget {
     const currentUrl = this.webview_.src;
     let payload = undefined;
     if (messageData) {
-      payload = {type: messageType, data: messageData};
+      payload = { type: messageType, data: messageData };
     } else {
       // TODO(crbug.com/1116343): Use new message format when it will be
       // available in production.
@@ -1132,7 +1200,7 @@ export class Authenticator extends EventTarget {
 
   shouldWaitForJemaAccountTypeSelection_() {
     return this.enableJemaAccount_ && !this.isExistedUser_ && !this.deviceEnterpriseManaged_ &&
-           this.requireSelectAccountTypeAfterSignin_;
+      this.requireSelectAccountTypeAfterSignin_;
   }
 
   /**
@@ -1154,7 +1222,7 @@ export class Authenticator extends EventTarget {
       }
     }
     const missingGaiaInfo =
-        !this.email_ || !this.gaiaId_ || !this.sessionIndex_;
+      !this.email_ || !this.gaiaId_ || !this.sessionIndex_;
     if (missingGaiaInfo && !this.skipForNow_) {
       if (this.missingGaiaInfoCallback) {
         this.missingGaiaInfoCallback();
@@ -1169,7 +1237,7 @@ export class Authenticator extends EventTarget {
     const userInfoAvailable = !!this.services_;
 
     const gaiaDone = userInfoAvailable && this.closeViewReceived_ &&
-        !this.waitApiPasswordConfirm_;
+      !this.waitApiPasswordConfirm_;
 
     if (gaiaDone) {
       this.maybeRecordGaiaElapsedTime_();
@@ -1182,7 +1250,7 @@ export class Authenticator extends EventTarget {
       this.gaiaStartTime = Date.now();
       // Start `gaiaDoneTimer_` if Gaia is not yet done.
       this.gaiaDoneTimer_ = window.setTimeout(
-          () => this.onGaiaDoneTimeout_(), GAIA_DONE_WAIT_TIMEOUT_MS);
+        () => this.onGaiaDoneTimeout_(), GAIA_DONE_WAIT_TIMEOUT_MS);
       return;
     }
 
@@ -1245,7 +1313,7 @@ export class Authenticator extends EventTarget {
    */
   assertStringArray_(arr, nameOfArr) {
     console.assert(
-        Array.isArray(arr), 'FATAL: Bad %s type: %s', nameOfArr, typeof arr);
+      Array.isArray(arr), 'FATAL: Bad %s type: %s', nameOfArr, typeof arr);
     for (let i = 0; i < arr.length; ++i) {
       this.assertStringElement_(arr[i], nameOfArr, i);
     }
@@ -1257,8 +1325,8 @@ export class Authenticator extends EventTarget {
    */
   assertStringDict_(dict, nameOfDict) {
     console.assert(
-        typeof dict === 'object', 'FATAL: Bad %s type: %s', nameOfDict,
-        typeof dict);
+      typeof dict === 'object', 'FATAL: Bad %s type: %s', nameOfDict,
+      typeof dict);
     for (const key in dict) {
       this.assertStringElement_(dict[key], nameOfDict, key);
     }
@@ -1267,8 +1335,8 @@ export class Authenticator extends EventTarget {
   /** Asserts an element |elem| in a certain collection is a string. */
   assertStringElement_(elem, nameOfCollection, index) {
     console.assert(
-        typeof elem === 'string', 'FATAL: Bad %s[%s] type: %s',
-        nameOfCollection, index, typeof elem);
+      typeof elem === 'string', 'FATAL: Bad %s[%s] type: %s',
+      nameOfCollection, index, typeof elem);
   }
 
   /**
@@ -1276,27 +1344,112 @@ export class Authenticator extends EventTarget {
    * @private
    */
   onAuthCompleted_() {
-    assert(
-        this.skipForNow_ ||
-        (this.email_ && this.gaiaId_ && this.sessionIndex_));
+    // Validate required data to prevent crashes
+    if (!this.skipForNow_) {
+      if (!this.email_ || typeof this.email_ !== 'string') {
+        console.error('[FATAL] Invalid email:', this.email_);
+        return;
+      }
+      if (!this.gaiaId_ || typeof this.gaiaId_ !== 'string') {
+        console.error('[FATAL] Invalid gaiaId:', this.gaiaId_);
+        return;
+      }
+      if (!this.sessionIndex_ || typeof this.sessionIndex_ !== 'string') {
+        console.error('[FATAL] Invalid sessionIndex:', this.sessionIndex_);
+        return;
+      }
+    }
+
+    // Ensure services is a valid array
+    if (!this.services_ || !Array.isArray(this.services_)) {
+      console.warn('[WARNING] Invalid services, setting default');
+      this.services_ = ['jemaos'];
+    }
+
+    // Debug logging
+    console.log('[JEMAOS-DEBUG] onAuthCompleted_ called');
+    console.log('[JEMAOS-DEBUG] email:', this.email_);
+    console.log('[JEMAOS-DEBUG] gaiaId:', this.gaiaId_);
+    console.log('[JEMAOS-DEBUG] services:', JSON.stringify(this.services_));
+    console.log('[JEMAOS-DEBUG] password length:', (this.password_ || '').length);
+    console.log('[JEMAOS-DEBUG] isExistedUser:', this.isExistedUser_);
+
+    // Check if this is a JEMA or Flint account
+    // Check both services list and gaia_id prefix as fallback
+    const isJemaOrFlint = this.services_.includes('jemaos') ||
+      this.services_.includes('flint') ||
+      (this.gaiaId_ && (this.gaiaId_.startsWith('jema_id_') ||
+        this.gaiaId_.startsWith('ft_id_')));
+
+    console.log('[JEMAOS-DEBUG] isJemaOrFlint:', isJemaOrFlint);
+
+    if (isJemaOrFlint) {
+      // Route Jema/Flint users to LOCAL account flow.
+      // Decode base64 password if needed to ensure plaintext is sent to the local handler.
+      let localPassword = this.password_ || '';
+
+      console.log('[JEMAOS] Processing Jema/Flint auth, password length:', localPassword.length,
+        'services:', this.services_);
+
+      if (this.passwordIsBase64_ && typeof localPassword === 'string' && localPassword.length > 0) {
+        try {
+          // Handle base64 to UTF-8 decoding robustly.
+          const binary = atob(localPassword);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; ++i) bytes[i] = binary.charCodeAt(i);
+          if (window.TextDecoder) {
+            localPassword = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+          } else {
+            // Fallback: assume ASCII if TextDecoder is unavailable.
+            localPassword = binary;
+          }
+          console.log('[JEMAOS] Decoded base64 password, new length:', localPassword.length);
+        } catch (e) {
+          console.warn('[WARNING] Failed to decode base64 password, using raw value');
+        }
+      }
+
+      // Determine whether to create a new local user or sign into an existing one.
+      // Heuristic: if this.isExistedUser_ is true, treat as sign-in; otherwise treat as new user.
+      const newUser = !this.isExistedUser_;
+
+      // Username can include domain; handler trims it.
+      console.log('[DEBUG] completeFtAuthentication', newUser, this.email_ || '', 'password_length:', localPassword.length);
+      chrome.send('completeFtAuthentication', [newUser, this.email_ || '', localPassword]);
+      return;
+    }
+
+    // Validate services array contains only strings
+    try {
+      this.assertStringArray_(this.services_, 'services');
+    } catch (e) {
+      console.error('[FATAL] Services validation failed:', e);
+      this.services_ = ['jemaos']; // Set safe default
+    }
+
     let scrapedPasswords = [];
     if (this.authFlow === AuthFlow.SAML && !this.samlHandler_.samlApiUsed) {
-      scrapedPasswords = this.samlHandler_.scrapedPasswords;
+      scrapedPasswords = this.samlHandler_.scrapedPasswords || [];
     }
-    // Chrome will crash on incorrect data type, so log some error message
-    // here.
-    if (this.services_) {
-      this.assertStringArray_(this.services_, 'services');
-    }
+
     let passwordAttributes = {};
     if (this.authFlow === AuthFlow.SAML &&
-        this.samlHandler_.extractSamlPasswordAttributes) {
-      passwordAttributes = this.samlHandler_.passwordAttributes;
+      this.samlHandler_.extractSamlPasswordAttributes) {
+      passwordAttributes = this.samlHandler_.passwordAttributes || {};
     }
-    this.assertStringDict_(passwordAttributes, 'passwordAttributes');
-    this.dispatchEvent(new CustomEvent(
+
+    // Validate password attributes
+    try {
+      this.assertStringDict_(passwordAttributes, 'passwordAttributes');
+    } catch (e) {
+      console.error('[FATAL] Password attributes validation failed:', e);
+      passwordAttributes = {}; // Set safe default
+    }
+
+    // Proceed to dispatch authCompleted event
+    try {
+      this.dispatchEvent(new CustomEvent(
         'authCompleted',
-        // TODO(rsorokin): get rid of the stub values.
         {
           detail: {
             email: this.email_ || '',
@@ -1305,6 +1458,7 @@ export class Authenticator extends EventTarget {
             usingSAML: this.authFlow === AuthFlow.SAML,
             scrapedSAMLPasswords: scrapedPasswords,
             publicSAML: this.samlAclUrl_ || false,
+            chooseWhatToSync: this.chooseWhatToSync_,
             skipForNow: this.skipForNow_,
             sessionIndex: this.sessionIndex_ || '',
             trusted: this.trusted_,
@@ -1314,8 +1468,15 @@ export class Authenticator extends EventTarget {
             syncTrustedVaultKeys: this.syncTrustedVaultKeys_ || {},
           },
         }));
-    this.resetStates();
-    this.authCompletedFired_ = true;
+
+      console.log('[DEBUG] authCompleted event dispatched successfully');
+      this.resetStates();
+      this.authCompletedFired_ = true;
+
+    } catch (error) {
+      console.error('[FATAL] Error dispatching authCompleted:', error);
+      // Don't call resetStates() if dispatch failed
+    }
   }
 
   /**
@@ -1397,7 +1558,7 @@ export class Authenticator extends EventTarget {
    */
   onChallengeMachineKeyRequired_(e) {
     sendWithPromise('samlChallengeMachineKey', e.detail.url, e.detail.challenge)
-        .then(e.detail.callback);
+      .then(e.detail.callback);
   }
 
   /**
@@ -1405,7 +1566,7 @@ export class Authenticator extends EventTarget {
    * @private
    */
   onDropLink_(e) {
-    this.dispatchEvent(new CustomEvent('dropLink', {detail: e.url}));
+    this.dispatchEvent(new CustomEvent('dropLink', { detail: e.url }));
   }
 
   /**
@@ -1413,7 +1574,7 @@ export class Authenticator extends EventTarget {
    * @private
    */
   onNewWindow_(e) {
-    this.dispatchEvent(new CustomEvent('newWindow', {detail: e}));
+    this.dispatchEvent(new CustomEvent('newWindow', { detail: e }));
   }
 
   /**
@@ -1474,7 +1635,7 @@ export class Authenticator extends EventTarget {
     }
 
     this.dispatchEvent(new CustomEvent(
-        'loadAbort', {detail: {error_code: e.code, src: e.url}}));
+      'loadAbort', { detail: { error_code: e.code, src: e.url } }));
   }
 
   /**
@@ -1508,8 +1669,8 @@ export class Authenticator extends EventTarget {
       console.warn('Gaia done timeout: Forcing empty services.');
       this.services_ = [];
       const metric = this.authFlow === AuthFlow.SAML ?
-          GAIA_MESSAGE_SAML_USER_INFO :
-          GAIA_MESSAGE_GAIA_USER_INFO;
+        GAIA_MESSAGE_SAML_USER_INFO :
+        GAIA_MESSAGE_GAIA_USER_INFO;
       chrome.send('metricsHandler:recordBooleanHistogram', [metric, false]);
     }
 
@@ -1518,8 +1679,8 @@ export class Authenticator extends EventTarget {
       this.closeViewReceived_ = true;
 
       const metric = this.authFlow === AuthFlow.SAML ?
-          GAIA_MESSAGE_SAML_CLOSE_VIEW :
-          GAIA_MESSAGE_GAIA_CLOSE_VIEW;
+        GAIA_MESSAGE_SAML_CLOSE_VIEW :
+        GAIA_MESSAGE_GAIA_CLOSE_VIEW;
       chrome.send('metricsHandler:recordBooleanHistogram', [metric, false]);
     }
 
@@ -1555,19 +1716,19 @@ export class Authenticator extends EventTarget {
    * @private
    */
   maybeRecordAccountFreshnessInOobe_() {
-      // Record the metric if the record new account feature
-      // flag is enabled. This metric is recorded only for the sign-in
-      // event happens in Oobe.
-      if (!this.samlHandler_.shouldHandleAccountCreationMessage ||
-          !this.isFirstUser_) {
-        return;
-      }
-      chrome.send('metricsHandler:recordBooleanHistogram', [
-        GAIA_DONE_OOBE_NEW_ACCOUNT,
-        this.isNewAccount
-      ]);
-      this.isNewAccount = false;
+    // Record the metric if the record new account feature
+    // flag is enabled. This metric is recorded only for the sign-in
+    // event happens in Oobe.
+    if (!this.samlHandler_.shouldHandleAccountCreationMessage ||
+      !this.isFirstUser_) {
+      return;
     }
+    chrome.send('metricsHandler:recordBooleanHistogram', [
+      GAIA_DONE_OOBE_NEW_ACCOUNT,
+      this.isNewAccount
+    ]);
+    this.isNewAccount = false;
+  }
 
   /**
    * Record new account creation.
@@ -1578,7 +1739,7 @@ export class Authenticator extends EventTarget {
     // and false if another account existed.
     // TODO (b/307591058): add metric to track if account is created
     // during login or not.
-    chrome.send('metricsHandler:recordBooleanHistogram',[
+    chrome.send('metricsHandler:recordBooleanHistogram', [
       GAIA_CREATE_ACCOUNT_FIRST_USER,
       this.isFirstUser_
     ]);
@@ -1601,7 +1762,7 @@ export class Authenticator extends EventTarget {
    */
   disableAllActions_() {
     this.dispatchEvent(
-        new CustomEvent('setAllActionsEnabled', {detail: false}));
+      new CustomEvent('setAllActionsEnabled', { detail: false }));
   }
 
   /**

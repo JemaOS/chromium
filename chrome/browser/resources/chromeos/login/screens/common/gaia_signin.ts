@@ -96,6 +96,7 @@ const GaiaSigninElementBase =
 
 interface GaiaSigninScreenData {
   hasUserPods: boolean;
+  showAccountTypeSelection: boolean;
 }
 
 export class GaiaSigninElement extends GaiaSigninElementBase {
@@ -263,6 +264,10 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
         type: Boolean,
         value: false,
       },
+      selectedAccountType_: {
+        type: String,
+        value: 'jema-local', // Default to JemaOS local account type
+      }
     };
   }
 
@@ -300,6 +305,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   private initAccountTypeSelectionRequired: boolean;
   private isAccountTypeSelectionRequired: boolean;
   private isAccountTypeSelected: boolean;
+  private selectedAccountType_: string;
 
   private onUserCreationNextWithThis_: () => void;
   private onUserCreationCanceledWithThis_: () => void;
@@ -455,6 +461,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
       if (!this.userCreationContext_ && this.isAccountTypeSelectionRequired) {
         // from fydoe signin page back to account type selection page
         this.isAccountTypeSelected = false;
+        this.setUIStep(DialogMode.ACCOUNT_TYPE_SELECTION); 
       }
       this.cancel(true /* isBackClicked */);
     }
@@ -582,6 +589,14 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
 
     if (data && 'hasUserPods' in data) {
       this.isClosable = data.hasUserPods;
+    }
+
+    // Check if we should show account type selection directly
+    if (data && data.showAccountTypeSelection) {
+      // Enable account type selection and reset selection state
+      this.isAccountTypeSelectionRequired = true;
+      this.isAccountTypeSelected = false;
+      // refreshDialogStep_ will be called automatically by the observer
     }
 
     const pinDialog =
@@ -1135,14 +1150,25 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
       return;
     }
     if (isLoading) {
-      this.setUIStep(DialogMode.LOADING);
+      // this.setUIStep(DialogMode.LOADING);
+       console.log('[DEBUG] Setting UI step to GAIA for online accounts');
       return;
     }
     if (isDupEmailError) {
       this.setUIStep(DialogMode.GAIA_DUP_EMAIL_ERROR);
       return;
     }
-    this.setUIStep(DialogMode.GAIA);
+    // Only set GAIA step for online accounts (Google and JemaOS online)
+    if (this.isAccountTypeSelected && (this.selectedAccountType_ === 'google' || this.selectedAccountType_ === 'jema')) {
+      this.setUIStep(DialogMode.GAIA);
+      return;
+    }
+
+    // For jema-local, bypass GAIA and navigate directly
+    if (this.isAccountTypeSelected && this.selectedAccountType_ === 'jema-local') {
+      console.log('[DEBUG] Navigating directly to JemaOS local signin');
+      return;
+    }
   }
 
   /**
@@ -1212,16 +1238,22 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   }
 
   onAccountTypeSelectionBack_() {
+    this.isAccountTypeSelected = false;
     this.userActed('accountTypeSelectionBack');
   }
 
   onAccountTypeSelected_(e: CustomEvent) {
-    this.isAccountTypeSelected = true;
     if (e.detail === 'google') {
+      this.selectedAccountType_ = 'google';
       chrome.send('userSelectGoogleAccount');
     } else if (e.detail === 'jema') {
+      this.selectedAccountType_ = 'jema';
       chrome.send('resetAccountFlag');
+    } else if (e.detail === 'jema-local') {
+      this.selectedAccountType_ = 'jema-local';
+      chrome.send('jemaLocalSignin');
     }
+    this.isAccountTypeSelected = true;
   }
 
   onUserCreationCanceled_() {

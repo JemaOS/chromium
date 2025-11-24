@@ -1531,6 +1531,14 @@ void WizardController::OnGaiaScreenExit(GaiaScreen::Result result) {
     case GaiaScreen::Result::ACCOUNT_TYPE_SELECTION_BACK:
     case GaiaScreen::Result::BACK:
     case GaiaScreen::Result::CANCEL: {
+      // Ensure Account Type Selection is shown when returning to GAIA.
+      if (result == GaiaScreen::Result::ACCOUNT_TYPE_SELECTION_BACK) {
+        if (auto* oobe_ui = GetOobeUI()) {
+          if (auto* gaia_handler = oobe_ui->GetView<GaiaScreenHandler>()) {
+            gaia_handler->SetShowAccountTypeSelection(true);
+          }
+        }
+      }
       if (features::IsOobeSoftwareUpdateEnabled()) {
         // When `OobeSoftwareUpdate` is enabled, clicking the back button should
         // return the user to the user creation screen if it is enabled or the
@@ -1698,8 +1706,24 @@ void WizardController::OnSamlConfirmPasswordScreenExit(
   }
 }
 
-void WizardController::OnJemaLocalSigninScreenExit() {
-  OnScreenExit(JemaLocalSigninView::kScreenId, kDefaultExitReason);
+void WizardController::OnJemaLocalSigninScreenExit(
+    JemaLocalSigninScreen::Result result) {
+  OnScreenExit(JemaLocalSigninView::kScreenId,
+               JemaLocalSigninScreen::GetResultString(result));
+
+  // If user chose to go back to Account Type Selection, ensure GAIA shows it.
+  if (result == JemaLocalSigninScreen::Result::ACCOUNT_TYPE_SELECTION_BACK) {
+    if (auto* oobe_ui = GetOobeUI()) {
+      if (auto* gaia_handler = oobe_ui->GetView<GaiaScreenHandler>()) {
+        gaia_handler->SetShowAccountTypeSelection(true);
+      }
+    }
+    GetScreen<GaiaScreen>()->LoadOnlineGaia();
+    AdvanceToScreen(GaiaView::kScreenId);
+    return;
+  }
+
+  // For CANCEL or BACK, restore previous behavior based on context.
   if (wizard_context_->is_user_creation_enabled) {
     AdvanceToScreen(UserCreationView::kScreenId);
   } else {

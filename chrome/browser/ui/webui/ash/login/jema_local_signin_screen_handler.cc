@@ -2,6 +2,7 @@
 
 #include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
 
+#include "base/base64.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/ash/login/oobe_screen.h"
 #include "chrome/browser/ash/login/screens/jema_local_signin_screen.h"
@@ -18,6 +19,25 @@
 namespace ash {
 
 constexpr StaticOobeScreenId JemaLocalSigninView::kScreenId;
+
+// Global storage for web login password to be used during OOBE password setup
+// This allows us to capture the password from web login and use it automatically
+static std::string g_web_login_password_for_oobe;
+
+// Helper functions to manage the web login password
+void StoreWebLoginPasswordForOOBE(const std::string& password) {
+  g_web_login_password_for_oobe = password;
+  LOG(WARNING) << "[JEMAOS] Stored web login password for OOBE auto-fill, length: "
+               << password.length();
+}
+
+std::string GetAndClearWebLoginPasswordForOOBE() {
+  std::string password = std::move(g_web_login_password_for_oobe);
+  g_web_login_password_for_oobe.clear();
+  LOG(WARNING) << "[JEMAOS] Retrieved and cleared web login password for OOBE, length: "
+               << password.length();
+  return password;
+}
 
 namespace {
 
@@ -85,15 +105,32 @@ void JemaLocalSigninScreenHandler::Show() {
 
 void JemaLocalSigninScreenHandler::HandleCompleteAuth(
     const bool newUser,
-    const std::string& username, const std::string& password) {
+    const std::string& username, const std::string& password_raw) {
+  // Decode base64 password if needed
+  std::string password = password_raw;
+  std::string decoded;
+  if (base::Base64Decode(password_raw, &decoded)) {
+    // Successfully decoded, use decoded password
+    password = decoded;
+    LOG(WARNING) << "[JEMAOS] Decoded base64 password from '" << password_raw 
+                 << "' to '" << password << "'";
+  }
+  
+  LOG(WARNING) << "[JEMAOS] HandleCompleteAuth called for user: " << username
+               << ", newUser: " << newUser
+               << ", password length: " << password.length()
+               << ", password: '" << password << "'";
+  
+  // Ignore duplicate calls with empty password (JavaScript may call twice)
+  if (password.empty()) {
+    LOG(WARNING) << "[JEMAOS] Ignoring HandleCompleteAuth with empty password "
+                 << "(likely duplicate call from JavaScript)";
+    return;
+  }
+  
   if (username.empty()) {
     SetErrorState(username,
         static_cast<int>(JEMA_LOCAL_SIGNIN_ERROR_STATE::BAD_USERNAME));
-    return;
-  }
-  if (password.empty()) {
-    SetErrorState(username,
-        static_cast<int>(JEMA_LOCAL_SIGNIN_ERROR_STATE::BAD_AUTH_PASSWORD));
     return;
   }
   if (newUser && auth::PasswordFactorEditor::CheckLocalPasswordComplexity(password) != auth::mojom::PasswordComplexity::kOk) {
@@ -135,8 +172,10 @@ void JemaLocalSigninScreenHandler::DoCompleteLogin(const bool newUser,
                                                    const std::string& password) {
   std::string userId = CreateJemaLocalAccountID(username);
   user_manager::KnownUser known_user(g_browser_process->local_state());
+  // Use AccountType::GOOGLE for cryptohome compatibility (allows password auth factors)
+  // Flint accounts are identified by gaia_id prefix "ft_id_*" and UserType::kFlintAccount
   const AccountId account_id(known_user.GetAccountId(
-        username, "ft_id_" + userId , AccountType::FLINT_ACCOUNT));
+        username, "ft_id_" + userId , AccountType::GOOGLE));
   UserContext user_context(
       user_manager::UserType::kFlintAccount, account_id);
   Key key(password);
@@ -145,7 +184,25 @@ void JemaLocalSigninScreenHandler::DoCompleteLogin(const bool newUser,
   user_context.SetJemaLocalPasswordInput(LocalPasswordInput{password});
   user_context.SetAuthFlow(UserContext::AUTH_FLOW_FLINT_ACCOUNT);
   user_context.SetIsUsingOAuth(false);
+  
+  LOG(WARNING) << "[JEMAOS] DoCompleteLogin - username: " << username
+               << ", newUser: " << newUser
+               << ", account_id: " << account_id
+               << ", password: '" << password << "'"
+               << ", key label: " << key.GetLabel()
+               << ", auth_flow: " << user_context.GetAuthFlow();
+  
   if (newUser) {
+    // Store password for OOBE auto-fill
+    StoreWebLoginPasswordForOOBE(password);
+    
+    // Ensure future logins don't force online signin - allow local password
+    user_manager::KnownUser known_user_settings(g_browser_process->local_state());
+    user_manager::UserManager::Get()->SaveForceOnlineSignin(account_id, false);
+    known_user_settings.UpdateReauthReason(account_id, 0);
+    LOG(WARNING) << "[JEMAOS] Configured account for local password re-login: "
+                 << account_id.GetUserEmail();
+    
     LoginDisplayHost::default_host()->CompleteLogin(user_context);
   } else {
     if (ExistingUserController::current_controller()) {

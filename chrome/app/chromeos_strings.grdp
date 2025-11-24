@@ -657,6 +657,12 @@
   <message name="IDS_NETWORK_SELECTION_TITLE" desc="Title of network selection screen" meaning="A title of the dialog where user should select network to connect to Internet">
     Get connected to enjoy all the features on your new <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>
   </message>
+  <message name="IDS_NETWORK_SELECTION_TITLE_WIFI" desc="Title of network selection screen when connected via WiFi" meaning="A title of the dialog when device is connected via WiFi">
+    Connected via WiFi
+  </message>
+  <message name="IDS_NETWORK_SELECTION_TITLE_ETHERNET" desc="Title of network selection screen when connected via Ethernet" meaning="A title of the dialog when device is connected via Ethernet">
+    Connected via Ethernet
+  </message>
   <message name="IDS_NETWORK_SELECTION_SUBTITLE" desc="Subtitle of the network selection screen">
     We will remember your network the next time you use the <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>
   </message>
@@ -1163,8 +1169,8 @@
     Start using <ph name="DEVICE_OS">$1<ex>ChromeOS Flex</ex></ph>
   </message>
   <message name="IDS_OS_TRIAL_SUBTITLE" desc="Subtitle of the install or try screen, the first screen of the ChromeOS Flex Installation flow">
-    <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>For the best experience, install <ph name="DEVICE_OS">$1<ex>ChromeOS Flex</ex></ph> to your internal disk. You can also install it later from the login screen.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
-    <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>If you're not ready to install, you can run from USB to try it out. This will keep your existing OS and data, but you may see storage and performance limits.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>For a complete experience, you can install JemaOS on your internal drive. You can also continue using it from the Jema device and install it later from the login screen.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+    <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>If you're not ready to install, you can run JemaOS from the Jema device to use it right away. This will preserve your existing operating system and data.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
   </message>
   <message name="IDS_OS_TRIAL_INSTALL_TITLE" desc="Title of the try option in the install or try screen, the first screen of the ChromeOS Flex Installation flow.">
     Install <ph name="DEVICE_OS">$1<ex>ChromeOS Flex</ex></ph>
@@ -1173,7 +1179,7 @@
     Convert this device into a <ph name="DEVICE_OS">$1<ex>ChromeOS Flex</ex></ph> device.
   </message>
   <message name="IDS_OS_TRIAL_TRY_TITLE" desc="Title of the install option in the install or try screen, the first screen of the ChromeOS Flex Installation flow">
-    Try it first
+    Start on JemaOS
   </message>
   <message name="IDS_OS_TRIAL_TRY_SUBTITLE" desc="Subtitle of the install option in the install or try screen, the first screen of the ChromeOS Flex Installation flow">
     Keep your OS and run <ph name="DEVICE_OS">$1<ex>ChromeOS Flex</ex></ph> from USB.
@@ -7624,5 +7630,16 @@ Your <ph name="DEVICE_TYPE">{0}<ex>Chromebook</ex></ph> will be locked now.
   <!-- Mall app -->
   <message name="IDS_MALL_APP_NAME" desc="Name of a system app which can be used to find and install apps and games">
     Apps &amp; games
+  </message>
+
+  <!-- JemaOS Online Account Network Requirements -->
+  <message name="IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR" desc="Error message shown when JemaOS online account is selected but no internet connection is available.">
+    Internet connection required for JemaOS online account. Please connect to WiFi or Ethernet to continue.
+  </message>
+  <message name="IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_MESSAGE" desc="Message shown when JemaOS online account requires internet connection.">
+    JemaOS online account requires internet connection. Please select a network below to connect.
+  </message>
+  <message name="IDS_JEMAOS_ONLINE_ACCOUNT_WIFI_PREFERRED_MESSAGE" desc="Message shown when JemaOS online account prefers WiFi over Ethernet.">
+    For the best experience with JemaOS online account, please connect to WiFi.
   </message>
 </grit-part>

@@ -86,6 +86,8 @@ class GaiaView {
   // Shows Gaia screen.
   virtual void Show() = 0;
   virtual void Hide() = 0;
+  // Sets whether to show account type selection directly.
+  virtual void SetShowAccountTypeSelection(bool show) = 0;
   // Reloads authenticator.
   virtual void ReloadGaiaAuthenticator() = 0;
   // Sets reauth request token in the URL, in order to get reauth proof token
@@ -150,6 +152,7 @@ class GaiaScreenHandler final
   void LoadGaiaAsync(const AccountId& account_id) override;
   void Show() override;
   void Hide() override;
+  void SetShowAccountTypeSelection(bool show) override;
   void ReloadGaiaAuthenticator() override;
   void SetReauthRequestToken(const std::string& reauth_request_token) override;
   void ShowEnrollmentNudge(const std::string& email_domain) override;
@@ -276,6 +279,7 @@ class GaiaScreenHandler final
   void HandleLaunchSAMLPublicSession(const std::string& email);
 
   // ---***JEMAOS BEGIN***---
+  void SetupCertificateCacheForOnlineAuth();
   void HandleUserSelectGoogleAccount();
   void HandleResetAccountFlag();
   // ---***JEMAOS END***---
@@ -463,6 +467,10 @@ class GaiaScreenHandler final
 
   bool hidden_ = true;
 
+  // Helper method to check network connectivity and show error screen if offline.
+  // Returns true if network is available, false if error screen was shown.
+  bool CheckNetworkAndShowErrorIfOffline();
+
   // Used to record amount of time user needed for successful online login.
   std::unique_ptr<base::ElapsedTimer> elapsed_timer_;
 
@@ -516,6 +524,15 @@ class GaiaScreenHandler final
   base::TimeDelta offline_timeout_ = base::Seconds(1);
 
   std::unique_ptr<ErrorScreensHistogramHelper> histogram_helper_;
+
+  // Flag to indicate if account type selection should be shown directly.
+  bool show_account_type_selection_ = false;
+
+  // Flag to indicate account type selection should be shown after network is restored
+  bool pending_account_type_selection_ = false;
+
+  // Whether a network error has been shown for account selection.
+  bool network_error_shown_for_account_selection_ = false;
 
   bool is_gaia_password_required_ = false;
 

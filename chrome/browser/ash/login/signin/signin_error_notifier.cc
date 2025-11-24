@@ -264,6 +264,19 @@ void SigninErrorNotifier::OnErrorChanged() {
 
   const AccountId account_id =
       multi_user_util::GetAccountIdFromProfile(profile_);
+  
+  // Skip reauth reason setting for Jema/Flint accounts - they don't have Google OAuth
+  const std::string& gaia_id = account_id.GetGaiaId();
+  const bool is_jema_or_flint_account = 
+      gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0;
+  
+  if (is_jema_or_flint_account) {
+    LOG(WARNING) << "[JEMAOS] Skipping kSyncFailed reauth reason for Jema/Flint account: "
+                 << account_id.GetUserEmail() << ", gaia_id: " << gaia_id;
+    // Don't set reauth reason or show error notification for Jema/Flint accounts
+    return;
+  }
+  
   if (!IsAccountManagerAvailable(profile_)) {
     // If this flag is disabled, Chrome OS does not have a concept of Secondary
     // Accounts. Preserve existing behavior.

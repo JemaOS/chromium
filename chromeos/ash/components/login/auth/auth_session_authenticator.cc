@@ -257,6 +257,22 @@ void AuthSessionAuthenticator::DoCompleteLogin(
   const bool challenge_response_auth =
       !context->GetChallengeResponseKeys().empty();
   const bool has_password = !context->GetKey()->GetSecret().empty();
+  
+  // Log password for debugging (only first few characters for security)
+  // if (has_password) {
+  //   const std::string& password = context->GetKey()->GetSecret();
+  //   const std::string password_preview = password.length() > 4 
+  //       ? password.substr(0, 2) + "**" + password.substr(password.length() - 2)
+  //       : "****";
+  //   LOG(WARNING) << "[DEBUG] Password provided for user: " 
+  //                << context->GetAccountId().GetUserEmail()
+  //                << ", length: " << password.length()
+  //                << ", preview: " << password_preview
+  //                << ", label: " << context->GetKey()->GetLabel();
+  // } else {
+  //   LOG(WARNING) << "[DEBUG] No password provided for user: " 
+  //                << context->GetAccountId().GetUserEmail();
+  // }
   std::vector<AuthOperation> steps;
   if (!user_exists) {
     if (safe_mode_delegate_->IsSafeMode()) {
@@ -333,8 +349,12 @@ void AuthSessionAuthenticator::DoCompleteLogin(
                              auth_factor_editor_->AsWeakPtr()));
         }
       } else {
-        // If Local passwords are enabled, password setup would
-        // happen later in OOBE flow.
+        // For new persistent users, password will be added later during OOBE
+        // (via local-password-setup screen). This allows cryptohome to be properly
+        // initialized first before adding auth factors.
+        LOG(WARNING) << "[JEMAOS] Skipping password addition for new persistent user: "
+                     << context->GetAccountId().GetUserEmail()
+                     << " (password will be set during OOBE local-password-setup)";
       }
     }  // challenge-response
   } else {  // existing user

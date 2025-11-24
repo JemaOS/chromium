@@ -14,7 +14,7 @@ const char kJemaOSHomePageUrl[] = "https://jemaos.com";
 const char kOpenJemaHomePageUrl[] = "https://openjema.cn";
 
 const char kJemaOSStoreBaseUrl[] = "https://store.jemaos.com";
-const char kJemaOSAccountBaseUrl[] = "https://account.jemaos.com";
+const char kJemaOSAccountBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 
 const char kJemaOSForumURL[] = "https://community.jemaos.com/";
 const char kJemaOSRemoteDesktopURL[] = "https://rdp.jemaos.com/";
@@ -78,7 +78,7 @@ const char kJemaOSHomePageUrl[] = "https://jemaos.io";
 const char kOpenJemaHomePageUrl[] = "https://openjema.io";
 
 const char kJemaOSStoreBaseUrl[] = "https://store.jemaos.io";
-const char kJemaOSAccountBaseUrl[] = "https://account.jemaos.io";
+const char kJemaOSAccountBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 
 const char kJemaOSForumURL[] = "https://community.jemaos.io/";
 const char kJemaOSRemoteDesktopURL[] = "https://rdp.jemaos.io/";
@@ -102,9 +102,9 @@ const char kControlledScrollingHelpURL[] = "https://jemaos.io/docs/manual/custom
 const char kTimeZoneSettingsLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/appearance/set-the-date-and-time/";
 const char kResetProfileSettingsLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
 const char kCrosBatterySaverLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/advanced-settings/battery-saver/";
-const char kJemaOSAccountURL[] = "https://account.jemaos.io";
-const char kJemaOSAccountChooserURL[] = "https://account.jemaos.io";
-const char kJemaOSPasswordManagerURL[] = "https://account.jemaos.io";
+const char kJemaOSAccountURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kJemaOSAccountChooserURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kJemaOSPasswordManagerURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 
 const char kGoogleDriveBuyStorageUrl[] = "https://jemaos.io/docs/knowledge-base";
 const char kGoogleDriveOverviewUrl[] = "https://jemaos.io/docs/knowledge-base";

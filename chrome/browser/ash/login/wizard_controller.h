@@ -26,6 +26,7 @@
 #include "chrome/browser/ash/login/screen_manager.h"
 #include "chrome/browser/ash/login/screens/account_selection_screen.h"
 #include "chrome/browser/ash/login/screens/add_child_screen.h"
+#include "chrome/browser/ash/login/screens/jema_local_signin_screen.h"
 #include "chrome/browser/ash/login/screens/ai_intro_screen.h"
 #include "chrome/browser/ash/login/screens/assistant_optin_flow_screen.h"
 #include "chrome/browser/ash/login/screens/categories_selection_screen.h"
@@ -399,7 +400,7 @@ class WizardController : public OobeUI::Observer {
   void OnEnableDebuggingScreenExit();
   void OnDemoPreferencesScreenExit(DemoPreferencesScreen::Result result);
   void OnDemoSetupScreenExit(DemoSetupScreen::Result result);
-  void OnJemaLocalSigninScreenExit();
+  void OnJemaLocalSigninScreenExit(JemaLocalSigninScreen::Result result);
   void OnUserCreationScreenExit(UserCreationScreen::Result result);
   // Start of online authentication sub-group
   void OnGaiaScreenExit(GaiaScreen::Result result);

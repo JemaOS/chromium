@@ -1,4 +1,4 @@
-<!-- Copyright 2025 jema technology. All rights reserved.
+<!-- Copyright 2022 Jema Technology. All rights reserved.
 Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file. -->
 
@@ -9,18 +9,35 @@ found in the LICENSE file. -->
     }
   }
 </style>
-<oobe-adaptive-dialog id="accountTypeSelectionDialog"
-    jemaos-layout
-    animation-url="animations/jemaos_choose_account.json"
-    role="dialog">
+<oobe-adaptive-dialog id="accountTypeSelectionDialog" role="dialog">
+  <if expr="openjema">
+    <img class="logo openjema" slot="icon" srcset="images/openjema_logo.png" />
+  </if>
+  <if expr="not openjema">
+    <img class="logo jemaos" slot="icon"
+        srcset="../../images/jema_logo_1x.png 1x,
+                ../../images/jema_logo_2x.png 2x" />
+  </if>
   <h1 slot="title">
-    [[i18nDynamic(locale, 'accountTypeSelectionTitle')]]
+    [[i18nDynamic(locale, 'accountTypeSelectionTitle')]] v1
   </h1>
   <div slot="subtitle">
-    [[i18nDynamic(locale, 'accountTypeSelectionSubtitle')]]
+    [[i18nDynamic(locale, 'accountTypeSelectionSubtitle')]] v1
   </div>
-  <div slot="content" class="layout vertical">
+  <div slot="content" class="layout vertical landscape-vertical-centered">
     <cr-radio-group id="accountType" selected="{{selectedAccountType_}}">
+      <cr-card-radio-button id="jemaLocalButton" class="flex" name="jema-local">
+        <div class="card-container">
+          <div class="card-content">
+            <div class="card-label">
+              [[i18nDynamic(locale, 'accountTypeSelectionLocalJemaOSTitle')]]
+            </div>
+            <div class="card-text">
+              [[i18nDynamic(locale, 'accountTypeSelectionLocalJemaOSSubtitle')]]
+            </div>
+          </div>
+        </div>
+      </cr-card-radio-button>
       <cr-card-radio-button id="jemaButton" class="flex" name="jema">
         <div class="card-container">
           <div class="card-content">

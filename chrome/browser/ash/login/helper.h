@@ -84,6 +84,9 @@ class NetworkStateHelper {
   // Returns true if the ethernet network is in connected state.
   virtual bool IsConnectedToEthernet() const;
 
+  // Returns true if the WiFi network is in connected state.
+  virtual bool IsConnectedToWifi() const;
+
   // Returns true if the default network is in connecting state.
   virtual bool IsConnecting() const;
 

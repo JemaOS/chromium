@@ -23,6 +23,7 @@ const AccountTypeSelectionScreenElementBase =
 const AccountTypeToSelect = {
   GOOGLE: 'google',
   JEMA: 'jema',
+  JEMA_LOCAL: 'jema-local',
 };
 
 class AccountTypeSelection extends AccountTypeSelectionScreenElementBase {
@@ -54,7 +55,7 @@ class AccountTypeSelection extends AccountTypeSelectionScreenElementBase {
 
   override ready() {
     super.ready();
-    this.selectedAccountType_ = AccountTypeToSelect.JEMA;
+    this.selectedAccountType_ = AccountTypeToSelect.JEMA_LOCAL;
   }
 
 

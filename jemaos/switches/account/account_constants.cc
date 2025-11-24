@@ -9,17 +9,15 @@ namespace jemaos::constants {
 
 #if BUILDFLAG(USE_JEMAOS_COM)
 
-const char kDefaultJemaOSGaiaUrl[] = "https://account.jemaos.com";
-const char kDefaultJemaOSApisBaseUrl[] = "https://apis.jemaos.com";
-const char kDefaultJemaOSDeviceManagementServerUrl[] =
-  "https://policy.jemaos.com";
+const char kDefaultJemaOSGaiaUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kDefaultJemaOSApisBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kDefaultJemaOSDeviceManagementServerUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com/devicemanagement";
 const char kDefaultJemaOSRealtimeReportingServerUrl[] =
   "https://apis.jemaos.com/report/events";
 const char kDefaultJemaOSEncryptedReportingServerUrl[] =
   "https://apis.jemaos.com/report/record";
-const char kJemaOSSyncDevServerUrl[] =
-  "https://clients4.jemaos.com/chrome-sync/dev";
-const char kJemaOSSyncServerUrl[] = "https://clients4.jemaos.com/chrome-sync";
+const char kJemaOSSyncDevServerUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com/chrome-sync";
+const char kJemaOSSyncServerUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com/chrome-sync";
 const char kDefaultJemaOSFamilyLinkApisUrl[] =
   "https://familylink-apis.jemaos.com/kidsmanagement/v1/";
 
@@ -28,7 +26,7 @@ const char kDefaultJemaRemotingServerEndpoint[] = "remoting.jemaos.com";
 
 #else
 
-const char kDefaultJemaOSGaiaUrl[] = "https://account.jemaos.io";
+const char kDefaultJemaOSGaiaUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 const char kDefaultJemaOSApisBaseUrl[] = "https://apis.jemaos.io";
 const char kDefaultJemaOSDeviceManagementServerUrl[] =
   "https://policy.jemaos.io";

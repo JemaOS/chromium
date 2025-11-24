@@ -1295,12 +1295,22 @@ void LoginAuthUserView::OnAuthSubmit(const std::u16string& password) {
   //---***JEMAOS BEGIN***---
   // For Jema/Flint accounts: Use API to verify if user is blocked, then use local password
   // authentication. This allows creating local user accounts on first login and using
-  // the same local password for subsequent logins. Check AccountType to allow any email domain.
-  if (user.basic_user_info.account_id.GetAccountType() == AccountType::JEMA_ACCOUNT ||
-      user.basic_user_info.account_id.GetAccountType() == AccountType::FLINT_ACCOUNT) {
+  // the same local password for subsequent logins.
+  // Check by gaia_id prefix (jema_id_*, ft_id_*) to detect Jema/Flint accounts reliably
+  // for both new and existing users (since AccountType may be GOOGLE for cryptohome compatibility).
+  LOG(WARNING) << "[OnAuthSubmit] AccountType: " 
+               << static_cast<int>(user.basic_user_info.account_id.GetAccountType())
+               << ", GaiaId: " << user.basic_user_info.account_id.GetGaiaId();
+  const std::string& gaia_id = user.basic_user_info.account_id.GetGaiaId();
+  const bool is_jema_or_flint = 
+      gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0;
+  
+  if (is_jema_or_flint) {
     // Step 1: Verify with API if user is blocked
     // Step 2: If not blocked, proceed with local password authentication
     //         (CompleteLogin will create account for new users or verify password for existing users)
+    LOG(WARNING) << "[JEMAOS] Jema/Flint account detected (gaia_id: " << gaia_id 
+                 << "), calling API to check if user is blocked";
     AuthenticateWithApi(password);
     return;
   }

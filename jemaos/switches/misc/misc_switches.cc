@@ -22,6 +22,8 @@ const char kDisableUnknownPeripheralBatteryNotification[] = "disable-unknown-per
 const char kJemaEnableDynamicDefaultWallpaper[] =
   "jema-dynamic-default-wallpaper";
 
+const char kJemaHideOsInstallButton[] = "jema-hide-os-install-button";
+
 const std::vector<std::string> kNonForYouBoards = {
   "amd64-jemaos",
   "amd64-openjema",
@@ -75,6 +77,10 @@ int64_t GetJemaOSAutoSigninDelay() {
 	if (delayStr.empty())
 		return 0;
 	return (int64_t) std::stoi(delayStr);
+}
+
+bool IsOsInstallButtonHidden() {
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(kJemaHideOsInstallButton);
 }
 
 } // switches

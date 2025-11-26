@@ -59,10 +59,18 @@ export class OsTrial extends OsTrialScreenElementBase {
         type: String,
         value: TrialOption.TRY,
       },
+      /**
+       * Whether OS install is allowed.
+       */
+      isOsInstallAllowed: {
+        type: Boolean,
+        value: true,
+      },
     };
   }
 
   private selectedTrialOption: TrialOption;
+  private isOsInstallAllowed: boolean;
 
   constructor() {
     super();
@@ -71,6 +79,18 @@ export class OsTrial extends OsTrialScreenElementBase {
   override ready(): void {
     super.ready();
     this.initializeLoginScreen('OsTrialScreen');
+  }
+
+  /**
+   * Called when the screen is shown.
+   */
+  override onBeforeShow(data: {isOsInstallAllowed: boolean}): void {
+    super.onBeforeShow(data);
+    this.isOsInstallAllowed = data.isOsInstallAllowed;
+    // If OS install is not allowed, default to try option
+    if (!this.isOsInstallAllowed) {
+      this.selectedTrialOption = TrialOption.TRY;
+    }
   }
 
   /**

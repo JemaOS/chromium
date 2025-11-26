@@ -46,6 +46,7 @@
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_thread.h"
 #include "jemaos/switches/misc/misc_constants.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 namespace ash {
 
@@ -609,6 +610,8 @@ void WelcomeScreen::SetQuickStartButtonVisibility(bool visible) {
 // WelcomeScreen, private:
 
 void WelcomeScreen::OnContinueButtonPressed() {
+  // Go to OS Trial screen if OS Install is allowed
+  // The OS Trial screen will hide the install button if IsOsInstallButtonHidden() is true
   if (switches::IsOsInstallAllowed())
     Exit(Result::kNextOSInstall);
   else

@@ -4,10 +4,12 @@
 
 #include "chrome/browser/ui/webui/ash/login/os_trial_screen_handler.h"
 
+#include "ash/constants/ash_switches.h"
 #include "chrome/browser/ash/login/oobe_screen.h"
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/login/localized_values_builder.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 namespace ash {
 
@@ -32,7 +34,9 @@ void OsTrialScreenHandler::DeclareLocalizedValues(
 }
 
 void OsTrialScreenHandler::Show() {
-  ShowInWebUI();
+  base::Value::Dict data;
+  data.Set("isOsInstallAllowed", switches::IsOsInstallAllowed() && !jemaos::switches::IsOsInstallButtonHidden());
+  ShowInWebUI(std::move(data));
 }
 
 base::WeakPtr<OsTrialScreenView> OsTrialScreenHandler::AsWeakPtr() {

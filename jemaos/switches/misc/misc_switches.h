@@ -27,6 +27,8 @@ CHROMEOS_EXPORT extern const char kJemaOSServiceHostSuffixForTesting[];
 
 CHROMEOS_EXPORT int64_t GetJemaOSAutoSigninDelay();
 
+CHROMEOS_EXPORT bool IsOsInstallButtonHidden();
+
 } // switches
 } // jemaos
 

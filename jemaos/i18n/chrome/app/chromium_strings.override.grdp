@@ -46,16 +46,18 @@
   <if expr="chromeos_ash">
     <!-- Strings for the OOBE user selection screen -->
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_TITLE" desc="Title of the screen which allows users to select account type.">
-        Which account would you like to use?
+        choisir type de compte
     </message>
     <if expr="not openjema">
       <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          Please choose the type of account you prefer to sign in to JemaOS. Note that once signed in, you will not be able to change the account type. However, you can sign in with a new account of a different type.
+          Veuillez choisir votre compte Jema pour vous connecter à JemaOS. Notez qu'une fois connecté(e), vous ne pourrez plus modifier le type de compte.
+          Vous pourrez toutefois vous connecter avec un nouveau compte d'un type différent.
       </message>
     </if>
     <if expr="openjema">
       <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          Please choose the type of account you prefer to sign in to JemaOS. Note that once signed in, you will not be able to change the account type. However, you can sign in with a new account of a different type.
+          Veuillez choisir votre compte Jema pour vous connecter à JemaOS. Notez qu'une fois connecté(e), vous ne pourrez plus modifier le type de compte.
+          Vous pourrez toutefois vous connecter avec un nouveau compte d'un type différent.
       </message>
     </if>
     <!-- Local JemaOS account ** START -->
@@ -67,10 +69,10 @@
     </message>
     <!-- Local JemaOS account ** END -->
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
-        JemaOS account
+        Compte Jema
     </message>
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
-        Sign in with a JemaOS account and use cloud services associated by your JemaOS account.
+        Connectez-vous avec un compte Jema et utilisez les services cloud associés à votre compte Jema.
     </message>
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_TITLE" desc="Title of user select Google account type.">
         Google account

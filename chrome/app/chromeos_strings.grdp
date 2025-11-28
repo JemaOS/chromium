@@ -655,7 +655,7 @@
     You can customize this device to fit your needs. These accessibility features can be changed later in Settings.
   </message>
   <message name="IDS_NETWORK_SELECTION_TITLE" desc="Title of network selection screen" meaning="A title of the dialog where user should select network to connect to Internet">
-    Get connected to enjoy all the features on your new <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>
+    Connectez-vous pour profiter de toutes les fonctionnalités de votre dispositif Jema
   </message>
   <message name="IDS_NETWORK_SELECTION_TITLE_WIFI" desc="Title of network selection screen when connected via WiFi" meaning="A title of the dialog when device is connected via WiFi">
     Connected via WiFi
@@ -1179,7 +1179,7 @@
     Convert this device into a <ph name="DEVICE_OS">$1<ex>ChromeOS Flex</ex></ph> device.
   </message>
   <message name="IDS_OS_TRIAL_TRY_TITLE" desc="Title of the install option in the install or try screen, the first screen of the ChromeOS Flex Installation flow">
-    Start on JemaOS
+    Démarrer sur JemaOS
   </message>
   <message name="IDS_OS_TRIAL_TRY_SUBTITLE" desc="Subtitle of the install option in the install or try screen, the first screen of the ChromeOS Flex Installation flow">
     Keep your OS and run <ph name="DEVICE_OS">$1<ex>ChromeOS Flex</ex></ph> from USB.

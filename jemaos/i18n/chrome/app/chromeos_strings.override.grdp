@@ -223,8 +223,8 @@
     </message>
   </if>
   <message name="IDS_OS_TRIAL_SUBTITLE" desc="Subtitle of the install or try screen, the first screen of the ChromeOS Flex Installation flow">
-    <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>For the best experience, install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> to your internal disk. You can also install it later from the login screen.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
-    <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>If you're not ready to install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, you can run from USB to try it out. Please note that running JemaOS from the device allows virtual memory management to compensate for a lack of physical RAM. Additionally, in the event of a hard drive failure, the Jema device will automatically take over.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> est un système d’exploitation français, souverain et open core, spécialement conçu pour fonctionner exclusivement sur le dispositif Jema. Il s’exécute en natif sur votre appareil, sans nécessiter d’installation sur disque dur.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+    <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Il offre une gestion intelligente de la mémoire virtuelle, ce qui permet d’optimiser les performances même lorsque la RAM physique est limitée. De plus, en cas de panne du disque dur, votre appareil Jema assure automatiquement la continuité de service.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
   </message>
   <if expr="openjema">
     <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">

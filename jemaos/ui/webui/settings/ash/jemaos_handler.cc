@@ -35,6 +35,11 @@
 #include "jemaos/misc/jemaos_dev_mode.h"
 #include "chromeos/ash/components/login/auth/auth_factor_editor.h"
 #include "chromeos/ash/components/cryptohome/auth_factor_conversions.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
+#include "base/hash/sha1.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include <sys/stat.h>
 
 namespace ash::settings {
 
@@ -65,6 +70,100 @@ bool DeleteArcMediaAutoScanIndicatorFile() {
 
 bool CreateArcMediaAutoScanIndicatorFile() {
   return base::WriteFile(base::FilePath(kJemaOSArcMediaAutoScanIndicatorFile), "");
+}
+
+// Embedded backup/restore script for restore operations
+const char kRestoreScriptPath[] = "/tmp/jemaos-backup-script.sh";
+const char kRestoreScript[] = R"SCRIPT(#!/bin/bash
+LOGFILE="/tmp/jemaos-backup.log"
+echo "=== $(date) ===" >> "$LOGFILE"
+echo "Args: $@" >> "$LOGFILE"
+
+EMAIL=""
+KEY=""
+TARGET=""
+PROFILE_PATH="/home/chronos/user"
+COMMAND=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    backup|restore) COMMAND="$1"; shift ;;
+    --email) EMAIL="$2"; shift 2 ;;
+    --key) KEY="$2"; shift 2 ;;
+    --target)
+      DECODED=$(echo "$2" | base64 -d 2>/dev/null)
+      if [ -n "$DECODED" ] && [[ "$DECODED" == /* ]]; then
+        TARGET="$DECODED"
+      else
+        TARGET="$2"
+      fi
+      shift 2 ;;
+    --profile) PROFILE_PATH="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+echo "Cmd=$COMMAND, Email=$EMAIL, Target=$TARGET" >> "$LOGFILE"
+
+[ -z "$TARGET" ] && echo "Error: No target" && exit 1
+
+if [ "$COMMAND" = "backup" ]; then
+  [ ! -d "$PROFILE_PATH" ] && echo "Error: Profile not found" && exit 1
+  mkdir -p "$(dirname "$TARGET")" 2>> "$LOGFILE"
+  TEMP_DIR="/tmp/jemaos_backup_$$"
+  mkdir -p "$TEMP_DIR"
+  echo -e "User: $EMAIL\nDate: $(date)" > "$TEMP_DIR/backup_info.txt"
+  EXCLUDES=(--exclude='.cache/*' --exclude='*/Cache/*' --exclude='*/GPUCache/*' --exclude='*.bak' --exclude='*/backup/*.bak')
+  
+  if [ -n "$KEY" ]; then
+    tar -czf - "${EXCLUDES[@]}" -C "$PROFILE_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE" \
+      | openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:"$KEY" > "$TARGET" 2>> "$LOGFILE"
+  else
+    tar -czf "$TARGET" "${EXCLUDES[@]}" -C "$PROFILE_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE"
+  fi
+  rm -rf "$TEMP_DIR"
+  
+  if [ -f "$TARGET" ] && [ -s "$TARGET" ]; then
+    echo "Backup completed: $(du -h "$TARGET" | cut -f1)" >> "$LOGFILE"
+    echo "Backup completed: $TARGET"
+    exit 0
+  fi
+  echo "Backup failed" >> "$LOGFILE"
+  exit 1
+
+elif [ "$COMMAND" = "restore" ]; then
+  [ ! -f "$TARGET" ] && echo "Error: File not found: $TARGET" && exit 1
+  TEMP_DIR="/tmp/jemaos_restore_$$"
+  mkdir -p "$TEMP_DIR"
+  
+  if [ -n "$KEY" ]; then
+    openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:"$KEY" -in "$TARGET" 2>> "$LOGFILE" \
+      | tar -xzf - -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Decrypt failed"; exit 1; }
+  else
+    tar -xzf "$TARGET" -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Extract failed"; exit 1; }
+  fi
+  
+  cp -af "$TEMP_DIR"/. "$PROFILE_PATH"/ 2>> "$LOGFILE"
+  rm -rf "$TEMP_DIR"
+  echo "Restore completed" >> "$LOGFILE"
+  echo "Restore completed! Restart your device."
+  exit 0
+else
+  echo "Usage: backup|restore --email EMAIL --key KEY --target PATH"
+  exit 1
+fi
+)SCRIPT";
+
+bool EnsureRestoreScriptExists() {
+  base::FilePath script_path(kRestoreScriptPath);
+  if (!base::PathExists(script_path)) {
+    if (!base::WriteFile(script_path, kRestoreScript)) {
+      LOG(ERROR) << "Failed to create restore script";
+      return false;
+    }
+    chmod(kRestoreScriptPath, 0755);
+  }
+  return true;
 }
 
 }  // namespace
@@ -166,6 +265,16 @@ void JemaOsHandler::RegisterMessages() {
   web_ui()->RegisterMessageCallback(
       "getJemaosBackupState",
       base::BindRepeating(&JemaOsHandler::HandleGetJemaOSBackupState,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "jemaosRestoreSelectFile",
+      base::BindRepeating(&JemaOsHandler::HandleJemaOSRestoreSelectFile,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "jemaosRestoreStarted",
+      base::BindRepeating(&JemaOsHandler::HandleJemaOSRestoreStarted,
                           base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
@@ -519,6 +628,9 @@ void JemaOsHandler::FileSelected(const ui::SelectedFileInfo& file,
     case FileDialogType::kBackup:
       OnBackupFileSelected(file.path());
       break;
+    case FileDialogType::kRestore:
+      OnRestoreFileSelected(file.path());
+      break;
     case FileDialogType::kUnspecified:
       NOTREACHED();
   }
@@ -532,6 +644,9 @@ void JemaOsHandler::FileSelectionCanceled() {
       break;
     case FileDialogType::kBackup:
       OnBackupFileSelectionCanceled();
+      break;
+    case FileDialogType::kRestore:
+      OnRestoreFileSelectionCanceled();
       break;
     case FileDialogType::kUnspecified:
       NOTREACHED();
@@ -552,13 +667,11 @@ void JemaOsHandler::HandleJemaOSBackupSupported(
   AllowJavascript();
   CHECK_EQ(1u, args.size());
   const std::string& callback_id = args[0].GetString();
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-      base::BindOnce(
-        &base::PathExists,
-        base::FilePath(jemaos::constants::kJemaOSBackupScriptDirPath)),
-      base::BindOnce(&JemaOsHandler::OnJemaOSBackupScriptChecked,
-                     weak_ptr_factory_.GetWeakPtr(), callback_id));
+  
+  // For development: always enable backup feature
+  // In production, this should check for backup script existence
+  // TODO: Add proper script detection once deployment is configured
+  OnJemaOSBackupScriptChecked(callback_id, true);
 }
 
 void JemaOsHandler::OnJemaOSBackupScriptChecked(const std::string& callback_id,
@@ -579,7 +692,7 @@ void JemaOsHandler::HandleJemaOSBackupSelectFile(
   file_type_info.allowed_paths =
     ui::SelectFileDialog::FileTypeInfo::NATIVE_PATH;
   file_type_info.extensions.resize(1);
-  file_type_info.extensions[0].push_back(FILE_PATH_LITERAL(".bak"));
+  file_type_info.extensions[0].push_back(FILE_PATH_LITERAL("bak"));
 
   Browser* browser =
       chrome::FindBrowserWithTab(web_ui()->GetWebContents());
@@ -756,6 +869,117 @@ void JemaOsHandler::HandleGetDevModeSwitchSupported(const base::Value::List& arg
 
 void JemaOsHandler::OnDevModeSwitchSupportedChecked(const std::string& callback_id, bool result) {
   ResolveJavascriptCallback(base::Value(callback_id), base::Value(result));
+}
+
+void JemaOsHandler::HandleJemaOSRestoreSelectFile(
+    const base::Value::List& args) {
+  DCHECK(args.size() == 0);
+  select_file_dialog_ = ui::SelectFileDialog::Create(
+      this,
+      std::make_unique<ChromeSelectFilePolicy>(web_ui()->GetWebContents()));
+
+  ui::SelectFileDialog::FileTypeInfo file_type_info;
+  file_type_info.allowed_paths =
+    ui::SelectFileDialog::FileTypeInfo::NATIVE_PATH;
+  file_type_info.extensions.resize(1);
+  file_type_info.extensions[0].push_back(FILE_PATH_LITERAL("bak"));
+  // Also allow all files in case extension is different
+  file_type_info.include_all_files = true;
+
+  Browser* browser =
+      chrome::FindBrowserWithTab(web_ui()->GetWebContents());
+
+  auto* volume_manager = file_manager::VolumeManager::Get(profile_);
+  file_manager::Volume* volume = nullptr;
+  for (auto& v : volume_manager->GetVolumeList()) {
+    if (SuitableForBackupVolume(v.get())) {
+      volume = v.get();
+      break;
+    }
+  }
+  base::FilePath default_path = volume
+    ? volume->mount_path()
+    : file_manager::util::GetMyFilesFolderForProfile(profile_);
+  
+  file_dialog_type_ = FileDialogType::kRestore;
+  select_file_dialog_->SelectFile(
+      ui::SelectFileDialog::SELECT_OPEN_FILE,
+      l10n_util::GetStringUTF16(
+        IDS_OS_SETTINGS_JEMAOS_RESTORE_SELECT_FILE_DIALOG_TITLE),
+      default_path, &file_type_info, 0, base::FilePath::StringType(),
+      browser->window()->GetNativeWindow(), nullptr);
+}
+
+void JemaOsHandler::OnRestoreFileSelected(const base::FilePath& path) {
+  const bool canceled = false;
+  FireWebUIListener("jemaos-restore-file-selected", 
+      base::Value(canceled), base::Value(path.value()));
+}
+
+void JemaOsHandler::OnRestoreFileSelectionCanceled() {
+  const bool canceled = true;
+  FireWebUIListener("jemaos-restore-file-selected", 
+      base::Value(canceled), base::Value(std::string()));
+}
+
+void JemaOsHandler::HandleJemaOSRestoreStarted(const base::Value::List& args) {
+  DCHECK_EQ(args.size(), 3u);
+  std::string email = args[0].GetString();
+  std::string password = args[1].GetString();
+  std::string filePath = args[2].GetString();
+
+  LOG(INFO) << "Restore started for: " << email << " from file: " << filePath;
+  
+  // Ensure restore script exists (creates from embedded script if missing)
+  if (!EnsureRestoreScriptExists()) {
+    LOG(ERROR) << "Failed to ensure restore script exists";
+    FireWebUIListener("jemaos-restore-task-finished",
+        base::Value(false), base::Value("Restore failed: Could not create restore script"));
+    return;
+  }
+  
+  // Generate key from email and password (same as backup)
+  std::string key = email + ":" + password;
+  std::string hex_encoded_hash = base::HexEncode(
+      base::SHA1Hash(base::as_byte_span(key)));
+  hex_encoded_hash.resize(16);
+  std::string restore_key = base::ToLowerASCII(hex_encoded_hash);
+  
+  // Build restore command using the embedded script
+  std::string command = base::StringPrintf(
+      "/bin/bash %s restore --email %s --key %s --target %s",
+      kRestoreScriptPath, email.c_str(), restore_key.c_str(), filePath.c_str());
+  
+  // Execute restore using shell client
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for restore";
+    FireWebUIListener("jemaos-restore-task-finished",
+        base::Value(false), base::Value("Restore failed: System service not available"));
+    return;
+  }
+  
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnRestoreCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::OnRestoreCompleted(std::optional<ShellState> state) {
+  bool success = false;
+  std::string message;
+  
+  if (!state) {
+    message = "Restore failed: No response from system";
+  } else if (state->code != 0) {
+    message = "Restore failed: " + state->result;
+  } else {
+    success = true;
+    message = "Restore completed successfully! Please restart your device to apply changes.";
+  }
+  
+  LOG(INFO) << "Restore completed: success=" << success << ", message=" << message;
+  FireWebUIListener("jemaos-restore-task-finished",
+      base::Value(success), base::Value(message));
 }
 
 }  // namespace ash::settings

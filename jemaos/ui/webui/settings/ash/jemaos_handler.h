@@ -14,6 +14,7 @@
 #include "jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.h"
 #include "chromeos/ash/components/dbus/cryptohome/UserDataAuth.pb.h"
 #include "chromeos/ash/components/dbus/userdataauth/userdataauth_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
 
 class PrefService;
 class Profile;
@@ -45,6 +46,7 @@ class JemaOsHandler :
     kUnspecified,
     kLibwidevine,
     kBackup,
+    kRestore,
   };
   void OnSystemSaltObtained(const std::string& system_salt);
   void HandleGetIsOfflineAutoSigninEnabled(const base::Value::List& args);
@@ -91,6 +93,13 @@ class JemaOsHandler :
   void OnBackupFileSelectionCanceled();
 
   void OnBackupTaskFinished(BackupTaskManager::TaskState state);
+
+  void HandleJemaOSRestoreSelectFile(const base::Value::List& args);
+  void HandleJemaOSRestoreStarted(const base::Value::List& args);
+  void OnRestoreCompleted(std::optional<ShellState> state);
+
+  void OnRestoreFileSelected(const base::FilePath& path);
+  void OnRestoreFileSelectionCanceled();
 
   void HandleGetArcMediaAutoScanState(const base::Value::List& args);
   void OnArcMediaAutoScanIndicatorFileExistenceChecked(const std::string& callback_id, bool result);

@@ -11,6 +11,8 @@ import 'chrome://resources/ash/common/cr_elements/cr_shared_style.css.js';
 import '../settings_shared.css.js';
 import '../common/password_prompt_dialog/password_prompt_dialog.js';
 import './components/backup_intro_dialog.js';
+import './components/restore_password_dialog.js';
+import './components/restore_result_dialog.js';
 import {ShellClient} from './shell_client.js';
 
 import {getTemplate} from './jemaos_tweak_ui.html.js';
@@ -151,6 +153,26 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
         type: Boolean,
         value: false,
       },
+      showRestorePasswordDialog_: {
+        type: Boolean,
+        value: false,
+      },
+      showRestoreResultDialog_: {
+        type: Boolean,
+        value: false,
+      },
+      restoreRunning_: {
+        type: Boolean,
+        value: false,
+      },
+      restoreSuccess_: {
+        type: Boolean,
+        value: false,
+      },
+      restoreMessage_: {
+        type: String,
+        value: '',
+      },
       authFactorHasPassword: Boolean,
       arcMediaAutoScanEnabled_: {
         type: Boolean,
@@ -185,6 +207,11 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private backupRunning_: boolean;
   private showPasswordPromptDialog_: boolean;
   private showBackupIntroDialog_: boolean;
+  private showRestorePasswordDialog_: boolean;
+  private showRestoreResultDialog_: boolean;
+  private restoreRunning_: boolean;
+  private restoreSuccess_: boolean;
+  private restoreMessage_: string;
   private authFactorHasPassword: boolean;
 
   private client_: WidevineHelper;
@@ -192,6 +219,8 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private backupEmail_: string;
   private backupFilePassword_: string;
   private backupCanceled_: boolean;
+  private restoreFilePath_: string;
+  private restorePassword_: string;
 
   private showWidevineErrorDialog_: boolean;
   private rebootRequiredForWidevine_: boolean;
@@ -200,7 +229,9 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     super();
     this.client_ =  new WidevineHelper(this);
     this.backupEmail_ = '';
-    this.backupFilePassword_ = ''
+    this.backupFilePassword_ = '';
+    this.restoreFilePath_ = '';
+    this.restorePassword_ = '';
     this.togglingArcMediaAutoScan_ = false;
   }
 
@@ -217,6 +248,9 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
     this.addWebUiListener('jemaos-backup-file-selected', this.onBackupFileSelected_.bind(this));
     this.addWebUiListener('jemaos-backup-task-finished', this.onBackupDone_.bind(this));
+
+    this.addWebUiListener('jemaos-restore-file-selected', this.onRestoreFileSelected_.bind(this));
+    this.addWebUiListener('jemaos-restore-task-finished', this.onRestoreDone_.bind(this));
 
     this.addWebUiListener('jemaos-arc-media-auto-scan-changed', this.onArcMediaAutoScanStateChanged_.bind(this));
 
@@ -486,6 +520,68 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
   onPasswordPromptCanceled_(e: Event) {
     console.log('password prompt cancel', e);
+  }
+
+  restoreDisabled_() {
+    return this.restoreRunning_ || !this.authFactorHasPassword;
+  }
+
+  onRestoreClick_() {
+    console.log('restore click');
+    this.showRestorePasswordDialog_ = true;
+  }
+
+  onRestorePasswordObtained_(e: Event) {
+    console.log('onRestorePasswordObtained_', e);
+    const { detail } = e as CustomEvent;
+    this.restorePassword_ = detail;
+  }
+
+  onRestorePasswordDialogClosed_(e: Event) {
+    this.showRestorePasswordDialog_ = false;
+    console.log('restore password dialog closed', e);
+    if (this.restorePassword_) {
+      console.log('continue to select restore file');
+      this.openSelectRestoreFileDialog_();
+    }
+  }
+
+  onRestorePasswordDialogCanceled_(e: Event) {
+    console.log('restore password dialog cancel', e);
+    this.restorePassword_ = '';
+  }
+
+  openSelectRestoreFileDialog_() {
+    chrome.send('jemaosRestoreSelectFile', []);
+  }
+
+  onRestoreFileSelected_(canceled: boolean, filePath: string) {
+    if (canceled) {
+      this.restorePassword_ = '';
+      return;
+    }
+    this.restoreFilePath_ = filePath;
+    this.startRestore_();
+  }
+
+  startRestore_() {
+    this.restoreRunning_ = true;
+    chrome.send('jemaosRestoreStarted', [this.backupEmail_, this.restorePassword_, this.restoreFilePath_]);
+  }
+
+  onRestoreDone_(success: boolean, message: string) {
+    console.log('onRestoreDone_, result', success, message);
+    this.restoreRunning_ = false;
+    this.restoreSuccess_ = success;
+    this.restoreMessage_ = message;
+    this.showRestoreResultDialog_ = true;
+  }
+
+  onRestoreResultDialogClosed_(e: Event) {
+    console.log('restore result dialog closed', e);
+    this.showRestoreResultDialog_ = false;
+    this.restorePassword_ = '';
+    this.restoreFilePath_ = '';
   }
 
   getArcMediaAutoScanEnabled() {

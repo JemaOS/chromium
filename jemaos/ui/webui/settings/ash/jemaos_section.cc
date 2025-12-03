@@ -151,6 +151,23 @@ void JemaOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
     {"jemaosSettingsBackupPasswordPromptText",
       IDS_OS_SETTINGS_JEMAOS_BACKUP_PASSWORD_PROMPT_TEXT},
 
+    {"jemaosSettingsRestoreLabel",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_LABEL},
+    {"jemaosSettingsRestoreButtonLabel",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_BUTTON_LABEL},
+    {"jemaosSettingsRestorePasswordDialogTitle",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_DIALOG_TITLE},
+    {"jemaosSettingsRestorePasswordDialogMessage",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_DIALOG_MESSAGE},
+    {"jemaosSettingsRestorePasswordLabel",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_LABEL},
+    {"jemaosSettingsRestorePasswordError",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_ERROR},
+    {"jemaosSettingsRestoreSuccessTitle",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_SUCCESS_TITLE},
+    {"jemaosSettingsRestoreErrorTitle",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_ERROR_TITLE},
+
 #if BUILDFLAG(USE_JEMAOS_LICENSE)
     {"jemaosSettingsLicenseStateLoading",
       IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_STATE_LOADING},

@@ -29,6 +29,8 @@ CHROMEOS_EXPORT int64_t GetJemaOSAutoSigninDelay();
 
 CHROMEOS_EXPORT bool IsOsInstallButtonHidden();
 
+CHROMEOS_EXPORT bool IsJemaAiHidden();
+
 } // switches
 } // jemaos
 

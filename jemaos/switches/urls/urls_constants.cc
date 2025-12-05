@@ -9,63 +9,63 @@ namespace jemaos::constants {
 
 #if BUILDFLAG(USE_JEMAOS_COM)
 
-const char kDefaultTestUrl[] = "http://store.jemaos.com/204";
-const char kJemaOSHomePageUrl[] = "https://jemaos.com";
-const char kOpenJemaHomePageUrl[] = "https://openjema.cn";
+const char kDefaultTestUrl[] = "http://jematech.fr/204";
+const char kJemaOSHomePageUrl[] = "https://jematechnology.fr";
+const char kOpenJemaHomePageUrl[] = "https://jematechnology.fr";
 
-const char kJemaOSStoreBaseUrl[] = "https://store.jemaos.com";
+const char kJemaOSStoreBaseUrl[] = "https://chromewebstore.google.com/category/extensions";
 const char kJemaOSAccountBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 
-const char kJemaOSForumURL[] = "https://community.jemaos.com/";
-const char kJemaOSRemoteDesktopURL[] = "https://rdp.jemaos.com/";
-const char kJemaOSNotesAppURL[] = "https://notes.jemaos.com";
-const char kJemaOSHelpURL[] = "https://jemaos.com/help/";
-const char kJemaOSReleaseNotesURL[] = "https://jemaos.com/release";
-const char kJemaOSNewsURL[] = "https://jemaos.com/blog";
-const char kMultiDeviceLearnMoreURL[] = "https://jemaos.com/docs";
-const char kLanguageSettingsLearnMoreUrl[] = "https://jemaos.com/docs/manual/customize-settings/language/manage-your-jemaos-devices-languages/";
-const char kLinuxAppsLearnMoreURL[] = "https://jemaos.com/docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-jemaos-device/";
-const char kOnlineEulaURLPath[] = "https://jemaos.com/terms-of-service/?agent=oobe";
-const char kOnlinePrivacyURLPath[] = "https://jemaos.com/privacy/?agent=oobe";
-const char kEulaURLPath[] = "https://jemaos.com/terms-of-service";
-const char kPrivacyURLPath[] = "https://jemaos.com/privacy";
-const char kJemaAccessibilityHelpURL[] = "https://jemaos.com/docs/manual/explore-accessibility";
-const char kJemaNewGestureHelpURL[] = "https://jemaos.com/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
-const char kSmbSharesLearnMoreURL[] = "https://jemaos.com/help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
-const char kCupsPrintLearnMoreURL[] = "https://jemaos.com/docs/manual/connect-your-jemaos-device/connect-to-other-devices/set-up-your-printer";
-const char kNaturalScrollHelpURL[] = "https://jemaos.com/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
-const char kControlledScrollingHelpURL[] = "https://jemaos.com/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
-const char kTimeZoneSettingsLearnMoreURL[] = "https://jemaos.com/help/manual/customize-settings/appearance/set-the-date-and-time/";
-const char kResetProfileSettingsLearnMoreURL[] = "https://jemaos.com/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
-const char kCrosBatterySaverLearnMoreURL[] = "https://jemaos.com/help/manual/customize-settings/advanced-settings/battery-saver/";
-const char kJemaOSAccountURL[] = "https://account.jemaos.com";
-const char kJemaOSAccountChooserURL[] = "https://account.jemaos.com";
-const char kJemaOSPasswordManagerURL[] = "https://account.jemaos.com";
+const char kJemaOSForumURL[] = "https://community.jematechnology.fr/";
+const char kJemaOSRemoteDesktopURL[] = "https://rdp.jematechnology.fr/";
+const char kJemaOSNotesAppURL[] = "https://notes.jematechnology.fr";
+const char kJemaOSHelpURL[] = "https://jematechnology.fr/help/";
+const char kJemaOSReleaseNotesURL[] = "https://jematechnology.fr/release";
+const char kJemaOSNewsURL[] = "https://jematechnology.fr/blog";
+const char kMultiDeviceLearnMoreURL[] = "https://jematechnology.fr/docs";
+const char kLanguageSettingsLearnMoreUrl[] = "https://jematechnology.fr/docs/manual/customize-settings/language/manage-your-jemaos-devices-languages/";
+const char kLinuxAppsLearnMoreURL[] = "https://jematechnology.fr/docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-jemaos-device/";
+const char kOnlineEulaURLPath[] = "https://jematechnology.fr/terms-of-service/?agent=oobe";
+const char kOnlinePrivacyURLPath[] = "https://jematechnology.fr/privacy/?agent=oobe";
+const char kEulaURLPath[] = "https://jematechnology.fr/terms-of-service";
+const char kPrivacyURLPath[] = "https://jematechnology.fr/privacy";
+const char kJemaAccessibilityHelpURL[] = "https://jematechnology.fr/docs/manual/explore-accessibility";
+const char kJemaNewGestureHelpURL[] = "https://jematechnology.fr/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
+const char kSmbSharesLearnMoreURL[] = "https://jematechnology.fr/help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
+const char kCupsPrintLearnMoreURL[] = "https://jematechnology.fr/docs/manual/connect-your-jemaos-device/connect-to-other-devices/set-up-your-printer";
+const char kNaturalScrollHelpURL[] = "https://jematechnology.fr/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
+const char kControlledScrollingHelpURL[] = "https://jematechnology.fr/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
+const char kTimeZoneSettingsLearnMoreURL[] = "https://jematechnology.fr/help/manual/customize-settings/appearance/set-the-date-and-time/";
+const char kResetProfileSettingsLearnMoreURL[] = "https://jematechnology.fr/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
+const char kCrosBatterySaverLearnMoreURL[] = "https://jematechnology.fr/help/manual/customize-settings/advanced-settings/battery-saver/";
+const char kJemaOSAccountURL[] = "https://account.jematechnology.fr";
+const char kJemaOSAccountChooserURL[] = "https://account.jematechnology.fr";
+const char kJemaOSPasswordManagerURL[] = "https://account.jematechnology.fr";
 
-const char kGoogleDriveBuyStorageUrl[] = "https://jemaos.com/docs/knowledge-base";
-const char kGoogleDriveOverviewUrl[] = "https://jemaos.com/docs/knowledge-base";
-const char kGoogleDriveHelpUrl[] = "https://jemaos.com/docs/knowledge-base";
-const char kGoogleDriveOfflineHelpUrl[] = "https://jemaos.com/docs/knowledge-base";
-const char kGoogleDriveRootUrl[] = "https://jemaos.com";
-const char kHelpURLFormat[] = "https://jemaos.com/docs/knowledge-base/answer/%d";
-const char kHelpURLNoTaskForFile[] = "https://jemaos.com/docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-jemaos-device/";
-const char kJemaDropUrl[] = "https://drop.jemaos.com";
+const char kGoogleDriveBuyStorageUrl[] = "https://jematechnology.fr/docs/knowledge-base";
+const char kGoogleDriveOverviewUrl[] = "https://jematechnology.fr/docs/knowledge-base";
+const char kGoogleDriveHelpUrl[] = "https://jematechnology.fr/docs/knowledge-base";
+const char kGoogleDriveOfflineHelpUrl[] = "https://jematechnology.fr/docs/knowledge-base";
+const char kGoogleDriveRootUrl[] = "https://jematechnology.fr";
+const char kHelpURLFormat[] = "https://jematechnology.fr/docs/knowledge-base/answer/%d";
+const char kHelpURLNoTaskForFile[] = "https://jematechnology.fr/docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-jemaos-device/";
+const char kJemaDropUrl[] = "https://drop.jematechnology.fr";
 
-const char kJemaExperimentTpmFallbackUrl[] = "https://jemaos.com/faq/experimental-tpm-fallback";
-const char kEolNotificationURL[] = "https://jemaos.com/eol";
-const char kKeyboardShortcutHelpPageUrl[] = "https://jemaos.com/docs/knowledge-base/recipes/keyboard-shortcuts";
-const char kJemaOSEnableWidevineLearnMoreURL[] = "https://jemaos.com/docs/knowledge-base/recipes/widevine";
-const char kWifiHiddenNetworkURL[] = "https://jemaos.com/docs/manual/connect-your-jemaos-device/connect-to-wi-fi-&-other-networks/manage-wifi-networks/";
-const char kBluetoothPairingLearnMoreUrl[] = "https://jemaos.com/docs/manual/connect-your-jemaos-device/connect-to-other-devices/connect-to-bluetooth-devices/";
-const char kFileManagerHelpURL[] = "https://jemaos.com/docs/manual/manage-your-apps/files-and-downloads/open-save-or-delete-files/";
-const char kTabletModeGesturesLearnMoreURL[] = "https://jemaos.com/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
-const char kRuntimeHostPermissionsHelpURL[] = "https://jemaos.com/docs/manual/manage-your-apps/add-apps-and-extensions/add-apps-and-extensions/";
-const char kFingerprintLearnMoreURL[] = "https://jemaos.com/docs/manual/customize-settings/users-and-sync/set-up-and-sign-in-with-fingerprint-on-your-jemaos-device";
+const char kJemaExperimentTpmFallbackUrl[] = "https://jematechnology.fr/faq/experimental-tpm-fallback";
+const char kEolNotificationURL[] = "https://jematechnology.fr/eol";
+const char kKeyboardShortcutHelpPageUrl[] = "https://jematechnology.fr/docs/knowledge-base/recipes/keyboard-shortcuts";
+const char kJemaOSEnableWidevineLearnMoreURL[] = "https://jematechnology.fr/docs/knowledge-base/recipes/widevine";
+const char kWifiHiddenNetworkURL[] = "https://jematechnology.fr/docs/manual/connect-your-jemaos-device/connect-to-wi-fi-&-other-networks/manage-wifi-networks/";
+const char kBluetoothPairingLearnMoreUrl[] = "https://jematechnology.fr/docs/manual/connect-your-jemaos-device/connect-to-other-devices/connect-to-bluetooth-devices/";
+const char kFileManagerHelpURL[] = "https://jematechnology.fr/docs/manual/manage-your-apps/files-and-downloads/open-save-or-delete-files/";
+const char kTabletModeGesturesLearnMoreURL[] = "https://jematechnology.fr/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
+const char kRuntimeHostPermissionsHelpURL[] = "https://jematechnology.fr/docs/manual/manage-your-apps/add-apps-and-extensions/add-apps-and-extensions/";
+const char kFingerprintLearnMoreURL[] = "https://jematechnology.fr/docs/manual/customize-settings/users-and-sync/set-up-and-sign-in-with-fingerprint-on-your-jemaos-device";
 
-const char kJemaOSBackupRestoreLearnMoreURL[] = "https://jemaos.com/docs/manual/customize-settings/jemaos-settings/misc#backup-and-restore";
+const char kJemaOSBackupRestoreLearnMoreURL[] = "https://jematechnology.fr/docs/manual/customize-settings/jemaos-settings/misc#backup-and-restore";
 
-const char kJemaOSToggleArcMediaAutoScanLearnMoreURL[] = "https://jemaos.com/faq/disable-media-files-scan/";
-const char kJemaOSDevModeTransitionLearnMoreURL[] = "https://jemaos.com/docs/knowledge-base/getting-started/developer-mode";
+const char kJemaOSToggleArcMediaAutoScanLearnMoreURL[] = "https://jematechnology.fr/faq/disable-media-files-scan/";
+const char kJemaOSDevModeTransitionLearnMoreURL[] = "https://jematechnology.fr/docs/knowledge-base/getting-started/developer-mode";
 
 #if BUILDFLAG(JEMAOS_DEVICE)
 const char kJemaOSProductWarrantyDefaultURL[] = "https://sn.jematabduo.cn";
@@ -73,70 +73,72 @@ const char kJemaOSProductWarrantyDefaultURL[] = "https://sn.jematabduo.cn";
 
 #else
 
-const char kDefaultTestUrl[] = "http://store.jemaos.io/204";
-const char kJemaOSHomePageUrl[] = "https://jemaos.io";
-const char kOpenJemaHomePageUrl[] = "https://openjema.io";
+const char kDefaultTestUrl[] = "http://store.jematechnology.fr/204";
+const char kJemaOSHomePageUrl[] = "https://jematechnology.fr";
+const char kOpenJemaHomePageUrl[] = "https://jematechnology.fr/openjema/";
 
-const char kJemaOSStoreBaseUrl[] = "https://store.jemaos.io";
+const char kJemaOSStoreBaseUrl[] = "https://store.jematechnology.fr";
 const char kJemaOSAccountBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 
-const char kJemaOSForumURL[] = "https://community.jemaos.io/";
-const char kJemaOSRemoteDesktopURL[] = "https://rdp.jemaos.io/";
-const char kJemaOSNotesAppURL[] = "https://notes.jemaos.io";
-const char kJemaOSHelpURL[] = "https://jemaos.io/help/";
-const char kJemaOSReleaseNotesURL[] = "https://jemaos.io/release";
-const char kJemaOSNewsURL[] = "https://jemaos.io/blog";
-const char kMultiDeviceLearnMoreURL[] = "https://jemaos.io/docs";
-const char kLanguageSettingsLearnMoreUrl[] = "https://jemaos.io/docs/manual/customize-settings/language/manage-your-jemaos-devices-languages/";
-const char kLinuxAppsLearnMoreURL[] = "https://jemaos.io/docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-jemaos-device/";
-const char kOnlineEulaURLPath[] = "https://jemaos.io/terms-of-service/?agent=oobe";
-const char kOnlinePrivacyURLPath[] = "https://jemaos.io/privacy/?agent=oobe";
-const char kEulaURLPath[] = "https://jemaos.io/terms-of-service";
-const char kPrivacyURLPath[] = "https://jemaos.io/privacy";
-const char kJemaAccessibilityHelpURL[] = "https://jemaos.io/docs/manual/explore-accessibility";
-const char kJemaNewGestureHelpURL[] = "https://jemaos.io/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
-const char kSmbSharesLearnMoreURL[] = "https://jemaos.io/help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
-const char kCupsPrintLearnMoreURL[] = "https://jemaos.io/docs/manual/connect-your-jemaos-device/connect-to-other-devices/set-up-your-printer";
-const char kNaturalScrollHelpURL[] = "https://jemaos.io/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
-const char kControlledScrollingHelpURL[] = "https://jemaos.io/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
-const char kTimeZoneSettingsLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/appearance/set-the-date-and-time/";
-const char kResetProfileSettingsLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
-const char kCrosBatterySaverLearnMoreURL[] = "https://jemaos.io/help/manual/customize-settings/advanced-settings/battery-saver/";
+const char kJemaOSForumURL[] = "https://community.jematechnology.fr/";
+const char kJemaOSRemoteDesktopURL[] = "https://rdp.jematechnology.fr/";
+const char kJemaOSNotesAppURL[] = "https://notes.jematechnology.fr";
+const char kJemaOSHelpURL[] = "https://jematechnology.fr/help/";
+const char kJemaOSReleaseNotesURL[] = "https://jematechnology.fr/release";
+const char kJemaOSNewsURL[] = "https://jematechnology.fr/blog";
+const char kMultiDeviceLearnMoreURL[] = "https://jematechnology.fr/docs";
+const char kLanguageSettingsLearnMoreUrl[] = "https://jematechnology.fr/docs/manual/customize-settings/language/manage-your-jemaos-devices-languages/";
+const char kLinuxAppsLearnMoreURL[] = "https://jematechnology.fr/docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-jemaos-device/";
+const char kOnlineEulaURLPath[] = "https://jematechnology.fr/terms-of-service/?agent=oobe";
+const char kOnlinePrivacyURLPath[] = "https://jematechnology.fr/privacy/?agent=oobe";
+const char kEulaURLPath[] = "https://jematechnology.fr/terms-of-service";
+const char kPrivacyURLPath[] = "https://jematechnology.fr/privacy";
+const char kJemaAccessibilityHelpURL[] = "https://jematechnology.fr/docs/manual/explore-accessibility";
+const char kJemaNewGestureHelpURL[] = "https://jematechnology.fr/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
+const char kSmbSharesLearnMoreURL[] = "https://jematechnology.fr/help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
+const char kCupsPrintLearnMoreURL[] = "https://jematechnology.fr/docs/manual/connect-your-jemaos-device/connect-to-other-devices/set-up-your-printer";
+const char kNaturalScrollHelpURL[] = "https://jematechnology.fr/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
+const char kControlledScrollingHelpURL[] = "https://jematechnology.fr/docs/manual/customize-settings/appearance/use-your-jemaos-device-touchpad/";
+const char kTimeZoneSettingsLearnMoreURL[] = "https://jematechnology.fr/help/manual/customize-settings/appearance/set-the-date-and-time/";
+const char kResetProfileSettingsLearnMoreURL[] = "https://jematechnology.fr/help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
+const char kCrosBatterySaverLearnMoreURL[] = "https://jematechnology.fr/help/manual/customize-settings/advanced-settings/battery-saver/";
 const char kJemaOSAccountURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 const char kJemaOSAccountChooserURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 const char kJemaOSPasswordManagerURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 
-const char kGoogleDriveBuyStorageUrl[] = "https://jemaos.io/docs/knowledge-base";
-const char kGoogleDriveOverviewUrl[] = "https://jemaos.io/docs/knowledge-base";
-const char kGoogleDriveHelpUrl[] = "https://jemaos.io/docs/knowledge-base";
-const char kGoogleDriveOfflineHelpUrl[] = "https://jemaos.io/docs/knowledge-base";
-const char kGoogleDriveRootUrl[] = "https://jemaos.io";
-const char kHelpURLFormat[] = "https://jemaos.io/docs/knowledge-base/answer/%d";
-const char kHelpURLNoTaskForFile[] = "https://jemaos.io/docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-jemaos-device/";
-const char kJemaDropUrl[] = "https://drop.jemaos.io";
+const char kGoogleDriveBuyStorageUrl[] = "https://jematechnology.fr/docs/knowledge-base";
+const char kGoogleDriveOverviewUrl[] = "https://jematechnology.fr/docs/knowledge-base";
+const char kGoogleDriveHelpUrl[] = "https://jematechnology.fr/docs/knowledge-base";
+const char kGoogleDriveOfflineHelpUrl[] = "https://jematechnology.fr/docs/knowledge-base";
+const char kGoogleDriveRootUrl[] = "https://jematechnology.fr";
+const char kHelpURLFormat[] = "https://jematechnology.fr/docs/knowledge-base/answer/%d";
+const char kHelpURLNoTaskForFile[] = "https://jematechnology.fr/docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-jemaos-device/";
+const char kJemaDropUrl[] = "https://master.d3tump1ibzy1gt.amplifyapp.com";
 
-const char kJemaExperimentTpmFallbackUrl[] = "https://jemaos.io/faq/experimental-tpm-fallback";
-const char kEolNotificationURL[] = "https://jemaos.io/eol";
-const char kKeyboardShortcutHelpPageUrl[] = "https://jemaos.io/docs/knowledge-base/recipes/keyboard-shortcuts";
-const char kJemaOSEnableWidevineLearnMoreURL[] = "https://jemaos.io/docs/knowledge-base/recipes/widevine";
-const char kWifiHiddenNetworkURL[] = "https://jemaos.io/docs/manual/connect-your-jemaos-device/connect-to-wi-fi-&-other-networks/manage-wifi-networks/";
-const char kBluetoothPairingLearnMoreUrl[] = "https://jemaos.io/docs/manual/connect-your-jemaos-device/connect-to-other-devices/connect-to-bluetooth-devices/";
-const char kFileManagerHelpURL[] = "https://jemaos.io/docs/manual/manage-your-apps/files-and-downloads/open-save-or-delete-files/";
-const char kTabletModeGesturesLearnMoreURL[] = "https://jemaos.io/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
-const char kRuntimeHostPermissionsHelpURL[] = "https://jemaos.io/docs/manual/manage-your-apps/add-apps-and-extensions/add-apps-and-extensions/";
-const char kFingerprintLearnMoreURL[] = "https://jemaos.io/docs/manual/customize-settings/users-and-sync/set-up-and-sign-in-with-fingerprint-on-your-jemaos-device";
+const char kJemaExperimentTpmFallbackUrl[] = "https://jematechnology.fr/faq/experimental-tpm-fallback";
+const char kEolNotificationURL[] = "https://jematechnology.fr/eol";
+const char kKeyboardShortcutHelpPageUrl[] = "https://jematechnology.fr/docs/knowledge-base/recipes/keyboard-shortcuts";
+const char kJemaOSEnableWidevineLearnMoreURL[] = "https://jematechnology.fr/docs/knowledge-base/recipes/widevine";
+const char kWifiHiddenNetworkURL[] = "https://jematechnology.fr/docs/manual/connect-your-jemaos-device/connect-to-wi-fi-&-other-networks/manage-wifi-networks/";
+const char kBluetoothPairingLearnMoreUrl[] = "https://jematechnology.fr/docs/manual/connect-your-jemaos-device/connect-to-other-devices/connect-to-bluetooth-devices/";
+const char kFileManagerHelpURL[] = "https://jematechnology.fr/docs/manual/manage-your-apps/files-and-downloads/open-save-or-delete-files/";
+const char kTabletModeGesturesLearnMoreURL[] = "https://jematechnology.fr/docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
+const char kRuntimeHostPermissionsHelpURL[] = "https://jematechnology.fr/docs/manual/manage-your-apps/add-apps-and-extensions/add-apps-and-extensions/";
+const char kFingerprintLearnMoreURL[] = "https://jematechnology.fr/docs/manual/customize-settings/users-and-sync/set-up-and-sign-in-with-fingerprint-on-your-jemaos-device";
 
-const char kJemaOSBackupRestoreLearnMoreURL[] = "https://jemaos.io/docs/manual/customize-settings/jemaos-settings/misc#backup-and-restore";
+const char kJemaOSBackupRestoreLearnMoreURL[] = "https://jematechnology.fr/docs/manual/customize-settings/jemaos-settings/misc#backup-and-restore";
 
-const char kJemaOSToggleArcMediaAutoScanLearnMoreURL[] = "https://jemaos.io/faq/disable-media-files-scan/";
+const char kJemaOSToggleArcMediaAutoScanLearnMoreURL[] = "https://jematechnology.fr/faq/disable-media-files-scan/";
 
-const char kJemaOSDevModeTransitionLearnMoreURL[] = "https://jemaos.io/docs/knowledge-base/getting-started/developer-mode";
+const char kJemaOSDevModeTransitionLearnMoreURL[] = "https://jematechnology.fr/docs/knowledge-base/getting-started/developer-mode";
 
-const char kJemaOSDiscordServerURL[] = "https://discord.gg/Qv3kxGeMJQ";
-const char kJemaOSTelegramGroupURL[] = "https://t.me/hi_jemaos";
+const char kJemaOSDiscordServerURL[] = "https://discord.jematechnology.fr";
+const char kJemaOSTelegramGroupURL[] = "https://telegram.jematechnology.fr";
+// const char kJemaOSTelegramGroupURL[] = "https://t.me/hi_jemaos";
 
 #if BUILDFLAG(JEMAOS_DEVICE)
-const char kJemaOSProductWarrantyDefaultURL[] = "https://sn.jematabduo.com";
+const char kJemaOSProductWarrantyDefaultURL[] = "https://warrenty.jematechnology.fr";
+// const char kJemaOSProductWarrantyDefaultURL[] = "https://sn.jematabduo.com";
 #endif
 
 #endif

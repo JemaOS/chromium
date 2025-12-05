@@ -24,6 +24,8 @@ const char kJemaEnableDynamicDefaultWallpaper[] =
 
 const char kJemaHideOsInstallButton[] = "jema-hide-os-install-button";
 
+const char kJemaHideJemaAi[] = "jema-hide-jema-ai";
+
 const std::vector<std::string> kNonForYouBoards = {
   "amd64-jemaos",
   "amd64-openjema",
@@ -81,6 +83,10 @@ int64_t GetJemaOSAutoSigninDelay() {
 
 bool IsOsInstallButtonHidden() {
   return base::CommandLine::ForCurrentProcess()->HasSwitch(kJemaHideOsInstallButton);
+}
+
+bool IsJemaAiHidden() {
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(kJemaHideJemaAi);
 }
 
 } // switches

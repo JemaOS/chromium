@@ -1,0 +1,1114 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>Conditions d'Utilisation et Politique de Confidentialité de JemaOS</title>
+<style>
+/* ===== CSS Variables & Color Scheme ===== */
+:root {
+    color-scheme: light;
+    
+    /* Light mode colors (always used - dark mode disabled) */
+    --color-bg: #ffffff;
+    --color-bg-secondary: #f8f9fa;
+    --color-bg-tertiary: #f1f3f5;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #4a4a4a;
+    --color-text-muted: #6b7280;
+    --color-accent: #717be9;
+    --color-accent-hover: #5a63d6;
+    --color-accent-light: rgba(113, 123, 233, 0.1);
+    --color-border: #e5e7eb;
+    --color-border-light: #f0f0f0;
+    --color-shadow: rgba(0, 0, 0, 0.04);
+    --color-shadow-hover: rgba(0, 0, 0, 0.08);
+    
+    /* Typography */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-size-base: 16px;
+    --font-size-sm: 14px;
+    --font-size-xs: 12px;
+    --font-size-h1: 32px;
+    --font-size-h2: 24px;
+    --font-size-h3: 20px;
+    --font-size-h4: 17px;
+    --line-height: 1.7;
+    --line-height-tight: 1.4;
+    
+    /* Spacing */
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    --spacing-3xl: 64px;
+    
+    /* Layout */
+    --max-width: 850px;
+    --border-radius: 12px;
+    --border-radius-sm: 8px;
+    --border-radius-lg: 16px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.25s ease;
+}
+
+/* ===== Global Styles ===== */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height);
+    color: var(--color-text-primary);
+    background-color: var(--color-bg);
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: var(--spacing-xl) var(--spacing-lg);
+}
+
+/* ===== Typography ===== */
+h1, h2, h3, h4 {
+    font-weight: 600;
+    line-height: var(--line-height-tight);
+    color: var(--color-text-primary);
+    letter-spacing: -0.02em;
+}
+
+h1 {
+    font-size: var(--font-size-h1);
+    margin-top: var(--spacing-3xl);
+    margin-bottom: var(--spacing-lg);
+}
+
+h2 {
+    font-size: var(--font-size-h2);
+    margin-top: var(--spacing-2xl);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+h2::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 24px;
+    background: var(--color-accent);
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+h3 {
+    font-size: var(--font-size-h3);
+    margin-top: var(--spacing-xl);
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-text-secondary);
+}
+
+h4 {
+    font-size: var(--font-size-h4);
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-xs);
+    color: var(--color-text-secondary);
+}
+
+p {
+    margin: var(--spacing-md) 0;
+    color: var(--color-text-secondary);
+}
+
+strong {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+/* ===== Links ===== */
+a {
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+a:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* ===== Lists ===== */
+ul, ol {
+    margin: var(--spacing-md) 0;
+    padding-left: var(--spacing-lg);
+}
+
+li {
+    margin: var(--spacing-xs) 0;
+    color: var(--color-text-secondary);
+    padding-left: var(--spacing-xs);
+}
+
+li::marker {
+    color: var(--color-accent);
+}
+
+/* ===== Horizontal Rule ===== */
+hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-border), transparent);
+    margin: var(--spacing-3xl) 0;
+}
+
+.section-divider {
+    border: none;
+    height: 2px;
+    background: linear-gradient(to right, var(--color-accent), var(--color-accent-light), transparent);
+    margin: var(--spacing-3xl) 0;
+}
+
+/* ===== Table of Contents ===== */
+.toc {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-xl);
+    margin: var(--spacing-xl) 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.toc::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-accent), var(--color-accent-hover));
+}
+
+.toc h2 {
+    margin: 0 0 var(--spacing-md) 0;
+    padding: 0;
+    border: none;
+    font-size: var(--font-size-h3);
+}
+
+.toc h2::before {
+    display: none;
+}
+
+.toc ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.toc li {
+    margin: 0;
+    padding: 0;
+}
+
+.toc a {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-border-light);
+    transition: all var(--transition-normal);
+    text-decoration: none;
+}
+
+.toc a:hover {
+    background: var(--color-accent-light);
+    border-color: var(--color-accent);
+    transform: translateX(4px);
+    text-decoration: none;
+}
+
+.toc strong {
+    color: var(--color-accent);
+    font-weight: 600;
+    margin-right: var(--spacing-xs);
+}
+
+/* ===== Part Headers ===== */
+.part-header {
+    background: linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--color-accent);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-xl) var(--spacing-lg);
+    margin: var(--spacing-3xl) 0 var(--spacing-xl) 0;
+    box-shadow: 0 4px 20px var(--color-shadow);
+}
+
+.part-header h1 {
+    margin: 0;
+    padding: 0;
+    font-size: var(--font-size-h2);
+    border: none;
+    color: var(--color-text-primary);
+}
+
+/* ===== Tables ===== */
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: var(--spacing-lg) 0;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 2px 12px var(--color-shadow);
+}
+
+table th,
+table td {
+    padding: var(--spacing-md);
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--color-border);
+}
+
+table th {
+    background: var(--color-bg-tertiary);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+table td {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+table tr:nth-child(even) td {
+    background: var(--color-bg);
+}
+
+table tr:last-child td {
+    border-bottom: none;
+}
+
+table tr:hover td {
+    background: var(--color-accent-light);
+}
+
+/* ===== Contact Info Cards ===== */
+.contact-info {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-lg);
+    margin: var(--spacing-lg) 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.contact-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--color-accent);
+}
+
+.contact-info p {
+    margin: var(--spacing-xs) 0;
+    padding-left: var(--spacing-sm);
+}
+
+.contact-info p:first-child {
+    margin-top: 0;
+}
+
+.contact-info p:last-child {
+    margin-bottom: 0;
+}
+
+/* ===== Update Date ===== */
+.update-date {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-style: normal;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--color-bg-secondary);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-border-light);
+}
+
+.update-date::before {
+    content: '📅';
+    font-size: var(--font-size-xs);
+}
+
+/* ===== Section Numbers ===== */
+h2[id^="partie"]::before,
+.part-header h1::before {
+    display: none;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+    :root {
+        --font-size-base: 15px;
+        --font-size-h1: 26px;
+        --font-size-h2: 22px;
+        --font-size-h3: 18px;
+        --font-size-h4: 16px;
+        --spacing-xl: 24px;
+        --spacing-2xl: 36px;
+        --spacing-3xl: 48px;
+    }
+    
+    body {
+        padding: var(--spacing-md);
+    }
+    
+    .toc {
+        padding: var(--spacing-md);
+    }
+    
+    .part-header {
+        padding: var(--spacing-md);
+    }
+    
+    table {
+        font-size: var(--font-size-sm);
+    }
+    
+    table th,
+    table td {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* ===== Print Styles ===== */
+@media print {
+    body {
+        background: white;
+        color: black;
+        max-width: none;
+        padding: 20px;
+    }
+    
+    .toc,
+    .part-header,
+    .contact-info {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    a {
+        color: #717be9;
+        text-decoration: underline;
+    }
+    
+    h2::before {
+        background: #717be9;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}
+
+/* ===== Focus States for Accessibility ===== */
+a:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* ===== Selection Styles ===== */
+::selection {
+    background: var(--color-accent-light);
+    color: var(--color-text-primary);
+}
+</style>
+</head>
+<body>
+
+<!-- JEMA LOGO HEADER -->
+<div style="text-align: center; margin-bottom: 32px; padding-top: 16px;">
+<svg viewBox="0 0 495 382" fill="none" xmlns="http://www.w3.org/2000/svg" width="90" height="69" style="display: inline-block;">
+<path d="M318.1 0H176.506L0 381.341H113.189L124.681 377.222C164.363 363.13 205.779 356.193 247.411 356.193C288.827 356.193 330.46 363.13 370.141 377.222L381.634 381.341H494.823L318.1 0ZM247.411 288.119C212.284 288.119 177.156 295.707 144.414 310.666L247.411 80.2138L350.409 310.666C317.667 295.707 282.539 288.119 247.411 288.119Z" fill="#5a63e9"/>
+</svg>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+<h2>Table des Matières</h2>
+<ul>
+<li><a href="#partie1">CONDITIONS D'UTILISATION DE JEMAOS ET DES SERVICES JEMA</a></li>
+<li><a href="#partie2">POLITIQUE DE CONFIDENTIALITÉ DE JEMA TECHNOLOGY</a></li>
+</ul>
+</div>
+
+<!-- ============================================================== -->
+<!-- CONDITIONS D'UTILISATION DE JEMAOS ET DES SERVICES JEMA -->
+<!-- ============================================================== -->
+
+<div class="part-header">
+<h1 id="partie1">CONDITIONS D'UTILISATION DE JEMAOS ET DES SERVICES JEMA</h1>
+</div>
+
+<p><strong>(« Conditions d'utilisation »)</strong></p>
+<p class="update-date">Dernière mise à jour : 6 décembre 2025</p>
+
+<h2>1. Objet et champ d'application</h2>
+<p>Les présentes conditions d'utilisation (ci-après les « Conditions ») ont pour objet de définir les modalités et conditions dans lesquelles :</p>
+<p><strong>JEMA TECHNOLOGY</strong>, société par actions simplifiée, immatriculée au RCS d'Antibes sous le n° 983 591 447, dont le siège social est situé 14 avenue de Grasse, 06800 Cagnes-sur-Mer, France (site web : <a href="https://www.jematechnology.fr/">www.jematechnology.fr</a>) (ci-après « JEMA », « nous » ou « notre »),</p>
+<p>met à disposition :</p>
+<ul>
+<li>le système d'exploitation JemaOS (toutes éditions et variantes) ;</li>
+<li>les offres logicielles JemaOS Pro, JemaOS Power et JemaOS Premium ;</li>
+<li>la suite collaborative FLOW ;</li>
+<li>le navigateur souverain Thot ;</li>
+<li>les services cloud associés (SaaS, sauvegardes, monitoring, gestion de parc, analytique) ;</li>
+<li>et le dispositif JEMA intégrant notamment la technologie Enigma de gestion des licences.</li>
+</ul>
+<p>Les présentes Conditions s'appliquent à toute installation, utilisation, accès ou interaction avec les Services, que vous soyez :</p>
+<ul>
+<li>un utilisateur particulier ;</li>
+<li>un utilisateur final d'une organisation cliente (entreprise, administration, établissement scolaire) ;</li>
+<li>ou un représentant d'une telle organisation (Client B2B).</li>
+</ul>
+<p>Les questions relatives au traitement des données personnelles sont régies par un document séparé, la Politique de Confidentialité de JEMA, qui fait partie intégrante de la relation contractuelle.</p>
+
+<h2>2. Acceptation des Conditions</h2>
+<h3>2.1. Consentement</h3>
+<p>En copiant, installant, accédant à ou utilisant tout ou partie de JemaOS ou des autres Services JEMA, vous :</p>
+<ul>
+<li>reconnaissez avoir pris connaissance des présentes Conditions ;</li>
+<li>déclarez les accepter sans réserve ;</li>
+<li>vous engagez à les respecter.</li>
+</ul>
+<p>Si vous n'acceptez pas les présentes Conditions, vous ne devez pas installer ni utiliser JemaOS ni aucun Service JEMA. Dans ce cas, vous devez :</p>
+<ul>
+<li>désinstaller JemaOS, le cas échéant ;</li>
+<li>cesser toute utilisation des Services ;</li>
+<li>supprimer votre compte JEMA, si vous en avez un.</li>
+</ul>
+
+<h3>2.2. Utilisation pour le compte d'une organisation</h3>
+<p>Si vous utilisez les Services pour le compte d'une organisation (par exemple votre employeur, une administration, un établissement scolaire ou une association), vous déclarez et garantissez :</p>
+<ul>
+<li>être dûment habilité à accepter les présentes Conditions au nom de cette organisation ;</li>
+<li>et que l'organisation est liée par ces Conditions.</li>
+</ul>
+<p>En cas de contradiction entre les présentes Conditions et un contrat spécifique écrit conclu entre JEMA et l'organisation (contrat SaaS, SLA, DPA, etc.), ce contrat spécifique prévaut pour les dispositions concernées.</p>
+
+<h2>3. Modifications des Conditions</h2>
+<p>JEMA peut modifier les présentes Conditions afin de tenir compte :</p>
+<ul>
+<li>de l'évolution des Services et technologies ;</li>
+<li>des modifications législatives ou réglementaires ;</li>
+<li>des évolutions de son modèle économique ou de ses offres.</li>
+</ul>
+<p>Les modifications prennent effet à la date de leur publication dans la dernière version de JemaOS ou sur le site officiel (<a href="https://www.jematechnology.fr/">www.jematechnology.fr</a>).</p>
+<p>Vous serez informé des modifications substantielles par tout moyen approprié (notification dans le système, email, bandeau d'information…).</p>
+<p>Si vous poursuivez l'utilisation des Services après cette date, vous êtes réputé accepter les Conditions modifiées.</p>
+<p>Si vous refusez les nouvelles Conditions, vous devez cesser d'utiliser les Services, désinstaller JemaOS et fermer votre compte JEMA.</p>
+
+<h2>4. Licence d'utilisation</h2>
+<h3>4.1. Nature de la licence</h3>
+<h4>Composants Open Source et Licences Tierces</h4>
+<p>Certains composants de JemaOS, Thot, Flow et des services associés intègrent des logiciels open source, notamment issus du noyau Linux, de Chromium et d'autres projets sous licences libres (MIT, BSD, GPL, LGPL ou autres).</p>
+<p>JEMA respecte l'ensemble des obligations prévues par ces licences, qui peuvent inclure la reproduction de mentions, l'accès au code source des composants concernés ou l'inclusion de notices.</p>
+<p>La liste complète des licences open source utilisées est disponible dans JemaOS (Paramètres → À propos → Licences Open Source) et sur le site de JEMA (<a href="https://www.jematechnology.fr/">www.jematechnology.fr</a>).</p>
+<p>L'utilisation de ces composants n'implique aucune renonciation de JEMA à ses droits de propriété intellectuelle sur la surcouche logicielle propriétaire.</p>
+
+<h4>Architecture OpenCore</h4>
+<p>JemaOS est un système OpenCore reposant sur des briques open source et sur des modules propriétaires développés par JEMA.</p>
+<p>Les composants propriétaires, l'interface, l'intégration matérielle, la couche système et les services JEMA ne sont pas open source et ne peuvent être copiés, modifiés ou redistribués sans l'autorisation écrite de JEMA.</p>
+<p>JemaOS et les autres Services JEMA sont fournis sous forme de licence logicielle : nous vous concédons un droit d'utilisation, et non la propriété.</p>
+
+<h3>4.2. Autorisation de licence</h3>
+<p>Nous ne vous fournissons qu'un droit d'usage de JemaOS :</p>
+<ul>
+<li>le code, les éléments graphiques, les contenus et la documentation demeurent la propriété exclusive de JEMA ou de ses concédants ;</li>
+<li>la licence est limitée à des appareils déterminés (dispositif JEMA lié à un ID via Enigma, ID machine, etc.) ;</li>
+<li>elle peut expirer ou être résiliée dans les cas prévus aux présentes (non-paiement, violation, etc.).</li>
+</ul>
+<p>Si la licence arrive à expiration ou est résiliée, vous pouvez ne plus être en mesure d'utiliser JemaOS tant qu'une nouvelle licence n'est pas obtenue.</p>
+
+<h3>4.3. Typologie des licences</h3>
+<h4>4.3.1. JemaOS (édition de base)</h4>
+<p>L'édition de base de JemaOS est destinée à transformer et optimiser des appareils existants pour prolonger leur durée de vie.</p>
+<p>Elle peut être fournise gratuitement ou dans le cadre d'une offre packagée (ex : avec le dispositif JEMA).</p>
+<p>Elle permet une utilisation personnelle et/ou professionnelle, selon les conditions précisées sur le site ou dans l'offre commerciale.</p>
+
+<h4>4.3.2. JemaOS Pro (abonnement)</h4>
+<p>Chaque appareil installé avec JemaOS Pro bénéficie d'une période d'essai (par ex. 15 jours) à compter de la première activation en ligne.</p>
+<p>Avant ou après l'expiration de l'essai, vous pouvez acheter un abonnement en ligne.</p>
+<p>L'abonnement confère une licence non exclusive et non transférable de JemaOS Pro, en tant qu'extension de la version de base (fonctionnalités supplémentaires décrites sur le site de JEMA).</p>
+<p>Une connexion Internet périodique est nécessaire pour activer, mettre à jour et vérifier l'état de l'abonnement.</p>
+<p>Si JemaOS Pro ne peut pas vérifier son statut de licence, il peut être temporairement inutilisable jusqu'à validation.</p>
+<p>JEMA peut à tout moment ajuster les composants inclus dans JemaOS Pro (modules, versions, langues…), sans être tenue de maintenir une configuration figée.</p>
+<p>Vous pouvez transférer un abonnement de JemaOS Pro d'un appareil à un autre, dans la limite des règles définies (par ex. obligation de désactiver la licence sur l'ancien appareil avant activation sur le nouveau).</p>
+
+<h4>4.3.3. JemaOS Power</h4>
+<p>JemaOS Power est une offre commerciale destinée aux entreprises et organisations.</p>
+<p>La licence permet l'utilisation de JemaOS Power sur un ou plusieurs appareils que votre organisation possède ou contrôle.</p>
+<p>Elle est conçue pour un usage commercial / professionnel, avec support renforcé.</p>
+<p>Les modalités (nombre d'appareils, durée, prix, support, SLA éventuel) sont précisées dans l'offre ou le contrat conclu avec JEMA.</p>
+
+<h4>4.3.4. JemaOS Premium (Dashboard / SaaS)</h4>
+<p>JemaOS Premium est le centre de gestion de la solution JemaOS pour les clients professionnels.</p>
+<p>La console Premium permet de gérer licences, dispositifs, sauvegardes, monitoring, parc informatique, utilisateurs et rôles, etc.</p>
+<p>Certaines fonctions de base peuvent être accessibles sans abonnement spécifique, mais le déverrouillage des fonctions avancées (gestion cloud, analytique, sauvegarde étendue, etc.) nécessite des licences JemaOS Pro ou Power.</p>
+<p>La licence Premium est non exclusive et non transférable, pour un usage professionnel visant la gestion centralisée des déploiements JemaOS.</p>
+
+<h3>4.4. Conditions spécifiques JemaOS Premium / SaaS</h3>
+<p>La solution JemaOS Premium et les services SaaS associés sont des offres commerciales :</p>
+<ul>
+<li>l'achat de licences nécessite un paiement selon la liste de prix en vigueur ;</li>
+<li>JEMA peut ajuster périodiquement fonctionnalités, prix, modalités de fonctionnement ;</li>
+<li>la durée de service dépend du type de licence (mensuel, annuel, etc.).</li>
+</ul>
+<p>Avant de souscrire :</p>
+<ul>
+<li>vous devez lire et comprendre les informations présentes dans l'offre commerciale ;</li>
+<li>sauf mention contraire, les paiements ne sont remboursables qu'en cas de problème technique imputable à JEMA rendant le service inutilisable.</li>
+</ul>
+<p>Nous pouvons envoyer des rappels de renouvellement avant expiration de vos licences. À défaut de renouvellement :</p>
+<ul>
+<li>les fonctionnalités liées à JemaOS Premium peuvent être suspendues,</li>
+<li>et certains appareils peuvent cesser de bénéficier des services liés (backups, monitoring, etc.).</li>
+</ul>
+<p>En cas de maintenance, mise à jour ou ajustement des serveurs, des interruptions temporaires peuvent se produire sans indemnisation, sauf stipulation contraire d'un SLA spécifique.</p>
+
+<h2>5. Installation, mises à jour et désinstallation</h2>
+<h3>5.1. Installation et risques</h3>
+<p>JEMA propose plusieurs variantes de JemaOS selon les appareils (x86, ARM, etc.).</p>
+<p>Avant toute installation :</p>
+<ul>
+<li>vous devez vérifier la compatibilité matérielle ;</li>
+<li>procéder à une sauvegarde complète de vos données ;</li>
+<li>suivre les instructions officielles (documentation, tutoriels).</li>
+</ul>
+<p>L'installation ou l'utilisation de JemaOS peut entraîner une perte permanente de données sur vos supports de stockage si elle est mal réalisée. JEMA ne pourra être tenue responsable des pertes résultant d'une mauvaise manipulation ou d'actions non conformes à la documentation.</p>
+
+<h3>5.2. Mises à jour</h3>
+<p>Afin d'améliorer la sécurité, la stabilité et les performances de JemaOS, JEMA diffuse régulièrement des mises à jour système.</p>
+<p>JemaOS peut détecter et installer automatiquement ces mises à jour, sauf si vous désactivez cette option dans les paramètres ;</p>
+<p>en utilisant JemaOS, vous acceptez que JEMA puisse mettre à jour ou modifier certaines fonctionnalités lorsque cela est nécessaire.</p>
+<p>Après la sortie d'une nouvelle version :</p>
+<ul>
+<li>l'ancienne version peut cesser d'être disponible au téléchargement ;</li>
+<li>JEMA ne garantit pas le maintien du support des versions obsolètes.</li>
+</ul>
+
+<h3>5.3. Désinstallation</h3>
+<p>Vous pouvez à tout moment :</p>
+<ul>
+<li>désinstaller JemaOS de vos appareils ;</li>
+<li>supprimer votre compte JEMA ;</li>
+<li>cesser d'utiliser les Services.</li>
+</ul>
+<p>La simple désinstallation ou fermeture de compte ne donne pas droit, en soi, à remboursement des licences ou abonnements déjà payés, sauf disposition légale ou contractuelle contraire.</p>
+
+<h3>5.5. Automatisation de Séquences Clavier (BIOS / UEFI/LEGACY)</h3>
+<p>Certaines versions de JemaOS peuvent, sur des appareils compatibles, automatiser des séquences clavier permettant d'accéder au BIOS/UEFI, de sélectionner un périphérique de démarrage ou de configurer temporairement l'ordre de boot.</p>
+<p>Cette automatisation :</p>
+<ul>
+<li>n'est jamais activée sans consentement préalable ;</li>
+<li>ne modifie pas définitivement la configuration du BIOS/UEFI/LEGACY ;</li>
+<li>ne collecte aucune donnée sensible ;</li>
+<li>peut être désactivée à tout moment.</li>
+</ul>
+<p>L'utilisateur demeure responsable de tout paramétrage manuel incompatible avec ces fonctionnalités.</p>
+
+<h3>5.6. Conformité Cyber Resilience Act</h3>
+<p>Conformément au règlement européen Cyber Resilience Act, JEMA met à disposition des correctifs de sécurité, gère les vulnérabilités identifiées et maintient un mécanisme de suivi des risques pendant la durée de support du produit.</p>
+<p>L'utilisateur s'engage à installer sans délai les mises à jour de sécurité.</p>
+
+<h2>6. Compte JEMA et sécurité</h2>
+<p>Pour certaines fonctionnalités (cloud, sauvegarde, synchronisation, console Premium, etc.), un compte JEMA peut être nécessaire.</p>
+<p>Vous êtes responsable :</p>
+<ul>
+<li>de la confidentialité de vos identifiants (mot de passe, token, dispositif JEMA) ;</li>
+<li>de toute activité réalisée au moyen de votre compte ;</li>
+<li>de l'exactitude et de la mise à jour de vos informations de compte.</li>
+</ul>
+<p>En cas de suspicion de compromission (perte, vol, utilisation frauduleuse) :</p>
+<ul>
+<li>vous devez modifier vos identifiants dès que possible ;</li>
+<li>et informer JEMA sans délai.</li>
+</ul>
+<p>JEMA peut suspendre ou désactiver un compte en cas :</p>
+<ul>
+<li>de violation manifeste des présentes Conditions ;</li>
+<li>de risque de sécurité ou de fraude ;</li>
+<li>de demande d'une autorité compétente.</li>
+</ul>
+<p>Certains Services nécessitent l'utilisation d'un dispositif matériel JEMA (dispositif, module matériel, token) contenant la technologie Enigma de gestion des licences.</p>
+<p>Ce dispositif est lié à un ou plusieurs appareils ; toute manipulation, extraction, modification, clonage ou altération est strictement interdite.</p>
+<p>La perte ou la détérioration du dispositif peut empêcher l'accès aux Services ou nécessiter son remplacement.</p>
+
+<h2>7. Utilisation conforme et interdictions</h2>
+<h3>7.1. Utilisation conforme</h3>
+<p>Vous vous engagez à utiliser JemaOS et les Services :</p>
+<ul>
+<li>dans le respect des lois et règlements en vigueur ;</li>
+<li>conformément aux présentes Conditions ;</li>
+<li>dans le respect des droits de JEMA et des tiers (propriété intellectuelle, données personnelles, secret des affaires, etc.).</li>
+</ul>
+
+<h3>7.2. Interdictions</h3>
+<p>Vous vous interdisez notamment :</p>
+<ul>
+<li>de contourner ou tenter de contourner les mécanismes de sécurité ou de gestion des licences (dont Enigma) ;</li>
+<li>de copier, modifier, décompiler, pratiquer la rétro-ingénierie de JemaOS ou de tout composant propriétaire, sauf lorsque la loi l'autorise expressément ;</li>
+<li>d'utiliser des scripts, bots ou outils visant à surcharger les Services, à les perturber ou à les détourner de leur usage normal ;</li>
+<li>de mettre JemaOS ou les Services à disposition de tiers d'une manière non autorisée (revendre des comptes, louer des accès, etc.) ;</li>
+<li>d'utiliser JemaOS pour des activités illicites ou contraires à l'ordre public (ex : diffusion de malware, intrusion dans des systèmes, violation de droits de propriété intellectuelle, diffusion de contenus illicites) ;</li>
+<li>d'installer ou d'activer certaines fonctionnalités (ex : sous-système Android, GApps, codecs commerciaux) en violation de droits de tiers ou de licences liées ;</li>
+<li>désactiver, contourner ou altérer les mécanismes automatisés liés au boot, au BIOS/UEFI/LEGACY ou au système Enigma, lorsqu'ils sont techniques et nécessaires au fonctionnement de la solution.</li>
+</ul>
+<p>JEMA se réserve le droit d'apprécier si un usage est abusif ou non conforme à l'esprit des présentes et de prendre les mesures nécessaires (avertissement, restriction, suspension, résiliation).</p>
+
+<h3>7.3. Obligations de l'Organisation Cliente (Supervision)</h3>
+<p>Les fonctionnalités de supervision de JemaOS Premium (durées de connexion, état de l'appareil, journaux d'administration) sont destinées exclusivement à la gestion technique du parc informatique.</p>
+<p>L'organisation cliente est seule responsable du respect du droit social applicable (information préalable des salariés, proportionnalité du contrôle, consultation des instances représentatives, registre de traitement).</p>
+<p>JEMA ne saurait être tenue responsable d'un usage abusif, disproportionné ou illicite de ces outils de supervision.</p>
+
+<h2>8. Responsabilité de l'Utilisateur</h2>
+<p>Vous êtes seul responsable :</p>
+<ul>
+<li>des données, contenus et fichiers que vous créez, stockez, importez ou partagez via JemaOS, FLOW, Thot ou tout autre Service ;</li>
+<li>de la conformité de ces contenus aux lois applicables ;</li>
+<li>de l'installation et de la configuration de logiciels tiers ;</li>
+<li>du respect de la politique de sécurité de votre organisation, le cas échéant.</li>
+</ul>
+<p>Vous devez maintenir vos équipements (machines, réseau, antivirus éventuels) dans un état permettant le bon fonctionnement des Services.</p>
+<p>En cas de violation des présentes Conditions ou de la loi, vous devrez indemniser JEMA de tout préjudice résultant de :</p>
+<ul>
+<li>réclamations de tiers,</li>
+<li>sanctions administratives,</li>
+<li>condamnations judiciaires,</li>
+</ul>
+<p>liés à votre utilisation fautive des Services.</p>
+
+<h2>9. Logiciels et services tiers</h2>
+<p>JemaOS et les Services peuvent vous permettre :</p>
+<ul>
+<li>d'installer ou d'utiliser des applications tierces (open source ou propriétaires) ;</li>
+<li>d'accéder à des stores, dépôts ou services externes ;</li>
+<li>d'utiliser des services d'authentification ou de paiement tiers.</li>
+</ul>
+<p>Ces logiciels et services sont fournis sous la seule responsabilité de leurs éditeurs ou fournisseurs.</p>
+<p>Ils sont régis par leurs propres licences et conditions d'utilisation.</p>
+<p>JEMA n'est pas partie aux contrats conclus entre vous et ces tiers.</p>
+<p>JEMA ne garantit ni la sécurité, ni la disponibilité, ni la compatibilité de ces produits.</p>
+<p>Tout litige relatif à un service tiers doit être réglé avec le fournisseur concerné.</p>
+<p>Certains modules de JemaOS peuvent nécessiter l'installation de codecs, bibliothèques ou composants soumis à des licences tierces, non fournis par JEMA pour des raisons juridiques ou commerciales.</p>
+<p>L'installation de tels composants relève de la seule responsabilité de l'utilisateur, qui doit vérifier la validité des licences applicables.</p>
+
+<h2>10. Confidentialité & Interopérabilité</h2>
+<h3>10.1. Confidentialité</h3>
+<p>Dans le cadre des relations B2B, chacune des parties (JEMA ou le Client) peut être amenée à accéder à des informations confidentielles de l'autre (données techniques, business, contrats, etc.).</p>
+<p>Chaque partie s'engage à :</p>
+<ul>
+<li>utiliser ces informations uniquement pour l'exécution du contrat ;</li>
+<li>ne pas les divulguer à des tiers non autorisés ;</li>
+<li>prendre des mesures raisonnables pour en assurer la protection ;</li>
+<li>limiter l'accès à ses seuls collaborateurs ou prestataires qui en ont besoin et qui sont tenus à la confidentialité.</li>
+</ul>
+
+<h3>10.2. Interopérabilité et Standards Ouverts</h3>
+<p>JEMA conçoit JemaOS conformément aux principes de l'Interoperable Europe Act : utilisation de standards ouverts, interopérabilité entre systèmes, portabilité des données, absence de verrouillage propriétaire non nécessaire.</p>
+
+<h2>11. Mineurs</h2>
+<p>Si vous avez moins de 18 ans, vous êtes considéré comme mineur au sens des présentes.</p>
+<p>Vous devez lire ces Conditions et utiliser JemaOS et les Services sous la supervision d'un tuteur légal ;</p>
+<p>les tuteurs doivent encadrer et superviser l'utilisation des Services par les mineurs.</p>
+<p>Dans un cadre scolaire, l'établissement est responsable :</p>
+<ul>
+<li>d'informer les élèves et parents ;</li>
+<li>de s'assurer de la base légale appropriée pour l'usage des Services (instruction, consentement parental, etc.).</li>
+</ul>
+
+<h2>12. Garanties, exclusion et disponibilité</h2>
+<p>Sauf dispositions légales impératives ou stipulation écrite spécifique :</p>
+<ul>
+<li>JemaOS et les Services sont fournis « en l'état » et « selon disponibilité » ;</li>
+<li>JEMA ne garantit pas qu'ils seront exempts de bugs, d'erreurs ou d'interruptions ;</li>
+<li>JEMA ne garantit pas qu'ils répondront à un besoin particulier non expressément décrit dans la documentation.</li>
+</ul>
+<p>Vous reconnaissez que :</p>
+<ul>
+<li>la transmission de données sur Internet ne peut être sécurisée à 100 % ;</li>
+<li>l'utilisation de JemaOS consomme des ressources (processeur, bande passante, énergie) et peut générer des coûts (data, électricité) à votre charge ;</li>
+<li>certains usages peuvent nécessiter des précautions particulières (installation de sous-systèmes, codecs, etc.).</li>
+</ul>
+<p>L'utilisation de JemaOS dans des environnements modifiés (dual boot, bootloader déverrouillé, firmware altéré, virtualisation non standard) peut altérer sa stabilité et sa sécurité.</p>
+<p>JEMA n'en garantit ni le fonctionnement ni la compatibilité.</p>
+
+<h2>13. Limitation de responsabilité et force majeure</h2>
+<p>Dans les limites permises par la loi :</p>
+<ul>
+<li>JEMA ne pourra être tenue responsable des dommages indirects, immatériels ou spéciaux (perte de bénéfice, perte de données, interruption d'activité, coût de remplacement, etc.) ;</li>
+<li>la responsabilité totale cumulée de JEMA, tous fondements confondus, est limitée au montant des sommes effectivement payées par le Client au titre des Services au cours des douze (12) derniers mois.</li>
+</ul>
+<p>JEMA ne saurait être responsable des manquements dus à un cas de force majeure (catastrophes naturelles, guerre, actes terroristes, grèves, décisions administratives, pannes généralisées de réseau, etc.).</p>
+<p>Ces limitations ne s'appliquent pas lorsque la loi interdit d'exclure la responsabilité (notamment en cas de dommage corporel causé par la faute de JEMA).</p>
+
+<h2>14. Durée, résiliation et suspension</h2>
+<p>Les présentes Conditions entrent en vigueur :</p>
+<ul>
+<li>à la première installation ou utilisation de JemaOS ou d'un Service JEMA ;</li>
+<li>et demeurent applicables tant que vous utilisez les Services.</li>
+</ul>
+<p>Vous pouvez résilier à tout moment en :</p>
+<ul>
+<li>cessant d'utiliser les Services ;</li>
+<li>désinstallant JemaOS ;</li>
+<li>demandant la fermeture de votre compte.</li>
+</ul>
+<p>JEMA peut suspendre ou résilier votre accès dans les cas suivants :</p>
+<ul>
+<li>violation grave ou répétée des présentes Conditions ;</li>
+<li>non-paiement des sommes dues ;</li>
+<li>risque grave pour la sécurité ou l'intégrité des Services ;</li>
+<li>exigence légale ou réglementaire.</li>
+</ul>
+<p>Les clauses qui, par nature, survivent à la fin du contrat (propriété intellectuelle, confidentialité, limitation de responsabilité, loi applicable) continuent de produire leurs effets.</p>
+
+<h2>15. Loi applicable et juridiction compétente</h2>
+<p>Les présentes Conditions sont régies par le droit français.</p>
+<p>En cas de litige :</p>
+<ul>
+<li>les parties rechercheront une solution amiable ;</li>
+<li>à défaut, et sous réserve des règles impératives applicables aux consommateurs, les tribunaux compétents du ressort de la Cour d'appel d'Aix-en-Provence seront seuls compétents.</li>
+</ul>
+<p>Les consommateurs résidant dans l'Union européenne bénéficient des dispositions impératives de protection de leur droit national et peuvent saisir les juridictions de leur lieu de résidence.</p>
+
+<h2>16. Contact</h2>
+<p>Pour toute question relative aux présentes Conditions, vous pouvez nous contacter :</p>
+<div class="contact-info">
+<p>
+<svg viewBox="0 0 495 382" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="31" style="vertical-align: middle; margin-right: 8px;">
+<path d="M318.1 0H176.506L0 381.341H113.189L124.681 377.222C164.363 363.13 205.779 356.193 247.411 356.193C288.827 356.193 330.46 363.13 370.141 377.222L381.634 381.341H494.823L318.1 0ZM247.411 288.119C212.284 288.119 177.156 295.707 144.414 310.666L247.411 80.2138L350.409 310.666C317.667 295.707 282.539 288.119 247.411 288.119Z" fill="#5a63e9"/>
+</svg>
+<strong style="vertical-align: middle;">JEMA TECHNOLOGY</strong><br>
+14 avenue de Grasse<br>
+06800 Cagnes-sur-Mer – France<br>
+Site web : <a href="https://www.jematechnology.fr/">www.jematechnology.fr</a><br>
+E-mail : lc@jematechnology.fr</p>
+</div>
+
+<hr class="section-divider">
+
+<!-- ============================================================== -->
+<!-- POLITIQUE DE CONFIDENTIALITÉ DE JEMA TECHNOLOGY -->
+<!-- ============================================================== -->
+
+<div class="part-header">
+<h1 id="partie2">POLITIQUE DE CONFIDENTIALITÉ DE JEMA TECHNOLOGY</h1>
+</div>
+
+<p class="update-date">Politique de Confidentialité de JEMA Technology (2025)</p>
+
+<h2>1. Introduction</h2>
+<p>JEMA TECHNOLOGY (ci-après « JEMA » ou « nous »), société par actions simplifiée immatriculée au RCS d'Antibes sous le n° 983 591 447, dont le siège social est situé 14 Avenue de Grasse, 06800 Cagnes-sur-Mer (France), site web : <a href="https://www.jematechnology.fr/">www.jematechnology.fr</a>, s'engage à protéger et respecter votre vie privée. La présente Politique de confidentialité décrit comment nous collectons, utilisons, stockons et protégeons vos données personnelles dans le cadre de nos produits et services, en conformité avec le Règlement (UE) 2016/679 du 27 avril 2016 (RGPD) et la législation française applicable (notamment la Loi Informatique et Libertés modifiée).</p>
+<p>Cette Politique de confidentialité s'applique à l'ensemble des produits et services de JEMA, notamment : JemaOS (système d'exploitation), Flow (suite collaborative), Thot (navigateur web), JemaOS Premium (offre SaaS pour les entreprises), nos services cloud associés, ainsi qu'aux dispositifs matériels commercialisés par JEMA. En utilisant nos produits ou en interagissant avec nos services, vous acceptez les termes de la présente Politique. Si vous n'êtes pas en accord avec ces termes, nous vous invitons à ne pas utiliser nos services.</p>
+<p>JEMA se conforme aux obligations applicables aux produits numériques du règlement (UE) Cyber Resilience Act, incluant la gestion des vulnérabilités et le maintien de niveaux de sécurité actualisés.</p>
+
+<h2>2. Identité du responsable de traitement</h2>
+<p>Le responsable du traitement de vos données personnelles est JEMA TECHNOLOGY, représentée par son Président. Pour toute question relative à la protection des données personnelles, vous pouvez nous contacter aux coordonnées indiquées en fin de document (Section 15). À ce jour, JEMA n'a pas l'obligation légale de désigner un délégué à la protection des données (DPO) ; néanmoins, nous restons à votre disposition pour toute demande concernant vos données. Nous réévaluerons régulièrement la nécessité de désigner un DPO au regard de l'évolution de nos activités.</p>
+
+<h2>3. Données personnelles collectées</h2>
+<p>Nous veillons à collecter uniquement les données personnelles strictement nécessaires au regard des finalités exposées dans cette Politique. Selon le produit ou service utilisé, JEMA peut être amenée à collecter les catégories de données suivantes :</p>
+
+<p><strong>Données d'identification et de compte :</strong> informations permettant de vous identifier ou de créer un compte utilisateur. Cela comprend par exemple vos nom et prénom, adresse email, mot de passe (chiffré), numéro de téléphone, adresse postale (pour la livraison de dispositifs physiques ou la facturation), nom d'utilisateur/pseudonyme, ainsi que toute information d'inscription fournie (organisation d'appartenance dans le cas de JemaOS Premium, rôle au sein de l'entreprise, etc.).</p>
+
+<p><strong>Données d'utilisation :</strong> informations relatives à l'utilisation que vous faites de nos produits et services. Par exemple, les fonctionnalités de JemaOS ou de la suite Flow utilisées, la fréquence d'utilisation, les préférences enregistrées, l'historique des actions de collaboration (comme les documents partagés, commentaires ou modifications dans Flow), etc. Important : par défaut, aucune donnée de télémétrie détaillée n'est collectée sans votre consentement, sous réserve des strictes données techniques indispensables au fonctionnement ou à la sécurité des services (voir Section 5).</p>
+
+<p><strong>Données techniques :</strong> données techniques sur vos appareils et configurations nécessaires au bon fonctionnement de nos services. Il peut s'agir de l'adresse IP et du port de connexion, de l'identifiant unique de l'appareil ou du dispositif JEMA, du type et de la version du système d'exploitation (y compris JemaOS ou autre OS hôte), du navigateur utilisé (pour Thot ou services web), de la langue et fuseau horaire, des paramètres d'écran, ou encore des rapports d'erreur et journaux techniques en cas de crash. Ces informations techniques sont généralement collectées automatiquement lors de l'utilisation de nos services.</p>
+
+<p><strong>Données d'abonnement et de transaction :</strong> informations liées à votre souscription à nos offres et à la gestion de votre compte client Premium. Cela inclut les détails de l'abonnement (offre choisie, dates de début/fin, options activées), l'historique d'achats ou de paiements (par exemple, date et montant des transactions, informations de facturation, adresse de facturation, moyen de paiement utilisé – notez que les données de carte bancaire sont traitées directement par notre prestataire de paiement sécurisé et ne sont pas stockées par JEMA), ainsi que toute référence client interne.</p>
+
+<p><strong>Données de synchronisation et contenu utilisateur :</strong> certaines de nos solutions cloud ou collaboratives impliquent de stocker ou transmettre des données que vous créez ou importez. Par exemple, les fichiers, documents et messages partagés via Flow, les paramètres et préférences synchronisés via le cloud JemaOS (si vous activez la synchronisation entre vos appareils), les signets ou historiques de navigation synchronisés via Thot si connecté à un compte, ou tout autre contenu que vous sauvegardez sur nos serveurs. Ces données peuvent contenir des informations personnelles si vous en avez inclus (par ex. un document texte avec vos coordonnées). Elles sont chiffrées et accessibles uniquement aux personnes autorisées (vous et ceux à qui vous les partagez, ou JEMA en tant que prestataire technique si nécessaire pour maintenance).</p>
+
+<p><strong>Journaux et logs :</strong> dans le cadre de la sécurité et de la maintenance de nos systèmes, nous conservons des journaux d'activité incluant certaines données personnelles minimales. Il peut s'agir par exemple des journaux de connexion aux services (date, heure, adresse IP, identifiant du compte), des journaux d'événements applicatifs ou systèmes (actions techniques réalisées, état du système), et des journaux d'erreurs. Ces logs sont utilisés à des fins de sécurité, de détection des anomalies et de support technique (voir Section 4 sur les finalités) et ne sont pas exploités à des fins commerciales.</p>
+
+<p><strong>Données de support :</strong> si vous contactez notre support client ou technique, nous pouvons collecter les informations que vous nous communiquez à cette occasion. Par exemple, les détails de votre demande et des problèmes rencontrés, votre email de contact et/ou numéro de téléphone, des copies d'écran ou fichiers de logs que vous choisissez de nous transmettre, et toute autre information que vous fournissez dans vos échanges. Ces données ne seront utilisées que pour vous assister et améliorer nos services le cas échéant.</p>
+
+<p><strong>Données de navigation et cookies :</strong> lorsque vous visitez nos sites web ou utilisez nos applications en ligne, nous utilisons des cookies et technologies similaires susceptibles de collecter certaines informations (voir Section 9 Cookies pour plus de détails). Il peut s'agir de données de navigation sur nos sites (pages consultées, clics, préférences linguistiques), d'identifiants de cookie ou de session, etc. Ces traceurs sont gérés conformément à la réglementation (consentement requis pour les cookies non essentiels, durée de conservation limitée, etc.).</p>
+
+<p><strong>Données sensibles :</strong> De manière générale, JEMA ne cherche pas à collecter de données sensibles au sens du RGPD (par ex. données de santé, opinions politiques, données biométriques hors dispositif local, etc.) via ses services grand public. Si certaines données sensibles devaient être traitées dans le cadre d'un service spécifique (par exemple des données biométriques strictement locales pour l'authentification par empreinte digitale sur un appareil JEMA), nous appliquerons les garanties supplémentaires requises par la loi (et ces données ne sortiront pas de l'appareil sans consentement explicite). Nous demandons aux utilisateurs de ne pas saisir de données sensibles non nécessaires dans les champs libres ou documents synchronisés, sauf si cela est encadré par un contrat spécifique (cas de clients professionnels, voir Section 13).</p>
+
+<p><strong>Caractère obligatoire ou facultatif :</strong> Lors de la collecte de données (par exemple lors de la création d'un compte ou d'un formulaire), nous vous indiquons le cas échéant quelles informations doivent être fournies obligatoirement pour utiliser le service (par exemple, il est généralement nécessaire de fournir une adresse email valide pour créer un compte) et quelles informations sont facultatives. Le refus de fournir une donnée obligatoire peut empêcher la fourniture du service ou d'une fonctionnalité demandée.</p>
+
+<h2>4. Finalités du traitement et bases légales</h2>
+<p>Vos données personnelles sont collectées et traitées pour des finalités précises et avec une base juridique valide, conformément à l'article 6 du RGPD. Le tableau ci-dessous résume les principales finalités pour lesquelles JEMA utilise vos données et la base légale correspondante :</p>
+
+<table>
+<tr>
+<th>Finalité du traitement</th>
+<th>Base légale</th>
+</tr>
+<tr>
+<td>Fourniture des services JEMA (création et gestion de votre compte, authentification, fourniture des fonctionnalités de JemaOS, Flow, Thot, synchronisation de vos données entre appareils, etc.)</td>
+<td>Exécution du contrat liant l'utilisateur à JEMA (CGU/contrat de service) – RGPD art. 6(1)(b)</td>
+</tr>
+<tr>
+<td>Gestion des abonnements et transactions (accès à l'offre JemaOS Premium, facturation, paiements, historique d'achats, communications liées à l'abonnement, gestion des licences)</td>
+<td>Exécution du contrat (fournir le service souscrit et facturer) – RGPD art. 6(1)(b). Obligation légale pour certaines données financières (ex. conservation des factures) – RGPD art. 6(1)(c).</td>
+</tr>
+<tr>
+<td>Support client et assistance technique (répondre à vos questions, vous aider en cas de problème, traitement des tickets de support, corrections de bugs)</td>
+<td>Exécution du contrat (vous fournir l'assistance attendue pour le service) – RGPD art. 6(1)(b). Eventuellement, intérêt légitime de JEMA à améliorer ses services suite aux retours (RGPD art. 6(1)(f)).</td>
+</tr>
+<tr>
+<td>Amélioration et développement des produits (analyse des retours utilisateurs, des statistiques globales d'utilisation anonymisées, test de nouvelles fonctionnalités, recherche & développement en interne, amélioration de l'IA locale)</td>
+<td>Intérêt légitime de JEMA à faire évoluer et optimiser ses produits – RGPD art. 6(1)(f). Note : aucune télémétrie personnelle n'est collectée sans consentement explicite ; les améliorations s'appuient en priorité sur des données agrégées ou anonymes.</td>
+</tr>
+<tr>
+<td>Sécurité et intégrité des services (détection des activités suspectes ou malveillantes, protection contre la fraude, les virus et cyberattaques, gestion des accès non autorisés, garanties d'intégrité des données)</td>
+<td>Intérêt légitime de JEMA à assurer la sécurité de ses systèmes et de ses utilisateurs – RGPD art. 6(1)(f). Dans certains cas, obligation légale (ex. obligation de sécurisation des données personnelles, RGPD art. 32 ; obligations de conservation de logs de connexion selon le Code des postes et communications électroniques).</td>
+</tr>
+<tr>
+<td>Obligations légales et réglementaires (comptabilité, fiscalité, obligations de garantie, réponses aux injonctions des autorités, gestion des demandes d'exercice de droits RGPD, etc.)</td>
+<td>Obligation légale – RGPD art. 6(1)(c). JEMA traite et conserve certaines données pour se conformer à ses obligations légales (ex : conservation des enregistrements comptables pendant 10 ans, réponse aux autorités légales le cas échéant).</td>
+</tr>
+<tr>
+<td>Communication institutionnelle et informations sur les produits (envoi d'informations importantes sur les services, notifications de mise à jour, alertes de sécurité, ou communications relatives aux changements des CGU ou de la présente Politique)</td>
+<td>Intérêt légitime – RGPD art. 6(1)(f). Ces communications non promotionnelles sont nécessaires à la bonne information de l'utilisateur sur le service.</td>
+</tr>
+<tr>
+<td>Prospection et newsletters (marketing) – le cas échéant : envoi par email ou notification d'offres, actualités ou événements relatifs à JEMA (par ex. newsletter d'information sur les mises à jour majeures, nouveaux produits).</td>
+<td>Consentement – RGPD art. 6(1)(a). Ce type de communication n'est envoyé que si vous y avez consenti (par exemple en vous inscrivant à une newsletter ou en cochant une case d'opt-in). Vous pouvez retirer votre consentement à tout moment (voir Section 8). Pour les clients existants, JEMA peut s'appuyer sur son intérêt légitime pour vous proposer des produits analogues, dans le respect de l'art. L.34-5 CPCE, avec option de opt-out fournie dans chaque message.</td>
+</tr>
+</table>
+
+<p>Certaines opérations techniques de JemaOS, notamment lors de l'installation ou du démarrage sur certains matériels, peuvent impliquer l'automatisation de séquences de touches (accès au BIOS/UEFI/LEGACY, sélection de priorité de boot).</p>
+<p>Cette fonctionnalité n'est jamais activée sans consentement préalable de l'utilisateur et peut être désactivée à tout moment. Aucune donnée sensible n'est collectée du fait de cette automatisation.</p>
+<p>Dans tous les cas où la base légale invoquée est l'intérêt légitime de JEMA (article 6(1)(f) RGPD), nous prenons soin de réaliser un équilibre entre cet intérêt et vos droits et libertés. Par exemple, les données utilisées à des fins d'amélioration sont en principe anonymisées ou fortement agrégées, et vous conservez la possibilité de vous opposer à certains traitements (voir Section 8 sur vos droits). Si la base légale est votre consentement, vous pouvez le retirer à tout moment sans justification, ce qui n'affectera pas l'utilisation des données déjà collectées avant ce retrait.</p>
+
+<h2>5. Engagements spécifiques : télémétrie, IA locale et absence de publicité</h2>
+<p>JEMA adopte dès la conception de ses produits une approche respectueuse de votre vie privée (« privacy by design »). À ce titre, nous tenons à préciser nos engagements particuliers suivants :</p>
+
+<h3>5.1 Pas de télémétrie activée par défaut</h3>
+<p>Contrairement à certaines sociétés du secteur, JEMA n'intègre aucune télémétrie intrusive par défaut dans ses logiciels. La télémétrie (c'est-à-dire la collecte automatique de données d'utilisation de votre appareil ou logiciel) est désactivée par défaut sur JemaOS, Flow, Thot et nos autres produits. Concrètement, cela signifie que vos données d'utilisation ne sont pas transmises à nos serveurs sans action ou consentement de votre part. Par exemple, JemaOS ne remonte pas de statistiques d'utilisation de vos applications, et Thot n'envoie pas votre historique de navigation à JEMA. Les seules communications sortantes de nos logiciels se limitent à ce qui est nécessaire au fonctionnement du service que vous avez sollicité (par ex. vérification de mise à jour système, synchronisation que vous avez déclenchée, connexion à votre espace cloud, etc.), et ces échanges sont conçus pour minimiser les données transmises (uniquement les informations techniques indispensables, jamais de contenu personnel inutile). Si, dans un but d'amélioration continue, JEMA proposait un jour une option de partage de données d'usage ou de diagnostic, celle-ci serait purement optionnelle et soumise à votre consentement explicite.</p>
+
+<h3>5.2 Exécution locale de l'Intelligence Artificielle</h3>
+<p>JEMA privilégie le traitement local des données utilisateur, en particulier pour les fonctionnalités d'Intelligence Artificielle (IA) intégrées à nos produits. Grâce à l'architecture de JemaOS et aux dispositifs JEMA (dotés notamment de modules de calcul IA – ex: NPU, Neural Processing Unit), les modèles d'IA fonctionnent en local sur votre appareil sans nécessiter de transfert de vos données vers nos serveurs ou des services cloud externes. Par exemple, si JemaOS ou Thot inclut un assistant intelligent ou une fonction de complétion, les calculs sont réalisés directement sur votre machine : vos fichiers, vos requêtes ou vos interactions restent donc confidentiels et localisés. Cette approche garantit une confidentialité maximale, car vos données personnelles ne quittent pas votre environnement pour l'entraînement ou l'exécution des algorithmes d'IA. En outre, cela offre une meilleure maîtrise de vos informations (pas de dépendance à une connexion internet pour ces fonctions, et pas d'accès tiers). JEMA s'engage ainsi dans une démarche de souveraineté numérique en évitant l'envoi de données sensibles sur des plateformes distantes.</p>
+
+<h3>5.3 Aucune exploitation publicitaire des données</h3>
+<p>JEMA assure qu'aucune des données personnelles collectées n'est vendue, louée ou exploitée à des fins publicitaires. Nous n'affichons pas de publicités tierces ciblées dans nos applications et n'utilisons pas vos données pour du profilage marketing visant à de la publicité comportementale. De même, nous ne partageons pas vos informations avec des annonceurs ou réseaux publicitaires sans votre consentement explicite. Notre modèle commercial est fondé sur nos produits (ventes de dispositifs, abonnements Premium, etc.), et non sur la monétisation des données utilisateur. Vous ne verrez donc pas apparaître de bannières publicitaires personnalisées du fait de l'utilisation de nos services, et vous ne recevrez pas de sollicitations commerciales de partenaires extérieurs de la part de JEMA sans y avoir consenti. Cette absence d'exploitation publicitaire s'inscrit dans notre volonté de créer une relation de confiance avec nos utilisateurs et de respecter pleinement votre vie privée.</p>
+
+<h2>6. Souveraineté des données – Hébergement en France / UE</h2>
+<p>Dans le cadre de notre engagement en faveur de la souveraineté numérique, JEMA héberge et stocke vos données personnelles exclusivement en France ou au sein de l'Union Européenne. Tous nos serveurs, bases de données et infrastructures cloud utilisés pour faire fonctionner JemaOS Premium, Flow, les services de synchronisation ou de sauvegarde, sont situés sur des sites en France métropolitaine ou dans d'autres pays membres de l'UE offrant un niveau de protection des données équivalent. Nous garantissons qu'aucune donnée personnelle que vous nous confiez n'est délibérément stockée en dehors de l'UE.</p>
+<p>De plus, JEMA choisit ses fournisseurs et sous-traitants technologiques en privilégiant des acteurs européens lorsque cela est possible, afin d'assurer un contrôle accru sur la localisation des données. Vos données bénéficient ainsi du cadre juridique protecteur du RGPD et des réglementations françaises/UE, et ne sont pas exposées à des juridictions étrangères moins protectrices.</p>
+
+<h2>7. Transferts internationaux de données</h2>
+<p>En principe, JEMA ne réalise aucun transfert de vos données personnelles vers des pays situés en dehors de l'Espace Économique Européen (EEE). Vos informations sont traitées et hébergées en Europe, comme indiqué ci-dessus. Si, pour certaines fonctionnalités spécifiques ou pour l'utilisation de sous-traitants particuliers, un transfert en dehors de l'EEE devait avoir lieu, JEMA s'engage à :</p>
+<ul>
+<li>Vous en informer préalablement dans cette Politique de confidentialité (en précisant quelles données sont concernées et vers quel pays ou organisme elles sont envoyées).</li>
+<li>Ne réaliser le transfert que vers des pays reconnus comme offrant un niveau de protection adéquat par la Commission Européenne ou, à défaut, mettre en place des garanties appropriées conformes aux articles 46 et suivants du RGPD. Cela peut inclure la conclusion de Clauses Contractuelles Types approuvées par la Commission Européenne avec le destinataire des données, et l'ajout de mesures de sécurité complémentaires si nécessaire (chiffrement, pseudonymisation…).</li>
+<li>S'assurer que les personnes concernées disposent de droits opposables et de voies de recours effectives lorsque leurs données sont transférées hors UE, conformément au RGPD.</li>
+</ul>
+<p>Dans tous les cas, JEMA ne transfèrera jamais vos données en dehors de l'UE sans une raison légitime et sans encadrer strictement ce transfert. À ce jour (2025), aucun transfert international n'est effectué par JEMA dans le cadre de ses services standard.</p>
+
+<h2>8. Vos droits en tant qu'utilisateur</h2>
+<p>En vertu du RGPD et de la loi française, vous disposez de plusieurs droits concernant vos données personnelles. JEMA s'engage à respecter ces droits et à vous permettre de les exercer facilement. Vos principaux droits sont les suivants :</p>
+
+<p><strong>Droit d'accès :</strong> vous avez le droit d'obtenir la confirmation que des données personnelles vous concernant sont traitées par JEMA, et d'en recevoir une copie ainsi que les informations relatives aux traitements effectués (finalités, catégories de données, destinataires, etc.).</p>
+
+<p><strong>Droit de rectification :</strong> vous pouvez demander la correction des données inexactes ou incomplètes vous concernant. JEMA veillera à rectifier dans les meilleurs délais toute information erronée une fois votre identité vérifiée.</p>
+
+<p><strong>Droit à l'effacement (droit à l'oubli) :</strong> vous pouvez, dans certains cas, obtenir la suppression de vos données personnelles, par exemple si elles ne sont plus nécessaires au regard des finalités pour lesquelles elles avaient été collectées, ou si vous retirez votre consentement (lorsque le traitement était fondé sur le consentement) ou encore si vous vous êtes opposé au traitement et qu'il n'existe pas de motif légitime impérieux pour le maintenir. Notez que ce droit n'est pas absolu : JEMA peut conserver certaines données malgré votre demande si la loi l'y oblige ou si elle dispose d'un autre fondement juridique valable (par ex. obligation légale de conservation, exercice ou défense de droits en justice).</p>
+
+<p><strong>Droit d'opposition :</strong> vous avez le droit de vous opposer à tout moment, pour des raisons tenant à votre situation particulière, à un traitement de vos données fondé sur l'intérêt légitime de JEMA. Si vous exercez ce droit, nous cesserons le traitement concerné sauf si nous pouvons démontrer qu'il est nécessaire et proportionné (p. ex. motifs légitimes et impérieux prévalant sur vos intérêts, ou nécessité pour la constatation, l'exercice ou la défense de droits en justice). Important : vous pouvez également vous opposer à tout moment à l'utilisation de vos données à des fins de prospection commerciale (marketing), quel que soit le fondement, et JEMA respectera votre demande sans condition.</p>
+
+<p><strong>Droit à la limitation du traitement :</strong> ce droit vous permet de nous demander de « geler » l'utilisation de certaines de vos données dans les cas prévus par la loi, par exemple si vous contestez l'exactitude des données (le temps que nous vérifiions), ou si vous vous êtes opposé à un traitement (le temps d'examiner votre demande), ou encore si le traitement est illicite mais que vous ne souhaitez pas un effacement complet. Lorsque la limitation est accordée, nous n'utiliserons plus les données (sauf exceptions légales) mais les conserverons uniquement.</p>
+
+<p><strong>Droit à la portabilité :</strong> pour les données que vous nous avez fournies directement et qui sont traitées par des moyens automatisés sur la base de votre consentement ou d'un contrat, vous avez le droit de recevoir ces données dans un format structuré, couramment utilisé et lisible par machine, et de les transmettre à un autre responsable de traitement si vous le souhaitez. Sur demande et lorsque c'est techniquement possible, JEMA peut aussi transférer ces données directement vers un autre prestataire que vous désignez.</p>
+
+<p><strong>Droit de retirer votre consentement :</strong> lorsque le traitement de certaines de vos données repose sur votre consentement (par exemple, inscription à une newsletter, utilisation de cookies analytiques, etc.), vous pouvez à tout moment retirer votre consentement. Ce retrait n'affectera pas la licéité du traitement effectué avant le retrait, mais mettra fin aux traitements concernés pour l'avenir. Par exemple, vous pouvez vous désinscrire d'une communication marketing à tout moment en cliquant le lien de désinscription ou en nous contactant (vos données ne seront alors plus utilisées à cette fin).</p>
+
+<p><strong>Droit de ne pas faire l'objet d'une décision automatisée</strong> (y compris le profilage) produisant des effets juridiques ou vous affectant de manière significative : JEMA ne pratique pas de décision entièrement automatisée sans intervention humaine sur vous dans le cadre de ses services. Si cela venait à changer, vous auriez le droit de demander qu'une intervention humaine ait lieu, de donner votre point de vue ou de contester la décision automatisée.</p>
+
+<p><strong>Directives post-mortem :</strong> conformément au droit français (Article 85 de la loi Informatique et Libertés), vous avez la possibilité de définir des directives relatives au sort de vos données personnelles après votre décès (conservation, effacement, communication). Vous pouvez nous communiquer ces directives anticipées, que ce soit auprès de nous ou via un tiers de confiance certifié par la CNIL. Ces directives, une fois enregistrées, seront appliquées le moment venu. À défaut de directives, vos héritiers éventuels pourront nous contacter pour procéder à certaines actions sur vos données (par ex. fermeture du compte) conformément aux dispositions légales.</p>
+
+<p><strong>Exercer vos droits :</strong> Vous pouvez exercer vos droits à tout moment en nous contactant (voir Section 15 pour les coordonnées). Pour que nous puissions donner suite à votre demande, et afin de protéger la confidentialité de vos données, un justificatif d'identité pourra vous être demandé si la demande porte sur des informations sensibles ou si un doute existe quant à l'identité du demandeur. Nous nous efforcerons de répondre dans les meilleurs délais et en tout état de cause dans un délai d'un mois à compter de la réception de votre demande (délai prolongeable de deux mois supplémentaires en cas de demande complexe ou multiple, conformément à la réglementation). L'exercice de vos droits est gratuit. Toutefois, en cas de demandes manifestement infondées ou excessives (par exemple répétitives), JEMA se réserve la possibilité de refuser d'y donner suite ou d'exiger le paiement de frais raisonnables (comme autorisé par le RGPD).</p>
+
+<p>Enfin, si après nous avoir contactés vous estimez que vos droits ne sont pas respectés ou que la protection de vos données personnelles n'est pas assurée conforme aux règles, vous avez le droit d'introduire une réclamation auprès de l'autorité de contrôle compétente. En France, il s'agit de la CNIL (Commission Nationale de l'Informatique et des Libertés – www.cnil.fr). Vous trouverez en Section 15 les informations pour contacter la CNIL.</p>
+
+<h2>9. Cookies et technologies similaires</h2>
+<p>Notre site internet, nos applications web et certains de nos services en ligne utilisent des cookies et technologies assimilées (ex : balises web, stockage local, etc.) pour améliorer votre expérience utilisateur et assurer le bon fonctionnement des services. Cette section décrit la politique de JEMA en matière de cookies, conformément aux exigences de la réglementation (RGPD et directive « ePrivacy » transposée en droit français).</p>
+
+<h3>9.1 Qu'est-ce qu'un cookie ?</h3>
+<p>Un cookie est un petit fichier texte enregistré sur le terminal (ordinateur, smartphone, etc.) de l'utilisateur lors de la visite d'un site web ou de l'utilisation d'une application. Les cookies permettent au site ou à l'application de reconnaître le terminal lors des visites ultérieures, d'enregistrer des informations sur la navigation (ex : préférences de langue, contenus consultés, identifiant de session) et d'améliorer le service rendu. D'autres technologies similaires peuvent être utilisées à des fins analogues, telles que les Local Storage (stockage local du navigateur), les pixels invisibles ou balises web intégrés dans une page, etc. Dans cette Politique, nous désignons l'ensemble de ces technologies par le terme « cookies » pour simplifier.</p>
+
+<h3>9.2 Types de cookies utilisés</h3>
+<p>Nous utilisons différents types de cookies, classés selon leur finalité. JEMA privilégie une utilisation raisonnée des traceurs : la plupart de nos cookies visent à assurer la fourniture technique du service ou à mémoriser vos choix, et nous limitons le recours à des cookies optionnels. Les catégories de cookies pouvant être déposés via nos services sont les suivantes :</p>
+
+<p><strong>Cookies strictement nécessaires :</strong> ces cookies sont indispensables au fonctionnement correct de nos sites ou applications. Sans eux, certaines fonctionnalités demandées ne pourraient pas être fournies. Par exemple, il s'agit des cookies de session qui maintiennent votre connexion lorsque vous accédez à un espace sécurisé (votre compte JEMA), des cookies permettant l'équilibrage de charge entre nos serveurs, ou encore des cookies retenant vos préférences essentielles (comme la langue d'affichage) lorsque cela est techniquement nécessaire. Ces cookies n'ont pas besoin de votre consentement préalable, car ils sont purement fonctionnels et proportionnés au service demandé.</p>
+
+<p><strong>Cookies de fonctionnalité (préférences) :</strong> ces cookies améliorent la convivialité de nos services en mémorisant vos choix et préférences non essentielles d'une session à l'autre. Par exemple, un cookie peut retenir certains de vos réglages d'interface, le dernier service consulté, ou votre choix de désactiver/activer une fonctionnalité optionnelle. Ils peuvent également servir à pré-remplir certains champs de formulaires pour vous éviter de retaper vos informations à chaque fois. L'activation de ces cookies vise à vous faire gagner du temps et à personnaliser votre expérience. Ils peuvent être déposés par JEMA ou par des fournisseurs tiers intégrés à nos services (par ex. un module de chat d'assistance). Ces cookies de préférence sont généralement soumis à consentement si leur refus altère peu le service, et vous pouvez les désactiver à tout moment (voir 9.3).</p>
+
+<p><strong>Cookies d'analyse et de performance :</strong> ces cookies nous aident à comprendre comment notre site ou application est utilisé, afin d'améliorer son performance et son contenu. Il peut s'agir par exemple de cookies nous indiquant les pages les plus visitées, le temps passé sur chacune, les parcours de navigation, ou les messages d'erreur éventuels. JEMA peut utiliser des outils d'analytique respectueux de la vie privée (privilégiant l'anonymat ou l'auto-hébergement, sans transfert à des tiers non sécurisés). Par défaut, aucun cookie analytique n'est déposé sans votre consentement. Si vous les acceptez, ces cookies collecteront des informations agrégées qui ne visent pas à vous identifier personnellement mais à dégager des tendances d'ensemble. Ils nous permettent par exemple de détecter qu'une nouvelle fonctionnalité est peu utilisée (ce qui pourrait signifier qu'elle est peu visible ou pas assez intuitive). Nous utilisons ces retours dans un but d'amélioration continue. Vous êtes libre de refuser ces cookies sans impact majeur sur le service.</p>
+
+<p><strong>Cookies de publicité et réseaux sociaux :</strong> À ce jour, JEMA n'intègre pas de cookies publicitaires tiers sur ses propres sites et services (voir Section 5.3 sur l'absence d'exploitation publicitaire). Nous n'affichons pas de contenus sponsorisés de régies externes, et n'utilisons donc pas de cookies de ciblage publicitaire. De même, nous n'utilisons pas de plugins de réseaux sociaux qui déposeraient leurs propres cookies (tels que le bouton « J'aime » de Facebook ou le suivi LinkedIn) sans action de votre part. Si un jour nous devions mener des campagnes publicitaires ou intégrer du contenu de ce type, cela ne se ferait qu'avec votre consentement et dans le respect de la réglementation (par ex. via un bandeau cookie spécifique). En dehors de notre propre site, si vous êtes redirigé vers des sites tiers (par ex. visionner une vidéo de présentation hébergée sur YouTube ou autre), ces tiers peuvent toutefois déposer des cookies sous leur propre responsabilité. Nous vous invitons dans ce cas à consulter les politiques de confidentialité de ces plateformes externes.</p>
+
+<h3>9.3 Gestion du consentement et paramétrage des cookies</h3>
+<p>Lors de votre première visite sur notre site web ou application, un bandeau d'information vous invite à paramétrer vos choix en matière de cookies non essentiels. Vous avez la possibilité d'accepter, de refuser ou de personnaliser les cookies qui vous seront déposés. Votre choix sera conservé et peut être modifié à tout moment ultérieurement. Pour ajuster vos préférences, vous pouvez :</p>
+<ul>
+<li>Utiliser le module de gestion des cookies mis à disposition sur notre site (par exemple, un lien « Cookies » ou « Préférences cookies » en pied de page vous permet de rouvrir le panneau de consentement et de modifier vos choix).</li>
+<li>Configurer votre navigateur internet pour bloquer ou supprimer les cookies. La plupart des navigateurs offrent des réglages permettant de refuser tout ou partie des cookies, ou de recevoir une notification avant qu'un cookie soit enregistré. Consultez la section « Aide » ou « Paramètres » de votre navigateur pour en savoir plus sur la gestion des cookies. Vous pouvez généralement supprimer tous les cookies déjà enregistrés via votre navigateur. Attention : si vous désactivez tous les cookies via votre navigateur (en particulier les cookies nécessaires), certaines fonctionnalités de nos services pourraient ne plus fonctionner correctement (ex : impossible de rester connecté à votre compte, affichage dégradé, etc.). Nous vous conseillons donc de conserver au moins les cookies strictement nécessaires.</li>
+</ul>
+<p>JEMA respecte vos choix concernant les cookies. Un refus des cookies analytiques n'entraînera aucune collecte de ce type et n'affectera pas votre accès aux fonctionnalités de base. Si vous acceptez certains cookies et en refusez d'autres, nous appliquerons ces réglages. Notez que votre consentement aux cookies (ou son refus) est enregistré par le biais d'un cookie technique à cette fin ; si vous effacez vos cookies ou changez de terminal/navigateur, nous devrons vous redemander vos préférences.</p>
+
+<h3>9.4 Durée de conservation des cookies</h3>
+<p>Les cookies ont chacun une durée de vie spécifique. Conformément aux recommandations de la CNIL, les cookies non essentiels (par ex. analytiques) que vous auriez acceptés ont une durée de validité limitée (en général, nous n'utilisons pas de cookies analytiques avec une durée supérieure à 13 mois sans renouvellement du consentement). Les cookies strictement nécessaires quant à eux peuvent être des cookies de session (supprimés automatiquement lorsque vous fermez votre navigateur ou vous déconnectez) ou avoir une durée légèrement plus longue si cela est indispensable (par ex. un cookie de préférence de langue pouvant durer quelques jours ou semaines). Dans tous les cas, JEMA définit des durées de conservation raisonnables pour ses cookies, et s'interdit de les exploiter au-delà de ces durées. Vous trouverez, dans le gestionnaire de cookies ou sur demande, la liste détaillée des cookies utilisés avec leurs finalités et durées exactes.</p>
+
+<h2>10. Destinataires des données et sous-traitance</h2>
+<p>JEMA traite vos données en interne et s'assure de leur confidentialité. Seules les personnes dûment habilitées au sein de JEMA (ex : personnels des services techniques, support, commercial ou juridique selon le besoin) peuvent accéder à vos données personnelles, et ce dans la limite de leurs attributions respectives et sous obligation de confidentialité.</p>
+<p>Nous pouvons toutefois être amenés à partager certaines données avec des tiers de confiance, dans les circonstances et conditions suivantes :</p>
+
+<p><strong>Sous-traitants (prestataires de service) :</strong> JEMA peut faire appel à des sociétés tierces pour l'assister dans le cadre de ses services (par exemple, un prestataire d'hébergement cloud, un service de paiement sécurisé, un service d'envoi d'emails transactionnels, un support technique externalisé pour la maintenance, un service de livraison pour expédier un dispositif physique commandé, etc.). Ces tiers agissent pour le compte de JEMA et selon nos instructions, dans le rôle de sous-traitants au sens du RGPD. Cela signifie qu'ils sont tenus contractuellement de protéger vos données et de ne les utiliser qu'aux fins précises que nous leur avons confiées, en conformité avec la présente Politique. JEMA s'assure de choisir des prestataires offrant des garanties suffisantes en matière de sécurité et de confidentialité des données. Une liste ou description de nos principaux sous-traitants actuels peut être fournie sur demande. À la date de mise à jour de ce document, nos principaux partenaires techniques opèrent depuis l'Union Européenne (aucun accès par des entités non-UE sans garanties appropriées, voir Section 7).</p>
+
+<p><strong>Utilisation de services Zoho :</strong></p>
+<p>Dans le cadre de nos opérations internes, nous utilisons plusieurs services fournis par Zoho Corporation (tels que Zoho Mail, Zoho Desk, Zoho CRM, Zoho Projects, Zoho Books).</p>
+<p>Ces services peuvent traiter certaines données personnelles dans les finalités suivantes :</p>
+<ul>
+<li>gestion des tickets d'assistance et communication avec les utilisateurs,</li>
+<li>gestion de la relation client (CRM),</li>
+<li>traitement des commandes, facturation et suivi administratif,</li>
+<li>organisation interne de projets et documentation technique.</li>
+</ul>
+<p>Zoho agit en qualité de sous-traitant au sens du RGPD. Les données sont hébergées principalement dans l'Union européenne ou, lorsqu'un transfert hors UE s'avère nécessaire, protégées par des clauses contractuelles types (SCC) approuvées par la Commission européenne.</p>
+<p>JEMA impose contractuellement à Zoho des obligations de confidentialité et de sécurité conformes au RGPD.</p>
+
+<p><strong>Partenaires commerciaux :</strong> Actuellement, JEMA n'a pas de partenariat commercial impliquant un échange de vos données personnelles à des fins marketing ou autres (voir Section 5.3 sur l'absence de diffusion à des annonceurs). Si à l'avenir nous collaborons avec des partenaires (par ex. pour co-organiser un événement, ou offrir un service complémentaire au nôtre), vos données ne seraient partagées qu'avec votre accord explicite ou si une base légale le permet (et dans le strict périmètre annoncé). Dans un tel cas, la Politique serait mise à jour en conséquence.</p>
+
+<p><strong>Obligations légales, requêtes gouvernementales et contentieux :</strong> JEMA peut être contrainte de divulguer des données personnelles à des tiers autorisés lorsque la loi l'exige ou l'autorise. Par exemple, dans le cadre d'une obligation légale (réquisition judiciaire, demande d'une autorité administrative habilitée, obligation de coopération en matière de cybersécurité, etc.), ou pour protéger nos droits en justice (communication à nos conseils juridiques, huissiers, tribunaux compétents en cas de litige). Dans la mesure permise par la loi, nous ferons en sorte de vous informer de ces communications obligatoires.</p>
+
+<p><strong>Restructuration ou transaction financière :</strong> en cas de fusion, acquisition, cession partielle d'activité ou autre opération de restructuration impliquant le transfert d'une partie de nos activités, les données utilisateurs concernées pourraient être transmises à l'entité repreneuse, uniquement pour assurer la continuité du service. Le cas échéant, la confidentialité des données restera une priorité et les utilisateurs en seront informés au préalable.</p>
+
+<p>En dehors de ces cas, JEMA ne communique pas vos informations personnelles à des tiers. En particulier, vos données ne feront l'objet d'aucune vente ou location à des entreprises tierces. Chaque fois que des données sont partagées avec un sous-traitant ou partenaire, cela se fait sur la base d'un contrat écrit de protection des données conforme à l'article 28 du RGPD, garantissant un niveau de sécurité élevé et le respect de vos droits.</p>
+
+<h2>11. Durées de conservation des données</h2>
+<p>JEMA conserve vos données personnelles uniquement pendant la durée nécessaire aux finalités pour lesquelles elles ont été collectées, sous réserve de respecter les durées de conservation imposées par les lois applicables. Les durées peuvent varier selon la catégorie de données et la finalité du traitement. Voici nos principales politiques de conservation par type de données :</p>
+
+<p><strong>Données de compte et d'identité :</strong> conservées tant que vous maintenez votre compte actif. Si vous demandez la suppression de votre compte ou qu'il reste inactif pendant une longue période (inactivité prolongée au-delà de X années – durée à déterminer en interne, généralement 2 ans), vos données de compte seront supprimées ou anonymisées, après une éventuelle période d'archivage intermédiaire nécessaire pour protéger nos droits (par ex. conservation de certaines informations pendant 1 an après suppression pour gérer d'éventuels litiges ou assurer la désactivation effective sur l'ensemble de nos systèmes de backup).</p>
+
+<p><strong>Données d'abonnement, facturation et transactions :</strong> conservées pendant la durée de la relation contractuelle (durée de l'abonnement), puis archivées pendant 10 ans après la fin du contrat au titre de nos obligations légales comptables et fiscales (articles L123-22 du Code de commerce et L102B du Livre des procédures fiscales imposant la conservation des pièces comptables/fiscales pendant 10 ans). Les données liées aux paiements (hors données de carte non conservées) et factures seront donc tenues en archive sécurisée sur cette période.</p>
+
+<p><strong>Données de support client :</strong> les échanges (emails, tickets, chat) avec le support et les informations associées sont conservés le temps de traiter votre demande puis archivés pendant 2 à 3 ans après clôture du ticket (délai couvert par la plupart des prescriptions en matière de réclamations contractuelles). Cela nous permet de garder un historique pour mieux répondre si vous revenez vers nous pour un problème similaire, et servir de preuve en cas de contestation du support fourni. Au-delà, ces données sont soit supprimées soit anonymisées.</p>
+
+<p><strong>Données de synchronisation et contenu utilisateur :</strong> tout contenu que vous stockez sur nos services cloud (documents, fichiers, paramètres) reste stocké tant que vous utilisez activement le service. Si vous supprimez un fichier ou effacez un contenu, il est soit immédiatement supprimé de nos serveurs soit placé dans une corbeille récupérable par vos soins pendant un délai court (environ 30 jours) avant suppression définitive. De même, si vous clôturez votre compte, l'ensemble de vos contenus personnels sera supprimé, sous réserve des délais techniques de purge et des backups (nos sauvegardes étant rotatives, les données disparaitront automatiquement de nos supports de sauvegarde au bout de X jours supplémentaires au maximum).</p>
+
+<p><strong>Logs et journaux techniques :</strong> les journaux de connexion et logs applicatifs sont conservés pour une durée limitée nécessaire à la sécurité et aux audits. En règle générale, les logs de connexion (adresses IP, identifiants, dates/heures) sont conservés 12 mois conformément à la réglementation française (décret n° 2011-219). Les logs applicatifs détaillés (événements techniques) ont des durées de rétention variables mais généralement courtes (de quelques jours à quelques mois) selon leur utilité opérationnelle. Par exemple, un log d'erreur ponctuel peut être effacé après quelques jours une fois le problème résolu, tandis qu'un log de transaction système peut être gardé quelques semaines pour audit interne. Nous anonymisons ou supprimons les éléments de logs contenant des données personnelles dès que possible, et au plus tard à l'expiration des durées légales ou nécessaires.</p>
+
+<p><strong>Cookies :</strong> les durées de conservation des cookies sont détaillées en section 9.4. En synthèse, les cookies de session sont supprimés à la fin de la session de navigation, les cookies persistants ont une durée de vie limitée (13 mois maximum pour ceux soumis à consentement, sauf renouvellement du consentement).</p>
+
+<p><strong>Autres données :</strong> pour toute autre catégorie de données personnelles non listée ci-dessus, JEMA applique par défaut le principe de conservation pour la durée nécessaire aux finalités. Lorsque ces données ne sont plus utiles, nous procédons à leur suppression sécurisée ou anonymisation irréversible. Par exemple, si nous recueillons un jour des données dans le cadre d'une enquête de satisfaction ou d'un programme bêta, ces données seront détruites ou anonymisées une fois l'enquête terminée et les résultats compilés.</p>
+
+<p>Au terme des durées indiquées ci-dessus, les données sont soit supprimées de nos systèmes, soit rendues anonymes de façon irréversible (de sorte qu'elles ne constituent plus des données personnelles au sens du RGPD). Dans certains cas, plutôt que la suppression définitive immédiate, nous pouvons archiver les données de manière sécurisée, avec un accès restreint, pour une durée supplémentaire imposée par la loi ou pour la résolution d'un problème spécifique encore en cours (par ex. données bloquées pendant le temps d'une enquête interne ou légale). Ces archives, lorsqu'elles existent, sont ensuite purgées dès qu'il n'existe plus de raison valable de les conserver.</p>
+
+<h2>12. Sécurité des données</h2>
+<p>JEMA met en œuvre des mesures de sécurité techniques et organisationnelles afin de protéger les données personnelles contre toute perte, utilisation abusive, accès non autorisé, divulgation, altération ou destruction. Nous prenons la sécurité des informations très au sérieux et veillons à adopter les meilleures pratiques du secteur, en particulier :</p>
+
+<p><strong>Chiffrement :</strong> Les communications entre votre appareil et nos services sont systématiquement protégées par chiffrage (cryptage TLS/SSL) pour empêcher l'interception de vos données en transit. De plus, les données sensibles stockées côté serveur (par ex. mots de passe, tokens d'authentification, certaines données de compte ou contenus) sont chiffrées au repos à l'aide d'algorithmes robustes. Par exemple, les mots de passe sont hachés et salés en base de données, de sorte qu'ils ne puissent pas être récupérés en clair.</p>
+
+<p><strong>Contrôle d'accès :</strong> En interne, l'accès aux données personnelles est strictement limité aux employés de JEMA qui en ont besoin pour exercer leurs fonctions (principe du need-to-know). Chaque collaborateur ayant accès à des données est soumis à une obligation de confidentialité contractuelle et suit des formations à la protection des données. Les accès aux systèmes d'information sont protégés par des mots de passe forts, une authentification à facteurs multiples lorsque possible, et font l'objet de journaux de contrôle.</p>
+
+<p><strong>Infrastructure sécurisée :</strong> Nos serveurs sont hébergés dans des centres de données hautement sécurisés situés en France/UE, disposant de protections physiques (contrôle d'accès aux locaux, surveillance, redondance électrique) et logiques (pare-feu, systèmes de détection d'intrusion) de premier plan. Nous effectuons des sauvegardes chiffrées régulières des données pour prévenir tout risque de perte ou d'altération accidentelle, et testons la capacité de nos systèmes à restaurer la disponibilité des données en cas d'incident physique ou technique (conformément à l'art. 32 RGPD).</p>
+
+<p><strong>Développement sécurisé :</strong> Nos logiciels et applications sont développés selon des processus intégrant la sécurité dès la conception. Nous réalisons des tests internes (et faisons appel à des audits externes ponctuels) pour identifier et corriger d'éventuelles vulnérabilités (par ex. tests d'intrusion, analyse statique du code, etc.). Les mises à jour de sécurité de JemaOS et de nos applications sont déployées régulièrement afin de protéger vos appareils et données contre les nouvelles menaces.</p>
+
+<p><strong>Approche "Confidentialité par Conception" :</strong> Comme évoqué en Section 5, JEMA intègre nativement des principes de minimisation des données et de confidentialité. Par exemple, de nombreuses opérations sont réalisées localement sur votre dispositif plutôt que sur nos serveurs, ce qui réduit l'exposition des données. Là où le traitement de données personnelles est nécessaire côté serveur, nous nous efforçons d'utiliser par défaut des identifiants pseudonymes ou des agrégations lorsque le détail nominatif n'est pas requis.</p>
+
+<p>En dépit de toutes ces précautions, aucun système n'est infaillible à 100%. JEMA s'engage à réagir rapidement en cas de suspicion de faille de sécurité concernant des données personnelles. En particulier, conformément au RGPD, nous notifierons à la CNIL toute violation de données susceptible d'entraîner un risque pour les droits et libertés des utilisateurs dans les 72 heures suivant sa détection, et nous informerons également les personnes concernées lorsque cette violation est susceptible d'engendrer un risque élevé pour elles (par ex. fuite de données sensibles). Nous vous encourageons par ailleurs à maintenir la confidentialité de vos identifiants d'accès et de vos appareils (par ex. ne pas partager votre mot de passe, utiliser un code PIN ou empreinte pour protéger le dispositif JEMA) afin de contribuer à la sécurité de vos données.</p>
+
+<h2>13. Clients professionnels (JemaOS Premium, établissements scolaires, administrations)</h2>
+<p>JEMA propose des solutions à destination des clients professionnels (entreprises privées, organismes publics, établissements scolaires, etc.), notamment via l'offre JemaOS Premium et les services cloud associés. Le traitement des données dans ce contexte présente certaines spécificités :</p>
+
+<p><strong>Rôle de JEMA en tant que sous-traitant :</strong> Lorsqu'une organisation (par exemple, une entreprise ou une école) souscrit aux services JemaOS Premium pour ses collaborateurs ou élèves, cette organisation peut être considérée comme le responsable de traitement principal pour les données personnelles de ses utilisateurs finaux (employés, étudiants) dans le cadre de l'utilisation des services. JEMA agit alors en sous-traitant pour le compte de l'organisation cliente en ce qui concerne les données qu'elle nous confie (par ex. liste des utilisateurs autorisés, données générées par ces utilisateurs via l'outil collaboratif, etc.). Autrement dit, JEMA traite ces données uniquement selon les instructions documentées de son client et dans le but de fournir le service contractuellement convenu. Nous ne les utilisons pas à d'autres fins et n'y accédons pas sauf nécessité technique ou support demandé. Un avenant de traitement des données (Data Processing Agreement) peut être mis en place avec nos clients professionnels afin de cadrer ces responsabilités conformément à l'article 28 du RGPD.</p>
+
+<p><strong>Données des utilisateurs finaux B2B :</strong> Pour les employés, agents ou élèves utilisant JemaOS dans le cadre d'un abonnement institutionnel, il est important de noter que les administrateurs de l'organisation cliente peuvent avoir accès à certaines de leurs données (par exemple, des journaux d'activité internes, des fichiers partagés au sein de l'espace de travail de l'organisation, etc.). Ces traitements sont régis par la politique de confidentialité propre à l'organisation cliente en plus de la nôtre. JEMA recommande à ses clients professionnels d'informer adéquatement leurs utilisateurs des traitements réalisés. De notre côté, nous fournissons les outils et réglages permettant à l'administrateur de l'organisation de gérer les données des utilisateurs (création/suppression de comptes, export des données, etc.) en respect de la réglementation.</p>
+
+<p><strong>Ségrégation et sécurité renforcée :</strong> Les données des clients professionnels sont logiquement séparées (et si applicable, physiquement isolées) de celles des clients particuliers. Par exemple, chaque entreprise dispose de son espace dédié dans le cloud JEMA, avec des contrôles d'accès stricts empêchant qu'un utilisateur non autorisé d'une autre entreprise puisse accéder à ces données. Des mécanismes de chiffrement spécifiques peuvent être proposés (comme des clés de chiffrement détenues par le client lui-même pour certaines données sensibles).</p>
+
+<p><strong>Conservation et restitution des données B2B :</strong> Les données des clients professionnels (ainsi que celles de leurs utilisateurs finaux) sont conservées pendant la durée du contrat liant JEMA à l'organisation, puis supprimées ou restituées à l'issue du contrat selon les termes convenus. Par exemple, en fin de contrat, l'organisation peut demander une restitution de l'ensemble des données hébergées (sous forme d'export) avant suppression définitive de nos serveurs. JEMA ne conservera alors que les données strictement nécessaires pour respecter ses obligations légales (par ex. factures).</p>
+
+<p><strong>Établissements scolaires et utilisateurs mineurs :</strong> Dans le cadre de déploiements en milieu éducatif (écoles, universités…), le client (établissement) est responsable de s'assurer que l'utilisation de JemaOS par les élèves mineurs se fait en conformité avec le RGPD et les lois applicables (voir aussi Section 14 ci-après). Par exemple, en France, l'établissement devra s'assurer d'avoir une base légale adéquate pour inscrire des élèves de moins de 15 ans sur la plateforme (consentement parental ou autre base permise par la loi telle que l'exécution d'une mission d'éducation d'intérêt public). JEMA fournira toute l'assistance nécessaire pour permettre à l'établissement de recueillir les consentements requis si nécessaire (formulaires types, contrôle parental dans l'application, etc.), et pour respecter les droits des élèves ou de leurs parents sur les données (demandes d'accès, de rectification, d'effacement via l'établissement). L'âge minimum de 15 ans concerne exclusivement le consentement au traitement des données personnelles conformément au RGPD. L'accès aux services JemaOS reste soumis aux conditions fixées dans les CGU, notamment l'exigence d'être âgé de 18 ans pour conclure un contrat.</p>
+
+<p><strong>Indicateurs techniques :</strong> Certaines fonctionnalités d'administration de JemaOS Premium permettent aux organisations clientes de visualiser des indicateurs techniques (ex. durée de connexion).</p>
+<p>JEMA n'utilise pas ces données pour son propre compte et agit en qualité de sous-traitant (article 28 RGPD).</p>
+<p>L'organisation cliente demeure seule responsable du respect du droit du travail applicable, notamment en matière de surveillance des employés, d'information des salariés, de proportionnalité des moyens de contrôle et de consultation des instances représentatives.</p>
+
+<p>En résumé, pour nos clients B2B, JEMA agit avec la même exigence de confidentialité et de sécurité, tout en respectant le rôle de chaque partie. Le client professionnel est invité à nous contacter pour toute question relative aux traitements spécifiques réalisés dans ce cadre, et à se référer en complément aux documents contractuels dédiés (ex : Contrat de service, Accord de traitement des données) pour plus de détails sur la gestion des données.</p>
+
+<h2>14. Données personnelles des mineurs</h2>
+<p>Les services de JEMA ne sont pas destinés aux enfants n'ayant pas atteint l'âge minimum requis par la réglementation pour consentir au traitement de leurs données personnelles. En France, cet âge est fixé à 15 ans (article 7-1 de la Loi Informatique et Libertés). Par conséquent, en dehors d'un usage encadré par un établissement scolaire ou par les parents, nous ne collectons pas intentionnellement de données relatives à des mineurs de moins de 15 ans sans le consentement vérifiable d'un représentant légal.</p>
+
+<p><strong>Création de compte individuel :</strong> Pour créer un compte JEMA (par exemple, pour utiliser JemaOS en tant que particulier), l'utilisateur doit confirmer qu'il a l'âge requis (15 ans en France, ou plus si la loi de son pays de résidence fixe un âge supérieur). Si nous constatons qu'un compte a été créé par un enfant en-dessous de cet âge sans autorisation parentale, nous prendrons les mesures nécessaires pour supprimer promptement les données associées à ce compte.</p>
+
+<p><strong>Utilisation encadrée (parentale ou scolaire) :</strong> Si un mineur de moins de 15 ans utilise nos services dans le cadre familial (sous la surveillance de ses parents) ou dans un cadre éducatif (via son établissement scolaire, comme évoqué en Section 13), nous considérons que le responsable légal ou l'institution a fourni l'autorisation et supervise l'utilisation. Nous recommandons aux parents d'accompagner leurs enfants dans l'utilisation de nos outils et d'aborder avec eux les questions de confidentialité. Nous restons disponibles pour fournir aux parents ou éducateurs toute information sur les données concernant des mineurs et pour honorer toute demande de droit exercée au nom du mineur (par le titulaire de l'autorité parentale ou par le mineur lui-même s'il est en capacité de le faire).</p>
+
+<p><strong>Contenus inappropriés :</strong> Nos services ne diffusent pas de contenu inadapté aux enfants, mais si vous estimez qu'un aspect de nos produits n'est pas approprié pour un public mineur, merci de nous le signaler.</p>
+
+<p><strong>Conseils et liens utiles :</strong> Nous encourageons les parents soucieux de la protection des données de leurs enfants à consulter les ressources pédagogiques mises à disposition par la CNIL et d'autres organismes, afin d'apprendre aux plus jeunes les bons réflexes en matière de vie privée en ligne.</p>
+
+<h2>15. Contact et réclamations</h2>
+<p><strong>Contactez JEMA :</strong> Pour toute question, demande ou préoccupation relative à vos données personnelles ou à la présente Politique de confidentialité, vous pouvez nous contacter aux coordonnées suivantes :</p>
+<div class="contact-info">
+<p>
+<svg viewBox="0 0 495 382" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="31" style="vertical-align: middle; margin-right: 8px;">
+<path d="M318.1 0H176.506L0 381.341H113.189L124.681 377.222C164.363 363.13 205.779 356.193 247.411 356.193C288.827 356.193 330.46 363.13 370.141 377.222L381.634 381.341H494.823L318.1 0ZM247.411 288.119C212.284 288.119 177.156 295.707 144.414 310.666L247.411 80.2138L350.409 310.666C317.667 295.707 282.539 288.119 247.411 288.119Z" fill="#5a63e9"/>
+</svg>
+<strong style="vertical-align: middle;">JEMA TECHNOLOGY</strong>
+</p>
+<p><strong>Site web :</strong> <a href="https://www.jematechnology.fr/">www.jematechnology.fr</a></p>
+<p><strong>Email :</strong> privacy@jematechnology.fr (ou) lc@jematechnology.fr</p>
+<p><strong>Adresse postale :</strong> JEMA TECHNOLOGY, 14 Avenue de Grasse, 06800 CAGNES-SUR-MER, France</p>
+<p><strong>Téléphone :</strong> +33 6 69 66 64 15</p>
+</div>
+<p>Nous accordons une grande importance à vos retours et ferons le nécessaire pour vous répondre et résoudre votre demande dans les plus brefs délais.</p>
+
+<p><strong>Réclamation auprès de la CNIL :</strong> Si vous estimez que JEMA n'a pas correctement répondu à une de vos demandes ou que vos droits « Informatique et Libertés » ne sont pas respectés, vous pouvez en dernier recours adresser une réclamation à l'autorité de contrôle française, la CNIL.</p>
+<div class="contact-info">
+<p><strong>Site web de la CNIL :</strong> <a href="https://www.cnil.fr">https://www.cnil.fr</a> (formulaire de plainte en ligne disponible)</p>
+<p><strong>Adresse postale :</strong> CNIL – 3 Place de Fontenoy, TSA 80715 – 75334 PARIS CEDEX 07, France</p>
+<p><strong>Téléphone CNIL :</strong> +33 (0)1 53 73 22 22</p>
+</div>
+<p>La CNIL pourra vous conseiller et instruire votre réclamation. Nous vous invitons, avant de la saisir, à toujours nous contacter directement afin que nous puissions tenter de répondre à vos préoccupations – nous avons à cœur de trouver une solution satisfaisante dans le respect de vos droits.</p>
+
+<h2>16. Modifications de la politique de confidentialité</h2>
+<p>La présente Politique de confidentialité est susceptible d'être mise à jour ou modifiée afin de refléter les évolutions de nos pratiques ou pour respecter les changements légaux et réglementaires. En cas de modification substantielle affectant la manière dont vos données sont traitées, nous vous en informerons par les moyens appropriés (par exemple, via notre site web et/ou par une notification dans nos applications ou un email d'information). Nous vous encourageons à consulter régulièrement cette page pour rester informé des dernières dispositions en vigueur.</p>
+<p class="update-date">Date d'entrée en vigueur de la Politique : 26 novembre 2025 (v.2025.1)</p>
+
+</body>
+</html>

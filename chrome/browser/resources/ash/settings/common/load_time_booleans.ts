@@ -19,6 +19,10 @@ export function isJemaAssistantFeatureEnabled(): boolean {
   return loadTimeData.getBoolean('jemaAssistantFeatureEnabled');
 }
 
+export function isJemaAiHidden(): boolean {
+  return loadTimeData.getBoolean('isJemaAiHidden');
+}
+
 export function isChild(): boolean {
   return loadTimeData.getBoolean('isChild');
 }

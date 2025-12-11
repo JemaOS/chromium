@@ -1,30 +1,48 @@
 <style include="settings-shared">
+  .coming-soon-container {
+    padding: 20px;
+    text-align: center;
+  }
+  .coming-soon-text {
+    font-size: 16px;
+    color: var(--cr-secondary-text-color);
+  }
 </style>
 
 <os-settings-animated-pages id="pages" section="[[section_]]">
   <div route-path="default">
-    <settings-card header-text="$i18n{jemaAssistantPageTitle}">
-      <settings-toggle-button
-          pref="{{prefs.jema_assistant_enabled}}"
-          id="jemaAssistantToggle"
-          label="$i18n{jemaAssistantToggleLabel}"
-          sub-label="$i18n{jemaAssistantToggleSublabel}">
-      </settings-toggle-button>
-      <div class="hr"></div>
-      <settings-toggle-button
-          disabled="[[!prefs.jema_assistant_enabled.value]]"
-          pref="{{prefs.jema_assistant_extra_accelerator_enabled}}"
-          id="jemaAssistantExtraAcceleratorToggle"
-          label="$i18n{jemaAssistantBubbleShortcutToggleLabel}"
-          sub-label="$i18n{jemaAssistantBubbleShortcutToggleSublabel}">
-      </settings-toggle-button>
-      <div class="hr"></div>
-      <cr-link-row id="jemaosAiSettingsLink"
-          disabled="[[!prefs.jema_assistant_enabled.value]]"
-          label="$i18n{jemaAssistantSettingsInAppLabel}"
-          sub-label="$i18n{jemaAssistantSettingsInAppSublabel}"
-          on-click="onSettingsClicked_"
-          external>
-      </cr-link-row>
+    <template is="dom-if" if="[[isJemaAiHidden_]]">
+      <settings-card header-text="$i18n{jemaAssistantPageTitle}">
+        <div class="coming-soon-container">
+          <span class="coming-soon-text">Coming Soon</span>
+        </div>
+      </settings-card>
+    </template>
+    <template is="dom-if" if="[[!isJemaAiHidden_]]">
+      <settings-card header-text="$i18n{jemaAssistantPageTitle}">
+        <settings-toggle-button
+            pref="{{prefs.jema_assistant_enabled}}"
+            id="jemaAssistantToggle"
+            label="$i18n{jemaAssistantToggleLabel}"
+            sub-label="$i18n{jemaAssistantToggleSublabel}">
+        </settings-toggle-button>
+        <div class="hr"></div>
+        <settings-toggle-button
+            disabled="[[!prefs.jema_assistant_enabled.value]]"
+            pref="{{prefs.jema_assistant_extra_accelerator_enabled}}"
+            id="jemaAssistantExtraAcceleratorToggle"
+            label="$i18n{jemaAssistantBubbleShortcutToggleLabel}"
+            sub-label="$i18n{jemaAssistantBubbleShortcutToggleSublabel}">
+        </settings-toggle-button>
+        <div class="hr"></div>
+        <cr-link-row id="jemaosAiSettingsLink"
+            disabled="[[!prefs.jema_assistant_enabled.value]]"
+            label="$i18n{jemaAssistantSettingsInAppLabel}"
+            sub-label="$i18n{jemaAssistantSettingsInAppSublabel}"
+            on-click="onSettingsClicked_"
+            external>
+        </cr-link-row>
+      </settings-card>
+    </template>
   </div>
 </os-settings-animated-pages>

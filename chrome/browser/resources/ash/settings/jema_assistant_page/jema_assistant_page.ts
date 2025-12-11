@@ -7,6 +7,7 @@ import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {Section} from '../mojom-webui/routes.mojom-webui.js';
+import {isJemaAiHidden} from '../common/load_time_booleans.js';
 
 import {getTemplate} from './jema_assistant_page.html.js';
 
@@ -26,6 +27,12 @@ export class OsSettingsJemaAssistantPageElement extends OsSettingsJemaAssistantP
       section_: {
         type: Number,
         value: Section.kJemaAssistant,
+        readOnly: true,
+      },
+
+      isJemaAiHidden_: {
+        type: Boolean,
+        value: () => isJemaAiHidden(),
         readOnly: true,
       },
     };

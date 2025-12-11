@@ -69,6 +69,7 @@ build_webui("build") {
     "images/1x/jemaos/thumbnail-theme-auto-1x.png",
     "images/2x/jemaos/thumbnail-theme-auto-2x.png",
 
+    "images/jema_logo_new.png",
     "images/jemaos_touchpad_scroll_illo.png",
 
     # Structure files

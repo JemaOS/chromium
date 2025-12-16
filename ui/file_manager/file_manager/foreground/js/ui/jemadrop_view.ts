@@ -14,6 +14,12 @@ export class JemaDropView {
      */
     this.jemaDropView_ = element;
 
+    /** @private {?HTMLElement} */
+    this.comingSoonEl_ = this.jemaDropView_.querySelector('#jemadrop-coming-soon');
+
+    /** @private {?HTMLElement} */
+    this.webview_ = this.jemaDropView_.getElementsByTagName('webview')[0] || null;
+
     // Download permission is denied by default in a webview
     // @ts-ignore TS7006: Parameter 'element' implicitly has an 'any' type.
     this.jemaDropView_.addEventListener('permissionrequest', function(e) {
@@ -27,7 +33,11 @@ export class JemaDropView {
   }
 
   setUrl() {
-    const webview = this.jemaDropView_.getElementsByTagName('webview')[0];
+    if (this.isComingSoonEnabled_()) {
+      return;
+    }
+
+    const webview = this.webview_;
     if (webview && !webview.src) {
       this.jemaDropView_.addEventListener(
         "contentload",
@@ -37,15 +47,37 @@ export class JemaDropView {
     }
   }
 
+  /** @private */
+  isComingSoonEnabled_() {
+    // Flag to swap between the placeholder and the real JemaDrop webview.
+    return loadTimeData.getBoolean('JEMADROP_COMING_SOON_ENABLED');
+  }
+
   show() {
-    if (!this.loaded_) {
-      this.hideSpinnerCallback_ =
-        window.fileManager.spinnerController.showWithDelay(
-          100,
-          this.onSpinnerShow_.bind(this),
-        );
+    const comingSoonEnabled = this.isComingSoonEnabled_();
+
+    if (this.comingSoonEl_) {
+      this.comingSoonEl_.hidden = !comingSoonEnabled;
     }
-    this.setUrl();
+
+    if (this.webview_) {
+      this.webview_.hidden = comingSoonEnabled;
+    }
+
+    if (!comingSoonEnabled) {
+      if (!this.loaded_) {
+        this.hideSpinnerCallback_ =
+          window.fileManager.spinnerController.showWithDelay(
+            100,
+            this.onSpinnerShow_.bind(this),
+          );
+      }
+      this.setUrl();
+    } else {
+      // No remote content to load => ensure spinner doesn't stick around.
+      this.hideSpinner_();
+    }
+
     this.jemaDropView_.hidden = false;
   }
 

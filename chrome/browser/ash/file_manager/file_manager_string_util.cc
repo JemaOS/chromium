@@ -392,6 +392,12 @@ void AddStringsForJema(base::Value::Dict* dict) {
              IDS_FILE_BROWSER_NUTSTORE_HINT_STEPS_CONNECT_ACCOUNT);
   SET_STRING("JEMADROP_ROOT_LABEL",
              IDS_FILE_BROWSER_JEMADROP_ROOT_LABEL);
+
+  SET_STRING("JEMADROP_COMING_SOON", IDS_FILE_BROWSER_JEMADROP_COMING_SOON);
+
+  // Toggle between showing the "Coming soon" placeholder or the real webview.
+  // When this is set to false, Files will load the URL from JEMA_DROP_URL.
+  dict->Set("JEMADROP_COMING_SOON_ENABLED", true);
 }
 
 void AddStringsGeneric(base::Value::Dict* dict) {

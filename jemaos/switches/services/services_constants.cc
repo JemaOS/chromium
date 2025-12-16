@@ -21,15 +21,15 @@ const char kJemaOSFeedbackPostUrl[] = "https://apis.jemaos.com/feedback/submit";
 const char kJemaOSAssistantDefaultWebUrl[] = "https://ai.jemaos.com/chat/";
 #else
 const char kDefaultJemaOSGeolocationAPIUrl[] =
-  "https://apis.jemaos.io/geo/locationByIp?";
+  "https://apis.jematechnology.fr/geo/locationByIp?";
 const char kDefaultJemaOSTimezoneAPIUrl[] =
-  "https://apis.jemaos.io/geo/timezone?";
+  "https://apis.jematechnology.fr/geo/timezone?";
 const char kDefaultJemaOSLookingGlassUrl[] =
-  "https://apis.jemaos.io/lookingglass";
-const char kJemaOSWebStoreUpdateURL[] = "https://store.jemaos.io";
-const char kJemaOSFeedbackPostUrl[] = "https://apis.jemaos.io/feedback/submit";
+  "https://apis.jematechnology.fr/lookingglass";
+const char kJemaOSWebStoreUpdateURL[] = "https://store.jematechnology.fr";
+const char kJemaOSFeedbackPostUrl[] = "https://apis.jematechnology.fr/feedback/submit";
 
-const char kJemaOSAssistantDefaultWebUrl[] = "https://ai.jemaos.io/chat/";
+const char kJemaOSAssistantDefaultWebUrl[] = "https://ai.jematechnology.fr/chat/";
 #endif
 
 const uint8_t* kJemaOSCryptoKey =

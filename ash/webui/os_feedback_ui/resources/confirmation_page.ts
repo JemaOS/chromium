@@ -123,7 +123,7 @@ export class ConfirmationPageElement extends ConfirmationPageElementBase {
         break;
       case 'help':
         // <if expr="not use_jemaos_com">
-        url = 'https://jemaos.io/help';
+        url = 'https://jematechnology.fr/help';
         // </if>
         // <if expr="use_jemaos_com">
         url = 'https://jemaos.com/help';
@@ -132,7 +132,7 @@ export class ConfirmationPageElement extends ConfirmationPageElementBase {
         break;
       case 'jemaosCommunity':
         // <if expr="not use_jemaos_com">
-        url = 'https://community.jemaos.io';
+        url = 'https://community.jematechnology.fr';
         // </if>
         // <if expr="use_jemaos_com">
         url = 'https://community.jemaos.com';

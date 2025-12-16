@@ -27,21 +27,21 @@ const char kDefaultJemaRemotingServerEndpoint[] = "remoting.jemaos.com";
 #else
 
 const char kDefaultJemaOSGaiaUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
-const char kDefaultJemaOSApisBaseUrl[] = "https://apis.jemaos.io";
+const char kDefaultJemaOSApisBaseUrl[] = "https://apis.jematechnology.fr";
 const char kDefaultJemaOSDeviceManagementServerUrl[] =
-  "https://policy.jemaos.io";
+  "https://policy.jematechnology.fr";
 const char kDefaultJemaOSRealtimeReportingServerUrl[] =
-  "https://apis.jemaos.io/report/events";
+  "https://apis.jematechnology.fr/report/events";
 const char kDefaultJemaOSEncryptedReportingServerUrl[] =
-  "https://apis.jemaos.io/report/record";
+  "https://apis.jematechnology.fr/report/record";
 const char kJemaOSSyncDevServerUrl[] =
-  "https://clients4.jemaos.io/chrome-sync/dev";
-const char kJemaOSSyncServerUrl[] = "https://clients4.jemaos.io/chrome-sync";
+  "https://clients4.jematechnology.fr/chrome-sync/dev";
+const char kJemaOSSyncServerUrl[] = "https://clients4.jematechnology.fr/chrome-sync";
 const char kDefaultJemaOSFamilyLinkApisUrl[] =
-  "https://familylink-apis.jemaos.io/kidsmanagement/v1/";
+  "https://familylink-apis.jematechnology.fr/kidsmanagement/v1/";
 
-const char kDefaultJemaFtlServerEndpoint[] = "im.jemaos.io";
-const char kDefaultJemaRemotingServerEndpoint[] = "remoting.jemaos.io";
+const char kDefaultJemaFtlServerEndpoint[] = "im.jematechnology.fr";
+const char kDefaultJemaRemotingServerEndpoint[] = "remoting.jematechnology.fr";
 
 #endif
 

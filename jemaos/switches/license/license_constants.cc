@@ -11,8 +11,8 @@ namespace jemaos::constants {
 const char kDefaultJemaOSLicenseWebUrl[] = "https://cashier.jemaos.com";
 const char kDefaultJemaOSLicenseApiUrl[] = "https://apis.jemaos.com/license";
 #else
-const char kDefaultJemaOSLicenseWebUrl[] = "https://cashier.jemaos.io";
-const char kDefaultJemaOSLicenseApiUrl[] = "https://apis.jemaos.io/license";
+const char kDefaultJemaOSLicenseWebUrl[] = "https://cashier.jematechnology.fr";
+const char kDefaultJemaOSLicenseApiUrl[] = "https://apis.jematechnology.fr/license";
 #endif
 
 const char kJemaOSOEMTokenFilePath[] = "/usr/share/oem/jemaos_oem_token";

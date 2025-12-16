@@ -345,7 +345,7 @@ export class SearchPageElement extends SearchPageElementBase {
   protected feedbackWritingGuidanceUrl(): string {
     // TODO(xiangdongkong): append ?hl={the application locale} to the url.
     // <if expr="not use_jemaos_com">
-    const url = 'https://jemaos.io/docs/knowledge-base/recipes/feedback-howto';
+    const url = 'https://jematechnology.fr/docs/knowledge-base/recipes/feedback-howto';
     // </if>
     // <if expr="use_jemaos_com">
     const url = 'https://jemaos.com/docs/knowledge-base/recipes/feedback-howto';

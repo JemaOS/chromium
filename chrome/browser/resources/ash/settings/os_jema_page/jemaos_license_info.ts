@@ -69,7 +69,7 @@ async GetLicenseExpireDate() {
 }
 
 const urlOpenAllowOriginList = [
-  'https://cashier.jemaos.io',
+  'https://cashier.jematechnology.fr',
   'https://cashier.jemaos.com',
 ];
 

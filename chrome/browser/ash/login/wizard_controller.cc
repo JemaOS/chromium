@@ -1281,6 +1281,18 @@ void WizardController::ShowAiIntroScreen() {
 }
 
 void WizardController::ShowGeminiIntroScreen() {
+  // --jema-hide-jema-ai
+  // JemaOS customization: skip the Gemini intro screen and jump directly to
+  // CHOOBE ("Choose more features to set up").
+  //
+  // This ensures that when the flow reaches the screen titled
+  // "Introducing JemaOS AI, your OS level AI assistant", it immediately
+  // advances to the CHOOBE screen.
+  if (features::IsOobeChoobeEnabled()) {
+    ShowChoobeScreen();
+    return;
+  }
+
   SetCurrentScreen(GetScreen(GeminiIntroScreenView::kScreenId));
 }
 
@@ -2917,7 +2929,14 @@ void WizardController::OnGeminiIntroScreenExit(
     return;
   }
 
-  ShowAssistantOptInFlowScreen();
+  // --jema-hide-jema-ai
+  //  JemaOS customization: go directly to CHOOBE ("Choose more features to set
+  // up") after Gemini intro.
+  if (features::IsOobeChoobeEnabled()) {
+    ShowChoobeScreen();
+  } else {
+    ShowAssistantOptInFlowScreen();
+  }
 }
 
 void WizardController::OnAssistantOptInFlowScreenExit(

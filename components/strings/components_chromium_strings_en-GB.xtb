@@ -5,11 +5,11 @@
 <translation id="275588974610408078">Crash reporting is not available in Chromium.</translation>
 <translation id="3064346599913645280">You're viewing a secure Chromium page</translation>
 <translation id="3255926992597692024">Chromium is trying to modify settings for filling payment methods.</translation>
-<translation id="358997566136285270">Chromium logo</translation>
-<translation id="4050599136622776556">Chromium is trying to edit payment methods.</translation>
-<translation id="4365115785552740256">Chromium is made possible by the <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> open source project and other <ph name="BEGIN_LINK_OSS" />open source software<ph name="END_LINK_OSS" />.</translation>
+<translation id="358997566136285270">Thot logo</translation>
+<translation id="4050599136622776556">Thot is trying to edit payment methods.</translation>
+<translation id="4365115785552740256">Thot is made possible by the <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> open source project and other <ph name="BEGIN_LINK_OSS" />open source software<ph name="END_LINK_OSS" />.</translation>
 <translation id="4559775032954821361">Go to
-          the Chromium menu &gt;
+          the Thot menu &gt;
           <ph name="SETTINGS_TITLE" />
           &gt;
           <ph name="ADVANCED_TITLE" />

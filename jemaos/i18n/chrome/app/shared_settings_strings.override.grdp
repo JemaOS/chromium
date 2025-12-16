@@ -14,12 +14,12 @@
   <if expr="is_chromeos">
     <if expr="openjema">
       <message name="IDS_BROWSER_SETTINGS_SYNC_FEATURE_LABEL" desc="Label describing the browser sync feature.">
-        Your data will be synced across all Chromium browsers where you have turned on sync for this account. For openJema sync options, go to <ph name="LINK_BEGIN">&lt;a&gt;</ph>openJema settings<ph name="LINK_END">&lt;/a&gt;</ph>.
+        Your data will be synced across all Thot browsers where you have turned on sync for this account. For openJema sync options, go to <ph name="LINK_BEGIN">&lt;a&gt;</ph>openJema settings<ph name="LINK_END">&lt;/a&gt;</ph>.
       </message>
     </if>
     <if expr="not openjema">
       <message name="IDS_BROWSER_SETTINGS_SYNC_FEATURE_LABEL" desc="Label describing the browser sync feature.">
-        Your data will be synced across all Chromium browsers where you have turned on sync for this account. For JemaOS sync options, go to <ph name="LINK_BEGIN">&lt;a&gt;</ph>JemaOS settings<ph name="LINK_END">&lt;/a&gt;</ph>.
+        Your data will be synced across all Thot browsers where you have turned on sync for this account. For JemaOS sync options, go to <ph name="LINK_BEGIN">&lt;a&gt;</ph>JemaOS settings<ph name="LINK_END">&lt;/a&gt;</ph>.
       </message>
     </if>
   </if>

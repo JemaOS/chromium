@@ -319,7 +319,15 @@
               <include name="IDS_TERMS_HTML" file="../jemaos/components/resources/terms/terms_zh-CN.html" type="BINDATA" />
             </if>
             <if expr="not use_jemaos_com">
+              <if expr="'fr' == lang or 'fr-CA' == lang">
+                <include name="IDS_TERMS_HTML" file="../jemaos/components/resources/terms/terms_fr.html" type="BINDATA" />
+              </if>
+              <if expr="'zh-CN' == lang">
+                <include name="IDS_TERMS_HTML" file="../jemaos/components/resources/terms/terms_zh-CN.html" type="BINDATA" />
+              </if>
+              <if expr="'fr' != lang and 'fr-CA' != lang and 'zh-CN' != lang">
                 <include name="IDS_TERMS_HTML" file="../jemaos/components/resources/terms/terms_en.html" type="BINDATA" />
+              </if>
             </if>
           </else>
         </if>

@@ -11,11 +11,22 @@
   <div class="start padded">
     <localized-link localized-string="[[i18nAdvanced('jemaosSettingsBackupLabel')]]">
     </localized-link>
-    <!-- <div class="secondary"></div> -->
+    <div class="secondary">$i18n{jemaosSettingsBackupLocalDesc}</div>
   </div>
   <div class="separator"></div>
   <cr-button on-click="onBackupClick_" disabled="[[backupDisabled_(backupRunning_, authFactorHasPassword)]]">
     $i18n{jemaosSettingsBackupButtonLabel}
+  </cr-button>
+</div>
+<div class="settings-box two-line" hidden="[[!showBackup_]]">
+  <div class="start padded">
+    $i18n{jemaosSettingsCloudBackupLabel}
+    <div class="secondary">$i18n{jemaosSettingsCloudBackupDesc}</div>
+  </div>
+  <div class="separator"></div>
+  <cr-button on-click="onCloudBackupClick_"
+    disabled="[[cloudBackupDisabled_(cloudBackupRunning_, authFactorHasPassword)]]">
+    $i18n{jemaosSettingsCloudBackupButtonLabel}
   </cr-button>
 </div>
 <template is="dom-if" if="[[showBackupIntroDialog_]]" restamp>
@@ -27,24 +38,42 @@
     on-close="onPasswordPromptClosed_" on-cancel="onPasswordPromptCanceled_">
   </backup-password-prompt-dialog>
 </template>
-<div class="settings-box two-line first" hidden="[[!showBackup_]]">
+<div class="settings-box two-line" hidden="[[!showBackup_]]">
   <div class="start padded">
     <localized-link localized-string="[[i18nAdvanced('jemaosSettingsRestoreLabel')]]">
     </localized-link>
+    <div class="secondary">$i18n{jemaosSettingsRestoreLocalDesc}</div>
   </div>
   <div class="separator"></div>
   <cr-button on-click="onRestoreClick_" disabled="[[restoreDisabled_(restoreRunning_, authFactorHasPassword)]]">
     $i18n{jemaosSettingsRestoreButtonLabel}
   </cr-button>
 </div>
+<div class="settings-box two-line" hidden="[[!showBackup_]]">
+  <div class="start padded">
+    $i18n{jemaosSettingsCloudRestoreLabel}
+    <div class="secondary">$i18n{jemaosSettingsCloudRestoreDesc}</div>
+  </div>
+  <div class="separator"></div>
+  <cr-button on-click="onCloudRestoreClick_"
+    disabled="[[cloudRestoreDisabled_(cloudRestoreRunning_, authFactorHasPassword)]]">
+    $i18n{jemaosSettingsCloudRestoreButtonLabel}
+  </cr-button>
+</div>
 <template is="dom-if" if="[[showRestorePasswordDialog_]]" restamp>
-  <restore-password-dialog on-restore-password-obtained="onRestorePasswordObtained_"
-    on-close="onRestorePasswordDialogClosed_" on-cancel="onRestorePasswordDialogCanceled_">
+  <restore-password-dialog is-cloud-restore="[[isCloudRestore_]]" email="[[backupEmail_]]"
+    on-restore-password-obtained="onRestorePasswordObtained_" on-close="onRestorePasswordDialogClosed_"
+    on-cancel="onRestorePasswordDialogCanceled_">
   </restore-password-dialog>
 </template>
 <template is="dom-if" if="[[showRestoreResultDialog_]]" restamp>
   <restore-result-dialog is-success="[[restoreSuccess_]]" message="[[restoreMessage_]]"
     on-close="onRestoreResultDialogClosed_">
+  </restore-result-dialog>
+</template>
+<template is="dom-if" if="[[showCloudBackupResultDialog_]]" restamp>
+  <restore-result-dialog is-success="[[cloudBackupSuccess_]]" message="[[cloudBackupMessage_]]"
+    on-close="onCloudBackupResultDialogClosed_">
   </restore-result-dialog>
 </template>
 <div class="settings-box two-line" hidden=[[!showToggleRotateScreenButton]]>

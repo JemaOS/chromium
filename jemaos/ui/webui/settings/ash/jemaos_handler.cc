@@ -4,6 +4,8 @@
 
 #include "jemaos/ui/webui/settings/ash/jemaos_handler.h"
 
+#include <algorithm>
+
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "base/values.h"
@@ -73,10 +75,13 @@ bool CreateArcMediaAutoScanIndicatorFile() {
 }
 
 // Embedded backup/restore script for restore operations
+// SAFE VERSION: Only backs up and restores MyFiles folder contents
+// Never touches browser profile, auth files, or system directories
 const char kRestoreScriptPath[] = "/tmp/jemaos-backup-script.sh";
 const char kRestoreScript[] = R"SCRIPT(#!/bin/bash
 LOGFILE="/tmp/jemaos-backup.log"
 echo "=== $(date) ===" >> "$LOGFILE"
+echo "Script version: MyFiles-only v2 (safe)" >> "$LOGFILE"
 echo "Args: $@" >> "$LOGFILE"
 
 EMAIL=""
@@ -107,25 +112,48 @@ echo "Cmd=$COMMAND, Email=$EMAIL, Target=$TARGET" >> "$LOGFILE"
 
 [ -z "$TARGET" ] && echo "Error: No target" && exit 1
 
+# MyFiles is the main user files directory in ChromeOS
+MYFILES_PATH="$PROFILE_PATH/MyFiles"
+
+# Fallback to Downloads if MyFiles doesn't exist
+if [ ! -d "$MYFILES_PATH" ]; then
+  MYFILES_PATH="$PROFILE_PATH/Downloads"
+fi
+
+echo "Using files path: $MYFILES_PATH" >> "$LOGFILE"
+
 if [ "$COMMAND" = "backup" ]; then
-  [ ! -d "$PROFILE_PATH" ] && echo "Error: Profile not found" && exit 1
+  [ ! -d "$MYFILES_PATH" ] && echo "Error: MyFiles folder not found" && exit 1
   mkdir -p "$(dirname "$TARGET")" 2>> "$LOGFILE"
+  
   TEMP_DIR="/tmp/jemaos_backup_$$"
   mkdir -p "$TEMP_DIR"
-  echo -e "User: $EMAIL\nDate: $(date)" > "$TEMP_DIR/backup_info.txt"
-  EXCLUDES=(--exclude='.cache/*' --exclude='*/Cache/*' --exclude='*/GPUCache/*' --exclude='*.bak' --exclude='*/backup/*.bak')
+  echo -e "User: $EMAIL\nDate: $(date)\nSource: MyFiles\nVersion: 2" > "$TEMP_DIR/backup_info.txt"
+  
+  # Only exclude cache files, no need for auth excludes since we only backup MyFiles
+  EXCLUDES=(
+    --exclude='.cache/*'
+    --exclude='*/Cache/*'
+    --exclude='*.bak'
+    --exclude='.Trash*'
+    --exclude='*.tmp'
+    --exclude='*.temp'
+  )
+  
+  echo "Backing up MyFiles folder only..." >> "$LOGFILE"
   
   if [ -n "$KEY" ]; then
-    tar -czf - "${EXCLUDES[@]}" -C "$PROFILE_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE" \
+    tar -czf - "${EXCLUDES[@]}" -C "$MYFILES_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE" \
       | openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:"$KEY" > "$TARGET" 2>> "$LOGFILE"
   else
-    tar -czf "$TARGET" "${EXCLUDES[@]}" -C "$PROFILE_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE"
+    tar -czf "$TARGET" "${EXCLUDES[@]}" -C "$MYFILES_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE"
   fi
   rm -rf "$TEMP_DIR"
   
   if [ -f "$TARGET" ] && [ -s "$TARGET" ]; then
-    echo "Backup completed: $(du -h "$TARGET" | cut -f1)" >> "$LOGFILE"
-    echo "Backup completed: $TARGET"
+    SIZE=$(du -h "$TARGET" | cut -f1)
+    echo "Backup completed: $SIZE" >> "$LOGFILE"
+    echo "Backup completed: $TARGET ($SIZE)"
     exit 0
   fi
   echo "Backup failed" >> "$LOGFILE"
@@ -133,20 +161,199 @@ if [ "$COMMAND" = "backup" ]; then
 
 elif [ "$COMMAND" = "restore" ]; then
   [ ! -f "$TARGET" ] && echo "Error: File not found: $TARGET" && exit 1
+  
   TEMP_DIR="/tmp/jemaos_restore_$$"
   mkdir -p "$TEMP_DIR"
   
+  echo "Extracting backup to temp directory..." >> "$LOGFILE"
+  
   if [ -n "$KEY" ]; then
     openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:"$KEY" -in "$TARGET" 2>> "$LOGFILE" \
-      | tar -xzf - -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Decrypt failed"; exit 1; }
+      | tar -xzf - -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Decrypt failed"; rm -rf "$TEMP_DIR"; exit 1; }
   else
-    tar -xzf "$TARGET" -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Extract failed"; exit 1; }
+    tar -xzf "$TARGET" -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Extract failed"; rm -rf "$TEMP_DIR"; exit 1; }
   fi
   
-  cp -af "$TEMP_DIR"/. "$PROFILE_PATH"/ 2>> "$LOGFILE"
+  # Check if this is an old full-profile backup that contains MyFiles folder
+  # If so, we should restore from MyFiles subfolder, not the root
+  if [ -d "$TEMP_DIR/MyFiles" ]; then
+    echo "Detected old full-profile backup with MyFiles folder inside" >> "$LOGFILE"
+    echo "Will restore from MyFiles subfolder only" >> "$LOGFILE"
+    
+    # Move MyFiles content to a safe location
+    MYFILES_CONTENT="/tmp/jemaos_myfiles_content_$$"
+    mkdir -p "$MYFILES_CONTENT"
+    cp -a "$TEMP_DIR/MyFiles"/. "$MYFILES_CONTENT"/ 2>> "$LOGFILE"
+    
+    # Clear temp dir and use only MyFiles content
+    rm -rf "$TEMP_DIR"
+    mkdir -p "$TEMP_DIR"
+    cp -a "$MYFILES_CONTENT"/. "$TEMP_DIR"/ 2>> "$LOGFILE"
+    rm -rf "$MYFILES_CONTENT"
+    
+    echo "Extracted MyFiles content for restore" >> "$LOGFILE"
+  fi
+  
+  # COMPREHENSIVE CLEANUP: Remove ALL system/browser files
+  echo "Safety check: removing ALL system/browser files from backup..." >> "$LOGFILE"
+  
+  # Remove ALL directories that are not typical user folders
+  # Keep ONLY: Downloads, Documents, Pictures, Music, Videos, and user-created folders
+  # Remove everything that looks like a system/browser folder
+  
+  # Known system directories (extensive list)
+  SYSTEM_DIRS=(
+    # Hidden directories
+    ".pki" ".config" ".local" ".cache" ".shadow" ".dmrc" ".android"
+    # Browser/Chrome directories
+    "GCache" "Cache" "cache" "Code Cache" "code_cache" "CodeCache"
+    "GPUCache" "gpu_cache" "GpuCache"
+    "DawnGraphiteCache" "DawnWebGPUCache" "dawn_cache"
+    "app_service" "app_service_storage" "AppServiceStorage"
+    "Application Cache" "application_cache"
+    "blob_storage" "BlobStorage"
+    "databases" "Databases"
+    "Extensions" "extensions" "Extension Scripts" "extension_scripts"
+    "Extension State" "extension_state"
+    "Extension Rules" "extension_rules"
+    "Feature Engagement Tracker" "feature_engagement"
+    "File System" "file_system"
+    "GCM Store" "gcm_store"
+    "IndexedDB" "indexeddb"
+    "Local Extension Settings" "local_extension_settings"
+    "Local Storage" "local_storage" "LocalStorage"
+    "Login Data" "login_data"
+    "Network" "network"
+    "Network Action Predictor" "network_action_predictor"
+    "optimization_guide" "OptimizationGuide"
+    "Platform Notifications" "platform_notifications"
+    "Safe Browsing" "safe_browsing"
+    "Service Worker" "service_worker" "ServiceWorker"
+    "Session Storage" "session_storage" "SessionStorage"
+    "Sessions" "sessions"
+    "Shortcuts" "shortcuts"
+    "Site Characteristics Database" "site_characteristics"
+    "Storage" "storage"
+    "Sync Data" "sync_data" "SyncData"
+    "TransportSecurity" "transport_security"
+    "Trust Tokens" "trust_tokens"
+    "Visited Links" "visited_links"
+    "Web Data" "web_data" "WebData"
+    "WebRTC Logs" "webrtc_logs"
+    "component_updater" "ComponentUpdater"
+    "data_reduction_proxy" "DataReductionProxy"
+    "Default" "Profile" "Guest Profile" "System Profile"
+    "cros-components" "cros_components"
+    "log" "LOG" "logs"
+    "shared_proto_db" "SharedProtoDb"
+    "Site Engagement" "site_engagement"
+    "Top Sites" "top_sites"
+    "History" "Thumbnails" "Favicons"
+    "Bookmarks" "Preferences" "Secure Preferences"
+    "Cookies" "cookies"
+    "Affiliation Database" "affiliation_database"
+    "AutofillStrikeDatabase" "autofill"
+    "BudgetDatabase" "budget_database"
+    "Download Service" "download_service"
+    "heavy_ad_intervention" "HeavyAdIntervention"
+    "media_device_salts" "MediaDeviceSalts"
+    "Pepper Data" "pepper_data"
+    "previews_opt_out" "PreviewsOptOut"
+    "QuotaManager" "quota_manager"
+    "Reporting and NEL" "reporting_nel"
+    "SmartScreenState" "smartscreen"
+    "VideoDecodeStats" "video_decode_stats"
+    "webdata"
+    "ZxcvbnData" "zxcvbn_data"
+    # ChromeOS specific system folders
+    "autobrightness" "birch" "commerce_subscriptions" "commerce_subscription"
+    "discounts_db" "launcher_ranking" "app_launch_automation"
+    "user" "crash" "crosvm.sock" "shill" "session_manager" "flimflam"
+    "segmentation_platform" "optimization_guide_model_store"
+    "optimization_guide_prediction_model_downloads"
+    "component_crl" "FileTypePolicies" "OriginTrials" "SSLErrorAssistant"
+    "SafetyTips" "Subresource Filter" "TrustTokenKeyCommitments"
+    "first_party_sets" "PrivacySandboxAttestations"
+    "CertificateRevocation" "CRLSet" "MEIPreload" "OnDeviceHeadModel"
+    "pnacl" "recovery_component" "widevine"
+    "MyFiles"
+    # Common temp/system patterns
+    "tmp" "temp" "README" "backup_info.txt"
+  )
+  
+  # Remove each system directory
+  for dir in "${SYSTEM_DIRS[@]}"; do
+    if [ -e "$TEMP_DIR/$dir" ]; then
+      echo "Removing system dir: $dir" >> "$LOGFILE"
+      rm -rf "$TEMP_DIR/$dir" 2>/dev/null
+    fi
+  done
+  
+  # Remove ALL hidden directories and files
+  find "$TEMP_DIR" -maxdepth 1 -name ".*" -exec rm -rf {} + 2>/dev/null
+  
+  # Remove specific file patterns
+  find "$TEMP_DIR" -name "*.keyring" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "Cookies*" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "Login Data*" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "Web Data*" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "Preferences" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "Secure Preferences" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "*.log" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "*.ldb" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "*.leveldb" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "LOCK" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "MANIFEST*" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "CURRENT" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "LOG*" -type f -delete 2>/dev/null
+  find "$TEMP_DIR" -name "*.sqlite*" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "*.db" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "*.db-*" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "Singleton*" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "backup_info.txt" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "*.crx" -delete 2>/dev/null
+  find "$TEMP_DIR" -name "*.pem" -delete 2>/dev/null
+  
+  # Ensure MyFiles directory exists
+  mkdir -p "$MYFILES_PATH" 2>> "$LOGFILE"
+  
+  echo "Restoring ONLY user files to MyFiles folder: $MYFILES_PATH" >> "$LOGFILE"
+  echo "Remaining items after cleanup:" >> "$LOGFILE"
+  ls -la "$TEMP_DIR" >> "$LOGFILE" 2>&1
+  
+  # Count files to restore
+  FILE_COUNT=$(find "$TEMP_DIR" -type f 2>/dev/null | wc -l)
+  DIR_COUNT=$(find "$TEMP_DIR" -mindepth 1 -type d 2>/dev/null | wc -l)
+  echo "Files to restore: $FILE_COUNT, Directories: $DIR_COUNT" >> "$LOGFILE"
+  
+  # Only restore if there's something to restore
+  if [ "$FILE_COUNT" -eq 0 ] && [ "$DIR_COUNT" -eq 0 ]; then
+    echo "No user files found in backup after cleanup" >> "$LOGFILE"
+    rm -rf "$TEMP_DIR"
+    echo "Restore completed but no user files were found in backup."
+    exit 0
+  fi
+  
+  # Copy remaining files (should only be user files) to MyFiles
+  for item in "$TEMP_DIR"/*; do
+    if [ -e "$item" ]; then
+      basename=$(basename "$item")
+      echo "Restoring to MyFiles: $basename" >> "$LOGFILE"
+      cp -a "$item" "$MYFILES_PATH/" 2>> "$LOGFILE"
+    fi
+  done
+  
+  # Fix ownership only for MyFiles directory (not profile root!)
+  if id chronos &>/dev/null; then
+    echo "Fixing ownership for MyFiles only..." >> "$LOGFILE"
+    chown -R chronos:chronos "$MYFILES_PATH" 2>> "$LOGFILE"
+  fi
+  
   rm -rf "$TEMP_DIR"
-  echo "Restore completed" >> "$LOGFILE"
-  echo "Restore completed! Restart your device."
+  
+  RESTORED_COUNT=$(find "$MYFILES_PATH" -type f 2>/dev/null | wc -l)
+  echo "Restore completed! Files in MyFiles: $RESTORED_COUNT" >> "$LOGFILE"
+  echo "Restore completed! Your files are in MyFiles folder."
   exit 0
 else
   echo "Usage: backup|restore --email EMAIL --key KEY --target PATH"
@@ -156,13 +363,13 @@ fi
 
 bool EnsureRestoreScriptExists() {
   base::FilePath script_path(kRestoreScriptPath);
-  if (!base::PathExists(script_path)) {
-    if (!base::WriteFile(script_path, kRestoreScript)) {
-      LOG(ERROR) << "Failed to create restore script";
-      return false;
-    }
-    chmod(kRestoreScriptPath, 0755);
+  // Always write the script to ensure latest version is used
+  // This overwrites any cached old version
+  if (!base::WriteFile(script_path, kRestoreScript)) {
+    LOG(ERROR) << "Failed to create restore script";
+    return false;
   }
+  chmod(kRestoreScriptPath, 0755);
   return true;
 }
 
@@ -275,6 +482,21 @@ void JemaOsHandler::RegisterMessages() {
   web_ui()->RegisterMessageCallback(
       "jemaosRestoreStarted",
       base::BindRepeating(&JemaOsHandler::HandleJemaOSRestoreStarted,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "jemaosCloudBackupStarted",
+      base::BindRepeating(&JemaOsHandler::HandleJemaOSCloudBackupStarted,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "jemaosCloudRestoreStarted",
+      base::BindRepeating(&JemaOsHandler::HandleJemaOSCloudRestoreStarted,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "jemaosCloudListBackupFiles",
+      base::BindRepeating(&JemaOsHandler::HandleJemaOSCloudListBackupFiles,
                           base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
@@ -979,6 +1201,630 @@ void JemaOsHandler::OnRestoreCompleted(std::optional<ShellState> state) {
   
   LOG(INFO) << "Restore completed: success=" << success << ", message=" << message;
   FireWebUIListener("jemaos-restore-task-finished",
+      base::Value(success), base::Value(message));
+}
+
+// Cloud Backup API constants
+const char kCloudBackupApiBaseUrl[] = "https://test-connect-api.jematech.fr";
+const char kCloudBackupApiPath[] = "/v1/connect/upload/signed-url-private";
+
+// Cloud Backup implementation
+void JemaOsHandler::HandleJemaOSCloudBackupStarted(const base::Value::List& args) {
+  DCHECK_EQ(args.size(), 2u);
+  std::string email = args[0].GetString();
+  std::string password = args[1].GetString();
+
+  LOG(INFO) << "Cloud backup started for: " << email;
+  
+  // Ensure backup script exists
+  if (!EnsureRestoreScriptExists()) {
+    LOG(ERROR) << "Failed to ensure backup script exists";
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: Could not create backup script"));
+    return;
+  }
+  
+  // Generate key from email and password
+  std::string key = email + ":" + password;
+  std::string hex_encoded_hash = base::HexEncode(
+      base::SHA1Hash(base::as_byte_span(key)));
+  hex_encoded_hash.resize(16);
+  std::string backup_key = base::ToLowerASCII(hex_encoded_hash);
+  
+  // Generate temp file path for cloud backup with timestamp
+  // Format: jemaos_backup_YYYYMMDD_HHMMSS.bak
+  base::Time now = base::Time::Now();
+  base::Time::Exploded exploded;
+  now.LocalExplode(&exploded);
+  std::string timestamp = base::StringPrintf(
+      "%04d%02d%02d_%02d%02d%02d",
+      exploded.year, exploded.month, exploded.day_of_month,
+      exploded.hour, exploded.minute, exploded.second);
+  std::string filename = "jemaos_backup_" + timestamp + ".bak";
+  std::string temp_file = "/tmp/" + filename;
+  
+  LOG(INFO) << "Cloud backup filename: " << filename;
+  
+  // Store cloud backup context for later use
+  cloud_backup_email_ = email;
+  cloud_backup_filename_ = filename;
+  cloud_backup_temp_file_ = temp_file;
+  
+  // First create local backup to temp file
+  std::string command = base::StringPrintf(
+      "/bin/bash %s backup --email %s --key %s --target %s",
+      kRestoreScriptPath, email.c_str(), backup_key.c_str(), temp_file.c_str());
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for cloud backup";
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: System service not available"));
+    return;
+  }
+  
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnCloudBackupLocalCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::OnCloudBackupLocalCompleted(std::optional<ShellState> state) {
+  if (!state || state->code != 0) {
+    std::string error_msg = state ? state->result : "No response";
+    LOG(ERROR) << "Cloud backup local step failed: " << error_msg;
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: " + error_msg));
+    return;
+  }
+  
+  LOG(INFO) << "Local backup created, getting pre-signed URL...";
+  
+  // Call API to get pre-signed URL
+  // fileName: just the filename (API will handle the path)
+  std::string api_url = std::string(kCloudBackupApiBaseUrl) + kCloudBackupApiPath;
+  std::string json_body = base::StringPrintf(
+      "{\"fileName\": \"%s\", \"email_id\": \"%s\"}",
+      cloud_backup_filename_.c_str(), cloud_backup_email_.c_str());
+  
+  LOG(INFO) << "Requesting upload URL for: " << cloud_backup_filename_;
+  LOG(INFO) << "API URL: " << api_url;
+  LOG(INFO) << "JSON body: " << json_body;
+  
+  // Write a shell script to execute curl - avoids all escaping issues
+  std::string script_file = "/tmp/jemaos_cloud_curl.sh";
+  std::string script_content = 
+      "#!/bin/bash\n"
+      "curl -s -L -X POST \"" + api_url + "\" \\\n"
+      "  -H 'Content-Type: application/json' \\\n"
+      "  -d '" + json_body + "'\n";
+  base::WriteFile(base::FilePath(script_file), script_content);
+  chmod(script_file.c_str(), 0755);
+  
+  std::string command = "/bin/bash " + script_file;
+  
+  LOG(INFO) << "Executing curl via script: " << script_file;
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for API call";
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: System service not available"));
+    return;
+  }
+  
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnCloudBackupPresignedUrlReceived,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::OnCloudBackupPresignedUrlReceived(std::optional<ShellState> state) {
+  
+  if (!state) {
+    LOG(ERROR) << "Failed to get pre-signed URL: No response";
+    base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: Could not get upload URL (no response)"));
+    return;
+  }
+  
+  LOG(INFO) << "Curl exit code: " << state->code;
+  LOG(INFO) << "Curl output: " << state->result;
+  
+  if (state->code != 0) {
+    std::string error_msg = state->result;
+    LOG(ERROR) << "Failed to get pre-signed URL, curl exit code: " << state->code << ", output: " << error_msg;
+    base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: Could not get upload URL (curl error " + std::to_string(state->code) + ")"));
+    return;
+  }
+  
+  // Parse the response to extract the upload URL
+  // Response format: {"success":true,"data":{"uploadUrl":"https://...","fileKey":"...","expiresIn":900},"message":"..."}
+  // Note: response may have HTTP status code appended at the end due to -w flag
+  std::string response = state->result;
+  LOG(INFO) << "API Response: " << response;
+  
+  // Check for success
+  if (response.find("\"success\":true") == std::string::npos &&
+      response.find("\"success\": true") == std::string::npos) {
+    LOG(ERROR) << "API returned error response";
+    base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: API error"));
+    return;
+  }
+  
+  // Extract uploadUrl from data object
+  std::string upload_url;
+  size_t url_pos = response.find("\"uploadUrl\"");
+  
+  if (url_pos != std::string::npos) {
+    size_t colon_pos = response.find(':', url_pos);
+    size_t quote_start = response.find('"', colon_pos);
+    size_t quote_end = response.find('"', quote_start + 1);
+    if (quote_start != std::string::npos && quote_end != std::string::npos) {
+      upload_url = response.substr(quote_start + 1, quote_end - quote_start - 1);
+    }
+  }
+  
+  if (upload_url.empty()) {
+    LOG(ERROR) << "Could not parse uploadUrl from response";
+    base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: Invalid API response"));
+    return;
+  }
+  
+  LOG(INFO) << "Got pre-signed URL, uploading backup...";
+  LOG(INFO) << "Upload URL length: " << upload_url.length();
+  
+  // Write a shell script to execute curl upload - avoids all escaping issues
+  std::string script_file = "/tmp/jemaos_cloud_upload.sh";
+  std::string script_content = 
+      "#!/bin/bash\n"
+      "curl -s -X PUT \\\n"
+      "  -H 'Content-Type: application/octet-stream' \\\n"
+      "  -T \"" + cloud_backup_temp_file_ + "\" \\\n"
+      "  \"" + upload_url + "\"\n";
+  base::WriteFile(base::FilePath(script_file), script_content);
+  chmod(script_file.c_str(), 0755);
+  
+  std::string command = "/bin/bash " + script_file;
+  
+  LOG(INFO) << "Executing upload via script: " << script_file;
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnCloudBackupUploadCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::OnCloudBackupUploadCompleted(std::optional<ShellState> state) {
+  // Clean up temp files regardless of result
+  base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+  base::DeleteFile(base::FilePath("/tmp/jemaos_cloud_upload.sh"));
+  
+  if (!state) {
+    LOG(ERROR) << "Upload failed: No response";
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: Upload error"));
+    return;
+  }
+  
+  LOG(INFO) << "Upload curl exit code: " << state->code;
+  LOG(INFO) << "Upload curl output: " << state->result;
+  
+  // curl returns 0 on success
+  if (state->code != 0) {
+    LOG(ERROR) << "Upload failed with code: " << state->code;
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup failed: Upload error (code " + std::to_string(state->code) + ")"));
+    return;
+  }
+  
+  LOG(INFO) << "Cloud backup uploaded successfully: " << cloud_backup_filename_;
+  FireWebUIListener("jemaos-cloud-backup-task-finished",
+      base::Value(true), 
+      base::Value("Backup uploaded successfully: " + cloud_backup_filename_));
+}
+
+// Cloud Restore API paths
+const char kCloudRestoreApiPath[] = "/v1/connect/download/signed-url-private";
+const char kCloudListFilesApiPath[] = "/v1/connect/backup/files/list";
+
+// List backup files implementation
+void JemaOsHandler::HandleJemaOSCloudListBackupFiles(const base::Value::List& args) {
+  DCHECK_EQ(args.size(), 1u);
+  std::string email = args[0].GetString();
+
+  LOG(INFO) << "Listing cloud backup files for: " << email;
+  
+  // Store email for later use
+  cloud_backup_email_ = email;
+  
+  // Call API to list backup files
+  std::string api_url = std::string(kCloudBackupApiBaseUrl) + kCloudListFilesApiPath;
+  std::string json_body = base::StringPrintf(
+      "{\"email_id\": \"%s\", \"filter\": \"all\"}",
+      email.c_str());
+  
+  LOG(INFO) << "List files API URL: " << api_url;
+  LOG(INFO) << "List files JSON body: " << json_body;
+  
+  // Write a shell script to execute curl
+  std::string script_file = "/tmp/jemaos_cloud_list_files.sh";
+  std::string script_content = 
+      "#!/bin/bash\n"
+      "curl -s -L -X POST \"" + api_url + "\" \\\n"
+      "  -H 'Content-Type: application/json' \\\n"
+      "  -d '" + json_body + "'\n";
+  base::WriteFile(base::FilePath(script_file), script_content);
+  chmod(script_file.c_str(), 0755);
+  
+  std::string command = "/bin/bash " + script_file;
+  
+  LOG(INFO) << "Executing list files curl via script";
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for listing files";
+    FireWebUIListener("jemaos-cloud-list-files-result",
+        base::Value(false), base::Value::List());
+    return;
+  }
+  
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnCloudListFilesCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::OnCloudListFilesCompleted(std::optional<ShellState> state) {
+  // Clean up script file
+  base::DeleteFile(base::FilePath("/tmp/jemaos_cloud_list_files.sh"));
+  
+  if (!state || state->code != 0) {
+    std::string error_msg = state ? state->result : "No response";
+    LOG(ERROR) << "Failed to list backup files: " << error_msg;
+    FireWebUIListener("jemaos-cloud-list-files-result",
+        base::Value(false), base::Value::List());
+    return;
+  }
+  
+  LOG(INFO) << "List files API response: " << state->result;
+  
+  // Parse the JSON response to extract files array
+  std::string response = state->result;
+  
+  // Check for success
+  if (response.find("\"success\":true") == std::string::npos &&
+      response.find("\"success\": true") == std::string::npos) {
+    LOG(ERROR) << "API returned error - failed to list files";
+    FireWebUIListener("jemaos-cloud-list-files-result",
+        base::Value(false), base::Value::List());
+    return;
+  }
+  
+  // Parse files array - simple parsing for the expected format
+  base::Value::List files_list;
+  
+  // Find "files": [ array
+  size_t files_start = response.find("\"files\"");
+  if (files_start != std::string::npos) {
+    size_t array_start = response.find('[', files_start);
+    size_t array_end = response.find(']', array_start);
+    
+    if (array_start != std::string::npos && array_end != std::string::npos) {
+      std::string files_array = response.substr(array_start, array_end - array_start + 1);
+      
+      // Parse each file object
+      size_t pos = 0;
+      while ((pos = files_array.find('{', pos)) != std::string::npos) {
+        size_t obj_end = files_array.find('}', pos);
+        if (obj_end == std::string::npos) break;
+        
+        std::string file_obj = files_array.substr(pos, obj_end - pos + 1);
+        
+        // Extract fileKey
+        std::string file_key;
+        size_t key_pos = file_obj.find("\"fileKey\"");
+        if (key_pos != std::string::npos) {
+          size_t colon = file_obj.find(':', key_pos);
+          size_t quote1 = file_obj.find('"', colon);
+          size_t quote2 = file_obj.find('"', quote1 + 1);
+          if (quote1 != std::string::npos && quote2 != std::string::npos) {
+            file_key = file_obj.substr(quote1 + 1, quote2 - quote1 - 1);
+          }
+        }
+        
+        // Extract fileName
+        std::string file_name;
+        size_t name_pos = file_obj.find("\"fileName\"");
+        if (name_pos != std::string::npos) {
+          size_t colon = file_obj.find(':', name_pos);
+          size_t quote1 = file_obj.find('"', colon);
+          size_t quote2 = file_obj.find('"', quote1 + 1);
+          if (quote1 != std::string::npos && quote2 != std::string::npos) {
+            file_name = file_obj.substr(quote1 + 1, quote2 - quote1 - 1);
+          }
+        }
+        
+        // Extract size
+        int64_t size = 0;
+        size_t size_pos = file_obj.find("\"size\"");
+        if (size_pos != std::string::npos) {
+          size_t colon = file_obj.find(':', size_pos);
+          size_t num_start = colon + 1;
+          while (num_start < file_obj.size() && (file_obj[num_start] == ' ' || file_obj[num_start] == ':')) {
+            num_start++;
+          }
+          size_t num_end = num_start;
+          while (num_end < file_obj.size() && std::isdigit(file_obj[num_end])) {
+            num_end++;
+          }
+          if (num_end > num_start) {
+            size = std::stoll(file_obj.substr(num_start, num_end - num_start));
+          }
+        }
+        
+        // Extract lastModified
+        std::string last_modified;
+        size_t mod_pos = file_obj.find("\"lastModified\"");
+        if (mod_pos != std::string::npos) {
+          size_t colon = file_obj.find(':', mod_pos);
+          size_t quote1 = file_obj.find('"', colon);
+          size_t quote2 = file_obj.find('"', quote1 + 1);
+          if (quote1 != std::string::npos && quote2 != std::string::npos) {
+            last_modified = file_obj.substr(quote1 + 1, quote2 - quote1 - 1);
+          }
+        }
+        
+        if (!file_key.empty() && !file_name.empty()) {
+          base::Value::Dict file_dict;
+          file_dict.Set("fileKey", file_key);
+          file_dict.Set("fileName", file_name);
+          file_dict.Set("size", static_cast<double>(size));
+          file_dict.Set("lastModified", last_modified);
+          files_list.Append(std::move(file_dict));
+        }
+        
+        pos = obj_end + 1;
+      }
+    }
+  }
+  
+  // Sort files by lastModified date (latest first)
+  std::sort(files_list.begin(), files_list.end(),
+      [](const base::Value& a, const base::Value& b) {
+        const std::string* date_a = a.GetDict().FindString("lastModified");
+        const std::string* date_b = b.GetDict().FindString("lastModified");
+        if (!date_a || !date_b) return false;
+        // ISO date strings can be compared lexicographically
+        return *date_a > *date_b;  // Descending order (latest first)
+      });
+  
+  LOG(INFO) << "Parsed " << files_list.size() << " backup files (sorted by date, latest first)";
+  FireWebUIListener("jemaos-cloud-list-files-result",
+      base::Value(true), std::move(files_list));
+}
+
+// Cloud Restore implementation
+void JemaOsHandler::HandleJemaOSCloudRestoreStarted(const base::Value::List& args) {
+  // Accept 3 arguments: email, password, fileKey
+  DCHECK_GE(args.size(), 2u);
+  std::string email = args[0].GetString();
+  std::string password = args[1].GetString();
+  
+  // Get fileKey from third argument (full path from the file list API)
+  std::string file_key;
+  if (args.size() >= 3 && args[2].is_string() && !args[2].GetString().empty()) {
+    file_key = args[2].GetString();
+  } else if (!cloud_backup_filename_.empty()) {
+    // Use filename from last backup in this session - construct the full path
+    file_key = "common/" + email + "/" + cloud_backup_filename_;
+  } else {
+    // Default fallback
+    file_key = "common/" + email + "/jemaos_backup.bak";
+  }
+
+  LOG(INFO) << "Cloud restore started for: " << email;
+  LOG(INFO) << "Restore fileKey: " << file_key;
+  
+  // Store restore context
+  cloud_backup_email_ = email;
+  cloud_restore_password_ = password;
+  cloud_restore_temp_file_ = "/tmp/jemaos_cloud_restore.bak";
+  
+  // Call API to get download pre-signed URL
+  std::string api_url = std::string(kCloudBackupApiBaseUrl) + kCloudRestoreApiPath;
+  std::string json_body = base::StringPrintf(
+      "{\"fileKey\": \"%s\"}",
+      file_key.c_str());
+  
+  LOG(INFO) << "Requesting download URL for: " << file_key;
+  LOG(INFO) << "API URL: " << api_url;
+  LOG(INFO) << "JSON body: " << json_body;
+  
+  // Write a shell script to execute curl - avoids all escaping issues
+  std::string script_file = "/tmp/jemaos_cloud_curl.sh";
+  std::string script_content = 
+      "#!/bin/bash\n"
+      "curl -s -L -X POST \"" + api_url + "\" \\\n"
+      "  -H 'Content-Type: application/json' \\\n"
+      "  -d '" + json_body + "'\n";
+  base::WriteFile(base::FilePath(script_file), script_content);
+  chmod(script_file.c_str(), 0755);
+  
+  std::string command = "/bin/bash " + script_file;
+  
+  LOG(INFO) << "Executing curl via script: " << script_file;
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for cloud restore";
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: System service not available"));
+    return;
+  }
+  
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnCloudRestorePresignedUrlReceived,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::OnCloudRestorePresignedUrlReceived(std::optional<ShellState> state) {
+  
+  if (!state) {
+    LOG(ERROR) << "Failed to get download URL: No response";
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: Could not get download URL (no response)"));
+    return;
+  }
+  
+  LOG(INFO) << "Curl exit code: " << state->code;
+  LOG(INFO) << "Curl output: " << state->result;
+  
+  if (state->code != 0) {
+    std::string error_msg = state->result;
+    LOG(ERROR) << "Failed to get download URL, curl exit code: " << state->code << ", output: " << error_msg;
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: Could not get download URL (curl error " + std::to_string(state->code) + ")"));
+    return;
+  }
+  
+  // Parse response to extract download URL
+  // Response format: {"success":true,"data":{"downloadUrl":"https://...","expiresIn":900},"message":"..."}
+  // Note: response may have HTTP status code appended at the end due to -w flag
+  std::string response = state->result;
+  LOG(INFO) << "Download API Response: " << response;
+  
+  // Check for success
+  if (response.find("\"success\":true") == std::string::npos &&
+      response.find("\"success\": true") == std::string::npos) {
+    LOG(ERROR) << "API returned error - no backup found in cloud";
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: No backup found in cloud for this account"));
+    return;
+  }
+  
+  // Extract downloadUrl from data object
+  std::string download_url;
+  size_t url_pos = response.find("\"downloadUrl\"");
+  
+  if (url_pos != std::string::npos) {
+    size_t colon_pos = response.find(':', url_pos);
+    size_t quote_start = response.find('"', colon_pos);
+    size_t quote_end = response.find('"', quote_start + 1);
+    if (quote_start != std::string::npos && quote_end != std::string::npos) {
+      download_url = response.substr(quote_start + 1, quote_end - quote_start - 1);
+    }
+  }
+  
+  if (download_url.empty()) {
+    LOG(ERROR) << "Could not parse downloadUrl from response";
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: No backup found in cloud"));
+    return;
+  }
+  
+  LOG(INFO) << "Got download URL, downloading backup...";
+  LOG(INFO) << "Download URL length: " << download_url.length();
+  
+  // Write a shell script to execute curl download - avoids all escaping issues
+  std::string script_file = "/tmp/jemaos_cloud_download.sh";
+  std::string script_content = 
+      "#!/bin/bash\n"
+      "curl -s -o \"" + cloud_restore_temp_file_ + "\" \\\n"
+      "  \"" + download_url + "\"\n";
+  base::WriteFile(base::FilePath(script_file), script_content);
+  chmod(script_file.c_str(), 0755);
+  
+  std::string command = "/bin/bash " + script_file;
+  
+  LOG(INFO) << "Executing download via script: " << script_file;
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnCloudRestoreDownloadCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::OnCloudRestoreDownloadCompleted(std::optional<ShellState> state) {
+  // Clean up script temp file
+  base::DeleteFile(base::FilePath("/tmp/jemaos_cloud_download.sh"));
+  
+  if (!state) {
+    LOG(ERROR) << "Download failed: No response";
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: Download error (no response)"));
+    return;
+  }
+  
+  LOG(INFO) << "Download curl exit code: " << state->code;
+  LOG(INFO) << "Download curl output: " << state->result;
+  
+  if (state->code != 0) {
+    LOG(ERROR) << "Download failed with code: " << state->code;
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: Download error (code " + std::to_string(state->code) + ")"));
+    return;
+  }
+  
+  // Check if file was downloaded
+  if (!base::PathExists(base::FilePath(cloud_restore_temp_file_))) {
+    LOG(ERROR) << "Downloaded file not found";
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: Downloaded file not found"));
+    return;
+  }
+  
+  LOG(INFO) << "Backup downloaded, starting restore...";
+  
+  // Ensure restore script exists
+  if (!EnsureRestoreScriptExists()) {
+    base::DeleteFile(base::FilePath(cloud_restore_temp_file_));
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore failed: Could not create restore script"));
+    return;
+  }
+  
+  // Generate key from email and password
+  std::string key = cloud_backup_email_ + ":" + cloud_restore_password_;
+  std::string hex_encoded_hash = base::HexEncode(
+      base::SHA1Hash(base::as_byte_span(key)));
+  hex_encoded_hash.resize(16);
+  std::string restore_key = base::ToLowerASCII(hex_encoded_hash);
+  
+  // Run restore
+  std::string command = base::StringPrintf(
+      "/bin/bash %s restore --email %s --key %s --target %s",
+      kRestoreScriptPath, cloud_backup_email_.c_str(), restore_key.c_str(), 
+      cloud_restore_temp_file_.c_str());
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnCloudRestoreCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void JemaOsHandler::OnCloudRestoreCompleted(std::optional<ShellState> state) {
+  // Clean up temp file
+  base::DeleteFile(base::FilePath(cloud_restore_temp_file_));
+  
+  bool success = false;
+  std::string message;
+  
+  if (!state) {
+    message = "Cloud restore failed: No response from system";
+  } else if (state->code != 0) {
+    message = "Cloud restore failed: " + state->result;
+  } else {
+    success = true;
+    message = "Cloud restore completed successfully! Please restart your device.";
+  }
+  
+  LOG(INFO) << "Cloud restore completed: success=" << success;
+  FireWebUIListener("jemaos-cloud-restore-task-finished",
       base::Value(success), base::Value(message));
 }
 

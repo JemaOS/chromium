@@ -8,26 +8,37 @@
 
 namespace jemaos::constants {
 
+// ⚠️ IMPORTANT: These URLs are EXAMPLE PLACEHOLDERS ONLY and must be replaced
+// with real, functional API endpoints before production deployment.
+// These example URLs will NOT work and are provided for development/testing purposes.
 #if BUILDFLAG(USE_JEMAOS_COM)
 const char kDefaultJemaOSGeolocationAPIUrl[] =
-  "https://apis.jemaos.com/geo/locationByIp?";
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/geo/locationByIp?"; // EXAMPLE - Replace with real geolocation API
 const char kDefaultJemaOSTimezoneAPIUrl[] =
-  "https://apis.jemaos.com/geo/timezone?";
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/geo/timezone?"; // EXAMPLE - Replace with real timezone API
 const char kDefaultJemaOSLookingGlassUrl[] =
-  "https://apis.jemaos.com/lookingglass";
-const char kJemaOSWebStoreUpdateURL[] = "https://store.jemaos.com";
-const char kJemaOSFeedbackPostUrl[] = "https://apis.jemaos.com/feedback/submit";
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/lookingglass"; // EXAMPLE - Replace with real diagnostics service
+const char kJemaOSWebStoreUpdateURL[] =
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/store"; // EXAMPLE - Replace with real app store URL
+const char kJemaOSFeedbackPostUrl[] =
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/feedback/submit"; // EXAMPLE - Replace with real feedback API
 
 const char kJemaOSAssistantDefaultWebUrl[] = "https://ai.jemaos.com/chat/";
 #else
+// URLs for JemaOS services when using the .io domain
+// ⚠️ IMPORTANT: These URLs are EXAMPLE PLACEHOLDERS ONLY and must be replaced
+// with real, functional API endpoints before production deployment.
+// These example URLs will NOT work and are provided for development/testing purposes.
 const char kDefaultJemaOSGeolocationAPIUrl[] =
-  "https://apis.jematechnology.fr/geo/locationByIp?";
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/geo/locationByIp?"; // EXAMPLE - Replace with real geolocation API
 const char kDefaultJemaOSTimezoneAPIUrl[] =
-  "https://apis.jematechnology.fr/geo/timezone?";
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/geo/timezone?"; // EXAMPLE - Replace with real timezone API
 const char kDefaultJemaOSLookingGlassUrl[] =
-  "https://apis.jematechnology.fr/lookingglass";
-const char kJemaOSWebStoreUpdateURL[] = "https://store.jematechnology.fr";
-const char kJemaOSFeedbackPostUrl[] = "https://apis.jematechnology.fr/feedback/submit";
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/lookingglass"; // EXAMPLE - Replace with real diagnostics service
+const char kJemaOSWebStoreUpdateURL[] =
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/store"; // EXAMPLE - Replace with real app store URL
+const char kJemaOSFeedbackPostUrl[] =
+  "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/feedback/submit"; // EXAMPLE - Replace with real feedback API
 
 const char kJemaOSAssistantDefaultWebUrl[] = "https://ai.jematechnology.fr/chat/";
 #endif

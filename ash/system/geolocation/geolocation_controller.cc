@@ -13,14 +13,22 @@
 #include "ash/system/time/time_of_day.h"
 #include "base/check_is_test.h"
 #include "base/functional/bind.h"
+#include "base/json/json_reader.h"
 #include "base/logging.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/time/clock.h"
 #include "chromeos/ash/components/geolocation/geoposition.h"
 #include "chromeos/ash/components/geolocation/simple_geolocation_provider.h"
+#include "chromeos/ash/components/settings/timezone_settings.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
+#include "jemaos/switches/services/services_switches.h"
+#include "net/traffic_annotation/network_traffic_annotation.h"
+#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "services/network/public/cpp/simple_url_loader.h"
 #include "third_party/icu/source/i18n/astro.h"
 
 namespace ash {
@@ -42,6 +50,9 @@ constexpr int kDefaultSunsetTimeOffsetMinutes = 18 * 60;
 
 // Default sunrise time at 6:00 AM as an offset from 00:00.
 constexpr int kDefaultSunriseTimeOffsetMinutes = 6 * 60;
+
+// Maximum size of the timezone API response.
+constexpr int kMaxTimezoneResponseSize = 1024 * 1024;  // 1 MB
 
 }  // namespace
 
@@ -219,6 +230,9 @@ void GeolocationController::OnGeoposition(const Geoposition& position,
   is_current_geoposition_from_cache_ = false;
   StoreCachedGeoposition();
 
+  // Request timezone from JemaOS API based on the new coordinates
+  RequestTimezoneFromJemaOS(position.latitude, position.longitude);
+
   const base::expected<base::Time, SunRiseSetError> new_sunset =
       GetSunsetTime();
   const base::expected<base::Time, SunRiseSetError> new_sunrise =
@@ -364,6 +378,103 @@ void GeolocationController::StoreCachedGeoposition() const {
     pref_service->SetDouble(prefs::kDeviceGeolocationCachedLongitude,
                             geoposition_->longitude);
   }
+}
+
+void GeolocationController::RequestTimezoneFromJemaOS(double latitude,
+                                                       double longitude) {
+  if (jemaos::switches::DisableJemaOSTimezoneAPI()) {
+    VLOG(1) << "[JEMA GEOLOCATION] JemaOS Timezone API is disabled.";
+    return;
+  }
+
+  std::string timezone_url = jemaos::switches::GetJemaOSTimezoneAPIUrl();
+  timezone_url += "lat=" + base::NumberToString(latitude);
+  timezone_url += "&lng=" + base::NumberToString(longitude);
+
+  VLOG(1) << "[JEMA GEOLOCATION] Requesting timezone from: " << timezone_url;
+
+  net::NetworkTrafficAnnotationTag traffic_annotation =
+      net::DefineNetworkTrafficAnnotation("jemaos_timezone_request", R"(
+        semantics {
+          sender: "JemaOS Timezone Service"
+          description:
+            "Requests timezone information based on geographic coordinates "
+            "to automatically set the system timezone."
+          trigger:
+            "When a new geolocation is obtained and JemaOS timezone API is enabled."
+          data:
+            "Latitude and longitude coordinates."
+          destination: OTHER
+          internal {
+            contacts {
+              email: "support@jemaos.com"
+            }
+          }
+          user_data {
+            type: LOCATION
+          }
+          last_reviewed: "2025-01-01"
+        }
+        policy {
+          cookies_allowed: NO
+          setting:
+            "This feature can be disabled by command line switch "
+            "--disable-jemaos-timezone-api."
+          policy_exception_justification:
+            "Not implemented. This feature is essential for JemaOS functionality."
+        })");
+
+  auto resource_request = std::make_unique<network::ResourceRequest>();
+  resource_request->url = GURL(timezone_url);
+  resource_request->method = "GET";
+  resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+
+  timezone_url_loader_ = network::SimpleURLLoader::Create(
+      std::move(resource_request), traffic_annotation);
+
+  // Use the SharedURLLoaderFactory from SimpleGeolocationProvider
+  auto* url_loader_factory =
+      geolocation_provider_->GetSharedURLLoaderFactoryForTesting();
+  if (!url_loader_factory) {
+    VLOG(1) << "[JEMA GEOLOCATION] URL loader factory not available.";
+    return;
+  }
+
+  timezone_url_loader_->DownloadToString(
+      url_loader_factory,
+      base::BindOnce(&GeolocationController::OnTimezoneResponse,
+                     weak_ptr_factory_.GetWeakPtr()),
+      kMaxTimezoneResponseSize);
+}
+
+void GeolocationController::OnTimezoneResponse(
+    std::unique_ptr<std::string> response_body) {
+  if (!response_body) {
+    VLOG(1) << "[JEMA GEOLOCATION] Failed to get timezone response.";
+    return;
+  }
+
+  VLOG(1) << "[JEMA GEOLOCATION] Timezone response: " << *response_body;
+
+  std::optional<base::Value> json_value =
+      base::JSONReader::Read(*response_body);
+  if (!json_value || !json_value->is_dict()) {
+    VLOG(1) << "[JEMA GEOLOCATION] Failed to parse timezone JSON response.";
+    return;
+  }
+
+  const base::Value::Dict& dict = json_value->GetDict();
+  const std::string* timezone_id = dict.FindString("timeZoneId");
+  if (!timezone_id || timezone_id->empty()) {
+    VLOG(1) << "[JEMA GEOLOCATION] No timezone ID in response.";
+    return;
+  }
+
+  VLOG(1) << "[JEMA GEOLOCATION] Setting timezone to: " << *timezone_id;
+
+  // Set the system timezone
+  system::TimezoneSettings::GetInstance()->SetTimezoneFromID(
+      base::UTF8ToUTF16(*timezone_id));
 }
 
 }  // namespace ash

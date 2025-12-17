@@ -20,6 +20,7 @@
 #include "chromeos/ash/components/geolocation/simple_geolocation_provider.h"
 #include "chromeos/ash/components/settings/timezone_settings.h"
 #include "chromeos/dbus/power/power_manager_client.h"
+#include "services/network/public/cpp/simple_url_loader.h"
 
 class PrefChangeRegistrar;
 class PrefRegistrySimple;
@@ -183,6 +184,13 @@ class ASH_EXPORT GeolocationController
   // being able to retrieve a valid geoposition.
   void StoreCachedGeoposition() const;
 
+  // JemaOS timezone resolution via IP-based geolocation.
+  // Requests timezone information from JemaOS API based on coordinates.
+  void RequestTimezoneFromJemaOS(double latitude, double longitude);
+
+  // Callback for the timezone API response.
+  void OnTimezoneResponse(std::unique_ptr<std::string> response_body);
+
   // Points to the `SimpleGeolocationProvider::GetInstance()` throughout the
   // object lifecycle. Overridden in unit tests.
   raw_ptr<SimpleGeolocationProvider> geolocation_provider_ = nullptr;
@@ -219,6 +227,9 @@ class ASH_EXPORT GeolocationController
   std::unique_ptr<SimpleGeoposition> geoposition_;
 
   ScopedSessionObserver scoped_session_observer_;
+
+  // URL loader for JemaOS timezone API requests.
+  std::unique_ptr<network::SimpleURLLoader> timezone_url_loader_;
 
   base::WeakPtrFactory<GeolocationController> weak_ptr_factory_{this};
 };

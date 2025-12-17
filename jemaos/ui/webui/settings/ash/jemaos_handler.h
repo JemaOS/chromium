@@ -101,6 +101,25 @@ class JemaOsHandler :
   void OnRestoreFileSelected(const base::FilePath& path);
   void OnRestoreFileSelectionCanceled();
 
+  // Cloud backup/restore handlers
+  void HandleJemaOSCloudBackupStarted(const base::Value::List& args);
+  void HandleJemaOSCloudRestoreStarted(const base::Value::List& args);
+  void HandleJemaOSCloudListBackupFiles(const base::Value::List& args);
+  void OnCloudBackupLocalCompleted(std::optional<ShellState> state);
+  void OnCloudBackupPresignedUrlReceived(std::optional<ShellState> state);
+  void OnCloudBackupUploadCompleted(std::optional<ShellState> state);
+  void OnCloudListFilesCompleted(std::optional<ShellState> state);
+  void OnCloudRestoreCompleted(std::optional<ShellState> state);
+  void OnCloudRestorePresignedUrlReceived(std::optional<ShellState> state);
+  void OnCloudRestoreDownloadCompleted(std::optional<ShellState> state);
+  
+  // Cloud backup context
+  std::string cloud_backup_email_;
+  std::string cloud_backup_filename_;
+  std::string cloud_backup_temp_file_;
+  std::string cloud_restore_password_;
+  std::string cloud_restore_temp_file_;
+
   void HandleGetArcMediaAutoScanState(const base::Value::List& args);
   void OnArcMediaAutoScanIndicatorFileExistenceChecked(const std::string& callback_id, bool result);
   void HandleSetArcMediaAutoScanState(const base::Value::List& args);

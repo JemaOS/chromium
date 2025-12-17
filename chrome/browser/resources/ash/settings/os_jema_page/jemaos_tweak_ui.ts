@@ -1,10 +1,10 @@
 // os-settings-jemaos-tweak-ui
-import {PolymerElement, mixinBehaviors} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {sendWithPromise} from 'chrome://resources/js/cr.js';
-import {I18nMixin} from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
-import {WebUiListenerMixin} from 'chrome://resources/ash/common/cr_elements/web_ui_listener_mixin.js';
-import {CrDialogElement} from 'chrome://resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
-import {LifetimeBrowserProxyImpl} from '/shared/settings/lifetime_browser_proxy.js';
+import { PolymerElement, mixinBehaviors } from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import { sendWithPromise } from 'chrome://resources/js/cr.js';
+import { I18nMixin } from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
+import { WebUiListenerMixin } from 'chrome://resources/ash/common/cr_elements/web_ui_listener_mixin.js';
+import { CrDialogElement } from 'chrome://resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
+import { LifetimeBrowserProxyImpl } from '/shared/settings/lifetime_browser_proxy.js';
 import 'chrome://resources/ash/common/cr_elements/cr_toggle/cr_toggle.js';
 import 'chrome://resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
 import 'chrome://resources/ash/common/cr_elements/cr_shared_style.css.js';
@@ -13,9 +13,9 @@ import '../common/password_prompt_dialog/password_prompt_dialog.js';
 import './components/backup_intro_dialog.js';
 import './components/restore_password_dialog.js';
 import './components/restore_result_dialog.js';
-import {ShellClient} from './shell_client.js';
+import { ShellClient } from './shell_client.js';
 
-import {getTemplate} from './jemaos_tweak_ui.html.js';
+import { getTemplate } from './jemaos_tweak_ui.html.js';
 
 class WidevineHelper {
   private element_: HTMLElement;
@@ -97,7 +97,7 @@ interface JemaSettingsTweakUiPageElement {
 }
 
 const JemaSettingsTweakUIPageElementBase =
-    WebUiListenerMixin(I18nMixin(PolymerElement));
+  WebUiListenerMixin(I18nMixin(PolymerElement));
 
 class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase {
   static get is() {
@@ -173,6 +173,26 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
         type: String,
         value: '',
       },
+      cloudBackupRunning_: {
+        type: Boolean,
+        value: false,
+      },
+      cloudRestoreRunning_: {
+        type: Boolean,
+        value: false,
+      },
+      showCloudBackupResultDialog_: {
+        type: Boolean,
+        value: false,
+      },
+      cloudBackupSuccess_: {
+        type: Boolean,
+        value: false,
+      },
+      cloudBackupMessage_: {
+        type: String,
+        value: '',
+      },
       authFactorHasPassword: Boolean,
       arcMediaAutoScanEnabled_: {
         type: Boolean,
@@ -212,6 +232,13 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private restoreRunning_: boolean;
   private restoreSuccess_: boolean;
   private restoreMessage_: string;
+  private cloudBackupRunning_: boolean;
+  private cloudRestoreRunning_: boolean;
+  private showCloudBackupResultDialog_: boolean;
+  private cloudBackupSuccess_: boolean;
+  private cloudBackupMessage_: string;
+  private isCloudBackup_: boolean = false;
+  private isCloudRestore_: boolean = false;
   private authFactorHasPassword: boolean;
 
   private client_: WidevineHelper;
@@ -221,17 +248,19 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private backupCanceled_: boolean;
   private restoreFilePath_: string;
   private restorePassword_: string;
+  private cloudRestoreFileKey_: string;
 
   private showWidevineErrorDialog_: boolean;
   private rebootRequiredForWidevine_: boolean;
 
   constructor() {
     super();
-    this.client_ =  new WidevineHelper(this);
+    this.client_ = new WidevineHelper(this);
     this.backupEmail_ = '';
     this.backupFilePassword_ = '';
     this.restoreFilePath_ = '';
     this.restorePassword_ = '';
+    this.cloudRestoreFileKey_ = '';
     this.togglingArcMediaAutoScan_ = false;
   }
 
@@ -251,6 +280,9 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
     this.addWebUiListener('jemaos-restore-file-selected', this.onRestoreFileSelected_.bind(this));
     this.addWebUiListener('jemaos-restore-task-finished', this.onRestoreDone_.bind(this));
+
+    this.addWebUiListener('jemaos-cloud-backup-task-finished', this.onCloudBackupDone_.bind(this));
+    this.addWebUiListener('jemaos-cloud-restore-task-finished', this.onCloudRestoreDone_.bind(this));
 
     this.addWebUiListener('jemaos-arc-media-auto-scan-changed', this.onArcMediaAutoScanStateChanged_.bind(this));
 
@@ -513,13 +545,22 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     this.showPasswordPromptDialog_ = false;
     console.log('password prompt closed', e);
     if (this.backupFilePassword_) {
-      console.log('continue to select file');
-      this.openSelectBackupFileDialog_();
+      if (this.isCloudBackup_) {
+        console.log('starting cloud backup');
+        this.isCloudBackup_ = false;
+        this.startCloudBackup_();
+      } else {
+        console.log('continue to select file');
+        this.openSelectBackupFileDialog_();
+      }
+    } else {
+      this.isCloudBackup_ = false;
     }
   }
 
   onPasswordPromptCanceled_(e: Event) {
     console.log('password prompt cancel', e);
+    this.isCloudBackup_ = false;
   }
 
   restoreDisabled_() {
@@ -534,21 +575,37 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   onRestorePasswordObtained_(e: Event) {
     console.log('onRestorePasswordObtained_', e);
     const { detail } = e as CustomEvent;
-    this.restorePassword_ = detail;
+    // Handle both old format (string) and new format (object with password and fileKey)
+    if (typeof detail === 'string') {
+      this.restorePassword_ = detail;
+      this.cloudRestoreFileKey_ = '';
+    } else {
+      this.restorePassword_ = detail.password;
+      this.cloudRestoreFileKey_ = detail.fileKey || '';
+    }
   }
 
   onRestorePasswordDialogClosed_(e: Event) {
     this.showRestorePasswordDialog_ = false;
     console.log('restore password dialog closed', e);
     if (this.restorePassword_) {
-      console.log('continue to select restore file');
-      this.openSelectRestoreFileDialog_();
+      if (this.isCloudRestore_) {
+        console.log('starting cloud restore');
+        this.isCloudRestore_ = false;
+        this.startCloudRestore_();
+      } else {
+        console.log('continue to select restore file');
+        this.openSelectRestoreFileDialog_();
+      }
+    } else {
+      this.isCloudRestore_ = false;
     }
   }
 
   onRestorePasswordDialogCanceled_(e: Event) {
     console.log('restore password dialog cancel', e);
     this.restorePassword_ = '';
+    this.isCloudRestore_ = false;
   }
 
   openSelectRestoreFileDialog_() {
@@ -584,8 +641,62 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     this.restoreFilePath_ = '';
   }
 
+  // Cloud Backup handlers
+  cloudBackupDisabled_() {
+    return this.cloudBackupRunning_ || !this.authFactorHasPassword;
+  }
+
+  cloudRestoreDisabled_() {
+    return this.cloudRestoreRunning_ || !this.authFactorHasPassword;
+  }
+
+  onCloudBackupClick_() {
+    console.log('cloud backup click');
+    this.isCloudBackup_ = true;
+    this.showPasswordPromptDialog_ = true;
+  }
+
+  onCloudRestoreClick_() {
+    console.log('cloud restore click');
+    this.isCloudRestore_ = true;
+    this.showRestorePasswordDialog_ = true;
+  }
+
+  startCloudBackup_() {
+    this.cloudBackupRunning_ = true;
+    chrome.send('jemaosCloudBackupStarted', [this.backupEmail_, this.backupFilePassword_]);
+  }
+
+  onCloudBackupDone_(success: boolean, message: string) {
+    console.log('onCloudBackupDone_, result', success, message);
+    this.cloudBackupRunning_ = false;
+    this.cloudBackupSuccess_ = success;
+    this.cloudBackupMessage_ = message;
+    this.showCloudBackupResultDialog_ = true;
+  }
+
+  onCloudBackupResultDialogClosed_(e: Event) {
+    console.log('cloud backup result dialog closed', e);
+    this.showCloudBackupResultDialog_ = false;
+    this.backupFilePassword_ = '';
+  }
+
+  startCloudRestore_() {
+    this.cloudRestoreRunning_ = true;
+    // Send the fileKey directly to the backend (it already contains the full path)
+    chrome.send('jemaosCloudRestoreStarted', [this.backupEmail_, this.restorePassword_, this.cloudRestoreFileKey_]);
+  }
+
+  onCloudRestoreDone_(success: boolean, message: string) {
+    console.log('onCloudRestoreDone_, result', success, message);
+    this.cloudRestoreRunning_ = false;
+    this.restoreSuccess_ = success;
+    this.restoreMessage_ = message;
+    this.showRestoreResultDialog_ = true;
+  }
+
   getArcMediaAutoScanEnabled() {
-    sendWithPromise('getArcMediaAutoScanState').then((result : {enabled: boolean, saved: number}) => {
+    sendWithPromise('getArcMediaAutoScanState').then((result: { enabled: boolean, saved: number }) => {
       const { enabled, saved } = result;
       console.log('getArcMediaAutoScanState', result);
       this.arcMediaAutoScanEnabled_ = enabled;
@@ -606,7 +717,7 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     this.togglingArcMediaAutoScan_ = false;
   }
 
-  onArcMediaAutoScanStateChanged_(result: { enabled: boolean, saved: number} ) {
+  onArcMediaAutoScanStateChanged_(result: { enabled: boolean, saved: number }) {
     const { enabled, saved } = result;
     console.log('onArcMediaAutoScanStateChanged_', result);
     this.arcMediaAutoScanEnabled_ = enabled;
@@ -624,4 +735,4 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 }
 
 customElements.define(
-    JemaSettingsTweakUiPageElement.is, JemaSettingsTweakUiPageElement);
+  JemaSettingsTweakUiPageElement.is, JemaSettingsTweakUiPageElement);

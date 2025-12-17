@@ -168,6 +168,24 @@ void JemaOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
     {"jemaosSettingsRestoreErrorTitle",
       IDS_OS_SETTINGS_JEMAOS_RESTORE_ERROR_TITLE},
 
+    // Cloud backup/restore strings
+    {"jemaosSettingsBackupLocalDesc",
+      IDS_OS_SETTINGS_JEMAOS_BACKUP_LOCAL_DESC},
+    {"jemaosSettingsCloudBackupLabel",
+      IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_LABEL},
+    {"jemaosSettingsCloudBackupDesc",
+      IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_DESC},
+    {"jemaosSettingsCloudBackupButtonLabel",
+      IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_BUTTON_LABEL},
+    {"jemaosSettingsRestoreLocalDesc",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_LOCAL_DESC},
+    {"jemaosSettingsCloudRestoreLabel",
+      IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_LABEL},
+    {"jemaosSettingsCloudRestoreDesc",
+      IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_DESC},
+    {"jemaosSettingsCloudRestoreButtonLabel",
+      IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_BUTTON_LABEL},
+
 #if BUILDFLAG(USE_JEMAOS_LICENSE)
     {"jemaosSettingsLicenseStateLoading",
       IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_STATE_LOADING},

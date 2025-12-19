@@ -57,7 +57,7 @@ export class OsTrial extends OsTrialScreenElementBase {
        */
       selectedTrialOption: {
         type: String,
-        value: TrialOption.INSTALL,
+        value: TrialOption.TRY,
       },
     };
   }

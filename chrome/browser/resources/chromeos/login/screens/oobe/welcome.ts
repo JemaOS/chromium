@@ -34,7 +34,7 @@ import {traceWelcomeAnimationPlay} from '../../oobe_trace.js';
 import {getTemplate} from './welcome.html.js';
 import {OobeWelcomeDialog} from './welcome_dialog.js';
 
-const DEFAULT_CHROMEVOX_HINT_LOCALE: string = 'en-US';
+const DEFAULT_CHROMEVOX_HINT_LOCALE: string = 'fr';
 
 /**
  * The extension ID of the speech engine (Google Speech Synthesis) used to
@@ -331,10 +331,10 @@ export class OobeWelcomeScreen extends OobeWelcomeScreenBase {
 
    /**
    * JemaOS.
-   * move en-US and zh-CN to the top of languageList
+   * move fr (French) and en-US to the top of languageList
    */
   rearrangeLanguages() {
-    const defaultLangs = [ 'en-US', 'zh-CN' ];
+    const defaultLangs = [ 'fr', 'en-US' ];
     const languages = loadTimeData.getValue('languageList') as OobeTypes.LanguageDsc[];
     const priorities : OobeTypes.LanguageDsc[] = [];
     const left  : OobeTypes.LanguageDsc[] = [];

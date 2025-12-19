@@ -6,8 +6,8 @@
 
 namespace jemaos {
 namespace constants {
+const char kJemaOSDefaultTimeZoneId[] = "Europe/Paris";
 
-const char kJemaOSDefaultTimeZoneId[] = "Asia/Shanghai";
 
 const char kJemaOSSystemInfoHeader[] = "--- Full System ---";
 

@@ -588,11 +588,16 @@ std::string GetApplicationLocaleInternalNonMac(const std::string& pref_locale) {
   // Fallback on en-US.
   const std::string fallback_locale("en-US");
 #else
-  // Fallback on zh-CN.
-  const std::string fallback_locale("zh-CN");
+  // Fallback on fr (French).
+  const std::string fallback_locale("fr");
 #endif
   if (HasStringsForLocale(fallback_locale))
     return fallback_locale;
+
+  // Secondary fallback to en-US if French is not available
+  const std::string secondary_fallback("en-US");
+  if (HasStringsForLocale(secondary_fallback))
+    return secondary_fallback;
 
   return std::string();
 }

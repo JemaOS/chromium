@@ -50,6 +50,7 @@
 #include "ui/chromeos/devicetype_utils.h"
 #include "base/system/sys_info.h"
 #include "jemaos/switches/misc//misc_switches.h"
+#include "jemaos/switches/misc/misc_constants.h"
 
 namespace ash {
 
@@ -316,6 +317,13 @@ void WelcomeScreenHandler::UpdateA11yState(const A11yState& state) {
 base::Value::List WelcomeScreenHandler::GetTimezoneList() {
   std::string current_timezone_id;
   CrosSettings::Get()->GetString(kSystemTimezone, &current_timezone_id);
+
+  // If no explicit system timezone is stored yet, default the welcome screen
+  // timezone selection to the JemaOS default ("Europe/Paris") so that the time
+  // shown on the welcome screen uses the France/Paris timezone.
+  if (current_timezone_id.empty()) {
+    current_timezone_id = jemaos::constants::kJemaOSDefaultTimeZoneId;
+  }
 
   base::Value::List timezone_list;
   base::Value::List timezones = ash::system::GetTimezoneList();

@@ -45,6 +45,7 @@
 #include "components/language/core/browser/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_thread.h"
+#include "jemaos/switches/misc/misc_constants.h"
 
 namespace ash {
 
@@ -357,6 +358,13 @@ void WelcomeScreen::RemoveObserver(Observer* observer) {
 // BaseScreen implementation:
 
 void WelcomeScreen::ShowImpl() {
+  // JemaOS: ensure the system/sign-in timezone is set to the default
+  // (Europe/Paris) before showing the welcome screen so that the time
+  // displayed on the welcome screen uses the France/Paris timezone.
+  if (timezone_.empty()) {
+    SetTimezone(jemaos::constants::kJemaOSDefaultTimeZoneId);
+  }
+
   // Here we should handle default locales, for which we do not have UI
   // resources. This would load fallback, but properly show "selected" locale
   // in the UI.

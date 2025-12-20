@@ -8,7 +8,7 @@
   </if>
   <if expr="not use_jemaos_com">
     <message name="IDS_FACTORY_RESET_HELP_URL" translateable="false">
-      https://jemaos.io/docs/manual/fix-problems/reset-your-jemaos-device-to-factory-settings/
+      https://jematechnology.fr/docs/manual/fix-problems/reset-your-jemaos-device-to-factory-settings/
     </message>
   </if>
 </grit-part>

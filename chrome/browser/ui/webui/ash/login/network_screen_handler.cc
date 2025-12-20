@@ -36,11 +36,18 @@ void NetworkScreenHandler::DeclareLocalizedValues(
     ::login::LocalizedValuesBuilder* builder) {
   builder->AddF("networkSectionTitle", IDS_NETWORK_SELECTION_TITLE,
                 ui::GetChromeOSDeviceName());
+  builder->Add("networkSectionTitleWiFi", IDS_NETWORK_SELECTION_TITLE_WIFI);
+  builder->Add("networkSectionTitleEthernet", IDS_NETWORK_SELECTION_TITLE_ETHERNET);
   builder->AddF("networkSectionSubtitle", IDS_NETWORK_SELECTION_SUBTITLE,
                 ui::GetChromeOSDeviceName());
   builder->Add("proxySettingsListItemName",
                IDS_NETWORK_PROXY_SETTINGS_LIST_ITEM_NAME);
   builder->Add("addWiFiListItemName", IDS_NETWORK_ADD_WI_FI_LIST_ITEM_NAME);
+
+  // JemaOS online account network requirement strings
+  builder->Add("jemaosOnlineAccountNetworkRequiredError", IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR);
+  builder->Add("jemaosOnlineAccountNetworkRequiredMessage", IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_MESSAGE);
+  builder->Add("jemaosOnlineAccountWifiPreferredMessage", IDS_JEMAOS_ONLINE_ACCOUNT_WIFI_PREFERRED_MESSAGE);
 
   builder->Add("networkScreenQuickStart",
                IDS_LOGIN_QUICK_START_SETUP_NETWORK_SCREEN_ENTRY_POINT);
@@ -65,6 +72,11 @@ void NetworkScreenHandler::GetAdditionalParameters(base::Value::Dict* dict) {
   cellular_setup::AddNonStringLoadTimeDataToDict(dict);
 }
 
+void NetworkScreenHandler::OnJemaosOnlineAccountSelected() {
+  // Notify WebUI that JemaOS online account was selected on the network screen.
+  // UI handlers may choose to react (e.g. advance flow, record metrics).
+  CallExternalAPI("onJemaosOnlineAccountSelected");
+}
 void NetworkScreenHandler::SetQuickStartEntryPointVisibility(bool visible) {
   CallExternalAPI("setQuickStartEntryPointVisibility", visible);
 }

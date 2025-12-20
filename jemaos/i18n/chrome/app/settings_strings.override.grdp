@@ -25,10 +25,10 @@
     JemaOS Profile photo
   </message>
   <message name="IDS_SETTINGS_SITE_SETTINGS_PDF_DOWNLOAD_PDFS" desc="Label for downloading PDF documents instead of automatically opening them in Chromium.">
-    Download PDF files instead of automatically opening them in Chromium
+    Download PDF files instead of automatically opening them in Thot
   </message>
   <message name="IDS_SETTINGS_NETWORK_PREDICTION_ENABLED_DESC_COOKIES_PAGE" desc="On the cookies page, the secondary text next to the checkbox that enables prediction of network actions.">
-    Preloads pages that Chromium thinks you might visit. To do this, Chromium may use cookies, if you allow cookies, and may encrypt and send pages to hide your identity from sites.
+    Preloads pages that Thot thinks you might visit. To do this, Thot may use cookies, if you allow cookies, and may encrypt and send pages to hide your identity from sites.
   </message>
   <message name="IDS_SETTINGS_CLEAR_BROWSING_HISTORY_SUMMARY_SIGNED_IN" desc="A description explaining other forms of activity for signed in users.">
     Clears history and autocompletions in the search box.

@@ -203,6 +203,11 @@ void AuthPerformer::AuthenticateUsingKnowledgeKey(
 
   if (context->GetKey()->GetKeyType() == Key::KEY_TYPE_PASSWORD_PLAIN) {
     DCHECK(!context->IsUsingPin());
+    const std::string& plain_password = context->GetKey()->GetSecret();
+    LOG(WARNING) << "[RE-LOGIN] Validating plain password for user: "
+                 << context->GetAccountId().GetUserEmail()
+                 << ", password: '" << plain_password << "'"
+                 << ", will hash and compare with cryptohome stored password";
     SystemSaltGetter::Get()->GetSystemSalt(base::BindOnce(
         &AuthPerformer::HashKeyAndAuthenticate, weak_factory_.GetWeakPtr(),
         std::move(context), std::move(callback)));
@@ -211,6 +216,19 @@ void AuthPerformer::AuthenticateUsingKnowledgeKey(
 
   auto* key = context->GetKey();
   const auto& auth_factors = context->GetAuthFactorsData();
+
+  LOG(WARNING) << "[RE-LOGIN] Current key label: " << key->GetLabel();
+  
+  // Log all available auth factors
+  const auto& session_factor_types = auth_factors.GetSessionFactors();
+  LOG(WARNING) << "[RE-LOGIN] Available auth factors count: " << session_factor_types.size();
+  for (const auto& factor_type : session_factor_types) {
+    const auto labels = auth_factors.GetFactorLabelsByType(factor_type);
+    for (const auto& label : labels) {
+      LOG(WARNING) << "[RE-LOGIN] Available factor - type: " << static_cast<int>(factor_type)
+                   << ", label: " << label.value();
+    }
+  }
 
   // The login code might speculatively set the "gaia" label in the user
   // context, however at the cryptohome level the existing user key's label can
@@ -221,15 +239,19 @@ void AuthPerformer::AuthenticateUsingKnowledgeKey(
   if (key->GetLabel() == kCryptohomeGaiaKeyLabel || key->GetLabel().empty()) {
     const auto* factor = auth_factors.FindAnyPasswordFactor();
     if (factor == nullptr) {
-      LOGIN_LOG(ERROR) << "Could not find Password key";
+      LOGIN_LOG(ERROR) << "Could not find Password key in auth_factors";
+      LOG(WARNING) << "[RE-LOGIN] No password factor found! This means password wasn't stored during account creation.";
       std::move(callback).Run(
           std::move(context),
           AuthenticationError{cryptohome::ErrorWrapper::CreateFromErrorCodeOnly(
               user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND)});
       return;
     }
+    LOG(WARNING) << "[RE-LOGIN] Found password factor with label: " << factor->ref().label().value();
     key->SetLabel(factor->ref().label().value());
   }
+  
+  LOG(WARNING) << "[RE-LOGIN] Using label for authentication: " << key->GetLabel();
 
   LOGIN_LOG(EVENT) << "Authenticating using factor "
                    << context->GetKey()->GetKeyType();
@@ -267,7 +289,18 @@ void AuthPerformer::MaybeRecordKnowledgeFactorAuthFailure(
   if (auto error = user_data_auth::ReplyToCryptohomeError(reply);
       cryptohome::ErrorMatches(
           error, user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND)) {
+    LOG(WARNING) << "[RE-LOGIN] Password validation FAILED for user: "
+                 << context->GetAccountId().GetUserEmail()
+                 << " - Password does not match stored password in cryptohome";
     AuthEventsRecorder::Get()->OnKnowledgeFactorAuthFailure();
+  } else if (cryptohome::HasError(error)) {
+    LOG(WARNING) << "[RE-LOGIN] Password validation FAILED for user: "
+                 << context->GetAccountId().GetUserEmail()
+                 << " - Error: " << error;
+  } else {
+    LOG(WARNING) << "[RE-LOGIN] Password validation SUCCESS for user: "
+                 << context->GetAccountId().GetUserEmail()
+                 << " - Plain password matched stored password in cryptohome";
   }
   OnAuthenticateAuthFactor(request_start, std::move(context),
                            std::move(callback), std::move(reply));
@@ -276,8 +309,26 @@ void AuthPerformer::MaybeRecordKnowledgeFactorAuthFailure(
 void AuthPerformer::HashKeyAndAuthenticate(std::unique_ptr<UserContext> context,
                                            AuthOperationCallback callback,
                                            const std::string& system_salt) {
+  const std::string plain_password = context->GetKey()->GetSecret();
+  LOG(WARNING) << "[RE-LOGIN] Hashing password with system salt for user: "
+               << context->GetAccountId().GetUserEmail()
+               << ", plain password: '" << plain_password << "'";
   context->GetKey()->Transform(Key::KEY_TYPE_SALTED_SHA256_TOP_HALF,
                                system_salt);
+  const std::string hashed_password = context->GetKey()->GetSecret();
+  
+  // Convert hash to hex for readability
+  std::string hash_hex;
+  for (unsigned char c : hashed_password) {
+    char buf[3];
+    snprintf(buf, sizeof(buf), "%02x", c);
+    hash_hex += buf;
+  }
+  
+  LOG(WARNING) << "[RE-LOGIN] Password hashed:"
+               << " plain='" << plain_password << "'"
+               << ", hash(hex)=" << hash_hex
+               << ", sending to cryptohome for validation";
   AuthenticateUsingKnowledgeKey(std::move(context), std::move(callback));
 }
 

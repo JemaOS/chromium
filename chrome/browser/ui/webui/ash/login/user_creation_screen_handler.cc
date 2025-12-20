@@ -77,6 +77,13 @@ void UserCreationScreenHandler::DeclareLocalizedValues(
       "userCreationEnrollTriageDeclineEnrollButtonLabel",
       IDS_OOBE_USER_CREATION_ENROLL_TRIAGE_DECLINE_ENROLL_BUTTON_LABEL);
 
+  // Local JemaOS account -- START
+  builder->Add("accountTypeSelectionLocalJemaOSTitle",
+               IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_TITLE);
+  builder->Add("accountTypeSelectionLocalJemaOSSubtitle",
+               IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_SUBTITLE);
+  // Local JemaOS account -- END
+
   // Child Setup Strings
   builder->Add("userCreationChildSetupTitle",
                IDS_OOBE_USER_CREATION_CHILD_SETUP_TITLE);

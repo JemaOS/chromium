@@ -14,8 +14,8 @@ namespace prefs {
 void RegisterProfilePrefs(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(kJemaOSImprovementPlanEnabled, false);
 
-  registry->RegisterBooleanPref(kJemaAssistantEnabled, true);
-  registry->RegisterBooleanPref(kJemaAssistantExtraAcceleratorEnabled, true);
+  registry->RegisterBooleanPref(kJemaAssistantEnabled, false);
+  registry->RegisterBooleanPref(kJemaAssistantExtraAcceleratorEnabled, false);
 
   registry->RegisterBooleanPref(kJemaOSArcMediaAutoScanEnabled, true);
 #if BUILDFLAG(USE_JEMAOS_COM)

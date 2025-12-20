@@ -93,6 +93,19 @@
 #include "chromeos/ash/components/login/auth/public/saml_password_attributes.h"
 #include "chromeos/ash/components/login/auth/public/sync_trusted_vault_keys.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
+#include "components/user_manager/known_user.h"
+#include "components/user_manager/user_type.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/base64.h"
+#include "chromeos/ash/components/dbus/userdataauth/userdataauth_client.h"
+#include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
+#include "chromeos/ash/components/dbus/cryptohome/UserDataAuth.pb.h"
+#include "chromeos/ash/components/cryptohome/cryptohome_util.h"
+#include "chrome/grit/generated_resources.h"
+#include "components/login/localized_values_builder.h"
+#include "chrome/browser/ash/login/existing_user_controller.h"
+#include "chromeos/ash/components/login/auth/public/key.h"
 #include "chromeos/ash/components/settings/cros_settings.h"
 #include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "chromeos/components/onc/certificate_scope.h"
@@ -809,6 +822,107 @@ void GaiaScreenHandler::HandleCompleteAuthenticationEvent(
     auth_flow_auto_reload_manager_.Terminate();
   };
 
+  // Check for JemaOS or Flint service
+  bool is_jemaos = false;
+  LOG(WARNING) << "[JEMAOS] Checking services_list, count: " << services_list.size();
+  for (const auto& service : services_list) {
+    LOG(WARNING) << "[JEMAOS] Service: " << service.GetString();
+    if (service.is_string() && 
+        (service.GetString() == "jemaos" || service.GetString() == "flint")) {
+      is_jemaos = true;
+      LOG(WARNING) << "[JEMAOS] Found matching service: " << service.GetString();
+    }
+  }
+  
+  // Also check gaia_id prefix as fallback in case services_list is empty
+  if (!is_jemaos && (gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0)) {
+    is_jemaos = true;
+    LOG(WARNING) << "[JEMAOS] Detected JEMA/Flint account by gaia_id prefix: " << gaia_id;
+  }
+
+  if (is_jemaos) {
+    LOG(WARNING) << "[JEMAOS] Starting session for JemaOS/Flint user: " << email
+            << " with IsJemaAccountEnabled: " << jemaos::switches::IsJemaAccountEnabled();
+
+    std::string raw_password;
+    // Accept both base64 and plain text (fallback) to avoid breaking flows
+    if (!base::Base64Decode(password_value, &raw_password)) {
+      LOG(WARNING) << "[JEMAOS] Password not base64-encoded, using raw value.";
+      raw_password = password_value;
+    }
+
+     bool exist = false;
+     bool newUser = false;
+      user_manager::KnownUser known_user(g_browser_process->local_state());
+      const std::vector<AccountId> known_account_ids =
+        known_user.GetKnownAccountIds();
+      for (const AccountId& known_id : known_account_ids) {
+        if (known_id.GetUserEmail() == email) {
+          exist = true;
+          break;
+        }
+      }
+
+      if(!exist)
+        newUser = true;
+
+      if (LoginDisplayHost::default_host())
+        LoginDisplayHost::default_host()->SetDisplayEmail(email);
+
+      Key key(raw_password);
+      key.SetLabel(kCryptohomeGaiaKeyLabel);
+      // Use AccountType::GOOGLE instead of JEMA_ACCOUNT so cryptohome allows password auth factors
+      // JEMA accounts are treated like regular Google accounts for authentication purposes
+      const AccountId account_id(known_user.GetAccountId(
+            email, "jema_id_" + email , AccountType::GOOGLE));
+      LoginDisplayHost::default_host()->SetDisplayEmail(email);
+      // Ensure next sign-ins show local password input instead of forcing online sign-in.
+      user_manager::UserManager::Get()->SaveForceOnlineSignin(account_id, false);
+      // Clear any stored reauth reason so the pod doesn't route back to online flow.
+      known_user.UpdateReauthReason(account_id, 0);
+
+      LOG(ERROR) << "[JEMAOS] Account ID: " << account_id 
+              << ", Email: " << email
+              << ", New User: " << newUser
+              << ", Existing User: " << exist
+              << ", raw_password: '" << raw_password << "'"
+              << ", key_label: " << key.GetLabel()
+              << ", key_secret: '" << key.GetSecret() << "'"
+              << ", confirmToken: " << password_attributes.FindString("confirmToken");
+      const std::string* confirm_token = password_attributes.FindString("confirmToken");
+      UserContext user_context(
+          user_manager::UserType::kJemaAccount, account_id);
+      user_context.SetKey(key);
+      // Set the password from external source (JavaScript) similar to local accounts
+      user_context.SetJemaLocalPasswordInput(LocalPasswordInput{raw_password});
+      
+      LOG(WARNING) << "[JEMAOS] UserContext after SetKey - has password: " 
+                   << !user_context.GetKey()->GetSecret().empty()
+                   << ", password: '" << user_context.GetKey()->GetSecret() << "'"
+                   << ", label: " << user_context.GetKey()->GetLabel();
+      if (confirm_token)
+        user_context.SetRefreshToken(*confirm_token);
+      user_context.SetAuthFlow(UserContext::AUTH_FLOW_JEMA_ONLINE);
+      user_context.SetIsUsingOAuth(false);
+      if (newUser) {
+        LOG(ERROR) << "[JEMAOS] Account ID: newUser true " << newUser;
+        LoginDisplayHost::default_host()->CompleteLogin(user_context);
+      } else {
+        LOG(ERROR) << "[JEMAOS] Account ID: newUser false " << newUser;
+        if (ExistingUserController::current_controller()) {
+          ExistingUserController::current_controller()->Login(user_context,
+                                                              SigninSpecifics());
+        } else {
+          LOG(ERROR) << "JemaLocalSigninScreenHandler::DoCompleteLogin: "
+                    << "ExistingUserController not available.";
+        }
+      }
+    
+
+    VLOG(1) << "[JEMAOS] SessionManagerClient::StartSession called for: " << email;
+    return;
+  }
+
   if (gaia_id.empty()) {
     LOG(WARNING) << "GaiaId is empty!";
   }
@@ -938,6 +1052,13 @@ void GaiaScreenHandler::CompleteAuthentication(
     ash::login::OnlineSigninArtifacts signin_artifacts) {
   // Record screen-related metrics before continuing.
   RecordCompleteAuthenticationMetrics(signin_artifacts);
+  
+  // Log signin artifacts for debugging
+  LOG(WARNING) << "[JEMAOS] CompleteAuthentication called for email: " << signin_artifacts.email
+               << ", gaia_id: " << signin_artifacts.gaia_id
+               << ", has password: " << signin_artifacts.password.has_value()
+               << ", password value: " << (signin_artifacts.password.has_value() ? signin_artifacts.password.value() : "NONE")
+               << ", using_saml: " << signin_artifacts.using_saml;
 
   if (!LoginDisplayHost::default_host()) {
     return;
@@ -988,6 +1109,13 @@ void GaiaScreenHandler::CompleteAuthentication(
 
   // Transfer the received cookies into the UserContext
   signin_artifacts.cookies->TransferCookiesToUserContext(*user_context);
+  
+  // Log UserContext details for debugging
+  LOG(WARNING) << "[JEMAOS] UserContext built - account_id: " << user_context->GetAccountId()
+               << ", has key: " << (user_context->GetKey() != nullptr)
+               << ", key secret: '" << (user_context->GetKey() ? user_context->GetKey()->GetSecret() : "NULL") << "'"
+               << ", key label: " << (user_context->GetKey() ? user_context->GetKey()->GetLabel() : "NULL")
+               << ", user_type: " << static_cast<int>(user_type);
 
   // Finish the authentication
   bool confirm_saml_password =
@@ -1001,6 +1129,7 @@ void GaiaScreenHandler::CompleteAuthentication(
     LoginDisplayHost::default_host()->GetSigninUI()->SAMLConfirmPassword(
         std::move(scraped_saml_passwords), std::move(user_context));
   } else {
+    LOG(WARNING) << "[JEMAOS] Calling CompleteLogin with UserContext";
     LoginDisplayHost::default_host()->CompleteLogin(*user_context);
   }
 
@@ -1022,8 +1151,38 @@ void GaiaScreenHandler::OnCookieWaitTimeout() {
       SigninError::kCookieWaitTimeout, /*details=*/std::string());
 }
 
+// ---***JEMAOS BEGIN***---
+void GaiaScreenHandler::SetupCertificateCacheForOnlineAuth() {
+  if (!untrusted_authority_certs_cache_) {
+    // Make additional untrusted authority certificates available for client
+    // certificate discovery in case a SAML flow is used which requires a client
+    // certificate to be present.
+    // When the WebUI is destroyed, `untrusted_authority_certs_cache_` will go
+    // out of scope and the certificates will not be held in memory anymore.
+    untrusted_authority_certs_cache_ =
+        std::make_unique<network::NSSTempCertsCacheChromeOS>(
+            g_browser_process->platform_part()
+                ->browser_policy_connector_ash()
+                ->GetDeviceNetworkConfigurationUpdater()
+                ->GetAllAuthorityCertificates(
+                    chromeos::onc::CertificateScope::Default()));
+  }
+}
+
 void GaiaScreenHandler::HandleUserSelectGoogleAccount() {
+  // Check network availability before proceeding with Google account
+  if (!CheckNetworkAndShowErrorIfOffline()) {
+    return;
+  }
+  
   jemaos::switches::DisableJemaAccountFlag();
+  
+  // Setup certificate cache only when user selects Google account
+  SetupCertificateCacheForOnlineAuth();
+  
+  // Load authenticator only when user selects Google account
+  LoadAuthenticator(/* force=*/true);
+
   LoadGaiaAsync(EmptyAccountId());
   LoginDisplayHost::default_host()->StartWizard(UserCreationView::kScreenId);
 }
@@ -1032,7 +1191,19 @@ void GaiaScreenHandler::HandleResetAccountFlag() {
   if (g_browser_process->platform_part()
       ->browser_policy_connector_ash()
       ->IsDeviceEnterpriseManaged()) return;
+  // Check network availability before proceeding with JemaOS online account
+  if (!CheckNetworkAndShowErrorIfOffline()) {
+    return;
+  }
+  
   jemaos::switches::EnableJemaAccountFlag();
+  
+  // Setup certificate cache only when user selects JemaOS online account
+  SetupCertificateCacheForOnlineAuth();
+  
+  // Load authenticator only when user selects JemaOS online account
+  LoadAuthenticator(/* force=*/true);
+
   ReloadGaia(true/* force_reload */);
 }
 
@@ -1304,6 +1475,13 @@ void GaiaScreenHandler::Show() {
   base::Value::Dict data;
   if (LoginDisplayHost::default_host())
     data.Set("hasUserPods", LoginDisplayHost::default_host()->HasUserPods());
+
+  // Check if we should show account type selection directly
+  if (show_account_type_selection_) {
+    data.Set("showAccountTypeSelection", true);
+    show_account_type_selection_ = false; // Reset the flag
+  }
+
   ShowInWebUI(std::move(data));
   elapsed_timer_ = std::make_unique<base::ElapsedTimer>();
   hidden_ = false;
@@ -1453,22 +1631,22 @@ void GaiaScreenHandler::ShowGaiaScreenIfReady() {
     return;
   }
 
-  if (!untrusted_authority_certs_cache_) {
-    // Make additional untrusted authority certificates available for client
-    // certificate discovery in case a SAML flow is used which requires a client
-    // certificate to be present.
-    // When the WebUI is destroyed, `untrusted_authority_certs_cache_` will go
-    // out of scope and the certificates will not be held in memory anymore.
-    untrusted_authority_certs_cache_ =
-        std::make_unique<network::NSSTempCertsCacheChromeOS>(
-            g_browser_process->platform_part()
-                ->browser_policy_connector_ash()
-                ->GetDeviceNetworkConfigurationUpdater()
-                ->GetAllAuthorityCertificates(
-                    chromeos::onc::CertificateScope::Default()));
-  }
+  // if (!untrusted_authority_certs_cache_) {
+  //   // Make additional untrusted authority certificates available for client
+  //   // certificate discovery in case a SAML flow is used which requires a client
+  //   // certificate to be present.
+  //   // When the WebUI is destroyed, `untrusted_authority_certs_cache_` will go
+  //   // out of scope and the certificates will not be held in memory anymore.
+  //   untrusted_authority_certs_cache_ =
+  //       std::make_unique<network::NSSTempCertsCacheChromeOS>(
+  //           g_browser_process->platform_part()
+  //               ->browser_policy_connector_ash()
+  //               ->GetDeviceNetworkConfigurationUpdater()
+  //               ->GetAllAuthorityCertificates(
+  //                   chromeos::onc::CertificateScope::Default()));
+  // }
 
-  LoadAuthenticator(/* force=*/true);
+  // LoadAuthenticator(/* force=*/true);
 
   UpdateState(NetworkError::ERROR_REASON_UPDATE);
 
@@ -1656,16 +1834,24 @@ void GaiaScreenHandler::UpdateStateInternal(NetworkError::ErrorReason reason,
 
   if (state != NetworkStateInformer::ONLINE || is_gaia_loading_timeout ||
       is_gaia_error) {
-    if (GetCurrentScreen() != ErrorScreenView::kScreenId) {
-      error_screen_->SetParentScreen(GaiaView::kScreenId);
-      error_screen_->SetHideCallback(base::BindOnce(
-          &GaiaScreenHandler::OnErrorScreenHide, weak_factory_.GetWeakPtr()));
+    LOG(WARNING) << "surendar error screen, state: " << state
+                 << ", reason: " << reason
+                 << ", frame_error: " << frame_error_;
+    
+    // Only show network error screen for genuine network connectivity issues
+    // Show for OFFLINE state with network-related error reasons, avoid showing for other issues that might cause loops
+    if (state != NetworkStateInformer::ONLINE &&
+        (state == NetworkStateInformer::OFFLINE || state == NetworkStateInformer::CONNECTING) &&
+        (reason == NetworkError::ERROR_REASON_NETWORK_STATE_CHANGED ||
+         reason == NetworkError::ERROR_REASON_PROXY_CONNECTION_FAILED)) {
+      if (GetCurrentScreen() != ErrorScreenView::kScreenId) {
+        error_screen_->SetParentScreen(GaiaView::kScreenId);
+        error_screen_->SetHideCallback(base::BindOnce(
+            &GaiaScreenHandler::OnErrorScreenHide, weak_factory_.GetWeakPtr()));
+      }
+      // Show `ErrorScreen` for genuine network issues only
+      error_screen_->ShowNetworkErrorMessage(state, reason);
     }
-
-    auth_flow_auto_reload_manager_.Terminate();
-
-    // Show `ErrorScreen` or update network error message.
-    error_screen_->ShowNetworkErrorMessage(state, reason);
     histogram_helper_->OnErrorShow(error_screen_->GetErrorState());
   } else {
     HideOfflineMessage(state, reason);
@@ -1745,8 +1931,11 @@ void GaiaScreenHandler::OnProxyAuthDone() {
 void GaiaScreenHandler::OnErrorScreenHide() {
   histogram_helper_->OnErrorHide();
   error_screen_->SetParentScreen(ash::OOBE_SCREEN_UNKNOWN);
-  ReloadGaia(/*force_reload=*/true);
-  ShowScreenDeprecated(GaiaView::kScreenId);
+  NetworkStateInformer::State state = network_state_informer_->state();
+  if (state == NetworkStateInformer::ONLINE) {
+    ReloadGaia(/*force_reload=*/true);
+    ShowScreenDeprecated(GaiaView::kScreenId);
+  }
 }
 
 bool GaiaScreenHandler::IsGaiaVisible() {
@@ -1785,6 +1974,36 @@ void GaiaScreenHandler::SetQuickStartEntryPointVisibility(bool visible) {
 
 void GaiaScreenHandler::SetIsGaiaPasswordRequired(bool is_required) {
   is_gaia_password_required_ = is_required;
+}
+
+void GaiaScreenHandler::SetShowAccountTypeSelection(bool show) {
+  if (show) {
+    // Check network availability before showing account type selection
+    NetworkStateInformer::State state = network_state_informer_->state();
+    if (state != NetworkStateInformer::ONLINE) {
+      CheckNetworkAndShowErrorIfOffline();
+      return; // Don't set the flag if no network
+    }
+  }
+  
+  show_account_type_selection_ = show;
+}
+
+bool GaiaScreenHandler::CheckNetworkAndShowErrorIfOffline() {
+  NetworkStateInformer::State state = network_state_informer_->state();
+  if (state != NetworkStateInformer::ONLINE) {
+    LOG(WARNING) << "Network not available, showing error screen";
+    // Show network error screen for offline state
+    if (GetCurrentScreen() != ErrorScreenView::kScreenId) {
+      error_screen_->SetParentScreen(GaiaView::kScreenId);
+      error_screen_->SetHideCallback(base::BindOnce(
+          &GaiaScreenHandler::OnErrorScreenHide, weak_factory_.GetWeakPtr()));
+    }
+    error_screen_->ShowNetworkErrorMessage(state, NetworkError::ERROR_REASON_NETWORK_STATE_CHANGED);
+    histogram_helper_->OnErrorShow(error_screen_->GetErrorState());
+    return false; // Network not available
+  }
+  return true; // Network is available
 }
 
 // static

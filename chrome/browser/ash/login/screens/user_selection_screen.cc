@@ -225,6 +225,19 @@ proximity_auth::mojom::AuthType GetInitialUserAuthType(
     return proximity_auth::mojom::AuthType::OFFLINE_PASSWORD;
   }
 
+  // Check if this is a Jema/Flint account (by gaia_id prefix)
+  const std::string& gaia_id = user->GetAccountId().GetGaiaId();
+  const bool is_jema_or_flint_account = 
+      gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0;
+  
+  if (is_jema_or_flint_account) {
+    // Jema/Flint accounts don't have Google OAuth tokens, so skip all OAuth-related checks
+    // They should always use offline password (local password auth factor)
+    LOG(WARNING) << "[JEMAOS] Jema/Flint account detected in GetInitialUserAuthType: "
+                 << user->GetAccountId().GetUserEmail() << ", forcing OFFLINE_PASSWORD";
+    return proximity_auth::mojom::AuthType::OFFLINE_PASSWORD;
+  }
+
   // At this point the reason for invalid token should be already set. If not,
   // this might be a leftover from an old version.
   if (has_gaia_account &&
@@ -681,10 +694,18 @@ void UserSelectionScreen::OnBeforeShow() {
 void UserSelectionScreen::OnUserStatusChecked(const AccountId& account_id,
                                               const std::string& token,
                                               bool reauth_required) {
-  if (reauth_required && account_id.GetAccountType() != AccountType::FLINT_ACCOUNT) {
+  // Check if this is a Jema/Flint account (by gaia_id prefix)
+  const std::string& gaia_id = account_id.GetGaiaId();
+  const bool is_jema_or_flint_account = 
+      gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0;
+  
+  if (reauth_required && !is_jema_or_flint_account) {
     RecordReauthReason(account_id, ReauthReason::kInvalidTokenHandle);
     SetAuthType(account_id, proximity_auth::mojom::AuthType::ONLINE_SIGN_IN,
                 std::u16string());
+  } else if (reauth_required && is_jema_or_flint_account) {
+    LOG(WARNING) << "[JEMAOS] Skipping token handle reauth for Jema/Flint account: "
+                 << account_id.GetUserEmail();
   }
 }
 

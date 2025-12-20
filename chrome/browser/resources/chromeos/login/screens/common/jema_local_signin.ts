@@ -6,17 +6,17 @@
  * @fileoverview Polymer element for displaying material design jema local signin
  */
 
-import {PolymerElementProperties} from '//resources/polymer/v3_0/polymer/interfaces.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {LoginScreenMixin} from '../../components/mixins/login_screen_mixin.js';
-import {OobeI18nMixin} from '../../components/mixins/oobe_i18n_mixin.js';
-import {OobeDialogHostMixin} from '../../components/mixins/oobe_dialog_host_mixin.js';
-import {MultiStepMixin} from '../../components/mixins/multi_step_mixin.js';
+import { PolymerElementProperties } from '//resources/polymer/v3_0/polymer/interfaces.js';
+import { PolymerElement } from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import { LoginScreenMixin } from '../../components/mixins/login_screen_mixin.js';
+import { OobeI18nMixin } from '../../components/mixins/oobe_i18n_mixin.js';
+import { OobeDialogHostMixin } from '../../components/mixins/oobe_dialog_host_mixin.js';
+import { MultiStepMixin } from '../../components/mixins/multi_step_mixin.js';
 
-import {OobeUiState} from '../../components/display_manager_types.js';
+import { OobeUiState } from '../../components/display_manager_types.js';
 
-import {CrInputElement} from '//resources/ash/common/cr_elements/cr_input/cr_input.js';
-import {assert} from '//resources/js/assert.js';
+import { CrInputElement } from '//resources/ash/common/cr_elements/cr_input/cr_input.js';
+import { assert } from '//resources/js/assert.js';
 
 import '//resources/ash/common/cr_elements/icons.html.js';
 import '//resources/polymer/v3_0/paper-progress/paper-progress.js';
@@ -29,7 +29,7 @@ import '../../components/common_styles/oobe_common_styles.css.js';
 import '../../components/common_styles/oobe_dialog_host_styles.css.js';
 import '../../components/dialogs/oobe_adaptive_dialog.js';
 
-import {getTemplate} from './jema_local_signin.html.js';
+import { getTemplate } from './jema_local_signin.html.js';
 
 enum JEMA_LOCAL_SIGNIN_ERROR_STATE {
   NONE = 0,
@@ -63,9 +63,9 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
 
   static get properties(): PolymerElementProperties {
     return {
-      loading: {type: Boolean, value: false},
-      userRealm: {type: String, value: ''},
-      userName: {type: String, value: '', observer: 'userNameObserver_'},
+      loading: { type: Boolean, value: false },
+      userRealm: { type: String, value: '' },
+      userName: { type: String, value: '', observer: 'userNameObserver_' },
       errorState: {
         type: Number,
         value: JEMA_LOCAL_SIGNIN_ERROR_STATE.NONE,
@@ -81,13 +81,13 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
         computed: 'computeShowSigninButton_(showUsersOnSignin_, uiStep)',
       },
       userInvalid:
-          {type: Boolean, value: false, observer: 'userInvalidObserver_'},
+        { type: Boolean, value: false, observer: 'userInvalidObserver_' },
       authPasswordInvalid:
-          {type: Boolean, value: false, observer: 'authPasswordInvalidObserver_'},
+        { type: Boolean, value: false, observer: 'authPasswordInvalidObserver_' },
       authPasswordConfirmInvalid:
-          {type: Boolean, value: false, observer: 'authPasswordConfirmInvalidObserver_'},
+        { type: Boolean, value: false, observer: 'authPasswordConfirmInvalidObserver_' },
       authSigninPasswordInvalid:
-          {type: Boolean, value: false, observer: 'authSigninPasswordInvalidObserver_'},
+        { type: Boolean, value: false, observer: 'authSigninPasswordInvalidObserver_' },
     };
   }
 
@@ -106,10 +106,12 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
   private showUsersOnSignin_: boolean;
   private showSigninButton_: boolean;
   private authSigninPasswordInvalid: boolean;
+  private hadAlternateRetry_: boolean;
 
   constructor() {
     super();
     this.errorStateLocked_ = false;
+    this.hadAlternateRetry_ = false;
   }
 
   override get EXTERNAL_API(): string[] {
@@ -130,22 +132,22 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
     this.initializeLoginScreen('JemaLocalSigninScreen');
 
     const passwordInput =
-        this.shadowRoot?.querySelector<CrInputElement>('#passwordInput');
+      this.shadowRoot?.querySelector<CrInputElement>('#passwordInput');
     assert(passwordInput instanceof CrInputElement);
     this.passwordInput = passwordInput;
 
     const passwordConfirmInput =
-        this.shadowRoot?.querySelector<CrInputElement>('#passwordConfirmInput');
+      this.shadowRoot?.querySelector<CrInputElement>('#passwordConfirmInput');
     assert(passwordConfirmInput instanceof CrInputElement);
     this.passwordConfirmInput = passwordConfirmInput;
 
     const userInput =
-        this.shadowRoot?.querySelector<CrInputElement>('#userInput');
+      this.shadowRoot?.querySelector<CrInputElement>('#userInput');
     assert(userInput instanceof CrInputElement);
     this.userInput = userInput;
 
     const signinPasswordInput =
-        this.shadowRoot?.querySelector<CrInputElement>('#signinPasswordInput');
+      this.shadowRoot?.querySelector<CrInputElement>('#signinPasswordInput');
     assert(signinPasswordInput instanceof CrInputElement);
     this.signinPasswordInput = signinPasswordInput;
   }
@@ -176,6 +178,7 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
     this.passwordInput.value = '';
     this.passwordConfirmInput.value = '';
     this.errorState = JEMA_LOCAL_SIGNIN_ERROR_STATE.NONE;
+    this.hadAlternateRetry_ = false;
   }
 
   focus_() {
@@ -196,6 +199,32 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
     this.authPasswordInvalid = this.errorState === JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_AUTH_PASSWORD || this.errorState === JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_AUTH_PASSWORD_TOO_SHORT;
     this.authPasswordConfirmInvalid = this.errorState === JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_CONFIRM_PASSWORD;
     this.authSigninPasswordInvalid = this.errorState === JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_USERNAME_OR_PASSWORD_ERROR;
+
+    // // Auto-retry once with alternate encoding for legacy accounts that may have
+    // // stored a base64-encoded password during initial creation.
+    // if (this.uiStep === JemaLocalSigninUIState.SIGNIN &&
+    //     this.errorState === JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_USERNAME_OR_PASSWORD_ERROR &&
+    //     !this.hadAlternateRetry_) {
+    //   this.hadAlternateRetry_ = true;
+
+    //   // Build username same as onSubmit_()
+    //   let user = /** @type {string} */ (this.userInput.value);
+    //   if (!user.includes('@') && this.userRealm) {
+    //     user += this.userRealm;
+    //   }
+
+    //   // Base64-encode the UTF-8 bytes of the entered password.
+    //   const enc = new TextEncoder();
+    //   const bytes = enc.encode(this.signinPasswordInput.value || '');
+    //   let bin = '';
+    //   for (let i = 0; i < bytes.length; ++i) bin += String.fromCharCode(bytes[i]);
+    //   const altPassword = btoa(bin);
+
+    //   console.warn('[JemaLocalSignin] BAD_AUTH detected, retrying once with base64-encoded password');
+    //   this.loading = true;
+    //   chrome.send('completeFtAuthentication', [false, user, altPassword]);
+    //   // Keep lock until after we send the retry; UI will update on next result.
+    // }
 
     this.errorStateLocked_ = false;
   }
@@ -247,7 +276,7 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
   }
 
   onBackButton_() {
-    this.userActed('cancel');
+    this.userActed('accountTypeSelectionBack');
   }
 
   onKeydownUserInput_(e: KeyboardEvent) {
@@ -263,7 +292,7 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
 
   userNameObserver_() {
     if (this.userRealm && this.userName &&
-        this.userName.endsWith(this.userRealm)) {
+      this.userName.endsWith(this.userRealm)) {
       this.userName = this.userName.replace(this.userRealm, '');
     }
   }
@@ -300,17 +329,17 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
 
   authPasswordInvalidObserver_(isInvalid: boolean) {
     this.setErrorState_(
-        isInvalid, JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_AUTH_PASSWORD);
+      isInvalid, JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_AUTH_PASSWORD);
   }
 
   authPasswordConfirmInvalidObserver_(isInvalid: boolean) {
     this.setErrorState_(
-        isInvalid, JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_CONFIRM_PASSWORD);
+      isInvalid, JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_CONFIRM_PASSWORD);
   }
 
   authSigninPasswordInvalidObserver_(isInvalid: boolean) {
     this.setErrorState_(
-        isInvalid, JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_USERNAME_OR_PASSWORD_ERROR);
+      isInvalid, JEMA_LOCAL_SIGNIN_ERROR_STATE.BAD_USERNAME_OR_PASSWORD_ERROR);
   }
 
   setErrorState_(isInvalid: boolean, error: JEMA_LOCAL_SIGNIN_ERROR_STATE) {

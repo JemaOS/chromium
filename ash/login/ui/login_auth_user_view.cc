@@ -85,8 +85,17 @@
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/view.h"
+#include "content/public/browser/browser_context.h"
+#include "content/public/browser/storage_partition.h"
+#include "ash/shell_delegate.h"
+#include "base/json/json_reader.h"
+#include "net/traffic_annotation/network_traffic_annotation.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/cpp/simple_url_loader.h"
+#include "url/gurl.h"
 
 namespace ash {
+
 namespace {
 
 constexpr const char kLoginAuthUserViewClassName[] = "LoginAuthUserView";
@@ -1122,14 +1131,190 @@ void LoginAuthUserView::OnGestureEvent(ui::GestureEvent* event) {
   RequestFocus();
 }
 
+void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
+  auto user = current_user();
+  LOG(WARNING) << "AuthenticateWithApi called for account: "
+               << user.basic_user_info.account_id << " with password: [redacted] "
+               << user.basic_user_info.account_id.GetUserEmail();
+
+  // Prepare the request to external API.
+  const std::string url =
+      "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/isBlocked?userId=" +
+      user.basic_user_info.account_id.GetUserEmail();
+
+  auto resource_request = std::make_unique<network::ResourceRequest>();
+  resource_request->url = GURL(url);
+  resource_request->method = "GET";
+
+  net::NetworkTrafficAnnotationTag traffic_annotation =
+      net::DefineNetworkTrafficAnnotation("login_auth_user_view_version", R"(
+        semantics {
+          sender: "LoginAuthUserView"
+          description: "Calls user block status API to gate login."
+          trigger: "User submits password"
+          data: "Email address as userId query parameter"
+          destination: OTHER
+        }
+        policy {
+          cookies_allowed: NO
+          setting: "No setting available."
+          policy_exception_justification: "Not implemented."
+        }
+      )");
+
+  // Keep loader alive as a member variable to ensure callback is invoked.
+  version_loader_ =
+      network::SimpleURLLoader::Create(std::move(resource_request), traffic_annotation);
+
+  scoped_refptr<network::SharedURLLoaderFactory> loader_factory =
+      Shell::Get()->shell_delegate()->GetBrowserProcessUrlLoaderFactory();
+
+  version_loader_->DownloadToString(
+      loader_factory.get(),
+      base::BindOnce(
+          [](LoginAuthUserView* self, const std::u16string& password,
+             std::unique_ptr<std::string> response_body) {
+            const std::string body = response_body ? *response_body : std::string();
+            LOG(WARNING) << "AuthenticateWithApi response: "
+                         << (response_body ? body : "<null>");
+
+            if (!response_body) {
+              LOG(WARNING) << "Authentication failed: No response from server.";
+              self->ShowAuthError(u"Server did not respond. Please try again later.");
+              return;
+            }
+
+            bool api_allows_login = false;
+            std::string server_message;
+
+            // Try JSON first.
+            std::optional<base::Value> json = base::JSONReader::Read(body);
+            if (json && json->is_dict()) {
+              const base::Value::Dict& dict = json->GetDict();
+
+              if (auto* msg = dict.FindString("message")) {
+                server_message = *msg;
+              }
+
+              if (auto success = dict.FindBool("success"); success.has_value()) {
+                api_allows_login = success.value();
+              } else if (auto allowed = dict.FindBool("allowed"); allowed.has_value()) {
+                api_allows_login = allowed.value();
+              } else if (auto is_blocked = dict.FindBool("isBlocked");
+                         is_blocked.has_value()) {
+                api_allows_login = !is_blocked.value();
+              } else if (auto* status = dict.FindString("status")) {
+                std::string status_lower = base::ToLowerASCII(*status);
+                api_allows_login = (status_lower == "success" || status_lower == "ok");
+              }
+            } else {
+              // Fallback for plain-text responses like "success".
+              std::string trimmed;
+              base::TrimWhitespaceASCII(body, base::TRIM_ALL, &trimmed);
+              std::string lowered = base::ToLowerASCII(trimmed);
+              api_allows_login = (lowered == "success" || lowered == "ok" || lowered == "true");
+            }
+
+            if (api_allows_login) {
+              // API allows login. Clear any error shown by password view.
+              self->password_view_->ShowErrorMessage(u"");
+
+              const bool authenticated_by_pin =
+                  self->ShouldAuthenticateWithPin() &&
+                  base::ContainsOnlyChars(base::UTF16ToUTF8(password), "0123456789");
+
+              //---***JEMAOS BEGIN***---
+              // API verified user is not blocked: proceed with local password authentication.
+              // For new users: CompleteLogin will create the local account with this password.
+              // For existing users: CompleteLogin will verify the password matches the stored password.
+              // This allows persistent local accounts with stored passwords for subsequent logins.
+              LOG(WARNING) << "API verified, proceeding with local authentication for: "
+                           << self->current_user().basic_user_info.account_id.GetUserEmail();
+              //---***JEMAOS END***---
+              
+              Shell::Get()
+                  ->login_screen_controller()
+                  ->AuthenticateUserWithPasswordOrPin(
+                      self->current_user().basic_user_info.account_id,
+                      base::UTF16ToUTF8(password), authenticated_by_pin,
+                      base::BindOnce(
+                          [](base::WeakPtr<LoginAuthUserView> weak_self,
+                             bool authenticated_by_pin_param,
+                             std::optional<bool> auth_success_param) {
+                            if (!weak_self)
+                              return;
+                            // Pass through the real auth result; UI will show errors if needed.
+                            weak_self->OnAuthComplete(authenticated_by_pin_param, auth_success_param);
+                          },
+                          self->weak_factory_.GetWeakPtr(), authenticated_by_pin));
+            } else {
+              LOG(WARNING) << "Authentication failed by API. Body: " << body;
+              const std::u16string msg =
+                  server_message.empty()
+                      ? u"Access denied by server policy."
+                      : base::UTF8ToUTF16(server_message);
+              self->ShowAuthError(msg);
+            }
+          },
+          base::Unretained(this), password),
+      1024 * 1024 /* max response size */);
+}
+
+void LoginAuthUserView::ShowAuthError(const std::u16string& error_message) {
+  password_view_->Reset();
+  password_view_->SetReadOnly(false);
+  pin_input_view_->Reset();
+  pin_input_view_->SetReadOnly(false);
+  password_view_->ShowErrorMessage(error_message);
+}
+
 void LoginAuthUserView::OnAuthSubmit(const std::u16string& password) {
   AuthEventsRecorder::Get()->OnAuthSubmit();
+  auto user = current_user();
+
   LOG(WARNING) << "crbug.com/1339004 : AuthSubmit "
                << password_view_->IsReadOnly() << " / "
-               << pin_input_view_->IsReadOnly();
+               << pin_input_view_->IsReadOnly() << " /  "
+               << HasAuthMethod(AUTH_PIN)
+               << ", Account ID: " << user.basic_user_info.account_id
+               << ", Email: " << user.basic_user_info.display_email
+               << ", New User: " << user.basic_user_info.display_name
+               << ", Existing User: " << user.basic_user_info.given_name
+               << ", is_signed_in: " << user.is_signed_in
+               << ", is_multiprofile_allowed: " << user.is_multi_user_sign_in_allowed
+               << ", GetFlintId: " << user.basic_user_info.account_id.GetFlintId()
+               << ", GetJemaId: " << user.basic_user_info.account_id.GetJemaId();
+
 
   password_view_->SetReadOnly(true);
   pin_input_view_->SetReadOnly(true);
+
+  LOG(WARNING) << "ids" << user.basic_user_info.account_id.GetFlintId() << " / "
+               << user.basic_user_info.account_id.GetJemaId();
+
+  //---***JEMAOS BEGIN***---
+  // For Jema/Flint accounts: Use API to verify if user is blocked, then use local password
+  // authentication. This allows creating local user accounts on first login and using
+  // the same local password for subsequent logins.
+  // Check by gaia_id prefix (jema_id_*, ft_id_*) to detect Jema/Flint accounts reliably
+  // for both new and existing users (since AccountType may be GOOGLE for cryptohome compatibility).
+  LOG(WARNING) << "[OnAuthSubmit] AccountType: " 
+               << static_cast<int>(user.basic_user_info.account_id.GetAccountType())
+               << ", GaiaId: " << user.basic_user_info.account_id.GetGaiaId();
+  const std::string& gaia_id = user.basic_user_info.account_id.GetGaiaId();
+  const bool is_jema_or_flint = 
+      gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0;
+  
+  if (is_jema_or_flint) {
+    // Step 1: Verify with API if user is blocked
+    // Step 2: If not blocked, proceed with local password authentication
+    //         (CompleteLogin will create account for new users or verify password for existing users)
+    LOG(WARNING) << "[JEMAOS] Jema/Flint account detected (gaia_id: " << gaia_id 
+                 << "), calling API to check if user is blocked";
+    AuthenticateWithApi(password);
+    return;
+  }
+  //---***JEMAOS END***---   
 
   // Checking if the password is only formed of numbers with base::StringToInt
   // will easily fail due to numeric limits. ContainsOnlyChars is used instead.

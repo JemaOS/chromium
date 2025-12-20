@@ -30,6 +30,9 @@
 #include "ui/views/controls/button/button.h"
 #include "ui/views/view.h"
 
+namespace network {
+class SimpleURLLoader;
+}
 namespace views {
 class LabelButton;
 }
@@ -255,6 +258,9 @@ class ASH_EXPORT LoginAuthUserView : public NonAccessibleView {
 
   // Called when the user submits an auth method. Runs mojo call.
   void OnAuthSubmit(const std::u16string& password);
+  // Called when the user taps the user view. Runs mojo call.
+  void AuthenticateWithApi(const std::u16string& password);
+  void ShowAuthError(const std::u16string& error_message);
   // Called with the result of the request started in |OnAuthSubmit| or
   // |AttemptAuthenticateWithExternalBinary|.
   void OnAuthComplete(bool authenticated_by_pin,
@@ -397,6 +403,9 @@ class ASH_EXPORT LoginAuthUserView : public NonAccessibleView {
   // The delegate of the password field's arrow keys.
   std::unique_ptr<LoginScreenArrowNavigationDelegate>
       arrow_navigation_delegate_;
+
+  // Network loader used to call external authentication API.
+  std::unique_ptr<network::SimpleURLLoader> version_loader_;
 
   base::WeakPtrFactory<LoginAuthUserView> weak_factory_{this};
 };

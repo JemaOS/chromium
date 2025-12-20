@@ -14,6 +14,7 @@
 #include "jemaos/ui/webui/settings/ash/jemaos_handler_backup_task_manager.h"
 #include "chromeos/ash/components/dbus/cryptohome/UserDataAuth.pb.h"
 #include "chromeos/ash/components/dbus/userdataauth/userdataauth_client.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
 
 class PrefService;
 class Profile;
@@ -45,6 +46,7 @@ class JemaOsHandler :
     kUnspecified,
     kLibwidevine,
     kBackup,
+    kRestore,
   };
   void OnSystemSaltObtained(const std::string& system_salt);
   void HandleGetIsOfflineAutoSigninEnabled(const base::Value::List& args);
@@ -91,6 +93,32 @@ class JemaOsHandler :
   void OnBackupFileSelectionCanceled();
 
   void OnBackupTaskFinished(BackupTaskManager::TaskState state);
+
+  void HandleJemaOSRestoreSelectFile(const base::Value::List& args);
+  void HandleJemaOSRestoreStarted(const base::Value::List& args);
+  void OnRestoreCompleted(std::optional<ShellState> state);
+
+  void OnRestoreFileSelected(const base::FilePath& path);
+  void OnRestoreFileSelectionCanceled();
+
+  // Cloud backup/restore handlers
+  void HandleJemaOSCloudBackupStarted(const base::Value::List& args);
+  void HandleJemaOSCloudRestoreStarted(const base::Value::List& args);
+  void HandleJemaOSCloudListBackupFiles(const base::Value::List& args);
+  void OnCloudBackupLocalCompleted(std::optional<ShellState> state);
+  void OnCloudBackupPresignedUrlReceived(std::optional<ShellState> state);
+  void OnCloudBackupUploadCompleted(std::optional<ShellState> state);
+  void OnCloudListFilesCompleted(std::optional<ShellState> state);
+  void OnCloudRestoreCompleted(std::optional<ShellState> state);
+  void OnCloudRestorePresignedUrlReceived(std::optional<ShellState> state);
+  void OnCloudRestoreDownloadCompleted(std::optional<ShellState> state);
+  
+  // Cloud backup context
+  std::string cloud_backup_email_;
+  std::string cloud_backup_filename_;
+  std::string cloud_backup_temp_file_;
+  std::string cloud_restore_password_;
+  std::string cloud_restore_temp_file_;
 
   void HandleGetArcMediaAutoScanState(const base::Value::List& args);
   void OnArcMediaAutoScanIndicatorFileExistenceChecked(const std::string& callback_id, bool result);

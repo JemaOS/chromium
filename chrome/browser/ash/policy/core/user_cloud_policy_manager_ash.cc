@@ -104,6 +104,22 @@ bool IsChildUser(const AccountId& account_id) {
   return user && (user->GetType() == user_manager::UserType::kChild || user->GetType() == user_manager::UserType::kJemaChild);
 }
 
+// Returns whether the user with |account_id| is a Jema account (regular, child, or Flint).
+bool IsJemaUser(const AccountId& account_id) {
+  // First check gaia_id prefix for new users (before User object is created)
+  const std::string& gaia_id = account_id.GetGaiaId();
+  if (gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0) {
+    return true;
+  }
+  
+  // Fallback to User type check for existing users
+  const user_manager::User* const user =
+      user_manager::UserManager::Get()->FindUser(account_id);
+  return user && (user->GetType() == user_manager::UserType::kJemaAccount ||
+                  user->GetType() == user_manager::UserType::kJemaChild ||
+                  user->GetType() == user_manager::UserType::kFlintAccount);
+}
+
 // This class is used to subscribe for notifications that the current profile is
 // being shut down.
 class UserCloudPolicyManagerAshNotifierFactory
@@ -618,7 +634,21 @@ void UserCloudPolicyManagerAsh::FetchPolicyOAuthToken() {
     return;
   }
 
-  LOG(ERROR) << "No refresh token for policy oauth token fetch!";
+  // JEMAOS: Allow Jema accounts to proceed without GAIA policy token.
+  // Policy for Jema accounts is optional and should not block session start.
+  if (IsJemaUser(account_id_)) {
+    LOG(WARNING) << "[JEMAOS] Skipping policy fetch for Jema/Flint account: " 
+                 << account_id_.GetUserEmail() 
+                 << ", gaia_id: " << account_id_.GetGaiaId();
+    SetPolicyRequired(false);
+    CancelWaitForPolicyFetch(true,
+                             "Jema account: skipping policy oauth token fetch");
+    return;
+  }
+
+  LOG(ERROR) << "No refresh token for policy oauth token fetch! account_id: "
+             << account_id_.GetUserEmail() 
+             << ", gaia_id: " << account_id_.GetGaiaId();
   OnOAuth2PolicyTokenFetched(
       std::string(),
       GoogleServiceAuthError(GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS));

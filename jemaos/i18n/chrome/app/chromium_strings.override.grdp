@@ -26,16 +26,16 @@
     </if>
   </if>
   <message name="IDS_PRODUCT_NAME" desc="The Chrome application name" translateable="false">
-    Browser
+    Thot
   </message>
   <message name="IDS_SHORT_PRODUCT_NAME" desc="The Chrome application short name." translateable="false">
-    Browser
+    Thot
   </message>
   <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
-    About &amp;Browser
+    About &amp;Thot
   </message>
   <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
-    Help make Chromium better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Technology
+    Help make Thot better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Technology
   </message>
   <message name="IDS_ABOUT_VERSION_COMPANY_NAME" desc="Company name on the about pages">
     Jema Technology, The Chromium Authors
@@ -46,23 +46,33 @@
   <if expr="chromeos_ash">
     <!-- Strings for the OOBE user selection screen -->
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_TITLE" desc="Title of the screen which allows users to select account type.">
-        Which online account would you like to use?
+        choisir type de compte
     </message>
     <if expr="not openjema">
       <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          Please choose your preferred online account type to sign in to JemaOS. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
+        <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Veuillez choisir votre compte Jema pour vous connecter à JemaOS. Notez qu'une fois connecté(e), vous ne pourrez plus modifier le type de compte.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+        <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Vous pourrez toutefois vous connecter avec un nouveau compte d'un type différent.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
       </message>
     </if>
     <if expr="openjema">
       <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          Please choose your preferred online account type to sign in to openJema. Please note that once signed in you won’t be able to change account type; you can however sign in new accounts of different types.
+          <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Veuillez choisir votre compte Jema pour vous connecter à JemaOS. Notez qu'une fois connecté(e), vous ne pourrez plus modifier le type de compte.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+        <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Vous pourrez toutefois vous connecter avec un nouveau compte d'un type différent.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
       </message>
     </if>
+    <!-- Local JemaOS account ** START -->
+    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
+        Local JemaOS account
+    </message>
+    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
+        Create a local account that will not be synchronized with the JemaOS API.
+    </message>
+    <!-- Local JemaOS account ** END -->
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
-        JemaOS account
+        Compte Jema
     </message>
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
-        Sign in with a JemaOS account and use cloud services associated by your JemaOS account.
+        Connectez-vous avec un compte Jema et utilisez les services cloud associés à votre compte Jema.
     </message>
     <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_TITLE" desc="Title of user select Google account type.">
         Google account

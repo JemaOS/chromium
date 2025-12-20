@@ -78,6 +78,6 @@
     </message>
   </if>
   <message name="IDS_SANITIZE_DONE_ACCORDION_CHROME_TITLE" desc="Accordion title for Chrome resets">
-    Browser Settings
+    Thot Settings
   </message>
 </grit-part>

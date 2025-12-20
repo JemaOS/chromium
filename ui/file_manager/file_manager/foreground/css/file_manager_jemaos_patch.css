@@ -2,12 +2,34 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  justify-content: center;
+  justify-content: flex-start;
+  /* justify-content: center; */
   left: 0;
   position: absolute;
   top: 0;
   width: 100%;
   z-index: 2;
+}
+
+#jemadrop-view webview {
+  flex: 1 1 auto;
+}
+
+/* Simple placeholder banner until JemaDrop is ready. */
+#jemadrop-coming-soon {
+  align-items: center;
+  background: var(--cros-sys-surface_variant);
+  border: 1px solid var(--cros-sys-separator);
+  border-radius: 12px;
+  color: var(--cros-sys-on_surface);
+  display: inline-flex;
+  font: var(--cros-title-2-font, var(--cros-button-2-font));
+  left: 50%;
+  padding: 10px 14px;
+  position: absolute;
+  top: 16px;
+  transform: translateX(-50%);
+  z-index: 3;
 }
 
 .tree-row > .file-row > [root-type-icon='jemadrop'] {

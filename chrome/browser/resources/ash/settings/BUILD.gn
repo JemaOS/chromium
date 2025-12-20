@@ -37,8 +37,7 @@ build_webui("build") {
     "images/notification_access_setup_dark.svg",
 
     "images/icon_backup.png",
-    "images/backup_intro.png",
-    "images/backup_intro_dark.png",
+    "images/backup_intro_jemaos.png",
 
     "os_settings.html",
   ]
@@ -232,6 +231,8 @@ build_webui("build") {
     "os_jema_page/os_jema_page.ts",
     "os_jema_page/components/backup_password_prompt_dialog.ts",
     "os_jema_page/components/backup_intro_dialog.ts",
+    "os_jema_page/components/restore_password_dialog.ts",
+    "os_jema_page/components/restore_result_dialog.ts",
     "os_apps_page/android_apps_subpage.ts",
     "os_apps_page/app_management_page/app_detail_view.ts",
     "os_apps_page/app_management_page/app_details_item.ts",

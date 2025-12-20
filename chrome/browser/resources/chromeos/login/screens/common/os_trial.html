@@ -9,29 +9,33 @@
 
 <oobe-adaptive-dialog id="osTrialDialog" role="dialog"
     aria-label$="[[i18nDynamic(locale, 'osTrialTitle')]]">
-  <iron-icon slot="icon" icon="oobe-32:jemaos"></iron-icon>
+
+  <iron-icon slot="icon" src="images/jema_logo_new.png" style="width: 132px;height: 20px;"></iron-icon>
+ 
   <h1 slot="title">[[i18nDynamic(locale, 'osTrialTitle')]]</h1>
   <span inner-h-t-m-l="[[i18nAdvancedDynamic(locale, 'osTrialSubtitle')]]"
       slot="subtitle"></span>
 
   <div slot="content" class="layout vertical landscape-vertical-centered">
     <cr-radio-group selected="{{selectedTrialOption}}">
-      <cr-card-radio-button id="installButton" class="flex" name="install">
-        <div class="card-container">
-          <hd-iron-icon class="card-icon"
-              icon1x="oobe-24:os-trial-install"
-              icon2x="oobe-48:os-trial-install">
-          </hd-iron-icon>
-          <div class="card-content">
-            <div class="card-label">
-              [[i18nDynamic(locale, 'osTrialInstallTitle')]]
-            </div>
-            <div class="card-text">
-              [[i18nDynamic(locale, 'osTrialInstallSubtitle')]]
+      <template is="dom-if" if="[[isOsInstallAllowed]]">
+        <cr-card-radio-button id="installButton" class="flex" name="install">
+          <div class="card-container">
+            <hd-iron-icon class="card-icon"
+                icon1x="oobe-24:os-trial-install"
+                icon2x="oobe-48:os-trial-install">
+            </hd-iron-icon>
+            <div class="card-content">
+              <div class="card-label">
+                [[i18nDynamic(locale, 'osTrialInstallTitle')]]
+              </div>
+              <div class="card-text">
+                [[i18nDynamic(locale, 'osTrialInstallSubtitle')]]
+              </div>
             </div>
           </div>
-        </div>
-      </cr-card-radio-button>
+        </cr-card-radio-button>
+      </template>
       <cr-card-radio-button id="tryButton" class="flex" name="try">
         <div class="card-container">
           <hd-iron-icon class="card-icon" icon1x="oobe-24:os-trial-try"

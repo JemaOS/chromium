@@ -12,6 +12,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 namespace ash::settings {
 
@@ -60,6 +61,7 @@ void JemaAssistantSection::AddLoadTimeData(content::WebUIDataSource* html_source
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
   html_source->AddBoolean("jemaAssistantFeatureEnabled",ash::features::IsJemaAssistantEnabled());
+  html_source->AddBoolean("isJemaAiHidden", jemaos::switches::IsJemaAiHidden());
 }
 
 void JemaAssistantSection::AddHandlers(content::WebUI* web_ui) {

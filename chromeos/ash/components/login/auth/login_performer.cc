@@ -7,9 +7,12 @@
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/logging.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/threading/thread_restrictions.h"
+#include "base/command_line.h"
+#include "base/system/sys_info.h"
 #include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
 #include "chromeos/ash/components/login/auth/auth_events_recorder.h"
 #include "chromeos/ash/components/login/auth/public/auth_failure.h"
@@ -203,11 +206,46 @@ void LoginPerformer::DoPerformLogin(const UserContext& user_context,
     return;
   }
 
+  LOG(WARNING) << "account_id" 
+               << account_id;
+
+  // API-success/dev bypass before invoking authenticator: when running outside
+  // ChromeOS or with --jema-dev-skip-cryptohome, immediately treat user as
+  // authenticated to avoid COULD_NOT_MOUNT_CRYPTOHOME on dev hosts.
+  // const bool dev_bypass =
+  //     !base::SysInfo::IsRunningOnChromeOS() ||
+  //     base::CommandLine::ForCurrentProcess()->HasSwitch("jema-dev-skip-cryptohome");
+  
+  // if (dev_bypass) {
+  //   LOG(WARNING) << "dev_bypass" 
+  //                << dev_bypass;
+  //   VLOG(1) << "Bypass active in DoPerformLogin: treating user as authenticated without cryptohome.";
+  //   DCHECK(delegate_);
+  //   delegate_->OnAuthSuccess(user_context);
+  //   return;
+  // }
+
   switch (auth_mode_) {
     case AuthorizationMode::kExternal: {
+      LOG(WARNING) << "kExternal" << user_context.GetAuthFlow();
       //---***JEMAOS BEGIN***---
-      if (user_context.GetAuthFlow() == UserContext::AUTH_FLOW_FLINT_ACCOUNT) {
-        StartLoginCompletion();
+      // For FlintAccount and JemaAccount users, check if user is known (existing)
+      // - For existing users, use StartAuthentication (AuthenticateToLogin) for proper relogin
+      // - For new users, use StartLoginCompletion (CompleteLogin) for account creation
+      if (user_context.GetAuthFlow() == UserContext::AUTH_FLOW_FLINT_ACCOUNT ||
+          user_context.GetAuthFlow() == UserContext::AUTH_FLOW_JEMA_ONLINE) {
+        const bool is_known_user = user_manager::UserManager::Get()->IsKnownUser(account_id);
+        if (is_known_user) {
+          // Existing user - use AuthenticateToLogin for relogin
+          LOG(WARNING) << "Existing Jema/Flint user relogin (kExternal), using AuthenticateToLogin: "
+                       << account_id.GetUserEmail();
+          StartAuthentication();
+        } else {
+          // New user - use CompleteLogin for account creation
+          LOG(WARNING) << "New Jema/Flint user (kExternal), using CompleteLogin: "
+                       << account_id.GetUserEmail();
+          StartLoginCompletion();
+        }
         break;
       }
       //---***JEMAOS END***---
@@ -220,6 +258,28 @@ void LoginPerformer::DoPerformLogin(const UserContext& user_context,
       break;
     }
     case AuthorizationMode::kInternal:
+      LOG(WARNING) << "kInternal" << user_context.GetAuthFlow();
+      //---***JEMAOS BEGIN***---
+      // For FlintAccount and JemaAccount users, check if user is known (existing)
+      // - For existing users, use StartAuthentication (AuthenticateToLogin) for proper relogin
+      // - For new users, use StartLoginCompletion (CompleteLogin) for account creation
+      if (user_context.GetAuthFlow() == UserContext::AUTH_FLOW_FLINT_ACCOUNT ||
+          user_context.GetAuthFlow() == UserContext::AUTH_FLOW_JEMA_ONLINE) {
+        const bool is_known_user = user_manager::UserManager::Get()->IsKnownUser(account_id);
+        if (is_known_user) {
+          // Existing user - use AuthenticateToLogin for relogin
+          LOG(WARNING) << "Existing Jema/Flint user relogin, using AuthenticateToLogin: "
+                       << account_id.GetUserEmail();
+          StartAuthentication();
+        } else {
+          // New user - use CompleteLogin for account creation
+          LOG(WARNING) << "New Jema/Flint user, using CompleteLogin: "
+                       << account_id.GetUserEmail();
+          StartLoginCompletion();
+        }
+        break;
+      }
+      //---***JEMAOS END***---
       StartAuthentication();
       break;
   }
@@ -336,25 +396,132 @@ void LoginPerformer::NotifyOldEncryptionDetected(
 void LoginPerformer::StartLoginCompletion() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VLOG(1) << "Online login completion started.";
+  LOG(WARNING) << "StartLoginCompletion";
+
+  // Dev bypass: when running outside ChromeOS (e.g., linux-chromeos) or when
+  // explicitly requested via --jema-dev-skip-cryptohome, allow Flint/Jema
+  // accounts to proceed without invoking cryptohome-backed authenticator.
+  // const bool dev_bypass =
+  //     !base::SysInfo::IsRunningOnChromeOS() ||
+  //     base::CommandLine::ForCurrentProcess()->HasSwitch("jema-dev-skip-cryptohome");
+
+  // if (dev_bypass) {
+  //   VLOG(1) << "Bypass is active: skipping cryptohome mount and treating "
+  //              "authentication as success.";
+  //   // Directly notify delegate of successful auth. This avoids cryptohome mount
+  //   // on non-ChromeOS environments where it is unavailable.
+  //   DCHECK(delegate_);
+  //   delegate_->OnAuthSuccess(user_context_);
+  //   user_context_.ClearSecrets();
+  //   return;
+  // }
+
   LoginEventRecorder::Get()->AddLoginTimeMarker("AuthStarted", false);
+  LOG(WARNING) << "StartLoginCompletion: EnsureAuthenticator";
   EnsureAuthenticator();
+  // DCHECK(authenticator_);
+  LOG(WARNING) << "StartLoginCompletion: EnsureAuthenticator done";
+  // //---***JEMAOS BEGIN***---
+  // // For Jema/Flint accounts, use persistent local accounts (not ephemeral) so passwords
+  // // are stored and can be used for subsequent logins. The API is only used to verify
+  // // if the user is blocked, while local password authentication handles account creation
+  // // and login for both new and existing users.
+  // const AccountId& account_id = user_context_.GetAccountId();
+  // const bool is_jema_account =
+  //     user_context_.GetAuthFlow() == UserContext::AUTH_FLOW_JEMA_ONLINE ||
+  //     account_id.GetGaiaId().find("jema_id_") == 0 ||
+  //     account_id.GetGaiaId().find("flint_id_") == 0;
+  
+  // // Use normal ephemeral check (don't force ephemeral for Jema accounts)
+  // // This allows persistent local accounts with stored passwords
+  // bool use_ephemeral = user_manager::UserManager::Get()->IsEphemeralAccountId(account_id);
+  
+  // // Check if this is an existing user - CompleteLogin handles both new and existing users,
+  // // but we log this for debugging purposes
+  // const bool is_known_user = user_manager::UserManager::Get()->IsKnownUser(account_id);
+  
+  // if (is_jema_account) {
+  //   LOG(WARNING) << "Jema account login for: " << account_id.GetUserEmail()
+  //                << " (ephemeral: " << use_ephemeral 
+  //                << ", known: " << is_known_user << ")";
+    
+  //   // Log password for debugging (only first few characters for security)
+  //   if (user_context_.GetKey()->GetKeyType() == Key::KEY_TYPE_PASSWORD_PLAIN) {
+  //     const std::string& password = user_context_.GetKey()->GetSecret();
+  //     if (!password.empty()) {
+  //       const std::string password_preview = password.length() > 4 
+  //           ? password.substr(0, 2) + "**" + password.substr(password.length() - 2)
+  //           : "****";
+  //       LOG(WARNING) << "[DEBUG] Password received in StartLoginCompletion for: "
+  //                    << account_id.GetUserEmail()
+  //                    << ", length: " << password.length()
+  //                    << ", preview: " << password_preview;
+  //     } else {
+  //       LOG(WARNING) << "[DEBUG] Empty password for Jema user: " 
+  //                    << account_id.GetUserEmail();
+  //     }
+  //   }
+    
+  //   // Ensure password key is set for existing users - CompleteLogin requires it
+  //   if (is_known_user && user_context_.GetKey()->GetKeyType() == Key::KEY_TYPE_PASSWORD_PLAIN) {
+  //     if (user_context_.GetKey()->GetSecret().empty()) {
+  //       LOG(ERROR) << "Empty password key for existing Jema user: " << account_id.GetUserEmail();
+  //     }
+  //   }
+  // }
+  // //---***JEMAOS END***---
+  
+  // if (!authenticator_) {
+  //   LOG(ERROR) << "Authenticator is null, cannot proceed with login";
+  //   NotifyAuthFailure(AuthFailure(AuthFailure::COULD_NOT_MOUNT_CRYPTOHOME));
+  //   return;
+  // }
+  
+  LOG(WARNING) << "StartLoginCompletion: CompleteLogin";
   authenticator_->CompleteLogin(
       user_manager::UserManager::Get()->IsEphemeralAccountId(
           user_context_.GetAccountId()),
       std::make_unique<UserContext>(user_context_));
+  LOG(WARNING) << "StartLoginCompletion: CompleteLogin done";
   user_context_.ClearSecrets();
+  LOG(WARNING) << "StartLoginCompletion: ClearSecrets done";
 }
 
 void LoginPerformer::StartAuthentication() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VLOG(1) << "Offline auth started.";
+  LOG(WARNING) << "StartAuthentication";
+  LOG(WARNING) << "StartAuthentication: password: " << user_context_.GetKey()->GetSecret();
+  LOG(WARNING) << "StartAuthentication: account_id: " << user_context_.GetAccountId();
+  LOG(WARNING) << "StartAuthentication: email: " << user_context_.GetAccountId().GetUserEmail();
+  LOG(WARNING) << "StartAuthentication: gaia_id: " << user_context_.GetAccountId().GetGaiaId();
+  LOG(WARNING) << "StartAuthentication: user_type: " << user_context_.GetUserType();
+  LOG(WARNING) << "StartAuthentication: auth_flow: " << user_context_.GetAuthFlow();
+  LOG(WARNING) << "StartAuthentication: user_id_hash: " << user_context_.GetUserIDHash();
+  // // Dev bypass: when running outside ChromeOS (e.g., linux-chromeos) or when
+  // // explicitly requested via --jema-dev-skip-cryptohome, allow Flint/Jema
+  // // accounts to proceed without invoking cryptohome-backed authenticator.
+  // const bool dev_bypass =
+  //     !base::SysInfo::IsRunningOnChromeOS() ||
+  //     base::CommandLine::ForCurrentProcess()->HasSwitch("jema-dev-skip-cryptohome");
+  // if (dev_bypass) {
+  //   VLOG(1) << "Bypass active: skipping cryptohome auth and treating as success.";
+  //   DCHECK(delegate_);
+  //   delegate_->OnAuthSuccess(user_context_);
+  //   user_context_.ClearSecrets();
+  //   return;
+  // }
+
   LoginEventRecorder::Get()->AddLoginTimeMarker("AuthStarted", false);
+  LOG(WARNING) << "StartAuthentication: EnsureAuthenticator";
   DCHECK(delegate_);
   EnsureAuthenticator();
+  LOG(WARNING) << "StartAuthentication: EnsureAuthenticator done";
   authenticator_->AuthenticateToLogin(
       user_manager::UserManager::Get()->IsEphemeralAccountId(
           user_context_.GetAccountId()),
       std::make_unique<UserContext>(user_context_));
+  LOG(WARNING) << "StartAuthentication: AuthenticateToLogin done";
   user_context_.ClearSecrets();
 }
 

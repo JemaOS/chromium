@@ -101,6 +101,43 @@ export class OobeAdaptiveDialog extends PolymerElement {
         type: Boolean,
         value: false,
       },
+      /**
+       * The name of the current OOBE screen for debugging purposes.
+       * @type {string}
+       */
+      screenName: {
+        type: String,
+        value: 'Unknown Screen',
+      },
+
+      /**
+       * Screen slug identifier for tracking and analytics.
+       * @type {string}
+       */
+      screenSlug: {
+        type: String,
+        value: '',
+      },
+
+      /**
+       * Network connection status for the dialog.
+       * @type {boolean}
+       */
+      networkConnectionStatus: {
+        type: Boolean,
+        value: false,
+        observer: 'onNetworkConnectionStatusChanged_',
+      },
+
+      /**
+       * Type of network connection (WiFi, Ethernet, etc.).
+       * @type {string}
+       */
+      networkConnectionType: {
+        type: String,
+        value: '',
+        observer: 'onNetworkConnectionTypeChanged_',
+      },
     };
   }
 
@@ -113,6 +150,12 @@ export class OobeAdaptiveDialog extends PolymerElement {
   private animationLoop: boolean;
   private resizeObserver?: ResizeObserver;
   private readMoreState: ReadMoreState;
+
+  // Polymer-bound public properties declared for TS type-checking
+  public screenName: string;
+  public screenSlug: string;
+  public networkConnectionStatus: boolean;
+  public networkConnectionType: string;
 
   constructor() {
     super();
@@ -187,8 +230,10 @@ export class OobeAdaptiveDialog extends PolymerElement {
    * updates the `Read more` button state if needed.
    */
   private applyScrollClassTags(): void {
-    const scrollContainer = this.getScrollContainer();
-    assert(scrollContainer instanceof HTMLDivElement);
+    const sc = this.getScrollContainer();
+    assert(sc instanceof HTMLDivElement);
+    const scrollContainer = sc as HTMLDivElement;
+
     scrollContainer.classList.toggle(
         'can-scroll',
         scrollContainer.clientHeight < scrollContainer.scrollHeight);
@@ -222,8 +267,9 @@ export class OobeAdaptiveDialog extends PolymerElement {
       this.removeReadMoreButton();
       return;
     }
-    const content = this.getContentContainer();
-    assert(content instanceof HTMLDivElement);
+    const contentEl = this.getContentContainer();
+    assert(contentEl instanceof HTMLDivElement);
+    const content = contentEl as HTMLDivElement;
     if (this.readMoreState === ReadMoreState.UNKNOWN) {
       if (content.clientHeight < content.scrollHeight) {
         this.readMoreState = ReadMoreState.SHOWN;
@@ -268,8 +314,9 @@ export class OobeAdaptiveDialog extends PolymerElement {
    * Scroll to the bottom of footer container.
    */
   private scrollToBottom(): void {
-    const scrollContainer = this.getScrollContainer();
-    assert(scrollContainer instanceof HTMLDivElement);
+    const sc = this.getScrollContainer();
+    assert(sc instanceof HTMLDivElement);
+    const scrollContainer = sc as HTMLDivElement;
     scrollContainer.scrollTop = scrollContainer.scrollHeight;
   }
 
@@ -307,8 +354,9 @@ export class OobeAdaptiveDialog extends PolymerElement {
   }
 
   private addReadMoreButton(): void {
-    const contentContainer = this.getContentContainer();
-    assert(contentContainer instanceof HTMLDivElement);
+    const cc = this.getContentContainer();
+    assert(cc instanceof HTMLDivElement);
+    const contentContainer = cc as HTMLDivElement;
     contentContainer.toggleAttribute('read-more-content', true);
     this.showReadMoreButton = true;
 
@@ -333,8 +381,9 @@ export class OobeAdaptiveDialog extends PolymerElement {
   }
 
   private removeReadMoreButton(): void {
-    const contentContainer = this.getContentContainer();
-    assert(contentContainer instanceof HTMLDivElement);
+    const cc = this.getContentContainer();
+    assert(cc instanceof HTMLDivElement);
+    const contentContainer = cc as HTMLDivElement;
     contentContainer.removeAttribute('read-more-content');
     this.showReadMoreButton = false;
 
@@ -350,7 +399,51 @@ export class OobeAdaptiveDialog extends PolymerElement {
   private onReadMoreClick(): void {
     this.maybeUpgradeReadMoreState(true /* readMoreClicked */);
   }
+
+  /**
+   * Observer for network connection status changes.
+   * @param {boolean} newStatus New connection status
+   * @private
+   */
+  onNetworkConnectionStatusChanged_(newStatus: boolean): void {
+    console.log(`Adaptive dialog: Network connection status changed to ${newStatus} for screen ${this.screenSlug || this.screenName}`);
+    
+    // Dispatch event to notify parent components about network status change
+    this.dispatchEvent(new CustomEvent('dialog-network-status-changed', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        isConnected: newStatus,
+        networkType: this.networkConnectionType,
+        screenSlug: this.screenSlug,
+        screenName: this.screenName
+      }
+    }));
+  }
+
+   /**
+   * Observer for network connection type changes.
+   * @param {string} newType New connection type
+   * @private
+   */
+  onNetworkConnectionTypeChanged_(newType: string): void {
+    console.log(`Adaptive dialog: Network connection type changed to ${newType} for screen ${this.screenSlug || this.screenName}`);
+    
+    // Dispatch event to notify parent components about network type change
+    this.dispatchEvent(new CustomEvent('dialog-network-type-changed', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        networkType: newType,
+        isConnected: this.networkConnectionStatus,
+        screenSlug: this.screenSlug,
+        screenName: this.screenName
+      }
+    }));
+  }
 }
+
+export interface OobeAdaptiveDialog extends HTMLElement {}
 
 declare global {
   interface HTMLElementTagNameMap {

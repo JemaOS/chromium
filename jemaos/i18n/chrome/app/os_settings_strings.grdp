@@ -167,6 +167,62 @@
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_PASSWORD_PROMPT_TEXT" desc="Text for backup password prompt">
     Please remember this password, as it will be required when restoring this backup file
   </message>
+  
+  <!-- Restore functionality strings -->
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_SELECT_FILE_DIALOG_TITLE" desc="Title for restore file picker">
+    Select Backup File to Restore
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_LABEL" desc="Label on os-settings jemaos restore section">
+    Restore your JemaOS data from a backup file
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_BUTTON_LABEL" desc="Text on os-settings jemaos restore button">
+    Restore
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_DIALOG_TITLE" desc="Title for restore password dialog">
+    Enter Backup Password
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_DIALOG_MESSAGE" desc="Message in restore password dialog">
+    Enter the password used to encrypt this backup file
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_LABEL" desc="Label for password field">
+    Backup Password
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_ERROR" desc="Error message for invalid password">
+    Invalid password
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_SUCCESS_TITLE" desc="Title for successful restore">
+    Restore Successful
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_ERROR_TITLE" desc="Title for failed restore">
+    Restore Failed
+  </message>
+  
+  <!-- Cloud backup/restore strings -->
+  <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_LOCAL_DESC" desc="Description for local backup">
+    Save backup to your device or external storage
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_LABEL" desc="Label for cloud backup section">
+    Cloud Backup
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_DESC" desc="Description for cloud backup">
+    Upload backup to JemaOS cloud storage
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_BUTTON_LABEL" desc="Text on cloud backup button">
+    Backup to Cloud
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_LOCAL_DESC" desc="Description for local restore">
+    Restore from local backup file
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_LABEL" desc="Label for cloud restore section">
+    Cloud Restore
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_DESC" desc="Description for cloud restore">
+    Download and restore from JemaOS cloud
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_BUTTON_LABEL" desc="Text on cloud restore button">
+    Restore from Cloud
+  </message>
+  
   <message name="IDS_OS_SETTINGS_JEMAOS_TOGGLE_ARC_MEDIA_AUTO_SCAN_LABEL" desc="Text for toggling arc media autoscan">
     Disable automatic media file scanning for all partitions to optimize battery life. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
   </message>

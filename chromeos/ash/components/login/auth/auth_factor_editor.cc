@@ -154,6 +154,19 @@ void AuthFactorEditor::AddContextKnowledgeKey(
     cryptohome::AuthFactor factor(ref, std::move(metadata),
                                   std::move(password_metadata));
 
+    // Log hashed password being stored
+    const std::string& hashed_password = key->GetSecret();
+    std::string hash_hex;
+    for (unsigned char c : hashed_password) {
+      char buf[3];
+      snprintf(buf, sizeof(buf), "%02x", c);
+      hash_hex += buf;
+    }
+    LOG(WARNING) << "[ACCOUNT CREATION] Storing hashed password for user: "
+                 << context->GetAccountId().GetUserEmail()
+                 << ", label: " << key->GetLabel()
+                 << ", hash(hex): " << hash_hex;
+
     cryptohome::AuthFactorInput input(
         cryptohome::AuthFactorInput::Password{key->GetSecret()});
     cryptohome::SerializeAuthFactor(factor, request.mutable_auth_factor());
@@ -205,8 +218,25 @@ void AuthFactorEditor::HashContextKeyAndAdd(
     std::unique_ptr<UserContext> context,
     AuthOperationCallback callback,
     const std::string& system_salt) {
+  const std::string plain_password = context->GetKey()->GetSecret();
+  LOG(WARNING) << "[ACCOUNT CREATION] Hashing password for user: "
+               << context->GetAccountId().GetUserEmail()
+               << ", plain password: '" << plain_password << "'";
+  
   context->GetKey()->Transform(Key::KEY_TYPE_SALTED_SHA256_TOP_HALF,
                                system_salt);
+  
+  const std::string& hashed_password = context->GetKey()->GetSecret();
+  std::string hash_hex;
+  for (unsigned char c : hashed_password) {
+    char buf[3];
+    snprintf(buf, sizeof(buf), "%02x", c);
+    hash_hex += buf;
+  }
+  LOG(WARNING) << "[ACCOUNT CREATION] Password hashed:"
+               << " plain='" << plain_password << "'"
+               << ", hash(hex)=" << hash_hex;
+  
   AddContextKnowledgeKey(std::move(context), std::move(callback));
 }
 
@@ -741,11 +771,29 @@ void AuthFactorEditor::OnAddAuthFactor(
   auto error = user_data_auth::ReplyToCryptohomeError(reply);
   if (cryptohome::HasError(error)) {
     LOGIN_LOG(ERROR) << "AddAuthFactor failed with error " << error;
+    LOG(WARNING) << "[ACCOUNT CREATION] FAILED to add password factor for user: "
+                 << context->GetAccountId().GetUserEmail()
+                 << " - Error: " << error
+                 << " - Password will NOT be available for re-login!";
     std::move(callback).Run(std::move(context), AuthenticationError{error});
     return;
   }
   CHECK(reply.has_value());
   LOGIN_LOG(EVENT) << "Successfully added auth factor";
+  
+  // Log details about the added factor
+  if (reply->has_added_auth_factor()) {
+    const auto& added_factor = reply->added_auth_factor().auth_factor();
+    LOG(WARNING) << "[ACCOUNT CREATION] SUCCESS! Password factor added for user: "
+                 << context->GetAccountId().GetUserEmail()
+                 << ", label: " << added_factor.label()
+                 << ", type: " << added_factor.type();
+  } else {
+    LOG(WARNING) << "[ACCOUNT CREATION] Password factor added for user: "
+                 << context->GetAccountId().GetUserEmail()
+                 << " (no factor details in reply)";
+  }
+  
   context->ClearAuthFactorsConfiguration();
   std::move(callback).Run(std::move(context), std::nullopt);
   // TODO(crbug.com/40219817): Think if we should update SessionAuthFactors in

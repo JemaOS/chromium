@@ -27,6 +27,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "ash/constants/notifier_catalogs.h"
 #include "base/task/thread_pool.h"
+#include <sys/stat.h>
 
 using message_center::MessageCenter;
 using message_center::Notification;
@@ -34,10 +35,105 @@ using message_center::Notification;
 namespace ash::settings {
 
 namespace {
+  const char kJemaOSBackupScriptPath[] = "/tmp/jemaos-backup-script.sh";
   const char kJemaOSBackupCommandFormat[] =
-    "/usr/bin/jemaos-backup backup --email %s --key %s --target %s";
+    "/bin/bash %s backup --email %s --key %s --target %s";
   constexpr int kJemaOSBackupTaskTrackIntervalSeconds = 5;
   constexpr int kJemaOSBackupTaskOutputLines = 10;
+
+  // Embedded backup/restore script
+  const char kJemaOSBackupScript[] = R"SCRIPT(#!/bin/bash
+LOGFILE="/tmp/jemaos-backup.log"
+echo "=== $(date) ===" >> "$LOGFILE"
+echo "Args: $@" >> "$LOGFILE"
+
+EMAIL=""
+KEY=""
+TARGET=""
+PROFILE_PATH="/home/chronos/user"
+COMMAND=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    backup|restore) COMMAND="$1"; shift ;;
+    --email) EMAIL="$2"; shift 2 ;;
+    --key) KEY="$2"; shift 2 ;;
+    --target)
+      DECODED=$(echo "$2" | base64 -d 2>/dev/null)
+      if [ -n "$DECODED" ] && [[ "$DECODED" == /* ]]; then
+        TARGET="$DECODED"
+      else
+        TARGET="$2"
+      fi
+      shift 2 ;;
+    --profile) PROFILE_PATH="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+echo "Cmd=$COMMAND, Email=$EMAIL, Target=$TARGET" >> "$LOGFILE"
+
+[ -z "$TARGET" ] && echo "Error: No target" && exit 1
+
+if [ "$COMMAND" = "backup" ]; then
+  [ ! -d "$PROFILE_PATH" ] && echo "Error: Profile not found" && exit 1
+  mkdir -p "$(dirname "$TARGET")" 2>> "$LOGFILE"
+  TEMP_DIR="/tmp/jemaos_backup_$$"
+  mkdir -p "$TEMP_DIR"
+  echo -e "User: $EMAIL\nDate: $(date)" > "$TEMP_DIR/backup_info.txt"
+  EXCLUDES=(--exclude='.cache/*' --exclude='*/Cache/*' --exclude='*/GPUCache/*' --exclude='*.bak' --exclude='*/backup/*.bak')
+  
+  if [ -n "$KEY" ]; then
+    tar -czf - "${EXCLUDES[@]}" -C "$PROFILE_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE" \
+      | openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:"$KEY" > "$TARGET" 2>> "$LOGFILE"
+  else
+    tar -czf "$TARGET" "${EXCLUDES[@]}" -C "$PROFILE_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE"
+  fi
+  rm -rf "$TEMP_DIR"
+  
+  if [ -f "$TARGET" ] && [ -s "$TARGET" ]; then
+    echo "Backup completed: $(du -h "$TARGET" | cut -f1)" >> "$LOGFILE"
+    echo "Backup completed: $TARGET"
+    exit 0
+  fi
+  echo "Backup failed" >> "$LOGFILE"
+  exit 1
+
+elif [ "$COMMAND" = "restore" ]; then
+  [ ! -f "$TARGET" ] && echo "Error: File not found: $TARGET" && exit 1
+  TEMP_DIR="/tmp/jemaos_restore_$$"
+  mkdir -p "$TEMP_DIR"
+  
+  if [ -n "$KEY" ]; then
+    openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:"$KEY" -in "$TARGET" 2>> "$LOGFILE" \
+      | tar -xzf - -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Decrypt failed"; exit 1; }
+  else
+    tar -xzf "$TARGET" -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Extract failed"; exit 1; }
+  fi
+  
+  cp -af "$TEMP_DIR"/. "$PROFILE_PATH"/ 2>> "$LOGFILE"
+  rm -rf "$TEMP_DIR"
+  echo "Restore completed" >> "$LOGFILE"
+  echo "Restore completed! Restart your device."
+  exit 0
+else
+  echo "Usage: backup|restore --email EMAIL --key KEY --target PATH"
+  exit 1
+fi
+)SCRIPT";
+
+  bool EnsureBackupScriptExists() {
+    base::FilePath script_path(kJemaOSBackupScriptPath);
+    if (!base::PathExists(script_path)) {
+      if (!base::WriteFile(script_path, kJemaOSBackupScript)) {
+        LOG(ERROR) << "Failed to create backup script at " << kJemaOSBackupScriptPath;
+        return false;
+      }
+      // Make executable
+      chmod(kJemaOSBackupScriptPath, 0755);
+    }
+    return true;
+  }
 
   JemaOSShellClient* GetShellClient() {
     return JemaOSShellClient::Get();
@@ -140,12 +236,20 @@ void BackupTaskManager::StartTask(Profile* profile,
   if (!shell_client_) {
     shell_client_ = GetShellClient();
   }
+  
+  // Ensure backup script exists (creates from embedded script if missing)
+  if (!EnsureBackupScriptExists()) {
+    LOG(ERROR) << "Failed to ensure backup script exists";
+    task_state_ = TaskState::kFailed;
+    return;
+  }
+  
   std::string encoded_filepath = base::Base64Encode(backup_path_.value());
   task_state_ = TaskState::kRunning;
   const std::string key = GenerateKey(email, password);
   const std::string command = base::StringPrintf(
       kJemaOSBackupCommandFormat,
-      email.c_str(), key.c_str(), encoded_filepath.c_str());
+      kJemaOSBackupScriptPath, email.c_str(), key.c_str(), encoded_filepath.c_str());
   shell_client_->AsyncExec(command,
       base::BindOnce(
         &BackupTaskManager::OnTaskStarted, weak_ptr_factory_.GetWeakPtr()));

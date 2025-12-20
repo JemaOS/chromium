@@ -32,7 +32,7 @@ namespace {
     "https://apis.jemaos.com/mailing/oobe/completion";
 #else
   const char kJemaOSSubscriptionUrl[] =
-    "https://apis.jemaos.io/mailing/oobe/completion";
+    "https://apis.jematechnology.fr/mailing/oobe/completion";
 #endif
   const size_t kMaxMessageSize = 1024 * 1;  // 1MB
 

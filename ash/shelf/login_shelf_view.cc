@@ -70,6 +70,7 @@
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 #include "jemaos/switches/misc/misc_constants.h"
+#include "jemaos/switches/misc/misc_switches.h"
 #include "jemaos/switches/account/account_switches.h"
 
 using session_manager::SessionState;
@@ -900,6 +901,11 @@ bool LoginShelfView::ShouldShowAppsButton() const {
 
 bool LoginShelfView::ShouldShowOsInstallButton() const {
   if (!switches::IsOsInstallAllowed()) {
+    return false;
+  }
+
+  // Check if the OS Install button is hidden via JemaOS switch
+  if (jemaos::switches::IsOsInstallButtonHidden()) {
     return false;
   }
 

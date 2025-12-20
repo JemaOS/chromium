@@ -8296,7 +8296,7 @@ Vous avez # autres mots de passe compromis. Le Gestionnaire de mots de passe Go
 <translation id="6885771755599377173">Aperçu des informations système</translation>
 <translation id="6886380424988777998">Impossible de mettre à niveau Linux</translation>
 <translation id="6886871292305414135">Ouvrir le lien dans un nouvel ongle&amp;t</translation>
-<translation id="6888831646723563669">Connectez-vous pour profiter de toutes les fonctionnalités de votre <ph name="DEVICE_TYPE" /></translation>
+<translation id="6888831646723563669">Connectez-vous pour profiter de toutes les fonctionnalités de votre dispositif Jema</translation>
 <translation id="6888850808202733940">Applis et jeux</translation>
 <translation id="6889957081990109136">Aucun contacteur n'a encore été associé</translation>
 <translation id="689007770043972343">Faites glisser d'autres onglets dans ce groupe</translation>
@@ -9842,7 +9842,7 @@ Appuyez sur un contacteur ou une touche associé(e) pour supprimer l'association
 <translation id="7986764869610100215">Les appareils USB seront alors partagés en permanence avec les invités. Une fois un appareil partagé avec un invité, il tente automatiquement de se connecter à cet invité. Si vous déconnectez l'appareil manuellement, le partage permanent est désactivé. Si vous désactivez complètement la fonctionnalité, tous les paramètres de partage permanent sont réinitialisés. Voulez-vous vraiment continuer ?</translation>
 <translation id="7987814697832569482">Toujours se connecter via ce VPN</translation>
 <translation id="7988355189918024273">Activer les fonctionnalités d'accessibilité</translation>
-<translation id="7988805580376093356">Exécutez <ph name="DEVICE_OS" /> depuis une clé USB pour conserver votre OS.</translation>
+<translation id="7988805580376093356">Exécutez <ph name="DEVICE_OS" /> depuis le dispositif pour conserver votre OS</translation>
 <translation id="7988876720343145286">Autres paramètres et autorisations Android</translation>
 <translation id="7990863024647916394"><ph name="DISPLAY_NAME" /> - Voix <ph name="COUNT" /></translation>
 <translation id="7990958035181555539">Transférer automatiquement le Wi-Fi depuis votre téléphone Android</translation>
@@ -11473,8 +11473,8 @@ Les autorisations que vous avez déjà accordées aux sites Web et aux applis pe
 <translation id="9117030152748022724">Gérer vos applications</translation>
 <translation id="9119587891086680311">Ces fonctionnalités utilisent l'IA, sont au début de leur développement et ne sont pas infaillibles.</translation>
 <translation id="9120362425083889527">Impossible de terminer l'installation. Veuillez réessayer ou fermer cette fenêtre.</translation>
-<translation id="9120693811286642342"><ph name="BEGIN_PARAGRAPH1" />Pour une expérience optimale, installez <ph name="DEVICE_OS" /> sur votre disque interne. Vous pouvez aussi le faire plus tard depuis l'écran de connexion.<ph name="END_PARAGRAPH1" />
-    <ph name="BEGIN_PARAGRAPH2" />Si vous ne voulez pas l'installer maintenant, vous pouvez l'exécuter depuis une clé USB pour l'essayer. Vous conserverez ainsi votre OS et vos données, mais vous serez peut-être limité en termes de stockage et de performances.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="9120693811286642342"><ph name="BEGIN_PARAGRAPH1" /><ph name="DEVICE_OS" /> JemaOS est un système d’exploitation français, souverain et open core, spécialement conçu pour fonctionner exclusivement sur le dispositif Jema. Il s’exécute en natif sur votre appareil, sans nécessiter d’installation sur disque dur.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Il offre une gestion intelligente de la mémoire virtuelle, ce qui permet d’optimiser les performances même lorsque la RAM physique est limitée. De plus, en cas de panne du disque dur, votre appareil Jema assure automatiquement la continuité de service.<ph name="END_PARAGRAPH2" /></translation>
 <translation id="9120761757252614786">Personnaliser la barre d'outils</translation>
 <translation id="9120800848981545750">Téléchargez Chrome pour iOS pour accéder à vos onglets, favoris et mots de passe sur votre téléphone.</translation>
 <translation id="9121814364785106365">Ouvrir dans un onglet épinglé</translation>

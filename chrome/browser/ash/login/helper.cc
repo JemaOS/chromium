@@ -144,6 +144,11 @@ bool NetworkStateHelper::IsConnected() const {
   return nsh->ConnectedNetworkByType(NetworkTypePattern::Default()) != nullptr;
 }
 
+bool NetworkStateHelper::IsConnectedToWifi() const {
+  NetworkStateHandler* nsh = NetworkHandler::Get()->network_state_handler();
+  return nsh->ConnectedNetworkByType(NetworkTypePattern::WiFi()) != nullptr;
+}
+
 bool NetworkStateHelper::IsConnectedToEthernet() const {
   NetworkStateHandler* nsh = NetworkHandler::Get()->network_state_handler();
   return nsh->ConnectedNetworkByType(NetworkTypePattern::Ethernet()) != nullptr;

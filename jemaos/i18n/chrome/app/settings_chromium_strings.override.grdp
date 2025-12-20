@@ -2,10 +2,10 @@
 <!-- override chrome/app/settings_chromium_strings.grdp, included from chromium_strings.grd -->
 <grit-part>
   <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">
-    About Browser
+    About Thot
   </message>
   <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">
-    Get help with Chromium browser
+    Get help with Thot browser
   </message>
   <if expr="chromeos_ash">
     <if expr="openjema">

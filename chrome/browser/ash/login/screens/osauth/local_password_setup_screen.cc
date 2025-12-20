@@ -31,6 +31,10 @@
 #include "components/crash/core/app/crashpad.h"
 
 namespace ash {
+
+// Forward declaration - defined in jema_local_signin_screen_handler.cc
+std::string GetAndClearWebLoginPasswordForOOBE();
+
 namespace {
 
 constexpr const char kUserActionInputPassword[] = "inputPassword";
@@ -92,6 +96,16 @@ void LocalPasswordSetupScreen::InspectContext(UserContext* user_context) {
     exit_callback_.Run(Result::kNotApplicable);
     return;
   }
+  
+  // Check if we have a web login password stored (from JEMA/Flint web authentication)
+  std::string web_password = GetAndClearWebLoginPasswordForOOBE();
+  if (!web_password.empty()) {
+    LOG(WARNING) << "[JEMAOS] Auto-filling password from web login for user: "
+                 << user_context->GetAccountId().GetUserEmail();
+    jema_local_password_ = web_password;
+    return;
+  }
+  
   AccountType account_type = user_context->GetAccountId().GetAccountType();
   if (account_type != AccountType::FLINT_ACCOUNT) {
     // only flint account will have local password, and skip DoShow

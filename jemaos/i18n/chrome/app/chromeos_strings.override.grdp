@@ -48,10 +48,10 @@
     </message>
     <if expr="not use_jemaos_com">
       <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
-        Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jemaos.io/help/
+        Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jematechnology.fr/help/
       </message>
       <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
-        Your computer contains a secure module, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jemaos.io/help/
+        Your computer contains a secure module, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jematechnology.fr/help/
       </message>
     </if>
     <if expr="use_jemaos_com">
@@ -73,7 +73,7 @@
         <ph name="LIST_ITEM">&lt;li&gt;</ph>Set both the dev and the system root login password to a custom value so you can manually SSH into the device
       <ph name="END_LIST">&lt;/ul&gt;</ph>
       <ph name="BR">&lt;br&gt;</ph>
-      Once enabled, most of the debugging features will remain enabled even after performing a powerwash or wiping the data on an enterprise managed device. To fully disable all debugging features, complete the openJema recovery process (https://jemaos.io/help/).
+      Once enabled, most of the debugging features will remain enabled even after performing a powerwash or wiping the data on an enterprise managed device. To fully disable all debugging features, complete the openJema recovery process (https://jematechnology.fr/help/).
       <ph name="BR">&lt;br&gt;</ph>
       <ph name="BR">&lt;br&gt;</ph>
       For more information about the debugging features see:<ph name="BR">&lt;br&gt;</ph>
@@ -139,10 +139,10 @@
     </message>
     <if expr="not use_jemaos_com">
       <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
-        Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jemaos.io/help/
+        Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jematechnology.fr/help/
       </message>
       <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
-        Your computer contains a secure module, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jemaos.io/help/
+        Your computer contains a secure module, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jematechnology.fr/help/
       </message>
     </if>
     <if expr="use_jemaos_com">
@@ -164,7 +164,7 @@
         <ph name="LIST_ITEM">&lt;li&gt;</ph>Set both the dev and the system root login password to a custom value so you can manually SSH into the device
       <ph name="END_LIST">&lt;/ul&gt;</ph>
       <ph name="BR">&lt;br&gt;</ph>
-      Once enabled, most of the debugging features will remain enabled even after performing a powerwash or wiping the data on an enterprise managed device. To fully disable all debugging features, complete the JemaOS recovery process (https://jemaos.io/help/).
+      Once enabled, most of the debugging features will remain enabled even after performing a powerwash or wiping the data on an enterprise managed device. To fully disable all debugging features, complete the JemaOS recovery process (https://jematechnology.fr/help/).
       <ph name="BR">&lt;br&gt;</ph>
       <ph name="BR">&lt;br&gt;</ph>
       For more information about the debugging features see:<ph name="BR">&lt;br&gt;</ph>
@@ -223,8 +223,8 @@
     </message>
   </if>
   <message name="IDS_OS_TRIAL_SUBTITLE" desc="Subtitle of the install or try screen, the first screen of the ChromeOS Flex Installation flow">
-    <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>For the best experience, install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> to your internal disk. You can also install it later from the login screen.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
-    <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>If you're not ready to install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, you can run from USB to try it out. Please note that running <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> from USB will introduce storage limits and performance penalties; some features, including OTA system updates, will not work.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> est un système d’exploitation français, souverain et open core, spécialement conçu pour fonctionner exclusivement sur le dispositif Jema. Il s’exécute en natif sur votre appareil, sans nécessiter d’installation sur disque dur.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+    <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Il offre une gestion intelligente de la mémoire virtuelle, ce qui permet d’optimiser les performances même lorsque la RAM physique est limitée. De plus, en cas de panne du disque dur, votre appareil Jema assure automatiquement la continuité de service.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
   </message>
   <if expr="openjema">
     <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">

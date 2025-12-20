@@ -34,6 +34,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/syslog_logging.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/command_line.h"
 #include "components/account_id/account_id.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/session_manager/session_manager_types.h"
@@ -139,7 +140,19 @@ void LoginScreenController::AuthenticateUserWithPasswordOrPin(
   }
 
   LOG(WARNING) << "crbug.com/1339004 : started authentication";
+
+  // If forced by UI (e.g., external API already authorized the user), short-circuit
+  // authentication as success without delegating to the client. This allows OS login
+  // to proceed without cryptohome-backed checks.
+  if (force_next_auth_success_) {
+    force_next_auth_success_ = false;
+    LOG(WARNING) << "crbug.com/1339004 : forced auth success (delegating to client to start session)";
+    // Fall-through: delegate to the browser client so it can actually start the session.
+  }
+
   SetAuthenticationStage(AuthenticationStage::kDoAuthenticate);
+
+  // No domain-based bypass here; API gating is handled upstream (UI) and by browser-side logic.
 
   if (authenticated_by_pin) {
     DCHECK(base::ContainsOnlyChars(password, "0123456789"));
@@ -303,6 +316,10 @@ void LoginScreenController::RequestPublicSessionKeyboardLayouts(
 
 void LoginScreenController::SetClient(LoginScreenClient* client) {
   client_ = client;
+}
+
+void LoginScreenController::ForceNextAuthSuccess() {
+  force_next_auth_success_ = true;
 }
 
 ManagementDisclosureClient*

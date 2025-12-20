@@ -154,7 +154,7 @@ constexpr char kHelpUrl[] =
     "https://jemaos.com/help/knowledge-base/getting-started/game-dashboard";
 #else
 constexpr char kHelpUrl[] =
-    "https://jemaos.io/help/knowledge-base/getting-started/game-dashboard";
+    "https://jematechnology.fr/help/knowledge-base/getting-started/game-dashboard";
 #endif
 
 // Creates an individual Game Dashboard Tile.

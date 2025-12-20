@@ -28,6 +28,9 @@
   <message name="IDS_FILE_BROWSER_JEMADROP_ROOT_LABEL" desc="A label for JemaDrop in file manager sidebar">
     JemaDrop
   </message>
+  <message name="IDS_FILE_BROWSER_JEMADROP_COMING_SOON" desc="Placeholder text shown on JemaDrop page in Files app">
+    Coming soon
+  </message>
   <if expr="openjema">
     <message name="IDS_FILE_BROWSER_NO_TASK_FOR_APK" desc="Message shown when a user tries to open a *.apk file, which we don't handle in the Files app.">
       To continue with this action you will need to <ph name="BEGIN_LINK_ARC_APP">&lt;a href="#"&gt;</ph>>activate the Android subsystem<ph name="END_LINK_ARC_APP">&lt;/a&gt;</ph> on your openJema device; also your openJema device needs to be <ph name="BEGIN_LINK_HELP">&lt;a target='_blank' href='$1'&gt;</ph>switched to Developer Mode<ph name="END_LINK_HELP">&lt;/a&gt;</ph>.

@@ -1,29 +1,29 @@
 // os-settings-jemaos-account
 
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import { PolymerElement } from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import 'chrome://resources/ash/common/cr_elements/cr_icon_button/cr_icon_button.js';
 import 'chrome://resources/ash/common/cr_elements/cr_icons.css.js';
 import 'chrome://resources/ash/common/cr_elements/icons.html.js';
 import 'chrome://resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
-import {WebUiListenerMixin} from 'chrome://resources/ash/common/cr_elements/web_ui_listener_mixin.js';
-import {I18nMixin} from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
-import {CrToggleElement} from 'chrome://resources/ash/common/cr_elements/cr_toggle/cr_toggle.js';
-import {sendWithPromise} from 'chrome://resources/js/cr.js';
-import {convertImageSequenceToPng} from 'chrome://resources/ash/common/cr_picture/png.js';
-import {getImage} from 'chrome://resources/js/icon.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {ProfileInfo, ProfileInfoBrowserProxyImpl} from '/shared/settings/people_page/profile_info_browser_proxy.js';
-import {SignedInState, SyncBrowserProxy, SyncBrowserProxyImpl, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {AccountManagerBrowserProxyImpl} from '../os_people_page/account_manager_browser_proxy.js';
-import {RouteObserverMixin} from '../common/route_observer_mixin.js';
-import type {Route} from '../router.js';
-import {Router, routes} from '../router.js';
+import { WebUiListenerMixin } from 'chrome://resources/ash/common/cr_elements/web_ui_listener_mixin.js';
+import { I18nMixin } from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
+import { CrToggleElement } from 'chrome://resources/ash/common/cr_elements/cr_toggle/cr_toggle.js';
+import { sendWithPromise } from 'chrome://resources/js/cr.js';
+import { convertImageSequenceToPng } from 'chrome://resources/ash/common/cr_picture/png.js';
+import { getImage } from 'chrome://resources/js/icon.js';
+import { loadTimeData } from 'chrome://resources/js/load_time_data.js';
+import { ProfileInfo, ProfileInfoBrowserProxyImpl } from '/shared/settings/people_page/profile_info_browser_proxy.js';
+import { SignedInState, SyncBrowserProxy, SyncBrowserProxyImpl, SyncStatus } from '/shared/settings/people_page/sync_browser_proxy.js';
+import { AccountManagerBrowserProxyImpl } from '../os_people_page/account_manager_browser_proxy.js';
+import { RouteObserverMixin } from '../common/route_observer_mixin.js';
+import type { Route } from '../router.js';
+import { Router, routes } from '../router.js';
 import '../settings_shared.css.js';
 import '../common/password_prompt_dialog/password_prompt_dialog.js';
-import {getTemplate} from './jemaos_account.html.js';
+import { getTemplate } from './jemaos_account.html.js';
 
 const JemaSettingsAccountPageElementBase =
-    WebUiListenerMixin(RouteObserverMixin(I18nMixin(PolymerElement)));
+  WebUiListenerMixin(RouteObserverMixin(I18nMixin(PolymerElement)));
 
 /** @polymer */
 class JemaSettingsAccountPageElement extends JemaSettingsAccountPageElementBase {
@@ -86,6 +86,7 @@ class JemaSettingsAccountPageElement extends JemaSettingsAccountPageElementBase 
       profileIconUrl_: String,
       profileName_: String,
       profileLabel_: String,
+
     };
   }
 
@@ -111,29 +112,26 @@ class JemaSettingsAccountPageElement extends JemaSettingsAccountPageElementBase 
     super.connectedCallback();
     if (this.isAccountManagerEnabled_) {
       this.addWebUiListener(
-          'accounts-changed', this.updateAccounts_.bind(this));
+        'accounts-changed', this.updateAccounts_.bind(this));
       this.updateAccounts_();
     } else {
       ProfileInfoBrowserProxyImpl.getInstance().getProfileInfo().then(
-          this.handleProfileInfo_.bind(this));
+        this.handleProfileInfo_.bind(this));
       this.addWebUiListener(
-          'profile-info-changed', this.handleProfileInfo_.bind(this));
+        'profile-info-changed', this.handleProfileInfo_.bind(this));
     }
 
     this.syncBrowserProxy_.getSyncStatus().then(
-        this.handleSyncStatus_.bind(this));
+      this.handleSyncStatus_.bind(this));
     this.addWebUiListener(
-        'sync-status-changed', this.handleSyncStatus_.bind(this));
+      'sync-status-changed', this.handleSyncStatus_.bind(this));
     if (!loadTimeData.getBoolean('isGuest')) {
       this.addWebUiListener('offline-auto-signin-system-salt-obtained',
-          this.onOfflineAutoSigninSystemSaltObtained_.bind(this));
+        this.onOfflineAutoSigninSystemSaltObtained_.bind(this));
     }
-    // this.getIsOfflineAutoSigninEnabled_();
-    // move this.getIsOfflineAutoSigninEnabled_ to routeChange observer
   }
 
   override async currentRouteChanged(route: Route): Promise<void> {
-    // move getIsOfflineAutoSigninEnabled_ here
     if (route === routes.JEMAOS) {
       this.getIsOfflineAutoSigninEnabled_();
     }
@@ -187,15 +185,19 @@ class JemaSettingsAccountPageElement extends JemaSettingsAccountPageElementBase 
   }
 
   async updateAccounts_() {
-    const accounts = await AccountManagerBrowserProxyImpl.getInstance().getAccounts();
-    if (accounts.length == 0) {
-      return;
-    }
-    this.profileName_ = accounts[0].fullName;
-    this.profileIconUrl_ = accounts[0].pic;
+    try {
+      const accounts = await AccountManagerBrowserProxyImpl.getInstance().getAccounts();
+      if (accounts.length == 0) {
+        return;
+      }
+      this.profileName_ = accounts[0].fullName;
+      this.profileIconUrl_ = accounts[0].pic;
 
-    const profileEmail = accounts[0].email;
-    this.profileLabel_ = profileEmail;
+      const profileEmail = accounts[0].email;
+      this.profileLabel_ = profileEmail;
+    } catch (error) {
+      console.error('Error in updateAccounts_:', error);
+    }
   }
 
   onToggleOfflineAutoSignin_() {
@@ -254,7 +256,7 @@ class JemaSettingsAccountPageElement extends JemaSettingsAccountPageElementBase 
     }
   }
 
-  openLocalAccountChangePasswordSystemSettings_(event: CustomEvent<{event: Event}>): void {
+  openLocalAccountChangePasswordSystemSettings_(event: CustomEvent<{ event: Event }>): void {
     event.detail.event.preventDefault();
     Router.getInstance().navigateTo(routes.LOCK_SCREEN);
   }
@@ -279,4 +281,4 @@ class JemaSettingsAccountPageElement extends JemaSettingsAccountPageElementBase 
 }
 
 customElements.define(
-    JemaSettingsAccountPageElement.is, JemaSettingsAccountPageElement);
+  JemaSettingsAccountPageElement.is, JemaSettingsAccountPageElement);

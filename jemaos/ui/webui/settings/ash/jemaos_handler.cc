@@ -41,6 +41,8 @@
 #include "base/hash/sha1.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
+#include "base/json/json_reader.h"
 #include <sys/stat.h>
 
 namespace ash::settings {
@@ -407,6 +409,18 @@ void JemaOsHandler::RegisterMessages() {
                "cleanOfflineLoginPassword",
                 base::BindRepeating(&JemaOsHandler::HandleCleanOfflineLoginPassword,
                           base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
+      "fetchConnectApiUserId",
+      base::BindRepeating(&JemaOsHandler::HandleFetchConnectApiUserId,
+                          base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
+      "getConnectApiUserId",
+      base::BindRepeating(&JemaOsHandler::HandleGetConnectApiUserId,
+                          base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
+      "getBackupAnalysis",
+      base::BindRepeating(&JemaOsHandler::HandleGetBackupAnalysis,
+                          base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
       "getShowRotateScreenButton",
@@ -648,6 +662,16 @@ void JemaOsHandler::HandleSaveOfflineLoginPassword(
       "plaintext");
   prefs->SetString(jemaos::prefs::kOfflineAutoSigninAccountIdKey,
       account_id.GetAccountIdKey());
+  
+  // Fetch user_id from Connect API after login
+  if (account_id.GetUserEmail().length() > 0) {
+    std::string email = account_id.GetUserEmail();
+    LOG(INFO) << "Triggering Connect API user_id fetch for email: " << email;
+    HandleFetchConnectApiUserId(base::Value::List().Append(email));
+  } else {
+    LOG(WARNING) << "No email available for Connect API user_id fetch";
+  }
+  
   ResolveJavascriptCallback(callback_id, base::Value(true));
 }
 
@@ -664,6 +688,464 @@ void JemaOsHandler::HandleCleanOfflineLoginPassword(
   prefs->SetString(jemaos::prefs::kOfflineAutoSigninAccountIdKey,
       std::string());
   ResolveJavascriptCallback(callback_id, base::Value(true));
+}
+
+void JemaOsHandler::HandleFetchConnectApiUserId(const base::Value::List& args) {
+  CHECK_EQ(1u, args.size());
+  std::string email = args[0].GetString();
+  
+  if (email.empty()) {
+    LOG(ERROR) << "Empty email provided for Connect API user ID fetch";
+    return;
+  }
+  
+  LOG(INFO) << "Fetching Connect API user ID for email: " << email;
+  
+  // API endpoint
+  const char kConnectApiBaseUrl[] = "https://test-connect-api.jematech.fr";
+  std::string api_url = std::string(kConnectApiBaseUrl) + "/v1/connect/user/by-email";
+  
+  // Prepare JSON body
+  std::string json_body = base::StringPrintf(
+      "{\"email\": \"%s\"}", email.c_str());
+  
+  LOG(INFO) << "=== Connect API Call Debug ===";
+  LOG(INFO) << "Email: " << email;
+  LOG(INFO) << "API URL: " << api_url;
+  LOG(INFO) << "JSON body: " << json_body;
+  
+  // Write a shell script to execute curl - same pattern as cloud backup API
+  std::string script_file = "/tmp/jemaos_connect_api.sh";
+  std::string script_content = 
+      "#!/bin/bash\n"
+      "exec 2>/dev/null\n"  // Suppress stderr warnings about noexec mount
+      "curl -s -L -X POST \"" + api_url + "\" \\\n"
+      "  -H 'Content-Type: application/json' \\\n"
+      "  -d '" + json_body + "'\n";
+  
+  LOG(INFO) << "Writing script to: " << script_file;
+  LOG(INFO) << "Script content:\n" << script_content;
+  
+  base::WriteFile(base::FilePath(script_file), script_content);
+  chmod(script_file.c_str(), 0755);
+  
+  // Redirect stderr when running the script to suppress noexec warnings
+  std::string command = "/bin/bash " + script_file + " 2>/dev/null";
+  LOG(INFO) << "Command: " << command;
+  LOG(INFO) << "==============================";
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for Connect API call";
+    return;
+  }
+  
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnConnectApiUserIdReceived,
+                     weak_ptr_factory_.GetWeakPtr(), email));
+}
+
+void JemaOsHandler::OnConnectApiUserIdReceived(const std::string& email, 
+                                               std::optional<ShellState> state) {
+  LOG(INFO) << "=== OnConnectApiUserIdReceived called ===";
+  LOG(INFO) << "Email: " << email;
+  
+  if (!state) {
+    LOG(ERROR) << "CRITICAL: No state returned from Connect API call - command may not have been executed";
+    LOG(ERROR) << "This usually means the shell client failed to execute the command";
+    return;
+  }
+  
+  LOG(INFO) << "Exit code: " << state->code;
+  LOG(INFO) << "Raw output length: " << state->result.length();
+  LOG(INFO) << "Raw output (first 500 chars): " << state->result.substr(0, std::min<size_t>(500, state->result.length()));
+  
+  if (state->code != 0) {
+    LOG(ERROR) << "Command failed with exit code: " << state->code;
+    LOG(ERROR) << "Full output: " << state->result;
+    LOG(ERROR) << "Possible causes: network issue, curl not found, or command syntax error";
+    return;
+  }
+  
+  LOG(INFO) << "Connect API raw response: [" << state->result << "]";
+  LOG(INFO) << "Response length: " << state->result.length();
+  
+  // Check if response is empty
+  if (state->result.empty()) {
+    LOG(ERROR) << "Empty response from Connect API";
+    return;
+  }
+  
+  // Filter out warning lines from the response (noexec mount warnings)
+  std::string cleaned_result = state->result;
+  size_t json_start = cleaned_result.find("{");
+  if (json_start != std::string::npos) {
+    // Extract only the JSON part (starting from first '{')
+    cleaned_result = cleaned_result.substr(json_start);
+    LOG(INFO) << "Cleaned JSON response: [" << cleaned_result << "]";
+  } else {
+    LOG(ERROR) << "No JSON found in response";
+    return;
+  }
+  
+  // Parse JSON response using base::JSONReader
+  std::optional<base::Value> json_value = base::JSONReader::Read(cleaned_result);
+  if (!json_value || !json_value->is_dict()) {
+    LOG(ERROR) << "Invalid JSON response from Connect API. First 200 chars: " 
+               << cleaned_result.substr(0, std::min<size_t>(200, cleaned_result.length()));
+    return;
+  }
+  
+  const base::Value::Dict& root_dict = json_value->GetDict();
+  const base::Value* success = root_dict.Find("success");
+  if (!success || !success->GetBool()) {
+    LOG(ERROR) << "API returned success=false";
+    return;
+  }
+  
+  const base::Value::Dict* data = root_dict.FindDict("data");
+  if (!data) {
+    LOG(ERROR) << "No data field in API response";
+    return;
+  }
+  
+  const std::string* user_id = data->FindString("user_id");
+  if (!user_id || user_id->empty()) {
+    LOG(ERROR) << "No user_id in API response data";
+    return;
+  }
+  
+  // Extract status field
+  const std::string* status = data->FindString("status");
+  std::string status_value = status ? *status : "unknown";
+  
+  LOG(INFO) << "Storing user_id: " << *user_id << " for email: " << email << " with status: " << status_value;
+  
+  // Store user_id and status in local state preferences
+  PrefService* prefs = g_browser_process->local_state();
+  if (prefs) {
+    prefs->SetString(jemaos::prefs::kConnectApiUserId, *user_id);
+    prefs->SetString(jemaos::prefs::kConnectApiUserStatus, status_value);
+  }
+  
+  // Notify UI that user_id was fetched
+  base::Value::Dict response_dict;
+  response_dict.Set("user_id", *user_id);
+  response_dict.Set("email", email);
+  response_dict.Set("status", status_value);
+  
+  if (IsJavascriptAllowed()) {
+    FireWebUIListener("connect-api-user-id-fetched", response_dict);
+  }
+}
+
+void JemaOsHandler::HandleGetConnectApiUserId(const base::Value::List& args) {
+  AllowJavascript();
+  
+  if (args.size() != 1u) {
+    LOG(ERROR) << "Invalid arguments for getConnectApiUserId";
+    return;
+  }
+  
+  if (!args[0].is_string()) {
+    LOG(ERROR) << "Invalid callback_id type for getConnectApiUserId";
+    return;
+  }
+  
+  std::string callback_id = args[0].GetString();
+  
+  if (callback_id.empty()) {
+    LOG(ERROR) << "Empty callback_id for getConnectApiUserId";
+    return;
+  }
+  
+  if (!g_browser_process) {
+    LOG(ERROR) << "Browser process not available for getConnectApiUserId";
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("user_id", "");
+      error_response.Set("has_user_id", false);
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  PrefService* prefs = g_browser_process->local_state();
+  if (!prefs) {
+    LOG(ERROR) << "Prefs not available for getConnectApiUserId";
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("user_id", "");
+      error_response.Set("has_user_id", false);
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  std::string user_id = prefs->GetString(jemaos::prefs::kConnectApiUserId);
+  std::string status = prefs->GetString(jemaos::prefs::kConnectApiUserStatus);
+  
+  // Get current user email
+  std::string email;
+  const user_manager::User* user = 
+      ash::ProfileHelper::Get()->GetUserByProfile(profile_);
+  if (user && user->GetAccountId().GetUserEmail().length() > 0) {
+    email = user->GetAccountId().GetUserEmail();
+  }
+  
+  // If user_id is not available, try to fetch it from API using current user's email
+  if (user_id.empty() && !email.empty()) {
+    LOG(INFO) << "User ID not found in prefs, fetching from API for email: " << email;
+    // Trigger API call in background - don't wait for result
+    HandleFetchConnectApiUserId(base::Value::List().Append(email));
+    // Return empty for now, will be updated via WebUI event when API responds
+  }
+  
+  if (!IsJavascriptAllowed()) {
+    LOG(WARNING) << "Javascript not allowed, cannot resolve callback for getConnectApiUserId";
+    return;
+  }
+  
+  base::Value::Dict response;
+  response.Set("user_id", user_id);
+  response.Set("email", email);
+  response.Set("status", status);
+  response.Set("has_user_id", !user_id.empty());
+  
+  LOG(INFO) << "Returning user info - user_id: " << user_id << ", status: " << status << ", email: " << email;
+  
+  ResolveJavascriptCallback(callback_id, response);
+}
+
+void JemaOsHandler::HandleGetBackupAnalysis(const base::Value::List& args) {
+  AllowJavascript();
+  
+  if (args.size() != 1u) {
+    LOG(ERROR) << "Invalid arguments for getBackupAnalysis";
+    return;
+  }
+  
+  if (!args[0].is_string()) {
+    LOG(ERROR) << "Invalid callback_id type for getBackupAnalysis";
+    return;
+  }
+  
+  std::string callback_id = args[0].GetString();
+  
+  if (callback_id.empty()) {
+    LOG(ERROR) << "Empty callback_id for getBackupAnalysis";
+    return;
+  }
+  
+  // Get user_id from preferences
+  if (!g_browser_process) {
+    LOG(ERROR) << "Browser process not available";
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "Browser process not available");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  PrefService* prefs = g_browser_process->local_state();
+  if (!prefs) {
+    LOG(ERROR) << "Local state prefs not available";
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "Preferences not available");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  std::string user_id = prefs->GetString(jemaos::prefs::kConnectApiUserId);
+  
+  if (user_id.empty()) {
+    LOG(ERROR) << "No user_id available for backup analysis";
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "No user_id available");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  LOG(INFO) << "Fetching backup analysis for user_id: " << user_id;
+  
+  // API endpoint
+  const char kConnectApiBaseUrl[] = "https://test-connect-api.jematech.fr";
+  std::string api_url = base::StringPrintf("%s/v1/connect/backup/analysis/%s",
+                                           kConnectApiBaseUrl, user_id.c_str());
+  
+  // Create curl script
+  std::string script_file = "/tmp/jemaos_backup_analysis.sh";
+  std::string script_content = 
+      "#!/bin/bash\n"
+      "curl -s -L \"" + api_url + "\"\n";
+  
+  base::WriteFile(base::FilePath(script_file), script_content);
+  chmod(script_file.c_str(), 0755);
+  
+  // Suppress stderr to avoid noexec warnings
+  std::string command = "/bin/bash " + script_file + " 2>/dev/null";
+  
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for backup analysis API call";
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "System service not available");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  shell_client->SyncExec(command,
+      base::BindOnce(&JemaOsHandler::OnBackupAnalysisReceived,
+                     weak_ptr_factory_.GetWeakPtr(), callback_id));
+}
+
+void JemaOsHandler::OnBackupAnalysisReceived(const std::string& callback_id,
+                                             std::optional<ShellState> state) {
+  // Safety check - ensure JavaScript is allowed before resolving callbacks
+  if (!IsJavascriptAllowed()) {
+    LOG(ERROR) << "JavaScript not allowed, skipping backup analysis callback";
+    return;
+  }
+  
+  if (!state || state->code != 0) {
+    LOG(ERROR) << "Failed to fetch backup analysis. Exit code: " 
+               << (state ? state->code : -1);
+    if (!callback_id.empty() && IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "API call failed");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  LOG(INFO) << "Backup analysis API raw response: " << state->result;
+  
+  // Filter out warning lines from the response (noexec mount warnings)
+  std::string cleaned_result = state->result;
+  size_t json_start = cleaned_result.find("{");
+  if (json_start != std::string::npos) {
+    cleaned_result = cleaned_result.substr(json_start);
+    LOG(INFO) << "Cleaned backup analysis JSON: " << cleaned_result;
+  } else {
+    LOG(ERROR) << "No JSON found in backup analysis response";
+    if (!callback_id.empty() && IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "No JSON in response");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  // Parse JSON response using base::JSONReader
+  std::optional<base::Value> json_value = base::JSONReader::Read(cleaned_result);
+  if (!json_value || !json_value->is_dict()) {
+    LOG(ERROR) << "Invalid JSON response from backup analysis API";
+    if (!callback_id.empty() && IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "Invalid JSON response");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  const base::Value::Dict& root_dict = json_value->GetDict();
+  const base::Value* success = root_dict.Find("success");
+  if (!success || !success->GetBool()) {
+    LOG(ERROR) << "API returned success=false";
+    if (!callback_id.empty() && IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      const std::string* message = root_dict.FindString("message");
+      error_response.Set("error", message ? *message : "API call failed");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  // Extract data section
+  const base::Value::Dict* data = root_dict.FindDict("data");
+  if (!data) {
+    LOG(ERROR) << "No data field in backup analysis API response";
+    if (!callback_id.empty() && IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "No data in response");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+  
+  // Build response with parsed data
+  base::Value::Dict response;
+  response.Set("success", true);
+  
+  // Extract storage info
+  const base::Value::Dict* storage = data->FindDict("storage");
+  if (storage) {
+    base::Value::Dict storage_dict;
+    const base::Value* limit = storage->Find("limit");
+    const base::Value* used = storage->Find("used");
+    if (limit) {
+      storage_dict.Set("limit", limit->GetIfInt().value_or(0));
+    }
+    if (used) {
+      storage_dict.Set("used", used->GetIfInt().value_or(0));
+    }
+    response.Set("storage", std::move(storage_dict));
+  }
+  
+  // Extract hardware devices
+  const base::Value::List* hardware_devices = data->FindList("hardware_devices");
+  if (hardware_devices) {
+    base::Value::List devices_list;
+    for (const auto& device_value : *hardware_devices) {
+      if (device_value.is_dict()) {
+        const base::Value::Dict& device = device_value.GetDict();
+        base::Value::Dict device_dict;
+        const std::string* hardware_id = device.FindString("hardware_id");
+        const std::string* status = device.FindString("status");
+        const std::string* used_storage = device.FindString("used_storage");
+        if (hardware_id) {
+          device_dict.Set("hardware_id", *hardware_id);
+        }
+        if (status) {
+          device_dict.Set("status", *status);
+        }
+        if (used_storage) {
+          device_dict.Set("used_storage", *used_storage);
+        }
+        devices_list.Append(std::move(device_dict));
+      }
+    }
+    response.Set("hardware_devices", std::move(devices_list));
+  }
+  
+  // Extract last_updated
+  const std::string* last_updated = data->FindString("last_updated");
+  if (last_updated) {
+    response.Set("last_updated", *last_updated);
+  }
+  
+  // Safety check before resolving callback
+  if (!callback_id.empty() && IsJavascriptAllowed()) {
+    ResolveJavascriptCallback(callback_id, response);
+  } else {
+    LOG(WARNING) << "Cannot resolve callback - JavaScript not allowed or empty callback_id";
+  }
 }
 
 void JemaOsHandler::HandleSetShowRotateScreenButton(

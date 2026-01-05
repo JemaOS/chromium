@@ -60,6 +60,37 @@
     $i18n{jemaosSettingsCloudRestoreButtonLabel}
   </cr-button>
 </div>
+<div class="settings-box two-line" hidden="[[!showBackup_]]">
+  <div class="start padded">
+    <div>Connect API User Information</div>
+    <div class="secondary" hidden="[[connectApiUserId_]]">Loading...</div>
+    <div class="secondary" hidden="[[!connectApiUserId_]]">
+      User ID: [[connectApiUserId_]]
+    </div>
+    <div class="secondary" hidden="[[!connectApiStatus_]]">
+      Status: [[connectApiStatus_]]
+    </div>
+  </div>
+</div>
+<div class="settings-box two-line" hidden="[[!showBackup_]]">
+  <div class="start padded">
+    <div>Backup Storage Analysis</div>
+    <div class="secondary" hidden="[[connectApiUserId_]]">User ID required</div>
+    <template is="dom-if" if="[[backupAnalysis_]]">
+      <div class="secondary">
+        Storage: [[getBackupStorageUsed_()]] / [[getBackupStorageLimit_()]] ([[getBackupStoragePercentage_()]]%)
+      </div>
+      <div class="secondary" hidden="[[!getLastUpdated_()]]">
+        Last updated: [[getLastUpdated_()]]
+      </div>
+      <div class="secondary" hidden="[[!getHardwareDevicesCount_()]]">
+        Hardware devices: [[getHardwareDevicesCount_()]]
+      </div>
+    </template>
+    <div class="secondary" hidden="[[!shouldShowLoadingMessage_()]]">Loading...</div>
+    <div class="secondary" hidden="[[!shouldShowNoDataMessage_()]]">No backup data available</div>
+  </div>
+</div>
 <template is="dom-if" if="[[showRestorePasswordDialog_]]" restamp>
   <restore-password-dialog is-cloud-restore="[[isCloudRestore_]]" email="[[backupEmail_]]"
     on-restore-password-obtained="onRestorePasswordObtained_" on-close="onRestorePasswordDialogClosed_"

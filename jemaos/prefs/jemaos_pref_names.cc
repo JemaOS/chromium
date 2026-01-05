@@ -29,6 +29,9 @@ const char kOfflineAutoSigninPassword[] = "offline_auto_signin.password";
 const char kOfflineAutoSigninPasswordFormat[] = "offline_auto_signin.password_format";
 const char kOfflineAutoSigninIsChromeLastSignout[] = "offline_auto_signin.chrome_signout";
 
+const char kConnectApiUserId[] = "connect_api.user_id";
+const char kConnectApiUserStatus[] = "connect_api.user_status";
+
 const char kFactoryResetRequested[] = "FactoryResetRequested";
 
 const char kRebootRequiredForWidevine[] = "reboot_required_for_widevine";

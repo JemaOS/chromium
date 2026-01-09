@@ -54,6 +54,12 @@ class AccountTypeSelection extends AccountTypeSelectionScreenElementBase {
         type: Boolean,
         computed: 'computeHideLocalButton_(isOnline_)',
       },
+
+      // When true, hides the Google account option in the selection UI.
+      hideGoogleLoginButton: {
+        type: Boolean,
+        value: false,
+      },
     }
   }
 
@@ -61,6 +67,7 @@ class AccountTypeSelection extends AccountTypeSelectionScreenElementBase {
   private hideBackButton_: boolean;
   private isOnline_: boolean;
   private hideLocalButton_: boolean;
+  private hideGoogleLoginButton: boolean;
 
 
   override ready() {

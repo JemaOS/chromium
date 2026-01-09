@@ -140,6 +140,7 @@
 #include "ui/chromeos/devicetype_utils.h"
 #include "jemaos/switches/account/account_switches.h"
 #include "jemaos/switches/account/toggle/account_type_toggle.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 // Enable VLOG level 1.
 #undef ENABLED_VLOG_LEVEL
@@ -1481,6 +1482,10 @@ void GaiaScreenHandler::Show() {
     data.Set("showAccountTypeSelection", true);
     show_account_type_selection_ = false; // Reset the flag
   }
+
+  // JemaOS: optionally hide the Google account login option.
+  data.Set("hideGoogleLoginButton",
+           jemaos::switches::IsGoogleLoginButtonHidden());
 
   ShowInWebUI(std::move(data));
   elapsed_timer_ = std::make_unique<base::ElapsedTimer>();

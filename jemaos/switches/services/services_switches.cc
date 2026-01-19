@@ -29,7 +29,7 @@ const char kJemaOSAppsGalleryUpdateURL[] = "jemaos-apps-gallery-update-url";
 const char kJemaOSAssistantWebUrl[] = "jemaos-ai-url";
 
 const char kJemaOSStoreComPrefix[] = "https://store.jemaos.com";
-const char kJemaOSStoreIoPrefix[] = "https://store.jematechnology.fr";
+const char kJemaOSStoreIoPrefix[] = "https://chromewebstore.google.com";
 
 #if BUILDFLAG(JEMAOS_DEVICE)
 const char kJemaOSProductWarrantyURL[] = "jemaos-product-warranty-url";

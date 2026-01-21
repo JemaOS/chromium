@@ -29,6 +29,10 @@ CHROMEOS_EXPORT int64_t GetJemaOSAutoSigninDelay();
 
 CHROMEOS_EXPORT bool IsOsInstallButtonHidden();
 
+// Returns true when the Google account login button should be hidden in the
+// OOBE / welcome flow (account type selection).
+CHROMEOS_EXPORT bool IsGoogleLoginButtonHidden();
+
 CHROMEOS_EXPORT bool IsJemaAiHidden();
 
 } // switches

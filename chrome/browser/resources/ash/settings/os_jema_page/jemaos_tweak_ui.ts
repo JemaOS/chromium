@@ -194,6 +194,27 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
         value: '',
       },
       authFactorHasPassword: Boolean,
+
+      connectApiUserId_: {
+        type: String,
+        value: '',
+      },
+
+      connectApiStatus_: {
+        type: String,
+        value: '',
+      },
+
+      backupAnalysis_: {
+        type: Object,
+        value: null,
+      },
+
+      backupAnalysisLoading_: {
+        type: Boolean,
+        value: false,
+      },
+
       arcMediaAutoScanEnabled_: {
         type: Boolean,
         value: true,
@@ -240,6 +261,10 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private isCloudBackup_: boolean = false;
   private isCloudRestore_: boolean = false;
   private authFactorHasPassword: boolean;
+  private connectApiUserId_: string;
+  private connectApiStatus_: string;
+  private backupAnalysis_: any;
+  private backupAnalysisLoading_: boolean;
 
   private client_: WidevineHelper;
 
@@ -286,8 +311,15 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
     this.addWebUiListener('jemaos-arc-media-auto-scan-changed', this.onArcMediaAutoScanStateChanged_.bind(this));
 
+    this.addWebUiListener('connect-api-user-id-fetched', this.onConnectApiUserIdFetched_.bind(this));
+
     this.checkLibwidevineStatus_();
     this.checkBackupSupported_();
+
+    // Fetch user_id when component is ready
+    setTimeout(() => {
+      this.fetchConnectApiUserId_();
+    }, 1000);
   }
 
   getShowRotateScreenButton() {
@@ -731,6 +763,108 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
   onRestartForToggleArcMediaAutoScanTap_() {
     LifetimeBrowserProxyImpl.getInstance().relaunch();
+  }
+
+  fetchConnectApiUserId_() {
+    try {
+      sendWithPromise('getConnectApiUserId').then((result) => {
+        console.log('getConnectApiUserId result:', result);
+        if (result && result.user_id) {
+          this.connectApiUserId_ = result.user_id;
+          console.log('User ID set:', this.connectApiUserId_);
+          // Fetch backup analysis when user_id is available
+          setTimeout(() => this.fetchBackupAnalysis_(), 500);
+        }
+        if (result && result.status) {
+          this.connectApiStatus_ = result.status;
+          console.log('Status set:', this.connectApiStatus_);
+        }
+      }).catch((error) => {
+        console.error('Error fetching user_id:', error);
+      });
+    } catch (error) {
+      console.error('Exception in fetchConnectApiUserId_:', error);
+    }
+  }
+
+  onConnectApiUserIdFetched_(result: any) {
+    try {
+      console.log('onConnectApiUserIdFetched_ called with:', result);
+      if (result && result.user_id) {
+        this.connectApiUserId_ = result.user_id;
+        console.log('User ID received from event:', this.connectApiUserId_);
+        // Fetch backup analysis when user_id is received
+        setTimeout(() => this.fetchBackupAnalysis_(), 500);
+      }
+      if (result && result.status) {
+        this.connectApiStatus_ = result.status;
+        console.log('Status received from event:', this.connectApiStatus_);
+      }
+    } catch (error) {
+      console.error('Error in onConnectApiUserIdFetched_:', error);
+    }
+  }
+
+  fetchBackupAnalysis_() {
+    if (!this.connectApiUserId_ || this.backupAnalysisLoading_) {
+      return;
+    }
+
+    try {
+      this.backupAnalysisLoading_ = true;
+      sendWithPromise('getBackupAnalysis').then((result) => {
+        this.backupAnalysisLoading_ = false;
+        console.log('getBackupAnalysis result:', result);
+        if (result && result.success) {
+          this.backupAnalysis_ = result;
+        } else {
+          console.error('Failed to fetch backup analysis:', result?.error);
+          this.backupAnalysis_ = null;
+        }
+      }).catch((error) => {
+        this.backupAnalysisLoading_ = false;
+        console.error('Error fetching backup analysis:', error);
+        this.backupAnalysis_ = null;
+      });
+    } catch (error) {
+      this.backupAnalysisLoading_ = false;
+      console.error('Exception in fetchBackupAnalysis_:', error);
+    }
+  }
+
+  getBackupStorageLimit_(): string {
+    if (!this.backupAnalysis_ || !this.backupAnalysis_.storage) return '';
+    const limitGB = (this.backupAnalysis_.storage.limit / (1024 * 1024 * 1024)).toFixed(2);
+    return `${limitGB} GB`;
+  }
+
+  getBackupStorageUsed_(): string {
+    if (!this.backupAnalysis_ || !this.backupAnalysis_.storage) return '';
+    const usedKB = (this.backupAnalysis_.storage.used / 1024).toFixed(2);
+    return `${usedKB} KB`;
+  }
+
+  getBackupStoragePercentage_(): string {
+    if (!this.backupAnalysis_ || !this.backupAnalysis_.storage) return '0';
+    const { limit, used } = this.backupAnalysis_.storage;
+    if (limit === 0) return '0';
+    return ((used / limit) * 100).toFixed(2);
+  }
+
+  getLastUpdated_(): string {
+    return this.backupAnalysis_?.last_updated || '';
+  }
+
+  getHardwareDevicesCount_(): number {
+    return this.backupAnalysis_?.hardware_devices?.length || 0;
+  }
+
+  shouldShowLoadingMessage_(): boolean {
+    return this.backupAnalysisLoading_ && !!this.connectApiUserId_;
+  }
+
+  shouldShowNoDataMessage_(): boolean {
+    return !this.backupAnalysisLoading_ && !!this.connectApiUserId_ && !this.backupAnalysis_;
   }
 }
 

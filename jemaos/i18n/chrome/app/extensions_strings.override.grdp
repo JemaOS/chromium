@@ -12,7 +12,7 @@
   </if>
   <if expr="not use_jemaos_com">
     <message name="IDS_EXTENSIONS_NO_INSTALLED_ITEMS" desc="The message shown to the user on the Extensions settings page when there are no extensions or apps installed.">
-      Find extensions and themes in the <ph name="BEGIN_LINK">&lt;a href="https://store.jematechnology.fr/?init=extensions"&gt;</ph>JemaOS App Store<ph name="END_LINK">&lt;/a&gt;<ex>&lt;/a&gt;</ex></ph>
+      Find extensions and themes in the <ph name="BEGIN_LINK">&lt;a href="https://chromewebstore.google.com/?init=extensions"&gt;</ph>JemaOS App Store<ph name="END_LINK">&lt;/a&gt;<ex>&lt;/a&gt;</ex></ph>
     </message>
   </if>
   <message name="IDS_EXTENSIONS_SIDEBAR_DISCOVER_MORE" desc="The text displayed in the sidebar to open the JemaOS App Store to get more extensions.">

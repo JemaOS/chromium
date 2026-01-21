@@ -97,6 +97,7 @@ const GaiaSigninElementBase =
 interface GaiaSigninScreenData {
   hasUserPods: boolean;
   showAccountTypeSelection: boolean;
+  hideGoogleLoginButton?: boolean;
 }
 
 export class GaiaSigninElement extends GaiaSigninElementBase {
@@ -268,6 +269,16 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
         type: String,
         value: 'jema-local', // Default to JemaOS local account type
       }
+      ,
+
+      /**
+       * When true, hides the Google login option in the account type selection
+       * step.
+       */
+      hideGoogleLoginButton_: {
+        type: Boolean,
+        value: false,
+      },
     };
   }
 
@@ -306,6 +317,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   private isAccountTypeSelectionRequired: boolean;
   private isAccountTypeSelected: boolean;
   private selectedAccountType_: string;
+  private hideGoogleLoginButton_: boolean;
 
   private onUserCreationNextWithThis_: () => void;
   private onUserCreationCanceledWithThis_: () => void;
@@ -597,6 +609,11 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
       this.isAccountTypeSelectionRequired = true;
       this.isAccountTypeSelected = false;
       // refreshDialogStep_ will be called automatically by the observer
+    }
+
+    // JemaOS: optionally hide the Google login button in the welcome flow.
+    if (data && 'hideGoogleLoginButton' in data) {
+      this.hideGoogleLoginButton_ = !!data.hideGoogleLoginButton;
     }
 
     const pinDialog =

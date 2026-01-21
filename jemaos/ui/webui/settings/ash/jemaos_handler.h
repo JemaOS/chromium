@@ -138,6 +138,12 @@ class JemaOsHandler :
   void ListAuthFactors(const AccountId& account_id, const std::string& callback_id);
   void OnListAuthFactors(const std::string& callback_id, std::optional<user_data_auth::ListAuthFactorsReply> reply);
 
+  void HandleFetchConnectApiUserId(const base::Value::List& args);
+  void HandleGetConnectApiUserId(const base::Value::List& args);
+  void OnConnectApiUserIdReceived(const std::string& email, std::optional<ShellState> state);
+  void HandleGetBackupAnalysis(const base::Value::List& args);
+  void OnBackupAnalysisReceived(const std::string& callback_id, std::optional<ShellState> state);
+
   std::string system_salt_;
   bool auth_factor_has_password_ = false;
   Profile* profile_;

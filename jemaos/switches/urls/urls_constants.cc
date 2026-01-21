@@ -73,11 +73,14 @@ const char kJemaOSProductWarrantyDefaultURL[] = "https://sn.jematabduo.cn";
 
 #else
 
-const char kDefaultTestUrl[] = "http://store.jematechnology.fr/204";
+const char kDefaultTestUrl[] = "http://chromewebstore.google.com/204";
 const char kJemaOSHomePageUrl[] = "https://jematechnology.fr";
 const char kOpenJemaHomePageUrl[] = "https://jematechnology.fr/openjema/";
 
-const char kJemaOSStoreBaseUrl[] = "https://store.jematechnology.fr";
+// Base URL used to open the extensions store UI.
+// NOTE: Keep this without a trailing slash because callers append their own
+// paths/query params.
+const char kJemaOSStoreBaseUrl[] = "https://chromewebstore.google.com";
 const char kJemaOSAccountBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
 
 const char kJemaOSForumURL[] = "https://community.jematechnology.fr/";

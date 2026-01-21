@@ -36,6 +36,9 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   registry->RegisterStringPref(kOfflineAutoSigninPasswordFormat, std::string());
   registry->RegisterBooleanPref(kOfflineAutoSigninIsChromeLastSignout, false);
 
+  registry->RegisterStringPref(kConnectApiUserId, std::string());
+  registry->RegisterStringPref(kConnectApiUserStatus, std::string());
+
   registry->RegisterBooleanPref(kRebootRequiredForWidevine, false);
 
 #if BUILDFLAG(USE_JEMAOS_LICENSE)

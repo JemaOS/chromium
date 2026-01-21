@@ -32,6 +32,9 @@ extern const char kOfflineAutoSigninPassword[];
 extern const char kOfflineAutoSigninPasswordFormat[];
 extern const char kOfflineAutoSigninIsChromeLastSignout[];
 
+extern const char kConnectApiUserId[];
+extern const char kConnectApiUserStatus[];
+
 // same with kFactoryResetRequested in chrome/common/pref_names.cc
 // dep conflict issue
 extern const char kFactoryResetRequested[];

@@ -19,25 +19,25 @@ import '../../components/dialogs/oobe_modal_dialog.js';
 import '../../components/gaia_dialog.js';
 import './account_type_selection.js';
 
-import {CrDialogElement} from '//resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
+import { CrDialogElement } from '//resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
 
-import {Authenticator, AuthFlow, AuthMode, SUPPORTED_PARAMS} from '//oobe/gaia_auth_host/authenticator.js';
-import {assert} from '//resources/js/assert.js';
-import {sendWithPromise} from '//resources/js/cr.js';
-import {PolymerElementProperties} from '//resources/polymer/v3_0/polymer/interfaces.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import { Authenticator, AuthFlow, AuthMode, SUPPORTED_PARAMS } from '//oobe/gaia_auth_host/authenticator.js';
+import { assert } from '//resources/js/assert.js';
+import { sendWithPromise } from '//resources/js/cr.js';
+import { PolymerElementProperties } from '//resources/polymer/v3_0/polymer/interfaces.js';
+import { PolymerElement } from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {OobeModalDialog} from '../../components/dialogs/oobe_modal_dialog.js';
-import {OobeUiState} from '../../components/display_manager_types.js';
-import type {GaiaDialog} from '../../components/gaia_dialog.js';
-import {LoginScreenMixin} from '../../components/mixins/login_screen_mixin.js';
-import {MultiStepMixin} from '../../components/mixins/multi_step_mixin.js';
-import {OobeI18nMixin} from '../../components/mixins/oobe_i18n_mixin.js';
-import {OobeTypes} from '../../components/oobe_types.js';
-import type {SecurityTokenPin} from '../../components/security_token_pin.js';
-import {Oobe} from '../../cr_ui.js';
+import type { OobeModalDialog } from '../../components/dialogs/oobe_modal_dialog.js';
+import { OobeUiState } from '../../components/display_manager_types.js';
+import type { GaiaDialog } from '../../components/gaia_dialog.js';
+import { LoginScreenMixin } from '../../components/mixins/login_screen_mixin.js';
+import { MultiStepMixin } from '../../components/mixins/multi_step_mixin.js';
+import { OobeI18nMixin } from '../../components/mixins/oobe_i18n_mixin.js';
+import { OobeTypes } from '../../components/oobe_types.js';
+import type { SecurityTokenPin } from '../../components/security_token_pin.js';
+import { Oobe } from '../../cr_ui.js';
 
-import {getTemplate} from './gaia_signin.html.js';
+import { getTemplate } from './gaia_signin.html.js';
 
 // GAIA animation guard timer. Started when GAIA page is loaded (Authenticator
 // 'ready' event) and is intended to guard against edge cases when 'showView'
@@ -92,7 +92,7 @@ enum EnrollmentNudgeUserAction {
 }
 
 const GaiaSigninElementBase =
-    LoginScreenMixin(MultiStepMixin(OobeI18nMixin(PolymerElement)));
+  LoginScreenMixin(MultiStepMixin(OobeI18nMixin(PolymerElement)));
 
 interface GaiaSigninScreenData {
   hasUserPods: boolean;
@@ -125,7 +125,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
       isLoadingUiShown: {
         type: Boolean,
         computed: 'computeIsLoadingUiShown(loadingFrameContents, ' +
-            'authCompleted)',
+          'authCompleted)',
       },
 
       /**
@@ -286,7 +286,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   private isLoadingUiShown: boolean;
   private navigationEnabled: boolean;
   private isSaml: boolean;
-  private pinDialogParameters: OobeTypes.SecurityTokenPinDialogParameters|null;
+  private pinDialogParameters: OobeTypes.SecurityTokenPinDialogParameters | null;
   private isSamlSsoVisible: boolean;
   private videoEnabled: boolean;
   private authDomain: string;
@@ -299,13 +299,13 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   private isClosable: boolean;
   private emailDomain: string;
   private dupEmail: string;
-  private knownAccountList: Array<{email: string, type: string}>;
+  private knownAccountList: Array<{ email: string, type: string }>;
   private isDupEmailErrorShown: boolean;
-  private authenticatorParams: null|any;
+  private authenticatorParams: null | any;
   private email: string;
-  private loadingTimer: number|undefined;
-  private loadAnimationGuardTimer: number|undefined;
-  private videoTimer: number|undefined;
+  private loadingTimer: number | undefined;
+  private loadAnimationGuardTimer: number | undefined;
+  private videoTimer: number | undefined;
   private showViewProcessed: boolean;
   private authCompleted: boolean;
   private pinDialogResultReported: boolean;
@@ -398,8 +398,8 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   static get observers() {
     return [
       'refreshDialogStep(isShown, pinDialogParameters,' +
-          'isAccountTypeSelectionRequired, isAccountTypeSelected,' +
-          'isLoadingUiShown, isDupEmailErrorShown)',
+      'isAccountTypeSelectionRequired, isAccountTypeSelected,' +
+      'isLoadingUiShown, isDupEmailErrorShown)',
     ];
   }
 
@@ -419,7 +419,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
 
   private get authenticator(): Authenticator {
     const gaiaDialog =
-        this.shadowRoot?.querySelector<GaiaDialog>('#signin-frame-dialog');
+      this.shadowRoot?.querySelector<GaiaDialog>('#signin-frame-dialog');
     assert(!!gaiaDialog);
     return gaiaDialog.getAuthenticator()!;
   }
@@ -427,21 +427,21 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   override ready(): void {
     super.ready();
     this.authenticator.insecureContentBlockedCallback =
-        this.onInsecureContentBlocked.bind(this);
+      this.onInsecureContentBlocked.bind(this);
     this.authenticator.missingGaiaInfoCallback =
-        this.missingGaiaInfo.bind(this);
+      this.missingGaiaInfo.bind(this);
     this.authenticator.accountTypeGoogleSelectedCallback =
-        this.accountTypeGoogleSelectedCallback.bind(this);
+      this.accountTypeGoogleSelectedCallback.bind(this);
     this.authenticator.samlApiUsedCallback = this.samlApiUsed.bind(this);
     this.authenticator.recordSamlProviderCallback =
-        this.recordSamlProvider.bind(this);
+      this.recordSamlProvider.bind(this);
     this.authenticator.addEventListener('getDeviceId', () => {
       sendWithPromise('getDeviceIdForLogin')
-          .then(deviceId => this.authenticator.getDeviceIdResponse(deviceId));
+        .then(deviceId => this.authenticator.getDeviceIdResponse(deviceId));
     });
 
     const confirmGotoLocalAccountDlg =
-        this.shadowRoot?.querySelector<CrDialogElement>('#confirmGotoLocalAccountDlg');
+      this.shadowRoot?.querySelector<CrDialogElement>('#confirmGotoLocalAccountDlg');
     assert(confirmGotoLocalAccountDlg instanceof CrDialogElement);
     this.confirmGotoLocalAccountDlg = confirmGotoLocalAccountDlg;
 
@@ -454,9 +454,9 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    * Guest button should be shown.)
    */
   private isFirstSigninStep(
-      uiStep: DialogMode, canGaiaGoBack: boolean, isSaml: boolean): boolean {
+    uiStep: DialogMode, canGaiaGoBack: boolean, isSaml: boolean): boolean {
     return !this.isClosable && POSSIBLE_FIRST_SIGNIN_STEPS.includes(uiStep) &&
-        !canGaiaGoBack && !(isSaml && !this.isDefaultSsoProvider);
+      !canGaiaGoBack && !(isSaml && !this.isDefaultSsoProvider);
   }
 
   private onIsFirstSigninStepChanged(firstSigninStep: boolean): void {
@@ -473,7 +473,8 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
       if (!this.userCreationContext_ && this.isAccountTypeSelectionRequired) {
         // from fydoe signin page back to account type selection page
         this.isAccountTypeSelected = false;
-        this.setUIStep(DialogMode.ACCOUNT_TYPE_SELECTION); 
+        this.setUIStep(DialogMode.ACCOUNT_TYPE_SELECTION);
+        return;
       }
       this.cancel(true /* isBackClicked */);
     }
@@ -519,9 +520,9 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    * Whether the SAML 3rd-party page is visible.
    */
   private computeSamlSsoVisible(
-      isSaml: boolean,
-      pinDialogParameters: OobeTypes.SecurityTokenPinDialogParameters):
-      boolean {
+    isSaml: boolean,
+    pinDialogParameters: OobeTypes.SecurityTokenPinDialogParameters):
+    boolean {
     return isSaml && !pinDialogParameters;
   }
 
@@ -553,7 +554,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   private startLoadingTimer(): void {
     this.clearLoadingTimer();
     this.loadingTimer = setTimeout(
-        this.onLoadingTimeOut.bind(this), MAX_GAIA_LOADING_TIME_SEC * 1000);
+      this.onLoadingTimeOut.bind(this), MAX_GAIA_LOADING_TIME_SEC * 1000);
   }
 
   /**
@@ -580,8 +581,8 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   private startLoadAnimationGuardTimer(): void {
     this.clearLoadAnimationGuardTimer();
     this.loadAnimationGuardTimer = setTimeout(
-        this.onLoadAnimationGuardTimer.bind(this),
-        GAIA_ANIMATION_GUARD_MILLISEC);
+      this.onLoadAnimationGuardTimer.bind(this),
+      GAIA_ANIMATION_GUARD_MILLISEC);
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -617,7 +618,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
     }
 
     const pinDialog =
-        this.shadowRoot?.querySelector<SecurityTokenPin>('#pinDialog');
+      this.shadowRoot?.querySelector<SecurityTokenPin>('#pinDialog');
     assert(!!pinDialog);
     pinDialog.onBeforeShow();
 
@@ -627,7 +628,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
   // Used in tests.
   private getSigninFrame(): chrome.webviewTag.WebView {
     const gaiaDialog =
-        this.shadowRoot?.querySelector<GaiaDialog>('#signin-frame-dialog');
+      this.shadowRoot?.querySelector<GaiaDialog>('#signin-frame-dialog');
     assert(!!gaiaDialog);
     return gaiaDialog.getFrame() as chrome.webviewTag.WebView;
   }
@@ -667,7 +668,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
 
     params.doSamlRedirect = data.screenMode === ScreenAuthMode.SAML_REDIRECT;
     params.menuEnterpriseEnrollment =
-        !(data.enterpriseManagedDevice || data.hasDeviceOwner);
+      !(data.enterpriseManagedDevice || data.hasDeviceOwner);
     params.isFirstUser = !(data.enterpriseManagedDevice || data.hasDeviceOwner);
     params.obfuscatedOwnerId = data.obfuscatedOwnerId;
 
@@ -790,7 +791,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    */
   private onInsecureContentBlocked(url: string): void {
     this.showFatalAuthError(
-        OobeTypes.FatalErrorCode.INSECURE_CONTENT_BLOCKED, {'url': url});
+      OobeTypes.FatalErrorCode.INSECURE_CONTENT_BLOCKED, { 'url': url });
   }
 
   /**
@@ -799,7 +800,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    * @param info Additional info
    */
   private showFatalAuthError(
-      errorCode: OobeTypes.FatalErrorCode, info?: Object): void {
+    errorCode: OobeTypes.FatalErrorCode, info?: Object): void {
     chrome.send('onFatalError', [errorCode, info || {}]);
   }
 
@@ -863,7 +864,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
     this.authCompleted = true;
   }
 
-  checkIsDupEmail_(credentials: {email: string}) {
+  checkIsDupEmail_(credentials: { email: string }) {
     const { email } = credentials;
     let targetAccountType = '';
     if (this.authenticatorParams.enableJemaAccount) {
@@ -995,7 +996,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
     this.reset();
     this.emailDomain = domain;
     const enrollmentNudgeDialog =
-        this.shadowRoot?.querySelector<OobeModalDialog>('#enrollmentNudge');
+      this.shadowRoot?.querySelector<OobeModalDialog>('#enrollmentNudge');
     assert(!!enrollmentNudgeDialog);
     enrollmentNudgeDialog.showDialog();
   }
@@ -1019,9 +1020,9 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    */
   private onEnrollmentNudgeUseAnotherAccount(): void {
     this.recordUmaHistogramForEnrollmentNudgeUserAction(
-        EnrollmentNudgeUserAction.USE_ANOTHER_ACCOUNT_BUTTON);
+      EnrollmentNudgeUserAction.USE_ANOTHER_ACCOUNT_BUTTON);
     const enrollmentNudgeDialog =
-        this.shadowRoot?.querySelector<OobeModalDialog>('#enrollmentNudge');
+      this.shadowRoot?.querySelector<OobeModalDialog>('#enrollmentNudge');
     assert(!!enrollmentNudgeDialog);
     enrollmentNudgeDialog.hideDialog();
     this.doReload();
@@ -1033,9 +1034,9 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    */
   private onEnrollmentNudgeEnroll(): void {
     this.recordUmaHistogramForEnrollmentNudgeUserAction(
-        EnrollmentNudgeUserAction.ENTERPRISE_ENROLLMENT_BUTTON);
+      EnrollmentNudgeUserAction.ENTERPRISE_ENROLLMENT_BUTTON);
     const enrollmentNudgeDialog =
-        this.shadowRoot?.querySelector<OobeModalDialog>('#enrollmentNudge');
+      this.shadowRoot?.querySelector<OobeModalDialog>('#enrollmentNudge');
     assert(!!enrollmentNudgeDialog);
     enrollmentNudgeDialog.hideDialog();
     this.userActed('startEnrollment');
@@ -1073,8 +1074,8 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    * changed.
    */
   private onPinDialogParametersChanged(
-      newValue: OobeTypes.SecurityTokenPinDialogParameters,
-      oldValue: OobeTypes.SecurityTokenPinDialogParameters): void {
+    newValue: OobeTypes.SecurityTokenPinDialogParameters,
+    oldValue: OobeTypes.SecurityTokenPinDialogParameters): void {
     if (oldValue === undefined) {
       // Don't do anything on the initial call, triggered by the property
       // initialization.
@@ -1088,7 +1089,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
       // the caret is positioned).
       requestAnimationFrame(() => {
         const pinDialog =
-            this.shadowRoot?.querySelector<SecurityTokenPin>('#pinDialog');
+          this.shadowRoot?.querySelector<SecurityTokenPin>('#pinDialog');
         if (pinDialog) {
           pinDialog.focus();
         }
@@ -1096,8 +1097,8 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
       });
     }
     if ((oldValue !== null && newValue === null) ||
-        (oldValue !== null && newValue !== null &&
-         !this.pinDialogResultReported)) {
+      (oldValue !== null && newValue !== null &&
+        !this.pinDialogResultReported)) {
       // Report the cancellation result if the dialog got closed or got reused
       // before reporting the result.
       chrome.send('securityTokenPinEntered', [/*user_input=*/ '']);
@@ -1149,12 +1150,12 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    * Updates current UI step based on internal state.
    */
   private refreshDialogStep(
-      isScreenShown: boolean,
-      pinParams: OobeTypes.SecurityTokenPinDialogParameters,
-      isAccountTypeSelectionRequired: boolean,
-      isAccountTypeSelected: boolean,
-      isLoading: boolean,
-      isDupEmailError: boolean): void {
+    isScreenShown: boolean,
+    pinParams: OobeTypes.SecurityTokenPinDialogParameters,
+    isAccountTypeSelectionRequired: boolean,
+    isAccountTypeSelected: boolean,
+    isLoading: boolean,
+    isDupEmailError: boolean): void {
     if (!isScreenShown) {
       return;
     }
@@ -1168,7 +1169,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
     }
     if (isLoading) {
       // this.setUIStep(DialogMode.LOADING);
-       console.log('[DEBUG] Setting UI step to GAIA for online accounts');
+      console.log('[DEBUG] Setting UI step to GAIA for online accounts');
       return;
     }
     if (isDupEmailError) {
@@ -1201,13 +1202,13 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    * Computes the value of the isLoadingUiShown property.
    */
   private computeIsLoadingUiShown(
-      loadingFrameContents: boolean, authCompleted: boolean): boolean {
+    loadingFrameContents: boolean, authCompleted: boolean): boolean {
     return (loadingFrameContents || authCompleted);
   }
 
   clickPrimaryButtonForTesting(): void {
     const gaiaDialog =
-        this.shadowRoot?.querySelector<GaiaDialog>('#signin-frame-dialog');
+      this.shadowRoot?.querySelector<GaiaDialog>('#signin-frame-dialog');
     assert(!!gaiaDialog);
     gaiaDialog.clickPrimaryButtonForTesting();
   }
@@ -1223,7 +1224,7 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
    * @param locale  i18n locale data
    */
   private getSamlVideoAlertMessage(
-      locale: string, videoEnabled: boolean, authDomain: string): string {
+    locale: string, videoEnabled: boolean, authDomain: string): string {
     if (videoEnabled && authDomain) {
       return this.i18nDynamic(locale, 'samlNoticeWithVideo', authDomain);
     }
@@ -1240,13 +1241,13 @@ export class GaiaSigninElement extends GaiaSigninElementBase {
 
   private setQuickStartEntryPointVisibility(visible: boolean): void {
     const gaiaDialog =
-        this.shadowRoot?.querySelector<GaiaDialog>('#signin-frame-dialog');
+      this.shadowRoot?.querySelector<GaiaDialog>('#signin-frame-dialog');
     assert(!!gaiaDialog);
     gaiaDialog.isQuickStartEnabled = visible;
   }
 
   private recordUmaHistogramForEnrollmentNudgeUserAction(
-      userAction: EnrollmentNudgeUserAction): void {
+    userAction: EnrollmentNudgeUserAction): void {
     chrome.send('metricsHandler:recordInHistogram', [
       'Enterprise.EnrollmentNudge.UserAction',
       userAction,

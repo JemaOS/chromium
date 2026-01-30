@@ -6,15 +6,15 @@
 export const FEEDBACK_LEGAL_HELP_URL =
     'https://support.google.com/legal/answer/3110420';
 export const FEEDBACK_PRIVACY_POLICY_URL =
-    'https://jematechnology.fr/privacy/';
+    'https://www.jematechnology.fr/politique-confidentialite';
 export const FEEDBACK_TERMS_OF_SERVICE_URL =
-    'https://jematechnology.fr/terms-of-use/';
+    'https://www.jematechnology.fr/conditions-utilisation';
 // </if>
 // <if expr="use_jemaos_com">
 export const FEEDBACK_LEGAL_HELP_URL =
     'https://support.google.com/legal/answer/3110420';
 export const FEEDBACK_PRIVACY_POLICY_URL =
-    'https://jemaos.com/privacy/';
+    'https://www.jematechnology.fr/politique-confidentialite';
 export const FEEDBACK_TERMS_OF_SERVICE_URL =
-    'https://jemaos.com/terms-of-use/';
+    'https://www.jematechnology.fr/conditions-utilisation';
 // </if>

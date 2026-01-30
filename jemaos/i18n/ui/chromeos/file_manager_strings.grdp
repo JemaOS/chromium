@@ -29,7 +29,7 @@
     JemaDrop
   </message>
   <message name="IDS_FILE_BROWSER_JEMADROP_COMING_SOON" desc="Placeholder text shown on JemaDrop page in Files app">
-    Coming soon
+    Bientôt disponible
   </message>
   <if expr="openjema">
     <message name="IDS_FILE_BROWSER_NO_TASK_FOR_APK" desc="Message shown when a user tries to open a *.apk file, which we don't handle in the Files app.">

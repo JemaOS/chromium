@@ -1,8 +1,28 @@
-<style include="settings-shared"></style>
+<style include="settings-shared">
+  .coming-soon-container {
+    padding: 20px;
+    text-align: center;
+  }
+
+  .coming-soon-text {
+    font-size: 16px;
+    color: var(--cr-secondary-text-color);
+  }
+</style>
 
 <os-settings-animated-pages id="pages" section="[[section_]]">
   <div route-path="default">
-    <crostini-settings-card prefs="{{prefs}}"></crostini-settings-card>
+    <template is="dom-if" if="[[showComingSoon_]]" restamp>
+      <settings-card header-text="$i18n{crostiniPageTitle}">
+        <div class="coming-soon-container">
+          <span class="coming-soon-text">Bientôt disponible</span>
+        </div>
+      </settings-card>
+    </template>
+
+    <template is="dom-if" if="[[!showComingSoon_]]" restamp>
+      <crostini-settings-card prefs="{{prefs}}"></crostini-settings-card>
+    </template>
   </div>
 
   <template is="dom-if" route-path="/crostini/details">

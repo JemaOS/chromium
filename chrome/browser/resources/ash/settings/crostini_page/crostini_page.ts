@@ -11,6 +11,7 @@
 
 import '../os_settings_page/os_settings_animated_pages.js';
 import '../os_settings_page/os_settings_subpage.js';
+import '../os_settings_page/settings_card.js';
 import '../settings_shared.css.js';
 import '../guest_os/guest_os_shared_paths.js';
 import './crostini_arc_adb.js';
@@ -29,6 +30,10 @@ import {Section} from '../mojom-webui/routes.mojom-webui.js';
 
 import {getTemplate} from './crostini_page.html.js';
 
+// Toggle to show a lightweight placeholder instead of the full Linux/Crostini
+// settings UI.
+const SHOW_LINUX_COMING_SOON = true;
+
 export class SettingsCrostiniPageElement extends PolymerElement {
   static get is() {
     return 'settings-crostini-page' as const;
@@ -45,6 +50,10 @@ export class SettingsCrostiniPageElement extends PolymerElement {
         type: Object,
         notify: true,
       },
+      showComingSoon_: {
+        type: Boolean,
+        value: SHOW_LINUX_COMING_SOON,
+      },
       section_: {
         type: Number,
         value: Section.kCrostini,
@@ -54,6 +63,7 @@ export class SettingsCrostiniPageElement extends PolymerElement {
   }
 
   prefs: PrefsState;
+  private showComingSoon_!: boolean;
   private section_: Section;
 }
 

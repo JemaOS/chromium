@@ -1,7 +1,36 @@
 <?xml version="1.0" ?>
 <!DOCTYPE translationbundle>
 <translationbundle lang="fr">
+<translation id="-9169683451600127205">Télécharger la sauvegarde vers le stockage cloud JemaOS</translation>
+<translation id="-8879827440136526394">Veuillez vous souvenir de ce mot de passe, car il sera nécessaire lors de la restauration de ce fichier de sauvegarde</translation>
+<translation id="-7634356890529819233">Sauvegarder vers le cloud</translation>
+<translation id="-7625968816097559180">Une erreur s'est produite pendant le processus de sauvegarde</translation>
+<translation id="-6979486508584149248">Sauvegarde cloud</translation>
+<translation id="-6902359492135784583">Échec de la sauvegarde</translation>
+<translation id="-6740122865030567525">Restaurer depuis un fichier de sauvegarde local</translation>
+<translation id="-6122300690493316487">Saisir le mot de passe de sauvegarde</translation>
+<translation id="-3672944504948910001">Créer un fichier de sauvegarde pour ce compte (version bêta)</translation>
+<translation id="-1821592439886107313">Sélectionnez le fichier de sauvegarde à restaurer</translation>
+<translation id="-1688284532779228497">Restaurer</translation>
+<translation id="-1126095489942887387">Échec de la restauration</translation>
+<translation id="-7127353813280598674">Statut</translation>
+<translation id="-6145742952315830205">Fermer</translation>
+<translation id="-2769233979202695866">Image de l'écouteur droit</translation>
+<translation id="-2258635158087467068">Bientôt disponible</translation>
+<translation id="-5866305899861219530">Aucun fichier de sauvegarde trouvé. Veuillez d'abord créer une sauvegarde.</translation>
+<translation id="-5687321950340462610">Aucune donnée de sauvegarde disponible</translation>
+<translation id="27073698460969706">Sélectionnez le fichier de sauvegarde à restaurer :</translation>
+<translation id="639288682897193452">Image du boîtier</translation>
+<translation id="-2478105276176445396">Dernière mise à jour</translation>
+<translation id="-1242476958075416392">Informations utilisateur de l'API Connect</translation>
+<translation id="-613010907582691876">Veuillez spécifier le chemin pour stocker le fichier de sauvegarde</translation>
+<translation id="757372489522446615">Chargement en cours...</translation>
 <translation id="1001033507375626788">Ce réseau est partagé avec vous</translation>
+<translation id="1090186437285023955">Stockage</translation>
+<translation id="1428523817533777225">Analyse du stockage de sauvegarde</translation>
+<translation id="1498095155831816010">ID utilisateur requis</translation>
+<translation id="4357603458646806754">Chargement des fichiers de sauvegarde...</translation>
+<translation id="5383984770278438937">-- Sélectionnez un fichier de sauvegarde --</translation>
 <translation id="1001360573085135660">Cliquer pour activer/désactiver l'autorisation.</translation>
 <translation id="1002085272681738789">Onglet de nouveau actif</translation>
 <translation id="1003088604756913841">Ouvrir le lien dans une nouvelle fenêtre <ph name="APP" /></translation>
@@ -11714,4 +11743,25 @@ Les autorisations que vous avez déjà accordées aux sites Web et aux applis pe
 <translation id="99731366405731005">Activez la <ph name="LINK1_BEGIN" />synchronisation Chrome<ph name="LINK1_END" /> pour utiliser Sync Wi-Fi. <ph name="LINK2_BEGIN" />En savoir plus<ph name="LINK2_END" /></translation>
 <translation id="998347228911661591">Synchronisez vos groupes d'onglets</translation>
 <translation id="998747458861718449">I&amp;nspecter</translation>
+<translation id="341624006663023254">Mot de passe de sauvegarde</translation>
+<translation id="464687545587841552">Restauration réussie</translation>
+<translation id="537757917543113153">Sauvegarde en cours</translation>
+<translation id="850827679129428366">Mot de passe incorrect</translation>
+<translation id="1250169422663706137">Sauvegarder</translation>
+<translation id="1376326181510379614">Créer un fichier de sauvegarde pour ce compte (version bêta). <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph></translation>
+<translation id="2997850853665304373">Télécharger et restaurer depuis le cloud JemaOS</translation>
+<translation id="5025261056364822637">Sauvegarder sur votre appareil ou stockage externe</translation>
+<translation id="5298968738136296261">Restaurer depuis le cloud</translation>
+<translation id="5359937975336300864">Cette opération crée une sauvegarde complète du disque pour ce compte, facilitant la restauration de l'état de votre JemaOS au moment de la création de la sauvegarde, y compris les paramètres, les extensions de navigateur installées et les applications du sous-système. Selon vos applications et le contenu de votre dossier personnel, le fichier de sauvegarde peut être volumineux ; il est recommandé de stocker le fichier de sauvegarde sur un périphérique de stockage externe. Si vous avez une clé USB portable, veuillez la connecter maintenant. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph></translation>
+<translation id="6903112927877405950">Sauvegarde terminée</translation>
+<translation id="7342173421111754066">Restauration cloud</translation>
+<translation id="7390329869773823152">Restaurer vos données JemaOS depuis un fichier de sauvegarde</translation>
+<translation id="7542044823182383183">Votre sauvegarde a été créée avec succès</translation>
+<translation id="8461987825862862964">Saisissez le mot de passe utilisé pour chiffrer ce fichier de sauvegarde</translation>
+<translation id="6307676154688031397">Ajouter un dictionnaire</translation>
+<translation id="6510689835293107492">Appareils matériels</translation>
+<translation id="8466315134963592149">Image de l'écouteur gauche</translation>
+<translation id="8580373135346451437">Image de l'appareil par défaut</translation>
+<translation id="8594898340669037649">Veuillez saisir le mot de passe de connexion pour ce compte</translation>
+<translation id="8835885734147345191">ID utilisateur</translation>
 </translationbundle>

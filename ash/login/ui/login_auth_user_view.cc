@@ -1180,7 +1180,8 @@ void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
 
             if (!response_body) {
               LOG(WARNING) << "Authentication failed: No response from server.";
-              self->ShowAuthError(u"Server did not respond. Please try again later.");
+              self->ShowAuthError(l10n_util::GetStringUTF16(
+                  IDS_ASH_LOGIN_ERROR_SERVER_NO_RESPONSE));
               return;
             }
 

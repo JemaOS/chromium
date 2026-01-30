@@ -204,6 +204,7 @@ void LanguagesSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       {"addLanguages", IDS_SETTINGS_LANGUAGES_LANGUAGES_ADD},
       {"moveUp", IDS_SETTINGS_LANGUAGES_LANGUAGES_LIST_MOVE_UP},
       {"noSearchResults", IDS_SEARCH_NO_RESULTS},
+      {"addDictionary", IDS_OS_SETTINGS_ADD_DICTIONARY},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
   html_source->AddBoolean("isPerAppLanguageEnabled",

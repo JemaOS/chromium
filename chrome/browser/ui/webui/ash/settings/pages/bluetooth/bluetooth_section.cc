@@ -328,6 +328,14 @@ void BluetoothSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
        IDS_SAVED_DEVICE_LIST_ITEM_BUTTON_A11Y_LABEL},
       {"bluetoothMenuItemDescriptionMultipleDevicesConnected",
        IDS_OS_SETTINGS_BLUETOOTH_MENU_ITEM_DESCRIPTION_MULTIPLE_DEVICES_CONNECTED},
+      {"bluetoothLeftBudImageAlt",
+       IDS_OS_SETTINGS_BLUETOOTH_LEFT_BUD_IMAGE_ALT},
+      {"bluetoothCaseImageAlt",
+       IDS_OS_SETTINGS_BLUETOOTH_CASE_IMAGE_ALT},
+      {"bluetoothRightBudImageAlt",
+       IDS_OS_SETTINGS_BLUETOOTH_RIGHT_BUD_IMAGE_ALT},
+      {"bluetoothDefaultImageAlt",
+       IDS_OS_SETTINGS_BLUETOOTH_DEFAULT_IMAGE_ALT},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
   html_source->AddBoolean("enableFastPairFlag", features::IsFastPairEnabled());

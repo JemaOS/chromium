@@ -186,6 +186,44 @@ void JemaOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
     {"jemaosSettingsCloudRestoreButtonLabel",
       IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_BUTTON_LABEL},
 
+    // Backup API and Storage strings
+    {"jemaosSettingsConnectApiUserInfoTitle",
+      IDS_OS_SETTINGS_JEMAOS_CONNECT_API_USER_INFO_TITLE},
+    {"jemaosSettingsLoading",
+      IDS_OS_SETTINGS_JEMAOS_LOADING},
+    {"jemaosSettingsUserIdLabel",
+      IDS_OS_SETTINGS_JEMAOS_USER_ID_LABEL},
+    {"jemaosSettingsStatusLabel",
+      IDS_OS_SETTINGS_JEMAOS_STATUS_LABEL},
+    {"jemaosSettingsBackupStorageAnalysisTitle",
+      IDS_OS_SETTINGS_JEMAOS_BACKUP_STORAGE_ANALYSIS_TITLE},
+    {"jemaosSettingsUserIdRequired",
+      IDS_OS_SETTINGS_JEMAOS_USER_ID_REQUIRED},
+    {"jemaosSettingsStorageLabel",
+      IDS_OS_SETTINGS_JEMAOS_STORAGE_LABEL},
+    {"jemaosSettingsLastUpdatedLabel",
+      IDS_OS_SETTINGS_JEMAOS_LAST_UPDATED_LABEL},
+    {"jemaosSettingsHardwareDevicesLabel",
+      IDS_OS_SETTINGS_JEMAOS_HARDWARE_DEVICES_LABEL},
+    {"jemaosSettingsNoBackupData",
+      IDS_OS_SETTINGS_JEMAOS_NO_BACKUP_DATA},
+
+    // Restore dialog strings
+    {"jemaosSettingsClose",
+      IDS_OS_SETTINGS_JEMAOS_CLOSE},
+    {"jemaosSettingsLoadingBackupFiles",
+      IDS_OS_SETTINGS_JEMAOS_LOADING_BACKUP_FILES},
+    {"jemaosSettingsSelectBackupFileLabel",
+      IDS_OS_SETTINGS_JEMAOS_SELECT_BACKUP_FILE_LABEL},
+    {"jemaosSettingsSelectBackupFilePlaceholder",
+      IDS_OS_SETTINGS_JEMAOS_SELECT_BACKUP_FILE_PLACEHOLDER},
+    {"jemaosSettingsNoBackupFilesFound",
+      IDS_OS_SETTINGS_JEMAOS_NO_BACKUP_FILES_FOUND},
+
+    // JemaOS AI Assistant strings
+    {"jemaosComingSoon",
+      IDS_OS_SETTINGS_JEMAOS_COMING_SOON},
+
 #if BUILDFLAG(USE_JEMAOS_LICENSE)
     {"jemaosSettingsLicenseStateLoading",
       IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_STATE_LOADING},

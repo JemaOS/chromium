@@ -38,72 +38,54 @@
   }
 </style>
 <div id="container">
-  <template is="dom-if" restamp
-      if="[[shouldShowBatteryTypeInfo_(device, BatteryType.LEFT_BUD)]]">
+  <template is="dom-if" restamp if="[[shouldShowBatteryTypeInfo_(device, BatteryType.LEFT_BUD)]]">
     <div id="leftBudContainer" class="battery-container">
       <div class="image-wrapper">
-        <img src="[[getImageSrc_(device, BatteryType.LEFT_BUD)]]"
-            alt="Left bud device image">
+        <img src="[[getImageSrc_(device, BatteryType.LEFT_BUD)]]" alt="$i18n{bluetoothLeftBudImageAlt}">
       </div>
       <span id="leftBudLabel">
         [[getBatteryTypeString_(device, BatteryType.LEFT_BUD)]]
       </span>
-      <bluetooth-battery-icon-percentage
-        device="[[device]]"
-        battery-type="[[BatteryType.LEFT_BUD]]">
+      <bluetooth-battery-icon-percentage device="[[device]]" battery-type="[[BatteryType.LEFT_BUD]]">
       </bluetooth-battery-icon-percentage>
     </div>
   </template>
-  <template is="dom-if" restamp
-      if="[[shouldShowBatteryTypeInfo_(device, BatteryType.CASE)]]">
+  <template is="dom-if" restamp if="[[shouldShowBatteryTypeInfo_(device, BatteryType.CASE)]]">
     <div id="caseContainer" class="battery-container">
       <div class="image-wrapper">
-        <img src="[[getImageSrc_(device, BatteryType.CASE)]]"
-            alt="Case device image">
+        <img src="[[getImageSrc_(device, BatteryType.CASE)]]" alt="$i18n{bluetoothCaseImageAlt}">
       </div>
       <span id="caseLabel">
         [[getBatteryTypeString_(device, BatteryType.CASE)]]
       </span>
-      <bluetooth-battery-icon-percentage
-        device="[[device]]"
-        battery-type="[[BatteryType.CASE]]">
+      <bluetooth-battery-icon-percentage device="[[device]]" battery-type="[[BatteryType.CASE]]">
       </bluetooth-battery-icon-percentage>
     </div>
   </template>
-  <template is="dom-if" restamp
-      if="[[shouldShowBatteryTypeInfo_(device, BatteryType.RIGHT_BUD)]]">
+  <template is="dom-if" restamp if="[[shouldShowBatteryTypeInfo_(device, BatteryType.RIGHT_BUD)]]">
     <div id="rightBudContainer" class="battery-container">
       <div class="image-wrapper">
-        <img src="[[getImageSrc_(device, BatteryType.RIGHT_BUD)]]"
-            alt="Right bud device image">
+        <img src="[[getImageSrc_(device, BatteryType.RIGHT_BUD)]]" alt="$i18n{bluetoothRightBudImageAlt}">
       </div>
       <span id="rightBudLabel">
         [[getBatteryTypeString_(device, BatteryType.RIGHT_BUD)]]
       </span>
-      <bluetooth-battery-icon-percentage
-        device="[[device]]"
-        battery-type="[[BatteryType.RIGHT_BUD]]">
+      <bluetooth-battery-icon-percentage device="[[device]]" battery-type="[[BatteryType.RIGHT_BUD]]">
       </bluetooth-battery-icon-percentage>
     </div>
   </template>
-  <template is="dom-if" restamp
-      if="[[shouldShowDefaultInfo_(device)]]">
+  <template is="dom-if" restamp if="[[shouldShowDefaultInfo_(device)]]">
     <div id="defaultContainer" class="battery-container">
       <div class="image-wrapper">
-        <img src="[[getImageSrc_(device, BatteryType.DEFAULT)]]"
-            alt="Default device image">
+        <img src="[[getImageSrc_(device, BatteryType.DEFAULT)]]" alt="$i18n{bluetoothDefaultImageAlt}">
       </div>
-      <template is="dom-if" restamp
-        if="[[isDeviceNotConnected_(device)]]">
+      <template is="dom-if" restamp if="[[isDeviceNotConnected_(device)]]">
         <span id="notConnectedLabel">
           $i18n{bluetoothDeviceDetailDisconnected}
         </span>
       </template>
-      <template is="dom-if" restamp
-        if="[[!isDeviceNotConnected_(device)]]">
-        <bluetooth-battery-icon-percentage
-          device="[[device]]"
-          battery-type="[[BatteryType.DEFAULT]]">
+      <template is="dom-if" restamp if="[[!isDeviceNotConnected_(device)]]">
+        <bluetooth-battery-icon-percentage device="[[device]]" battery-type="[[BatteryType.DEFAULT]]">
         </bluetooth-battery-icon-percentage>
       </template>
     </div>

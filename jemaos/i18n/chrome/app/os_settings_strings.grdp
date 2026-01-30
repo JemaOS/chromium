@@ -223,6 +223,96 @@
     Restore from Cloud
   </message>
   
+  <!-- Backup/Restore notification strings -->
+  <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_RUNNING_TITLE" desc="Title for backup running notification">
+    Backup in Progress
+  </message>
+  <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FINISHED_TITLE" desc="Title for backup finished notification">
+    Backup Complete
+  </message>
+  <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FINISHED_MESSAGE" desc="Message for backup finished notification">
+    Your backup has been created successfully
+  </message>
+  <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE" desc="Title for backup failed notification">
+    Backup Failed
+  </message>
+  <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_MESSAGE" desc="Message for backup failed notification">
+    An error occurred during the backup process
+  </message>
+  
+  <!-- Backup API and Storage strings -->
+  <message name="IDS_OS_SETTINGS_JEMAOS_CONNECT_API_USER_INFO_TITLE" desc="Title for connect API user information section">
+    Connect API User Information
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_LOADING" desc="Loading message">
+    Loading...
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_USER_ID_LABEL" desc="Label for user ID">
+    User ID
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_STATUS_LABEL" desc="Label for status">
+    Status
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_STORAGE_ANALYSIS_TITLE" desc="Title for backup storage analysis section">
+    Backup Storage Analysis
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_USER_ID_REQUIRED" desc="Message when user ID is required">
+    User ID required
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_STORAGE_LABEL" desc="Label for storage information">
+    Storage
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_LAST_UPDATED_LABEL" desc="Label for last updated time">
+    Last updated
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_HARDWARE_DEVICES_LABEL" desc="Label for hardware devices count">
+    Hardware devices
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_NO_BACKUP_DATA" desc="Message when no backup data is available">
+    No backup data available
+  </message>
+  
+  <!-- Restore dialog strings -->
+  <message name="IDS_OS_SETTINGS_JEMAOS_CLOSE" desc="Close button text">
+    Close
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_LOADING_BACKUP_FILES" desc="Message shown while loading backup files">
+    Loading backup files...
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_SELECT_BACKUP_FILE_LABEL" desc="Label for backup file selection">
+    Select backup file to restore:
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_SELECT_BACKUP_FILE_PLACEHOLDER" desc="Placeholder text for backup file selection">
+    -- Select a backup file --
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_NO_BACKUP_FILES_FOUND" desc="Message when no backup files are found">
+    No backup files found. Please create a backup first.
+  </message>
+  
+  <!-- JemaOS AI Assistant strings -->
+  <message name="IDS_OS_SETTINGS_JEMAOS_COMING_SOON" desc="Text shown for features coming soon">
+    Coming Soon
+  </message>
+  
+  <!-- Japanese Dictionary strings -->
+  <message name="IDS_OS_SETTINGS_ADD_DICTIONARY" desc="Button text to add a new dictionary">
+    Add dictionary
+  </message>
+  
+  <!-- Bluetooth device image alt text -->
+  <message name="IDS_OS_SETTINGS_BLUETOOTH_LEFT_BUD_IMAGE_ALT" desc="Alt text for left earbud device image">
+    Left bud device image
+  </message>
+  <message name="IDS_OS_SETTINGS_BLUETOOTH_CASE_IMAGE_ALT" desc="Alt text for charging case device image">
+    Case device image
+  </message>
+  <message name="IDS_OS_SETTINGS_BLUETOOTH_RIGHT_BUD_IMAGE_ALT" desc="Alt text for right earbud device image">
+    Right bud device image
+  </message>
+  <message name="IDS_OS_SETTINGS_BLUETOOTH_DEFAULT_IMAGE_ALT" desc="Alt text for default device image">
+    Default device image
+  </message>
+  
   <message name="IDS_OS_SETTINGS_JEMAOS_TOGGLE_ARC_MEDIA_AUTO_SCAN_LABEL" desc="Text for toggling arc media autoscan">
     Disable automatic media file scanning for all partitions to optimize battery life. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
   </message>

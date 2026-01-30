@@ -62,33 +62,34 @@
 </div>
 <div class="settings-box two-line" hidden="[[!showBackup_]]">
   <div class="start padded">
-    <div>Connect API User Information</div>
-    <div class="secondary" hidden="[[connectApiUserId_]]">Loading...</div>
+    <div>$i18n{jemaosSettingsConnectApiUserInfoTitle}</div>
+    <div class="secondary" hidden="[[connectApiUserId_]]">$i18n{jemaosSettingsLoading}</div>
     <div class="secondary" hidden="[[!connectApiUserId_]]">
-      User ID: [[connectApiUserId_]]
+      $i18n{jemaosSettingsUserIdLabel}: [[connectApiUserId_]]
     </div>
     <div class="secondary" hidden="[[!connectApiStatus_]]">
-      Status: [[connectApiStatus_]]
+      $i18n{jemaosSettingsStatusLabel}: [[connectApiStatus_]]
     </div>
   </div>
 </div>
 <div class="settings-box two-line" hidden="[[!showBackup_]]">
   <div class="start padded">
-    <div>Backup Storage Analysis</div>
-    <div class="secondary" hidden="[[connectApiUserId_]]">User ID required</div>
+    <div>$i18n{jemaosSettingsBackupStorageAnalysisTitle}</div>
+    <div class="secondary" hidden="[[connectApiUserId_]]">$i18n{jemaosSettingsUserIdRequired}</div>
     <template is="dom-if" if="[[backupAnalysis_]]">
       <div class="secondary">
-        Storage: [[getBackupStorageUsed_()]] / [[getBackupStorageLimit_()]] ([[getBackupStoragePercentage_()]]%)
+        $i18n{jemaosSettingsStorageLabel}: [[getBackupStorageUsed_()]] / [[getBackupStorageLimit_()]]
+        ([[getBackupStoragePercentage_()]]%)
       </div>
       <div class="secondary" hidden="[[!getLastUpdated_()]]">
-        Last updated: [[getLastUpdated_()]]
+        $i18n{jemaosSettingsLastUpdatedLabel}: [[getLastUpdated_()]]
       </div>
       <div class="secondary" hidden="[[!getHardwareDevicesCount_()]]">
-        Hardware devices: [[getHardwareDevicesCount_()]]
+        $i18n{jemaosSettingsHardwareDevicesLabel}: [[getHardwareDevicesCount_()]]
       </div>
     </template>
-    <div class="secondary" hidden="[[!shouldShowLoadingMessage_()]]">Loading...</div>
-    <div class="secondary" hidden="[[!shouldShowNoDataMessage_()]]">No backup data available</div>
+    <div class="secondary" hidden="[[!shouldShowLoadingMessage_()]]">$i18n{jemaosSettingsLoading}</div>
+    <div class="secondary" hidden="[[!shouldShowNoDataMessage_()]]">$i18n{jemaosSettingsNoBackupData}</div>
   </div>
 </div>
 <template is="dom-if" if="[[showRestorePasswordDialog_]]" restamp>

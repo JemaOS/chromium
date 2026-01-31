@@ -12,31 +12,31 @@
     Mise à jour de <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> désactivée
   </message>
   <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_VERSION" desc="The text label describing the version of the browser, example: Version 57.0.2937.0 (Developer Build) unknown (64-bit)">
-    <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="JEMAOS_MAJOR_VERSION">$2<ex>v9.0</ex></ph> (<ph name="PRODUCT_CHANNEL">$3<ex>Developer Build</ex></ph>) Platform <ph name="JEMAOS_PLATFORM_VERSION">$4<ex>12739.22.9.15</ex></ph> <ph name="PRODUCT_VERSION_BITS">$5</ph>
+    <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="JEMAOS_MAJOR_VERSION">$2<ex>v9.0</ex></ph> (<ph name="PRODUCT_CHANNEL">$3<ex>Build développeur</ex></ph>) Plateforme <ph name="JEMAOS_PLATFORM_VERSION">$4<ex>12739.22.9.15</ex></ph> <ph name="PRODUCT_VERSION_BITS">$5</ph>
   </message>
   <message name="IDS_SETTINGS_JEMAOS_REMOTE_DESKTOP_APP_NAME" desc="Title of remote desktop app in os-settings menu">
-    Remote desktop
+    Remote Desktop
   </message>
   <message name="IDS_SETTINGS_CROSTINI_VERSION" desc="Version label for crostini">
     Version 
   </message>
   <message name="IDS_SETTINGS_CROSTINI_RELAUNCH" desc="The label for the relaunch button that relaunches the browser once update is complete">
-    Restart
+    Redémarrer
   </message>
   <message name="IDS_SETTINGS_CROSTINI_CHECK_FOR_UPDATES" desc="The button label to check for updates and apply (download and install) if found">
-    Check for updates
+    Vérifier les mises à jour
   </message>
   <message name="IDS_SETTINGS_CROSTINI_UPDATE" desc="Status label: just do update">
-    Update
+    Mettre à jour
   </message>
   <message name="IDS_SETTINGS_CROSTINI_UPGRADE_CHECK_STARTED" desc="Status label: About to start checking for updates">
-    Checking for updates
+    Vérification des mises à jour
   </message>
   <message name="IDS_SETTINGS_CROSTINI_UPGRADE_UP_TO_DATE" desc="Status label: Crostini Already up to date">
-    Your Linux is up to date
+    Votre Linux est à jour
   </message>
   <message name="IDS_SETTINGS_CROSTINI_UPDATE_AVAILABLE" desc="message of jemaos stateful update available in settings">
-    Thers's a critical update available for the Linux(beta) component. It's strongly recommended to perform this update as soon as possible or your Linux(beta) may no longer work.
+    Une mise à jour critique est disponible pour le composant Linux (bêta). Il est fortement recommandé d'effectuer cette mise à jour dès que possible, sinon votre Linux (bêta) pourrait ne plus fonctionner.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS" desc="jemaos settings page title">
     Paramètres de <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
@@ -45,156 +45,156 @@
     Compte JemaOS, sauvegarde, divers
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_WIFI_DRIVER_TITLE" desc="jemao settings wifi section title">
-    Wifi settings
+    Paramètres Wifi
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_TOUCHPAD_MODE_TITLE" desc="jemao settings touchpad section title">
-    Touchpad settings
+    Paramètres du pavé tactile
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_REMOTE_ASSISTANCE_TITLE" desc="jemaos settings remote assist section title">
-    Remote services
+    Services à distance
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_TITLE" desc="jemaos settings remote helper service title">
-    Remote diagnosis service
+    Service de diagnostic à distance
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_DESC" desc="jemaos settings remote helper service desc">
-    Remote diagnosis service enables official JemaOS support representatives to identify system issues. Currently remote diagnosis service can only be initialised by JemaOS official support representatives.
+    Le service de diagnostic à distance permet aux représentants officiels du support JemaOS d'identifier les problèmes système. Actuellement, le service de diagnostic à distance ne peut être initialisé que par les représentants officiels du support JemaOS.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_ENABLED_MESSAGE" desc="jemaos settings remote helper service message when it is enabled">
-    Please share this number to official JemaOS support representatives
+    Veuillez partager ce numéro avec les représentants officiels du support JemaOS
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_STARGING_MESSAGE" desc="jemaos settings remote helper service message when it is starting">
-    Starting remote diagnosis service...
+    Démarrage du service de diagnostic à distance...
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_REMOTE_HELPER_SERVICE_REQUIRE_RESTART_MESSAGE" desc="jemaos settings remote helper service message when it requires restart">
-    Please stop remote diagnosis service and try again
+    Veuillez arrêter le service de diagnostic à distance et réessayer
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_MORE_INFO_TITLE" desc="jemaos settings more_info title">
-    More info
+    Plus d'informations
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_OTHER_TWEAKS_TITLE" desc="jemaos settings other tweaks title">
-    Miscellaneous
+    Divers
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_REBOOT_BUTTON_IN_TRAY_LABEL" desc="jemaos settings label show reboot button in tray">
-    "Restart" button
+    Bouton "Redémarrer"
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_DISPLAY_REBOOT_BUTTON_IN_TRAY" desc="jemaos settings show reboot button in tray">
-    Display a "Restart" button on the system menu
+    Afficher un bouton "Redémarrer" dans le menu système
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_ROTATE_SCREEN_BUTTON_IN_TRAY_LABEL" desc="jemaos settings label show rotate screen button in tray">
-    "Rotate screen" button
+    Bouton "Faire pivoter l'écran"
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_NOT_TABLET_STATE_DISABLE_ROTATE_SCREEN" desc="jemaos settings, not in tablet state, disable rotate screen">
-    You are not on tablet-mode at the moment, "Rotate screen" button is now hidden
+    Vous n'êtes pas en mode tablette pour le moment, le bouton "Faire pivoter l'écran" est maintenant masqué
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_DISPLAY_ROTATE_SCREEN_BUTTON" desc="jemaos settings show rotate screen button in tray">
-    Display a "Rotate screen" button on the system menu
+    Afficher un bouton "Faire pivoter l'écran" dans le menu système
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SWITCH_TABLET_LAPTOP_MODE_BUTTON_IN_TRAY_LABEL" desc="jemaos settings label show tablet/laptop mode switch button in tray">
-    Tablet/Laptop switch
+    Commutateur Tablette/Ordinateur portable
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_DISPLAY_SWITCH_TABLET_LAPTOP_MODE_BUTTON" desc="jemaos settings show tablet/laptop mode switch button in tray">
-    Display a tablet/laptop switch on the system menu
+    Afficher un commutateur tablette/ordinateur portable dans le menu système
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_ENABLE_LIBWIDEVINE_LABEL" desc="jemaos settings libwidevine switch label">
-    Enable Widevine
+    Activer Widevine
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_TOGGLE_LIBWIDEVINE_HELP_MESSAGE" desc="jemaos settings libwidevine switch hint msg">
-    Enable Widevine for streaming protected premium content. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
+    Activer Widevine pour le streaming de contenu premium protégé. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SELECT_WIDEVINE_FILE_DIALOG_TITLE" desc="jemaos settings title of selecting libwidevine dialog">
-    Select "libwidevine.so"
+    Sélectionner "libwidevine.so"
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_FAILED_ENABLE_WIDEVINE_TITLE" desc="jemaos settings title of failed enabling libwidevine">
-    Failed to enable Widevine...
+    Échec de l'activation de Widevine...
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_FAILED_ENABLE_WIDEVINE_MESSAGE" desc="jemaos settings message of failed enabling libwidevine">
-    The selected "libwidevine.so" is not valid, please try again with a different file.
+    Le fichier "libwidevine.so" sélectionné n'est pas valide, veuillez réessayer avec un fichier différent.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_ACCOUNT_TITLE" desc="jemaos settings account section title">
-    JemaOS account settings
+    Paramètres du compte JemaOS
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_EXPERIMENTAL_FEATURES_TITLE" desc="title of jemaos settings experimental features title">
-    Experimental features
+    Fonctionnalités expérimentales
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BYPASS_TPM_CHECKS_TITLE" desc="title of experimental feature bypass tpm checks">
-    Bypass Trusted Platform Module(TPM) checks
+    Contourner les vérifications du Module de Plateforme de Confiance (TPM)
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BYPASS_TPM_CHECKS_DESC" desc="short desc for experimental feature bypass tpm checks">
-    Some of the features could fail due to incompatible TPM chip in your device, you can bypass TPM checks as a workaround.
+    Certaines fonctionnalités peuvent échouer en raison d'une puce TPM incompatible dans votre appareil, vous pouvez contourner les vérifications TPM comme solution de contournement.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_TITLE" desc="title of jemaos settings enable auto signin">
-    Auto sign-in
+    Connexion automatique
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_ENABLE_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_MESSAGE" desc="message of jemaos settings enable auto signin">
-    Allow the current account to sign-in to desktop automatically when the device reboots
+    Autoriser le compte actuel à se connecter automatiquement au bureau lorsque l'appareil redémarre
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT_ALREADY_ENABLED_BY_OTHER" desc="message of other user already enabled auto signin">
-    Unable to activate for this account; there is an active auto sign-in configured for other accounts in this device
+    Impossible d'activer pour ce compte ; il y a une connexion automatique active configurée pour d'autres comptes sur cet appareil
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_UNABLE_TO_SET_AUTO_SIGNIN_FOR_LOCAL_ACCOUNT" desc="message of unable to turn on auto signin">
-    Unable to activate for this account; there is an unknown error when initialising the file systems for this account. Please try rebooting or creating a new account
+    Impossible d'activer pour ce compte ; il y a une erreur inconnue lors de l'initialisation des systèmes de fichiers pour ce compte. Veuillez essayer de redémarrer ou de créer un nouveau compte
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_UNABLE_TO_SET_AUTO_SIGNIN_FOR_NON_LOCAL_ACCOUNT" desc="message of unable to turn on auto signin for non-local account">
-    Unable to activate for this account; auto sign-in option is only available for "Local account" type.
+    Impossible d'activer pour ce compte ; l'option de connexion automatique n'est disponible que pour le type "Compte local".
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_UNABLE_TO_SET_AUTO_SIGNIN_WITHOUT_PASSWORD_AUTH_FACTOR" desc="message of unable to turn on auto signin without password auth factor">
-    Please add a login password in the <ph name="BEGIN_LINK">&lt;a href="#"&gt;</ph>Privacy and security<ph name="END_LINK">&lt;/a&gt;</ph> settings before enabling automatic sign-in.
+    Veuillez ajouter un mot de passe de connexion dans les paramètres <ph name="BEGIN_LINK">&lt;a href="#"&gt;</ph>Confidentialité et sécurité<ph name="END_LINK">&lt;/a&gt;</ph> avant d'activer la connexion automatique.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_OTA_DISALLOWED_BY_LICENSE_VALIDATION" desc="message of ota disallowed by license validation">
-    A newer version of JemaOS is available to update now. However, your JemaOS for You subscription has expired, you need an active subscription to update your JemaOS.
+    Une version plus récente de JemaOS est disponible pour mise à jour maintenant. Cependant, votre abonnement JemaOS for You a expiré, vous avez besoin d'un abonnement actif pour mettre à jour votre JemaOS.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_OTA_DISALLOWED_REQUIRES_ONE_TIME_PAYMENT" desc="message of ota disallowed requires one time payment">
-    A new milestone version of JemaOS is available to update now. You need to pay a one-off fee to continue with this update.
+    Une nouvelle version majeure de JemaOS est disponible pour mise à jour maintenant. Vous devez payer des frais uniques pour continuer avec cette mise à jour.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_SAVE_FILE_DIALOG_TITLE" desc="Title for backing up">
-    Please specify the path to store the backup file
+    Veuillez spécifier le chemin pour stocker le fichier de sauvegarde
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_LABEL" desc="Label on os-settings jemaos backup section">
     Créer un fichier de sauvegarde pour ce compte (bêta). <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_BUTTON_LABEL" desc="Text on os-settings jemaos backup button">
-    Backup
+    Sauvegarder
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_INTRO_TITLE" desc="Title for backup intro">
     Créer un fichier de sauvegarde pour ce compte (bêta).
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_INTRO_TEXT" desc="Text for backup intro">
-    This operation creates a full disk backup for this account, making it easy to restore to the state of your JemaOS when the backup was created, including settings, installed browser extensions and subsystem apps. Depending on your apps and the contents of your personal folder, the backup file may be large; it is recommended to store the backup file on an external storage device. If you have a portable USB drive, please connect it now. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
+    Cette opération crée une sauvegarde complète du disque pour ce compte, permettant de restaurer facilement l'état de votre JemaOS au moment où la sauvegarde a été créée, y compris les paramètres, les extensions de navigateur installées et les applications de sous-système. Selon vos applications et le contenu de votre dossier personnel, le fichier de sauvegarde peut être volumineux ; il est recommandé de stocker le fichier de sauvegarde sur un périphérique de stockage externe. Si vous avez une clé USB portable, veuillez la connecter maintenant. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_PASSWORD_PROMPT_TITLE" desc="Title for backup password prompt">
-    Please enter the login password for this account
+    Veuillez saisir le mot de passe de connexion pour ce compte
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_PASSWORD_PROMPT_TEXT" desc="Text for backup password prompt">
-    Please remember this password, as it will be required when restoring this backup file
+    Veuillez retenir ce mot de passe, car il sera requis lors de la restauration de ce fichier de sauvegarde
   </message>
   
   <!-- Restore functionality strings -->
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_SELECT_FILE_DIALOG_TITLE" desc="Title for restore file picker">
-    Select Backup File to Restore
+    Sélectionner le fichier de sauvegarde à restaurer
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_LABEL" desc="Label on os-settings jemaos restore section">
-    Restore your JemaOS data from a backup file
+    Restaurer vos données JemaOS à partir d'un fichier de sauvegarde
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_BUTTON_LABEL" desc="Text on os-settings jemaos restore button">
-    Restore
+    Restaurer
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_DIALOG_TITLE" desc="Title for restore password dialog">
-    Enter Backup Password
+    Saisir le mot de passe de sauvegarde
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_DIALOG_MESSAGE" desc="Message in restore password dialog">
-    Enter the password used to encrypt this backup file
+    Saisissez le mot de passe utilisé pour chiffrer ce fichier de sauvegarde
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_LABEL" desc="Label for password field">
-    Backup Password
+    Mot de passe de sauvegarde
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_PASSWORD_ERROR" desc="Error message for invalid password">
-    Invalid password
+    Mot de passe invalide
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_SUCCESS_TITLE" desc="Title for successful restore">
-    Restore Successful
+    Restauration réussie
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_ERROR_TITLE" desc="Title for failed restore">
-    Restore Failed
+    Échec de la restauration
   </message>
   
   <!-- Cloud backup/restore strings -->
@@ -211,7 +211,7 @@
     Sauvegarder dans le cloud
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_LOCAL_DESC" desc="Description for local restore">
-    Restaurer à partir d’un fichier de sauvegarde local
+    Restaurer à partir d'un fichier de sauvegarde local
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_LABEL" desc="Label for cloud restore section">
     Restauration dans le cloud
@@ -242,209 +242,209 @@
   
   <!-- Backup API and Storage strings -->
   <message name="IDS_OS_SETTINGS_JEMAOS_CONNECT_API_USER_INFO_TITLE" desc="Title for connect API user information section">
-    Connect API User Information
+    Informations utilisateur de l'API Connect
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_LOADING" desc="Loading message">
-    Loading...
+    Chargement...
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_USER_ID_LABEL" desc="Label for user ID">
-    User ID
+    ID utilisateur
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_STATUS_LABEL" desc="Label for status">
-    Status
+    Statut
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_STORAGE_ANALYSIS_TITLE" desc="Title for backup storage analysis section">
-    Backup Storage Analysis
+    Analyse du stockage de sauvegarde
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_USER_ID_REQUIRED" desc="Message when user ID is required">
-    User ID required
+    ID utilisateur requis
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_STORAGE_LABEL" desc="Label for storage information">
-    Storage
+    Stockage
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_LAST_UPDATED_LABEL" desc="Label for last updated time">
-    Last updated
+    Dernière mise à jour
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_HARDWARE_DEVICES_LABEL" desc="Label for hardware devices count">
-    Hardware devices
+    Appareils matériels
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_NO_BACKUP_DATA" desc="Message when no backup data is available">
-    No backup data available
+    Aucune donnée de sauvegarde disponible
   </message>
   
   <!-- Restore dialog strings -->
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOSE" desc="Close button text">
-    Close
+    Fermer
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_LOADING_BACKUP_FILES" desc="Message shown while loading backup files">
-    Loading backup files...
+    Chargement des fichiers de sauvegarde...
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SELECT_BACKUP_FILE_LABEL" desc="Label for backup file selection">
-    Select backup file to restore:
+    Sélectionnez le fichier de sauvegarde à restaurer :
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SELECT_BACKUP_FILE_PLACEHOLDER" desc="Placeholder text for backup file selection">
-    -- Select a backup file --
+    -- Sélectionnez un fichier de sauvegarde --
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_NO_BACKUP_FILES_FOUND" desc="Message when no backup files are found">
-    No backup files found. Please create a backup first.
+    Aucun fichier de sauvegarde trouvé. Veuillez d'abord créer une sauvegarde.
   </message>
   
   <!-- JemaOS AI Assistant strings -->
   <message name="IDS_OS_SETTINGS_JEMAOS_COMING_SOON" desc="Text shown for features coming soon">
-    Coming Soon
+    Bientôt disponible
   </message>
   
   <!-- Japanese Dictionary strings -->
   <message name="IDS_OS_SETTINGS_ADD_DICTIONARY" desc="Button text to add a new dictionary">
-    Add dictionary
+    Ajouter un dictionnaire
   </message>
   
   <!-- Bluetooth device image alt text -->
   <message name="IDS_OS_SETTINGS_BLUETOOTH_LEFT_BUD_IMAGE_ALT" desc="Alt text for left earbud device image">
-    Left bud device image
+    Image de l'écouteur gauche
   </message>
   <message name="IDS_OS_SETTINGS_BLUETOOTH_CASE_IMAGE_ALT" desc="Alt text for charging case device image">
-    Case device image
+    Image de l'étui de charge
   </message>
   <message name="IDS_OS_SETTINGS_BLUETOOTH_RIGHT_BUD_IMAGE_ALT" desc="Alt text for right earbud device image">
-    Right bud device image
+    Image de l'écouteur droit
   </message>
   <message name="IDS_OS_SETTINGS_BLUETOOTH_DEFAULT_IMAGE_ALT" desc="Alt text for default device image">
-    Default device image
+    Image de l'appareil par défaut
   </message>
   
   <message name="IDS_OS_SETTINGS_JEMAOS_TOGGLE_ARC_MEDIA_AUTO_SCAN_LABEL" desc="Text for toggling arc media autoscan">
-    Disable automatic media file scanning for all partitions to optimize battery life. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
+    Désactiver l'analyse automatique des fichiers multimédias pour toutes les partitions afin d'optimiser l'autonomie de la batterie. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SECURITY_SECTION_TITLE" desc="Title of security section on os-settings jemaos">
-    Security options
+    Options de sécurité
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_DEV_MODE_TRANSITION_LABEL" desc="Label on os-settings jemaos dev mode transition section">
-    Enable "Developer mode" for this <ph name="IDS_SHORT_PRODUCT_OS_NAME">$1<ex>JemaOS</ex></ph> installation with more developer features. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$2"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
+    Activer le "Mode développeur" pour cette installation <ph name="IDS_SHORT_PRODUCT_OS_NAME">$1<ex>JemaOS</ex></ph> avec plus de fonctionnalités développeur. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$2"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_IN_DEV_MODE_TOOLTIP" desc="In dev mode message on os-settings jemaos dev mode transition section">
-    You are already in "Developer mode"
+    Vous êtes déjà en "Mode développeur"
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_ENABLE_DEV_MODE_BUTTON_TEXT" desc="Text on action button of os-settings jemaos dev mode transition section">
-    Enable "Developer mode"
+    Activer le "Mode développeur"
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_ENABLE_DEV_MODE_CONFIRM_TITLE" desc="confirm title of os-settings jemaos dev mode transition section">
-    Warning
+    Avertissement
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_ENABLE_DEV_MODE_CONFIRM_MESSAGE" desc="confirm message of os-settings jemaos dev mode transition section">
-    Warning! Enabling “Developer mode“ is an irreversible operation. If you wish to disable “Developer mode“ you must reinstall JemaOS, resulting in all data being wiped. Please back up your data and proceed at your own risk.
+    Avertissement ! L'activation du "Mode développeur" est une opération irréversible. Si vous souhaitez désactiver le "Mode développeur", vous devez réinstaller JemaOS, ce qui entraînera l'effacement de toutes les données. Veuillez sauvegarder vos données et procéder à vos propres risques.
   </message>
   <message name="IDS_SETTINGS_ABOUT_PAGE_NEW_JEMAOS_VERSION_WITHOUT_LICENSE_STATE" desc="The text label describing the version of the browser, example: JemaOS for PC (apu), v18.0-SP1, Platform 15662.71.18.6">
-    <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="DEVICE_VARIANT">$2<ex> for PC (apu)</ex></ph>, <ph name="JEMAOS_MAJOR_VERSION">$3<ex>v9.0</ex></ph>
+    <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="DEVICE_VARIANT">$2<ex> pour PC (apu)</ex></ph>, <ph name="JEMAOS_MAJOR_VERSION">$3<ex>v9.0</ex></ph>
     <ph name="LINE_BREAK1">&lt;br&gt;</ph>
-    Platform <ph name="JEMAOS_PLATFORM_VERSION">$4<ex>12739.22.9.15</ex></ph>
+    Plateforme <ph name="JEMAOS_PLATFORM_VERSION">$4<ex>12739.22.9.15</ex></ph>
     <ph name="LINE_BREAK2">&lt;br&gt;</ph>
     Chromium <ph name="PRODUCT_VERSION">$5<ex>57.0.2937.0</ex></ph>
   </message>
   <if expr="use_jemaos_license">
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_STATE_LOADING" desc="loading text of license info page">
-     Loading...
+     Chargement...
    </message>
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_RETRY_BUTTON" desc="text of retry button in license page">
-     Retry
+     Réessayer
    </message>
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_OFFLINE_HINT_MESSAGE" desc="offline message in license page">
-     Currently offline
+     Actuellement hors ligne
    </message>
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_MENU" desc="title of license info menu in os about page">
-     Check your JemaOS subscription online
+     Vérifier votre abonnement JemaOS en ligne
    </message>
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_TITLE" desc="title of license info page">
-     JemaOS subscription information
+     Informations d'abonnement JemaOS
    </message>
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_ERROR_MACHINE_ID" desc="error message of reading machine id/(license info)">
-     There is an error with getting your Device ID
+     Il y a une erreur lors de l'obtention de votre ID d'appareil
    </message>
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_EXPIRE_DATE_LABEL" desc="text of expire date label in license page">
-     Subscription ends
+     Fin d'abonnement
    </message>
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_ID_LABEL" desc="text of id label in license page">
-     Device ID
+     ID d'appareil
    </message>
    <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS_JEMAOS_LICENSE_INFO_RETRY_WEBVIEW_BUTTON" desc="text of retry webview button in license page">
-     Check your subscription online
+     Vérifier votre abonnement en ligne
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_NEW_JEMAOS_VERSION" desc="The text label describing the version of the browser, with license state info, example: JemaOS for PC (apu), v18.0-SP1, Unlicensed version, Platform 15662.71.18.6">
-     <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="DEVICE_VARIANT">$2<ex> pour PC (apu)</ex></ph>, <ph name="JEMAOS_MAJOR_VERSION">$3<ex>v9.0</ex></ph>, <ph name="JEMAOS_LICENSE_STATE_DESC">$4<ex>Non-commercial Edition</ex></ph>
+     <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="DEVICE_VARIANT">$2<ex> pour PC (apu)</ex></ph>, <ph name="JEMAOS_MAJOR_VERSION">$3<ex>v9.0</ex></ph>, <ph name="JEMAOS_LICENSE_STATE_DESC">$4<ex>Édition non-commerciale</ex></ph>
      <ph name="LINE_BREAK1">&lt;br&gt;</ph>
-     Platform <ph name="JEMAOS_PLATFORM_VERSION">$5<ex>12739.22.9.15</ex></ph>
+     Plateforme <ph name="JEMAOS_PLATFORM_VERSION">$5<ex>12739.22.9.15</ex></ph>
      <ph name="LINE_BREAK2">&lt;br&gt;</ph>
      Chromium <ph name="PRODUCT_VERSION">$6<ex>57.0.2937.0</ex></ph>
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_FOR_YOU_TRIAL" desc="The text label describing jemaos license state for you trial">
-     Trial subscription
+     Abonnement d'essai
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_FOR_YOU_VALID" desc="The text label describing jemaos license state for you valid">
-     Active subscription
+     Abonnement actif
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_FOR_YOU_EXPIRED" desc="The text label describing jemaos license state for you expired">
-     Subscription expired
+     Abonnement expiré
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_UNLICENSED" desc="The text label describing jemaos license state unlicensed">
-     Non-commercial Edition
+     Édition non-commerciale
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_ENTERPRISE_TRIAL" desc="The text label describing jemaos license state enterprise trial">
-     Enterprise licensed version (trial)
+     Version sous licence entreprise (essai)
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_ENTERPRISE_VALID" desc="The text label describing jemaos license state enterprise valid">
-     Enterprise licensed version
+     Version sous licence entreprise
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_LICENSE_STATE_ENTERPRISE_EXPIRED" desc="The text label describing jemaos license state enterprise expired">
-     Enterprise licensed version (expired)
+     Version sous licence entreprise (expirée)
    </message>
   </if>
 
   <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_DEVICE_TITLE_LEGACY_INTEL" desc="The text label describing jemaos device for pc(amd)">
-    Legacy Intel
+    Intel hérité
   </message>
   <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_DEVICE_TITLE_MODERN_INTEL" desc="The text label describing jemaos device for pc(iris)">
-    Modern Intel
+    Intel moderne
   </message>
   <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_DEVICE_TITLE_AMD_GRAPHICS" desc="The text label describing jemaos device for pc(apu)">
-    AMD Graphics
+    Graphiques AMD
   </message>
   <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_DEVICE_TITLE_INTEL_SLIM" desc="The text label describing jemaos device for pc(slim)">
     Intel Slim
   </message>
 
   <message name="IDS_SETTINGS_CROSTINI_MENU_ITEM_DESCRIPTION" desc="The description of Crostini section. It is meant to be used by software developers.">
-    Bientôt
+    Bientôt disponible
   </message>
   <!-- Linux subsystem, Linux apps -->
 
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT" desc="jemaos assistant section title">
-    JemaOS AI
+    IA JemaOS
   </message>
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_MENU_ITEM_DESCRIPTION" desc="sub label for os-settings jemaos ai section">
-    Bientôt
+    Bientôt disponible
   </message>
   <!-- On/Off switch, JemaOS AI options -->
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_TOGGLE_LABEL" desc="label for jemaos ai toggle setting">
-    Enable JemaOS AI
+    Activer l'IA JemaOS
   </message>
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_TOGGLE_SUBLABEL" desc="">
-    Enable or disable all JemaOS AI related features
+    Activer ou désactiver toutes les fonctionnalités liées à l'IA JemaOS
   </message>
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_BUBBLE_SHORTCUT_TOGGLE_LABEL" desc="label for toggling an bubble shortcut for ai">
-    Enable JemaOS AI QuickCall
+    Activer l'Appel Rapide IA JemaOS
   </message>
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_BUBBLE_SHORTCUT_TOGGLE_SUBLABEL" desc="sublabel for toggling an bubble shortcut for ai">
-    Quickly bring up JemaOS AI options for highlighted content by pressing Ctrl + C + C
+    Faire apparaître rapidement les options d'IA JemaOS pour le contenu mis en surbrillance en appuyant sur Ctrl + C + C
   </message>
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_SETTINGS_IN_APP_LABEL" desc="label for link of jemaos ai settings inside app">
-    More settings
+    Plus de paramètres
   </message>
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_SETTINGS_IN_APP_SUBLABEL" desc="sublabel for link of jemaos ai settings inside app">
-    Other settings and options for JemaOS AI
+    Autres paramètres et options pour l'IA JemaOS
   </message>
 
   <message name="IDS_SETTINGS_OS_SETTINGS_JEMA_LOCAL_ACCOUNT_CHANGE_PASSWORD_LINK_DESC" desc="Description for jemaos local account change password link">
-    To change the sign-in PIN or password of this local account, it's within the <ph name="BEGIN_LINK">&lt;a href="#"&gt;</ph>Privacy and security<ph name="END_LINK">&lt;/a&gt;</ph> settings.
+    Pour changer le code PIN ou le mot de passe de connexion de ce compte local, c'est dans les paramètres <ph name="BEGIN_LINK">&lt;a href="#"&gt;</ph>Confidentialité et sécurité<ph name="END_LINK">&lt;/a&gt;</ph>.
   </message>
 </if>
 </grit-part>

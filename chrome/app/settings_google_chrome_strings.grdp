@@ -9,7 +9,7 @@
   </if>
   <!-- About Page -->
   <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Thot page.">
-    About Thot
+    À propos de Thot
   </message>
   <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Thot help page.">
     Get help with Thot

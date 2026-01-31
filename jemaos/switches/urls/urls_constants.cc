@@ -28,7 +28,7 @@ const char kLinuxAppsLearnMoreURL[] = "https://jematechnology.fr/?ospath=docs/ma
 const char kOnlineEulaURLPath[] = "https://www.jematechnology.fr/conditions-utilisation/?agent=oobe";
 const char kOnlinePrivacyURLPath[] = "https://www.jematechnology.fr/politique-confidentialite/?agent=oobe";
 const char kEulaURLPath[] = "https://www.jematechnology.fr/conditions-utilisation";
-const char kPrivacyURLPath[] = "https://www.jematechnology.fr/conditions-utilisation";
+const char kPrivacyURLPath[] = "https://www.jematechnology.fr/politique-confidentialite";
 const char kJemaAccessibilityHelpURL[] = "https://jematechnology.fr/?ospath=docs/manual/explore-accessibility";
 const char kJemaNewGestureHelpURL[] = "https://jematechnology.fr/?ospath=docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
 const char kSmbSharesLearnMoreURL[] = "https://jematechnology.fr/?ospath=help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";
@@ -93,9 +93,9 @@ const char kMultiDeviceLearnMoreURL[] = "https://jematechnology.fr/?ospath=docs"
 const char kLanguageSettingsLearnMoreUrl[] = "https://jematechnology.fr/?ospath=docs/manual/customize-settings/language/manage-your-jemaos-devices-languages/";
 const char kLinuxAppsLearnMoreURL[] = "https://jematechnology.fr/?ospath=docs/manual/manage-your-apps/add-apps-and-extensions/set-up-linux-on-your-jemaos-device/";
 const char kOnlineEulaURLPath[] = "https://www.jematechnology.fr/conditions-utilisation/?agent=oobe";
-const char kOnlinePrivacyURLPath[] = "https://www.jematechnology.fr/conditions-utilisation/?agent=oobe";
+const char kOnlinePrivacyURLPath[] = "https://www.jematechnology.fr/politique-confidentialite/?agent=oobe";
 const char kEulaURLPath[] = "https://www.jematechnology.fr/conditions-utilisation";
-const char kPrivacyURLPath[] = "https://www.jematechnology.fr/conditions-utilisation";
+const char kPrivacyURLPath[] = "https://www.jematechnology.fr/politique-confidentialite";
 const char kJemaAccessibilityHelpURL[] = "https://jematechnology.fr/?ospath=docs/manual/explore-accessibility";
 const char kJemaNewGestureHelpURL[] = "https://jematechnology.fr/?ospath=docs/manual/customize-settings/use-tablets/use-gestures-or-buttons-to-navigate-in-tablet-mode";
 const char kSmbSharesLearnMoreURL[] = "https://jematechnology.fr/?ospath=help/manual/manage-your-apps/files-and-downloads/add-network-file-share-system/";

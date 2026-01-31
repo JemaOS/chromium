@@ -2,15 +2,15 @@
 <!-- override chrome/app/settings_chromium_strings.grdp, included from chromium_strings.grd -->
 <grit-part>
   <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">
-    About Thot
+    À propos de Thot
   </message>
   <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">
-    Get help with Thot browser
+    Obtenir de l’aide pour le navigateur Thot
   </message>
   <if expr="chromeos_ash">
     <if expr="openjema">
       <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">
-        About openJema
+        À propos de Jema
       </message>
       <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings, which gives information about the current Chrome OS version.">
         openJema version
@@ -21,23 +21,23 @@
     </if>
     <if expr="not openjema">
       <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">
-        About JemaOS
+        À propos de JemaOS
       </message>
       <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings, which gives information about the current Chrome OS version.">
-        JemaOS version
+        Version de JemaOS
       </message>
       <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">
-        Get help with JemaOS
+        Obtenir de l’aide pour JemaOS
       </message>
     </if>
   </if>
   <message name="IDS_SETTINGS_PERFORMANCE_MEMORY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the memory saver mode setting">
-    The browser frees up memory from inactive tabs. This gives active tabs and other apps more computer resources and keeps the browser fast. Your inactive tabs automatically become active again when you go back to them.
+    Le navigateur libère de la mémoire des onglets inactifs. Cela donne aux onglets actifs et aux autres applications plus de ressources informatiques et maintient la rapidité du navigateur. Vos onglets inactifs redeviennent automatiquement actifs lorsque vous y revenez.
   </message>
   <message name="IDS_SETTINGS_PERFORMANCE_BATTERY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the energy saver mode setting">
-    The browser conserves battery power by limiting background activity and visual effects, such as smooth scrolling and video frame rates.
+    Le navigateur économise la batterie en limitant l’activité en arrière-plan et les effets visuels, tels que le défilement fluide et les fréquences d’images vidéo.
   </message>
   <message name="IDS_SETTINGS_PERFORMANCE_PRELOAD_TOGGLE_SUMMARY" desc="Summary for the preload pages setting">
-    The browser preloads pages which makes browsing and searching faster.
+    Le navigateur précharge les pages, ce qui rend la navigation et la recherche plus rapides.
   </message>
 </grit-part>

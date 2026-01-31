@@ -63,7 +63,7 @@
       Your JemaOS or Bluetooth device is using an older version of Bluetooth. Use the internal microphone for better audio quality.
     </message>
     <message name="IDS_ASH_BIRCH_RELEASE_NOTES_TITLE" desc="Title for the suggestion chip that links to release notes">
-      JemaOS Updated
+      Mise à jour de JemaOS 
     </message>
     <message name="IDS_ASH_IN_SESSION_AUTH_SETTINGS_PROMPT" desc="Text shown in the settings auth dialog.">
       JemaOS Settings would like to confirm it's you

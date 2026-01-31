@@ -31,7 +31,7 @@
   <if expr="chromeos_ash">
     <if expr="reven">
       <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About ChromeOS Flex page.">
-        About JemaOS Flex
+        À propos de JemaOS Flex
       </message>
       <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about ChromeOS Flex settings, which gives information about the current ChromeOS Flex version.">
         JemaOS Flex version
@@ -42,7 +42,7 @@
     </if>
     <if expr="not reven">
       <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About ChromeOS page.">
-        About JemaOS
+        À propos de JemaOS
       </message>
       <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about ChromeOS settings, which gives information about the current ChromeOS version.">
         JemaOS version

@@ -3,13 +3,13 @@
 <grit-part>
 <if expr="chromeos_ash">
   <message name="IDS_SETTINGS_ABOUT_KEEP_JEMAOS_UPDATE_TO_DATE" desc="The text of keep jemaos update title in os-settings about section.">
-    Automatically keep my <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> up to date
+    Maintenir automatiquement <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> à jour
   </message>
   <message name="IDS_SETTINGS_ABOUT_JEMAOS_UPDATE_ENABLED" desc="The text of keep jemaos update status in os-settings about section.">
-    <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> update enabled
+    Mise à jour de <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> activée
   </message>
   <message name="IDS_SETTINGS_ABOUT_JEMAOS_UPDATE_DISABLED" desc="The text of disable jemaos update status in os-settings about section.">
-    <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> update disabled
+    Mise à jour de <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> désactivée
   </message>
   <message name="IDS_SETTINGS_ABOUT_PAGE_JEMAOS_VERSION" desc="The text label describing the version of the browser, example: Version 57.0.2937.0 (Developer Build) unknown (64-bit)">
     <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="JEMAOS_MAJOR_VERSION">$2<ex>v9.0</ex></ph> (<ph name="PRODUCT_CHANNEL">$3<ex>Developer Build</ex></ph>) Platform <ph name="JEMAOS_PLATFORM_VERSION">$4<ex>12739.22.9.15</ex></ph> <ph name="PRODUCT_VERSION_BITS">$5</ph>
@@ -18,7 +18,7 @@
     Remote desktop
   </message>
   <message name="IDS_SETTINGS_CROSTINI_VERSION" desc="Version label for crostini">
-    Version
+    Version 
   </message>
   <message name="IDS_SETTINGS_CROSTINI_RELAUNCH" desc="The label for the relaunch button that relaunches the browser once update is complete">
     Restart
@@ -39,10 +39,10 @@
     Thers's a critical update available for the Linux(beta) component. It's strongly recommended to perform this update as soon as possible or your Linux(beta) may no longer work.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_SETTINGS" desc="jemaos settings page title">
-    <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> settings
+    Paramètres de <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_MENU_ITEM_DESCRIPTION" desc="jemaos settings sublabel">
-    JemaOS account, backup, misc
+    Compte JemaOS, sauvegarde, divers
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_WIFI_DRIVER_TITLE" desc="jemao settings wifi section title">
     Wifi settings
@@ -150,13 +150,13 @@
     Please specify the path to store the backup file
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_LABEL" desc="Label on os-settings jemaos backup section">
-    Create a backup file for this account (beta). <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
+    Créer un fichier de sauvegarde pour ce compte (bêta). <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_BUTTON_LABEL" desc="Text on os-settings jemaos backup button">
     Backup
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_INTRO_TITLE" desc="Title for backup intro">
-    Create a backup file for this account (beta)
+    Créer un fichier de sauvegarde pour ce compte (bêta).
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_INTRO_TEXT" desc="Text for backup intro">
     This operation creates a full disk backup for this account, making it easy to restore to the state of your JemaOS when the backup was created, including settings, installed browser extensions and subsystem apps. Depending on your apps and the contents of your personal folder, the backup file may be large; it is recommended to store the backup file on an external storage device. If you have a portable USB drive, please connect it now. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$1"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
@@ -199,45 +199,45 @@
   
   <!-- Cloud backup/restore strings -->
   <message name="IDS_OS_SETTINGS_JEMAOS_BACKUP_LOCAL_DESC" desc="Description for local backup">
-    Save backup to your device or external storage
+    Enregistrer la sauvegarde sur votre appareil ou un stockage externe
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_LABEL" desc="Label for cloud backup section">
-    Cloud Backup
+    Sauvegarde dans le cloud
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_DESC" desc="Description for cloud backup">
-    Upload backup to JemaOS cloud storage
+    Téléverser la sauvegarde vers le stockage cloud de JemaOS
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_BACKUP_BUTTON_LABEL" desc="Text on cloud backup button">
-    Backup to Cloud
+    Sauvegarder dans le cloud
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_RESTORE_LOCAL_DESC" desc="Description for local restore">
-    Restore from local backup file
+    Restaurer à partir d’un fichier de sauvegarde local
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_LABEL" desc="Label for cloud restore section">
-    Cloud Restore
+    Restauration dans le cloud
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_DESC" desc="Description for cloud restore">
-    Download and restore from JemaOS cloud
+    Télécharger et restaurer depuis le cloud de JemaOS
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOUD_RESTORE_BUTTON_LABEL" desc="Text on cloud restore button">
-    Restore from Cloud
+    Restaurer depuis le cloud
   </message>
   
   <!-- Backup/Restore notification strings -->
   <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_RUNNING_TITLE" desc="Title for backup running notification">
-    Backup in Progress
+    Sauvegarde en cours
   </message>
   <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FINISHED_TITLE" desc="Title for backup finished notification">
-    Backup Complete
+    Sauvegarde terminée
   </message>
   <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FINISHED_MESSAGE" desc="Message for backup finished notification">
-    Your backup has been created successfully
+    Votre sauvegarde a été créée avec succès
   </message>
   <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE" desc="Title for backup failed notification">
-    Backup Failed
+    Échec de la sauvegarde
   </message>
   <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_MESSAGE" desc="Message for backup failed notification">
-    An error occurred during the backup process
+    Une erreur s'est produite lors du processus de sauvegarde
   </message>
   
   <!-- Backup API and Storage strings -->
@@ -370,7 +370,7 @@
      Check your subscription online
    </message>
    <message name="IDS_SETTINGS_ABOUT_PAGE_NEW_JEMAOS_VERSION" desc="The text label describing the version of the browser, with license state info, example: JemaOS for PC (apu), v18.0-SP1, Unlicensed version, Platform 15662.71.18.6">
-     <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="DEVICE_VARIANT">$2<ex> for PC (apu)</ex></ph>, <ph name="JEMAOS_MAJOR_VERSION">$3<ex>v9.0</ex></ph>, <ph name="JEMAOS_LICENSE_STATE_DESC">$4<ex>Non-commercial Edition</ex></ph>
+     <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> <ph name="DEVICE_VARIANT">$2<ex> pour PC (apu)</ex></ph>, <ph name="JEMAOS_MAJOR_VERSION">$3<ex>v9.0</ex></ph>, <ph name="JEMAOS_LICENSE_STATE_DESC">$4<ex>Non-commercial Edition</ex></ph>
      <ph name="LINE_BREAK1">&lt;br&gt;</ph>
      Platform <ph name="JEMAOS_PLATFORM_VERSION">$5<ex>12739.22.9.15</ex></ph>
      <ph name="LINE_BREAK2">&lt;br&gt;</ph>
@@ -413,15 +413,17 @@
   </message>
 
   <message name="IDS_SETTINGS_CROSTINI_MENU_ITEM_DESCRIPTION" desc="The description of Crostini section. It is meant to be used by software developers.">
-    Linux subsystem, Linux apps
+    Bientôt
   </message>
+  <!-- Linux subsystem, Linux apps -->
 
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT" desc="jemaos assistant section title">
     JemaOS AI
   </message>
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_MENU_ITEM_DESCRIPTION" desc="sub label for os-settings jemaos ai section">
-    On/Off switch, JemaOS AI options
+    Bientôt
   </message>
+  <!-- On/Off switch, JemaOS AI options -->
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT_TOGGLE_LABEL" desc="label for jemaos ai toggle setting">
     Enable JemaOS AI
   </message>

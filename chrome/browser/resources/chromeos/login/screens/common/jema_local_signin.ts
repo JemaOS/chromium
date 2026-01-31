@@ -64,6 +64,11 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
   static get properties(): PolymerElementProperties {
     return {
       loading: { type: Boolean, value: false },
+      /**
+       * Whether the device is currently online.
+       * Used to hide "Create a new local account" entry point when internet is available.
+       */
+      isOnline_: { type: Boolean, value: true },
       userRealm: { type: String, value: '' },
       userName: { type: String, value: '', observer: 'userNameObserver_' },
       errorState: {
@@ -92,6 +97,7 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
   }
 
   private loading: boolean;
+  private isOnline_: boolean;
   private errorStateLocked_: boolean;
   private userName: string;
   private userRealm: string;
@@ -131,6 +137,8 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
     super.ready();
     this.initializeLoginScreen('JemaLocalSigninScreen');
 
+    this.setupConnectivityListener_();
+
     const passwordInput =
       this.shadowRoot?.querySelector<CrInputElement>('#passwordInput');
     assert(passwordInput instanceof CrInputElement);
@@ -150,6 +158,17 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
       this.shadowRoot?.querySelector<CrInputElement>('#signinPasswordInput');
     assert(signinPasswordInput instanceof CrInputElement);
     this.signinPasswordInput = signinPasswordInput;
+  }
+
+  private setupConnectivityListener_(): void {
+    // Use browser-reported connectivity state for UI toggles.
+    this.isOnline_ = navigator.onLine;
+    window.addEventListener('online', () => {
+      this.isOnline_ = true;
+    });
+    window.addEventListener('offline', () => {
+      this.isOnline_ = false;
+    });
   }
 
   override getOobeUIInitialState() {

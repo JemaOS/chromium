@@ -867,11 +867,30 @@ bool LoginShelfView::ShouldShowAddUserButton() const {
 }
 
 bool LoginShelfView::ShouldShowUseLocalAccountButton() const {
+  // Hide the "Use local account" shelf button during the OOBE welcome flow.
+  // This keeps the local-account sign-in entry point out of the footer buttons
+  // list while still allowing other flows (e.g. existing login screen) to
+  // control local sign-in separately if needed.
+  const SessionState session_state =
+      Shell::Get()->session_controller()->GetSessionState();
+  if (session_state == SessionState::OOBE) {
+    return false;
+  }
+
+  // Hide the button during lock screen / add-person (secondary sign-in) flows.
+  // When the device is already in a user session (LOCKED) or is presenting the
+  // secondary sign-in UI, we don't want to surface local-account entry points
+  // via the footer shelf.
+  if (session_state == SessionState::LOCKED ||
+      session_state == SessionState::LOGIN_SECONDARY) {
+    return false;
+  }
+
   const bool user_session_started =
       Shell::Get()->session_controller()->NumberOfLoggedInUsers() != 0;
   return (dialog_state_ == OobeDialogState::GAIA_SIGNIN ||
-          dialog_state_ == OobeDialogState::USER_CREATION)
-       && !user_session_started;
+           dialog_state_ == OobeDialogState::USER_CREATION)
+        && !user_session_started;
 }
 
 bool LoginShelfView::ShouldShowDataRestoreButton() const {

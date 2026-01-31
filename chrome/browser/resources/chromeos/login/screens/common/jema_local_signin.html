@@ -61,7 +61,11 @@
   </div>
   <div slot="bottom-buttons" hidden="[[loading]]">
     <oobe-text-button id="signinButton" on-click="onGotoSigninClicked_" text-key="jemaosLocalSigninExistLocalAccountButtonText" hidden="[[!showSigninButton_]]"></oobe-text-button>
-    <oobe-text-button for-step="signin" id="signupButton" on-click="onGotoSignupClicked_" text-key="jemaosLocalSigninNewLocalAccountButtonText"></oobe-text-button>
+    <!--
+      Hide "Create a new local account" entry point from the footer *only when online*.
+      Show it when offline so the user can create a local account without internet.
+    -->
+    <oobe-text-button for-step="signin" id="signupButton" on-click="onGotoSignupClicked_" text-key="jemaosLocalSigninNewLocalAccountButtonText" hidden="[[isOnline_]]"></oobe-text-button>
     <oobe-next-button id="nextButton" on-click="onSubmit_"></oobe-next-button>
   </div>
 </oobe-adaptive-dialog>

@@ -1,14 +1,14 @@
-// Copyright 2025 Jema Technology. All rights reserved.
+// Copyright 2022 Jema Technology. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.h"
 
 namespace web_app {
 
-ExternalInstallOptions GetConfigForGmail() {
+ExternalInstallOptions GetConfigForJemaRemoteDesktop() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://mail.google.com/mail/installwebapp?usp=chrome_default"),
+      /*install_url=*/GURL("https://jema-rdp.vercel.app/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

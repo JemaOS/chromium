@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
+#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/mistral.h"
 
 namespace web_app {
 
-ExternalInstallOptions GetConfigForGmail() {
+ExternalInstallOptions GetConfigForMistral() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://mail.google.com/mail/installwebapp?usp=chrome_default"),
+      /*install_url=*/GURL("https://chat.mistral.ai/chat"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/proton_drive.h"
 
 namespace web_app {
 
-ExternalInstallOptions GetConfigForGmail() {
+ExternalInstallOptions GetConfigForProtonDrive() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://mail.google.com/mail/installwebapp?usp=chrome_default"),
+      /*install_url=*/GURL("https://account.proton.me/fr/drive"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

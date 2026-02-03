@@ -142,6 +142,8 @@ void JemaOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
     {"unableToSetAutoSigninWithoutPasswordAuthFactor",
       IDS_OS_SETTINGS_JEMAOS_UNABLE_TO_SET_AUTO_SIGNIN_WITHOUT_PASSWORD_AUTH_FACTOR},
 
+    {"jemaosSettingsBackupSaveFileDialogTitle",
+      IDS_OS_SETTINGS_JEMAOS_BACKUP_SAVE_FILE_DIALOG_TITLE},
     {"jemaosSettingsBackupButtonLabel",
       IDS_OS_SETTINGS_JEMAOS_BACKUP_BUTTON_LABEL},
     {"jemaosSettingsBackupIntroTitle",
@@ -151,6 +153,8 @@ void JemaOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
     {"jemaosSettingsBackupPasswordPromptText",
       IDS_OS_SETTINGS_JEMAOS_BACKUP_PASSWORD_PROMPT_TEXT},
 
+    {"jemaosSettingsRestoreSelectFileDialogTitle",
+      IDS_OS_SETTINGS_JEMAOS_RESTORE_SELECT_FILE_DIALOG_TITLE},
     {"jemaosSettingsRestoreLabel",
       IDS_OS_SETTINGS_JEMAOS_RESTORE_LABEL},
     {"jemaosSettingsRestoreButtonLabel",

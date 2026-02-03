@@ -11764,4 +11764,113 @@ Les autorisations que vous avez déjà accordées aux sites Web et aux applis pe
 <translation id="8580373135346451437">Image de l'appareil par défaut</translation>
 <translation id="8594898340669037649">Veuillez saisir le mot de passe de connexion pour ce compte</translation>
 <translation id="8835885734147345191">ID utilisateur</translation>
+<translation id="1079017345574916945">Bureau à distance</translation>
+<translation id="1126095489942887387">Échec de la restauration</translation>
+<translation id="1210024513248363065">Services à distance</translation>
+<translation id="1242476958075416392">Informations utilisateur de l'API Connect</translation>
+<translation id="125640132000960723">Une mise à jour critique est disponible pour le composant Linux (bêta). Il est fortement recommandé d'effectuer cette mise à jour dès que possible, sinon votre Linux (bêta) pourrait ne plus fonctionner.</translation>
+<translation id="133677533106907546">Activer JemaOS AI</translation>
+<translation id="1553585557005267964">Compte JemaOS, sauvegarde, divers</translation>
+<translation id="157949693054552220">Veuillez ajouter un mot de passe de connexion dans les paramètres <ph name="BEGIN_LINK" />Confidentialité et sécurité<ph name="END_LINK" /> avant d'activer la connexion automatique.</translation>
+<translation id="1674714510072289091">Impossible d'activer pour ce compte ; une erreur inconnue s'est produite lors de l'initialisation des systèmes de fichiers pour ce compte. Veuillez essayer de redémarrer ou de créer un nouveau compte</translation>
+<translation id="1688284532779228497">Restaurer depuis le cloud</translation>
+<translation id="1851103550468466960">Activer Widevine</translation>
+<translation id="185834232609012804">Mise à jour <ph name="DEVICE_OS" /> désactivée</translation>
+<translation id="189101945990408398">Intel ancien</translation>
+<translation id="1987923075425225632">Activer ou désactiver toutes les fonctionnalités liées à JemaOS AI</translation>
+<translation id="2036152819788683293">Créer un fichier de sauvegarde pour ce compte (bêta). <ph name="BEGIN_LINK_LEARN_MORE" />En savoir plus<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2100769780401669290">Pour modifier le code PIN ou le mot de passe de connexion de ce compte local, rendez-vous dans les paramètres <ph name="BEGIN_LINK" />Confidentialité et sécurité<ph name="END_LINK" />.</translation>
+<translation id="2237927770036822831">Options de sécurité</translation>
+<translation id="2258635158087467068">Bientôt disponible</translation>
+<translation id="2347352406101856238">Mise à jour <ph name="DEVICE_OS" /> activée</translation>
+<translation id="2349211327705667074">Restaurer vos données JemaOS à partir d'un fichier de sauvegarde</translation>
+<translation id="2392181387643487118">Activer l'appel rapide JemaOS AI</translation>
+<translation id="2478105276176445396">Dernière mise à jour</translation>
+<translation id="2505128566310022721">Interrupteur marche/arrêt, options JemaOS AI</translation>
+<translation id="2769233979202695866">Image de l'appareil par défaut</translation>
+<translation id="2853871047705932424">Version sous licence d'entreprise</translation>
+<translation id="2985624172970894798">Afficher un basculement tablette/ordinateur portable dans le menu système</translation>
+<translation id="2988226676715633921">Impossible d'activer pour ce compte ; une connexion automatique est déjà active pour d'autres comptes sur cet appareil</translation>
+<translation id="3054784944085654098">Sélectionner le fichier de sauvegarde à restaurer</translation>
+<translation id="3176232846379750386">Désactiver l'analyse automatique des fichiers multimédias pour toutes les partitions afin d'optimiser l'autonomie de la batterie. <ph name="BEGIN_LINK_LEARN_MORE" />En savoir plus<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="329101945990408398">Chargement...</translation>
+<translation id="332133321970894798">Réessayer</translation>
+<translation id="335066889529819233">Actuellement hors ligne</translation>
+<translation id="338169111700962696">Vérifiez votre abonnement JemaOS en ligne</translation>
+<translation id="3403772795089627134">Autres paramètres et options pour JemaOS AI</translation>
+<translation id="341074610956962696">Informations sur l'abonnement JemaOS</translation>
+<translation id="343169111700962696">Une erreur s'est produite lors de l'obtention de votre ID d'appareil</translation>
+<translation id="346169111700962696">Fin de l'abonnement</translation>
+<translation id="350169111700962696">ID de l'appareil</translation>
+<translation id="353169111700962696">Vérifiez votre abonnement en ligne</translation>
+<translation id="376676483415835736">Une version plus récente de JemaOS est disponible pour mise à jour maintenant. Cependant, votre abonnement JemaOS for You a expiré, vous avez besoin d'un abonnement actif pour mettre à jour votre JemaOS.</translation>
+<translation id="3840770932695838898">Afficher un bouton « Faire pivoter l'écran » dans le menu système</translation>
+<translation id="3851274061009484883">Paramètres du compte JemaOS</translation>
+<translation id="402771080257510050">JemaOS AI</translation>
+<translation id="4070039109671307724">Informations supplémentaires</translation>
+<translation id="4153448966914043142">Veuillez partager ce numéro avec les représentants du support officiel de JemaOS</translation>
+<translation id="4220157073401904732">Ajouter un dictionnaire</translation>
+<translation id="4362781408813685579">Abonnement actif</translation>
+<translation id="4590248637022771792">Activer le « Mode développeur » pour cette installation <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> avec plus de fonctionnalités pour développeurs. <ph name="BEGIN_LINK_LEARN_MORE" />En savoir plus<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4690206696796355711">Afficher un bouton « Redémarrer » dans le menu système</translation>
+<translation id="4722832498335744482">Maintenir automatiquement mon <ph name="DEVICE_OS" /> à jour</translation>
+<translation id="4745886129774726269">Basculement tablette/ordinateur portable</translation>
+<translation id="4770469035145322795">Veuillez arrêter le service d'assistance à distance et réessayer</translation>
+<translation id="4779786050352687599">Activer le « Mode développeur »</translation>
+<translation id="4838463656205005584">Échec de l'activation de Widevine...</translation>
+<translation id="4938972461544498524">Paramètres du pavé tactile</translation>
+<translation id="5239675900317881945">Version sous licence d'entreprise (expirée)</translation>
+<translation id="5314803795362753367">Faire apparaître rapidement les options JemaOS AI pour le contenu sélectionné en appuyant sur Ctrl + C + C</translation>
+<translation id="5687321950340462610">Aucune donnée de sauvegarde disponible</translation>
+<translation id="5866305899861219530">Aucun fichier de sauvegarde trouvé. Veuillez d'abord créer une sauvegarde.</translation>
+<translation id="5879112835975398426">Créer un fichier de sauvegarde pour ce compte (bêta)</translation>
+<translation id="595136526907376719">Une nouvelle version majeure de JemaOS est disponible pour mise à jour maintenant. Vous devez payer des frais uniques pour continuer avec cette mise à jour.</translation>
+<translation id="6095651579470426894"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Plateforme <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="6145742952315830205">Fermer</translation>
+<translation id="6169452478137972655">Graphiques AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="621731412870836460">Permettre au compte actuel de se connecter automatiquement au bureau lorsque l'appareil redémarre</translation>
+<translation id="6243454903512423518">Bouton « Faire pivoter l'écran »</translation>
+<translation id="6463286951433091842">Contourner les vérifications du module de plateforme sécurisée (TPM)</translation>
+<translation id="6468776556018764845">Fonctionnalités expérimentales</translation>
+<translation id="6478848278025138641">Abonnement expiré</translation>
+<translation id="6529331856800157597">Cette opération crée une sauvegarde complète du disque pour ce compte, facilitant la restauration à l'état de votre JemaOS lors de la création de la sauvegarde, y compris les paramètres, les extensions de navigateur installées et les applications de sous-système. Selon vos applications et le contenu de votre dossier personnel, le fichier de sauvegarde peut être volumineux ; il est recommandé de stocker le fichier de sauvegarde sur un périphérique de stockage externe. Si vous avez une clé USB portable, veuillez la connecter maintenant. <ph name="BEGIN_LINK_LEARN_MORE" />En savoir plus<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="6694016202036959050">Paramètres <ph name="DEVICE_OS" /></translation>
+<translation id="6698090158927982244">Votre Linux est à jour</translation>
+<translation id="6740122865030567525">Restaurer à partir d'un fichier de sauvegarde local</translation>
+<translation id="6816405236809604904">Intel moderne</translation>
+<translation id="6979486508584149248">Sauvegarde cloud</translation>
+<translation id="7054511234201172814"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+    <ph name="LINE_BREAK1" />
+    Plateforme <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7127353813280598674">Mot de passe de sauvegarde</translation>
+<translation id="7170710479480545448">Service d'assistance à distance</translation>
+<translation id="7303548327449168702">Vous n'êtes pas en mode tablette pour le moment, le bouton « Faire pivoter l'écran » est maintenant masqué</translation>
+<translation id="7326893024940073254">Divers</translation>
+<translation id="7386874137903403308">Le fichier « libwidevine.so » sélectionné n'est pas valide, veuillez réessayer avec un fichier différent.</translation>
+<translation id="7392552814771602496">Édition non commerciale</translation>
+<translation id="7421654468125961872">Le service d'assistance à distance permet aux représentants du support officiel de JemaOS d'identifier les problèmes système. Actuellement, le service d'assistance à distance ne peut être initié que par les représentants du support officiel de JemaOS.</translation>
+<translation id="7470950608293086085">Attention ! L'activation du « Mode développeur » est une opération irréversible. Si vous souhaitez désactiver le « Mode développeur », vous devez réinstaller JemaOS, ce qui effacera toutes les données. Veuillez sauvegarder vos données et procéder à vos propres risques.</translation>
+<translation id="7634356890529819233">Sauvegarder vers le cloud</translation>
+<translation id="768441431736013726">Activer Widevine pour diffuser du contenu premium protégé. <ph name="BEGIN_LINK_LEARN_MORE" />En savoir plus<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="771827447936691071">Avertissement</translation>
+<translation id="7831066889529819233">Entrer le mot de passe de sauvegarde</translation>
+<translation id="8180845003886240840">Impossible d'activer pour ce compte ; l'option de connexion automatique n'est disponible que pour le type « Compte local ».</translation>
+<translation id="8447783727233371010">Démarrage du service d'assistance à distance...</translation>
+<translation id="8466048683756385518">Version sous licence d'entreprise (essai)</translation>
+<translation id="8473208832886345753">Certaines fonctionnalités pourraient échouer en raison d'une puce TPM incompatible sur votre appareil, vous pouvez contourner les vérifications TPM comme solution de contournement.</translation>
+<translation id="8484013063794117855">Vous êtes déjà en « Mode développeur »</translation>
+<translation id="8509770612780794865">Paramètres Wi-Fi</translation>
+<translation id="8543313412385980367"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Plateforme <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="8663988871299316062">Veuillez mémoriser ce mot de passe, car il sera nécessaire lors de la restauration de ce fichier de sauvegarde</translation>
+<translation id="8879827440136526394">Entrer le mot de passe utilisé pour chiffrer ce fichier de sauvegarde</translation>
+<translation id="8990695698551687522">Sélectionner « libwidevine.so »</translation>
+<translation id="9125114578624380848">Sous-système Linux, applications Linux</translation>
+<translation id="996700315270946845">Veuillez entrer le mot de passe de connexion pour ce compte</translation>
 </translationbundle>

@@ -13,5 +13,5 @@ const char kAnimationPolicyNone[] = "none";
 
 void RegisterAnimationPolicyPrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterStringPref(prefs::kAnimationPolicy,
-                               kAnimationPolicyNone);
+                               kAnimationPolicyAllowed);
 }

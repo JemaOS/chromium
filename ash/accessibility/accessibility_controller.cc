@@ -1313,7 +1313,7 @@ void AccessibilityController::RegisterProfilePrefs(
                                 false);
 
   registry->RegisterBooleanPref(prefs::kAccessibilityReducedAnimationsEnabled,
-                                false);
+                                true);
 
   // TODO(b/266816160): Make ChromeVox prefs are syncable, to so that ChromeOS
   // backs up users' ChromeVox settings and reflects across their devices.

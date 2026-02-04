@@ -73,8 +73,8 @@ namespace {
 // The space between the home button and quick app.
 constexpr int kQuickAppStartMargin = 8;
 
-constexpr uint8_t kAssistantVisibleAlpha = 255;    // 100% alpha
-constexpr uint8_t kAssistantInvisibleAlpha = 138;  // 54% alpha
+//constexpr uint8_t kAssistantVisibleAlpha = 255;    // 100% alpha
+//constexpr uint8_t kAssistantInvisibleAlpha = 138;  // 54% alpha
 
 // Nudge animation constants
 

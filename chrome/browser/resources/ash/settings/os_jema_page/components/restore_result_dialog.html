@@ -1,4 +1,4 @@
-<style include="cr-shared-style">
+<style include="cr-shared-style settings-shared">
   :host {
     --cr-dialog-width: 400px;
   }
@@ -24,6 +24,16 @@
   .error-icon {
     color: var(--google-red-600);
     margin-right: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .success-icon {
+      color: var(--google-green-300);
+    }
+
+    .error-icon {
+      color: var(--google-red-300);
+    }
   }
 
   .dialog-header {

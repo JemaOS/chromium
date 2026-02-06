@@ -12,21 +12,21 @@ import '../../components/common_styles/oobe_dialog_host_styles.css.js';
 import '../../components/dialogs/oobe_adaptive_dialog.js';
 import '../../components/dialogs/oobe_modal_dialog.js';
 
-import {assert} from '//resources/js/assert.js';
-import {loadTimeData} from '//resources/js/load_time_data.js';
-import {afterNextRender, html, mixinBehaviors, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import { assert } from '//resources/js/assert.js';
+import { loadTimeData } from '//resources/js/load_time_data.js';
+import { afterNextRender, html, mixinBehaviors, PolymerElement } from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {LoginScreenMixin} from '../../components/mixins/login_screen_mixin.js';
-import {OobeI18nMixin} from '../../components/mixins/oobe_i18n_mixin.js';
-import {OobeDialogHostMixin} from '../../components/mixins/oobe_dialog_host_mixin.js';
-import {MultiStepMixin} from '../../components/mixins/multi_step_mixin.js';
+import { LoginScreenMixin } from '../../components/mixins/login_screen_mixin.js';
+import { OobeI18nMixin } from '../../components/mixins/oobe_i18n_mixin.js';
+import { OobeDialogHostMixin } from '../../components/mixins/oobe_dialog_host_mixin.js';
+import { MultiStepMixin } from '../../components/mixins/multi_step_mixin.js';
 import '../../components/buttons/oobe_back_button.js';
 import '../../components/buttons/oobe_text_button.js';
-import {WebViewHelper, ContentType} from '../../components/web_view_helper.js';
-import {WebViewLoader} from '../../components/web_view_loader.js';
-import {Oobe} from '../../cr_ui.js';
+import { WebViewHelper, ContentType } from '../../components/web_view_helper.js';
+import { WebViewLoader } from '../../components/web_view_loader.js';
+import { Oobe } from '../../cr_ui.js';
 
-import {getTemplate} from './oobe_eula.html.js';
+import { getTemplate } from './oobe_eula.html.js';
 
 const EulaScreenState = {
   LOADING: 'loading',
@@ -132,17 +132,27 @@ class EulaScreen extends EulaScreenBase {
     // this.$.eulaDialog.scrollToBottom();
   }
 
-  private loadEulaToWebview_(webview: chrome.webviewTag.WebView, onlineEulaUrl: string, clear_anchors: boolean) {
+  private loadEulaToWebview_(
+    webview: chrome.webviewTag.WebView,
+    onlineEulaUrl: string,
+    clear_anchors: boolean,
+    useLocalTermsOnly: boolean) {
     var loadBundledEula = () => {
       WebViewHelper.loadUrlContentToWebView(
-          webview, EULA_TERMS_URL, ContentType.HTML);
+        webview, EULA_TERMS_URL, ContentType.HTML);
       this.offline_ = true;
     };
 
+    if (useLocalTermsOnly) {
+      // Load local bundled terms HTML (e.g. terms_fr.html via chrome://terms).
+      loadBundledEula();
+      return;
+    }
+
     this.offline_ = false;
     var eulaLoader = new WebViewLoader(
-        webview, ONLINE_EULA_LOAD_TIMEOUT_IN_MS, loadBundledEula,
-        clear_anchors, true);
+      webview, ONLINE_EULA_LOAD_TIMEOUT_IN_MS, loadBundledEula,
+      clear_anchors, true);
     eulaLoader.setUrl(onlineEulaUrl);
   }
 
@@ -153,15 +163,17 @@ class EulaScreen extends EulaScreenBase {
   private loadEula() {
     this.setUIStep(EulaScreenState.LOADING);
 
+    // Load local bundled terms HTML (e.g. terms_fr.html) into the terms webview.
     const onlineEulaUrl = loadTimeData.getString('eulaOnlineUrl');
     const eulaFrame = this.shadowRoot?.querySelector<chrome.webviewTag.WebView>('#crosEulaFrame');
     assert(eulaFrame);
-    this.loadEulaToWebview_(eulaFrame, onlineEulaUrl, true);
+    this.loadEulaToWebview_(eulaFrame, onlineEulaUrl, true, true);
 
+    // Load same local bundled terms HTML into the privacy webview.
     const onlinePrivacyUrl = loadTimeData.getString('privacyOnlineUrl');
     const privacyFrame = this.shadowRoot?.querySelector<chrome.webviewTag.WebView>('#jemaosPrivacyFrame');
     assert(privacyFrame);
-    this.loadEulaToWebview_(privacyFrame, onlinePrivacyUrl, true);
+    this.loadEulaToWebview_(privacyFrame, onlinePrivacyUrl, true, true);
   }
 
   private eulaAccepted_() {

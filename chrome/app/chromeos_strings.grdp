@@ -1907,6 +1907,9 @@
   <message name="IDS_LOGIN_FATAL_ERROR_NO_AUTH_TOKEN" desc="Message to show when the authentication could not be completed because the user's auth token retrieved.">
     Sign-in failed because your access token could not be retrieved. Please check your network connection and try again.
   </message>
+  <message name="IDS_LOGIN_FATAL_ERROR_GAIA_ERROR" desc="Message to show when Gaia redirects to an error page (e.g. unknownerror) during sign-in.">
+    Sign-in failed. Please try again.
+  </message>
   <message name="IDS_LOGIN_SAML_INTERSTITIAL_MESSAGE" desc="Message to show on the SAML interstitial page to tell the user to continue signing in using their enterprise account. MANAGER can be a domain or an email address.">
     This device is managed by <ph name="MANAGER">$1<ex>acmecorp.com</ex></ph> and requires you to sign in every time.
   </message>

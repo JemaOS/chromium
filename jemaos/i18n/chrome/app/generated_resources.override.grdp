@@ -45,4 +45,8 @@
     Visit JemaOS App Store
   </message>
 
+  <message name="IDS_BRAVE_BROWSER_APP_NAME" desc="Name of the Brave Browser app in the launcher.">
+    Brave Browser
+  </message>
+
 </grit-part>

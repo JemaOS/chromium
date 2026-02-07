@@ -137,21 +137,24 @@ class EulaScreen extends EulaScreenBase {
     onlineEulaUrl: string,
     clear_anchors: boolean,
     useLocalTermsOnly: boolean) {
-    var loadBundledEula = () => {
+    const loadBundledEula = (setOffline: boolean) => {
       WebViewHelper.loadUrlContentToWebView(
         webview, EULA_TERMS_URL, ContentType.HTML);
-      this.offline_ = true;
+      if (setOffline) {
+        this.offline_ = true;
+      }
     };
 
     if (useLocalTermsOnly) {
       // Load local bundled terms HTML (e.g. terms_fr.html via chrome://terms).
-      loadBundledEula();
+      // Do not set offline_ so the privacy step is still shown.
+      loadBundledEula(false);
       return;
     }
 
     this.offline_ = false;
     var eulaLoader = new WebViewLoader(
-      webview, ONLINE_EULA_LOAD_TIMEOUT_IN_MS, loadBundledEula,
+      webview, ONLINE_EULA_LOAD_TIMEOUT_IN_MS, () => loadBundledEula(true),
       clear_anchors, true);
     eulaLoader.setUrl(onlineEulaUrl);
   }

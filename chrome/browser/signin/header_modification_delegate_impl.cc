@@ -65,7 +65,10 @@ HeaderModificationDelegateImpl::HeaderModificationDelegateImpl(
 HeaderModificationDelegateImpl::HeaderModificationDelegateImpl(Profile* profile)
     : profile_(profile),
       cookie_settings_(CookieSettingsFactory::GetForProfile(profile_)) {
-  dontProcessHeader_ = profile_->IsJemaProfile();
+  // @todo: Remove this check when the OS-level dialog is ready and enabled for JemaOS.
+  // google login popup
+  // dontProcessHeader_ = profile_->IsJemaProfile();
+  dontProcessHeader_ = true;
 }
 #endif
 
@@ -164,6 +167,14 @@ void HeaderModificationDelegateImpl::ProcessResponse(
     ResponseAdapter* response_adapter,
     const GURL& redirect_url) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+
+  // Skip processing the Mirror/account consistency response headers for JemaOS
+  // profiles so that Google login proceeds in the browser instead of showing
+  // the OS-level "Add Google account" dialog.
+  // @TODO: Remove this check when the OS-level dialog is ready and enabled for JemaOS.
+  // google login popup skiped for JemaOS profiles
+  if (dontProcessHeader_)
+    return;
 
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
   if (gaia::HasGaiaSchemeHostPort(response_adapter->GetUrl()) &&

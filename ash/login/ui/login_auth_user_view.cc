@@ -1306,7 +1306,11 @@ void LoginAuthUserView::OnAuthSubmit(const std::u16string& password) {
   const bool is_jema_or_flint = 
       gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0;
   
-  if (is_jema_or_flint) {
+  const std::string& email = user.basic_user_info.display_email;
+  const bool is_local_jemaos = base::EndsWith(
+      email, "@jemaos.local", base::CompareCase::INSENSITIVE_ASCII);
+
+  if (is_jema_or_flint && !is_local_jemaos) {
     // Step 1: Verify with API if user is blocked
     // Step 2: If not blocked, proceed with local password authentication
     //         (CompleteLogin will create account for new users or verify password for existing users)
@@ -1314,6 +1318,11 @@ void LoginAuthUserView::OnAuthSubmit(const std::u16string& password) {
                  << "), calling API to check if user is blocked";
     AuthenticateWithApi(password);
     return;
+  }
+
+  if (is_local_jemaos) {
+    LOG(WARNING) << "[JEMAOS] Local JemaOS account detected (" << email
+                 << "), skipping API authentication";
   }
   //---***JEMAOS END***---   
 

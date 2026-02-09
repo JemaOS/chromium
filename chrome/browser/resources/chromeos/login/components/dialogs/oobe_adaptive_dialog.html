@@ -67,14 +67,10 @@ found in the LICENSE file.
       --oobe-adaptive-dialog-content-direction: row;
       --oobe-adaptive-dialog-item-alignment: unset;
       --oobe-text-alignment: start;
-      --oobe-adaptive-dialog-content-width: calc(
-          var(--oobe-adaptive-dialog-width) -
-          4 * var(--oobe-adaptive-dialog-content-padding) -
-          var(--oobe-adaptive-dialog-header-width));
+      --oobe-adaptive-dialog-content-width: calc(var(--oobe-adaptive-dialog-width) - 4 * var(--oobe-adaptive-dialog-content-padding) - var(--oobe-adaptive-dialog-header-width));
       /* Header takes 40% of the width remaining after applying padding */
       --oobe-adaptive-dialog-header-width: clamp(302px,
-          calc(0.4 * (var(--oobe-adaptive-dialog-width) -
-          4 * var(--oobe-adaptive-dialog-content-padding))) , 346px);
+          calc(0.4 * (var(--oobe-adaptive-dialog-width) - 4 * var(--oobe-adaptive-dialog-content-padding))), 346px);
       --oobe-adaptive-dialog-content-top-padding: 0;
     }
 
@@ -88,13 +84,10 @@ found in the LICENSE file.
       --oobe-adaptive-dialog-content-direction: column;
       --oobe-adaptive-dialog-item-alignment: center;
       --oobe-text-alignment: center;
-      --oobe-adaptive-dialog-content-width: calc(
-          var(--oobe-adaptive-dialog-width) -
-          2 * var(--oobe-adaptive-dialog-content-padding));
+      --oobe-adaptive-dialog-content-width: calc(var(--oobe-adaptive-dialog-width) - 2 * var(--oobe-adaptive-dialog-content-padding));
       /* Header takes 60% of the width remaining after applying padding */
       --oobe-adaptive-dialog-header-width: clamp(346px,
-          calc(0.6 * (var(--oobe-adaptive-dialog-width) -
-          2 * var(--oobe-adaptive-dialog-content-padding))) , 520px);
+          calc(0.6 * (var(--oobe-adaptive-dialog-width) - 2 * var(--oobe-adaptive-dialog-content-padding))), 520px);
     }
   }
 
@@ -166,6 +159,7 @@ found in the LICENSE file.
   #oobe-title {
     padding-top: var(--oobe-adaptive-dialog-title-top-padding);
   }
+
   :host-context(.jelly-enabled) #oobe-title {
     padding-top: var(--oobe-adaptive-dialog-item-vertical-padding);
   }
@@ -173,6 +167,7 @@ found in the LICENSE file.
   #oobe-progress ::slotted(*) {
     margin-top: 32px;
   }
+
   :host-context(.jelly-enabled) #oobe-progress ::slotted(*) {
     margin-top: var(--oobe-adaptive-dialog-item-vertical-padding);
   }
@@ -184,6 +179,7 @@ found in the LICENSE file.
     height: 4px;
     width: 100%;
   }
+
   :host-context(.jelly-enabled) #oobe-progress ::slotted(paper-progress) {
     --paper-progress-active-color: var(--cros-sys-primary);
     --paper-progress-container-color: var(--cros-sys-primary_container);
@@ -192,10 +188,12 @@ found in the LICENSE file.
   #oobe-subtitle {
     padding-top: 16px;
   }
+
   /* Avoid applying the padding twice if there's no text */
   :host-context(.jelly-enabled) #oobe-subtitle {
     padding-top: 0;
   }
+
   :host-context(.jelly-enabled) #oobe-subtitle ::slotted(*) {
     padding-top: var(--oobe-adaptive-dialog-item-vertical-padding);
   }
@@ -203,6 +201,7 @@ found in the LICENSE file.
   #oobe-subtitle-illustration ::slotted(*) {
     padding-top: 16px;
   }
+
   :host-context(.jelly-enabled) #oobe-subtitle-illustration ::slotted(*) {
     padding-top: var(--oobe-adaptive-dialog-item-vertical-padding);
   }
@@ -210,6 +209,7 @@ found in the LICENSE file.
   #contentContainer {
     width: var(--oobe-adaptive-dialog-content-width);
   }
+
   #contentContainer ::slotted(*) {
     max-width: var(--oobe-adaptive-dialog-content-width);
   }
@@ -256,24 +256,58 @@ found in the LICENSE file.
   :host([jemaos-layout]) #oobe-subtitle ::slotted(*) {
     padding-top: 16px;
   }
+
   :host([jemaos-layout]) #oobe-jemaos-illustration {
     overflow: hidden;
     height: 72%;
   }
+
   :host([jemaos-layout]) #oobe-jemaos-illustration.oobe-jemaos-non-animation-container {
     width: fit-content;
     margin: 0 auto;
   }
+
   :host([jemaos-layout]) #oobe-jemaos-illustration ::slotted(img) {
     width: 100%;
     height: 100%;
   }
+
   :host([jemaos-layout]) #contentContainer {
     width: 100%;
     padding-top: var(--oobe-adaptive-dialog-item-vertical-padding);
   }
+
   :host([jemaos-layout]) #contentContainer ::slotted(*) {
     max-width: 100%;
+  }
+
+  #jemaos-local-connect-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 72%;
+    text-align: center;
+    padding: 24px;
+  }
+
+  #jemaos-local-connect-container iron-icon {
+    --iron-icon-height: 64px;
+    --iron-icon-width: 64px;
+    --iron-icon-fill-color: var(--cros-sys-primary);
+    margin-bottom: 16px;
+  }
+
+  #jemaos-local-connect-link {
+    color: var(--cros-sys-primary);
+    cursor: pointer;
+    font-size: var(--oobe-subheader-font-size);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  #jemaos-local-connect-link:hover {
+    text-decoration: underline;
   }
 </style>
 <cr-lazy-render id="lazy">
@@ -282,79 +316,85 @@ found in the LICENSE file.
       <slot name="back-navigation"></slot>
     </div>
     <div id="main-container" class="layout vertical flex">
-     <template is="dom-if" if="[[!jemaosLayout]]">
-      <div id="header-container">
-        <div id="oobe-icon-div" class="vertical-mode-centering">
-          <slot name="icon"></slot>
-        </div>
-        <div id="oobe-title" class="vertical-mode-centering">
-          <slot name="title"></slot>
-        </div>
-        <div id="oobe-progress" class="vertical-mode-centering">
-          <slot name="progress"></slot>
-        </div>
-        <div id="oobe-subtitle" class="vertical-mode-centering">
-          <slot name="subtitle"></slot>
-        </div>
-        <div id="oobe-subtitle-illustration" class="vertical-mode-centering">
-          <slot name="subtitle-illustration"></slot>
-        </div>
-      </div>
-      <div id="scrollContainer" class="layout vertical flex scrollable">
-        <div id="contentContainer" class="layout vertical flex">
-          <slot name="content"></slot>
-        </div>
-        <div id="readMoreButtonContainer">
-          <template is="dom-if" if="[[showReadMoreButton]]" restamp>
-            <cr-button id="readMoreButton" on-click="onReadMoreClick"
-                class="action-button">
-              <iron-icon icon="oobe-20:button-arrow-forward"></iron-icon>
-            </cr-button>
-          </template>
-        </div>
-      </div>
-     </template>
-     <template is="dom-if" if="[[jemaosLayout]]">
-      <div id="header-container" class="layout vertical flex center-justified">
-        <template is="dom-if" if="[[animationUrl]]">
-          <div id="oobe-jemaos-illustration" class="vertical-mode-centering">
-            <slot name="jemaos-illustration">
-              <template is="dom-if" if="[[animationUrl]]">
-                <oobe-cr-lottie id="jemaos-illustration-animation"
-                    hide-play-pause-icon
-                    loop="[[animationLoop]]"
-                    animation-url="[[animationUrl]]">
-            </slot>
+      <template is="dom-if" if="[[!jemaosLayout]]">
+        <div id="header-container">
+          <div id="oobe-icon-div" class="vertical-mode-centering">
+            <slot name="icon"></slot>
           </div>
-        </template>
-        <template is="dom-if" if="[[!animationUrl]]">
-          <div id="oobe-jemaos-illustration" class="vertical-mode-centering oobe-jemaos-non-animation-container">
-            <slot name="jemaos-illustration"></slot>
-          </div>
-        </template>
-      </div>
-      <div id="scrollContainer" class="layout vertical flex scrollable">
-        <div id="oobe-title-container">
           <div id="oobe-title" class="vertical-mode-centering">
             <slot name="title"></slot>
+          </div>
+          <div id="oobe-progress" class="vertical-mode-centering">
+            <slot name="progress"></slot>
           </div>
           <div id="oobe-subtitle" class="vertical-mode-centering">
             <slot name="subtitle"></slot>
           </div>
+          <div id="oobe-subtitle-illustration" class="vertical-mode-centering">
+            <slot name="subtitle-illustration"></slot>
+          </div>
         </div>
-        <div id="oobe-progress" class="vertical-mode-centering">
-          <slot name="progress"></slot>
+        <div id="scrollContainer" class="layout vertical flex scrollable">
+          <div id="contentContainer" class="layout vertical flex">
+            <slot name="content"></slot>
+          </div>
+          <div id="readMoreButtonContainer">
+            <template is="dom-if" if="[[showReadMoreButton]]" restamp>
+              <cr-button id="readMoreButton" on-click="onReadMoreClick" class="action-button">
+                <iron-icon icon="oobe-20:button-arrow-forward"></iron-icon>
+              </cr-button>
+            </template>
+          </div>
         </div>
-        <div id="contentContainer" class="layout vertical flex">
-          <slot name="content"></slot>
+      </template>
+      <template is="dom-if" if="[[jemaosLayout]]">
+        <div id="header-container" class="layout vertical flex center-justified">
+          <template is="dom-if" if="[[showNoNetworkLink_]]">
+            <div id="jemaos-local-connect-container">
+              <iron-icon icon="oobe-32:avatar"></iron-icon>
+              <a id="jemaos-local-connect-link" href="#" on-click="onLocalConnectClicked_">
+                Sign in with a local account
+              </a>
+            </div>
+          </template>
+          <template is="dom-if" if="[[!showNoNetworkLink_]]">
+            <template is="dom-if" if="[[animationUrl]]">
+              <div id="oobe-jemaos-illustration" class="vertical-mode-centering">
+                <slot name="jemaos-illustration">
+                  <template is="dom-if" if="[[animationUrl]]">
+                    <oobe-cr-lottie id="jemaos-illustration-animation" hide-play-pause-icon loop="[[animationLoop]]"
+                      animation-url="[[animationUrl]]">
+                </slot>
+              </div>
+            </template>
+            <template is="dom-if" if="[[!animationUrl]]">
+              <div id="oobe-jemaos-illustration" class="vertical-mode-centering oobe-jemaos-non-animation-container">
+                <slot name="jemaos-illustration"></slot>
+              </div>
+            </template>
+          </template>
         </div>
-      </div>
-     </template>
+        <div id="scrollContainer" class="layout vertical flex scrollable">
+          <div id="oobe-title-container">
+            <div id="oobe-title" class="vertical-mode-centering">
+              <slot name="title"></slot>
+            </div>
+            <div id="oobe-subtitle" class="vertical-mode-centering">
+              <slot name="subtitle"></slot>
+            </div>
+          </div>
+          <div id="oobe-progress" class="vertical-mode-centering">
+            <slot name="progress"></slot>
+          </div>
+          <div id="contentContainer" class="layout vertical flex">
+            <slot name="content"></slot>
+          </div>
+        </div>
+      </template>
     </div>
     <div class="buttons-common bottom-buttons-container
         vertical-mode-centering">
-      <slot class="layout horizontal end-justified" name="bottom-buttons"
-          hidden="[[showReadMoreButton]]">
+      <slot class="layout horizontal end-justified" name="bottom-buttons" hidden="[[showReadMoreButton]]">
       </slot>
     </div>
   </template>

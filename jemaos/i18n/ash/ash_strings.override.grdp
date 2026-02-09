@@ -77,4 +77,8 @@
     </message>
   </if>
 
+  <message name="IDS_ASH_LOGIN_ERROR_SERVER_NO_RESPONSE" desc="Error message shown when the authentication server does not respond">
+    Le serveur n'a pas répondu. Veuillez réessayer plus tard.
+  </message>
+
 </grit-part>

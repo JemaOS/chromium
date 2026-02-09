@@ -11,15 +11,15 @@ import '../oobe_vars/oobe_custom_vars.css.js';
 import '../oobe_vars/oobe_shared_vars.css.js';
 
 import '../../components/oobe_cr_lottie.js';
-import {OobeCrLottie} from '../../components/oobe_cr_lottie.js';
+import { OobeCrLottie } from '../../components/oobe_cr_lottie.js';
 
-import {CrButtonElement} from '//resources/ash/common/cr_elements/cr_button/cr_button.js';
-import {CrLazyRenderElement} from '//resources/ash/common/cr_elements/cr_lazy_render/cr_lazy_render.js';
-import {assert} from '//resources/js/assert.js';
-import {PolymerElementProperties} from '//resources/polymer/v3_0/polymer/interfaces.js';
-import {afterNextRender, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import { CrButtonElement } from '//resources/ash/common/cr_elements/cr_button/cr_button.js';
+import { CrLazyRenderElement } from '//resources/ash/common/cr_elements/cr_lazy_render/cr_lazy_render.js';
+import { assert } from '//resources/js/assert.js';
+import { PolymerElementProperties } from '//resources/polymer/v3_0/polymer/interfaces.js';
+import { afterNextRender, PolymerElement } from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {getTemplate} from './oobe_adaptive_dialog.html.js';
+import { getTemplate } from './oobe_adaptive_dialog.html.js';
 
 /**
  * Indicates `Read more` button state (listed in upgrade order).
@@ -101,6 +101,27 @@ export class OobeAdaptiveDialog extends PolymerElement {
         type: Boolean,
         value: false,
       },
+
+      /**
+       * Whether to show a "local connect" link when there is no network.
+       * When true and networkConnectionStatus is false, a local connect
+       * link replaces the animation in the jemaos illustration area.
+       * @type {boolean}
+       */
+      showLocalConnectWhenOffline: {
+        type: Boolean,
+        value: false,
+      },
+
+      /**
+       * Computed: true when offline and showLocalConnectWhenOffline is set.
+       * Used in the template to swap the animation for a local connect link.
+       * @type {boolean}
+       */
+      showNoNetworkLink_: {
+        type: Boolean,
+        computed: 'computeShowNoNetworkLink_(showLocalConnectWhenOffline, networkConnectionStatus)',
+      },
       /**
        * The name of the current OOBE screen for debugging purposes.
        * @type {string}
@@ -148,6 +169,8 @@ export class OobeAdaptiveDialog extends PolymerElement {
   private jemaosLayout: boolean;
   private animationUrl: string;
   private animationLoop: boolean;
+  private showLocalConnectWhenOffline: boolean;
+  private showNoNetworkLink_: boolean;
   private resizeObserver?: ResizeObserver;
   private readMoreState: ReadMoreState;
 
@@ -170,19 +193,19 @@ export class OobeAdaptiveDialog extends PolymerElement {
     return lazyRender;
   }
 
-  private getReadMoreButton(): CrButtonElement|null {
+  private getReadMoreButton(): CrButtonElement | null {
     const readMoreButton = this.shadowRoot?.querySelector('#readMoreButton');
     return readMoreButton instanceof CrButtonElement ? readMoreButton : null;
   }
 
-  private getScrollContainer(): HTMLDivElement|null {
+  private getScrollContainer(): HTMLDivElement | null {
     const scrollContainer = this.shadowRoot?.querySelector('#scrollContainer');
     return scrollContainer instanceof HTMLDivElement ? scrollContainer : null;
   }
 
-  private getContentContainer(): HTMLDivElement|null {
+  private getContentContainer(): HTMLDivElement | null {
     const contentContainer =
-        this.shadowRoot?.querySelector('#contentContainer');
+      this.shadowRoot?.querySelector('#contentContainer');
     return contentContainer instanceof HTMLDivElement ? contentContainer : null;
   }
 
@@ -235,14 +258,14 @@ export class OobeAdaptiveDialog extends PolymerElement {
     const scrollContainer = sc as HTMLDivElement;
 
     scrollContainer.classList.toggle(
-        'can-scroll',
-        scrollContainer.clientHeight < scrollContainer.scrollHeight);
+      'can-scroll',
+      scrollContainer.clientHeight < scrollContainer.scrollHeight);
     scrollContainer.classList.toggle(
-        'is-scrolled', scrollContainer.scrollTop > 0);
+      'is-scrolled', scrollContainer.scrollTop > 0);
     scrollContainer.classList.toggle(
-        'scrolled-to-bottom',
-        scrollContainer.scrollTop + scrollContainer.clientHeight >=
-            scrollContainer.scrollHeight);
+      'scrolled-to-bottom',
+      scrollContainer.scrollTop + scrollContainer.clientHeight >=
+      scrollContainer.scrollHeight);
   }
 
   /**
@@ -279,7 +302,7 @@ export class OobeAdaptiveDialog extends PolymerElement {
       }
     } else if (this.readMoreState === ReadMoreState.SHOWN) {
       if (content.clientHeight >= content.scrollHeight ||
-          content.scrollTop > 0) {
+        content.scrollTop > 0) {
         this.readMoreState = ReadMoreState.HIDDEN;
         this.removeReadMoreButton();
       }
@@ -304,7 +327,7 @@ export class OobeAdaptiveDialog extends PolymerElement {
 
   private playJemaAnimation(): void {
     const animation =
-        this.shadowRoot?.querySelector('#jemaos-illustration-animation');
+      this.shadowRoot?.querySelector('#jemaos-illustration-animation');
     if (animation instanceof OobeCrLottie) {
       animation.playing = true;
     }
@@ -322,7 +345,7 @@ export class OobeAdaptiveDialog extends PolymerElement {
 
   private focusOnShow(): void {
     const focusedElements =
-        this.querySelectorAll<HTMLElement>('.focus-on-show');
+      this.querySelectorAll<HTMLElement>('.focus-on-show');
     let focused = false;
     for (let i = 0; i < focusedElements.length; ++i) {
       if (focusedElements[i].hidden) {
@@ -344,7 +367,7 @@ export class OobeAdaptiveDialog extends PolymerElement {
   show(): void {
     this.focusOnShow();
     this.dispatchEvent(
-        new CustomEvent('show-dialog', {bubbles: true, composed: true}));
+      new CustomEvent('show-dialog', { bubbles: true, composed: true }));
   }
 
   private onNoLazyChanged(): void {
@@ -401,13 +424,35 @@ export class OobeAdaptiveDialog extends PolymerElement {
   }
 
   /**
+   * Computes whether to show the local connect link instead of the animation.
+   * Returns true when offline and showLocalConnectWhenOffline is enabled.
+   */
+  private computeShowNoNetworkLink_(
+    showLocalConnectWhenOffline: boolean,
+    networkConnectionStatus: boolean): boolean {
+    return showLocalConnectWhenOffline && !networkConnectionStatus;
+  }
+
+  /**
+   * Handles click on the local connect link.
+   * Dispatches an event so the parent screen can navigate to local signin.
+   */
+  private onLocalConnectClicked_(e: Event): void {
+    e.preventDefault();
+    this.dispatchEvent(new CustomEvent('local-connect-clicked', {
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  /**
    * Observer for network connection status changes.
    * @param {boolean} newStatus New connection status
    * @private
    */
   onNetworkConnectionStatusChanged_(newStatus: boolean): void {
     console.log(`Adaptive dialog: Network connection status changed to ${newStatus} for screen ${this.screenSlug || this.screenName}`);
-    
+
     // Dispatch event to notify parent components about network status change
     this.dispatchEvent(new CustomEvent('dialog-network-status-changed', {
       bubbles: true,
@@ -421,14 +466,14 @@ export class OobeAdaptiveDialog extends PolymerElement {
     }));
   }
 
-   /**
-   * Observer for network connection type changes.
-   * @param {string} newType New connection type
-   * @private
-   */
+  /**
+  * Observer for network connection type changes.
+  * @param {string} newType New connection type
+  * @private
+  */
   onNetworkConnectionTypeChanged_(newType: string): void {
     console.log(`Adaptive dialog: Network connection type changed to ${newType} for screen ${this.screenSlug || this.screenName}`);
-    
+
     // Dispatch event to notify parent components about network type change
     this.dispatchEvent(new CustomEvent('dialog-network-type-changed', {
       bubbles: true,
@@ -443,7 +488,7 @@ export class OobeAdaptiveDialog extends PolymerElement {
   }
 }
 
-export interface OobeAdaptiveDialog extends HTMLElement {}
+export interface OobeAdaptiveDialog extends HTMLElement { }
 
 declare global {
   interface HTMLElementTagNameMap {

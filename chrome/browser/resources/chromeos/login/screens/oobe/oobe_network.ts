@@ -15,20 +15,20 @@ import '../../components/common_styles/oobe_dialog_host_styles.css.js';
 import '../../components/dialogs/oobe_adaptive_dialog.js';
 import '../../components/dialogs/oobe_loading_dialog.js';
 
-import {PolymerElementProperties} from '//resources/polymer/v3_0/polymer/interfaces.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {NetworkList} from 'chrome://resources/ash/common/network/network_list_types.js';
-import {NetworkSelectElement} from 'chrome://resources/ash/common/network/network_select.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import { PolymerElementProperties } from '//resources/polymer/v3_0/polymer/interfaces.js';
+import { PolymerElement } from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import { NetworkList } from 'chrome://resources/ash/common/network/network_list_types.js';
+import { NetworkSelectElement } from 'chrome://resources/ash/common/network/network_select.js';
+import { assert } from 'chrome://resources/js/assert.js';
 
-import {OobeAdaptiveDialog} from '../../components/dialogs/oobe_adaptive_dialog.js';
-import {LoginScreenMixin} from '../../components/mixins/login_screen_mixin.js';
-import {MultiStepMixin} from '../../components/mixins/multi_step_mixin.js';
-import {OobeDialogHostMixin} from '../../components/mixins/oobe_dialog_host_mixin.js';
-import {OobeI18nMixin} from '../../components/mixins/oobe_i18n_mixin.js';
-import {NetworkSelectLogin} from '../../components/network_select_login.js';
+import { OobeAdaptiveDialog } from '../../components/dialogs/oobe_adaptive_dialog.js';
+import { LoginScreenMixin } from '../../components/mixins/login_screen_mixin.js';
+import { MultiStepMixin } from '../../components/mixins/multi_step_mixin.js';
+import { OobeDialogHostMixin } from '../../components/mixins/oobe_dialog_host_mixin.js';
+import { OobeI18nMixin } from '../../components/mixins/oobe_i18n_mixin.js';
+import { NetworkSelectLogin } from '../../components/network_select_login.js';
 
-import {getTemplate} from './oobe_network.html.js';
+import { getTemplate } from './oobe_network.html.js';
 
 export enum NetworkScreenStates {
   DEFAULT = 'default',
@@ -38,11 +38,11 @@ export enum NetworkScreenStates {
 }
 
 const NetworkScreenBase = OobeDialogHostMixin(
-    LoginScreenMixin(MultiStepMixin(OobeI18nMixin(PolymerElement))));
+  LoginScreenMixin(MultiStepMixin(OobeI18nMixin(PolymerElement))));
 
 interface NetworkScreenData {
-  ssid: string|undefined;
-  useQuickStartSubtitle: boolean|undefined;
+  ssid: string | undefined;
+  useQuickStartSubtitle: boolean | undefined;
   useQuickStartWiFiErrorStrings: boolean | undefined;
 }
 
@@ -157,8 +157,8 @@ class NetworkScreen extends NetworkScreenBase {
 
   private getNetworkSelectLogin(): NetworkSelectLogin {
     const networkSelectLogin =
-        this.shadowRoot?.querySelector<NetworkSelectLogin>(
-            '#networkSelectLogin');
+      this.shadowRoot?.querySelector<NetworkSelectLogin>(
+        '#networkSelectLogin');
     assert(networkSelectLogin instanceof NetworkSelectLogin);
     return networkSelectLogin;
   }
@@ -208,7 +208,7 @@ class NetworkScreen extends NetworkScreenBase {
 
   private getNetworkDialog(): OobeAdaptiveDialog {
     const networkDialog =
-        this.shadowRoot?.querySelector<OobeAdaptiveDialog>('#networkDialog');
+      this.shadowRoot?.querySelector<OobeAdaptiveDialog>('#networkDialog');
     assert(networkDialog instanceof OobeAdaptiveDialog);
     return networkDialog;
   }
@@ -231,7 +231,7 @@ class NetworkScreen extends NetworkScreenBase {
    * Returns subtitle of the network dialog.
    */
   private getSubtitleMessage(
-      locale: string, errorMessage: string,
+    locale: string, errorMessage: string,
     useQuickStartSubtitle: string,
     useQuickStartWiFiErrorStrings: string): string {
     if (errorMessage) {
@@ -267,11 +267,11 @@ class NetworkScreen extends NetworkScreenBase {
    * Returns element of the network list with the given name.
    * Used to simplify testing.
    */
-  getNetworkListItemByNameForTest(name: string): HTMLDivElement|null {
+  getNetworkListItemByNameForTest(name: string): HTMLDivElement | null {
     const item =
-        this.getNetworkSelectLogin()
-            ?.shadowRoot?.querySelector<NetworkSelectElement>('#networkSelect')
-            ?.getNetworkListItemByNameForTest(name);
+      this.getNetworkSelectLogin()
+        ?.shadowRoot?.querySelector<NetworkSelectElement>('#networkSelect')
+        ?.getNetworkListItemByNameForTest(name);
     if (item !== undefined) {
       return item;
     }
@@ -288,7 +288,7 @@ class NetworkScreen extends NetworkScreenBase {
     setTimeout(() => {
       if (this.isNetworkConnected) {
         const nextButton =
-            this.shadowRoot?.querySelector<HTMLElement>('#nextButton');
+          this.shadowRoot?.querySelector<HTMLElement>('#nextButton');
         assert(nextButton instanceof HTMLElement);
         nextButton.focus();
       } else {
@@ -304,6 +304,13 @@ class NetworkScreen extends NetworkScreenBase {
    */
   private onQuickStartClicked() {
     this.userActed('activateQuickStart');
+  }
+
+  /**
+   * Local connect link click handler. Navigates to jema local signin.
+   */
+  private onLocalConnectClicked_() {
+    chrome.send('jemaLocalSignin');
   }
 
   /**

@@ -5021,7 +5021,7 @@ No devices connected.
         Recover user
       </message>
       <message name="IDS_ASH_LOGIN_ERROR_SERVER_NO_RESPONSE" desc="Error message shown when the authentication server does not respond">
-        Server did not respond. Please try again later.
+        Le serveur n'a pas répondu. Veuillez réessayer plus tard.
       </message>
       <message name="IDS_ASH_LOGIN_ERROR_CAPS_LOCK_HINT" desc="A hint text for the login and lock screens that Caps Lock is on">
         Caps Lock is on.

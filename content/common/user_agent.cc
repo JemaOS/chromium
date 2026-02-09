@@ -64,7 +64,7 @@ std::string GetUnifiedPlatform() {
 #if BUILDFLAG(IS_ANDROID)
   return "Linux; Android 10; K";
 #elif BUILDFLAG(IS_CHROMEOS)
-  return "X11; CrOS x86_64 14541.0.0";
+  return "X11; JemaOS x86_64 14541.0.0";
 #elif BUILDFLAG(IS_MAC)
   return "Macintosh; Intel Mac OS X 10_15_7";
 #elif BUILDFLAG(IS_WIN)
@@ -288,7 +288,7 @@ std::string BuildOSCpuInfoFromOSVersionAndCpuType(const std::string& os_version,
 #if BUILDFLAG(IS_MAC)
                       "%s Mac OS X %s", cpu_type.c_str(), os_version.c_str()
 #elif BUILDFLAG(IS_CHROMEOS)
-                      "CrOS "
+                      "JemaOS "
                       "%s %s",
                       cpu_type.c_str(),  // e.g. i686
                       os_version.c_str()

@@ -147,3 +147,4 @@ const char kJemaOSProductWarrantyDefaultURL[] = "https://jematechnology.fr"; // 
 #endif
 
 }  // jemaos::constants
+ 

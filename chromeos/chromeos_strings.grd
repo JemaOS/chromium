@@ -178,6 +178,8 @@
     <file path="strings/chromeos_strings_zh-TW.xtb" lang="zh-TW" />
     <file path="strings/chromeos_strings_zu.xtb" lang="zu" />
     <file path="../jemaos/i18n/chromeos/strings/chromeos_strings_zh-CN.xtb" lang="zh-CN" />
+    <file path="../jemaos/i18n/chromeos/strings/chromeos_strings_fr.xtb" lang="fr" />
+    <file path="../jemaos/i18n/chromeos/strings/chromeos_strings_fr-CA.xtb" lang="fr-CA" />
   </translations>
   <release seq="1">
     <messages fallback_to_english="true">

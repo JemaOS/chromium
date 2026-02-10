@@ -2243,7 +2243,7 @@ Vous pouvez gérer les paramètres de ce compte en installant l'application Fami
 <translation id="252277619743753687">Sélectionner les mots de passe</translation>
 <translation id="2523184218357549926">Envoie les URL des pages que vous consultez à Google</translation>
 <translation id="2524093372979370955">Cette action désactivera les notifications pour tous les nouveaux périphériques USB du système. Voulez-vous vraiment continuer?</translation>
-<translation id="252418934079508528">Installer <ph name="DEVICE_OS" /></translation>
+<translation id="252418934079508528">Installeur <ph name="DEVICE_OS" /></translation>
 <translation id="2526590354069164005">Ordinateur de bureau</translation>
 <translation id="2526619973349913024">Rechercher des mises à jour</translation>
 <translation id="2527167509808613699">Tout type de connexion</translation>
@@ -7548,7 +7548,7 @@ Les autorisations que vous avez déjà accordées à des sites Web et à des app
 <translation id="634792071306410644">Personne ne peut partager du contenu avec vous tant que vous ne devenez pas visible</translation>
 <translation id="6348252528297699679">Vous pouvez désactiver la localisation dans Paramètres &gt; Confidentialité et sécurité &gt; Paramètres de confidentialité &gt; Accès à la position. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
 <translation id="6348805481186204412">Stockage hors ligne</translation>
-<translation id="6349101878882523185">Installer <ph name="APP_NAME" /></translation>
+<translation id="6349101878882523185">Installeur  <ph name="APP_NAME" /></translation>
 <translation id="6350821834561350243">Décrivez clairement le problème et indiquez les étapes à suivre pour reproduire le problème (si possible)</translation>
 <translation id="6351178441572658285">Langues des applications</translation>
 <translation id="6354918092619878358">Courbe elliptique SECG secp256r1 (aussi appelée ANSI X9.62 prime256v1, NIST P-256)</translation>

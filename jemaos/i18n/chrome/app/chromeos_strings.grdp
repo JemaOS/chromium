@@ -202,7 +202,7 @@
       Contenu de la déclaration de confidentialité
     </message>
     <message name="IDS_LOGIN_MARKETING_OPT_IN_SCREEN_GET_JEMA_UPDATES_SIGN_ME_UP" desc="A lablel next to the checkbox that controls user subscription to marketing updates and useful information about the user's Chrome device.">
-      S'inscrire à la (très rare, promis) newsletter JemaOS
+      S'inscrire à la newsletter JemaOS
     </message>
   </if>
   <if expr="lang != 'fr' and lang != 'fr-CA'">

@@ -1,37 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- extend chromeos/chromeos_strings.grd -->
 <grit-part>
-  <message name="IDS_ASH_USE_LOCAL_ACCOUNT_BUTTON" desc="Text shown on local account button on oobe screen.">
-    Use local account
-  </message>
-  <message name="IDS_ASH_DATA_RESTORE_BUTTON" desc="Text shown on data restore button on oobe screen.">
-    Restore backup
-  </message>
-  <message name="IDS_FEEDBACK_TOOL_RESOURCES_HELP_PAGE_LABEL" desc="Label of the ask community that opens an external link to the Chromebook community.">
-    JemaOS Help Center
-  </message>
-  <message name="IDS_FEEDBACK_TOOL_RESOURCES_HELP_PAGE_DESCRIPTION" desc="Description of the ask community link">
-    Find help articles and answers to common JemaOS questions
-  </message>
-  <if expr="use_jemaos_com">
-    <message name="IDS_FEEDBACK_TOOL_JEMAOS_FEEDBACK_FEATURE_HELP_MESSAGE" desc="Description of the feedback feature">
-      Notes:
-      <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>You are about to submit a feedback or issue report to the JemaOS development team to help improve the experience of using JemaOS.
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Feedback submitted through this channel will not receive a response from the JemaOS team, so if you are experiencing a technical issue or require help, please read the Help page on our website or join the JemaOS Community to ask a question.
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Thank you once again for taking the time to help.
-      <ph name="END_LIST">&lt;/ul&gt;</ph>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_ASH_USE_LOCAL_ACCOUNT_BUTTON" desc="Text shown on local account button on oobe screen.">
+      Utiliser un compte local
+    </message>
+    <message name="IDS_ASH_DATA_RESTORE_BUTTON" desc="Text shown on data restore button on oobe screen.">
+      Restaurer la sauvegarde
+    </message>
+    <message name="IDS_FEEDBACK_TOOL_RESOURCES_HELP_PAGE_LABEL" desc="Label of the ask community that opens an external link to the Chromebook community.">
+      Centre d'aide JemaOS
+    </message>
+    <message name="IDS_FEEDBACK_TOOL_RESOURCES_HELP_PAGE_DESCRIPTION" desc="Description of the ask community link">
+      Trouvez des articles d'aide et des réponses aux questions courantes sur JemaOS
     </message>
   </if>
-  <if expr="not use_jemaos_com">
-    <message name="IDS_FEEDBACK_TOOL_JEMAOS_FEEDBACK_FEATURE_HELP_MESSAGE" desc="Description of the feedback feature">
-      Notes:
-      <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>You are about to submit a feedback or issue report to the JemaOS development team to help improve the experience of using JemaOS.
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Unfortunately, you will not receive a response from us by sending this feedback, so it’s probably not a good idea to ask questions here. Your feedback will still be very important for us to iterate JemaOS though.
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>If you encounter technical issues or require support, we have a <ph name="BEGIN_LINK_HELP_PAGE">&lt;a target="_blank" href="$1"&gt;</ph>Help page<ph name="END_LINK_HELP_PAGE">&lt;/a&gt;</ph> for you to troubleshoot. You are also welcome to join the conversations in our <ph name="BEGIN_LINK_COMMUNITY">&lt;a target="_blank" href="$2"&gt;</ph>Community<ph name="END_LINK_COMMUNITY">&lt;/a&gt;</ph>, <ph name="BEGIN_LINK_DISCORD_SERVER">&lt;a target="_blank" href="$3"&gt;</ph>Discord Server<ph name="END_LINK_DISCORD_SERVER">&lt;/a&gt;</ph> and <ph name="BEGIN_LINK_TELEGRAM_GROUP">&lt;a target="_blank" href="$4"&gt;</ph>Telegram Group<ph name="END_LINK_TELEGRAM_GROUP">&lt;/a&gt;</ph>.
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Thank you once again for taking the time to help.
-      <ph name="END_LIST">&lt;/ul&gt;</ph>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_ASH_USE_LOCAL_ACCOUNT_BUTTON" desc="Text shown on local account button on oobe screen.">
+      Use local account
     </message>
+    <message name="IDS_ASH_DATA_RESTORE_BUTTON" desc="Text shown on data restore button on oobe screen.">
+      Restore backup
+    </message>
+    <message name="IDS_FEEDBACK_TOOL_RESOURCES_HELP_PAGE_LABEL" desc="Label of the ask community that opens an external link to the Chromebook community.">
+      JemaOS Help Center
+    </message>
+    <message name="IDS_FEEDBACK_TOOL_RESOURCES_HELP_PAGE_DESCRIPTION" desc="Description of the ask community link">
+      Find help articles and answers to common JemaOS questions
+    </message>
+  </if>
+  <if expr="use_jemaos_com">
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_FEEDBACK_TOOL_JEMAOS_FEEDBACK_FEATURE_HELP_MESSAGE" desc="Description of the feedback feature">
+        Remarques :
+        <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Vous êtes sur le point de soumettre un commentaire ou un rapport de problème à l’équipe de développement JemaOS afin d’améliorer l’expérience d’utilisation de JemaOS.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Les commentaires soumis via ce canal ne recevront pas de réponse de l’équipe JemaOS. Si vous rencontrez un problème technique ou avez besoin d’aide, veuillez consulter la page d’aide sur notre site web ou rejoindre la communauté JemaOS pour poser une question.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Merci encore d’avoir pris le temps de nous aider.
+        <ph name="END_LIST">&lt;/ul&gt;</ph>
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_FEEDBACK_TOOL_JEMAOS_FEEDBACK_FEATURE_HELP_MESSAGE" desc="Description of the feedback feature">
+        Notes:
+        <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>You are about to submit a feedback or issue report to the JemaOS development team to help improve the experience of using JemaOS.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Feedback submitted through this channel will not receive a response from the JemaOS team, so if you are experiencing a technical issue or require help, please read the Help page on our website or join the JemaOS Community to ask a question.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Thank you once again for taking the time to help.
+        <ph name="END_LIST">&lt;/ul&gt;</ph>
+      </message>
+    </if>
+  </if>
+  <if expr="not use_jemaos_com">
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_FEEDBACK_TOOL_JEMAOS_FEEDBACK_FEATURE_HELP_MESSAGE" desc="Description of the feedback feature">
+        Remarques :
+        <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Vous êtes sur le point de soumettre un commentaire ou un rapport de problème à l’équipe de développement JemaOS afin d’améliorer l’expérience d’utilisation de JemaOS.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Malheureusement, vous ne recevrez pas de réponse de notre part en envoyant ce commentaire, il n’est donc probablement pas judicieux de poser des questions ici. Vos commentaires restent néanmoins très importants pour nous afin d’améliorer JemaOS.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Si vous rencontrez des problèmes techniques ou avez besoin d’assistance, nous avons une <ph name="BEGIN_LINK_HELP_PAGE">&lt;a target="_blank" href="$1"&gt;</ph>Page d’aide<ph name="END_LINK_HELP_PAGE">&lt;/a&gt;</ph> pour vous aider à résoudre vos problèmes. Vous êtes également invité à rejoindre les discussions dans notre <ph name="BEGIN_LINK_COMMUNITY">&lt;a target="_blank" href="$2"&gt;</ph>Communauté<ph name="END_LINK_COMMUNITY">&lt;/a&gt;</ph>, notre <ph name="BEGIN_LINK_DISCORD_SERVER">&lt;a target="_blank" href="$3"&gt;</ph>Serveur Discord<ph name="END_LINK_DISCORD_SERVER">&lt;/a&gt;</ph> et notre <ph name="BEGIN_LINK_TELEGRAM_GROUP">&lt;a target="_blank" href="$4"&gt;</ph>Groupe Telegram<ph name="END_LINK_TELEGRAM_GROUP">&lt;/a&gt;</ph>.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Merci encore d’avoir pris le temps de nous aider.
+        <ph name="END_LIST">&lt;/ul&gt;</ph>
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_FEEDBACK_TOOL_JEMAOS_FEEDBACK_FEATURE_HELP_MESSAGE" desc="Description of the feedback feature">
+        Notes:
+        <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>You are about to submit a feedback or issue report to the JemaOS development team to help improve the experience of using JemaOS.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Unfortunately, you will not receive a response from us by sending this feedback, so it’s probably not a good idea to ask questions here. Your feedback will still be very important for us to iterate JemaOS though.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>If you encounter technical issues or require support, we have a <ph name="BEGIN_LINK_HELP_PAGE">&lt;a target="_blank" href="$1"&gt;</ph>Help page<ph name="END_LINK_HELP_PAGE">&lt;/a&gt;</ph> for you to troubleshoot. You are also welcome to join the conversations in our <ph name="BEGIN_LINK_COMMUNITY">&lt;a target="_blank" href="$2"&gt;</ph>Community<ph name="END_LINK_COMMUNITY">&lt;/a&gt;</ph>, <ph name="BEGIN_LINK_DISCORD_SERVER">&lt;a target="_blank" href="$3"&gt;</ph>Discord Server<ph name="END_LINK_DISCORD_SERVER">&lt;/a&gt;</ph> and <ph name="BEGIN_LINK_TELEGRAM_GROUP">&lt;a target="_blank" href="$4"&gt;</ph>Telegram Group<ph name="END_LINK_TELEGRAM_GROUP">&lt;/a&gt;</ph>.
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Thank you once again for taking the time to help.
+        <ph name="END_LIST">&lt;/ul&gt;</ph>
+      </message>
+    </if>
   </if>
 </grit-part>

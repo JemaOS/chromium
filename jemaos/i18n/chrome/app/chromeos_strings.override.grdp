@@ -1,17 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- override chrome/app/chromeos_strings.grdp, included from generated_resources.grd -->
 <grit-part>
-  <message name="IDS_NEW_WELCOME_SCREEN_GREETING" desc="Greeting message on the OOBE welcome screen">
-    Welcome to <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_NEW_WELCOME_SCREEN_GREETING" desc="Greeting message on the OOBE welcome screen">
+      Bienvenue sur <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
+    </message>
+    <message name="IDS_NETWORK_SELECTION_TITLE" desc="Title of network selection screen" meaning="A title of the dialog where user should select network to connect to Internet">
+      Connectez-vous pour profiter de toutes les fonctionnalités de votre dispositif Jema
+    </message>
+    <message name="IDS_OS_TRIAL_TRY_TITLE" desc="Title of the install option in the install or try screen, the first screen of the ChromeOS Flex Installation flow">
+      Démarrer sur JemaOS
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_NEW_WELCOME_SCREEN_GREETING" desc="Greeting message on the OOBE welcome screen">
+      Welcome to <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
+    </message>
+    <message name="IDS_NETWORK_SELECTION_TITLE" desc="Title of network selection screen" meaning="A title of the dialog where user should select network to connect to Internet">
+      Connect to enjoy all the features of your Jema device
+    </message>
+    <message name="IDS_OS_TRIAL_TRY_TITLE" desc="Title of the install option in the install or try screen, the first screen of the ChromeOS Flex Installation flow">
+      Boot into JemaOS
+    </message>
+  </if>
   <if expr="openjema">
     <message name="IDS_LOGIN_API_KEYS_NOTICE" desc="Notice displayed on the login screen in case if API keys are missing.">
       You will not be able to add users because Google API and JemaOS API keys are missing. See <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> for details.
     </message>
   </if>
-  <message name="IDS_LOGIN_MARKETING_OPT_IN_SCREEN_SUBTITLE" desc="The sub-title of the dialog that allows user to opt-in into several Google marketing options.">
-    Get <ph name="DEVICE_TYPE">$1<ex>JemaOS device</ex></ph> tips and updates from Jema Technology
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_LOGIN_MARKETING_OPT_IN_SCREEN_SUBTITLE" desc="The sub-title of the dialog that allows user to opt-in into several Google marketing options.">
+      Recevez des conseils et mises à jour pour votre <ph name="DEVICE_TYPE">$1<ex>JemaOS device</ex></ph> de la part de Jema Technology
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_LOGIN_MARKETING_OPT_IN_SCREEN_SUBTITLE" desc="The sub-title of the dialog that allows user to opt-in into several Google marketing options.">
+      Get <ph name="DEVICE_TYPE">$1<ex>JemaOS device</ex></ph> tips and updates from Jema Technology
+    </message>
+  </if>
   <message name="IDS_AD_ORG_UNIT_HINT" desc="Admin-facing. Hint for the Active Directory Organizational units input on the 'More options' dialog.">
     Device OU (e.g. OU=JemaOS devices,DC=example,DC=com)
   </message>
@@ -242,10 +268,18 @@
       The Files app provides quick access to files that you've saved on Google Drive, external storage, or your JemaOS device.
     </message>
   </if>
-  <message name="IDS_OS_TRIAL_SUBTITLE" desc="Subtitle of the install or try screen, the first screen of the ChromeOS Flex Installation flow">
-    <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> est un système d’exploitation français, souverain et open core, spécialement conçu pour fonctionner exclusivement sur le dispositif Jema. Il s’exécute en natif sur votre appareil, sans nécessiter d’installation sur disque dur.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
-    <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Il offre une gestion intelligente de la mémoire virtuelle, ce qui permet d’optimiser les performances même lorsque la RAM physique est limitée. De plus, en cas de panne du disque dur, votre appareil Jema assure automatiquement la continuité de service.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_OS_TRIAL_SUBTITLE" desc="Subtitle of the install or try screen, the first screen of the ChromeOS Flex Installation flow">
+      <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> est un système d'exploitation français, souverain et open core, spécialement conçu pour fonctionner exclusivement sur le dispositif Jema. Il s'exécute en natif sur votre appareil, sans nécessiter d'installation sur disque dur.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+      <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Il offre une gestion intelligente de la mémoire virtuelle, ce qui permet d'optimiser les performances même lorsque la RAM physique est limitée. De plus, en cas de panne du disque dur, votre appareil Jema assure automatiquement la continuité de service.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_OS_TRIAL_SUBTITLE" desc="Subtitle of the install or try screen, the first screen of the ChromeOS Flex Installation flow">
+      <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> is a French, sovereign, and open-core operating system, specially designed to run exclusively on the Jema device. It runs natively on your device, without requiring installation on a hard drive.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+      <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>It offers intelligent virtual memory management, which optimises performance even when physical RAM is limited. Additionally, in the event of a hard drive failure, your Jema device automatically ensures service continuity.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    </message>
+  </if>
   <if expr="openjema">
     <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">
       Welcome to Steam on openJema device
@@ -324,13 +358,24 @@
     You do not have enough license to enroll this device. Please contact sales to purchase more. If you believe you're seeing this message in error, please contact support.
   </message>
 
-  <message name="IDS_GEMINI_INTRO_TITLE" desc="The title of the gemini intro dialog">
-    Introducing JemaOS AI, your OS level AI assistant
-  </message>
-  <message name="IDS_GEMINI_INTRO_SUBTITLE" desc="The subtitle of the gemini intro dialog">
-    <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Start a quick chat in JemaOS AI to begin writing, planning, learning, and more by creating various AI assistants. JemaOS AI is also accessible by pressing Ctrl + C + C anywhere for customisable quick actions.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
-    <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>To use JemaOS AI, you'll need to sign in with a JemaOS account. If you don’t have one yet, you can sign up for free.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_GEMINI_INTRO_TITLE" desc="The title of the gemini intro dialog">
+      Découvrez JemaOS AI, votre assistant IA au niveau du système
+    </message>
+    <message name="IDS_GEMINI_INTRO_SUBTITLE" desc="The subtitle of the gemini intro dialog">
+      <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Lancez une conversation rapide dans JemaOS AI pour commencer à écrire, planifier, apprendre et bien plus encore en créant divers assistants IA. JemaOS AI est également accessible en appuyant sur Ctrl + C + C n'importe où pour des actions rapides personnalisables.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+      <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Pour utiliser JemaOS AI, vous devez vous connecter avec un compte JemaOS. Si vous n'en avez pas encore, vous pouvez vous inscrire gratuitement.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_GEMINI_INTRO_TITLE" desc="The title of the gemini intro dialog">
+      Introducing JemaOS AI, your OS level AI assistant
+    </message>
+    <message name="IDS_GEMINI_INTRO_SUBTITLE" desc="The subtitle of the gemini intro dialog">
+      <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Start a quick chat in JemaOS AI to begin writing, planning, learning, and more by creating various AI assistants. JemaOS AI is also accessible by pressing Ctrl + C + C anywhere for customisable quick actions.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+      <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>To use JemaOS AI, you'll need to sign in with a JemaOS account. If you don't have one yet, you can sign up for free.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    </message>
+  </if>
 
   <if expr="openjema">
     <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in laptop mode." is_accessibility_with_no_ui="true">
@@ -351,4 +396,5 @@
   <message name="IDS_DISCOVER_PIN_SETUP_PIN_AS_MAIN_FACTOR_SUBTITLE" desc="A sub-title of the dialog asking the user to set up a PIN as the main factor for signing in.">
     Instead of entering your online account password to sign in, you can create a PIN for this <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>
   </message>
+  
 </grit-part>

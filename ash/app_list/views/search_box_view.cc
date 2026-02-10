@@ -1262,16 +1262,13 @@ void SearchBoxView::SunfishButtonPressed() {
 }
 
 void SearchBoxView::UpdateSearchIcon() {
-  const bool search_engine_is_google =
-      AppListModelProvider::Get()->search_model()->search_engine_is_google();
-  const gfx::VectorIcon& google_icon = is_search_box_active()
-                                           ? vector_icons::kGoogleColorIcon
-                                           : kGoogleBlackIcon;
-  const gfx::VectorIcon& icon =
-      search_engine_is_google ? google_icon : kSearchEngineNotGoogleIcon;
-  SetSearchIconImage(gfx::CreateVectorIcon(
-      icon, GetSearchBoxIconSize(),
-      GetColorProvider()->GetColor(kColorAshButtonIconColor)));
+  SetSearchIconImage(
+      gfx::ImageSkiaOperations::CreateResizedImage(
+          ui::ResourceBundle::GetSharedInstance()
+              .GetImageNamed(IDR_JEMAOS_AI_ICON_20)
+              .AsImageSkia(),
+          skia::ImageOperations::RESIZE_BEST,
+          gfx::Size(GetSearchBoxIconSize(), GetSearchBoxIconSize())));
 }
 
 bool SearchBoxView::IsValidAutocompleteText(

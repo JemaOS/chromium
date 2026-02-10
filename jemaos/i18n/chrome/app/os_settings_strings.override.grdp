@@ -20,9 +20,16 @@
   <message name="IDS_SETTINGS_ACCOUNT_MANAGER_SUBMENU_LABEL" desc="Label of Account Manager submenu in Settings page.">
     JemaOS Accounts
   </message>
-  <message name="IDS_OS_SETTINGS_REVAMP_FACTORY_RESET_DESCRIPTION" desc="Description of the factory reset option on the Chrome settings page">
-    Remove all user accounts and reset your <ph name="IDS_SHORT_PRODUCT_OS_NAME">$1<ex>JemaOS</ex></ph> device to be just like new.
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_OS_SETTINGS_REVAMP_FACTORY_RESET_DESCRIPTION" desc="Description of the factory reset option on the Chrome settings page">
+      Supprimer tous les comptes utilisateur et réinitialiser votre appareil <ph name="IDS_SHORT_PRODUCT_OS_NAME">$1<ex>JemaOS</ex></ph> comme neuf.
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_OS_SETTINGS_REVAMP_FACTORY_RESET_DESCRIPTION" desc="Description of the factory reset option on the Chrome settings page">
+      Remove all user accounts and reset your <ph name="IDS_SHORT_PRODUCT_OS_NAME">$1<ex>JemaOS</ex></ph> device to be just like new.
+    </message>
+  </if>
   <if expr="openjema">
     <message name="IDS_SETTINGS_ANDROID_APPS_DISABLE_DIALOG_MESSAGE" desc="Describes what will happen if the user opts out of android apps.">
       Apps you've downloaded and installed will be deleted from this openJema device.

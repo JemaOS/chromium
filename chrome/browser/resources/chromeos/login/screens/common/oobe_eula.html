@@ -13,8 +13,10 @@ found in the LICENSE file.
 </style>
 <oobe-adaptive-dialog id="eulaLoadingDialog" for-step="loading" role="dialog"
   jemaos-layout
-  animation-url="animations/jemaos_eula.json"
   aria-label$="[[i18nDynamic(locale, 'termsOfServiceLoading')]]">
+  <img src="images/eula_illustration.svg"
+      slot="jemaos-illustration"
+      class="illustration-jelly">
   <h1 slot="title">
     [[i18nDynamic(locale, 'termsOfServiceLoading')]]
   </h1>
@@ -25,10 +27,9 @@ found in the LICENSE file.
   jemaos-layout
   aria-label$="[[i18nDynamic(locale, 'oobeEulaSectionTitle')]]"
   aria-describedby="crosEulaFrame" no-lazy>
-  <iron-icon icon="oobe-illos:jemaos-eula-illo"
+  <img src="images/eula_illustration.svg"
       slot="jemaos-illustration"
       class="illustration-jelly">
-  </iron-icon>
   <h1 slot="title">
     [[i18nDynamic(locale, 'oobeEulaSectionTitle')]]
   </h1>
@@ -55,10 +56,9 @@ found in the LICENSE file.
     jemaos-layout
     aria-label$="[[i18nDynamic(locale, 'oobePrivacySectionTitle')]]"
     aria-describedby="jemaosPrivacyFrame" no-lazy>
-  <iron-icon icon="oobe-illos:jemaos-eula-illo"
+  <img src="images/eula_illustration.svg"
       slot="jemaos-illustration"
       class="illustration-jelly">
-  </iron-icon>
   <h1 slot="title">
     [[i18nDynamic(locale, 'oobePrivacySectionTitle')]]
   </h1>

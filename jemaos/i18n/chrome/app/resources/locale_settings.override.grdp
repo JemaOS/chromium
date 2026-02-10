@@ -3,12 +3,12 @@
   <!-- override chrome/app/resources/locale_settings.grd -->
   <if expr="use_jemaos_com">
     <message name="IDS_FACTORY_RESET_HELP_URL" translateable="false">
-      https://jemaos.com/docs/manual/fix-problems/reset-your-jemaos-device-to-factory-settings/
+      https://jematechnology.fr/?ospath=docs/manual/fix-problems/reset-your-jemaos-device-to-factory-settings/
     </message>
   </if>
   <if expr="not use_jemaos_com">
     <message name="IDS_FACTORY_RESET_HELP_URL" translateable="false">
-      https://jematechnology.fr/docs/manual/fix-problems/reset-your-jemaos-device-to-factory-settings/
+      https://jematechnology.fr/?ospath=docs/manual/fix-problems/reset-your-jemaos-device-to-factory-settings/
     </message>
   </if>
 </grit-part>

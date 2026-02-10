@@ -32,7 +32,7 @@
     Thot
   </message>
   <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
-    About &amp;Thot
+    À propos de &amp;Thot
   </message>
   <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
     Help make Thot better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Technology

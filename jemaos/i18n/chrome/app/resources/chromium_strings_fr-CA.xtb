@@ -2,7 +2,7 @@
 <!DOCTYPE translationbundle>
 <translationbundle lang="fr-CA">
 <!-- settings_chromium_strings.override.grdp -->
-<translation id="8551772682046551906">À propos du navigateur</translation>
+<translation id="8551772682046551906">À propos de Thot</translation>
 <translation id="8490972672529577501">Obtenir de l'aide sur le navigateur Chromium</translation>
 <translation id="5142122574074815690">À propos d'openJema</translation>
 <translation id="6192687727981687833">À propos de JemaOS</translation>
@@ -21,7 +21,7 @@
 <translation id="3881521827899273698">Le navigateur économise la batterie en limitant les activités en arrière-plan et les effets visuels (tels que le défilement fluide et la fréquence d'images vidéo).</translation>
 <translation id="855000782089941672">Le navigateur précharge les pages Web pour vous permettre de naviguer et de rechercher plus rapidement.</translation>
 <!-- chromium_strings.override.grdp -->
-<translation id="6165720105278553476">À propos du navigateur</translation>
+<translation id="6165720105278553476">À propos de Thot</translation>
 <translation id="1593197356125639191">Envoyer des rapports de plantage et <ph name="UMA_LINK" /> à Jema Technology pour nous aider à améliorer Chromium.</translation>
 <translation id="2048909425194476151">Jema Technology Innovation (Beijing) Co., Ltd., The Chromium Authors</translation>
 <translation id="5271316801269855654">Copyright <ph name="YEAR" /> Jema Technology Innovation (Beijing) Co., Ltd., The Chromium Authors. Tous droits réservés.</translation>

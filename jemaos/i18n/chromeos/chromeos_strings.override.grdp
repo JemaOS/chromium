@@ -21,9 +21,6 @@
     <message name="IDS_FEEDBACK_TOOL_PAGE_TITLE" desc="Label showing the title of the feedback tool before a report has been sent">
       Envoyer des commentaires à l'équipe d'assistance JemaOS
     </message>
-    <message name="IDS_FEEDBACK_TOOL_DESCRIPTION_LABEL" desc="Label of the text box where users can describe a problem they are having">
-      Description
-    </message>
     <message name="IDS_FEEDBACK_TOOL_ATTACH_FILE_LABEL_TOOLTIP" desc="Label for the tooltip content on attach files icon.">
       Les fichiers seront envoyés à l'équipe de développement JemaOS pour le débogage ; vous pouvez également choisir un fichier supplémentaire (moins de 5 Mo) à soumettre.
     </message>
@@ -43,9 +40,6 @@
   <if expr="lang != 'fr' and lang != 'fr-CA'">
     <message name="IDS_FEEDBACK_TOOL_PAGE_TITLE" desc="Label showing the title of the feedback tool before a report has been sent">
       Send feedback to the JemaOS support team
-    </message>
-    <message name="IDS_FEEDBACK_TOOL_DESCRIPTION_LABEL" desc="Label of the text box where users can describe a problem they are having">
-      Description
     </message>
     <message name="IDS_FEEDBACK_TOOL_ATTACH_FILE_LABEL_TOOLTIP" desc="Label for the tooltip content on attach files icon.">
       Files will be sent to JemaOS development team for debugging; you can also choose an additional file (less than 5MB) to submit.

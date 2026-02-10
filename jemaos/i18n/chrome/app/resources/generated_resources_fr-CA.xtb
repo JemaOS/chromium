@@ -139,4 +139,7 @@
 <translation id="3403772795089627134">Plus de paramètres</translation>
 <translation id="3403772795089627134">Autres paramètres et options pour JemaOS AI</translation>
 <translation id="2100769780401669290">Pour modifier le code PIN ou le mot de passe de connexion de ce compte local, rendez-vous dans les paramètres <ph name="BEGIN_LINK" />Confidentialité et sécurité<ph name="END_LINK" />.</translation>
+<!-- extensions_strings.override.grdp -->
+<translation id="3635723840107310657">Trouvez des extensions et des thèmes dans le <ph name="BEGIN_LINK" />JemaOS App Store<ph name="END_LINK" /></translation>
+<translation id="7833783333207521175">Découvrez plus d'extensions et de thèmes sur le <ph name="BEGIN_LINK" />JemaOS App Store<ph name="END_LINK" /></translation>
 </translationbundle>

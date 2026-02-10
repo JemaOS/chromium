@@ -910,7 +910,7 @@ Permissions you've already given to websites and apps may apply to this account.
 
       <if expr="use_titlecase and not chromeos_ash">
         <message name="IDS_ABOUT" desc="In Title Case: The text label of the About Chrome menu item">
-          About &amp;Google Chrome
+          About &amp;Thot
         </message>
         <message name="IDS_RELAUNCH_TO_UPDATE" desc="In Title Case: The text label of the relaunch to update Chrome menu item">
           Relaunch to Update &amp;Chrome
@@ -918,7 +918,7 @@ Permissions you've already given to websites and apps may apply to this account.
       </if>
       <if expr="not use_titlecase and not chromeos_ash">
         <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
-          About &amp;Google Chrome
+          About &amp;Thot
         </message>
         <message name="IDS_RELAUNCH_TO_UPDATE" desc="The text label of the relaunch to update Chrome menu item">
           Relaunch to update &amp;Chrome
@@ -926,7 +926,7 @@ Permissions you've already given to websites and apps may apply to this account.
       </if>
       <if expr="chromeos_ash">
         <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
-          About &amp;Google Chrome
+          About &amp;Thot
         </message>
         <if expr="reven">
           <message name="IDS_RELAUNCH_TO_UPDATE" desc="The text label of the relaunch to update ChromeOS Flex menu item">

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- override chrome/app/chromeos_strings.grdp, included from generated_resources.grd -->
 <grit-part>
+  <!-- === Welcome / Network / Trial === -->
   <if expr="lang == 'fr' or lang == 'fr-CA'">
     <message name="IDS_NEW_WELCOME_SCREEN_GREETING" desc="Greeting message on the OOBE welcome screen">
       Bienvenue sur <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
@@ -23,11 +24,22 @@
       Boot into JemaOS
     </message>
   </if>
+
+  <!-- === API Keys notice (openjema only) === -->
   <if expr="openjema">
-    <message name="IDS_LOGIN_API_KEYS_NOTICE" desc="Notice displayed on the login screen in case if API keys are missing.">
-      You will not be able to add users because Google API and JemaOS API keys are missing. See <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> for details.
-    </message>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_LOGIN_API_KEYS_NOTICE" desc="Notice displayed on the login screen in case if API keys are missing.">
+        Vous ne pourrez pas ajouter d'utilisateurs car les clés API Google et JemaOS sont manquantes. Voir <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> pour plus de détails.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_LOGIN_API_KEYS_NOTICE" desc="Notice displayed on the login screen in case if API keys are missing.">
+        You will not be able to add users because Google API and JemaOS API keys are missing. See <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> for details.
+      </message>
+    </if>
   </if>
+
+  <!-- === Marketing opt-in === -->
   <if expr="lang == 'fr' or lang == 'fr-CA'">
     <message name="IDS_LOGIN_MARKETING_OPT_IN_SCREEN_SUBTITLE" desc="The sub-title of the dialog that allows user to opt-in into several Google marketing options.">
       Recevez des conseils et mises à jour pour votre <ph name="DEVICE_TYPE">$1<ex>JemaOS device</ex></ph> de la part de Jema Technology
@@ -38,109 +50,231 @@
       Get <ph name="DEVICE_TYPE">$1<ex>JemaOS device</ex></ph> tips and updates from Jema Technology
     </message>
   </if>
-  <message name="IDS_AD_ORG_UNIT_HINT" desc="Admin-facing. Hint for the Active Directory Organizational units input on the 'More options' dialog.">
-    Device OU (e.g. OU=JemaOS devices,DC=example,DC=com)
-  </message>
-  <message name="IDS_ARC_MANAGED_PROVISION_NOTIFICATION_TITLE" desc="Title of the notification shown to user during ARC provision when the ARC opt-in flow happens silently due to enterprise policies">
-    Android support
-  </message>
-  <message name="IDS_ARC_OOBE_TERMS_HEADING" desc="Heading of the Arc Terms OOBE dialog.">
-    Android support
-  </message>
-  <message name="IDS_ARC_OOBE_TERMS_DESCRIPTION" desc="Description of the Arc Terms OOBE dialog.">
-    Install Android apps
-  </message>
-  <message name="IDS_ARC_OOBE_TERMS_LOAD_ERROR" desc="Load error message of the Arc Terms OOBE dialog.">
-    Oops, connection issues. Please retry.
-  </message>
-  <message name="IDS_LOGIN_APP_DOWNLOADING_SCREEN_DESCRIPTION" desc="The description of the 'App Downloading' section">
-    You can find more apps for your device in any 3rd party Android app store of your choice.
-  </message>
-  <message name="IDS_ARC_ANDROID_MANAGEMENT_REQUIRED_ERROR" desc="Error message shown when Android management is required for an unmanaged Chrome OS user.">
-    Your organisation has not enabled Android support for your account. Contact your administrator for more information.
-  </message>
-  <message name="IDS_ARC_DATA_REMOVAL_CONFIRMATION_HEADING" desc="Heading text in the content area of the confirmation for data removal in case ARC comes to wrong state.">
-    To use Android apps, you must first restore your apps. Some data may have been lost.
-  </message>
-  <message name="IDS_ARC_MANAGED_PROVISION_NOTIFICATION_MESSAGE" desc="Notification shown to user during ARC provision when the ARC opt-in flow happens silently due to enterprise policies.">
-    Installing Android support on your <ph name="DEVICE_TYPE">$1<ex>JemaOS device</ex></ph>. This could take a few minutes.
-  </message>
 
-  <if expr="openjema">
-    <message name="IDS_USER_IMAGE_SCREEN_DESCRIPTION" desc="Description text for the oobe/login user image selection dialog.">
-      Take a new photo or choose an existing photo or icon.
-      <ph name="LINE_BREAK">&lt;br&gt;&lt;br&gt;</ph>
-      This picture will show up on your openJema device sign in screen and lock screen.
+  <!-- === Shared strings (AD, ARC, Android) === -->
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_AD_ORG_UNIT_HINT" desc="Admin-facing. Hint for the Active Directory Organizational units input on the 'More options' dialog.">
+      UO de l'appareil (ex. OU=Appareils JemaOS,DC=exemple,DC=com)
     </message>
+    <message name="IDS_ARC_MANAGED_PROVISION_NOTIFICATION_TITLE" desc="Title of the notification shown to user during ARC provision when the ARC opt-in flow happens silently due to enterprise policies">
+      Support Android
+    </message>
+    <message name="IDS_ARC_OOBE_TERMS_HEADING" desc="Heading of the Arc Terms OOBE dialog.">
+      Support Android
+    </message>
+    <message name="IDS_ARC_OOBE_TERMS_DESCRIPTION" desc="Description of the Arc Terms OOBE dialog.">
+      Installer les applications Android
+    </message>
+    <message name="IDS_ARC_OOBE_TERMS_LOAD_ERROR" desc="Load error message of the Arc Terms OOBE dialog.">
+      Oups, problèmes de connexion. Veuillez réessayer.
+    </message>
+    <message name="IDS_LOGIN_APP_DOWNLOADING_SCREEN_DESCRIPTION" desc="The description of the 'App Downloading' section">
+      Vous pouvez trouver d'autres applications pour votre appareil dans n'importe quelle boutique d'applications Android tierce de votre choix.
+    </message>
+    <message name="IDS_ARC_ANDROID_MANAGEMENT_REQUIRED_ERROR" desc="Error message shown when Android management is required for an unmanaged Chrome OS user.">
+      Votre organisation n'a pas activé le support Android pour votre compte. Contactez votre administrateur pour plus d'informations.
+    </message>
+    <message name="IDS_ARC_DATA_REMOVAL_CONFIRMATION_HEADING" desc="Heading text in the content area of the confirmation for data removal in case ARC comes to wrong state.">
+      Pour utiliser les applications Android, vous devez d'abord restaurer vos applications. Certaines données peuvent avoir été perdues.
+    </message>
+    <message name="IDS_ARC_MANAGED_PROVISION_NOTIFICATION_MESSAGE" desc="Notification shown to user during ARC provision when the ARC opt-in flow happens silently due to enterprise policies.">
+      Installation du support Android sur votre <ph name="DEVICE_TYPE">$1<ex>JemaOS device</ex></ph>. Cela peut prendre quelques minutes.
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_AD_ORG_UNIT_HINT" desc="Admin-facing. Hint for the Active Directory Organizational units input on the 'More options' dialog.">
+      Device OU (e.g. OU=JemaOS devices,DC=example,DC=com)
+    </message>
+    <message name="IDS_ARC_MANAGED_PROVISION_NOTIFICATION_TITLE" desc="Title of the notification shown to user during ARC provision when the ARC opt-in flow happens silently due to enterprise policies">
+      Android support
+    </message>
+    <message name="IDS_ARC_OOBE_TERMS_HEADING" desc="Heading of the Arc Terms OOBE dialog.">
+      Android support
+    </message>
+    <message name="IDS_ARC_OOBE_TERMS_DESCRIPTION" desc="Description of the Arc Terms OOBE dialog.">
+      Install Android apps
+    </message>
+    <message name="IDS_ARC_OOBE_TERMS_LOAD_ERROR" desc="Load error message of the Arc Terms OOBE dialog.">
+      Oops, connection issues. Please retry.
+    </message>
+    <message name="IDS_LOGIN_APP_DOWNLOADING_SCREEN_DESCRIPTION" desc="The description of the 'App Downloading' section">
+      You can find more apps for your device in any 3rd party Android app store of your choice.
+    </message>
+    <message name="IDS_ARC_ANDROID_MANAGEMENT_REQUIRED_ERROR" desc="Error message shown when Android management is required for an unmanaged Chrome OS user.">
+      Your organisation has not enabled Android support for your account. Contact your administrator for more information.
+    </message>
+    <message name="IDS_ARC_DATA_REMOVAL_CONFIRMATION_HEADING" desc="Heading text in the content area of the confirmation for data removal in case ARC comes to wrong state.">
+      To use Android apps, you must first restore your apps. Some data may have been lost.
+    </message>
+    <message name="IDS_ARC_MANAGED_PROVISION_NOTIFICATION_MESSAGE" desc="Notification shown to user during ARC provision when the ARC opt-in flow happens silently due to enterprise policies.">
+      Installing Android support on your <ph name="DEVICE_TYPE">$1<ex>JemaOS device</ex></ph>. This could take a few minutes.
+    </message>
+  </if>
+
+  <!-- ============================= -->
+  <!-- === openJema (openjema) block === -->
+  <!-- ============================= -->
+  <if expr="openjema">
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_USER_IMAGE_SCREEN_DESCRIPTION" desc="Description text for the oobe/login user image selection dialog.">
+        Prenez une nouvelle photo ou choisissez une photo ou une icône existante.
+        <ph name="LINE_BREAK">&lt;br&gt;&lt;br&gt;</ph>
+        Cette image apparaîtra sur l'écran de connexion et l'écran de verrouillage de votre appareil openJema.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_USER_IMAGE_SCREEN_DESCRIPTION" desc="Description text for the oobe/login user image selection dialog.">
+        Take a new photo or choose an existing photo or icon.
+        <ph name="LINE_BREAK">&lt;br&gt;&lt;br&gt;</ph>
+        This picture will show up on your openJema device sign in screen and lock screen.
+      </message>
+    </if>
     <if expr="not use_jemaos_com">
-      <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
-        Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jematechnology.fr/help/
-      </message>
-      <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
-        Your computer contains a secure module, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jematechnology.fr/help/
-      </message>
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
+          Votre ordinateur contient un module de sécurité TPM (Trusted Platform Module), utilisé pour implémenter de nombreuses fonctionnalités de sécurité essentielles dans openJema. Visitez le Centre d'aide openJema pour en savoir plus : https://jematechnology.fr/help/
+        </message>
+        <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
+          Votre ordinateur contient un module de sécurité, utilisé pour implémenter de nombreuses fonctionnalités de sécurité essentielles dans openJema. Visitez le Centre d'aide openJema pour en savoir plus : https://jematechnology.fr/help/
+        </message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
+          Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jematechnology.fr/help/
+        </message>
+        <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
+          Your computer contains a secure module, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jematechnology.fr/help/
+        </message>
+      </if>
     </if>
     <if expr="use_jemaos_com">
-      <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
-        Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jemaos.com/help/
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
+          Votre ordinateur contient un module de sécurité TPM (Trusted Platform Module), utilisé pour implémenter de nombreuses fonctionnalités de sécurité essentielles dans openJema. Visitez le Centre d'aide openJema pour en savoir plus : https://jemaos.com/help/
+        </message>
+        <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
+          Votre ordinateur contient un module de sécurité, utilisé pour implémenter de nombreuses fonctionnalités de sécurité essentielles dans openJema. Visitez le Centre d'aide openJema pour en savoir plus : https://jemaos.com/help/
+        </message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
+          Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jemaos.com/help/
+        </message>
+        <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
+          Your computer contains a secure module, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jemaos.com/help/
+        </message>
+      </if>
+    </if>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_ENABLE_DEBUGGING_HELP" desc="Help content of the enable debugging features dialog.">
+        <ph name="BEGIN_H3">&lt;h3&gt;</ph>Fonctionnalités de débogage<ph name="END_H3">&lt;/h3&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        Vous pouvez activer les fonctionnalités de débogage sur votre appareil openJema afin d'installer et de tester du code personnalisé. Cela vous permettra de :<ph name="BR">&lt;br&gt;</ph>
+        <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Supprimer la vérification rootfs pour pouvoir modifier les fichiers du système
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Activer l'accès SSH à l'appareil avec les clés de test standard pour utiliser des outils comme <ph name="BEGIN_CODE">&lt;span style=&quot;color:grey;font-family:monospace&quot;&gt;</ph>&apos;cros flash&apos;<ph name="END_CODE">&lt;/span&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Activer le démarrage depuis USB pour installer une image OS depuis une clé USB
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Définir le mot de passe root dev et système sur une valeur personnalisée pour un accès SSH manuel
+        <ph name="END_LIST">&lt;/ul&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        Une fois activées, la plupart des fonctionnalités de débogage resteront actives même après un powerwash ou un effacement des données sur un appareil géré par l'entreprise. Pour désactiver complètement toutes les fonctionnalités de débogage, effectuez le processus de restauration openJema (https://jematechnology.fr/help/).
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        Pour plus d'informations sur les fonctionnalités de débogage, consultez :<ph name="BR">&lt;br&gt;</ph>
+        https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-features
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BEGIN_BOLD">&lt;b&gt;</ph>Remarque :<ph name="END_BOLD">&lt;/b&gt;</ph>  Le système redémarrera pendant le processus.
       </message>
-      <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
-        Your computer contains a secure module, which is used to implement many critical security features in openJema. Visit the openJema device Help Center to learn more: https://jemaos.com/help/
+      <message name="IDS_AD_DEVICE_NAME_INPUT_LABEL" desc="Admin-facing. Label for device name input field on the Active Directory domain join screen. User should tell us the name of their device.">
+        Nom de l'appareil openJema
+      </message>
+      <message name="IDS_AD_BOARD_NOT_SUPPORTED" desc="Admin-facing. Alert message that the Chromebook model is not supported for Active Directory">
+        L'intégration openJema <ph name="MS_AD_NAME">Microsoft® Active Directory®</ph> n'est prise en charge que sur les plateformes x86_64. Les appareils openJema basés sur une plateforme ARM ou x86 ne supportent pas cette fonctionnalité.
+      </message>
+      <message name="IDS_ARC_SIGN_IN_BAD_AUTHENTICATION_ERROR" desc="Android sign-in error because of bad authentification">
+        Impossible de vérifier votre compte. Veuillez réessayer ou redémarrer votre appareil openJema.
+      </message>
+      <message name="IDS_ARC_SERVER_COMMUNICATION_ERROR" desc="Android sign-in error because of server communication error">
+        Impossible de se connecter au serveur. Veuillez vérifier votre connexion réseau et réessayer. Si le problème persiste, redémarrez votre appareil openJema.
+      </message>
+      <message name="IDS_HATS_NOTIFICATION_TITLE" desc="The title of the notification for Happiness Tracking Survey.">
+        Aidez-nous à améliorer openJema
+      </message>
+      <message name="IDS_ARC_NOTIFICATION_DISPLAY_SOURCE" desc="Context title of the first-run notification that enables Android apps.">
+        Android pour openJema
+      </message>
+      <message name="IDS_ARC_PLAYSTORE_SETTING_UP_TITLE" desc="The text tile which is shown when Play Store is initializing.">
+        Configuration d'Android pour openJema...
+      </message>
+      <message name="IDS_ARC_OPEN_PLAY_STORE_NOTIFICATION_BUTTON" desc="Label for the button in the first-run notification that enables Android apps.">
+        Ouvrir Android pour openJema
+      </message>
+      <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_TITLE" desc="Title displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
+        Compte Android openJema
+      </message>
+      <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_DESC" desc="Description displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
+        Pour activer l'accès de votre compte à la boutique Android openJema, veuillez vous authentifier auprès de votre fournisseur d'identité.
+      </message>
+      <message name="IDS_ECHO_CONSENT_DIALOG_TEXT" desc="Dialog text shown when user is asked to give consent to proceed with redeeming an ECHO offer.">
+        <ph name="SERVICE_NAME">$1<ex>Google Drive</ex></ph> souhaite vérifier si vous utilisez un appareil openJema éligible.
       </message>
     </if>
-    <message name="IDS_ENABLE_DEBUGGING_HELP" desc="Help content of the enable debugging features dialog.">
-      <ph name="BEGIN_H3">&lt;h3&gt;</ph>Debugging Features<ph name="END_H3">&lt;/h3&gt;</ph>
-      <ph name="BR">&lt;br&gt;</ph>
-      You can enable the debugging features on your openJema Device in order to install and test custom code on your device.  This will allow you to:<ph name="BR">&lt;br&gt;</ph>
-      <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Remove rootfs verification so you can modify OS files
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Enable SSH access to the device using the standard test keys so you can use tools such as <ph name="BEGIN_CODE">&lt;span style=&quot;color:grey;font-family:monospace&quot;&gt;</ph>&apos;cros flash&apos;<ph name="END_CODE">&lt;/span&gt;</ph> to access the device
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Enable booting from USB so you can install an OS image from a USB drive
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Set both the dev and the system root login password to a custom value so you can manually SSH into the device
-      <ph name="END_LIST">&lt;/ul&gt;</ph>
-      <ph name="BR">&lt;br&gt;</ph>
-      Once enabled, most of the debugging features will remain enabled even after performing a powerwash or wiping the data on an enterprise managed device. To fully disable all debugging features, complete the openJema recovery process (https://jematechnology.fr/help/).
-      <ph name="BR">&lt;br&gt;</ph>
-      <ph name="BR">&lt;br&gt;</ph>
-      For more information about the debugging features see:<ph name="BR">&lt;br&gt;</ph>
-      https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-features
-      <ph name="BR">&lt;br&gt;</ph>
-      <ph name="BR">&lt;br&gt;</ph>
-      <ph name="BEGIN_BOLD">&lt;b&gt;</ph>Note:<ph name="END_BOLD">&lt;/b&gt;</ph>  The system will reboot during the process.
-    </message>
-    <message name="IDS_AD_DEVICE_NAME_INPUT_LABEL" desc="Admin-facing. Label for device name input field on the Active Directory domain join screen. User should tell us the name of their device.">
-      openJema device name
-    </message>
-    <message name="IDS_AD_BOARD_NOT_SUPPORTED" desc="Admin-facing. Alert message that the Chromebook model is not supported for Active Directory">
-      openJema <ph name="MS_AD_NAME">Microsoft® Active Directory®</ph> integration is only supported on x86_64 platforms. openJema devices built on top of an ARM or x86 platform do not support this functionality.
-    </message>
-    <message name="IDS_ARC_SIGN_IN_BAD_AUTHENTICATION_ERROR" desc="Android sign-in error because of bad authentification">
-      Couldn't verify your account. Please try again or restart your openJema device.
-    </message>
-    <message name="IDS_ARC_SERVER_COMMUNICATION_ERROR" desc="Android sign-in error because of server communication error">
-      Couldn't connect with the server. Please check your network connection and try again. If the problem persists, restart your openJema device.
-    </message>
-    <message name="IDS_HATS_NOTIFICATION_TITLE" desc="The title of the notification for Happiness Tracking Survey.">
-      Help us improve openJema
-    </message>
-    <message name="IDS_ARC_NOTIFICATION_DISPLAY_SOURCE" desc="Context title of the first-run notification that enables Android apps.">
-      Android for openJema
-    </message>
-    <message name="IDS_ARC_PLAYSTORE_SETTING_UP_TITLE" desc="The text tile which is shown when Play Store is initializing.">
-      Setting up Android for openJema...
-    </message>
-    <message name="IDS_ARC_OPEN_PLAY_STORE_NOTIFICATION_BUTTON" desc="Label for the button in the first-run notification that enables Android apps.">
-      Open Android for openJema
-    </message>
-    <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_TITLE" desc="Title displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
-      openJema Android Account
-    </message>
-    <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_DESC" desc="Description displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
-      To enable your account to access the openJema Android Store, please authenticate with your Identity Provider.
-    </message>
-    <message name="IDS_ECHO_CONSENT_DIALOG_TEXT" desc="Dialog text shown when user is asked to give consent to proceed with redeeming an ECHO offer.">
-      <ph name="SERVICE_NAME">$1<ex>Google Drive</ex></ph> wants to check if you are using an eligible openJema device.
-    </message>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_ENABLE_DEBUGGING_HELP" desc="Help content of the enable debugging features dialog.">
+        <ph name="BEGIN_H3">&lt;h3&gt;</ph>Debugging Features<ph name="END_H3">&lt;/h3&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        You can enable the debugging features on your openJema Device in order to install and test custom code on your device.  This will allow you to:<ph name="BR">&lt;br&gt;</ph>
+        <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Remove rootfs verification so you can modify OS files
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Enable SSH access to the device using the standard test keys so you can use tools such as <ph name="BEGIN_CODE">&lt;span style=&quot;color:grey;font-family:monospace&quot;&gt;</ph>&apos;cros flash&apos;<ph name="END_CODE">&lt;/span&gt;</ph> to access the device
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Enable booting from USB so you can install an OS image from a USB drive
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Set both the dev and the system root login password to a custom value so you can manually SSH into the device
+        <ph name="END_LIST">&lt;/ul&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        Once enabled, most of the debugging features will remain enabled even after performing a powerwash or wiping the data on an enterprise managed device. To fully disable all debugging features, complete the openJema recovery process (https://jematechnology.fr/help/).
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        For more information about the debugging features see:<ph name="BR">&lt;br&gt;</ph>
+        https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-features
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BEGIN_BOLD">&lt;b&gt;</ph>Note:<ph name="END_BOLD">&lt;/b&gt;</ph>  The system will reboot during the process.
+      </message>
+      <message name="IDS_AD_DEVICE_NAME_INPUT_LABEL" desc="Admin-facing. Label for device name input field on the Active Directory domain join screen. User should tell us the name of their device.">
+        openJema device name
+      </message>
+      <message name="IDS_AD_BOARD_NOT_SUPPORTED" desc="Admin-facing. Alert message that the Chromebook model is not supported for Active Directory">
+        openJema <ph name="MS_AD_NAME">Microsoft® Active Directory®</ph> integration is only supported on x86_64 platforms. openJema devices built on top of an ARM or x86 platform do not support this functionality.
+      </message>
+      <message name="IDS_ARC_SIGN_IN_BAD_AUTHENTICATION_ERROR" desc="Android sign-in error because of bad authentification">
+        Couldn't verify your account. Please try again or restart your openJema device.
+      </message>
+      <message name="IDS_ARC_SERVER_COMMUNICATION_ERROR" desc="Android sign-in error because of server communication error">
+        Couldn't connect with the server. Please check your network connection and try again. If the problem persists, restart your openJema device.
+      </message>
+      <message name="IDS_HATS_NOTIFICATION_TITLE" desc="The title of the notification for Happiness Tracking Survey.">
+        Help us improve openJema
+      </message>
+      <message name="IDS_ARC_NOTIFICATION_DISPLAY_SOURCE" desc="Context title of the first-run notification that enables Android apps.">
+        Android for openJema
+      </message>
+      <message name="IDS_ARC_PLAYSTORE_SETTING_UP_TITLE" desc="The text tile which is shown when Play Store is initializing.">
+        Setting up Android for openJema...
+      </message>
+      <message name="IDS_ARC_OPEN_PLAY_STORE_NOTIFICATION_BUTTON" desc="Label for the button in the first-run notification that enables Android apps.">
+        Open Android for openJema
+      </message>
+      <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_TITLE" desc="Title displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
+        openJema Android Account
+      </message>
+      <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_DESC" desc="Description displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
+        To enable your account to access the openJema Android Store, please authenticate with your Identity Provider.
+      </message>
+      <message name="IDS_ECHO_CONSENT_DIALOG_TEXT" desc="Dialog text shown when user is asked to give consent to proceed with redeeming an ECHO offer.">
+        <ph name="SERVICE_NAME">$1<ex>Google Drive</ex></ph> wants to check if you are using an eligible openJema device.
+      </message>
+    </if>
     <if expr="lang == 'fr' or lang == 'fr-CA'">
       <message name="IDS_OOBE_EULA_SECTION_TITLE" desc="Title of Terms of Service screen">
         Conditions d'utilisation d'openJema
@@ -157,91 +291,194 @@
         openJema Terms of Service contents
       </message>
     </if>
-    <message name="IDS_ENABLE_DEBUGGING_SETUP_MESSAGE" desc="Setup message in dialog for enabling debugging features.">
-    You are enabling openJema debugging features which will set up sshd daemon and enable booting from USB drives.
-    </message>
-    <message name="IDS_WRONG_HWID_SCREEN_MESSAGE_FIRST_PART" desc="Warning message shown on screen notifying about malformed hardware ID. First paragraph.">
-      Unfortunately, your computer is configured with a malformed hardware ID. This prevents openJema from updating with the latest security fixes and your computer <ph name="BEGIN_BOLD">$1</ph>may be vulnerable to malicious attacks<ph name="END_BOLD">$2</ph>.
-    </message>
-    <message name="IDS_FILEMANAGER_APP_DESCRIPTION" desc="Description for the File Manager app.">
-      The Files app provides quick access to files that you've saved on Google Drive, external storage, or your openJema device.
-    </message>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_ENABLE_DEBUGGING_SETUP_MESSAGE" desc="Setup message in dialog for enabling debugging features.">
+      Vous activez les fonctionnalités de débogage openJema qui configureront le démon sshd et activeront le démarrage depuis les clés USB.
+      </message>
+      <message name="IDS_WRONG_HWID_SCREEN_MESSAGE_FIRST_PART" desc="Warning message shown on screen notifying about malformed hardware ID. First paragraph.">
+        Malheureusement, votre ordinateur est configuré avec un identifiant matériel malformé. Cela empêche openJema de se mettre à jour avec les derniers correctifs de sécurité et votre ordinateur <ph name="BEGIN_BOLD">$1</ph>peut être vulnérable aux attaques malveillantes<ph name="END_BOLD">$2</ph>.
+      </message>
+      <message name="IDS_FILEMANAGER_APP_DESCRIPTION" desc="Description for the File Manager app.">
+        L'application Fichiers offre un accès rapide aux fichiers enregistrés sur Google Drive, un stockage externe ou votre appareil openJema.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_ENABLE_DEBUGGING_SETUP_MESSAGE" desc="Setup message in dialog for enabling debugging features.">
+      You are enabling openJema debugging features which will set up sshd daemon and enable booting from USB drives.
+      </message>
+      <message name="IDS_WRONG_HWID_SCREEN_MESSAGE_FIRST_PART" desc="Warning message shown on screen notifying about malformed hardware ID. First paragraph.">
+        Unfortunately, your computer is configured with a malformed hardware ID. This prevents openJema from updating with the latest security fixes and your computer <ph name="BEGIN_BOLD">$1</ph>may be vulnerable to malicious attacks<ph name="END_BOLD">$2</ph>.
+      </message>
+      <message name="IDS_FILEMANAGER_APP_DESCRIPTION" desc="Description for the File Manager app.">
+        The Files app provides quick access to files that you've saved on Google Drive, external storage, or your openJema device.
+      </message>
+    </if>
   </if>
+
+  <!-- ============================= -->
+  <!-- === JemaOS (not openjema) block === -->
+  <!-- ============================= -->
   <if expr="not openjema">
-    <message name="IDS_USER_IMAGE_SCREEN_DESCRIPTION" desc="Description text for the oobe/login user image selection dialog.">
-      Take a new photo or choose an existing photo or icon.
-      <ph name="LINE_BREAK">&lt;br&gt;&lt;br&gt;</ph>
-      This picture will show up on your JemaOS device sign in screen and lock screen.
-    </message>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_USER_IMAGE_SCREEN_DESCRIPTION" desc="Description text for the oobe/login user image selection dialog.">
+        Prenez une nouvelle photo ou choisissez une photo ou une icône existante.
+        <ph name="LINE_BREAK">&lt;br&gt;&lt;br&gt;</ph>
+        Cette image apparaîtra sur l'écran de connexion et l'écran de verrouillage de votre appareil JemaOS.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_USER_IMAGE_SCREEN_DESCRIPTION" desc="Description text for the oobe/login user image selection dialog.">
+        Take a new photo or choose an existing photo or icon.
+        <ph name="LINE_BREAK">&lt;br&gt;&lt;br&gt;</ph>
+        This picture will show up on your JemaOS device sign in screen and lock screen.
+      </message>
+    </if>
     <if expr="not use_jemaos_com">
-      <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
-        Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jematechnology.fr/help/
-      </message>
-      <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
-        Your computer contains a secure module, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jematechnology.fr/help/
-      </message>
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
+          Votre ordinateur contient un module de sécurité TPM (Trusted Platform Module), utilisé pour implémenter de nombreuses fonctionnalités de sécurité essentielles dans JemaOS. Visitez le Centre d'aide JemaOS pour en savoir plus : https://jematechnology.fr/help/
+        </message>
+        <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
+          Votre ordinateur contient un module de sécurité, utilisé pour implémenter de nombreuses fonctionnalités de sécurité essentielles dans JemaOS. Visitez le Centre d'aide JemaOS pour en savoir plus : https://jematechnology.fr/help/
+        </message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
+          Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jematechnology.fr/help/
+        </message>
+        <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
+          Your computer contains a secure module, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jematechnology.fr/help/
+        </message>
+      </if>
     </if>
     <if expr="use_jemaos_com">
-      <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
-        Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jemaos.com/help/
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
+          Votre ordinateur contient un module de sécurité TPM (Trusted Platform Module), utilisé pour implémenter de nombreuses fonctionnalités de sécurité essentielles dans JemaOS. Visitez le Centre d'aide JemaOS pour en savoir plus : https://jemaos.com/help/
+        </message>
+        <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
+          Votre ordinateur contient un module de sécurité, utilisé pour implémenter de nombreuses fonctionnalités de sécurité essentielles dans JemaOS. Visitez le Centre d'aide JemaOS pour en savoir plus : https://jemaos.com/help/
+        </message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_EULA_TPM_DESCRIPTION" desc="Dialog box text">
+          Your computer contains a Trusted Platform Module (TPM) security device, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jemaos.com/help/
+        </message>
+        <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
+          Your computer contains a secure module, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jemaos.com/help/
+        </message>
+      </if>
+    </if>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_ENABLE_DEBUGGING_HELP" desc="Help content of the enable debugging features dialog.">
+        <ph name="BEGIN_H3">&lt;h3&gt;</ph>Fonctionnalités de débogage<ph name="END_H3">&lt;/h3&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        Vous pouvez activer les fonctionnalités de débogage sur votre appareil JemaOS afin d'installer et de tester du code personnalisé. Cela vous permettra de :<ph name="BR">&lt;br&gt;</ph>
+        <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Supprimer la vérification rootfs pour pouvoir modifier les fichiers du système
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Activer l'accès SSH à l'appareil avec les clés de test standard pour utiliser des outils comme <ph name="BEGIN_CODE">&lt;span style=&quot;color:grey;font-family:monospace&quot;&gt;</ph>&apos;cros flash&apos;<ph name="END_CODE">&lt;/span&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Activer le démarrage depuis USB pour installer une image OS depuis une clé USB
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Définir le mot de passe root dev et système sur une valeur personnalisée pour un accès SSH manuel
+        <ph name="END_LIST">&lt;/ul&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        Une fois activées, la plupart des fonctionnalités de débogage resteront actives même après un powerwash ou un effacement des données sur un appareil géré par l'entreprise. Pour désactiver complètement toutes les fonctionnalités de débogage, effectuez le processus de restauration JemaOS (https://jematechnology.fr/help/).
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        Pour plus d'informations sur les fonctionnalités de débogage, consultez :<ph name="BR">&lt;br&gt;</ph>
+        https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-features
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BEGIN_BOLD">&lt;b&gt;</ph>Remarque :<ph name="END_BOLD">&lt;/b&gt;</ph>  Le système redémarrera pendant le processus.
       </message>
-      <message name="IDS_EULA_SECURE_MODULE_DESCRIPTION" desc="Description of what a secure module does in the eula page.">
-        Your computer contains a secure module, which is used to implement many critical security features in JemaOS. Visit the JemaOS device Help Center to learn more: https://jemaos.com/help/
+      <message name="IDS_AD_DEVICE_NAME_INPUT_LABEL" desc="Admin-facing. Label for device name input field on the Active Directory domain join screen. User should tell us the name of their device.">
+        Nom de l'appareil JemaOS
+      </message>
+      <message name="IDS_AD_BOARD_NOT_SUPPORTED" desc="Admin-facing. Alert message that the Chromebook model is not supported for Active Directory">
+        L'intégration JemaOS <ph name="MS_AD_NAME">Microsoft® Active Directory®</ph> n'est prise en charge que sur les plateformes x86_64. Les appareils JemaOS basés sur une plateforme ARM ou x86 ne supportent pas cette fonctionnalité.
+      </message>
+      <message name="IDS_ARC_SIGN_IN_BAD_AUTHENTICATION_ERROR" desc="Android sign-in error because of bad authentification">
+        Impossible de vérifier votre compte. Veuillez réessayer ou redémarrer votre appareil JemaOS.
+      </message>
+      <message name="IDS_ARC_SERVER_COMMUNICATION_ERROR" desc="Android sign-in error because of server communication error">
+        Impossible de se connecter au serveur. Veuillez vérifier votre connexion réseau et réessayer. Si le problème persiste, redémarrez votre appareil JemaOS.
+      </message>
+      <message name="IDS_HATS_NOTIFICATION_TITLE" desc="The title of the notification for Happiness Tracking Survey.">
+        Aidez-nous à améliorer JemaOS
+      </message>
+      <message name="IDS_ARC_NOTIFICATION_DISPLAY_SOURCE" desc="Context title of the first-run notification that enables Android apps.">
+        Android pour JemaOS
+      </message>
+      <message name="IDS_ARC_PLAYSTORE_SETTING_UP_TITLE" desc="The text tile which is shown when Play Store is initializing.">
+        Configuration d'Android pour JemaOS...
+      </message>
+      <message name="IDS_ARC_OPEN_PLAY_STORE_NOTIFICATION_BUTTON" desc="Label for the button in the first-run notification that enables Android apps.">
+        Ouvrir Android pour JemaOS
+      </message>
+      <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_TITLE" desc="Title displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
+        Compte Android JemaOS
+      </message>
+      <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_DESC" desc="Description displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
+        Pour activer l'accès de votre compte à la boutique Android JemaOS, veuillez vous authentifier auprès de votre fournisseur d'identité.
+      </message>
+      <message name="IDS_ECHO_CONSENT_DIALOG_TEXT" desc="Dialog text shown when user is asked to give consent to proceed with redeeming an ECHO offer.">
+        <ph name="SERVICE_NAME">$1<ex>Google Drive</ex></ph> souhaite vérifier si vous utilisez un appareil JemaOS éligible.
       </message>
     </if>
-    <message name="IDS_ENABLE_DEBUGGING_HELP" desc="Help content of the enable debugging features dialog.">
-      <ph name="BEGIN_H3">&lt;h3&gt;</ph>Debugging Features<ph name="END_H3">&lt;/h3&gt;</ph>
-      <ph name="BR">&lt;br&gt;</ph>
-      You can enable the debugging features on your JemaOS Device in order to install and test custom code on your device.  This will allow you to:<ph name="BR">&lt;br&gt;</ph>
-      <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Remove rootfs verification so you can modify OS files
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Enable SSH access to the device using the standard test keys so you can use tools such as <ph name="BEGIN_CODE">&lt;span style=&quot;color:grey;font-family:monospace&quot;&gt;</ph>&apos;cros flash&apos;<ph name="END_CODE">&lt;/span&gt;</ph> to access the device
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Enable booting from USB so you can install an OS image from a USB drive
-        <ph name="LIST_ITEM">&lt;li&gt;</ph>Set both the dev and the system root login password to a custom value so you can manually SSH into the device
-      <ph name="END_LIST">&lt;/ul&gt;</ph>
-      <ph name="BR">&lt;br&gt;</ph>
-      Once enabled, most of the debugging features will remain enabled even after performing a powerwash or wiping the data on an enterprise managed device. To fully disable all debugging features, complete the JemaOS recovery process (https://jematechnology.fr/help/).
-      <ph name="BR">&lt;br&gt;</ph>
-      <ph name="BR">&lt;br&gt;</ph>
-      For more information about the debugging features see:<ph name="BR">&lt;br&gt;</ph>
-      https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-features
-      <ph name="BR">&lt;br&gt;</ph>
-      <ph name="BR">&lt;br&gt;</ph>
-      <ph name="BEGIN_BOLD">&lt;b&gt;</ph>Note:<ph name="END_BOLD">&lt;/b&gt;</ph>  The system will reboot during the process.
-    </message>
-    <message name="IDS_AD_DEVICE_NAME_INPUT_LABEL" desc="Admin-facing. Label for device name input field on the Active Directory domain join screen. User should tell us the name of their device.">
-      JemaOS device name
-    </message>
-    <message name="IDS_AD_BOARD_NOT_SUPPORTED" desc="Admin-facing. Alert message that the Chromebook model is not supported for Active Directory">
-      JemaOS <ph name="MS_AD_NAME">Microsoft® Active Directory®</ph> integration is only supported on x86_64 platforms. JemaOS devices built on top of an ARM or x86 platform do not support this functionality.
-    </message>
-    <message name="IDS_ARC_SIGN_IN_BAD_AUTHENTICATION_ERROR" desc="Android sign-in error because of bad authentification">
-      Couldn't verify your account. Please try again or restart your JemaOS device.
-    </message>
-    <message name="IDS_ARC_SERVER_COMMUNICATION_ERROR" desc="Android sign-in error because of server communication error">
-      Couldn't connect with the server. Please check your network connection and try again. If the problem persists, restart your JemaOS device.
-    </message>
-    <message name="IDS_HATS_NOTIFICATION_TITLE" desc="The title of the notification for Happiness Tracking Survey.">
-      Help us improve JemaOS
-    </message>
-    <message name="IDS_ARC_NOTIFICATION_DISPLAY_SOURCE" desc="Context title of the first-run notification that enables Android apps.">
-      Android for JemaOS
-    </message>
-    <message name="IDS_ARC_PLAYSTORE_SETTING_UP_TITLE" desc="The text tile which is shown when Play Store is initializing.">
-      Setting up Android for JemaOS...
-    </message>
-    <message name="IDS_ARC_OPEN_PLAY_STORE_NOTIFICATION_BUTTON" desc="Label for the button in the first-run notification that enables Android apps.">
-      Open Android for JemaOS
-    </message>
-    <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_TITLE" desc="Title displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
-      JemaOS Android Account
-    </message>
-    <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_DESC" desc="Description displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
-      To enable your account to access the JemaOS Android Store, please authenticate with your Identity Provider.
-    </message>
-    <message name="IDS_ECHO_CONSENT_DIALOG_TEXT" desc="Dialog text shown when user is asked to give consent to proceed with redeeming an ECHO offer.">
-      <ph name="SERVICE_NAME">$1<ex>Google Drive</ex></ph> wants to check if you are using an eligible JemaOS device.
-    </message>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_ENABLE_DEBUGGING_HELP" desc="Help content of the enable debugging features dialog.">
+        <ph name="BEGIN_H3">&lt;h3&gt;</ph>Debugging Features<ph name="END_H3">&lt;/h3&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        You can enable the debugging features on your JemaOS Device in order to install and test custom code on your device.  This will allow you to:<ph name="BR">&lt;br&gt;</ph>
+        <ph name="BEGIN_LIST">&lt;ul&gt;</ph>
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Remove rootfs verification so you can modify OS files
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Enable SSH access to the device using the standard test keys so you can use tools such as <ph name="BEGIN_CODE">&lt;span style=&quot;color:grey;font-family:monospace&quot;&gt;</ph>&apos;cros flash&apos;<ph name="END_CODE">&lt;/span&gt;</ph> to access the device
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Enable booting from USB so you can install an OS image from a USB drive
+          <ph name="LIST_ITEM">&lt;li&gt;</ph>Set both the dev and the system root login password to a custom value so you can manually SSH into the device
+        <ph name="END_LIST">&lt;/ul&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        Once enabled, most of the debugging features will remain enabled even after performing a powerwash or wiping the data on an enterprise managed device. To fully disable all debugging features, complete the JemaOS recovery process (https://jematechnology.fr/help/).
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        For more information about the debugging features see:<ph name="BR">&lt;br&gt;</ph>
+        https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-features
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BR">&lt;br&gt;</ph>
+        <ph name="BEGIN_BOLD">&lt;b&gt;</ph>Note:<ph name="END_BOLD">&lt;/b&gt;</ph>  The system will reboot during the process.
+      </message>
+      <message name="IDS_AD_DEVICE_NAME_INPUT_LABEL" desc="Admin-facing. Label for device name input field on the Active Directory domain join screen. User should tell us the name of their device.">
+        JemaOS device name
+      </message>
+      <message name="IDS_AD_BOARD_NOT_SUPPORTED" desc="Admin-facing. Alert message that the Chromebook model is not supported for Active Directory">
+        JemaOS <ph name="MS_AD_NAME">Microsoft® Active Directory®</ph> integration is only supported on x86_64 platforms. JemaOS devices built on top of an ARM or x86 platform do not support this functionality.
+      </message>
+      <message name="IDS_ARC_SIGN_IN_BAD_AUTHENTICATION_ERROR" desc="Android sign-in error because of bad authentification">
+        Couldn't verify your account. Please try again or restart your JemaOS device.
+      </message>
+      <message name="IDS_ARC_SERVER_COMMUNICATION_ERROR" desc="Android sign-in error because of server communication error">
+        Couldn't connect with the server. Please check your network connection and try again. If the problem persists, restart your JemaOS device.
+      </message>
+      <message name="IDS_HATS_NOTIFICATION_TITLE" desc="The title of the notification for Happiness Tracking Survey.">
+        Help us improve JemaOS
+      </message>
+      <message name="IDS_ARC_NOTIFICATION_DISPLAY_SOURCE" desc="Context title of the first-run notification that enables Android apps.">
+        Android for JemaOS
+      </message>
+      <message name="IDS_ARC_PLAYSTORE_SETTING_UP_TITLE" desc="The text tile which is shown when Play Store is initializing.">
+        Setting up Android for JemaOS...
+      </message>
+      <message name="IDS_ARC_OPEN_PLAY_STORE_NOTIFICATION_BUTTON" desc="Label for the button in the first-run notification that enables Android apps.">
+        Open Android for JemaOS
+      </message>
+      <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_TITLE" desc="Title displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
+        JemaOS Android Account
+      </message>
+      <message name="IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_DESC" desc="Description displayed in opt-in dialog to inform an Active Directory user that they may have to enter their credentials">
+        To enable your account to access the JemaOS Android Store, please authenticate with your Identity Provider.
+      </message>
+      <message name="IDS_ECHO_CONSENT_DIALOG_TEXT" desc="Dialog text shown when user is asked to give consent to proceed with redeeming an ECHO offer.">
+        <ph name="SERVICE_NAME">$1<ex>Google Drive</ex></ph> wants to check if you are using an eligible JemaOS device.
+      </message>
+    </if>
     <if expr="lang == 'fr' or lang == 'fr-CA'">
       <message name="IDS_OOBE_EULA_SECTION_TITLE" desc="Title of Terms of Service screen">
         Conditions d'utilisation de JemaOS
@@ -258,16 +495,31 @@
         JemaOS Terms of Service contents
       </message>
     </if>
-    <message name="IDS_ENABLE_DEBUGGING_SETUP_MESSAGE" desc="Setup message in dialog for enabling debugging features.">
-    You are enabling JemaOS debugging features which will set up sshd daemon and enable booting from USB drives.
-    </message>
-    <message name="IDS_WRONG_HWID_SCREEN_MESSAGE_FIRST_PART" desc="Warning message shown on screen notifying about malformed hardware ID. First paragraph.">
-      Unfortunately, your computer is configured with a malformed hardware ID. This prevents JemaOS from updating with the latest security fixes and your computer <ph name="BEGIN_BOLD">$1</ph>may be vulnerable to malicious attacks<ph name="END_BOLD">$2</ph>.
-    </message>
-    <message name="IDS_FILEMANAGER_APP_DESCRIPTION" desc="Description for the File Manager app.">
-      The Files app provides quick access to files that you've saved on Google Drive, external storage, or your JemaOS device.
-    </message>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_ENABLE_DEBUGGING_SETUP_MESSAGE" desc="Setup message in dialog for enabling debugging features.">
+      Vous activez les fonctionnalités de débogage JemaOS qui configureront le démon sshd et activeront le démarrage depuis les clés USB.
+      </message>
+      <message name="IDS_WRONG_HWID_SCREEN_MESSAGE_FIRST_PART" desc="Warning message shown on screen notifying about malformed hardware ID. First paragraph.">
+        Malheureusement, votre ordinateur est configuré avec un identifiant matériel malformé. Cela empêche JemaOS de se mettre à jour avec les derniers correctifs de sécurité et votre ordinateur <ph name="BEGIN_BOLD">$1</ph>peut être vulnérable aux attaques malveillantes<ph name="END_BOLD">$2</ph>.
+      </message>
+      <message name="IDS_FILEMANAGER_APP_DESCRIPTION" desc="Description for the File Manager app.">
+        L'application Fichiers offre un accès rapide aux fichiers enregistrés sur Google Drive, un stockage externe ou votre appareil JemaOS.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_ENABLE_DEBUGGING_SETUP_MESSAGE" desc="Setup message in dialog for enabling debugging features.">
+      You are enabling JemaOS debugging features which will set up sshd daemon and enable booting from USB drives.
+      </message>
+      <message name="IDS_WRONG_HWID_SCREEN_MESSAGE_FIRST_PART" desc="Warning message shown on screen notifying about malformed hardware ID. First paragraph.">
+        Unfortunately, your computer is configured with a malformed hardware ID. This prevents JemaOS from updating with the latest security fixes and your computer <ph name="BEGIN_BOLD">$1</ph>may be vulnerable to malicious attacks<ph name="END_BOLD">$2</ph>.
+      </message>
+      <message name="IDS_FILEMANAGER_APP_DESCRIPTION" desc="Description for the File Manager app.">
+        The Files app provides quick access to files that you've saved on Google Drive, external storage, or your JemaOS device.
+      </message>
+    </if>
   </if>
+
+  <!-- === OS Trial subtitle === -->
   <if expr="lang == 'fr' or lang == 'fr-CA'">
     <message name="IDS_OS_TRIAL_SUBTITLE" desc="Subtitle of the install or try screen, the first screen of the ChromeOS Flex Installation flow">
       <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> est un système d'exploitation français, souverain et open core, spécialement conçu pour fonctionner exclusivement sur le dispositif Jema. Il s'exécute en natif sur votre appareil, sans nécessiter d'installation sur disque dur.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
@@ -280,84 +532,186 @@
       <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>It offers intelligent virtual memory management, which optimises performance even when physical RAM is limited. Additionally, in the event of a hard drive failure, your Jema device automatically ensures service continuity.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
     </message>
   </if>
+
+  <!-- === Steam / Borealis (openjema) === -->
   <if expr="openjema">
-    <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">
-      Welcome to Steam on openJema device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_MESSAGE" desc="Body text shown in the installer for 'Steam for Chromebook'.">
-      This is a beta program. You can now use Steam to play some games on your openJema device.
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ERROR_UPDATE" desc="Body for Steam (noun, name of app) installer when installation fails due to device being out of date.">
-      Make sure your openJema is on the latest version. Then, restart your openJema device and try again.
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ONGOING_TITLE" desc="Title for installer while Steam (noun, name of app) is installing.">
-      Setting up Steam on openJema device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_FINISHED_MESSAGE" desc="Title for Steam (noun, name of app) installer when installation suceeded.">
-      Enjoy gaming on openJema device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ERROR_TITLE" desc="Title for installer when Steam (noun, name of app) fails to install.">
-      There was a problem setting up Steam on openJema device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ERROR_REBOOT" desc="Body for Steam (noun, name of app) installer when a restart is needed.">
-      Please restart your device to use Steam on openJema device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ERROR_STARTUP" desc="Body for Steam (noun, name of app) installer when installation fails trying to start up after installing">
-      Couldn't launch Steam on openJema device. Please try again
-    </message>
-    <message name="IDS_BOREALIS_DISALLOWED_HARDWARE" desc="Message shown to the user when 'Steam for Chromebook' is disabled on their device">
-      Steam for Chromebook (beta) is not available on your openJema device.
-    </message>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">
+        Bienvenue sur Steam pour appareil openJema
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_MESSAGE" desc="Body text shown in the installer for 'Steam for Chromebook'.">
+        Il s'agit d'un programme bêta. Vous pouvez maintenant utiliser Steam pour jouer à certains jeux sur votre appareil openJema.
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_UPDATE" desc="Body for Steam (noun, name of app) installer when installation fails due to device being out of date.">
+        Assurez-vous que votre openJema est à jour. Ensuite, redémarrez votre appareil openJema et réessayez.
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ONGOING_TITLE" desc="Title for installer while Steam (noun, name of app) is installing.">
+        Configuration de Steam sur l'appareil openJema
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_FINISHED_MESSAGE" desc="Title for Steam (noun, name of app) installer when installation suceeded.">
+        Profitez du jeu sur votre appareil openJema
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_TITLE" desc="Title for installer when Steam (noun, name of app) fails to install.">
+        Un problème est survenu lors de la configuration de Steam sur l'appareil openJema
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_REBOOT" desc="Body for Steam (noun, name of app) installer when a restart is needed.">
+        Veuillez redémarrer votre appareil pour utiliser Steam sur l'appareil openJema
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_STARTUP" desc="Body for Steam (noun, name of app) installer when installation fails trying to start up after installing">
+        Impossible de lancer Steam sur l'appareil openJema. Veuillez réessayer
+      </message>
+      <message name="IDS_BOREALIS_DISALLOWED_HARDWARE" desc="Message shown to the user when 'Steam for Chromebook' is disabled on their device">
+        Steam (bêta) n'est pas disponible sur votre appareil openJema.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">
+        Welcome to Steam on openJema device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_MESSAGE" desc="Body text shown in the installer for 'Steam for Chromebook'.">
+        This is a beta program. You can now use Steam to play some games on your openJema device.
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_UPDATE" desc="Body for Steam (noun, name of app) installer when installation fails due to device being out of date.">
+        Make sure your openJema is on the latest version. Then, restart your openJema device and try again.
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ONGOING_TITLE" desc="Title for installer while Steam (noun, name of app) is installing.">
+        Setting up Steam on openJema device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_FINISHED_MESSAGE" desc="Title for Steam (noun, name of app) installer when installation suceeded.">
+        Enjoy gaming on openJema device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_TITLE" desc="Title for installer when Steam (noun, name of app) fails to install.">
+        There was a problem setting up Steam on openJema device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_REBOOT" desc="Body for Steam (noun, name of app) installer when a restart is needed.">
+        Please restart your device to use Steam on openJema device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_STARTUP" desc="Body for Steam (noun, name of app) installer when installation fails trying to start up after installing">
+        Couldn't launch Steam on openJema device. Please try again
+      </message>
+      <message name="IDS_BOREALIS_DISALLOWED_HARDWARE" desc="Message shown to the user when 'Steam for Chromebook' is disabled on their device">
+        Steam for Chromebook (beta) is not available on your openJema device.
+      </message>
+    </if>
   </if>
+
+  <!-- === Steam / Borealis (not openjema / JemaOS) === -->
   <if expr="not openjema">
-    <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">
-      Welcome to Steam on JemaOS device
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">
+        Bienvenue sur Steam pour appareil JemaOS
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_MESSAGE" desc="Body text shown in the installer for 'Steam for Chromebook'.">
+        Il s'agit d'un programme bêta. Vous pouvez maintenant utiliser Steam pour jouer à certains jeux sur votre appareil JemaOS.
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_UPDATE" desc="Body for Steam (noun, name of app) installer when installation fails due to device being out of date.">
+        Assurez-vous que votre JemaOS est à jour. Ensuite, redémarrez votre appareil JemaOS et réessayez.
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ONGOING_TITLE" desc="Title for installer while Steam (noun, name of app) is installing.">
+        Configuration de Steam sur l'appareil JemaOS
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_FINISHED_MESSAGE" desc="Title for Steam (noun, name of app) installer when installation suceeded.">
+        Profitez du jeu sur votre appareil JemaOS
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_TITLE" desc="Title for installer when Steam (noun, name of app) fails to install.">
+        Un problème est survenu lors de la configuration de Steam sur l'appareil JemaOS
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_REBOOT" desc="Body for Steam (noun, name of app) installer when a restart is needed.">
+        Veuillez redémarrer votre appareil pour utiliser Steam sur l'appareil JemaOS
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_STARTUP" desc="Body for Steam (noun, name of app) installer when installation fails trying to start up after installing">
+        Impossible de lancer Steam sur l'appareil JemaOS. Veuillez réessayer
+      </message>
+      <message name="IDS_BOREALIS_DISALLOWED_HARDWARE" desc="Message shown to the user when 'Steam for Chromebook' is disabled on their device">
+        Steam (bêta) n'est pas disponible sur votre appareil JemaOS.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_TITLE" desc="Title for installer for Steam (noun, name of app).">
+        Welcome to Steam on JemaOS device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_MESSAGE" desc="Body text shown in the installer for 'Steam for Chromebook'.">
+        This is a beta program. You can now use Steam to play some games on your JemaOS device.
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_UPDATE" desc="Body for Steam (noun, name of app) installer when installation fails due to device being out of date.">
+        Make sure your JemaOS is on the latest version. Then, restart your JemaOS device and try again.
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ONGOING_TITLE" desc="Title for installer while Steam (noun, name of app) is installing.">
+        Setting up Steam on JemaOS device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_FINISHED_MESSAGE" desc="Title for Steam (noun, name of app) installer when installation suceeded.">
+        Enjoy gaming on JemaOS device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_TITLE" desc="Title for installer when Steam (noun, name of app) fails to install.">
+        There was a problem setting up Steam on JemaOS device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_REBOOT" desc="Body for Steam (noun, name of app) installer when a restart is needed.">
+        Please restart your device to use Steam on JemaOS device
+      </message>
+      <message name="IDS_BOREALIS_INSTALLER_ERROR_STARTUP" desc="Body for Steam (noun, name of app) installer when installation fails trying to start up after installing">
+        Couldn't launch Steam on JemaOS device. Please try again
+      </message>
+      <message name="IDS_BOREALIS_DISALLOWED_HARDWARE" desc="Message shown to the user when 'Steam for Chromebook' is disabled on their device">
+        Steam for Chromebook (beta) is not available on your JemaOS device.
+      </message>
+    </if>
+  </if>
+
+  <!-- === Crostini / Linux === -->
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_CROSTINI_INSTALLER_NEED_UPDATE_TITLE" desc="Title shown in the Crostini installer dialog when the VM fails to install because the device must be updated">
+      Mise à jour JemaOS requise
     </message>
-    <message name="IDS_BOREALIS_INSTALLER_CONFIRMATION_MESSAGE" desc="Body text shown in the installer for 'Steam for Chromebook'.">
-      This is a beta program. You can now use Steam to play some games on your JemaOS device.
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ERROR_UPDATE" desc="Body for Steam (noun, name of app) installer when installation fails due to device being out of date.">
-      Make sure your JemaOS is on the latest version. Then, restart your JemaOS device and try again.
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ONGOING_TITLE" desc="Title for installer while Steam (noun, name of app) is installing.">
-      Setting up Steam on JemaOS device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_FINISHED_MESSAGE" desc="Title for Steam (noun, name of app) installer when installation suceeded.">
-      Enjoy gaming on JemaOS device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ERROR_TITLE" desc="Title for installer when Steam (noun, name of app) fails to install.">
-      There was a problem setting up Steam on JemaOS device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ERROR_REBOOT" desc="Body for Steam (noun, name of app) installer when a restart is needed.">
-      Please restart your device to use Steam on JemaOS device
-    </message>
-    <message name="IDS_BOREALIS_INSTALLER_ERROR_STARTUP" desc="Body for Steam (noun, name of app) installer when installation fails trying to start up after installing">
-      Couldn't launch Steam on JemaOS device. Please try again
-    </message>
-    <message name="IDS_BOREALIS_DISALLOWED_HARDWARE" desc="Message shown to the user when 'Steam for Chromebook' is disabled on their device">
-      Steam for Chromebook (beta) is not available on your JemaOS device.
+    <message name="IDS_CROSTINI_INSTALLER_NEED_UPDATE_ERROR" desc="Text shown in the Crostini installer dialog when the VM fails to install because the device must be updated first">
+      Pour terminer la configuration de Linux, mettez à jour JemaOS et réessayez.
     </message>
   </if>
-  <message name="IDS_CROSTINI_INSTALLER_NEED_UPDATE_TITLE" desc="Title shown in the Crostini installer dialog when the VM fails to install because the device must be updated">
-    JemaOS update required
-  </message>
-  <message name="IDS_CROSTINI_INSTALLER_NEED_UPDATE_ERROR" desc="Text shown in the Crostini installer dialog when the VM fails to install because the device must be updated first">
-    To finish setting up Linux, update JemaOS and try again.
-  </message>
-  <message name="IDS_BLUETOOTH_PAIRING_LEARN_MORE" desc="Bluetooth pairing dialog: Message informing the user on what actions to take in order to see a device in the list of available devices.">
-    Make sure your Bluetooth device is in pairing mode and nearby. Only pair with devices you trust. Paired devices are visible to all accounts on this <ph name="DEVICE_TYPE">$1</ph>. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$2"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
-  </message>
-  <message name="IDS_BLUETOOTH_PAIRING_DESCRIPTION" desc="Bluetooth pairing dialog: Message informing the user on what actions to take in order to see a device in the list of available devices.">
-    Make sure your Bluetooth device is in pairing mode and nearby. Only pair with devices you trust. Paired devices are visible to all accounts on this <ph name="DEVICE_TYPE">$1</ph>.
-  </message>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_CROSTINI_INSTALLER_NEED_UPDATE_TITLE" desc="Title shown in the Crostini installer dialog when the VM fails to install because the device must be updated">
+      JemaOS update required
+    </message>
+    <message name="IDS_CROSTINI_INSTALLER_NEED_UPDATE_ERROR" desc="Text shown in the Crostini installer dialog when the VM fails to install because the device must be updated first">
+      To finish setting up Linux, update JemaOS and try again.
+    </message>
+  </if>
 
-  <message name="IDS_ENTERPRISE_ENROLLMENT_KIOSK_CONFIRM_MESSAGE" desc="Message of kiosk confirm enrollment screen.">
-    You will use a kiosk and signage upgrade which only allows the device to run in kiosk or signage mode. If you would like users to sign into the device, please go back and enroll using business+ device.
-  </message>
-  <message name="IDS_ENTERPRISE_ENROLLMENT_MISSING_LICENSES_ERROR" desc="Error message to show when the domain the device is trying to enroll into has expired or exhausted licenses.">
-    You do not have enough license to enroll this device. Please contact sales to purchase more. If you believe you're seeing this message in error, please contact support.
-  </message>
+  <!-- === Bluetooth pairing === -->
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_BLUETOOTH_PAIRING_LEARN_MORE" desc="Bluetooth pairing dialog: Message informing the user on what actions to take in order to see a device in the list of available devices.">
+      Assurez-vous que votre appareil Bluetooth est en mode d'appairage et à proximité. N'appairez que des appareils de confiance. Les appareils appairés sont visibles par tous les comptes sur cet <ph name="DEVICE_TYPE">$1</ph>. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$2"&gt;</ph>En savoir plus<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
+    </message>
+    <message name="IDS_BLUETOOTH_PAIRING_DESCRIPTION" desc="Bluetooth pairing dialog: Message informing the user on what actions to take in order to see a device in the list of available devices.">
+      Assurez-vous que votre appareil Bluetooth est en mode d'appairage et à proximité. N'appairez que des appareils de confiance. Les appareils appairés sont visibles par tous les comptes sur cet <ph name="DEVICE_TYPE">$1</ph>.
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_BLUETOOTH_PAIRING_LEARN_MORE" desc="Bluetooth pairing dialog: Message informing the user on what actions to take in order to see a device in the list of available devices.">
+      Make sure your Bluetooth device is in pairing mode and nearby. Only pair with devices you trust. Paired devices are visible to all accounts on this <ph name="DEVICE_TYPE">$1</ph>. <ph name="BEGIN_LINK_LEARN_MORE">&lt;a target="_blank" href="$2"&gt;</ph>Learn more<ph name="END_LINK_LEARN_MORE">&lt;/a&gt;</ph>
+    </message>
+    <message name="IDS_BLUETOOTH_PAIRING_DESCRIPTION" desc="Bluetooth pairing dialog: Message informing the user on what actions to take in order to see a device in the list of available devices.">
+      Make sure your Bluetooth device is in pairing mode and nearby. Only pair with devices you trust. Paired devices are visible to all accounts on this <ph name="DEVICE_TYPE">$1</ph>.
+    </message>
+  </if>
 
+  <!-- === Enterprise enrollment === -->
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_ENTERPRISE_ENROLLMENT_KIOSK_CONFIRM_MESSAGE" desc="Message of kiosk confirm enrollment screen.">
+      Vous utiliserez une mise à niveau kiosque et affichage qui ne permet à l'appareil de fonctionner qu'en mode kiosque ou affichage. Si vous souhaitez que les utilisateurs se connectent à l'appareil, veuillez revenir en arrière et vous inscrire avec un appareil business+.
+    </message>
+    <message name="IDS_ENTERPRISE_ENROLLMENT_MISSING_LICENSES_ERROR" desc="Error message to show when the domain the device is trying to enroll into has expired or exhausted licenses.">
+      Vous n'avez pas assez de licences pour inscrire cet appareil. Veuillez contacter le service commercial pour en acheter davantage. Si vous pensez que ce message est une erreur, veuillez contacter le support.
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_ENTERPRISE_ENROLLMENT_KIOSK_CONFIRM_MESSAGE" desc="Message of kiosk confirm enrollment screen.">
+      You will use a kiosk and signage upgrade which only allows the device to run in kiosk or signage mode. If you would like users to sign into the device, please go back and enroll using business+ device.
+    </message>
+    <message name="IDS_ENTERPRISE_ENROLLMENT_MISSING_LICENSES_ERROR" desc="Error message to show when the domain the device is trying to enroll into has expired or exhausted licenses.">
+      You do not have enough license to enroll this device. Please contact sales to purchase more. If you believe you're seeing this message in error, please contact support.
+    </message>
+  </if>
+
+  <!-- === Gemini / JemaOS AI === -->
   <if expr="lang == 'fr' or lang == 'fr-CA'">
     <message name="IDS_GEMINI_INTRO_TITLE" desc="The title of the gemini intro dialog">
       Découvrez JemaOS AI, votre assistant IA au niveau du système
@@ -377,24 +731,56 @@
     </message>
   </if>
 
+  <!-- === ChromeVox (openjema) === -->
   <if expr="openjema">
-    <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in laptop mode." is_accessibility_with_no_ui="true">
-      The screen reader on openJema, ChromeVox, is primarily used by people with blindness or low vision to read text displayed on the screen with a speech synthesizer or braille display. Press the space bar to turn on ChromeVox. When ChromeVox is activated, you’ll go through a quick tour.
-    </message>
-    <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_TABLET_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in tablet mode." is_accessibility_with_no_ui="true">
-      The screen reader on openJema, ChromeVox, is primarily used by people with blindness or low vision to read text displayed on the screen with a speech synthesizer or braille display. Press and hold both volume keys for five seconds to turn on ChromeVox. When ChromeVox is activated, you’ll go through a quick tour.
-    </message>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in laptop mode." is_accessibility_with_no_ui="true">
+        Le lecteur d'écran openJema, ChromeVox, est principalement utilisé par les personnes aveugles ou malvoyantes pour lire le texte affiché à l'écran avec un synthétiseur vocal ou un afficheur braille. Appuyez sur la barre d'espace pour activer ChromeVox. Une fois ChromeVox activé, vous suivrez une visite guidée rapide.
+      </message>
+      <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_TABLET_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in tablet mode." is_accessibility_with_no_ui="true">
+        Le lecteur d'écran openJema, ChromeVox, est principalement utilisé par les personnes aveugles ou malvoyantes pour lire le texte affiché à l'écran avec un synthétiseur vocal ou un afficheur braille. Maintenez les deux touches de volume enfoncées pendant cinq secondes pour activer ChromeVox. Une fois ChromeVox activé, vous suivrez une visite guidée rapide.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in laptop mode." is_accessibility_with_no_ui="true">
+        The screen reader on openJema, ChromeVox, is primarily used by people with blindness or low vision to read text displayed on the screen with a speech synthesizer or braille display. Press the space bar to turn on ChromeVox. When ChromeVox is activated, you'll go through a quick tour.
+      </message>
+      <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_TABLET_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in tablet mode." is_accessibility_with_no_ui="true">
+        The screen reader on openJema, ChromeVox, is primarily used by people with blindness or low vision to read text displayed on the screen with a speech synthesizer or braille display. Press and hold both volume keys for five seconds to turn on ChromeVox. When ChromeVox is activated, you'll go through a quick tour.
+      </message>
+    </if>
   </if>
+
+  <!-- === ChromeVox (not openjema / JemaOS) === -->
   <if expr="not openjema">
-    <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in laptop mode." is_accessibility_with_no_ui="true">
-      The screen reader on JemaOS, ChromeVox, is primarily used by people with blindness or low vision to read text displayed on the screen with a speech synthesizer or braille display. Press the space bar to turn on ChromeVox. When ChromeVox is activated, you’ll go through a quick tour.
-    </message>
-    <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_TABLET_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in tablet mode." is_accessibility_with_no_ui="true">
-      The screen reader on JemaOS, ChromeVox, is primarily used by people with blindness or low vision to read text displayed on the screen with a speech synthesizer or braille display. Press and hold both volume keys for five seconds to turn on ChromeVox. When ChromeVox is activated, you’ll go through a quick tour.
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in laptop mode." is_accessibility_with_no_ui="true">
+        Le lecteur d'écran JemaOS, ChromeVox, est principalement utilisé par les personnes aveugles ou malvoyantes pour lire le texte affiché à l'écran avec un synthétiseur vocal ou un afficheur braille. Appuyez sur la barre d'espace pour activer ChromeVox. Une fois ChromeVox activé, vous suivrez une visite guidée rapide.
+      </message>
+      <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_TABLET_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in tablet mode." is_accessibility_with_no_ui="true">
+        Le lecteur d'écran JemaOS, ChromeVox, est principalement utilisé par les personnes aveugles ou malvoyantes pour lire le texte affiché à l'écran avec un synthétiseur vocal ou un afficheur braille. Maintenez les deux touches de volume enfoncées pendant cinq secondes pour activer ChromeVox. Une fois ChromeVox activé, vous suivrez une visite guidée rapide.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in laptop mode." is_accessibility_with_no_ui="true">
+        The screen reader on JemaOS, ChromeVox, is primarily used by people with blindness or low vision to read text displayed on the screen with a speech synthesizer or braille display. Press the space bar to turn on ChromeVox. When ChromeVox is activated, you'll go through a quick tour.
+      </message>
+      <message name="IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_TABLET_EXPANDED" desc="The new string spoken when the ChromeVox hint is activated when the device is in tablet mode." is_accessibility_with_no_ui="true">
+        The screen reader on JemaOS, ChromeVox, is primarily used by people with blindness or low vision to read text displayed on the screen with a speech synthesizer or braille display. Press and hold both volume keys for five seconds to turn on ChromeVox. When ChromeVox is activated, you'll go through a quick tour.
+      </message>
+    </if>
+  </if>
+
+  <!-- === PIN setup === -->
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_DISCOVER_PIN_SETUP_PIN_AS_MAIN_FACTOR_SUBTITLE" desc="A sub-title of the dialog asking the user to set up a PIN as the main factor for signing in.">
+      Au lieu de saisir le mot de passe de votre compte en ligne pour vous connecter, vous pouvez créer un code PIN pour cet <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>
     </message>
   </if>
-  <message name="IDS_DISCOVER_PIN_SETUP_PIN_AS_MAIN_FACTOR_SUBTITLE" desc="A sub-title of the dialog asking the user to set up a PIN as the main factor for signing in.">
-    Instead of entering your online account password to sign in, you can create a PIN for this <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>
-  </message>
-  
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_DISCOVER_PIN_SETUP_PIN_AS_MAIN_FACTOR_SUBTITLE" desc="A sub-title of the dialog asking the user to set up a PIN as the main factor for signing in.">
+      Instead of entering your online account password to sign in, you can create a PIN for this <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>
+    </message>
+  </if>
+
 </grit-part>

@@ -31,136 +31,287 @@
   <message name="IDS_SHORT_PRODUCT_NAME" desc="The Chrome application short name." translateable="false">
     Thot
   </message>
-  <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
-    À propos de &amp;Thot
-  </message>
-  <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
-    Help make Thot better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Technology
-  </message>
-  <message name="IDS_ABOUT_VERSION_COMPANY_NAME" desc="Company name on the about pages">
-    Jema Technology, The Chromium Authors
-  </message>
-  <message name="IDS_ABOUT_VERSION_COPYRIGHT" desc="Copyright information on the about pages">
-    Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Jema Technology, The Chromium Authors. All rights reserved.
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
+      À propos de &amp;Thot
+    </message>
+    <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
+      Aidez à améliorer Thot en envoyant les rapports de plantage et les <ph name="UMA_LINK">$1<ex>statistiques d'utilisation</ex></ph> à Jema Technology
+    </message>
+    <message name="IDS_ABOUT_VERSION_COMPANY_NAME" desc="Company name on the about pages">
+      Jema Technology, Les auteurs de Chromium
+    </message>
+    <message name="IDS_ABOUT_VERSION_COPYRIGHT" desc="Copyright information on the about pages">
+      Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Jema Technology, Les auteurs de Chromium. Tous droits réservés.
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
+      About &amp;Thot
+    </message>
+    <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
+      Help make Thot better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Jema Technology
+    </message>
+    <message name="IDS_ABOUT_VERSION_COMPANY_NAME" desc="Company name on the about pages">
+      Jema Technology, The Chromium Authors
+    </message>
+    <message name="IDS_ABOUT_VERSION_COPYRIGHT" desc="Copyright information on the about pages">
+      Copyright <ph name="YEAR">{0,date,y}<ex>2016</ex></ph> Jema Technology, The Chromium Authors. All rights reserved.
+    </message>
+  </if>
   <if expr="chromeos_ash">
     <!-- Strings for the OOBE user selection screen -->
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_TITLE" desc="Title of the screen which allows users to select account type.">
-        choisir type de compte
-    </message>
-    <if expr="not openjema">
-      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-        <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Veuillez choisir votre compte Jema pour vous connecter à JemaOS. Notez qu'une fois connecté(e), vous ne pourrez plus modifier le type de compte.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
-        <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Vous pourrez toutefois vous connecter avec un nouveau compte d'un type différent.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_TITLE" desc="Title of the screen which allows users to select account type.">
+          Choisir le type de compte
       </message>
     </if>
-    <if expr="openjema">
-      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
-          <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Veuillez choisir votre compte Jema pour vous connecter à JemaOS. Notez qu'une fois connecté(e), vous ne pourrez plus modifier le type de compte.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
-        <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Vous pourrez toutefois vous connecter avec un nouveau compte d'un type différent.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_TITLE" desc="Title of the screen which allows users to select account type.">
+          Choose account type
       </message>
+    </if>
+    <if expr="not openjema">
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
+          <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Veuillez choisir votre compte Jema pour vous connecter à JemaOS. Notez qu'une fois connecté(e), vous ne pourrez plus modifier le type de compte.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+          <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Vous pourrez toutefois vous connecter avec un nouveau compte d'un type différent.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+        </message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
+          <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Please choose your Jema account to sign in to JemaOS. Note that once signed in, you will not be able to change the account type.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+          <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>However, you can sign in with a new account of a different type.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+        </message>
+      </if>
+    </if>
+    <if expr="openjema">
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
+          <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Veuillez choisir votre compte Jema pour vous connecter à openJema. Notez qu'une fois connecté(e), vous ne pourrez plus modifier le type de compte.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+          <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>Vous pourrez toutefois vous connecter avec un nouveau compte d'un type différent.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+        </message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_SUBTITLE" desc="Subtitle of the screen which allows users to select account type.">
+          <ph name="BEGIN_PARAGRAPH1">&lt;p&gt;</ph>Please choose your Jema account to sign in to openJema. Note that once signed in, you will not be able to change the account type.<ph name="END_PARAGRAPH1">&lt;/p&gt;</ph>
+          <ph name="BEGIN_PARAGRAPH2">&lt;p&gt;</ph>However, you can sign in with a new account of a different type.<ph name="END_PARAGRAPH2">&lt;/p&gt;</ph>
+        </message>
+      </if>
     </if>
     <!-- Local JemaOS account ** START -->
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
-        Local JemaOS account
-    </message>
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
-        Create a local account that will not be synchronized with the JemaOS API.
-    </message>
-    <!-- Local JemaOS account ** END -->
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
-        Compte Jema
-    </message>
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
-        Connectez-vous avec un compte Jema et utilisez les services cloud associés à votre compte Jema.
-    </message>
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_TITLE" desc="Title of user select Google account type.">
-        Google account
-    </message>
-    <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_SUBTITLE" desc="Subtitle of user select Google account type.">
-        Sign in with a Google account and use cloud services provided by Google.
-    </message>
-    <if expr="openjema">
-      <message name="IDS_ABOUT_CROS_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS.">
-        openJema is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>.
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
+          Compte local JemaOS
       </message>
-      <message name="IDS_ABOUT_CROS_WITH_LINUX_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS when Crostini is installed.">
-        openJema is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>, as is <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Beta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
-      </message>
-      <message name="IDS_EXTERNAL_PROTOCOL_NO_HANDLER_TITLE" desc="External Protocol Dialog Title">
-        openJema can't open this page.
-      </message>
-      <message name="IDS_SYNC_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when the user's sign-in credentials are out of date.">
-        openJema could not sync your data because your account sign-in details are out of date.
-      </message>
-      <message name="IDS_SYNC_UNAVAILABLE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when sync is not available for their domain.">
-        openJema could not sync your data because Sync is not available for your domain.
-      </message>
-      <message name="IDS_SYNC_OTHER_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when there's an error signing in.">
-        openJema could not sync your data due to an error signing in.
-      </message>
-      <message name="IDS_UPDATE_RECOMMENDED_DIALOG_TITLE" desc="The window title for the Update Recommended dialog.">
-        Restart openJema
-      </message>
-      <message name="IDS_UPDATE_RECOMMENDED" desc="The main text of the Update Recommended dialog.">
-        openJema needs to be restarted to apply the update.
-      </message>
-      <message name="IDS_INSTALLING_UPDATE" desc="Label shown on the updates installation screen during OOBE">
-        Please wait while openJema installs the latest system updates.
-      </message>
-      <message name="IDS_EULA_SCREEN_ACCESSIBLE_TITLE" desc="Title to be spoken on opening the OOBE EULA screen">
-        openJema terms
-      </message>
-      <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
-        Optional: Help make openJema better by automatically sending usage statistics and crash reports to Jema Technology.
-      </message>
-      <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
-        <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the openJema EULA Terms.
-      </message>
-      <message name="IDS_RESTORE_NOTIFICATION_DISPLAY_SOURCE" desc="This is the string shown as the display source of the notification for the user to select restore or not on startup.">
-        openJema
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
+          Créer un compte local qui ne sera pas synchronisé avec l'API JemaOS.
       </message>
     </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
+          Local JemaOS account
+      </message>
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_LOCAL_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
+          Create a local account that will not be synchronized with the JemaOS API.
+      </message>
+    </if>
+    <!-- Local JemaOS account ** END -->
+    <if expr="lang == 'fr' or lang == 'fr-CA'">
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
+          Compte Jema
+      </message>
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
+          Connectez-vous avec un compte Jema et utilisez les services cloud associés à votre compte Jema.
+      </message>
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_TITLE" desc="Title of user select Google account type.">
+          Compte Google
+      </message>
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_SUBTITLE" desc="Subtitle of user select Google account type.">
+          Connectez-vous avec un compte Google et utilisez les services cloud fournis par Google.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA'">
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_TITLE" desc="Title of user select JemaOS account type.">
+          Jema account
+      </message>
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_JEMAOS_SUBTITLE" desc="Subtitle of user select JemaOS account type.">
+          Sign in with a Jema account and use cloud services associated with your Jema account.
+      </message>
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_TITLE" desc="Title of user select Google account type.">
+          Google account
+      </message>
+      <message name="IDS_OOBE_ACCOUNT_TYPE_SELECTION_GOOGLE_SUBTITLE" desc="Subtitle of user select Google account type.">
+          Sign in with a Google account and use cloud services provided by Google.
+      </message>
+    </if>
+    <if expr="openjema">
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_ABOUT_CROS_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS.">
+          openJema est rendu possible grâce à des <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>logiciels open source<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph> supplémentaires.
+        </message>
+        <message name="IDS_ABOUT_CROS_WITH_LINUX_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS when Crostini is installed.">
+          openJema est rendu possible grâce à des <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>logiciels open source<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph> supplémentaires, tout comme <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Bêta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
+        </message>
+        <message name="IDS_EXTERNAL_PROTOCOL_NO_HANDLER_TITLE" desc="External Protocol Dialog Title">
+          openJema ne peut pas ouvrir cette page.
+        </message>
+        <message name="IDS_SYNC_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when the user's sign-in credentials are out of date.">
+          openJema n'a pas pu synchroniser vos données car les informations de connexion de votre compte ne sont plus à jour.
+        </message>
+        <message name="IDS_SYNC_UNAVAILABLE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when sync is not available for their domain.">
+          openJema n'a pas pu synchroniser vos données car la synchronisation n'est pas disponible pour votre domaine.
+        </message>
+        <message name="IDS_SYNC_OTHER_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when there's an error signing in.">
+          openJema n'a pas pu synchroniser vos données en raison d'une erreur de connexion.
+        </message>
+        <message name="IDS_UPDATE_RECOMMENDED_DIALOG_TITLE" desc="The window title for the Update Recommended dialog.">
+          Redémarrer openJema
+        </message>
+        <message name="IDS_UPDATE_RECOMMENDED" desc="The main text of the Update Recommended dialog.">
+          openJema doit être redémarré pour appliquer la mise à jour.
+        </message>
+        <message name="IDS_INSTALLING_UPDATE" desc="Label shown on the updates installation screen during OOBE">
+          Veuillez patienter pendant qu'openJema installe les dernières mises à jour du système.
+        </message>
+        <message name="IDS_EULA_SCREEN_ACCESSIBLE_TITLE" desc="Title to be spoken on opening the OOBE EULA screen">
+          Conditions d'utilisation d'openJema
+        </message>
+        <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
+          Facultatif : Aidez à améliorer openJema en envoyant automatiquement les statistiques d'utilisation et les rapports de plantage à Jema Technology.
+        </message>
+        <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
+          <ph name="DOMAIN">$1<ex>example.com</ex></ph> exige que vous lisiez et acceptiez les conditions d'utilisation suivantes avant d'utiliser cet appareil. Ces conditions ne modifient ni n'étendent les conditions du CLUF d'openJema.
+        </message>
+        <message name="IDS_RESTORE_NOTIFICATION_DISPLAY_SOURCE" desc="This is the string shown as the display source of the notification for the user to select restore or not on startup.">
+          openJema
+        </message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_ABOUT_CROS_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS.">
+          openJema is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>.
+        </message>
+        <message name="IDS_ABOUT_CROS_WITH_LINUX_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS when Crostini is installed.">
+          openJema is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>, as is <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Beta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
+        </message>
+        <message name="IDS_EXTERNAL_PROTOCOL_NO_HANDLER_TITLE" desc="External Protocol Dialog Title">
+          openJema can't open this page.
+        </message>
+        <message name="IDS_SYNC_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when the user's sign-in credentials are out of date.">
+          openJema could not sync your data because your account sign-in details are out of date.
+        </message>
+        <message name="IDS_SYNC_UNAVAILABLE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when sync is not available for their domain.">
+          openJema could not sync your data because Sync is not available for your domain.
+        </message>
+        <message name="IDS_SYNC_OTHER_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when there's an error signing in.">
+          openJema could not sync your data due to an error signing in.
+        </message>
+        <message name="IDS_UPDATE_RECOMMENDED_DIALOG_TITLE" desc="The window title for the Update Recommended dialog.">
+          Restart openJema
+        </message>
+        <message name="IDS_UPDATE_RECOMMENDED" desc="The main text of the Update Recommended dialog.">
+          openJema needs to be restarted to apply the update.
+        </message>
+        <message name="IDS_INSTALLING_UPDATE" desc="Label shown on the updates installation screen during OOBE">
+          Please wait while openJema installs the latest system updates.
+        </message>
+        <message name="IDS_EULA_SCREEN_ACCESSIBLE_TITLE" desc="Title to be spoken on opening the OOBE EULA screen">
+          openJema terms
+        </message>
+        <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
+          Optional: Help make openJema better by automatically sending usage statistics and crash reports to Jema Technology.
+        </message>
+        <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
+          <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the openJema EULA Terms.
+        </message>
+        <message name="IDS_RESTORE_NOTIFICATION_DISPLAY_SOURCE" desc="This is the string shown as the display source of the notification for the user to select restore or not on startup.">
+          openJema
+        </message>
+      </if>
+    </if>
     <if expr="not openjema">
-      <message name="IDS_ABOUT_CROS_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS.">
-        JemaOS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>.
-      </message>
-      <message name="IDS_ABOUT_CROS_WITH_LINUX_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS when Crostini is installed.">
-        JemaOS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>, as is <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Beta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
-      </message>
-      <message name="IDS_EXTERNAL_PROTOCOL_NO_HANDLER_TITLE" desc="External Protocol Dialog Title">
-        JemaOS can't open this page.
-      </message>
-      <message name="IDS_SYNC_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when the user's sign-in credentials are out of date.">
-        JemaOS could not sync your data because your account sign-in details are out of date.
-      </message>
-      <message name="IDS_SYNC_UNAVAILABLE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when sync is not available for their domain.">
-        JemaOS could not sync your data because Sync is not available for your domain.
-      </message>
-      <message name="IDS_SYNC_OTHER_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when there's an error signing in.">
-        JemaOS could not sync your data due to an error signing in.
-      </message>
-      <message name="IDS_UPDATE_RECOMMENDED_DIALOG_TITLE" desc="The window title for the Update Recommended dialog.">
-        Restart JemaOS
-      </message>
-      <message name="IDS_UPDATE_RECOMMENDED" desc="The main text of the Update Recommended dialog.">
-        JemaOS needs to be restarted to apply the update.
-      </message>
-      <message name="IDS_INSTALLING_UPDATE" desc="Label shown on the updates installation screen during OOBE">
-        Please wait while JemaOS installs the latest system updates.
-      </message>
-      <message name="IDS_EULA_SCREEN_ACCESSIBLE_TITLE" desc="Title to be spoken on opening the OOBE EULA screen">
-        JemaOS terms
-      </message>
-      <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
-        Optional: Help make JemaOS better by automatically sending usage statistics and crash reports to Jema Technology.
-      </message>
-      <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
-        <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the JemaOS EULA Terms.
-      </message>
-      <message name="IDS_RESTORE_NOTIFICATION_DISPLAY_SOURCE" desc="This is the string shown as the display source of the notification for the user to select restore or not on startup.">
-        JemaOS
-      </message>
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_ABOUT_CROS_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS.">
+          JemaOS est rendu possible grâce à des <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>logiciels open source<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph> supplémentaires.
+        </message>
+        <message name="IDS_ABOUT_CROS_WITH_LINUX_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS when Crostini is installed.">
+          JemaOS est rendu possible grâce à des <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>logiciels open source<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph> supplémentaires, tout comme <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Bêta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
+        </message>
+        <message name="IDS_EXTERNAL_PROTOCOL_NO_HANDLER_TITLE" desc="External Protocol Dialog Title">
+          JemaOS ne peut pas ouvrir cette page.
+        </message>
+        <message name="IDS_SYNC_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when the user's sign-in credentials are out of date.">
+          JemaOS n'a pas pu synchroniser vos données car les informations de connexion de votre compte ne sont plus à jour.
+        </message>
+        <message name="IDS_SYNC_UNAVAILABLE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when sync is not available for their domain.">
+          JemaOS n'a pas pu synchroniser vos données car la synchronisation n'est pas disponible pour votre domaine.
+        </message>
+        <message name="IDS_SYNC_OTHER_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when there's an error signing in.">
+          JemaOS n'a pas pu synchroniser vos données en raison d'une erreur de connexion.
+        </message>
+        <message name="IDS_UPDATE_RECOMMENDED_DIALOG_TITLE" desc="The window title for the Update Recommended dialog.">
+          Redémarrer JemaOS
+        </message>
+        <message name="IDS_UPDATE_RECOMMENDED" desc="The main text of the Update Recommended dialog.">
+          JemaOS doit être redémarré pour appliquer la mise à jour.
+        </message>
+        <message name="IDS_INSTALLING_UPDATE" desc="Label shown on the updates installation screen during OOBE">
+          Veuillez patienter pendant que JemaOS installe les dernières mises à jour du système.
+        </message>
+        <message name="IDS_EULA_SCREEN_ACCESSIBLE_TITLE" desc="Title to be spoken on opening the OOBE EULA screen">
+          Conditions d'utilisation de JemaOS
+        </message>
+        <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
+          Facultatif : Aidez à améliorer JemaOS en envoyant automatiquement les statistiques d'utilisation et les rapports de plantage à Jema Technology.
+        </message>
+        <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
+          <ph name="DOMAIN">$1<ex>example.com</ex></ph> exige que vous lisiez et acceptiez les conditions d'utilisation suivantes avant d'utiliser cet appareil. Ces conditions ne modifient ni n'étendent les conditions du CLUF de JemaOS.
+        </message>
+        <message name="IDS_RESTORE_NOTIFICATION_DISPLAY_SOURCE" desc="This is the string shown as the display source of the notification for the user to select restore or not on startup.">
+          JemaOS
+        </message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_ABOUT_CROS_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS.">
+          JemaOS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>.
+        </message>
+        <message name="IDS_ABOUT_CROS_WITH_LINUX_VERSION_LICENSE" desc="Additional text displayed beneath the Chromium open source URLs for Chrome OS when Crostini is installed.">
+          JemaOS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS">&lt;a target="_blank" href="$1"&gt;</ph>open source software<ph name="END_LINK_CROS_OSS">&lt;/a&gt;</ph>, as is <ph name="BEGIN_LINK_LINUX_OSS">&lt;a target="_blank" href="$2"&gt;</ph>Linux (Beta)<ph name="END_LINK_LINUX_OSS">&lt;/a&gt;</ph>.
+        </message>
+        <message name="IDS_EXTERNAL_PROTOCOL_NO_HANDLER_TITLE" desc="External Protocol Dialog Title">
+          JemaOS can't open this page.
+        </message>
+        <message name="IDS_SYNC_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when the user's sign-in credentials are out of date.">
+          JemaOS could not sync your data because your account sign-in details are out of date.
+        </message>
+        <message name="IDS_SYNC_UNAVAILABLE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when sync is not available for their domain.">
+          JemaOS could not sync your data because Sync is not available for your domain.
+        </message>
+        <message name="IDS_SYNC_OTHER_SIGN_IN_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sign-in error notification when there's an error signing in.">
+          JemaOS could not sync your data due to an error signing in.
+        </message>
+        <message name="IDS_UPDATE_RECOMMENDED_DIALOG_TITLE" desc="The window title for the Update Recommended dialog.">
+          Restart JemaOS
+        </message>
+        <message name="IDS_UPDATE_RECOMMENDED" desc="The main text of the Update Recommended dialog.">
+          JemaOS needs to be restarted to apply the update.
+        </message>
+        <message name="IDS_INSTALLING_UPDATE" desc="Label shown on the updates installation screen during OOBE">
+          Please wait while JemaOS installs the latest system updates.
+        </message>
+        <message name="IDS_EULA_SCREEN_ACCESSIBLE_TITLE" desc="Title to be spoken on opening the OOBE EULA screen">
+          JemaOS terms
+        </message>
+        <message name="IDS_EULA_CHECKBOX_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">
+          Optional: Help make JemaOS better by automatically sending usage statistics and crash reports to Jema Technology.
+        </message>
+        <message name="IDS_TERMS_OF_SERVICE_SCREEN_SUBHEADING" desc="Subheading at the top of the Terms of Service screen.">
+          <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires that you read and accept the following Terms of Service before using this device. These terms do not expand, modify or limit the JemaOS EULA Terms.
+        </message>
+        <message name="IDS_RESTORE_NOTIFICATION_DISPLAY_SOURCE" desc="This is the string shown as the display source of the notification for the user to select restore or not on startup.">
+          JemaOS
+        </message>
+      </if>
     </if>
   </if>
 </grit-part>

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/mistral.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/mistral.h"
 
 namespace web_app {
 

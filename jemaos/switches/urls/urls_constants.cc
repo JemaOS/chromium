@@ -14,10 +14,10 @@ const char kJemaOSHomePageUrl[] = "https://jematechnology.fr";
 const char kOpenJemaHomePageUrl[] = "https://jematechnology.fr";
 
 const char kJemaOSStoreBaseUrl[] = "https://chromewebstore.google.com/category/extensions";
-const char kJemaOSAccountBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kJemaOSAccountBaseUrl[] = "https://auth-app.jematech.fr";
 
 const char kJemaOSForumURL[] = "https://jematechnology.fr/";
-const char kJemaOSRemoteDesktopURL[] = "https://jema-rdp.vercel.app/"; // https://rdp.jematechnology.fr/
+const char kJemaOSRemoteDesktopURL[] = "https://rpd.jematech.fr/"; // https://rdp.jematechnology.fr/
 const char kJemaOSNotesAppURL[] = "https://jematechnology.fr"; // https://notes.jematechnology.fr
 const char kJemaOSHelpURL[] = "https://jematechnology.fr/?ospath=help/";
 const char kJemaOSReleaseNotesURL[] = "https://jematechnology.fr/?ospath=release";
@@ -81,7 +81,7 @@ const char kOpenJemaHomePageUrl[] = "https://jematechnology.fr/"; // https://jem
 // NOTE: Keep this without a trailing slash because callers append their own
 // paths/query params.
 const char kJemaOSStoreBaseUrl[] = "https://chromewebstore.google.com";
-const char kJemaOSAccountBaseUrl[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kJemaOSAccountBaseUrl[] = "https://auth-app.jematech.fr";
 
 const char kJemaOSForumURL[] = "https://jematechnology.fr/"; // https://community.jematechnology.fr/
 const char kJemaOSRemoteDesktopURL[] = "https://jema-rdp.vercel.app/"; // https://rdp.jematechnology.fr/
@@ -105,9 +105,9 @@ const char kControlledScrollingHelpURL[] = "https://jematechnology.fr/?ospath=do
 const char kTimeZoneSettingsLearnMoreURL[] = "https://jematechnology.fr/?ospath=help/manual/customize-settings/appearance/set-the-date-and-time/";
 const char kResetProfileSettingsLearnMoreURL[] = "https://jematechnology.fr/?ospath=help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
 const char kCrosBatterySaverLearnMoreURL[] = "https://jematechnology.fr/?ospath=help/manual/customize-settings/advanced-settings/battery-saver/";
-const char kJemaOSAccountURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
-const char kJemaOSAccountChooserURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
-const char kJemaOSPasswordManagerURL[] = "https://staging.d3ihq4vq2ptyl6.amplifyapp.com";
+const char kJemaOSAccountURL[] = "https://auth-app.jematech.fr";
+const char kJemaOSAccountChooserURL[] = "https://auth-app.jematech.fr";
+const char kJemaOSPasswordManagerURL[] = "https://auth-app.jematech.fr";
 
 const char kGoogleDriveBuyStorageUrl[] = "https://jematechnology.fr/?ospath=docs/knowledge-base";
 const char kGoogleDriveOverviewUrl[] = "https://jematechnology.fr/?ospath=docs/knowledge-base";

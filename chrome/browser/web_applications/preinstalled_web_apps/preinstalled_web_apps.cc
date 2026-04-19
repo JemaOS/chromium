@@ -44,9 +44,35 @@
 
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/community.h"
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.h"
-#include "jemaos/chrome/browser/web_applications/preinstalled_web_apps/notes.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/community.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/remote_desktop.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/notes.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/mistral.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/qwant.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/jema_calculator.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/bentopdf.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/screennow.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/proton_mail.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/proton_drive.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/galerie.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/osivibe.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/anu.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/jemachess.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/setsound.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/anima.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/office365.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/toffeeshare.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/excalidraw.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/vscode.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/photopea.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/telegram.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/whatsapp.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/teams.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/google_docs.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/google_sheets.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/google_meet.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/jema_youtube.h"
 
 namespace web_app {
 namespace {
@@ -81,43 +107,41 @@ bool IsGoogleInternalAccount() {
 std::vector<ExternalInstallOptions> GetChromeBrandedApps(
     Profile& profile,
     const std::optional<DeviceInfo>& device_info) {
-  bool is_standalone_tabbed =
-      IsPreinstalledDocsSheetsSlidesDriveStandaloneTabbed(profile);
-  // TODO(crbug.com/40705277): Replace these C++ configs with JSON configs like
-  // those seen in: chrome/test/data/web_app_default_apps/good_json
-  // This requires:
-  // - Mimicking the directory packaging used by
-  //   chrome/browser/resources/default_apps.
-  // - Hooking up a second JSON config load to PreinstalledWebAppManager.
-  // - Validating everything works on all OSs (Mac bundles things differently).
-  // - Ensure that these resources are correctly installed by our Chrome
-  //   installers on every desktop platform.
-  std::vector<ExternalInstallOptions> apps = {
+  // JemaOS: We replace Google's default apps with our own selection.
+  // This avoids conflicts and ensures our configuration is used.
+  return {
+      // Jema Apps (OEM Folder)
+      GetConfigForJemaNotes(),
+      GetConfigForAnima(),
+      GetConfigForOsivibe(),
+      GetConfigForSetSound(),
+      GetConfigForJemaChess(),
+      GetConfigForAnu(),
+
+      // Root Apps
+      GetConfigForJemaCommunity(),
+      GetConfigForJemaRemoteDesktop(),
+      GetConfigForMistral(),
+      GetConfigForQwant(),
+      GetConfigForBentoPDF(),
+      GetConfigForScreenNow(),
+      GetConfigForProtonMail(),
+      GetConfigForProtonDrive(),
+      GetConfigForGalerie(),
       GetConfigForGmail(),
-      GetConfigForGoogleDocs(is_standalone_tabbed),
-      GetConfigForGoogleDrive(/*is_standalone=*/is_standalone_tabbed),
-      GetConfigForGoogleSheets(is_standalone_tabbed),
-      GetConfigForGoogleSlides(is_standalone_tabbed),
-      GetConfigForYouTube(),
-#if BUILDFLAG(IS_CHROMEOS)
-      GetConfigForCalculator(),
-      GetConfigForGemini(device_info),
-      GetConfigForGoogleCalendar(),
-      GetConfigForGoogleChat(/*is_standalone=*/true,
-                             /*only_for_new_users=*/true),
+      GetConfigForJemaCalculator(),
+      GetConfigForOffice365(),
+      GetConfigForToffeeShare(),
+      GetConfigForExcalidraw(),
+      GetConfigForVSCode(),
+      GetConfigForPhotopea(),
+      GetConfigForTelegram(),
+      GetConfigForWhatsApp(),
+      GetConfigForTeams(),
+      GetConfigForGoogleDocs(),
+      GetConfigForGoogleSheets(),
       GetConfigForGoogleMeet(),
-#endif  // BUILDFLAG(IS_CHROMEOS)
   };
-
-#if !BUILDFLAG(IS_CHROMEOS)
-  if (base::FeatureList::IsEnabled(kChatPreinstalledWebApp)) {
-    apps.insert(apps.end(), GetConfigForGoogleChat(
-                                /*is_standalone=*/false,
-                                /*only_for_new_users=*/kOnlyForNewUsers.Get()));
-  }
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-
-  return apps;
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
@@ -163,9 +187,38 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps(
   return GetChromeBrandedApps(profile, device_info);
 #else
   return {
-    GetConfigForJemaCommunity(),
-    GetConfigForJemaRemoteDesktop(),
-    GetConfigForJemaNotes(),
+      // Jema Apps (OEM Folder)
+      GetConfigForJemaNotes(),
+      GetConfigForAnima(),
+      GetConfigForOsivibe(),
+      GetConfigForSetSound(),
+      GetConfigForJemaChess(),
+      GetConfigForAnu(),
+
+      // Root Apps
+      GetConfigForJemaCommunity(),
+      GetConfigForJemaRemoteDesktop(),
+      GetConfigForMistral(),
+      GetConfigForQwant(),
+      GetConfigForBentoPDF(),
+      GetConfigForScreenNow(),
+      GetConfigForProtonMail(),
+      GetConfigForProtonDrive(),
+      GetConfigForGalerie(),
+      GetConfigForGmail(),
+      GetConfigForJemaCalculator(),
+      GetConfigForOffice365(),
+      GetConfigForToffeeShare(),
+      GetConfigForExcalidraw(),
+      GetConfigForVSCode(),
+      GetConfigForPhotopea(),
+      GetConfigForTelegram(),
+      GetConfigForWhatsApp(),
+      GetConfigForTeams(),
+      GetConfigForGoogleDocs(),
+      GetConfigForGoogleSheets(),
+      GetConfigForGoogleMeet(),
+      GetConfigForJemaYouTube(),
   };
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }

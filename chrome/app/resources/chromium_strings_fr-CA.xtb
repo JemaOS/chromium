@@ -61,7 +61,7 @@ Les autorisations que vous avez déjà accordées à des sites Web et à des app
 <translation id="1808667845054772817">Réinstaller Chromium</translation>
 <translation id="1820835682567584003">Chromium essaie de <ph name="AUTHENTICATION_PURPOSE" /></translation>
 <translation id="18552579716432081">Pour supprimer les données de navigation de cet appareil uniquement, tout en les conservant dans votre compte Google, <ph name="BEGIN_LINK" />déconnectez-vous de Chromium<ph name="END_LINK" />.</translation>
-<translation id="185970820835152459">Vous pouvez gérer les comptes Google auxquels vous êtes connecté. Vos comptes Google sont utilisés par le navigateur Chronium, par Play Store, par Gmail et autres. Si vous voulez ajouter un compte pour quelqu'un d'autre, comme un membre de votre famille, ajoutez plutôt une nouvelle personne à votre <ph name="DEVICE_TYPE" />. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
+<translation id="185970820835152459">Vous pouvez gérer les comptes Jema auxquels vous êtes connecté. Ils vous permettent d'accéder au navigateur Thot, à l’écosystème JemaOS, etc. Pour ajouter le compte d'une autre personne, comme un membre de votre famille, ajoutez un nouvel utilisateur à votre <ph name="DEVICE_TYPE" /> device à la place. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
 <translation id="1862852878885210965">Recherche avec la recherche d'images</translation>
 <translation id="1863308913976887472">Les sites peuvent stocker des renseignements sur vos centres d'intérêt dans Chromium. Par exemple, si vous visitez un site pour acheter des chaussures pour un marathon, le site pourrait définir votre centre d'intérêt comme la course de marathons. Ultérieurement, si vous visitez un autre site pour vous inscrire à une course, celui-ci peut vous montrer une annonce pour des chaussures de course en fonction de vos centres d'intérêt.</translation>
 <translation id="1880677175115548835">Sélectionnez du texte</translation>
@@ -620,6 +620,7 @@ Chromium est incapable de récupérer vos paramètres.</translation>
 <translation id="965162752251293939">Qui utilise Chromium?</translation>
 <translation id="967427899662692980">Profiter de la sécurité la plus robuste de Chromium</translation>
 <translation id="983803489796659991">L'installation a échoué, car le serveur de mise à jour ne dispose pas de données de hachage pour cette application.</translation>
+<translation id="7917876797003313048">Vous pouvez gérer vos comptes Jema connectés. Vos comptes Jema sont utilisés pour ce navigateur. Si vous souhaitez ajouter un compte pour quelqu'un d'autre, comme un membre de votre famille, ajoutez une nouvelle personne à votre <ph name="DEVICE_TYPE" /> à la place. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
 <translation id="985498048907240953">Utiliser Chromium sans compte</translation>
 <translation id="985602178874221306">Les auteurs de Chrome</translation>
 <translation id="992780518932311116">Pour utiliser votre position, accordez l'accès à Chromium dans les <ph name="BEGIN_LINK" />paramètres système<ph name="END_LINK" /></translation>

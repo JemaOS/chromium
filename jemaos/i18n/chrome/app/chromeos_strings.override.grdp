@@ -3,6 +3,9 @@
 <grit-part>
   <!-- === Welcome / Network / Trial === -->
   <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_ACCOUNT_MANAGER_DIALOG_ADD_ACCOUNT_LABEL" desc="Label of the Add account button on Account picker screen.">
+      Ajouter un compte Jema
+    </message>
     <message name="IDS_NEW_WELCOME_SCREEN_GREETING" desc="Greeting message on the OOBE welcome screen">
       Bienvenue sur <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
     </message>
@@ -14,6 +17,9 @@
     </message>
   </if>
   <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_ACCOUNT_MANAGER_DIALOG_ADD_ACCOUNT_LABEL" desc="Label of the Add account button on Account picker screen.">
+      Add Jema Account
+    </message>
     <message name="IDS_NEW_WELCOME_SCREEN_GREETING" desc="Greeting message on the OOBE welcome screen">
       Welcome to <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
     </message>

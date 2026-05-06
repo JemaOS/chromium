@@ -60,7 +60,7 @@ Les autorisations que vous avez déjà accordées aux sites Web et aux applis pe
 <translation id="1808667845054772817">Réinstaller Chromium</translation>
 <translation id="1820835682567584003">Chromium tente <ph name="AUTHENTICATION_PURPOSE" /></translation>
 <translation id="18552579716432081">Pour supprimer les données de navigation de cet appareil uniquement, tout en les conservant dans votre compte Google, <ph name="BEGIN_LINK" />déconnectez-vous de Chromium<ph name="END_LINK" />.</translation>
-<translation id="185970820835152459"> Vous pouvez gérer les comptes Jema auxquels vous êtes connecté. Ils vous permettent d'accéder au navigateur Thot, à l’écosystème JemaOS, etc. Pour ajouter le compte d'une autre personne, comme un membre de votre famille, ajoutez un nouvel utilisateur à votre <ph name="DEVICE_TYPE" /> device à la place. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
+<translation id="185970820835152459">Vous pouvez gérer les comptes Jema auxquels vous êtes connecté. Ils vous permettent d'accéder au navigateur Thot, à l’écosystème JemaOS, etc. Pour ajouter le compte d'une autre personne, comme un membre de votre famille, ajoutez un nouvel utilisateur à votre JemaOS device <ph name="DEVICE_TYPE" /> à la place. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
 <translation id="1862852878885210965">Rechercher avec la recherche dans des images</translation>
 <translation id="1863308913976887472">Les sites peuvent stocker des informations sur vos centres d'intérêt dans Chromium. Par exemple, si vous allez sur un site afin d'acheter des chaussures pour un marathon, le site peut définir le marathon comme l'un de vos centres d'intérêt. Ensuite, si vous consultez un autre site pour vous enregistrer pour une course, ce site peut diffuser une annonce pour des chaussures de running en se basant sur vos centres d'intérêt.</translation>
 <translation id="1880677175115548835">Sélectionner du texte</translation>
@@ -619,7 +619,7 @@ Chromium ne peut pas récupérer vos paramètres.</translation>
 <translation id="965162752251293939">Qui utilise Chromium ?</translation>
 <translation id="967427899662692980">Renforcer la sécurité de Chromium</translation>
 <translation id="983803489796659991">Échec de l'installation, car le serveur de mise à jour ne dispose d'aucune donnée de hachage pour l'application.</translation>
-<translation id="7917876797003313048">Vous pouvez gérer vos comptes Jema connectés. Vos comptes Jema sont utilisés pour ce navigateur. Si vous souhaitez ajouter un compte pour quelqu'un d'autre, comme un membre de votre famille, ajoutez une nouvelle personne à votre <ph name="DEVICE_TYPE" /> à la place. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
+<translation id="7805844601705092487">Vous pouvez gérer les comptes Jema auxquels vous êtes connecté. Ils vous permettent d'accéder au navigateur Thot, à l’écosystème JemaOS, etc. Pour ajouter le compte d'une autre personne, comme un membre de votre famille, ajoutez un nouvel utilisateur à votre <ph name="DEVICE_TYPE" /> à la place. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
 <translation id="985498048907240953">Utiliser Chromium sans compte</translation>
 <translation id="985602178874221306">Auteurs de Chromium</translation>
 <translation id="992780518932311116">Pour que Chromium puisse utiliser votre position, autorisez-le à y accéder dans les <ph name="BEGIN_LINK" />paramètres système<ph name="END_LINK" /></translation>

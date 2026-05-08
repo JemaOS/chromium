@@ -135,6 +135,18 @@
           </div>
         </div>
       </cr-card-radio-button>
+      <cr-card-radio-button id="usbInstall" class="flex" name="usb">
+        <div class="card-container">
+          <div class="card-content">
+            <div class="card-label">
+              [[i18nDynamic(locale, 'jemaosInstallerUsbInstallationTitle')]]
+            </div>
+            <div class="card-text">
+              [[i18nDynamic(locale, 'jemaosInstallerUsbInstallationHelperText')]]
+            </div>
+          </div>
+        </div>
+      </cr-card-radio-button>
     </cr-radio-group>
   </div>
   <div slot="back-navigation">
@@ -169,6 +181,32 @@
   </div>
   <div slot="bottom-buttons">
     <oobe-text-button inverse on-click="onInstallClicked_" disabled="[[!isNormalSetup_]]" text-key="jemaosInstallerInstallButton">
+    </oobe-text-button>
+  </div>
+</oobe-adaptive-dialog>
+<oobe-adaptive-dialog has-buttons for-step="usb-config">
+  <h1 slot="title">[[i18nDynamic(locale, 'jemaosInstallerUsbInstallationTitle')]]</h1>
+  <div slot="subtitle">[[i18nDynamic(locale, 'jemaosInstallerUsbInstallationDisclaimer')]]</div>
+  <div slot="content" class="layout vertical landscape-header-aligned">
+    <div class="layout vertical">
+      <div class="flex layout center horizontal justified config-selection-entry">
+        <div class="config-selection-title layout vertical center-justified">
+          [[i18nDynamic(locale, 'jemaosInstallerConfigDiskSelectLabel')]]
+        </div>
+        <select id="usbConfigDiskList" class="md-select"
+                                        value=[[usbConfigSelectedDisk_]]
+                                        >
+        </select>
+      </div>
+    </div>
+    <div id="usbConfigMessage">[[usbConfigMessage_]]</div>
+  </div>
+  <div slot="back-navigation">
+    <oobe-back-button on-click="onBackClicked_">
+    </oobe-back-button>
+  </div>
+  <div slot="bottom-buttons">
+    <oobe-text-button inverse on-click="onInstallClicked_" disabled="[[!isUsbSetup_]]" text-key="jemaosInstallerInstallButton">
     </oobe-text-button>
   </div>
 </oobe-adaptive-dialog>

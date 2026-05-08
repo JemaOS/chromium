@@ -382,6 +382,18 @@
     <message name="IDS_JEMAOS_INSTALLER_ABORTING_MESAGE" desc="aborting message for jemaos installer">
       L'installation est en cours d'interruption...
     </message>
+    <message name="IDS_JEMAOS_INSTALLER_USB_INSTALLATION_TITLE" desc="Title for USB installation option, jemaos installer">
+      Installer sur USB
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_USB_INSTALLATION_HELPER_TEXT" desc="Helper text for USB installation option, jemaos installer">
+      Installez <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sur un disque USB ; toutes les données du disque USB cible seront effacées.
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_USB_INSTALLATION_DISCLAIMER" desc="Disclaimer for USB installation, jemaos installer">
+      <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sera installé sur le disque USB sélectionné ; toutes les données du disque cible seront effacées.
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_USB_CONFIG_NO_AVAILABLE_DISK" desc="Message when no USB disk is available, jemaos installer">
+      Aucun disque USB disponible
+    </message>
     <message name="IDS_JEMAOS_OOBE_WELCOME_DISABLE_NEXT_DESC" desc="oobe welcome disable next desc">
       Nous avons détecté que vous utilisez JemaOS à partir d'une image téléchargée. Pour bénéficier des mises à jour et du support complets, nous recommandons d'utiliser l'« Installateur » pour une installation sur disque. Vous pouvez <ph name="LINK_BEGIN">&lt;span id="continue-anyway"&gt;</ph>continuer à utiliser cette copie sans installer<ph name="LINK_END">&lt;/span&gt;</ph>, mais après une installation ultérieure toutes les données seront effacées et vous repartirez de cette page.
     </message>
@@ -539,6 +551,18 @@
     </message>
     <message name="IDS_JEMAOS_INSTALLER_ABORTING_MESAGE" desc="aborting message for jemaos installer">
       The installation is being terminated...
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_USB_INSTALLATION_TITLE" desc="Title for USB installation option, jemaos installer">
+      Install in USB
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_USB_INSTALLATION_HELPER_TEXT" desc="Helper text for USB installation option, jemaos installer">
+      Install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> onto a USB disk; all data on the target USB disk will be wiped.
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_USB_INSTALLATION_DISCLAIMER" desc="Disclaimer for USB installation, jemaos installer">
+      <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> will be installed on your selected USB disk; all data on the target disk will be wiped.
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_USB_CONFIG_NO_AVAILABLE_DISK" desc="Message when no USB disk is available, jemaos installer">
+      No USB disk available
     </message>
     <message name="IDS_JEMAOS_OOBE_WELCOME_DISABLE_NEXT_DESC" desc="oobe welcome disable next desc">
       We have detected that you are running this copy of JemaOS from a downloaded image file. To utilise the most comprehensive support features (including Over-The-Air updates) that JemaOS can offer, we strongly recommend you launch the "Installer" function to perform a full-disk installation of JemaOS to a separate storage device.

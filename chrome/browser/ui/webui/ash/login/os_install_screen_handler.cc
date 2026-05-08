@@ -183,6 +183,16 @@ void OsInstallScreenHandler::DeclareJemaInstallerLocalizedValues(
                IDS_JEMAOS_INSTALLER_GET_DISK_INFO_FAILED);
   builder->Add("jemaosInstallerAbortingMessage",
                IDS_JEMAOS_INSTALLER_ABORTING_MESAGE);
+  builder->Add("jemaosInstallerUsbInstallationTitle",
+               IDS_JEMAOS_INSTALLER_USB_INSTALLATION_TITLE);
+  builder->AddF("jemaosInstallerUsbInstallationHelperText",
+               IDS_JEMAOS_INSTALLER_USB_INSTALLATION_HELPER_TEXT,
+               IDS_INSTALLED_PRODUCT_OS_NAME);
+  builder->AddF("jemaosInstallerUsbInstallationDisclaimer",
+               IDS_JEMAOS_INSTALLER_USB_INSTALLATION_DISCLAIMER,
+               IDS_INSTALLED_PRODUCT_OS_NAME);
+  builder->Add("jemaosInstallerUsbConfigNoAvailableDisk",
+               IDS_JEMAOS_INSTALLER_USB_CONFIG_NO_AVAILABLE_DISK);
 
   builder->Add("jemaosOobeWelcomeDisableNextDesc",
                IDS_JEMAOS_OOBE_WELCOME_DISABLE_NEXT_DESC);

@@ -102,35 +102,36 @@ class JemaOSInstaller {
   async GetBlockDevList() {
     // TODO real dev
     let blkList = await this.execForResult(
-      'lsblk -l -J -o name,size,type,vendor,rev,ro,parttype,rm,mountpoint',
+      'lsblk -l -J -o name,size,type,vendor,rev,ro,parttype,rm,tran,mountpoint',
     );
     const mock = `{
 "blockdevices": [
-  {"name": "loop0", "size": "1.2G", "type": "loop", "vendor": null, "rev": null, "ro": "0", "parttype": null, "rm": "0", "mountpoint": null},
-  {"name": "loop1", "size": "90.8M", "type": "loop", "vendor": null, "rev": null, "ro": "1", "parttype": null, "rm": "0", "mountpoint": "/usr/share/chromeos-assets/speech_synthesis/patts"},
-  {"name": "sdb", "size": "128.3G", "type": "disk", "vendor": "QEMU    ", "rev": "2.5+", "ro": "0", "parttype": null, "rm": "0", "mountpoint": null},
-  {"name": "sdb2", "size": "18G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "mountpoint": "/"},
-  {"name": "sdb3", "size": "28G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "mountpoint": "/"},
-  {"name": "sda", "size": "8.3G", "type": "disk", "vendor": "QEMU    ", "rev": "2.5+", "ro": "0", "parttype": null, "rm": "0", "mountpoint": null},
-  {"name": "sda1", "size": "4G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "0fc63daf-8483-4772-8e79-3d69d8477de4", "rm": "0", "mountpoint": "/mnt/stateful_partition"},
-  {"name": "sda2", "size": "64M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "fe3a2a5d-4f32-41a7-b725-accc3285a309", "rm": "0", "mountpoint": null},
-  {"name": "sda3", "size": "2G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "mountpoint": "/"},
-  {"name": "sda4", "size": "64M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "fe3a2a5d-4f32-41a7-b725-accc3285a309", "rm": "0", "mountpoint": null},
-  {"name": "sda5", "size": "2G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "mountpoint": null},
-  {"name": "sda6", "size": "512B", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "fe3a2a5d-4f32-41a7-b725-accc3285a309", "rm": "0", "mountpoint": null},
-  {"name": "sda7", "size": "512B", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "mountpoint": null},
-  {"name": "sda8", "size": "16M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "0fc63daf-8483-4772-8e79-3d69d8477de4", "rm": "0", "mountpoint": "/usr/share/oem"},
-  {"name": "sda9", "size": "512B", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "2e0a753d-9e48-43b0-8337-b15192cb1b5e", "rm": "0", "mountpoint": null},
-  {"name": "sda10", "size": "512B", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "2e0a753d-9e48-43b0-8337-b15192cb1b5e", "rm": "0", "mountpoint": null},
-  {"name": "sda11", "size": "8M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "cab6e88e-abf3-4102-a07a-d4bb9be3c1d3", "rm": "0", "mountpoint": null},
-  {"name": "sdb12", "size": "128M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", "rm": "0", "mountpoint": null},
-  {"name": "sda22", "size": "90G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "x12a7328-f81f-11d2-ba4b-00a0c93ec93b", "rm": "0", "mountpoint": "/tmp/jemaos_dualboot_XXX"},
-  {"name": "zram0", "size": "11.4G", "type": "disk", "vendor": null, "rev": null, "ro": "0", "parttype": null, "rm": "0", "mountpoint": "[SWAP]"},
-  {"name": "encstateful", "size": "1.2G", "type": "dm", "vendor": null, "rev": null, "ro": "0", "parttype": null, "rm": "0", "mountpoint": "/mnt/stateful_partition/encrypted"},
-  {"name": "sdc", "size": "128.3G", "type": "disk", "vendor": "QEMU    ", "rev": "2.5+", "ro": "0", "parttype": null, "rm": "0", "mountpoint": null},
-  {"name": "sdc1", "size": "9G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "mountpoint": "/"},
-  {"name": "sdc2", "size": "29G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "mountpoint": "/"},
-  {"name": "sdc12", "size": "128M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", "rm": "0", "mountpoint": null}
+  {"name": "loop0", "size": "1.2G", "type": "loop", "vendor": null, "rev": null, "ro": "0", "parttype": null, "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "loop1", "size": "90.8M", "type": "loop", "vendor": null, "rev": null, "ro": "1", "parttype": null, "rm": "0", "tran": null, "mountpoint": "/usr/share/chromeos-assets/speech_synthesis/patts"},
+  {"name": "sdb", "size": "128.3G", "type": "disk", "vendor": "QEMU    ", "rev": "2.5+", "ro": "0", "parttype": null, "rm": "0", "tran": "sata", "mountpoint": null},
+  {"name": "sdb2", "size": "18G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "tran": null, "mountpoint": "/"},
+  {"name": "sdb3", "size": "28G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "tran": null, "mountpoint": "/"},
+  {"name": "sda", "size": "8.3G", "type": "disk", "vendor": "QEMU    ", "rev": "2.5+", "ro": "0", "parttype": null, "rm": "0", "tran": "sata", "mountpoint": null},
+  {"name": "sda1", "size": "4G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "0fc63daf-8483-4772-8e79-3d69d8477de4", "rm": "0", "tran": null, "mountpoint": "/mnt/stateful_partition"},
+  {"name": "sda2", "size": "64M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "fe3a2a5d-4f32-41a7-b725-accc3285a309", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sda3", "size": "2G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "tran": null, "mountpoint": "/"},
+  {"name": "sda4", "size": "64M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "fe3a2a5d-4f32-41a7-b725-accc3285a309", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sda5", "size": "2G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sda6", "size": "512B", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "fe3a2a5d-4f32-41a7-b725-accc3285a309", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sda7", "size": "512B", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sda8", "size": "16M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "0fc63daf-8483-4772-8e79-3d69d8477de4", "rm": "0", "tran": null, "mountpoint": "/usr/share/oem"},
+  {"name": "sda9", "size": "512B", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "2e0a753d-9e48-43b0-8337-b15192cb1b5e", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sda10", "size": "512B", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "2e0a753d-9e48-43b0-8337-b15192cb1b5e", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sda11", "size": "8M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "cab6e88e-abf3-4102-a07a-d4bb9be3c1d3", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sdb12", "size": "128M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sda22", "size": "90G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "x12a7328-f81f-11d2-ba4b-00a0c93ec93b", "rm": "0", "tran": null, "mountpoint": "/tmp/jemaos_dualboot_XXX"},
+  {"name": "zram0", "size": "11.4G", "type": "disk", "vendor": null, "rev": null, "ro": "0", "parttype": null, "rm": "0", "tran": null, "mountpoint": "[SWAP]"},
+  {"name": "encstateful", "size": "1.2G", "type": "dm", "vendor": null, "rev": null, "ro": "0", "parttype": null, "rm": "0", "tran": null, "mountpoint": "/mnt/stateful_partition/encrypted"},
+  {"name": "sdc", "size": "128.3G", "type": "disk", "vendor": "QEMU    ", "rev": "2.5+", "ro": "0", "parttype": null, "rm": "0", "tran": "sata", "mountpoint": null},
+  {"name": "sdc1", "size": "9G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "tran": null, "mountpoint": "/"},
+  {"name": "sdc2", "size": "29G", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec", "rm": "0", "tran": null, "mountpoint": "/"},
+  {"name": "sdc12", "size": "128M", "type": "part", "vendor": null, "rev": null, "ro": "0", "parttype": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", "rm": "0", "tran": null, "mountpoint": null},
+  {"name": "sdd", "size": "32G", "type": "disk", "vendor": "USB Flash", "rev": "1.00", "ro": "0", "parttype": null, "rm": "1", "tran": "usb", "mountpoint": null}
 ]
 }`;
     if (this.IS_DEBUG) blkList = mock;
@@ -326,6 +327,68 @@ class JemaOSInstaller {
 
   static get DualbootCommand() {
     return '/usr/sbin/dual-boot-install';
+  }
+
+  async InstallToUSB({ diskPath }) {
+    console.log('install to USB diskpath', diskPath);
+    const self = this;
+    self.forceClosed = false;
+    const processParser = [
+      { filter: 'Installing partition 5', indicator: 20 },
+      { filter: 'Installing partition 3', indicator: 40 },
+      { filter: 'Installing the stateful partition', indicator: 60 },
+    ];
+    let indicator = 0;
+
+    function dispatchSuccess() {
+      self.dispatchEvent(JemaOSInstaller.Events.OnSuccess);
+    }
+
+    function dispatchError(error) {
+      if (self.forceClosed) return;
+      self.dispatchEvent(JemaOSInstaller.Events.OnError, { detail: { error }});
+    }
+
+    function findProgressIndicator(result, filter) {
+      try {
+        const lines = result.split('\n');
+        for (let i = 0; i < lines.length; i += 1) {
+          const line = lines[i];
+          if (line.startsWith(filter)) {
+            return true;
+          }
+        }
+        return false;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function dispatchProcess(result) {
+      let findIndicator = false;
+      for (let i = indicator; i < processParser.length; i += 1) {
+        if (findProgressIndicator(result, processParser[i].filter)) {
+          self.dispatchEvent(JemaOSInstaller.Events.OnProgress, { detail: { desc: processParser[i].filter, indicator: processParser[i].indicator } });
+          indicator = i + 1;
+          findIndicator = true;
+          break;
+        }
+      }
+      if (!findIndicator) {
+        self.dispatchEvent(JemaOSInstaller.Events.OnProgress, { detail: { desc: result ? result.trim() : '' } });
+      }
+    }
+
+    return this.isARM().then((ret) => {
+      let extraArray = ['--skip_dst_removable'];
+      if (ret) {
+        extraArray.push('--skip_postinstall');
+      }
+      const extra = extraArray.join(' ');
+      return this.execForLongTask(`${JemaOSInstaller.InstallCommand} ${extra} --dst ${diskPath} --yes`,
+        this.asyncTaskCreated,
+        dispatchSuccess, dispatchError, 999999, 2, 10, dispatchProcess);
+    });
   }
 
   static InstallrEFIndCMD(devPath) {
@@ -594,6 +657,7 @@ enum InstallSteps {
   PORTAL = 'portal',
   NORMAL_CONFIG = 'normal-config',
   DUALBOOT_CONFIG = 'dualboot-config',
+  USB_CONFIG = 'usb-config',
   INSTALLING = 'installing',
   ABORTING = 'aborting',
   DONE = 'done',
@@ -602,6 +666,7 @@ enum InstallSteps {
 enum InstallTypes {
   NORMAL = 'normal',
   DUALBOOT = 'dualboot',
+  USB = 'usb',
 };
 
 enum InstallResults {
@@ -702,6 +767,19 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
         type: Boolean,
         value: false,
         computed: 'computeIsDualbootSetup_(dualbootConfigSelectedOSPart_, dualbootConfigSelectedEFIPart_)',
+      },
+      usbConfigSelectedDisk_: {
+        type: String,
+        value: '',
+      },
+      usbConfigMessage_: {
+        type: String,
+        value: '',
+      },
+      isUsbSetup_: {
+        type: Boolean,
+        value: false,
+        computed: 'computeIsUsbSetup_(usbConfigSelectedDisk_)',
       },
       installingTitle_: {
         type: String,
@@ -840,6 +918,8 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     this.dualbootConfigSelectedOSPart_ = '';
     this.dualbootConfigSelectedEFIPart_ = '';
     this.multiBootOptionSelected_ = '';
+    this.usbConfigSelectedDisk_ = '';
+    this.usbConfigMessage_ = '';
     this.isNormalSetup_ = false;
     this.isDualbootSetup_ = false;
     this.installingTitle_ = this.i18n('jemaosInstallerInstalling');
@@ -942,6 +1022,9 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     } else if (this.selectedInstallType_ === InstallTypes.DUALBOOT) {
       this.setUIStep(InstallSteps.DUALBOOT_CONFIG);
       this.prepareConfigForDualbootInstall_();
+    } else if (this.selectedInstallType_ === InstallTypes.USB) {
+      this.setUIStep(InstallSteps.USB_CONFIG);
+      this.prepareConfigForUsbInstall_();
     }
   }
 
@@ -990,6 +1073,39 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
 
   computeIsNormalSetup_(normalConfigSelectDisk) {
     return !!normalConfigSelectDisk;
+  }
+
+  computeIsUsbSetup_(usbConfigSelectedDisk) {
+    return !!usbConfigSelectedDisk;
+  }
+
+  async prepareConfigForUsbInstall_() {
+    if (this.isUsbSetup_) return;
+    const isUsbDisk = d => {
+      // Support string, integer, and boolean forms of the rm field
+      // (lsblk --json may return "1", 1, or true depending on kernel/version)
+      const rmFlag = String(d.rm) === '1' || d.rm === true;
+      // tran === 'usb' is the most reliable indicator (transport type)
+      return rmFlag || d.tran === 'usb';
+    };
+    const list = this.fullDiskList_.filter(d => {
+      return d.type === 'disk' && isUsbDisk(d) && !this.isRootDev_(d);
+    });
+    if (!list.length) {
+      this.usbConfigMessage_ = this.i18n('jemaosInstallerUsbConfigNoAvailableDisk');
+      return;
+    }
+    const selectList = list.map(d => DiskToSelectOption(d));
+    if (selectList.length) {
+      this.setupSelect_(this.$.usbConfigDiskList, selectList, this.onUsbConfigSelectDiskSelected_.bind(this));
+    }
+    if (selectList.length === 1) {
+      this.usbConfigSelectedDisk_ = selectList[0].value;
+    }
+  }
+
+  onUsbConfigSelectDiskSelected_(value) {
+    this.usbConfigSelectedDisk_ = value;
   }
 
   computeIsDualbootSetup_(dualbootConfigSelectedOSPart, dualbootConfigSelectedEFIPart) {
@@ -1105,6 +1221,8 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
         installrEFI: this.multiBootOptionSelected_ === MultiBootOptions.REFIND,
         installBoot: this.multiBootOptionSelected_ === MultiBootOptions.UEFI,
       });
+    } else if (this.selectedInstallType_ === InstallTypes.USB) {
+      this.installer_.InstallToUSB({ diskPath: JemaOSInstaller.GetDevPath(this.usbConfigSelectedDisk_) });
     }
   }
 
@@ -1119,6 +1237,7 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
         break;
       case InstallSteps.NORMAL_CONFIG:
       case InstallSteps.DUALBOOT_CONFIG:
+      case InstallSteps.USB_CONFIG:
         this.setUIStep(InstallSteps.PORTAL);
         break;
       case InstallSteps.DONE:
@@ -1129,6 +1248,8 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
             this.setUIStep(InstallSteps.NORMAL_CONFIG);
           } else if (this.selectedInstallType_ === InstallTypes.DUALBOOT) {
             this.setUIStep(InstallSteps.DUALBOOT_CONFIG);
+          } else if (this.selectedInstallType_ === InstallTypes.USB) {
+            this.setUIStep(InstallSteps.USB_CONFIG);
           }
         }
         break;

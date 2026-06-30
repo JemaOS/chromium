@@ -42,8 +42,17 @@ class WidevineHelper {
     return '--file';
   }
 
+  static get AutoParam() {
+    return '--auto';
+  }
+
   static get DisableParam() {
     return '--disable';
+  }
+
+  async auto() {
+    await this.shellClient_.ExecForResult(
+      `${WidevineHelper.Command} ${WidevineHelper.AutoParam}`);
   }
 
   async isSupported() {
@@ -298,7 +307,6 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     this.addWebUiListener('show-rotate-screen-button-changed', this.onShowRotateScreenButtonChanged_.bind(this));
     this.addWebUiListener('is-in-tablet-physical-state-changed', this.onIsInTabletPhysicalStateChanged_.bind(this));
     this.addWebUiListener('show-switch-tablet-laptop-button-changed', this.onShowSwitchTabletLaptopButtonChanged_.bind(this));
-    this.addWebUiListener('jemaos-libwidevine-file-selected', this.onLibwidevineFileSelected_.bind(this));
 
     this.addWebUiListener('jemaos-backup-file-selected', this.onBackupFileSelected_.bind(this));
     this.addWebUiListener('jemaos-backup-task-finished', this.onBackupDone_.bind(this));
@@ -412,16 +420,16 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     const enabled = !this.libwidevineEnabled_;
     this.libwidevineEnabled_ = enabled;
     if (enabled) {
-      chrome.send('selectLibwidevineFile', []);
+      await this.enableLibwidevineAuto_();
     } else {
       await this.disableLibwidevine_();
     }
   }
 
-  async enableLibwidevine_(file: string) {
+  async enableLibwidevineAuto_() {
     this.togglingWidevine_ = true;
     try {
-      await this.client_.toggle(file);
+      await this.client_.auto();
     } catch (e) {
       this.showWidevineErrorDialog_ = true;
     }
@@ -468,14 +476,6 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
   onWidevineErrorDialogClose_() {
     this.showWidevineErrorDialog_ = false;
-  }
-
-  async onLibwidevineFileSelected_(file: string | null) {
-    if (file) {
-      await this.enableLibwidevine_(file);
-    } else {
-      this.libwidevineEnabled_ = false;
-    }
   }
 
   async checkBackupSupported_() {

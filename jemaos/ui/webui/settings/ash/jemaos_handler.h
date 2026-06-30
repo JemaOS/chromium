@@ -44,7 +44,6 @@ class JemaOsHandler :
  private:
   enum class FileDialogType {
     kUnspecified,
-    kLibwidevine,
     kBackup,
     kRestore,
   };
@@ -66,7 +65,6 @@ class JemaOsHandler :
   void HandleSetForceTpmFallback(const base::Value::List& args);
   void OnForceTpmFallbackChanged();
 
-  void HandleSelectLibwidevineFile(const base::Value::List& args);
   void HandleGetRebootRequiredForWidevine(const base::Value::List& args);
   void HandleToggleRebootRequiredForWidevine(const base::Value::List& args);
 
@@ -75,8 +73,6 @@ class JemaOsHandler :
       const ui::SelectedFileInfo& path, int index) override;
   void FileSelectionCanceled() override;
 
-  void OnLibwidevineFileSelected(const base::FilePath& path);
-  void OnLibwidevineFileSelectionCanceled();
 
   bool nextToggleRebootRequiredForWidevine_ = false;
   bool lastToggleRebootRequiredForce_ = false;

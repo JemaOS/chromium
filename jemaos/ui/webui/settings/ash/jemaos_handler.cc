@@ -456,9 +456,15 @@ void JemaOsHandler::RegisterMessages() {
                           base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
-      "selectLibwidevineFile",
-      base::BindRepeating(&JemaOsHandler::HandleSelectLibwidevineFile,
+      "getRebootRequiredForWidevine",
+      base::BindRepeating(&JemaOsHandler::HandleGetRebootRequiredForWidevine,
                           base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
+      "toggleRebootRequiredForWidevine",
+      base::BindRepeating(
+          &JemaOsHandler::HandleToggleRebootRequiredForWidevine,
+          base::Unretained(this)));
+
   web_ui()->RegisterMessageCallback(
       "getRebootRequiredForWidevine",
       base::BindRepeating(&JemaOsHandler::HandleGetRebootRequiredForWidevine,
@@ -1260,29 +1266,6 @@ void JemaOsHandler::OnForceTpmFallbackChanged() {
   FireWebUIListener("force-tpm-fallback-changed", response);
 }
 
-void JemaOsHandler::HandleSelectLibwidevineFile(const base::Value::List& args) {
-  CHECK_EQ(0u, args.size());
-  select_file_dialog_ = ui::SelectFileDialog::Create(
-      this,
-      std::make_unique<ChromeSelectFilePolicy>(web_ui()->GetWebContents()));
-  ui::SelectFileDialog::FileTypeInfo file_type_info;
-  file_type_info.allowed_paths =
-    ui::SelectFileDialog::FileTypeInfo::NATIVE_PATH;
-  file_type_info.extensions.resize(1);
-  file_type_info.extensions[0].push_back(FILE_PATH_LITERAL("so"));
-  Browser* browser =
-      chrome::FindBrowserWithTab(web_ui()->GetWebContents());
-  base::FilePath default_path =
-    file_manager::util::GetDownloadsFolderForProfile(profile_);
-  file_dialog_type_ = FileDialogType::kLibwidevine;
-  select_file_dialog_->SelectFile(
-      ui::SelectFileDialog::SELECT_OPEN_FILE,
-      l10n_util::GetStringUTF16(
-        IDS_OS_SETTINGS_JEMAOS_SELECT_WIDEVINE_FILE_DIALOG_TITLE),
-      default_path, &file_type_info, 0, base::FilePath::StringType(),
-      browser->window()->GetNativeWindow(), nullptr);
-}
-
 void JemaOsHandler::HandleGetRebootRequiredForWidevine(
     const base::Value::List& args) {
   DCHECK(args.size());
@@ -1326,9 +1309,6 @@ void JemaOsHandler::FileSelected(const ui::SelectedFileInfo& file,
 
   select_file_dialog_ = nullptr;
   switch (file_dialog_type_) {
-    case FileDialogType::kLibwidevine:
-      OnLibwidevineFileSelected(file.path());
-      break;
     case FileDialogType::kBackup:
       OnBackupFileSelected(file.path());
       break;
@@ -1343,9 +1323,6 @@ void JemaOsHandler::FileSelected(const ui::SelectedFileInfo& file,
 void JemaOsHandler::FileSelectionCanceled() {
   select_file_dialog_ = nullptr;
   switch (file_dialog_type_) {
-    case FileDialogType::kLibwidevine:
-      OnLibwidevineFileSelectionCanceled();
-      break;
     case FileDialogType::kBackup:
       OnBackupFileSelectionCanceled();
       break;
@@ -1355,15 +1332,6 @@ void JemaOsHandler::FileSelectionCanceled() {
     case FileDialogType::kUnspecified:
       NOTREACHED();
   }
-}
-
-void JemaOsHandler::OnLibwidevineFileSelected(const base::FilePath& path) {
-  FireWebUIListener("jemaos-libwidevine-file-selected",
-      base::Value(path.value()));
-}
-
-void JemaOsHandler::OnLibwidevineFileSelectionCanceled() {
-  FireWebUIListener("jemaos-libwidevine-file-selected", base::Value());
 }
 
 void JemaOsHandler::HandleJemaOSBackupSupported(

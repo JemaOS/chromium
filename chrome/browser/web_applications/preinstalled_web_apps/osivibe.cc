@@ -8,7 +8,7 @@ namespace web_app {
 
 ExternalInstallOptions GetConfigForOsivibe() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://osivibe.vercel.app/"),
+      /*install_url=*/GURL("https://osivibe.jemaos.com/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

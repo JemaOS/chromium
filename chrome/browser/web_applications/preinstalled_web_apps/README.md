@@ -18,17 +18,19 @@ JemaOS uses the hardcoded C++ approach to preinstall PWAs. This is the most robu
 | App | URL | Function | Folder |
 |-----|-----|----------|--------|
 | JemaOS Community | https://community.jemaos.io/ | `GetConfigForJemaCommunity()` | Root |
-| JemaOS Remote Desktop | https://jema-rdp.vercel.app/ | `GetConfigForJemaRemoteDesktop()` | Root |
-| JemaOS Notes | https://jemanote-pwa.vercel.app/ | `GetConfigForJemaNotes()` | **OEM/JEMA** |
+| JemaOS Remote Desktop | https://remotedesktop.jemaos.com/ | `GetConfigForJemaRemoteDesktop()` | Root |
+| JemaOS Notes | https://jemanote.jemaos.com/ | `GetConfigForJemaNotes()` | **OEM/JEMA** |
 | Mistral AI | https://chat.mistral.ai/chat | `GetConfigForMistral()` | Root |
 | Qwant | https://www.qwant.com/?l=fr | `GetConfigForQwant()` | Root |
 | Calculator | https://calculator.apps.chrome/ | `GetConfigForJemaCalculator()` | Root |
 | Galerie | https://galerie-eta.vercel.app/ | `GetConfigForGalerie()` | Root |
-| Osivibe | https://osivibe.vercel.app/ | `GetConfigForOsivibe()` | **OEM/JEMA** |
-| Anu (Nephtys) | https://anu-nine.vercel.app/ | `GetConfigForAnu()` | **OEM/JEMA** |
-| JemaChess | https://jemachess.vercel.app/ | `GetConfigForJemaChess()` | **OEM/JEMA** |
-| SetSound | https://setsound.vercel.app/ | `GetConfigForSetSound()` | **OEM/JEMA** |
-| Anima | https://anima-app-one.vercel.app/ | `GetConfigForAnima()` | **OEM/JEMA** |
+| Osivibe | https://osivibe.jemaos.com/ | `GetConfigForOsivibe()` | **OEM/JEMA** |
+| Nephtys | https://nephtys.jemaos.com/auth | `GetConfigForNephtys()` | **OEM/JEMA** |
+| JemaChess | https://jemachess.jemaos.com/ | `GetConfigForJemaChess()` | **OEM/JEMA** |
+| SetSound | https://setsound.jemaos.com/ | `GetConfigForSetSound()` | **OEM/JEMA** |
+| Anima | https://anima.jemaos.com/ | `GetConfigForAnima()` | **OEM/JEMA** |
+| JemaPDF | https://jemapdf.jemaos.com/ | `GetConfigForJemaPDF()` | **OEM/JEMA** |
+| QuickText | https://textapp.jemaos.com/ | `GetConfigForQuickText()` | **OEM/JEMA** |
 | Gmail | https://mail.google.com/ | `GetConfigForJemaGmail()` | Root |
 | Text Editor | https://text.app/ | `GetConfigForJemaText()` | Root |
 | Office 365 | https://www.office.com/?auth=1 | `GetConfigForOffice365()` | Root |

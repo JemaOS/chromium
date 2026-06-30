@@ -8,7 +8,7 @@ namespace web_app {
 
 ExternalInstallOptions GetConfigForJemaNotes() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://jemanote-pwa.vercel.app/"),
+      /*install_url=*/GURL("https://jemanote.jemaos.com/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/web_applications/preinstalled_web_apps/anu.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/nephtys.h"
 
 namespace web_app {
 
-ExternalInstallOptions GetConfigForAnu() {
+ExternalInstallOptions GetConfigForNephtys() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://anu-nine.vercel.app/"),
+      /*install_url=*/GURL("https://nephtys.jemaos.com/auth"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

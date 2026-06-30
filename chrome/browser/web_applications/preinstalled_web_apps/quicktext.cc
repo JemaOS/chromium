@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/web_applications/preinstalled_web_apps/anima.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/quicktext.h"
 
 namespace web_app {
 
-ExternalInstallOptions GetConfigForAnima() {
+ExternalInstallOptions GetConfigForQuickText() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://anima.jemaos.com/"),
+      /*install_url=*/GURL("https://textapp.jemaos.com/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

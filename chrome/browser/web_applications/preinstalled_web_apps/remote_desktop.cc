@@ -8,7 +8,7 @@ namespace web_app {
 
 ExternalInstallOptions GetConfigForJemaRemoteDesktop() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://jema-rdp.vercel.app/"),
+      /*install_url=*/GURL("https://remotedesktop.jemaos.com/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

@@ -8,7 +8,7 @@ namespace web_app {
 
 ExternalInstallOptions GetConfigForSetSound() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://setsound.vercel.app/"),
+      /*install_url=*/GURL("https://setsound.jemaos.com/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

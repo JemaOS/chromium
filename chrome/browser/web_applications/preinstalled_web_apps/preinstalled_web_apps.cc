@@ -56,12 +56,13 @@
 #include "chrome/browser/web_applications/preinstalled_web_apps/proton_drive.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/galerie.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/osivibe.h"
-#include "chrome/browser/web_applications/preinstalled_web_apps/anu.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/nephtys.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/jemachess.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/setsound.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/anima.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
-#include "chrome/browser/web_applications/preinstalled_web_apps/office365.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/jemapdf.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/quicktext.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/toffeeshare.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/excalidraw.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/vscode.h"
@@ -116,7 +117,9 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps(
       GetConfigForOsivibe(),
       GetConfigForSetSound(),
       GetConfigForJemaChess(),
-      GetConfigForAnu(),
+      GetConfigForNephtys(),
+      GetConfigForJemaPDF(),
+      GetConfigForQuickText(),
 
       // Root Apps
       GetConfigForJemaCommunity(),
@@ -193,7 +196,9 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps(
       GetConfigForOsivibe(),
       GetConfigForSetSound(),
       GetConfigForJemaChess(),
-      GetConfigForAnu(),
+      GetConfigForNephtys(),
+      GetConfigForJemaPDF(),
+      GetConfigForQuickText(),
 
       // Root Apps
       GetConfigForJemaCommunity(),

@@ -8,7 +8,7 @@ namespace web_app {
 
 ExternalInstallOptions GetConfigForJemaChess() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://jemachess.vercel.app/"),
+      /*install_url=*/GURL("https://jemachess.jemaos.com/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 

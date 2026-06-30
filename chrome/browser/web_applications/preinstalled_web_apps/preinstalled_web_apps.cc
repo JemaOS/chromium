@@ -61,6 +61,7 @@
 #include "chrome/browser/web_applications/preinstalled_web_apps/setsound.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/anima.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/office365.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/jemapdf.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/quicktext.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/toffeeshare.h"

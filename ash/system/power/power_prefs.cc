@@ -101,7 +101,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
   registry->RegisterIntegerPref(prefs::kPowerLockScreenOffDelayMs, 40000);
   registry->RegisterIntegerPref(
       prefs::kPowerAcIdleAction,
-      chromeos::PowerPolicyController::ACTION_SUSPEND);
+      chromeos::PowerPolicyController::ACTION_DO_NOTHING);
   registry->RegisterBooleanPref(prefs::kPowerUseAudioActivity, true);
   registry->RegisterBooleanPref(prefs::kPowerUseVideoActivity, true);
   registry->RegisterBooleanPref(prefs::kPowerAllowWakeLocks, true);
@@ -240,7 +240,7 @@ void PowerPrefs::RegisterUserProfilePrefs(PrefRegistrySimple* registry) {
 
   registry->RegisterIntegerPref(
       prefs::kPowerBatteryIdleAction,
-      chromeos::PowerPolicyController::ACTION_SUSPEND);
+      chromeos::PowerPolicyController::ACTION_DO_NOTHING);
   registry->RegisterIntegerPref(
       prefs::kPowerLidClosedAction,
       chromeos::PowerPolicyController::ACTION_SUSPEND);

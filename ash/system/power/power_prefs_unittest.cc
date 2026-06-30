@@ -413,14 +413,18 @@ TEST_F(PowerPrefsTest, DisabledLockScreen) {
 
   // Verify that the power policy actions are set to default values initially.
   EXPECT_EQ(std::vector<power_manager::PowerManagementPolicy_Action>(
-                3, power_manager::PowerManagementPolicy_Action_SUSPEND),
+                {power_manager::PowerManagementPolicy_Action_DO_NOTHING,
+                 power_manager::PowerManagementPolicy_Action_DO_NOTHING,
+                 power_manager::PowerManagementPolicy_Action_SUSPEND}),
             GetCurrentPowerPolicyActions());
 
   // The automatic screen locking is enabled, but, as the lock screen is
   // allowed, the power policy actions still have the default values.
   prefs->SetBoolean(prefs::kEnableAutoScreenLock, true);
   EXPECT_EQ(std::vector<power_manager::PowerManagementPolicy_Action>(
-                3, power_manager::PowerManagementPolicy_Action_SUSPEND),
+                {power_manager::PowerManagementPolicy_Action_DO_NOTHING,
+                 power_manager::PowerManagementPolicy_Action_DO_NOTHING,
+                 power_manager::PowerManagementPolicy_Action_SUSPEND}),
             GetCurrentPowerPolicyActions());
 
   // The lock screen is disabled, but, as automatic screen locking is not
@@ -428,7 +432,9 @@ TEST_F(PowerPrefsTest, DisabledLockScreen) {
   prefs->ClearPref(prefs::kEnableAutoScreenLock);
   prefs->SetBoolean(prefs::kAllowScreenLock, false);
   EXPECT_EQ(std::vector<power_manager::PowerManagementPolicy_Action>(
-                3, power_manager::PowerManagementPolicy_Action_SUSPEND),
+                {power_manager::PowerManagementPolicy_Action_DO_NOTHING,
+                 power_manager::PowerManagementPolicy_Action_DO_NOTHING,
+                 power_manager::PowerManagementPolicy_Action_SUSPEND}),
             GetCurrentPowerPolicyActions());
 
   // The automatic screen locking is enabled and the lock screen is disabled, so

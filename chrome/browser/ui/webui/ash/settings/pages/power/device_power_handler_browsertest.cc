@@ -69,9 +69,9 @@ class PowerHandlerTest : public InProcessBrowserTest {
     std::set<PowerHandler::IdleBehavior> possible_ac_behaviors;
     std::set<PowerHandler::IdleBehavior> possible_battery_behaviors;
     PowerHandler::IdleBehavior current_ac_behavior =
-        PowerHandler::IdleBehavior::DISPLAY_OFF_SLEEP;
+        PowerHandler::IdleBehavior::DISPLAY_OFF;
     PowerHandler::IdleBehavior current_battery_behavior =
-        PowerHandler::IdleBehavior::DISPLAY_OFF_SLEEP;
+        PowerHandler::IdleBehavior::DISPLAY_OFF;
     bool ac_idle_managed = false;
     bool battery_idle_managed = false;
     PowerPolicyController::Action lid_closed_behavior =

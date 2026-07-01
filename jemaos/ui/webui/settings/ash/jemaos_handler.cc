@@ -19,30 +19,7 @@
 #include "components/prefs/pref_service.h"
 #include "chrome/browser/browser_process.h"
 #include "components/user_manager/user_manager.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller.h"
-#include "jemaos/prefs/jemaos_pref_names.h"
-#include "chrome/browser/ash/profiles/profile_helper.h"
-#include "ui/base/l10n/l10n_util.h"
-// #include "chromeos/cryptohome/system_salt_getter.h"
-// #include "chrome/browser/ash/settings/token_encryptor.h"
-#include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_window.h"
-#include "chrome/browser/ui/chrome_select_file_policy.h"
-#include "content/public/browser/browser_thread.h"
-#include "chrome/browser/ash/file_manager/path_util.h"
-#include "chrome/grit/generated_resources.h"
-#include "ui/shell_dialogs/selected_file_info.h"
-#include "chrome/browser/ash/file_manager/volume_manager.h"
-#include "jemaos/switches/misc/misc_constants.h"
-#include "jemaos/misc/jemaos_dev_mode.h"
-#include "chromeos/ash/components/login/auth/auth_factor_editor.h"
-#include "chromeos/ash/components/cryptohome/auth_factor_conversions.h"
-#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
-#include "base/hash/sha1.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
-#include "base/json/json_reader.h"
+#include "components/component_updater/component_updater_service.h"
 #include <sys/stat.h>
 
 namespace ash::settings {
@@ -464,6 +441,10 @@ void JemaOsHandler::RegisterMessages() {
       base::BindRepeating(
           &JemaOsHandler::HandleToggleRebootRequiredForWidevine,
           base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
+      "triggerWidevineUpdate",
+      base::BindRepeating(&JemaOsHandler::HandleTriggerWidevineUpdate,
+                          base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
       "jemaosBackupSupported",
@@ -1292,6 +1273,45 @@ void JemaOsHandler::HandleToggleRebootRequiredForWidevine(
   }
   prefs->SetBoolean(jemaos::prefs::kRebootRequiredForWidevine, rebootRequired);
   ResolveJavascriptCallback(callback_id, base::Value(rebootRequired));
+}
+
+void JemaOsHandler::HandleTriggerWidevineUpdate(
+    const base::Value::List& args) {
+  if (args.size() < 1 || !args[0].is_string()) {
+    VLOG(2) << "Invalid arguments for triggerWidevineUpdate";
+    return;
+  }
+  std::string callback_id = args[0].GetString();
+
+  constexpr char kWidevineCdmComponentId[] =
+      "oimompecagnajdejgnnjijobebaeigek";
+  component_updater::ComponentUpdateService* cus =
+      g_browser_process->component_updater();
+  if (!cus) {
+    VLOG(2) << "ComponentUpdateService not available";
+    ResolveJavascriptCallback(callback_id, base::Value(false));
+    return;
+  }
+
+  // Trigger a foreground on-demand update. The component updater will download
+  // the verified Chrome OS Widevine CDM image, register it with imageloader, and
+  // update the hint file. A reboot is required for the zygote to load the new
+  // CDM before the sandbox is locked down.
+  cus->MaybeThrottle(
+      kWidevineCdmComponentId,
+      base::BindOnce(
+          [](base::WeakPtr<JemaOsHandler> handler,
+             const std::string& callback_id) {
+            if (!handler) {
+              return;
+            }
+            handler->ResolveJavascriptCallback(callback_id, base::Value(true));
+            // Mark that a reboot is required to load the CDM.
+            PrefService* prefs = g_browser_process->local_state();
+            prefs->SetBoolean(
+                jemaos::prefs::kRebootRequiredForWidevine, true);
+          },
+          weak_ptr_factory_.GetWeakPtr(), callback_id));
 }
 
 void JemaOsHandler::FileSelected(const ui::SelectedFileInfo& file,

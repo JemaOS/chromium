@@ -391,9 +391,8 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   async checkLibwidevineStatus_() {
     const support = await this.client_.isSupported();
     if (support) {
-      this.getLibwidevineScriptRunningState_();
       const result = await this.getLibwidevineEnabled_();
-      // if we can't get 'yes' or 'no' throught the script, do not show libwidevine settings block
+      // Show the toggle if we can determine yes/no status.
       this.showToggleWidevine_ = !!result;
     }
     if (this.showToggleWidevine_) {
@@ -429,14 +428,20 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   async enableLibwidevineAuto_() {
     this.togglingWidevine_ = true;
     try {
-      await this.client_.auto();
-    } catch (e) {
-      this.showWidevineErrorDialog_ = true;
-    }
-    this.togglingWidevine_ = false;
-    const result = await this.getLibwidevineEnabled_();
-    if (result === 'yes') {
+      const result = await sendWithPromise('triggerWidevineUpdate');
+      if (!result) {
+        this.libwidevineEnabled_ = false;
+        this.showWidevineErrorDialog_ = true;
+        return;
+      }
+      // The component update was triggered. A reboot is required for the
+      // zygote to load the downloaded Widevine CDM.
       this.toggleRebootRequiredForWidevine_(true);
+    } catch (e) {
+      this.libwidevineEnabled_ = false;
+      this.showWidevineErrorDialog_ = true;
+    } finally {
+      this.togglingWidevine_ = false;
     }
   }
 

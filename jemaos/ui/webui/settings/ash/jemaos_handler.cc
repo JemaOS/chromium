@@ -466,15 +466,6 @@ void JemaOsHandler::RegisterMessages() {
           base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
-      "getRebootRequiredForWidevine",
-      base::BindRepeating(&JemaOsHandler::HandleGetRebootRequiredForWidevine,
-                          base::Unretained(this)));
-  web_ui()->RegisterMessageCallback(
-      "toggleRebootRequiredForWidevine",
-      base::BindRepeating(&JemaOsHandler::HandleToggleRebootRequiredForWidevine,
-                          base::Unretained(this)));
-
-  web_ui()->RegisterMessageCallback(
       "jemaosBackupSupported",
       base::BindRepeating(&JemaOsHandler::HandleJemaOSBackupSupported,
                           base::Unretained(this)));

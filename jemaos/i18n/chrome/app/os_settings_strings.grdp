@@ -108,7 +108,7 @@
     Échec de l'activation de Widevine...
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_FAILED_ENABLE_WIDEVINE_MESSAGE" desc="jemaos settings message of failed enabling libwidevine">
-    Le fichier "libwidevine.so" sélectionné n'est pas valide, veuillez réessayer avec un fichier différent.
+    L'installation du module Widevine CDM a échoué. Veuillez vérifier votre connexion et réessayer.
   </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_ACCOUNT_TITLE" desc="jemaos settings account section title">
     Paramètres du compte JemaOS

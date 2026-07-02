@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/process/launch.h"
+#include "base/process/process.h"
+#include "base/task/thread_pool.h"
+#include "base/threading/thread_restrictions.h"
 #include "jemaos/ui/webui/settings/ash/jemaos_handler.h"
 
 #include <algorithm>
@@ -10,7 +14,6 @@
 #include "base/notreached.h"
 #include "base/values.h"
 #include "base/files/file_util.h"
-#include "base/task/thread_pool.h"
 #include "ash/shell.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/profiles/profile.h"
@@ -19,7 +22,6 @@
 #include "components/prefs/pref_service.h"
 #include "chrome/browser/browser_process.h"
 #include "components/user_manager/user_manager.h"
-#include "components/component_updater/component_updater_service.h"
 #include <sys/stat.h>
 
 namespace ash::settings {
@@ -1283,33 +1285,52 @@ void JemaOsHandler::HandleTriggerWidevineUpdate(
   }
   std::string callback_id = args[0].GetString();
 
-  constexpr char kWidevineCdmComponentId[] =
-      "oimompecagnajdejgnnjijobebaeigek";
-  component_updater::ComponentUpdateService* cus =
-      g_browser_process->component_updater();
-  if (!cus) {
-    VLOG(2) << "ComponentUpdateService not available";
-    ResolveJavascriptCallback(callback_id, base::Value(false));
-    return;
-  }
+  // Run the JemaOS helper that downloads and installs a Widevine CDM suitable
+  // for unbranded ChromiumOS builds. The helper writes the Chrome hint file
+  // and bind-mounts the CDM with exec on the noexec /home/chronos partition.
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE,
+      {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
+       base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
+      base::BindOnce([]() {
+        std::vector<std::string> argv = {
+            "/usr/bin/enable_libwidevine",
+            "--auto",
+        };
 
-  // Trigger a foreground on-demand update. The component updater will download
-  // the verified Chrome OS Widevine CDM image, register it with imageloader, and
-  // update the hint file. A reboot is required for the zygote to load the new
-  // CDM before the sandbox is locked down.
-  cus->MaybeThrottle(
-      kWidevineCdmComponentId,
+        base::Process process = base::LaunchProcess(argv, base::LaunchOptions());
+        if (!process.IsValid()) {
+          LOG(ERROR) << "Failed to launch enable_libwidevine";
+          return false;
+        }
+
+        base::ScopedAllowBaseSyncPrimitives allow_sync;
+        int exit_code = 0;
+        if (!process.WaitForExit(&exit_code)) {
+          LOG(ERROR) << "enable_libwidevine did not exit cleanly";
+          return false;
+        }
+
+        if (exit_code != 0) {
+          LOG(ERROR) << "enable_libwidevine exited with code " << exit_code;
+          return false;
+        }
+
+        return true;
+      }),
       base::BindOnce(
-          [](base::WeakPtr<JemaOsHandler> handler,
-             const std::string& callback_id) {
+          [](base::WeakPtr<JemaOsHandler> handler, const std::string& callback_id,
+             bool success) {
             if (!handler) {
               return;
             }
-            handler->ResolveJavascriptCallback(callback_id, base::Value(true));
-            // Mark that a reboot is required to load the CDM.
-            PrefService* prefs = g_browser_process->local_state();
-            prefs->SetBoolean(
-                jemaos::prefs::kRebootRequiredForWidevine, true);
+            if (success) {
+              PrefService* prefs = g_browser_process->local_state();
+              prefs->SetBoolean(
+                  jemaos::prefs::kRebootRequiredForWidevine, true);
+            }
+            handler->ResolveJavascriptCallback(callback_id,
+                                              base::Value(success));
           },
           weak_ptr_factory_.GetWeakPtr(), callback_id));
 }

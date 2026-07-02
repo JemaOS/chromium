@@ -11849,7 +11849,7 @@ Les autorisations que vous avez déjà accordées aux sites Web et aux applis pe
 <translation id="7170710479480545448">Service d'assistance à distance</translation>
 <translation id="7303548327449168702">Vous n'êtes pas en mode tablette pour le moment, le bouton « Faire pivoter l'écran » est maintenant masqué</translation>
 <translation id="7326893024940073254">Divers</translation>
-<translation id="7386874137903403308">Le fichier « libwidevine.so » sélectionné n'est pas valide, veuillez réessayer avec un fichier différent.</translation>
+<translation id="7386874137903403308">L'installation du module Widevine CDM a échoué. Veuillez vérifier votre connexion et réessayer.</translation>
 <translation id="7392552814771602496">Édition non commerciale</translation>
 <translation id="7421654468125961872">Le service d'assistance à distance permet aux représentants du support officiel de JemaOS d'identifier les problèmes système. Actuellement, le service d'assistance à distance ne peut être initié que par les représentants du support officiel de JemaOS.</translation>
 <translation id="7470950608293086085">Attention ! L'activation du « Mode développeur » est une opération irréversible. Si vous souhaitez désactiver le « Mode développeur », vous devez réinstaller JemaOS, ce qui effacera toutes les données. Veuillez sauvegarder vos données et procéder à vos propres risques.</translation>

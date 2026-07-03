@@ -23,9 +23,21 @@
 #include "chrome/browser/browser_process.h"
 #include "components/user_manager/user_manager.h"
 #include "chrome/browser/ash/file_manager/volume.h"
+#include "chrome/browser/ash/file_manager/volume_manager.h"
+#include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "jemaos/prefs/jemaos_pref_names.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
+#include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
+#include "base/json/json_reader.h"
+#include "content/public/browser/browser_thread.h"
+#include "ui/shell_dialogs/selected_file_info.h"
+#include "chrome/browser/ui/shell_dialogs/chrome_select_file_policy.h"
+#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_finder.h"
+#include "ui/base/l10n/l10n_util.h"
+#include "chrome/grit/generated_resources.h"
+#include "jemaos/misc/jemaos_dev_mode.h"
 #include <sys/stat.h>
 
 namespace ash::settings {

@@ -32,7 +32,7 @@
 #include "base/json/json_reader.h"
 #include "content/public/browser/browser_thread.h"
 #include "ui/shell_dialogs/selected_file_info.h"
-#include "chrome/browser/ui/shell_dialogs/chrome_select_file_policy.h"
+#include "chrome/browser/ui/chrome_select_file_policy.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "ui/base/l10n/l10n_util.h"

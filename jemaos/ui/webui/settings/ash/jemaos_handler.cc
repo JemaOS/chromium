@@ -73,6 +73,7 @@ bool CreateArcMediaAutoScanIndicatorFile() {
   return base::WriteFile(base::FilePath(kJemaOSArcMediaAutoScanIndicatorFile), "");
 }
 
+
 // Embedded backup/restore script for restore operations
 // SAFE VERSION: Only backs up and restores MyFiles folder contents
 // Never touches browser profile, auth files, or system directories
@@ -1297,70 +1298,43 @@ void JemaOsHandler::HandleToggleRebootRequiredForWidevine(
 
 void JemaOsHandler::HandleTriggerWidevineUpdate(
     const base::Value::List& args) {
+  AllowJavascript();
   if (args.size() < 1 || !args[0].is_string()) {
     VLOG(2) << "Invalid arguments for triggerWidevineUpdate";
     return;
   }
   std::string callback_id = args[0].GetString();
 
-  // Run the JemaOS helper that downloads and installs a Widevine CDM suitable
-  // for unbranded ChromiumOS builds. The helper writes the Chrome hint file
-  // and bind-mounts the CDM with exec on the noexec /home/chronos partition.
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE,
-      {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
-       base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
-      base::BindOnce([]() {
-        std::vector<std::string> argv = {
-            "/usr/bin/sudo",
-            "-n",
-            "/usr/bin/enable_libwidevine",
-            "--auto",
-        };
+  // Use the JemaOS shell client (system DBus service) to run the helper.
+  // Launching a root process directly from the browser process is blocked by
+  // the sandbox, so we delegate to the shell daemon which already has the
+  // required privileges.
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for Widevine update";
+    ResolveJavascriptCallback(callback_id, base::Value(false));
+    return;
+  }
 
-        base::LaunchOptions options;
-        // Chrome sets LD_LIBRARY_PATH which sudo rejects. Clear the inherited
-        // environment so sudo runs the script with a clean env, but restore
-        // PATH so the script can find standard utilities.
-        options.clear_environment = true;
-        options.environment["PATH"] = "/usr/local/sbin:/usr/local/bin:"
-                                      "/usr/sbin:/usr/bin:/sbin:/bin";
-        base::Process process = base::LaunchProcess(argv, options);
-        if (!process.IsValid()) {
-          LOG(ERROR) << "Failed to launch enable_libwidevine";
-          return false;
-        }
+  shell_client->SyncExec(
+      "/usr/bin/enable_libwidevine --auto",
+      base::BindOnce(&JemaOsHandler::OnWidevineUpdateCompleted,
+                     weak_ptr_factory_.GetWeakPtr(), callback_id));
+}
 
-        // ScopedAllowBaseSyncPrimitives is private in R132; WaitForExit works
-        // without it in release builds (dcheck is off).
-        int exit_code = 0;
-        if (!process.WaitForExit(&exit_code)) {
-          LOG(ERROR) << "enable_libwidevine did not exit cleanly";
-          return false;
-        }
-
-        if (exit_code != 0) {
-          LOG(ERROR) << "enable_libwidevine exited with code " << exit_code;
-          return false;
-        }
-
-        return true;
-      }),
-      base::BindOnce(
-          [](base::WeakPtr<JemaOsHandler> handler, const std::string& callback_id,
-             bool success) {
-            if (!handler) {
-              return;
-            }
-            if (success) {
-              PrefService* prefs = g_browser_process->local_state();
-              prefs->SetBoolean(
-                  jemaos::prefs::kRebootRequiredForWidevine, true);
-            }
-            handler->ResolveJavascriptCallback(callback_id,
-                                              base::Value(success));
-          },
-          weak_ptr_factory_.GetWeakPtr(), callback_id));
+void JemaOsHandler::OnWidevineUpdateCompleted(
+    const std::string& callback_id,
+    std::optional<ShellState> state) {
+  bool success = state && state->code == 0;
+  if (!success) {
+    LOG(ERROR) << "Widevine update failed"
+               << (state ? " with code " + std::to_string(state->code)
+                         : " (no state)");
+  } else {
+    PrefService* prefs = g_browser_process->local_state();
+    prefs->SetBoolean(jemaos::prefs::kRebootRequiredForWidevine, true);
+  }
+  ResolveJavascriptCallback(callback_id, base::Value(success));
 }
 
 void JemaOsHandler::FileSelected(const ui::SelectedFileInfo& file,

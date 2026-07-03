@@ -1299,11 +1299,12 @@ void JemaOsHandler::HandleToggleRebootRequiredForWidevine(
 void JemaOsHandler::HandleTriggerWidevineUpdate(
     const base::Value::List& args) {
   AllowJavascript();
-  if (args.size() < 1 || !args[0].is_string()) {
+  if (args.size() < 2 || !args[0].is_string() || !args[1].is_bool()) {
     VLOG(2) << "Invalid arguments for triggerWidevineUpdate";
     return;
   }
   std::string callback_id = args[0].GetString();
+  bool enable = args[1].GetBool();
 
   // Use the JemaOS shell client (system DBus service) to run the helper.
   // Launching a root process directly from the browser process is blocked by
@@ -1316,14 +1317,18 @@ void JemaOsHandler::HandleTriggerWidevineUpdate(
     return;
   }
 
+  std::string command = enable
+                            ? "/usr/bin/enable_libwidevine --auto"
+                            : "/usr/bin/enable_libwidevine --disable";
   shell_client->SyncExec(
-      "/usr/bin/enable_libwidevine --auto",
+      command,
       base::BindOnce(&JemaOsHandler::OnWidevineUpdateCompleted,
-                     weak_ptr_factory_.GetWeakPtr(), callback_id));
+                     weak_ptr_factory_.GetWeakPtr(), callback_id, enable));
 }
 
 void JemaOsHandler::OnWidevineUpdateCompleted(
     const std::string& callback_id,
+    bool enable,
     std::optional<ShellState> state) {
   bool success = state && state->code == 0;
   if (!success) {

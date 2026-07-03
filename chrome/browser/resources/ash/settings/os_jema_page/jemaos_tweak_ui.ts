@@ -448,7 +448,7 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   async enableLibwidevineAuto_() {
     this.togglingWidevine_ = true;
     try {
-      const result = await sendWithPromise('triggerWidevineUpdate');
+      const result = await sendWithPromise('triggerWidevineUpdate', true);
       if (!result) {
         this.libwidevineEnabled_ = false;
         this.showWidevineErrorDialog_ = true;
@@ -467,11 +467,19 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
   async disableLibwidevine_() {
     this.togglingWidevine_ = true;
-    await this.client_.toggle(null);
-    this.togglingWidevine_ = false;
-    const result = await this.getLibwidevineEnabled_();
-    if (result === 'no') {
+    try {
+      const result = await sendWithPromise('triggerWidevineUpdate', false);
+      if (!result) {
+        this.libwidevineEnabled_ = true;
+        this.showWidevineErrorDialog_ = true;
+        return;
+      }
       this.toggleRebootRequiredForWidevine_(false);
+    } catch (e) {
+      this.libwidevineEnabled_ = true;
+      this.showWidevineErrorDialog_ = true;
+    } finally {
+      this.togglingWidevine_ = false;
     }
   }
 

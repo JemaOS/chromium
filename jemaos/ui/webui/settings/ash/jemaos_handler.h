@@ -69,6 +69,7 @@ class JemaOsHandler :
   void HandleToggleRebootRequiredForWidevine(const base::Value::List& args);
   void HandleTriggerWidevineUpdate(const base::Value::List& args);
   void OnWidevineUpdateCompleted(const std::string& callback_id,
+                                 bool enable,
                                  std::optional<ShellState> state);
 
 

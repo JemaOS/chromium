@@ -56,8 +56,12 @@ class WidevineHelper {
   }
 
   async isSupported() {
-    const ret = await this.shellClient_.IsFileExist(WidevineHelper.Command);
-    return ret;
+    // On JemaOS, enable_libwidevine is installed by chromeos-login /
+    // jemaos-utils, so the Widevine toggle should always be visible.
+    // shellClient_.IsFileExist() is unreliable in some release builds and
+    // would hide the toggle even when the binary is present. The real
+    // presence check is done by the status / enable helpers later.
+    return true;
   }
 
   async getRunningState() {
@@ -389,14 +393,30 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   }
 
   async checkLibwidevineStatus_() {
-    const support = await this.client_.isSupported();
-    if (support) {
-      const result = await this.getLibwidevineEnabled_();
-      // Show the toggle if we can determine yes/no status.
-      this.showToggleWidevine_ = !!result;
+    // On some JemaOS builds the shell-client based file existence check
+    // incorrectly reports that enable_libwidevine is not supported, even
+    // though the binary is installed and Widevine already works. As a
+    // robust fallback, also use the actual script status output.
+    let support = false;
+    try {
+      support = await this.client_.isSupported();
+    } catch (e) {
+      support = false;
     }
-    if (this.showToggleWidevine_) {
+
+    let status = '';
+    try {
+      status = await this.client_.getWidevineStatus();
+    } catch (e) {
+      status = '';
+    }
+
+    if (support || status === 'yes') {
+      this.showToggleWidevine_ = true;
+      this.libwidevineEnabled_ = (status === 'yes');
       this.getRebootRequiredForWidevine_();
+    } else {
+      this.showToggleWidevine_ = false;
     }
   }
 

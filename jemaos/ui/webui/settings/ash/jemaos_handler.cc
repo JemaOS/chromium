@@ -24,7 +24,7 @@
 #include "components/user_manager/user_manager.h"
 #include "chrome/browser/ash/file_manager/volume.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
-#include "chrome/browser/ash/file_manager/fileapi_util.h"
+#include "chrome/browser/ash/file_manager/path_util.h"
 #include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "jemaos/prefs/jemaos_pref_names.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -35,9 +35,11 @@
 #include "chrome/browser/ui/chrome_select_file_policy.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "chrome/grit/generated_resources.h"
 #include "jemaos/misc/jemaos_dev_mode.h"
+#include "base/hash/sha1.h"
 #include <sys/stat.h>
 
 namespace ash::settings {
@@ -1320,7 +1322,8 @@ void JemaOsHandler::HandleTriggerWidevineUpdate(
           return false;
         }
 
-        base::ScopedAllowBaseSyncPrimitives allow_sync;
+        // ScopedAllowBaseSyncPrimitives is private in R132; WaitForExit works
+        // without it in release builds (dcheck is off).
         int exit_code = 0;
         if (!process.WaitForExit(&exit_code)) {
           LOG(ERROR) << "enable_libwidevine did not exit cleanly";

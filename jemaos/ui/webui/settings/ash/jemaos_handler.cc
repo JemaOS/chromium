@@ -22,6 +22,10 @@
 #include "components/prefs/pref_service.h"
 #include "chrome/browser/browser_process.h"
 #include "components/user_manager/user_manager.h"
+#include "chrome/browser/ash/file_manager/volume.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
+#include "chrome/browser/ash/profiles/profile_helper.h"
 #include <sys/stat.h>
 
 namespace ash::settings {

@@ -1312,6 +1312,8 @@ void JemaOsHandler::HandleTriggerWidevineUpdate(
        base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
       base::BindOnce([]() {
         std::vector<std::string> argv = {
+            "/usr/bin/sudo",
+            "-n",
             "/usr/bin/enable_libwidevine",
             "--auto",
         };

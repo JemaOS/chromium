@@ -1318,7 +1318,14 @@ void JemaOsHandler::HandleTriggerWidevineUpdate(
             "--auto",
         };
 
-        base::Process process = base::LaunchProcess(argv, base::LaunchOptions());
+        base::LaunchOptions options;
+        // Chrome sets LD_LIBRARY_PATH which sudo rejects. Clear the inherited
+        // environment so sudo runs the script with a clean env, but restore
+        // PATH so the script can find standard utilities.
+        options.clear_environment = true;
+        options.environment["PATH"] = "/usr/local/sbin:/usr/local/bin:"
+                                      "/usr/sbin:/usr/bin:/sbin:/bin";
+        base::Process process = base::LaunchProcess(argv, options);
         if (!process.IsValid()) {
           LOG(ERROR) << "Failed to launch enable_libwidevine";
           return false;

@@ -8,13 +8,13 @@ namespace web_app {
 
 ExternalInstallOptions GetConfigForGalerie() {
   ExternalInstallOptions options(
-      /*install_url=*/GURL("https://galerie-eta.vercel.app/"),
+      /*install_url=*/GURL("https://gallery.jemaos.com/"),
       /*user_display_mode=*/mojom::UserDisplayMode::kStandalone,
       /*install_source=*/ExternalInstallSource::kExternalDefault);
 
   options.user_type_allowlist = {"unmanaged", "managed", "child"};
   options.add_to_quick_launch_bar = false;
-  options.oem_installed = false;
+  options.oem_installed = true;
 
   return options;
 }

@@ -75,7 +75,7 @@ class PowerHandlerTest : public InProcessBrowserTest {
     bool ac_idle_managed = false;
     bool battery_idle_managed = false;
     PowerPolicyController::Action lid_closed_behavior =
-        PowerPolicyController::ACTION_SUSPEND;
+        PowerPolicyController::ACTION_DO_NOTHING;
     bool lid_closed_controlled = false;
     bool has_lid = true;
     bool adaptive_charging = true;
@@ -260,6 +260,7 @@ IN_PROC_BROWSER_TEST_F(PowerHandlerTest, SendSettingsForControlledPrefs) {
   // Ditto for making the lid action pref managed.
   SetPolicyForPolicyKey(&policy_map, policy::key::kLidCloseAction,
                         base::Value(PowerPolicyController::ACTION_SUSPEND));
+  settings.lid_closed_behavior = PowerPolicyController::ACTION_SUSPEND;
   settings.lid_closed_controlled = true;
   EXPECT_EQ(ToString(settings), GetLastSettingsChangedMessage());
 
@@ -443,13 +444,13 @@ IN_PROC_BROWSER_TEST_F(PowerHandlerTest, SetIdleBehavior) {
 
 // Verifies that requests from WebUI to change the lid behavior update the pref.
 IN_PROC_BROWSER_TEST_F(PowerHandlerTest, SetLidBehavior) {
-  // The "do nothing" setting should update the pref.
-  test_api_->SetLidClosedBehavior(PowerPolicyController::ACTION_DO_NOTHING);
-  EXPECT_EQ(PowerPolicyController::ACTION_DO_NOTHING,
+  // The "suspend" setting should update the pref.
+  test_api_->SetLidClosedBehavior(PowerPolicyController::ACTION_SUSPEND);
+  EXPECT_EQ(PowerPolicyController::ACTION_SUSPEND,
             GetIntPref(ash::prefs::kPowerLidClosedAction));
 
-  // Selecting the "suspend" setting should just clear the pref.
-  test_api_->SetLidClosedBehavior(PowerPolicyController::ACTION_SUSPEND);
+  // Selecting the "do nothing" setting should just clear the pref.
+  test_api_->SetLidClosedBehavior(PowerPolicyController::ACTION_DO_NOTHING);
   EXPECT_EQ(-1, GetIntPref(ash::prefs::kPowerLidClosedAction));
 }
 

@@ -303,11 +303,11 @@ void PowerHandler::HandleSetLidClosedBehavior(const base::Value::List& args) {
   int value = list[0].GetInt();
   switch (static_cast<PowerPolicyController::Action>(value)) {
     case PowerPolicyController::ACTION_SUSPEND:
-      prefs_->ClearPref(ash::prefs::kPowerLidClosedAction);
+      prefs_->SetInteger(ash::prefs::kPowerLidClosedAction,
+                         PowerPolicyController::ACTION_SUSPEND);
       break;
     case PowerPolicyController::ACTION_DO_NOTHING:
-      prefs_->SetInteger(ash::prefs::kPowerLidClosedAction,
-                         PowerPolicyController::ACTION_DO_NOTHING);
+      prefs_->ClearPref(ash::prefs::kPowerLidClosedAction);
       break;
     default:
       NOTREACHED() << "Unsupported lid-closed behavior " << value;

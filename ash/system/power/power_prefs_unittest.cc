@@ -415,7 +415,7 @@ TEST_F(PowerPrefsTest, DisabledLockScreen) {
   EXPECT_EQ(std::vector<power_manager::PowerManagementPolicy_Action>(
                 {power_manager::PowerManagementPolicy_Action_DO_NOTHING,
                  power_manager::PowerManagementPolicy_Action_DO_NOTHING,
-                 power_manager::PowerManagementPolicy_Action_SUSPEND}),
+                 power_manager::PowerManagementPolicy_Action_DO_NOTHING}),
             GetCurrentPowerPolicyActions());
 
   // The automatic screen locking is enabled, but, as the lock screen is
@@ -424,7 +424,7 @@ TEST_F(PowerPrefsTest, DisabledLockScreen) {
   EXPECT_EQ(std::vector<power_manager::PowerManagementPolicy_Action>(
                 {power_manager::PowerManagementPolicy_Action_DO_NOTHING,
                  power_manager::PowerManagementPolicy_Action_DO_NOTHING,
-                 power_manager::PowerManagementPolicy_Action_SUSPEND}),
+                 power_manager::PowerManagementPolicy_Action_DO_NOTHING}),
             GetCurrentPowerPolicyActions());
 
   // The lock screen is disabled, but, as automatic screen locking is not
@@ -434,7 +434,7 @@ TEST_F(PowerPrefsTest, DisabledLockScreen) {
   EXPECT_EQ(std::vector<power_manager::PowerManagementPolicy_Action>(
                 {power_manager::PowerManagementPolicy_Action_DO_NOTHING,
                  power_manager::PowerManagementPolicy_Action_DO_NOTHING,
-                 power_manager::PowerManagementPolicy_Action_SUSPEND}),
+                 power_manager::PowerManagementPolicy_Action_DO_NOTHING}),
             GetCurrentPowerPolicyActions());
 
   // The automatic screen locking is enabled and the lock screen is disabled, so

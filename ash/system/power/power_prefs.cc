@@ -243,7 +243,7 @@ void PowerPrefs::RegisterUserProfilePrefs(PrefRegistrySimple* registry) {
       chromeos::PowerPolicyController::ACTION_DO_NOTHING);
   registry->RegisterIntegerPref(
       prefs::kPowerLidClosedAction,
-      chromeos::PowerPolicyController::ACTION_SUSPEND);
+      chromeos::PowerPolicyController::ACTION_DO_NOTHING);
 }
 
 void PowerPrefs::ScreenIdleStateChanged(

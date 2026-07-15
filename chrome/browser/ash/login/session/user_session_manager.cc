@@ -190,6 +190,8 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
 #include "net/cookies/canonical_cookie.h"
+#include "net/cookies/cookie_constants.h"
+#include "net/cookies/cookie_inclusion_status.h"
 #include "net/cookies/cookie_options.h"
 #include "services/network/public/mojom/cookie_manager.mojom.h"
 #include "rlz/buildflags/buildflags.h"
@@ -2143,13 +2145,17 @@ void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
       "jemaos_access_token=" + token +
       "; Path=/; Domain=.jemaos.com; Secure; SameSite=Lax; Max-Age=86400";
 
+  net::CookieInclusionStatus status;
   auto cookie = net::CanonicalCookie::Create(
       kJemaOsUrl, cookie_value, base::Time::Now(),
       /*server_time=*/base::Time(),
-      /*cookie_partition_key=*/std::nullopt);
+      /*cookie_partition_key=*/std::nullopt,
+      net::CookieSourceType::kOther,
+      &status);
 
   if (!cookie) {
-    LOG(ERROR) << "[JEMAOS] Failed to create JemaOS token cookie";
+    LOG(ERROR) << "[JEMAOS] Failed to create JemaOS token cookie: "
+               << status.GetDebugString();
     return;
   }
 

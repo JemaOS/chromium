@@ -189,6 +189,9 @@
 #include "content/public/browser/network_service_instance.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
+#include "net/cookies/canonical_cookie.h"
+#include "net/cookies/cookie_options.h"
+#include "services/network/public/mojom/cookie_manager.mojom.h"
 #include "rlz/buildflags/buildflags.h"
 #include "third_party/cros_system_api/switches/chrome_switches.h"
 #include "ui/aura/window.h"
@@ -2083,6 +2086,9 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
   session_manager::SessionManager::Get()->NotifyUserProfileLoaded(
       user->GetAccountId());
 
+  // Inject SAML access token as cookie on .jemaos.com for PWA apps.
+  InjectJemaOSTokenCookie(profile);
+
   // TODO(hidehiko): the condition looks redundant. We can merge them into
   // AuthErrorObserver::ShouldObserve.
   auto* user_manager = user_manager::UserManager::Get();
@@ -2117,6 +2123,45 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
       UpdateTokenHandleIfRequired(profile, user->GetAccountId());
     }
   }
+}
+
+void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
+  // The SAML login page sends access_token as 'token' in the SAML 'confirm'
+  // message. gaia_screen_handler.cc stores it as the refresh token in
+  // UserContext (because confirmToken maps to SetRefreshToken).
+  // We expose it as a cookie so PWA apps (jemanote, osivibe, etc.) can
+  // read it via document.cookie and verify subscription via the API.
+  const std::string& token = user_context_.GetRefreshToken();
+  if (token.empty()) {
+    return;
+  }
+
+  LOG(INFO) << "[JEMAOS] Injecting SAML access token cookie for PWA apps";
+
+  const GURL kJemaOsUrl("https://jemaos.com");
+  const std::string cookie_value =
+      "jemaos_access_token=" + token +
+      "; Path=/; Domain=.jemaos.com; Secure; SameSite=Lax; Max-Age=86400";
+
+  auto cookie = net::CanonicalCookie::Create(
+      kJemaOsUrl, cookie_value, base::Time::Now(),
+      /*server_time=*/base::Time(),
+      /*cookie_partition_key=*/std::nullopt);
+
+  if (!cookie) {
+    LOG(ERROR) << "[JEMAOS] Failed to create JemaOS token cookie";
+    return;
+  }
+
+  auto* storage_partition = profile->GetDefaultStoragePartition();
+  auto* cookie_manager = storage_partition->GetCookieManagerForBrowserProcess();
+
+  net::CookieOptions options = net::CookieOptions::MakeAllInclusive();
+  cookie_manager->SetCanonicalCookie(
+      *cookie, kJemaOsUrl, options,
+      base::BindOnce([](bool success) {
+        LOG(INFO) << "[JEMAOS] JemaOS token cookie set: " << success;
+      }));
 }
 
 void UserSessionManager::StartTetherServiceIfPossible(Profile* profile) {

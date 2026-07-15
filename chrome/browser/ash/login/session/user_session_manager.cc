@@ -190,6 +190,7 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
 #include "net/cookies/canonical_cookie.h"
+#include "net/cookies/cookie_access_result.h"
 #include "net/cookies/cookie_constants.h"
 #include "net/cookies/cookie_inclusion_status.h"
 #include "net/cookies/cookie_options.h"
@@ -2165,8 +2166,9 @@ void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
   net::CookieOptions options = net::CookieOptions::MakeAllInclusive();
   cookie_manager->SetCanonicalCookie(
       *cookie, kJemaOsUrl, options,
-      base::BindOnce([](bool success) {
-        LOG(INFO) << "[JEMAOS] JemaOS token cookie set: " << success;
+      base::BindOnce([](net::CookieAccessResult result) {
+        LOG(INFO) << "[JEMAOS] JemaOS token cookie set: "
+                  << result.status.IsInclude();
       }));
 }
 

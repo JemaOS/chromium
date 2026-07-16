@@ -259,6 +259,12 @@ import {WebviewEventManager} from './webview_event_manager.js';
       this.confirmToken_ = null;
 
       /**
+       * JEMAOS: Refresh token received in the SAML 'confirm' message.
+       * @private {?string}
+       */
+      this.refreshToken_ = null;
+
+      /**
        * Saml API password bytes set by last 'add' call. Needed to not break
        * existing behavior.
        * @private {?string}
@@ -423,6 +429,15 @@ import {WebviewEventManager} from './webview_event_manager.js';
     }
 
     /**
+     * JEMAOS: Returns the refresh token received in the SAML 'confirm'
+     * message from the login page.
+     * @return {?string}
+     */
+    get refreshToken() {
+      return this.refreshToken_;
+    }
+
+    /**
      * Returns the first scraped password if any, or an empty string otherwise.
      * @return {string}
      */
@@ -517,6 +532,7 @@ import {WebviewEventManager} from './webview_event_manager.js';
       this.apiVersion_ = 0;
       this.apiTokenStore_ = {};
       this.confirmToken_ = null;
+      this.refreshToken_ = null;
       this.lastApiPasswordBytes_ = null;
       this.passwordAttributes_ = PasswordAttributes.EMPTY;
       this.x509certificate = null;
@@ -987,6 +1003,8 @@ import {WebviewEventManager} from './webview_event_manager.js';
               SamlHandler.ApiErrorType.CONFIRM_TOKEN_MISMATCH);
         } else {
           this.confirmToken_ = call.token;
+          // JEMAOS: Store the refresh token from the confirm message.
+          this.refreshToken_ = call.refreshToken || null;
           console.info('SamlHandler.onAPICall_: password confirmed');
           this.dispatchEvent(new CustomEvent('apiPasswordConfirmed'));
         }

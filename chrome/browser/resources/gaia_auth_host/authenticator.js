@@ -1424,13 +1424,8 @@ export class Authenticator extends EventTarget {
         if (this.samlHandler_.confirmToken) {
           jemaPasswordAttributes['confirmToken'] = this.samlHandler_.confirmToken;
         }
-        if (this.samlHandler_.apiTokenStore_) {
-          const confirmToken = this.samlHandler_.confirmToken;
-          if (confirmToken && this.samlHandler_.apiTokenStore_[confirmToken] &&
-              this.samlHandler_.apiTokenStore_[confirmToken].refreshToken) {
-            jemaPasswordAttributes['refreshToken'] =
-                this.samlHandler_.apiTokenStore_[confirmToken].refreshToken;
-          }
+        if (this.samlHandler_.refreshToken) {
+          jemaPasswordAttributes['refreshToken'] = this.samlHandler_.refreshToken;
         }
       }
 

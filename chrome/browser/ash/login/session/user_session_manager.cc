@@ -2089,14 +2089,6 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
   session_manager::SessionManager::Get()->NotifyUserProfileLoaded(
       user->GetAccountId());
 
-  // Inject SAML access token as cookie on .jemaos.com for PWA apps.
-  // Use PostTask to ensure profile is fully initialized.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&UserSessionManager::InjectJemaOSTokenCookie,
-                     weak_factory_.GetWeakPtr(),
-                     base::Unretained(profile)));
-
   // TODO(hidehiko): the condition looks redundant. We can merge them into
   // AuthErrorObserver::ShouldObserve.
   auto* user_manager = user_manager::UserManager::Get();

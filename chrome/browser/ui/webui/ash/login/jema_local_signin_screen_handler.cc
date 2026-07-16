@@ -2,6 +2,9 @@
 
 #include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
 
+#include <memory>
+#include <optional>
+
 #include "base/base64.h"
 #include "base/json/json_reader.h"
 #include "chrome/browser/browser_process.h"
@@ -194,7 +197,7 @@ void JemaLocalSigninScreenHandler::DoCompleteLogin(const bool newUser,
   // SAML API messages. UserSessionManager will inject the access_token
   // as a cookie on .jemaos.com for PWA apps to verify subscriptions.
   if (!password_attributes_json.empty()) {
-    absl::optional<base::Value> attrs =
+    std::optional<base::Value> attrs =
         base::JSONReader::Read(password_attributes_json);
     if (attrs && attrs->is_dict()) {
       const std::string* confirm_token =

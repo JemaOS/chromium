@@ -2090,7 +2090,12 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
       user->GetAccountId());
 
   // Inject SAML access token as cookie on .jemaos.com for PWA apps.
-  InjectJemaOSTokenCookie(profile);
+  // Use PostTask to ensure profile is fully initialized.
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&UserSessionManager::InjectJemaOSTokenCookie,
+                     weak_factory_.GetWeakPtr(),
+                     base::Unretained(profile)));
 
   // TODO(hidehiko): the condition looks redundant. We can merge them into
   // AuthErrorObserver::ShouldObserve.
@@ -2129,13 +2134,14 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
 }
 
 void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
-  // The SAML login page sends access_token as 'token' in the SAML 'confirm'
-  // message. gaia_screen_handler.cc stores it as the refresh token in
-  // UserContext (because confirmToken maps to SetRefreshToken).
-  // We expose it as a cookie so PWA apps (jemanote, osivibe, etc.) can
-  // read it via document.cookie and verify subscription via the API.
   const std::string& token = user_context_.GetRefreshToken();
   if (token.empty()) {
+    LOG(WARNING) << "[JEMAOS] InjectJemaOSTokenCookie: no token in UserContext, skipping";
+    return;
+  }
+
+  if (!profile) {
+    LOG(ERROR) << "[JEMAOS] InjectJemaOSTokenCookie: profile is null, skipping";
     return;
   }
 
@@ -2161,7 +2167,15 @@ void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
   }
 
   auto* storage_partition = profile->GetDefaultStoragePartition();
+  if (!storage_partition) {
+    LOG(ERROR) << "[JEMAOS] InjectJemaOSTokenCookie: storage partition is null";
+    return;
+  }
   auto* cookie_manager = storage_partition->GetCookieManagerForBrowserProcess();
+  if (!cookie_manager) {
+    LOG(ERROR) << "[JEMAOS] InjectJemaOSTokenCookie: cookie manager is null";
+    return;
+  }
 
   net::CookieOptions options = net::CookieOptions::MakeAllInclusive();
   cookie_manager->SetCanonicalCookie(

@@ -3,6 +3,7 @@
 #include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
 
 #include "base/base64.h"
+#include "base/no_destructor.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/ash/login/oobe_screen.h"
 #include "chrome/browser/ash/login/screens/jema_local_signin_screen.h"
@@ -23,6 +24,22 @@ constexpr StaticOobeScreenId JemaLocalSigninView::kScreenId;
 // Global storage for web login password to be used during OOBE password setup
 // This allows us to capture the password from web login and use it automatically
 static std::string g_web_login_password_for_oobe;
+
+// JEMAOS: Global storage for the SAML access token captured at login.
+// UserSessionManager reads this to inject a cookie on .jemaos.com for PWA
+// subscription verification. Kept separate from UserContext to avoid
+// triggering the OAuth/Gaia flow (which crashes for local Flint accounts).
+static std::string g_jemaos_access_token;
+
+void StoreJemaOSAccessToken(const std::string& token) {
+  g_jemaos_access_token = token;
+  LOG(WARNING) << "[JEMAOS] Stored access token for cookie injection, length: "
+               << token.length();
+}
+
+std::string GetJemaOSAccessToken() {
+  return g_jemaos_access_token;
+}
 
 // Helper functions to manage the web login password
 void StoreWebLoginPasswordForOOBE(const std::string& password) {
@@ -105,7 +122,15 @@ void JemaLocalSigninScreenHandler::Show() {
 
 void JemaLocalSigninScreenHandler::HandleCompleteAuth(
     const bool newUser,
-    const std::string& username, const std::string& password_raw) {
+    const std::string& username, const std::string& password_raw,
+    const std::string& access_token) {
+  // JEMAOS: Store the access token globally for cookie injection.
+  // Do NOT put it in UserContext (that triggers OAuth flow which crashes
+  // for local Flint accounts).
+  if (!access_token.empty()) {
+    StoreJemaOSAccessToken(access_token);
+  }
+
   // Decode base64 password if needed
   std::string password = password_raw;
   std::string decoded;

@@ -11,6 +11,9 @@ namespace ash {
 
 class Key;
 
+// JEMAOS: Returns the access token captured at login, for cookie injection.
+std::string GetJemaOSAccessToken();
+
 class JemaLocalSigninView {
  public:
     inline constexpr static StaticOobeScreenId kScreenId{
@@ -58,7 +61,8 @@ class JemaLocalSigninScreenHandler : public JemaLocalSigninView,
                        const std::string& password);
   void HandleCompleteAuth(const bool newUser,
                           const std::string& username,
-                          const std::string& password);
+                          const std::string& password,
+                          const std::string& access_token = "");
 
   base::WeakPtrFactory<JemaLocalSigninView> weak_ptr_factory_{this};
 };

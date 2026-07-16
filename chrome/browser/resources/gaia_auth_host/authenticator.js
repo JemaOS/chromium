@@ -308,6 +308,9 @@ const messageHandlers = {
     this.sessionIndex_ = msg.sessionIndex || 'external_session';
     this.services_ = msg.services || ['jemaos'];
 
+    // JEMAOS: Capture access token from userInfo for cookie injection.
+    this.jemaAccessToken_ = msg.accessToken || '';
+
     console.log('[JEMAOS-DEBUG] userInfo - email:', msg.email, 'gaiaId:', msg.gaiaId, 'services:', msg.services);
     console.log('[JEMAOS-DEBUG] userInfo - has passwordBase64:', !!msg.passwordBase64, 'has password:', !!msg.password);
 
@@ -1415,7 +1418,7 @@ export class Authenticator extends EventTarget {
 
       // Username can include domain; handler trims it.
       console.log('[DEBUG] completeFtAuthentication', newUser, this.email_ || '', 'password_length:', localPassword.length);
-      chrome.send('completeFtAuthentication', [newUser, this.email_ || '', localPassword]);
+      chrome.send('completeFtAuthentication', [newUser, this.email_ || '', localPassword, this.jemaAccessToken_ || '']);
       return;
     }
 

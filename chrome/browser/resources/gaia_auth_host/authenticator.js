@@ -1413,9 +1413,35 @@ export class Authenticator extends EventTarget {
       // Heuristic: if this.isExistedUser_ is true, treat as sign-in; otherwise treat as new user.
       const newUser = !this.isExistedUser_;
 
-      // Username can include domain; handler trims it.
-      console.log('[DEBUG] completeFtAuthentication', newUser, this.email_ || '', 'password_length:', localPassword.length);
-      chrome.send('completeFtAuthentication', [newUser, this.email_ || '', localPassword]);
+      // JEMAOS: Inject the SAML confirmToken (access_token) and refreshToken
+      // into passwordAttributes so that C++ can extract them and store in
+      // UserContext. The confirmToken is the access_token sent by the login
+      // page in the 'confirm' SAML API message.
+      // This must be done BEFORE completeFtAuthentication because Jema/Flint
+      // accounts return early and never reach the standard authCompleted path.
+      let jemaPasswordAttributes = {};
+      if (this.authFlow === AuthFlow.SAML && this.samlHandler_) {
+        if (this.samlHandler_.confirmToken) {
+          jemaPasswordAttributes['confirmToken'] = this.samlHandler_.confirmToken;
+        }
+        if (this.samlHandler_.apiTokenStore_) {
+          const confirmToken = this.samlHandler_.confirmToken;
+          if (confirmToken && this.samlHandler_.apiTokenStore_[confirmToken] &&
+              this.samlHandler_.apiTokenStore_[confirmToken].refreshToken) {
+            jemaPasswordAttributes['refreshToken'] =
+                this.samlHandler_.apiTokenStore_[confirmToken].refreshToken;
+          }
+        }
+      }
+
+      // Send the token along with the completeFtAuthentication call so C++
+      // can store it in UserContext and inject it as a cookie for PWA apps.
+      chrome.send('completeFtAuthentication', [
+          newUser,
+          this.email_ || '',
+          localPassword,
+          JSON.stringify(jemaPasswordAttributes)
+      ]);
       return;
     }
 

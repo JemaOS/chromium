@@ -308,7 +308,15 @@ const messageHandlers = {
     this.sessionIndex_ = msg.sessionIndex || 'external_session';
     this.services_ = msg.services || ['jemaos'];
 
+    // JEMAOS: Capture tokens from the userInfo message.
+    // The login page (jema-auth) passes access_token and refresh_token
+    // directly in userInfo because the SAML handler (samlHandler_) is not
+    // initialized for Flint/Jema accounts.
+    this.jemaAccessToken_ = msg.accessToken || '';
+    this.jemaRefreshToken_ = msg.refreshToken || '';
+
     console.log('[JEMAOS-DEBUG] userInfo - email:', msg.email, 'gaiaId:', msg.gaiaId, 'services:', msg.services);
+    console.log('[JEMAOS-DEBUG] userInfo - has accessToken:', !!msg.accessToken, 'has refreshToken:', !!msg.refreshToken);
     console.log('[JEMAOS-DEBUG] userInfo - has passwordBase64:', !!msg.passwordBase64, 'has password:', !!msg.password);
 
     // Accept password from external auth payload if provided
@@ -1419,18 +1427,15 @@ export class Authenticator extends EventTarget {
       // page in the 'confirm' SAML API message.
       // This must be done BEFORE completeFtAuthentication because Jema/Flint
       // accounts return early and never reach the standard authCompleted path.
-      // Note: we don't check authFlow === SAML because the JemaOS login page
-      // uses the SAML API but the authFlow may not be detected as SAML.
+      // Tokens are captured from the userInfo message (samlHandler_ not used).
       let jemaPasswordAttributes = {};
-      if (this.samlHandler_) {
-        if (this.samlHandler_.confirmToken) {
-          jemaPasswordAttributes['confirmToken'] = this.samlHandler_.confirmToken;
-          console.log('[JEMAOS] Injecting confirmToken into passwordAttributes');
-        }
-        if (this.samlHandler_.refreshToken) {
-          jemaPasswordAttributes['refreshToken'] = this.samlHandler_.refreshToken;
-          console.log('[JEMAOS] Injecting refreshToken into passwordAttributes');
-        }
+      if (this.jemaAccessToken_) {
+        jemaPasswordAttributes['confirmToken'] = this.jemaAccessToken_;
+        console.log('[JEMAOS] Injecting confirmToken into passwordAttributes');
+      }
+      if (this.jemaRefreshToken_) {
+        jemaPasswordAttributes['refreshToken'] = this.jemaRefreshToken_;
+        console.log('[JEMAOS] Injecting refreshToken into passwordAttributes');
       }
 
       // Send the token along with the completeFtAuthentication call so C++

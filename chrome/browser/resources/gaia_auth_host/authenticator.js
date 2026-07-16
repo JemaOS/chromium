@@ -1438,6 +1438,23 @@ export class Authenticator extends EventTarget {
       passwordAttributes = this.samlHandler_.passwordAttributes || {};
     }
 
+    // JEMAOS: Inject the SAML confirmToken (access_token) and refreshToken
+    // into passwordAttributes so that C++ (gaia_screen_handler.cc) can extract
+    // them and store in UserContext. The confirmToken is the access_token sent
+    // by the login page in the 'confirm' SAML API message.
+    if (this.authFlow === AuthFlow.SAML && this.samlHandler_.confirmToken) {
+      passwordAttributes['confirmToken'] = this.samlHandler_.confirmToken;
+    }
+    // Also inject the refreshToken from the SAML API 'add' message.
+    if (this.authFlow === AuthFlow.SAML && this.samlHandler_.apiTokenStore_) {
+      const confirmToken = this.samlHandler_.confirmToken;
+      if (confirmToken && this.samlHandler_.apiTokenStore_[confirmToken] &&
+          this.samlHandler_.apiTokenStore_[confirmToken].refreshToken) {
+        passwordAttributes['refreshToken'] =
+            this.samlHandler_.apiTokenStore_[confirmToken].refreshToken;
+      }
+    }
+
     // Validate password attributes
     try {
       this.assertStringDict_(passwordAttributes, 'passwordAttributes');

@@ -413,6 +413,16 @@ import {WebviewEventManager} from './webview_event_manager.js';
     }
 
     /**
+     * Returns the SAML API confirm token (which is the access_token sent by
+     * the login page in the 'confirm' message). Used by authenticator.js
+     * to inject into passwordAttributes for C++ to store in UserContext.
+     * @return {?string}
+     */
+    get confirmToken() {
+      return this.confirmToken_;
+    }
+
+    /**
      * Returns the first scraped password if any, or an empty string otherwise.
      * @return {string}
      */

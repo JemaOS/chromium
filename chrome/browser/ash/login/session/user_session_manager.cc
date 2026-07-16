@@ -189,12 +189,6 @@
 #include "content/public/browser/network_service_instance.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
-#include "net/cookies/canonical_cookie.h"
-#include "net/cookies/cookie_access_result.h"
-#include "net/cookies/cookie_constants.h"
-#include "net/cookies/cookie_inclusion_status.h"
-#include "net/cookies/cookie_options.h"
-#include "services/network/public/mojom/cookie_manager.mojom.h"
 #include "rlz/buildflags/buildflags.h"
 #include "third_party/cros_system_api/switches/chrome_switches.h"
 #include "ui/aura/window.h"
@@ -2123,59 +2117,6 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
       UpdateTokenHandleIfRequired(profile, user->GetAccountId());
     }
   }
-}
-
-void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
-  const std::string& token = user_context_.GetRefreshToken();
-  if (token.empty()) {
-    LOG(WARNING) << "[JEMAOS] InjectJemaOSTokenCookie: no token in UserContext, skipping";
-    return;
-  }
-
-  if (!profile) {
-    LOG(ERROR) << "[JEMAOS] InjectJemaOSTokenCookie: profile is null, skipping";
-    return;
-  }
-
-  LOG(INFO) << "[JEMAOS] Injecting SAML access token cookie for PWA apps";
-
-  const GURL kJemaOsUrl("https://jemaos.com");
-  const std::string cookie_value =
-      "jemaos_access_token=" + token +
-      "; Path=/; Domain=.jemaos.com; Secure; SameSite=Lax; Max-Age=86400";
-
-  net::CookieInclusionStatus status;
-  auto cookie = net::CanonicalCookie::Create(
-      kJemaOsUrl, cookie_value, base::Time::Now(),
-      /*server_time=*/base::Time(),
-      /*cookie_partition_key=*/std::nullopt,
-      net::CookieSourceType::kOther,
-      &status);
-
-  if (!cookie) {
-    LOG(ERROR) << "[JEMAOS] Failed to create JemaOS token cookie: "
-               << status.GetDebugString();
-    return;
-  }
-
-  auto* storage_partition = profile->GetDefaultStoragePartition();
-  if (!storage_partition) {
-    LOG(ERROR) << "[JEMAOS] InjectJemaOSTokenCookie: storage partition is null";
-    return;
-  }
-  auto* cookie_manager = storage_partition->GetCookieManagerForBrowserProcess();
-  if (!cookie_manager) {
-    LOG(ERROR) << "[JEMAOS] InjectJemaOSTokenCookie: cookie manager is null";
-    return;
-  }
-
-  net::CookieOptions options = net::CookieOptions::MakeAllInclusive();
-  cookie_manager->SetCanonicalCookie(
-      *cookie, kJemaOsUrl, options,
-      base::BindOnce([](net::CookieAccessResult result) {
-        LOG(INFO) << "[JEMAOS] JemaOS token cookie set: "
-                  << result.status.IsInclude();
-      }));
 }
 
 void UserSessionManager::StartTetherServiceIfPossible(Profile* profile) {

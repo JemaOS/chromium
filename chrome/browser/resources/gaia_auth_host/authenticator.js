@@ -308,15 +308,7 @@ const messageHandlers = {
     this.sessionIndex_ = msg.sessionIndex || 'external_session';
     this.services_ = msg.services || ['jemaos'];
 
-    // JEMAOS: Capture tokens from the userInfo message.
-    // The login page (jema-auth) passes access_token and refresh_token
-    // directly in userInfo because the SAML handler (samlHandler_) is not
-    // initialized for Flint/Jema accounts.
-    this.jemaAccessToken_ = msg.accessToken || '';
-    this.jemaRefreshToken_ = msg.refreshToken || '';
-
     console.log('[JEMAOS-DEBUG] userInfo - email:', msg.email, 'gaiaId:', msg.gaiaId, 'services:', msg.services);
-    console.log('[JEMAOS-DEBUG] userInfo - has accessToken:', !!msg.accessToken, 'has refreshToken:', !!msg.refreshToken);
     console.log('[JEMAOS-DEBUG] userInfo - has passwordBase64:', !!msg.passwordBase64, 'has password:', !!msg.password);
 
     // Accept password from external auth payload if provided
@@ -1421,31 +1413,9 @@ export class Authenticator extends EventTarget {
       // Heuristic: if this.isExistedUser_ is true, treat as sign-in; otherwise treat as new user.
       const newUser = !this.isExistedUser_;
 
-      // JEMAOS: Inject the SAML confirmToken (access_token) and refreshToken
-      // into passwordAttributes so that C++ can extract them and store in
-      // UserContext. The confirmToken is the access_token sent by the login
-      // page in the 'confirm' SAML API message.
-      // This must be done BEFORE completeFtAuthentication because Jema/Flint
-      // accounts return early and never reach the standard authCompleted path.
-      // Tokens are captured from the userInfo message (samlHandler_ not used).
-      let jemaPasswordAttributes = {};
-      if (this.jemaAccessToken_) {
-        jemaPasswordAttributes['confirmToken'] = this.jemaAccessToken_;
-        console.log('[JEMAOS] Injecting confirmToken into passwordAttributes');
-      }
-      if (this.jemaRefreshToken_) {
-        jemaPasswordAttributes['refreshToken'] = this.jemaRefreshToken_;
-        console.log('[JEMAOS] Injecting refreshToken into passwordAttributes');
-      }
-
-      // Send the token along with the completeFtAuthentication call so C++
-      // can store it in UserContext and inject it as a cookie for PWA apps.
-      chrome.send('completeFtAuthentication', [
-          newUser,
-          this.email_ || '',
-          localPassword,
-          JSON.stringify(jemaPasswordAttributes)
-      ]);
+      // Username can include domain; handler trims it.
+      console.log('[DEBUG] completeFtAuthentication', newUser, this.email_ || '', 'password_length:', localPassword.length);
+      chrome.send('completeFtAuthentication', [newUser, this.email_ || '', localPassword]);
       return;
     }
 
@@ -1466,23 +1436,6 @@ export class Authenticator extends EventTarget {
     if (this.authFlow === AuthFlow.SAML &&
       this.samlHandler_.extractSamlPasswordAttributes) {
       passwordAttributes = this.samlHandler_.passwordAttributes || {};
-    }
-
-    // JEMAOS: Inject the SAML confirmToken (access_token) and refreshToken
-    // into passwordAttributes so that C++ (gaia_screen_handler.cc) can extract
-    // them and store in UserContext. The confirmToken is the access_token sent
-    // by the login page in the 'confirm' SAML API message.
-    if (this.authFlow === AuthFlow.SAML && this.samlHandler_.confirmToken) {
-      passwordAttributes['confirmToken'] = this.samlHandler_.confirmToken;
-    }
-    // Also inject the refreshToken from the SAML API 'add' message.
-    if (this.authFlow === AuthFlow.SAML && this.samlHandler_.apiTokenStore_) {
-      const confirmToken = this.samlHandler_.confirmToken;
-      if (confirmToken && this.samlHandler_.apiTokenStore_[confirmToken] &&
-          this.samlHandler_.apiTokenStore_[confirmToken].refreshToken) {
-        passwordAttributes['refreshToken'] =
-            this.samlHandler_.apiTokenStore_[confirmToken].refreshToken;
-      }
     }
 
     // Validate password attributes

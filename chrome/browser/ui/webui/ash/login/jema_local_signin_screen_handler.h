@@ -55,12 +55,10 @@ class JemaLocalSigninScreenHandler : public JemaLocalSigninView,
  private:
   void DoCompleteLogin(const bool newUser,
                        const std::string& username,
-                       const std::string& password,
-                       const std::string& password_attributes_json = "");
+                       const std::string& password);
   void HandleCompleteAuth(const bool newUser,
                           const std::string& username,
-                          const std::string& password,
-                          const std::string& password_attributes_json = "");
+                          const std::string& password);
 
   base::WeakPtrFactory<JemaLocalSigninView> weak_ptr_factory_{this};
 };

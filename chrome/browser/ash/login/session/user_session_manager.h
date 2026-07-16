@@ -213,10 +213,6 @@ class UserSessionManager
   // can be created first.
   void OnUserProfileLoaded(Profile* profile, const user_manager::User* user);
 
-  // Inject SAML access token as a cookie on .jemaos.com so that PWA apps
-  // can verify subscription via the SubscriptionGuard component.
-  void InjectJemaOSTokenCookie(Profile* profile);
-
   // Start the Tether service if it is ready.
   void StartTetherServiceIfPossible(Profile* profile);
 

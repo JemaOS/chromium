@@ -2,11 +2,7 @@
 
 #include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
 
-#include <memory>
-#include <optional>
-
 #include "base/base64.h"
-#include "base/json/json_reader.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/ash/login/oobe_screen.h"
 #include "chrome/browser/ash/login/screens/jema_local_signin_screen.h"
@@ -109,8 +105,7 @@ void JemaLocalSigninScreenHandler::Show() {
 
 void JemaLocalSigninScreenHandler::HandleCompleteAuth(
     const bool newUser,
-    const std::string& username, const std::string& password_raw,
-    const std::string& password_attributes_json) {
+    const std::string& username, const std::string& password_raw) {
   // Decode base64 password if needed
   std::string password = password_raw;
   std::string decoded;
@@ -169,13 +164,12 @@ void JemaLocalSigninScreenHandler::HandleCompleteAuth(
   if (LoginDisplayHost::default_host())
     LoginDisplayHost::default_host()->SetDisplayEmail(username);
 
-  DoCompleteLogin(newUser, username, password, password_attributes_json);
+  DoCompleteLogin(newUser, username, password);
 }
 
 void JemaLocalSigninScreenHandler::DoCompleteLogin(const bool newUser,
                                                    const std::string& username,
-                                                   const std::string& password,
-                                                   const std::string& password_attributes_json) {
+                                                   const std::string& password) {
   std::string userId = CreateJemaLocalAccountID(username);
   user_manager::KnownUser known_user(g_browser_process->local_state());
   // Use AccountType::GOOGLE for cryptohome compatibility (allows password auth factors)
@@ -190,30 +184,6 @@ void JemaLocalSigninScreenHandler::DoCompleteLogin(const bool newUser,
   user_context.SetJemaLocalPasswordInput(LocalPasswordInput{password});
   user_context.SetAuthFlow(UserContext::AUTH_FLOW_FLINT_ACCOUNT);
   user_context.SetIsUsingOAuth(false);
-
-  // JEMAOS: Extract SAML tokens from password_attributes JSON and store
-  // them in UserContext. The login page (jema-auth) sends the access_token
-  // as 'confirmToken' and the refresh_token as 'refreshToken' in the
-  // SAML API messages. UserSessionManager will inject the access_token
-  // as a cookie on .jemaos.com for PWA apps to verify subscriptions.
-  if (!password_attributes_json.empty()) {
-    std::optional<base::Value> attrs =
-        base::JSONReader::Read(password_attributes_json);
-    if (attrs && attrs->is_dict()) {
-      const std::string* confirm_token =
-          attrs->GetDict().FindString("confirmToken");
-      if (confirm_token && !confirm_token->empty()) {
-        user_context.SetRefreshToken(*confirm_token);
-        LOG(INFO) << "[JEMAOS] Stored SAML access_token in UserContext (refresh token): "
-                  << confirm_token->substr(0, 8) << "...";
-      }
-      const std::string* refresh_token =
-          attrs->GetDict().FindString("refreshToken");
-      if (refresh_token && !refresh_token->empty()) {
-        LOG(INFO) << "[JEMAOS] Stored SAML refresh_token in UserContext";
-      }
-    }
-  }
   
   LOG(WARNING) << "[JEMAOS] DoCompleteLogin - username: " << username
                << ", newUser: " << newUser

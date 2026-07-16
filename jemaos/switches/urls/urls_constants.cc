@@ -49,7 +49,7 @@ const char kGoogleDriveOfflineHelpUrl[] = "https://jematechnology.fr/?ospath=doc
 const char kGoogleDriveRootUrl[] = "https://jematechnology.fr";
 const char kHelpURLFormat[] = "https://jematechnology.fr/docs/?ospath=knowledge-base/answer/%d";
 const char kHelpURLNoTaskForFile[] = "https://jematechnology.fr/?ospath=docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-jemaos-device/";
-const char kJemaDropUrl[] = "https://drop.jematechnology.fr";
+const char kJemaDropUrl[] = "https://drop.jemaos.com";
 
 const char kJemaExperimentTpmFallbackUrl[] = "https://jematechnology.fr/?ospath=faq/experimental-tpm-fallback";
 const char kEolNotificationURL[] = "https://jematechnology.fr/?ospath=eol";
@@ -116,7 +116,7 @@ const char kGoogleDriveOfflineHelpUrl[] = "https://jematechnology.fr/?ospath=doc
 const char kGoogleDriveRootUrl[] = "https://jematechnology.fr";
 const char kHelpURLFormat[] = "https://jematechnology.fr/?ospath=docs/knowledge-base/answer/%d";
 const char kHelpURLNoTaskForFile[] = "https://jematechnology.fr/?ospath=docs/manual/manage-your-apps/files-and-downloads/file-types-and-external-devices-that-work-on-jemaos-device/";
-const char kJemaDropUrl[] = "https://master.d3tump1ibzy1gt.amplifyapp.com";
+const char kJemaDropUrl[] = "https://drop.jemaos.com";
 
 const char kJemaExperimentTpmFallbackUrl[] = "https://jematechnology.fr/?ospath=faq/experimental-tpm-fallback";
 const char kEolNotificationURL[] = "https://jematechnology.fr/?ospath=eol";

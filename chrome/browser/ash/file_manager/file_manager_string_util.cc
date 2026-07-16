@@ -397,7 +397,7 @@ void AddStringsForJema(base::Value::Dict* dict) {
 
   // Toggle between showing the "Coming soon" placeholder or the real webview.
   // When this is set to false, Files will load the URL from JEMA_DROP_URL.
-  dict->Set("JEMADROP_COMING_SOON_ENABLED", true);
+  dict->Set("JEMADROP_COMING_SOON_ENABLED", false);
 }
 
 void AddStringsGeneric(base::Value::Dict* dict) {

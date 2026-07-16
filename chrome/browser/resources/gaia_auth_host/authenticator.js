@@ -1419,13 +1419,17 @@ export class Authenticator extends EventTarget {
       // page in the 'confirm' SAML API message.
       // This must be done BEFORE completeFtAuthentication because Jema/Flint
       // accounts return early and never reach the standard authCompleted path.
+      // Note: we don't check authFlow === SAML because the JemaOS login page
+      // uses the SAML API but the authFlow may not be detected as SAML.
       let jemaPasswordAttributes = {};
-      if (this.authFlow === AuthFlow.SAML && this.samlHandler_) {
+      if (this.samlHandler_) {
         if (this.samlHandler_.confirmToken) {
           jemaPasswordAttributes['confirmToken'] = this.samlHandler_.confirmToken;
+          console.log('[JEMAOS] Injecting confirmToken into passwordAttributes');
         }
         if (this.samlHandler_.refreshToken) {
           jemaPasswordAttributes['refreshToken'] = this.samlHandler_.refreshToken;
+          console.log('[JEMAOS] Injecting refreshToken into passwordAttributes');
         }
       }
 

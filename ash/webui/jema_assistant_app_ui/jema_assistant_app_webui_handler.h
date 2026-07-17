@@ -58,6 +58,7 @@ class JemaAssistantWebUIHandler
   void OnBubbleVisibilityChanged(bool visible) override;
   void OnCreateAgentRequested() override;
   void OnAgentActivated(const std::string& agent_id) override;
+  void OnAgentVoiceInputRequested(const std::string& agent_id) override;
   void OnDeskAgentActivated(const std::string& agent_id) override;
   void OnVoiceInputRequested() override;
 

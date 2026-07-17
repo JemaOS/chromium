@@ -87,14 +87,14 @@ std::unique_ptr<IconButton> CreateIconButton(
 class AgentButton : public views::LabelButton {
  public:
   AgentButton(const JemaAssistantAgentSummary& agent,
-              base::RepeatingCallback<void(const std::string&)> activate_agent)
-      : LabelButton(
-            base::BindRepeating(
-                [](base::RepeatingCallback<void(const std::string&)> callback,
-                   std::string id) { callback.Run(id); },
-                std::move(activate_agent),
-                agent.id),
-            agent.name.empty() ? u"?" : agent.name.substr(0, 1)),
+              base::RepeatingCallback<void(const std::string&)> activate_agent,
+              base::RepeatingCallback<void(const std::string&)> voice_agent)
+      : LabelButton(base::BindRepeating(&AgentButton::OnShortPress,
+                                        base::Unretained(this)),
+                    agent.name.empty() ? u"?" : agent.name.substr(0, 1)),
+        agent_id_(agent.id),
+        activate_agent_(std::move(activate_agent)),
+        voice_agent_(std::move(voice_agent)),
         progress_(agent.progress),
         working_(agent.working),
         autonomous_(agent.autonomous),
@@ -110,6 +110,28 @@ class AgentButton : public views::LabelButton {
     SetBackground(
         views::CreateRoundedRectBackground(agent.color, kAgentSize / 2.0f));
     SetBorder(views::CreateEmptyBorder(gfx::Insets(3)));
+  }
+
+  bool OnMousePressed(const ui::MouseEvent& event) override {
+    long_press_triggered_ = false;
+    long_press_timer_.Start(
+        FROM_HERE, base::Milliseconds(650),
+        base::BindOnce(&AgentButton::TriggerVoice, base::Unretained(this)));
+    return views::LabelButton::OnMousePressed(event);
+  }
+
+  void OnMouseReleased(const ui::MouseEvent& event) override {
+    long_press_timer_.Stop();
+    views::LabelButton::OnMouseReleased(event);
+  }
+
+  void OnGestureEvent(ui::GestureEvent* event) override {
+    if (event->type() == ui::EventType::kGestureLongPress) {
+      TriggerVoice();
+      event->SetHandled();
+      return;
+    }
+    views::LabelButton::OnGestureEvent(event);
   }
 
   void PaintButtonContents(gfx::Canvas* canvas) override {
@@ -144,6 +166,23 @@ class AgentButton : public views::LabelButton {
   }
 
  private:
+  void OnShortPress() {
+    if (!long_press_triggered_) {
+      activate_agent_.Run(agent_id_);
+    }
+    long_press_triggered_ = false;
+  }
+
+  void TriggerVoice() {
+    long_press_triggered_ = true;
+    voice_agent_.Run(agent_id_);
+  }
+
+  const std::string agent_id_;
+  base::RepeatingCallback<void(const std::string&)> activate_agent_;
+  base::RepeatingCallback<void(const std::string&)> voice_agent_;
+  base::OneShotTimer long_press_timer_;
+  bool long_press_triggered_ = false;
   const int progress_;
   const bool working_;
   const bool autonomous_;
@@ -236,6 +275,7 @@ class JemaAssistantBarView : public views::View {
       base::RepeatingClosure voice_input,
       base::RepeatingClosure create_agent,
       base::RepeatingCallback<void(const std::string&)> activate_agent,
+      base::RepeatingCallback<void(const std::string&)> voice_agent,
       base::RepeatingClosure activate_user_desk,
       base::RepeatingClosure hide_bar) {
     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -246,6 +286,13 @@ class JemaAssistantBarView : public views::View {
     layout->set_cross_axis_alignment(
         views::BoxLayout::CrossAxisAlignment::kCenter);
 
+    auto* left = AddChildView(std::make_unique<views::View>());
+    auto* left_layout =
+        left->SetLayoutManager(std::make_unique<views::BoxLayout>(
+            views::BoxLayout::Orientation::kHorizontal, gfx::Insets(),
+            kControlSpacing));
+    left_layout->set_cross_axis_alignment(
+        views::BoxLayout::CrossAxisAlignment::kCenter);
     auto home_button = CreateIconButton(
         base::BindRepeating(
             [](base::RepeatingClosure callback) { callback.Run(); },
@@ -253,9 +300,9 @@ class JemaAssistantBarView : public views::View {
         kKsvBrowserHomeIcon, u"Revenir au bureau utilisateur");
     home_button->SetIconColor(cros_tokens::kCrosSysOnSurface);
     home_button->SetBackgroundColor(cros_tokens::kCrosSysSystemOnBase1);
-    AddChildView(std::move(home_button));
+    left->AddChildView(std::move(home_button));
 
-    agents_container_ = AddChildView(std::make_unique<views::View>());
+    agents_container_ = left->AddChildView(std::make_unique<views::View>());
     auto* agents_layout =
         agents_container_->SetLayoutManager(std::make_unique<views::BoxLayout>(
             views::BoxLayout::Orientation::kHorizontal, gfx::Insets(),
@@ -264,8 +311,9 @@ class JemaAssistantBarView : public views::View {
         views::BoxLayout::CrossAxisAlignment::kCenter);
     create_agent_ = std::move(create_agent);
     activate_agent_ = std::move(activate_agent);
+    voice_agent_ = std::move(voice_agent);
     RebuildAgents({});
-    layout->SetFlexForView(agents_container_, 1);
+    layout->SetFlexForView(left, 1);
 
     std::unique_ptr<views::View> orchestrator =
         std::make_unique<OrchestratorButton>(std::move(show_assistant),
@@ -323,7 +371,7 @@ class JemaAssistantBarView : public views::View {
     } else {
       for (const auto& agent : agents) {
         std::unique_ptr<views::View> button =
-            std::make_unique<AgentButton>(agent, activate_agent_);
+            std::make_unique<AgentButton>(agent, activate_agent_, voice_agent_);
         agents_container_->AddChildView(std::move(button));
       }
     }
@@ -347,6 +395,7 @@ class JemaAssistantBarView : public views::View {
   raw_ptr<views::View> agents_container_ = nullptr;
   base::RepeatingClosure create_agent_;
   base::RepeatingCallback<void(const std::string&)> activate_agent_;
+  base::RepeatingCallback<void(const std::string&)> voice_agent_;
 };
 
 JemaAssistantBar::JemaAssistantBar(aura::Window* root_window,
@@ -476,6 +525,8 @@ void JemaAssistantBar::CreateWidgets(aura::Window* container) {
                           base::Unretained(this)),
       base::BindRepeating(&JemaAssistantBar::ActivateAgent,
                           base::Unretained(this)),
+      base::BindRepeating(&JemaAssistantBar::ActivateAgentVoice,
+                          base::Unretained(this)),
       base::BindRepeating(&JemaAssistantBar::ActivateUserDesk,
                           base::Unretained(this)),
       base::BindRepeating(&JemaAssistantBar::SetVisible, base::Unretained(this),
@@ -580,8 +631,28 @@ void JemaAssistantBar::ActivateAgent(const std::string& agent_id) {
                                            DesksSwitchSource::kApiSwitch);
     }
   }
-  if (assistant_view_ && assistant_view_->IsVisible()) {
+  ShowAssistant();
+  if (assistant_view_) {
     assistant_view_->ActivateAgent(agent_id);
+  }
+}
+
+void JemaAssistantBar::ActivateAgentVoice(const std::string& agent_id) {
+  const auto it =
+      std::find_if(agents_.begin(), agents_.end(),
+                   [&agent_id](const JemaAssistantAgentSummary& agent) {
+                     return agent.id == agent_id;
+                   });
+  if (it != agents_.end()) {
+    Desk* target = EnsureAgentDesk(*it);
+    if (target && !target->is_active()) {
+      DesksController::Get()->ActivateDesk(target,
+                                           DesksSwitchSource::kApiSwitch);
+    }
+  }
+  ShowAssistant();
+  if (assistant_view_) {
+    assistant_view_->RequestAgentVoiceInput(agent_id);
   }
 }
 

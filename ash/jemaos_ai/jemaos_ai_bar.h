@@ -86,6 +86,7 @@ class ASH_EXPORT JemaAssistantBar : public aura::WindowObserver,
   void StartVoiceInput();
   void CreateAgent();
   void ActivateAgent(const std::string& agent_id);
+  void ActivateAgentVoice(const std::string& agent_id);
   void ActivateUserDesk();
   Desk* EnsureAgentDesk(const JemaAssistantAgentSummary& agent);
 

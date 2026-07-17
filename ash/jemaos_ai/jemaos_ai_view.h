@@ -40,6 +40,7 @@ class JemaAssistantViewObserver : public base::CheckedObserver {
   virtual void OnBubbleVisibilityChanged(bool visible) {}
   virtual void OnCreateAgentRequested() {}
   virtual void OnAgentActivated(const std::string& agent_id) {}
+  virtual void OnAgentVoiceInputRequested(const std::string& agent_id) {}
   virtual void OnDeskAgentActivated(const std::string& agent_id) {}
   virtual void OnVoiceInputRequested() {}
   virtual void OnJemaAssistantEnabledChanged(bool enabled) {}
@@ -82,6 +83,7 @@ class ASH_EXPORT JemaAssistantView : public SessionObserver,
 
   void RequestCreateAgent();
   void ActivateAgent(const std::string& agent_id);
+  void RequestAgentVoiceInput(const std::string& agent_id);
   void NotifyDeskAgentActivated(const std::string& agent_id);
   void RequestVoiceInput();
 
@@ -116,6 +118,7 @@ class ASH_EXPORT JemaAssistantView : public SessionObserver,
   bool create_agent_requested_ = false;
   bool voice_input_requested_ = false;
   std::optional<std::string> pending_agent_id_;
+  std::optional<std::string> pending_agent_voice_id_;
   base::TimeTicks last_clipboard_item_time_ = base::TimeTicks::Min();
   base::TimeTicks last_time_triggered_ = base::TimeTicks::Min();
   JemaAssistantViewObserver::ClipboardItemForAssistant last_clipboard_item_;

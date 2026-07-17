@@ -284,6 +284,13 @@ void JemaAssistantWebUIHandler::OnAgentActivated(const std::string& agent_id) {
   }
 }
 
+void JemaAssistantWebUIHandler::OnAgentVoiceInputRequested(
+    const std::string& agent_id) {
+  if (IsJavascriptAllowed()) {
+    FireWebUIListener("agent-voice-input-requested", base::Value(agent_id));
+  }
+}
+
 void JemaAssistantWebUIHandler::OnDeskAgentActivated(
     const std::string& agent_id) {
   if (IsJavascriptAllowed()) {

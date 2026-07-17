@@ -53,10 +53,18 @@ Agents disponibles :
 ${JSON.stringify(agentList, null, 2)}
 
 Règles :
+- Réponds directement toi-même par défaut quand tu peux satisfaire la demande sans expertise spécialisée ni action longue.
+- Ne délègue pas une salutation, une explication, une question générale ou une réponse courte.
 - Choisis l'agent le plus pertinent selon ses skills.
 - Reformule la tâche déléguée de manière complète et autonome (l'agent ne voit que ce texte).
 - Si la demande mentionne plusieurs tâches, délègue la principale au meilleur agent.
 - Réponds en français.`;
+}
+
+export function promptAgent(agentId, task) {
+  const agent = getAgent(agentId);
+  if (!agent) throw new Error('Agent introuvable');
+  return runAgentTask(agent, task);
 }
 
 export async function orchestrate(userText) {

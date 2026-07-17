@@ -54,6 +54,7 @@
         </div>
         <button type="button" class="modal-close" id="agent-close" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7.05 5.64 4.95 4.95 4.95-4.95 1.41 1.41L13.41 12l4.95 4.95-1.41 1.41L12 13.41l-4.95 4.95-1.41-1.41L10.59 12 5.64 7.05l1.41-1.41Z"/></svg></button>
       </div>
+      <section id="existing-agents" class="existing-agents"></section>
       <div id="template-gallery"></div>
       <form id="agent-form">
         <div class="form-row">
@@ -93,6 +94,26 @@
         <div class="form-actions">
           <button type="button" class="btn-ghost" id="agent-cancel">Annuler</button>
           <button type="submit" class="btn-primary">Créer l'agent</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== Modal : prompt ciblé agent ===== -->
+  <div id="agent-prompt-modal" class="modal-backdrop hidden">
+    <div class="modal agent-prompt-card">
+      <div class="modal-header">
+        <div class="agent-prompt-identity">
+          <span id="agent-prompt-avatar" class="agent-prompt-avatar"></span>
+          <div><h2 id="agent-prompt-title">Agent</h2><p id="agent-prompt-role" class="modal-sub"></p></div>
+        </div>
+        <button type="button" class="modal-close" id="agent-prompt-close" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7.05 5.64 4.95 4.95 4.95-4.95 1.41 1.41L13.41 12l4.95 4.95-1.41 1.41L12 13.41l-4.95 4.95-1.41-1.41L10.59 12 5.64 7.05l1.41-1.41Z"/></svg></button>
+      </div>
+      <form id="agent-prompt-form">
+        <textarea id="agent-prompt-input" rows="5" placeholder="Demandez une tâche précise à cet agent…" required></textarea>
+        <div class="form-actions">
+          <button type="button" class="btn-ghost" id="agent-prompt-voice">Parler</button>
+          <button type="submit" class="btn-primary">Envoyer à l’agent</button>
         </div>
       </form>
     </div>

@@ -1,10 +1,10 @@
 // ===== Point d'entrée : câblage des événements =====
 
-import { state, loadState, saveState, createAgent, publishAgentState } from './state.js';
+import { state, loadState, saveState, createAgent, deleteAgent, publishAgentState } from './state.js';
 import {addWebUIListener, sendWithPromise} from 'chrome://resources/ash/common/cr.m.js';
 import { PROVIDERS, chatCompletion } from './llm.js';
 import { AGENT_TEMPLATES, PALETTE } from './templates.js';
-import { orchestrate, bindUI } from './orchestrator.js';
+import { orchestrate, promptAgent, bindUI } from './orchestrator.js';
 import {executeSystemTool} from './tools.js';
 import * as ui from './ui.js';
 
@@ -12,6 +12,7 @@ const $ = sel => document.querySelector(sel);
 
 let selectedTemplate = null;
 let selectedColor = PALETTE[0];
+let targetedAgentId = null;
 
 // ===== Init =====
 
@@ -54,7 +55,11 @@ addWebUIListener('create-agent-requested', () => openAgentModal());
 addWebUIListener('voice-input-requested', () => startVoiceInput());
 addWebUIListener('agent-activated', agentId => {
   const agent = state.agents.find(a => a.id === agentId);
-  if (agent) ui.switchView(agent.id);
+  if (agent) openAgentPrompt(agent.id, false);
+});
+addWebUIListener('agent-voice-input-requested', agentId => {
+  const agent = state.agents.find(a => a.id === agentId);
+  if (agent) openAgentPrompt(agent.id, true);
 });
 addWebUIListener('desk-agent-activated', agentId => {
   const agent = state.agents.find(a => a.id === agentId);
@@ -126,11 +131,69 @@ $('#agent-cancel').addEventListener('click', closeAgentModal);
 function openAgentModal() {
   $('#orch-panel').classList.add('hidden');
   ui.closeModal('#settings-modal');
+  ui.closeModal('#agent-prompt-modal');
+  renderExistingAgents();
   renderTemplateGallery();
   renderColorPalette();
   selectTemplate(AGENT_TEMPLATES[0]);
   ui.openModal('#agent-modal');
 }
+
+function renderExistingAgents() {
+  const container = $('#existing-agents');
+  container.innerHTML = state.agents.length ? '<span class="form-label">Agents existants</span>' : '';
+  for (const agent of state.agents) {
+    const row = document.createElement('div');
+    row.className = 'existing-agent-row';
+    row.innerHTML = `<span class="existing-agent-dot" style="background:${agent.color}">${ui.esc(agent.letter)}</span><span class="existing-agent-meta"><strong>${ui.esc(agent.name)}</strong><small>${ui.esc(agent.role)}</small></span><button type="button" class="delete-agent-button">Supprimer</button>`;
+    row.querySelector('button').addEventListener('click', () => {
+      if (!window.confirm(`Supprimer l’agent « ${agent.name} » ?`)) return;
+      deleteAgent(agent.id);
+      publishAgentState();
+      renderExistingAgents();
+      ui.renderTopBar();
+      ui.renderWorkspace();
+      ui.toast(`Agent « ${agent.name} » supprimé`, '#ef4444');
+    });
+    container.appendChild(row);
+  }
+}
+
+function openAgentPrompt(agentId, startVoice) {
+  const agent = state.agents.find(item => item.id === agentId);
+  if (!agent) return;
+  targetedAgentId = agent.id;
+  $('#orch-panel').classList.add('hidden');
+  ui.closeModal('#agent-modal');
+  ui.closeModal('#settings-modal');
+  $('#agent-prompt-avatar').textContent = agent.letter;
+  $('#agent-prompt-avatar').style.background = agent.color;
+  $('#agent-prompt-title').textContent = agent.name;
+  $('#agent-prompt-role').textContent = agent.role;
+  $('#agent-prompt-input').value = '';
+  ui.openModal('#agent-prompt-modal');
+  $('#agent-prompt-input').focus();
+  if (startVoice) startVoiceInput({agentId: agent.id, targetInput: '#agent-prompt-input'});
+}
+
+function closeAgentPrompt() {
+  ui.closeModal('#agent-prompt-modal');
+  targetedAgentId = null;
+  if (source === 'bubble') $('#orch-panel').classList.remove('hidden');
+}
+
+$('#agent-prompt-close').addEventListener('click', closeAgentPrompt);
+$('#agent-prompt-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const task = $('#agent-prompt-input').value.trim();
+  if (!task || !targetedAgentId) return;
+  const agentId = targetedAgentId;
+  closeAgentPrompt();
+  promptAgent(agentId, task);
+});
+$('#agent-prompt-voice').addEventListener('click', () => {
+  if (targetedAgentId) startVoiceInput({agentId: targetedAgentId, targetInput: '#agent-prompt-input'});
+});
 
 function closeAgentModal() {
   ui.closeModal('#agent-modal');
@@ -289,10 +352,13 @@ function closeSettingsModal() {
 
 let speechRecognition = null;
 
-function startVoiceInput() {
+function startVoiceInput(options = {}) {
   $('#orch-panel').classList.remove('hidden');
-  ui.closeModal('#agent-modal');
-  ui.closeModal('#settings-modal');
+  if (!options.agentId) {
+    ui.closeModal('#agent-modal');
+    ui.closeModal('#settings-modal');
+    ui.closeModal('#agent-prompt-modal');
+  }
   ui.updateProviderLabel();
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) {
@@ -300,7 +366,7 @@ function startVoiceInput() {
     return;
   }
   if (speechRecognition) speechRecognition.abort();
-  const input = $('#orch-input');
+  const input = $(options.targetInput || '#orch-input');
   speechRecognition = new Recognition();
   speechRecognition.lang = navigator.language || 'fr-FR';
   speechRecognition.interimResults = true;
@@ -319,7 +385,12 @@ function startVoiceInput() {
     input.value = transcript;
     if (finalTranscript.trim()) {
       input.value = '';
-      orchestrate(finalTranscript.trim());
+      if (options.agentId) {
+        closeAgentPrompt();
+        promptAgent(options.agentId, finalTranscript.trim());
+      } else {
+        orchestrate(finalTranscript.trim());
+      }
     }
   };
   speechRecognition.onerror = event => {

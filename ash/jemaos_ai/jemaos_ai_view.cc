@@ -278,6 +278,11 @@ void JemaAssistantView::OnBubbleReady() {
     voice_input_requested_ = false;
     RequestVoiceInput();
   }
+  if (pending_agent_voice_id_) {
+    std::string agent_id = std::move(*pending_agent_voice_id_);
+    pending_agent_voice_id_.reset();
+    RequestAgentVoiceInput(agent_id);
+  }
   if (pending_agent_id_) {
     std::string agent_id = std::move(*pending_agent_id_);
     pending_agent_id_.reset();
@@ -302,6 +307,16 @@ void JemaAssistantView::ActivateAgent(const std::string& agent_id) {
   }
   for (auto& observer : observers_) {
     observer.OnAgentActivated(agent_id);
+  }
+}
+
+void JemaAssistantView::RequestAgentVoiceInput(const std::string& agent_id) {
+  if (!ready_to_show_bubble_) {
+    pending_agent_voice_id_ = agent_id;
+    return;
+  }
+  for (auto& observer : observers_) {
+    observer.OnAgentVoiceInputRequested(agent_id);
   }
 }
 

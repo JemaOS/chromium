@@ -428,11 +428,10 @@ void ChromeJemaAssistantAppUIDelegate::OnFrameAccessibilityTreeSnapshot(
       }
     }
   }
-}
---request->pending;
-if (request->pending == 0) {
-  CompleteAccessibilitySnapshot(request);
-}
+  --request->pending;
+  if (request->pending == 0) {
+    CompleteAccessibilitySnapshot(request);
+  }
 }
 
 void ChromeJemaAssistantAppUIDelegate::CompleteAccessibilitySnapshot(

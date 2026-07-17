@@ -1,7 +1,7 @@
 // ===== Point d'entrée : câblage des événements =====
 
 import { state, loadState, saveState, createAgent, publishAgentState } from './state.js';
-import {addWebUIListener} from 'chrome://resources/ash/common/cr.m.js';
+import {addWebUIListener, sendWithPromise} from 'chrome://resources/ash/common/cr.m.js';
 import { PROVIDERS, chatCompletion } from './llm.js';
 import { AGENT_TEMPLATES, PALETTE } from './templates.js';
 import { orchestrate, bindUI } from './orchestrator.js';

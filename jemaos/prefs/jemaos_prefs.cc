@@ -3,9 +3,10 @@
 // found in the LICENSE file.
 
 #include "jemaos/prefs/jemaos_prefs.h"
+
 #include "base/logging.h"
-#include "components/prefs/pref_service.h"
 #include "components/prefs/pref_registry_simple.h"
+#include "components/prefs/pref_service.h"
 #include "jemaos/constants/jemaos_constants.h"
 
 namespace jemaos {
@@ -14,12 +15,16 @@ namespace prefs {
 void RegisterProfilePrefs(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(kJemaOSImprovementPlanEnabled, false);
 
-  registry->RegisterBooleanPref(kJemaAssistantEnabled, false);
+  registry->RegisterBooleanPref(kJemaAssistantEnabled, true);
   registry->RegisterBooleanPref(kJemaAssistantExtraAcceleratorEnabled, false);
+  registry->RegisterDictionaryPref(kJemaAssistantEncryptedApiKeys);
+  registry->RegisterDictionaryPref(kJemaAssistantAgentPermissions);
+  registry->RegisterListPref(kJemaAssistantAuditLog);
 
   registry->RegisterBooleanPref(kJemaOSArcMediaAutoScanEnabled, true);
 #if BUILDFLAG(USE_JEMAOS_COM)
-  registry->RegisterBooleanPref(kCrostiniInstallerNotificationUserInteracted, false);
+  registry->RegisterBooleanPref(kCrostiniInstallerNotificationUserInteracted,
+                                false);
 #endif
 }
 
@@ -43,10 +48,12 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
 
 #if BUILDFLAG(USE_JEMAOS_LICENSE)
   registry->RegisterBooleanPref(kJemaLicenseShouldShowInSettings, false);
-  registry->RegisterIntegerPref(kJemaLicenseStateType,
-                                static_cast<int>(jemaos::constants::LicenseStateType::kUnspecified));
-  registry->RegisterIntegerPref(kJemaLicenseEnforcementLevel,
-                                static_cast<int>(jemaos::constants::LicenseEnforcementLevel::kNone));
+  registry->RegisterIntegerPref(
+      kJemaLicenseStateType,
+      static_cast<int>(jemaos::constants::LicenseStateType::kUnspecified));
+  registry->RegisterIntegerPref(
+      kJemaLicenseEnforcementLevel,
+      static_cast<int>(jemaos::constants::LicenseEnforcementLevel::kNone));
   registry->RegisterIntegerPref(kJemaLicenseEnforcementLogOutInterval, 0);
 #endif
 }
@@ -56,8 +63,10 @@ void KeepCurrentPrefs(PrefService* local_state) {
   bool tpm_fallback = local_state->GetBoolean(jemaos::prefs::kForceTpmFallback);
   local_state->SetBoolean(kCurrentForceTpmFallback, tpm_fallback);
 
-  bool enable_arc_ime_globally = local_state->GetBoolean(jemaos::prefs::kEnableArcIMEGlobally);
-  local_state->SetBoolean(kCurrentEnableArcIMEGlobally, enable_arc_ime_globally);
+  bool enable_arc_ime_globally =
+      local_state->GetBoolean(jemaos::prefs::kEnableArcIMEGlobally);
+  local_state->SetBoolean(kCurrentEnableArcIMEGlobally,
+                          enable_arc_ime_globally);
 }
 
 void SetNotNecessaryForceTpmFallback(PrefService* local_state) {
@@ -74,5 +83,5 @@ void ClearOneShotProfilePrefs(PrefService* prefs) {
   prefs->ClearPref(kJemaOSArcMediaAutoScanEnabled);
 }
 
-} // prefs
-} // jemaos
+}  // namespace prefs
+}  // namespace jemaos

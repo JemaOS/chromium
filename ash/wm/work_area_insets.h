@@ -53,6 +53,9 @@ class ASH_EXPORT WorkAreaInsets : public KeyboardControllerObserver {
   // window.
   int docked_magnifier_height() const { return docked_magnifier_height_; }
 
+  // Returns the height reserved by the native JemaOS AI environment bar.
+  int jema_assistant_bar_height() const { return jema_assistant_bar_height_; }
+
   // Returns cached user work area bounds in screen coordinates DIPs for this
   // root window.
   const gfx::Rect& user_work_area_bounds() const {
@@ -90,6 +93,10 @@ class ASH_EXPORT WorkAreaInsets : public KeyboardControllerObserver {
   // Shell observers will be notified that accessibility insets changed.
   void SetAccessibilityPanelHeight(int height);
 
+  // Sets the height of the native JemaOS AI environment bar. The value is
+  // added to other top system insets and does not replace the shelf insets.
+  void SetJemaAssistantBarHeight(int height);
+
   // Sets bounds (in window coordinates) and insets of the shelf for this root
   // window. |bounds| and |insets| are passed separately, because insets depend
   // on shelf visibility and can be different than calculated from bounds.
@@ -103,6 +110,10 @@ class ASH_EXPORT WorkAreaInsets : public KeyboardControllerObserver {
   void OnKeyboardVisibilityChanged(bool is_visible) override;
 
  private:
+  // Returns the total top system inset, including accessibility surfaces and
+  // the JemaOS AI environment bar.
+  gfx::Insets GetTopSystemInsets() const;
+
   // Updates cached values of work area bounds and insets.
   void UpdateWorkArea();
 
@@ -145,6 +156,9 @@ class ASH_EXPORT WorkAreaInsets : public KeyboardControllerObserver {
   // Cached height of the accessibility panel in DIPs at the top of the
   // screen. It needs to be removed from the available work area.
   int accessibility_panel_height_ = 0;
+
+  // Cached height of the native JemaOS AI environment bar in DIPs.
+  int jema_assistant_bar_height_ = 0;
 };
 
 }  // namespace ash

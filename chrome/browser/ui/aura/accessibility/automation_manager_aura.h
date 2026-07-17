@@ -16,6 +16,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/no_destructor.h"
 #include "base/scoped_observation.h"
+#include "base/time/time.h"
 #include "extensions/browser/api/automation_internal/automation_event_router.h"
 #include "ui/accessibility/ax_action_handler.h"
 #include "ui/accessibility/ax_tree_serializer.h"
@@ -58,6 +59,21 @@ class AutomationManagerAura : public ui::AXActionHandler,
 
   // Disable automation support for views.
   void Disable();
+
+  // Keeps the native Views accessibility tree alive independently from
+  // extension consumers such as ChromeVox.
+  void AddNativeClient();
+  void RemoveNativeClient();
+
+  // Serializes a bounded tree rooted at `window` without resetting the global
+  // incremental serializer used by accessibility extensions.
+  bool SnapshotWindow(aura::Window* window,
+                      size_t max_node_count,
+                      base::TimeDelta timeout,
+                      ui::AXTreeUpdate* update);
+
+  // Dispatches only a supported action advertised by the current native node.
+  bool PerformCheckedAction(const ui::AXActionData& data);
 
   // Handle an event fired upon the root view.
   void HandleEvent(ax::mojom::Event event_type, bool from_user);
@@ -112,6 +128,9 @@ class AutomationManagerAura : public ui::AXActionHandler,
   // Reset state in this manager. If |reset_serializer| is true, reset the
   // serializer to save memory.
   void Reset(bool reset_serializer);
+  void UpdateEnabledState();
+  void EnableInternal();
+  void DisableInternal();
 
   void PostEvent(int32_t id,
                  ax::mojom::Event event_type,
@@ -128,6 +147,8 @@ class AutomationManagerAura : public ui::AXActionHandler,
 
   // Whether automation support for views is enabled.
   bool enabled_ = false;
+  bool extension_client_enabled_ = false;
+  size_t native_client_count_ = 0;
 
   std::unique_ptr<views::AXAuraObjCache> cache_;
 

@@ -14,6 +14,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/functional/function_ref.h"
 #include "base/memory/safety_checks.h"
+#include "base/time/time.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
@@ -42,6 +43,7 @@
 #include "third_party/blink/public/mojom/page/page_visibility_state.mojom-forward.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-forward.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#include "ui/accessibility/ax_mode.h"
 #include "ui/accessibility/ax_node_id_forward.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/image/image_skia.h"
@@ -88,7 +90,7 @@ namespace network {
 namespace mojom {
 class URLLoaderFactory;
 class URLResponseHead;
-}
+}  // namespace mojom
 }  // namespace network
 
 namespace perfetto::protos::pbzero {
@@ -218,6 +220,13 @@ class CONTENT_EXPORT RenderFrameHost : public IPC::Listener,
   virtual ui::AXTreeID GetAXTreeID() = 0;
 
   using AXTreeSnapshotCallback = base::OnceCallback<void(ui::AXTreeUpdate&)>;
+
+  // Requests a one-time snapshot of this frame's accessibility tree without
+  // combining it with child frame trees or changing the persistent AX mode.
+  virtual void RequestAXTreeSnapshot(AXTreeSnapshotCallback callback,
+                                     ui::AXMode ax_mode,
+                                     size_t max_nodes,
+                                     base::TimeDelta timeout) = 0;
 
   // Returns the SiteInstance grouping all RenderFrameHosts that have script
   // access to this RenderFrameHost, and must therefore live in the same

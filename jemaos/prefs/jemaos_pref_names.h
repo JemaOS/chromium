@@ -10,8 +10,9 @@
 namespace jemaos {
 namespace prefs {
 
-
-extern const char kPrefHideJemaOSStoreIcon[]; // registered in chrome/browser/ui/browser_ui_prefs.cc
+extern const char
+    kPrefHideJemaOSStoreIcon[];  // registered in
+                                 // chrome/browser/ui/browser_ui_prefs.cc
 
 extern const char kJemaOSImprovementPlanEnabled[];
 
@@ -43,6 +44,9 @@ extern const char kRebootRequiredForWidevine[];
 
 extern const char kJemaAssistantEnabled[];
 extern const char kJemaAssistantExtraAcceleratorEnabled[];
+extern const char kJemaAssistantEncryptedApiKeys[];
+extern const char kJemaAssistantAgentPermissions[];
+extern const char kJemaAssistantAuditLog[];
 
 extern const char kJemaOSArcMediaAutoScanEnabled[];
 
@@ -53,12 +57,11 @@ extern const char kJemaLicenseEnforcementLevel[];
 extern const char kJemaLicenseEnforcementLogOutInterval[];
 #endif
 
-
 #if BUILDFLAG(USE_JEMAOS_COM)
 extern const char kCrostiniInstallerNotificationUserInteracted[];
 #endif
 
-} // prefs
-} // jemaos
+}  // namespace prefs
+}  // namespace jemaos
 
 #endif

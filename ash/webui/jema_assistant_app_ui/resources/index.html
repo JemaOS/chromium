@@ -1,20 +1,137 @@
 <!DOCTYPE html>
-<html dir="$i18n{textdirection}" lang="$i18n{language}">
-  <head>
-    <title></title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-      body, html {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-        overflow: hidden;
-      }
-  </head>
-    </style>
-  <body>
-    <jema-assistant-app></jema-assistant-app>
-    <script type="module" src="/js/jema_assistant_app.js"></script>
-  </body>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JemaOS AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ===== Barre haute : environnement IA ===== -->
+  <header id="topbar">
+    <div class="tb-left" id="agents-list"></div>
+    <div class="tb-center">
+      <button id="orchestrator-btn" title="Orchestrateur — parler à l'IA">
+        <span class="orb-icon">✦</span>
+      </button>
+    </div>
+    <div class="tb-right">
+      <button id="home-btn" class="tb-btn" title="Environnement utilisateur">⌂</button>
+      <button id="add-agent-btn" class="tb-btn" title="Créer un agent">+</button>
+      <button id="settings-btn" class="tb-btn" title="Réglages API" aria-label="Réglages API"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.1 13a7 7 0 0 0 .05-1 7 7 0 0 0-.05-1l2.1-1.64-2-3.46-2.49 1a7.4 7.4 0 0 0-1.72-1L14.6 3h-4l-.39 2.9a7.4 7.4 0 0 0-1.72 1L6 5.9 4 9.36 6.1 11a7 7 0 0 0-.05 1 7 7 0 0 0 .05 1L4 14.64l2 3.46 2.49-1a7.4 7.4 0 0 0 1.72 1l.39 2.9h4l.39-2.9a7.4 7.4 0 0 0 1.72-1l2.49 1 2-3.46L19.1 13ZM12.6 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></svg></button>
+      <button id="toggle-bar-btn" class="tb-btn" title="Masquer la barre IA">▴</button>
+    </div>
+  </header>
+  <button id="show-bar-btn" class="hidden" title="Afficher la barre IA">▾ Environnement IA</button>
+
+  <!-- ===== Zone de travail ===== -->
+  <main id="workspace"></main>
+
+  <!-- ===== Panneau orchestrateur ===== -->
+  <section id="orch-panel" class="hidden">
+    <div id="orch-header">
+      <span class="orch-dot"></span>
+      <strong>Orchestrateur</strong>
+      <span id="orch-provider-label"></span>
+      <button id="orch-settings" title="Réglages LLM" aria-label="Réglages LLM"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.1 13a7 7 0 0 0 .05-1 7 7 0 0 0-.05-1l2.1-1.64-2-3.46-2.49 1a7.4 7.4 0 0 0-1.72-1L14.6 3h-4l-.39 2.9a7.4 7.4 0 0 0-1.72 1L6 5.9 4 9.36 6.1 11a7 7 0 0 0-.05 1 7 7 0 0 0 .05 1L4 14.64l2 3.46 2.49-1a7.4 7.4 0 0 0 1.72 1l.39 2.9h4l.39-2.9a7.4 7.4 0 0 0 1.72-1l2.49 1 2-3.46L19.1 13ZM12.6 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></svg></button>
+      <button id="orch-close" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7.05 5.64 4.95 4.95 4.95-4.95 1.41 1.41L13.41 12l4.95 4.95-1.41 1.41L12 13.41l-4.95 4.95-1.41-1.41L10.59 12 5.64 7.05l1.41-1.41Z"/></svg></button>
+    </div>
+    <div id="orch-messages"></div>
+    <form id="orch-form">
+      <input id="orch-input" autocomplete="off" placeholder="Ex. Prépare-moi le rapport des ventes du trimestre…">
+      <button type="submit" title="Envoyer" aria-label="Envoyer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.4 20.4 17.45-7.48a1 1 0 0 0 0-1.84L3.4 3.6a1 1 0 0 0-1.38 1.02L3 10l10 2-10 2-.98 5.38A1 1 0 0 0 3.4 20.4Z"/></svg></button>
+    </form>
+  </section>
+
+  <!-- ===== Modal : création d'agent ===== -->
+  <div id="agent-modal" class="modal-backdrop hidden">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <div>
+          <h2>Créer un agent</h2>
+          <p class="modal-sub">Choisissez un rôle, sa couleur et ses accès JemaOS.</p>
+        </div>
+        <button type="button" class="modal-close" id="agent-close" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7.05 5.64 4.95 4.95 4.95-4.95 1.41 1.41L13.41 12l4.95 4.95-1.41 1.41L12 13.41l-4.95 4.95-1.41-1.41L10.59 12 5.64 7.05l1.41-1.41Z"/></svg></button>
+      </div>
+      <div id="template-gallery"></div>
+      <form id="agent-form">
+        <div class="form-row">
+          <label>Nom de l'agent
+            <input id="agent-name" required maxlength="24" placeholder="Ex. Compta Q3">
+          </label>
+          <label>Rôle
+            <input id="agent-role" maxlength="48" placeholder="Ex. Comptable senior">
+          </label>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Couleur</span>
+          <div id="color-palette"></div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Skills</span>
+          <div id="agent-skills-preview" class="chips"></div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Accès OS autorisés</span>
+          <div id="agent-tools-checks" class="chips tools-checks"></div>
+        </div>
+        <div class="form-row">
+          <label>Mode d’exécution
+            <select id="agent-execution-mode">
+              <option value="ask">Toujours demander</option>
+              <option value="autonomous">Autonome pour les accès autorisés</option>
+              <option value="blocked">Bloquer toutes les actions OS</option>
+            </select>
+          </label>
+          <p class="modal-note">Le mode autonome reste limité aux outils cochés, journalisé et visible dans la barre.</p>
+        </div>
+        <details class="form-row">
+          <summary>System prompt (avancé)</summary>
+          <textarea id="agent-sysprompt" rows="5"></textarea>
+        </details>
+        <div class="form-actions">
+          <button type="button" class="btn-ghost" id="agent-cancel">Annuler</button>
+          <button type="submit" class="btn-primary">Créer l'agent</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== Modal : réglages API ===== -->
+  <div id="settings-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Réglages LLM</h2>
+        <button type="button" class="modal-close" id="settings-close" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7.05 5.64 4.95 4.95 4.95-4.95 1.41 1.41L13.41 12l4.95 4.95-1.41 1.41L12 13.41l-4.95 4.95-1.41-1.41L10.59 12 5.64 7.05l1.41-1.41Z"/></svg></button>
+      </div>
+      <form id="settings-form">
+        <label>Fournisseur
+          <select id="set-provider"></select>
+        </label>
+        <label>Modèle
+          <input id="set-model" list="model-suggestions" spellcheck="false">
+          <datalist id="model-suggestions"></datalist>
+        </label>
+        <label>Clé API
+          <input id="set-apikey" type="password" autocomplete="off" placeholder="sk-…">
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="set-mock"> Mode simulation (aucune clé requise, réponses fictives)
+        </label>
+        <p class="modal-note">La clé est chiffrée avec le stockage sécurisé du profil JemaOS.</p>
+        <div id="settings-status" class="settings-status" role="status" aria-live="polite"></div>
+        <div class="form-actions">
+          <button type="button" class="btn-ghost" id="settings-test">Tester la connexion</button>
+          <button type="button" class="btn-ghost" id="settings-cancel">Annuler</button>
+          <button type="submit" class="btn-primary" id="settings-save">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
 </html>

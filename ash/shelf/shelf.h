@@ -51,6 +51,7 @@ class ShelfObserver;
 class WorkAreaInsets;
 class ShelfTooltipManager;
 class JemaAssistantView;
+class JemaAssistantBar;
 
 // TODO(oshima) : move to .cc
 
@@ -275,6 +276,9 @@ class ASH_EXPORT Shelf : public ShelfLayoutManagerObserver {
   JemaAssistantView* jema_assistant_view() const {
     return jema_assistant_view_.get();
   }
+  JemaAssistantBar* jema_assistant_bar() const {
+    return jema_assistant_bar_.get();
+  }
   LoginShelfWidget* login_shelf_widget() { return login_shelf_widget_.get(); }
 
   ShelfAlignment alignment() const { return alignment_; }
@@ -390,6 +394,7 @@ class ASH_EXPORT Shelf : public ShelfLayoutManagerObserver {
   int disable_auto_hide_ = 0;
 
   std::unique_ptr<JemaAssistantView> jema_assistant_view_;
+  std::unique_ptr<JemaAssistantBar> jema_assistant_bar_;
 
   std::unique_ptr<ShelfTooltipManager> tooltip_;
 

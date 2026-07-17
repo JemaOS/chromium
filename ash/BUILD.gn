@@ -745,6 +745,8 @@ component("ash") {
     "jemaos_ai/jemaos_ai_view.h",
     "jemaos_ai/jemaos_ai_bubble.cc",
     "jemaos_ai/jemaos_ai_bubble.h",
+    "jemaos_ai/jemaos_ai_bar.cc",
+    "jemaos_ai/jemaos_ai_bar.h",
     "game_dashboard/game_dashboard_battery_view.cc",
     "game_dashboard/game_dashboard_battery_view.h",
     "game_dashboard/game_dashboard_button.cc",

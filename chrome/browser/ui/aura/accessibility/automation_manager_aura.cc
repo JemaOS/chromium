@@ -42,6 +42,11 @@ AutomationManagerAura* AutomationManagerAura::GetInstance() {
 }
 
 void AutomationManagerAura::Enable() {
+  extension_client_enabled_ = true;
+  UpdateEnabledState();
+}
+
+void AutomationManagerAura::EnableInternal() {
   enabled_ = true;
   Reset(false);
 
@@ -82,8 +87,9 @@ void AutomationManagerAura::Enable() {
 
   if (active_window) {
     views::AXAuraObjWrapper* focus = cache_->GetOrCreate(active_window);
-    if (focus)
+    if (focus) {
       PostEvent(focus->GetUniqueId(), ax::mojom::Event::kChildrenChanged);
+    }
   }
 
   if (!automation_event_router_observer_.IsObserving()) {
@@ -93,33 +99,42 @@ void AutomationManagerAura::Enable() {
 }
 
 void AutomationManagerAura::Disable() {
+  extension_client_enabled_ = false;
+  UpdateEnabledState();
+}
+
+void AutomationManagerAura::DisableInternal() {
   enabled_ = false;
   if (tree_) {
-    if (automation_event_router_interface_)
+    if (automation_event_router_interface_) {
       automation_event_router_interface_->DispatchTreeDestroyedEvent(
           tree_->tree_id());
+    }
     tree_.reset();
   }
   tree_serializer_.reset();
   alert_window_.reset();
   cache_ = std::make_unique<views::AXAuraObjCache>();
 
-  if (automation_event_router_observer_.IsObserving())
+  if (automation_event_router_observer_.IsObserving()) {
     automation_event_router_observer_.Reset();
+  }
 }
 
 void AutomationManagerAura::OnViewEvent(views::View* view,
                                         ax::mojom::Event event_type) {
   CHECK(view);
 
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   DCHECK(tree_.get());
 
   views::AXAuraObjWrapper* obj = cache_->GetOrCreate(view);
-  if (!obj)
+  if (!obj) {
     return;
+  }
 
   PostEvent(obj->GetUniqueId(), event_type);
 }
@@ -129,20 +144,86 @@ void AutomationManagerAura::OnVirtualViewEvent(
     ax::mojom::Event event_type) {
   CHECK(virtual_view);
 
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   DCHECK(tree_.get());
 
   views::AXAuraObjWrapper* obj = virtual_view->GetOrCreateWrapper(cache_.get());
-  if (!obj)
+  if (!obj) {
     return;
+  }
 
   PostEvent(obj->GetUniqueId(), event_type);
 }
 
 void AutomationManagerAura::AllAutomationExtensionsGone() {
   Disable();
+}
+
+void AutomationManagerAura::AddNativeClient() {
+  ++native_client_count_;
+  UpdateEnabledState();
+}
+
+void AutomationManagerAura::RemoveNativeClient() {
+  CHECK_GT(native_client_count_, 0u);
+  --native_client_count_;
+  UpdateEnabledState();
+}
+
+void AutomationManagerAura::UpdateEnabledState() {
+  const bool should_enable = extension_client_enabled_ || native_client_count_;
+  if (should_enable == enabled_) {
+    return;
+  }
+  if (should_enable) {
+    EnableInternal();
+  } else {
+    DisableInternal();
+  }
+}
+
+bool AutomationManagerAura::SnapshotWindow(aura::Window* window,
+                                           size_t max_node_count,
+                                           base::TimeDelta timeout,
+                                           ui::AXTreeUpdate* update) {
+  if (!enabled_ || !window || !update) {
+    return false;
+  }
+  views::AXAuraObjWrapper* root = cache_->GetOrCreate(window);
+  if (!root) {
+    return false;
+  }
+  views::AXTreeSourceViews source(root->GetUniqueId(), ax_tree_id(),
+                                  cache_.get());
+  AuraAXTreeSerializer serializer(&source);
+  serializer.set_max_node_count(max_node_count);
+  serializer.set_timeout(timeout);
+  return serializer.SerializeChanges(root, update);
+}
+
+bool AutomationManagerAura::PerformCheckedAction(const ui::AXActionData& data) {
+  if (!enabled_ || data.target_tree_id != ax_tree_id() || !tree_) {
+    return false;
+  }
+  if (data.action != ax::mojom::Action::kFocus &&
+      data.action != ax::mojom::Action::kDoDefault &&
+      data.action != ax::mojom::Action::kSetValue) {
+    return false;
+  }
+  views::AXAuraObjWrapper* target = tree_->GetFromId(data.target_node_id);
+  if (!target) {
+    return false;
+  }
+  ui::AXNodeData node;
+  tree_->SerializeNode(target, &node);
+  if (!node.HasAction(data.action)) {
+    return false;
+  }
+  PerformAction(data);
+  return true;
 }
 
 void AutomationManagerAura::ExtensionListenerAdded() {
@@ -155,30 +236,35 @@ void AutomationManagerAura::ExtensionListenerAdded() {
 
 void AutomationManagerAura::HandleEvent(ax::mojom::Event event_type,
                                         bool from_user) {
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   DCHECK(tree_.get());
   views::AXAuraObjWrapper* obj = tree_->GetRoot();
-  if (!obj)
+  if (!obj) {
     return;
+  }
 
   PostEvent(obj->GetUniqueId(), event_type, /*action_request_id=*/-1,
             /*from_user=*/from_user);
 }
 
 void AutomationManagerAura::HandleAlert(const std::string& text) {
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   DCHECK(tree_.get());
-  if (alert_window_.get())
+  if (alert_window_.get()) {
     alert_window_->HandleAlert(text);
+  }
 }
 
 void AutomationManagerAura::PerformAction(const ui::AXActionData& data) {
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   DCHECK(tree_.get());
 
@@ -187,8 +273,9 @@ void AutomationManagerAura::PerformAction(const ui::AXActionData& data) {
 
   // Exclude the do default action, which can trigger too many important events
   // that should not be ignored by clients like focus.
-  if (data.action == ax::mojom::Action::kDoDefault)
+  if (data.action == ax::mojom::Action::kDoDefault) {
     currently_performing_action_ = ax::mojom::Action::kNone;
+  }
 
   // Unlike all of the other actions, a hit test requires determining the
   // node to perform the action on first.
@@ -207,13 +294,15 @@ void AutomationManagerAura::SetA11yOverrideWindow(
 
 void AutomationManagerAura::OnChildWindowRemoved(
     views::AXAuraObjWrapper* parent) {
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   DCHECK(tree_.get());
 
-  if (!parent)
+  if (!parent) {
     parent = tree_->GetRoot();
+  }
 
   PostEvent(parent->GetUniqueId(), ax::mojom::Event::kChildrenChanged);
 }
@@ -263,8 +352,9 @@ void AutomationManagerAura::PostEvent(int id,
   pending_events_.push_back({id, event_type, action_request_id,
                              currently_performing_action_, from_user});
 
-  if (processing_posted_)
+  if (processing_posted_) {
     return;
+  }
 
   processing_posted_ = true;
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
@@ -274,11 +364,13 @@ void AutomationManagerAura::PostEvent(int id,
 
 void AutomationManagerAura::SendPendingEvents() {
   processing_posted_ = false;
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
-  if (!tree_serializer_)
+  if (!tree_serializer_) {
     return;
+  }
 
   std::vector<ui::AXTreeUpdate> tree_updates;
   std::vector<ui::AXEvent> events;
@@ -291,11 +383,13 @@ void AutomationManagerAura::SendPendingEvents() {
 
     // Some events are important enough where even if their ax obj was
     // destroyed, they still need to be fired.
-    if (event_type == ax::mojom::Event::kMenuEnd && !aura_obj)
+    if (event_type == ax::mojom::Event::kMenuEnd && !aura_obj) {
       aura_obj = tree_->GetRoot();
+    }
 
-    if (!aura_obj)
+    if (!aura_obj) {
       continue;
+    }
 
     ui::AXTreeUpdate update;
     if (!tree_serializer_->SerializeChanges(aura_obj, &update)) {
@@ -352,13 +446,15 @@ void AutomationManagerAura::PerformHitTest(
        aura::Env::GetInstance()->window_tree_hosts()) {
     if (display.id() == host->GetDisplayId()) {
       root_window = host->window();
-      if (aura::client::GetFocusClient(root_window)->GetFocusedWindow())
+      if (aura::client::GetFocusClient(root_window)->GetFocusedWindow()) {
         break;
+      }
     }
   }
 
-  if (!root_window)
+  if (!root_window) {
     return;
+  }
 
   // Convert to the root window's coordinates.
   gfx::Point point_in_window(action.target_point);
@@ -366,8 +462,9 @@ void AutomationManagerAura::PerformHitTest(
 
   // Determine which aura Window is associated with the target point.
   aura::Window* window = root_window->GetEventHandlerForPoint(point_in_window);
-  if (!window)
+  if (!window) {
     return;
+  }
 
   // Convert point to local coordinates of the hit window within the root
   // window.
@@ -377,8 +474,9 @@ void AutomationManagerAura::PerformHitTest(
   // Check for a AX node tree in a remote process (e.g. renderer, mojo app).
   ui::AXTreeID child_ax_tree_id;
   std::string* child_ax_tree_id_ptr = window->GetProperty(ui::kChildAXTreeID);
-  if (child_ax_tree_id_ptr)
+  if (child_ax_tree_id_ptr) {
     child_ax_tree_id = ui::AXTreeID::FromString(*child_ax_tree_id_ptr);
+  }
 
   // If the window has a child AX tree ID, forward the action to the
   // associated AXActionHandlerBase.
@@ -416,13 +514,15 @@ void AutomationManagerAura::PerformHitTest(
     views::View* root_view = widget->GetRootView();
     views::View* hit_view =
         root_view->GetEventHandlerForPoint(action.target_point);
-    if (hit_view)
+    if (hit_view) {
       obj_to_send_event = cache_->GetOrCreate(hit_view);
+    }
   }
 
   // Otherwise, fire the event directly on the Window.
-  if (!obj_to_send_event)
+  if (!obj_to_send_event) {
     obj_to_send_event = cache_->GetOrCreate(window);
+  }
   if (obj_to_send_event) {
     PostEvent(obj_to_send_event->GetUniqueId(), action.hit_test_event_to_fire,
               action.request_id);

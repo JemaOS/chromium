@@ -2,15 +2,18 @@
 #define ASH_JEMAOS_AI_JEMAOS_AI_VIEW_H_
 
 #include <memory>
+#include <optional>
+#include <string>
+
 #include "ash/ash_export.h"
 #include "ash/clipboard/clipboard_history_item.h"
-#include "base/memory/raw_ptr.h"
+#include "ash/public/cpp/assistant/assistant_state.h"
 #include "ash/public/cpp/session/session_observer.h"
+#include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
 #include "ui/events/event.h"
 #include "ui/events/event_handler.h"
-#include "ash/public/cpp/assistant/assistant_state.h"
 
 namespace views {
 class View;
@@ -22,18 +25,25 @@ class Window;
 
 namespace ash {
 
-class JemaAssistantViewObserver : public base::CheckedObserver  {
+class JemaAssistantViewObserver : public base::CheckedObserver {
  public:
   struct ClipboardItemForAssistant {
     std::u16string display_text;
-    int            display_format;
+    int display_format;
   };
 
   JemaAssistantViewObserver(const JemaAssistantViewObserver&) = delete;
-  JemaAssistantViewObserver& operator=(const JemaAssistantViewObserver&) = delete;
+  JemaAssistantViewObserver& operator=(const JemaAssistantViewObserver&) =
+      delete;
 
   virtual void OnBubbleQueryChanged(const ClipboardItemForAssistant& item) {}
   virtual void OnBubbleVisibilityChanged(bool visible) {}
+  virtual void OnCreateAgentRequested() {}
+  virtual void OnAgentActivated(const std::string& agent_id) {}
+  virtual void OnDeskAgentActivated(const std::string& agent_id) {}
+  virtual void OnVoiceInputRequested() {}
+  virtual void OnJemaAssistantEnabledChanged(bool enabled) {}
+
  protected:
   JemaAssistantViewObserver() = default;
   ~JemaAssistantViewObserver() override = default;
@@ -41,7 +51,8 @@ class JemaAssistantViewObserver : public base::CheckedObserver  {
 
 class JemaAssistantBubble;
 
-class ASH_EXPORT JemaAssistantView : public SessionObserver, public ui::EventHandler,
+class ASH_EXPORT JemaAssistantView : public SessionObserver,
+                                     public ui::EventHandler,
                                      public AssistantStateObserver {
  public:
   explicit JemaAssistantView(aura::Window* container);
@@ -55,6 +66,7 @@ class ASH_EXPORT JemaAssistantView : public SessionObserver, public ui::EventHan
   void RemoveObserver(JemaAssistantViewObserver* observer) const;
 
   bool IsVisible() const;
+  bool enabled() const { return enabled_; }
 
   void ShowBubble(bool update_anchor_point = true);
   void HideBubble();
@@ -63,9 +75,15 @@ class ASH_EXPORT JemaAssistantView : public SessionObserver, public ui::EventHan
   bool CanHandleToggleJemaOSAssistant();
 
   bool CanHandleTouchSelectionMenuAction();
-  void HandleSendTextToAI(const gfx::Rect& anchor_rect, const std::u16string& text);
+  void HandleSendTextToAI(const gfx::Rect& anchor_rect,
+                          const std::u16string& text);
 
   void OnBubbleReady();
+
+  void RequestCreateAgent();
+  void ActivateAgent(const std::string& agent_id);
+  void NotifyDeskAgentActivated(const std::string& agent_id);
+  void RequestVoiceInput();
 
   void SetBubbleRect(int x, int y, int width, int height);
 
@@ -79,11 +97,9 @@ class ASH_EXPORT JemaAssistantView : public SessionObserver, public ui::EventHan
   void OnTouchEvent(ui::TouchEvent* event) override;
 
   void ProcessPressedEvent(ui::LocatedEvent* event);
-  void ProcessDraggedEvent(ui::LocatedEvent* event);
-
-  void ResetDragStartPoint(ui::LocatedEvent* event);
 
   void OnJemaAssistantExtraAcceleratorEnabled(bool enabled) override;
+  void OnJemaAssistantEnabled(bool enabled) override;
 
   void Show(bool update_anchor_point);
   void Hide();
@@ -96,6 +112,10 @@ class ASH_EXPORT JemaAssistantView : public SessionObserver, public ui::EventHan
   bool ready_to_show_bubble_ = false;
   bool bubble_initialized_ = false;
   bool should_show_bubble_delay_ = false;
+  bool show_when_ready_ = false;
+  bool create_agent_requested_ = false;
+  bool voice_input_requested_ = false;
+  std::optional<std::string> pending_agent_id_;
   base::TimeTicks last_clipboard_item_time_ = base::TimeTicks::Min();
   base::TimeTicks last_time_triggered_ = base::TimeTicks::Min();
   JemaAssistantViewObserver::ClipboardItemForAssistant last_clipboard_item_;
@@ -104,14 +124,12 @@ class ASH_EXPORT JemaAssistantView : public SessionObserver, public ui::EventHan
   raw_ptr<aura::Window, DanglingUntriaged> window_ = nullptr;
 
   gfx::Point current_anchor_point_;
-  gfx::Point drag_start_point_;
-  bool is_dragging_ = false;
 
   mutable base::ObserverList<JemaAssistantViewObserver> observers_;
 
-base::WeakPtrFactory<JemaAssistantView> weak_factory_{this};
+  base::WeakPtrFactory<JemaAssistantView> weak_factory_{this};
 };
 
 }  // namespace ash
 
-#endif // !ASH_JEMAOS_AI_JEMAOS_AI_VIEW_H_
+#endif  // !ASH_JEMAOS_AI_JEMAOS_AI_VIEW_H_

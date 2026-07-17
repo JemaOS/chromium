@@ -84,6 +84,11 @@ gfx::Insets WorkAreaInsets::GetAccessibilityInsets() const {
       accessibility_panel_height_ + docked_magnifier_height_, 0, 0, 0);
 }
 
+gfx::Insets WorkAreaInsets::GetTopSystemInsets() const {
+  return gfx::Insets::TLBR(jema_assistant_bar_height_, 0, 0, 0) +
+         GetAccessibilityInsets();
+}
+
 gfx::Rect WorkAreaInsets::ComputeStableWorkArea() const {
   aura::Window* root_window = root_window_controller_->GetRootWindow();
 
@@ -92,7 +97,7 @@ gfx::Rect WorkAreaInsets::ComputeStableWorkArea() const {
       root_window_controller_->shelf()->GetIdealBoundsForWorkAreaCalculation());
   ::wm::ConvertRectToScreen(root_window, &shelf_bounds_in_screen);
 
-  return CalculateWorkAreaBounds(GetAccessibilityInsets(),
+  return CalculateWorkAreaBounds(GetTopSystemInsets(),
                                  shelf_bounds_in_screen,
                                  keyboard_displaced_bounds_, root_window);
 }
@@ -110,6 +115,16 @@ void WorkAreaInsets::SetDockedMagnifierHeight(int height) {
 
 void WorkAreaInsets::SetAccessibilityPanelHeight(int height) {
   accessibility_panel_height_ = height;
+  UpdateWorkArea();
+  Shell::Get()->NotifyUserWorkAreaInsetsChanged(
+      root_window_controller_->GetRootWindow());
+}
+
+void WorkAreaInsets::SetJemaAssistantBarHeight(int height) {
+  if (jema_assistant_bar_height_ == height) {
+    return;
+  }
+  jema_assistant_bar_height_ = height;
   UpdateWorkArea();
   Shell::Get()->NotifyUserWorkAreaInsetsChanged(
       root_window_controller_->GetRootWindow());
@@ -154,13 +169,13 @@ void WorkAreaInsets::UpdateWorkArea() {
   // Note: Different keyboard bounds properties are used to calculate insets and
   // bounds. See ui/keyboard/keyboard_controller_observer.h for details.
   user_work_area_insets_ = CalculateWorkAreaInsets(
-      GetAccessibilityInsets(), shelf_insets_, keyboard_displaced_bounds_);
+      GetTopSystemInsets(), shelf_insets_, keyboard_displaced_bounds_);
   user_work_area_bounds_ = CalculateWorkAreaBounds(
-      GetAccessibilityInsets(), shelf_bounds_, keyboard_occluded_bounds_,
+      GetTopSystemInsets(), shelf_bounds_, keyboard_occluded_bounds_,
       root_window_controller_->GetRootWindow());
 
   in_session_user_work_area_insets_ = CalculateWorkAreaInsets(
-      GetAccessibilityInsets(), in_session_shelf_insets_,
+      GetTopSystemInsets(), in_session_shelf_insets_,
       keyboard_displaced_bounds_);
 }
 

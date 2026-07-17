@@ -11,6 +11,8 @@
 #include "ash/constants/ash_constants.h"
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
+#include "ash/jemaos_ai/jemaos_ai_bar.h"
+#include "ash/jemaos_ai/jemaos_ai_view.h"
 #include "ash/metrics/login_unlock_throughput_recorder.h"
 #include "ash/public/cpp/keyboard/keyboard_controller_observer.h"
 #include "ash/public/cpp/shelf_item_delegate.h"
@@ -43,7 +45,6 @@
 #include "base/notreached.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/gfx/geometry/rect.h"
-#include "ash/jemaos_ai/jemaos_ai_view.h"
 
 namespace ash {
 
@@ -226,8 +227,9 @@ class Shelf::AutoHideEventHandler : public ui::EventHandler {
         event, static_cast<aura::Window*>(event->target()));
   }
   void OnTouchEvent(ui::TouchEvent* event) override {
-    if (shelf_->auto_hide_behavior() != ShelfAutoHideBehavior::kAlways)
+    if (shelf_->auto_hide_behavior() != ShelfAutoHideBehavior::kAlways) {
       return;
+    }
 
     // The event target should be the shelf widget or the hotseat widget.
     if (!shelf_->shelf_layout_manager()->IsShelfWindow(
@@ -295,8 +297,9 @@ class Shelf::AutoDimEventHandler : public ui::EventHandler,
 
   void DimShelf() {
     // Attempt to dim the shelf. Stop the |dim_shelf_timer_| if successful.
-    if (shelf_->shelf_layout_manager()->SetDimmed(true))
+    if (shelf_->shelf_layout_manager()->SetDimmed(true)) {
       dim_shelf_timer_.Stop();
+    }
   }
 
   // Sets shelf as active and sets timer to mark shelf as inactive.
@@ -310,15 +313,17 @@ class Shelf::AutoDimEventHandler : public ui::EventHandler,
   // ShelfObserver:
   void OnAutoHideStateChanged(ShelfAutoHideState new_state) override {
     // Shelf should be undimmed when it is shown.
-    if (new_state == ShelfAutoHideState::SHELF_AUTO_HIDE_SHOWN)
+    if (new_state == ShelfAutoHideState::SHELF_AUTO_HIDE_SHOWN) {
       UndimShelf();
+    }
   }
 
   // ShelfObserver:
   void OnShelfVisibilityStateChanged(ShelfVisibilityState new_state) override {
     // Shelf should be undimmed when it is shown.
-    if (new_state != ShelfVisibilityState::SHELF_HIDDEN)
+    if (new_state != ShelfVisibilityState::SHELF_HIDDEN) {
       UndimShelf();
+    }
   }
 
  private:
@@ -379,8 +384,9 @@ void Shelf::LaunchShelfItem(int item_index) {
   // A negative argument will launch the last app. A positive argument will
   // launch the app at the corresponding index, unless it's higher than the
   // total number of apps, in which case we do nothing.
-  if (item_index >= item_count)
+  if (item_index >= item_count) {
     return;
+  }
 
   const int found_index = item_index >= 0 ? item_index : item_count - 1;
 
@@ -487,18 +493,20 @@ void Shelf::CreateShelfWidget(aura::Window* root) {
   // function.
   hotseat_widget()->InitializeAccessibilityProperties();
 
-  if (ash::features::IsJemaAssistantEnabled()) {
-    jema_assistant_view_ = std::make_unique<JemaAssistantView>(shelf_container);
-  }
+  jema_assistant_view_ = std::make_unique<JemaAssistantView>(shelf_container);
+  jema_assistant_bar_ = std::make_unique<JemaAssistantBar>(
+      root, shelf_container, jema_assistant_view_.get());
 }
 
 void Shelf::ShutdownShelfWidget() {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnShelfShuttingDown();
+  }
 
   // Remove observers prior to destroying child widgets, this prevents
   // activation changes from triggering during shutdown, see
   // https://crbug.com/1307898.
+  jema_assistant_bar_.reset();
   shelf_widget_->Shutdown();
 
   // The contents view of the hotseat widget may rely on the status area widget.
@@ -528,11 +536,13 @@ aura::Window* Shelf::GetWindow() {
 }
 
 void Shelf::SetAlignment(ShelfAlignment alignment) {
-  if (!shelf_widget_)
+  if (!shelf_widget_) {
     return;
+  }
 
-  if (alignment_ == alignment)
+  if (alignment_ == alignment) {
     return;
+  }
 
   if (shelf_locking_manager_.is_locked() &&
       alignment != ShelfAlignment::kBottomLocked) {
@@ -572,13 +582,15 @@ bool Shelf::IsHorizontalAlignment() const {
 void Shelf::SetAutoHideBehavior(ShelfAutoHideBehavior auto_hide_behavior) {
   DCHECK(shelf_layout_manager_);
 
-  if (auto_hide_behavior_ == auto_hide_behavior)
+  if (auto_hide_behavior_ == auto_hide_behavior) {
     return;
+  }
 
   auto_hide_behavior_ = auto_hide_behavior;
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnShelfAutoHideBehaviorChanged();
+  }
 }
 
 ShelfAutoHideState Shelf::GetAutoHideState() const {
@@ -595,13 +607,15 @@ ShelfBackgroundType Shelf::GetBackgroundType() const {
 }
 
 void Shelf::UpdateVisibilityState() {
-  if (shelf_layout_manager_)
+  if (shelf_layout_manager_) {
     shelf_layout_manager_->UpdateVisibilityState(/*force_layout=*/false);
+  }
 }
 
 void Shelf::MaybeUpdateShelfBackground() {
-  if (!shelf_layout_manager_)
+  if (!shelf_layout_manager_) {
     return;
+  }
 
   shelf_layout_manager_->MaybeUpdateShelfBackground(
       AnimationChangeType::ANIMATE);
@@ -625,21 +639,24 @@ gfx::Rect Shelf::GetIdealBoundsForWorkAreaCalculation() {
 }
 
 gfx::Rect Shelf::GetScreenBoundsOfItemIconForWindow(aura::Window* window) {
-  if (!shelf_widget_)
+  if (!shelf_widget_) {
     return gfx::Rect();
+  }
   return shelf_widget_->GetScreenBoundsOfItemIconForWindow(window);
 }
 
 bool Shelf::ProcessGestureEvent(const ui::GestureEvent& event) {
   // Can be called at login screen.
-  if (!shelf_layout_manager_)
+  if (!shelf_layout_manager_) {
     return false;
+  }
   return shelf_layout_manager_->ProcessGestureEvent(event);
 }
 
 void Shelf::ProcessMouseEvent(const ui::MouseEvent& event) {
-  if (shelf_layout_manager_)
+  if (shelf_layout_manager_) {
     shelf_layout_manager_->ProcessMouseEventFromShelf(event);
+  }
 }
 
 void Shelf::ProcessScrollEvent(ui::ScrollEvent* event) {
@@ -647,12 +664,14 @@ void Shelf::ProcessScrollEvent(ui::ScrollEvent* event) {
     return;
   }
 
-  if (!shelf_layout_manager_->is_active_session_state())
+  if (!shelf_layout_manager_->is_active_session_state()) {
     return;
+  }
 
   // Introduce the swipe up gesture behind a flag over certain conditions.
-  if (!shelf_layout_manager_->IsBubbleLauncherShowOnGestureScrollAvailable())
+  if (!shelf_layout_manager_->IsBubbleLauncherShowOnGestureScrollAvailable()) {
     return;
+  }
 
   auto* app_list_controller = Shell::Get()->app_list_controller();
   DCHECK(app_list_controller);
@@ -663,12 +682,14 @@ void Shelf::ProcessScrollEvent(ui::ScrollEvent* event) {
 
 void Shelf::ProcessMouseWheelEvent(ui::MouseWheelEvent* event) {
   if (!shelf_layout_manager_->is_active_session_state() ||
-      !IsHorizontalAlignment())
+      !IsHorizontalAlignment()) {
     return;
+  }
 
   // Introduce the swipe up gesture behind a flag over certain conditions.
-  if (!shelf_layout_manager_->IsBubbleLauncherShowOnGestureScrollAvailable())
+  if (!shelf_layout_manager_->IsBubbleLauncherShowOnGestureScrollAvailable()) {
     return;
+  }
 
   auto* app_list_controller = Shell::Get()->app_list_controller();
   DCHECK(app_list_controller);
@@ -686,8 +707,9 @@ void Shelf::RemoveObserver(ShelfObserver* observer) {
 }
 
 void Shelf::NotifyShelfIconPositionsChanged() {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnShelfIconPositionsChanged();
+  }
 }
 
 StatusAreaWidget* Shelf::GetStatusAreaWidget() const {
@@ -714,8 +736,9 @@ gfx::Rect Shelf::GetSystemTrayAnchorRect() const {
 }
 
 bool Shelf::ShouldHideOnSecondaryDisplay(session_manager::SessionState state) {
-  if (Shell::GetPrimaryRootWindowController()->shelf() == this)
+  if (Shell::GetPrimaryRootWindowController()->shelf() == this) {
     return false;
+  }
 
   return state != session_manager::SessionState::ACTIVE;
 }
@@ -789,29 +812,34 @@ void Shelf::OnShelfVisibilityStateChanged(ShelfVisibilityState new_state) {
 }
 
 void Shelf::OnAutoHideStateChanged(ShelfAutoHideState new_state) {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnAutoHideStateChanged(new_state);
+  }
 }
 
 void Shelf::OnBackgroundUpdated(ShelfBackgroundType background_type,
                                 AnimationChangeType change_type) {
   // Shelf should undim when transitioning to show app list.
-  if (auto_dim_event_handler_ && IsAppListBackground(background_type))
+  if (auto_dim_event_handler_ && IsAppListBackground(background_type)) {
     UndimShelf();
+  }
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnBackgroundTypeChanged(background_type, change_type);
+  }
 }
 
 void Shelf::OnHotseatStateChanged(HotseatState old_state,
                                   HotseatState new_state) {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnHotseatStateChanged(old_state, new_state);
+  }
 }
 
 void Shelf::OnWorkAreaInsetsChanged() {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnShelfWorkAreaInsetsChanged();
+  }
 }
 
 void Shelf::DimShelf() {

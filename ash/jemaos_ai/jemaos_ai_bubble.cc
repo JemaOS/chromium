@@ -3,27 +3,29 @@
 // found in the LICENSE file.
 
 #include "ash/jemaos_ai/jemaos_ai_bubble.h"
+
+#include "ash/assistant/util/deep_link_util.h"
+#include "ash/bubble/bubble_constants.h"
+#include "ash/public/cpp/ash_web_view_factory.h"
+#include "ash/public/cpp/assistant/controller/assistant_controller.h"
+#include "ash/public/cpp/shell_window_ids.h"
 #include "base/strings/utf_string_conversions.h"
 #include "net/base/url_util.h"
-#include "ui/views/layout/fill_layout.h"
 #include "ui/aura/window.h"
-#include "ash/public/cpp/shell_window_ids.h"
-#include "ash/bubble/bubble_constants.h"
-#include "ui/views/highlight_border.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
-#include "ash/public/cpp/ash_web_view_factory.h"
-#include "ash/assistant/util/deep_link_util.h"
-#include "ash/public/cpp/assistant/controller/assistant_controller.h"
+#include "ui/views/highlight_border.h"
+#include "ui/views/layout/fill_layout.h"
 
 namespace ash {
 
 namespace {
 
-const char kJemaAssistantExtensionUrl[] = "chrome://jemaos-ai/bubble?source=bubble";
-constexpr int kWidthDip = 300;
-constexpr int kHeightDip = 162;
+const char kJemaAssistantExtensionUrl[] =
+    "chrome://jemaos-ai/bubble?source=bubble";
+constexpr int kWidthDip = 720;
+constexpr int kHeightDip = 600;
 
-}
+}  // namespace
 
 JemaAssistantBubble::~JemaAssistantBubble() = default;
 
@@ -32,7 +34,8 @@ bool JemaAssistantBubble::ReadyToInit() {
   return AshWebViewFactory::Get() != nullptr;
 }
 
-gfx::Size JemaAssistantBubble::CalculatePreferredSize(const views::SizeBounds& available_size) const {
+gfx::Size JemaAssistantBubble::CalculatePreferredSize(
+    const views::SizeBounds& available_size) const {
   return gfx::Size(kWidthDip, kHeightDip);
 }
 
@@ -42,7 +45,8 @@ void JemaAssistantBubble::OnThemeChanged() {
       GetColorProvider()->GetColor(cros_tokens::kCrosSysSystemBaseElevated));
 }
 
-JemaAssistantBubble::JemaAssistantBubble(aura::Window* window, const gfx::Rect& anchor_rect) {
+JemaAssistantBubble::JemaAssistantBubble(aura::Window* window,
+                                         const gfx::Rect& anchor_rect) {
   SetAnchorRect(anchor_rect);
   SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
   set_margins(gfx::Insets());
@@ -84,7 +88,7 @@ bool JemaAssistantBubble::OpenUrl(const GURL& url) {
   return true;
 }
 
-void JemaAssistantBubble::DidStopLoading()  {
+void JemaAssistantBubble::DidStopLoading() {
   if (!web_view_) {
     return;
   }
@@ -97,4 +101,4 @@ void JemaAssistantBubble::DidStopLoading()  {
   owner_->OnBubbleReady();
 }
 
-}
+}  // namespace ash

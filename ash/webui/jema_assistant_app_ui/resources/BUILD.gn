@@ -11,26 +11,24 @@ build_webui("build") {
     "loading.png",
     "loading_dark.png",
     "index.html",
+    "styles.css",
   ]
-  css_files = [ "css/jema_assistant_app_shared.css" ]
-  web_component_files = [
-    "js/jema_assistant_app.ts",
+
+  non_web_component_files = [
+    "js/llm.js",
+    "js/main.js",
+    "js/orchestrator.js",
+    "js/state.js",
+    "js/templates.js",
+    "js/tools.js",
+    "js/ui.js",
   ]
 
   ts_composite = true
-  ts_definitions = [
-    "//tools/typescript/definitions/chrome_send.d.ts",
-    "js/extra_types.d.ts",
-  ]
-  ts_deps = [
-    "//ash/webui/common/resources:build_ts",
-    "//ash/webui/common/resources/cr_elements:build_ts",
-    "//third_party/polymer/v3_0:library",
-    "//ui/webui/resources/cr_components/color_change_listener:build_ts",
-    "//ui/webui/resources/js:build_ts",
-  ]
-
+  ts_definitions = [ "//tools/typescript/definitions/chrome_send.d.ts" ]
+  ts_deps = [ "//ash/webui/common/resources:build_ts" ]
   webui_context_type = "trusted"
+
   grd_prefix = "ash_jema_assistant_app"
   grit_output_dir = "$root_gen_dir/ash/webui"
 }

@@ -234,7 +234,7 @@ class TimeoutMonitor;
 namespace mojo {
 class MessageFilter;
 class UrgentMessageScope;
-}
+}  // namespace mojo
 
 namespace network {
 class ResourceRequestBody;
@@ -1460,6 +1460,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // the accessibility mode.
   void RequestAXTreeSnapshot(AXTreeSnapshotCallback callback,
                              mojom::SnapshotAccessibilityTreeParamsPtr params);
+  void RequestAXTreeSnapshot(AXTreeSnapshotCallback callback,
+                             ui::AXMode ax_mode,
+                             size_t max_nodes,
+                             base::TimeDelta timeout) override;
 
   // Resets the accessibility serializer in the renderer.
   void AccessibilityReset();

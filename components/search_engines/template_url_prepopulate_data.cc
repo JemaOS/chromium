@@ -28,7 +28,6 @@
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_data_util.h"
 #include "components/version_info/version_info.h"
-#include "jemaos/switches/account/account_switches.h"
 
 namespace TemplateURLPrepopulateData {
 
@@ -318,8 +317,15 @@ void ClearPrepopulatedEnginesInPrefs(PrefService* prefs) {
 std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
     PrefService* prefs,
     search_engines::SearchEngineChoiceService* search_engine_choice_service) {
+  // Prefer Qwant as the fallback search engine for JemaOS profiles. If Qwant is
+  // not in the country-specific list, look it up in the full engine list.
+  auto qwant_engine = GetPrepopulatedEngineFromFullList(
+      prefs, search_engine_choice_service, qwant.id);
+  if (qwant_engine)
+    return qwant_engine;
+
   return FindPrepopulatedEngineInternal(prefs, search_engine_choice_service,
-                                        jemaos::switches::IsJemaExtendAccountEnabled() ? bing.id : google.id,
+                                        qwant.id,
                                         /*use_first_as_fallback=*/true);
 }
 

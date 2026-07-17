@@ -647,7 +647,12 @@ TEST_F(SearchEngineChoiceServiceTest, GetCountryIdChangesAfterReading) {
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 TEST_F(SearchEngineChoiceServiceTest, ChoiceScreenConditions_SkipFor3p) {
-  // First, check the state with Google as the default search engine
+  // First, set Google as the default search engine to verify the eligible state.
+  std::unique_ptr<TemplateURLData> google_template_url_data =
+      TemplateURLDataFromPrepopulatedEngine(TemplateURLPrepopulateData::google);
+  template_url_service().SetUserSelectedDefaultSearchProvider(
+      template_url_service().Add(
+          std::make_unique<TemplateURL>(*google_template_url_data.get())));
   ASSERT_TRUE(
       template_url_service().GetDefaultSearchProvider()->prepopulate_id() ==
       TemplateURLPrepopulateData::google.id);
@@ -730,7 +735,7 @@ TEST_F(SearchEngineChoiceServiceTest, RecordChoiceMade) {
   const TemplateURL* default_search_engine =
       template_url_service().GetDefaultSearchProvider();
   EXPECT_EQ(default_search_engine->prepopulate_id(),
-            TemplateURLPrepopulateData::google.id);
+            TemplateURLPrepopulateData::qwant.id);
 
   search_engine_choice_service().RecordChoiceMade(
       search_engines::ChoiceMadeLocation::kChoiceScreen,
@@ -738,11 +743,11 @@ TEST_F(SearchEngineChoiceServiceTest, RecordChoiceMade) {
 
   histogram_tester_.ExpectUniqueSample(
       search_engines::kSearchEngineChoiceScreenDefaultSearchEngineTypeHistogram,
-      SearchEngineType::SEARCH_ENGINE_GOOGLE, 0);
+      SearchEngineType::SEARCH_ENGINE_QWANT, 0);
   histogram_tester_.ExpectUniqueSample(
       search_engines::
           kSearchEngineChoiceScreenDefaultSearchEngineType2Histogram,
-      SearchEngineType::SEARCH_ENGINE_GOOGLE, 0);
+      SearchEngineType::SEARCH_ENGINE_QWANT, 0);
   EXPECT_FALSE(pref_service()->HasPrefPath(
       prefs::kDefaultSearchProviderChoiceScreenCompletionTimestamp));
   EXPECT_FALSE(pref_service()->HasPrefPath(
@@ -761,11 +766,11 @@ TEST_F(SearchEngineChoiceServiceTest, RecordChoiceMade) {
       &template_url_service());
   histogram_tester_.ExpectUniqueSample(
       search_engines::kSearchEngineChoiceScreenDefaultSearchEngineTypeHistogram,
-      SearchEngineType::SEARCH_ENGINE_GOOGLE, 1);
+      SearchEngineType::SEARCH_ENGINE_QWANT, 1);
   histogram_tester_.ExpectUniqueSample(
       search_engines::
           kSearchEngineChoiceScreenDefaultSearchEngineType2Histogram,
-      SearchEngineType::SEARCH_ENGINE_GOOGLE, 1);
+      SearchEngineType::SEARCH_ENGINE_QWANT, 1);
 
   EXPECT_NEAR(pref_service()->GetInt64(
                   prefs::kDefaultSearchProviderChoiceScreenCompletionTimestamp),
@@ -791,11 +796,11 @@ TEST_F(SearchEngineChoiceServiceTest, RecordChoiceMade) {
 
   histogram_tester_.ExpectUniqueSample(
       search_engines::kSearchEngineChoiceScreenDefaultSearchEngineTypeHistogram,
-      SearchEngineType::SEARCH_ENGINE_GOOGLE, 1);
+      SearchEngineType::SEARCH_ENGINE_QWANT, 1);
   histogram_tester_.ExpectUniqueSample(
       search_engines::
           kSearchEngineChoiceScreenDefaultSearchEngineType2Histogram,
-      SearchEngineType::SEARCH_ENGINE_GOOGLE, 1);
+      SearchEngineType::SEARCH_ENGINE_QWANT, 1);
 }
 
 TEST_F(SearchEngineChoiceServiceTest, RecordChoiceMade_ByLocation) {
@@ -806,7 +811,7 @@ TEST_F(SearchEngineChoiceServiceTest, RecordChoiceMade_ByLocation) {
       switches::kSearchEngineChoiceCountry,
       country_codes::CountryIDToCountryString(kBelgiumCountryId));
   EXPECT_EQ(template_url_service().GetDefaultSearchProvider()->prepopulate_id(),
-            TemplateURLPrepopulateData::google.id);
+            TemplateURLPrepopulateData::qwant.id);
 
   auto locations = {ChoiceMadeLocation::kChoiceScreen,
                     ChoiceMadeLocation::kSearchSettings,
@@ -837,11 +842,11 @@ TEST_F(SearchEngineChoiceServiceTest, RecordChoiceMade_ByLocation) {
     histogram_tester_.ExpectBucketCount(
         search_engines::
             kSearchEngineChoiceScreenDefaultSearchEngineTypeHistogram,
-        SearchEngineType::SEARCH_ENGINE_GOOGLE, expected_v1_records);
+        SearchEngineType::SEARCH_ENGINE_QWANT, expected_v1_records);
     histogram_tester_.ExpectUniqueSample(
         search_engines::
             kSearchEngineChoiceScreenDefaultSearchEngineType2Histogram,
-        SearchEngineType::SEARCH_ENGINE_GOOGLE, expected_v2_records);
+        SearchEngineType::SEARCH_ENGINE_QWANT, expected_v2_records);
     WipeSearchEngineChoicePrefs(*pref_service(),
                                 WipeSearchEngineChoiceReason::kCommandLineFlag);
   }

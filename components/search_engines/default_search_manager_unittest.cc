@@ -150,9 +150,9 @@ TEST_F(DefaultSearchManagerTest, DefaultSearchSetByUserPref) {
       TemplateURLPrepopulateData::GetPrepopulatedFallbackSearch(
           pref_service(), search_engine_choice_service());
   EXPECT_EQ(fallback_t_url_data->keyword(),
-            TemplateURLPrepopulateData::google.keyword);
+            TemplateURLPrepopulateData::qwant.keyword);
   EXPECT_EQ(fallback_t_url_data->prepopulate_id,
-            TemplateURLPrepopulateData::google.id);
+            TemplateURLPrepopulateData::qwant.id);
   DefaultSearchManager::Source source = DefaultSearchManager::FROM_POLICY;
   // If no user pref is set, we should use the pre-populated values.
   ExpectSimilar(fallback_t_url_data.get(),

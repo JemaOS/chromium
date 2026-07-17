@@ -448,17 +448,17 @@ TEST_F(TemplateURLPrepopulateDataTest, ClearProvidersFromPrefs) {
     EXPECT_NE(1001, t_urls[i]->prepopulate_id);
   }
 
-  // Ensures the fallback URL is Google and has the optional fields filled.
+  // Ensures the fallback URL is Qwant and has the optional fields filled.
   std::unique_ptr<TemplateURLData> fallback_t_url =
       TemplateURLPrepopulateData::GetPrepopulatedFallbackSearch(
           pref_service(), search_engine_choice_service());
-  EXPECT_EQ(TemplateURLPrepopulateData::google.name,
+  EXPECT_EQ(TemplateURLPrepopulateData::qwant.name,
             fallback_t_url->short_name());
   EXPECT_FALSE(fallback_t_url->suggestions_url.empty());
   EXPECT_FALSE(fallback_t_url->image_url.empty());
   EXPECT_FALSE(fallback_t_url->contextual_search_url.empty());
   EXPECT_FALSE(fallback_t_url->image_url_post_params.empty());
-  EXPECT_EQ(TemplateURLPrepopulateData::google.type,
+  EXPECT_EQ(TemplateURLPrepopulateData::qwant.type,
             TemplateURL(*fallback_t_url).GetEngineType(SearchTermsData()));
 }
 
@@ -484,11 +484,11 @@ TEST_F(TemplateURLPrepopulateDataTest, ProvidersFromPrepopulated) {
     EXPECT_TRUE(t_urls[0]->last_modified.is_null());
   }
 
-  // Ensures the fallback URL is Google and has the optional fields filled.
+  // Ensures the fallback URL is Qwant and has the optional fields filled.
   std::unique_ptr<TemplateURLData> fallback_t_url =
       TemplateURLPrepopulateData::GetPrepopulatedFallbackSearch(
           pref_service(), search_engine_choice_service());
-  EXPECT_EQ(TemplateURLPrepopulateData::google.name,
+  EXPECT_EQ(TemplateURLPrepopulateData::qwant.name,
             fallback_t_url->short_name());
   EXPECT_FALSE(fallback_t_url->suggestions_url.empty());
   EXPECT_FALSE(fallback_t_url->image_url.empty());
@@ -500,7 +500,7 @@ TEST_F(TemplateURLPrepopulateDataTest, ProvidersFromPrepopulated) {
   for (size_t i = 0; i < fallback_t_url->alternate_urls.size(); ++i) {
     EXPECT_FALSE(fallback_t_url->alternate_urls[i].empty());
   }
-  EXPECT_EQ(TemplateURLPrepopulateData::google.type,
+  EXPECT_EQ(TemplateURLPrepopulateData::qwant.type,
             TemplateURL(*fallback_t_url).GetEngineType(SearchTermsData()));
 }
 
@@ -660,39 +660,26 @@ TEST_F(TemplateURLPrepopulateDataTest, HttpsUrls) {
   }
 }
 
-TEST_F(TemplateURLPrepopulateDataTest, FindGoogleAsFallback) {
+TEST_F(TemplateURLPrepopulateDataTest, FindQwantAsFallback) {
   std::unique_ptr<TemplateURLData> fallback_url;
 
-  // Google is first in US, so confirm index 0.
+  // Qwant is not in the US top engines, but it should still be the fallback
+  // because it is looked up from the full engine list.
   int us_country_id = country_codes::CountryCharsToCountryID('U', 'S');
   OverrideCountryId(us_country_id);
-  EXPECT_EQ(
-      TemplateURLPrepopulateData::GetPrepopulationSetFromCountryIDForTesting(
-          us_country_id)[0]
-          ->id,
-      TemplateURLPrepopulateData::google.id);
-
   fallback_url = TemplateURLPrepopulateData::GetPrepopulatedFallbackSearch(
       pref_service(), search_engine_choice_service());
   EXPECT_EQ(fallback_url->prepopulate_id,
-            TemplateURLPrepopulateData::google.id);
+            TemplateURLPrepopulateData::qwant.id);
 
-  // Google is not first in CN; confirm it is found at index > 0.
-  // If Google ever does reach top in China, this test will need to be adjusted:
-  // check template_url_prepopulate_data.cc reference orders (engines_CN, etc.)
-  // to find a suitable country and index.
+  // Qwant is not in the CN engine set at all; confirm it is still found as the
+  // fallback via the full engine list.
   int cn_country_id = country_codes::CountryCharsToCountryID('C', 'N');
   OverrideCountryId(cn_country_id);
   fallback_url = TemplateURLPrepopulateData::GetPrepopulatedFallbackSearch(
       pref_service(), search_engine_choice_service());
-  EXPECT_NE(
-      TemplateURLPrepopulateData::GetPrepopulationSetFromCountryIDForTesting(
-          cn_country_id)[0]
-          ->id,
-      TemplateURLPrepopulateData::google.id);
-  EXPECT_TRUE(fallback_url);
   EXPECT_EQ(fallback_url->prepopulate_id,
-            TemplateURLPrepopulateData::google.id);
+            TemplateURLPrepopulateData::qwant.id);
 }
 
 // Regression test for https://crbug.com/1500526.

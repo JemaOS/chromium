@@ -35,7 +35,6 @@
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
-#include "chrome/grit/chromeos_strings.h"
 #include "ash/style/ash_color_id.h"
 #include "ash/style/ash_color_provider.h"
 #include "ash/style/color_util.h"
@@ -1189,7 +1188,7 @@ void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
               LOG(WARNING) << "Blocked-user API unreachable; online account "
                               "requires internet, showing error.";
               self->ShowAuthError(l10n_util::GetStringUTF16(
-                  IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR));
+                  IDS_ASH_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR));
               return;
               //---***JEMAOS END***---
             }

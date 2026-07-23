@@ -191,6 +191,10 @@ Style notes:
     <file path="strings/ash_strings_zh-TW.xtb" lang="zh-TW" />
     <file path="strings/ash_strings_zu.xtb" lang="zu" />
     <file path="../jemaos/i18n/ash/strings/ash_strings_zh-CN.xtb" lang="zh-CN" />
+    <file path="../jemaos/i18n/ash/strings/ash_strings_fr.xtb" lang="fr" />
+    <file path="../jemaos/i18n/ash/strings/ash_strings_fr-CA.xtb" lang="fr-CA" />
+    <file path="../jemaos/i18n/ash/strings/ash_strings_es.xtb" lang="es" />
+    <file path="../jemaos/i18n/ash/strings/ash_strings_it.xtb" lang="it" />
   </translations>
   <release seq="1">
     <messages fallback_to_english="true">

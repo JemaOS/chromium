@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/command_line.h"
+#include "base/logging.h"
 #include "base/strings/string_util.h"
 #include "base/trace_event/trace_event.h"
 #include "ui/base/ime/ash/extension_ime_util.h"
@@ -86,7 +87,10 @@ bool ComponentExtensionIMEManager::LoadComponentExtensionIME(
   TRACE_EVENT0("ime",
                "ComponentExtensionIMEManager::LoadComponentExtensionIME");
   ComponentExtensionIME ime;
-  if (FindEngineEntry(input_method_id, &ime)) {
+  const bool found = FindEngineEntry(input_method_id, &ime);
+  LOG(WARNING) << "[IME-DIAG] LoadComponentExtensionIME: id="
+               << input_method_id << " found=" << found;
+  if (found) {
     bool will_load = extension_loaded == nullptr;
     if (!will_load &&
         extension_loaded->find(ime.id) == extension_loaded->end()) {

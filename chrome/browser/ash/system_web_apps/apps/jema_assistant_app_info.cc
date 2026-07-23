@@ -40,3 +40,14 @@ std::unique_ptr<web_app::WebAppInstallInfo> JemaAssistantAppDelegate::GetWebAppI
 bool JemaAssistantAppDelegate::IsAppEnabled() const {
   return ash::features::IsJemaAssistantEnabled();
 }
+
+bool JemaAssistantAppDelegate::ShouldShowInLauncher() const {
+  // JEMAOS: hide the JemaOS AI app icon from the app launcher (the feature is
+  // not ready yet). The app remains functional via its other entry points.
+  return false;
+}
+
+bool JemaAssistantAppDelegate::ShouldShowInSearchAndShelf() const {
+  // JEMAOS: also keep the JemaOS AI icon out of search results and the shelf.
+  return false;
+}

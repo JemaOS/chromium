@@ -116,6 +116,8 @@ void DoLoadExtension(content::BrowserContext* context,
                      const std::string& manifest,
                      const base::FilePath& file_path) {
   TRACE_EVENT1("ime", "DoLoadExtension", "ext_id", extension_id);
+  LOG(WARNING) << "[IME-DIAG] DoLoadExtension: " << extension_id
+               << " path=" << file_path.value();
   extensions::ExtensionRegistry* extension_registry =
       extensions::ExtensionRegistry::Get(context);
   DCHECK(extension_registry);

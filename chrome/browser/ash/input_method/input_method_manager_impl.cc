@@ -396,6 +396,9 @@ bool InputMethodManagerImpl::StateImpl::ReplaceEnabledInputMethods(
     return false;
   }
 
+  LOG(WARNING) << "[IME-DIAG] ReplaceEnabledInputMethods: "
+               << base::JoinString(new_enabled_input_method_ids, ", ");
+
   // Filter unknown or obsolete IDs.
   std::vector<std::string> new_enabled_input_method_ids_filtered;
 
@@ -882,7 +885,18 @@ void InputMethodManagerImpl::StateImpl::LoadNecessaryComponentExtensions() {
   std::vector<std::string> unfiltered_input_method_ids;
   unfiltered_input_method_ids.swap(enabled_input_method_ids_);
   std::set<std::string> ext_loaded;
+  LOG(WARNING) << "[IME-DIAG] LoadNecessaryComponentExtensions: "
+               << unfiltered_input_method_ids.size() << " enabled ids, "
+               << "enable_extension_loading="
+               << manager_->enable_extension_loading_;
   for (const auto& unfiltered_input_method_id : unfiltered_input_method_ids) {
+    LOG(WARNING) << "[IME-DIAG]   id=" << unfiltered_input_method_id
+                 << " comp_ext="
+                 << extension_ime_util::IsComponentExtensionIME(
+                        unfiltered_input_method_id)
+                 << " allowlisted="
+                 << manager_->component_extension_ime_manager_->IsAllowlisted(
+                        unfiltered_input_method_id);
     if (!extension_ime_util::IsComponentExtensionIME(
             unfiltered_input_method_id)) {
       // Legacy IMEs or xkb layouts are alwayes enabled.

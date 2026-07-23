@@ -16,6 +16,8 @@ class JemaAssistantAppDelegate : public ash::SystemWebAppDelegate {
   std::unique_ptr<web_app::WebAppInstallInfo> GetWebAppInfo() const override;
   bool ShouldCaptureNavigations() const override;
   bool IsAppEnabled() const override;
+  bool ShouldShowInLauncher() const override;
+  bool ShouldShowInSearchAndShelf() const override;
   // NOTE: there are more virtual methods in the base class.
 };
 

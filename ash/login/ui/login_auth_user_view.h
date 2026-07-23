@@ -260,6 +260,11 @@ class ASH_EXPORT LoginAuthUserView : public NonAccessibleView {
   void OnAuthSubmit(const std::u16string& password);
   // Called when the user taps the user view. Runs mojo call.
   void AuthenticateWithApi(const std::u16string& password);
+  // JemaOS: proceeds with local (cryptohome) password authentication for the
+  // current user. Used after the blocked-user API check succeeds, and as a
+  // fallback when the API is unreachable (the pod only exists for users that
+  // already have a local account on the device).
+  void AuthenticateLocallyWithPassword(const std::u16string& password);
   void ShowAuthError(const std::u16string& error_message);
   // Called with the result of the request started in |OnAuthSubmit| or
   // |AttemptAuthenticateWithExternalBinary|.

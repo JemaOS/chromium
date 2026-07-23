@@ -775,7 +775,10 @@ void LoginDisplayHostMojo::HandleAuthenticateUserWithPasswordOrPin(
   //---***JEMAOS BEGIN***---
   // Set AUTH_FLOW_JEMA_ONLINE for Jema/Flint accounts to ensure proper authentication flow
   // Since we use AccountType::GOOGLE for compatibility, check the gaia_id prefix instead
+  // Note: local Flint accounts use the "ft_id_" prefix ("flint_id_" was a typo
+  // that never matched any real account).
   if (account_id.GetGaiaId().find("jema_id_") == 0 ||
+      account_id.GetGaiaId().find("ft_id_") == 0 ||
       account_id.GetGaiaId().find("flint_id_") == 0) {
     user_context.SetAuthFlow(UserContext::AUTH_FLOW_JEMA_ONLINE);
     LOG(WARNING) << "Set AUTH_FLOW_JEMA_ONLINE for Jema/Flint account: "

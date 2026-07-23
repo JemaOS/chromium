@@ -93,6 +93,23 @@ UserType FixUserTypeForJema(const UserType user_type, const AccountId& account_i
       return UserType::kFlintAccount;
     case AccountType::JEMA_ACCOUNT:
       return UserType::kJemaAccount;
+    case AccountType::GOOGLE:
+      // Local Flint/Jema accounts are stored as GOOGLE accounts with
+      // "ft_id_"/"jema_id_" gaia id prefixes (for cryptohome compatibility).
+      // Accounts registered as kRegular by older builds must be re-resolved
+      // to their Jema type so they are not subject to gaia-only logic
+      // (ephemeral users cleanup, login-screen allowlist filtering, forced
+      // online sign-in).
+      if (user_type == UserType::kRegular) {
+        const std::string& gaia_id = account_id.GetGaiaId();
+        if (gaia_id.starts_with("ft_id_")) {
+          return UserType::kFlintAccount;
+        }
+        if (gaia_id.starts_with("jema_id_")) {
+          return UserType::kJemaAccount;
+        }
+      }
+      return user_type;
     default:
       return user_type;
   }
@@ -1107,6 +1124,28 @@ bool UserManagerImpl::IsUserCryptohomeDataEphemeral(
 }
 
 bool UserManagerImpl::IsEphemeralAccountId(const AccountId& account_id) const {
+  // ---***JEMAOS BEGIN***---
+  // Jema/Flint accounts are persistent local accounts: their cryptohome and
+  // their entry in the user list must survive sign-out, otherwise re-login
+  // with the local password becomes impossible and the device falls back to
+  // OOBE (no known users). Never treat them as ephemeral, regardless of the
+  // ephemeral-users device policy. They are identified by account type or,
+  // for accounts stored as GOOGLE (cryptohome compatibility), by the
+  // "ft_id_"/"jema_id_" gaia id prefix.
+  if (account_id.GetAccountType() == AccountType::FLINT_ACCOUNT ||
+      account_id.GetAccountType() == AccountType::JEMA_ACCOUNT) {
+    return false;
+  }
+  if (account_id.GetAccountType() == AccountType::GOOGLE) {
+    const std::string& gaia_id = account_id.GetGaiaId();
+    if (gaia_id.starts_with("ft_id_") ||
+        gaia_id.starts_with("flint_id_") ||
+        gaia_id.starts_with("jema_id_")) {
+      return false;
+    }
+  }
+  // ---***JEMAOS END***---
+
   // Data belonging to the device owner is never ephemeral.
   if (account_id == GetOwnerAccountId()) {
     return false;

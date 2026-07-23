@@ -155,17 +155,10 @@ void AuthFactorEditor::AddContextKnowledgeKey(
                                   std::move(password_metadata));
 
     // Log hashed password being stored
-    const std::string& hashed_password = key->GetSecret();
-    std::string hash_hex;
-    for (unsigned char c : hashed_password) {
-      char buf[3];
-      snprintf(buf, sizeof(buf), "%02x", c);
-      hash_hex += buf;
-    }
     LOG(WARNING) << "[ACCOUNT CREATION] Storing hashed password for user: "
                  << context->GetAccountId().GetUserEmail()
                  << ", label: " << key->GetLabel()
-                 << ", hash(hex): " << hash_hex;
+                 << ", hash: [redacted]";
 
     cryptohome::AuthFactorInput input(
         cryptohome::AuthFactorInput::Password{key->GetSecret()});
@@ -218,25 +211,15 @@ void AuthFactorEditor::HashContextKeyAndAdd(
     std::unique_ptr<UserContext> context,
     AuthOperationCallback callback,
     const std::string& system_salt) {
-  const std::string plain_password = context->GetKey()->GetSecret();
   LOG(WARNING) << "[ACCOUNT CREATION] Hashing password for user: "
                << context->GetAccountId().GetUserEmail()
-               << ", plain password: '" << plain_password << "'";
-  
+               << ", plain password: [redacted]";
+
   context->GetKey()->Transform(Key::KEY_TYPE_SALTED_SHA256_TOP_HALF,
                                system_salt);
-  
-  const std::string& hashed_password = context->GetKey()->GetSecret();
-  std::string hash_hex;
-  for (unsigned char c : hashed_password) {
-    char buf[3];
-    snprintf(buf, sizeof(buf), "%02x", c);
-    hash_hex += buf;
-  }
-  LOG(WARNING) << "[ACCOUNT CREATION] Password hashed:"
-               << " plain='" << plain_password << "'"
-               << ", hash(hex)=" << hash_hex;
-  
+
+  LOG(WARNING) << "[ACCOUNT CREATION] Password hashed (plain: [redacted])";
+
   AddContextKnowledgeKey(std::move(context), std::move(callback));
 }
 

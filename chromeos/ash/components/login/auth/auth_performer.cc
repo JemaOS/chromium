@@ -203,10 +203,9 @@ void AuthPerformer::AuthenticateUsingKnowledgeKey(
 
   if (context->GetKey()->GetKeyType() == Key::KEY_TYPE_PASSWORD_PLAIN) {
     DCHECK(!context->IsUsingPin());
-    const std::string& plain_password = context->GetKey()->GetSecret();
     LOG(WARNING) << "[RE-LOGIN] Validating plain password for user: "
                  << context->GetAccountId().GetUserEmail()
-                 << ", password: '" << plain_password << "'"
+                 << ", password: [redacted]"
                  << ", will hash and compare with cryptohome stored password";
     SystemSaltGetter::Get()->GetSystemSalt(base::BindOnce(
         &AuthPerformer::HashKeyAndAuthenticate, weak_factory_.GetWeakPtr(),
@@ -309,26 +308,14 @@ void AuthPerformer::MaybeRecordKnowledgeFactorAuthFailure(
 void AuthPerformer::HashKeyAndAuthenticate(std::unique_ptr<UserContext> context,
                                            AuthOperationCallback callback,
                                            const std::string& system_salt) {
-  const std::string plain_password = context->GetKey()->GetSecret();
   LOG(WARNING) << "[RE-LOGIN] Hashing password with system salt for user: "
                << context->GetAccountId().GetUserEmail()
-               << ", plain password: '" << plain_password << "'";
+               << ", plain password: [redacted]";
   context->GetKey()->Transform(Key::KEY_TYPE_SALTED_SHA256_TOP_HALF,
                                system_salt);
-  const std::string hashed_password = context->GetKey()->GetSecret();
-  
-  // Convert hash to hex for readability
-  std::string hash_hex;
-  for (unsigned char c : hashed_password) {
-    char buf[3];
-    snprintf(buf, sizeof(buf), "%02x", c);
-    hash_hex += buf;
-  }
-  
-  LOG(WARNING) << "[RE-LOGIN] Password hashed:"
-               << " plain='" << plain_password << "'"
-               << ", hash(hex)=" << hash_hex
-               << ", sending to cryptohome for validation";
+
+  LOG(WARNING) << "[RE-LOGIN] Password hashed (plain: [redacted]),"
+               << " sending to cryptohome for validation";
   AuthenticateUsingKnowledgeKey(std::move(context), std::move(callback));
 }
 

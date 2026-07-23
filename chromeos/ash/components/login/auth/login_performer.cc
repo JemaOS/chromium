@@ -198,7 +198,19 @@ void LoginPerformer::DoPerformLogin(const UserContext& user_context,
   bool wildcard_match = false;
 
   const AccountId& account_id = user_context.GetAccountId();
-  if (!IsUserAllowlisted(account_id, &wildcard_match,
+  //---***JEMAOS BEGIN***---
+  // Jema/Flint local accounts are not gaia users: they must not be subject to
+  // the device user allowlist (kAccountsPrefUsers), which only contains gaia
+  // emails and would silently reject local account logins on managed devices.
+  const bool is_jema_local_flow =
+      user_context.GetAuthFlow() == UserContext::AUTH_FLOW_FLINT_ACCOUNT ||
+      user_context.GetAuthFlow() == UserContext::AUTH_FLOW_JEMA_ONLINE ||
+      (account_id.GetAccountType() == AccountType::GOOGLE &&
+       (account_id.GetGaiaId().starts_with("ft_id_") ||
+        account_id.GetGaiaId().starts_with("jema_id_")));
+  //---***JEMAOS END***---
+  if (!is_jema_local_flow &&
+      !IsUserAllowlisted(account_id, &wildcard_match,
                          user_context.GetUserType())) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&LoginPerformer::NotifyAllowlistCheckFailure,
@@ -491,7 +503,7 @@ void LoginPerformer::StartAuthentication() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VLOG(1) << "Offline auth started.";
   LOG(WARNING) << "StartAuthentication";
-  LOG(WARNING) << "StartAuthentication: password: " << user_context_.GetKey()->GetSecret();
+  LOG(WARNING) << "StartAuthentication: password: [redacted]";
   LOG(WARNING) << "StartAuthentication: account_id: " << user_context_.GetAccountId();
   LOG(WARNING) << "StartAuthentication: email: " << user_context_.GetAccountId().GetUserEmail();
   LOG(WARNING) << "StartAuthentication: gaia_id: " << user_context_.GetAccountId().GetGaiaId();

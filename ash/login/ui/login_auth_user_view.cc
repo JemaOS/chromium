@@ -1179,10 +1179,18 @@ void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
                          << (response_body ? body : "<null>");
 
             if (!response_body) {
-              LOG(WARNING) << "Authentication failed: No response from server.";
-              self->ShowAuthError(l10n_util::GetStringUTF16(
-                  IDS_ASH_LOGIN_ERROR_SERVER_NO_RESPONSE));
+              //---***JEMAOS BEGIN***---
+              // The blocked-user API is unreachable (device offline, server
+              // down). The pod only exists for users that already have a
+              // local account on this device: fall back to the local
+              // (cryptohome) password verification instead of locking the
+              // user out. An explicit "blocked" API response still denies
+              // the login below.
+              LOG(WARNING) << "Blocked-user API unreachable; falling back to "
+                              "local password authentication.";
+              self->AuthenticateLocallyWithPassword(password);
               return;
+              //---***JEMAOS END***---
             }
 
             bool api_allows_login = false;
@@ -1217,37 +1225,12 @@ void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
             }
 
             if (api_allows_login) {
-              // API allows login. Clear any error shown by password view.
-              self->password_view_->ShowErrorMessage(u"");
-
-              const bool authenticated_by_pin =
-                  self->ShouldAuthenticateWithPin() &&
-                  base::ContainsOnlyChars(base::UTF16ToUTF8(password), "0123456789");
-
-              //---***JEMAOS BEGIN***---
-              // API verified user is not blocked: proceed with local password authentication.
-              // For new users: CompleteLogin will create the local account with this password.
-              // For existing users: CompleteLogin will verify the password matches the stored password.
-              // This allows persistent local accounts with stored passwords for subsequent logins.
+              // API verified user is not blocked: proceed with local password
+              // authentication (CompleteLogin creates the account for new
+              // users or verifies the stored password for existing users).
               LOG(WARNING) << "API verified, proceeding with local authentication for: "
                            << self->current_user().basic_user_info.account_id.GetUserEmail();
-              //---***JEMAOS END***---
-              
-              Shell::Get()
-                  ->login_screen_controller()
-                  ->AuthenticateUserWithPasswordOrPin(
-                      self->current_user().basic_user_info.account_id,
-                      base::UTF16ToUTF8(password), authenticated_by_pin,
-                      base::BindOnce(
-                          [](base::WeakPtr<LoginAuthUserView> weak_self,
-                             bool authenticated_by_pin_param,
-                             std::optional<bool> auth_success_param) {
-                            if (!weak_self)
-                              return;
-                            // Pass through the real auth result; UI will show errors if needed.
-                            weak_self->OnAuthComplete(authenticated_by_pin_param, auth_success_param);
-                          },
-                          self->weak_factory_.GetWeakPtr(), authenticated_by_pin));
+              self->AuthenticateLocallyWithPassword(password);
             } else {
               LOG(WARNING) << "Authentication failed by API. Body: " << body;
               const std::u16string msg =
@@ -1259,6 +1242,34 @@ void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
           },
           base::Unretained(this), password),
       1024 * 1024 /* max response size */);
+}
+
+void LoginAuthUserView::AuthenticateLocallyWithPassword(
+    const std::u16string& password) {
+  // Clear any error shown by the password view.
+  password_view_->ShowErrorMessage(u"");
+
+  const bool authenticated_by_pin =
+      ShouldAuthenticateWithPin() &&
+      base::ContainsOnlyChars(base::UTF16ToUTF8(password), "0123456789");
+
+  Shell::Get()
+      ->login_screen_controller()
+      ->AuthenticateUserWithPasswordOrPin(
+          current_user().basic_user_info.account_id,
+          base::UTF16ToUTF8(password), authenticated_by_pin,
+          base::BindOnce(
+              [](base::WeakPtr<LoginAuthUserView> weak_self,
+                 bool authenticated_by_pin_param,
+                 std::optional<bool> auth_success_param) {
+                if (!weak_self)
+                  return;
+                // Pass through the real auth result; UI will show errors if
+                // needed.
+                weak_self->OnAuthComplete(authenticated_by_pin_param,
+                                          auth_success_param);
+              },
+              weak_factory_.GetWeakPtr(), authenticated_by_pin));
 }
 
 void LoginAuthUserView::ShowAuthError(const std::u16string& error_message) {

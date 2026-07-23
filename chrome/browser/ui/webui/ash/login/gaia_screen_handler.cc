@@ -335,6 +335,37 @@ std::string GetOrGenerateDeviceId(const user_manager::KnownUser& known_user,
   return device_id;
 }
 
+//---***JEMAOS BEGIN***---
+// The Jema web login payload sometimes delivers the password base64-encoded
+// (in a field the JS does not flag as such), while the pod and the local
+// signin form always use plaintext. Decode the value only when it is valid
+// base64 that decodes to printable UTF-8 text; otherwise keep it as-is.
+// Valid base64 requires a length that is a multiple of 4, so genuine
+// plaintext passwords of other lengths are never touched, and alphanumeric
+// plaintext that happens to be base64-shaped decodes to non-printable bytes
+// and is rejected as well.
+std::string DecodePasswordIfBase64(const std::string& value) {
+  if (value.size() < 8 || value.size() % 4 != 0) {
+    return value;
+  }
+  std::string decoded;
+  if (!base::Base64Decode(value, &decoded)) {
+    return value;
+  }
+  if (!base::IsStringUTF8(decoded)) {
+    return value;
+  }
+  for (const char c : decoded) {
+    if (static_cast<unsigned char>(c) < 0x20) {
+      return value;
+    }
+  }
+  LOG(WARNING) << "[JEMAOS] Password arrived base64-encoded, decoded "
+               << value.size() << " -> " << decoded.size() << " chars";
+  return decoded;
+}
+//---***JEMAOS END***---
+
 }  // namespace
 
 GaiaScreenHandler::GaiaScreenHandler(
@@ -846,11 +877,13 @@ void GaiaScreenHandler::HandleCompleteAuthenticationEvent(
             << " with IsJemaAccountEnabled: " << jemaos::switches::IsJemaAccountEnabled();
 
     std::string raw_password;
-    // Accept both base64 and plain text (fallback) to avoid breaking flows
-    if (!base::Base64Decode(password_value, &raw_password)) {
-      LOG(WARNING) << "[JEMAOS] Password not base64-encoded, using raw value.";
-      raw_password = password_value;
-    }
+    //---***JEMAOS BEGIN***---
+    // The Jema web login payload may deliver the password base64-encoded;
+    // decode it only when it is provably base64 wrapping printable text
+    // (see DecodePasswordIfBase64). Plaintext passwords pass through
+    // unchanged, so the cryptohome vault always seals the real password.
+    raw_password = DecodePasswordIfBase64(password_value);
+    //---***JEMAOS END***---
 
      bool exist = false;
      bool newUser = false;
@@ -886,10 +919,12 @@ void GaiaScreenHandler::HandleCompleteAuthenticationEvent(
               << ", Email: " << email
               << ", New User: " << newUser
               << ", Existing User: " << exist
-              << ", raw_password: '" << raw_password << "'"
+              << ", raw_password: [redacted]"
               << ", key_label: " << key.GetLabel()
-              << ", key_secret: '" << key.GetSecret() << "'"
-              << ", confirmToken: " << password_attributes.FindString("confirmToken");
+              << ", key_secret: [redacted]"
+              << ", confirmToken: "
+              << (password_attributes.FindString("confirmToken") ? "present"
+                                                                 : "absent");
       const std::string* confirm_token = password_attributes.FindString("confirmToken");
       UserContext user_context(
           user_manager::UserType::kJemaAccount, account_id);
@@ -899,7 +934,7 @@ void GaiaScreenHandler::HandleCompleteAuthenticationEvent(
       
       LOG(WARNING) << "[JEMAOS] UserContext after SetKey - has password: " 
                    << !user_context.GetKey()->GetSecret().empty()
-                   << ", password: '" << user_context.GetKey()->GetSecret() << "'"
+                   << ", password: [redacted]"
                    << ", label: " << user_context.GetKey()->GetLabel();
       if (confirm_token)
         user_context.SetRefreshToken(*confirm_token);

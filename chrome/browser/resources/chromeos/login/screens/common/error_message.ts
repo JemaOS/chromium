@@ -163,7 +163,9 @@ export class ErrorMessageScreen extends ErrorMessageScreenBase {
 
       jemaLocalSigninAllowed: {
         type: Boolean,
-        value: true,
+        // JEMAOS: default hidden — the "sign in with a local account" link is
+        // not shown on the OOBE/first-boot screen.
+        value: false,
         observer: 'updateLocalizedContent',
       },
 

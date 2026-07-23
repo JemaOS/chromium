@@ -16,6 +16,7 @@ import { OobeCrLottie } from '../../components/oobe_cr_lottie.js';
 import { CrButtonElement } from '//resources/ash/common/cr_elements/cr_button/cr_button.js';
 import { CrLazyRenderElement } from '//resources/ash/common/cr_elements/cr_lazy_render/cr_lazy_render.js';
 import { assert } from '//resources/js/assert.js';
+import { loadTimeData } from '//resources/js/load_time_data.js';
 import { PolymerElementProperties } from '//resources/polymer/v3_0/polymer/interfaces.js';
 import { afterNextRender, PolymerElement } from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
@@ -158,6 +159,19 @@ export class OobeAdaptiveDialog extends PolymerElement {
         type: String,
         value: '',
         observer: 'onNetworkConnectionTypeChanged_',
+      },
+
+      /**
+       * Localized label of the "sign in with a local account" link.
+       */
+      localConnectText_: {
+        type: String,
+        value() {
+          // Fallback to the source language (English); the FR/EN string is
+          // provided by loadTimeData for the WiFi screen, never hardcoded here.
+          return loadTimeData.getString('jemaosLocalConnectLink') ||
+              'Sign in with a local account';
+        },
       },
     };
   }

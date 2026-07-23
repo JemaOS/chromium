@@ -516,8 +516,9 @@ void ExistingUserController::Login(const UserContext& user_context,
 
   is_login_in_progress_ = true;
 
-  if ((user_context.GetUserType() != user_manager::UserType::kRegular ||
-      user_context.GetUserType() != user_manager::UserType::kJemaAccount) &&
+  if (user_context.GetUserType() != user_manager::UserType::kRegular &&
+      user_context.GetUserType() != user_manager::UserType::kJemaAccount &&
+      user_context.GetUserType() != user_manager::UserType::kFlintAccount &&
       user_manager::UserManager::Get()->IsUserLoggedIn()) {
     // Multi-login is only allowed for regular users. If we are attempting to
     // do multi-login as another type of user somehow, bail out. Do not
@@ -665,7 +666,19 @@ void ExistingUserController::OnAuthFailure(const AuthFailure& failure) {
 
   const bool is_known_user = user_manager::UserManager::Get()->IsKnownUser(
       last_login_attempt_account_id_);
-  const bool is_jema_local_user = last_login_attempt_account_id_.GetAccountType() == AccountType::FLINT_ACCOUNT;
+  // Jema local (Flint) accounts are stored as GOOGLE accounts with the
+  // "ft_id_" gaia id prefix, so detect them by prefix as well as by account
+  // type. They must never be forced into the online (gaia) sign-in flow:
+  // they authenticate locally against the cryptohome.
+  const std::string& last_attempt_gaia_id =
+      last_login_attempt_account_id_.GetAccountType() == AccountType::GOOGLE
+          ? last_login_attempt_account_id_.GetGaiaId()
+          : base::EmptyString();
+  const bool is_jema_local_user =
+      last_login_attempt_account_id_.GetAccountType() ==
+          AccountType::FLINT_ACCOUNT ||
+      last_attempt_gaia_id.starts_with("ft_id_") ||
+      last_attempt_gaia_id.starts_with("jema_id_");
   if (failure.reason() == AuthFailure::OWNER_REQUIRED) {
     ShowError(SigninError::kOwnerRequired, error);
     // Using Untretained here is safe because SessionTerminationManager is

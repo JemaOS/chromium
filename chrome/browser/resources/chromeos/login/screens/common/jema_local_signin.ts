@@ -284,7 +284,11 @@ export class JemaLocalSignin extends JemaLocalSigninBase {
       password,
     };
     this.loading = true;
-    chrome.send('completeFtAuthentication', [msg.newUser, msg.username, msg.password]);
+    // JEMAOS: the C++ HandleCompleteAuth callback expects 5 arguments
+    // (newUser, username, password, accessToken, refreshToken). Local accounts
+    // have no online tokens, so pad with empty strings to satisfy the
+    // WebUI::Call arity check (CHECK_EQ) — empty tokens are ignored.
+    chrome.send('completeFtAuthentication', [msg.newUser, msg.username, msg.password, '', '']);
   }
 
   getInvalidPasswordMessage_(locale: string, errorState: JEMA_LOCAL_SIGNIN_ERROR_STATE) {

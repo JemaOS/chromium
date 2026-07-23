@@ -137,6 +137,26 @@ UserType UserManager::CalculateUserType(const AccountId& account_id,
   if (user) {
     // This branch works for any other user type, including PUBLIC_ACCOUNT.
     const UserType user_type = user->GetType();
+    // ---***JEMAOS BEGIN***---
+    // Local Flint/Jema accounts are stored as GOOGLE accounts with
+    // "ft_id_"/"jema_id_" gaia id prefixes (for cryptohome compatibility).
+    // Accounts created before this mapping existed were registered as
+    // kRegular, which wrongly subjects them to gaia-only logic (ephemeral
+    // users cleanup, login-screen allowlist filtering, forced online
+    // sign-in). Re-resolve their type from the gaia id prefix.
+    if (user_type == UserType::kRegular &&
+        account_id.GetAccountType() == AccountType::GOOGLE) {
+      const std::string& gaia_id = account_id.GetGaiaId();
+      if (gaia_id.starts_with("ft_id_") ||
+          gaia_id.starts_with("flint_id_")) {
+        // "flint_id_" was a typo in older builds; those accounts are local.
+        return UserType::kFlintAccount;
+      }
+      if (gaia_id.starts_with("jema_id_")) {
+        return UserType::kJemaAccount;
+      }
+    }
+    // ---***JEMAOS END***---
     if (user_type == UserType::kChild || user_type == UserType::kRegular) {
       const UserType new_user_type =
           is_child ? UserType::kChild : UserType::kRegular;
@@ -179,6 +199,20 @@ UserType UserManager::CalculateUserType(const AccountId& account_id,
   if (account_id.GetAccountType() == AccountType::JEMA_ACCOUNT) {
     return UserType::kJemaAccount;
   }
+
+  // ---***JEMAOS BEGIN***---
+  // Local Flint/Jema accounts use AccountType::GOOGLE (for cryptohome
+  // compatibility) and are identified by their gaia id prefix.
+  if (account_id.GetAccountType() == AccountType::GOOGLE) {
+    const std::string& gaia_id = account_id.GetGaiaId();
+    if (gaia_id.starts_with("ft_id_")) {
+      return UserType::kFlintAccount;
+    }
+    if (gaia_id.starts_with("jema_id_")) {
+      return UserType::kJemaAccount;
+    }
+  }
+  // ---***JEMAOS END***---
 
   return UserType::kRegular;
 }

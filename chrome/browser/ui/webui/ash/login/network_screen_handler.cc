@@ -37,7 +37,8 @@ void NetworkScreenHandler::DeclareLocalizedValues(
   builder->AddF("networkSectionTitle", IDS_NETWORK_SELECTION_TITLE,
                 ui::GetChromeOSDeviceName());
   builder->Add("networkSectionTitleWiFi", IDS_NETWORK_SELECTION_TITLE_WIFI);
-  builder->Add("networkSectionTitleEthernet", IDS_NETWORK_SELECTION_TITLE_ETHERNET);
+  builder->Add("networkSectionTitleEthernet",
+               IDS_NETWORK_SELECTION_TITLE_ETHERNET);
   builder->AddF("networkSectionSubtitle", IDS_NETWORK_SELECTION_SUBTITLE,
                 ui::GetChromeOSDeviceName());
   builder->Add("proxySettingsListItemName",
@@ -45,9 +46,15 @@ void NetworkScreenHandler::DeclareLocalizedValues(
   builder->Add("addWiFiListItemName", IDS_NETWORK_ADD_WI_FI_LIST_ITEM_NAME);
 
   // JemaOS online account network requirement strings
-  builder->Add("jemaosOnlineAccountNetworkRequiredError", IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR);
-  builder->Add("jemaosOnlineAccountNetworkRequiredMessage", IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_MESSAGE);
-  builder->Add("jemaosOnlineAccountWifiPreferredMessage", IDS_JEMAOS_ONLINE_ACCOUNT_WIFI_PREFERRED_MESSAGE);
+  builder->Add("jemaosOnlineAccountNetworkRequiredError",
+               IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR);
+  builder->Add("jemaosOnlineAccountNetworkRequiredMessage",
+               IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_MESSAGE);
+  builder->Add("jemaosOnlineAccountWifiPreferredMessage",
+               IDS_JEMAOS_ONLINE_ACCOUNT_WIFI_PREFERRED_MESSAGE);
+
+  // JemaOS local account sign-in link shown on the WiFi page when offline.
+  builder->Add("jemaosLocalConnectLink", IDS_JEMAOS_LOCAL_CONNECT_LINK);
 
   builder->Add("networkScreenQuickStart",
                IDS_LOGIN_QUICK_START_SETUP_NETWORK_SCREEN_ENTRY_POINT);

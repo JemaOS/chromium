@@ -310,6 +310,9 @@ const messageHandlers = {
 
     // JEMAOS: Capture access token from userInfo for cookie injection.
     this.jemaAccessToken_ = msg.accessToken || '';
+    // JEMAOS: Capture refresh token if the auth backend provides one, so the
+    // access token can be renewed without forcing a new login.
+    this.jemaRefreshToken_ = msg.refreshToken || msg.refresh_token || '';
 
     console.log('[JEMAOS-DEBUG] userInfo - email:', msg.email, 'gaiaId:', msg.gaiaId, 'services:', msg.services);
     console.log('[JEMAOS-DEBUG] userInfo - has passwordBase64:', !!msg.passwordBase64, 'has password:', !!msg.password);
@@ -1149,7 +1152,17 @@ export class Authenticator extends EventTarget {
   handleExternalAuth_(e) {
     console.log('[DEBUG] Handling external auth:', e.data);
 
-    const msg = e.data?.payload?.call || {};
+    //---***JEMAOS BEGIN***---
+    // The Jema login page posts auth messages in several shapes:
+    //   {type:"gaia_saml_api", call:{method:...}}   (SAML bridge)
+    //   {method:...}                                 (direct postMessage)
+    //   {payload:{call:{method:...}}}                (legacy wrapper)
+    // Only the legacy wrapper was extracted, so every Jema message was
+    // silently dropped and the 'userInfo' handler (the only place capturing
+    // the access token) was dead code: no token ever reached the device.
+    const msg =
+        e.data?.payload?.call || e.data?.call || e.data || {};
+    //---***JEMAOS END***---
     if (msg.method && msg.method in messageHandlers) {
       messageHandlers[msg.method].call(this, msg);
     }
@@ -1418,7 +1431,7 @@ export class Authenticator extends EventTarget {
 
       // Username can include domain; handler trims it.
       console.log('[DEBUG] completeFtAuthentication', newUser, this.email_ || '', 'password_length:', localPassword.length);
-      chrome.send('completeFtAuthentication', [newUser, this.email_ || '', localPassword, this.jemaAccessToken_ || '']);
+      chrome.send('completeFtAuthentication', [newUser, this.email_ || '', localPassword, this.jemaAccessToken_ || '', this.jemaRefreshToken_ || '']);
       return;
     }
 

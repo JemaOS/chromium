@@ -992,7 +992,10 @@ void EnrollmentScreen::SetupAndShowOfflineMessage(
 
   if (LoginDisplayHost::default_host()->GetOobeUI()->current_screen() !=
       ErrorScreenView::kScreenId) {
-    error_screen_->AllowJemaLocalSignin(!policy::EnrollmentConfig::IsZeroTouchEnrollmentJemaForced());
+    // JEMAOS: always hide the "sign in with a local account" link on the
+    // first-boot/OOBE signin screen (the user does not want it shown next to
+    // the WiFi step). Local accounts remain available elsewhere (Settings).
+    error_screen_->AllowJemaLocalSignin(false);
     error_screen_->SetUIState(NetworkError::UI_STATE_SIGNIN);
     error_screen_->SetParentScreen(EnrollmentScreenView::kScreenId);
     error_screen_->SetHideCallback(

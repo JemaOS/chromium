@@ -35,6 +35,7 @@
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
+#include "chrome/grit/chromeos_strings.h"
 #include "ash/style/ash_color_id.h"
 #include "ash/style/ash_color_provider.h"
 #include "ash/style/color_util.h"
@@ -1181,14 +1182,14 @@ void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
             if (!response_body) {
               //---***JEMAOS BEGIN***---
               // The blocked-user API is unreachable (device offline, server
-              // down). The pod only exists for users that already have a
-              // local account on this device: fall back to the local
-              // (cryptohome) password verification instead of locking the
-              // user out. An explicit "blocked" API response still denies
-              // the login below.
-              LOG(WARNING) << "Blocked-user API unreachable; falling back to "
-                              "local password authentication.";
-              self->AuthenticateLocallyWithPassword(password);
+              // down). A JemaOS online account is a SaaS account: it REQUIRES
+              // an internet connection to sign in. Show the network-required
+              // error in red instead of allowing an offline login; a clear
+              // "blocked" API response below still denies the login.
+              LOG(WARNING) << "Blocked-user API unreachable; online account "
+                              "requires internet, showing error.";
+              self->ShowAuthError(l10n_util::GetStringUTF16(
+                  IDS_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR));
               return;
               //---***JEMAOS END***---
             }

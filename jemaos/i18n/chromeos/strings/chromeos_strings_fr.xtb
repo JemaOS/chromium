@@ -4,4 +4,7 @@
 <!-- chromeos_strings.override.grdp -->
 <translation id="676750809707619649">Installer openJema</translation>
 <translation id="8896685659418072052">Installer JemaOS</translation>
+<translation id="4316870623728975874">Connexion Internet requise pour le compte en ligne JemaOS. Veuillez vous connecter au WiFi ou à l'Ethernet pour continuer.</translation>
+<translation id="8499370917213033221">Le compte en ligne JemaOS nécessite une connexion Internet. Veuillez sélectionner un réseau ci-dessous pour vous connecter.</translation>
+<translation id="8963692381325729533">Pour une meilleure expérience avec le compte en ligne JemaOS, veuillez vous connecter au WiFi.</translation>
 </translationbundle>

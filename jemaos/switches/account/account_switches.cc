@@ -59,7 +59,15 @@ int GetJemaOSSupervisedUserSettingsSyncInterval() {
 }
 
 bool IsPolicyManagedByJema() {
-  return base::CommandLine::ForCurrentProcess()->HasSwitch(kPolicyManagedByJema) || IsJemaAccountEnabled();
+  //---***JEMAOS BEGIN***---
+  // The Jema device-management backend is not deployed yet. Treating every
+  // Jema account as DM-managed makes user cloud policy mandatory, and the
+  // session is killed (chrome::AttemptUserExit) when the missing server
+  // can't serve it: every online login ended in a black screen back to the
+  // login panel. Only honor the explicit switch until the backend exists.
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(
+      kPolicyManagedByJema);
+  //---***JEMAOS END***---
 }
 
 bool IsJemaDMServerUrl(const std::string& url) {

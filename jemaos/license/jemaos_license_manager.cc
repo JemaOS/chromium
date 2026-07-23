@@ -246,6 +246,22 @@ void LicenseManager::OnError(int errCode, const std::string& errMsg) {
   } else {
     LOG(ERROR) << "Error occured from online verification, code:"
       << errCode << " message:" << errMsg;
+    //---***JEMAOS BEGIN***---
+    // Only enforce on a DEFINITIVE license rejection: negative validator
+    // codes (except the fetch timeout -30) mean the validator examined the
+    // server's answer and rejected the license itself. Everything else is a
+    // transport problem (0 = no response, -30 = timeout, HTTP status codes)
+    // and may just mean the device is offline or the server is down; that
+    // must never force-quit the user.
+    const bool definitive_rejection = errCode < 0 && errCode != -30;
+    if (!definitive_rejection) {
+      LOG(WARNING) << "[JEMAOS] License verification unavailable (code "
+                   << errCode << "); keeping previous state, no enforcement";
+      state_ = ManagerState::Idle;
+      mode_ = FetchMode::OfflineMode;
+      return;
+    }
+    //---***JEMAOS END***---
     OnInvalid();
   }
 }
